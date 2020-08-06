@@ -14,6 +14,7 @@ describe("kong.db [#postgres] connector", function()
         db_desc  = "database",
         db_ver   = "9.5",
         strategy = "PostgreSQL",
+        db_readonly = false,
       }, infos)
 
       local infos = connector.infos{ major_version = 9.5, major_minor_version = "9.5", config = config }
@@ -21,6 +22,7 @@ describe("kong.db [#postgres] connector", function()
         db_desc  = "database",
         db_ver   = "9.5",
         strategy = "PostgreSQL",
+        db_readonly = false,
       }, infos)
 
       infos = connector.infos{ major_version = 9, major_minor_version = "9.5.1", config = config }
@@ -28,6 +30,7 @@ describe("kong.db [#postgres] connector", function()
         db_desc  = "database",
         db_ver   = "9.5",
         strategy = "PostgreSQL",
+        db_readonly = false,
       }, infos)
 
       infos = connector.infos{ major_version = 9.5, major_minor_version = "9.5.1", config = config }
@@ -35,6 +38,7 @@ describe("kong.db [#postgres] connector", function()
         db_desc  = "database",
         db_ver   = "9.5",
         strategy = "PostgreSQL",
+        db_readonly = false,
       }, infos)
 
       infos = connector.infos{ major_version = 10, major_minor_version = "10.5", config = config }
@@ -42,6 +46,7 @@ describe("kong.db [#postgres] connector", function()
         db_desc  = "database",
         db_ver   = "10.5",
         strategy = "PostgreSQL",
+        db_readonly = false,
       }, infos)
     end)
 
@@ -51,6 +56,7 @@ describe("kong.db [#postgres] connector", function()
         db_desc  = "database",
         db_ver   = "unknown",
         strategy = "PostgreSQL",
+        db_readonly = false,
       }, infos)
 
       infos = connector.infos{ major_version = 10, config = config }
@@ -58,6 +64,7 @@ describe("kong.db [#postgres] connector", function()
         db_desc  = "database",
         db_ver   = "unknown",
         strategy = "PostgreSQL",
+        db_readonly = false,
       }, infos)
 
       infos = connector.infos{ config = config }
@@ -65,6 +72,7 @@ describe("kong.db [#postgres] connector", function()
         db_desc  = "database",
         db_ver   = "unknown",
         strategy = "PostgreSQL",
+        db_readonly = false,
       }, infos)
     end)
 
@@ -74,6 +82,7 @@ describe("kong.db [#postgres] connector", function()
         db_desc  = "database",
         db_ver   = "unknown",
         strategy = "PostgreSQL",
+        db_readonly = false,
       }, infos)
 
       infos = connector.infos{ major_version = 10, major_minor_version = "invalid", config = config }
@@ -81,6 +90,7 @@ describe("kong.db [#postgres] connector", function()
         db_desc  = "database",
         db_ver   = "unknown",
         strategy = "PostgreSQL",
+        db_readonly = false,
       }, infos)
 
       infos = connector.infos{ major_minor_version = "invalid", config = config }
@@ -88,6 +98,17 @@ describe("kong.db [#postgres] connector", function()
         db_desc  = "database",
         db_ver   = "unknown",
         strategy = "PostgreSQL",
+        db_readonly = false,
+      }, infos)
+    end)
+
+    it("returns db_readonly = true when readonly connection is enabled", function()
+      local infos = connector.infos{ config = config, config_ro = config, }
+      assert.same({
+        db_desc  = "database",
+        db_ver   = "unknown",
+        strategy = "PostgreSQL",
+        db_readonly = true,
       }, infos)
     end)
   end)

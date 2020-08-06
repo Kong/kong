@@ -72,6 +72,13 @@ for _, strategy in helpers.each_strategy() do
       assert.is_falsy(errors)
       assert.equal(1209600, t2.config.refresh_token_ttl)
     end)
+    it("defaults to non-persistent refresh tokens", function()
+      local t = {enable_authorization_code = true, mandatory_scope = false}
+      local t2, errors = v(t, schema_def)
+      assert.truthy(t2)
+      assert.is_falsy(errors)
+      assert.equal(false, t2.config.reuse_refresh_token)
+    end)
 
     describe("errors", function()
       it("requires at least one flow", function()

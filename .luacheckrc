@@ -28,6 +28,14 @@ exclude_files = {
 }
 
 
+files["kong/hooks.lua"] = {
+    read_globals = {
+        "table.pack",
+        "table.unpack",
+    }
+}
+
+
 files["kong/plugins/ldap-auth/*.lua"] = {
     read_globals = {
         "bit.mod",

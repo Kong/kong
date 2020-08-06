@@ -5,7 +5,7 @@ use t::Util;
 
 no_long_string();
 
-plan tests => repeat_each() * (blocks() * 3 + 3);
+plan tests => repeat_each() * (blocks() * 3 + 4);
 
 run_tests();
 
@@ -142,6 +142,44 @@ qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):\d+ \[my-plugin\] h
 qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):\d+ hello world/,
 qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):\d+ \[my-plugin\] hello world/,
 qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):\d+ \[my-other-plugin\] hello world/
+]
+--- no_error_log
+[error]
+
+
+
+=== TEST 6: set_namespaced_log() produces light-thread safe namespaces
+--- http_config
+    init_by_lua_block {
+        kong_global = require "kong.global"
+        kong = kong_global.new()
+        kong_global.init_pdk(kong)
+    }
+--- config
+    location = /lua {
+        content_by_lua_block {
+            local args = assert(ngx.req.get_uri_args())
+            local thread_name = args.name
+
+            kong_global.set_namespaced_log(kong, thread_name)
+
+            ngx.sleep(0.1)
+
+            kong.log.notice(args.msg)
+        }
+    }
+
+    location = /t {
+        echo_subrequest_async GET '/lua' -q 'name=A&msg=hello';
+        echo_subrequest_async GET '/lua' -q 'name=B&msg=world';
+    }
+--- request
+GET /t
+--- ignore_response_body
+--- error_log eval
+[
+qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):\d+ \[A\] hello/,
+qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):\d+ \[B\] world/,
 ]
 --- no_error_log
 [error]

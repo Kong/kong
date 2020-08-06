@@ -1,9 +1,11 @@
 -- Mock for the underlying 'resty.dns.resolver' library
 -- (so NOT the Kong dns client)
 
--- this file should be in the Kong working direrctory (prefix)
+-- this file should be in the Kong working directory (prefix)
 local MOCK_RECORD_FILENAME = "dns_mock_records.json"
 
+
+local LOG_PREFIX = "[mock_dns_resolver] "
 local cjson = require "cjson.safe"
 
 -- first thing is to get the original (non-mock) resolver
@@ -64,6 +66,7 @@ do
     mock_records = {}
     if not is_file(filename) then
       -- no mock records set up, return empty default
+      ngx.log(ngx.DEBUG, LOG_PREFIX, "bypassing mock, no mock records found")
       return mock_records
     end
 
@@ -88,6 +91,7 @@ resolver.query = function(self, name, options, tries)
   local answer = (mock_records[qtype] or {})[name]
   if answer then
     -- we actually have a mock answer, return it
+    ngx.log(ngx.DEBUG, LOG_PREFIX, "serving '", name, "' from mocks")
     return answer, nil, tries
   end
 

@@ -1,28 +1,22 @@
-local basic_serializer = require "kong.plugins.log-serializers.basic"
-local statsd_logger    = require "kong.plugins.statsd.statsd_logger"
+local statsd_logger = require "kong.plugins.statsd.statsd_logger"
 
 
-local ngx_log       = ngx.log
-local ngx_timer_at  = ngx.timer.at
-local string_gsub   = string.gsub
-local pairs         = pairs
-local string_format = string.format
-local NGX_ERR       = ngx.ERR
-
-
-local StatsdHandler = {}
-StatsdHandler.PRIORITY = 11
-StatsdHandler.VERSION = "2.0.0"
+local kong     = kong
+local ngx      = ngx
+local timer_at = ngx.timer.at
+local pairs    = pairs
+local gsub     = string.gsub
+local fmt      = string.format
 
 
 local get_consumer_id = {
   consumer_id = function(consumer)
-    return consumer and string_gsub(consumer.id, "-", "_")
+    return consumer and gsub(consumer.id, "-", "_")
   end,
-  custom_id   = function(consumer)
+  custom_id = function(consumer)
     return consumer and consumer.custom_id
   end,
-  username    = function(consumer)
+  username = function(consumer)
     return consumer and consumer.username
   end
 }
@@ -30,13 +24,13 @@ local get_consumer_id = {
 
 local metrics = {
   status_count = function (service_name, message, metric_config, logger)
-    local fmt = string_format("%s.request.status", service_name,
+    local format = fmt("%s.request.status", service_name,
                        message.response.status)
 
-    logger:send_statsd(string_format("%s.%s", fmt, message.response.status),
+    logger:send_statsd(fmt("%s.%s", format, message.response.status),
                        1, logger.stat_types.counter, metric_config.sample_rate)
 
-    logger:send_statsd(string_format("%s.%s", fmt, "total"), 1,
+    logger:send_statsd(fmt("%s.%s", format, "total"), 1,
                        logger.stat_types.counter, metric_config.sample_rate)
   end,
   unique_users = function (service_name, message, metric_config, logger)
@@ -44,7 +38,7 @@ local metrics = {
     local consumer_id     = get_consumer_id(message.consumer)
 
     if consumer_id then
-      local stat = string_format("%s.user.uniques", service_name)
+      local stat = fmt("%s.user.uniques", service_name)
 
       logger:send_statsd(stat, consumer_id, logger.stat_types.set)
     end
@@ -54,7 +48,7 @@ local metrics = {
     local consumer_id     = get_consumer_id(message.consumer)
 
     if consumer_id then
-      local stat = string_format("%s.user.%s.request.count", service_name, consumer_id)
+      local stat = fmt("%s.user.%s.request.count", service_name, consumer_id)
 
       logger:send_statsd(stat, 1, logger.stat_types.counter,
                          metric_config.sample_rate)
@@ -65,13 +59,13 @@ local metrics = {
     local consumer_id     = get_consumer_id(message.consumer)
 
     if consumer_id then
-      local fmt = string_format("%s.user.%s.request.status", service_name, consumer_id)
+      local format = fmt("%s.user.%s.request.status", service_name, consumer_id)
 
-      logger:send_statsd(string_format("%s.%s", fmt, message.response.status),
+      logger:send_statsd(fmt("%s.%s", format, message.response.status),
                          1, logger.stat_types.counter,
                          metric_config.sample_rate)
 
-      logger:send_statsd(string_format("%s.%s", fmt,  "total"),
+      logger:send_statsd(fmt("%s.%s", format,  "total"),
                          1, logger.stat_types.counter,
                          metric_config.sample_rate)
     end
@@ -84,9 +78,9 @@ local function log(premature, conf, message)
     return
   end
 
-  local name = string_gsub(message.service.name ~= ngx.null and
-                           message.service.name or message.service.host,
-                           "%.", "_")
+  local name = gsub(message.service.name ~= ngx.null and
+                    message.service.name or message.service.host,
+                    "%.", "_")
 
   local stat_name  = {
     request_size     = name .. ".request.size",
@@ -107,7 +101,7 @@ local function log(premature, conf, message)
 
   local logger, err = statsd_logger:new(conf)
   if err then
-    ngx_log(NGX_ERR, "failed to create Statsd logger: ", err)
+    kong.log.err("failed to create Statsd logger: ", err)
     return
   end
 
@@ -131,16 +125,22 @@ local function log(premature, conf, message)
 end
 
 
+local StatsdHandler = {
+  PRIORITY = 11,
+  VERSION = "2.0.1",
+}
+
+
 function StatsdHandler:log(conf)
   if not ngx.ctx.service then
     return
   end
 
-  local message = basic_serializer.serialize(ngx)
+  local message = kong.log.serialize()
 
-  local ok, err = ngx_timer_at(0, log, conf, message)
+  local ok, err = timer_at(0, log, conf, message)
   if not ok then
-    ngx_log(NGX_ERR, "failed to create timer: ", err)
+    kong.log.err("failed to create timer: ", err)
   end
 end
 

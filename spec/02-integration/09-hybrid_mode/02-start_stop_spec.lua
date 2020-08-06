@@ -44,6 +44,20 @@ describe("invalid config are rejected", function()
       assert.False(ok)
       assert.matches("Error: in-memory storage can not be used when role = \"control_plane\"", err, nil, true)
     end)
+
+    it("must define cluster_ca_cert", function()
+      local ok, err = helpers.start_kong({
+        role = "control_plane",
+        prefix = "servroot2",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        cluster_mtls = "pki",
+      })
+
+      assert.False(ok)
+      assert.matches("Error: cluster_ca_cert must be specified when cluster_mtls = \"pki\"", err, nil, true)
+    end)
   end)
 
   describe("role is proxy", function()

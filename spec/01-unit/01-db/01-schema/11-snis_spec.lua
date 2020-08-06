@@ -25,6 +25,16 @@ describe("snis", function()
       end
     end)
 
+    it("accepts a * for default certificate", function()
+      local names = { "*" }
+
+      for _, name in ipairs(names) do
+        local ok, err = validate({ name = name, certificate = certificate })
+        assert.is_nil(err)
+        assert.is_true(ok)
+      end
+    end)
+
     it("accepts wildcards", function()
       local names = { "*.wildcard.com", "wildcard.*", "test.wildcard.*",
                       "foo.test.wildcard.*", "*.test.wildcard.com" }

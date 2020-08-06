@@ -30,6 +30,19 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      bp.plugins:insert {
+        name    = "post-function",
+        route   = { id = route.id },
+        config  = { access = { [[
+          local header = kong.request.get_header("x-ssl-client-verify")
+          if header then
+            kong.client.tls.set_client_verify("SUCCESS")
+          end
+        ]]
+        }, },
+      }
+
+
       local route2 = bp.routes:insert {
         hosts = { "tcp_logging_tls.com" },
       }
@@ -229,7 +242,7 @@ for _, strategy in helpers.each_strategy() do
       assert.True(is_latencies_sum_adding_up)
     end)
 
-    it("logs proper latencies (#grpcs)", function()
+    it("logs proper latencies (#grpcs) #flaky", function()
       local tcp_thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
 
       -- Making the request
@@ -313,6 +326,33 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("TLSv1.2", log_message.request.tls.version)
       assert.is_string(log_message.request.tls.cipher)
       assert.equal("NONE", log_message.request.tls.client_verify)
+    end)
+
+    it("TLS client_verify can be overwritten", function()
+      local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+
+      -- Making the request
+      local r = assert(proxy_ssl_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          host  = "tcp_logging.com",
+          ["x-ssl-client-verify"] = "SUCCESS",
+        },
+      })
+
+      assert.response(r).has.status(200)
+
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+      assert.equal("TLSv1.2", log_message.request.tls.version)
+      assert.is_string(log_message.request.tls.cipher)
+      assert.equal("SUCCESS", log_message.request.tls.client_verify)
     end)
 
     it("logs TLS info (#grpcs)", function()

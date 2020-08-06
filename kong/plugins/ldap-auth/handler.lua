@@ -1,16 +1,15 @@
 local access = require "kong.plugins.ldap-auth.access"
 
 
-local LdapAuthHandler = {}
+local LdapAuthHandler = {
+  PRIORITY = 1002,
+  VERSION = "2.2.0",
+}
 
 
 function LdapAuthHandler:access(conf)
   access.execute(conf)
 end
-
-
-LdapAuthHandler.PRIORITY = 1002
-LdapAuthHandler.VERSION = "2.0.0"
 
 
 return LdapAuthHandler

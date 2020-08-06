@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "acl",
         route = { id = route1.id },
         config   = {
-          whitelist = {"admin"}
+          allow = {"admin"}
         }
       }
 
@@ -82,7 +82,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "acl",
         route = { id = route2.id },
         config   = {
-          whitelist = { "ya" }
+          allow = { "ya" }
         }
       }
 
@@ -129,13 +129,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(204, res)
 
         -- Wait for cache to be invalidated
-        helpers.wait_until(function()
-          local res = assert(admin_client:get("/cache/" .. cache_key, {
-            headers = {}
-          }))
-          res:read_body()
-          return res.status == 404
-        end, 3)
+        helpers.wait_for_invalidation(cache_key)
 
         -- It should not work
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {
@@ -181,13 +175,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Wait for cache to be invalidated
-        helpers.wait_until(function()
-          local res = assert(admin_client:get("/cache/" .. cache_key, {
-            headers = {}
-          }))
-          res:read_body()
-          return res.status == 404
-        end, 3)
+        helpers.wait_for_invalidation(cache_key)
 
         -- It should not work
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {
@@ -231,23 +219,11 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(204, res)
 
         -- Wait for cache to be invalidated
-        helpers.wait_until(function()
-          local res = assert(admin_client:get("/cache/" .. cache_key, {
-            headers = {}
-          }))
-          res:read_body()
-          return res.status == 404
-        end, 3)
+        helpers.wait_for_invalidation(cache_key)
 
         -- Wait for key to be invalidated
         local keyauth_cache_key = db.keyauth_credentials:cache_key("apikey123")
-        helpers.wait_until(function()
-          local res = assert(admin_client:get("/cache/" .. keyauth_cache_key, {
-            headers = {}
-          }))
-          res:read_body()
-          return res.status == 404
-        end, 3)
+        helpers.wait_for_invalidation(keyauth_cache_key)
 
         -- It should not work
         local res = assert(proxy_client:get("/status/200?apikey=apikey123", {

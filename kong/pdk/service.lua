@@ -66,7 +66,7 @@ local function new()
 
 
   ---
-  -- Sets the host and port on which to connect to for proxying the request. ]]
+  -- Sets the host and port on which to connect to for proxying the request.
   -- Using this method is equivalent to ask Kong to not run the load-balancing
   -- phase for this request, and consider it manually overridden.
   -- Load-balancing components such as retries and health-checks will also be
@@ -103,8 +103,12 @@ local function new()
 
 
   if ngx.config.subsystem == "http" then
-    local set_upstream_cert_and_key =
-        require("resty.kong.tls").set_upstream_cert_and_key
+    local tls = require("resty.kong.tls")
+
+    local set_upstream_cert_and_key = tls.set_upstream_cert_and_key
+    local set_upstream_ssl_verify = tls.set_upstream_ssl_verify
+    local set_upstream_ssl_verify_depth = tls.set_upstream_ssl_verify_depth
+    local set_upstream_ssl_trusted_store = tls.set_upstream_ssl_trusted_store
 
     ---
     -- Sets the client certificate used while handshaking with the Service.
@@ -120,12 +124,12 @@ local function new()
     -- @tparam cdata chain The client certificate chain
     -- @tparam cdata key The client certificate private key
     -- @treturn boolean|nil `true` if the operation succeeded, `nil` if an error occurred
-    -- @treturn string|nil An error message describing the error if there was one.
+    -- @treturn string|nil An error message describing the error if there was one
     -- @usage
     -- local chain = assert(ssl.parse_pem_cert(cert_data))
     -- local key = assert(ssl.parse_pem_priv_key(key_data))
     --
-    -- local ok, err = tls.set_cert_key(chain, key)
+    -- local ok, err = kong.service.set_tls_cert_key(chain, key)
     -- if not ok then
     --   -- do something with error
     -- end
@@ -142,6 +146,101 @@ local function new()
 
       local res, err = set_upstream_cert_and_key(chain, key)
       return res, err
+    end
+
+
+    ---
+    -- Sets whether TLS verification is enabled while handshaking with the Service.
+    --
+    -- The `on` argument is a boolean flag, where `true` means upstream verification
+    -- is enabled and `false` disables it.
+    --
+    -- This call affects only the current request. If the trusted certificate store is
+    -- not set already (via [proxy_ssl_trusted_certificate](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_trusted_certificate)
+    -- or [kong.service.set_upstream_ssl_trusted_store](#kongserviceset_upstream_ssl_trusted_store)),
+    -- then TLS verification will always fail with "unable to get local issuer certificate" error.
+    --
+    -- @function kong.service.set_tls_verify
+    -- @phases `rewrite`, `access`, `balancer`
+    -- @tparam boolean on Whether to enable TLS certificate verification for the current request
+    -- @treturn boolean|nil `true` if the operation succeeded, `nil` if an error occurred
+    -- @treturn string|nil An error message describing the error if there was one
+    -- @usage
+    -- local ok, err = kong.service.set_tls_verify(true)
+    -- if not ok then
+    --   -- do something with error
+    -- end
+    service.set_tls_verify = function(on)
+      check_phase(access_and_rewrite_and_balancer)
+
+      if type(on) ~= "boolean" then
+        error("argument must be a boolean", 2)
+      end
+
+      return set_upstream_ssl_verify(on)
+    end
+
+
+    ---
+    -- Sets the maximum depth of verification when validating upstream server's TLS certificate.
+    --
+    -- This call affects only the current request. For the depth to be actually used the verification
+    -- has to be enabled with either the [proxy_ssl_verify](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_verify)
+    -- directive or using the [kong.service.set_tls_verify](#kongserviceset_tls_verify) function.
+    --
+    -- @function kong.service.set_tls_verify_depth
+    -- @phases `rewrite`, `access`, `balancer`
+    -- @tparam number depth Depth to use when validating. Must be non-negative
+    -- @treturn boolean|nil `true` if the operation succeeded, `nil` if an error occurred
+    -- @treturn string|nil An error message describing the error if there was one
+    -- @usage
+    -- local ok, err = kong.service.set_tls_verify_depth(3)
+    -- if not ok then
+    --   -- do something with error
+    -- end
+    service.set_tls_verify_depth = function(depth)
+      check_phase(access_and_rewrite_and_balancer)
+
+      if type(depth) ~= "number" then
+        error("argument must be a number", 2)
+      end
+
+      return set_upstream_ssl_verify_depth(depth)
+    end
+
+
+    ---
+    -- Sets the CA trust store to use when validating upstream server's TLS certificate.
+    --
+    -- This call affects only the current request. For the store to be actually used the verification
+    -- has to be enabled with either the [proxy_ssl_verify](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_verify)
+    -- directive or using the [kong.service.set_tls_verify](#kongserviceset_tls_verify) function.
+    --
+    -- The resty.openssl.x509.store object can be created by following
+    -- [examples](https://github.com/Kong/lua-kong-nginx-module#restykongtlsset_upstream_ssl_trusted_store) from the Kong/lua-kong-nginx-module repo.
+    --
+    -- @function kong.service.set_tls_verify_store
+    -- @phases `rewrite`, `access`, `balancer`
+    -- @tparam table store resty.openssl.x509.store object to use
+    -- @treturn boolean|nil `true` if the operation succeeded, `nil` if an error occurred
+    -- @treturn string|nil An error message describing the error if there was one
+    -- @usage
+    -- local store = require("resty.openssl.x509.store")
+    -- local st = assert(store.new())
+    -- -- st:add(...certificate)
+    --
+    -- local ok, err = kong.service.set_tls_verify_store(st)
+    -- if not ok then
+    --   -- do something with error
+    -- end
+    service.set_tls_verify_store = function(store)
+      check_phase(access_and_rewrite_and_balancer)
+
+      if type(store) ~= "table" then
+        error("argument must be a resty.openssl.x509.store object", 2)
+      end
+
+      return set_upstream_ssl_trusted_store(store)
     end
   end
 

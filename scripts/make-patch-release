@@ -52,6 +52,7 @@ function usage() {
    step "homebrew"         "bump version and submit a PR to homebrew-kong"
    step "luarocks"         "upload to LuaRocks" "<api-key>"
    step "vagrant"          "bump version and submit a PR to kong-vagrant"
+   step "pongo"            "bump version and submit a PR to kong-pongo"
    exit 0
 }
 
@@ -211,6 +212,7 @@ function bump_docs_kong_versions() {
       local version = "'$version'"
 
       local state = "start"
+      local version_line
       for line in fd_in:lines() do
          if state == "start" then
             if line:match("^  release: \"'$major'.'$minor'.x\"") then
@@ -219,11 +221,18 @@ function bump_docs_kong_versions() {
             fd_out:write(line .. "\n")
          elseif state == "version" then
             if line:match("^  version: \"") then
+               version_line = line
+               state = "edition"
+            end
+         elseif state == "edition" then
+            if line:match("^  edition.*community.*") then
                fd_out:write("  version: \"'$version'\"\n")
                state = "wait_for_luarocks_version"
             else
-               fd_out:write(line .. "\n")
+               fd_out:write(version_line .. "\n")
+               state = "start"
             end
+            fd_out:write(line .. "\n")
          elseif state == "wait_for_luarocks_version" then
             if line:match("^  luarocks_version: \"") then
                fd_out:write("  luarocks_version: \"'$version'-0\"\n")
@@ -549,6 +558,22 @@ case "$step" in
       SUCCESS "Make sure you get the PR above approved and merged."
       ;;
    #---------------------------------------------------------------------------
+   pongo)
+      if [ -d ../kong-pongo ]
+      then
+         cd ../kong-pongo
+      else
+         cd ..
+         git clone https://github.com/kong/kong-pongo
+         cd kong-pongo
+      fi
+
+      git checkout master
+      git pull
+      ./assets/add_version.sh CE $version
+      SUCCESS "Make sure you get the PR above approved and merged."
+      ;;
+   #---------------------------------------------------------------------------
    vagrant)
       if [ -d ../kong-vagrant ]
       then
@@ -566,7 +591,7 @@ case "$step" in
 
       git diff
 
-      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/homebrew-kong" \
+      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/kong-vagrant" \
               "or Ctrl-C to cancel."
 
       set -e

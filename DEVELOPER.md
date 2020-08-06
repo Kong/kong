@@ -23,7 +23,7 @@ You will need to setup port forwarding on VirtualBox to be able to ssh into the 
 1. Add a new rule in the popup. The only thing you will need is "Host Port" to be 22222 and "Guest Port" to be 22. Everything else can be left default (see screenshot below)
 1. Click "Ok"
 
-Now you should be able to ssh <your_name>@127.1 -p 22222 to get SSH prompt. However, this requires us to type a long command and password every time we sign in. It is recommended you setup a public key and SSH alias to make this process simpler:
+Now you should be able to `ssh <your_name>@127.1 -p 22222` to get SSH prompt. However, this requires us to type a long command and password every time we sign in. It is recommended you setup a public key and SSH alias to make this process simpler:
 
 1. On your host machine, generate a keypair for SSH into the guest: `ssh-keygen -t ed25519`.
 Just keep hitting Enter until the key is generated. You do not need a password for this key file since it is only used for SSH into your guest
@@ -43,7 +43,7 @@ Just keep hitting Enter until the key is generated. You do not need a password f
         User <your_user_name>
 ```
 
-Now try ssh dev on your host, you should be able to get into the guest directly
+Now try `ssh dev` on your host, you should be able to get into the guest directly
 
 ## Linux Environment
 
@@ -57,11 +57,11 @@ Once you have a Linux development environment (either virtual or bare metal), th
 
 ### Prerequisites
 
-These are the needed tools and libraries that aren't installed out of the box on Ubuntu and Fedora, respectively.  Just run one of these, either as root or sudo.
+These are the needed tools and libraries that aren't installed out of the box on Ubuntu and Fedora, respectively.  Just run one of these, either as root or `sudo`.
 
 Ubuntu:
 
-```
+```shell
     apt-get update
 
     apt-get install \
@@ -83,7 +83,7 @@ Ubuntu:
 
 Fedora:
 
-```
+```shell
     dnf install \
         automake \
         docker \
@@ -101,20 +101,20 @@ Fedora:
 
 ### OpenResty
 
-We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  Currently these include OpenResty 1.15.8.2, OpenSSl 1.1.1d, LuaRocks 3.2.1 and PCRE 8.43;  the exact versions can also be found on the `.requirements` file of the main Kong repository (https://github.com/Kong/kong/blob/master/.requirements)
+We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  Currently these include OpenResty 1.15.8.3, OpenSSl 1.1.1g, LuaRocks 3.3.1 and PCRE 8.44;  the exact versions can also be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file of the main Kong repository.
 
 These commands don't have to be performed as root, since all compilation is done within a subdirectory, and installs everything in the target specified by the `-p` argument (here the `build` directory).
 
 ```
-    git clone https://github.com/kong/openresty-build-tools
+    git clone https://github.com/kong/kong-build-tools
 
-    cd openresty-build-tools
+    cd kong-build-tools/openresty-build-tools
 
     ./kong-ngx-build -p build \
-        --openresty 1.15.8.2 \
-        --openssl 1.1.1d \
-        --luarocks 3.2.1 \
-        --pcre 8.43
+        --openresty 1.15.8.3 \
+        --openssl 1.1.1g \
+        --luarocks 3.3.1 \
+        --pcre 8.44
 ```
 
 After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
@@ -135,7 +135,7 @@ You can add these lines to your `.profile` or `.bashrc` file.  Otherwise you cou
 
 The easiest way to handle these as a single group is via docker-compose.  It's also recommended to set your user as a [docker manager](https://docs.docker.com/install/linux/linux-postinstall/#manage-docker-as-a-non-root-user) to simplify the next steps.
 
-Make sure the docker daemon is enabled and running: `sudo systemctl enable docker` and `sudo systemctl start docker`.  Verify that `docker ps` shows no errors.
+Make sure the docker daemon is enabled and running: `sudo systemctl enable docker` and `sudo systemctl start docker`. Verify that `docker ps` shows no errors.
 
 On a Fedora VM, you might have to disable SELinux:
 

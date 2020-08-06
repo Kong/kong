@@ -1,73 +1,53 @@
-local iputils = require "resty.iputils"
+local ipmatcher = require "resty.ipmatcher"
 
 
-local FORBIDDEN = 403
+local ngx = ngx
+local kong = kong
+local error = error
 
 
--- cache of parsed CIDR values
-local cache = {}
+local IpRestrictionHandler = {
+  PRIORITY = 990,
+  VERSION = "2.0.0",
+}
 
 
-local IpRestrictionHandler = {}
+local function match_bin(list, binary_remote_addr)
+  local ip, err = ipmatcher.new(list)
+  if err then
+    return error("failed to create a new ipmatcher instance: " .. err)
+  end
 
-IpRestrictionHandler.PRIORITY = 990
-IpRestrictionHandler.VERSION = "2.0.0"
+  local is_match
+  is_match, err = ip:match_bin(binary_remote_addr)
+  if err then
+    return error("invalid binary ip address: " .. err)
+  end
 
-local function cidr_cache(cidr_tab)
-  local cidr_tab_len = #cidr_tab
+  return is_match
+end
 
-  local parsed_cidrs = kong.table.new(cidr_tab_len, 0) -- table of parsed cidrs to return
 
-  -- build a table of parsed cidr blocks based on configured
-  -- cidrs, either from cache or via iputils parse
-  -- TODO dont build a new table every time, just cache the final result
-  -- best way to do this will require a migration (see PR details)
-  for i = 1, cidr_tab_len do
-    local cidr        = cidr_tab[i]
-    local parsed_cidr = cache[cidr]
+function IpRestrictionHandler:access(conf)
+  local binary_remote_addr = ngx.var.binary_remote_addr
+  if not binary_remote_addr then
+    return kong.response.error(403, "Cannot identify the client IP address, unix domain sockets are not supported.")
+  end
 
-    if parsed_cidr then
-      parsed_cidrs[i] = parsed_cidr
-
-    else
-      -- if we dont have this cidr block cached,
-      -- parse it and cache the results
-      local lower, upper = iputils.parse_cidr(cidr)
-
-      cache[cidr] = { lower, upper }
-      parsed_cidrs[i] = cache[cidr]
+  if conf.deny and #conf.deny > 0 then
+    local blocked = match_bin(conf.deny, binary_remote_addr)
+    if blocked then
+      return kong.response.error(403, "Your IP address is not allowed")
     end
   end
 
-  return parsed_cidrs
-end
-
-function IpRestrictionHandler:init_worker()
-  local ok, err = iputils.enable_lrucache()
-  if not ok then
-    kong.log.err("could not enable lrucache: ", err)
+  if conf.allow and #conf.allow > 0 then
+    local allowed = match_bin(conf.allow, binary_remote_addr)
+    if not allowed then
+      return kong.response.error(403, "Your IP address is not allowed")
+    end
   end
 end
 
-function IpRestrictionHandler:access(conf)
-  local block = false
-  local binary_remote_addr = ngx.var.binary_remote_addr
-
-  if not binary_remote_addr then
-    return kong.response.exit(FORBIDDEN, { message = "Cannot identify the client IP address, unix domain sockets are not supported." })
-  end
-
-  if conf.blacklist and #conf.blacklist > 0 then
-    block = iputils.binip_in_cidrs(binary_remote_addr, cidr_cache(conf.blacklist))
-  end
-
-  if conf.whitelist and #conf.whitelist > 0 then
-    block = not iputils.binip_in_cidrs(binary_remote_addr, cidr_cache(conf.whitelist))
-  end
-
-  if block then
-    return kong.response.exit(FORBIDDEN, { message = "Your IP address is not allowed" })
-  end
-end
 
 return IpRestrictionHandler

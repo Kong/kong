@@ -21,6 +21,7 @@ local default_port = 80
 return {
   name = "services",
   primary_key = { "id" },
+  workspaceable = true,
   endpoint_key = "name",
 
   fields = {
@@ -39,6 +40,9 @@ return {
     { read_timeout       = nonzero_timeout { default = 60000 }, },
     { tags               = typedefs.tags },
     { client_certificate = { type = "foreign", reference = "certificates" }, },
+    { tls_verify         = { type = "boolean", }, },
+    { tls_verify_depth   = { type = "integer", default = null, between = { 0, 64 }, }, },
+    { ca_certificates    = { type = "array", elements = { type = "string", uuid = true, }, }, },
     -- { load_balancer = { type = "foreign", reference = "load_balancers" } },
   },
 
@@ -50,6 +54,18 @@ return {
     { conditional = { if_field = "protocol",
                       if_match = { ne = "https" },
                       then_field = "client_certificate",
+                      then_match = { eq = null }}},
+    { conditional = { if_field = "protocol",
+                      if_match = { ne = "https" },
+                      then_field = "tls_verify",
+                      then_match = { eq = null }}},
+    { conditional = { if_field = "protocol",
+                      if_match = { ne = "https" },
+                      then_field = "tls_verify_depth",
+                      then_match = { eq = null }}},
+    { conditional = { if_field = "protocol",
+                      if_match = { ne = "https" },
+                      then_field = "ca_certificates",
                       then_match = { eq = null }}},
   },
 

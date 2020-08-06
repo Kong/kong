@@ -284,6 +284,25 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      describe("X-Forwarded-Prefix", function()
+        it("should be added if not present in request", function()
+          local headers = request_headers {
+            ["Host"] = "headers-inspect.com",
+          }
+
+          assert.equal("/", headers["x-forwarded-prefix"])
+        end)
+
+        it("should be replaced if present in request", function()
+          local headers = request_headers {
+            ["Host"]               = "headers-inspect.com",
+            ["X-Forwarded-Prefix"] = "/replaced",
+          }
+
+          assert.equal("/", headers["x-forwarded-prefix"])
+        end)
+      end)
+
       describe("with the downstream host preserved", function()
         it("should be added if not present in request while preserving the downstream host", function()
           local headers = request_headers {
@@ -296,6 +315,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("preserved.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+          assert.equal("/", headers["x-forwarded-prefix"])
         end)
 
         it("should be added if present in request while preserving the downstream host", function()
@@ -314,6 +334,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("preserved.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+          assert.equal("/", headers["x-forwarded-prefix"])
         end)
       end)
 
@@ -331,6 +352,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("headers-inspect.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+          assert.equal("/", headers["x-forwarded-prefix"])
         end)
 
         it("if present in request while discarding the downstream host", function()
@@ -351,6 +373,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("headers-inspect.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+          assert.equal("/", headers["x-forwarded-prefix"])
         end)
       end)
 
@@ -461,7 +484,25 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal("80", headers["x-forwarded-port"])
         end)
+      end)
 
+      describe("X-Forwarded-Prefix", function()
+        it("should be added if not present in request", function()
+          local headers = request_headers {
+            ["Host"] = "headers-inspect.com",
+          }
+
+          assert.equal("/", headers["x-forwarded-prefix"])
+        end)
+
+        it("should be forwarded if present in request", function()
+          local headers = request_headers {
+            ["Host"]             = "headers-inspect.com",
+            ["X-Forwarded-Prefix"] = "/original-path",
+          }
+
+          assert.equal("/original-path", headers["x-forwarded-prefix"])
+        end)
       end)
 
     end)
@@ -570,6 +611,25 @@ for _, strategy in helpers.each_strategy() do
           }
 
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+        end)
+      end)
+
+      describe("X-Forwarded-Prefix", function()
+        it("should be added if not present in request", function()
+          local headers = request_headers {
+            ["Host"] = "headers-inspect.com",
+          }
+
+          assert.equal("/", headers["x-forwarded-prefix"])
+        end)
+
+        it("should be replaced if present in request", function()
+          local headers = request_headers {
+            ["Host"]             = "headers-inspect.com",
+            ["X-Forwarded-Prefix"] = "/untrusted",
+          }
+
+          assert.equal("/", headers["x-forwarded-prefix"])
         end)
       end)
     end)
@@ -907,6 +967,38 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("127.0.0.1:14, 10.0.0.1:15, 192.168.0.1:16, 127.0.0.1:17, 172.16.0.1:18, 127.0.0.1", headers["x-forwarded-for"])
           assert.equal(proxy_port, tonumber(headers["x-forwarded-port"]))
           assert(sock:close())
+        end)
+      end)
+    end)
+
+    describe("(using port maps configuration)", function()
+      local proxy_port = helpers.get_proxy_port(false)
+
+      lazy_setup(start_kong {
+        database         = strategy,
+        nginx_conf       = "spec/fixtures/custom_nginx.template",
+        lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+        port_maps        =  "80:" .. proxy_port,
+      })
+
+      lazy_teardown(stop_kong)
+
+      describe("X-Forwarded-Port", function()
+        it("should be added if not present in request", function()
+          local headers = request_headers {
+            ["Host"] = "headers-inspect.com",
+          }
+
+          assert.equal(80, tonumber(headers["x-forwarded-port"]))
+        end)
+
+        it("should be replaced if present in request", function()
+          local headers = request_headers {
+            ["Host"]             = "headers-inspect.com",
+            ["X-Forwarded-Port"] = "81",
+          }
+
+          assert.equal(80, tonumber(headers["x-forwarded-port"]))
         end)
       end)
     end)

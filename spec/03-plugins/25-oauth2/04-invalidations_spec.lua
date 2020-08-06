@@ -152,14 +152,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(204)
 
         -- ensure cache is invalidated
-        helpers.wait_until(function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/cache/" .. cache_key
-          })
-          res:read_body()
-          return res.status == 404
-        end, 5)
+        helpers.wait_for_invalidation(cache_key)
 
         -- It should not work
         local code = provision_code("clientid123")
@@ -226,14 +219,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- ensure cache is invalidated
-        helpers.wait_until(function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/cache/" .. cache_key
-          })
-          res:read_body()
-          return res.status == 404
-        end, 5)
+        helpers.wait_for_invalidation(cache_key)
 
         -- It should work
         local code = provision_code("updated_clientid123")
@@ -297,14 +283,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(204, res)
 
         -- ensure cache is invalidated
-        helpers.wait_until(function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/cache/" .. cache_key
-          })
-          res:read_body()
-          return res.status == 404
-        end, 5)
+        helpers.wait_for_invalidation(cache_key)
 
         -- It should not work
         local code = provision_code("clientid123")
@@ -369,14 +348,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(204, res)
 
         -- ensure cache is invalidated
-        helpers.wait_until(function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/cache/" .. cache_key
-          })
-          res:read_body()
-          return res.status == 404
-        end, 5)
+        helpers.wait_for_invalidation(cache_key)
 
         -- It should not work
         local res = assert(proxy_ssl_client:send {
@@ -442,14 +414,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- ensure cache is invalidated
-        helpers.wait_until(function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/cache/" .. cache_key
-          })
-          res:read_body()
-          return res.status == 404
-        end, 5)
+        helpers.wait_for_invalidation(cache_key)
 
         -- It should work
         local res = assert(proxy_ssl_client:send {
@@ -528,14 +493,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(204, res)
 
         -- ensure cache is invalidated
-        helpers.wait_until(function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/cache/" .. cache_key
-          })
-          res:read_body()
-          return res.status == 404
-        end, 5)
+        helpers.wait_for_invalidation(cache_key)
 
         -- it should not work
         local res = assert(proxy_ssl_client:send {

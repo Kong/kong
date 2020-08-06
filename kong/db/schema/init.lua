@@ -31,6 +31,7 @@ Schema.__index     = Schema
 
 
 local _cache = {}
+local _workspaceable = {}
 
 
 local new_tab
@@ -958,8 +959,9 @@ end
 -- fill its slot in `entity` with an appropriate default value,
 -- if possible.
 -- @param field The field definition table.
-local function handle_missing_field(field, value)
-  if field.default ~= nil then
+local function handle_missing_field(field, value, opts)
+  local no_defaults = opts and opts.no_defaults
+  if field.default ~= nil and not no_defaults then
     local copy = tablex.deepcopy(field.default)
     if (field.type == "array" or field.type == "set")
       and type(copy) == "table"
@@ -1326,11 +1328,9 @@ local function run_transformation_checks(self, input, original_input, rbw_entity
       for _, input_field_name in ipairs(transformation.needs) do
         if rbw_entity and not needs_changed then
           local value = get_field(original_input or input, input_field_name)
-          if is_nonempty(value) then
-            local rbw_value = get_field(rbw_entity, input_field_name)
-            if value ~= rbw_value then
-              needs_changed = true
-            end
+          local rbw_value = get_field(rbw_entity, input_field_name)
+          if value ~= rbw_value then
+            needs_changed = true
           end
         end
 
@@ -1472,9 +1472,9 @@ local function should_recurse_record(context, value, field)
 end
 
 
-local function adjust_field_for_context(field, value, context, nulls)
+local function adjust_field_for_context(field, value, context, nulls, opts)
   if context == "select" and value == null and field.required == true then
-    return handle_missing_field(field, value)
+    return handle_missing_field(field, value, opts)
   end
 
   if field.abstract then
@@ -1483,10 +1483,10 @@ local function adjust_field_for_context(field, value, context, nulls)
 
   if field.type == "record" then
     if should_recurse_record(context, value, field) then
-      value = value or handle_missing_field(field, value)
+      value = value or handle_missing_field(field, value, opts)
       if type(value) == "table" then
         local field_schema = get_field_schema(field)
-        return field_schema:process_auto_fields(value, context, nulls)
+        return field_schema:process_auto_fields(value, context, nulls, opts)
       end
     end
 
@@ -1506,13 +1506,13 @@ local function adjust_field_for_context(field, value, context, nulls)
 
     if subfield then
       for i, e in ipairs(value) do
-        value[i] = adjust_field_for_context(subfield, e, context, nulls)
+        value[i] = adjust_field_for_context(subfield, e, context, nulls, opts)
       end
     end
   end
 
   if value == nil and context ~= "update" then
-    return handle_missing_field(field, value)
+    return handle_missing_field(field, value, opts)
   end
 
   return value
@@ -1532,41 +1532,15 @@ end
 -- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
-function Schema:process_auto_fields(data, context, nulls)
+function Schema:process_auto_fields(data, context, nulls, opts)
   ngx.update_time()
 
   local now_s  = ngx_time()
   local now_ms = ngx_now()
 
-  local read_before_write = false
-  if context == "update" and self.transformations then
-    for _, transformation in ipairs(self.transformations) do
-      if transformation.needs then
-        for _, input_field_name in ipairs(transformation.needs) do
-          read_before_write = is_nonempty(get_field(data, input_field_name))
-        end
-
-        if read_before_write then
-          break
-        end
-      end
-    end
-  end
-
-  local cache_key_modified = false
   local check_immutable_fields = false
 
   data = tablex.deepcopy(data)
-
-  --[[
-  if context == "select" and self.translations then
-    for _, translation in ipairs(self.translations) do
-      if type(translation.read) == "function" then
-        output = translation.read(output)
-      end
-    end
-  end
-  --]]
 
   if self.shorthands then
     for _, shorthand in ipairs(self.shorthands) do
@@ -1621,13 +1595,7 @@ function Schema:process_auto_fields(data, context, nulls)
       end
     end
 
-    data[key] = adjust_field_for_context(field, data[key], context, nulls)
-
-    if data[key] ~= nil then
-      if self.cache_key_set and self.cache_key_set[key] then
-        cache_key_modified = true
-      end
-    end
+    data[key] = adjust_field_for_context(field, data[key], context, nulls, opts)
 
     if context == "select" and data[key] == null and not nulls then
       data[key] = nil
@@ -1637,71 +1605,35 @@ function Schema:process_auto_fields(data, context, nulls)
       data[key] = floor(data[key])
     end
 
-    if not read_before_write then
-      -- Set read_before_write to true,
-      -- to handle deep merge of record object on update.
-      if context == "update" and field.type == "record"
-         and data[key] ~= nil and data[key] ~= null then
-        read_before_write = true
-      end
-    end
-
     if context == 'update' and field.immutable then
-      if not read_before_write then
-        -- if entity schema contains immutable fields,
-        -- we need to preform a read-before-write and
-        -- check the existing record to insure update
-        -- is valid.
-        read_before_write = true
-      end
-
       check_immutable_fields = true
     end
   end
 
-  if self.ttl and context == "select" and data.ttl == null and not nulls then
-    data.ttl = nil
-  end
-
-  --[[
-  if context ~= "select" and self.translations then
-    for _, translation in ipairs(self.translations) do
-      if type(translation.write) == "function" then
-        data = translation.write(data)
-      end
-    end
-  end
-  --]]
-
-  if context == "update" and (
-    -- If a partial update does not provide the subschema key,
-    -- we need to do a read-before-write to get it and be
-    -- able to properly validate the entity.
-    (self.subschema_key and data[self.subschema_key] == nil)
-    -- If we're resetting the value of a composite cache key,
-    -- we to do a read-before-write to get the rest of the cache key
-    -- and be able to properly update it.
-    or cache_key_modified
-    -- Entity checks validate across fields, and the field
-    -- that is necessary for validating may not be present.
-    or self.entity_checks)
-  then
-    if not read_before_write then
-      read_before_write = true
+  if context == "select" then
+    if self.ttl and data.ttl == null and not nulls then
+      data.ttl = nil
     end
 
-  elseif context == "select" then
     for key in pairs(data) do
-      -- set non defined fields to nil, except meta fields (ttl) if enabled
-      if not self.fields[key] then
-        if not self.ttl or key ~= "ttl" then
-          data[key] = nil
+      local field = self.fields[key]
+      if field then
+        if not field.legacy
+           and field.type == "string"
+           and (field.len_min or 1) > 0
+           and data[key] == ""
+        then
+          data[key] = nulls and null or nil
         end
+
+      elseif not ((key == "ttl" and self.ttl) or
+                  (key == "ws_id" and opts and opts.show_ws_id)) then
+        data[key] = nil
       end
     end
   end
 
-  return data, nil, read_before_write, check_immutable_fields
+  return data, nil, check_immutable_fields
 end
 
 
@@ -2036,6 +1968,23 @@ end
 
 
 function Schema:get_constraints()
+  if self.name == "workspaces" then
+    -- merge explicit and implicit constraints for workspaces
+    for _, e in ipairs(_cache["workspaces"].constraints) do
+      local found = false
+      for _, w in ipairs(_workspaceable) do
+        if w == e then
+          found = true
+          break
+        end
+      end
+      if not found then
+        table.insert(_workspaceable, e)
+      end
+    end
+    return _workspaceable
+  end
+
   return _cache[self.name].constraints
 end
 
@@ -2066,7 +2015,7 @@ function Schema:transform(input, original_input, context)
     return input
   end
 
-  local output = input
+  local output = nil
   for _, transformation in ipairs(self.transformations) do
     local transform
     if context == "select" then
@@ -2083,11 +2032,11 @@ function Schema:transform(input, original_input, context)
     local args = {}
     local argc = 0
     for _, input_field_name in ipairs(transformation.input) do
-      local value = get_field(original_input or input, input_field_name)
+      local value = get_field(output or original_input or input, input_field_name)
       if is_nonempty(value) then
         argc = argc + 1
         if original_input then
-          args[argc] = get_field(input, input_field_name)
+          args[argc] = get_field(output or input, input_field_name)
         else
           args[argc] = value
         end
@@ -2099,10 +2048,10 @@ function Schema:transform(input, original_input, context)
 
     if transformation.needs then
       for _, need in ipairs(transformation.needs) do
-        local value = get_field(input, need)
+        local value = get_field(output or input, need)
         if is_nonempty(value) then
           argc = argc + 1
-          args[argc] = get_field(input, need)
+          args[argc] = get_field(output or input, need)
 
         else
           goto next
@@ -2115,12 +2064,12 @@ function Schema:transform(input, original_input, context)
       return nil, validation_errors.TRANSFORMATION_ERROR:format(err)
     end
 
-    output = self:merge_values(data, output)
+    output = self:merge_values(data, output or input)
 
     ::next::
   end
 
-  return output
+  return output or input
 end
 
 
@@ -2176,11 +2125,22 @@ function Schema.new(definition, is_subschema)
     end
   end
 
+  if self.workspaceable and self.name then
+    if not _workspaceable[self.name] then
+      _workspaceable[self.name] = true
+      table.insert(_workspaceable, { schema = self })
+    end
+  end
+
   if self.name then
-    _cache[self.name] = {
-      schema = self,
-      constraints = {},
-    }
+    -- do not reset the constraints list if a schema in reloaded
+    if not _cache[self.name] then
+      _cache[self.name] = {
+        constraints = {},
+      }
+    end
+    -- but always update the schema object in cache
+    _cache[self.name].schema = self
   end
 
   return self
@@ -2236,7 +2196,7 @@ function Schema.define(tbl)
     __call = function(t, arg)
       arg = arg or {}
       for k,v in pairs(t) do
-        if not arg[k] then
+        if arg[k] == nil then
           arg[k] = v
         end
       end

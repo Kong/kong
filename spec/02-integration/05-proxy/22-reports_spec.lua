@@ -60,6 +60,8 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "routes",
         "plugins",
+        "certificates",
+        "snis",
       }, { "reports-api" }))
 
       local http_srv = assert(bp.services:insert {
@@ -419,6 +421,22 @@ for _, strategy in helpers.each_strategy() do
       assert.match("streams=2", reports_data[1])
       assert.match("tcp_streams=1", reports_data[1]) -- it counts the stream request for the ping
       assert.match("tls_streams=1", reports_data[1])
+    end)
+
+    it("does not log NGINX-produced errors", function()
+      local proxy_client = assert(helpers.proxy_client())
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          ["X-Large"] = string.rep("a", 2^10 * 10), -- default large_client_header_buffers is 8k
+        }
+      })
+      assert.res_status(494, res)
+      proxy_client:close()
+
+      assert.errlog()
+            .has.no.line([[could not determine log suffix]], true)
     end)
   end)
 end
