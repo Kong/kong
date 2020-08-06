@@ -509,40 +509,27 @@ local function ws_migrate_plugin(plugin_entities)
     end
   end
 
-  -- XXX EE postgres.ee.up ?
-  -- ngx.log(ngx.ERR, [[kong.bootstrapping:]], require("inspect")(kong.bootstrapping))
+  return {
+    postgres = {
+      up = ws_migration_up(postgres.up),
+      teardown = ws_migration_teardown(postgres.teardown),
+    },
 
-  if kong.bootstrapping then
-    return {
-      postgres = {
-        up = ws_migration_up(postgres.up),
-        teardown = ws_migration_teardown(postgres.teardown),
-      },
-
-      cassandra = {
-        up = ws_migration_up(cassandra.up),
-        teardown = ws_migration_teardown(cassandra.teardown),
-      },
-    }
-  else
-    vasectomize(postgres)
-    vasectomize(cassandra)
-    return {
-      postgres = {
-        up = ws_migration_up(postgres.up),
-        teardown = ws_migration_teardown(postgres.teardown)
-      },
-      cassandra = {
-        up = ws_migration_up(cassandra.up),
-        teardown = ws_migration_teardown(cassandra.teardown),
-      }
-    }
-  end
+    cassandra = {
+      up = ws_migration_up(cassandra.up),
+      teardown = ws_migration_teardown(cassandra.teardown),
+    },
+  }
 end
 
 
 --------------------------------------------------------------------------------
 
+
+if not kong.bootstrapping then
+  vasectomize(postgres)
+  vasectomize(cassandra)
+end
 
 return {
   postgres = postgres,
