@@ -364,11 +364,6 @@ describe("tracing_headers.set", function()
 
       headers = {}
 
-      set("preserve", nil, proxy_span)
-      assert.same(b3_headers, headers)
-
-      headers = {}
-
       set("preserve", "b3-single", proxy_span)
       assert.same(b3_single_headers, headers)
 
@@ -378,6 +373,26 @@ describe("tracing_headers.set", function()
       assert.same(w3c_headers, headers)
 
       assert.same({}, warnings)
+    end)
+
+    it("sets headers according to default_header_type when no headers are provided", function()
+      set("preserve", nil, proxy_span)
+      assert.same(b3_headers, headers)
+
+      headers = {}
+
+      set("preserve", nil, proxy_span, "b3")
+      assert.same(b3_headers, headers)
+
+      headers = {}
+
+      set("preserve", nil, proxy_span, "b3-single")
+      assert.same(b3_single_headers, headers)
+
+      headers = {}
+
+      set("preserve", "w3c", proxy_span, "w3c")
+      assert.same(w3c_headers, headers)
     end)
   end)
 

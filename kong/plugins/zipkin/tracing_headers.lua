@@ -273,7 +273,7 @@ local function parse(headers)
 end
 
 
-local function set(conf_header_type, found_header_type, proxy_span)
+local function set(conf_header_type, found_header_type, proxy_span, conf_default_header_type)
   local set_header = kong.service.request.set_header
 
   if conf_header_type ~= "preserve" and
@@ -283,8 +283,9 @@ local function set(conf_header_type, found_header_type, proxy_span)
     kong.log.warn("Mismatched header types. conf: " .. conf_header_type .. ". found: " .. found_header_type)
   end
 
+  found_header_type = found_header_type or conf_default_header_type or "b3"
+
   if conf_header_type == "b3"
-  or found_header_type == nil
   or found_header_type == "b3"
   then
     set_header("x-b3-traceid", to_hex(proxy_span.trace_id))

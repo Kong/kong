@@ -168,7 +168,7 @@ if subsystem == "http" then
       or ngx_now_mu()
     get_or_add_proxy_span(zipkin, access_start)
 
-    tracing_headers.set(conf.header_type, zipkin.header_type, zipkin.proxy_span)
+    tracing_headers.set(conf.header_type, zipkin.header_type, zipkin.proxy_span, conf.default_header_type)
   end
 
 

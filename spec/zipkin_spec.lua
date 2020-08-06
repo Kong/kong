@@ -162,7 +162,8 @@ describe("http integration tests with zipkin server [#"
         traceid_byte_count = traceid_byte_count,
         static_tags = {
           { name = "static", value = "ok" },
-        }
+        },
+        default_header_type = "b3-single",
       }
     })
 
@@ -532,7 +533,6 @@ describe("http integration tests with zipkin server [#"
       local span_id = gen_span_id()
       local parent_id = gen_span_id()
 
-
       local r = proxy_client:get("/", {
         headers = {
           b3 = fmt("%s-%s-%s-%s", trace_id, span_id, "1", parent_id),
@@ -685,6 +685,20 @@ describe("http integration tests with zipkin server [#"
       assert.equals(parent_id, request_span.parentId)
 
       assert.equals(trace_id, proxy_span.traceId)
+    end)
+  end)
+
+  describe("header type with 'preserve' config and no inbound headers", function()
+    it("uses whatever is set in the plugin's config.default_header_type property", function()
+      local r = proxy_client:get("/", {
+        headers = {
+          -- no tracing header
+          host = "http-route"
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      assert.not_nil(json.headers.b3)
     end)
   end)
 end)
