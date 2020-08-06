@@ -84,7 +84,7 @@ local postgres = {
       else
 
       table.insert(out, render([[
-        -- Add ws_id to $(TABLE), populating all of them with the default workspace id
+        -- Add ws_id to $(TABLE), with no default
         DO $$
         BEGIN
           ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD "ws_id" UUID REFERENCES "workspaces" ("id");

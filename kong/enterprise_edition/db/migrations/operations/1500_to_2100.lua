@@ -286,8 +286,8 @@ local cassandra = {
 
           ws_name = ws_name                and
                     ws_name[1]             and
-                    ws_name.workspace_name and
-                    ws_name.workspace_name .. ":"
+                    ws_name[1].workspace_name and
+                    ws_name[1].workspace_name .. ":"
         end
         if not ws_name or not ws_prefix_fixups[ws_name] then
           -- data is already adjusted, bail out
