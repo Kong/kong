@@ -499,7 +499,8 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
   else
     ret.meta.level = "node"
   end
-
+  local inspect = require "inspect"
+  kong.log.err(inspect(prometheus_stats))
   local stats = ret.stats
   local stat_labels_inserted = false
   local expected_dp_count = duration_seconds / interval
@@ -774,51 +775,53 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   end
 
   local stats = {}
-  local inspect = require "inspect"
-  local all_services = "count by (service)(kong_status_code_per_workspace)"
-  local all_consumers = "count by (consumer)(kong_status_code_per_consumer)"
   local metrics_query
 
   if is_consumer then
     if is_timeseries_report then
-      local one_consumer = "sum(kong_status_code_per_consumer{consumer='" .. entity_id .. "'})"
-      kong.log.err(entity .. " ID Passed in!!!!!!! " .. entity_id)
+      local one_consumer = "sum(kong_status_code_per_consumer{consumer='" .. entity_id .. "'}) by (status_code)"
       metrics_query = one_consumer
     else
-      kong.log.err(entity .. " TIMESERIES")
+      local all_consumers = "sum(kong_status_code_per_consumer) by (consumer, status_code)"
       metrics_query = all_consumers
     end
   else
     if is_timeseries_report then
-      kong.log.err(entity .. " ID Passed in!!!!!!! " .. entity_id)
-      local one_service = "sum(kong_status_code_per_workspace{service='" .. entity_id .. "'})"
+      local one_service = "sum(kong_status_code{service='" .. entity_id .. "'}) by (status_code)"
       metrics_query = one_service
     else
-      kong.log.err(entity .. " TIMESERIES")
+      local all_services = "sum(kong_status_code) by (service, status_code)"
       metrics_query = all_services
     end
   end
-  kong.log.err("INTERVAL: " .. interval)
   kong.log.err(metrics_query)
- -- todo: handle err
   local res, err, duration_seconds = self:query(
     start_ts,
     {{"", metrics_query}},
     duration
   )
-
+  local inspect = require "inspect"
   kong.log.err(inspect(res))
   kong.log.err(inspect(err))
+  if err then
+    return err
+  end
+  -- local aggregate = false
+  -- local merge_status_class = false
+  -- local key_by = nil
+  
+  -- local translated = translate_vitals_status({{"test", metrics_query}}, res, duration, duration_seconds, aggregate, merge_status_class, key_by)
+  -- kong.log.err(inspect(translated))
   for _, series_list in ipairs(res) do
     for _, series in ipairs(series_list) do
       local index, entity_metadata
       if is_timeseries_report then
         for _, value in ipairs(series.values) do
           local timestamp = tostring(value[1])
-          local total = value[2]
           index = timestamp
           entity_metadata = entities[entity_id] or {}
           stats[index] = stats[index] or { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
+          local total = value[2]
           stats[index]["total"] = total
           stats[index]["name"] = entity_metadata.name
           if is_consumer then
@@ -830,6 +833,11 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
         index = series.metric[entity]
         entity_metadata = entities[index] or {}
         stats[index] = stats[index] or { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
+        local status_group = tostring(series.metric.status_code):sub(1, 1) .. "XX"
+        -- subtract first from last in timeseries to give total requests in timeframe
+        local request_count = tonumber(series.values[#series.values][2]) - tonumber(series.values[1][2])
+        stats[index]["total"] = stats[index]["total"] + request_count
+        stats[index][status_group] = stats[index][status_group] + request_count
         stats[index]["name"] = entity_metadata.name
         if is_consumer then
           stats[index]["app_id"] = entity_metadata.app_id
