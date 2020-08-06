@@ -54,6 +54,7 @@ local function new(self)
   local X_FORWARDED_PROTO      = "X-Forwarded-Proto"
   local X_FORWARDED_HOST       = "X-Forwarded-Host"
   local X_FORWARDED_PORT       = "X-Forwarded-Port"
+  local X_FORWARDED_PATH       = "X-Forwarded-Path"
   local X_FORWARDED_PREFIX     = "X-Forwarded-Prefix"
 
 
@@ -252,18 +253,17 @@ local function new(self)
 
   ---
   -- Returns the path component of the request's URL, but also considers
-  -- `X-Forwarded-Prefix` if it comes from a trusted source. The value
+  -- `X-Forwarded-Path` if it comes from a trusted source. The value
   -- is returned as a Lua string.
   --
-  -- Whether this function considers `X-Forwarded-Prefix` or not depends on
+  -- Whether this function considers `X-Forwarded-Path` or not depends on
   -- several Kong configuration parameters:
   --
   -- * [trusted\_ips](https://getkong.org/docs/latest/configuration/#trusted_ips)
   -- * [real\_ip\_header](https://getkong.org/docs/latest/configuration/#real_ip_header)
   -- * [real\_ip\_recursive](https://getkong.org/docs/latest/configuration/#real_ip_recursive)
   --
-  -- **Note**: we do not currently do any normalization on the request
-  --           path except return `"/"` on empty path.
+  -- **Note**: we do not currently do any normalization on the request path.
   --
   -- @function kong.request.get_forwarded_path
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
@@ -274,14 +274,14 @@ local function new(self)
     check_phase(PHASES.request)
 
     if self.ip.is_trusted(self.client.get_ip()) then
-      local prefix = _REQUEST.get_header(X_FORWARDED_PREFIX)
-      if prefix then
-        return prefix
+      local path = _REQUEST.get_header(X_FORWARDED_PATH)
+      if path then
+        return path
       end
     end
 
     local path = _REQUEST.get_path()
-    return path == "" and "/" or path
+    return path
   end
 
 

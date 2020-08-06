@@ -284,22 +284,22 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("X-Forwarded-Prefix", function()
+      describe("X-Forwarded-Path", function()
         it("should be added if not present in request", function()
           local headers = request_headers {
             ["Host"] = "headers-inspect.com",
           }
 
-          assert.equal("/", headers["x-forwarded-prefix"])
+          assert.equal("/", headers["x-forwarded-path"])
         end)
 
         it("should be replaced if present in request", function()
           local headers = request_headers {
-            ["Host"]               = "headers-inspect.com",
-            ["X-Forwarded-Prefix"] = "/replaced",
+            ["Host"]             = "headers-inspect.com",
+            ["X-Forwarded-Path"] = "/replaced",
           }
 
-          assert.equal("/", headers["x-forwarded-prefix"])
+          assert.equal("/", headers["x-forwarded-path"])
         end)
       end)
 
@@ -315,7 +315,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("preserved.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
-          assert.equal("/", headers["x-forwarded-prefix"])
+          assert.equal("/", headers["x-forwarded-path"])
         end)
 
         it("should be added if present in request while preserving the downstream host", function()
@@ -334,7 +334,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("preserved.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
-          assert.equal("/", headers["x-forwarded-prefix"])
+          assert.equal("/", headers["x-forwarded-path"])
         end)
       end)
 
@@ -352,7 +352,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("headers-inspect.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
-          assert.equal("/", headers["x-forwarded-prefix"])
+          assert.equal("/", headers["x-forwarded-path"])
         end)
 
         it("if present in request while discarding the downstream host", function()
@@ -373,7 +373,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("headers-inspect.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
-          assert.equal("/", headers["x-forwarded-prefix"])
+          assert.equal("/", headers["x-forwarded-path"])
         end)
       end)
 
@@ -486,22 +486,22 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("X-Forwarded-Prefix", function()
+      describe("X-Forwarded-Path", function()
         it("should be added if not present in request", function()
           local headers = request_headers {
             ["Host"] = "headers-inspect.com",
           }
 
-          assert.equal("/", headers["x-forwarded-prefix"])
+          assert.equal("/", headers["x-forwarded-path"])
         end)
 
         it("should be forwarded if present in request", function()
           local headers = request_headers {
             ["Host"]             = "headers-inspect.com",
-            ["X-Forwarded-Prefix"] = "/original-path",
+            ["X-Forwarded-Path"] = "/original-path",
           }
 
-          assert.equal("/original-path", headers["x-forwarded-prefix"])
+          assert.equal("/original-path", headers["x-forwarded-path"])
         end)
       end)
 
@@ -614,22 +614,22 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("X-Forwarded-Prefix", function()
+      describe("X-Forwarded-Path", function()
         it("should be added if not present in request", function()
           local headers = request_headers {
             ["Host"] = "headers-inspect.com",
           }
 
-          assert.equal("/", headers["x-forwarded-prefix"])
+          assert.equal("/", headers["x-forwarded-path"])
         end)
 
         it("should be replaced if present in request", function()
           local headers = request_headers {
             ["Host"]             = "headers-inspect.com",
-            ["X-Forwarded-Prefix"] = "/untrusted",
+            ["X-Forwarded-Path"] = "/untrusted",
           }
 
-          assert.equal("/", headers["x-forwarded-prefix"])
+          assert.equal("/", headers["x-forwarded-path"])
         end)
       end)
     end)

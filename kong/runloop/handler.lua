@@ -1111,7 +1111,7 @@ return {
       local forwarded_proto
       local forwarded_host
       local forwarded_port
-      local forwarded_prefix
+      local forwarded_path
 
       -- X-Forwarded-* Headers Parsing
       --
@@ -1127,7 +1127,7 @@ return {
         forwarded_proto  = var.http_x_forwarded_proto  or scheme
         forwarded_host   = var.http_x_forwarded_host   or host
         forwarded_port   = var.http_x_forwarded_port   or port
-        forwarded_prefix = var.http_x_forwarded_prefix
+        forwarded_path   = var.http_x_forwarded_path
 
       else
         forwarded_proto  = scheme
@@ -1135,15 +1135,11 @@ return {
         forwarded_port   = port
       end
 
-      if not forwarded_prefix then
-        forwarded_prefix = var.request_uri
-        local p = find(forwarded_prefix, "?", 2, true)
+      if not forwarded_path then
+        forwarded_path = var.request_uri
+        local p = find(forwarded_path, "?", 2, true)
         if p then
-          forwarded_prefix = sub(forwarded_prefix, 1, p - 1)
-        end
-
-        if forwarded_prefix == "" then
-          forwarded_prefix = "/"
+          forwarded_path = sub(forwarded_path, 1, p - 1)
         end
       end
 
@@ -1234,7 +1230,7 @@ return {
       var.upstream_x_forwarded_proto  = forwarded_proto
       var.upstream_x_forwarded_host   = forwarded_host
       var.upstream_x_forwarded_port   = forwarded_port
-      var.upstream_x_forwarded_prefix = forwarded_prefix
+      var.upstream_x_forwarded_path   = forwarded_path
 
       -- At this point, the router and `balancer_setup_stage1` have been
       -- executed; detect requests that need to be redirected from `proxy_pass`

@@ -12,7 +12,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: request.get_forwarded_path() considers X-Forwarded-Prefix when trusted
+=== TEST 1: request.get_forwarded_path() considers X-Forwarded-Path when trusted
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
@@ -27,7 +27,7 @@ __DATA__
 --- request
 GET /t/request-path
 --- more_headers
-X-Forwarded-Prefix: /trusted
+X-Forwarded-Path: /trusted
 --- response_body
 path: /trusted
 type: string
@@ -36,7 +36,7 @@ type: string
 
 
 
-=== TEST 2: request.get_forwarded_path() doesn't considers X-Forwarded-Prefix when not trusted
+=== TEST 2: request.get_forwarded_path() doesn't considers X-Forwarded-Path when not trusted
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
@@ -50,7 +50,7 @@ type: string
 --- request
 GET /t/request-path
 --- more_headers
-X-Forwarded-Prefix: /not-trusted
+X-Forwarded-Path: /not-trusted
 --- response_body
 path: /t/request-path
 --- no_error_log
@@ -58,7 +58,7 @@ path: /t/request-path
 
 
 
-=== TEST 3: request.get_forwarded_path() considers first X-Forwarded-Prefix if multiple when trusted
+=== TEST 3: request.get_forwarded_path() considers first X-Forwarded-Path if multiple when trusted
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -72,8 +72,8 @@ path: /t/request-path
 --- request
 GET /t
 --- more_headers
-X-Forwarded-Prefix: /first
-X-Forwarded-Prefix: /second
+X-Forwarded-Path: /first
+X-Forwarded-Path: /second
 --- response_body
 path: /first
 --- no_error_log
@@ -81,7 +81,7 @@ path: /first
 
 
 
-=== TEST 4: request.get_forwarded_path() doesn't considers any X-Forwarded-Prefix headers when not trusted
+=== TEST 4: request.get_forwarded_path() doesn't considers any X-Forwarded-Path headers when not trusted
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
@@ -95,8 +95,8 @@ path: /first
 --- request
 GET /t/request-uri
 --- more_headers
-X-Forwarded-Prefix: /first
-X-Forwarded-Prefix: /second
+X-Forwarded-Path: /first
+X-Forwarded-Path: /second
 --- response_body
 path: /t/request-uri
 --- no_error_log
@@ -118,7 +118,7 @@ path: /t/request-uri
 --- request
 GET /t/request-uri?query&field=value#here
 --- more_headers
-X-Forwarded-Prefix: /first
+X-Forwarded-Path: /first
 --- response_body
 path: /t/request-uri
 --- no_error_log
@@ -140,7 +140,7 @@ path: /t/request-uri
 --- request
 GET /t/request-uri?query&field=value#here
 --- more_headers
-X-Forwarded-Prefix: /first?query&field=value#here
+X-Forwarded-Path: /first?query&field=value#here
 --- response_body
 path: /first?query&field=value#here
 --- no_error_log
