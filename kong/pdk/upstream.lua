@@ -50,7 +50,7 @@ local function new()
     local health_info, err = balancer.get_balancer_health(upstream.id)
 
     if err then
-      return nil, "failed getting upstream health '" .. upstream_name .. "'"
+      return nil, "failed getting balancer health '" .. upstream_name .. "'," .. err
     end
 
     return health_info
@@ -113,7 +113,7 @@ local function new()
 
     local health_info, err = balancer.get_upstream_health(upstream.id)
     if err then
-      return nil, "failed getting upstream health '" .. upstream_name .. "'"
+      return nil, "failed getting upstream health '" .. upstream_name .. "'," .. err
     end
 
     return health_info
