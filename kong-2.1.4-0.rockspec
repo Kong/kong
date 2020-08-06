@@ -14,7 +14,7 @@ dependencies = {
   "inspect == 3.1.1",
   "luasec == 0.9",
   "luasocket == 3.0-rc1",
-  "penlight == 1.7.0",
+  "penlight == 1.8.0",
   "lua-resty-http == 0.15",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
