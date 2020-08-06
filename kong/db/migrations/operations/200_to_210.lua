@@ -17,6 +17,10 @@ end
 -- Postgres operations for Workspace migration
 --------------------------------------------------------------------------------
 
+-- XXX EE
+-- if we are testing then migrations should also act as "bootstrapping"
+local bootstrapping = kong.bootstrapping or os.getenv("KONG_IS_TESTING") == "1"
+
 
 local postgres = {
 
@@ -65,7 +69,7 @@ local postgres = {
 
     ws_add_ws_id = function(_, table_name, fk_users) -- XXX EE Always (part)
       local out = {}
-      if kong.bootstrapping then
+      if bootstrapping then
 
       table.insert(out, render([[
         -- Add ws_id to $(TABLE), populating all of them with the default workspace id
@@ -526,7 +530,7 @@ end
 --------------------------------------------------------------------------------
 
 
-if not kong.bootstrapping then
+if not bootstrapping then
   vasectomize(postgres)
   vasectomize(cassandra)
 end
