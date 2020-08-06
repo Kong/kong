@@ -2,24 +2,42 @@
 // kong code, so keep it up to date and relevant after new releases
 // These are just mapping to the arguments to pass to sealy
 def paths = [
-  [
-    name: "Kong EE 1.5.0.4 to here",
+  "Kong EE 1.5.0.4 to here (pg)": [
     from: "kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.5.0.4-alpine",
-    seeds: "paths/0.35_happy_path"
+    to: "/tmp/kong",
+    seeds: "paths/0.35_happy_path",
+    postgres: ""
   ],
-  [
-    name: "Kong EE next/2.1.0.x to here",
+  "Kong EE 1.5.0.4 to here (c*)": [
+    from: "kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.5.0.4-alpine",
+    to: "/tmp/kong",
+    seeds: "paths/0.35_happy_path",
+    cassandra: ""
+  ],
+  "Kong EE next/2.1.0.x to here (pg)": [
     from: "registry.kongcloud.io/kong-enterprise-edition:2.1.0.0-nightly-alpine",
-    seeds: "paths/2.x_happy_path"
+    to: "/tmp/kong",
+    seeds: "paths/2.x_happy_path",
+    postgres: ""
+  ],
+  "Kong EE next/2.1.0.x to here (c*)": [
+    from: "registry.kongcloud.io/kong-enterprise-edition:2.1.0.0-nightly-alpine",
+    to: "/tmp/kong",
+    seeds: "paths/2.x_happy_path",
+    cassandra: ""
   ]
 ]
 
 def builds = [:]
-for (x in paths) {
-  def path = x // need to assign closure
-  builds[path.name] = {
+paths.each{ _name, _flags ->
+  def name = _name
+  def flags = _flags.inject([]) { result, entry ->
+    result << "--${entry.key} ${entry.value}"
+  }.join(' ')
+
+  builds[name] = {
     node('bionic') {
-      stage(path.name) {
+      stage(name) {
         stage('prepare') {
           env.BRANCH_OR_TAG = env.BRANCH_NAME ? env.BRANCH_NAME : "refs/tags/${env.TAG_NAME}"
 
@@ -37,14 +55,9 @@ for (x in paths) {
           sh "git clone -b ${env.BRANCH_OR_TAG} https://$GITHUB_TOKEN:@github.com/Kong/kong-ee.git /tmp/kong"
         }
 
-        stage('test migration (postgres)') {
+        stage('test migration') {
           env.PATH = env.PATH + ":~/.local/bin"
-          sh "sealy --from $path.from --to /tmp/kong --seeds $path.seeds --postgres"
-        }
-
-        stage('test migration (cassandra)') {
-          env.PATH = env.PATH + ":~/.local/bin"
-          sh "sealy --from $path.from --to /tmp/kong --seeds $path.seeds --cassandra"
+          sh "sealy $flags"
         }
       }
     }
