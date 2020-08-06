@@ -862,7 +862,7 @@ local function generate_foreign_key_methods(schema)
                               self.schema.name,
                               options,
                               ws_id,
-                              rbw_entity)
+                              not rbw_entity)
         if not row then
           return nil, tostring(err_t), err_t
         end
@@ -1226,7 +1226,7 @@ function DAO:upsert(primary_key, entity, options)
   end
 
   row, err_t = run_hook("dao:upsert:post",
-                        row, self.schema.name, options, ws_id, rbw_entity)
+                        row, self.schema.name, options, ws_id, not rbw_entity)
   if not row then
     return nil, tostring(err_t), err_t
   end

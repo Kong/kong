@@ -116,7 +116,7 @@ end
 
 local function upsert_hook(entity, name, _, ws_id, is_create)
   if is_create and ws_id then
-    _M.inc_counter(ws_id, name, entity, -1)
+    _M.inc_counter(ws_id, name, entity, 1)
   end
   return entity
 end
