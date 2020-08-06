@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.1.1](#211)
 - [2.1.0](#210)
 - [2.0.5](#205)
 - [2.0.4](#204)
@@ -43,6 +44,44 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.1.1]
+
+> Released 2020/08/05
+
+### Dependencies
+
+- Bump [lua-multipart](https://github.com/Kong/lua-multipart) to `0.5.9`.
+  [#6148](https://github.com/Kong/kong/pull/6148)
+
+### Fixes
+
+##### Core
+
+- No longer reject valid characters (as specified in the RFC 3986) in the `path` attribute of the
+  Service entity.
+  [#6183](https://github.com/Kong/kong/pull/6183)
+
+##### Migrations
+
+- Fix issue in Cassandra migrations where empty values in some entities would be incorrectly migrated.
+  [#6171](https://github.com/Kong/kong/pull/6171)
+
+##### Admin API
+
+Fix issue where consumed worker memory as reported by the `kong.node.get_memory_stats()` PDK method would be incorrectly reported in kilobytes, rather than bytes, leading to inaccurate values in the `/status` Admin API endpoint (and other users of said PDK method).
+  [#6170](https://github.com/Kong/kong/pull/6170)
+
+##### Plugins
+
+- rate-limiting: fix issue where rate-limiting by Service would result in a global limit, rather than per Service.
+  [#6157](https://github.com/Kong/kong/pull/6157)
+- rate-limiting: fix issue where a TTL would not be set to some Redis keys.
+  [#6150](https://github.com/Kong/kong/pull/6150)
+
+
+[Back to TOC](#table-of-contents)
 
 
 ## [2.1.0]
@@ -5171,6 +5210,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.1.1]: https://github.com/Kong/kong/compare/2.1.0...2.1.1
 [2.1.0]: https://github.com/Kong/kong/compare/2.0.5...2.1.0
 [2.0.5]: https://github.com/Kong/kong/compare/2.0.4...2.0.5
 [2.0.4]: https://github.com/Kong/kong/compare/2.0.3...2.0.4
