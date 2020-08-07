@@ -483,7 +483,7 @@ cassandra.teardown.ws_adjust_data = ws_adjust_data
 -- Super high-level shortcut for plugins
 --------------------------------------------------------------------------------
 
-local function vasectomize(t)
+local function mock_ce_only_destructive_functions(t)
   local nop = function() return "" end -- nop function
 
   -- up
@@ -531,8 +531,8 @@ end
 
 
 if not bootstrapping then
-  vasectomize(postgres)
-  vasectomize(cassandra)
+  mock_ce_only_destructive_functions(postgres)
+  mock_ce_only_destructive_functions(cassandra)
 end
 
 return {
