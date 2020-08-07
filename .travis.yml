@@ -64,7 +64,7 @@ jobs:
     - stage: lint and unit
       script:
       - make lint
-      - scripts/autodoc-admin-api
+      - scripts/autodoc
       - bin/busted -v -o htest spec/01-unit
       env:
         - KONG_DATABASE=none
