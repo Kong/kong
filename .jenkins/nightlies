@@ -12,6 +12,7 @@ for (x in distros) {
         }
         stage('prepare') {
           env.BRANCH_OR_TAG = env.BRANCH_NAME ? env.BRANCH_NAME : "refs/tags/${env.TAG_NAME}"
+          env.DOCKER_IMAGE_TAG_PREFIX = env.BRANCH_NAME.replaceAll("[^a-zA-Z0-9_.-]","-")
 
           checkout([$class: 'GitSCM',
             branches: [[name: env.BRANCH_OR_TAG]],
