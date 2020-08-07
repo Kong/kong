@@ -14,14 +14,14 @@ def paths = [
     seeds: "paths/0.35_happy_path",
     cassandra: ""
   ],
-  "Kong EE next/2.1.0.x to here (pg)": [
-    from: "registry.kongcloud.io/kong-enterprise-edition:2.1.0.0-nightly-alpine",
+  "Kong EE next/2.1.x.x to here (pg)": [
+    from: "registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine",
     to: "/tmp/kong",
     seeds: "paths/2.x_happy_path",
     postgres: ""
   ],
-  "Kong EE next/2.1.0.x to here (c*)": [
-    from: "registry.kongcloud.io/kong-enterprise-edition:2.1.0.0-nightly-alpine",
+  "Kong EE next/2.1.x.x to here (c*)": [
+    from: "registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine",
     to: "/tmp/kong",
     seeds: "paths/2.x_happy_path",
     cassandra: ""
