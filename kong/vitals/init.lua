@@ -1178,7 +1178,7 @@ end
 
 
 function _M:get_stats(query_type, level, node_id, start_ts)
-  if kong.configuration.vitals_strategy ~= "database" then
+  if kong.configuration.vitals_strategy == "influxdb" or kong.configuration.vitals_strategy == "prometheus" then
     if query_type ~= "days" and query_type ~= "hours" and query_type ~= "minutes" and query_type ~= "seconds" then
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
@@ -1224,7 +1224,7 @@ function _M:get_stats(query_type, level, node_id, start_ts)
 end
 
 function _M:get_status_codes(opts, key_by)
-  if kong.configuration.vitals_strategy ~= "database" then
+  if kong.configuration.vitals_strategy == "influxdb" or kong.configuration.vitals_strategy == "prometheus" then
     if opts.duration ~= "days" and opts.duration ~= "hours" and opts.duration ~= "minutes" and opts.duration ~= "seconds" then
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
@@ -1303,7 +1303,7 @@ function _M:get_consumer_stats(opts)
     return nil, "Invalid query params: consumer_id, duration, and level are required"
   end
 
-  if kong.configuration.vitals_strategy ~= "database" then
+  if kong.configuration.vitals_strategy == "influxdb" or kong.configuration.vitals_strategy == "prometheus" then
     if opts.duration ~= "days" and opts.duration ~= "hours" and opts.duration ~= "minutes" and opts.duration ~= "seconds" then
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
