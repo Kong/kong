@@ -4,7 +4,7 @@ local _M = {}
 local cjson = require "cjson"
 local ffi   = require "ffi"
 local http  = require "resty.http"
-local enums = require "kong.enterprise_edition.dao.enums"
+local vitals_utils = require "kong.vitals.utils"
 
 local ipairs        = ipairs
 local math_floor    = math.floor
@@ -635,28 +635,6 @@ local function status_code_query(entity_id, entity, seconds_from_now, interval)
 end
 _M.status_code_query = status_code_query
 
--- @param entity: consumer or service DAO
-local function resolve_entity_metadata(entity)
-  local is_service = not not entity.name
-  if is_service then
-    return { name = entity.name }
-  end
-  if entity.type == enums.CONSUMERS.TYPE.APPLICATION then
-    return {
-      name = "",
-      app_id = entity.username:sub(0, entity.username:find("_") - 1),
-      app_name = entity.username:sub(entity.username:find("_") + 1)
-    }
-  end
-  return {
-    name = entity.username or entity.custom_id,
-    app_id = "",
-    app_name = "",
-  }
-end
-_M.resolve_entity_metadata = resolve_entity_metadata
-
-
 -- @param[type=string] entity: consumer or service
 -- @param[type=nullable-string] entity_id: UUID or null, signifies how each row is indexed
 -- @param[type=string] interval: seconds, minutes, hours, days, weeks, months
@@ -668,10 +646,10 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   local entities = {}
   if is_timeseries_report then
     local row = kong.db[plural_entity]:select({ id = entity_id }, { workspace = null })
-    if row ~= nil then entities[row.id] = resolve_entity_metadata(row) end
+    if row ~= nil then entities[row.id] = vitals_utils.resolve_entity_metadata(row) end
   else
     for row in kong.db[plural_entity]:each(nil, { workspace = null }) do
-      if row ~= nil then entities[row.id] = resolve_entity_metadata(row) end
+      if row ~= nil then entities[row.id] = vitals_utils.resolve_entity_metadata(row) end
     end
   end
 

@@ -12,7 +12,7 @@ local WARN       = ngx.WARN
 local singletons = require "kong.singletons"
 local pl_stringx   = require "pl.stringx"
 local statsd_handler = require "kong.vitals.prometheus.statsd.handler"
-local enums = require "kong.enterprise_edition.dao.enums"
+local vitals_utils = require "kong.vitals.utils"
 
 local http = require "resty.http"
 local cjson = require "cjson.safe"
@@ -731,27 +731,6 @@ function _M:select_consumer_stats(opts)
   end
 end
 
--- @param entity: consumer or service DAO
-local function resolve_entity_metadata(entity)
-  local is_service = not not entity.name
-  if is_service then
-    return { name = entity.name }
-  end
-  if entity.type == enums.CONSUMERS.TYPE.APPLICATION then
-    return {
-      name = "",
-      app_id = entity.username:sub(0, entity.username:find("_") - 1),
-      app_name = entity.username:sub(entity.username:find("_") + 1)
-    }
-  end
-  return {
-    name = entity.username or entity.custom_id,
-    app_id = "",
-    app_name = "",
-  }
-end
-_M.resolve_entity_metadata = resolve_entity_metadata
-
 -- @param entity: consumer or service
 -- @param entity_id: UUID or null, signifies how each row is indexed
 -- @param interval: seconds, minutes, hours, days, weeks, months
@@ -767,10 +746,10 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   local plural_entity = entity .. 's'
   if is_timeseries_report then
     local row = kong.db[plural_entity]:select({ id = entity_id }, { workspace = null })
-    if row ~= nil then entities[row.id] = resolve_entity_metadata(row) end
+    if row ~= nil then entities[row.id] = vitals_utils.resolve_entity_metadata(row) end
   else
     for row in kong.db[plural_entity]:each(nil, { workspace = null }) do
-      if row ~= nil then entities[row.id] = resolve_entity_metadata(row) end
+      if row ~= nil then entities[row.id] = vitals_utils.resolve_entity_metadata(row) end
     end
   end
 
