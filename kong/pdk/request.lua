@@ -16,6 +16,7 @@ local find = string.find
 local lower = string.lower
 local type = type
 local error = error
+local pcall = pcall
 local tonumber = tonumber
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
@@ -282,6 +283,54 @@ local function new(self)
 
     local path = _REQUEST.get_path()
     return path
+  end
+
+
+  ---
+  -- Returns the prefix path component of the request's URL that Kong stripped
+  -- before proxying to upstream. It also checks if `X-Forwarded-Prefix` comes
+  -- from a trusted source, and uses it as is when given. The value is returned
+  -- as a Lua string.
+  --
+  -- In general, this function should be called after Kong has ran its router,
+  -- as the Kong router may strip the prefix of the request path. That stripped
+  -- path will become the return value of this function, unless there was already
+  -- a trusted `X-Forwarded-Prefix` header in the request.
+  --
+  -- Whether this function considers `X-Forwarded-Prefix` or not depends on
+  -- several Kong configuration parameters:
+  --
+  -- * [trusted\_ips](https://getkong.org/docs/latest/configuration/#trusted_ips)
+  -- * [real\_ip\_header](https://getkong.org/docs/latest/configuration/#real_ip_header)
+  -- * [real\_ip\_recursive](https://getkong.org/docs/latest/configuration/#real_ip_recursive)
+  --
+  -- **Note**: we do not currently do any normalization on the request path prefix
+  --           except return `"/"` on empty prefix.
+  --
+  -- @function kong.request.get_forwarded_prefix
+  -- @phases access, header_filter, body_filter, log, admin_api
+  -- @treturn string the forwarded path prefix
+  -- @usage
+  -- kong.request.get_forwarded_prefix() -- /prefix
+  function _REQUEST.get_forwarded_prefix()
+    check_phase(PHASES.request)
+
+    if self.ip.is_trusted(self.client.get_ip()) then
+      local prefix = _REQUEST.get_header(X_FORWARDED_PREFIX)
+      if prefix then
+        return prefix
+      end
+    end
+
+    local ok, prefix = pcall(function()
+      return ngx.var.upstream_x_forwarded_prefix
+    end)
+
+    if not ok or not prefix then
+      return "/"
+    end
+
+    return prefix == "" and "/" or prefix
   end
 
 

@@ -846,9 +846,14 @@ do
               ctx.matches.uri = uri_t.value
 
               if m.uri_postfix then
+                ctx.matches.uri_prefix = sub(ctx.req_uri, 1, -(#m.uri_postfix + 1))
+
                 -- remove the uri_postfix group
-                m[#m]          = nil
+                m[#m] = nil
                 m.uri_postfix = nil
+
+              else
+                ctx.matches.uri_prefix = "/"
               end
 
               if uri_t.has_captures then
@@ -860,6 +865,7 @@ do
           end
 
           -- plain or prefix match from the index
+          ctx.matches.uri_prefix = sub(ctx.req_uri, 1, #uri_t.value)
           ctx.matches.uri_postfix = sub(ctx.req_uri, #uri_t.value + 1)
           ctx.matches.uri = uri_t.value
 
@@ -882,9 +888,14 @@ do
             ctx.matches.uri = uri_t.value
 
             if m.uri_postfix then
+              ctx.matches.uri_prefix = sub(ctx.req_uri, 1, -(#m.uri_postfix + 1))
+
               -- remove the uri_postfix group
-              m[#m]          = nil
+              m[#m] = nil
               m.uri_postfix = nil
+
+            else
+              ctx.matches.uri_prefix = "/"
             end
 
             if uri_t.has_captures then
@@ -898,6 +909,7 @@ do
           -- plain or prefix match (not from the index)
           local from, to = find(ctx.req_uri, uri_t.value, nil, true)
           if from == 1 then
+            ctx.matches.uri_prefix = sub(ctx.req_uri, 1, to)
             ctx.matches.uri_postfix = sub(ctx.req_uri, to + 1)
             ctx.matches.uri = uri_t.value
 
@@ -1560,9 +1572,13 @@ function _M.new(routes)
               matched_route.route = routes_by_id[matched_route.route.id].route
             end
 
+            local request_prefix
+
             -- Path construction
 
             if matched_route.type == "http" then
+              request_prefix = matched_route.strip_uri and matches.uri_prefix or "/"
+
               -- if we do not have a path-match, then the postfix is simply the
               -- incoming path, without the initial slash
               local request_postfix = matches.uri_postfix or sub(req_uri, 2, -1)
@@ -1651,6 +1667,7 @@ function _M.new(routes)
               upstream_scheme = upstream_url_t.scheme,
               upstream_uri    = upstream_uri,
               upstream_host   = upstream_host,
+              prefix          = request_prefix,
               matches         = {
                 uri_captures  = matches.uri_captures,
                 uri           = matches.uri,
