@@ -9,29 +9,5 @@ local plugin_entities = {
   }
 }
 
---------------------------------------------------------------------------------
--- High-level description of the migrations to execute on 'teardown'
--- @param ops table: table of functions which execute the low-level operations
--- for the database (each function receives a connector).
--- @return a function that receives a connector
-local function ws_migration_teardown(ops)
-  return function(connector)
-    ops:ws_adjust_data(connector, plugin_entities)
-  end
-end
 
-
---------------------------------------------------------------------------------
-
-
-return {
-  postgres = {
-    up = "",
-    teardown = ws_migration_teardown(operations.postgres.teardown),
-  },
-
-  cassandra = {
-    up = "",
-    teardown = ws_migration_teardown(operations.cassandra.teardown),
-  },
-}
+return operations.ws_migrate_plugin(plugin_entities)

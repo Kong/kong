@@ -374,12 +374,35 @@ postgres.teardown.ws_adjust_data = ws_adjust_data
 cassandra.teardown.ws_adjust_data = ws_adjust_data
 
 
+local function ws_migrate_plugin(plugin_entities)
+
+  local function ws_migration_teardown(ops)
+    return function(connector)
+      ops:ws_adjust_data(connector, plugin_entities)
+    end
+  end
+
+  return {
+    postgres = {
+      up = "",
+      teardown = ws_migration_teardown(postgres.teardown),
+    },
+
+    cassandra = {
+      up = "",
+      teardown = ws_migration_teardown(cassandra.teardown),
+    },
+  }
+end
+
+
 --------------------------------------------------------------------------------
 
 
 local ee_operations = {
   postgres = postgres,
   cassandra = cassandra,
+  ws_migrate_plugin = ws_migrate_plugin,
 }
 
 
