@@ -18,6 +18,10 @@ return {
             default = 503,
             between = { 100, 599 },
           }, },
+          { enabled = {
+            type = "boolean",
+            default = true,
+          }, },
           { message = { type = "string" }, },
           { content_type = { type = "string" }, },
           { body = { type = "string" }, },
