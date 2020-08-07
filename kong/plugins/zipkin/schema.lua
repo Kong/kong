@@ -46,7 +46,7 @@ return {
     { config = {
         type = "record",
         fields = {
-          { http_endpoint = typedefs.url{ required = true } },
+          { http_endpoint = typedefs.url },
           { sample_ratio = { type = "number",
                              default = 0.001,
                              between = { 0, 1 } } },

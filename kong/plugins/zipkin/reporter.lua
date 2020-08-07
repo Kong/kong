@@ -101,6 +101,10 @@ function zipkin_reporter_methods:flush()
   self.pending_spans = {}
   self.pending_spans_n = 0
 
+  if self.http_endpoint == nil or self.http_endpoint == ngx.null then
+    return true
+  end
+
   local httpc = resty_http.new()
   local res, err = httpc:request_uri(self.http_endpoint, {
     method = "POST",
