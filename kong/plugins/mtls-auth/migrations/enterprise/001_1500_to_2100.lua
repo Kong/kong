@@ -1,4 +1,4 @@
-local operations = require "kong.db.migrations.operations.200_to_210"
+local operations = require "kong.enterprise_edition.db.migrations.operations.1500_to_2100"
 
 local plugin_entities = {
   {
@@ -7,7 +7,7 @@ local plugin_entities = {
     uniques = {"cache_key"},
     fks = {
       {name = "consumer", reference = "consumers", on_delete = "cascade"},
-      -- ca_certificates is not workspaceable
+      -- ca_certificates is non workspaceable
       -- {name = "ca_certificate", reference = "ca_certificates", on_delete = "cascade"}
     }
   }
