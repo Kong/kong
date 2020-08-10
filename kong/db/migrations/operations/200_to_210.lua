@@ -495,7 +495,7 @@ local function mock_ce_only_destructive_functions(t)
   -- teardown
   t.teardown.ws_update_composite_cache_key = nop
   t.teardown.ws_update_keys = nop
-  t.teardown.fixup_plugin_config = nop
+  -- t.teardown.fixup_plugin_config = nop
 
   return t
 end
