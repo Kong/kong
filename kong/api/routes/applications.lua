@@ -105,6 +105,7 @@ return {
   ["/applications/:applications/credentials/:plugin"] = {
     before = function(self, db, helpers)
       crud_helpers.exit_if_portal_disabled()
+      crud_helpers.exit_if_external_oauth2()
 
       local application_pk = self.params.applications
       self.params.applications = nil
@@ -149,6 +150,7 @@ return {
   ["/applications/:applications/credentials/:plugin/:credential_id"] = {
     before = function(self, db, helpers)
       crud_helpers.exit_if_portal_disabled()
+      crud_helpers.exit_if_external_oauth2()
 
       local application_pk = self.params.applications
       self.params.applications = nil
