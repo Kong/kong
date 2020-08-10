@@ -811,17 +811,10 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
       else
         index = series.metric[entity]
         entity_metadata = entities[index] or {}
-        stats[index] = stats[index] or { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
         local status_group = tostring(series.metric.status_code):sub(1, 1) .. "XX"
         -- subtract first from last in timeseries to give total requests in timeframe
         local request_count = tonumber(series.values[#series.values][2]) - tonumber(series.values[1][2])
-        stats[index]["total"] = stats[index]["total"] + request_count
-        stats[index][status_group] = stats[index][status_group] + request_count
-        stats[index]["name"] = entity_metadata.name
-        if is_consumer then
-          stats[index]["app_id"] = entity_metadata.app_id
-          stats[index]["app_name"] = entity_metadata.app_name
-        end
+        stats = vitals_utils.append_to_stats(stats, index, status_group, request_count, entity_metadata)
       end
     end
   end

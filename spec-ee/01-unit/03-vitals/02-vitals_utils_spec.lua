@@ -48,3 +48,43 @@ describe("resolve_entity_metadata", function()
   end)
 
 end)
+
+
+describe("append_to_stats", function()
+  local utils = require "kong.vitals.utils"
+  describe("given one service and no state", function()
+    it("creates single vitals stats row and looks up name", function()
+      local id = "exampleid"
+      local status_group = "2XX"
+      local request_count = 10
+      local entity = { name = "example"}
+      local current_state = {}
+      local expected = { exampleid = { ["total"] = 10, ["2XX"] = 10, ["4XX"] = 0, ["5XX"] = 0, ["name"] = "example" }}
+      assert.are.same(expected, utils.append_to_stats(current_state, id, status_group, request_count, entity))
+    end)
+  end)
+
+  describe("given one service and some 200s", function()
+    it("aggregates a single vitals stats row", function()
+      local id = "exampleid"
+      local status_group = "2XX"
+      local request_count = 10
+      local entity = { name = "example"}
+      local current_state = { exampleid = { ["total"] = 15, ["2XX"] = 15, ["4XX"] = 0, ["5XX"] = 0 }}
+      local expected = { exampleid = { ["total"] = 25, ["2XX"] = 25, ["4XX"] = 0, ["5XX"] = 0, ["name"] = "example" }}
+      assert.are.same(expected, utils.append_to_stats(current_state, id, status_group, request_count, entity))
+    end)
+  end)
+
+  describe("given one application and some 200s", function()
+    it("aggregates a single vitals stats row", function()
+      local id = "exampleid"
+      local status_group = "2XX"
+      local request_count = 10
+      local entity = { name = "consumername", app_id = "appid", app_name = "appname"}
+      local current_state = { exampleid = { ["total"] = 15, ["2XX"] = 15, ["4XX"] = 0, ["5XX"] = 0 }}
+      local expected = { exampleid = { ["total"] = 25, ["2XX"] = 25, ["4XX"] = 0, ["5XX"] = 0, ["name"] = "consumername", ["app_id"] = "appid", ["app_name"] = "appname" }}
+      assert.are.same(expected, utils.append_to_stats(current_state, id, status_group, request_count, entity))
+    end)
+  end)
+end)
