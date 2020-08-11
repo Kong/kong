@@ -678,7 +678,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
-        assert.res_status(204 res)
+        assert.res_status(204, res)
         assert.equal("http://my-site.com", res.headers["Access-Control-Allow-Origin"])
 
         -- Illegitimate origins
