@@ -210,6 +210,9 @@ function update_docker {
         cd docker-kong
     fi
     
+    git pull
+    git checkout -B "release/$1"
+    
     set -e
     ./update.sh "$1"
 }
