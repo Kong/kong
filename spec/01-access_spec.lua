@@ -32,16 +32,16 @@ for _, strategy in helpers.each_strategy() do
         --local str = f:read("*a")
         --f:close()
 
-        local bp = helpers.get_db_utils(strategy, {
+        local bp, db = helpers.get_db_utils(strategy, {
           "routes",
           "services",
           "files",
         })
 
-        local anonymous_user = bp.files:insert {
+        assert(db.files:insert {
           path = "default:specs/stock.json",
           content = read_fixture("stock.json"),
-        }
+        })
 
       -- Inject a test route. No need to create a service, there is a default
       -- service which will echo the request.
