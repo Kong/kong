@@ -20,11 +20,11 @@ for _, strategy in helpers.each_strategy() do
         "acme_storage",
       }, { "acme", })
 
-      bp.routes:insert {
+      assert(bp.routes:insert {
         hosts = { do_domain, skip_domain },
-      }
+      })
 
-      bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "acme",
         config = {
           account_email = "test@test.com",
@@ -32,12 +32,16 @@ for _, strategy in helpers.each_strategy() do
           storage = "kong",
           domains = { do_domain },
         },
-      }
+      })
 
-      db.acme_storage:insert {
+      assert(bp.plugins:insert {
+        name = "key-auth",
+      })
+
+      assert(db.acme_storage:insert {
         key = dummy_id .. "#http-01",
         value = "isme",
-      }
+      })
 
       assert(helpers.start_kong({
         plugins = "bundled,acme",
@@ -62,6 +66,8 @@ for _, strategy in helpers.each_strategy() do
         path    = "/.well-known/acme-challenge/yay",
         headers =  { host = do_domain }
       })
+
+      -- key-auth should not run
       assert.response(res).has.status(404)
       body = res:read_body()
       assert.match("Not found", body)
@@ -71,6 +77,8 @@ for _, strategy in helpers.each_strategy() do
         path    = "/.well-known/acme-challenge/" .. dummy_id,
         headers =  { host = do_domain }
       })
+
+      -- key-auth should not run
       assert.response(res).has.status(200)
       body = res:read_body()
       assert.equal("isme\n", body)
@@ -83,8 +91,8 @@ for _, strategy in helpers.each_strategy() do
         path    = "/.well-known/acme-challenge/yay",
         headers =  { host = skip_domain }
       })
-      -- default behaviour for route without service
-      assert.response(res).has.status(502)
+      -- key-auth should take over
+      assert.response(res).has.status(401)
 
     end)
 
