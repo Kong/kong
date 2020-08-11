@@ -5,11 +5,62 @@
 --
 -- If you want to reuse these operations in a future migration,
 -- copy the functions over to a new versioned module.
+
+
+local ngx = ngx
 local uuid = require "resty.jit-uuid"
 
 
 local function render(template, keys)
   return (template:gsub("$%(([A-Z_]+)%)", keys))
+end
+
+
+local function cassandra_get_default_ws(connector)
+  local rows, err = connector:query("SELECT * FROM workspaces WHERE name='default'")
+  if err then
+    return nil, err
+  end
+
+  if not rows
+     or not rows[1]
+     or not rows[1].id
+  then
+    return nil
+  end
+
+  return rows[1].id
+end
+
+
+local function cassandra_create_default_ws(connector)
+  local cql = render([[
+    INSERT INTO workspaces(id, name, created_at)
+    VALUES (uuid(), 'default', $(NOW))
+]], {
+    NOW = ngx.time() * 1000
+  })
+
+  local _, err = connector:query(cql)
+  if err then
+    return nil, err
+  end
+
+  return cassandra_get_default_ws(connector)
+end
+
+
+local function cassandra_ensure_default_ws(connector)
+  local default_ws, err = cassandra_get_default_ws(connector)
+  if err then
+    return nil, err
+  end
+
+  if default_ws then
+    return default_ws
+  end
+
+  return cassandra_create_default_ws(connector)
 end
 
 
@@ -112,7 +163,7 @@ local postgres = {
     end,
 
     ----------------------------------------------------------------------------
-    -- Adjust foreign key to take ws_id into account and ansure it matches
+    -- Adjust foreign key to take ws_id into account and ensure it matches
     -- @param table_name string: name of the table e.g. "routes"
     -- @param fk_prefix string: name of the foreign field in the schema,
     -- which is used as a prefix in foreign key entries in tables e.g. "service"
@@ -209,7 +260,7 @@ local cassandra = {
     -- Add `workspaces` table.
     -- @return string: CQL
     ws_add_workspaces = function(_)
-      return render([[
+      return [[
 
           CREATE TABLE IF NOT EXISTS workspaces(
             id         uuid,
@@ -220,14 +271,10 @@ local cassandra = {
             config     text,
             PRIMARY KEY (id)
           );
+
           CREATE INDEX IF NOT EXISTS workspaces_name_idx ON workspaces(name);
 
-          -- Create default workspace
-          INSERT INTO workspaces(id, name, created_at)
-          VALUES (uuid(), 'default', $(NOW));
-      ]], {
-        NOW = ngx.time() * 1000
-      })
+      ]]
     end,
 
     ----------------------------------------------------------------------------
@@ -264,7 +311,7 @@ local cassandra = {
     end,
 
     ----------------------------------------------------------------------------
-    -- Adjust foreign key to take ws_id into account and ansure it matches
+    -- Adjust foreign key to take ws_id into account and ensure it matches
     -- @param table_name string: name of the table e.g. "routes"
     -- @param fk_prefix string: name of the foreign field in the schema,
     -- which is used as a prefix in foreign key entries in tables e.g. "service"
@@ -282,15 +329,8 @@ local cassandra = {
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      local rows, err = connector:query([[
-        SELECT * FROM workspaces WHERE name='default';
-      ]])
-      if err then
-        return nil, err
-      end
-      local default_ws = rows[1].id
-
       local coordinator = assert(connector:connect_migrations())
+      local default_ws = assert(cassandra_ensure_default_ws(connector))
 
       for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
         if err then
@@ -305,11 +345,11 @@ local cassandra = {
               TABLE = table_name,
               CACHE_KEY = row.cache_key .. ":" .. default_ws,
               PARTITION = is_partitioned
-                        and "partition = '" .. table_name .. "' AND"
-                        or  "",
+                and "partition = '" .. table_name .. "' AND"
+                or  "",
               ID = row.id,
             })
-          assert(connector:query(cql))
+            assert(connector:query(cql))
           end
         end
       end
@@ -318,16 +358,8 @@ local cassandra = {
     ------------------------------------------------------------------------------
     -- Update keys to workspace-aware formats
     ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned)
-
-      local rows, err = connector:query([[
-        SELECT * FROM workspaces WHERE name='default';
-      ]])
-      if err then
-        return nil, err
-      end
-      local default_ws = rows[1].id
-
       local coordinator = assert(connector:connect_migrations())
+      local default_ws = assert(cassandra_ensure_default_ws(connector))
 
       for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
         if err then
