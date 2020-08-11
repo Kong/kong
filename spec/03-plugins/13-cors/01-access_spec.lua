@@ -536,7 +536,7 @@ for _, strategy in helpers.each_strategy() do
               }
             })
 
-            assert.res_status(200, res)
+            assert.res_status(204, res)
 
             if accept then
               assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
@@ -562,7 +562,7 @@ for _, strategy in helpers.each_strategy() do
             ["Access-Control-Request-Method"] = "GET",
           }
         })
-        assert.res_status(200, res)
+        assert.res_status(204, res)
         assert.equal("0", res.headers["Content-Length"])
         assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
@@ -588,7 +588,7 @@ for _, strategy in helpers.each_strategy() do
             ["Access-Control-Request-Method"] = "GET",
           }
         })
-        assert.res_status(200, res)
+        assert.res_status(204, res)
         assert.equal("0", res.headers["Content-Length"])
         assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
@@ -608,7 +608,7 @@ for _, strategy in helpers.each_strategy() do
             ["Access-Control-Request-Method"] = "GET",
           }
         })
-        assert.res_status(200, res)
+        assert.res_status(204, res)
         assert.equal("0", res.headers["Content-Length"])
         assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
         assert.equal("origin5.com", res.headers["Access-Control-Allow-Origin"])
@@ -628,7 +628,7 @@ for _, strategy in helpers.each_strategy() do
             ["Access-Control-Request-Method"] = "GET",
           }
         })
-        assert.res_status(200, res)
+        assert.res_status(204, res)
         assert.equal("0", res.headers["Content-Length"])
         assert.equal("GET", res.headers["Access-Control-Allow-Methods"])
         assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
@@ -663,7 +663,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
-        assert.res_status(200, res)
+        assert.res_status(204, res)
         assert.equal("0", res.headers["Content-Length"])
         assert.equal("origin,accepts", res.headers["Access-Control-Allow-Headers"])
       end)
@@ -678,7 +678,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
-        assert.res_status(200, res)
+        assert.res_status(204 res)
         assert.equal("http://my-site.com", res.headers["Access-Control-Allow-Origin"])
 
         -- Illegitimate origins
@@ -690,7 +690,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
-        assert.res_status(200, res)
+        assert.res_status(204, res)
         assert.is_nil(res.headers["Access-Control-Allow-Origin"])
 
         -- Tricky illegitimate origins
@@ -702,7 +702,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
-        assert.res_status(200, res)
+        assert.res_status(204, res)
         assert.is_nil(res.headers["Access-Control-Allow-Origin"])
       end)
     end)
@@ -733,7 +733,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "cors1.com"
           }
         })
-        local body = assert.res_status(200, res)
+        local body = assert.res_status(204, res)
         local json = cjson.decode(body)
         assert.equal("OPTIONS", json.vars.request_method)
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
