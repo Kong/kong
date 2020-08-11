@@ -10,7 +10,7 @@ local tostring = tostring
 local ipairs   = ipairs
 
 
-local HTTP_OK = 200
+local HTTP_OK = 204
 
 
 local CorsHandler = {}
