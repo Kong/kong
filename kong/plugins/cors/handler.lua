@@ -10,7 +10,7 @@ local tostring = tostring
 local ipairs   = ipairs
 
 
-local HTTP_OK = 204
+local HTTP_NO_CONTENT = 204
 
 
 local CorsHandler = {}
@@ -232,7 +232,7 @@ function CorsHandler:access(conf)
     set_header("Access-Control-Max-Age", tostring(conf.max_age))
   end
 
-  return kong.response.exit(HTTP_OK)
+  return kong.response.exit(HTTP_NO_CONTENT)
 end
 
 
