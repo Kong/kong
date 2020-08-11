@@ -736,7 +736,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "cors1.com"
           }
         })
-        local body = assert.res_status(204, res)
+        local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal("OPTIONS", json.vars.request_method)
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
