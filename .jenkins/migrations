@@ -1,74 +1,15 @@
-// Set here migration paths to test. This pipeline lives together with the
-// kong code, so keep it up to date and relevant after new releases
-// These are just mapping to the arguments to pass to sealy
-def paths = [
-  "Kong EE 1.5.0.4 to here (pg)": [
-    from: "kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.5.0.4-alpine",
-    to: "/tmp/kong",
-    seeds: "paths/1.5.x_to_2.1.x_happy_path",
-    postgres: ""
-  ],
-  "Kong EE 1.5.0.4 to here (c*)": [
-    from: "kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.5.0.4-alpine",
-    to: "/tmp/kong",
-    seeds: "paths/1.5.x_to_2.1.x_happy_path",
-    cassandra: ""
-  ],
-  "Kong EE next/2.1.x.x to here (pg)": [
-    from: "registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine",
-    to: "/tmp/kong",
-    seeds: "paths/2.1.x_happy_path",
-    postgres: ""
-  ],
-  "Kong EE next/2.1.x.x to here (c*)": [
-    from: "registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine",
-    to: "/tmp/kong",
-    seeds: "paths/2.1.x_happy_path",
-    cassandra: ""
-  ]
-]
+pipeline {
 
-def builds = [:]
-paths.each{ _name, _flags ->
-  def name = _name
-  def flags = _flags.inject([]) { result, entry ->
-    result << "--${entry.key} ${entry.value}"
-  }.join(' ')
-
-  builds[name] = {
-    node('bionic') {
-      stage(name) {
-        stage('prepare') {
-          env.BRANCH_OR_TAG = env.BRANCH_NAME ? env.BRANCH_NAME : "refs/tags/${env.TAG_NAME}"
-
-          sh "docker login -u ${env.BINTRAY_USR} -p ${env.BINTRAY_PSW} kong-docker-kong-enterprise-edition-docker.bintray.io"
-          sh "docker login -u ${env.DOCKER_REGISTRY_USR} -p ${env.DOCKER_REGISTRY_PSW} registry.kongcloud.io"
-
-          sh "mkdir -p ~/.local/bin"
-
-          sh "git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-gojira.git /tmp/gojira"
-          sh 'ln -s $(realpath /tmp/gojira/gojira.sh) $(realpath ~/.local/bin/gojira)'
-
-          sh "git clone https://$GITHUB_TOKEN:@github.com/Kong/sealy.git /tmp/sealy"
-          sh 'ln -s $(realpath /tmp/sealy/sealy.sh) $(realpath ~/.local/bin/sealy)'
-
-          sh "git clone -b ${env.BRANCH_OR_TAG} https://$GITHUB_TOKEN:@github.com/Kong/kong-ee.git /tmp/kong"
-        }
-
-        stage('test migration') {
-          env.PATH = env.PATH + ":~/.local/bin"
-          sh "sealy $flags"
-        }
-      }
+  agent {
+    node {
+      label 'bionic'
     }
   }
-}
 
-pipeline {
-  agent none
   options {
     timeout(time: 100, unit: 'MINUTES')
   }
+
   environment {
     GITHUB = credentials('GITHUB_TOKEN')
     GITHUB_TOKEN = credentials('GITHUB_TOKEN')
@@ -79,19 +20,50 @@ pipeline {
     BINTRAY = credentials('bintray')
     KONG_LICENSE_DATA = credentials('KONG_LICENSE_DATA')
     SEALY_ALWAYS_TEARDOWN = 1
+    PATH = "${env.PATH}:~/.local/bin"
+    // Speed up build
+    ENABLE_OPENTRACING = 0
+    DOCKER_IMAGE_NAME="migration-tests"
   }
 
   stages {
-    // build parameters are at this point because if not, first build never
-    // gets them. If we were to just automate this so it just runs all steps
-    // when a tag is pushed, remove this part and set the options to the
-    // desired actions
+    stage('prepare environment') {
+      steps {
+        sh "docker login -u ${env.BINTRAY_USR} -p ${env.BINTRAY_PSW} kong-docker-kong-enterprise-edition-docker.bintray.io"
+        sh "docker login -u ${env.DOCKER_REGISTRY_USR} -p ${env.DOCKER_REGISTRY_PSW} registry.kongcloud.io"
+        sh "mkdir -p ~/.local/bin"
+
+        sh "git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-gojira.git /tmp/gojira"
+        sh 'ln -s $(realpath /tmp/gojira/gojira.sh) $(realpath ~/.local/bin/gojira)'
+
+        sh "git clone https://$GITHUB_TOKEN:@github.com/Kong/sealy.git /tmp/sealy"
+        sh 'ln -s $(realpath /tmp/sealy/sealy.sh) $(realpath ~/.local/bin/sealy)'
+      }
+    }
+
+    stage('build dist image') {
+      steps {
+        sh "./dist/dist.sh build alpine"
+        sh "./dist/dist.sh build-image alpine"
+      }
+    }
 
     stage('run migration integration tests') {
       steps {
-        script {
-          parallel builds
-        }
+        parallel (
+          "Kong EE 1.5.0.4 to here (pg)": {
+            sh "sealy --from kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.5.0.4-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/1.5.x_to_2.1.x_happy_path"
+          },
+          "Kong EE 1.5.0.4 to here (c*)": {
+            sh "sealy --from kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.5.0.4-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/1.5.x_to_2.1.x_happy_path --cassandra"
+          },
+          "Kong EE next/2.1.x.x to here (pg)": {
+            sh "sealy --from registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path"
+          },
+          "Kong EE next/2.1.x.x to here (c*)": {
+            sh "sealy --from registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path --cassandra"
+          }
+        )
       }
     }
   }
