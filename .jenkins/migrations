@@ -44,6 +44,7 @@ pipeline {
     stage('build dist image') {
       steps {
         sh "./dist/dist.sh build alpine"
+        sh "./dist/dist.sh test alpine"
         sh "./dist/dist.sh build-image alpine"
       }
     }
