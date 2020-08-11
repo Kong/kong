@@ -5,25 +5,25 @@ def paths = [
   "Kong EE 1.5.0.4 to here (pg)": [
     from: "kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.5.0.4-alpine",
     to: "/tmp/kong",
-    seeds: "paths/0.35_happy_path",
+    seeds: "paths/1.5.x_to_2.1.x_happy_path",
     postgres: ""
   ],
   "Kong EE 1.5.0.4 to here (c*)": [
     from: "kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.5.0.4-alpine",
     to: "/tmp/kong",
-    seeds: "paths/0.35_happy_path",
+    seeds: "paths/1.5.x_to_2.1.x_happy_path",
     cassandra: ""
   ],
   "Kong EE next/2.1.x.x to here (pg)": [
     from: "registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine",
     to: "/tmp/kong",
-    seeds: "paths/2.x_happy_path",
+    seeds: "paths/2.1.x_happy_path",
     postgres: ""
   ],
   "Kong EE next/2.1.x.x to here (c*)": [
     from: "registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine",
     to: "/tmp/kong",
-    seeds: "paths/2.x_happy_path",
+    seeds: "paths/2.1.x_happy_path",
     cassandra: ""
   ]
 ]
