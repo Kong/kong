@@ -563,9 +563,9 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(204, res)
-        assert.equal("0", res.headers["Content-Length"])
         assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+        assert.is_nil(res.headers["Content-Length"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
@@ -589,9 +589,9 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(204, res)
-        assert.equal("0", res.headers["Content-Length"])
         assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
         assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+        assert.is_nil(res.headers["Content-Length"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
@@ -609,11 +609,11 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(204, res)
-        assert.equal("0", res.headers["Content-Length"])
         assert.equal(CORS_DEFAULT_METHODS, res.headers["Access-Control-Allow-Methods"])
         assert.equal("origin5.com", res.headers["Access-Control-Allow-Origin"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
         assert.equal("Origin", res.headers["Vary"])
+        assert.is_nil(res.headers["Content-Length"])
         assert.is_nil(res.headers["Access-Control-Allow-Headers"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
@@ -629,13 +629,13 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(204, res)
-        assert.equal("0", res.headers["Content-Length"])
         assert.equal("GET", res.headers["Access-Control-Allow-Methods"])
         assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
         assert.equal("23", res.headers["Access-Control-Max-Age"])
         assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
         assert.equal("origin,type,accepts", res.headers["Access-Control-Allow-Headers"])
         assert.equal("Origin", res.headers["Vary"])
+        assert.is_nil(res.headers["Content-Length"])
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
       end)
 
@@ -664,8 +664,8 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.res_status(204, res)
-        assert.equal("0", res.headers["Content-Length"])
         assert.equal("origin,accepts", res.headers["Access-Control-Allow-Headers"])
+        assert.is_nil(res.headers["Content-Length"])
       end)
 
       it("properly validates flat strings", function()
