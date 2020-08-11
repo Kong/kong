@@ -318,5 +318,27 @@ pipeline {
                 }
             }
         }
+        stage('Post Release') {
+            when {
+                beforeAgent true
+                allOf {
+                    buildingTag()
+                    not { triggeredBy 'TimerTrigger' }
+                }
+            }
+            stage('Post Release Steps'){
+                agent {
+                    node {
+                        label 'bionic'
+                    }
+                }
+                steps {
+                    sh './scripts/make-patch-release $TAG_NAME update_docker'
+                    sh './scripts/make-patch-release $TAG_NAME homebrew'
+                    sh './scripts/make-patch-release $TAG_NAME vagrant'
+                    sh './scripts/make-patch-release $TAG_NAME pongo'
+                }
+            }
+        }
     }
 }
