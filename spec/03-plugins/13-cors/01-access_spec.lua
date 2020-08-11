@@ -674,7 +674,8 @@ for _, strategy in helpers.each_strategy() do
           method  = "OPTIONS",
           headers = {
             ["Host"]   = "cors10.com",
-            ["Origin"] = "http://my-site.com"
+            ["Origin"] = "http://my-site.com",
+            ["Access-Control-Request-Method"] = "GET",
           }
         })
 
@@ -686,7 +687,8 @@ for _, strategy in helpers.each_strategy() do
           method  = "OPTIONS",
           headers = {
             ["Host"]   = "cors10.com",
-            ["Origin"] = "http://bad-guys.com"
+            ["Origin"] = "http://bad-guys.com",
+            ["Access-Control-Request-Method"] = "GET",
           }
         })
 
@@ -698,7 +700,8 @@ for _, strategy in helpers.each_strategy() do
           method  = "OPTIONS",
           headers = {
             ["Host"]   = "cors10.com",
-            ["Origin"] = "http://my-site.com.bad-guys.com"
+            ["Origin"] = "http://my-site.com.bad-guys.com",
+            ["Access-Control-Request-Method"] = "GET",
           }
         })
 
