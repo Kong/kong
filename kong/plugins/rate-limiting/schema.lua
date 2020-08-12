@@ -39,9 +39,10 @@ return {
           { limit_by = {
               type = "string",
               default = "consumer",
-              one_of = { "consumer", "credential", "ip", "service", "header" },
+              one_of = { "consumer", "credential", "ip", "service", "header", "path" },
           }, },
           { header_name = typedefs.header_name },
+          { path = typedefs.path },
           { policy = {
               type = "string",
               default = "cluster",
