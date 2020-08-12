@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.2.10](#0210---20200812)
 - [0.2.9](#029---20200804)
 - [0.2.8](#028---20200730)
 - [0.2.7](#027---20200629)
@@ -13,6 +14,13 @@
 - [0.1.2](#012---20191216)
 - [0.1.1](#011---20191212)
 - [0.1.0](#010---20191212)
+
+
+##  [0.2.10] - 2020/08/12
+
+- Increased plugin priority to run before all the auth plugins. This ensures the ACME
+validation endpoints `/.well-known/acme-challenge/*` doesn't get blocked by auth plugins,
+causing validation failures.
 
 ##  [0.2.9] - 2020/08/04
 
@@ -73,6 +81,7 @@
 - Initial release of ACME plugin for Kong.
 
 
+[0.2.10]: https://github.com/Kong/kong-plugin-acme/compare/0.2.9...0.2.10
 [0.2.9]: https://github.com/Kong/kong-plugin-acme/compare/0.2.8...0.2.9
 [0.2.8]: https://github.com/Kong/kong-plugin-acme/compare/0.2.7...0.2.8
 [0.2.7]: https://github.com/Kong/kong-plugin-acme/compare/0.2.6...0.2.7
