@@ -753,6 +753,7 @@ stream {
     server {
         listen 15557;
         listen 15558 ssl;
+        listen 15557 udp;
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
