@@ -85,7 +85,7 @@ local function new(args, ctx, issuer, client, anonymous, session)
       if count == 1 then
         err = select(1, ...)
       elseif count > 1 then
-        err = concat({ ... }, " ")
+        err = concat({ ... })
       end
 
       return forbidden(err, msg, ctx, issuer, client, anonymous, session)
@@ -97,7 +97,7 @@ local function new(args, ctx, issuer, client, anonymous, session)
       if count == 1 then
         err = select(1, ...)
       elseif count > 1 then
-        err = concat({ ... }, " ")
+        err = concat({ ... })
       end
 
       return unauthorized(err, msg, ctx, issuer, client, anonymous, session)
