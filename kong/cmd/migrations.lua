@@ -28,6 +28,10 @@ The available commands are:
   migrate-community-to-enterprise   Migrates CE entities to EE on the default
                                     workspace
 
+  upgrade-workspace-table           Outputs a script to be run on the db to upgrade
+                                    the entity for 2.x workspaces implementation
+
+
   reinitialize-workspace-entity-counters  Resets the entity counters from the
                                           database entities.
 
@@ -227,6 +231,14 @@ local function execute(args)
       error(err)
     end
 
+  elseif args.command == "upgrade-workspace-table" then
+    local tname = table.remove(args, 1)
+    if tname then
+      custom_wspaced_entities(db, conf, tname)
+    else
+      error("upgrade-workspace-table needs an existing non-migrated table name")
+    end
+
   else
     error("unreachable")
   end
@@ -244,5 +256,6 @@ return {
     reset = true,
     ["migrate-community-to-enterprise"] = true,
     ["reinitialize-workspace-entity-counters"]=true,
+    ["upgrade-workspace-table"]=true,
   }
 }
