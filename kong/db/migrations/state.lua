@@ -313,7 +313,7 @@ function State:is_migration_executed(subsystem_name, migration_name)
 end
 
 -- XXX EE needed to check migration path < 1.5
-function State:subsystem_executed(self, subsystem_name)
+function State:subsystem_executed(subsystem_name)
   return get_executed_migrations_for_subsystem(self, subsystem_name) ~= nil
 end
 
