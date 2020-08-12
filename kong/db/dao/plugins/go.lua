@@ -17,6 +17,8 @@ local go = {}
 
 
 local reset_instances   -- forward declaration
+local reset_instance
+local reset_and_get_instance
 local preloaded_stuff = {}
 
 
@@ -238,8 +240,20 @@ do
 
     ["kong.nginx.get_tls1_version_str"] = ngx_ssl.get_tls1_version_str,
 
-    ["kong.nginx.get_ctx"] = function(v)
-      return ngx.ctx[v]
+    ["kong.nginx.get_ctx"] = function(k)
+      return ngx.ctx[k]
+    end,
+
+    ["kong.nginx.set_ctx"] = function(k, v)
+      ngx.ctx[k] = v
+    end,
+
+    ["kong.ctx.shared.get"] = function(k)
+      return kong.ctx.shared[k]
+    end,
+
+    ["kong.ctx.shared.set"] = function(k, v)
+      kong.ctx.shared[k] = v
     end,
 
     ["kong.nginx.req_start_time"] = ngx.req.start_time,
@@ -363,6 +377,16 @@ do
     instances = {}
   end
 
+  function reset_instance(plugin_name, conf)
+    local key = type(conf) == "table" and conf.__key__ or plugin_name
+    instances[key] = nil
+  end
+
+  function reset_and_get_instance(plugin_name, conf)
+    reset_instance(plugin_name, conf)
+    return get_instance(plugin_name, conf)
+  end
+
   function get_instance(plugin_name, conf)
     local key = type(conf) == "table" and conf.__key__ or plugin_name
     local instance_info = instances[key]
@@ -377,7 +401,7 @@ do
 
     if instance_info
       and instance_info.id
-      and instance_info.seq == instance_info.conf.__seq__
+      and instance_info.seq == conf.__seq__
     then
       -- exact match, return it
       return instance_info.id
@@ -409,6 +433,8 @@ do
     end
 
     instance_info.id = status.Id
+    instance_info.conf = conf
+    instance_info.seq = conf.__seq__
     instance_info.Config = status.Config
 
     if old_instance_id then
@@ -458,7 +484,11 @@ local get_plugin do
           preloaded_stuff.basic_serializer = basic_serializer.serialize(ngx)
           ngx_timer_at(0, function()
             local instance_id = get_instance(plugin_name, conf)
-            bridge_loop(instance_id, phase)
+            local _, err = bridge_loop(instance_id, phase)
+            if err and string.match(err, "No plugin instance") then
+              instance_id = reset_and_get_instance(plugin_name, conf)
+              bridge_loop(instance_id, phase)
+            end
             preloaded_stuff.basic_serializer = nil
           end)
         end
@@ -466,7 +496,11 @@ local get_plugin do
       else
         plugin[phase] = function(self, conf)
           local instance_id = get_instance(plugin_name, conf)
-          bridge_loop(instance_id, phase)
+          local _, err = bridge_loop(instance_id, phase)
+          if err and string.match(err, "No plugin instance") then
+            instance_id = reset_and_get_instance(plugin_name, conf)
+            bridge_loop(instance_id, phase)
+          end
         end
       end
     end

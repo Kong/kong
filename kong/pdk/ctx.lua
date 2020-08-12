@@ -4,11 +4,16 @@
 
 
 local ngx = ngx
+local ngx_get_phase = ngx.get_phase
 
 
 -- shared between all global instances
 local _CTX_SHARED_KEY = {}
 local _CTX_CORE_KEY = {}
+
+
+-- dynamic namespaces, also shared between global instances
+local _CTX_NAMESPACES_KEY = {}
 
 
 ---
@@ -51,12 +56,15 @@ local _CTX_CORE_KEY = {}
 
 ---
 -- A table that has the lifetime of the current request - Unlike
--- `kong.ctx.shared`, this table is **not** shared between plugins. Instead,
--- it is only visible for the current plugin.
+-- `kong.ctx.shared`, this table is **not** shared between plugins.
+-- Instead, it is only visible for the current plugin _instance_.
+-- That is, if several instances of the rate-limiting plugin
+-- are configured (e.g. on different Services), each instance has its
+-- own table, for every request.
 --
 -- Because of its namespaced nature, this table is safer for a plugin to use
 -- than `kong.ctx.shared` since it avoids potential naming conflicts, which
--- could lead to different plugins unknowingly overwrite each other's data.
+-- could lead to several plugins unknowingly overwriting each other's data.
 --
 -- Since only relevant in the context of a request, this table cannot be
 -- accessed from the top-level chunk of Lua modules. Instead, it can only be
@@ -65,11 +73,9 @@ local _CTX_CORE_KEY = {}
 -- of the plugin interfaces. Accessing this table in those functions (and
 -- their callees) is fine.
 --
--- Values inserted in this table by a plugin will be visible in succeeding
--- phases (please note that the plugin configuration, that is passed to phase
--- handler function, may change between the phases of the request).
--- The following example illustrates how a plugin can save a value on access
--- phase for post-processing on log phase:
+-- Values inserted in this table by a plugin will be visible in successful
+-- phases of this plugin's instance only. For example, if a plugin wants to
+-- save some value for post-processing during the `log` phase:
 --
 -- @table kong.ctx.plugin
 -- @phases rewrite, access, header_filter, body_filter, log, preread
@@ -86,19 +92,58 @@ local _CTX_CORE_KEY = {}
 --
 --   kong.log(value) -- "hello world"
 -- end
+
+
 local function new(self)
-  local _CTX = {
-    -- those would be visible on the *.ctx namespace for now
-    -- TODO: hide them in a private table shared between this
-    -- module and the global.lua one
-    keys = setmetatable({}, { __mode = "v" }),
-  }
-
-
+  local _CTX = {}
   local _ctx_mt = {}
+  local _ns_mt = { __mode = "v" }
+
+
+  local function get_namespaces(nctx)
+    local namespaces = nctx[_CTX_NAMESPACES_KEY]
+    if not namespaces then
+      -- 4 namespaces for request, i.e. ~4 plugins
+      namespaces = self.table.new(0, 4)
+      nctx[_CTX_NAMESPACES_KEY] = setmetatable(namespaces, _ns_mt)
+    end
+
+    return namespaces
+  end
+
+
+  local function set_namespace(namespace, namespace_key)
+    local nctx = ngx.ctx
+    local namespaces = get_namespaces(nctx)
+
+    local ns = namespaces[namespace]
+    if ns and ns == namespace_key then
+      return
+    end
+
+    namespaces[namespace] = namespace_key
+  end
+
+
+  local function del_namespace(namespace)
+    local nctx = ngx.ctx
+    local namespaces = get_namespaces(nctx)
+    namespaces[namespace] = nil
+  end
 
 
   function _ctx_mt.__index(t, k)
+    if k == "__set_namespace" then
+      return set_namespace
+
+    elseif k == "__del_namespace" then
+      return del_namespace
+    end
+
+    if ngx_get_phase() == "init" then
+      return
+    end
+
     local nctx = ngx.ctx
     local key
 
@@ -109,7 +154,8 @@ local function new(self)
       key = _CTX_SHARED_KEY
 
     else
-      key = t.keys[k]
+      local namespaces = get_namespaces(nctx)
+      key = namespaces[k]
     end
 
     if key then

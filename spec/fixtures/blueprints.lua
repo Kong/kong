@@ -24,6 +24,18 @@ function Blueprint:insert(overrides, options)
 end
 
 
+-- insert blueprint in workspace specified by `ws`
+function Blueprint:insert_ws(overrides, workspace)
+  local old_workspace = ngx.ctx.workspace
+
+  ngx.ctx.workspace = workspace.id
+  local entity = self:insert(overrides)
+  ngx.ctx.workspace = old_workspace
+
+  return entity
+end
+
+
 function Blueprint:remove(overrides, options)
   local entity, err = self.dao:remove({ id = overrides.id }, options)
   if err then
@@ -337,6 +349,13 @@ function _M.new(db)
     return {
       name   = "statsd",
       config = {},
+    }
+  end)
+
+  local workspace_name_seq = new_sequence("workspace-name-%d")
+  res.workspaces = new_blueprint(db.workspaces, function()
+    return {
+      name = workspace_name_seq:next(),
     }
   end)
 

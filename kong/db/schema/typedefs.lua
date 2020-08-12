@@ -76,7 +76,10 @@ end
 
 
 local function validate_path(path)
-  if not match(path, "^/[%w%.%-%_~%/%%]*$") then
+  if not match(path, "^/[%w%.%-%_%~%/%%%:%@" ..
+                     "%!%$%&%'%(%)%*%+%,%;%=" .. -- RFC 3986 "sub-delims"
+                     "]*$")
+  then
     return nil,
            "invalid path: '" .. path ..
            "' (characters outside of the reserved list of RFC 3986 found)",
@@ -89,7 +92,7 @@ local function validate_path(path)
 
     if raw:find("%", nil, true) then
       local err = raw:sub(raw:find("%%.?.?"))
-      return nil, "invalid url-encoded value: '" .. err .. "'"
+      return nil, "invalid url-encoded value: '" .. err .. "'", "percent"
     end
   end
 
@@ -179,7 +182,7 @@ end
 
 
 local function validate_certificate(cert)
-  local _, err =  openssl_x509.new(cert)
+  local _, err = openssl_x509.new(cert)
   if err then
     return nil, "invalid certificate: " .. err
   end
@@ -394,14 +397,21 @@ end
 
 local function validate_path_with_regexes(path)
 
-
   local ok, err, err_code = typedefs.path.custom_validator(path)
 
-  if ok or err_code ~= "rfc3986" then
+  if err_code == "percent" then
     return ok, err, err_code
   end
 
-  -- URI contains characters outside of the reserved list of RFC 3986:
+  -- We can't take an ok from validate_path as a success just yet,
+  -- because the router is currently more strict than RFC 3986 for
+  -- non-regex paths:
+  if ngx.re.find(path, [[^[a-zA-Z0-9\.\-_~/%]*$]]) then
+    return true
+  end
+
+  -- URI contains characters outside of the list recognized by the
+  -- router as valid non-regex paths.
   -- the value will be interpreted as a regex by the router; but is it a
   -- valid one? Let's dry-run it with the same options as our router.
   local _, _, err = ngx.re.find("", path, "aj")

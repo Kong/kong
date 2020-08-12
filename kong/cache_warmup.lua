@@ -9,7 +9,11 @@ local tostring = tostring
 local ipairs = ipairs
 local math = math
 local kong = kong
+local null = ngx.null
 local ngx = ngx
+
+
+local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
 function cache_warmup._mock_kong(mock_kong)
@@ -40,9 +44,10 @@ end
 local function cache_warmup_single_entity(dao)
   local entity_name = dao.schema.name
 
-  local cache = constants.CORE_ENTITIES[entity_name] and kong.core_cache or kong.cache
+  local cache_store = constants.ENTITY_CACHE_STORE[entity_name]
+  local cache = kong[cache_store]
 
-  ngx.log(ngx.NOTICE, "Preloading '", entity_name, "' into the cache ...")
+  ngx.log(ngx.NOTICE, "Preloading '", entity_name, "' into the ", cache_store, "...")
 
   local start = ngx.now()
 
@@ -53,7 +58,7 @@ local function cache_warmup_single_entity(dao)
     host_count = 0
   end
 
-  for entity, err in dao:each() do
+  for entity, err in dao:each(nil, GLOBAL_QUERY_OPTS) do
     if err then
       return nil, err
     end
@@ -82,7 +87,7 @@ local function cache_warmup_single_entity(dao)
   local elapsed = math.floor((ngx.now() - start) * 1000)
 
   ngx.log(ngx.NOTICE, "finished preloading '", entity_name,
-                      "' into the cache (in ", tostring(elapsed), "ms)")
+                      "' into the ", cache_store, " (in ", tostring(elapsed), "ms)")
   return true
 end
 

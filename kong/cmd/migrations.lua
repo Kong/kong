@@ -148,6 +148,10 @@ local function execute(args)
     -- exit(0)
 
   elseif args.command == "bootstrap" then
+    if args.force then
+      migrations_utils.reset(schema_state, db, args.lock_timeout)
+      schema_state = assert(db:schema_state())
+    end
     migrations_utils.bootstrap(schema_state, db, args.lock_timeout)
 
   elseif args.command == "reset" then
@@ -156,7 +160,8 @@ local function execute(args)
         error("not a tty: invoke 'reset' non-interactively with the --yes flag")
       end
 
-      if not confirm_prompt("Are you sure? This operation is irreversible.") then
+      if not schema_state.needs_bootstrap and
+        not confirm_prompt("Are you sure? This operation is irreversible.") then
         log("cancelled")
         return
       end

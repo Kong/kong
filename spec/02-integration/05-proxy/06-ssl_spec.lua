@@ -279,15 +279,15 @@ for _, strategy in helpers.each_strategy() do
     describe("handshake", function()
       it("sets the default fallback SSL certificate if no SNI match", function()
         local cert = get_cert("test.com")
-        assert.cn("localhost", cert)
+        assert.certificate(cert).has.cn("localhost")
       end)
 
       it("sets the configured SSL certificate if SNI match", function()
         local cert = get_cert("ssl1.com")
-        assert.cn("ssl-example.com", cert)
+        assert.certificate(cert).has.cn("ssl-example.com")
 
         cert = get_cert("example.com")
-        assert.cn("ssl-example.com", cert)
+        assert.certificate(cert).has.cn("ssl-example.com")
       end)
 
       describe("wildcard sni", function()
@@ -574,6 +574,55 @@ for _, strategy in helpers.each_strategy() do
 
         local cert = get_cert("example.com")
         -- this fails if the "example.com" SNI wasn't inserted above
+        assert.certificate(cert).has.cn("ssl-example.com")
+      end)
+    end)
+  end)
+
+  describe("SSL [#" .. strategy .. "]", function()
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "certificates",
+        "snis",
+      })
+
+      local service = bp.services:insert {
+        name = "default-cert",
+      }
+
+      bp.routes:insert {
+        protocols = { "https" },
+        hosts     = { "example.com" },
+        service   = service,
+      }
+
+      local cert = bp.certificates:insert {
+        cert  = ssl_fixtures.cert,
+        key   = ssl_fixtures.key,
+      }
+
+      bp.snis:insert {
+        name = "*",
+        certificate = cert,
+      }
+
+      assert(helpers.start_kong {
+        database    = strategy,
+        nginx_conf  = "spec/fixtures/custom_nginx.template",
+      })
+
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    describe("handshake", function()
+      it("sets the default certificate of '*' SNI", function()
+        local cert = get_cert("example.com")
         assert.cn("ssl-example.com", cert)
       end)
     end)

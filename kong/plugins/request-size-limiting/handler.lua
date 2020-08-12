@@ -30,9 +30,9 @@ local function check_size(length, allowed_size, headers, unit)
   local allowed_bytes_size = allowed_size * unit_multiplication_factor[unit]
   if length > allowed_bytes_size then
     if headers.expect and strip(headers.expect:lower()) == "100-continue" then
-      return kong.response.exit(417, { message = "Request size limit exceeded" })
+      return kong.response.error(417, "Request size limit exceeded")
     else
-      return kong.response.exit(413, { message = "Request size limit exceeded" })
+      return kong.response.error(413, "Request size limit exceeded")
     end
   end
 end

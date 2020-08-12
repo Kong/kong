@@ -14,15 +14,12 @@ local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
-local socket = require "socket"
 local log = require "kong.cmd.utils.log"
-local constants = require "kong.constants"
 local ffi = require "ffi"
 local bit = require "bit"
-local fmt = string.format
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
-local function gen_default_ssl_cert(kong_config, admin)
+local function gen_default_ssl_cert(kong_config, target)
   -- create SSL folder
   local ok, err = pl_dir.makepath(pl_path.join(kong_config.prefix, "ssl"))
   if not ok then
@@ -30,9 +27,13 @@ local function gen_default_ssl_cert(kong_config, admin)
   end
 
   local ssl_cert, ssl_cert_key
-  if admin then
+  if target == "admin" then
     ssl_cert = kong_config.admin_ssl_cert_default
     ssl_cert_key = kong_config.admin_ssl_cert_key_default
+
+  elseif target == "status" then
+    ssl_cert = kong_config.status_ssl_cert_default
+    ssl_cert_key = kong_config.status_ssl_cert_key_default
 
   else
     ssl_cert = kong_config.ssl_cert_default
@@ -40,8 +41,7 @@ local function gen_default_ssl_cert(kong_config, admin)
   end
 
   if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
-    log.verbose("generating %s SSL certificate and key",
-                admin and "admin" or "default")
+    log.verbose("generating %s SSL certificate and key", target or "default")
 
     local key = openssl_pkey.new { bits = 2048 }
 
@@ -97,8 +97,7 @@ local function gen_default_ssl_cert(kong_config, admin)
     end
 
   else
-    log.verbose("%s SSL certificate found at %s",
-                admin and "admin" or "default", ssl_cert)
+    log.verbose("%s SSL certificate found at %s", target or "default", ssl_cert)
   end
 
   return true
@@ -126,37 +125,32 @@ local function compile_conf(kong_config, conf_template)
     tostring = tostring
   }
 
-  if kong_config.anonymous_reports and socket.dns.toip(constants.REPORTS.ADDRESS) then
-    compile_env["syslog_reports"] = fmt("error_log syslog:server=%s:%d error;",
-                                        constants.REPORTS.ADDRESS, constants.REPORTS.SYSLOG_PORT)
-  end
-
   do
-    local worker_rlimit_nofile
+    local worker_rlimit_nofile_auto
     if kong_config.nginx_main_directives then
       for _, directive in pairs(kong_config.nginx_main_directives) do
         if directive.name == "worker_rlimit_nofile" then
           if directive.value == "auto" then
-            worker_rlimit_nofile = directive
+            worker_rlimit_nofile_auto = directive
           end
           break
         end
       end
     end
 
-    local worker_connections
+    local worker_connections_auto
     if kong_config.nginx_events_directives then
       for _, directive in pairs(kong_config.nginx_events_directives) do
         if directive.name == "worker_connections" then
           if directive.value == "auto" then
-            worker_connections = directive
+            worker_connections_auto = directive
           end
           break
         end
       end
     end
 
-    if worker_connections or worker_rlimit_nofile then
+    if worker_connections_auto or worker_rlimit_nofile_auto then
       local value, err = get_ulimit()
       if not value then
         return nil, err
@@ -164,18 +158,22 @@ local function compile_conf(kong_config, conf_template)
 
       value = math.min(value, 16384)
 
-      if worker_rlimit_nofile then
-        worker_rlimit_nofile.value = value
+      if worker_rlimit_nofile_auto then
+        worker_rlimit_nofile_auto.value = value
       end
 
-      if worker_connections then
-        worker_connections.value = value
+      if worker_connections_auto then
+        worker_connections_auto.value = value
       end
     end
   end
 
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
   compile_env.dns_resolver = table.concat(compile_env.dns_resolver, " ")
+  compile_env.lua_package_path = (compile_env.lua_package_path or "") .. ";" ..
+                                 (os.getenv("LUA_PATH") or "")
+  compile_env.lua_package_cpath = (compile_env.lua_package_cpath or "") .. ";" ..
+                                  (os.getenv("LUA_CPATH") or "")
 
   local post_template, err = pl_template.substitute(conf_template, compile_env)
   if not post_template then
@@ -283,15 +281,27 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     kong_config.ssl_cert = kong_config.ssl_cert_default
     kong_config.ssl_cert_key = kong_config.ssl_cert_key_default
   end
+
   if kong_config.admin_ssl_enabled and not kong_config.admin_ssl_cert and
      not kong_config.admin_ssl_cert_key then
     log.verbose("Admin SSL enabled, no custom certificate set: using default certificate")
-    local ok, err = gen_default_ssl_cert(kong_config, true)
+    local ok, err = gen_default_ssl_cert(kong_config, "admin")
     if not ok then
       return nil, err
     end
     kong_config.admin_ssl_cert = kong_config.admin_ssl_cert_default
     kong_config.admin_ssl_cert_key = kong_config.admin_ssl_cert_key_default
+  end
+
+  if kong_config.status_ssl_enabled and not kong_config.status_ssl_cert and
+     not kong_config.status_ssl_cert_key then
+    log.verbose("Status SSL enabled, no custom certificate set: using default certificate")
+    local ok, err = gen_default_ssl_cert(kong_config, "status")
+    if not ok then
+      return nil, err
+    end
+    kong_config.status_ssl_cert = kong_config.status_ssl_cert_default
+    kong_config.status_ssl_cert_key = kong_config.status_ssl_cert_key_default
   end
 
   -- check ulimit
@@ -374,6 +384,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
 end
 
 return {
+  get_ulimit = get_ulimit,
   prepare_prefix = prepare_prefix,
   compile_conf = compile_conf,
   compile_kong_conf = compile_kong_conf,

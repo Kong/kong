@@ -20,10 +20,6 @@ http {
     charset UTF-8;
     server_tokens off;
 
-> if anonymous_reports then
-    ${{SYSLOG_REPORTS}}
-> end
-
     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
     lua_package_path       '${{LUA_PACKAGE_PATH}};;';
@@ -83,14 +79,15 @@ http {
 > if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
     upstream kong_upstream {
         server 0.0.0.1;
-        balancer_by_lua_block {
-            Kong.balancer()
-        }
 
         # injected nginx_upstream_* directives
 > for _, el in ipairs(nginx_upstream_directives) do
         $(el.name) $(el.value);
 > end
+
+        balancer_by_lua_block {
+            Kong.balancer()
+        }
     }
 
     server {
@@ -118,8 +115,8 @@ http {
 > for _, el in ipairs(nginx_proxy_directives) do
         $(el.name) $(el.value);
 > end
-> for i = 1, #trusted_ips do
-        set_real_ip_from $(trusted_ips[i]);
+> for _, ip in ipairs(trusted_ips) do
+        set_real_ip_from $(ip);
 > end
 
         rewrite_by_lua_block {
@@ -143,31 +140,33 @@ http {
         }
 
         location / {
-            default_type                    '';
+            default_type                     '';
 
-            set $ctx_ref                    '';
-            set $upstream_te                '';
-            set $upstream_host              '';
-            set $upstream_upgrade           '';
-            set $upstream_connection        '';
-            set $upstream_scheme            '';
-            set $upstream_uri               '';
-            set $upstream_x_forwarded_for   '';
-            set $upstream_x_forwarded_proto '';
-            set $upstream_x_forwarded_host  '';
-            set $upstream_x_forwarded_port  '';
-            set $kong_proxy_mode            'http';
+            set $ctx_ref                     '';
+            set $upstream_te                 '';
+            set $upstream_host               '';
+            set $upstream_upgrade            '';
+            set $upstream_connection         '';
+            set $upstream_scheme             '';
+            set $upstream_uri                '';
+            set $upstream_x_forwarded_for    '';
+            set $upstream_x_forwarded_proto  '';
+            set $upstream_x_forwarded_host   '';
+            set $upstream_x_forwarded_port   '';
+            set $upstream_x_forwarded_prefix '';
+            set $kong_proxy_mode             'http';
 
             proxy_http_version    1.1;
-            proxy_set_header      TE                $upstream_te;
-            proxy_set_header      Host              $upstream_host;
-            proxy_set_header      Upgrade           $upstream_upgrade;
-            proxy_set_header      Connection        $upstream_connection;
-            proxy_set_header      X-Forwarded-For   $upstream_x_forwarded_for;
-            proxy_set_header      X-Forwarded-Proto $upstream_x_forwarded_proto;
-            proxy_set_header      X-Forwarded-Host  $upstream_x_forwarded_host;
-            proxy_set_header      X-Forwarded-Port  $upstream_x_forwarded_port;
-            proxy_set_header      X-Real-IP         $remote_addr;
+            proxy_set_header      TE                 $upstream_te;
+            proxy_set_header      Host               $upstream_host;
+            proxy_set_header      Upgrade            $upstream_upgrade;
+            proxy_set_header      Connection         $upstream_connection;
+            proxy_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
+            proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
+            proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
+            proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+            proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
+            proxy_set_header      X-Real-IP          $remote_addr;
             proxy_pass_header     Server;
             proxy_pass_header     Date;
             proxy_ssl_name        $upstream_host;
@@ -184,13 +183,14 @@ http {
             default_type         '';
             set $kong_proxy_mode 'grpc';
 
-            grpc_set_header      TE                $upstream_te;
-            grpc_set_header      Host              $upstream_host;
-            grpc_set_header      X-Forwarded-For   $upstream_x_forwarded_for;
-            grpc_set_header      X-Forwarded-Proto $upstream_x_forwarded_proto;
-            grpc_set_header      X-Forwarded-Host  $upstream_x_forwarded_host;
-            grpc_set_header      X-Forwarded-Port  $upstream_x_forwarded_port;
-            grpc_set_header      X-Real-IP         $remote_addr;
+            grpc_set_header      TE                 $upstream_te;
+            grpc_set_header      Host               $upstream_host;
+            grpc_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
+            grpc_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
+            grpc_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
+            grpc_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+            grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
+            grpc_set_header      X-Real-IP          $remote_addr;
             grpc_pass_header     Server;
             grpc_pass_header     Date;
             grpc_pass            grpc://kong_upstream;
@@ -201,13 +201,14 @@ http {
             default_type         '';
             set $kong_proxy_mode 'grpc';
 
-            grpc_set_header      TE                $upstream_te;
-            grpc_set_header      Host              $upstream_host;
-            grpc_set_header      X-Forwarded-For   $upstream_x_forwarded_for;
-            grpc_set_header      X-Forwarded-Proto $upstream_x_forwarded_proto;
-            grpc_set_header      X-Forwarded-Host  $upstream_x_forwarded_host;
-            grpc_set_header      X-Forwarded-Port  $upstream_x_forwarded_port;
-            grpc_set_header      X-Real-IP         $remote_addr;
+            grpc_set_header      TE                 $upstream_te;
+            grpc_set_header      Host               $upstream_host;
+            grpc_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
+            grpc_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
+            grpc_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
+            grpc_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+            grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
+            grpc_set_header      X-Real-IP          $remote_addr;
             grpc_pass_header     Server;
             grpc_pass_header     Date;
             grpc_ssl_name        $upstream_host;
@@ -231,15 +232,16 @@ http {
             log_by_lua_block           {;}
 
             proxy_http_version    1.1;
-            proxy_set_header      TE                $upstream_te;
-            proxy_set_header      Host              $upstream_host;
-            proxy_set_header      Upgrade           $upstream_upgrade;
-            proxy_set_header      Connection        $upstream_connection;
-            proxy_set_header      X-Forwarded-For   $upstream_x_forwarded_for;
-            proxy_set_header      X-Forwarded-Proto $upstream_x_forwarded_proto;
-            proxy_set_header      X-Forwarded-Host  $upstream_x_forwarded_host;
-            proxy_set_header      X-Forwarded-Port  $upstream_x_forwarded_port;
-            proxy_set_header      X-Real-IP         $remote_addr;
+            proxy_set_header      TE                 $upstream_te;
+            proxy_set_header      Host               $upstream_host;
+            proxy_set_header      Upgrade            $upstream_upgrade;
+            proxy_set_header      Connection         $upstream_connection;
+            proxy_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
+            proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
+            proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
+            proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+            proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
+            proxy_set_header      X-Real-IP          $remote_addr;
             proxy_pass_header     Server;
             proxy_pass_header     Date;
             proxy_ssl_name        $upstream_host;
@@ -322,6 +324,12 @@ http {
 
         access_log ${{STATUS_ACCESS_LOG}};
         error_log  ${{STATUS_ERROR_LOG}} ${{LOG_LEVEL}};
+
+> if status_ssl_enabled then
+        ssl_certificate     ${{STATUS_SSL_CERT}};
+        ssl_certificate_key ${{STATUS_SSL_CERT_KEY}};
+        ssl_session_cache   shared:StatusSSL:1m;
+> end
 
         # injected nginx_status_* directives
 > for _, el in ipairs(nginx_status_directives) do
@@ -601,6 +609,10 @@ http {
                 return mu.reset_log(ngx.var.logname)
             }
         }
+
+        location = /echo_sni {
+            return 200 'SNI=$ssl_server_name\n';
+        }
     }
 
     include '*.http_mock';
@@ -609,9 +621,6 @@ http {
 
 > if #stream_listeners > 0 then
 stream {
-> if anonymous_reports then
-    ${{SYSLOG_REPORTS}}
-> end
 
     log_format basic '$remote_addr [$time_local] '
                      '$protocol $status $bytes_sent $bytes_received '
@@ -645,7 +654,7 @@ stream {
     lua_shared_dict stream_kong_db_cache_miss_2        12m;
 > end
 > if database == "cassandra" then
-    lua_shared_dict  stream_kong_cassandra             5m;
+    lua_shared_dict stream_kong_cassandra              5m;
 > end
 
 > if ssl_ciphers then
@@ -695,10 +704,9 @@ stream {
         access_log ${{PROXY_ACCESS_LOG}} basic;
         error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
-> for i = 1, #trusted_ips do
-        set_real_ip_from $(trusted_ips[i]);
+> for _, ip in ipairs(trusted_ips) do
+        set_real_ip_from $(ip);
 > end
-
         # injected nginx_sproxy_* directives
 > for _, el in ipairs(nginx_sproxy_directives) do
         $(el.name) $(el.value);
@@ -728,6 +736,18 @@ stream {
             Kong.log()
         }
     }
+
+> if database == "off" then
+    server {
+        listen unix:${{PREFIX}}/stream_config.sock;
+
+        error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
+
+        content_by_lua_block {
+            Kong.stream_config_listener()
+        }
+    }
+> end -- database == "off"
 > end -- #stream_listeners > 0
 
     server {

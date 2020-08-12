@@ -1,7 +1,10 @@
 local connector = require "kong.db.strategies.connector"
+local hooks = require "kong.hooks"
 
 
 local tostring = tostring
+local run_hook = hooks.run_hook
+local type = type
 
 
 local iteration = {}
@@ -65,6 +68,8 @@ function iteration.by_row(self, pager, size, options)
     if failed then
       return nil
     end
+
+    ::nextrow::
     local row, err, page = next_row()
     if not row then
       if err then
@@ -80,11 +85,19 @@ function iteration.by_row(self, pager, size, options)
       return nil
     end
 
+    row, err_t = run_hook("dao:iterator:post", row, self.schema.name, options)
+    if row == false then
+      goto nextrow
+    end
+    if err_t then
+      return false, tostring(err_t), err_t
+    end
+
     if not self.row_to_entity then
       return row, nil, page
     end
 
-    row, err, err_t = self:row_to_entity(row)
+    row, err, err_t = self:row_to_entity(row, options)
     if not row then
       failed = true
       return false, err, err_t

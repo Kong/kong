@@ -8,9 +8,7 @@ return {
     primary_key = { "id" },
     cache_key = { "username" },
     endpoint_key = "username",
-    -- Passwords are hashed, so the exported passwords would contain the hashes.
-    -- Importing them back would require "plain" non-hashed passwords instead.
-    db_export = false,
+    workspaceable = true,
     admin_api_name = "basic-auths",
     admin_api_nested_name = "basic-auth",
     fields = {

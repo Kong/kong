@@ -1,10 +1,8 @@
-local ngx_socket_udp = ngx.socket.udp
-local ngx_log        = ngx.log
-local NGX_ERR        = ngx.ERR
-local NGX_DEBUG      = ngx.DEBUG
-local setmetatable   = setmetatable
-local tostring       = tostring
-local fmt            = string.format
+local kong         = kong
+local udp          = ngx.socket.udp
+local setmetatable = setmetatable
+local tostring     = tostring
+local fmt          = string.format
 
 
 local stat_types = {
@@ -32,7 +30,7 @@ statsd_mt.__index = statsd_mt
 
 
 function statsd_mt:new(conf)
-  local sock   = ngx_socket_udp()
+  local sock   = udp()
   local _, err = sock:setpeername(conf.host, conf.port)
   if err then
     return nil, fmt("failed to connect to %s:%s: %s", conf.host,
@@ -53,8 +51,8 @@ end
 function statsd_mt:close_socket()
   local ok, err = self.socket:close()
   if not ok then
-    ngx_log(NGX_ERR, fmt("failed to close connection from %s:%s: %s", self.host,
-                         tostring(self.port), err))
+    kong.log.err("failed to close connection from ", self.host, ":",
+                 tostring(self.port), ": ", err)
     return
   end
 end
@@ -64,12 +62,12 @@ function statsd_mt:send_statsd(stat, delta, kind, sample_rate)
   local udp_message = create_statsd_message(self.prefix or "kong", stat,
                                             delta, kind, sample_rate)
 
-  ngx_log(NGX_DEBUG, fmt("sending data to statsd server: %s", udp_message))
+  kong.log.debug("sending data to statsd server: %s", udp_message)
 
   local ok, err = self.socket:send(udp_message)
   if not ok then
-    ngx_log(NGX_ERR, fmt("failed to send data to %s:%s: %s", self.host,
-                         tostring(self.port), err))
+    kong.log.err("failed to send data to ", self.host, ":",
+                 tostring(self.port), ": ", err)
   end
 end
 

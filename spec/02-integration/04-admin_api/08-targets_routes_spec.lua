@@ -26,10 +26,18 @@ describe("Admin API #" .. strategy, function()
   local bp
   local db
   local client
-  local weight_default, weight_min, weight_max = 100, 0, 1000
+  local weight_default, weight_min, weight_max = 100, 0, 65535
   local default_port = 8000
 
   lazy_setup(function()
+    local fixtures = {
+      dns_mock = helpers.dns_mock.new()
+    }
+    fixtures.dns_mock:A {
+      name = "custom_localhost",
+      address = "127.0.0.1",
+    }
+
     bp, db = helpers.get_db_utils(strategy, {
       "upstreams",
       "targets",
@@ -37,7 +45,7 @@ describe("Admin API #" .. strategy, function()
     assert(helpers.start_kong({
       database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
-    }))
+    }, nil, nil, fixtures))
   end)
 
   lazy_teardown(function()
@@ -224,7 +232,7 @@ describe("Admin API #" .. strategy, function()
             body = assert.response(res).has.status(400)
             local json = cjson.decode(body)
             assert.equal("schema violation", json.name)
-            assert.same({ weight = "value should be between 0 and 1000" }, json.fields)
+            assert.same({ weight = "value should be between 0 and " .. weight_max }, json.fields)
           end
         end)
 
@@ -750,6 +758,136 @@ describe("Admin API #" .. strategy, function()
   end)
 
   describe("/upstreams/{upstream}/targets/{target}", function()
+    describe("GET", function()
+      local target
+      local upstream
+
+      before_each(function()
+        upstream = bp.upstreams:insert {}
+
+        bp.targets:insert {
+          target = "api-1:80",
+          weight = 10,
+          upstream = { id = upstream.id },
+        }
+
+        target = bp.targets:insert {
+          target = "api-2:80",
+          weight = 10,
+          upstream = { id = upstream.id },
+        }
+      end)
+
+      it("returns target entity", function()
+        local res = client:get("/upstreams/" .. upstream.name .. "/targets/" .. target.target)
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        json.tags = nil
+        assert.same(target, json)
+      end)
+    end)
+
+    describe("PATCH", function()
+      local target
+      local upstream
+
+      before_each(function()
+        upstream = bp.upstreams:insert {}
+
+        bp.targets:insert {
+          target = "api-1:80",
+          weight = 10,
+          upstream = { id = upstream.id },
+        }
+
+        -- predefine the target to mock delete
+        target = bp.targets:insert {
+          target = "api-2:80",
+          weight = 10,
+          upstream = { id = upstream.id },
+        }
+      end)
+
+      it("is disallowed", function()
+        local res = client:patch("/upstreams/" .. upstream.name .. "/targets/" .. target.target, {
+          body = {
+            weight = 100,
+          },
+          headers = { ["Content-Type"] = "application/json" }
+        })
+
+        assert.response(res).has.status(405)
+        local json = assert.response(res).has.jsonbody()
+        assert.same({ message = "Method not allowed" }, json)
+      end)
+    end)
+
+    describe("PUT", function()
+      local target
+      local upstream
+
+      before_each(function()
+        upstream = bp.upstreams:insert {}
+
+        bp.targets:insert {
+          target = "api-1:80",
+          weight = 10,
+          upstream = { id = upstream.id },
+        }
+
+        target = bp.targets:insert {
+          target = "api-2:80",
+          weight = 10,
+          upstream = { id = upstream.id },
+        }
+      end)
+
+      it("acts as a sugar method to POST (by id)", function()
+        local res = client:put("/upstreams/" .. upstream.name .. "/targets/" .. target.id, {
+          body = {
+            target = target.target
+          },
+          headers = { ["Content-Type"] = "application/json" }
+        })
+
+        -- the targets cannot be updated nor deleted, they are only rotated
+        assert.response(res).has.status(400)
+        local err = assert.response(res).has.jsonbody()
+        assert.equal("primary key violation on key '{id=\"" .. target.id .. "\"}'", err.message)
+
+        res = client:get("/upstreams/" .. upstream.name .. "/targets/" .. target.id)
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        json.tags = nil
+        assert.same(target, json)
+
+        local uuid = utils.uuid()
+        local res = client:put("/upstreams/" .. upstream.name .. "/targets/" .. uuid, {
+          body = {
+            target = target.target
+          },
+          headers = { ["Content-Type"] = "application/json" }
+        })
+        assert.response(res).has.status(200)
+        local tgt = assert.response(res).has.jsonbody()
+
+        res = client:get("/upstreams/" .. upstream.name .. "/targets/" .. uuid)
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.same(tgt, json)
+      end)
+
+      it("acts as a sugar method to POST (by target)", function()
+        local res = client:put("/upstreams/" .. upstream.name .. "/targets/" .. target.target)
+        assert.response(res).has.status(200)
+        local tgt = assert.response(res).has.jsonbody()
+        res = client:get("/upstreams/" .. upstream.name .. "/targets/" .. target.target)
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.same(tgt, json)
+      end)
+    end)
+
     describe("DELETE", function()
       local target
 

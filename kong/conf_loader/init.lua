@@ -2,6 +2,7 @@ local kong_default_conf = require "kong.templates.kong_defaults"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
+local listeners = require "kong.conf_loader.listeners"
 local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
 local pl_file = require "pl.file"
@@ -183,7 +184,71 @@ local PREFIX_PATHS = {
 
   admin_ssl_cert_default = {"ssl", "admin-kong-default.crt"},
   admin_ssl_cert_key_default = {"ssl", "admin-kong-default.key"},
+
+  status_ssl_cert_default = {"ssl", "status-kong-default.crt"},
+  status_ssl_cert_key_default = {"ssl", "status-kong-default.key"},
 }
+
+
+local function upstream_keepalive_deprecated_properties(conf)
+  -- nginx_http_upstream_keepalive -> nginx_upstream_keepalive
+  if conf.nginx_upstream_keepalive == nil then
+    if conf.nginx_http_upstream_keepalive ~= nil then
+      conf.nginx_upstream_keepalive = conf.nginx_http_upstream_keepalive
+    end
+  end
+
+  -- upstream_keepalive -> nginx_upstream_keepalive + nginx_http_upstream_keepalive
+  if conf.nginx_upstream_keepalive == nil then
+    if conf.upstream_keepalive ~= nil then
+      if conf.upstream_keepalive == 0 then
+        conf.nginx_upstream_keepalive = "NONE"
+        conf.nginx_http_upstream_keepalive = "NONE"
+
+      else
+        conf.nginx_upstream_keepalive = tostring(conf.upstream_keepalive)
+        conf.nginx_http_upstream_keepalive = tostring(conf.upstream_keepalive)
+      end
+    end
+  end
+
+  -- nginx_upstream_keepalive -> upstream_keepalive_pool_size
+  if conf.upstream_keepalive_pool_size == nil then
+    if conf.nginx_upstream_keepalive ~= nil then
+      if conf.nginx_upstream_keepalive == "NONE" then
+        conf.upstream_keepalive_pool_size = 0
+
+      else
+        conf.upstream_keepalive_pool_size = tonumber(conf.nginx_upstream_keepalive)
+      end
+    end
+  end
+
+  -- nginx_http_upstream_keepalive_requests -> nginx_upstream_keepalive_requests
+  if conf.nginx_upstream_keepalive_requests == nil then
+    conf.nginx_upstream_keepalive_requests = conf.nginx_http_upstream_keepalive_requests
+  end
+
+  -- nginx_upstream_keepalive_requests -> upstream_keepalive_max_requests
+  if conf.upstream_keepalive_max_requests == nil
+     and conf.nginx_upstream_keepalive_requests ~= nil
+  then
+    conf.upstream_keepalive_max_requests = tonumber(conf.nginx_upstream_keepalive_requests)
+  end
+
+  -- nginx_http_upstream_keepalive_timeout -> nginx_upstream_keepalive_timeout
+  if conf.nginx_upstream_keepalive_timeout == nil then
+    conf.nginx_upstream_keepalive_timeout = conf.nginx_http_upstream_keepalive_timeout
+  end
+  --
+  -- nginx_upstream_keepalive_timeout -> upstream_keepalive_idle_timeout
+  if conf.upstream_keepalive_idle_timeout == nil
+     and conf.nginx_upstream_keepalive_timeout ~= nil
+  then
+    conf.upstream_keepalive_idle_timeout =
+      utils.nginx_conf_time_to_seconds(conf.nginx_upstream_keepalive_timeout)
+  end
+end
 
 
 -- By default, all properties in the configuration are considered to
@@ -199,6 +264,7 @@ local PREFIX_PATHS = {
 -- `array`: a comma-separated list
 local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
+  port_maps = { typ = "array" },
   proxy_listen = { typ = "array" },
   admin_listen = { typ = "array" },
   status_listen = { typ = "array" },
@@ -207,6 +273,7 @@ local CONF_INFERENCES = {
   db_update_frequency = {  typ = "number"  },
   db_update_propagation = {  typ = "number"  },
   db_cache_ttl = {  typ = "number"  },
+  db_cache_neg_ttl = {  typ = "number"  },
   db_resurrect_ttl = {  typ = "number"  },
   db_cache_warmup_entities = { typ = "array" },
   nginx_user = {
@@ -227,53 +294,66 @@ local CONF_INFERENCES = {
       replacement = "nginx_main_worker_processes",
     },
   },
-  upstream_keepalive = { -- TODO: remove since deprecated in 1.3
+
+  -- TODO: remove since deprecated in 1.3
+  upstream_keepalive = {
     typ = "number",
     deprecated = {
-      replacement = "nginx_upstream_keepalive",
-      alias = function(conf)
-        if tonumber(conf.upstream_keepalive) == 0 then
-          conf.nginx_upstream_keepalive = "NONE"
+      replacement = "upstream_keepalive_pool_size",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
 
-        elseif conf.nginx_upstream_keepalive == nil then
-          conf.nginx_upstream_keepalive = tostring(conf.upstream_keepalive)
-        end
-      end,
-    }
-  },
-  nginx_http_upstream_keepalive = { -- TODO: remove since deprecated in 2.0
+  -- TODO: remove since deprecated in 2.0
+  nginx_http_upstream_keepalive = {
     typ = "string",
     deprecated = {
-      replacement = "nginx_upstream_keepalive",
-      alias = function(conf)
-        if conf.nginx_upstream_keepalive == nil then
-          conf.nginx_upstream_keepalive = tostring(conf.nginx_http_upstream_keepalive)
-        end
-      end,
+      replacement = "upstream_keepalive_pool_size",
+      alias = upstream_keepalive_deprecated_properties,
     }
   },
-  nginx_http_upstream_keepalive_timeout = { -- TODO: remove since deprecated in 2.0
+  nginx_http_upstream_keepalive_requests = {
     typ = "string",
     deprecated = {
-      replacement = "nginx_upstream_keepalive_timeout",
-      alias = function(conf)
-        if conf.nginx_upstream_keepalive_timeout == nil then
-          conf.nginx_upstream_keepalive_timeout = tostring(conf.nginx_http_upstream_keepalive_timeout)
-        end
-      end,
+      replacement = "upstream_keepalive_max_requests",
+      alias = upstream_keepalive_deprecated_properties,
     }
   },
-  nginx_http_upstream_keepalive_requests = { -- TODO: remove since deprecated in 2.0
+  nginx_http_upstream_keepalive_timeout = {
     typ = "string",
     deprecated = {
-      replacement = "nginx_upstream_keepalive_requests",
-      alias = function(conf)
-        if conf.nginx_upstream_keepalive_requests == nil then
-          conf.nginx_upstream_keepalive_requests = tostring(conf.nginx_http_upstream_keepalive_requests)
-        end
-      end,
+      replacement = "upstream_keepalive_idle_timeout",
+      alias = upstream_keepalive_deprecated_properties,
     }
   },
+
+  -- TODO: remove since deprecated in 2.1
+  nginx_upstream_keepalive = {
+    typ = "string",
+    deprecated = {
+      replacement = "upstream_keepalive_pool_size",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
+  nginx_upstream_keepalive_requests = {
+    typ = "string",
+    deprecated = {
+      replacement = "upstream_keepalive_max_requests",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
+  nginx_upstream_keepalive_timeout = {
+    typ = "string",
+    deprecated = {
+      replacement = "upstream_keepalive_idle_timeout",
+      alias = upstream_keepalive_deprecated_properties,
+    }
+  },
+
+  upstream_keepalive_pool_size = { typ = "number" },
+  upstream_keepalive_max_requests = { typ = "number" },
+  upstream_keepalive_idle_timeout = { typ = "number" },
+
   headers = { typ = "array" },
   trusted_ips = { typ = "array" },
   real_ip_header = {
@@ -290,14 +370,24 @@ local CONF_INFERENCES = {
   },
   client_max_body_size = {
     typ = "string",
-    alias = {
+    deprecated = {
       replacement = "nginx_http_client_max_body_size",
+      alias = function(conf)
+        if conf.nginx_http_client_max_body_size == nil then
+          conf.nginx_http_client_max_body_size = conf.client_max_body_size
+        end
+      end,
     }
   },
   client_body_buffer_size = {
     typ = "string",
-    alias = {
+    deprecated = {
       replacement = "nginx_http_client_body_buffer_size",
+      alias = function(conf)
+        if conf.nginx_http_client_body_buffer_size == nil then
+          conf.nginx_http_client_body_buffer_size = conf.client_body_buffer_size
+        end
+      end,
     }
   },
   error_default_type = { enum = {
@@ -317,23 +407,57 @@ local CONF_INFERENCES = {
   pg_max_concurrent_queries = { typ = "number" },
   pg_semaphore_timeout = { typ = "number" },
 
+  pg_ro_port = { typ = "number" },
+  pg_ro_timeout = { typ = "number" },
+  pg_ro_password = { typ = "string" },
+  pg_ro_ssl = { typ = "boolean" },
+  pg_ro_ssl_verify = { typ = "boolean" },
+  pg_ro_max_concurrent_queries = { typ = "number" },
+  pg_ro_semaphore_timeout = { typ = "number" },
+
   cassandra_contact_points = { typ = "array" },
   cassandra_port = { typ = "number" },
   cassandra_password = { typ = "string" },
   cassandra_timeout = { typ = "number" },
   cassandra_ssl = { typ = "boolean" },
   cassandra_ssl_verify = { typ = "boolean" },
-  cassandra_consistency = { enum = {
-                              "ALL",
-                              "EACH_QUORUM",
-                              "QUORUM",
-                              "LOCAL_QUORUM",
-                              "ONE",
-                              "TWO",
-                              "THREE",
-                              "LOCAL_ONE",
-                            }
-                          },
+  cassandra_write_consistency = { enum = {
+                                  "ALL",
+                                  "EACH_QUORUM",
+                                  "QUORUM",
+                                  "LOCAL_QUORUM",
+                                  "ONE",
+                                  "TWO",
+                                  "THREE",
+                                  "LOCAL_ONE",
+                                }
+                              },
+  cassandra_read_consistency = { enum = {
+                                  "ALL",
+                                  "EACH_QUORUM",
+                                  "QUORUM",
+                                  "LOCAL_QUORUM",
+                                  "ONE",
+                                  "TWO",
+                                  "THREE",
+                                  "LOCAL_ONE",
+                                }
+                              },
+  cassandra_consistency = {
+    typ = "string",
+    deprecated = {
+      replacement = "cassandra_write_consistency / cassandra_read_consistency",
+      alias = function(conf)
+        if conf.cassandra_write_consistency == nil then
+          conf.cassandra_write_consistency = conf.cassandra_consistency
+        end
+
+        if conf.cassandra_read_consistency == nil then
+          conf.cassandra_read_consistency = conf.cassandra_consistency
+        end
+      end,
+    }
+  },
   cassandra_lb_policy = { enum = {
                             "RoundRobin",
                             "RequestRoundRobin",
@@ -360,9 +484,61 @@ local CONF_INFERENCES = {
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },
+  worker_consistency = { enum = { "strict", "eventual" } },
+  router_consistency = {
+    enum = { "strict", "eventual" },
+    deprecated = {
+      replacement = "worker_consistency",
+      alias = function(conf)
+        if conf.worker_consistency == nil and
+           conf.router_consistency ~= nil then
+          conf.worker_consistency = conf.router_consistency
+        end
+      end,
+    }
+  },
+  worker_state_update_frequency = { typ = "number" },
+  router_update_frequency = {
+    typ = "number",
+    deprecated = {
+      replacement = "worker_state_update_frequency",
+      alias = function(conf)
+        if conf.worker_state_update_frequency == nil and
+           conf.router_update_frequency ~= nil then
+          conf.worker_state_update_frequency = conf.router_update_frequency
+        end
+      end,
+    }
+  },
 
-  router_consistency = { enum = { "strict", "eventual" } },
-  router_update_frequency = { typ = "number" },
+  ssl_protocols = {
+    typ = "string",
+    directives = {
+      "nginx_http_ssl_protocols",
+      "nginx_stream_ssl_protocols",
+    },
+  },
+  ssl_prefer_server_ciphers = {
+    typ = "ngx_boolean",
+    directives = {
+      "nginx_http_ssl_prefer_server_ciphers",
+      "nginx_stream_ssl_prefer_server_ciphers",
+    },
+  },
+  ssl_session_tickets = {
+    typ = "ngx_boolean",
+    directives = {
+      "nginx_http_ssl_session_tickets",
+      "nginx_stream_ssl_session_tickets",
+    },
+  },
+  ssl_session_timeout = {
+    typ = "string",
+    directives = {
+      "nginx_http_ssl_session_timeout",
+      "nginx_stream_ssl_session_timeout",
+    },
+  },
 
   client_ssl = { typ = "boolean" },
 
@@ -397,6 +573,10 @@ local CONF_INFERENCES = {
   cluster_control_plane = { typ = "string", },
   cluster_cert = { typ = "string" },
   cluster_cert_key = { typ = "string" },
+  cluster_mtls = { enum = { "shared", "pki" } },
+  cluster_ca_cert = { typ = "string" },
+  cluster_server_name = { typ = "string" },
+  kic = { typ = "boolean" },
 }
 
 
@@ -405,6 +585,7 @@ local CONF_INFERENCES = {
 local CONF_SENSITIVE_PLACEHOLDER = "******"
 local CONF_SENSITIVE = {
   pg_password = true,
+  pg_ro_password = true,
   cassandra_password = true,
 }
 
@@ -433,7 +614,7 @@ local _nop_tostring_mt = {
 
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
-local function check_and_infer(conf)
+local function check_and_infer(conf, opts)
   local errors = {}
 
   for k, value in pairs(conf) do
@@ -441,10 +622,12 @@ local function check_and_infer(conf)
     local typ = v_schema.typ
 
     if type(value) == "string" then
-      -- remove trailing comment, if any
-      -- and remove escape chars from octothorpes
-      value = string.gsub(value, "[^\\]#.-$", "")
-      value = string.gsub(value, "\\#", "#")
+      if not opts.from_kong_env then
+        -- remove trailing comment, if any
+        -- and remove escape chars from octothorpes
+        value = string.gsub(value, "[^\\]#.-$", "")
+        value = string.gsub(value, "\\#", "#")
+      end
 
       value = pl_stringx.strip(value)
     end
@@ -499,6 +682,34 @@ local function check_and_infer(conf)
   ---------------------
   -- custom validations
   ---------------------
+
+  conf.host_ports = {}
+  if conf.port_maps then
+    local MIN_PORT = 1
+    local MAX_PORT = 65535
+
+    for _, port_map in ipairs(conf.port_maps) do
+      local colpos = string.find(port_map, ":", nil, true)
+      if not colpos then
+        errors[#errors + 1] = "invalid port mapping (`port_maps`): " .. port_map
+
+      else
+        local host_port_str = string.sub(port_map, 1, colpos - 1)
+        local host_port_num = tonumber(host_port_str, 10)
+        local kong_port_str = string.sub(port_map, colpos + 1)
+        local kong_port_num = tonumber(kong_port_str, 10)
+
+        if  (host_port_num and host_port_num >= MIN_PORT and host_port_num <= MAX_PORT)
+        and (kong_port_num and kong_port_num >= MIN_PORT and kong_port_num <= MAX_PORT)
+        then
+            conf.host_ports[kong_port_num] = host_port_num
+            conf.host_ports[kong_port_str] = host_port_num
+        else
+          errors[#errors + 1] = "invalid port mapping (`port_maps`): " .. port_map
+        end
+      end
+    end
+  end
 
   if conf.database == "cassandra" then
     if string.find(conf.cassandra_lb_policy, "DCAware", nil, true)
@@ -602,6 +813,8 @@ local function check_and_infer(conf)
       conf.ssl_ciphers = suite.ciphers
       conf.nginx_http_ssl_protocols = suite.protocols
       conf.nginx_http_ssl_prefer_server_ciphers = suite.prefer_server_ciphers
+      conf.nginx_stream_ssl_protocols = suite.protocols
+      conf.nginx_stream_ssl_prefer_server_ciphers = suite.prefer_server_ciphers
 
     else
       errors[#errors + 1] = "Undefined cipher suite " .. tostring(conf.ssl_cipher_suite)
@@ -675,13 +888,37 @@ local function check_and_infer(conf)
     errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
   end
 
-  if conf.router_update_frequency <= 0 then
-    errors[#errors + 1] = "router_update_frequency must be greater than 0"
+  if conf.pg_ro_max_concurrent_queries then
+    if conf.pg_ro_max_concurrent_queries < 0 then
+      errors[#errors + 1] = "pg_ro_max_concurrent_queries must be greater than 0"
+    end
+
+    if conf.pg_ro_max_concurrent_queries ~= math.floor(conf.pg_ro_max_concurrent_queries) then
+      errors[#errors + 1] = "pg_ro_max_concurrent_queries must be an integer greater than 0"
+    end
+  end
+
+  if conf.pg_ro_semaphore_timeout then
+    if conf.pg_ro_semaphore_timeout < 0 then
+      errors[#errors + 1] = "pg_ro_semaphore_timeout must be greater than 0"
+    end
+
+    if conf.pg_ro_semaphore_timeout ~= math.floor(conf.pg_ro_semaphore_timeout) then
+      errors[#errors + 1] = "pg_ro_semaphore_timeout must be an integer greater than 0"
+    end
+  end
+
+  if conf.worker_state_update_frequency <= 0 then
+    errors[#errors + 1] = "worker_state_update_frequency must be greater than 0"
   end
 
   if conf.role == "control_plane" then
     if #conf.admin_listen < 1 or pl_stringx.strip(conf.admin_listen[1]) == "off" then
       errors[#errors + 1] = "admin_listen must be specified when role = \"control_plane\""
+    end
+
+    if conf.cluster_mtls == "pki" and not conf.cluster_ca_cert then
+      errors[#errors + 1] = "cluster_ca_cert must be specified when cluster_mtls = \"pki\""
     end
 
     if #conf.cluster_listen < 1 or pl_stringx.strip(conf.cluster_listen[1]) == "off" then
@@ -718,6 +955,18 @@ local function check_and_infer(conf)
                               conf.cluster_cert_key
       end
     end
+  end
+
+  if conf.upstream_keepalive_pool_size < 0 then
+    errors[#errors + 1] = "upstream_keepalive_pool_size must be 0 or greater"
+  end
+
+  if conf.upstream_keepalive_max_requests < 0 then
+    errors[#errors + 1] = "upstream_keepalive_max_requests must be 0 or greater"
+  end
+
+  if conf.upstream_keepalive_idle_timeout < 0 then
+    errors[#errors + 1] = "upstream_keepalive_idle_timeout must be 0 or greater"
   end
 
   return #errors == 0, errors[1], errors
@@ -780,106 +1029,6 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
 end
 
 
--- @param value The options string to check for flags (whitespace separated)
--- @param flags List of boolean flags to check for.
--- @returns 1) remainder string after all flags removed, 2) table with flag
--- booleans, 3) sanitized flags string
-local function parse_option_flags(value, flags)
-  assert(type(value) == "string")
-
-  value = " " .. value .. " "
-
-  local sanitized = ""
-  local result = {}
-
-  for _, flag in ipairs(flags) do
-    local count
-    local patt = "%s(" .. flag .. ")%s"
-
-    local found = value:match(patt)
-    if found then
-      -- replace pattern like `backlog=%d+` with actual values
-      flag = found
-    end
-
-    value, count = value:gsub(patt, " ")
-
-    if count > 0 then
-      result[flag] = true
-      sanitized = sanitized .. " " .. flag
-
-    else
-      result[flag] = false
-    end
-  end
-
-  return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
-end
-
-
--- Parses a listener address line.
--- Supports multiple (comma separated) addresses, with flags such as
--- 'ssl' and 'http2' added to the end.
--- Pre- and postfixed whitespace as well as comma's are allowed.
--- "off" as a first entry will return empty tables.
--- @param values list of entries (strings)
--- @param flags array of strings listing accepted flags.
--- @return list of parsed entries, each entry having fields
--- `listener` (string, full listener), `ip` (normalized string)
--- `port` (number), and a boolean entry for each flag added to the entry
--- (e.g. `ssl`).
-local function parse_listeners(values, flags)
-  assert(type(flags) == "table")
-  local list = {}
-  local usage = "must be of form: [off] | <ip>:<port> [" ..
-                concat(flags, "] [") .. "], [... next entry ...]"
-
-  if #values == 0 then
-    return nil, usage
-  end
-
-  if pl_stringx.strip(values[1]) == "off" then
-    return list
-  end
-
-  for _, entry in ipairs(values) do
-    -- parse the flags
-    local remainder, listener, cleaned_flags = parse_option_flags(entry, flags)
-
-    -- verify IP for remainder
-    local ip
-
-    if utils.hostname_type(remainder) == "name" then
-      -- it's not an IP address, so a name/wildcard/regex
-      ip = {}
-      ip.host, ip.port = remainder:match("(.+):([%d]+)$")
-
-    else
-      -- It's an IPv4 or IPv6, normalize it
-      ip = utils.normalize_ip(remainder)
-      -- nginx requires brackets in IPv6 addresses, but normalize_ip does
-      -- not include them (due to backwards compatibility with its other uses)
-      if ip and ip.type == "ipv6" then
-        ip.host = "[" .. ip.host .. "]"
-      end
-    end
-
-    if not ip or not ip.port then
-      return nil, usage
-    end
-
-    listener.ip = ip.host
-    listener.port = ip.port
-    listener.listener = ip.host .. ":" .. ip.port ..
-                        (#cleaned_flags == 0 and "" or " " .. cleaned_flags)
-
-    table.insert(list, listener)
-  end
-
-  return list
-end
-
-
 local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace)
   conf = conf or {}
   local directives = {}
@@ -937,6 +1086,26 @@ local function deprecated_properties(conf, opts)
 
       if deprecated.alias then
         deprecated.alias(conf)
+      end
+    end
+  end
+end
+
+
+local function dynamic_properties(conf)
+  for property_name, v_schema in pairs(CONF_INFERENCES) do
+    local value = conf[property_name]
+    if value ~= nil then
+      local directives = v_schema.directives
+      if directives then
+        for _, directive in ipairs(directives) do
+          if not conf[directive] then
+            if type(value) == "boolean" then
+              value = value and "on" or "off"
+            end
+            conf[directive] = value
+          end
+        end
       end
     end
   end
@@ -1038,6 +1207,29 @@ local function load(path, custom_conf, opts)
     -- find dynamic keys that need to be loaded
     local dynamic_keys = {}
 
+    local function add_dynamic_keys(t)
+      t = t or {}
+
+      for property_name, v_schema in pairs(CONF_INFERENCES) do
+        local directives = v_schema.directives
+        if directives then
+          local v = t[property_name]
+          if v then
+            if type(v) == "boolean" then
+              v = v and "on" or "off"
+            end
+
+            tostring(v)
+
+            for _, directive in ipairs(directives) do
+              dynamic_keys[directive] = true
+              t[directive] = v
+            end
+          end
+        end
+      end
+    end
+
     local function find_dynamic_keys(dyn_prefix, t)
       t = t or {}
 
@@ -1047,11 +1239,7 @@ local function load(path, custom_conf, opts)
           dynamic_keys[directive] = true
 
           if type(v) == "boolean" then
-            if v then
-              v = "on"
-            else
-              v = "off"
-            end
+            v = v and "on" or "off"
           end
 
           t[k] = tostring(v)
@@ -1077,6 +1265,11 @@ local function load(path, custom_conf, opts)
       end
     end
 
+    add_dynamic_keys(defaults)
+    add_dynamic_keys(custom_conf)
+    add_dynamic_keys(kong_env_vars)
+    add_dynamic_keys(from_file_conf)
+
     for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
       find_dynamic_keys(dyn_namespace.prefix, defaults) -- tostring() defaults
       find_dynamic_keys(dyn_namespace.prefix, custom_conf)
@@ -1099,6 +1292,7 @@ local function load(path, custom_conf, opts)
   end
 
   aliased_properties(user_conf)
+  dynamic_properties(user_conf)
   deprecated_properties(user_conf, opts)
 
   -- merge user_conf with defaults
@@ -1107,7 +1301,7 @@ local function load(path, custom_conf, opts)
                               user_conf)
 
   -- validation
-  local ok, err, errors = check_and_infer(conf)
+  local ok, err, errors = check_and_infer(conf, opts)
 
   if not opts.starting then
     log.enable()
@@ -1242,71 +1436,21 @@ local function load(path, custom_conf, opts)
     end
   end
 
-  do
-    local http_flags = { "ssl", "http2", "proxy_protocol", "deferred",
-                         "bind", "reuseport", "backlog=%d+" }
-    local stream_flags = { "ssl", "proxy_protocol", "bind", "reuseport",
-                           "backlog=%d+" }
+  for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
+    table.sort(conf[dyn_namespace.injected_conf_name], function(a, b)
+      return a.name < b.name
+    end)
+  end
 
-    -- extract ports/listen ips
-    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen, http_flags)
-    if err then
-      return nil, "proxy_listen " .. err
-    end
-
-    setmetatable(conf.proxy_listeners, _nop_tostring_mt)
-    conf.proxy_ssl_enabled = false
-
-    for _, listener in ipairs(conf.proxy_listeners) do
-      if listener.ssl == true then
-        conf.proxy_ssl_enabled = true
-        break
-      end
-    end
-
-    conf.stream_listeners, err = parse_listeners(conf.stream_listen, stream_flags)
-    if err then
-      return nil, "stream_listen " .. err
-    end
-
-    setmetatable(conf.stream_listeners, _nop_tostring_mt)
-    conf.stream_proxy_ssl_enabled = false
-
-    for _, listener in ipairs(conf.stream_listeners) do
-      if listener.ssl == true then
-        conf.stream_proxy_ssl_enabled = true
-        break
-      end
-    end
-
-    conf.admin_listeners, err = parse_listeners(conf.admin_listen, http_flags)
-    if err then
-      return nil, "admin_listen " .. err
-    end
-
-    setmetatable(conf.admin_listeners, _nop_tostring_mt)
-    conf.admin_ssl_enabled = false
-
-    for _, listener in ipairs(conf.admin_listeners) do
-      if listener.ssl == true then
-        conf.admin_ssl_enabled = true
-        break
-      end
-    end
-
-    conf.status_listeners, err = parse_listeners(conf.status_listen, { "ssl" })
-    if err then
-      return nil, "status_listen " .. err
-    end
-
-    setmetatable(conf.status_listeners, _nop_tostring_mt)
-
-    conf.cluster_listeners, err = parse_listeners(conf.cluster_listen, http_flags)
-    if err then
-      return nil, "cluster_listen " .. err
-    end
-
-    setmetatable(conf.cluster_listeners, _nop_tostring_mt)
+  ok, err = listeners.parse(conf, {
+    { name = "proxy_listen",   subsystem = "http",   ssl_flag = "proxy_ssl_enabled" },
+    { name = "stream_listen",  subsystem = "stream", ssl_flag = "stream_proxy_ssl_enabled" },
+    { name = "admin_listen",   subsystem = "http",   ssl_flag = "admin_ssl_enabled" },
+    { name = "status_listen",  flags = { "ssl" },    ssl_flag = "status_ssl_enabled" },
+    { name = "cluster_listen", subsystem = "http" },
+  })
+  if not ok then
+    return nil, err
   end
 
   do
@@ -1372,6 +1516,10 @@ local function load(path, custom_conf, opts)
   if conf.cluster_cert and conf.cluster_cert_key then
     conf.cluster_cert = pl_path.abspath(conf.cluster_cert)
     conf.cluster_cert_key = pl_path.abspath(conf.cluster_cert_key)
+  end
+
+  if conf.cluster_ca_cert then
+    conf.cluster_ca_cert = pl_path.abspath(conf.cluster_ca_cert)
   end
 
   -- attach prefix files paths

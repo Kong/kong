@@ -2,9 +2,6 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 
-for _, strategy in helpers.each_strategy() do
-
-
 local function get_kong_workers()
   local workers
   helpers.wait_until(function()
@@ -40,7 +37,7 @@ local function assert_wait_call(fn, ...)
 end
 
 
-local function wait_until_no_common_workers(workers, expected_total)
+local function wait_until_no_common_workers(workers, expected_total, strategy)
   if strategy == "cassandra" then
     ngx.sleep(0.5)
   end
@@ -71,15 +68,17 @@ local function wait_until_no_common_workers(workers, expected_total)
 end
 
 
-local function kong_reload(...)
+local function kong_reload(strategy, ...)
   local workers = get_kong_workers()
   local ok, err = helpers.kong_exec(...)
   if ok then
-    wait_until_no_common_workers(workers)
+    wait_until_no_common_workers(workers, nil, strategy)
   end
   return ok, err
 end
 
+
+for _, strategy in helpers.each_strategy() do
 
 describe("kong reload #" .. strategy, function()
   lazy_setup(function()
@@ -99,7 +98,7 @@ describe("kong reload #" .. strategy, function()
     local nginx_pid = assert_wait_call(helpers.file.read, helpers.test_conf.nginx_pid)
 
     -- kong_exec uses test conf too, so same prefix
-    assert(kong_reload("reload --prefix " .. helpers.test_conf.prefix))
+    assert(kong_reload(strategy, "reload --prefix " .. helpers.test_conf.prefix))
 
     local nginx_pid_after = assert_wait_call(helpers.file.read, helpers.test_conf.nginx_pid)
 
@@ -182,7 +181,7 @@ describe("kong reload #" .. strategy, function()
     local prng_seeds_1 = json.prng_seeds
     client:close()
 
-    assert(kong_reload("reload --prefix " .. helpers.test_conf.prefix))
+    assert(kong_reload(strategy, "reload --prefix " .. helpers.test_conf.prefix))
 
     client = helpers.admin_client()
     local res = assert(client:get("/"))
@@ -215,7 +214,7 @@ describe("kong reload #" .. strategy, function()
     local node_id_1 = json.node_id
     client:close()
 
-    assert(kong_reload("reload --prefix " .. helpers.test_conf.prefix))
+    assert(kong_reload(strategy, "reload --prefix " .. helpers.test_conf.prefix))
 
     client = helpers.admin_client()
     local res = assert(client:get("/"))
@@ -291,7 +290,7 @@ describe("kong reload #" .. strategy, function()
             - example.test
       ]], yaml_file)
 
-      assert(kong_reload("reload --prefix " .. helpers.test_conf.prefix))
+      assert(kong_reload(strategy, "reload --prefix " .. helpers.test_conf.prefix))
 
       helpers.wait_until(function()
         pok, admin_client = pcall(helpers.admin_client)
@@ -361,7 +360,7 @@ describe("kong reload #" .. strategy, function()
 
       admin_client = assert(helpers.admin_client())
 
-      assert(kong_reload("reload --prefix " .. helpers.test_conf.prefix))
+      assert(kong_reload(strategy, "reload --prefix " .. helpers.test_conf.prefix))
 
       admin_client = assert(helpers.admin_client())
       local res = assert(admin_client:send {
@@ -452,7 +451,7 @@ describe("kong reload #" .. strategy, function()
             weight: 100
       ]], yaml_file)
 
-      assert(kong_reload("reload --prefix " .. helpers.test_conf.prefix))
+      assert(kong_reload(strategy, "reload --prefix " .. helpers.test_conf.prefix))
 
       helpers.wait_until(function()
         pok, admin_client = pcall(helpers.admin_client)
@@ -492,3 +491,157 @@ describe("kong reload #" .. strategy, function()
 end)
 
 end
+
+
+describe("key-auth plugin invalidation on dbless reload #off", function()
+  it("(regression - issue 5705)", function()
+    local admin_client
+    local proxy_client
+    local yaml_file = helpers.make_yaml_file([[
+      _format_version: "1.1"
+      services:
+      - name: my-service
+        url: https://127.0.0.1:15556
+        plugins:
+        - name: key-auth
+        routes:
+        - name: my-route
+          paths:
+          - /
+      consumers:
+      - username: my-user
+        keyauth_credentials:
+        - key: my-key
+    ]])
+
+    finally(function()
+      os.remove(yaml_file)
+      helpers.stop_kong(helpers.test_conf.prefix, true)
+      if admin_client then
+        admin_client:close()
+      end
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    assert(helpers.start_kong({
+      database = "off",
+      declarative_config = yaml_file,
+      nginx_worker_processes = 1,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+
+    proxy_client = helpers.proxy_client()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/",
+      headers = {
+        ["apikey"] = "my-key"
+      }
+    })
+    assert.res_status(200, res)
+
+    res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/",
+      headers = {
+        ["apikey"] = "my-new-key"
+      }
+    })
+    assert.res_status(401, res)
+
+    proxy_client:close()
+
+    admin_client = assert(helpers.admin_client())
+    local res = assert(admin_client:send {
+      method = "GET",
+      path = "/key-auths",
+    })
+    assert.res_status(200, res)
+
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    assert.same(1, #json.data)
+    assert.same("my-key", json.data[1].key)
+    admin_client:close()
+
+    helpers.make_yaml_file([[
+      _format_version: "1.1"
+      services:
+      - name: my-service
+        url: https://127.0.0.1:15556
+        plugins:
+        - name: key-auth
+        routes:
+        - name: my-route
+          paths:
+          - /
+      consumers:
+      - username: my-user
+        keyauth_credentials:
+        - key: my-new-key
+    ]], yaml_file)
+    assert(kong_reload("off", "reload --prefix " .. helpers.test_conf.prefix))
+
+
+    local res
+
+    helpers.wait_until(function()
+      admin_client = assert(helpers.admin_client())
+
+      res = assert(admin_client:send {
+        method = "GET",
+        path = "/key-auths",
+      })
+      assert.res_status(200, res)
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      admin_client:close()
+      assert.same(1, #json.data)
+      return "my-new-key" == json.data[1].key
+    end, 5)
+
+    helpers.wait_until(function()
+      proxy_client = helpers.proxy_client()
+      res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          ["apikey"] = "my-key"
+        }
+      })
+      proxy_client:close()
+      return res.status == 401
+    end, 5)
+
+    helpers.wait_until(function()
+      proxy_client = helpers.proxy_client()
+      res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          ["apikey"] = "my-new-key"
+        }
+      })
+      local body = res:read_body()
+      proxy_client:close()
+      return body ~= [[{"message":"Invalid authentication credentials"}]]
+    end, 5)
+
+    admin_client = assert(helpers.admin_client())
+    local res = assert(admin_client:send {
+      method = "GET",
+      path = "/key-auths",
+    })
+    assert.res_status(200, res)
+
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    assert.same(1, #json.data)
+    assert.same("my-new-key", json.data[1].key)
+    admin_client:close()
+
+  end)
+end)
+

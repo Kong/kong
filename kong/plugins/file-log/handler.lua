@@ -2,7 +2,10 @@
 local ffi = require "ffi"
 local cjson = require "cjson"
 local system_constants = require "lua_system_constants"
-local basic_serializer = require "kong.plugins.log-serializers.basic"
+
+
+local kong = kong
+
 
 local O_CREAT = system_constants.O_CREAT()
 local O_WRONLY = system_constants.O_WRONLY()
@@ -12,16 +15,18 @@ local S_IWUSR = system_constants.S_IWUSR()
 local S_IRGRP = system_constants.S_IRGRP()
 local S_IROTH = system_constants.S_IROTH()
 
-local oflags = bit.bor(O_WRONLY, O_CREAT, O_APPEND)
 
+local oflags = bit.bor(O_WRONLY, O_CREAT, O_APPEND)
 local mode = bit.bor(S_IRUSR, S_IWUSR, S_IRGRP, S_IROTH)
 
-local C = ffi.C
-local serialize = basic_serializer.serialize
 
-ffi.cdef[[
+local C = ffi.C
+
+
+ffi.cdef [[
 int write(int fd, const void * ptr, int numbytes);
 ]]
+
 
 -- fd tracking utility functions
 local file_descriptors = {}
@@ -32,7 +37,6 @@ local file_descriptors = {}
 -- @param `message`  Message to be logged
 local function log(conf, message)
   local msg = cjson.encode(message) .. "\n"
-
   local fd = file_descriptors[conf.path]
 
   if fd and conf.reopen then
@@ -47,7 +51,8 @@ local function log(conf, message)
     fd = C.open(conf.path, oflags, mode)
     if fd < 0 then
       local errno = ffi.errno()
-      ngx.log(ngx.ERR, "[file-log] failed to open the file: ", ffi.string(C.strerror(errno)))
+      kong.log.err("failed to open the file: ", ffi.string(C.strerror(errno)))
+
     else
       file_descriptors[conf.path] = fd
     end
@@ -56,15 +61,17 @@ local function log(conf, message)
   C.write(fd, msg, #msg)
 end
 
-local FileLogHandler = {}
 
-FileLogHandler.PRIORITY = 9
-FileLogHandler.VERSION = "2.0.1"
+local FileLogHandler = {
+  PRIORITY = 9,
+  VERSION = "2.0.2",
+}
+
 
 function FileLogHandler:log(conf)
-  local message = serialize(ngx)
-
+  local message = kong.log.serialize()
   log(conf, message)
 end
+
 
 return FileLogHandler

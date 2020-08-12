@@ -10,6 +10,7 @@ local insert    = table.insert
 local ngx_log   = ngx.log
 local ngx_now   = ngx.now
 local timer_at  = ngx.timer.at
+local ngx_update_time = ngx.update_time
 local knode     = (kong and kong.node) and kong.node or
                   require "kong.pdk.node".new()
 
@@ -69,6 +70,10 @@ function _M.new(opts)
     return error("opts.poll_offset must be a number")
   end
 
+  if opts.poll_delay and type(opts.poll_delay) ~= "number" then
+    return error("opts.poll_delay must be a number")
+  end
+
   if not opts.db then
     return error("opts.db is required")
   end
@@ -78,6 +83,7 @@ function _M.new(opts)
   local strategy
   local poll_interval = max(opts.poll_interval or 5, 0)
   local poll_offset   = max(opts.poll_offset   or 0, 0)
+  local poll_delay    = max(opts.poll_delay    or 0, 0)
 
   do
     local db_strategy
@@ -109,6 +115,8 @@ function _M.new(opts)
     strategy      = strategy,
     poll_interval = poll_interval,
     poll_offset   = poll_offset,
+    poll_delay    = poll_delay,
+    event_ttl_shm = poll_interval * 2 + poll_offset,
     node_id       = nil,
     polling       = false,
     channels      = {},
@@ -152,6 +160,9 @@ function _M:broadcast(channel, data, delay)
 
   if delay and type(delay) ~= "number" then
     return nil, "delay must be a number"
+
+  elseif self.poll_delay > 0 then
+    delay = self.poll_delay
   end
 
   -- insert event row
@@ -220,12 +231,11 @@ local function process_event(self, row, local_start_time)
   end
 
   log(DEBUG, "new event (channel: '", row.channel, "') data: '", row.data,
-             "' nbf: '", row.nbf or "none", "'")
-
-  local exptime = self.poll_interval + self.poll_offset
+             "' nbf: '", row.nbf or "none", "' shm exptime: ",
+             self.event_ttl_shm)
 
   -- mark as ran before running in case of long-running callbacks
-  local ok, err = self.events_shm:set(row.id, true, exptime)
+  local ok, err = self.events_shm:set(row.id, true, self.event_ttl_shm)
   if not ok then
     return nil, "failed to mark event as ran: " .. err
   end
@@ -236,23 +246,26 @@ local function process_event(self, row, local_start_time)
   end
 
   for j = 1, #cbs do
-    if not row.nbf then
-      -- unique callback run without delay
-      local ok, err = pcall(cbs[j], row.data)
-      if not ok and not ngx_debug then
-        log(ERR, "callback threw an error: ", err)
-      end
+    local delay
 
-    else
-      -- unique callback run after some delay
+    if row.nbf and row.now then
+      ngx_update_time()
       local now = row.now + max(ngx_now() - local_start_time, 0)
-      local delay = max(row.nbf - now, 0)
+      delay = max(row.nbf - now, 0)
+    end
 
+    if delay and delay > 0 then
       log(DEBUG, "delaying nbf event by ", delay, "s")
 
       local ok, err = timer_at(delay, nbf_cb_handler, cbs[j], row.data)
       if not ok then
         log(ERR, "failed to schedule nbf event timer: ", err)
+      end
+
+    else
+      local ok, err = pcall(cbs[j], row.data)
+      if not ok and not ngx_debug then
+        log(ERR, "callback threw an error: ", err)
       end
     end
   end
@@ -269,15 +282,21 @@ local function poll(self)
     return nil, "failed to retrieve 'at' in shm: " .. err
   end
 
-  if not min_at then
-    return nil, "no 'at' in shm"
+  if min_at then
+    -- apply grace period
+    min_at = min_at - self.poll_offset - 0.001
+    log(DEBUG, "polling events from: ", min_at)
+
+  else
+    -- 'at' was evicted from 'kong' shm - safest is to resume fetching events
+    -- that may still be in the shm to ensure that we do not replay them
+    -- This is far from normal behavior, since the 'at' value should never
+    -- be evicted from the 'kong' shm (which should be frozen and never subject
+    -- to eviction, unless misused).
+    local now = self.strategy:server_time() or ngx_now()
+    min_at = now - self.event_ttl_shm
+    log(CRIT, "no 'at' in shm, polling events from: ", min_at)
   end
-
-  -- apply grace period
-
-  min_at = min_at - self.poll_offset - 0.001
-
-  log(DEBUG, "polling events from: ", min_at)
 
   for rows, err, page in self.strategy:select_interval(self.channels, min_at) do
     if err then
@@ -293,6 +312,7 @@ local function poll(self)
       end
     end
 
+    ngx_update_time()
     local local_start_time = ngx_now()
     for i = 1, count do
       local ok, err = process_event(self, rows[i], local_start_time)

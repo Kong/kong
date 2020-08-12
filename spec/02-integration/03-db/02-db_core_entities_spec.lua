@@ -4,6 +4,8 @@ local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local ssl_fixtures = require "spec.fixtures.ssl"
+local openssl_x509  = require "resty.openssl.x509"
+local str           = require "resty.string"
 
 
 local fmt      = string.format
@@ -502,6 +504,26 @@ for _, strategy in helpers.each_strategy() do
             db.routes:insert({}, "options")
           end, "options must be a table when specified")
 
+        end)
+
+        it("errors on invalid workspace", function()
+          local route, err, err_t = db.routes:insert({
+            protocols = { "http" },
+            hosts = { "example.com" },
+            service = assert(db.services:insert({ host = "service.com" })),
+            path_handling = "v1",
+          }, { nulls = true, workspace = "8a139c70-49a1-4ba2-98a6-bb36f534269d", })
+          assert.is_nil(route)
+          assert.is_string(err)
+          assert.is_table(err_t)
+          assert.same({
+            code     = Errors.codes.INVALID_WORKSPACE,
+            name     = "invalid workspace",
+            strategy = strategy,
+            message  = unindent([[
+              invalid workspace '8a139c70-49a1-4ba2-98a6-bb36f534269d'
+            ]], true, true),
+          }, err_t)
         end)
 
         it("errors on invalid fields", function()
@@ -1337,6 +1359,9 @@ for _, strategy in helpers.each_strategy() do
             retries            = 5,
             tags               = ngx.null,
             client_certificate = ngx.null,
+            ca_certificates    = ngx.null,
+            tls_verify         = ngx.null,
+            tls_verify_depth   = ngx.null,
           }, service)
         end)
 
@@ -1352,6 +1377,9 @@ for _, strategy in helpers.each_strategy() do
             read_timeout       = 10000,
             retries            = 6,
             client_certificate = { id = certificate.id },
+            ca_certificates    = { "c67521dd-8393-48fb-8d70-c5e251fb4b4c", },
+            tls_verify         = ngx.null,
+            tls_verify_depth   = ngx.null,
           })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -1375,6 +1403,7 @@ for _, strategy in helpers.each_strategy() do
             read_timeout       = 10000,
             retries            = 6,
             client_certificate = { id = certificate.id },
+            ca_certificates    = { "c67521dd-8393-48fb-8d70-c5e251fb4b4c", },
           }, service)
         end)
 
@@ -1478,6 +1507,69 @@ for _, strategy in helpers.each_strategy() do
             fields   = {
               ["@entity"] = { "failed conditional validation given value of field 'protocol'", },
               client_certificate = 'value must be null',
+            },
+          }, err_t)
+        end)
+
+        it("cannot create assign ca_certificates when protocol is not https", function()
+          -- insert 2
+          local service, _, err_t = db.services:insert {
+            name = "cc_test",
+            protocol = "http",
+            host = "example.com",
+            ca_certificates = { id = "123e4567-e89b-12d3-a456-426655440000" },
+          }
+          assert.is_nil(service)
+          assert.same({
+            code     = Errors.codes.SCHEMA_VIOLATION,
+            message  = "2 schema violations (failed conditional validation given value of field 'protocol'; ca_certificates: value must be null)",
+            strategy = strategy,
+            name     = "schema violation",
+            fields   = {
+              ["@entity"] = { "failed conditional validation given value of field 'protocol'", },
+              ca_certificates = 'value must be null',
+            },
+          }, err_t)
+        end)
+
+        it("cannot create assign tls_verify when protocol is not https", function()
+          -- insert 2
+          local service, _, err_t = db.services:insert {
+            name = "cc_test",
+            protocol = "http",
+            host = "example.com",
+            tls_verify = true,
+          }
+          assert.is_nil(service)
+          assert.same({
+            code     = Errors.codes.SCHEMA_VIOLATION,
+            message  = "2 schema violations (failed conditional validation given value of field 'protocol'; tls_verify: value must be null)",
+            strategy = strategy,
+            name     = "schema violation",
+            fields   = {
+              ["@entity"] = { "failed conditional validation given value of field 'protocol'", },
+              tls_verify = 'value must be null',
+            },
+          }, err_t)
+        end)
+
+        it("cannot create assign tls_verify_depth when protocol is not https", function()
+          -- insert 2
+          local service, _, err_t = db.services:insert {
+            name = "cc_test",
+            protocol = "http",
+            host = "example.com",
+            tls_verify_depth = 1,
+          }
+          assert.is_nil(service)
+          assert.same({
+            code     = Errors.codes.SCHEMA_VIOLATION,
+            message  = "2 schema violations (failed conditional validation given value of field 'protocol'; tls_verify_depth: value must be null)",
+            strategy = strategy,
+            name     = "schema violation",
+            fields   = {
+              ["@entity"] = { "failed conditional validation given value of field 'protocol'", },
+              tls_verify_depth = 'value must be null',
             },
           }, err_t)
         end)
@@ -1647,10 +1739,12 @@ for _, strategy in helpers.each_strategy() do
         local s1, s2
         before_each(function()
           if s1 then
-            assert(db.services:delete({ id = s1.id }))
+            local ok, err = db.services:delete({ id = s1.id })
+            assert(ok, tostring(err))
           end
           if s2 then
-            assert(db.services:delete({ id = s2.id }))
+            local ok, err = db.services:delete({ id = s2.id })
+            assert(ok, tostring(err))
           end
 
           s1 = assert(db.services:insert({
@@ -2359,6 +2453,14 @@ for _, strategy in helpers.each_strategy() do
           assert.not_nil(page)
           assert.is_string(offset)
         end)
+
+        it("respects nulls=true on targets too", function()
+          local page = db.targets:page_for_upstream({
+            id = upstream.id,
+          }, 1, nil, { nulls = true })
+          assert.not_nil(page)
+          assert.equal(cjson.null, page[1].tags)
+        end)
       end)
     end)
 
@@ -2386,6 +2488,8 @@ for _, strategy in helpers.each_strategy() do
 
     describe("CA Certificates", function()
       it("cannot create a CA Certificate with an existing cert content", function()
+        local digest = str.to_hex(openssl_x509.new(ssl_fixtures.cert_ca):digest("sha256"))
+
         -- insert 1
         local _, _, err_t = db.ca_certificates:insert {
           cert = ssl_fixtures.cert_ca,
@@ -2401,10 +2505,10 @@ for _, strategy in helpers.each_strategy() do
         assert.same({
           code     = Errors.codes.UNIQUE_VIOLATION,
           name     = "unique constraint violation",
-          message  = "UNIQUE violation detected on '{cert=[[" .. ssl_fixtures.cert_ca .. "]]}'",
+          message  = "UNIQUE violation detected on '{cert_digest=\"" .. digest .. "\"}'",
           strategy = strategy,
           fields   = {
-            cert = ssl_fixtures.cert_ca,
+            cert_digest = digest,
           }
         }, err_t)
       end)

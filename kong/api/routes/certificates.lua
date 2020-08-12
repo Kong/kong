@@ -16,7 +16,7 @@ local function prepare_params(self)
   local method = self.req.method
   local name
   if not utils.is_valid_uuid(id) then
-    name = id
+    name = arguments.infer_value(id, kong.db.snis.schema.fields.name)
 
     local sni, _, err_t = kong.db.snis:select_by_name(name)
     if err_t then
@@ -41,39 +41,45 @@ end
 
 
 local function prepare_args(self)
-  local name_field
+  local infer_snis
   do
     local content_type = ngx.var.content_type
     if content_type then
       content_type = lower(content_type)
-      if find(content_type, "application/x-www-form-urlencoded", 1, true) == 1 or
-         find(content_type, "multipart/form-data",               1, true) == 1 then
-        name_field = kong.db.snis.schema.fields.name
+
+      if find(content_type, "application/x-www-form-urlencoded", 1, true) == 1
+      or find(content_type, "multipart/form-data",               1, true) == 1
+      then
+        infer_snis = true
       end
     end
   end
 
   local method = self.req.method
+
   local snis = self.args.post.snis
   local name = self.params.name
 
   if type(snis) == "table" then
+    local found
     local count = #snis
+    for i=1, count do
+      if infer_snis then
+        snis[i] = arguments.infer_value(snis[i], kong.db.snis.schema.fields.name)
+      end
 
-    if name and method == "PUT" then
-      count = count + 1
-      snis[count] = name
-    end
-
-    if name_field then
-      for i=1, count do
-        snis[i] = arguments.infer_value(snis[i], name_field)
+      if not found and name and name == snis[i] then
+        found = true
       end
     end
 
+    if not found and name and method == "PUT" then
+      snis[count + 1] = name
+    end
+
   elseif type(snis) == "string" then
-    if name_field then
-      snis = arguments.infer_value(snis, name_field)
+    if infer_snis then
+      snis = arguments.infer_value(snis, kong.db.snis.schema.fields.name)
     end
 
     if name and method == "PUT" and name ~= snis then

@@ -59,6 +59,21 @@ end
 
 describe("cache_warmup", function()
 
+  it("uses right entity cache store", function()
+    local store = require "kong.constants".ENTITY_CACHE_STORE
+    assert.equal("cache", store.consumers)
+    assert.equal("core_cache", store.certificates)
+    assert.equal("core_cache", store.services)
+    assert.equal("core_cache", store.routes)
+    assert.equal("core_cache", store.snis)
+    assert.equal("core_cache", store.upstreams)
+    assert.equal("core_cache", store.targets)
+    assert.equal("core_cache", store.plugins)
+    assert.equal("cache", store.tags)
+    assert.equal("core_cache", store.ca_certificates)
+    assert.equal("cache", store.keyauth_credentials)
+  end)
+
   it("caches entities", function()
     local cache_table = {}
     local db_data = {

@@ -13,6 +13,8 @@
 local errlog = require "ngx.errlog"
 local ngx_re = require "ngx.re"
 local inspect = require "inspect"
+local ngx_ssl = require "ngx.ssl"
+local phase_checker = require "kong.pdk.private.phases"
 
 
 local sub = string.sub
@@ -24,11 +26,15 @@ local getinfo = debug.getinfo
 local reverse = string.reverse
 local tostring = tostring
 local setmetatable = setmetatable
+local ngx = ngx
+local kong = kong
+local check_phase = phase_checker.check
 
 
 local _PREFIX = "[kong] "
 local _DEFAULT_FORMAT = "%file_src:%line_src %message"
 local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
+local PHASES_LOG = phase_checker.phases.log
 
 
 local _LEVELS = {
@@ -442,7 +448,9 @@ do
       self.print = nop
     end
 
+
     self.on()
+
 
     return setmetatable(self, _inspect_mt)
   end
@@ -454,6 +462,138 @@ local _log_mt = {
     return self.notice(...)
   end,
 }
+
+
+local serialize
+
+do
+  local REDACTED_REQUEST_HEADERS = { "authorization", "proxy-authorization" }
+  local REDACTED_RESPONSE_HEADERS = {}
+
+  ---
+  -- Generates a table that contains information that are helpful for logging.
+  --
+  -- This method can currently be used in the `http` subsystem.
+  --
+  -- The following fields are included in the returned table:
+  -- * `client_ip` - client IP address in textual format.
+  -- * `latencies` - request/proxy latencies.
+  -- * `request.headers` - request headers.
+  -- * `request.method` - request method.
+  -- * `request.querystring` - request query strings.
+  -- * `request.size` - size of request.
+  -- * `request.url` and `request.uri` - URL and URI of request.
+  -- * `response.headers` - response headers.
+  -- * `response.size` - size of response.
+  -- * `response.status` - response HTTP status code.
+  -- * `route` - route object matched.
+  -- * `service` - service object used.
+  -- * `started_at` - timestamp this request came in, in milliseconds.
+  -- * `tries` - Upstream information; this is an array and if any balancer retries occurred, will contain more than one entry.
+  -- * `upstream_uri` - request URI sent to Upstream.
+  --
+  -- The following fields are only present in an authenticated request (with consumer):
+  --
+  -- * `authenticated_entity` - credential used for authentication.
+  -- * `consumer` - consumer entity accessing the resource.
+  --
+  -- The following fields are only present in a TLS/HTTPS request:
+  -- * `request.tls.version` - TLS/SSL version used by the connection.
+  -- * `request.tls.cipher` - TLS/SSL cipher used by the connection.
+  -- * `request.tls.client_verify` - mTLS validation result. Contents are the same as described in [$ssl_client_verify](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#var_ssl_client_verify).
+  --
+  -- **Warning:** This function may return sensitive data (e.g., API keys).
+  -- Consider filtering before writing it to unsecured locations.
+  --
+  -- To see what content is present in your setup, enable any of the logging
+  -- plugins (e.g., `file-log`) and the output written to the log file is the table
+  -- returned by this function JSON-encoded.
+  --
+  -- @function kong.log.serialize
+  -- @phases log
+  -- @treturn table the request information table
+  -- @usage
+  -- local tbl = kong.log.serialize()
+  function serialize(options)
+    check_phase(PHASES_LOG)
+
+    local ongx = (options or {}).ngx or ngx
+    local okong = (options or {}).kong or kong
+
+    local ctx = ongx.ctx
+    local var = ongx.var
+    local req = ongx.req
+
+    local authenticated_entity
+    if ctx.authenticated_credential ~= nil then
+      authenticated_entity = {
+        id = ctx.authenticated_credential.id,
+        consumer_id = ctx.authenticated_credential.consumer_id
+      }
+    end
+
+    local request_tls
+    local request_tls_ver = ngx_ssl.get_tls1_version_str()
+    if request_tls_ver then
+      request_tls = {
+        version = request_tls_ver,
+        cipher = var.ssl_cipher,
+        client_verify = ngx.ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
+      }
+    end
+
+    local request_uri = var.request_uri or ""
+
+    local req_headers = okong.request.get_headers()
+    for _, header in ipairs(REDACTED_REQUEST_HEADERS) do
+      if req_headers[header] then
+        req_headers[header] = "REDACTED"
+      end
+    end
+
+    local resp_headers = ongx.resp.get_headers()
+    for _, header in ipairs(REDACTED_RESPONSE_HEADERS) do
+      if resp_headers[header] then
+        resp_headers[header] = "REDACTED"
+      end
+    end
+
+    local host_port = ctx.host_port or var.server_port
+
+    return {
+      request = {
+        uri = request_uri,
+        url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
+        querystring = okong.request.get_query(), -- parameters, as a table
+        method = okong.request.get_method(), -- http method
+        headers = req_headers,
+        size = var.request_length,
+        tls = request_tls
+      },
+      upstream_uri = var.upstream_uri,
+      response = {
+        status = ongx.status,
+        headers = resp_headers,
+        size = var.bytes_sent
+      },
+      tries = (ctx.balancer_data or {}).tries,
+      latencies = {
+        kong = (ctx.KONG_ACCESS_TIME or 0) +
+               (ctx.KONG_RECEIVE_TIME or 0) +
+               (ctx.KONG_REWRITE_TIME or 0) +
+               (ctx.KONG_BALANCER_TIME or 0),
+        proxy = ctx.KONG_WAITING_TIME or -1,
+        request = var.request_time * 1000
+      },
+      authenticated_entity = authenticated_entity,
+      route = ctx.route,
+      service = ctx.service,
+      consumer = ctx.authenticated_consumer,
+      client_ip = var.remote_addr,
+      started_at = req.start_time() * 1000
+    }
+  end
+end
 
 
 local function new_log(namespace, format)
@@ -503,6 +643,8 @@ local function new_log(namespace, format)
   self.set_format(format)
 
   self.inspect = new_inspect(format)
+
+  self.serialize = serialize
 
   return setmetatable(self, _log_mt)
 end

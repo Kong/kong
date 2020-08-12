@@ -158,6 +158,29 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local service_error = bp.services:insert {
+        name = "service-error",
+      }
+
+      bp.routes:insert {
+        hosts     = { "service-error.test" },
+        protocols = { "http" },
+        service   = service_error,
+      }
+
+      bp.plugins:insert {
+        name     = "error-generator",
+        service  = { id = service_error.id },
+        config   = {
+          access = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "error-handler-log",
+        service  = { id = service_error.id },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -228,6 +251,17 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
       assert.equal("5", res.headers["x-ratelimit-limit-hour"])
+    end)
+
+    it("builds complete plugins iterator even when plugin errors", function()
+      local res = proxy_client:get("/status/200", {
+        headers = {
+          Host = "service-error.test",
+        }
+      })
+
+      assert.res_status(500, res)
+      assert.equal("header_filter", res.headers["Log-Plugin-Phases"])
     end)
 
     describe("short-circuited requests", function()
@@ -334,8 +368,9 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong(nil, true)
       end)
 
-      after_each(function()
-        os.execute("echo '' > " .. FILE_LOG_PATH)
+      before_each(function()
+        os.execute("echo -n '' > " .. FILE_LOG_PATH)
+        os.execute("chmod 0777 " .. FILE_LOG_PATH)
       end)
 
       it("execute a log plugin", function()
@@ -360,7 +395,7 @@ for _, strategy in helpers.each_strategy() do
         end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log))
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
         assert.equal("127.0.0.1", log_message.client_ip)
         assert.equal(uuid, log_message.request.headers["x-uuid"])
       end)
@@ -429,7 +464,7 @@ for _, strategy in helpers.each_strategy() do
         end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log))
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
         assert.equal("127.0.0.1", log_message.client_ip)
         assert.equal(uuid, log_message.request.headers["x-uuid"])
       end)
@@ -651,6 +686,8 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         proxy_client = helpers.proxy_client()
+        os.execute("echo -n '' > " .. FILE_LOG_PATH)
+        os.execute("chmod 0777 " .. FILE_LOG_PATH)
       end)
 
 
@@ -686,7 +723,7 @@ for _, strategy in helpers.each_strategy() do
         end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log))
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
         assert.equal("127.0.0.1", log_message.client_ip)
         assert.equal(uuid, log_message.request.headers["x-uuid"])
       end)
@@ -720,7 +757,7 @@ for _, strategy in helpers.each_strategy() do
         end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log))
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
         assert.equal(uuid, log_message.request.headers["x-uuid"])
         assert.equal("refused", log_message.request.headers.host)
         assert.equal("POST", log_message.request.method)
@@ -752,7 +789,7 @@ for _, strategy in helpers.each_strategy() do
         end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log))
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
         assert.equal("127.0.0.1", log_message.client_ip)
         assert.equal(uuid, log_message.request.headers["x-uuid"])
       end)
@@ -781,7 +818,7 @@ for _, strategy in helpers.each_strategy() do
         end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log))
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
         assert.equal("127.0.0.1", log_message.client_ip)
         assert.equal(uuid, log_message.request.headers["x-uuid"])
       end)
@@ -815,7 +852,7 @@ for _, strategy in helpers.each_strategy() do
         end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log))
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
         assert.equal(uuid, log_message.request.headers["x-uuid"])
         assert.equal("connect_timeout", log_message.request.headers.host)
         assert.equal("POST", log_message.request.method)
@@ -852,7 +889,7 @@ for _, strategy in helpers.each_strategy() do
         end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log))
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
 
         assert.equal(uuid, log_message.request.headers["x-uuid"])
         assert.equal(494, log_message.response.status)
@@ -892,7 +929,7 @@ for _, strategy in helpers.each_strategy() do
         end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log))
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
         assert.equal("POST", log_message.request.method)
         assert.equal("bar", log_message.request.querystring.foo)
         assert.equal("", log_message.upstream_uri) -- no URI here since Nginx could not parse request
@@ -928,7 +965,7 @@ for _, strategy in helpers.each_strategy() do
         end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log))
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
 
         assert.same({}, log_message.request.headers)
         assert.equal(414, log_message.response.status)
@@ -967,7 +1004,7 @@ for _, strategy in helpers.each_strategy() do
         end, LOG_WAIT_TIMEOUT)
 
         local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log))
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
         assert.equal("POST", log_message.request.method)
         assert.equal("", log_message.upstream_uri) -- no URI here since Nginx could not parse request
         assert.is_nil(log_message.request.headers["x-uuid"]) -- none since Nginx could not parse request

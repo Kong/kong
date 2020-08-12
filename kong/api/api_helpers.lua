@@ -6,6 +6,7 @@ local app_helpers = require "lapis.application"
 local arguments = require "kong.api.arguments"
 local Errors = require "kong.db.errors"
 local singletons = require "kong.singletons"
+local hooks = require "kong.hooks"
 
 local ngx      = ngx
 local sub      = string.sub
@@ -360,6 +361,9 @@ function _M.attach_routes(app, routes)
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
+
+    assert(hooks.run_hook("api:helpers:attach_routes",
+      app, route_path, methods))
   end
 end
 
@@ -385,6 +389,9 @@ function _M.attach_new_db_routes(app, routes)
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
+
+    assert(hooks.run_hook("api:helpers:attach_new_db_routes",
+      app, route_path, methods))
   end
 end
 
@@ -424,6 +431,15 @@ function _M.handle_error(self, err, trace)
   -- We just logged the error so no need to give it to responses and log it
   -- twice
   return kong.response.exit(500, { message = "An unexpected error occurred" })
+end
+
+
+function _M.is_new_db_routes(routes)
+  for _, verbs in pairs(routes) do
+    if type(verbs) == "table" then -- ignore "before" functions
+      return verbs.schema
+    end
+  end
 end
 
 

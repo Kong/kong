@@ -5,6 +5,7 @@ local constants = require "kong.constants"
 local decode_base64 = ngx.decode_base64
 local re_gmatch = ngx.re.gmatch
 local re_match = ngx.re.match
+local error = error
 local kong = kong
 
 
@@ -66,6 +67,7 @@ local function retrieve_credentials(header_name, conf)
   return username, password
 end
 
+
 --- Validate a credential in the Authorization header against one fetched from the database.
 -- @param credential The retrieved credential from the username passed in the request
 -- @param given_password The password as given in the Authorization header
@@ -79,6 +81,7 @@ local function validate_credentials(credential, given_password)
   return credential.password == digest
 end
 
+
 local function load_credential_into_memory(username)
   local credential, err = kong.db.basicauth_credentials:select_by_username(username)
   if err then
@@ -86,6 +89,7 @@ local function load_credential_into_memory(username)
   end
   return credential
 end
+
 
 local function load_credential_from_db(username)
   if not username then
@@ -97,14 +101,16 @@ local function load_credential_from_db(username)
                                               load_credential_into_memory,
                                               username)
   if err then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   return credential
 end
 
+
 local function set_consumer(consumer, credential)
+  kong.client.authenticate(consumer, credential)
+
   local set_header = kong.service.request.set_header
   local clear_header = kong.service.request.clear_header
 
@@ -126,22 +132,26 @@ local function set_consumer(consumer, credential)
     clear_header(constants.HEADERS.CONSUMER_USERNAME)
   end
 
-  kong.client.authenticate(consumer, credential)
+  if credential and credential.username then
+    set_header(constants.HEADERS.CREDENTIAL_IDENTIFIER, credential.username)
+    set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+  else
+    clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
+    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
+  end
 
   if credential then
-    if credential.username then
-      set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
-    else
-      clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
-    end
-
     clear_header(constants.HEADERS.ANONYMOUS)
-
   else
-    clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
     set_header(constants.HEADERS.ANONYMOUS, true)
   end
 end
+
+
+local function fail_authentication()
+  return false, { status = 401, message = "Invalid authentication credentials" }
+end
+
 
 local function do_authentication(conf)
   -- If both headers are missing, return 401
@@ -157,18 +167,22 @@ local function do_authentication(conf)
 
   local credential
   local given_username, given_password = retrieve_credentials("proxy-authorization", conf)
-  if given_username then
+  if given_username and given_password then
     credential = load_credential_from_db(given_username)
   end
 
   -- Try with the authorization header
   if not credential then
     given_username, given_password = retrieve_credentials("authorization", conf)
-    credential = load_credential_from_db(given_username)
+    if given_username and given_password then
+      credential = load_credential_from_db(given_username)
+    else
+      return fail_authentication()
+    end
   end
 
   if not credential or not validate_credentials(credential, given_password) then
-    return false, { status = 401, message = "Invalid authentication credentials" }
+    return fail_authentication()
   end
 
   -- Retrieve consumer
@@ -177,8 +191,7 @@ local function do_authentication(conf)
                                             kong.client.load_consumer,
                                             credential.consumer.id)
   if err then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   set_consumer(consumer, credential)
@@ -203,14 +216,13 @@ function _M.execute(conf)
                                                 kong.client.load_consumer,
                                                 conf.anonymous, true)
       if err then
-        kong.log.err("failed to load anonymous consumer:", err)
-        return kong.response.exit(500, { message = "An unexpected error occurred" })
+        return error(err)
       end
 
-      set_consumer(consumer, nil)
+      set_consumer(consumer)
 
     else
-      return kong.response.exit(err.status, { message = err.message }, err.headers)
+      return kong.response.error(err.status, err.message, err.headers)
     end
   end
 end

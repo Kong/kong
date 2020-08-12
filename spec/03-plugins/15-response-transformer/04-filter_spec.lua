@@ -103,7 +103,7 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.response(res).has.status(200)
         assert.response(res).has.jsonbody()
-        assert.response(res).has.no.header("acess-control-allow-origin")
+        assert.response(res).has.no.header("access-control-allow-origin")
       end)
       it("replace a body parameter on GET", function()
         local res = assert(proxy_client:send {

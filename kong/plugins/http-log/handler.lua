@@ -1,25 +1,19 @@
-local basic_serializer = require "kong.plugins.log-serializers.basic"
 local BatchQueue = require "kong.tools.batch_queue"
 local cjson = require "cjson"
 local url = require "socket.url"
 local http = require "resty.http"
 
 
-local cjson_encode = cjson.encode
-local ngx_encode_base64 = ngx.encode_base64
-local table_concat = table.concat
+local kong = kong
+local ngx = ngx
+local encode_base64 = ngx.encode_base64
+local tostring = tostring
+local tonumber = tonumber
+local concat = table.concat
 local fmt = string.format
 
 
-local HttpLogHandler = {}
-
-
-HttpLogHandler.PRIORITY = 12
-HttpLogHandler.VERSION = "2.0.0"
-
-
 local queues = {} -- one queue per unique plugin config
-
 local parsed_urls_cache = {}
 
 
@@ -91,7 +85,7 @@ local function send_payload(self, conf, payload)
       ["Content-Type"] = content_type,
       ["Content-Length"] = #payload,
       ["Authorization"] = parsed_url.userinfo and (
-        "Basic " .. ngx_encode_base64(parsed_url.userinfo)
+        "Basic " .. encode_base64(parsed_url.userinfo)
       ),
     },
     body = payload,
@@ -123,7 +117,7 @@ end
 
 
 local function json_array_concat(entries)
-  return "[" .. table_concat(entries, ",") .. "]"
+  return "[" .. concat(entries, ",") .. "]"
 end
 
 
@@ -140,8 +134,14 @@ local function get_queue_id(conf)
 end
 
 
+local HttpLogHandler = {
+  PRIORITY = 12,
+  VERSION = "2.0.1",
+}
+
+
 function HttpLogHandler:log(conf)
-  local entry = cjson_encode(basic_serializer.serialize(ngx))
+  local entry = cjson.encode(kong.log.serialize())
 
   local queue_id = get_queue_id(conf)
   local q = queues[queue_id]
@@ -173,5 +173,6 @@ function HttpLogHandler:log(conf)
 
   q:add(entry)
 end
+
 
 return HttpLogHandler
