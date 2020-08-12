@@ -8,6 +8,7 @@ local cjson = require "cjson"
 
 local cache = {
   get = function(self, x, y, f, ...) return f(...) end,
+  invalidate = function(self, x) return end,
 }
 for _, strategy in helpers.each_strategy() do
 
@@ -493,9 +494,9 @@ for _, strategy in helpers.each_strategy() do
           username = "an_admin",
           custom_id = ngx.null,
           email = "an_admin@test.com",
-          status = enums.CONSUMERS.TYPE.INVITED,
-        }))
-
+          status = enums.CONSUMERS.TYPE.INVITED
+        }, { show_ws_id = true }))
+        
         -- create a credential to keep in sync
         local original_cred = assert(db.basicauth_credentials:insert({
           consumer = admin.consumer,

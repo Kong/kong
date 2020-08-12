@@ -175,7 +175,7 @@ function _M.verify_password(user, old_password, new_password)
       user.consumer,
       nil,
       nil,
-      { workspaces = null }
+      { workspace = null }
     )
     if err then
       return nil, nil, err

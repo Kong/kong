@@ -1034,6 +1034,7 @@ return {
   ["/applications/:applications/credentials"] = {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
+      crud_helpers.exit_if_external_oauth2()
 
       local application_pk = self.params.applications
       self.params.applications = nil
@@ -1070,6 +1071,7 @@ return {
   ["/applications/:applications/credentials/:credential_id"] = {
     before = function(self, db, helpers)
       auth.authenticate_api_session(self, db, helpers)
+      crud_helpers.exit_if_external_oauth2()
 
       local application_pk = self.params.applications
       self.params.applications = nil

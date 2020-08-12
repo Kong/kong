@@ -3,9 +3,9 @@ local operations = require "kong.enterprise_edition.db.migrations.operations.150
 
 local plugin_entities = {
   {
-    name = "basicauth_credentials",
+    name = "jwt_secrets",
     primary_key = "id",
-    uniques = {"username"},
+    uniques = {"key"},
     fks = {{name = "consumer", reference = "consumers", on_delete = "cascade"}},
   }
 }

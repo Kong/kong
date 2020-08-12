@@ -17,6 +17,10 @@ end
 -- Postgres operations for Workspace migration
 --------------------------------------------------------------------------------
 
+-- XXX EE
+-- if we are testing then migrations should also act as "bootstrapping"
+local bootstrapping = kong.bootstrapping or os.getenv("KONG_IS_TESTING") == "1"
+
 
 local postgres = {
 
@@ -25,7 +29,7 @@ local postgres = {
     ----------------------------------------------------------------------------
     -- Add `workspaces` table.
     -- @return string: SQL
-    ws_add_workspaces = function()
+    ws_add_workspaces = function() -- XXX EE only boot
       return render([[
 
         CREATE TABLE IF NOT EXISTS "workspaces" (
@@ -62,15 +66,17 @@ local postgres = {
     -- we want the migration to remain self-contained and unchanged no matter
     -- what changes to the schemas in the latest version of Kong.
     -- @return string: SQL
-    ws_add_ws_id = function(_, table_name, fk_users)
-      local out = {}
-      table.insert(out, render([[
 
+    ws_add_ws_id = function(_, table_name, fk_users) -- XXX EE Always (part)
+      local out = {}
+      if bootstrapping then
+
+      table.insert(out, render([[
         -- Add ws_id to $(TABLE), populating all of them with the default workspace id
         DO $$
         BEGIN
           EXECUTE format('ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD "ws_id" UUID REFERENCES "workspaces" ("id") DEFAULT %L',
-                         (SELECT "id" FROM "workspaces" WHERE "name" = 'default'));
+                        (SELECT "id" FROM "workspaces" WHERE "name" = 'default'));
         EXCEPTION WHEN DUPLICATE_COLUMN THEN
           -- Do nothing, accept existing state
         END;
@@ -78,6 +84,23 @@ local postgres = {
 
 
       ]], { TABLE = table_name }))
+
+      else
+
+      table.insert(out, render([[
+        -- Add ws_id to $(TABLE), with no default
+        DO $$
+        BEGIN
+          ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD "ws_id" UUID REFERENCES "workspaces" ("id");
+        EXCEPTION WHEN DUPLICATE_COLUMN THEN
+          -- Do nothing, accept existing state
+        END;
+        $$;
+
+
+      ]], { TABLE = table_name }))
+      end
+
 
       table.insert(out, render([[
 
@@ -99,7 +122,8 @@ local postgres = {
     -- @param table_name string: name of the table, e.g. "services"
     -- @param field_name string: name of the field, e.g. "name"
     -- @return string: SQL
-    ws_unique_field = function(_, table_name, field_name)
+    -- XXX EE: WE HAVE TO DO THIS ANYWAY!
+    ws_unique_field = function(_, table_name, field_name) -- XXX EE always
       return render([[
 
           -- Make '$(TABLE).$(FIELD)' unique per workspace
@@ -127,7 +151,7 @@ local postgres = {
     -- @param foreign_table_name string: name of the table the foreign field
     -- refers to e.g. "services"
     -- @return string: SQL
-    ws_adjust_foreign_key = function(_, table_name, fk_prefix, foreign_table_name, is_cascade)
+    ws_adjust_foreign_key = function(_, table_name, fk_prefix, foreign_table_name, is_cascade) -- XXX EE always
       return render([[
 
           -- Update foreign key relationship
@@ -148,7 +172,7 @@ local postgres = {
 
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
-    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
+    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned) -- XXX EE only when boot
       assert(connector:query(render([[
         UPDATE "$(TABLE)"
         SET cache_key = CONCAT(cache_key, ':',
@@ -162,7 +186,7 @@ local postgres = {
 
     ------------------------------------------------------------------------------
     -- Update keys to workspace-aware formats
-    ws_update_keys = function(_, connector, table_name, unique_keys)
+    ws_update_keys = function(_, connector, table_name, unique_keys) -- XXX EE ALWAYS (see part)
       -- Reset default value for ws_id once it is populated
       assert(connector:query(render([[
         ALTER TABLE IF EXISTS ONLY "$(TABLE)" ALTER "ws_id" SET DEFAULT NULL;
@@ -174,7 +198,7 @@ local postgres = {
 
     ------------------------------------------------------------------------------
     -- General function to fixup a plugin configuration
-    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
+    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn) -- XXX EE Always (idcare)
       local pgmoon_json = require("pgmoon.json")
 
       for row, err in connector:iterate("SELECT * FROM plugins") do
@@ -208,7 +232,6 @@ local postgres = {
 -- Cassandra operations for Workspace migration
 --------------------------------------------------------------------------------
 
-
 local cassandra = {
 
   up = {
@@ -216,9 +239,8 @@ local cassandra = {
     ----------------------------------------------------------------------------
     -- Add `workspaces` table.
     -- @return string: CQL
-    ws_add_workspaces = function(_)
+    ws_add_workspaces = function(_) -- XXX EE only boot
       return render([[
-
           CREATE TABLE IF NOT EXISTS workspaces(
             id         uuid,
             name       text,
@@ -247,7 +269,7 @@ local cassandra = {
     -- we want the migration to remain self-contained and unchanged no matter
     -- what changes to the schemas in the latest version of Kong.
     -- @return string: CQL
-    ws_add_ws_id = function(_, table_name, fk_users)
+    ws_add_ws_id = function(_, table_name, fk_users) -- XXX EE Always (idcare)
       return render([[
 
           -- 1. Add ws_id to $(TABLE)
@@ -266,7 +288,7 @@ local cassandra = {
     -- @param table_name string: name of the table, e.g. "services"
     -- @param field_name string: name of the field, e.g. "name"
     -- @return string: CQL
-    ws_unique_field = function(_, table_name, field_name)
+    ws_unique_field = function(_, table_name, field_name) -- XXX EE Always (idcare)
       -- The Cassandra strategy controls this via Lua code
       return ""
     end,
@@ -279,7 +301,7 @@ local cassandra = {
     -- @param foreign_table_name string: name of the table the foreign field
     -- refers to e.g. "services"
     -- @return string: CQL
-    ws_adjust_foreign_key = function(_, table_name, fk_prefix, foreign_table_name)
+    ws_adjust_foreign_key = function(_, table_name, fk_prefix, foreign_table_name) --- XXX EE Always (idcare)
       -- The Cassandra strategy controls this via Lua code
       return ""
     end,
@@ -289,7 +311,7 @@ local cassandra = {
 
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
-    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
+    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned) -- XXX only boot (or none)
       local rows, err = connector:query([[
         SELECT * FROM workspaces WHERE name='default';
       ]])
@@ -325,7 +347,7 @@ local cassandra = {
 
     ------------------------------------------------------------------------------
     -- Update keys to workspace-aware formats
-    ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned)
+    ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned) -- XXX EE only boot (or none)
 
       local rows, err = connector:query([[
         SELECT * FROM workspaces WHERE name='default';
@@ -345,11 +367,13 @@ local cassandra = {
         for _, row in ipairs(rows) do
           local set_list = { "ws_id = " .. default_ws }
           for _, key in ipairs(unique_keys) do
-            table.insert(set_list, render([[$(KEY) = '$(WS):$(VALUE)']], {
-              KEY = key,
-              WS = default_ws,
-              VALUE = row[key],
-            }))
+            if row[key] then
+              table.insert(set_list, render([[$(KEY) = '$(WS):$(VALUE)']], {
+                KEY = key,
+                WS = default_ws,
+                VALUE = row[key],
+              }))
+            end
           end
 
           local cql = render([[
@@ -370,7 +394,7 @@ local cassandra = {
 
     ------------------------------------------------------------------------------
     -- General function to fixup a plugin configuration
-    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
+    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn) -- XXX EE only boot (or none)
       local cassandra = require("cassandra")
       local cjson = require("cjson")
 
@@ -459,6 +483,23 @@ cassandra.teardown.ws_adjust_data = ws_adjust_data
 -- Super high-level shortcut for plugins
 --------------------------------------------------------------------------------
 
+local function mock_ce_only_destructive_functions(t)
+  local nop = function() return "" end -- nop function
+
+  -- up
+  t.up.ws_add_workspaces = nop
+  -- t.up.ws_add_ws_id = nop
+  -- t.up.ws_unique_field = nop
+  -- t.up.ws_adjust_foreign_key = nop
+
+  -- teardown
+  t.teardown.ws_update_composite_cache_key = nop
+  t.teardown.ws_update_keys = nop
+  -- t.teardown.fixup_plugin_config = nop
+
+  return t
+end
+
 
 local function ws_migrate_plugin(plugin_entities)
 
@@ -488,6 +529,11 @@ end
 
 --------------------------------------------------------------------------------
 
+
+if not bootstrapping then
+  mock_ce_only_destructive_functions(postgres)
+  mock_ce_only_destructive_functions(cassandra)
+end
 
 return {
   postgres = postgres,

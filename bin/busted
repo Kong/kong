@@ -22,6 +22,9 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   -- add cli recursion detection
   table.insert(script, "export KONG_BUSTED_RESPAWNED=1")
 
+  -- XXX EE
+  table.insert(script, "export KONG_IS_TESTING=1")
+
   -- rebuild the invoked commandline, while inserting extra resty-flags
   local resty_flags = DEFAULT_RESTY_FLAGS
   local cmd = { "exec" }
