@@ -226,7 +226,6 @@ local MAJOR_VERSIONS = {
       "response",
       "router",
       "nginx",
-      "upstream",
     },
   },
 
