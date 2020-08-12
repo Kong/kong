@@ -41,6 +41,12 @@ local json            = codec.json
 local base64url       = codec.base64url
 
 
+local TOKEN_DECODE_OPTS = {
+  verify_signature = false,
+  verify_claims = false,
+}
+
+
 local function rediscover_keys(issuer, options)
   return function()
     return cache.issuers.rediscover(issuer, options)
@@ -929,7 +935,7 @@ function OICHandler.access(_, conf)
 
     if not auth_methods.bearer or type(tokens_decoded) ~= "table" or type(tokens_decoded.access_token) ~= "table" then
       if type(tokens_decoded) ~= "table" then
-        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+        tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
         if type(tokens_decoded) ~= "table" then
           return response.unauthorized(err)
         end
@@ -1326,7 +1332,7 @@ function OICHandler.access(_, conf)
     if jwt_session_cookie then
       if decode_tokens and type(tokens_decoded) ~= "table" then
         decode_tokens = false
-        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+        tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
         if err then
           log("error decoding tokens (", err, ")")
         end
@@ -1388,7 +1394,7 @@ function OICHandler.access(_, conf)
         if not access_token_values then
           if decode_tokens and type(tokens_decoded) ~= "table" then
             decode_tokens = false
-            tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+            tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
             if err then
               log("error decoding tokens (", err, ")")
             end
@@ -1475,7 +1481,7 @@ function OICHandler.access(_, conf)
       if not consumer then
         if decode_tokens and type(tokens_decoded) ~= "table" then
           decode_tokens = false
-          tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+          tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
           if err then
             log("error decoding tokens (", err, ")")
           end
@@ -1592,7 +1598,7 @@ function OICHandler.access(_, conf)
       if not credential_value then
         if decode_tokens and type(tokens_decoded) ~= "table" then
           decode_tokens = false
-          tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+          tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
           if err then
             log("error decoding tokens (", err, ")")
           end
@@ -1683,7 +1689,7 @@ function OICHandler.access(_, conf)
     if not authenticated_groups then
       if decode_tokens and type(tokens_decoded) ~= "table" then
         decode_tokens = false
-        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+        tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
         if err then
           log("error decoding tokens (", err, ")")
         end
@@ -1821,7 +1827,7 @@ function OICHandler.access(_, conf)
             if not value and type(tokens_encoded) == "table" then
               if decode_tokens and type(tokens_decoded) ~= "table" then
                 decode_tokens = false
-                tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+                tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
                 if err then
                   log("error decoding tokens (", err, ")")
                 end
@@ -1891,7 +1897,7 @@ function OICHandler.access(_, conf)
             if not value and type(tokens_encoded) == "table" then
               if decode_tokens and type(tokens_decoded) ~= "table" then
                 decode_tokens = false
-                tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+                tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
                 if err then
                   log("error decoding tokens (", err, ")")
                 end
@@ -1966,7 +1972,7 @@ function OICHandler.access(_, conf)
     headers.set(args, "access_token_jwk", function()
       if decode_tokens and type(tokens_decoded) ~= "table" then
         decode_tokens = false
-        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+        tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
         if err then
           log("error decoding tokens (", err, ")")
         end
@@ -1983,7 +1989,7 @@ function OICHandler.access(_, conf)
     headers.set(args, "id_token_jwk", function()
       if decode_tokens and type(tokens_decoded) ~= "table" then
         decode_tokens = false
-        tokens_decoded, err = oic.token:decode(tokens_encoded, { verify_signature = false })
+        tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
         if err then
           log("error decoding tokens (", err, ")")
         end
