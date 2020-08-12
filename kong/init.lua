@@ -351,6 +351,9 @@ local function load_declarative_config(kong_config, entities, meta)
   end)
 
   if ok then
+    local default_ws = kong.db.workspaces:select_by_name("default")
+    kong.default_workspace = default_ws and default_ws.id or kong.default_workspace
+
     ok, err = runloop.build_plugins_iterator("init")
     if not ok then
       return nil, "error building initial plugins iterator: " .. err
@@ -360,9 +363,6 @@ local function load_declarative_config(kong_config, entities, meta)
     if not ok then
       return nil, "error building initial router: " .. err
     end
-
-    local default_ws = kong.db.workspaces:select_by_name("default")
-    kong.default_workspace = default_ws and default_ws.id or kong.default_workspace
   end
 
   return ok, err
