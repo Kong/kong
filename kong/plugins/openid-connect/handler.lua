@@ -1373,7 +1373,7 @@ function OICHandler.access(_, conf)
           if access_token_values then
             log(name, " found in introspection results")
           else
-            log(name " not found in introspection results")
+            log(name, " not found in introspection results")
           end
 
         elseif type(jwt_token_introspected) == "table" then
@@ -1405,7 +1405,7 @@ function OICHandler.access(_, conf)
         end
 
         if not access_token_values then
-          return response.forbidden(name " required but no ", name, " found")
+          return response.forbidden(name, " required but no ", name, " found")
         end
 
         access_token_values = set.new(access_token_values)
