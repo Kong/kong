@@ -1,3 +1,14 @@
+// https://stackoverflow.com/questions/43214730/how-to-set-github-commit-status-with-jenkinsfile-not-using-a-pull-request-builde
+void setBuildStatus(String message, String state) {
+  step([
+      $class: "GitHubCommitStatusSetter",
+      reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/kong/kong-ee"],
+      contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "Kong EE Migration Paths"],
+      errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
+      statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
+  ]);
+}
+
 pipeline {
 
   agent {
@@ -66,6 +77,15 @@ pipeline {
           }
         )
       }
+    }
+  }
+
+  post {
+    success {
+      setBuildStatus("Build succeeded", "SUCCESS");
+    }
+    failure {
+      setBuildStatus("Build failed", "FAILURE");
     }
   }
 }
