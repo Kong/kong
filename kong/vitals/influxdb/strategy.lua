@@ -640,7 +640,6 @@ _M.status_code_query = status_code_query
 -- @param[type=string] interval: seconds, minutes, hours, days, weeks, months
 -- @param[type=number] start_ts: seconds from now
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
-  start_ts = start_ts or 36000
   local plural_entity = entity .. 's'
   local is_timeseries_report = not not entity_id
   local entities = {}
@@ -727,7 +726,6 @@ _M.latency_query = latency_query
 
 
 function _M:latency_report(hostname, interval, start_ts)
-  start_ts = start_ts or 36000
   local columns = {
     "proxy_max",
     "proxy_min",
