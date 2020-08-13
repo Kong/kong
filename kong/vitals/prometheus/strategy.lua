@@ -733,6 +733,25 @@ function _M:select_consumer_stats(opts)
   end
 end
 
+local function status_code_query(entity_id, entity)
+  local is_consumer = entity == "consumer"
+  local is_timeseries_report = not not entity_id
+  if is_consumer then
+    if is_timeseries_report then
+      return "sum(kong_status_code_per_consumer{consumer='" .. entity_id .. "'}) by (status_code)"
+    else
+      return "sum(kong_status_code_per_consumer) by (consumer, status_code)"
+    end
+  else
+    if is_timeseries_report then
+      return "sum(kong_status_code{service='" .. entity_id .. "'}) by (status_code)"
+    else
+      return "sum(kong_status_code) by (service, status_code)"
+    end
+  end
+end
+_M.status_code_query = status_code_query
+
 -- @param entity: consumer or service
 -- @param entity_id: UUID or null, signifies how each row is indexed
 -- @param interval: seconds, minutes, hours, days, weeks, months
@@ -756,27 +775,10 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   end
 
   local stats = {}
-  local metrics_query
+  local metrics_query = status_code_query(entity_id, is_consumer, is_timeseries_report)
 
-  if is_consumer then
-    if is_timeseries_report then
-      local one_consumer = "sum(kong_status_code_per_consumer{consumer='" .. entity_id .. "'}) by (status_code)"
-      metrics_query = one_consumer
-    else
-      local all_consumers = "sum(kong_status_code_per_consumer) by (consumer, status_code)"
-      metrics_query = all_consumers
-    end
-  else
-    if is_timeseries_report then
-      local one_service = "sum(kong_status_code{service='" .. entity_id .. "'}) by (status_code)"
-      metrics_query = one_service
-    else
-      local all_services = "sum(kong_status_code) by (service, status_code)"
-      metrics_query = all_services
-    end
-  end
   kong.log.err(metrics_query)
-  local res, err, duration_seconds = self:query(
+  local res, err = self:query(
     start_ts,
     {{"", metrics_query}},
     duration
@@ -891,6 +893,7 @@ function _M:latency_report(hostname, interval, start_ts)
     { "latency_upstream_min_ms", "min by (instance)(kong_latency_upstream_min)" },
     { "latency_upstream_max_ms", "max by (instance)(kong_latency_upstream_max)" },
     { "requests_proxy_total", "sum by (instance)(kong_requests_proxy)", true },
+    -- do i need to change [1m] for different timeframes?
     { "latency_proxy_request_avg_ms", "sum by (instance)(rate(kong_latency_proxy_request_sum[1m])) / sum by (instance)(rate(kong_latency_proxy_request_count[1m])) * 1000"}, -- we only have minute level precision
     { "latency_upstream_avg_ms","sum by (instance)(rate(kong_latency_upstream_sum[1m])) / sum by (instance)(rate(kong_latency_upstream_count[1m])) * 1000",},
   }
