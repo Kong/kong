@@ -1593,25 +1593,48 @@ for _, strategy in helpers.each_strategy() do
       local client
       local db
       local admin
-      local default_ws
 
-      local password_reset = function (client, cookie, body)
+      local function password_reset(client, cookie, body, username)
+        if username == nil then
+          username = "gruce"
+        end
+
         return client:send {
           method = "PATCH",
           path  = "/admins/self/password",
           headers = {
             ["Content-Type"] = "application/json",
-            ["kong-admin-user"] = "gruce",
+            ["kong-admin-user"] = username,
             cookie = cookie,
           },
           body = body,
         }
       end
 
+      local function create_admin(db, params, ws)
+        if ws == nil then
+          ws = "default"
+        end
+        
+        params.rbac_token_enabled = false
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/" .. ws .. "/admins",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Kong-Admin-Token"] = "letmein-default", 
+          },
+          body  = params,
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        return db.admins:select_by_username(json.admin.username)
+      end
+
       lazy_setup(function()
         _, db = helpers.get_db_utils(strategy)
-
-        default_ws = assert(db.workspaces:select_by_name("default"))
 
         assert(helpers.start_kong({
           database = strategy,
@@ -1624,19 +1647,10 @@ for _, strategy in helpers.each_strategy() do
         ee_helpers.register_rbac_resources(db)
         client = assert(helpers.admin_client())
 
-        local res = assert(admins_helpers.create({
-          custom_id = "gruce",
+        admin = create_admin(db,{
           username = "gruce",
           email = "gruce@konghq.com",
-        }, {
-          token_optional = false,
-          remote_addr = "localhost",
-          db = db,
-          workspace = default_ws,
-          raw = true,
-        }))
-
-        admin = res.body.admin
+        })
 
         -- add credentials
         assert(db.basicauth_credentials:insert {
@@ -1644,6 +1658,22 @@ for _, strategy in helpers.each_strategy() do
           password    = "original_gangster",
           consumer = admin.consumer,
         })
+
+        -- init another admin in ws2, like above step
+        local ws2 = assert(db.workspaces:insert({
+          name = "ws2",
+        }))
+
+        local admin_ws2 = create_admin(db,{
+          username = "gruce2",
+          email = "gruce2@konghq.com",
+        }, ws2.name)
+
+        assert(db.basicauth_credentials:insert({
+          username    = "gruce2",
+          password    = "original_gangster",
+          consumer = admin_ws2.consumer,
+        }, { workspace = ws2.id }))
       end)
 
       lazy_teardown(function()
@@ -1697,35 +1727,42 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("password can be reset successfully", function()
-          local old_password = "original_gangster"
-          local new_password = "New_hotne33"
+          local list = {
+            { username = "gruce"  },
+            { username = "gruce2" },
+          }
 
-          local cookie = get_admin_cookie(client, "gruce", old_password)
-          local res = assert(password_reset(client, cookie, {
-            password = new_password,
-            old_password = old_password,
-          }))
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
+          for _, row in ipairs(list) do
+            local old_password = "original_gangster"
+            local new_password = "New_hotne33"
 
-          assert.equal("Password reset successfully", json.message)
+            local cookie = get_admin_cookie(client, row.username, old_password)
+            local res = assert(password_reset(client, cookie, {
+              password = new_password,
+              old_password = old_password,
+            }, row.username))
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
 
-          -- use the new password to obtain a cookie
-          local cookie = get_admin_cookie(client, "gruce", new_password)
-          assert.truthy(cookie)
+            assert.equal("Password reset successfully", json.message)
 
-          -- ensure old password doesn't work anymore
-          local res = assert(client:send {
-            method = "GET",
-            path = "/auth",
-            headers = {
-              ["Authorization"] = "Basic " ..
-                                  ngx.encode_base64("gruce" .. ":" .. old_password),
-              ["Kong-Admin-User"] = "gruce",
-            }
-          })
+            -- use the new password to obtain a cookie
+            local cookie = get_admin_cookie(client, row.username, new_password)
+            assert.truthy(cookie)
 
-          assert.res_status(401, res)
+            -- ensure old password doesn't work anymore
+            local res = assert(client:send {
+              method = "GET",
+              path = "/auth",
+              headers = {
+                ["Authorization"] = "Basic " ..
+                                    ngx.encode_base64(row.username .. ":" .. old_password),
+                ["Kong-Admin-User"] = row.username,
+              }
+            })
+
+            assert.res_status(401, res)
+          end
         end)
       end)
     end)

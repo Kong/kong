@@ -117,6 +117,7 @@ local function ws_migration_teardown(ops)
     ops:ws_adjust_data(connector, ce_core_entities)
     ops:ws_adjust_data(connector, ee_core_entities)
     ops:ws_clean_kong_admin_rbac_user(connector)
+    ops:ws_set_default_ws_for_admin_entities(connector)
   end
 end
 

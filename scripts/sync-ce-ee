@@ -98,8 +98,10 @@ main() {
   git fetch $f_repo
   git fetch $t_repo
 
+  local new_branch_name
+  new_branch_name=$(to_branch_name "merge-$from-into-$to-$today")
   # create a temporary branch to check how is the merge looking
-  git checkout -B $(to_branch_name "merge-$from-into-$to-$today") "$t_branch"
+  git checkout -B $new_branch_name "$t_branch"
 
   # conflicts? bail out and you're on your own
   if ! git merge "$f_repo/$f_branch" ; then
@@ -108,12 +110,8 @@ main() {
 
   # was a clean merge (the commit is done locally)
 
-  # go back to your previous branch
-  git checkout -
-
-  # push the original $from branch to the $t_repo,
   # we leave the merge to github to not have a doublemerge
-  git push $t_repo "$f_repo/$f_branch"
+  git push $t_repo $new_branch_name
 
   repo_text=""
   [[ $f_repo == "kong" ]] && repo_text="kong "
@@ -124,7 +122,7 @@ main() {
 --
 $(curl https://quotebot.raimonster.workers.dev/ | jq -r .message)"
 
-  browser "https://github.com/Kong/kong-ee/compare/${t_branch}...${f_branch}?expand=1&pull_request[title]=$title&pull_request[body]=$body"
+  browser "https://github.com/Kong/kong-ee/compare/${t_branch}...${new_branch_name}?expand=1&pull_request[title]=$title&pull_request[body]=$body"
 }
 
 main "$@"

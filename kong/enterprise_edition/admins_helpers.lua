@@ -412,17 +412,36 @@ function _M.update_password(admin, params)
     return { code = 400, body = { message = bad_req_message }}
   end
 
+  local ws_id = admin.rbac_user.ws_id
+  
+  if ws_id == nil then
+    local consumer, err = kong.db.consumers:select(admin.consumer,
+                          { show_ws_id = true, workspace = null })
+
+    if not consumer then
+      kong.log("update_password:", err)
+
+      return { code = 500, body = { message = "An unexpected error occurred" }}
+    end
+
+    ws_id = consumer.ws_id
+  end
 
   local _, err = kong.db.basicauth_credentials:update(
     { id = creds.id },
     {
       consumer = { id = admin.consumer.id },
       password = params.password,
-    }, { workspace = null })
+    }, { workspace = ws_id })
 
   if err then
     return nil, err
   end
+
+  -- invalidate auth credential cache
+  -- could be removed after we migrates/creates consumer's ws_id to default ws id
+  local cache_key = kong.db.basicauth_credentials:cache_key(admin.username, nil, nil, nil, nil, ws_id)
+  kong.cache:invalidate(cache_key)
 
   return { code = 200, body = { message = "Password reset successfully" }}
 end

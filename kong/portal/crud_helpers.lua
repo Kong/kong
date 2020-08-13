@@ -616,5 +616,11 @@ function _M.exit_if_portal_disabled()
   end
 end
 
+function _M.exit_if_external_oauth2()
+  if kong.configuration.portal_app_auth == "external-oauth2" then
+    return kong.response.exit(404, { message = "Not Found" })
+  end
+end
+
 
 return _M

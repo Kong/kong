@@ -3,7 +3,7 @@ local strip = (require "pl.stringx").strip
 local version = setmetatable({
   x = 2,
   y = 1,
-  z = 0,
+  z = 1,
   e = 0,
 }, {
   __tostring = function(t)

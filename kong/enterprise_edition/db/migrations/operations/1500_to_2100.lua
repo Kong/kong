@@ -165,7 +165,12 @@ local postgres = {
 
       -- XXX EE test what happens here with shared entities
       -- XXX EE for admin-consumers, can we just put them in default?
-      local tables = postgres_list_tables(connector)
+      local tables, err = postgres_list_tables(connector)
+      if err then
+        ngx.log(ngx.ERR, kong.log.inspect(err))
+        return nil, err
+      end
+
       if tables.workspace_entities then
         table.insert(code,
           render([[
@@ -212,6 +217,29 @@ local postgres = {
            SET name = 'kong_admin'
          WHERE name = 'default:kong_admin';
       ]])
+    end,
+
+    ws_set_default_ws_for_admin_entities = function(_, connector)
+      local code = {}
+      local entities = { "rbac_user", "consumer" }
+
+      for _, e in ipairs(entities) do
+        table.insert(code,
+          render([[
+
+            -- assign admin linked $(TABLE)' ws_id to default ws id
+
+            update $(TABLE)
+            set ws_id = (select id from workspaces where name='default')
+            where id in (select $(COLUMN) from admins);
+          ]], {
+            TABLE = e .. "s",
+            COLUMN = e .. "_id",
+          })
+        )
+      end
+
+      postgres_run_query_in_transaction(connector, table.concat(code))
     end,
 
     drop_run_on = function(_, connector)
@@ -271,15 +299,19 @@ local cassandra = {
         if not ws_name and tables.workspace_entities then
           -- assumes that primary keys are 'id',
           -- which is currently true for all workspaceable entities
-          ws_name = ws_name and connector:query(render([[
+          ws_name = ws_name or connector:query(render([[
             SELECT workspace_name FROM $(KEYSPACE).workspace_entities
             WHERE entity_id = '$(ID)' LIMIT 1 ALLOW FILTERING;
           ]], {
             KEYSPACE = connector.keyspace,
-            ID = row[entity.primary_key] .. ':',
-          }))
-        end
+            ID = row[entity.primary_key],
+           }))
 
+          ws_name = ws_name                and
+                    ws_name[1]             and
+                    ws_name[1].workspace_name and
+                    ws_name[1].workspace_name .. ":"
+        end
         if not ws_name or not ws_prefix_fixups[ws_name] then
           -- data is already adjusted, bail out
           return
@@ -334,6 +366,55 @@ local cassandra = {
       end
     end,
 
+    ws_set_default_ws_for_admin_entities = function(_, connector)
+      local coordinator = connector:connect_migrations()
+      local entities = { "rbac_user", "consumer" }
+
+      local default_ws, err = connector:query(render([[
+        SELECT id FROM $(KEYSPACE).workspaces
+        WHERE name = 'default';
+      ]], {
+        KEYSPACE = connector.keyspace,
+      }))
+
+      if err then
+        return nil, err
+      end
+
+      -- The core 200_to_210.lua opteration inserts
+      -- `default` ws for cassandra regardless,
+      -- so use the 1st item as default ws.
+      local default_ws_id = default_ws and default_ws[1].id
+
+      for _, e in ipairs(entities) do
+        local column_name = e .. "_id"
+        local cql = render([[
+          SELECT * FROM $(KEYSPACE).admins;
+        ]], {
+          KEYSPACE = connector.keyspace,
+        })
+
+        for rows, err in coordinator:iterate(cql) do
+          if err then
+            return nil, err
+          end
+
+          for _, row in ipairs(rows) do
+            connector:query(render([[
+              update $(KEYSPACE).$(TABLE)
+              set ws_id = $(WS_ID)
+              where id = $(ID);
+            ]], {
+              KEYSPACE = connector.keyspace,
+              TABLE = e .. "s",
+              WS_ID = default_ws_id,
+              ID = row[column_name],
+            }))
+          end
+        end
+      end
+    end,
+
     drop_run_on = function(_, connector)
       -- no need to drop the actual row from the database
       -- (this operation is not reentrant in Cassandra)
@@ -365,12 +446,35 @@ postgres.teardown.ws_adjust_data = ws_adjust_data
 cassandra.teardown.ws_adjust_data = ws_adjust_data
 
 
+local function ws_migrate_plugin(plugin_entities)
+
+  local function ws_migration_teardown(ops)
+    return function(connector)
+      ops:ws_adjust_data(connector, plugin_entities)
+    end
+  end
+
+  return {
+    postgres = {
+      up = "",
+      teardown = ws_migration_teardown(postgres.teardown),
+    },
+
+    cassandra = {
+      up = "",
+      teardown = ws_migration_teardown(cassandra.teardown),
+    },
+  }
+end
+
+
 --------------------------------------------------------------------------------
 
 
 local ee_operations = {
   postgres = postgres,
   cassandra = cassandra,
+  ws_migrate_plugin = ws_migrate_plugin,
 }
 
 

@@ -834,6 +834,79 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("/developers/:developer/applications/:applications/credentials/:plugin", function()
+      describe("GET", function()
+        local developer_one, app_one
+
+        lazy_setup(function()
+          developer_one = assert(db.developers:insert({
+            email = "dog@bork.com",
+            password = "woof",
+            meta = '{ "full_name": "todd" }',
+          }))
+
+          app_one = assert(db.applications:insert({
+            developer = { id = developer_one.id },
+            name = "bonesRcool",
+            custom_id = "radical",
+          }))
+        end)
+
+        lazy_teardown(function()
+          db:truncate("basicauth_credentials")
+          db:truncate("services")
+          db:truncate("consumers")
+          db:truncate("developers")
+          db:truncate("applications")
+        end)
+
+        it("returns 404", function()
+          local res = assert(client:send({
+            method = "GET",
+            path = "/developers/" .. developer_one.id .. "/applications/" .. app_one.id .. "/credentials/oauth2",
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(404, res)
+        end)
+      end)
+
+      describe("POST", function()
+        local developer_one, app_one
+
+        before_each(function()
+          developer_one = assert(db.developers:insert({
+            email = "dog@bork.com",
+            password = "woof",
+            meta = '{ "full_name": "todd" }',
+          }))
+
+          app_one = assert(db.applications:insert({
+            developer = { id = developer_one.id },
+            name = "bonesRcool",
+            custom_id = "yeet",
+          }))
+        end)
+
+        after_each(function()
+          db:truncate("basicauth_credentials")
+          db:truncate("services")
+          db:truncate("consumers")
+          db:truncate("developers")
+          db:truncate("applications")
+        end)
+
+        it("returns 404", function()
+          local res = assert(client:send({
+            method = "POST",
+            path = "/developers/" .. developer_one.id .. "/applications/" .. app_one.id .. "/credentials/oauth2",
+            body = {},
+            headers = {["Content-Type"] = "application/json"}
+          }))
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+
     describe("/developers/:developer/applications/:application/application_instances", function()
       local developer,
             developer_two,
