@@ -97,14 +97,26 @@ return {
         return declarative.load_into_cache_with_events(entities, meta, new_hash)
       end)
 
-      if err == "no memory" then
-        kong.log.err("not enough cache space for declarative config")
-        return kong.response.exit(413, {
-          message = "Configuration does not fit in Kong cache"
-        })
-      end
-
       if not ok then
+        if err == "busy" or err == "locked" then
+          return kong.response.exit(429, {
+            message = "Currently loading previous configuration."
+          }, { ["Retry-After"] = 60 })
+        end
+
+        if err == "timeout" then
+          return kong.response.exit(504, {
+            message = "Timed out while loading configuration."
+          })
+        end
+
+        if err == "no memory" then
+          kong.log.err("not enough cache space for declarative config")
+          return kong.response.exit(413, {
+            message = "Configuration does not fit in Kong cache"
+          })
+        end
+
         kong.log.err("failed loading declarative config into cache: ", err)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end

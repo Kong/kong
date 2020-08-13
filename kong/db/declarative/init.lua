@@ -756,6 +756,10 @@ end
 
 
 function declarative.load_into_cache_with_events(entities, meta, hash)
+  if ngx.shared.kong:get("declarative:flips") then
+    return nil, "busy"
+  end
+
   -- ensure any previous update finished (we're flipped to the latest page)
   local ok, err = kong.worker_events.poll()
   if not ok then
@@ -815,18 +819,19 @@ function declarative.load_into_cache_with_events(entities, meta, hash)
     end
 
     sleep_time = sleep_time * 2
-
-    if sleep_left > sleep_time then
-      ngx.sleep(sleep_time)
-      sleep_left = sleep_left - sleep_time
-
-    else
-      ngx.sleep(sleep_left)
-      break
+    if sleep_time > sleep_left then
+      sleep_time = sleep_left
     end
+    ngx.sleep(sleep_time)
+    sleep_left = sleep_left - sleep_time
+
   end
 
   ngx.shared.kong:delete("declarative:flips")
+
+  if sleep_left <= 0 then
+    return nil, "timeout"
+  end
 
   return true
 end
