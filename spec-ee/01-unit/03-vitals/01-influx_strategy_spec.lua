@@ -62,8 +62,8 @@ end)
 describe("status_code_query", function()
   local strategy = require "kong.vitals.influxdb.strategy"
 
-  describe("when hostname is not provided", function()
-    it("group by hostname", function()
+  describe("when service id is not provided", function()
+    it("group by service id", function()
       local expected = "SELECT count(status) FROM kong_request" ..
       " WHERE time > now() - 3600s" ..
       " GROUP BY status_f, service"
@@ -71,7 +71,7 @@ describe("status_code_query", function()
     end)
   end)
 
-  describe("when hostname is provided", function()
+  describe("when service id is provided", function()
     it("group by interval", function()
       local expected = "SELECT count(status) FROM kong_request" ..
       " WHERE time > now() - 3600s and service='f25a1190-363c-4b1e-8202-b806631d6038'" ..
