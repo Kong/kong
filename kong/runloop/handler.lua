@@ -1135,16 +1135,8 @@ return {
         forwarded_port   = port
       end
 
-      if not forwarded_prefix then
-        forwarded_prefix = var.request_uri
-        local p = find(forwarded_prefix, "?", 2, true)
-        if p then
-          forwarded_prefix = sub(forwarded_prefix, 1, p - 1)
-        end
-
-        if forwarded_prefix == "" then
-          forwarded_prefix = "/"
-        end
+      if not forwarded_prefix and match_t.prefix ~= "/" then
+        forwarded_prefix = match_t.prefix
       end
 
       local protocols = route.protocols
