@@ -2498,7 +2498,7 @@ describe("Router", function()
       assert.equal("/endel%C3%B8st", match_t.upstream_uri)
     end)
 
-    describe("stripped paths", function()
+    describe("stripped paths #strip", function()
       local router
       local use_case_routes = {
         {
@@ -2516,6 +2516,7 @@ describe("Router", function()
             id         = uuid(),
             methods    = { "POST" },
             paths      = { "/my-route", "/this-route" },
+            strip_path = false,
           },
         },
       }
@@ -2530,6 +2531,7 @@ describe("Router", function()
         router._set_ngx(_ngx)
         local match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/my-route", match_t.prefix)
         assert.equal("/hello/world", match_t.upstream_uri)
       end)
 
@@ -2538,6 +2540,7 @@ describe("Router", function()
         router._set_ngx(_ngx)
         local match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/my-route", match_t.prefix)
         assert.equal("/", match_t.upstream_uri)
       end)
 
@@ -2547,6 +2550,7 @@ describe("Router", function()
         router._set_ngx(_ngx)
         local match_t = router.exec()
         assert.same(use_case_routes[2].route, match_t.route)
+        assert.is_nil(match_t.prefix)
         assert.equal("/my-route/hello/world", match_t.upstream_uri)
       end)
 
@@ -2568,6 +2572,7 @@ describe("Router", function()
         router._set_ngx(_ngx)
         local match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/", match_t.prefix)
         assert.equal("/my-route/hello/world", match_t.upstream_uri)
       end)
 
@@ -2576,12 +2581,14 @@ describe("Router", function()
         router._set_ngx(_ngx)
         local match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/my-route", match_t.prefix)
         assert.equal("/", match_t.upstream_uri)
 
         _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
         router._set_ngx(_ngx)
         match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/my-route", match_t.prefix)
         assert.equal("/", match_t.upstream_uri)
       end)
 
@@ -2590,24 +2597,28 @@ describe("Router", function()
         router._set_ngx(_ngx)
         local match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/my-route", match_t.prefix)
         assert.equal("/", match_t.upstream_uri)
 
         _ngx = mock_ngx("GET", "/this-route", { host = "domain.org" })
         router._set_ngx(_ngx)
         match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/this-route", match_t.prefix)
         assert.equal("/", match_t.upstream_uri)
 
         _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
         router._set_ngx(_ngx)
         match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/my-route", match_t.prefix)
         assert.equal("/", match_t.upstream_uri)
 
         _ngx = mock_ngx("GET", "/this-route", { host = "domain.org" })
         router._set_ngx(_ngx)
         match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/this-route", match_t.prefix)
         assert.equal("/", match_t.upstream_uri)
       end)
 
@@ -2627,6 +2638,7 @@ describe("Router", function()
         router._set_ngx(_ngx)
         local match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/endel%C3%B8st", match_t.prefix)
         assert.equal("/", match_t.upstream_uri)
       end)
 
@@ -2646,6 +2658,7 @@ describe("Router", function()
                               { host = "domain.org" })
         router._set_ngx(_ngx)
         local match_t = router.exec()
+        assert.equal("/users/123/profile", match_t.prefix)
         assert.equal("/hello/world", match_t.upstream_uri)
       end)
 
@@ -2665,6 +2678,7 @@ describe("Router", function()
                               { host = "domain.org" })
         router._set_ngx(_ngx)
         local match_t = router.exec()
+        assert.equal("/users/123/profile", match_t.prefix)
         assert.equal("/hello/world", match_t.upstream_uri)
       end)
     end)
