@@ -158,11 +158,11 @@ return {
   postgres = {
     up = [[
         -- ca_certificates table
-        ALTER TABLE ca_certificates DROP CONSTRAINT IF EXISTS ca_certificates_cert_key;
+        ALTER TABLE IF EXISTS ONLY ca_certificates DROP CONSTRAINT IF EXISTS ca_certificates_cert_key;
 
         DO $$
           BEGIN
-            ALTER TABLE ca_certificates ADD COLUMN "cert_digest" TEXT UNIQUE;
+            ALTER TABLE IF EXISTS ONLY ca_certificates ADD COLUMN "cert_digest" TEXT UNIQUE;
           EXCEPTION WHEN duplicate_column THEN
             -- Do nothing, accept existing state
           END;
@@ -170,7 +170,7 @@ return {
 
         DO $$
           BEGIN
-            ALTER TABLE services ADD COLUMN "tls_verify" BOOLEAN;
+            ALTER TABLE IF EXISTS ONLY services ADD COLUMN "tls_verify" BOOLEAN;
           EXCEPTION WHEN duplicate_column THEN
             -- Do nothing, accept existing state
           END;
@@ -187,7 +187,7 @@ return {
 
         DO $$
           BEGIN
-            ALTER TABLE services ADD COLUMN "tls_verify_depth" SMALLINT;
+            ALTER TABLE IF EXISTS ONLY services ADD COLUMN "tls_verify_depth" SMALLINT;
           EXCEPTION WHEN duplicate_column THEN
             -- Do nothing, accept existing state
           END;
@@ -195,7 +195,7 @@ return {
 
         DO $$
           BEGIN
-            ALTER TABLE services ADD COLUMN "ca_certificates" UUID[];
+            ALTER TABLE IF EXISTS ONLY services ADD COLUMN "ca_certificates" UUID[];
           EXCEPTION WHEN duplicate_column THEN
             -- Do nothing, accept existing state
           END;

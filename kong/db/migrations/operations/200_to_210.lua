@@ -127,7 +127,7 @@ local postgres = {
         -- Ensure (id, ws_id) pair is unique
         DO $$
         BEGIN
-          ALTER TABLE "$(TABLE)" ADD CONSTRAINT "$(TABLE)_id_ws_id_unique" UNIQUE ("id", "ws_id");
+          ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD CONSTRAINT "$(TABLE)_id_ws_id_unique" UNIQUE ("id", "ws_id");
         EXCEPTION WHEN DUPLICATE_TABLE THEN
           -- Do nothing, accept existing state
         END$$;
@@ -146,12 +146,12 @@ local postgres = {
       return render([[
 
           -- Make '$(TABLE).$(FIELD)' unique per workspace
-          ALTER TABLE "$(TABLE)" DROP CONSTRAINT IF EXISTS "$(TABLE)_$(FIELD)_key";
+          ALTER TABLE IF EXISTS ONLY "$(TABLE)" DROP CONSTRAINT IF EXISTS "$(TABLE)_$(FIELD)_key";
 
           -- Ensure (ws_id, $(FIELD)) pair is unique
           DO $$
           BEGIN
-            ALTER TABLE "$(TABLE)" ADD CONSTRAINT "$(TABLE)_ws_id_$(FIELD)_unique" UNIQUE ("ws_id", "$(FIELD)");
+            ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD CONSTRAINT "$(TABLE)_ws_id_$(FIELD)_unique" UNIQUE ("ws_id", "$(FIELD)");
           EXCEPTION WHEN DUPLICATE_TABLE THEN
             -- Do nothing, accept existing state
           END$$;
@@ -174,8 +174,17 @@ local postgres = {
       return render([[
 
           -- Update foreign key relationship
-          ALTER TABLE "$(TABLE)" DROP CONSTRAINT IF EXISTS "$(TABLE)_$(FK)_id_fkey";
-          ALTER TABLE "$(TABLE)" ADD FOREIGN KEY ("$(FK)_id", "ws_id") REFERENCES $(FOREIGN_TABLE)("id", "ws_id") $(CASCADE);
+          ALTER TABLE IF EXISTS ONLY "$(TABLE)" DROP CONSTRAINT IF EXISTS "$(TABLE)_$(FK)_id_fkey";
+
+          DO $$
+          BEGIN
+            ALTER TABLE IF EXISTS ONLY "$(TABLE)"
+                        ADD CONSTRAINT "$(TABLE)_$(FK)_id_fkey"
+                           FOREIGN KEY ("$(FK)_id", "ws_id")
+                            REFERENCES $(FOREIGN_TABLE)("id", "ws_id") $(CASCADE);
+          EXCEPTION WHEN DUPLICATE_OBJECT THEN
+            -- Do nothing, accept existing state
+          END$$;
 
       ]], {
         TABLE = table_name,
