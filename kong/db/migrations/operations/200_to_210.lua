@@ -411,6 +411,9 @@ local cassandra = {
       local cassandra = require("cassandra")
       local cjson = require("cjson")
 
+      local statements = {}
+      local count = 0
+
       local coordinator = assert(connector:connect_migrations())
 
       for rows, err in coordinator:iterate("SELECT * FROM plugins") do
@@ -425,14 +428,23 @@ local cassandra = {
             local fix = fixup_fn(config)
 
             if fix then
-              assert(connector:query([[
-                UPDATE plugins SET config = ? WHERE id = ?
-              ]], {
-                cassandra.text(cjson.encode(config)),
-                cassandra.uuid(row.id)
-              }))
+              count = count + 1
+              statements[count] = {
+                cql = "UPDATE plugins SET config = ? WHERE id = ?",
+                args = {
+                  cassandra.text(cjson.encode(config)),
+                  id = cassandra.uuid(row.id)
+                }
+              }
             end
           end
+        end
+      end
+
+      if count > 0 then
+        for i = 1, count do
+           local statement = statements[i]
+           assert(connector:query(statement.cql, statement.args))
         end
       end
     end,
