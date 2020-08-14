@@ -443,6 +443,33 @@ pipeline {
                         }
                     }
                 }
+                stage('Release to luarocks') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        SLACK_WEBHOOK = credentials('core_team_slack_webhook')
+                        LUAROCKS_API_KEY = credentials('luarocks_api_key')
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME luarocks $LUAROCKS_API_KEY'
+                    }
+                    post {
+                        failure {
+                            script {
+                                sh 'SLACK_MESSAGE="releasing to luarocks failed" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                        success {
+                            script {
+                                sh 'SLACK_MESSAGE="updating luarocks succeeded. No action i./s necessary this message is informational only" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                    }
+                }
             }
         }
     }
