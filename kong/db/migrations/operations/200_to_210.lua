@@ -17,7 +17,7 @@ end
 
 
 local function cassandra_get_default_ws(connector)
-  local rows, err = connector:query("SELECT * FROM workspaces WHERE name='default'")
+  local rows, err = connector:query("SELECT id FROM workspaces WHERE name='default'")
   if err then
     return nil, err
   end
@@ -201,14 +201,20 @@ local postgres = {
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      assert(connector:query(render([[
+      local _, err = connector:query(render([[
         UPDATE "$(TABLE)"
         SET cache_key = CONCAT(cache_key, ':',
                                (SELECT id FROM workspaces WHERE name = 'default'))
         WHERE cache_key LIKE '%:';
       ]], {
         TABLE = table_name,
-      })))
+      }))
+
+      if err then
+        return nil, err
+      end
+
+      return true
     end,
 
 
@@ -216,40 +222,61 @@ local postgres = {
     -- Update keys to workspace-aware formats
     ws_update_keys = function(_, connector, table_name, unique_keys)
       -- Reset default value for ws_id once it is populated
-      assert(connector:query(render([[
+      local _, err = connector:query(render([[
         ALTER TABLE IF EXISTS ONLY "$(TABLE)" ALTER "ws_id" SET DEFAULT NULL;
       ]], {
         TABLE = table_name,
-      })))
+      }))
+
+      if err then
+        return nil, err
+      end
+
+      return true
     end,
 
 
     ------------------------------------------------------------------------------
     -- General function to fixup a plugin configuration
     fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
+      local statements = {}
+      local count = 0
+
       local pgmoon_json = require("pgmoon.json")
 
-      for row, err in connector:iterate("SELECT * FROM plugins") do
+      for plugin, err in connector:iterate("SELECT id, name, config FROM plugins") do
         if err then
           return nil, err
         end
 
-        if row.name == plugin_name then
-          local fix = fixup_fn(row.config)
+        if plugin.name == plugin_name then
+          local fix = fixup_fn(plugin.config)
 
           if fix then
 
             local sql = render([[
               UPDATE plugins SET config = $(NEW_CONFIG)::jsonb WHERE id = '$(ID)'
             ]], {
-              NEW_CONFIG = pgmoon_json.encode_json(row.config),
-              ID = row.id,
+              NEW_CONFIG = pgmoon_json.encode_json(plugin.config),
+              ID = plugin.id,
             })
 
-            assert(connector:query(sql))
+            count = count + 1
+            statements[count] = sql
           end
         end
       end
+
+      if count > 0 then
+        for i = 1, count do
+          local _, err = connector:query(statements[i])
+          if err then
+            return nil, err
+          end
+        end
+      end
+
+      return true
     end,
   },
 
@@ -338,10 +365,20 @@ local cassandra = {
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      local coordinator = assert(connector:connect_migrations())
-      local default_ws = assert(cassandra_ensure_default_ws(connector))
+      local statements = {}
+      local count = 0
 
-      for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
+      local coordinator = assert(connector:connect_migrations())
+      local default_ws, err = cassandra_ensure_default_ws(connector)
+      if err then
+        return nil, err
+      end
+
+      if not default_ws then
+        return nil, "unable to find a default workspace"
+      end
+
+      for rows, err in coordinator:iterate("SELECT id, cache_key FROM " .. table_name) do
         if err then
           return nil, err
         end
@@ -358,17 +395,40 @@ local cassandra = {
                 or  "",
               ID = row.id,
             })
-            assert(connector:query(cql))
+
+            count = count + 1
+            statements[count] = cql
           end
         end
       end
+
+      if count > 0 then
+        for i = 1, count do
+          local _, err = connector:query(statements[i])
+          if err then
+            return nil, err
+          end
+        end
+      end
+
+      return true
     end,
 
     ------------------------------------------------------------------------------
     -- Update keys to workspace-aware formats
     ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned)
+      local statements = {}
+      local count = 0
+
       local coordinator = assert(connector:connect_migrations())
-      local default_ws = assert(cassandra_ensure_default_ws(connector))
+      local default_ws, err = cassandra_ensure_default_ws(connector)
+      if err then
+        return nil, err
+      end
+
+      if not default_ws then
+        return nil, "unable to find a default workspace"
+      end
 
       for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
         if err then
@@ -399,10 +459,22 @@ local cassandra = {
               ID = row.id,
             })
 
-            assert(connector:query(cql))
+            count = count + 1
+            statements[count] = cql
           end
         end
       end
+
+      if count > 0 then
+        for i = 1, count do
+          local _, err = connector:query(statements[i])
+          if err then
+            return nil, err
+          end
+        end
+      end
+
+      return true
     end,
 
     ------------------------------------------------------------------------------
@@ -416,15 +488,18 @@ local cassandra = {
 
       local coordinator = assert(connector:connect_migrations())
 
-      for rows, err in coordinator:iterate("SELECT * FROM plugins") do
+      for rows, err in coordinator:iterate("SELECT id, name, config FROM plugins") do
         if err then
           return nil, err
         end
 
-        for _, row in ipairs(rows) do
-          if row.name == plugin_name then
-            assert(type(row.config) == "string")
-            local config = cjson.decode(row.config)
+        for _, plugin in ipairs(rows) do
+          if plugin.name == plugin_name then
+            if type(plugin.config) ~= "string" then
+              return nil, "plugin config is not a string"
+            end
+
+            local config = cjson.decode(plugin.config)
             local fix = fixup_fn(config)
 
             if fix then
@@ -433,7 +508,7 @@ local cassandra = {
                 cql = "UPDATE plugins SET config = ? WHERE id = ?",
                 args = {
                   cassandra.text(cjson.encode(config)),
-                  id = cassandra.uuid(row.id)
+                  id = cassandra.uuid(plugin.id)
                 }
               }
             end
@@ -443,10 +518,15 @@ local cassandra = {
 
       if count > 0 then
         for i = 1, count do
-           local statement = statements[i]
-           assert(connector:query(statement.cql, statement.args))
+          local statement = statements[i]
+          local _, err = connector:query(statement.cql, statement.args)
+          if err then
+            return nil, err
+          end
         end
       end
+
+      return true
     end,
 
   }
@@ -487,12 +567,19 @@ local function ws_adjust_data(ops, connector, entities)
   for _, entity in ipairs(entities) do
 
     if entity.cache_key and #entity.cache_key > 1 then
-      ops:ws_update_composite_cache_key(connector, entity.name, entity.partitioned)
+      local _, err = ops:ws_update_composite_cache_key(connector, entity.name, entity.partitioned)
+      if err then
+        return nil, err
+      end
     end
 
-    ops:ws_update_keys(connector, entity.name, entity.uniques, entity.partitioned)
-
+    local _, err = ops:ws_update_keys(connector, entity.name, entity.uniques, entity.partitioned)
+    if err then
+      return nil, err
+    end
   end
+
+  return true
 end
 
 
@@ -517,7 +604,7 @@ local function ws_migrate_plugin(plugin_entities)
 
   local function ws_migration_teardown(ops)
     return function(connector)
-      ops:ws_adjust_data(connector, plugin_entities)
+      return ops:ws_adjust_data(connector, plugin_entities)
     end
   end
 

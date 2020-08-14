@@ -29,11 +29,14 @@ local function pg_ca_certificates_migration(connector)
 
   if count > 0 then
     for i = 1, count do
-      assert(connector:query(statements[i]))
+      local _, err = connector:query(statements[i])
+      if err then
+        return nil, err
+      end
     end
   end
 
-  assert(connector:query([[
+  local _, err = connector:query([[
     DO $$
     BEGIN
       ALTER TABLE IF EXISTS ONLY "ca_certificates" ALTER COLUMN "cert_digest" SET NOT NULL;
@@ -41,13 +44,20 @@ local function pg_ca_certificates_migration(connector)
       -- Do nothing, accept existing state
     END;
     $$;
-  ]]))
+  ]])
+
+  if err then
+    return nil, err
+  end
+
+  return true
 end
 
 local function c_ca_certificates_migration(connector)
   local statements = {}
   local count = 0
 
+  local cassandra = require "cassandra"
   local coordinator = connector:connect_migrations()
 
   for rows, err in coordinator:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
@@ -55,7 +65,8 @@ local function c_ca_certificates_migration(connector)
       return nil, err
     end
 
-    for _, ca_cert in ipairs(rows) do
+    for i = 1, #rows do
+      local ca_cert = rows[i]
       local digest = str.to_hex(openssl_x509.new(ca_cert.cert):digest("sha256"))
       if not digest then
         return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
@@ -63,17 +74,27 @@ local function c_ca_certificates_migration(connector)
 
       if digest ~= ca_cert.cert_digest then
         count = count + 1
-        statements[count] = fmt("UPDATE ca_certificates SET cert_digest = '%s' WHERE partition = 'ca_certificates' AND id = %s",
-                                digest, ca_cert.id)
+        statements[count] = {
+          cql = "UPDATE ca_certificates SET cert_digest = ? WHERE partition = 'ca_certificates' AND id = ?",
+          args = {
+            digest,
+            cassandra.uuid(ca_cert.id),
+          }
+        }
       end
     end
   end
 
   if count > 0 then
     for i = 1, count do
-      assert(connector:query(statements[i]))
+      local _, err = connector:query(statements[i].cql, statements[i].args)
+      if err then
+        return nil, err
+      end
     end
   end
+
+  return true
 end
 
 
@@ -134,8 +155,8 @@ local core_entities = {
 -- for the database (each function returns a string).
 -- @return SQL or CQL
 local function ws_migration_up(ops)
-  return ops:ws_add_workspaces()
-      .. ops:ws_adjust_fields(core_entities)
+  return assert(ops:ws_add_workspaces())
+      .. assert(ops:ws_adjust_fields(core_entities))
 end
 
 
@@ -146,7 +167,7 @@ end
 -- @return a function that receives a connector
 local function ws_migration_teardown(ops)
   return function(connector)
-    ops:ws_adjust_data(connector, core_entities)
+    return ops:ws_adjust_data(connector, core_entities)
   end
 end
 
@@ -209,10 +230,18 @@ return {
         END$$;
     ]] .. ws_migration_up(operations.postgres.up),
     teardown = function(connector)
-      ws_migration_teardown(operations.postgres.teardown)(connector)
+      local _, err = ws_migration_teardown(operations.postgres.teardown)(connector)
+      if err then
+        return nil, err
+      end
 
       -- add `cert_digest` field for `ca_certificates` table
-      pg_ca_certificates_migration(connector)
+      _, err = pg_ca_certificates_migration(connector)
+      if err then
+        return nil, err
+      end
+
+      return true
     end
   },
   cassandra = {
@@ -232,10 +261,18 @@ return {
       CREATE INDEX IF NOT EXISTS upstreams_client_certificate_id_idx ON upstreams(client_certificate_id);
     ]] .. ws_migration_up(operations.cassandra.up),
     teardown = function(connector)
-      ws_migration_teardown(operations.cassandra.teardown)(connector)
+      local _, err = ws_migration_teardown(operations.cassandra.teardown)(connector)
+      if err then
+        return nil, err
+      end
 
       -- add `cert_digest` field for `ca_certificates` table
-      c_ca_certificates_migration(connector)
+      _, err = c_ca_certificates_migration(connector)
+      if err then
+        return nil, err
+      end
+
+      return true
     end
   }
 }

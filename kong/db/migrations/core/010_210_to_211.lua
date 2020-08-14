@@ -9,7 +9,7 @@ return {
   cassandra = {
     up = [[]],
     teardown = function(connector)
-      operations.clean_cassandra_fields(connector, operations.entities)
+      return operations.clean_cassandra_fields(connector, operations.entities)
     end
   }
 }

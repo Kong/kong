@@ -58,8 +58,11 @@ return {
       END$$;
     ]],
     teardown = function(connector)
+      local statements = {}
+      local count = 0
+
       assert(connector:connect_migrations())
-      for upstream, err in connector:iterate([[SELECT * FROM "upstreams";]]) do
+      for upstream, err in connector:iterate("SELECT id, algorithm, hash_on FROM upstreams") do
         if err then
           return nil, err
         end
@@ -74,19 +77,27 @@ return {
         else
           algorithm = "consistent-hashing"
         end
-        local update_query = string.format([[
+
+        count = count + 1
+        statements[count] = string.format([[
           UPDATE "upstreams"
           SET "algorithm" = '%s'
           WHERE "id" = '%s';
         ]], algorithm, upstream.id)
 
-        local _, err = connector:query(update_query)
-        if err then
-          return nil, err
-        end
-
         ::continue::
       end
+
+      if count > 0 then
+        for i = 1, count do
+          local _, err = connector:query(statements[i])
+          if err then
+            return nil, err
+          end
+        end
+      end
+
+      return true
     end,
 
   },
@@ -118,10 +129,13 @@ return {
       CREATE INDEX IF NOT EXISTS services_client_certificate_id_idx ON services(client_certificate_id);
     ]],
     teardown = function(connector)
+      local statements = {}
+      local count = 0
+
       local cassandra = require "cassandra"
       local coordinator = assert(connector:connect_migrations())
 
-      for rows, err in coordinator:iterate([[SELECT * FROM upstreams;]]) do
+      for rows, err in coordinator:iterate("SELECT id, algorithm, hash_on FROM upstreams") do
         if err then
           return nil, err
         end
@@ -139,22 +153,30 @@ return {
             algorithm = "consistent-hashing"
           end
 
-          local _, err = connector:query([[
-            UPDATE upstreams
-            SET algorithm = ?
-            WHERE id = ?
-          ]], {
-            algorithm,
-            cassandra.uuid(upstream.id),
-          })
-          if err then
-            return nil, err
-          end
+          count = count + 1
+          statements[count] = {
+            cql = "UPDATE upstreams SET algorithm = ? WHERE id = ?",
+            args = {
+              algorithm,
+              cassandra.uuid(upstream.id),
+            }
+          }
 
           ::continue::
         end
 
       end
+
+      if count > 0 then
+        for i = 1, count do
+          local _, err = connector:query(statements[i].cql, statements[i].args)
+          if err then
+            return nil, err
+          end
+        end
+      end
+
+      return true
     end,
 
   },
