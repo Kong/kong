@@ -801,6 +801,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
           -- if we use integer as key, cjson will complain excessively sparse array
           local timestamp_number = dp[1]
           local timestamp = fmt("%d", dp[1])
+          kong.log.err("THIS SHOULD NOT BE NIL: ".. timestamp_number)
           -- 'NaN' will be parsed to math.nan and cjson will not encode it
           local counter = tonumber(dp[2])
           -- See http://lua-users.org/wiki/InfAndNanComparisons
@@ -832,12 +833,15 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
         end
       else
         index = series.metric[entity]
-        entity_metadata = entities[index] or {}
-        
-        local first_counter = tonumber(series.values[1][2])
-        local last_counter = tonumber(series.values[#series.values][2])
-        local request_count = last_counter - first_counter
-        stats = vitals_utils.append_to_stats(stats, index, status_group, request_count, entity_metadata)
+        local has_index = index ~= nil
+        if has_index then
+          entity_metadata = entities[index] or {}
+          kong.log.err("THIS SHOULD NOT BE NIL: ".. entity)
+          local first_counter = tonumber(series.values[1][2])
+          local last_counter = tonumber(series.values[#series.values][2])
+          local request_count = last_counter - first_counter
+          stats = vitals_utils.append_to_stats(stats, index, status_group, request_count, entity_metadata)
+        end
       end
     end
   end
@@ -870,6 +874,7 @@ end
 -- @param interval: seconds, minutes, hours, days, weeks, months
 -- @param start_ts: seconds from now
 function _M:latency_report(hostname, interval, start_ts)
+  interval = interval or "minutes"
   local duration = interval_to_duration[interval]
   local columns = {
     "proxy_max",
@@ -879,35 +884,79 @@ function _M:latency_report(hostname, interval, start_ts)
     "upstream_min",
     "upstream_avg",
   }
-
-
-  local stats = {}
-  local report_stats_metrics = {
-    -- { label_name_to_be_returned, query string, is_rate }
-    { "cache_datastore_hits_total", "sum by (instance)(kong_cache_datastore_hits_total)", true },
-    { "cache_datastore_misses_total", "sum by (instance)(kong_cache_datastore_misses_total)", true },
-    { "latency_proxy_request_min_ms", "min by (instance)(kong_latency_proxy_request_min)" },
-    { "latency_proxy_request_max_ms", "max by (instance)(kong_latency_proxy_request_max)" },
-    { "latency_upstream_min_ms", "min by (instance)(kong_latency_upstream_min)" },
-    { "latency_upstream_max_ms", "max by (instance)(kong_latency_upstream_max)" },
-    { "requests_proxy_total", "sum by (instance)(kong_requests_proxy)", true },
-    -- do i need to change [1m] for different timeframes?
-    { "latency_proxy_request_avg_ms", "sum by (instance)(rate(kong_latency_proxy_request_sum[1m])) / sum by (instance)(rate(kong_latency_proxy_request_count[1m])) * 1000"}, -- we only have minute level precision
-    { "latency_upstream_avg_ms","sum by (instance)(rate(kong_latency_upstream_sum[1m])) / sum by (instance)(rate(kong_latency_upstream_count[1m])) * 1000",},
-  }
-  local res, err, duration_seconds = self:query(
-    start_ts,
-    report_stats_metrics,
-    duration
-  )
-  local inspect = require "inspect"
-  kong.log.err(inspect(res))
-  kong.log.err(inspect(err))
   local meta = {
     earliest_ts = start_ts,
     latest_ts = ngx.time(),
     stat_labels = columns,
+    nodes = {},
   }
+
+  local stats = {}
+  local report_stats_metrics = {
+    { "proxy_max", "max by (instance)(kong_latency_proxy_request_max)" },
+    { "proxy_min", "min by (instance)(kong_latency_proxy_request_min)" },
+    -- TODO: do i need to change [1m] for different timeframes?
+    { "proxy_avg", "sum by (instance)(rate(kong_latency_proxy_request_sum[1m])) / sum by (instance)(rate(kong_latency_proxy_request_count[1m])) * 1000" }, -- we only have minute level precision
+    { "upstream_max", "max by (instance)(kong_latency_upstream_max)" },
+    { "upstream_min", "min by (instance)(kong_latency_upstream_min)" },
+    -- TODO: do i need to change [1m] for different timeframes?
+    { "upstream_avg","sum by (instance)(rate(kong_latency_upstream_sum[1m])) / sum by (instance)(rate(kong_latency_upstream_count[1m])) * 1000" },
+  }
+  local res, err = self:query(
+    start_ts,
+    report_stats_metrics,
+    duration
+  )
+  local seconds_from_now = ngx.time() - start_ts
+  local expected_dp_count = seconds_from_now / duration
+  local inspect = require "inspect"
+  kong.log.err(inspect(res))
+  kong.log.err(inspect(err))
+  if err then
+    return err
+  end
+  local earliest_ts = 0xFFFFFFFF
+  local latest_ts = 0
+  for idx, series_list in ipairs(res) do
+    local series_not_empty = false
+    for series_idx, series in ipairs(series_list) do
+      series_not_empty = true
+      -- Add to meta,nodes
+      local host = series.metric.instance
+
+      if not stats[host] then
+        stats[host] = new_tab(0, expected_dp_count)
+        meta.nodes[host] = { hostname = host }
+      end
+
+      for _, dp in ipairs(series.values) do
+        -- if we use integer as key, cjson will complain excessively sparse array
+        local timestamp = fmt("%d", dp[1])
+        -- 'NaN' will be parsed to math.nan and cjson will not encode it
+        local metric_value = tonumber(dp[2])
+        -- See http://lua-users.org/wiki/InfAndNanComparisons
+        -- cjson also won't encode inf and -inf
+        local is_not_a_number = metric_value ~= metric_value
+        local is_a_crazy_number = metric_value == math_huge or metric_value == -math_huge
+        if is_not_a_number or is_a_crazy_number then
+          metric_value = nil
+        else
+          metric_value = math_floor(metric_value)
+        end
+
+        stats[host][timestamp] = stats[host][timestamp] or {}
+
+        -- current_value is nil when is_rate = true and is the first datapoint
+        if metric_value ~= nil then
+          -- add the real data point
+          kong.log.err("THIS SHOULD BE " .. metric_value .. " : " .. timestamp .. " : " .. columns[idx])
+          stats[host][timestamp][columns[idx]] = metric_value
+        end
+      end
+    end
+  end
+
+
 
   return { stats=stats, meta=meta }
 end
