@@ -5,9 +5,12 @@ local openssl_x509  = require "resty.openssl.x509"
 local str           = require "resty.string"
 
 local function pg_ca_certificates_migration(connector)
+  local statements = {}
+  local count = 0
+
   assert(connector:connect_migrations())
 
-  for ca_cert, err in connector:iterate('SELECT * FROM ca_certificates') do
+  for ca_cert, err in connector:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
     if err then
       return nil, err
     end
@@ -17,20 +20,37 @@ local function pg_ca_certificates_migration(connector)
       return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
     end
 
-    local sql = string.format([[
-          UPDATE ca_certificates SET cert_digest = '%s' WHERE id = '%s';
-        ]], digest, ca_cert.id)
-
-    assert(connector:query(sql))
+    if digest ~= ca_cert.cert_digest then
+      count = count + 1
+      statements[count] = fmt("UPDATE ca_certificates SET cert_digest = '%s' WHERE id = '%s'",
+                              digest, ca_cert.id)
+    end
   end
 
-  assert(connector:query('ALTER TABLE ca_certificates ALTER COLUMN cert_digest SET NOT NULL'))
+  if count > 0 then
+    for i = 1, count do
+      assert(connector:query(statements[i]))
+    end
+  end
+
+  assert(connector:query([[
+    DO $$
+    BEGIN
+      ALTER TABLE IF EXISTS ONLY "ca_certificates" ALTER COLUMN "cert_digest" SET NOT NULL;
+    EXCEPTION WHEN UNDEFINED_COLUMN THEN
+      -- Do nothing, accept existing state
+    END;
+    $$;
+  ]]))
 end
 
 local function c_ca_certificates_migration(connector)
+  local statements = {}
+  local count = 0
+
   local coordinator = connector:connect_migrations()
 
-  for rows, err in coordinator:iterate("SELECT cert, id FROM ca_certificates") do
+  for rows, err in coordinator:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
     if err then
       return nil, err
     end
@@ -41,13 +61,17 @@ local function c_ca_certificates_migration(connector)
         return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
       end
 
-      _, err = connector:query(
-        fmt("UPDATE ca_certificates SET cert_digest = '%s' WHERE partition = 'ca_certificates' AND id = %s",
-          digest, ca_cert.id)
-      )
-      if err then
-        return nil, err
+      if digest ~= ca_cert.cert_digest then
+        count = count + 1
+        statements[count] = fmt("UPDATE ca_certificates SET cert_digest = '%s' WHERE partition = 'ca_certificates' AND id = %s",
+                                digest, ca_cert.id)
       end
+    end
+  end
+
+  if count > 0 then
+    for i = 1, count do
+      assert(connector:query(statements[i]))
     end
   end
 end
