@@ -93,20 +93,20 @@ local function filterexamples(example, qparameters)
       value = find_key(example,skey)
       --kong.log.inspect('value....'..value)
       local paramkeys={}
-      
-      if value == nil and qparameters then   
-        if #qparameters > 1 then 
+
+      if value == nil and qparameters then
+        if #qparameters > 1 then
           for dk,dv in pairs(qparameters) do
-            if string.find(find_key(qparameters,"in"),'query') then 
+            if string.find(find_key(qparameters,"in"),'query') then
               if string.find(find_key(qparameters,"name"),skey) then return true end
-            end  
+            end
           end
         else
-          if string.find(find_key(qparameters,"in"),'query') then 
+          if string.find(find_key(qparameters,"in"),'query') then
             if string.upper(skey) == string.upper(find_key(qparameters,"name")) then  return true end
-          end 
+          end
         end
-      end 
+      end
 
       if (value and string.upper( sval ) == string.upper( value )) then
         return true
@@ -126,21 +126,21 @@ local function find_example_value(tbl, key, queryparams)
   local no_qparams = (kong.request.get_raw_query() == nil or kong.request.get_raw_query() =='')
    for _, lv in pairs(tbl) do
      if type(lv) == "table" then
-      
+
        for dk, dv in pairs(lv) do
         if dk == key then
-          if no_qparams then table.insert( values, dv)  
-          elseif filterexamples(dv,queryparams) then table.insert( values, dv) end 
+          if no_qparams then table.insert( values, dv)
+          elseif filterexamples(dv,queryparams) then table.insert( values, dv) end
         end
        end
       end
     end
-  
+
   if next(values) == nil then
     return nil
   elseif #values == 1 then
     return values[1]
-  else 
+  else
     return values
   end
 end
@@ -180,7 +180,7 @@ local function get_example(accept, tbl, parameters)
         if find_key(retval, "example") then
           return find_key(retval, "example")
         end
-      else 
+      else
         return ""
       end
     end
@@ -251,7 +251,7 @@ local function retrieve_example(parsed_content, uripath, accept, method)
   -- Check to make sure we have paths in the spec file, Corrupt or bad spec file
   if (paths) then
   for specpath, value in pairs(paths) do
-   
+
     -- build formatted string for exact match
     local formatted_path = gsub(specpath, "{(.-)}", "[A-Za-z0-9]+") .. "$"
     local strmatch = match(uripath, formatted_path)
@@ -275,7 +275,6 @@ local function retrieve_example(parsed_content, uripath, accept, method)
 end
 
 function plugin:access(conf)
-
   -- Get resource information
   local uripath = kong.request.get_path()
 
@@ -284,13 +283,26 @@ function plugin:access(conf)
   if accept == "*/*" then accept = "application/json" end
   local method = kong.request.get_method()
 
-  local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
-  if err or (specfile == nil or specfile == '') then
-    return kong.response.exit(404, { message = "API Specification file not found. " ..
-     "Check Plugin 'api_specification_filename' (" .. conf.api_specification_filename .. ")" })
-  end
+  local contents = ""
+  if conf.api_specification == nil or conf.api_specification == '' then
+    if kong.db == nil then
+      return kong.response.exit(404, { message = "API Specification file api_specification_filename defined which is not supported in dbless mode - not supported. Use api_specification instead" })
+    end
 
-  local contents = specfile and specfile.contents or ""
+    local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
+
+    if err or (specfile == nil or specfile == '') then
+      return kong.response.exit(404, { message = "API Specification file not found. " ..
+       "Check Plugin 'api_specification_filename' (" .. conf.api_specification_filename ")" })
+    end
+
+    contents = specfile and specfile.contents or ""
+
+  else
+
+    contents = conf.api_specification
+
+  end
 
   local parsed_content = load_spec(contents)
 
@@ -306,4 +318,3 @@ function plugin:header_filter(conf)
 end
 
 return plugin
-
