@@ -45,6 +45,11 @@ for _, strategy in helpers.each_strategy() do
         service = bp.services:insert { name = "dd4" }
       }
 
+      local route5 = bp.routes:insert {
+        hosts   = { "datadog5.com" },
+        service = bp.services:insert { name = "dd5" }
+      }
+
       bp.plugins:insert {
         name     = "key-auth",
         route = { id = route1.id },
@@ -113,6 +118,23 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route5.id },
+      }
+
+      bp.plugins:insert {
+        name     = "datadog",
+        route = { id = route5.id },
+        config   = {
+          host             = "127.0.0.1",
+          port             = 9999,
+          service_name_tag = "upstream",
+          status_tag       = "http_status",
+          consumer_tag     = "user",
+        },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -172,6 +194,29 @@ for _, strategy in helpers.each_strategy() do
       assert.contains("prefix.response.size:%d+|ms|#name:dd4,status:200,consumer:bar,app:kong", gauges, true)
       assert.contains("prefix.upstream_latency:%d+|ms|#name:dd4,status:200,consumer:bar,app:kong", gauges, true)
       assert.contains("prefix.kong_latency:%d*|ms|#name:dd4,status:200,consumer:bar,app:kong", gauges, true)
+    end)
+
+    it("logs metrics over UDP with custom tag names", function()
+      local thread = helpers.udp_server(9999, 6)
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200?apikey=kong",
+        headers = {
+          ["Host"] = "datadog5.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      local ok, gauges = thread:join()
+      assert.True(ok)
+      assert.equal(6, #gauges)
+      assert.contains("kong.request.count:1|c|#upstream:dd5,http_status:200,user:bar,app:kong",gauges)
+      assert.contains("kong.latency:%d+|ms|#upstream:dd5,http_status:200,user:bar,app:kong", gauges, true)
+      assert.contains("kong.request.size:%d+|ms|#upstream:dd5,http_status:200,user:bar,app:kong", gauges, true)
+      assert.contains("kong.response.size:%d+|ms|#upstream:dd5,http_status:200,user:bar,app:kong", gauges, true)
+      assert.contains("kong.upstream_latency:%d+|ms|#upstream:dd5,http_status:200,user:bar,app:kong", gauges, true)
+      assert.contains("kong.kong_latency:%d*|ms|#upstream:dd5,http_status:200,user:bar,app:kong", gauges, true)
     end)
 
     it("logs only given metrics", function()

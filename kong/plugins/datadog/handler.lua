@@ -22,10 +22,13 @@ local get_consumer_id = {
 }
 
 
-local function compose_tags(service_name, status, consumer_id, tags)
-  local result = {"name:" ..service_name, "status:"..status}
+local function compose_tags(conf, service_name, status, consumer_id, tags)
+  local result = {
+    conf.service_name_tag..":"..service_name,
+    conf.status_tag..":"..status
+  }
   if consumer_id ~= nil then
-    insert(result, "consumer:" ..consumer_id)
+    insert(result, conf.consumer_tag..":" ..consumer_id)
   end
   if tags ~= nil then
     for _, v in pairs(tags) do
@@ -73,7 +76,7 @@ local function log(premature, conf, message)
     local stat_value      = stat_value[metric_config.name]
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
     local consumer_id     = get_consumer_id and get_consumer_id(message.consumer) or nil
-    local tags            = compose_tags(name, message.response.status, consumer_id, metric_config.tags)
+    local tags            = compose_tags(conf, name, message.response.status, consumer_id, metric_config.tags)
 
     if stat_name ~= nil then
       logger:send_statsd(stat_name, stat_value,
@@ -87,7 +90,7 @@ end
 
 local DatadogHandler = {
   PRIORITY = 10,
-  VERSION = "3.0.1",
+  VERSION = "3.0.2",
 }
 
 
