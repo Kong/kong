@@ -18,6 +18,7 @@ return {
           { hide_credentials = { type = "boolean", default = false }, },
           { anonymous = { type = "string" }, },
           { key_in_body = { type = "boolean", default = false }, },
+          { body_fault_tolerant = { type = "boolean", default = true }, },
           { run_on_preflight = { type = "boolean", default = true }, },
         },
     }, },
