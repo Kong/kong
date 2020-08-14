@@ -568,6 +568,18 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("bar", json.post_data.params.foo)
         end)
       end
+
+      it("works with 'key_in_body' and unsupported content type", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            ["Host"] = "key-auth6.com",
+            ["Content-Type"] = "text/plain",
+          }
+        })
+        assert.res_status(200, res)
+      end)
     end)
 
     describe("config.anonymous", function()
