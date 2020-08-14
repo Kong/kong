@@ -81,9 +81,8 @@ local function do_authentication(conf)
     local err
     body, err = kong.request.get_body()
 
-    if err and not conf.body_fault_tolerant then
+    if err then
       kong.log.err("Cannot process request body: ", err)
-      return nil, { status = 400, message = "Cannot process request body" }
     end
   end
 
