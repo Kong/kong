@@ -69,6 +69,10 @@
 - **Datadog**: add support for the `distribution` metric type.
   [#6231](https://github.com/Kong/kong/pull/6231)
   Thanks [onematchfox](https://github.com/onematchfox) for the patch!
+- **Datadog**: allow service, consumer, and status tags to be customized through
+  plugin configurations `service_tag`, `consumer_tag`, and `status_tag`.
+  [#6230](https://github.com/Kong/kong/pull/6230)
+  Thanks [onematchfox](https://github.com/onematchfox) for the patch!
 
 [Back to TOC](#table-of-contents)
 
