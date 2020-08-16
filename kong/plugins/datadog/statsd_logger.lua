@@ -7,12 +7,13 @@ local tostring     = tostring
 
 
 local stat_types = {
-  gauge     = "g",
-  counter   = "c",
-  timer     = "ms",
-  histogram = "h",
-  meter     = "m",
-  set       = "s",
+  gauge        = "g",
+  counter      = "c",
+  timer        = "ms",
+  histogram    = "h",
+  meter        = "m",
+  set          = "s",
+  distribution = "d",
 }
 
 

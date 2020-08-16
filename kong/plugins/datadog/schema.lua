@@ -16,6 +16,7 @@ local STAT_TYPES = {
   "meter",
   "set",
   "timer",
+  "distribution",
 }
 
 local CONSUMER_IDENTIFIERS = {
