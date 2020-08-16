@@ -79,6 +79,7 @@ return {
           { service_name_tag = { type = "string", default = "name" }, },
           { status_tag = { type = "string", default = "status" }, },
           { consumer_tag = { type = "string", default = "consumer" }, },
+          { uri_tag = { type = "string" }, },
           { metrics = {
               type     = "array",
               required = true,

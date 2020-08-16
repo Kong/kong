@@ -50,6 +50,11 @@ for _, strategy in helpers.each_strategy() do
         service = bp.services:insert { name = "dd5" }
       }
 
+      local route6 = bp.routes:insert {
+        hosts   = { "datadog6.com" },
+        service = bp.services:insert { name = "dd6" }
+      }
+
       bp.plugins:insert {
         name     = "key-auth",
         route = { id = route1.id },
@@ -132,6 +137,23 @@ for _, strategy in helpers.each_strategy() do
           service_name_tag = "upstream",
           status_tag       = "http_status",
           consumer_tag     = "user",
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "datadog",
+        route = { id = route6.id },
+        config   = {
+          host             = "127.0.0.1",
+          port             = 9999,
+          uri_tag          = "uri",
+          metrics = {
+            {
+              name        = "request_count",
+              stat_type   = "counter",
+              sample_rate = 1,
+            },
+          },
         },
       }
 
@@ -254,6 +276,25 @@ for _, strategy in helpers.each_strategy() do
       assert.True(ok)
       assert.contains("kong.request.count:1|c|#name:dd3,status:200,T2:V2,T3:V3,T4", gauges)
       assert.contains("kong.latency:%d+|g|#name:dd3,status:200,T2:V2:V3,T4", gauges, true)
+    end)
+
+    it("logs metrics with uri tag", function()
+      local thread = helpers.udp_server(9999, 1)
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          ["Host"] = "datadog6.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      local ok, gauges = thread:join()
+      assert.True(ok)
+      gauges = { gauges } -- as thread:join() returns a string in case of 1
+      assert.equal(1, #gauges)
+      assert.contains("kong.request.count:1|c|#name:dd6,status:200,uri:.*", gauges, true)
     end)
 
     it("should not return a runtime error (regression)", function()
