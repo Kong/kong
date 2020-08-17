@@ -37,7 +37,6 @@ pipeline {
               // https://www.jenkins.io/doc/book/pipeline/syntax/
               choice(
                 name: 'release_scope',
-                defaultValue: '',
                 description: 'What is the release scope?',
                 choices: [
                   'internal-preview',
@@ -48,7 +47,7 @@ pipeline {
               )
             ]
           )
-          env.RELEASE_SCOPE = input_params['release_scope']
+          env.RELEASE_SCOPE = input_params
         }
       }
     }
