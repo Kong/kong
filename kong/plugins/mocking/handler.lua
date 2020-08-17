@@ -266,7 +266,7 @@ function plugin:access(conf)
   local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
   if err or (specfile == nil or specfile == '') then
     return kong.response.exit(404, { message = "API Specification file not found. " ..
-     "Check Plugin 'api_specification_filename' (" .. conf.api_specification_filename ")" })
+     "Check Plugin 'api_specification_filename' (" .. conf.api_specification_filename .. ")" })
   end
 
   local contents = specfile and specfile.contents or ""
