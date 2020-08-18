@@ -561,14 +561,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         end)
 
         it("rejects gRPC call without credentials", function()
-          local ok, res = helpers.proxy_client_grpcs(){
+          local ok, err = helpers.proxy_client_grpcs(){
             service = "hello.HelloService.SayHello",
             opts = {
               ["-authority"] = "oauth2.com",
             },
           }
           assert.falsy(ok)
-          assert.match("Unauthenticated", res)
+          assert.match("Code: Unauthenticated", err)
         end)
 
         it("returns an error when no parameter is being sent", function()

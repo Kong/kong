@@ -421,10 +421,12 @@ for _, strategy in helpers.each_strategy() do
 
     describe("key in gRPC headers", function()
       it("rejects call without credentials", function()
-        assert.falsy(helpers.proxy_client_grpc(){
+        local ok, err = helpers.proxy_client_grpc(){
           service = "hello.HelloService.SayHello",
           opts = {},
-        })
+        }
+        assert.falsy(ok)
+        assert.matches("Code: Unauthenticated", err)
       end)
       it("accepts authorized calls", function()
         local ok, res = helpers.proxy_client_grpc(){
