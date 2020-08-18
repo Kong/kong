@@ -126,7 +126,7 @@ function _M:flush_data(data)
   if self.hybrid_cp then
     error("Cannot use this function in control plane", 2)
   end
-  return self.messaging:send_message(COUNTERS_TYPE_STATS, data)
+  return self.messaging:send_message(COUNTERS_TYPE_STATS, data, true)
 end
 
 return _M

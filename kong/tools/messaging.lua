@@ -170,6 +170,8 @@ function _M:new(opts)
     SHM = opts.shm,
     SHM_KEY = opts.shm_key,
     buffer = opts.buffer or new_tab(BUFFER_SIZE, 0),
+    buffer_idx = 1,
+    buffer_age = 0,
     buffer_ttl = opts.buffer_ttl or 2,
     buffer_retry_size = opts.buffer_retry_size or 60,
   }
@@ -192,10 +194,23 @@ function _M:start_client(server_name)
   return true
 end
 
-function _M:send_message(typ, data)
-  local buffer_idx = 1
-  self.buffer[buffer_idx] = typ
-  self.buffer[buffer_idx+1] = data
+function _M:send_message(typ, data, flush_now)
+  if self.buffer_idx == 1 then
+    self.buffer_age = ngx.now()
+  end
+
+  self.buffer[self.buffer_idx] = typ
+  self.buffer[self.buffer_idx+1] = data
+  self.buffer_idx = self.buffer_idx + 2
+
+  if not flush_now then
+    ngx.update_time()
+    -- TODO: this relies on the behaviour of timer of vitals and node_stats is flushed
+    -- every 10 seconds.
+    if self.buffer_idx < BUFFER_SIZE and ngx.now() - self.buffer_age < self.buffer_ttl then
+      return true
+    end
+  end
 
   local data = cjson_encode({
     type = self.message_type,
@@ -209,6 +224,7 @@ function _M:send_message(typ, data)
       self.buffer,
     }),
   })
+  self.buffer_idx = 1
   clear_tab(self.buffer)
 
   local _, err = self.SHM:lpush(self.SHM_KEY, data)
