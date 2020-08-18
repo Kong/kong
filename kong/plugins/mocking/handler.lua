@@ -35,6 +35,26 @@ local function find_key(tbl, key)
   return nil
 end
 
+-- Extract example value in V3.0
+-- returns lua table with all the values extracted and appended from multiple examples
+local function find_example_value(tbl, key)
+  local values = {}
+  for lk, lv in pairs(tbl) do
+    kong.log("find_example_value..first for..")
+    if type(lv) == "table" then
+      for dk, dv in pairs(lv) do
+        kong.log("find_example_value..second for..")
+        if dk == key then table.insert( values, dv) end
+      end
+    end
+  end
+  if next(values) == nil then
+    return nil
+  else
+  return values
+ end
+end
+
 local function get_example(accept, tbl)
   if isV2 then
     if find_key(tbl, "examples") then
@@ -51,14 +71,28 @@ local function get_example(accept, tbl)
   else
     tbl = tbl.content
     if find_key(tbl, accept) then
-      if find_key(tbl, accept).examples.response.value then
-        return find_key(tbl, accept).examples.response.value
+      --Removed response object reference as there is no such object within examples hierarchy
+      --Removed value :: Not required, referencing object examples in this case will return value
+      if find_key(tbl, accept).examples then
+       local retval = find_key(tbl, accept).examples
+        if find_example_value(retval,"value") then
+         return  (find_example_value(retval,"value"))
+        end
+      -- Single Example use case, Go ahead and use find_key
+      elseif find_key(tbl, accept).example then
+        kong.log("inside example....")
+        local retval = find_key(tbl, accept).example
+         if find_key(retval,"value") then
+          kong.log("inside example.... find val")
+          return  (find_key(retval,"value"))
+         end
       else
         return ""
       end
     end
   end
 end
+
 
 local function get_method_path(path, method, accept)
 
@@ -118,15 +152,14 @@ local function load_spec(spec_str)
 end
 
 local function retrieve_example(parsed_content, uripath, accept, method)
-
   local paths = parsed_content.paths
   local found = false
-
+  -- Check to make sure we have paths in the spec file, Corrupt or bad spec file
+  if (paths) then
   for specpath, value in pairs(paths) do
 
     -- build formatted string for exact match
     local formatted_path = gsub(specpath, "{(.-)}", "[A-Za-z0-9]+") .. "$"
-
     local strmatch = match(uripath, formatted_path)
     if strmatch then
       found = true
@@ -138,6 +171,7 @@ local function retrieve_example(parsed_content, uripath, accept, method)
          " resource with Accept Header (" .. accept .. ")"})
       end
     end
+  end
   end
 
   if not found then
