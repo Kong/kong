@@ -7,15 +7,26 @@ local event_hooks  = require "kong.enterprise_edition.event_hooks"
 
 
 local kong     = kong
+local ceil     = math.ceil
+local floor    = math.floor
 local max      = math.max
+local time     = ngx.time
 local tonumber = tonumber
 
 
 local NewRLHandler = BasePlugin:extend()
 
 
-local RATELIMIT_LIMIT = "X-RateLimit-Limit"
-local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
+local X_RATELIMIT_LIMIT = "X-RateLimit-Limit"
+local X_RATELIMIT_REMAINING = "X-RateLimit-Remaining"
+
+
+-- Add draft headers for rate limiting RFC
+-- https://tools.ietf.org/html/draft-polli-ratelimit-headers-02
+local RATELIMIT_LIMIT = "RateLimit-Limit"
+local RATELIMIT_REMAINING = "RateLimit-Remaining"
+local RATELIMIT_RESET = "RateLimit-Reset"
+local RATELIMIT_RETRY_AFTER = "Retry-After"
 
 
 NewRLHandler.PRIORITY = 902
@@ -114,8 +125,7 @@ local function new_namespace(config, init_timer)
     end
 
   else
-    kong.log.err("err in creating new ratelimit namespace: ",
-                     err)
+    kong.log.err("err in creating new ratelimit namespace: ", err)
     ret = false
   end
 
@@ -235,6 +245,7 @@ function NewRLHandler:init_worker()
 end
 
 function NewRLHandler:access(conf)
+  local now = time()
   local key = id_lookup[conf.identifier](conf)
 
   -- legacy logic, if authenticated consumer or credential is not found
@@ -259,32 +270,72 @@ function NewRLHandler:access(conf)
     new_namespace(conf, true)
   end
 
+  local limit
+  local window
+  local remaining
+  local reset
+  local namespace = conf.namespace
+  local window_type = conf.window_type
+  local shm = ngx.shared[conf.dictionary_name]
   for i = 1, #conf.window_size do
-    local window_size = tonumber(conf.window_size[i])
-    local limit       = tonumber(conf.limit[i])
+    local current_window = tonumber(conf.window_size[i])
+    local current_limit = tonumber(conf.limit[i])
 
     -- if we have exceeded any rate, we should not increment any other windows,
     -- butwe should still show the rate to the client, maintaining a uniform
     -- set of response headers regardless of whether we block the request
     local rate
     if deny then
-      rate = ratelimiting.sliding_window(key, window_size, nil, conf.namespace)
-
+      rate = ratelimiting.sliding_window(key, current_window, nil, namespace)
     else
-      rate = ratelimiting.increment(key, window_size, 1, conf.namespace,
+      rate = ratelimiting.increment(key, current_window, 1, namespace,
                                     conf.window_type == "fixed" and 0 or nil)
+    end
+
+    -- Ensure the window start time persists using shared memory
+    -- This handles the thundering herd problem for the sliding window reset
+    -- calculation to be extended longer than the actual window size
+    local window_start = floor(now / current_window) * current_window
+    local window_start_timstamp_key = "timestamp:" .. current_window .. ":window_start"
+    if rate > current_limit and window_type == "sliding" then
+      shm:add(window_start_timstamp_key, window_start)
+      window_start = shm:get(window_start_timstamp_key) or window_start
+    else
+      shm:delete(window_start_timstamp_key)
     end
 
     -- legacy logic of naming rate limiting headers. if we configured a window
     -- size that looks like a human friendly name, give that name
-    local window_name = human_window_size_lookup[window_size] or window_size
+    local window_name = human_window_size_lookup[current_window] or current_window
 
+    local current_remaining = floor(max(current_limit - rate, 0))
     if not conf.hide_client_headers then
-      ngx.header[RATELIMIT_LIMIT .. "-" .. window_name] = limit
-      ngx.header[RATELIMIT_REMAINING .. "-" .. window_name] = max(limit - rate, 0)
+      ngx.header[X_RATELIMIT_LIMIT .. "-" .. window_name] = current_limit
+      ngx.header[X_RATELIMIT_REMAINING .. "-" .. window_name] = current_remaining
+
+      -- calculate the reset value based on the window type (if applicable)
+      if not limit or (current_remaining < remaining)
+                   or (current_remaining == remaining and
+                       current_window > window) then
+        -- Ensure that the proper window reset value is set
+        limit = current_limit
+        window = current_window
+        remaining = current_remaining
+
+        -- Calculate the fixed window reset value
+        reset = max(1.0, window - (now - window_start))
+
+        -- Add some weight to the current reset value based on the window
+        -- and the rate difference. Apply the adjustment to the current
+        -- calculated reset value for a more accurate sliding window estimate.
+        if window_type == "sliding" then
+          local window_adjustment = max(0.0, (((rate - limit) / limit) * window))
+          reset = ceil(reset + window_adjustment)
+        end
+      end
     end
 
-    if rate > limit then
+    if rate > current_limit then
       deny = true
       -- only gets emitted when kong.configuration.databus_enabled = true
       -- no need to if here
@@ -296,13 +347,19 @@ function NewRLHandler:access(conf)
         ip = kong.client.get_forwarded_ip(),
         service = kong.router.get_service() or {},
         rate = rate,
-        limit = limit,
+        limit = current_limit,
         window = window_name,
       })
     end
   end
 
+  -- Add draft headers for rate limiting RFC; FTI-1447
+  ngx.header[RATELIMIT_LIMIT] = limit
+  ngx.header[RATELIMIT_REMAINING] = remaining
+  ngx.header[RATELIMIT_RESET] = reset
+
   if deny then
+    ngx.header[RATELIMIT_RETRY_AFTER] = reset -- Only addded for denied request
     return kong.response.exit(429, { message = "API rate limit exceeded" })
   end
 end

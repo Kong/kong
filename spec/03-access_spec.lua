@@ -2,10 +2,13 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local redis = require "kong.enterprise_edition.redis"
 
-local REDIS_HOST = "127.0.0.1"
+local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = 6379
 local REDIS_DATABASE = 1
 local REDIS_PASSWORD = nil
+
+local floor = math.floor
+local time = ngx.time
 
 for i, policy in ipairs({"cluster", "redis"}) do
   local MOCK_RATE = 3
@@ -240,7 +243,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
           strategy = policy,
           window_size = { MOCK_RATE },
           window_type = "fixed",
-          limit = { 6 },
+          limit = { 1 },
           sync_rate = 10,
           redis = {
             host = REDIS_HOST,
@@ -397,7 +400,11 @@ for i, policy in ipairs({"cluster", "redis"}) do
 
           assert.res_status(200, res)
           assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
           assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+          assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+          assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+          assert.is_nil(res.headers["retry-after"])
         end
 
         -- Additonal request, while limit is 6/window
@@ -411,9 +418,12 @@ for i, policy in ipairs({"cluster", "redis"}) do
         local body = assert.res_status(429, res)
         local json = cjson.decode(body)
         assert.same({ message = "API rate limit exceeded" }, json)
+        local retry_after = tonumber(res.headers["retry-after"])
+        assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+        assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
-        -- wait a bit longer than our window size
-        ngx.sleep(MOCK_RATE + 1)
+        -- wait a bit longer than our retry window size (handles window floor)
+        ngx.sleep(retry_after + 1)
 
         -- Additonal request, sliding window is 0 < rate <= limit
         res = assert(helpers.proxy_client():send {
@@ -426,6 +436,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
         assert.res_status(200, res)
         local rate = tonumber(res.headers["x-ratelimit-remaining-3"])
         assert.is_true(0 < rate and rate <= 6)
+        rate = tonumber(res.headers["ratelimit-remaining"])
+        assert.is_true(0 < rate and rate <= 6)
+        assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
       end)
 
       it("resets the counter", function()
@@ -442,6 +455,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
         })
         assert.res_status(200, res)
         assert.same(5, tonumber(res.headers["x-ratelimit-remaining-3"]))
+        assert.same(5, tonumber(res.headers["ratelimit-remaining"]))
+        assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+        assert.is_nil(res.headers["retry-after"])
       end)
 
       it("shares limit data in the same namespace", function()
@@ -457,7 +473,11 @@ for i, policy in ipairs({"cluster", "redis"}) do
 
           assert.res_status(200, res)
           assert.are.same(3, tonumber(res.headers["x-ratelimit-limit-3"]))
+          assert.are.same(3, tonumber(res.headers["ratelimit-limit"]))
           assert.are.same(3 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+          assert.are.same(3 - i, tonumber(res.headers["ratelimit-remaining"]))
+          assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+          assert.is_nil(res.headers["retry-after"])
         end
 
         -- access route5, which shares the same namespace
@@ -471,6 +491,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
         local body = assert.res_status(429, res)
         local json = cjson.decode(body)
         assert.same({ message = "API rate limit exceeded" }, json)
+        local retry_after = tonumber(res.headers["retry-after"])
+        assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+        assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
       end)
 
       local name = "handles multiple limits"
@@ -494,7 +517,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
 
           assert.res_status(200, res)
           assert.same(limits["5"], tonumber(res.headers["x-ratelimit-limit-5"]))
+          assert.same(limits["5"], tonumber(res.headers["ratelimit-limit"]))
           assert.same(limits["5"] - i, tonumber(res.headers["x-ratelimit-remaining-5"]))
+          assert.same(limits["5"] - i, tonumber(res.headers["ratelimit-remaining"]))
           assert.same(limits["10"], tonumber(res.headers["x-ratelimit-limit-10"]))
           assert.same(limits["10"] - i, tonumber(res.headers["x-ratelimit-remaining-10"]))
         end
@@ -514,10 +539,12 @@ for i, policy in ipairs({"cluster", "redis"}) do
           assert.same({ message = "API rate limit exceeded" }, json)
           assert.same(2, tonumber(res.headers["x-ratelimit-remaining-10"]))
           assert.same(0, tonumber(res.headers["x-ratelimit-remaining-5"]))
+          assert.same(0, tonumber(res.headers["ratelimit-remaining"])) -- Should only correspond to the current rate-limit being applied
         end
       end)
 
       it("implements a fixed window if instructed to do so", function()
+        local window_start = floor(time() / 3) * 3
         for i = 1, 6 do
           local res = assert(helpers.proxy_client():send {
             method = "GET",
@@ -529,7 +556,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
 
           assert.res_status(200, res)
           assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
           assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+          assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
         end
 
         -- Additonal request, while limit is 6/window
@@ -543,9 +572,17 @@ for i, policy in ipairs({"cluster", "redis"}) do
         local body = assert.res_status(429, res)
         local json = cjson.decode(body)
         assert.same({ message = "API rate limit exceeded" }, json)
+        local retry_after = tonumber(res.headers["retry-after"])
+        local ratelimit_reset = tonumber(res.headers["ratelimit-reset"])
 
-        -- wait a bit longer than our window size
-        ngx.sleep(MOCK_RATE + 0.1)
+        -- Calculate the expected wait for a fixed window
+        local expected_retry_after = (time() - window_start) + MOCK_RATE
+        expected_retry_after = (expected_retry_after > MOCK_RATE) and MOCK_RATE or expected_retry_after
+        assert.same(expected_retry_after, retry_after)
+        assert.same(retry_after, ratelimit_reset)
+
+        -- wait a bit longer than our retry window size
+        ngx.sleep(retry_after + 0.1)
 
         -- Additonal request, window/rate is reset
         res = assert(helpers.proxy_client():send {
@@ -556,21 +593,31 @@ for i, policy in ipairs({"cluster", "redis"}) do
           }
         })
         assert.res_status(200, res)
-        local remaining = tonumber(res.headers["x-ratelimit-remaining-3"])
-        assert.same(5, remaining)
+        assert.same(5, tonumber(res.headers["x-ratelimit-remaining-3"]))
+        assert.same(5, tonumber(res.headers["ratelimit-remaining"]))
       end)
 
       it("hides headers if hide_client_headers is true", function()
-        local res = assert(helpers.proxy_client():send {
-          method = "GET",
-          path = "/get",
-          headers = {
-            ["Host"] = "test9.com"
-          }
-        })
+        local res
+        for i = 1, 6 do
+          res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "test9.com"
+            }
+          })
 
-        assert.is_nil(res.headers["x-ratelimit-remaining-3"])
-        assert.is_nil(res.headers["x-ratelimit-limit-3"])
+          assert.is_nil(res.headers["x-ratelimit-remaining-3"])
+          assert.is_nil(res.headers["ratelimit-remaining"])
+          assert.is_nil(res.headers["x-ratelimit-limit-3"])
+          assert.is_nil(res.headers["ratelimit-limit"])
+          assert.is_nil(res.headers["ratelimit-reset"])
+        end
+
+        -- Ensure the Retry-After header is not available for 429 errors
+        assert.res_status(429, res)
+        assert.is_nil(res.headers["retry-after"])
       end)
     end)
     describe("With authentication", function()
@@ -591,7 +638,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
 
             assert.res_status(200, res)
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
           end
 
           -- Third query, while limit is 6/window
@@ -605,6 +654,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
           local body = assert.res_status(429, res)
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
+          assert.is_true(tonumber(res.headers["retry-after"]) >= 0) -- Uses sliding window and is executed in quick succession
 
           -- Using a different key of the same consumer works
           local res = assert(helpers.proxy_client():send {
@@ -615,6 +665,11 @@ for i, policy in ipairs({"cluster", "redis"}) do
             }
           })
           assert.res_status(200, res)
+          assert.is_truthy(res.headers["x-ratelimit-limit-3"])
+          assert.is_truthy(res.headers["ratelimit-limit"])
+          assert.is_truthy(res.headers["x-ratelimit-remaining-3"])
+          assert.is_truthy(res.headers["ratelimit-remaining"])
+          assert.is_truthy(res.headers["ratelimit-reset"])
         end)
       end)
     end)
@@ -635,7 +690,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
 
             assert.are.same(consumer2.id, json.headers["x-consumer-id"])
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
           end
 
           -- Additonal request, while limit is 6/window, for
@@ -650,6 +707,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
           local body = assert.res_status(429, res)
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
+          local retry_after = tonumber(res.headers["retry-after"])
 
           -- consumer1 should still be able to make request as
           -- limit is set by consumer not IP
@@ -664,8 +722,8 @@ for i, policy in ipairs({"cluster", "redis"}) do
           local json = cjson.decode(body)
           assert.are.same(consumer1.id, json.headers["x-consumer-id"])
 
-          -- wait a bit longer than our window size
-          ngx.sleep(MOCK_RATE + 1)
+          -- wait a bit longer than our retry window size for the rate limited consumer
+          ngx.sleep(retry_after + 1)
         end)
       end)
       describe("set to `ip`", function()
@@ -683,7 +741,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
             local json = cjson.decode(body)
             assert.are.same(consumer2.id, json.headers["x-consumer-id"])
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
           end
 
           -- Additonal request, while limit is 6/window, for consumer2
@@ -756,7 +816,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
             })
             assert.res_status(200, res)
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - ((i * 2) + 1), tonumber(res.headers["x-ratelimit-remaining-3"]))
+            assert.are.same(6 - ((i * 2) + 1), tonumber(res.headers["ratelimit-remaining"]))
 
             res = assert(helpers.proxy_client():send {
               method = "GET",
@@ -767,10 +829,13 @@ for i, policy in ipairs({"cluster", "redis"}) do
             })
             assert.res_status(200, res)
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - ((i * 2) + 2), tonumber(res.headers["x-ratelimit-remaining-3"]))
+            assert.are.same(6 - ((i * 2) + 2), tonumber(res.headers["ratelimit-remaining"]))
           end
 
           -- Ensure both routes in shared service have exceeded their limit
+          local retry_after
           for i = 1, 2 do
             local res = assert(helpers.proxy_client():send {
               method = "GET",
@@ -782,10 +847,11 @@ for i, policy in ipairs({"cluster", "redis"}) do
             local body = assert.res_status(429, res)
             local json = cjson.decode(body)
             assert.same({ message = "API rate limit exceeded" }, json)
+            retry_after = tonumber(res.headers["retry-after"])
           end
 
-          -- wait a bit longer than our window size
-          ngx.sleep(MOCK_RATE + 1)
+          -- wait a bit longer than our retry window size
+          ngx.sleep(retry_after + 1)
 
           -- Ensure both routes in shared service have not exceeded their limit
           for i = 1, 2 do
@@ -799,6 +865,8 @@ for i, policy in ipairs({"cluster", "redis"}) do
             })
             assert.res_status(200, res)
             local rate = tonumber(res.headers["x-ratelimit-remaining-3"])
+            assert.is_true(0 < rate and rate <= 6)
+            rate = tonumber(res.headers["ratelimit-remaining"])
             assert.is_true(0 < rate and rate <= 6)
           end
         end)
@@ -819,7 +887,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
             local json = cjson.decode(body)
             assert.are.same(consumer2.id, json.headers["x-consumer-id"])
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
           end
 
            -- Additonal request, while limit is 6/window, for consumer2
@@ -864,7 +934,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
             local json = cjson.decode(body)
             assert.are.same(consumer2.id, json.headers["x-consumer-id"])
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
           end
 
            -- Additonal request, while limit is 6/window, for consumer2
