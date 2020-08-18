@@ -7,6 +7,84 @@ local kong_global = require "kong.global"
 local migrations_utils = require "kong.cmd.utils.migrations"
 
 
+local fmt = string.format
+
+local function to_set(l)
+  local set = {}
+  for _, v in ipairs(l) do
+    set[v]=true
+  end
+  return set
+end
+
+local function list_fields(db, tname)
+
+  local qs = {
+    postgres = fmt("SELECT column_name FROM information_schema.columns WHERE table_schema='%s' and table_name='%s';",
+      db.connector.config.schema,
+      tname),
+    cassandra = fmt("SELECT column_name FROM system_schema.columns WHERE keyspace_name='%s' and table_name='%s';",
+      db.connector.keyspace,
+      tname)
+  }
+
+  if not qs[db.strategy] then
+    return {}
+  end
+
+  local fields = {}
+  local rows, err = db.connector:query(qs[db.strategy])
+
+  if err then
+    return nil, err, err_t
+  end
+  for _, v in ipairs(rows) do
+    local kk,vv = next(v)
+    fields[vv]=true
+  end
+
+  return fields
+end
+
+local function has_ws_id_in_db(db, tname)
+  return list_fields(db, tname).ws_id
+end
+
+local function migrate_table(db, conf, tname)
+  if db.daos[tname] then
+    local schema = db.daos[tname].schema
+    local has_ws_id = has_ws_id_in_db(db, schema.name)
+    if schema.workspaceable and not has_ws_id then
+      local unique = {}
+
+      for field_name, field_schema in pairs(schema.fields) do
+        if field_schema.unique then
+          unique[field_name] = field_schema
+        end
+      end
+
+      local data = {
+        primary_key = schema.primary_key[1],
+        primary_keys = to_set(schema.primary_key),
+        unique_keys = unique
+      }
+      print(fmt([[
+Table %s is workspaceable but hasn't been migrated.
+Follow the migrations path in
+...
+]]))
+    else
+      error(fmt("table %s is%sworkspaceable and%sws_id field.",
+        tname,
+        schema.workspaceable and " " or " not ",
+        has_ws_id and " has already " or " doesn't have "))
+    end
+  else
+    error(fmt("table %s doesn't exist", tname))
+  end
+end
+
+
 local lapp = [[
 Usage: kong migrations COMMAND [OPTIONS]
 
@@ -234,7 +312,7 @@ local function execute(args)
   elseif args.command == "upgrade-workspace-table" then
     local tname = table.remove(args, 1)
     if tname then
-      custom_wspaced_entities(db, conf, tname)
+      migrate_table(db, conf, tname)
     else
       error("upgrade-workspace-table needs an existing non-migrated table name")
     end

@@ -50,53 +50,32 @@ local function has_ws_id_in_db(db, tname)
   return list_fields(db, tname).ws_id
 end
 
-local function custom_wspaced_entities(db, conf)
-  local res = {}
 
+local function custom_wspaced_entities(db, conf)
+  local ret = {}
   local connector = db.connector
   local strategy = db.strategy
+
+  if strategy == 'postgres' then
+    _=_
+  elseif strategy == 'cassandra' then
+    _=_
+  else
+    print("dbless")
+    return false
+  end
+
   db.plugins:load_plugin_schemas(conf.loaded_plugins)
 
   for k, v in pairs(db.daos) do
     local schema = v.schema
     if schema.workspaceable and
     not has_ws_id_in_db(db, schema.name) then -- we have to check at db level
-      local unique = {}
-
-      for field_name, field_schema in pairs(schema.fields) do
-        if field_schema.unique then
-          unique[field_name] = field_schema
-        end
-      end
-
-      if next(unique) then
-        res[k]= {
-          primary_key = schema.primary_key[1],
-          primary_keys = to_set(schema.primary_key),
-          unique_keys = unique
-        }
-      end
+      table.insert(ret, k)
     end
   end
 
-  local driver
-  if strategy == 'postgres' then
-    driver = db.connector
-    _=_
-  elseif strategy == 'cassandra' then
-    mig_helper.seed_strategies.c.coordinator = db.connector:connect_migrations()
-    driver = db.connector
-  else
-    print("dbless")
-    return false
-  end
-
-  local ret = {}
-  for k, v in pairs(res) do
-    table.insert(ret, k)
-  end
-
-  return #ret>0 and ret
+  return #ret>0
 end
 
 local function execute(args)
