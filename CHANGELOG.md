@@ -1,6 +1,10 @@
 Versioning is strictly based on SemVer
 Also make sure to update the version in `handler.lua`
 
+## 1.1.0 (unreleased)
+
+- Bump jsonSchema lib to 1.1.0; see [its changelog](https://github.com/Tieske/lua-resty-ljsonschema#110-18-aug-2020)
+
 ## 1.0.0 (15-Jul-2020)
 
 - Bump to 1.0.0; considered production ready, and stable
