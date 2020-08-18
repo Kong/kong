@@ -9,14 +9,6 @@ local DB = require "kong.db"
 
 local fmt = string.format
 
-local function to_set(l)
-  local set = {}
-  for _, v in ipairs(l) do
-    set[v]=true
-  end
-  return set
-end
-
 local function list_fields(db, tname)
 
   local qs = {
@@ -36,10 +28,10 @@ local function list_fields(db, tname)
   local rows, err = db.connector:query(qs[db.strategy])
 
   if err then
-    return nil, err, err_t
+    return nil, err
   end
   for _, v in ipairs(rows) do
-    local kk,vv = next(v)
+    local _,vv = next(v)
     fields[vv]=true
   end
 
@@ -53,14 +45,9 @@ end
 
 local function custom_wspaced_entities(db, conf)
   local ret = {}
-  local connector = db.connector
   local strategy = db.strategy
 
-  if strategy == 'postgres' then
-    _=_
-  elseif strategy == 'cassandra' then
-    _=_
-  else
+  if strategy ~= 'postgres' and  strategy ~= 'cassandra' then
     print("dbless")
     return false
   end
