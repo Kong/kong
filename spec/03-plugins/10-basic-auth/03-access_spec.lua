@@ -219,10 +219,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("rejects gRPC call without credentials", function()
-        assert.falsy(helpers.proxy_client_grpc(){
+        local ok, err = helpers.proxy_client_grpc(){
           service = "hello.HelloService.SayHello",
           opts = {},
-        })
+        }
+        assert.falsy(ok)
+        assert.matches("Code: Unauthenticated", err)
       end)
 
       it("accepts authorized gRPC calls", function()
