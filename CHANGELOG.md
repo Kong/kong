@@ -1,6 +1,8 @@
 # Table of Contents
 
 
+- [2.1.2](#212)
+- [2.1.1](#211)
 - [2.1.0](#210)
 - [2.0.5](#205)
 - [2.0.4](#204)
@@ -45,9 +47,124 @@
 - [0.9.9 and prior](#099---20170202)
 
 
+## [2.1.2]
+
+> Released 2020/08/13
+
+:white_check_mark: **Update (2020/08/13)**: This release fixed a balancer
+bug that may cause incorrect request payloads to be sent to unrelated
+upstreams during balancer retries, potentially causing responses for
+other requests to be returned. Therefore it is **highly recommended**
+that Kong users running versions `2.1.0` and `2.1.1` to upgrade to this
+version as soon as possible, or apply mitigation from the
+[2.1.0](#210) section below.
+
+### Fixes
+
+##### Core
+
+- Fix a bug that balancer retries causes incorrect requests to be sent to
+  subsequent upstream connections of unrelated requests.
+  [#6224](https://github.com/Kong/kong/pull/6224)
+- Fix an issue where plugins iterator was being built before setting the
+  default workspace id, therefore indexing the plugins under the wrong workspace.
+  [#6206](https://github.com/Kong/kong/pull/6206)
+
+##### Migrations
+
+- Improve reentrancy of Cassandra migrations.
+  [#6206](https://github.com/Kong/kong/pull/6206)
+
+##### PDK
+
+- Make sure the `kong.response.error` PDK function respects gRPC related
+  content types.
+  [#6214](https://github.com/Kong/kong/pull/6214)
+
+
+## [2.1.1]
+
+> Released 2020/08/05
+
+:red_circle: **Post-release note (as of 2020/08/13)**: A faulty behavior
+has been observed with this change. When Kong proxies using the balancer
+and a request to one of the upstream `Target` fails, Kong might send the
+same request to another healthy `Target` in a different request later,
+causing response for the failed request to be returned.
+
+This bug could be mitigated temporarily by disabling upstream keepalive pools.
+It can be achieved by either:
+
+1. In `kong.conf`, set `upstream_keepalive_pool_size=0`, or
+2. Setting the environment `KONG_UPSTREAM_KEEPALIVE_POOL_SIZE=0` when starting
+   Kong with the CLI.
+
+Then restart/reload the Kong instance.
+
+Thanks Nham Le (@nhamlh) for reporting it in [#6212](https://github.com/Kong/kong/issues/6212).
+
+:white_check_mark: **Update (2020/08/13)**: A fix to this regression has been
+released as part of [2.1.2](#212). See the section of the Changelog related to this
+release for more details.
+
+### Dependencies
+
+- Bump [lua-multipart](https://github.com/Kong/lua-multipart) to `0.5.9`.
+  [#6148](https://github.com/Kong/kong/pull/6148)
+
+### Fixes
+
+##### Core
+
+- No longer reject valid characters (as specified in the RFC 3986) in the `path` attribute of the
+  Service entity.
+  [#6183](https://github.com/Kong/kong/pull/6183)
+
+##### Migrations
+
+- Fix issue in Cassandra migrations where empty values in some entities would be incorrectly migrated.
+  [#6171](https://github.com/Kong/kong/pull/6171)
+
+##### Admin API
+
+- Fix issue where consumed worker memory as reported by the `kong.node.get_memory_stats()` PDK method would be incorrectly reported in kilobytes, rather than bytes, leading to inaccurate values in the `/status` Admin API endpoint (and other users of said PDK method).
+  [#6170](https://github.com/Kong/kong/pull/6170)
+
+##### Plugins
+
+- rate-limiting: fix issue where rate-limiting by Service would result in a global limit, rather than per Service.
+  [#6157](https://github.com/Kong/kong/pull/6157)
+- rate-limiting: fix issue where a TTL would not be set to some Redis keys.
+  [#6150](https://github.com/Kong/kong/pull/6150)
+
+
+[Back to TOC](#table-of-contents)
+
+
 ## [2.1.0]
 
 > Released 2020/07/16
+
+:red_circle: **Post-release note (as of 2020/08/13)**: A faulty behavior
+has been observed with this change. When Kong proxies using the balancer
+and a request to one of the upstream `Target` fails, Kong might send the
+same request to another healthy `Target` in a different request later,
+causing response for the failed request to be returned.
+
+This bug could be mitigated temporarily by disabling upstream keepalive pools.
+It can be achieved by either:
+
+1. In `kong.conf`, set `upstream_keepalive_pool_size=0`, or
+2. Setting the environment `KONG_UPSTREAM_KEEPALIVE_POOL_SIZE=0` when starting
+   Kong with the CLI.
+
+Then restart/reload the Kong instance.
+
+Thanks Nham Le (@nhamlh) for reporting it in [#6212](https://github.com/Kong/kong/issues/6212).
+
+:white_check_mark: **Update (2020/08/13)**: A fix to this regression has been
+released as part of [2.1.2](#212). See the section of the Changelog related to this
+release for more details.
 
 ### Distributions
 
@@ -61,6 +178,16 @@
 
 ### Dependencies
 
+- :warning: In order to use all Kong features, including the new
+  dynamic upstream keepalive behavior, the required OpenResty version is
+  [1.15.8.3](http://openresty.org/en/changelog-1015008.html).
+  If you are installing Kong from one of our distribution
+  packages, this version and all required patches and modules are included.
+  If you are building from source, you must apply
+  Kong's [OpenResty patches](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools/openresty-patches)
+  as well as include [lua-kong-nginx-module](https://github.com/Kong/lua-kong-nginx-module).
+  Our [kong-build-tools](https://github.com/Kong/kong-build-tools)
+  repository allows you to do both easily.
 - Bump OpenSSL version from `1.1.1f` to `1.1.1g`.
   [#5820](https://github.com/Kong/kong/pull/5810)
 - Bump [lua-resty-dns-client](https://github.com/Kong/lua-resty-dns-client) from `4.1.3`
@@ -5161,6 +5288,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.1.1]: https://github.com/Kong/kong/compare/2.1.0...2.1.1
 [2.1.0]: https://github.com/Kong/kong/compare/2.0.5...2.1.0
 [2.0.5]: https://github.com/Kong/kong/compare/2.0.4...2.0.5
 [2.0.4]: https://github.com/Kong/kong/compare/2.0.3...2.0.4

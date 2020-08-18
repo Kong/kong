@@ -199,6 +199,7 @@ local function new(self)
                   pid .. "): reported value is corrupted"
 
         else
+          count = count * 1024 -- reported value is in kb
           w.http_allocated_gc = convert_bytes(count, unit, scale)
         end
 

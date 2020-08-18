@@ -1135,16 +1135,8 @@ return {
         forwarded_port   = port
       end
 
-      if not forwarded_prefix then
-        forwarded_prefix = var.request_uri
-        local p = find(forwarded_prefix, "?", 2, true)
-        if p then
-          forwarded_prefix = sub(forwarded_prefix, 1, p - 1)
-        end
-
-        if forwarded_prefix == "" then
-          forwarded_prefix = "/"
-        end
+      if not forwarded_prefix and match_t.prefix ~= "/" then
+        forwarded_prefix = match_t.prefix
       end
 
       local protocols = route.protocols
@@ -1275,11 +1267,22 @@ return {
 
       var.upstream_scheme = balancer_data.scheme
 
-      local ok, err = balancer.set_host_header(balancer_data)
-      if not ok then
-        ngx.log(ngx.ERR, "failed to set balancer Host header: ", err)
+      do
+        -- set the upstream host header if not `preserve_host`
+        local upstream_host = var.upstream_host
 
-        return ngx.exit(500)
+        if not upstream_host or upstream_host == "" then
+          upstream_host = balancer_data.hostname
+
+          local upstream_scheme = var.upstream_scheme
+          if upstream_scheme == "http"  and balancer_data.port ~= 80 or
+             upstream_scheme == "https" and balancer_data.port ~= 443
+          then
+            upstream_host = upstream_host .. ":" .. balancer_data.port
+          end
+
+          var.upstream_host = upstream_host
+        end
       end
 
       -- clear hop-by-hop request headers:

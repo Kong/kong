@@ -529,6 +529,12 @@ local function new(self, major_version)
   --  -- TODO: implement, but how?
   --end
 
+  local function is_grpc_request()
+    local req_ctype = ngx.var.content_type
+    return req_ctype
+      and find(req_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
+      and ngx.req.http_version() == 2
+  end
 
   local function send(status, body, headers)
     if ngx.headers_sent then
@@ -558,16 +564,14 @@ local function new(self, major_version)
     end
 
     local res_ctype = ngx.header[CONTENT_TYPE_NAME]
-    local req_ctype = ngx.var.content_type
 
     local is_grpc
     local is_grpc_output
     if res_ctype then
       is_grpc = find(res_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
       is_grpc_output = is_grpc
-    elseif req_ctype then
-      is_grpc = find(req_ctype, CONTENT_TYPE_GRPC, 1, true) == 1
-                 and ngx.req.http_version() == 2
+    else
+      is_grpc = is_grpc_request()
     end
 
     local grpc_status
@@ -1000,14 +1004,19 @@ local function new(self, major_version)
     end
 
     local content_type_header = headers[CONTENT_TYPE_NAME]
-    local content_type = content_type_header and content_type_header[1] or content_type_header
+    local content_type = content_type_header and content_type_header[1]
+      or content_type_header
 
     if content_type_header == nil then
-      content_type_header = ngx.req.get_headers()[ACCEPT_NAME]
-      if type(content_type_header) == "table" then
-        content_type_header = content_type_header[1]
+      if is_grpc_request() then
+        content_type = CONTENT_TYPE_GRPC
+      else
+        content_type_header = ngx.req.get_headers()[ACCEPT_NAME]
+        if type(content_type_header) == "table" then
+          content_type_header = content_type_header[1]
+        end
+        content_type = get_response_type(content_type_header)
       end
-      content_type = get_response_type(content_type_header)
     end
 
     headers[CONTENT_TYPE_NAME] = content_type
