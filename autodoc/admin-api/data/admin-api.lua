@@ -82,7 +82,7 @@ return {
         }
         ```
 
-        An example adding a route to a service named `test-service`:
+        An example adding a Route to a Service named `test-service`:
 
         ```
         curl -i -X POST http://localhost:8001/services/test-service/routes \
@@ -100,9 +100,9 @@ return {
         config.limit=10&config.period=seconds
         ```
 
-        When specifying arrays send the values in order, or use square brackets (numbering
+        When specifying arrays, send the values in order, or use square brackets (numbering
         inside the brackets is optional but if provided it must be 1-indexed, and
-        consecutive). An example route added to a service named `test-service`:
+        consecutive). An example Route added to a Service named `test-service`:
 
         ```
         curl -i -X POST http://localhost:8001/services/test-service/routes \
@@ -111,7 +111,7 @@ return {
              -d "paths[2]=/path/two"
         ```
 
-        The following two are identical to the one above, but less explicit:
+        The following two examples are identical to the one above, but less explicit:
         ```
         curl -i -X POST http://localhost:8001/services/test-service/routes \
              -d "name=test-route" \
@@ -127,7 +127,7 @@ return {
 
         - **multipart/form-data**
 
-        Similar to url-encoded, this content type uses dotted keys to reference nested
+        Similar to URL-encoded, this content type uses dotted keys to reference nested
         objects. Here is an example of sending a Lua file to the pre-function Kong plugin:
 
         ```
@@ -136,8 +136,8 @@ return {
              -F "config.access=@custom-auth.lua"
         ```
 
-        When specifying arrays for this content-type the array indices must be specified.
-        An example route added to a service named `test-service`:
+        When specifying arrays for this content-type, the array indices must be specified.
+        An example Route added to a Service named `test-service`:
 
         ```
         curl -i -X POST http://localhost:8001/services/test-service/routes \
@@ -662,14 +662,14 @@ return {
         tls_verify = {
           description = [[
             Whether to enable verification of upstream server TLS certificate.
-            If set to `null` then Nginx default is respected.
+            If set to `null`, then the Nginx default is respected.
           ]],
           example = true,
         },
         tls_verify_depth = {
           description = [[
-            Maximum depth of chain while verifying upstream server's TLS certificate.
-            If set to `null` when Nginx default is respected.
+            Maximum depth of chain while verifying Upstream server's TLS certificate.
+            If set to `null`, then the Nginx default is respected.
           ]],
         },
         ca_certificates = {
@@ -687,7 +687,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Service, for grouping and filtering.
+            An optional set of strings associated with the Service for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -701,7 +701,7 @@ return {
           description = [[
             Shorthand attribute to set `protocol`, `host`, `port` and `path`
             at once. This attribute is write-only (the Admin API never
-            "returns" the url).
+            returns the URL).
           ]]
         } },
       }
@@ -734,7 +734,7 @@ return {
         #### Path handling algorithms
 
         `"v0"` is the behavior used in Kong 0.x and 2.x. It treats `service.path`, `route.path` and request path as
-        *segments* of a url. It will always join them via slashes. Given a service path `/s`, route path `/r`
+        *segments* of a URL. It will always join them via slashes. Given a service path `/s`, route path `/r`
         and request path `/re`, the concatenated path will be `/s/re`. If the resulting path is a single slash,
         no further transformation is done to it. If it's longer, then the trailing slash is removed.
 
@@ -883,7 +883,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Route, for grouping and filtering.
+            An optional set of strings associated with the Route for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -907,7 +907,7 @@ return {
         username = {
           kind = "semi-optional",
           description = [[
-            The unique username of the consumer. You must send either
+            The unique username of the Consumer. You must send either
             this field or `custom_id` with the request.
           ]],
           example = "my-username",
@@ -915,7 +915,7 @@ return {
         custom_id = {
           kind = "semi-optional",
           description = [[
-            Field for storing an existing unique ID for the consumer -
+            Field for storing an existing unique ID for the Consumer -
             useful for mapping Kong with users in your existing database.
             You must send either this field or `username` with the request.
           ]],
@@ -923,7 +923,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Consumer, for grouping and filtering.
+            An optional set of strings associated with the Consumer for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1077,7 +1077,7 @@ return {
         updated_at = { skip = true },
         name = {
           description = [[
-            The name of the Plugin that's going to be added. Currently the
+            The name of the Plugin that's going to be added. Currently, the
             Plugin must be installed in every Kong instance separately.
           ]],
           example = "rate-limiting",
@@ -1103,7 +1103,7 @@ return {
         consumer = { description = [[
           If set, the plugin will activate only for requests where the specified has been authenticated.
           (Note that some plugins can not be restricted to consumers this way.). Leave unset for the plugin
-          to activate regardless of the authenticated consumer.
+          to activate regardless of the authenticated Consumer.
         ]] },
         protocols = {
           description = [[
@@ -1120,7 +1120,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Plugin, for grouping and filtering.
+            An optional set of strings associated with the Plugin for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1155,7 +1155,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Certificate, for grouping and filtering.
+            An optional set of strings associated with the Certificate for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1193,12 +1193,12 @@ return {
           example = "-----BEGIN CERTIFICATE-----...",
         },
         cert_digest = {
-          description = [[SHA256 hex digest of the public certificate]],
+          description = [[SHA256 hex digest of the public certificate.]],
           example = "c641e28d77e93544f2fa87b2cf3f3d51...",
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Certificate, for grouping and filtering.
+            An optional set of strings associated with the Certificate for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1233,7 +1233,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the SNIs, for grouping and filtering.
+            An optional set of strings associated with the SNIs for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1360,7 +1360,7 @@ return {
         ["slots"] = { description = [[The number of slots in the loadbalancer algorithm (`10`-`65536`).]] },
         ["algorithm"] = { description = [[Which load balancing algorithm to use.]] },
         ["hash_on"] = { description = [[What to use as hashing input. Using `none` results in a weighted-round-robin scheme with no hashing.]] },
-        ["hash_fallback"] = { description = [[What to use as hashing input if the primary `hash_on` does not return a hash (eg. header is missing, or no consumer identified). Not available if `hash_on` is set to `cookie`.]] },
+        ["hash_fallback"] = { description = [[What to use as hashing input if the primary `hash_on` does not return a hash (eg. header is missing, or no Consumer identified). Not available if `hash_on` is set to `cookie`.]] },
         ["hash_on_header"] = { kind = "semi-optional", skip_in_example = true, description = [[The header name to take the value from as hash input. Only required when `hash_on` is set to `header`.]] },
         ["hash_fallback_header"] = { kind = "semi-optional", skip_in_example = true, description = [[The header name to take the value from as hash input. Only required when `hash_fallback` is set to `header`.]] },
         ["hash_on_cookie"] = { kind = "semi-optional", skip_in_example = true, description = [[The cookie name to take the value from as hash input. Only required when `hash_on` or `hash_fallback` is set to `cookie`. If the specified cookie is not in the request, Kong will generate a value and set the cookie in the response.]] },
@@ -1391,7 +1391,7 @@ return {
         ["healthchecks.threshold"] = { description = [[The minimum percentage of the upstream's targets' weight that must be available for the whole upstream to be considered healthy.]] },
         tags = {
           description = [[
-            An optional set of strings associated with the Upstream, for grouping and filtering.
+            An optional set of strings associated with the Upstream for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -1660,7 +1660,7 @@ return {
         },
         tags = {
           description = [[
-            An optional set of strings associated with the Target, for grouping and filtering.
+            An optional set of strings associated with the Target for grouping and filtering.
           ]],
           examples = {
             { "user-level", "low-priority" },
@@ -2021,7 +2021,7 @@ return {
 
           - **multipart/form-data**
 
-          Similar to url-encoded, this content type uses dotted keys to reference nested objects.
+          Similar to URL-encoded, this content type uses dotted keys to reference nested objects.
           Here is an example of sending a Lua file to the pre-function Kong plugin:
 
           ```

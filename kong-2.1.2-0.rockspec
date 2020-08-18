@@ -1,9 +1,9 @@
 package = "kong"
-version = "2.1.0-0"
+version = "2.1.2-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.1.0"
+  tag = "2.1.2"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -18,7 +18,7 @@ dependencies = {
   "lua-resty-http == 0.15",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
-  "multipart == 0.5.8",
+  "multipart == 0.5.9",
   "version == 1.0.1",
   "kong-lapis == 1.8.1.2",
   "lua-cassandra == 1.5.0",
@@ -197,7 +197,9 @@ build = {
     ["kong.db.migrations.core.007_140_to_150"] = "kong/db/migrations/core/007_140_to_150.lua",
     ["kong.db.migrations.core.008_150_to_200"] = "kong/db/migrations/core/008_150_to_200.lua",
     ["kong.db.migrations.core.009_200_to_210"] = "kong/db/migrations/core/009_200_to_210.lua",
+    ["kong.db.migrations.core.010_210_to_211"] = "kong/db/migrations/core/010_210_to_211.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
+    ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -241,6 +243,7 @@ build = {
     ["kong.plugins.oauth2.migrations.000_base_oauth2"] = "kong/plugins/oauth2/migrations/000_base_oauth2.lua",
     ["kong.plugins.oauth2.migrations.003_130_to_140"] = "kong/plugins/oauth2/migrations/003_130_to_140.lua",
     ["kong.plugins.oauth2.migrations.004_200_to_210"] = "kong/plugins/oauth2/migrations/004_200_to_210.lua",
+    ["kong.plugins.oauth2.migrations.005_210_to_211"] = "kong/plugins/oauth2/migrations/005_210_to_211.lua",
     ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",
     ["kong.plugins.oauth2.secret"] = "kong/plugins/oauth2/secret.lua",
     ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",

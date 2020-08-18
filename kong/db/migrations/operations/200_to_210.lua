@@ -343,27 +343,31 @@ local cassandra = {
         end
 
         for _, row in ipairs(rows) do
-          local set_list = { "ws_id = " .. default_ws }
-          for _, key in ipairs(unique_keys) do
-            table.insert(set_list, render([[$(KEY) = '$(WS):$(VALUE)']], {
-              KEY = key,
-              WS = default_ws,
-              VALUE = row[key],
-            }))
+          if row.ws_id == nil then
+            local set_list = { "ws_id = " .. default_ws }
+            for _, key in ipairs(unique_keys) do
+              if row[key] then
+                table.insert(set_list, render([[$(KEY) = '$(WS):$(VALUE)']], {
+                  KEY = key,
+                  WS = default_ws,
+                  VALUE = row[key],
+                }))
+              end
+            end
+
+            local cql = render([[
+              UPDATE $(TABLE) SET $(SET_LIST) WHERE $(PARTITION) id = $(ID)
+            ]], {
+              PARTITION = is_partitioned
+                          and "partition = '" .. table_name .. "' AND"
+                          or  "",
+              TABLE = table_name,
+              SET_LIST = table.concat(set_list, ", "),
+              ID = row.id,
+            })
+
+            assert(connector:query(cql))
           end
-
-          local cql = render([[
-            UPDATE $(TABLE) SET $(SET_LIST) WHERE $(PARTITION) id = $(ID)
-          ]], {
-            PARTITION = is_partitioned
-                        and "partition = '" .. table_name .. "' AND"
-                        or  "",
-            TABLE = table_name,
-            SET_LIST = table.concat(set_list, ", "),
-            ID = row.id,
-          })
-
-          assert(connector:query(cql))
         end
       end
     end,

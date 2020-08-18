@@ -190,9 +190,8 @@ describe("services", function()
 
     it("rejects regular expressions & other non-rfc 3986 chars", function()
       local invalid_paths = {
-        [[/users/(foo/profile]],
-        [[/users/(foo/profile)]],
-        [[/users/*/foo]],
+        [[/users/|foo/profile]],
+        [[/users/(this|foo/profile)]],
       }
 
       for i = 1, #invalid_paths do
@@ -207,6 +206,19 @@ describe("services", function()
                      "' (characters outside of the reserved list of RFC 3986 found)",
                      err.path)
       end
+    end)
+
+    it("accepts \"sub-delims\" characters from RFC 3986 (#6125)", function()
+      local service = {
+        host = "example.com",
+        port = 80,
+        protocol = "http",
+        path = "/hello/path$with$!&'()*+,;=stuff",
+      }
+
+      local ok, err = Services:validate(service)
+      assert.is_nil(err)
+      assert.is_true(ok)
     end)
 
     it("rejects badly percent-encoded values", function()
