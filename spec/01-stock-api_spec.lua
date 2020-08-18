@@ -105,6 +105,20 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("true", header_value)
       end)
     end)
+    
+    describe("Stock API Specification tests", function()
+      it("/random_path Random path", function()
+        local r = assert(client:send {
+          method = "GET",
+          path = "/random_path",
+          headers = {
+            host = "mocking.com"
+          }
+        })
+        -- Random path, Response status - 404
+        assert.response(r).has.status(404)
+      end)
+    end)
 
   end)
 end
