@@ -756,13 +756,21 @@ end
 
 
 function declarative.load_into_cache_with_events(entities, meta, hash)
-  if ngx.shared.kong:get("declarative:flips") then
-    return nil, "busy"
+  local ok, err = ngx.shared.kong:add("declarative:flips", 0, 60)
+  if not ok then
+    if err == "exists" then
+      local ttl = math.min(ngx.shared.kong:ttl("declarative:flips"), 10)
+      return nil, "busy", ttl
+    end
+
+    ngx.shared.kong:delete("declarative:flips")
+    return nil, err
   end
 
   -- ensure any previous update finished (we're flipped to the latest page)
-  local ok, err = kong.worker_events.poll()
+  ok, err = kong.worker_events.poll()
   if not ok then
+    ngx.shared.kong:delete("declarative:flips")
     return nil, err
   end
 
@@ -775,6 +783,7 @@ function declarative.load_into_cache_with_events(entities, meta, hash)
     local sock = ngx_socket_tcp()
     ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
     if not ok then
+      ngx.shared.kong:delete("declarative:flips")
       return nil, err
     end
 
@@ -784,6 +793,7 @@ function declarative.load_into_cache_with_events(entities, meta, hash)
     sock:close()
 
     if not bytes then
+      ngx.shared.kong:delete("declarative:flips")
       return nil, err
     end
 
@@ -799,6 +809,7 @@ function declarative.load_into_cache_with_events(entities, meta, hash)
     end
 
   else
+    ngx.shared.kong:delete("declarative:flips")
     return nil, err
   end
 
@@ -806,8 +817,6 @@ function declarative.load_into_cache_with_events(entities, meta, hash)
   if not ok then
     return nil, "failed to persist cache page number inside shdict: " .. err
   end
-
-  ngx.shared.kong:add("declarative:flips", 0, 60)
 
   local sleep_left = 60
   local sleep_time = 0.0375

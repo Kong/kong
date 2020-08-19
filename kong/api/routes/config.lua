@@ -1,5 +1,4 @@
 local declarative = require("kong.db.declarative")
-local concurrency = require("kong.concurrency")
 local reports = require("kong.reports")
 local errors = require("kong.db.errors")
 
@@ -93,15 +92,13 @@ return {
         return kong.response.exit(400, errors:declarative_config(err_t))
       end
 
-      local ok, err = concurrency.with_worker_mutex({ name = "dbless-worker" }, function()
-        return declarative.load_into_cache_with_events(entities, meta, new_hash)
-      end)
+      local ok, err, ttl = declarative.load_into_cache_with_events(entities, meta, new_hash)
 
       if not ok then
         if err == "busy" or err == "locked" then
           return kong.response.exit(429, {
             message = "Currently loading previous configuration."
-          }, { ["Retry-After"] = 60 })
+          }, { ["Retry-After"] = ttl or 60 })
         end
 
         if err == "timeout" then
