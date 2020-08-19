@@ -91,13 +91,6 @@ local postgres = {
           "config"     JSONB
         );
 
-        DO $$
-        BEGIN
-          CREATE INDEX IF NOT EXISTS "workspaces_name_idx" ON "workspaces" ("name");
-        EXCEPTION WHEN UNDEFINED_COLUMN THEN
-          -- Do nothing, accept existing state
-        END$$;
-
         -- Create default workspace
         INSERT INTO workspaces(id, name)
         VALUES ('$(ID)', 'default') ON CONFLICT DO NOTHING;
