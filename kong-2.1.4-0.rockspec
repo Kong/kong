@@ -29,7 +29,7 @@ dependencies = {
   "lua-resty-iputils == 0.3.0",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 5.0.1",
+  "lua-resty-dns-client == 5.1.0",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 1.3.0",
