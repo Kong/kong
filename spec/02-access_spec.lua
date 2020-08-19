@@ -96,6 +96,10 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     local route22 = bp.routes:insert({
       hosts = { "test22.test" }
     })
+    local route23 = bp.routes:insert({
+      hosts = { "test23.test" },
+      paths = { "/request" }
+    })
 
     bp.plugins:insert {
       route = { id = route1.id },
@@ -368,6 +372,12 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
           headers = { "Authorization:Basic test" },
         },
       },
+    }
+
+    bp.plugins:insert {
+      route = { id = route23.id },
+      name = "request-transformer",
+      config = {}
     }
 
     assert(helpers.start_kong({
@@ -1841,6 +1851,22 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.status(200)
       local value = assert.request(r).has.header("authorization")
       assert.equals("Basic test", value)
+    end)
+  end)
+  describe("query parameters are not #urlencoded to upstream URL", function()
+    local expected = "$&+,/:;?@"
+    it("when plugin is not configured", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request?expected=" .. expected, -- Use inline to keep from getting URL encoded
+        headers = {
+          host = "test23.test"
+        }
+      })
+      local res = assert.response(r).has.status(200)
+      local body = cjson.decode(res)
+      local expected_url = helpers.mock_upstream_url .. "/?expected=" .. expected
+      assert.equals(expected_url, body.url)
     end)
   end)
 end)
