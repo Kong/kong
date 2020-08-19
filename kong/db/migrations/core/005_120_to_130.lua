@@ -146,7 +146,7 @@ return {
             SET algorithm = ?
             WHERE id = ?
           ]], {
-            algorithm,
+            cassandra.text(algorithm),
             cassandra.uuid(upstream.id),
           })
           if err then
