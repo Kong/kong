@@ -55,14 +55,20 @@ end
 
 
 function _M:select_ids_by_ident(key)
-  local ident = self:key_ident({ key = key })
+  -- XXX Here be dragons. This works for hybrid because key in declarative
+  -- is non encrypted
+  if self.strategy.off then
+    return self.strategy:select_ids_by_key(key)
+  else
+    local ident = self:key_ident({ key = key })
 
-  local ids, err = self.strategy:select_ids_by_ident(ident)
-  if not ids then
-    return nil, err, err
+    local ids, err = self.strategy:select_ids_by_ident(ident)
+    if not ids then
+      return nil, err, err
+    end
+
+    return ids
   end
-
-  return ids
 end
 
 
