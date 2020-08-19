@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.1.3](#213)
 - [2.1.2](#212)
 - [2.1.1](#211)
 - [2.1.0](#210)
@@ -45,6 +46,44 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.1.3]
+
+> Released 2020/08/19
+
+This is a patch release in the 2.0 series. Being a patch release, it strictly
+contains bugfixes. The are no new features or breaking changes.
+
+### Fixes
+
+##### Core
+
+- Fix behavior of `X-Forwarded-Prefix` header with stripped path prefixes:
+  the stripped portion of path is now added in `X-Forwarded-Prefix`,
+  except if it is `/` or if it is received from a trusted client.
+  [#6222](https://github.com/Kong/kong/pull/6222)
+
+##### Migrations
+
+- Avoid creating unnecessary an index for Postgres.
+  [#6250](https://github.com/Kong/kong/pull/6250)
+
+##### Admin API
+
+- DB-less: fix concurrency issues with `/config` endpoint. It now waits for
+  the configuration to update across workers before returning, and returns
+  HTTP 429 on attempts to perform concurrent updates and HTTP 504 in case
+  of update timeouts.
+  [#6121](https://github.com/Kong/kong/pull/6121)
+
+##### Plugins
+
+- request-transformer: bump from v1.2.5 to v1.2.6
+  * Fix an issue where query parameters would get incorrectly URL-encoded.
+    [#24](https://github.com/Kong/kong-plugin-aws-lambda/pull/35)
+- acl: Fix migration of ACLs table for the Kong 2.1 series.
+  [#6250](https://github.com/Kong/kong/pull/6250)
 
 
 ## [2.1.2]
@@ -5288,6 +5327,8 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.1.3]: https://github.com/Kong/kong/compare/2.1.2...2.1.3
+[2.1.2]: https://github.com/Kong/kong/compare/2.1.1...2.1.2
 [2.1.1]: https://github.com/Kong/kong/compare/2.1.0...2.1.1
 [2.1.0]: https://github.com/Kong/kong/compare/2.0.5...2.1.0
 [2.0.5]: https://github.com/Kong/kong/compare/2.0.4...2.0.5
