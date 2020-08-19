@@ -196,21 +196,21 @@ local postgres = {
     fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
       local pgmoon_json = require("pgmoon.json")
 
-      for row, err in connector:iterate("SELECT id, name, config FROM plugins") do
+      for plugin, err in connector:iterate("SELECT id, name, config FROM plugins") do
         if err then
           return nil, err
         end
 
-        if row.name == plugin_name then
-          local fix = fixup_fn(row.config)
+        if plugin.name == plugin_name then
+          local fix = fixup_fn(plugin.config)
 
           if fix then
 
             local sql = render([[
               UPDATE plugins SET config = $(NEW_CONFIG)::jsonb WHERE id = '$(ID)'
             ]], {
-              NEW_CONFIG = pgmoon_json.encode_json(row.config),
-              ID = row.id,
+              NEW_CONFIG = pgmoon_json.encode_json(plugin.config),
+              ID = plugin.id,
             })
 
             local _, err = connector:query(sql)
@@ -329,7 +329,8 @@ local cassandra = {
           return nil, err
         end
 
-        for _, row in ipairs(rows) do
+        for i = 1, #rows do
+          local row = rows[i]
           if row.cache_key:match(":$") then
             local cql = render([[
               UPDATE $(TABLE) SET cache_key = '$(CACHE_KEY)' WHERE $(PARTITION) id = $(ID)
@@ -372,7 +373,8 @@ local cassandra = {
           return nil, err
         end
 
-        for _, row in ipairs(rows) do
+        for i = 1, #rows do
+          local row = rows[i]
           if row.ws_id == nil then
             local set_list = { "ws_id = " .. default_ws }
             for _, key in ipairs(unique_keys) do
@@ -420,18 +422,19 @@ local cassandra = {
           return nil, err
         end
 
-        for _, row in ipairs(rows) do
-          if row.name == plugin_name then
-            assert(type(row.config) == "string")
-            local config = cjson.decode(row.config)
+        for i = 1, #rows do
+          local plugin = rows[i]
+          if plugin.name == plugin_name then
+            if type(plugin.config) ~= "string" then
+              return nil, "plugin config is not a string"
+            end
+            local config = cjson.decode(plugin.config)
             local fix = fixup_fn(config)
 
             if fix then
-              local _, err = connector:query([[
-                UPDATE plugins SET config = ? WHERE id = ?
-              ]], {
+              local _, err = connector:query("UPDATE plugins SET config = ? WHERE id = ?", {
                 cassandra.text(cjson.encode(config)),
-                cassandra.uuid(row.id)
+                cassandra.uuid(plugin.id)
               })
               if err then
                 return nil, err

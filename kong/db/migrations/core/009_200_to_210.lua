@@ -54,7 +54,8 @@ local function c_ca_certificates_migration(connector)
       return nil, err
     end
 
-    for _, ca_cert in ipairs(rows) do
+    for i = 1, #rows do
+      local ca_cert = rows[i]
       local digest = str.to_hex(openssl_x509.new(ca_cert.cert):digest("sha256"))
       if not digest then
         return nil, "cannot create digest value of certificate with id: " .. ca_cert.id

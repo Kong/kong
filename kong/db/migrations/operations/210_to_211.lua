@@ -43,7 +43,8 @@ local function clean_cassandra_fields(connector, entities)
         return nil, err
       end
 
-      for _, row in ipairs(rows) do
+      for i = 1, #rows do
+        local row = rows[i]
         local set_list = {}
         for _, key in ipairs(entity.unique_keys) do
           if row[key] and should_clean(row[key]) then
@@ -54,9 +55,7 @@ local function clean_cassandra_fields(connector, entities)
         end
 
         if #set_list > 0 then
-          local cql = render([[
-            UPDATE $(TABLE) SET $(SET_LIST) WHERE $(PARTITION) id = $(ID)
-          ]], {
+          local cql = render("UPDATE $(TABLE) SET $(SET_LIST) WHERE $(PARTITION) id = $(ID)", {
             PARTITION = entity.partitioned
                         and "partition = '" .. entity.name .. "' AND"
                         or  "",
