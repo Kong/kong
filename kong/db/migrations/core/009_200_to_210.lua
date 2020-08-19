@@ -17,13 +17,14 @@ local function pg_ca_certificates_migration(connector)
       return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
     end
 
-    local sql = string.format([[
-          UPDATE ca_certificates SET cert_digest = '%s' WHERE id = '%s';
-        ]], digest, ca_cert.id)
+    if digest ~= ca_cert.cert_digest then
+      local sql = fmt("UPDATE ca_certificates SET cert_digest = '%s' WHERE id = '%s'",
+                      digest, ca_cert.id)
 
-    local _, err = connector:query(sql)
-    if err then
-      return nil, err
+      local _, err = connector:query(sql)
+      if err then
+        return nil, err
+      end
     end
   end
 
@@ -36,9 +37,10 @@ local function pg_ca_certificates_migration(connector)
 end
 
 local function c_ca_certificates_migration(connector)
+  local cassandra = require "cassandra"
   local coordinator = connector:connect_migrations()
 
-  for rows, err in coordinator:iterate("SELECT cert, id FROM ca_certificates") do
+  for rows, err in coordinator:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
     if err then
       return nil, err
     end
@@ -49,12 +51,14 @@ local function c_ca_certificates_migration(connector)
         return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
       end
 
-      _, err = connector:query(
-        fmt("UPDATE ca_certificates SET cert_digest = '%s' WHERE partition = 'ca_certificates' AND id = %s",
-          digest, ca_cert.id)
-      )
-      if err then
-        return nil, err
+      if digest ~= ca_cert.cert_digest then
+        local _, err = connector:query(
+          "UPDATE ca_certificates SET cert_digest = ? WHERE partition = 'ca_certificates' AND id = ?",
+          { digest, cassandra.uuid(ca_cert.id) }
+        )
+        if err then
+          return nil, err
+        end
       end
     end
   end
