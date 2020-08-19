@@ -297,6 +297,25 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      describe("X-Forwarded-Path", function()
+        it("should be added if not present in request", function()
+          local headers = request_headers {
+            ["Host"] = "headers-inspect.com",
+          }
+
+          assert.equal("/", headers["x-forwarded-path"])
+        end)
+
+        it("should be replaced if present in request", function()
+          local headers = request_headers {
+            ["Host"]             = "headers-inspect.com",
+            ["X-Forwarded-Path"] = "/replaced",
+          }
+
+          assert.equal("/", headers["x-forwarded-path"])
+        end)
+      end)
+
       describe("X-Forwarded-Prefix", function()
         it("should be added if path was stripped", function()
           local headers = request_headers({}, "/foo/status/200")
@@ -336,6 +355,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("127.0.0.1", headers["x-forwarded-for"])
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("preserved.com", headers["x-forwarded-host"])
+          assert.equal("/", headers["x-forwarded-path"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
         end)
 
@@ -355,6 +375,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("preserved.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+          assert.equal("/", headers["x-forwarded-path"])
         end)
       end)
 
@@ -372,6 +393,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("headers-inspect.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+          assert.equal("/", headers["x-forwarded-path"])
         end)
 
         it("if present in request while discarding the downstream host", function()
@@ -392,6 +414,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("http", headers["x-forwarded-proto"])
           assert.equal("headers-inspect.com", headers["x-forwarded-host"])
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+          assert.equal("/", headers["x-forwarded-path"])
         end)
       end)
 
@@ -501,6 +524,25 @@ for _, strategy in helpers.each_strategy() do
           }
 
           assert.equal("80", headers["x-forwarded-port"])
+        end)
+      end)
+
+      describe("X-Forwarded-Path", function()
+        it("should be added if not present in request", function()
+          local headers = request_headers {
+            ["Host"] = "headers-inspect.com",
+          }
+
+          assert.equal("/", headers["x-forwarded-path"])
+        end)
+
+        it("should be forwarded if present in request", function()
+          local headers = request_headers {
+            ["Host"]             = "headers-inspect.com",
+            ["X-Forwarded-Path"] = "/original-path",
+          }
+
+          assert.equal("/original-path", headers["x-forwarded-path"])
         end)
       end)
 
@@ -627,6 +669,25 @@ for _, strategy in helpers.each_strategy() do
           }
 
           assert.equal(helpers.get_proxy_port(false), tonumber(headers["x-forwarded-port"]))
+        end)
+      end)
+
+      describe("X-Forwarded-Path", function()
+        it("should be added if not present in request", function()
+          local headers = request_headers {
+            ["Host"] = "headers-inspect.com",
+          }
+
+          assert.equal("/", headers["x-forwarded-path"])
+        end)
+
+        it("should be replaced if present in request", function()
+          local headers = request_headers {
+            ["Host"]             = "headers-inspect.com",
+            ["X-Forwarded-Path"] = "/untrusted",
+          }
+
+          assert.equal("/", headers["x-forwarded-path"])
         end)
       end)
 
