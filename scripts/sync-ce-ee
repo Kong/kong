@@ -101,7 +101,7 @@ main() {
   local new_branch_name
   new_branch_name=$(to_branch_name "merge-$from-into-$to-$today")
   # create a temporary branch to check how is the merge looking
-  git checkout -B $new_branch_name "$t_branch"
+  git checkout -B $new_branch_name "$t_repo/$t_branch"
 
   # conflicts? bail out and you're on your own
   if ! git merge "$f_repo/$f_branch" ; then

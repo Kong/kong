@@ -598,7 +598,7 @@ function _M:insert_stats(data, node_id)
   local now = time()
   local node
 
-  -- passing node_id is for ease of testing
+  -- passing node_id is for testing and clustering strategy
   if node_id then
     node = cassandra.uuid(node_id)
   else
@@ -722,7 +722,7 @@ function _M:insert_minutes(minutes, node_id)
     return 0
   end
 
-  -- passing node_id is for ease of testing
+  -- passing node_id is for testing and clustering strategy
   local node
   if node_id then
     node = cassandra.uuid(node_id)
@@ -1110,6 +1110,7 @@ end
 function _M:insert_consumer_stats(data, node_id)
   local res, err, count, at, duration, consumer_id
 
+  -- passing node_id is for testing and clustering strategy
   if node_id then
     node_id = cassandra.uuid(node_id)
   else

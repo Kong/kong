@@ -382,11 +382,10 @@ function PluginsIterator.new(version)
   end
   loaded_plugins = loaded_plugins or get_loaded_plugins()
 
-  local ws = {
-    [kong.default_workspace] = new_ws_data()
-  }
-
   local ws_id = workspaces.get_workspace_id() or kong.default_workspace
+  local ws = {
+    [ws_id] = new_ws_data()
+  }
 
   local counter = 0
   local page_size = kong.db.plugins.pagination.page_size

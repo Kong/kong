@@ -366,6 +366,8 @@ persistence_handler = function(premature, self)
 
   if self.tsdb_storage or self.hybrid_cp then
     -- TSDB strategy is read-only, the metrics will be sent by statsd-advanced plugin.
+    -- Hybrid Control Plane doesn't maintain its own counters, instead it just ingest
+    -- what Data Plane sends into database.
     return
   end
 

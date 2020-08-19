@@ -6,7 +6,11 @@ local counters_service = require"kong.counters"
 local timer_at   = ngx.timer.at
 local log        = ngx.log
 local INFO       = ngx.INFO
+local DEBUG      = ngx.DEBUG
 local ERR        = ngx.ERR
+
+local knode  = (kong and kong.node) and kong.node or
+  require "kong.pdk.node".new()
 
 
 local FLUSH_LOCK_KEY = "counters:sales:flush_lock"
@@ -28,6 +32,11 @@ persistence_handler = function(premature, self)
   if premature then
     -- we could flush counters now
     return
+  end
+
+  if self.hybrid_cp then
+   -- we don't need to run it in hybdrid_cp mode
+   return
   end
 
   -- if we've drifted, get back in sync
@@ -147,13 +156,31 @@ end
 
 
 function _M.new(opts)
+  local strategy = opts.strategy
+  local hybrid_cp = false
+
+  if kong.configuration.role ~= "traditional" then
+    local db_strategy = require "kong.counters.sales.strategies.clustering"
+    local err
+    strategy, err = db_strategy.new(strategy, {
+      node_id = opts.node_id
+    })
+    if not strategy then
+      log(ERR, _log_prefix, "failed to initialize strategy, check: ", err)
+      return
+    end
+    hybrid_cp = kong.configuration.role == "control_plane"
+    log(DEBUG, _log_prefix, "loading clustering strategy, is CP: ", hybrid_cp)
+  end
+
   local self = {
     list_cache     = ngx.shared.kong_counters,
     flush_interval = opts.flush_interval or 60,
-    strategy = opts.strategy,
+    strategy = strategy,
     counters = counters_service.new({
       name = "sales"
-    })
+    }),
+    hybrid_cp = hybrid_cp,
   }
 
   self.counters:add_key(METRICS.requests)
@@ -164,6 +191,26 @@ function _M:init()
   if get_license_data() == nil then
     return nil, "license data is missing"
   end
+
+  -- get node id (uuid)
+  local node_id, err = knode.get_id()
+  if err then
+    log(ERR, _log_prefix, "failed to get node_id ", err)
+    return
+  end
+
+  -- init strategy, recording node id and hostname in db
+  local ok, err = self.strategy:init(node_id, utils.get_hostname())
+  if not ok then
+    log(ERR, _log_prefix, "failed to initialize strategy ", err)
+    return
+  end
+
+  if self.hybrid_cp then
+    -- we don't need to run it on hybrid_cp mode
+    return true
+  end
+
   self.counters:init()
 
   local delay = self.flush_interval
@@ -179,6 +226,9 @@ function _M:init()
 end
 
 function _M:log_request()
+  if self.hybrid_cp then
+    return
+  end
   self.counters:increment(METRICS.requests)
 end
 

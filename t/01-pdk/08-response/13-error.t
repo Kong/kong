@@ -10,6 +10,7 @@ plan tests => repeat_each() * (blocks() * 4);
 run_tests();
 
 __DATA__
+
 === TEST 1: service.response.error() use accept header
 --- http_config eval: $t::Util::HttpConfig
 --- config
@@ -35,6 +36,8 @@ Content-Type: application/json; charset=utf-8
 --- no_error_log
 [error]
 
+
+
 === TEST 2: service.response.error() fallbacks to json
 --- http_config eval: $t::Util::HttpConfig
 --- config
@@ -57,6 +60,8 @@ Content-Type: application/json; charset=utf-8
 }
 --- no_error_log
 [error]
+
+
 
 === TEST 3: service.response.error() may ignore accept header
 --- http_config eval: $t::Util::HttpConfig
@@ -87,6 +92,8 @@ Content-Type: application/xml
 </error>
 --- no_error_log
 [error]
+
+
 
 === TEST 4: service.response.error() respects accept header priorities
 --- http_config eval: $t::Util::HttpConfig
@@ -122,6 +129,7 @@ Content-Type: text/html; charset=utf-8
 [error]
 
 
+
 === TEST 5: service.response.error() has higher priority than handle_errors
 --- http_config eval: $t::Util::HttpConfig
 --- config
@@ -155,6 +163,8 @@ Content-Type: application/json; charset=utf-8
 --- no_error_log
 [error]
 
+
+
 === TEST 6: service.response.error() formats default template
 --- http_config eval: $t::Util::HttpConfig
 --- config
@@ -179,6 +189,8 @@ Content-Type: application/json; charset=utf-8
 }
 --- no_error_log
 [error]
+
+
 
 === TEST 7: service.response.error() overrides default message
 --- http_config eval: $t::Util::HttpConfig
@@ -205,6 +217,8 @@ Content-Type: application/json; charset=utf-8
 --- no_error_log
 [error]
 
+
+
 === TEST 8: service.response.error() use accept header "*" mime sub-type
 --- http_config eval: $t::Util::HttpConfig
 --- config
@@ -225,5 +239,109 @@ Accept: text/*
 Content-Type: text/plain; charset=utf-8
 --- response_body
 Gone
+--- no_error_log
+[error]
+
+
+
+=== TEST 9: response.error() maps http 400 to grpc InvalidArgument
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            ngx.req.http_version = function() return 2 end
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.error(400)
+        }
+    }
+--- request
+GET /t
+--- more_headers
+Content-Type: application/grpc
+--- error_code: 400
+--- response_headers_like
+grpc-status: 3
+grpc-message: InvalidArgument
+--- no_error_log
+[error]
+
+
+
+=== TEST 10: response.error() maps http 401 to grpc Unauthenticated
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            ngx.req.http_version = function() return 2 end
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.error(401)
+        }
+    }
+--- request
+GET /t
+--- more_headers
+Content-Type: application/grpc
+--- error_code: 401
+--- response_headers_like
+grpc-status: 16
+grpc-message: Unauthenticated
+--- no_error_log
+[error]
+
+
+
+=== TEST 11: response.error() maps http 403 to grpc PermissionDenied
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            ngx.req.http_version = function() return 2 end
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.error(403)
+        }
+    }
+--- request
+GET /t
+--- more_headers
+Content-Type: application/grpc
+--- error_code: 403
+--- response_headers_like
+grpc-status: 7
+grpc-message: PermissionDenied
+--- no_error_log
+[error]
+
+
+
+=== TEST 12: response.error() maps http 429 to grpc ResourceExhausted
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            ngx.req.http_version = function() return 2 end
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.error(429)
+        }
+    }
+--- request
+GET /t
+--- more_headers
+Content-Type: application/grpc
+--- error_code: 429
+--- response_headers_like
+grpc-status: 8
+grpc-message: ResourceExhausted
 --- no_error_log
 [error]

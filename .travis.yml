@@ -92,8 +92,8 @@ jobs:
       script:
       - make lint
       # - scripts/autodoc-admin-api
-      - bin/busted -v -o htest spec/01-unit
-      - bin/busted -v -o htest spec-ee/01-unit
+      - bin/busted -v -o htest spec/01-unit --exclude-tags=flaky
+      - bin/busted -v -o htest spec-ee/01-unit --exclude-tags=flaky
       - scripts/autodoc-admin-api
       env:
         - KONG_DATABASE=none

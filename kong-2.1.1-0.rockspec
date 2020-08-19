@@ -96,6 +96,7 @@ build = {
     ["kong.counters.sales.strategies.postgres"] = "kong/counters/sales/strategies/postgres/init.lua",
     ["kong.counters.sales.strategies.cassandra"] = "kong/counters/sales/strategies/cassandra/init.lua",
     ["kong.counters.sales.strategies.off"] = "kong/counters/sales/strategies/off/init.lua",
+    ["kong.counters.sales.strategies.clustering"] = "kong/counters/sales/strategies/clustering/init.lua",
 
     ["kong.enterprise_edition"] = "kong/enterprise_edition/init.lua",
     ["kong.enterprise_edition.admin.emails"] = "kong/enterprise_edition/admin/emails.lua",
@@ -204,6 +205,7 @@ build = {
     ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
+    ["kong.tools.messaging"] = "kong/tools/messaging.lua",
 
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
     ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",

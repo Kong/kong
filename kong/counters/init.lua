@@ -34,6 +34,11 @@ persistence_handler = function(premature, self)
     return
   end
 
+  if self.hybrid_cp then
+    -- we don't need to run it on hybrid_cp mode
+    return
+  end
+
   -- if we've drifted, get back in sync
   local delay = self.flush_interval
   local when  = delay - (ngx.now() - (math.floor(ngx.now() / delay) * delay))

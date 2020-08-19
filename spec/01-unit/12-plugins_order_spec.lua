@@ -44,7 +44,7 @@ describe("Plugins", function()
     end
   end)
 
-  it("run in the following order", function()
+  it("#flaky run in the following order", function()
     -- here is the order as of 0.10.1 with OpenResty 1.11.2.2
     --
     -- since 1.11.2.3 and the LuaJIT string hashing change, we hard-code
@@ -64,7 +64,7 @@ describe("Plugins", function()
       "ldap-auth",
       "basic-auth",
       "hmac-auth",
-      "acme",
+      "acme",    -- XXX EE conflict marker to remove flaky when this conflicts with CE
       "grpc-gateway",
       "application-registration",
       "ip-restriction",
