@@ -21,7 +21,7 @@ return {
     teardown = function(connector)
       local coordinator = assert(connector:connect_migrations())
 
-      for rows, err in coordinator:iterate([[SELECT * FROM routes]]) do
+      for rows, err in coordinator:iterate("SELECT id, path_handling FROM routes") do
         if err then
           return nil, err
         end
