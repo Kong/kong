@@ -27,7 +27,7 @@ return {
         end
 
         for _, row in ipairs(rows) do
-          if row.path_handling ~= "v0" then
+          if row.path_handling ~= "v0" and row.path_handling ~= "v1" then
             local _, err = connector:query([[
               UPDATE routes SET path_handling = 'v1'
               WHERE partition = 'routes' AND id = ]] .. row.id)
