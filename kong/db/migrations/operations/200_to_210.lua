@@ -187,7 +187,7 @@ local postgres = {
     fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
       local pgmoon_json = require("pgmoon.json")
 
-      for row, err in connector:iterate("SELECT * FROM plugins") do
+      for row, err in connector:iterate("SELECT id, name, config FROM plugins") do
         if err then
           return nil, err
         end
@@ -306,7 +306,7 @@ local cassandra = {
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
       local rows, err = connector:query([[
-        SELECT * FROM workspaces WHERE name='default';
+        SELECT id FROM workspaces WHERE name='default';
       ]])
       if err then
         return nil, err
@@ -315,7 +315,7 @@ local cassandra = {
 
       local coordinator = assert(connector:connect_migrations())
 
-      for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
+      for rows, err in coordinator:iterate("SELECT id, cache_key FROM " .. table_name) do
         if err then
           return nil, err
         end
@@ -349,7 +349,7 @@ local cassandra = {
     ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned)
 
       local rows, err = connector:query([[
-        SELECT * FROM workspaces WHERE name='default';
+        SELECT id FROM workspaces WHERE name='default';
       ]])
       if err then
         return nil, err
@@ -406,7 +406,7 @@ local cassandra = {
 
       local coordinator = assert(connector:connect_migrations())
 
-      for rows, err in coordinator:iterate("SELECT * FROM plugins") do
+      for rows, err in coordinator:iterate("SELECT id, name, config FROM plugins") do
         if err then
           return nil, err
         end
