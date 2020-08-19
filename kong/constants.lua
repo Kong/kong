@@ -85,6 +85,7 @@ local constants = {
     CONSUMER_GROUPS = "X-Consumer-Groups",
     AUTHENTICATED_GROUPS = "X-Authenticated-Groups",
     FORWARDED_HOST = "X-Forwarded-Host",
+    FORWARDED_PATH = "X-Forwarded-Path",
     FORWARDED_PREFIX = "X-Forwarded-Prefix",
     ANONYMOUS = "X-Anonymous-Consumer",
     VIA = "Via",

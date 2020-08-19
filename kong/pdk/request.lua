@@ -16,7 +16,6 @@ local find = string.find
 local lower = string.lower
 local type = type
 local error = error
-local pcall = pcall
 local tonumber = tonumber
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
@@ -292,7 +291,7 @@ local function new(self)
   -- from a trusted source, and uses it as is when given. The value is returned
   -- as a Lua string.
   --
-  -- In general, this function should be called after Kong has ran its router,
+  -- If a trusted `X-Forwarded-Prefix` is not passed, this function must be called after Kong has ran its router (`access` phase),
   -- as the Kong router may strip the prefix of the request path. That stripped
   -- path will become the return value of this function, unless there was already
   -- a trusted `X-Forwarded-Prefix` header in the request.
@@ -304,33 +303,25 @@ local function new(self)
   -- * [real\_ip\_header](https://getkong.org/docs/latest/configuration/#real_ip_header)
   -- * [real\_ip\_recursive](https://getkong.org/docs/latest/configuration/#real_ip_recursive)
   --
-  -- **Note**: we do not currently do any normalization on the request path prefix
-  --           except return `"/"` on empty prefix.
+  -- **Note**: we do not currently do any normalization on the request path prefix.
   --
   -- @function kong.request.get_forwarded_prefix
-  -- @phases access, header_filter, body_filter, log, admin_api
-  -- @treturn string the forwarded path prefix
+  -- @phases access
+  -- @treturn string|nil the forwarded path prefix or nil if prefix was not stripped
   -- @usage
   -- kong.request.get_forwarded_prefix() -- /prefix
   function _REQUEST.get_forwarded_prefix()
     check_phase(PHASES.request)
 
+    local prefix
     if self.ip.is_trusted(self.client.get_ip()) then
-      local prefix = _REQUEST.get_header(X_FORWARDED_PREFIX)
+      prefix = _REQUEST.get_header(X_FORWARDED_PREFIX)
       if prefix then
         return prefix
       end
     end
 
-    local ok, prefix = pcall(function()
-      return ngx.var.upstream_x_forwarded_prefix
-    end)
-
-    if not ok or not prefix then
-      return "/"
-    end
-
-    return prefix == "" and "/" or prefix
+    return ngx.var.upstream_x_forwarded_prefix
   end
 
 
