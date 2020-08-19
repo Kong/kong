@@ -21,10 +21,18 @@ local function pg_ca_certificates_migration(connector)
           UPDATE ca_certificates SET cert_digest = '%s' WHERE id = '%s';
         ]], digest, ca_cert.id)
 
-    assert(connector:query(sql))
+    local _, err = connector:query(sql)
+    if err then
+      return nil, err
+    end
   end
 
-  assert(connector:query('ALTER TABLE ca_certificates ALTER COLUMN cert_digest SET NOT NULL'))
+  local _, err = connector:query('ALTER TABLE ca_certificates ALTER COLUMN cert_digest SET NOT NULL')
+  if err then
+    return nil, err
+  end
+
+  return true
 end
 
 local function c_ca_certificates_migration(connector)
@@ -50,6 +58,8 @@ local function c_ca_certificates_migration(connector)
       end
     end
   end
+
+  return true
 end
 
 
@@ -110,8 +120,8 @@ local core_entities = {
 -- for the database (each function returns a string).
 -- @return SQL or CQL
 local function ws_migration_up(ops)
-  return ops:ws_add_workspaces()
-      .. ops:ws_adjust_fields(core_entities)
+  return assert(ops:ws_add_workspaces())
+      .. assert(ops:ws_adjust_fields(core_entities))
 end
 
 
@@ -122,7 +132,7 @@ end
 -- @return a function that receives a connector
 local function ws_migration_teardown(ops)
   return function(connector)
-    ops:ws_adjust_data(connector, core_entities)
+    return ops:ws_adjust_data(connector, core_entities)
   end
 end
 
@@ -185,10 +195,18 @@ return {
         END$$;
     ]] .. ws_migration_up(operations.postgres.up),
     teardown = function(connector)
-      ws_migration_teardown(operations.postgres.teardown)(connector)
+      local _, err = ws_migration_teardown(operations.postgres.teardown)(connector)
+      if err then
+        return nil, err
+      end
 
       -- add `cert_digest` field for `ca_certificates` table
-      pg_ca_certificates_migration(connector)
+      _, err = pg_ca_certificates_migration(connector)
+      if err then
+        return nil, err
+      end
+
+      return true
     end
   },
   cassandra = {
@@ -208,10 +226,18 @@ return {
       CREATE INDEX IF NOT EXISTS upstreams_client_certificate_id_idx ON upstreams(client_certificate_id);
     ]] .. ws_migration_up(operations.cassandra.up),
     teardown = function(connector)
-      ws_migration_teardown(operations.cassandra.teardown)(connector)
+      local _, err = ws_migration_teardown(operations.cassandra.teardown)(connector)
+      if err then
+        return nil, err
+      end
 
       -- add `cert_digest` field for `ca_certificates` table
-      c_ca_certificates_migration(connector)
+      _, err = c_ca_certificates_migration(connector)
+      if err then
+        return nil, err
+      end
+
+      return true
     end
   }
 }

@@ -87,6 +87,8 @@ return {
 
         ::continue::
       end
+
+      return true
     end,
 
   },
@@ -155,6 +157,8 @@ return {
         end
 
       end
+
+      return true
     end,
 
   },

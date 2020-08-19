@@ -36,7 +36,7 @@ end
 
 local function ws_migration_teardown(ops)
   return function(connector)
-    ops:ws_adjust_data(connector, plugin_entities)
+    return ops:ws_adjust_data(connector, plugin_entities)
   end
 end
 
@@ -71,7 +71,7 @@ return {
       EXCEPTION WHEN DUPLICATE_COLUMN THEN
         -- Do nothing, accept existing state
       END$$;
-    ]] .. ws_migration_up(operations.postgres.up),
+    ]] .. assert(ws_migration_up(operations.postgres.up)),
 
     teardown = ws_migration_teardown(operations.postgres.teardown),
   },
@@ -82,7 +82,7 @@ return {
       ALTER TABLE oauth2_authorization_codes ADD challenge_method text;
       ALTER TABLE oauth2_credentials ADD client_type text;
       ALTER TABLE oauth2_credentials ADD hash_secret boolean;
-    ]] .. ws_migration_up(operations.cassandra.up),
+    ]] .. assert(ws_migration_up(operations.cassandra.up)),
 
     teardown = ws_migration_teardown(operations.cassandra.teardown),
   },
