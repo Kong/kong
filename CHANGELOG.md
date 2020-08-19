@@ -1,3 +1,9 @@
+## 1.2.6
+
+### Fixed
+
+- Correct short circuit conditional for query strings (#24)
+
 ## 1.2.5
 
 ### Fixed
