@@ -1,5 +1,5 @@
 local prometheus = require "kong.plugins.prometheus.exporter"
-local basic_serializer = require "kong.plugins.log-serializers.basic"
+local kong = kong
 
 
 prometheus.init()
@@ -16,7 +16,7 @@ end
 
 
 function PrometheusHandler.log()
-  local message = basic_serializer.serialize(ngx)
+  local message = kong.log.serialize()
   prometheus.log(message)
 end
 
