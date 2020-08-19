@@ -66,10 +66,7 @@ function _M.select_phone_home()
   return {}, nil
 end
 
-function _M.node_exists(node_id)
-  if node_id == nil then
-    return false
-  end
+function _M.node_exists()
   return true, nil
 end
 
@@ -162,6 +159,7 @@ end
 function _M:init()
   local conf = singletons.configuration
 
+  -- hostname is statsd_address as each one should be a sidecar to every kong node
   local host, port, use_tcp
   local remainder, _, protocol = parse_option_flags(conf.vitals_statsd_address, { "udp", "tcp" })
   if remainder then
@@ -250,8 +248,6 @@ function _M:query(start_ts, metrics_query, interval)
 
 
   for i, q in ipairs(metrics_query) do
-    kong.log.err("QUERY " ..  "/api/v1/query_range?query=" ..  ngx_escape_uri(q[2]) .. "&start=" .. start_ts 
-    .. "&end=" .. end_ts .. "&step=" .. interval .. "s")
     local res, err = client:request {
         method = "GET",
         path = "/api/v1/query_range?query=" ..  ngx_escape_uri(q[2]) .. "&start=" .. start_ts 
@@ -499,8 +495,6 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
   else
     ret.meta.level = "node"
   end
-  local inspect = require "inspect"
-  kong.log.err(inspect(prometheus_stats))
   local stats = ret.stats
   local stat_labels_inserted = false
   local expected_dp_count = duration_seconds / interval
@@ -626,9 +620,7 @@ function _M:select_stats(query_type, level, node_id, start_ts)
     metrics,
     interval
   )
-  local inspect = require "inspect"
-  kong.log.err(inspect(res))
-  kong.log.err(inspect(err))
+
   if res then
     return translate_vitals_stats(metrics, res, interval, duration_seconds,
       self.cluster_level -- Cloud: set to true to hide node-level metrics
@@ -735,7 +727,7 @@ end
 
 local function status_code_query(entity_id, entity)
   local is_consumer = entity == "consumer"
-  local is_timeseries_report = not not entity_id
+  local is_timeseries_report = entity_id ~= nil
   if is_consumer then
     if is_timeseries_report then
       return "sum(kong_status_code_per_consumer{consumer='" .. entity_id .. "'}) by (status_code)"
@@ -752,46 +744,32 @@ local function status_code_query(entity_id, entity)
 end
 _M.status_code_query = status_code_query
 
--- @param entity: consumer or service
--- @param entity_id: UUID or null, signifies how each row is indexed
--- @param interval: seconds, minutes, hours, days, weeks, months
--- @param start_ts: seconds from now
+-- Can produce a timeseries report for a given entity, or a summary of a given type of entity
+-- @param[type=string] entity: consumer or service
+-- @param[type=nullable-string] entity_id: UUID or nil, signifies how each row is indexed
+-- @param[type=string] interval: seconds, minutes, hours, days, weeks, months
+-- @param[type=number] start_ts: seconds from now
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
-  interval = interval or "minutes"
   local duration = interval_to_duration[interval]
-  local is_consumer = entity == "consumer"
-  local is_timeseries_report = not not entity_id
-
-  local entities = {}
-  local plural_entity = entity .. 's'
-  if is_timeseries_report then
-    local row = kong.db[plural_entity]:select({ id = entity_id }, { workspace = null })
-    if row ~= nil then entities[row.id] = vitals_utils.resolve_entity_metadata(row) end
-  else
-    for row in kong.db[plural_entity]:each(nil, { workspace = null }) do
-      if row ~= nil then entities[row.id] = vitals_utils.resolve_entity_metadata(row) end
-    end
-  end
-
-  local stats = {}
-  local metrics_query = status_code_query(entity_id, is_consumer, is_timeseries_report)
-
-  kong.log.err(metrics_query)
+  local entities = vitals_utils.get_entity_metadata(entity, entity_id)
+  local metrics_query = status_code_query(entity_id, entity)
   local res, err = self:query(
     start_ts,
     {{"", metrics_query}},
     duration
   )
-  local inspect = require "inspect"
-  kong.log.err(inspect(res))
-  kong.log.err(inspect(err))
+
   if err then
     return err
   end
 
+  local stats = {}
+  local is_consumer = entity == "consumer"
+  local is_timeseries_report = entity_id ~= nil
+
   for _, series_list in ipairs(res) do
     for _, series in ipairs(series_list) do
-      local index, entity_metadata
+      local key, entity_metadata
       entity_metadata = entities[entity_id] or {}
       local status_group = tostring(series.metric.status_code):sub(1, 1) .. "XX"
       if is_timeseries_report then
@@ -801,7 +779,6 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
           -- if we use integer as key, cjson will complain excessively sparse array
           local timestamp_number = dp[1]
           local timestamp = fmt("%d", dp[1])
-          kong.log.err("THIS SHOULD NOT BE NIL: ".. timestamp_number)
           -- 'NaN' will be parsed to math.nan and cjson will not encode it
           local counter = tonumber(dp[2])
           -- See http://lua-users.org/wiki/InfAndNanComparisons
@@ -832,15 +809,14 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
           last_ts = timestamp_number
         end
       else
-        index = series.metric[entity]
-        local has_index = index ~= nil
-        if has_index then
-          entity_metadata = entities[index] or {}
-          kong.log.err("THIS SHOULD NOT BE NIL: ".. entity)
+        key = series.metric[entity]
+        local has_key = key ~= nil and key ~= ''
+        if has_key then
+          entity_metadata = entities[key] or {}
           local first_counter = tonumber(series.values[1][2])
           local last_counter = tonumber(series.values[#series.values][2])
           local request_count = last_counter - first_counter
-          stats = vitals_utils.append_to_stats(stats, index, status_group, request_count, entity_metadata)
+          stats = vitals_utils.append_to_stats(stats, key, status_group, request_count, entity_metadata)
         end
       end
     end
@@ -874,91 +850,8 @@ end
 -- @param interval: seconds, minutes, hours, days, weeks, months
 -- @param start_ts: seconds from now
 function _M:latency_report(hostname, interval, start_ts)
-  interval = interval or "minutes"
-  local duration = interval_to_duration[interval]
-  local columns = {
-    "proxy_max",
-    "proxy_min",
-    "proxy_avg",
-    "upstream_max",
-    "upstream_min",
-    "upstream_avg",
-  }
-  local meta = {
-    earliest_ts = start_ts,
-    latest_ts = ngx.time(),
-    stat_labels = columns,
-    nodes = {},
-  }
-
-  local stats = {}
-  local report_stats_metrics = {
-    { "proxy_max", "max by (instance)(kong_latency_proxy_request_max)" },
-    { "proxy_min", "min by (instance)(kong_latency_proxy_request_min)" },
-    -- TODO: do i need to change [1m] for different timeframes?
-    { "proxy_avg", "sum by (instance)(rate(kong_latency_proxy_request_sum[1m])) / sum by (instance)(rate(kong_latency_proxy_request_count[1m])) * 1000" }, -- we only have minute level precision
-    { "upstream_max", "max by (instance)(kong_latency_upstream_max)" },
-    { "upstream_min", "min by (instance)(kong_latency_upstream_min)" },
-    -- TODO: do i need to change [1m] for different timeframes?
-    { "upstream_avg","sum by (instance)(rate(kong_latency_upstream_sum[1m])) / sum by (instance)(rate(kong_latency_upstream_count[1m])) * 1000" },
-  }
-  local res, err = self:query(
-    start_ts,
-    report_stats_metrics,
-    duration
-  )
-  local seconds_from_now = ngx.time() - start_ts
-  local expected_dp_count = seconds_from_now / duration
-  local inspect = require "inspect"
-  kong.log.err(inspect(res))
-  kong.log.err(inspect(err))
-  if err then
-    return err
-  end
-  local earliest_ts = 0xFFFFFFFF
-  local latest_ts = 0
-  for idx, series_list in ipairs(res) do
-    local series_not_empty = false
-    for series_idx, series in ipairs(series_list) do
-      series_not_empty = true
-      -- Add to meta,nodes
-      local host = series.metric.instance
-
-      if not stats[host] then
-        stats[host] = new_tab(0, expected_dp_count)
-        meta.nodes[host] = { hostname = host }
-      end
-
-      for _, dp in ipairs(series.values) do
-        -- if we use integer as key, cjson will complain excessively sparse array
-        local timestamp = fmt("%d", dp[1])
-        -- 'NaN' will be parsed to math.nan and cjson will not encode it
-        local metric_value = tonumber(dp[2])
-        -- See http://lua-users.org/wiki/InfAndNanComparisons
-        -- cjson also won't encode inf and -inf
-        local is_not_a_number = metric_value ~= metric_value
-        local is_a_crazy_number = metric_value == math_huge or metric_value == -math_huge
-        if is_not_a_number or is_a_crazy_number then
-          metric_value = nil
-        else
-          metric_value = math_floor(metric_value)
-        end
-
-        stats[host][timestamp] = stats[host][timestamp] or {}
-
-        -- current_value is nil when is_rate = true and is the first datapoint
-        if metric_value ~= nil then
-          -- add the real data point
-          kong.log.err("THIS SHOULD BE " .. metric_value .. " : " .. timestamp .. " : " .. columns[idx])
-          stats[host][timestamp][columns[idx]] = metric_value
-        end
-      end
-    end
-  end
-
-
-
-  return { stats=stats, meta=meta }
+  -- TODO: implement
+  return nil, "Not Implemented"
 end
 
 

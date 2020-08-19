@@ -635,48 +635,41 @@ local function status_code_query(entity_id, entity, seconds_from_now, interval)
 end
 _M.status_code_query = status_code_query
 
+-- Can produce a timeseries report for a given entity, or a summary of a given type of entity
 -- @param[type=string] entity: consumer or service
--- @param[type=nullable-string] entity_id: UUID or null, signifies how each row is indexed
+-- @param[type=nullable-string] entity_id: UUID or nil, signifies how each row is indexed
 -- @param[type=string] interval: seconds, minutes, hours, days, weeks, months
 -- @param[type=number] start_ts: seconds from now
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
-  local plural_entity = entity .. 's'
-  local is_timeseries_report = not not entity_id
-  local entities = {}
-  if is_timeseries_report then
-    local row = kong.db[plural_entity]:select({ id = entity_id }, { workspace = null })
-    if row ~= nil then entities[row.id] = vitals_utils.resolve_entity_metadata(row) end
-  else
-    for row in kong.db[plural_entity]:each(nil, { workspace = null }) do
-      if row ~= nil then entities[row.id] = vitals_utils.resolve_entity_metadata(row) end
-    end
-  end
-
+  local entities = vitals_utils.get_entity_metadata(entity, entity_id)
   local seconds_from_now = ngx.time() - start_ts
   local result = query(self, status_code_query(entity_id, entity, seconds_from_now, interval))
+  
   local stats = {}
   local is_consumer = entity == "consumer"
+  local is_timeseries_report = entity_id ~= nil
+
   for _, series in ipairs(result) do
     for _, value in ipairs(series.values) do
-      local index, entity_metadata
+      local key -- can either be a timestamp or an uuid
+      local entity_metadata -- can either be an empty table or contain metadata fetched from kong db
       if is_timeseries_report then
         local timestamp = tostring(value[1])
-        index = timestamp
+        key = timestamp
         entity_metadata = entities[entity_id] or {}
       else
         local entity_tag = {
           consumer = series.tags.consumer,
           service = series.tags.service
         }
-        local id = entity_tag[entity]
-        index = id
-        entity_metadata = entities[id] or {}
+        key = entity_tag[entity]
+        entity_metadata = entities[key] or {}
       end
-      local has_index = index ~= ''
-      if has_index then
+      local has_key = key ~= nil and key ~= ''
+      if has_key then
         local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
         local request_count = value[2]
-        stats = vitals_utils.append_to_stats(stats, index, status_group, request_count, entity_metadata)
+        stats = vitals_utils.append_to_stats(stats, key, status_group, request_count, entity_metadata)
       end 
     end
   end
