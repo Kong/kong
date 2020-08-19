@@ -13,7 +13,7 @@ cd spec && ldoc . && open docs/index.html && cd ..
 
 ## Environment variables
 
-When testing, Kong will ingore the `KONG_xxx` environment variables that are
+When testing, Kong will ignore the `KONG_xxx` environment variables that are
 usually used to configure it. This is to make sure that the tests run deterministically.
 If this behaviour needs to be overridden, the `KONG_TEST_xxx`
 version of the variable can be used, which will be respected by the Kong test
