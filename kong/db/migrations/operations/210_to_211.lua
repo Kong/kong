@@ -65,12 +65,17 @@ local function clean_cassandra_fields(connector, entities)
             ID = row.id,
           })
 
-          assert(connector:query(cql))
+          local _, err = connector:query(cql)
+          if err then
+            return nil, err
+          end
         end
 
       end
     end
   end
+
+  return true
 end
 
 

@@ -149,14 +149,19 @@ local postgres = {
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      assert(connector:query(render([[
+      local _, err = connector:query(render([[
         UPDATE "$(TABLE)"
         SET cache_key = CONCAT(cache_key, ':',
                                (SELECT id FROM workspaces WHERE name = 'default'))
         WHERE cache_key LIKE '%:';
       ]], {
         TABLE = table_name,
-      })))
+      }))
+      if err then
+        return nil, err
+      end
+
+      return true
     end,
 
 
@@ -164,11 +169,16 @@ local postgres = {
     -- Update keys to workspace-aware formats
     ws_update_keys = function(_, connector, table_name, unique_keys)
       -- Reset default value for ws_id once it is populated
-      assert(connector:query(render([[
+      local _, err = connector:query(render([[
         ALTER TABLE IF EXISTS ONLY "$(TABLE)" ALTER "ws_id" SET DEFAULT NULL;
       ]], {
         TABLE = table_name,
-      })))
+      }))
+      if err then
+        return nil, err
+      end
+
+      return true
     end,
 
 
@@ -194,10 +204,15 @@ local postgres = {
               ID = row.id,
             })
 
-            assert(connector:query(sql))
+            local _, err = connector:query(sql)
+            if err then
+              return nil, err
+            end
           end
         end
       end
+
+      return true
     end,
   },
 
@@ -317,10 +332,16 @@ local cassandra = {
                         or  "",
               ID = row.id,
             })
-          assert(connector:query(cql))
+
+            local _, err = connector:query(cql)
+            if err then
+              return nil, err
+            end
           end
         end
       end
+
+      return true
     end,
 
     ------------------------------------------------------------------------------
@@ -366,10 +387,15 @@ local cassandra = {
               ID = row.id,
             })
 
-            assert(connector:query(cql))
+            local _, err = connector:query(cql)
+            if err then
+              return nil, err
+            end
           end
         end
       end
+
+      return true
     end,
 
     ------------------------------------------------------------------------------
@@ -392,16 +418,21 @@ local cassandra = {
             local fix = fixup_fn(config)
 
             if fix then
-              assert(connector:query([[
+              local _, err = connector:query([[
                 UPDATE plugins SET config = ? WHERE id = ?
               ]], {
                 cassandra.text(cjson.encode(config)),
                 cassandra.uuid(row.id)
-              }))
+              })
+              if err then
+                return nil, err
+              end
             end
           end
         end
       end
+
+      return true
     end,
 
   }
@@ -442,12 +473,19 @@ local function ws_adjust_data(ops, connector, entities)
   for _, entity in ipairs(entities) do
 
     if entity.cache_key and #entity.cache_key > 1 then
-      ops:ws_update_composite_cache_key(connector, entity.name, entity.partitioned)
+      local _, err = ops:ws_update_composite_cache_key(connector, entity.name, entity.partitioned)
+      if err then
+        return nil, err
+      end
     end
 
-    ops:ws_update_keys(connector, entity.name, entity.uniques, entity.partitioned)
-
+    local _, err = ops:ws_update_keys(connector, entity.name, entity.uniques, entity.partitioned)
+    if err then
+      return nil, err
+    end
   end
+
+  return true
 end
 
 
@@ -472,7 +510,7 @@ local function ws_migrate_plugin(plugin_entities)
 
   local function ws_migration_teardown(ops)
     return function(connector)
-      ops:ws_adjust_data(connector, plugin_entities)
+      return ops:ws_adjust_data(connector, plugin_entities)
     end
   end
 

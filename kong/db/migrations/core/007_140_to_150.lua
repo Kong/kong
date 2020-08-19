@@ -28,12 +28,17 @@ return {
 
         for _, row in ipairs(rows) do
           if row.path_handling ~= "v0" then
-            assert(connector:query([[
+            local _, err = connector:query([[
               UPDATE routes SET path_handling = 'v1'
-              WHERE partition = 'routes' AND id = ]] .. row.id))
+              WHERE partition = 'routes' AND id = ]] .. row.id)
+            if err then
+              return nil, err
+            end
           end
         end
       end
+
+      return true
     end,
   },
 }
