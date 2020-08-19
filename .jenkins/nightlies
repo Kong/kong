@@ -1,3 +1,14 @@
+// https://stackoverflow.com/questions/43214730/how-to-set-github-commit-status-with-jenkinsfile-not-using-a-pull-request-builde
+void setBuildStatus(String message, String state) {
+  step([
+      $class: "GitHubCommitStatusSetter",
+      reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/kong/kong-ee"],
+      contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "Kong EE Nightlies"],
+      errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
+      statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
+  ]);
+}
+
 // add any other distro here, as "foo", "bar"
 //  * ubuntu dockerfile targets xenial (so 16.04)
 def distros = [ "alpine", "ubuntu:16.04" ]
@@ -68,6 +79,15 @@ pipeline {
           parallel builds
         }
       }
+    }
+  }
+
+  post {
+    success {
+      node(null) { setBuildStatus("Build succeeded", "SUCCESS") }
+    }
+    failure {
+      node(null) { setBuildStatus("Build failed", "FAILURE") }
     }
   }
 }

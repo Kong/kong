@@ -32,6 +32,9 @@ function _M:new(db)
   return setmetatable(self, mt)
 end
 
+function _M:init()
+  return true
+end
 
 function _M:flush_data(data)
   local date_split = split(data.license_creation_date, "-")
@@ -57,7 +60,6 @@ function _M:flush_data(data)
     log(ERR, "error occurred during counters data flush: ", err)
   end
 end
-
 
 function _M:pull_data()
   local QUERY_OPTIONS = {

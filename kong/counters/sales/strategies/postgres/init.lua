@@ -25,6 +25,9 @@ function _M:new(db)
   return setmetatable(self, mt)
 end
 
+function _M:init()
+  return true
+end
 
 function _M:flush_data(data)
   local values = {

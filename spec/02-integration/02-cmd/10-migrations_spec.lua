@@ -6,8 +6,8 @@ local tb_clone = require "table.clone"
 
 
 -- Current number of migrations to execute in a new install
--- additional 1 for EE
-local nr_migrations = 1 + 1 -- 11
+-- additional 2 for EE
+local nr_migrations = 1 + 2 -- 11
 
 
 local lua_path = [[ KONG_LUA_PATH_OVERRIDE="./spec/fixtures/migrations/?.lua;]] ..
@@ -201,7 +201,7 @@ for _, strategy in helpers.each_strategy() do
         --              "with-migrations: 000_base_with_migrations, 001_14_to_15",
         assert.match("Executed migrations:\n" ..
                      "      core: 000_base\n" ..
-                     "enterprise: 000_base\n\n" ..
+                     "enterprise: 000_base, 006_1301_to_1500\n\n" ..
                      "New migrations available:\n" ..
                      "        session: 000_base_session\n" ..
                      "with-migrations: 000_base_with_migrations, 001_14_to_15\n\n" ..

@@ -229,6 +229,8 @@ function _M.new(db, opts)
   return setmetatable(self, mt)
 end
 
+local delete_timer_started = false
+
 
 function _M:init(node_id, hostname)
   if not node_id then
@@ -250,6 +252,12 @@ function _M:init(node_id, hostname)
   end
 
   -- delete timer
+  -- make sure the timer is started only once, clustering strategy will call
+  -- this function multiple times
+  if delete_timer_started then
+    return true
+  end
+
   local when = self.delete_interval
   log(INFO, _log_prefix, "starting initial postgres delete timer in ", when, " seconds")
 
@@ -257,6 +265,8 @@ function _M:init(node_id, hostname)
   if err then
     return nil, "failed to start initial postgres delete timer: " .. err
   end
+
+  delete_timer_started = true
 
   return true
 end
@@ -487,7 +497,7 @@ function _M:insert_stats(data, node_id)
         requests, plat_count, plat_total, ulat_count, ulat_total
   local tname = self:current_table_name()
 
-  -- node_id is an optional argument to simplify testing
+  -- node_id is an optional argument for testing and clustering strategy
   node_id = node_id or self.node_id
 
   -- as we loop over our seconds, we'll calculate the minutes data to insert

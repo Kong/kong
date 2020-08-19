@@ -72,10 +72,8 @@ local function up(schema_state, db, opts)
     schema_state = assert(db:schema_state())
 
     -- XXX EE detect broken migration path from < 1.5 to 2.1
-    if schema_state and schema_state:subsystem_executed("enterprise") then
-      if not schema_state:is_migration_executed("enterprise", "006_1301_to_1500") then
-        error(EE_NEEDS_UPGRADE("1.5.0"))
-      end
+    if schema_state and not schema_state:is_migration_executed("enterprise", "006_1301_to_1500") then
+      error(EE_NEEDS_UPGRADE("1.5.0"))
     end
 
     if not opts.force and schema_state.pending_migrations then

@@ -57,6 +57,7 @@ local dummy_heartbeat_msg = cjson_encode({
 
 local dummy_response_msg = "PONG"
 
+-- DP function
 local function flush_cp(premature)
   if premature then
     return
@@ -145,6 +146,7 @@ function _M.new(db, opts)
   return setmetatable(self, mt)
 end
 
+-- DP function
 local function start_ws_client()
   local conf = kong.configuration
   local address = conf.cluster_telemetry_endpoint
@@ -186,6 +188,7 @@ function _M:init(...)
   return self.real_strategy:init(...)
 end
 
+-- DP function
 local function store_buffer(typ, data, flush_now)
 
   if buffer_idx == 1 then
@@ -227,6 +230,7 @@ local function store_buffer(typ, data, flush_now)
   return true
 end
 
+-- DP function
 function _M:insert_stats(flush_data)
   if self.is_cp then
     error("Cannot use this function in control plane", 2)
@@ -235,6 +239,7 @@ function _M:insert_stats(flush_data)
   return store_buffer(VITALS_TYPE_STATS, flush_data, true)
 end
 
+-- DP function
 function _M:delete_stats(...)
   if self.is_cp then
     error("Cannot use this function in control plane", 2)
@@ -267,6 +272,19 @@ for f, t in pairs(datasets) do
   datasets_lookup[t] = f
 end
 
+-- CP function
+local function init_node_meta(self, node_id, node_hostname)
+  local meta, err = self.real_strategy:select_node_meta({ node_id })
+  if err then
+    return false, err
+  elseif meta and #meta > 0 then
+    return false
+  end
+
+  return self.real_strategy:init(node_id, node_hostname)
+end
+
+-- CP function
 function _M:serve_ingest(msg, queued_send)
   if not kong.configuration.vitals then
     ngx.log(ngx.WARN, _log_prefix, "received telemetry from data plane, ",
@@ -295,6 +313,21 @@ function _M:serve_ingest(msg, queued_send)
     return
   end
 
+  local node_id = ngx.var.arg_node_id
+  local node_hostname = ngx.var.arg_node_hostname
+  if node_id == "" or node_hostname == "" then
+    ngx.log(ngx.ERR, _log_prefix, "node_id or node_hostname not exist in query")
+    return ngx.exit(400)
+  end
+
+  local ok, err = init_node_meta(self, node_id, node_hostname)
+  if err then
+    ngx.log(ngx.WARN, _log_prefix, "failed to store node meta with ID: ", node_id,
+                                ", hostname: ", node_hostname, ", err: ", err)
+  elseif ok then
+    ngx.log(ngx.DEBUG, _log_prefix, "new node meta stored with ID: ", node_id, ", hostname: ", node_hostname)
+  end
+
   ngx.log(ngx.DEBUG, "recv size ", #msg.data, " sets ", #payload/2)
 
   local idx = 1
@@ -310,9 +343,9 @@ function _M:serve_ingest(msg, queued_send)
     ngx.log(ngx.DEBUG, _log_prefix, "processing type ", stats_type)
 
     if stats_type == VITALS_TYPE_STATS then
-      local ok, err = self.real_strategy:insert_stats(flush_data)
+      local ok, err = self.real_strategy:insert_stats(flush_data, node_id)
       if not ok then
-        ngx.log(ngx.ERR, _log_prefix, "error writing: ", err)
+        ngx.log(ngx.ERR, _log_prefix, "error writing stats: ", err)
       end
 
       ngx.log(ngx.DEBUG, _log_prefix, "delete expired stats")
@@ -323,10 +356,18 @@ function _M:serve_ingest(msg, queued_send)
       if not ok then
         ngx.log(ngx.WARN, _log_prefix, "failed to delete stats: ", err)
       end
+    elseif stats_type == VITALS_TYPE_CONSUMER_STATS then
+      local ok, err = self.real_strategy:insert_consumer_stats(flush_data, node_id)
+      if not ok then
+        ngx.log(ngx.WARN, _log_prefix, "error writing type ", stats_type, ": ", err)
+      end
     else
       local f = datasets_lookup[stats_type]
       if f then
-        self.real_strategy[f](self.real_strategy, flush_data)
+        local ok, err = self.real_strategy[f](self.real_strategy, flush_data)
+        if not ok then
+          ngx.log(ngx.WARN, _log_prefix, "error writing type ", stats_type, ": ", err)
+        end
       else
         ngx.log(ngx.ERR, _log_prefix, "unknown vitals type ", stats_type)
       end
@@ -335,7 +376,7 @@ function _M:serve_ingest(msg, queued_send)
 end
 
 local cp_functions = {
-  "select_stats", "select_node_meta", "select_phone_home", "select_consumer_stats",
+  "select_stats", "select_node_meta", "select_consumer_stats",
   "select_status_codes_by_service", "select_status_codes_by_route", "select_status_codes_by_consumer",
   "select_status_codes_by_consumer_and_route", "select_status_codes",
   "node_exists", "interval_width",
@@ -348,6 +389,15 @@ for _, f in ipairs(cp_functions) do
 
     return self.real_strategy[f](self.real_strategy, ...)
   end
+end
+
+function _M:select_phone_home(...)
+  if not self.is_cp then
+    error("Cannot use this function in data plane", 2)
+  end
+
+  ngx.log(ngx.WARN, "phone home is not yet implemented on Hybrid control plane")
+  return {}, nil
 end
 
 local dp_functions = {}
