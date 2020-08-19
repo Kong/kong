@@ -6,6 +6,7 @@ local plugin_entities = {
     name = "acls",
     primary_key = "id",
     uniques = {},
+    cache_key = { "consumer", "group" },
     fks = {{name = "consumer", reference = "consumers", on_delete = "cascade"}},
   }
 }
