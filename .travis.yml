@@ -2,8 +2,8 @@ dist: bionic
 
 jobs:
   include:
-  - name: Kong CE 2.0.x
-    env: KONG_VERSION=2.0.x
+  - name: Kong CE 2.1.x
+    env: KONG_VERSION=2.1.x
   - name: Nightly EE-master
     env: KONG_VERSION=nightly-ee POSTGRES=latest CASSANDRA=latest
   #- name: Nightly CE-master
