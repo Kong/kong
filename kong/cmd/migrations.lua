@@ -12,12 +12,16 @@ local fmt = string.format
 local function list_fields(db, tname)
 
   local qs = {
-    postgres = fmt("SELECT column_name FROM information_schema.columns WHERE table_schema='%s' and table_name='%s';",
-      db.connector.config.schema,
-      tname),
-    cassandra = fmt("SELECT column_name FROM system_schema.columns WHERE keyspace_name='%s' and table_name='%s';",
-      db.connector.keyspace,
-      tname)
+    postgres = function()
+      return fmt("SELECT column_name FROM information_schema.columns WHERE table_schema='%s' and table_name='%s';",
+        db.connector.config.schema,
+        tname)
+    end,
+    cassandra = function()
+      return fmt("SELECT column_name FROM system_schema.columns WHERE keyspace_name='%s' and table_name='%s';",
+        db.connector.keyspace,
+        tname)
+    end
   }
 
   if not qs[db.strategy] then
@@ -25,7 +29,7 @@ local function list_fields(db, tname)
   end
 
   local fields = {}
-  local rows, err = db.connector:query(qs[db.strategy])
+  local rows, err = db.connector:query(qs[db.strategy]())
 
   if err then
     return nil, err
