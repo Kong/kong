@@ -1,8 +1,6 @@
 local helpers   = require "spec.helpers"
 local pl_path   = require "pl.path"
 local cjson     = require("cjson.safe").new()
-local ngx_log   = ngx.log
-local ngx_WARN  = ngx.WARN
 
 local PLUGIN_NAME = "mocking"
 
@@ -19,7 +17,7 @@ end
 
 
 local function read_fixture(filename)
-  ngx_log(ngx_WARN, "fixture path: ", fixture_path)
+  ngx.log(ngx.WARN, "fixture path: ", fixture_path)
   local content  = assert(helpers.utils.readfile(fixture_path .. filename))
   --ngx_log(ngx_WARN, "content", content)
    return content
@@ -99,7 +97,7 @@ for _, strategy in helpers.each_strategy() do
         -- validate that the request succeeded, response status 200
         --assert.response(r).has.status(200)
         local body = assert.res_status(200, r)
-        ngx_log(ngx_WARN, "Body: ", body)
+        ngx.log(ngx.WARN, "Body: ", body)
         local header_value = assert.response(r).has.header("X-Kong-Mocking-Plugin")
         -- validate the value of that header
         assert.equal("true", header_value)

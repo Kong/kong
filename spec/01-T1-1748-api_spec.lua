@@ -32,7 +32,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(db.files:insert {
           path = "specs/T1-1748.json",
-          contents = read_fixture("T1-1748.json"),  
+          contents = read_fixture("T1-1748.json"),
         })
 
         local service1 = bp.services:insert{
@@ -91,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
         })
         -- validate that the request succeeded, response status 200
         local body = assert.res_status(200, r)
-        kong.log.notice(body)
+        ngx.log(ngx.WARN, "Body: ", body)
         local header_value = assert.response(r).has.header("X-Kong-Mocking-Plugin")
         -- validate the value of that header
         assert.equal("true", header_value)
