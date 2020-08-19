@@ -45,15 +45,15 @@ for f, t in pairs(datasets) do
 end
 
 -- CP function
-local function init_node_meta(self, node_id, node_hostname)
-  local meta, err = self.real_strategy:select_node_meta({ node_id })
+local function init_node_meta(real_strategy, node_id, node_hostname)
+  local meta, err = real_strategy:select_node_meta({ node_id })
   if err then
     return false, err
   elseif meta and #meta > 0 then
     return false
   end
 
-  return self.real_strategy:init(node_id, node_hostname)
+  return real_strategy:init(node_id, node_hostname)
 end
 
 local cp_functions = {
@@ -84,90 +84,7 @@ for _, f in ipairs(dp_functions) do
   end
 end
 
-local function serve_ingest(self, msg, queued_send)
-  if not kong.configuration.vitals then
-    ngx.log(ngx.WARN, _log_prefix, "received telemetry from data plane, ",
-      "but vitals is not enabled on control plane")
-    -- disconnect websocket
-    return ngx.exit(ngx.ERROR)
-  end
 
-  if self.type == self.TYPE.PRODUCER then
-    error("Cannot use this function in data plane", 2)
-  end
-
-  local payload, err = self:unpack_message(msg)
-  if err then
-    ngx.log(ngx.ERR, _log_prefix, err)
-    return ngx.exit(400)
-  end
-
-  -- just send a empty response for now
-  -- this can be implemented into a per msgid retry in the future
-  queued_send(dummy_response_msg)
-
-  if #payload == 0 then
-    return
-  end
-
-  local node_id = ngx.var.arg_node_id
-  local node_hostname = ngx.var.arg_node_hostname
-  if node_id == "" or node_hostname == "" then
-    ngx.log(ngx.ERR, _log_prefix, "node_id or node_hostname not exist in query")
-    return ngx.exit(400)
-  end
-
-  local ok, err = init_node_meta(self, node_id, node_hostname)
-  if err then
-    ngx.log(ngx.WARN, _log_prefix, "failed to store node meta with ID: ", node_id,
-                                ", hostname: ", node_hostname, ", err: ", err)
-  elseif ok then
-    ngx.log(ngx.DEBUG, _log_prefix, "new node meta stored with ID: ", node_id, ", hostname: ", node_hostname)
-  end
-
-  ngx.log(ngx.DEBUG, "recv size ", #msg.data, " sets ", #payload/2)
-
-  local idx = 1
-  local stats_type, flush_data
-  while true do
-    stats_type = payload[idx]
-    flush_data = payload[idx+1]
-    if not stats_type or not flush_data then
-      break
-    end
-    idx = idx + 2
-
-    ngx.log(ngx.DEBUG, _log_prefix, "processing type ", stats_type)
-
-    if stats_type == VITALS_TYPE_STATS then
-      local ok, err = self.serve_ingest_args.real_strategy:insert_stats(flush_data)
-      if not ok then
-        ngx.log(ngx.ERR, _log_prefix, "error writing stats: ", err)
-      end
-
-      ngx.log(ngx.DEBUG, _log_prefix, "delete expired stats")
-      local expiries = {
-        minutes = kong.vitals.ttl_minutes,
-      }
-      local ok, err = self.serve_ingest_args.real_strategy:delete_stats(expiries)
-      if not ok then
-        ngx.log(ngx.WARN, _log_prefix, "failed to delete stats: ", err)
-      end
-    elseif stats_type == VITALS_TYPE_CONSUMER_STATS then
-      local ok, err = self.real_strategy:insert_consumer_stats(flush_data, node_id)
-      if not ok then
-        ngx.log(ngx.WARN, _log_prefix, "error writing type ", stats_type, ": ", err)
-      end
-    else
-      local f = datasets_lookup[stats_type]
-      if f then
-        self.serve_ingest_args.real_strategy[f](self.serve_ingest_args.real_strategy, flush_data)
-      else
-        ngx.log(ngx.ERR, _log_prefix, "unknown vitals type ", stats_type)
-      end
-    end
-  end
-end
 
 local function get_server_name()
   local conf = kong.configuration
@@ -183,6 +100,90 @@ local function get_server_name()
     end
   end
   return server_name
+end
+
+local function get_serve_ingest_func(self)
+  local real_strategy = self.real_strategy
+  return function(msg, queued_send)
+    if not kong.configuration.vitals then
+      ngx.log(ngx.WARN, _log_prefix, "received telemetry from data plane, ",
+        "but vitals is not enabled on control plane")
+      -- disconnect websocket
+      return ngx.exit(ngx.ERROR)
+    end
+
+    if not self.hybrid_cp then
+      error("Cannot use this function in data plane", 2)
+    end
+
+    local payload, err = messaging.unpack_message(msg, TELEMETRY_TYPE, TELEMETRY_VERSION)
+    if err then
+      ngx.log(ngx.ERR, _log_prefix, err)
+      return ngx.exit(400)
+    end
+
+    -- just send a empty response for now
+    -- this can be implemented into a per msgid retry in the future
+    queued_send(dummy_response_msg)
+
+    if #payload == 0 then
+      return
+    end
+
+    ngx.log(ngx.DEBUG, "recv size ", #msg.data, " sets ", #payload/2)
+    local node_id = ngx.var.arg_node_id
+    local node_hostname = ngx.var.arg_node_hostname
+    if node_id == "" or node_hostname == "" then
+      ngx.log(ngx.ERR, _log_prefix, "node_id or node_hostname not exist in query")
+      return ngx.exit(400)
+    end
+
+    local ok, err = init_node_meta(real_strategy, node_id, node_hostname)
+    if err then
+      ngx.log(ngx.WARN, _log_prefix, "failed to store node meta with ID: ", node_id,
+                                  ", hostname: ", node_hostname, ", err: ", err)
+    elseif ok then
+      ngx.log(ngx.DEBUG, _log_prefix, "new node meta stored with ID: ", node_id, ", hostname: ", node_hostname)
+    end
+
+    ngx.log(ngx.DEBUG, "recv size ", #msg.data, " sets ", #payload/2)
+
+    local idx = 1
+    local stats_type, flush_data
+    while true do
+      stats_type = payload[idx]
+      flush_data = payload[idx+1]
+      if not stats_type or not flush_data then
+        break
+      end
+      idx = idx + 2
+
+      ngx.log(ngx.DEBUG, _log_prefix, "processing type ", stats_type)
+
+      if stats_type == VITALS_TYPE_STATS then
+        local ok, err = real_strategy:insert_stats(flush_data)
+        if not ok then
+          ngx.log(ngx.ERR, _log_prefix, "error writing: ", err)
+        end
+
+        ngx.log(ngx.DEBUG, _log_prefix, "delete expired stats")
+        local expiries = {
+          minutes = kong.vitals.ttl_minutes,
+        }
+        local ok, err = real_strategy:delete_stats(expiries)
+        if not ok then
+          ngx.log(ngx.WARN, _log_prefix, "failed to delete stats: ", err)
+        end
+      else
+        local f = datasets_lookup[stats_type]
+        if f then
+          real_strategy[f](real_strategy, flush_data)
+        else
+          ngx.log(ngx.ERR, _log_prefix, "unknown vitals type ", stats_type)
+        end
+      end
+    end
+  end
 end
 
 function _M.new(db, opts)
@@ -205,15 +206,12 @@ function _M.new(db, opts)
     self.real_strategy = strategy.new(db, opts)
   end
 
-  local messaging, err = messaging:new({
+  local messaging, err = messaging.new({
     type = hybrid_cp and messaging.TYPE.CONSUMER or messaging.TYPE.PRODUCER,
     cluster_endpoint = kong.configuration.cluster_telemetry_endpoint,
     message_type = TELEMETRY_TYPE,
     message_type_version = TELEMETRY_VERSION,
-    serve_ingest_func = serve_ingest,
-    serve_ingest_func_args = {
-      real_strategy = self.real_strategy,
-    },
+    serve_ingest_func = get_serve_ingest_func(self),
     shm = SHM,
     shm_key = SHM_KEY,
   })
