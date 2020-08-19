@@ -120,7 +120,7 @@ local postgres = {
     end,
 
     ----------------------------------------------------------------------------
-    -- Adjust foreign key to take ws_id into account and ansure it matches
+    -- Adjust foreign key to take ws_id into account and ensure it matches
     -- @param table_name string: name of the table e.g. "routes"
     -- @param fk_prefix string: name of the foreign field in the schema,
     -- which is used as a prefix in foreign key entries in tables e.g. "service"
@@ -296,7 +296,7 @@ local cassandra = {
     end,
 
     ----------------------------------------------------------------------------
-    -- Adjust foreign key to take ws_id into account and ansure it matches
+    -- Adjust foreign key to take ws_id into account and ensure it matches
     -- @param table_name string: name of the table e.g. "routes"
     -- @param fk_prefix string: name of the foreign field in the schema,
     -- which is used as a prefix in foreign key entries in tables e.g. "service"
