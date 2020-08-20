@@ -7,7 +7,7 @@ local reports    = require "kong.reports"
 local utils      = require "kong.tools.utils"
 local pg_strat   = require "kong.vitals.postgres.strategy"
 local feature_flags = require "kong.enterprise_edition.feature_flags"
-
+local vitals_utils = require "kong.vitals.utils"
 
 local timer_at   = ngx.timer.at
 local time       = ngx.time
@@ -98,14 +98,6 @@ local PH_STATS = {
   "v.nt",
   "v.lpra",
   "v.lua",
-}
-
-local interval_to_duration = {
-  seconds = 1,
-  minutes = 60,
-  hours = 3600,
-  days = 86400,
-  weeks = 604800
 }
 
 local worker_count = ngx.worker.count()
@@ -1247,7 +1239,7 @@ function _M:get_status_codes(opts, key_by)
   -- currently depending on the API (api/init.lua) to do that check
 
   local query_opts = {
-    duration = interval_to_duration[opts.duration],
+    duration = vitals_utils.interval_to_duration[opts.duration],
     start_ts = opts.start_ts,
     entity_type = opts.entity_type,
     entity_id = opts.entity_id,
@@ -1327,7 +1319,7 @@ function _M:get_consumer_stats(opts)
 
   local query_opts = {
     consumer_id = opts.consumer_id,
-    duration    = interval_to_duration[opts.duration],
+    duration    = vitals_utils.interval_to_duration[opts.duration],
     level       = opts.level,
     node_id     = opts.node_id,
     start_ts    = opts.start_ts,
