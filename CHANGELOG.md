@@ -1,3 +1,9 @@
+## Unreleased
+
+### Changed
+
+* Standardize on `allow` instead of `whitelist` to specify the parameter names that should be allowed in request JSON body. Previous `whitelist` nomenclature is deprecated and support will be removed in Kong 3.0.
+
 ## 0.37.2
 
 ### Changed

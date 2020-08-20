@@ -372,7 +372,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       route = { id = route22.id },
       name = "request-transformer-advanced",
       config = {
-        whitelist = {
+        allow = {
           body = {"k1", "k3"},
         }
       }
@@ -385,7 +385,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         remove = {
           body = {"k1", "k2", "k3", "k4"},
         },
-        whitelist = {
+        allow = {
           body = {"k1", "k3"},
         }
       }

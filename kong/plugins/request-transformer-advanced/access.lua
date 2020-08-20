@@ -348,15 +348,15 @@ local function transform_json_body(conf, body, content_length)
   end
 
 
-  if conf.whitelist.body and #conf.whitelist.body then
-    local whitelisted_parameter = {}
-    for _, name in iter(conf.whitelist.body) do
-      whitelisted_parameter[name] = parameters[name]
+  if conf.allow.body and #conf.allow.body then
+    local allowed_parameter = {}
+    for _, name in iter(conf.allow.body) do
+      allowed_parameter[name] = parameters[name]
       filtered = true
     end
 
     if filtered then
-      parameters = whitelisted_parameter
+      parameters = allowed_parameter
     end
   end
 
@@ -411,15 +411,15 @@ local function transform_url_encoded_body(conf, body, content_length)
     end
   end
 
-  if conf.whitelist.body and #conf.whitelist.body then
-    local whitelisted_parameter = {}
-    for _, name in iter(conf.whitelist.body) do
-      whitelisted_parameter[name] = parameters[name]
+  if conf.allow.body and #conf.allow.body then
+    local allowed_parameter = {}
+    for _, name in iter(conf.allow.body) do
+      allowed_parameter[name] = parameters[name]
       filtered = true
     end
 
     if filtered then
-      parameters = whitelisted_parameter
+      parameters = allowed_parameter
     end
   end
 
@@ -469,15 +469,15 @@ local function transform_multipart_body(conf, body, content_length, content_type
     end
   end
 
-  if conf.whitelist.body and #conf.whitelist.body > 0 then
-    local whitelisted_parameter = multipart("", content_type_value)
-    for _, name in iter(conf.whitelist.body) do
-      whitelisted_parameter:set_simple(name, parameters:get(name))
+  if conf.allow.body and #conf.allow.body > 0 then
+    local allowed_parameter = multipart("", content_type_value)
+    for _, name in iter(conf.allow.body) do
+      allowed_parameter:set_simple(name, parameters:get(name))
       filtered = true
     end
 
     if filtered then
-      parameters = whitelisted_parameter
+      parameters = allowed_parameter
     end
   end
 
@@ -492,7 +492,7 @@ local function transform_body(conf)
   if content_type == nil or #conf.rename.body < 1 and
      #conf.remove.body < 1 and #conf.replace.body < 1 and
      #conf.add.body < 1 and #conf.append.body < 1 and
-     (conf.whitelist.body and #conf.whitelist.body < 1) then
+     (conf.allow.body and #conf.allow.body < 1) then
     return
   end
 
