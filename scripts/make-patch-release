@@ -27,13 +27,13 @@ function usage() {
    step "submit"           "push and submit a release PR"
    step "docs_pr"          "push and submit a docs.konghq.com PR for the release"
    step "merge"            "merge, tag and sign the release"
-   step "update_docker"    "update and submit a PR to Kong's docker-kong repo"
+   step "update_docker"    "(ran by CI now) update and submit a PR to Kong's docker-kong repo"
    step "merge_docker"     "merge, tag and sign Kong's docker-kong PR"
    step "submit_docker"    "submit a PR to docker-library/official-images"
-   step "homebrew"         "bump version and submit a PR to homebrew-kong"
+   step "homebrew"         "(ran by CI now) bump version and submit a PR to homebrew-kong"
    step "luarocks"         "upload to LuaRocks" "<api-key>"
-   step "vagrant"          "bump version and submit a PR to kong-vagrant"
-   step "pongo"            "bump version and submit a PR to kong-pongo"
+   step "vagrant"          "(ran by CI now) bump version and submit a PR to kong-vagrant"
+   step "pongo"            "(ran by CI now) bump version and submit a PR to kong-pongo"
    exit 0
 }
 
@@ -317,7 +317,7 @@ case "$step" in
 
       git checkout master
       git pull
-      ./assets/add_version.sh CE $version
+      ./assets/add_version.sh CE "$version"
       SUCCESS "Make sure you get the PR above approved and merged."
       ;;
    #---------------------------------------------------------------------------
