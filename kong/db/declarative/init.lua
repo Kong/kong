@@ -755,96 +755,103 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
 end
 
 
-function declarative.load_into_cache_with_events(entities, meta, hash)
-  local ok, err = ngx.shared.kong:add("declarative:flips", 0, 60)
-  if not ok then
-    if err == "exists" then
-      local ttl = math.min(ngx.shared.kong:ttl("declarative:flips"), 10)
-      return nil, "busy", ttl
-    end
+do
+  local SHARED_COUNTER_NAME = "declarative:flips"
+  local SHARED_COUNTER_TTL = 60
+  declarative.SHARED_COUNTER_NAME = SHARED_COUNTER_NAME
+  declarative.SHARED_COUNTER_TTL = SHARED_COUNTER_TTL
 
-    ngx.shared.kong:delete("declarative:flips")
-    return nil, err
-  end
-
-  -- ensure any previous update finished (we're flipped to the latest page)
-  ok, err = kong.worker_events.poll()
-  if not ok then
-    ngx.shared.kong:delete("declarative:flips")
-    return nil, err
-  end
-
-  if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 and
-     ngx.get_phase() ~= "init_worker"
-  then
-    -- update stream if necessary
-    -- TODO: remove this once shdict can be shared between subsystems
-
-    local sock = ngx_socket_tcp()
-    ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
+  function declarative.load_into_cache_with_events(entities, meta, hash)
+    local ok, err = ngx.shared.kong:add(SHARED_COUNTER_NAME, 0, SHARED_COUNTER_TTL)
     if not ok then
-      ngx.shared.kong:delete("declarative:flips")
+      if err == "exists" then
+        local ttl = math.min(ngx.shared.kong:ttl(SHARED_COUNTER_NAME), 10)
+        return nil, "busy", ttl
+      end
+
+      ngx.shared.kong:delete(SHARED_COUNTER_NAME)
       return nil, err
     end
 
-    local json = cjson.encode({ entities, meta, hash, })
-    local bytes
-    bytes, err = sock:send(json)
-    sock:close()
-
-    if not bytes then
-      ngx.shared.kong:delete("declarative:flips")
+    -- ensure any previous update finished (we're flipped to the latest page)
+    ok, err = kong.worker_events.poll()
+    if not ok then
+      ngx.shared.kong:delete(SHARED_COUNTER_NAME)
       return nil, err
     end
 
-    assert(bytes == #json, "incomplete config sent to the stream subsystem")
-  end
+    if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 and
+       ngx.get_phase() ~= "init_worker"
+    then
+      -- update stream if necessary
+      -- TODO: remove this once shdict can be shared between subsystems
 
-  local default_ws
-  ok, err, default_ws = declarative.load_into_cache(entities, meta, hash, SHADOW)
-  if ok then
-    ok, err = kong.worker_events.post("declarative", "flip_config", default_ws)
-    if ok ~= "done" then
-      return nil, "failed to flip declarative config cache pages: " .. (err or ok)
+      local sock = ngx_socket_tcp()
+      ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
+      if not ok then
+        ngx.shared.kong:delete(SHARED_COUNTER_NAME)
+        return nil, err
+      end
+
+      local json = cjson.encode({ entities, meta, hash, })
+      local bytes
+      bytes, err = sock:send(json)
+      sock:close()
+
+      if not bytes then
+        ngx.shared.kong:delete(SHARED_COUNTER_NAME)
+        return nil, err
+      end
+
+      assert(bytes == #json, "incomplete config sent to the stream subsystem")
     end
 
-  else
-    ngx.shared.kong:delete("declarative:flips")
-    return nil, err
-  end
+    local default_ws
+    ok, err, default_ws = declarative.load_into_cache(entities, meta, hash, SHADOW)
+    if ok then
+      ok, err = kong.worker_events.post("declarative", "flip_config", default_ws)
+      if ok ~= "done" then
+        return nil, "failed to flip declarative config cache pages: " .. (err or ok)
+      end
 
-  ok, err = kong.core_cache:save_curr_page()
-  if not ok then
-    return nil, "failed to persist cache page number inside shdict: " .. err
-  end
-
-  local sleep_left = 60
-  local sleep_time = 0.0375
-
-  while sleep_left > 0 do
-    local flips = ngx.shared.kong:get("declarative:flips")
-    if  flips == nil or flips == WORKER_COUNT then
-      break
+    else
+      ngx.shared.kong:delete(SHARED_COUNTER_NAME)
+      return nil, err
     end
 
-    sleep_time = sleep_time * 2
-    if sleep_time > sleep_left then
-      sleep_time = sleep_left
+    ok, err = kong.core_cache:save_curr_page()
+    if not ok then
+      return nil, "failed to persist cache page number inside shdict: " .. err
     end
-    ngx.sleep(sleep_time)
-    sleep_left = sleep_left - sleep_time
 
+    local sleep_left = SHARED_COUNTER_TTL
+    local sleep_time = 0.0375
+
+    while sleep_left > 0 do
+      local flips = ngx.shared.kong:get(SHARED_COUNTER_NAME)
+      if  flips == nil or flips == WORKER_COUNT then
+        break
+      end
+
+      sleep_time = sleep_time * 2
+      if sleep_time > sleep_left then
+        sleep_time = sleep_left
+      end
+
+      ngx.sleep(sleep_time)
+      sleep_left = sleep_left - sleep_time
+
+    end
+
+    ngx.shared.kong:delete(SHARED_COUNTER_NAME)
+
+    if sleep_left <= 0 then
+      return nil, "timeout"
+    end
+
+    return true
   end
-
-  ngx.shared.kong:delete("declarative:flips")
-
-  if sleep_left <= 0 then
-    return nil, "timeout"
-  end
-
-  return true
 end
-
 
 
 function declarative.sanitize_output(entities)

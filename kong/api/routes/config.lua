@@ -97,13 +97,13 @@ return {
       if not ok then
         if err == "busy" or err == "locked" then
           return kong.response.exit(429, {
-            message = "Currently loading previous configuration."
-          }, { ["Retry-After"] = ttl or 60 })
+            message = "Currently loading previous configuration"
+          }, { ["Retry-After"] = ttl })
         end
 
         if err == "timeout" then
           return kong.response.exit(504, {
-            message = "Timed out while loading configuration."
+            message = "Timed out while loading configuration"
           })
         end
 
