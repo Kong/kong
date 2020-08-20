@@ -11,6 +11,7 @@ local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
+local declarative  = require "kong.db.declarative"
 
 
 local kong         = kong
