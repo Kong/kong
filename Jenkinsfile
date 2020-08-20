@@ -318,5 +318,159 @@ pipeline {
                 }
             }
         }
+        stage('Post Packaging Steps') {
+            when {
+                beforeAgent true
+                allOf {
+                    buildingTag()
+                    not { triggeredBy 'TimerTrigger' }
+                }
+            }
+            parallel {
+                stage('PR Docker') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        SLACK_WEBHOOK = credentials('core_team_slack_webhook')
+                        GITHUB_USER = "mashapedeployment"
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME update_docker'
+                    }
+                    post {
+                        failure {
+                            script {
+                                sh 'SLACK_MESSAGE="updating docker-kong failed" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                        success {
+                            script {
+                                sh 'SLACK_MESSAGE="updating docker-kong succeeded. Please review and approve the release PR" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                    }
+                }
+                stage('PR Homebrew') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        SLACK_WEBHOOK = credentials('core_team_slack_webhook')
+                        GITHUB_USER = "mashapedeployment"
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME homebrew'
+                    }
+                    post {
+                        failure {
+                            script {
+                                sh 'SLACK_MESSAGE="updating homebrew-kong failed" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                        success {
+                            script {
+                                sh 'SLACK_MESSAGE="updating homebrew-kong succeeded. Please review and approve the release PR" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                    }
+                }
+                stage('PR Vagrant') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        SLACK_WEBHOOK = credentials('core_team_slack_webhook')
+                        GITHUB_USER = "mashapedeployment"
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME vagrant'
+                    }
+                    post {
+                        failure {
+                            script {
+                                sh 'SLACK_MESSAGE="updating kong-vagrant failed" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                        success {
+                            script {
+                                sh 'SLACK_MESSAGE="updating kong-vagrant succeeded. Please review and approve the release PR" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                    }
+                }
+                stage('PR Pongo') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        SLACK_WEBHOOK = credentials('core_team_slack_webhook')
+                        GITHUB_USER = "mashapedeployment"
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME pongo'
+                    }
+                    post {
+                        failure {
+                            script {
+                                sh 'SLACK_MESSAGE="updating kong-pongo failed" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                        success {
+                            script {
+                                sh 'SLACK_MESSAGE="updating kong-pongo succeeded. Please review and approve the release PR" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                    }
+                }
+                stage('Release to luarocks') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        SLACK_WEBHOOK = credentials('core_team_slack_webhook')
+                        LUAROCKS_API_KEY = credentials('luarocks_api_key')
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME luarocks $LUAROCKS_API_KEY'
+                    }
+                    post {
+                        failure {
+                            script {
+                                sh 'SLACK_MESSAGE="releasing to luarocks failed" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                        success {
+                            script {
+                                sh 'SLACK_MESSAGE="updating luarocks succeeded. No action i./s necessary this message is informational only" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
