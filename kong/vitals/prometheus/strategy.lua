@@ -750,6 +750,7 @@ _M.status_code_query = status_code_query
 -- @param[type=string] interval: seconds, minutes, hours, days, weeks, months
 -- @param[type=number] start_ts: seconds from now
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
+  interval = interval or "minutes" -- query function requires an interval to get start_ts
   local duration = interval_to_duration[interval]
   local entities = vitals_utils.get_entity_metadata(entity, entity_id)
   local metrics_query = status_code_query(entity_id, entity)
