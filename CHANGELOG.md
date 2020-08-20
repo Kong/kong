@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.0.0](#100---20200820)
 - [0.9.0](#090---20200617)
 - [0.8.0](#080---20200424)
 - [0.7.1](#071---20200105)
@@ -16,6 +17,11 @@
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
 
+
+##  [1.0.0] - 2020/08/20
+
+- Change handler to use Kong PDK function kong.log.serialize instead of using
+  a deprecated basic serializer.
 
 ##  [0.9.0] - 2020/06/17
 
