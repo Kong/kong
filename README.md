@@ -1,7 +1,7 @@
 [![][kong-logo]][kong-url]
 
 [![Build Status](https://img.shields.io/travis/Kong/kong?logo=Travis%20ci)](https://travis-ci.org/Kong/kong/branches)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?logo=Github)](https://github.com/Kong/kong/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?logo=apache)](https://github.com/Kong/kong/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/twitter/follow/thekonginc.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=thekonginc)
 
 Kong is a cloud-native, fast, scalable, and distributed Microservice
