@@ -5,6 +5,7 @@ local pl_file = require "pl.file"
 local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
+local constants = require "kong.constants"
 
 
 local deepcopy = tablex.deepcopy
@@ -756,27 +757,25 @@ end
 
 
 do
-  local SHARED_COUNTER_NAME = "declarative:flips"
-  local SHARED_COUNTER_TTL = 60
-  declarative.SHARED_COUNTER_NAME = SHARED_COUNTER_NAME
-  declarative.SHARED_COUNTER_TTL = SHARED_COUNTER_TTL
+  local DECLARATIVE_FLIPS_NAME = constants.DECLARATIVE_FLIPS.name
+  local DECLARATIVE_FLIPS_TTL = constants.DECLARATIVE_FLIPS.ttl
 
   function declarative.load_into_cache_with_events(entities, meta, hash)
-    local ok, err = ngx.shared.kong:add(SHARED_COUNTER_NAME, 0, SHARED_COUNTER_TTL)
+    local ok, err = ngx.shared.kong:add(DECLARATIVE_FLIPS_NAME, 0, DECLARATIVE_FLIPS_TTL)
     if not ok then
       if err == "exists" then
-        local ttl = math.min(ngx.shared.kong:ttl(SHARED_COUNTER_NAME), 10)
+        local ttl = math.min(ngx.shared.kong:ttl(DECLARATIVE_FLIPS_NAME), 10)
         return nil, "busy", ttl
       end
 
-      ngx.shared.kong:delete(SHARED_COUNTER_NAME)
+      ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
       return nil, err
     end
 
     -- ensure any previous update finished (we're flipped to the latest page)
     ok, err = kong.worker_events.poll()
     if not ok then
-      ngx.shared.kong:delete(SHARED_COUNTER_NAME)
+      ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
       return nil, err
     end
 
@@ -789,7 +788,7 @@ do
       local sock = ngx_socket_tcp()
       ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
       if not ok then
-        ngx.shared.kong:delete(SHARED_COUNTER_NAME)
+        ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
         return nil, err
       end
 
@@ -799,7 +798,7 @@ do
       sock:close()
 
       if not bytes then
-        ngx.shared.kong:delete(SHARED_COUNTER_NAME)
+        ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
         return nil, err
       end
 
@@ -815,7 +814,7 @@ do
       end
 
     else
-      ngx.shared.kong:delete(SHARED_COUNTER_NAME)
+      ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
       return nil, err
     end
 
@@ -824,11 +823,11 @@ do
       return nil, "failed to persist cache page number inside shdict: " .. err
     end
 
-    local sleep_left = SHARED_COUNTER_TTL
+    local sleep_left = DECLARATIVE_FLIPS_TTL
     local sleep_time = 0.0375
 
     while sleep_left > 0 do
-      local flips = ngx.shared.kong:get(SHARED_COUNTER_NAME)
+      local flips = ngx.shared.kong:get(DECLARATIVE_FLIPS_NAME)
       if  flips == nil or flips == WORKER_COUNT then
         break
       end
@@ -843,7 +842,7 @@ do
 
     end
 
-    ngx.shared.kong:delete(SHARED_COUNTER_NAME)
+    ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
 
     if sleep_left <= 0 then
       return nil, "timeout"

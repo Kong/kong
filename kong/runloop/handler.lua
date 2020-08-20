@@ -11,7 +11,6 @@ local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
-local declarative  = require "kong.db.declarative"
 
 
 local kong         = kong
@@ -444,8 +443,7 @@ local function register_events()
 
         balancer.init()
 
-        ngx.shared.kong:incr(declarative.SHARED_COUNTER_NAME,
-            1, 0, declarative.SHARED_COUNTER_TTL)
+        ngx.shared.kong:incr(constants.DECLARATIVE_FLIPS.name, 1, 0, constants.DECLARATIVE_FLIPS.ttl)
 
         return true
       end)
