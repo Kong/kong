@@ -1,5 +1,4 @@
 local declarative = require("kong.db.declarative")
-local concurrency = require("kong.concurrency")
 local reports = require("kong.reports")
 local errors = require("kong.db.errors")
 
@@ -93,18 +92,28 @@ return {
         return kong.response.exit(400, errors:declarative_config(err_t))
       end
 
-      local ok, err = concurrency.with_worker_mutex({ name = "dbless-worker" }, function()
-        return declarative.load_into_cache_with_events(entities, meta, new_hash)
-      end)
-
-      if err == "no memory" then
-        kong.log.err("not enough cache space for declarative config")
-        return kong.response.exit(413, {
-          message = "Configuration does not fit in Kong cache"
-        })
-      end
+      local ok, err, ttl = declarative.load_into_cache_with_events(entities, meta, new_hash)
 
       if not ok then
+        if err == "busy" or err == "locked" then
+          return kong.response.exit(429, {
+            message = "Currently loading previous configuration"
+          }, { ["Retry-After"] = ttl })
+        end
+
+        if err == "timeout" then
+          return kong.response.exit(504, {
+            message = "Timed out while loading configuration"
+          })
+        end
+
+        if err == "no memory" then
+          kong.log.err("not enough cache space for declarative config")
+          return kong.response.exit(413, {
+            message = "Configuration does not fit in Kong cache"
+          })
+        end
+
         kong.log.err("failed loading declarative config into cache: ", err)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end

@@ -443,6 +443,8 @@ local function register_events()
 
         balancer.init()
 
+        ngx.shared.kong:incr(constants.DECLARATIVE_FLIPS.name, 1, 0, constants.DECLARATIVE_FLIPS.ttl)
+
         return true
       end)
 
