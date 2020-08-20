@@ -1,3 +1,7 @@
+## 1.3.7
+
+- feat(handler) add RateLimit headers for draft RFC (FTI-1447)
+
 ## 1.3.6
 
 - fix(handler) Corrected service ID lookup (FTI-1704) (#49)
