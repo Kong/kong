@@ -82,17 +82,6 @@ local postgres = {
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      local sql = render([[
-        UPDATE "$(TABLE)"
-        SET cache_key = CONCAT(cache_key, ':',
-                               (SELECT id FROM workspaces WHERE name = 'default'))
-        WHERE cache_key LIKE '%:';
-      ]], {
-        TABLE = table_name,
-      })
-
-      print(sql)
-
       local _, err = connector:query(render([[
         UPDATE "$(TABLE)"
         SET cache_key = CONCAT(cache_key, ':',
