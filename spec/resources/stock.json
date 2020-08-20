@@ -1,0 +1,113 @@
+{"swagger": "2.0",
+    "info" : {
+        "title": "Stock API",
+        "description": "Stock Information Service",
+        "version": "0.1"
+    },
+    "host": "apistore.kong.com:8000",
+    "basePath": "/",
+    "schemes": [
+        "http",
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+       "/stock/historical": {
+            "get": {
+                "description": "",
+                "operationId": "GET /stock/historical",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Production"
+                ],
+                "parameters": [
+                    {
+                        "required": true,
+                        "in": "query",
+                        "name": "tickers",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status 200",
+                        "examples": {
+                            "application/json":
+                                  {
+                                "meta_data" : {
+                                  "api_name" : "historical_stock_price_v2",
+                                  "num_total_data_points" : 1,
+                                  "credit_cost" : 10,
+                                  "start_date" : "yesterday",
+                                  "end_date" : "yesterday"
+                                },
+                                "result_data" : {
+                                  "AAPL" : [ {
+                                    "date" : "2000-04-23",
+                                    "volume" : 33,
+                                    "high" : 100.75,
+                                    "low" : 100.87,
+                                    "adj_close" : 275.03,
+                                    "close" : 100.03,
+                                    "open" : 100.87
+                                  } ]
+                                }
+                              }
+                            }
+                          }
+                }
+           }
+       },
+     "/stock/closing": {
+            "get": {
+                "description": "",
+                "operationId": "GET /stock/closing",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Beta"
+                ],
+                "parameters": [
+                    {
+                        "required": true,
+                        "in": "query",
+                        "name": "tickers",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status 200",
+                        "examples": {
+                            "application/json":
+                                  {
+                                "meta_data" : {
+                                  "api_name" : "closing_stock_price_v1"
+                                },
+                                "result_data" : {
+                                  "AAPL" : [ {
+                                    "date" : "2000-06-23",
+                                    "volume" : 33,
+                                    "high" : 100.75,
+                                    "low" : 100.87,
+                                    "adj_close" : 275.03,
+                                    "close" : 100.03,
+                                    "open" : 100.87
+                                  } ]
+                                }
+                              }
+                            }
+                          }
+                }
+           }
+       }
+    }
+}
