@@ -318,6 +318,9 @@ case "$step" in
       git checkout master
       git pull
       ./assets/add_version.sh CE "$version"
+      if [[ ! $? -eq 0 ]]; then
+         exit 1
+      fi
       SUCCESS "Make sure you get the PR above approved and merged."
       ;;
    #---------------------------------------------------------------------------
