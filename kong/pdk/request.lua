@@ -5,6 +5,7 @@
 -- @module kong.request
 
 
+local ck = require "resty.cookie"
 local cjson = require "cjson.safe".new()
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
