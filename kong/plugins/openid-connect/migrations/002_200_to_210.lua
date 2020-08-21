@@ -28,6 +28,8 @@ return {
       if err then
         return nil, err
       end
+
+      return true
     end,
 
   },
@@ -57,6 +59,8 @@ return {
       if err then
         return nil, err
       end
+
+      return true
     end,
   },
 }
