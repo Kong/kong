@@ -7,7 +7,7 @@ local str           = require "resty.string"
 local function pg_ca_certificates_migration(connector)
   assert(connector:connect_migrations())
 
-  for ca_cert, err in connector:iterate('SELECT * FROM ca_certificates') do
+  for ca_cert, err in connector:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
     if err then
       return nil, err
     end
@@ -17,39 +17,65 @@ local function pg_ca_certificates_migration(connector)
       return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
     end
 
-    local sql = string.format([[
-          UPDATE ca_certificates SET cert_digest = '%s' WHERE id = '%s';
-        ]], digest, ca_cert.id)
+    if digest ~= ca_cert.cert_digest then
+      local sql = fmt("UPDATE ca_certificates SET cert_digest = '%s' WHERE id = '%s'",
+                      digest, ca_cert.id)
 
-    assert(connector:query(sql))
-  end
-
-  assert(connector:query('ALTER TABLE ca_certificates ALTER COLUMN cert_digest SET NOT NULL'))
-end
-
-local function c_ca_certificates_migration(connector)
-  local coordinator = connector:connect_migrations()
-
-  for rows, err in coordinator:iterate("SELECT cert, id FROM ca_certificates") do
-    if err then
-      return nil, err
-    end
-
-    for _, ca_cert in ipairs(rows) do
-      local digest = str.to_hex(openssl_x509.new(ca_cert.cert):digest("sha256"))
-      if not digest then
-        return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
-      end
-
-      _, err = connector:query(
-        fmt("UPDATE ca_certificates SET cert_digest = '%s' WHERE partition = 'ca_certificates' AND id = %s",
-          digest, ca_cert.id)
-      )
+      local _, err = connector:query(sql)
       if err then
         return nil, err
       end
     end
   end
+
+  local _, err = connector:query([[
+    DO $$
+    BEGIN
+      ALTER TABLE IF EXISTS ONLY "ca_certificates" ALTER COLUMN "cert_digest" SET NOT NULL;
+    EXCEPTION WHEN UNDEFINED_COLUMN THEN
+      -- Do nothing, accept existing state
+    END;
+    $$;
+  ]])
+
+  if err then
+    return nil, err
+  end
+
+  return true
+end
+
+local function c_ca_certificates_migration(connector)
+  local cassandra = require "cassandra"
+  local coordinator = connector:connect_migrations()
+
+  for rows, err in coordinator:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
+    if err then
+      return nil, err
+    end
+
+    for i = 1, #rows do
+      local ca_cert = rows[i]
+      local digest = str.to_hex(openssl_x509.new(ca_cert.cert):digest("sha256"))
+      if not digest then
+        return nil, "cannot create digest value of certificate with id: " .. ca_cert.id
+      end
+
+      if digest ~= ca_cert.cert_digest then
+        local _, err = connector:query(
+          "UPDATE ca_certificates SET cert_digest = ? WHERE partition = 'ca_certificates' AND id = ?", {
+            cassandra.text(digest),
+            cassandra.uuid(ca_cert.id)
+          }
+        )
+        if err then
+          return nil, err
+        end
+      end
+    end
+  end
+
+  return true
 end
 
 
@@ -110,8 +136,8 @@ local core_entities = {
 -- for the database (each function returns a string).
 -- @return SQL or CQL
 local function ws_migration_up(ops)
-  return ops:ws_add_workspaces()
-      .. ops:ws_adjust_fields(core_entities)
+  return assert(ops:ws_add_workspaces())
+      .. assert(ops:ws_adjust_fields(core_entities))
 end
 
 
@@ -122,7 +148,7 @@ end
 -- @return a function that receives a connector
 local function ws_migration_teardown(ops)
   return function(connector)
-    ops:ws_adjust_data(connector, core_entities)
+    return ops:ws_adjust_data(connector, core_entities)
   end
 end
 
@@ -134,11 +160,11 @@ return {
   postgres = {
     up = [[
         -- ca_certificates table
-        ALTER TABLE ca_certificates DROP CONSTRAINT IF EXISTS ca_certificates_cert_key;
+        ALTER TABLE IF EXISTS ONLY ca_certificates DROP CONSTRAINT IF EXISTS ca_certificates_cert_key;
 
         DO $$
           BEGIN
-            ALTER TABLE ca_certificates ADD COLUMN "cert_digest" TEXT UNIQUE;
+            ALTER TABLE IF EXISTS ONLY ca_certificates ADD COLUMN "cert_digest" TEXT UNIQUE;
           EXCEPTION WHEN duplicate_column THEN
             -- Do nothing, accept existing state
           END;
@@ -146,7 +172,7 @@ return {
 
         DO $$
           BEGIN
-            ALTER TABLE services ADD COLUMN "tls_verify" BOOLEAN;
+            ALTER TABLE IF EXISTS ONLY services ADD COLUMN "tls_verify" BOOLEAN;
           EXCEPTION WHEN duplicate_column THEN
             -- Do nothing, accept existing state
           END;
@@ -163,7 +189,7 @@ return {
 
         DO $$
           BEGIN
-            ALTER TABLE services ADD COLUMN "tls_verify_depth" SMALLINT;
+            ALTER TABLE IF EXISTS ONLY services ADD COLUMN "tls_verify_depth" SMALLINT;
           EXCEPTION WHEN duplicate_column THEN
             -- Do nothing, accept existing state
           END;
@@ -171,7 +197,7 @@ return {
 
         DO $$
           BEGIN
-            ALTER TABLE services ADD COLUMN "ca_certificates" UUID[];
+            ALTER TABLE IF EXISTS ONLY services ADD COLUMN "ca_certificates" UUID[];
           EXCEPTION WHEN duplicate_column THEN
             -- Do nothing, accept existing state
           END;
@@ -185,10 +211,18 @@ return {
         END$$;
     ]] .. ws_migration_up(operations.postgres.up),
     teardown = function(connector)
-      ws_migration_teardown(operations.postgres.teardown)(connector)
+      local _, err = ws_migration_teardown(operations.postgres.teardown)(connector)
+      if err then
+        return nil, err
+      end
 
       -- add `cert_digest` field for `ca_certificates` table
-      pg_ca_certificates_migration(connector)
+      _, err = pg_ca_certificates_migration(connector)
+      if err then
+        return nil, err
+      end
+
+      return true
     end
   },
   cassandra = {
@@ -208,10 +242,18 @@ return {
       CREATE INDEX IF NOT EXISTS upstreams_client_certificate_id_idx ON upstreams(client_certificate_id);
     ]] .. ws_migration_up(operations.cassandra.up),
     teardown = function(connector)
-      ws_migration_teardown(operations.cassandra.teardown)(connector)
+      local _, err = ws_migration_teardown(operations.cassandra.teardown)(connector)
+      if err then
+        return nil, err
+      end
 
       -- add `cert_digest` field for `ca_certificates` table
-      c_ca_certificates_migration(connector)
+      _, err = c_ca_certificates_migration(connector)
+      if err then
+        return nil, err
+      end
+
+      return true
     end
   }
 }

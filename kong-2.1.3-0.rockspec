@@ -1,9 +1,9 @@
 package = "kong"
-version = "2.1.1-0"
+version = "2.1.3-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.1.1"
+  tag = "2.1.3"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -372,8 +372,10 @@ build = {
     ["kong.db.migrations.core.008_150_to_200"] = "kong/db/migrations/core/008_150_to_200.lua",
     ["kong.db.migrations.core.009_200_to_210"] = "kong/db/migrations/core/009_200_to_210.lua",
     ["kong.db.migrations.core.010_210_to_211"] = "kong/db/migrations/core/010_210_to_211.lua",
+    ["kong.db.migrations.core.011_212_to_213"] = "kong/db/migrations/core/011_212_to_213.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
+    ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -496,6 +498,7 @@ build = {
     ["kong.plugins.acl.migrations.000_base_acl"] = "kong/plugins/acl/migrations/000_base_acl.lua",
     ["kong.plugins.acl.migrations.002_130_to_140"] = "kong/plugins/acl/migrations/002_130_to_140.lua",
     ["kong.plugins.acl.migrations.003_200_to_210"] = "kong/plugins/acl/migrations/003_200_to_210.lua",
+    ["kong.plugins.acl.migrations.004_212_to_213"] = "kong/plugins/acl/migrations/004_212_to_213.lua",
     ["kong.plugins.acl.handler"] = "kong/plugins/acl/handler.lua",
     ["kong.plugins.acl.schema"] = "kong/plugins/acl/schema.lua",
     ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",
