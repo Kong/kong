@@ -5,7 +5,6 @@ local function ws_migration_teardown(ops)
   return function(connector)
     ops:fixup_plugin_config(connector, "request-transformer-advanced", function(config)
       config.allow = config.whitelist
-      config.allow.body = config.whitelist.body
       config.whitelist = nil
       return true
     end)
