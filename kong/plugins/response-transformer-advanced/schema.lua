@@ -152,11 +152,11 @@ return {
           { functions = functions_array },
           { if_status = status_array },
       }}},
-  }}}},
+  },
   shorthands = {
     -- deprecated forms, to be removed in Kong EE 3.x
     { whitelist = function(value)
         return { allow = value }
       end },
-  },
+  }}}},
 }

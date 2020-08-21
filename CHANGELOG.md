@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixed
+
+- Fix migration that changed `whitelist` to `allow`.
+
 ## 0.4.0
 
 ### Added
