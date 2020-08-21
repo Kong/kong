@@ -1252,6 +1252,7 @@ function OICHandler.access(_, conf)
 
     log("trying to refresh access token using refresh token")
 
+    local id_token = tokens_encoded.id_token
     local refresh_token = tokens_encoded.refresh_token
 
     local tokens_refreshed
@@ -1264,13 +1265,7 @@ function OICHandler.access(_, conf)
       log("refreshed access token using refresh token")
     end
 
-    if not tokens_refreshed.refresh_token then
-      -- perhaps this refresh token was not a single use token
-      tokens_refreshed.refresh_token = refresh_token
-    end
-
     log("verifying refreshed tokens")
-
     if ignore_signature.refresh_token then
       tokens_decoded, err = oic.token:verify(tokens_refreshed, { ignore_signature = true })
     else
@@ -1283,6 +1278,31 @@ function OICHandler.access(_, conf)
 
     else
       log("verified refreshed tokens")
+    end
+
+    local preserve_tokens
+    if not tokens_refreshed.refresh_token then
+      log("preserving refresh token")
+      tokens_refreshed.refresh_token = refresh_token
+      preserve_tokens = true
+    end
+
+    if not tokens_refreshed.id_token and id_token then
+      log("preserving id token")
+      tokens_refreshed.id_token = id_token
+      preserve_tokens = true
+    end
+
+    if preserve_tokens then
+      log("decoding tokens with preserved tokens")
+      tokens_decoded, err = oic.token:decode(tokens_refreshed, TOKEN_DECODE_OPTS)
+      if type(tokens_decoded) ~= "table" then
+        log("unable to decode tokens with preserved tokens")
+        return response.unauthorized(err)
+
+      else
+        log("decoded tokens with preserved tokens")
+      end
     end
 
     tokens_encoded = tokens_refreshed
