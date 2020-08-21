@@ -1,4 +1,4 @@
-local operations = require "kong.db.migrations.operations.200_to_210"
+local operations = require "kong.db.migrations.operations.212_to_213"
 
 
 local plugin_entities = {
@@ -11,26 +11,9 @@ local plugin_entities = {
   }
 }
 
-
-local function ws_migration_up(ops)
-  return ops:ws_adjust_fields(plugin_entities)
-end
-
-
 local function ws_migration_teardown(ops)
   return function(connector)
     local _, err = ops:ws_adjust_data(connector, plugin_entities)
-    if err then
-      return nil, err
-    end
-
-    _, err = ops:fixup_plugin_config(connector, "acl", function(config)
-      config.allow = config.whitelist
-      config.whitelist = nil
-      config.deny = config.blacklist
-      config.blacklist = nil
-      return true
-    end)
     if err then
       return nil, err
     end
@@ -42,12 +25,12 @@ end
 
 return {
   postgres = {
-    up = ws_migration_up(operations.postgres.up),
+    up = "",
     teardown = ws_migration_teardown(operations.postgres.teardown),
   },
 
   cassandra = {
-    up = ws_migration_up(operations.cassandra.up),
+    up = "",
     teardown = ws_migration_teardown(operations.cassandra.teardown),
   },
 }

@@ -51,7 +51,7 @@ Once you have a Linux development environment (either virtual or bare metal), th
 
 1. Prerequisite packages.  Mostly compilers, tools and libraries needed to compile everything else.
 1. OpenResty system, including Nginx, LuaJIT, PCRE, etc.
-1. Databases. Kong uses Posgres, Cassandra and Redis.  We have a handy setup with docker-compose to keep each on its container.
+1. Databases. Kong uses Postgres, Cassandra and Redis.  We have a handy setup with docker-compose to keep each on its container.
 1. Kong itself.
 
 

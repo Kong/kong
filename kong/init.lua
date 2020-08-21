@@ -79,7 +79,6 @@ local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
 local cache_warmup = require "kong.cache_warmup"
 local balancer_execute = require("kong.runloop.balancer").execute
-local balancer_set_host_header = require("kong.runloop.balancer").set_host_header
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local go = require "kong.db.dao.plugins.go"
@@ -971,13 +970,6 @@ function Kong.balancer()
       return ngx.exit(errcode)
     end
 
-    ok, err = balancer_set_host_header(balancer_data)
-    if not ok then
-      ngx_log(ngx_ERR, "failed to set balancer Host header: ", err)
-
-      return ngx.exit(500)
-    end
-
   else
     -- first try, so set the max number of retries
     local retries = balancer_data.retries
@@ -1451,10 +1443,7 @@ do
       return
     end
 
-    local ok, err = concurrency.with_worker_mutex({ name = "dbless-worker" }, function()
-      return declarative.load_into_cache_with_events(parsed[1], parsed[2])
-    end)
-
+    local ok, err = declarative.load_into_cache_with_events(parsed[1], parsed[2])
     if not ok then
       if err == "no memory" then
         kong.log.err("not enough cache space for declarative config, " ..
