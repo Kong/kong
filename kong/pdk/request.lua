@@ -492,6 +492,25 @@ local function new(self)
 
 
   ---
+  -- Returns the value of the specified request cookie.
+  function _REQUEST.get_cookie(name)
+    check_phase(PHASES.request)
+
+    if type(name) ~= "string" then
+      error("cookie name must be a string", 2)
+    end
+
+    local cookie = ck:new()
+    local cookie_value, err = cookie:get(name)
+    if not cookie_value then
+      return nil, err
+    end
+
+    return cookie_value
+  end
+
+
+  ---
   -- Returns the value of the specified request header.
   --
   -- The returned value is either a `string`, or can be `nil` if a header with
@@ -582,6 +601,21 @@ local function new(self)
     end
 
     return ngx.req.get_headers(max_headers)
+  end
+  
+
+  ---
+  -- Returns a Lua table holding the request cookie.
+  function _REQUEST.get_cookies()
+    check_phase(PHASES.request)
+
+    local cookie = ck:new()
+    local cookies_value, err = cookie:get_all()
+    if not cookies_value then
+      return nil, err
+    end
+
+    return cookies_value
   end
 
 
