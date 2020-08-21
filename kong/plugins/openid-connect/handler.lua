@@ -1097,8 +1097,8 @@ function OICHandler.access(_, conf)
 
           if type(tokens_encoded) == "table"   and
             (arg.grant_type == "refresh_token" or
-              arg.grant_type == "password"      or
-              arg.grant_type == "client_credentials")
+             arg.grant_type == "password"      or
+             arg.grant_type == "client_credentials")
           then
             log("verifying tokens")
             tokens_decoded, err = oic.token:verify(tokens_encoded, arg)
