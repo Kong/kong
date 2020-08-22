@@ -1,3 +1,19 @@
+## v1.7.0
+
+- Fix a bug in issuer normalization
+- Fix discovery and rediscovery to be more resilient
+- Fix typo in code related to `config.unexpected_redirect_uri`
+- Fix redirects to use `kong.response.exit` that implements the proper short-circuiting semantics in Kong
+- Add `config.issuers_allowed`
+- Add `config.cache_tokens_salt`
+- Add `config.userinfo_endpoint`
+- Add ability to pass `urn:ietf:params:oauth:grant-type:jwt-bearer` assertions with `client_credentials` auth method
+- Add ability to find a nested claim using array indices
+- Add issuer cache warmup on node start
+- Change to preserve id token when refreshing the tokens
+- Change to skip claims reverification on token decoding
+
+
 ## v1.6.2
 
 - Fix runtime error on two log statements when validating required claims
