@@ -304,6 +304,15 @@ local config = {
             },
           },
           {
+            issuers_allowed = {
+              required = false,
+              type     = "array",
+              elements = {
+                type = "string",
+              },
+            },
+          },
+          {
             scopes_required = {
               required = false,
               type     = "array",

@@ -107,6 +107,7 @@ function OICHandler.access(_, conf)
       client_alg             = client.alg,
       client_jwk             = client.jwk,
       redirect_uri           = client.redirect_uri,
+      issuers                = args.get_conf_arg("issuers_allowed"),
       scope                  = args.get_conf_arg("scopes", {}),
       response_mode          = args.get_conf_arg("response_mode"),
       response_type          = args.get_conf_arg("response_type"),
@@ -1387,11 +1388,16 @@ function OICHandler.access(_, conf)
       end
     end
 
-    local check_required = function(name, required_name, claim_name, default)
+    local check_required = function(name, required_name, claim_name, default, status)
       local requirements = args.get_conf_arg(required_name)
       if requirements then
         log("verifying required ", name)
-        local claim_lookup = args.get_conf_arg(claim_name, default)
+        local claim_lookup
+        if claim_name then
+          claim_lookup = args.get_conf_arg(claim_name, default)
+        else
+          claim_lookup = default
+        end
 
         local access_token_values
         if type(token_introspected) == "table" then
@@ -1431,14 +1437,18 @@ function OICHandler.access(_, conf)
         end
 
         if not access_token_values then
+          if status == 401 then
+            return response.unauthorized(name, " required but no ", name, " found")
+          end
+
           return response.forbidden(name, " required but no ", name, " found")
         end
 
         access_token_values = set.new(access_token_values)
 
         local has_valid_requirements
-        for _, scope_required in ipairs(requirements) do
-          if set.has(scope_required, access_token_values) then
+        for _, requirement in ipairs(requirements) do
+          if set.has(requirement, access_token_values) then
             has_valid_requirements = true
             break
           end
@@ -1448,12 +1458,18 @@ function OICHandler.access(_, conf)
           log("required ", name, " were found")
 
         else
+          if status == 401 then
+            return response.unauthorized("required ", name, " were not found [ ",
+                                         concat(access_token_values, ", "), " ]")
+          end
+
           return response.forbidden("required ", name, " were not found [ ",
-            concat(access_token_values, ", "), " ]")
+                                    concat(access_token_values, ", "), " ]")
         end
       end
     end
 
+    check_required("issuers", "issuers_allowed", nil, { "iss" }, 401)
     check_required("scopes", "scopes_required", "scopes_claim", { "scope" })
     check_required("audience", "audience_required", "audience_claim", { "aud" })
     check_required("groups", "groups_required", "groups_claim", { "groups" })
