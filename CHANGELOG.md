@@ -557,7 +557,7 @@ release for more details.
 
 ##### Configuration
 
-- Fix issue where the Postgres password from the Kong confiuration file
+- Fix issue where the Postgres password from the Kong configuration file
   would be truncated if it contained a `#` character.
   [#5822](https://github.com/Kong/kong/pull/5822)
 
