@@ -3011,7 +3011,7 @@ upgrade your Kong cluster.
   Routes and Services in plugins will remove and re-create the Cassandra
   rate-limiting counters table. This means that users that were rate-limited
   because of excessive API consumption will be able to consume the API until
-  they reach their limit again. There is no such data deletion in PosgreSQL.
+  they reach their limit again. There is no such data deletion in PostgreSQL.
   [def201f](https://github.com/Kong/kong/commit/def201f566ccf2dd9b670e2f38e401a0450b1cb5)
 
 ### Changes
