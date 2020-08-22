@@ -257,7 +257,7 @@ release for more details.
   [#5325](https://github.com/Kong/kong/pull/5325)
 - :warning: The `nginx_upstream_keepalive_*` configuration properties have been
   renamed to `upstream_keepalive_*`. This is due to the introduction of dynamic
-  upstream keepalve pools, see below for details.
+  upstream keepalive pools, see below for details.
   [#5771](https://github.com/Kong/kong/pull/5771)
 - :warning: The default value of `worker_state_update_frequency` (previously
   `router_update_frequency`) was changed from `1` to `5`.
