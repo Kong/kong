@@ -39,7 +39,7 @@ function _M.validate_groups(groups, gbase_dn, gattribute)
 
   for _, groupdn in ipairs(groups) do
     local group_match = "^" .. lower(gattribute):gsub("([^%w])", "%%%1")
-                        .. "%=[%w-_+:@]+%,"
+                        .. "%=[%w-_+:@%s]+%,"
                         .. lower(gbase_dn):gsub("([^%w])", "%%%1") .. "$"
     local is_matched = string.match(lower(groupdn), group_match)
     if is_matched and is_matched ~= "" and is_matched ~= gbase_dn then

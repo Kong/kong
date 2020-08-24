@@ -49,6 +49,29 @@ describe("validate_groups", function()
       "CN=test-group-3,CN=Users,DC=addomain,DC=creativehashtags,DC=com"
     }, "CN=Users,DC=addomain,DC=creativehashtags,DC=com", "CN"))
   end)
+
+  it("accepts a group with spaces in its name", function()
+    local groups = {
+      "CN=Test Group 4,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
+      "CN= Test Group 5,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
+      "CN= Test Group 6 ,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
+      "CN=  Test  Group  7  ,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
+      "CN= ,CN=Users,DC=addomain,DC=creativehashtags,DC=com", -- group name containing only a space
+    }
+
+    local expected = {
+      "Test Group 4",
+      " Test Group 5",
+      " Test Group 6 ",
+      "  Test  Group  7  ",
+      " ", -- group name containing only a space
+    }
+
+    local gbase = "CN=Users,DC=addomain,DC=creativehashtags,DC=com"
+    local gattr = "CN"
+
+    assert.same(expected, ldap_groups.validate_groups(groups, gbase, gattr))
+  end)
 end)
 
 for _, strategy in helpers.each_strategy() do
