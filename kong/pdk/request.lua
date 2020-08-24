@@ -786,14 +786,22 @@ local function new(self)
         return nil, err, CONTENT_TYPE_FORM_DATA
       end
 
-      -- TODO: multipart library doesn't support multiple fields with same name
-      return multipart(body, content_type):get_all(), nil, CONTENT_TYPE_FORM_DATA
+      local parts = multipart(body, content_type)
+      if not parts then
+        return nil, "unable to decode multipart body", CONTENT_TYPE_FORM_DATA
+      end
+
+      local margs = parts:get_all_with_arrays()
+      if not margs then
+        return nil, "unable to read multipart values", CONTENT_TYPE_FORM_DATA
+      end
+
+      return margs, nil, CONTENT_TYPE_FORM_DATA
 
     else
       return nil, "unsupported content type '" .. content_type .. "'", content_type_lower
     end
   end
-
 
   return _REQUEST
 end
