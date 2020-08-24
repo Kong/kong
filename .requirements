@@ -17,7 +17,7 @@ KONG_GO_PLUGINSERVER_VERSION=v0.4.0
 # here go enterprise build specific ones which might or might not have the
 # same names as core for building the final package.
 
-KONG_NGINX_MODULE_BRANCH=master
+KONG_NGINX_MODULE_BRANCH=0.0.7
 KONG_BUILD_TOOLS_BRANCH=4.8.0
 
 KONG_DISTRIBUTIONS_VERSION=next/2.1.x.x
