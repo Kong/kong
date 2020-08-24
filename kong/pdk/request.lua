@@ -494,6 +494,25 @@ local function new(self)
 
   ---
   -- Returns the value of the specified request cookie.
+  --
+  -- The returned value is either a `string`, or can be `nil` if a cookie with
+  -- `name` was not found in the request.
+  --
+  -- Cookie names in are case-sensitive.
+  --
+  -- @function kong.request.get_cookie
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
+  -- @tparam string name the name of the cookie to be returned
+  -- @treturn string|nil the value of the cookie or nil if not present
+  -- @usage
+  -- -- Given a request with the following cookies:
+  --
+  -- -- Cookie: X-Cookie-Foo=Hello; X-Cookie-Bar=World
+  --
+  -- kong.request.get_cookie("X-Cookie-Foo")        -- "Hello"
+  -- kong.request.get_cookie("X-Cookie-Bar")        -- "World"
+  -- kong.request.get_cookie("X-Cookie-foo")        --  nil
+  -- kong.request.get_cookie("X-Cookie-Missing")    --  nil
   function _REQUEST.get_cookie(name)
     check_phase(PHASES.request)
 
@@ -501,13 +520,7 @@ local function new(self)
       error("cookie name must be a string", 2)
     end
 
-    local cookie = ck:new()
-    local cookie_value, err = cookie:get(name)
-    if not cookie_value then
-      return nil, err
-    end
-
-    return cookie_value
+    return ck:new():get(name)
   end
 
 
@@ -603,20 +616,29 @@ local function new(self)
 
     return ngx.req.get_headers(max_headers)
   end
-  
+
 
   ---
-  -- Returns a Lua table holding the request cookie.
+  ---
+  -- Returns a Lua table holding the request cookies. Keys are cookie names.
+  -- Values are either a string with the cookie value.
+  --
+  -- @function kong.request.get_cookies
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
+  -- @treturn table the request cookies in table form
+  -- @usage
+  -- -- Given a request with the following cookies:
+  --
+  -- -- Cookie: X-Cookie-Foo=Hello; X-Cookie-Bar=World
+  --
+  -- local cookies = kong.request.get_cookies()
+  --
+  -- cookies.X-Cookie-Foo    -- "Hello"
+  -- cookies.X-Cookie-Bar    -- "World"
   function _REQUEST.get_cookies()
     check_phase(PHASES.request)
 
-    local cookie = ck:new()
-    local cookies_value, err = cookie:get_all()
-    if not cookies_value then
-      return nil, err
-    end
-
-    return cookies_value
+    return ck:new():get_all()
   end
 
 
