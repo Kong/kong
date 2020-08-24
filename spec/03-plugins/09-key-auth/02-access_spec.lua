@@ -569,7 +569,7 @@ for _, strategy in helpers.each_strategy() do
         end)
       end
 
-      it("works with 'key_in_body' and unsupported content type", function()
+      it("works with 'key_in_body' and unsupported content type if key was given in query string", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
