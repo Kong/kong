@@ -633,8 +633,9 @@ local function new(self)
   --
   -- local cookies = kong.request.get_cookies()
   --
-  -- cookies.X-Cookie-Foo    -- "Hello"
-  -- cookies.X-Cookie-Bar    -- "World"
+  -- cookies.X-Cookie-Foo      -- "Hello"
+  -- cookies.X-Cookie-Bar      -- "World"
+  -- cookies.X-Cookie-Missing  -- nil
   function _REQUEST.get_cookies()
     check_phase(PHASES.request)
 
