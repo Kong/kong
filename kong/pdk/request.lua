@@ -5,6 +5,7 @@
 -- @module kong.request
 
 
+local ck = require "resty.cookie"
 local cjson = require "cjson.safe".new()
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
@@ -492,6 +493,38 @@ local function new(self)
 
 
   ---
+  -- Returns the value of the specified request cookie.
+  --
+  -- The returned value is either a `string`, or can be `nil` if a cookie with
+  -- `name` was not found in the request.
+  --
+  -- Cookie names are case-sensitive.
+  --
+  -- @function kong.request.get_cookie
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
+  -- @tparam string name the name of the cookie to be returned
+  -- @treturn string|nil the value of the cookie or nil if not present
+  -- @usage
+  -- -- Given a request with the following cookies:
+  --
+  -- -- Cookie: X-Cookie-Foo=Hello; X-Cookie-Bar=World
+  --
+  -- kong.request.get_cookie("X-Cookie-Foo")        -- "Hello"
+  -- kong.request.get_cookie("X-Cookie-Bar")        -- "World"
+  -- kong.request.get_cookie("X-Cookie-foo")        --  nil
+  -- kong.request.get_cookie("X-Cookie-Missing")    --  nil
+  function _REQUEST.get_cookie(name)
+    check_phase(PHASES.request)
+
+    if type(name) ~= "string" then
+      error("cookie name must be a string", 2)
+    end
+
+    return ck:new():get(name)
+  end
+
+
+  ---
   -- Returns the value of the specified request header.
   --
   -- The returned value is either a `string`, or can be `nil` if a header with
@@ -582,6 +615,30 @@ local function new(self)
     end
 
     return ngx.req.get_headers(max_headers)
+  end
+
+
+  ---
+  -- Returns a Lua table holding the request cookies. Keys are cookie names.
+  -- Values are strings with the cookie value.
+  --
+  -- @function kong.request.get_cookies
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
+  -- @treturn table the request cookies in table form
+  -- @usage
+  -- -- Given a request with the following cookies:
+  --
+  -- -- Cookie: X-Cookie-Foo=Hello; X-Cookie-Bar=World
+  --
+  -- local cookies = kong.request.get_cookies()
+  --
+  -- cookies.X-Cookie-Foo      -- "Hello"
+  -- cookies.X-Cookie-Bar      -- "World"
+  -- cookies.X-Cookie-Missing  -- nil
+  function _REQUEST.get_cookies()
+    check_phase(PHASES.request)
+
+    return ck:new():get_all()
   end
 
 
@@ -729,22 +786,14 @@ local function new(self)
         return nil, err, CONTENT_TYPE_FORM_DATA
       end
 
-      local parts = multipart(body, content_type)
-      if not parts then
-        return nil, "unable to decode multipart body", CONTENT_TYPE_FORM_DATA
-      end
-
-      local margs = parts:get_all_with_arrays()
-      if not margs then
-        return nil, "unable to read multipart values", CONTENT_TYPE_FORM_DATA
-      end
-
-      return margs, nil, CONTENT_TYPE_FORM_DATA
+      -- TODO: multipart library doesn't support multiple fields with same name
+      return multipart(body, content_type):get_all(), nil, CONTENT_TYPE_FORM_DATA
 
     else
       return nil, "unsupported content type '" .. content_type .. "'", content_type_lower
     end
   end
+
 
   return _REQUEST
 end
