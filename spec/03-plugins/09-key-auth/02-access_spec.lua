@@ -602,19 +602,17 @@ for _, strategy in helpers.each_strategy() do
         end)
       end
 
-      it("fails with 'key_in_body' and unsupported content type", function()
+      it("works with 'key_in_body' and unsupported content type if key was given in query string", function()
         local res = assert(proxy_client:send {
-          path = "/status/200",
+          method  = "GET",
+          path    = "/request?apikey=kong",
           headers = {
             ["Host"] = "key-auth6.com",
             ["Content-Type"] = "text/plain",
           },
-          body = "foobar",
         })
 
-        local body = assert.res_status(400, res)
-        local json = cjson.decode(body)
-        assert.same({ message = "Cannot process request body" }, json)
+        assert.res_status(200, res)
       end)
     end)
 

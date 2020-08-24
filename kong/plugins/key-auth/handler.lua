@@ -83,7 +83,6 @@ local function do_authentication(conf)
 
     if err then
       kong.log.err("Cannot process request body: ", err)
-      return nil, { status = 400, message = "Cannot process request body" }
     end
   end
 
@@ -97,7 +96,7 @@ local function do_authentication(conf)
     end
 
     -- search the body, if we asked to
-    if not v and conf.key_in_body then
+    if not v and conf.key_in_body and body then
       v = body[name]
     end
 
@@ -109,7 +108,7 @@ local function do_authentication(conf)
         kong.service.request.set_query(query)
         kong.service.request.clear_header(name)
 
-        if conf.key_in_body then
+        if conf.key_in_body and body then
           body[name] = nil
           kong.service.request.set_body(body)
         end
