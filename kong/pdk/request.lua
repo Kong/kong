@@ -621,7 +621,7 @@ local function new(self)
   ---
   ---
   -- Returns a Lua table holding the request cookies. Keys are cookie names.
-  -- Values are either a string with the cookie value.
+  -- Values are strings with the cookie value.
   --
   -- @function kong.request.get_cookies
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
