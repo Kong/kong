@@ -62,7 +62,7 @@ describe("Plugin: rate-limiting (schema)", function()
     end)
 
     it("is limited by path but the path field is missing", function()
-      local config = { second = 10, limit_by = "path", path =  nil }
+      local config = { second = 20, limit_by = "path", path =  nil }
       local ok, err = v(config, schema_def)
       assert.falsy(ok)
       assert.equal("required field missing", err.config.path)
