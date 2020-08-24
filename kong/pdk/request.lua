@@ -498,7 +498,7 @@ local function new(self)
   -- The returned value is either a `string`, or can be `nil` if a cookie with
   -- `name` was not found in the request.
   --
-  -- Cookie names in are case-sensitive.
+  -- Cookie names are case-sensitive.
   --
   -- @function kong.request.get_cookie
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
@@ -618,7 +618,6 @@ local function new(self)
   end
 
 
-  ---
   ---
   -- Returns a Lua table holding the request cookies. Keys are cookie names.
   -- Values are strings with the cookie value.
