@@ -59,8 +59,7 @@ end
 local function has_ws_id_in_db(db, tname)
   local res, err = list_fields(db, tname)
   if err then
-    print(require("inspect")(err))
-    return res, err
+    return nil, err
   end
   return res.ws_id
 end
@@ -140,14 +139,20 @@ local function execute(args)
       end
     end
 
-    local non_migrated_entities = custom_wspaced_entities(db, conf)
-    if non_migrated_entities then
-      log.info(table.concat(
-        {"This instance contains workspaced entities that need a custom migration.",
-         "please use the provided helpers to migrate them: ", unpack(require("pl.tablex").values(non_migrated_entities))
-        }, "\n"))
-      error()
-    end
+      local non_migrated_entities = custom_wspaced_entities(db, conf)
+      local tx = require("pl.tablex")
+      if non_migrated_entities then
+        log.info(table.concat(
+          {"This instance contains workspaced entities that need a custom migration.",
+           "please use the provided helpers to migrate them: ",
+           unpack(tx.imap(
+             function(x)
+               return "kong migrations upgrade-workspace-table " .. x
+             end,
+             non_migrated_entities))
+          }, "\n"))
+        error()
+      end
 
     assert(nginx_signals.start(conf))
 
