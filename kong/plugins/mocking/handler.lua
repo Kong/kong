@@ -124,7 +124,7 @@ local function find_example_value(tbl, key)
    -- kong.log.inspect('values....',values)
     return nil
   else
-    kong.log.inspect('values....',values)
+    --kong.log.inspect('values....',values)
     return values
  end
 end

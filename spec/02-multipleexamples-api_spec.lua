@@ -19,11 +19,25 @@ end
 
 
 local function read_fixture(filename)
-  --ngx_log(ngx_WARN, "fixture path: ", fixture_path)
   local content  = assert(helpers.utils.readfile(fixture_path .. filename))
-  --ngx_log(ngx_WARN, "content", content)
    return content
-  --return assert(helpers.utils.readfile(fixture_path .. filename))
+end
+
+local function find_key(tbl, key)
+  for lk, lv in pairs(tbl) do
+    if lk == key then return lv end
+    if type(lv) == "table" then
+      for dk, dv in pairs(lv) do
+        if dk == key then return dv end
+        if type(dv) == "table" then
+          for ek, ev in pairs(dv) do
+            if ek == key then return ev end
+          end
+        end
+      end
+    end
+  end
+  return nil
 end
 
 for _, strategy in helpers.each_strategy() do
@@ -96,7 +110,12 @@ for _, strategy in helpers.each_strategy() do
             host = "mocking.com"
           }
         })
-        assert.res_status(200, r)
+        -- validate that the request succeeded, response status 200
+        local body = cjson.decode(assert.res_status(200, r))
+        -- check whether the results have 3 object as per the spec file
+        local count = 0
+        for _ in pairs(body) do count = count+1 end
+        assert.equal(3,count)
       end)
     end)
 
@@ -129,7 +148,10 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         -- Random path, Response status - 404
-        assert.response(r).has.status(404)
+        local body = assert.res_status(404, r)
+        local json = cjson.decode(body)
+        -- Check for error message
+        assert.same("Path does not exist in API Specification", json.message)
       end)
     end)
     
@@ -143,22 +165,29 @@ for _, strategy in helpers.each_strategy() do
             host = "mocking.com"
           }
         })
-        
-        assert.response(r).has.status(200)
+         -- validate that the request succeeded, response status 200
+         local body = cjson.decode(assert.res_status(200, r))
+         -- Compare field values against spec  
+         assert.equal("fluffy",find_key(body,"nickname"))
+         assert.equal("available",find_key(body,"status"))
       end)
     end)
 
+    
     describe("multipleexamples API Specification tests", function()
       it("Check multiple example filter logic - Positive filter", function()
         local r = assert(client:send {
           method = "GET",
-          path = "/pet/findByStatus/MultipleExamples?status=available",
+          path = "/pet/findByStatus/MultipleExamples?nickname=fluffy",
           headers = {
             host = "mocking.com"
           }
         })
         
-        assert.response(r).has.status(200)
+        local body = cjson.decode(assert.res_status(200, r))
+         assert.equal("fluffy",find_key(body,"nickname"))
+         assert.equal("cat",find_key(body,"name"))
+         assert.equal("available",find_key(body,"status"))
       end)
     end)
 
@@ -171,11 +200,32 @@ for _, strategy in helpers.each_strategy() do
             host = "mocking.com"
           }
         })
-        -- Random path, Response status - 404
-        assert.response(r).has.status(404)
+       
+        local body = assert.res_status(404, r)
+        local json = cjson.decode(body)
+        -- Check for error message
+        assert.same("No examples exist in API specification for this resource with Accept Header (application/json)", json.message)
+        
       end)
     end)
 
+    describe("multipleexamples API Specification tests", function()
+      it("Check for examples(Multiple Examples) with Multiple Search Parameters", function()
+        local r = assert(client:send {
+          method = "GET",
+          path = "/pet/findByStatus/MultipleExamples?name=dog&name=cat",  
+          headers = {
+            host = "mocking.com"
+          }
+        })
+        -- validate that the request succeeded, response status 200
+        local body = cjson.decode(assert.res_status(200, r))
+        -- check whether the results have 2 object as per the spec file
+        local count = 0
+        for _ in pairs(body) do count = count+1 end
+        assert.equal(2,count)
+      end)
+    end)
 
   end)
 end

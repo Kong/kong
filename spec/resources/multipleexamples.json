@@ -86,7 +86,7 @@
                                                 "id": 1,
                                                 "name": "cat"
                                             },
-                                            "name": "fluffy",
+                                            "nickname": "fluffy",
                                             "photoUrls": [
                                                 "http://example.com/path/to/cat/1.jpg",
                                                 "http://example.com/path/to/cat/2.jpg"
@@ -102,7 +102,7 @@
                                                 "id": 2,
                                                 "name": "dog"
                                             },
-                                            "name": "puppy",
+                                            "nickname": "puppy",
                                             "photoUrls": [
                                                 "http://example.com/path/to/dog/1.jpg"
                                             ],
@@ -168,13 +168,13 @@
                                 "example": {
                                     "summary": "Example response showing a regular response",
                                     "description": "Two pets are returned in this example.",
-                                    "value": [{
+                                    "value": {
                                         "id": 1,
                                         "category": {
                                             "id": 1,
                                             "name": "cat"
                                         },
-                                        "name": "fluffy",
+                                        "nickname": "fluffy",
                                         "photoUrls": [
                                             "http://example.com/path/to/cat/1.jpg",
                                             "http://example.com/path/to/cat/2.jpg"
@@ -184,22 +184,7 @@
                                             "name": "cat"
                                         }],
                                         "status": "available"
-                                    }, {
-                                        "id": 2,
-                                        "category": {
-                                            "id": 2,
-                                            "name": "dog"
-                                        },
-                                        "name": "puppy",
-                                        "photoUrls": [
-                                            "http://example.com/path/to/dog/1.jpg"
-                                        ],
-                                        "tags": [{
-                                            "id": 2,
-                                            "name": "dog"
-                                        }],
-                                        "status": "available"
-                                    }]
+                                    }
                                 }
                             }
                         }

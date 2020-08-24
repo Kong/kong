@@ -1,8 +1,7 @@
 local helpers   = require "spec.helpers"
 local pl_path   = require "pl.path"
 local cjson     = require("cjson.safe").new()
-local ngx_log   = ngx.log
-local ngx_WARN  = ngx.WARN
+
 
 local PLUGIN_NAME = "mocking"
 
@@ -19,11 +18,26 @@ end
 
 
 local function read_fixture(filename)
-  ngx_log(ngx_WARN, "fixture path: ", fixture_path)
   local content  = assert(helpers.utils.readfile(fixture_path .. filename))
-  --ngx_log(ngx_WARN, "content", content)
    return content
-  --return assert(helpers.utils.readfile(fixture_path .. filename))
+end
+
+
+local function find_key(tbl, key)
+  for lk, lv in pairs(tbl) do
+    if lk == key then return lv end
+    if type(lv) == "table" then
+      for dk, dv in pairs(lv) do
+        if dk == key then return dv end
+        if type(dv) == "table" then
+          for ek, ev in pairs(dv) do
+            if ek == key then return ev end
+          end
+        end
+      end
+    end
+  end
+  return nil
 end
 
 for _, strategy in helpers.each_strategy() do
@@ -91,15 +105,59 @@ for _, strategy in helpers.each_strategy() do
       it("/stock/historical happy path", function()
         local r = assert(client:send {
           method = "GET",
-          path = "/stock/historical",  -- makes mockbin return the entire request
+          path = "/stock/historical",
           headers = {
             host = "mocking.com"
           }
         })
         -- validate that the request succeeded, response status 200
-        --assert.response(r).has.status(200)
-        local body = assert.res_status(200, r)
-        ngx_log(ngx_WARN, "Body: ", body)
+        local body = cjson.decode(assert.res_status(200, r))
+        -- Compare meta data values against values from spec
+        assert.equal("historical_stock_price_v2",find_key(body,"api_name"))
+        assert.equal(10,find_key(body,"credit_cost"))
+        assert.equal("yesterday",find_key(body,"end_date"))
+
+        -- Compare result data values against values from spec
+        assert.equal(275.03, find_key(body.result_data,"adj_close"))
+        assert.equal(100.03, find_key(body.result_data,"close"))
+        assert.equal(100.75, find_key(body.result_data,"high"))
+        assert.equal(100.87, find_key(body.result_data,"low"))
+        assert.equal(100.87, find_key(body.result_data,"open"))
+      end)
+    end)
+
+    describe("Stock API Specification tests", function()
+      it("/stock/closing happy path", function()
+        local r = assert(client:send {
+          method = "GET",
+          path = "/stock/closing",
+          headers = {
+            host = "mocking.com"
+          }
+        })
+        -- validate that the request succeeded, response status 200
+        local body = cjson.decode(assert.res_status(200, r))
+        -- Compare meta data values against values from spec
+        assert.equal("closing_stock_price_v1",find_key(body,"api_name"))
+        
+        -- Compare result data values against values from spec
+        assert.equal(275.03, find_key(body.result_data,"adj_close"))
+        assert.equal(100.03, find_key(body.result_data,"close"))
+        assert.equal(100.75, find_key(body.result_data,"high"))
+        assert.equal(100.87, find_key(body.result_data,"low"))
+        assert.equal(100.87, find_key(body.result_data,"open"))
+      end)
+    end)
+
+    describe("Stock API Specification tests", function()
+      it("/stock/historical happy path", function()
+        local r = assert(client:send {
+          method = "GET",
+          path = "/stock/historical",
+          headers = {
+            host = "mocking.com"
+          }
+        })
         local header_value = assert.response(r).has.header("X-Kong-Mocking-Plugin")
         -- validate the value of that header
         assert.equal("true", header_value)
@@ -116,7 +174,9 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         -- Random path, Response status - 404
-        assert.response(r).has.status(404)
+        local body = assert.res_status(404, r)
+        local json = cjson.decode(body)
+        assert.same("Path does not exist in API Specification", json.message)
       end)
     end)
 
