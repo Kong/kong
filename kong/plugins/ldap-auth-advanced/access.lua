@@ -53,14 +53,14 @@ local function ldap_authenticate(given_username, given_password, conf)
   local opts = {}
 
   -- keep TLS connections in a separate pool to avoid reusing non-secure
-  -- connections and vica versa, because StartTLS use the same port 
+  -- connections and vica versa, because StartTLS use the same port
   if conf.start_tls then
     opts.pool = conf.ldap_host .. ":" .. conf.ldap_port .. ":starttls"
   end
 
   ok, err = sock:connect(conf.ldap_host, conf.ldap_port, opts)
   if not ok then
-    kong.log.err("failed to connect to ", conf.ldap_host, ":", 
+    kong.log.err("failed to connect to ", conf.ldap_host, ":",
                  tostring(conf.ldap_port),": ", err)
     return nil, nil, err
   end
@@ -92,7 +92,7 @@ local function ldap_authenticate(given_username, given_password, conf)
     end
 
     if ok then
-      kong.log.debug("ldap bind successful, performing search request with base_dn:", 
+      kong.log.debug("ldap bind successful, performing search request with base_dn:",
         conf.base_dn, ", scope='sub', and filter=", conf.attribute .. "=" .. given_username)
 
       local search_results, err = ldap.search_request(sock, {
@@ -116,12 +116,12 @@ local function ldap_authenticate(given_username, given_password, conf)
                        " and given_username=" .. given_username)
           return kong.response.exit(500)
         end
-        
+
         local raw_groups = result[conf.group_member_attribute]
         if raw_groups and #raw_groups then
           local group_dn = conf.group_base_dn or conf.base_dn
           local group_attr = conf.group_name_attribute or conf.attribute
-          
+
           groups = ldap_groups.validate_groups(raw_groups, group_dn, group_attr)
           ldap_groups.set_groups(groups)
 
@@ -135,7 +135,7 @@ local function ldap_authenticate(given_username, given_password, conf)
 
         user_dn = dn
       end
-      
+
       if not user_dn then
         return false, nil, "User not found"
       end
@@ -148,8 +148,8 @@ local function ldap_authenticate(given_username, given_password, conf)
       end
     end
   else
-    kong.log.debug("bind_dn failed to bind with given ldap_password," .. 
-      "attempting to bind with username and base_dn:", 
+    kong.log.debug("bind_dn failed to bind with given ldap_password," ..
+      "attempting to bind with username and base_dn:",
       conf.attribute .. "=" .. given_username .. "," .. conf.base_dn)
     local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
     is_authenticated, err = ldap.bind_request(sock, who, given_password)
@@ -262,7 +262,7 @@ local function find_consumer(consumer_field, value)
 
   if consumer_field == "id" then
     result, err = dao:select({ id = value })
-  else 
+  else
      result, err = dao["select_by_" .. consumer_field](dao, value)
   end
 
@@ -277,7 +277,7 @@ end
 
 local function load_consumers(value, consumer_by, ttl)
   local err
-  
+
   if not value then
     return nil, "cannot load consumers with empty value"
   end
@@ -317,7 +317,7 @@ local function do_authentication(conf)
     consumer, err = load_consumers(anonymous, { 'id' }, ttl)
 
     if err then
-      kong.log.err('error fetching anonymous user with conf.anonymous="' .. 
+      kong.log.err('error fetching anonymous user with conf.anonymous="' ..
                    (anonymous or '') .. '"', err)
       return false, { status = 500, message = "An unexpected error occurred" }
     end
@@ -329,7 +329,7 @@ local function do_authentication(conf)
 
     -- anonymous is configured but doesn't exist
     if anonymous ~= "" and not consumer then
-      kong.log.err('anonymous user not found with conf.anonymous="' .. 
+      kong.log.err('anonymous user not found with conf.anonymous="' ..
                    (anonymous or '') .. '"', err)
       return false, { status = 500, message = "An unexpected error occurred" }
     end
@@ -386,7 +386,7 @@ local function do_authentication(conf)
       anonymous = nil
     end
   end
-  
+
   ldap_groups.set_groups(credential.groups)
   set_consumer(consumer, credential, anonymous)
 

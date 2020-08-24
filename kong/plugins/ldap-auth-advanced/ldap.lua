@@ -86,7 +86,7 @@ function _M.bind_request(socket, username, password)
   socket:send(send_packet)
 
   local _, protocolOp, packet, pos, err = receive_ldap_message(socket)
-  
+
   if err then
     return false, err
   end

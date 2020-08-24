@@ -31,13 +31,13 @@ return {
       fields = {
         { ldap_host = {
           type = "string",
-          required = true, 
+          required = true,
         }},
         { ldap_password = {
           type = "string"
         }},
         { ldap_port = {
-          type = "number", 
+          type = "number",
           default = 389
         }},
         { bind_dn = {
@@ -50,58 +50,58 @@ return {
         }},
         { start_tls = {
           type = "boolean",
-          required = true, 
+          required = true,
           default = false
         }},
         { verify_ldap_host = {
           type = "boolean",
-          required = true, 
+          required = true,
           default = false
         }},
         { base_dn = {
           type = "string",
-          required = true 
+          required = true
         }},                            -- used for cache key
         { attribute = {
           type = "string",
-          required = true 
+          required = true
         }},                          -- used for cache key
         { cache_ttl = {
           type = "number",
-          required = true, 
+          required = true,
           default = 60
         }},            -- used for cache key
         { hide_credentials = {
-          type = "boolean", 
+          type = "boolean",
           default = false
         }},
         { timeout = {
-          type = "number", 
+          type = "number",
           default = 10000
         }},
         { keepalive = {
-          type = "number", 
+          type = "number",
           default = 60000
         }},
         { anonymous = {
           type = "string",
           len_min = 0,
-          default = "", 
+          default = "",
           custom_validator = check_user
         }},
         { header_type = {
-          type = "string", 
+          type = "string",
           default = "ldap"
         }},
-        { consumer_optional = { 
+        { consumer_optional = {
           type = "boolean",
-          required = false, 
-          default = false 
+          required = false,
+          default = false
         }},
-        { consumer_by = { 
+        { consumer_by = {
           type = "array",
           elements = { type = "string", one_of = { "username", "custom_id" }},
-          required = false, 
+          required = false,
           default = { "username", "custom_id" },
         }},
         { group_base_dn = {
