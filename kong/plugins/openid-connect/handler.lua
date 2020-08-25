@@ -1,6 +1,6 @@
 local OICHandler = {
   PRIORITY = 1000,
-  VERSION  = "1.6.1",
+  VERSION  = "1.6.2",
 }
 
 

@@ -1,3 +1,8 @@
+## v1.6.2
+
+- Fix runtime error on two log statements when validating required claims
+
+
 ## v1.6.1
 
 - Change arguments parser to use Kong PDK for building dynamic redirect uri.
