@@ -351,7 +351,7 @@ pipeline {
                         }
                         success {
                             script {
-                                sh 'SLACK_MESSAGE="updating docker-kong succeeded. Please review and approve the release PR" ./scripts/send-slack-message.sh'
+                                sh 'SLACK_MESSAGE="updating docker-kong succeeded. Please review, approve and continue with the kong release script" ./scripts/send-slack-message.sh'
                             }
                         }
                     }
@@ -380,7 +380,7 @@ pipeline {
                         }
                         success {
                             script {
-                                sh 'SLACK_MESSAGE="updating homebrew-kong succeeded. Please review and approve the release PR" ./scripts/send-slack-message.sh'
+                                sh 'SLACK_MESSAGE="updating homebrew-kong succeeded. Please review, approve and merge the PR" ./scripts/send-slack-message.sh'
                             }
                         }
                     }
@@ -409,7 +409,7 @@ pipeline {
                         }
                         success {
                             script {
-                                sh 'SLACK_MESSAGE="updating kong-vagrant succeeded. Please review and approve the release PR" ./scripts/send-slack-message.sh'
+                                sh 'SLACK_MESSAGE="updating kong-vagrant succeeded. Please review, approve and merge the PR" ./scripts/send-slack-message.sh'
                             }
                         }
                     }
@@ -421,7 +421,6 @@ pipeline {
                         }
                     }
                     environment {
-                        GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         SLACK_WEBHOOK = credentials('core_team_slack_webhook')
                         GITHUB_USER = "mashapedeployment"
@@ -431,41 +430,9 @@ pipeline {
                         sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME pongo'
                     }
                     post {
-                        failure {
+                        always {
                             script {
-                                sh 'SLACK_MESSAGE="updating kong-pongo failed" ./scripts/send-slack-message.sh'
-                            }
-                        }
-                        success {
-                            script {
-                                sh 'SLACK_MESSAGE="updating kong-pongo succeeded. Please review and approve the release PR" ./scripts/send-slack-message.sh'
-                            }
-                        }
-                    }
-                }
-                stage('Release to luarocks') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
-                    environment {
-                        SLACK_WEBHOOK = credentials('core_team_slack_webhook')
-                        LUAROCKS_API_KEY = credentials('luarocks_api_key')
-                    }
-                    steps {
-                        sh './scripts/setup-ci.sh'
-                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME luarocks $LUAROCKS_API_KEY'
-                    }
-                    post {
-                        failure {
-                            script {
-                                sh 'SLACK_MESSAGE="releasing to luarocks failed" ./scripts/send-slack-message.sh'
-                            }
-                        }
-                        success {
-                            script {
-                                sh 'SLACK_MESSAGE="updating luarocks succeeded. No action i./s necessary this message is informational only" ./scripts/send-slack-message.sh'
+                                sh 'SLACK_MESSAGE="pongo branch is pushed go open the PR at https://github.com/Kong/kong-pongo/branches" ./scripts/send-slack-message.sh'
                             }
                         }
                     }
