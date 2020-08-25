@@ -125,10 +125,10 @@ describe("routes schema", function()
 
   it("conflicting protocols produces error", function()
     local protocols_tests = {
-      { {"http", "tcp"}, "('http', 'https'), ('tcp', 'tls')" },
-      { {"http", "tls"}, "('http', 'https'), ('tcp', 'tls')" },
-      { {"https", "tcp"}, "('http', 'https'), ('tcp', 'tls')" },
-      { {"https", "tls"}, "('http', 'https'), ('tcp', 'tls')" },
+      { {"http", "tcp"}, "('http', 'https'), ('tcp', 'tls', 'udp')" },
+      { {"http", "tls"}, "('http', 'https'), ('tcp', 'tls', 'udp')" },
+      { {"https", "tcp"}, "('http', 'https'), ('tcp', 'tls', 'udp')" },
+      { {"https", "tls"}, "('http', 'https'), ('tcp', 'tls', 'udp')" },
     }
 
     for _, test in ipairs(protocols_tests) do
@@ -778,7 +778,7 @@ describe("routes schema", function()
       local ok, errs = Routes:validate(route)
       assert.is_nil(errs)
       assert.truthy(ok)
-      assert.same({ "tls" }, route.protocols)
+      assert.same({ "udp" }, route.protocols)
     end)
 
     it("if 'protocol = tcp/tls/udp', then 'paths' is empty", function()
@@ -793,7 +793,7 @@ describe("routes schema", function()
         local ok, errs = Routes:validate(route)
         assert.falsy(ok)
         assert.same({
-          paths = "cannot set 'paths' when 'protocols' is 'tcp' or 'tls'",
+          paths = "cannot set 'paths' when 'protocols' is 'tcp', 'tls' or 'udp'",
         }, errs)
       end
     end)
@@ -810,7 +810,7 @@ describe("routes schema", function()
         local ok, errs = Routes:validate(route)
         assert.falsy(ok)
         assert.same({
-          methods = "cannot set 'methods' when 'protocols' is 'tcp' or 'tls'",
+          methods = "cannot set 'methods' when 'protocols' is 'tcp', 'tls' or 'udp'",
         }, errs)
       end
     end)
@@ -1037,7 +1037,7 @@ describe("routes schema", function()
         assert.falsy(ok)
         assert.same({
           ["@entity"] = {
-            "must set one of 'sources', 'destinations', 'snis' when 'protocols' is 'tcp' or 'tls'"
+            "must set one of 'sources', 'destinations', 'snis' when 'protocols' is 'tcp', 'tls' or 'udp'"
           }
         }, errs)
       end
