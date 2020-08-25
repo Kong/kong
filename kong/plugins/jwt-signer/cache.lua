@@ -11,7 +11,6 @@ local log         = require "kong.plugins.jwt-signer.log"
 
 
 local tablex      = require "pl.tablex"
-local json        = require "cjson.safe"
 
 
 local decode_args = ngx.decode_args
@@ -92,7 +91,7 @@ local function rotate_keys(name, row, update, force)
     if not row then
       log("loading jwks from ", name)
 
-      row, err = keys.load(name, { ssl_verify = false, unwrap = true, json = true })
+      row, err = keys.load(name, { ssl_verify = false, unwrap = true, json = false })
       if not row then
         return nil, err
       end
@@ -118,14 +117,7 @@ local function rotate_keys(name, row, update, force)
         local previous_keys, current_keys
 
         previous_keys = row.keys
-        if type(previous_keys) == "table" then
-          previous_keys, err = json.encode(previous_keys)
-          if not previous_keys then
-            return nil, err
-          end
-        end
-
-        current_keys, err = keys.load(name, { ssl_verify = false, unwrap = true, json = true })
+        current_keys, err = keys.load(name, { ssl_verify = false, unwrap = true, json = false })
         if not current_keys then
           return nil, err
         end
@@ -134,7 +126,6 @@ local function rotate_keys(name, row, update, force)
         local id = { id = row.id }
 
         row, err = kong.db.jwt_signer_jwks:update(id, data)
-
         if not row then
           return nil, err
         end
@@ -151,7 +142,7 @@ local function rotate_keys(name, row, update, force)
     if not row then
       log("creating jwks for ", name)
 
-      row, err = jwks.new({ json = true, unwrap = true })
+      row, err = jwks.new({ unwrap = true, json = false })
       if not row then
         return nil, err
       end
@@ -171,14 +162,7 @@ local function rotate_keys(name, row, update, force)
       local previous_keys, current_keys
 
       previous_keys = row.keys
-      if type(previous_keys) == "table" then
-        previous_keys, err = json.encode(previous_keys)
-        if not previous_keys then
-          return nil, err
-        end
-      end
-
-      current_keys, err = jwks.new({ json = true, unwrap = true })
+      current_keys, err = jwks.new({ unwrap = true, json = false })
       if not current_keys then
         return nil, err
       end
