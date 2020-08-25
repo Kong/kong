@@ -453,8 +453,7 @@ return {
       end
 
       if entity_type ~= "wildcard" then
-        local row = db[entity_type]:select({ id = self.params.entity_id })
-        if not row then
+        if not db[entity_type] or not db[entity_type]:select({ id = self.params.entity_id }) then
           return kong.response.exit(400, {
             message = "There is no entity of type '" .. entity_type .. "' with given entity_id"
           })

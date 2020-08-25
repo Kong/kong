@@ -1791,6 +1791,21 @@ describe("Admin API RBAC with #" .. strategy, function()
         })
         assert.res_status(400, res)
 
+        -- entity_type must be valid
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/entities",
+          body = {
+            entity_id = e_id,
+            entity_type = "test", -- incorrect
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+        })
+        assert.res_status(400, res)
+
         res = assert(client:send {
           method = "POST",
           path = "/rbac/roles/mock-role/entities",
