@@ -27,7 +27,7 @@ healthchecker
 
 ### Added
 
-- Added whitelist and blacklist options to be able to select consumers instead
+- Added restriction options to be able to select consumers instead
   of having random consumers.
 - Added the port parameter to be able to be set a new port for the alternate
   upstream.

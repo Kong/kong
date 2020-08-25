@@ -16,6 +16,21 @@ return {
     { consumer = typedefs.no_consumer },
     { config = {
         type = "record",
+        shorthand_fields = {
+          -- deprecated forms, to be removed in Kong 3.0
+          { hash = {
+            type = "string",
+            func = function(value)
+              if value == "whitelist" then
+                value = "allow"
+              elseif value == "blacklist" then
+                value = "deny"
+              end
+
+              return { hash = value }
+            end,
+          }},
+        },
         fields = {
           { start = {
               type = "number",
@@ -24,7 +39,7 @@ return {
           { hash = {
               type = "string",
               default = "consumer",
-              one_of = { "consumer", "ip", "none", "whitelist", "blacklist" },
+              one_of = { "consumer", "ip", "none", "allow", "deny" },
           }},
           { duration = {
               type = "number",

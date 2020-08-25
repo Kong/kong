@@ -349,10 +349,10 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("test 'whitelist' consumers", function()
+      it("test 'allow' consumers", function()
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
-          hash = "whitelist",
+          hash = "allow",
           groups = { "mycanary", "yourcanary" }
         })
         local ids = generate_consumers(admin_client, {1,2,3}, 4)
@@ -408,10 +408,10 @@ for _, strategy in helpers.each_strategy() do
         assert.are.equal(1, count["/requests"])
       end)
 
-      it("test 'whitelist' with no consumer identified", function()
+      it("test 'allow' with no consumer identified", function()
         add_canary(route4.id, {
           upstream_uri = "/requests/path2",
-          hash = "whitelist",
+          hash = "allow",
           groups = { "mycanary", "yourcanary" }
         })
         local res = assert(proxy_client:send {
@@ -426,10 +426,10 @@ for _, strategy in helpers.each_strategy() do
         assert.are.equal("/requests", json.vars.request_uri)
       end)
 
-      it("test 'blacklist' consumers", function()
+      it("test 'deny' consumers", function()
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
-          hash = "blacklist",
+          hash = "deny",
           groups = { "mycanary", "yourcanary" }
         })
         local ids = generate_consumers(admin_client, {1,2,3}, 4)
@@ -485,10 +485,10 @@ for _, strategy in helpers.each_strategy() do
         assert.are.equal(2, count["/requests"])
       end)
 
-      it("test 'blacklist' with no consumer identified", function()
+      it("test 'deny' with no consumer identified", function()
         add_canary(route4.id, {
           upstream_uri = "/requests/path2",
-          hash = "blacklist",
+          hash = "deny",
           groups = { "mycanary", "yourcanary" }
         })
         local res = assert(proxy_client:send {

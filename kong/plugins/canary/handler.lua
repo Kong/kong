@@ -122,7 +122,7 @@ local function list_based(conf)
   local host = conf.upstream_host
   local port = conf.upstream_port
   local uri = conf.upstream_uri
-  local switch_on = conf.hash == "whitelist"
+  local switch_on = conf.hash == "allow"
   local canary_croups = conf.groups or {}
 
   return function()
@@ -168,7 +168,7 @@ function Canary:access(conf)
 
   local exec = conf_cache[conf]
   if not exec then
-    if conf.hash == "whitelist" or conf.hash == "blacklist" then
+    if conf.hash == "allow" or conf.hash == "deny" then
       exec = list_based(conf)
     else
       exec = hash_based(conf)
