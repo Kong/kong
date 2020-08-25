@@ -42,7 +42,7 @@ pipeline {
                   'internal-preview',
                   'beta1', 'beta2',
                   'rc1', 'rc2', 'rc3', 'rc4', 'rc5',
-                  'GA'
+                  'ga'
                 ]
               )
             ]
