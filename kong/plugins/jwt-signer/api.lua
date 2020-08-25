@@ -32,6 +32,9 @@ local function clear_private_keys(jwks)
         for key in pairs(jwk) do
           if PRIVATE[key] then
             jwk[key] = nil
+
+          elseif jwk[key] == null then
+            jwk[key] = nil
           end
         end
       end

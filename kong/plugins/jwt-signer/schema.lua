@@ -4,8 +4,6 @@ local cache     = require "kong.plugins.jwt-signer.cache"
 local log       = require "kong.plugins.jwt-signer.log"
 
 
-local table = table
-local pcall = pcall
 local get_phase = ngx.get_phase
 
 
@@ -575,5 +573,6 @@ local config = {
     },
   },
 }
+
 
 return config
