@@ -69,7 +69,6 @@ local function custom_wspaced_entities(db, conf)
   local strategy = db.strategy
 
   if strategy ~= 'postgres' and  strategy ~= 'cassandra' then
-    print("dbless")
     return false
   end
 
