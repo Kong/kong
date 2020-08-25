@@ -762,7 +762,7 @@ stream {
         content_by_lua_block {
             local sock = assert(ngx.req.socket())
             local data = sock:receive()  -- read a line from downstream
-            ngx.say(data) -- echo whatever was sent
+            sock:send(data) -- echo whatever was sent
         }
     }
 
