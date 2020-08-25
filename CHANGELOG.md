@@ -1,3 +1,11 @@
+## v1.6.0
+
+- Change Postgres column type for `keys` in `jwt_signer_jwks` table from `JSONB` to `JSONB[]`
+  for a better hybrid compatibility
+- Change Postgres column type for `previous` in `jwt_signer_jwks` table from `JSONB` to `JSONB[]`
+  for a better hybrid compatibility
+- Change JWKS uris to return `application/jwk-set+json` instead of `application/json` 
+
 ## v1.5.0
 
 ### Fixed

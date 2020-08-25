@@ -134,7 +134,9 @@ return {
           return kong.response.exit(404, { message = "Not found" })
         end
 
-        return kong.response.exit(200, post_process_row(row))
+        return kong.response.exit(200, post_process_row(row), {
+          ["Content-Type"] = "application/jwk-set+json",
+        })
       end,
       DELETE = endpoints.delete_entity_endpoint(jwks_schema),
     },
@@ -163,7 +165,9 @@ return {
           return kong.response.exit(404, { message = "Not found" })
         end
 
-        return kong.response.exit(200, post_process_row(row))
+        return kong.response.exit(200, post_process_row(row), {
+          ["Content-Type"] = "application/jwk-set+json",
+        })
       end,
     },
   },
