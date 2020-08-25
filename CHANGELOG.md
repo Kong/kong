@@ -1,3 +1,9 @@
+## 1.0.3
+
+### Fixed
+
+- Accept AD group names containing spaces
+
 ## 1.0.2
 
 - return 500 when error
