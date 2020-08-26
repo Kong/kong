@@ -23,7 +23,7 @@ pipeline {
     //  script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
     //)}"""
     // XXX: Can't bother to fix this now. This works, right? :)
-    KONG_VERSION = "2.1.2.0"
+    KONG_VERSION = "2.1.3.0"
   }
   stages {
     // choice between internal, rc1, rc2, rc3, rc4 ....,  GA
@@ -42,7 +42,7 @@ pipeline {
                   'internal-preview',
                   'beta1', 'beta2',
                   'rc1', 'rc2', 'rc3', 'rc4', 'rc5',
-                  'GA'
+                  'ga'
                 ]
               )
             ]

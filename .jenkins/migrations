@@ -60,7 +60,7 @@ pipeline {
       }
     }
 
-    stage('run migration integration tests') {
+    stage('1.5.0.4 to here') {
       steps {
         parallel (
           "Kong EE 1.5.0.4 to here (pg)": {
@@ -68,18 +68,45 @@ pipeline {
           },
           "Kong EE 1.5.0.4 to here (c*)": {
             sh "sealy --from kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.5.0.4-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/1.5.x_to_2.1.x_happy_path --cassandra"
-          },
+          }
+        )
+      }
+    }
+
+    stage('next/2.1.x.x to here') {
+      steps {
+        parallel (
           "Kong EE next/2.1.x.x to here (pg)": {
             sh "sealy --from registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path"
           },
           "Kong EE next/2.1.x.x to here (c*)": {
             sh "sealy --from registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path --cassandra"
-          },
+          }
+        )
+      }
+    }
+
+    stage('Kong EE < 1.5 to here') {
+      steps {
+        parallel (
           "Kong EE < 1.5 to here should err on upgrade! (pg)": {
             sh "! sealy --from kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.3.0.2-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/empty"
           },
           "Kong EE < 1.5 to here should err on upgrade! (c*)": {
             sh "! sealy --from kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.3.0.2-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/empty --cassandra"
+          }
+        )
+      }
+    }
+
+    stage('Kong CE 2.1.3 to here') {
+      steps {
+        parallel (
+          "Kong CE 2.1.3 to here (pg)": {
+            sh "sealy --from kong:2.1.3-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/core_1.x_ee_1.x_happy_path"
+          },
+          "Kong CE 2.1.3 to here (c*)": {
+            sh "sealy --from kong:2.1.3-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/core_1.x_ee_1.x_happy_path --cassandra"
           }
         )
       }

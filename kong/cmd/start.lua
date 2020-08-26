@@ -7,6 +7,83 @@ local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 
+local fmt = string.format
+
+local function list_fields(db, tname)
+
+  local qs = {
+    postgres = function()
+      return fmt("SELECT column_name FROM information_schema.columns WHERE table_schema='%s' and table_name='%s';",
+        db.connector.config.schema,
+        tname)
+    end,
+    cassandra = function()
+      -- Handle schema system tables and column name differences between Apache
+      -- Cassandra version
+      if db.connector.major_version >= 3 then
+        return fmt("SELECT column_name FROM system_schema.columns WHERE keyspace_name='%s' and table_name='%s';",
+          db.connector.keyspace,
+          tname)
+      else
+        return fmt("SELECT column_name FROM system.schema_columns WHERE keyspace_name='%s' and columnfamily_name='%s';",
+          db.connector.keyspace,
+          tname)
+      end
+    end,
+    off = function()
+      return setmetatable({}, {
+        __index = function()
+          return true
+      end})
+    end,
+  }
+
+  if not qs[db.strategy] then
+    return {}
+  end
+
+  local fields = {}
+  local rows, err = db.connector:query(qs[db.strategy]())
+
+  if err then
+    return nil, err
+  end
+  for _, v in ipairs(rows) do
+    local _,vv = next(v)
+    fields[vv]=true
+  end
+
+  return fields
+end
+
+local function has_ws_id_in_db(db, tname)
+  local res, err = list_fields(db, tname)
+  if err then
+    return nil, err
+  end
+  return res.ws_id
+end
+
+local function custom_wspaced_entities(db, conf)
+  local ret = {}
+  local strategy = db.strategy
+
+  if strategy ~= 'postgres' and  strategy ~= 'cassandra' then
+    return false
+  end
+
+  db.plugins:load_plugin_schemas(conf.loaded_plugins)
+
+  for k, v in pairs(db.daos) do
+    local schema = v.schema
+    if schema.workspaceable and
+    not has_ws_id_in_db(db, schema.name) then -- we have to check at db level
+      table.insert(ret, k)
+    end
+  end
+
+  return #ret>0 and ret
+end
 
 local function execute(args)
   args.db_timeout = args.db_timeout * 1000
@@ -60,6 +137,21 @@ local function execute(args)
                  r, tostring(schema_state.pending_migrations))
       end
     end
+
+      local non_migrated_entities = custom_wspaced_entities(db, conf)
+      local tx = require("pl.tablex")
+      if non_migrated_entities then
+        log.info(table.concat(
+          {"This instance contains workspaced entities that need a custom migration.",
+           "please use the provided helpers to migrate them: ",
+           unpack(tx.imap(
+             function(x)
+               return "kong migrations upgrade-workspace-table " .. x
+             end,
+             non_migrated_entities))
+          }, "\n"))
+        error()
+      end
 
     assert(nginx_signals.start(conf))
 

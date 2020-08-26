@@ -920,9 +920,7 @@
                                  # Detailed discussion of this behavior is
                                  # available in the online documentation.
 
-#pg_ro_host = NONE               # Same as `pg_host`, but for the
-                                 # read-only connection.
-                                 # Value of `NONE` disables
+#pg_ro_host =                    # Same as `pg_host`, but for the
                                  # read-only connection.
                                  # **Note:** Refer to the documentation
                                  # section above for detailed usage.

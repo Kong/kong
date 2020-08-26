@@ -15,7 +15,9 @@ local NEEDS_BOOTSTRAP_MSG = "Database needs bootstrapping or is older than Kong 
 local function EE_NEEDS_UPGRADE(version)
   return fmt("Database is older than Kong Enterprise %s.\n\n" ..
   "To migrate from a version older than Enterprise %s, migrate to Kong " ..
-  "Enterprise %s first.", version, version, version)
+    "Enterprise %s first.\n\n" ..
+      "To migrate from Kong Community Edition, versions should be the same",
+        version, version, version)
 end
 
 local function check_state(schema_state)
@@ -72,7 +74,10 @@ local function up(schema_state, db, opts)
     schema_state = assert(db:schema_state())
 
     -- XXX EE detect broken migration path from < 1.5 to 2.1
-    if schema_state and not schema_state:is_migration_executed("enterprise", "006_1301_to_1500") then
+    if schema_state and (
+      not schema_state:is_migration_executed("enterprise", "006_1301_to_1500") and
+        not schema_state:is_migration_executed("core", "011_212_to_213" ))
+    then
       error(EE_NEEDS_UPGRADE("1.5.0"))
     end
 
