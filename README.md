@@ -1,3 +1,5 @@
+[![Build Status][badge-travis-image]][badge-travis-url]
+
 # Kong gRPC-Web plugin
 
 A [Kong] plugin to allow access to a gRPC service via the [gRPC-Web](https://github.com/grpc/grpc-web) protocol.  Primarily, this means JS browser apps using the [gRPC-Web library](https://github.com/grpc/grpc-web).
@@ -117,3 +119,6 @@ The gRPC-Web plugin depends on [lua-protobuf], [lua-cjson] and [lua-pack]
 [lua-protobuf]: https://github.com/starwing/lua-protobuf
 [lua-cjson]: https://github.com/openresty/lua-cjson
 [lua-pack]: https://github.com/Kong/lua-pack
+[badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-grpc-web/branches
+[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-grpc-web.svg
+

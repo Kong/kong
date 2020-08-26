@@ -1,0 +1,32 @@
+dist: bionic
+jobs:
+  include:
+  - name: Kong CE 2.0.x
+    env: KONG_VERSION=2.0.x
+  - name: Kong CE 2.1.x
+    env: KONG_VERSION=2.1.x
+  - name: Kong CE 2.2.x
+    env: KONG_VERSION=2.2.x
+  - name: Kong Enterprise nightly
+    env: KONG_VERSION=nightly-ee
+env:
+  global:
+  - BINTRAY_REPO=kong
+  - BINTRAY_USERNAME=kong-automation@kong
+  - secure: FbTFh82pkhrepdWxR2JikIs8B6ZyOiyn7EtfolJpmbLvgXjY308J6HTmNHm3uI/gO5nNYb5qgA8PuwIHfdhAqXyVoAaPAAbZki8dvNg0ViayxZN1BgvJ2fABe9FEyrAigPVR/0BZeVRJVSVIjtuGKpyMiQjTlhgMMx1fPHGoXMs2lTfitmLRCRxgrQVwO/IfocMJV4xCb7LBQIjufBtWPo9qCy1OY6PoS9akyFyyIGnmjS/Asmyeh48MFQhy2sC8a+atX/POaAa1GltWNz+mDTCHZ0IN/86cTVnp1p6XbRXrfcyRRBO4CN/+3b7dQyyU314MyPi+KdqZL+0pXPWt0wY+2POu7/5thTL2N7h0ApWXqMMt0meKFuFvO5UxGEc9J3pw6m3QevdYYV3ac7XSjP6VkvSwHCPJPLtsQTVegY81bPepgqYI2cU5KQ0eilm9Q7k9kV7i8UZfrWwn8PEYgHDT8Sc+gNITJIgGQadQo5CHBSnH4vnfF26LgTKFL7XfmwhnZZErxnHmXscHvZJ08kWq1ydkcAPXBMV06O0SuP5AnVDcFma/J0M3o9D/dNj5EcdXH+SQp6uW/Wq5yvGv/Fr+AWiX52a3sXgC9BadQ2jgOCiLCcKWE3MbSxRiApAZ1eV/FfrZpKHBg/VlUjODvZRXl/+sK7gyhIbhti+PDlM=
+  - NIGHTLY_EE_USER=kong-automation@kong
+  - secure: me+mG8MkoKHel8j6sldMAiZAgSakqtyOt/zFOZ1a8lNObvkg1UGn0fADVElZPF0hhwunMDEeFl5TRxmjIcGWcCYFyNXeCOqwtLLpomW7okv+jivyn88FX5bZVFNDCmpbL+AATFjq0AVYLLFo1snC1sI5wHLMsnZnqVBSrr/KEFRmZ+hLuUgUAKJcAlILdddz7dnMQ2KIxgszXP4KLxZx+S77DrABCHKVZk9Znr7eEOMS+DeRNsVzxgqKUgqzob9VaF43T1f21fRXlc0l/yZSyAJM8lvX0P14j0+bDD7RNw41262BPYQC2fNIgym6ateMWqh9+eXNaikr04jbRwBLcFPq11i7yPaelSizSYomH/dsO1vAw0SXQGk+FSKZ9BntpVgdL4c1fyq3b/4QFpum8WmPcoWL+C/OMW/NmaYTbtFgGMWA8CdoRgKGn2zTLSzjRhnZYJo0rut4z5NRtQlFzU8UAzOQcqJZFFMtqecQpMCj9M3mNHW2M43GfZJTsiHK9WyhabHyCty41Goi/qqAp4KegX9eyDl8FwH1pPnVtZmkJ8wVtB8Gr4EraQST0+6NAGlBq7AulEv8pYcVCeNNMMDRZYYQu4NGkVjIYOwRTkTS56OaCewaNcqGExGD65Xpwunnvi06I0lcH17x91ysJXQPbrBagKWfNTmYLlnM7ug=
+install:
+- git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
+- "../kong-pongo/pongo.sh up"
+- "../kong-pongo/pongo.sh build"
+script:
+- "../kong-pongo/pongo.sh lint"
+- "../kong-pongo/pongo.sh run"
+notifications:
+  slack:
+    if: branch = master AND type != pull_request
+    on_success: change
+    on_failure: always
+    rooms:
+      secure: LvOo/Q68JJCkja97mM/eE/eRV0NXH/wFNeiKZ8yuqtdcoeIOBkxds9W8Jie0Ao+BrMtjK02RkxHrC3mN6qphk7e2P3lQKcNdzHHomMHOa6oUPYsn9nuUcJGQFi00WFzDBG2A3Mk0dTgUnRpMx6ibSdkZA1wZBm5TdH7FWmkn3ixPXctKLHsF9PYaOkG2ZVKaU7oE+yllOnspVqq2TxqudEjphfENAsKPTSlLOl64+rZUiaeY+zPfkalitT4y2fMr8TXLT1lk5nBqG8dzolI8EtVRls8ZxOrJvppFMXNEyYyJfkSzdA0tk3+JP2hTg+qBLMO29dXtPKfloWRAy5wU+MEE85uVT6ix+rOPPtU9Enpl/6I2McnLABvWNcVzyAdeAhKkx7PW9fM+O/gcFdRYRPkfnIzVxc0zXw+VxCeUNMoZLZkBWYjERHYIHe0bzndoLFkeYAngxevK3NohPRQbaD4IdrJc2IVLYHGrJ2Wv02JDRo9LBzHfTA/h1AmJQEOKQKfrikqRN9XZOSwGChVoxiAZ9C26/h7SfQSo7xHGkkNXlghLBtDRcBBW6V/TzMpQHiCKtOzdsAQlqaFOZT3ZxJnkVldshEQYRh6KZJfnMLMRD268RAkhOctE91KxTAfIlKq3fBl+yrbzDwW1la4mAX86T6yTeeRSCfPVXbwKdf4=
