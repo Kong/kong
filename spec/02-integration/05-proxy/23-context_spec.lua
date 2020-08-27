@@ -115,6 +115,21 @@ for _, strategy in helpers.each_strategy() do
         local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
         assert.not_matches("[ctx-tests]", err_log, nil, true)
       end)
+
+      it("can run unbuffered request after a \"response\" one", function()
+        local res = assert(proxy_client:get("/response/status/234"))
+        assert.res_status(234, res)
+
+        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+        assert.not_matches("[ctx-tests]", err_log, nil, true)
+
+        local res = proxy_client:get("/status/235")
+        assert.truthy(res)
+        assert.res_status(235, res)
+
+        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+        assert.not_matches("[ctx-tests]", err_log, nil, true)
+      end)
     end)
 
     if strategy ~= "off" then
