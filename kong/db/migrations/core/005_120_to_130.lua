@@ -59,7 +59,7 @@ return {
     ]],
     teardown = function(connector)
       assert(connector:connect_migrations())
-      for upstream, err in connector:iterate([[SELECT * FROM "upstreams";]]) do
+      for upstream, err in connector:iterate("SELECT id, algorithm, hash_on FROM upstreams") do
         if err then
           return nil, err
         end
@@ -87,6 +87,8 @@ return {
 
         ::continue::
       end
+
+      return true
     end,
 
   },
@@ -121,7 +123,7 @@ return {
       local cassandra = require "cassandra"
       local coordinator = assert(connector:connect_migrations())
 
-      for rows, err in coordinator:iterate([[SELECT * FROM upstreams;]]) do
+      for rows, err in coordinator:iterate("SELECT id, algorithm, hash_on FROM upstreams") do
         if err then
           return nil, err
         end
@@ -144,7 +146,7 @@ return {
             SET algorithm = ?
             WHERE id = ?
           ]], {
-            algorithm,
+            cassandra.text(algorithm),
             cassandra.uuid(upstream.id),
           })
           if err then
@@ -155,6 +157,8 @@ return {
         end
 
       end
+
+      return true
     end,
 
   },

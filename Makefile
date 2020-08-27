@@ -54,6 +54,9 @@ ifneq ($(TAG),)
 		# We're building a semver release tag
 		OFFICIAL_RELEASE = true
 		KONG_VERSION ?= `cat $(KONG_SOURCE_LOCATION)/kong-*.rockspec | grep -m1 tag | awk '{print $$3}' | sed 's/"//g'`
+		ifeq ($(PACKAGE_TYPE),apk)
+		    REPOSITORY_NAME = kong-alpine-tar
+		endif
 	endif
 else
 	OFFICIAL_RELEASE = false
