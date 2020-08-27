@@ -288,7 +288,7 @@ local function get_next(self)
       if cfg then
         plugins[name] = cfg
         if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
-          self.iterator.has_response = true
+          ctx.has_response = true
         end
       end
     end
@@ -330,7 +330,6 @@ local function iterate(self, phase, ctx)
   end
 
   local iteration = {
-    iterator = self,
     configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase],
     loaded = self.loaded,
     phases = ws.phases[phase] or EMPTY_T,

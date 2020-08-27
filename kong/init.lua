@@ -730,7 +730,7 @@ function Kong.access()
 
   execute_plugins_iterator(plugins_iterator, "access", ctx)
 
-  if plugins_iterator.has_response then
+  if ctx.has_response then
     kong.ctx.core.buffered_proxying = true
   end
 
