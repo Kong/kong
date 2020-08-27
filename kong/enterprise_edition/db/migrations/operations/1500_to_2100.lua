@@ -6,6 +6,8 @@
 -- If you want to reuse these operations in a future migration,
 -- copy the functions over to a new versioned module.
 local ce_operations = require "kong.db.migrations.operations.200_to_210"
+local log           = require "kong.cmd.utils.log"
+
 
 
 local concat = table.concat
@@ -159,15 +161,16 @@ local postgres = {
     -- Set `ws_id` fields based on values from `workspace_entities`,
     -- and remove prefixes from unique values.
     ws_fixup_workspaceable_rows = function(_, connector, entity)
+      log.debug("ws_fixup_workspaceable_rows: "..  entity.name)
+
       local code = {}
 
-      -- insert ws_id:
-
-      -- XXX EE test what happens here with shared entities
-      -- XXX EE for admin-consumers, can we just put them in default?
+      -- populate ws_id:
+      -- XXX EE shared entities will pick one of the workspaces
+      -- they're in.
       local tables, err = postgres_list_tables(connector)
       if err then
-        ngx.log(ngx.ERR, kong.log.inspect(err))
+        ngx.log(ngx.ERR, [[err: ]], type(err)=='string' and err or type(err))
         return nil, err
       end
 
@@ -209,6 +212,7 @@ local postgres = {
       end
 
       postgres_run_query_in_transaction(connector, table.concat(code))
+      log.debug("ws_fixup_workspaceable_rows: "..  entity.name .. " DONE")
     end,
 
     ws_clean_kong_admin_rbac_user = function(_, connector)
@@ -437,7 +441,9 @@ local cassandra = {
 
 local function ws_adjust_data(ops, connector, entities)
   for _, entity in ipairs(entities) do
+    log.debug("adjusting data for: " .. entity.name)
     ops.ws_fixup_workspaceable_rows(ops, connector, entity)
+    log.debug("adjusting data for: " .. entity.name .. " ...DONE")
   end
 end
 
