@@ -443,11 +443,11 @@ function issuers.rediscover(issuer, opts)
       discovery_data[issuer] = data
 
     else
-      local err
-      data, err = kong.db.oic_issuers:update({ id = discovery.id }, data)
-      if not data then
-        log.err("unable to update issuer ", issuer, " discovery documents in database (", err , ")")
-        return nil
+      local stored_data, err = kong.db.oic_issuers:update({ id = discovery.id }, data)
+      if not stored_data then
+        log.warn("unable to update issuer ", issuer, " discovery documents in database (", err , ")")
+      else
+        data = stored_data
       end
     end
 
@@ -455,7 +455,6 @@ function issuers.rediscover(issuer, opts)
 
   else
     local secret = get_secret()
-    local err
     local data = {
       issuer        = issuer,
       configuration = claims,
@@ -473,10 +472,11 @@ function issuers.rediscover(issuer, opts)
       discovery_data[issuer] = data
 
     else
-      data, err = kong.db.oic_issuers:insert(data)
-      if not data then
-        log.err("unable to store issuer ", issuer, " discovery documents in database (", err , ")")
-        return nil
+      local stored_data, err = kong.db.oic_issuers:insert(data)
+      if not stored_data then
+        log.warn("unable to store issuer ", issuer, " discovery documents in database (", err , ")")
+      else
+        data = stored_data
       end
     end
 
