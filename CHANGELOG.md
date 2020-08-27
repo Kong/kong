@@ -53,7 +53,7 @@
 > Released 2020/08/19
 
 This is a patch release in the 2.0 series. Being a patch release, it strictly
-contains bugfixes. The are no new features or breaking changes.
+contains bug fixes. The are no new features or breaking changes.
 
 ### Fixes
 
