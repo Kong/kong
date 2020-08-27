@@ -43,11 +43,26 @@ for _, strategy in helpers.each_strategy() do
         service = service1,
       })
 
+      local route2 = assert(bp.routes:insert {
+        protocols = { "http", "https" },
+        paths = { "/prefix" },
+        service = service1,
+      })
+
       assert(bp.plugins:insert {
         route = route1,
         name = "grpc-web",
         config = {
           proto = "spec/fixtures/grpc/hello.proto",
+        },
+      })
+
+      assert(bp.plugins:insert {
+        route = route2,
+        name = "grpc-web",
+        config = {
+          proto = "spec/fixtures/grpc/hello.proto",
+          pass_stripped_path = true,
         },
       })
 
@@ -152,5 +167,16 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(err)
     end)
 
+     test("Pass stripped URI", function()
+       local res, err = proxy_client:post("/prefix/hello.HelloService/SayHello", {
+         headers = {
+           ["Content-Type"] = "application/json",
+         },
+         body = cjson.encode{ greeting = "heya" },
+       })
+
+       assert.same({ reply = "hello heya" }, cjson.decode((res:read_body())))
+       assert.is_nil(err)
+     end)
  end)
 end

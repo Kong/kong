@@ -40,10 +40,17 @@ function grpc_web:access(conf)
     return kong_response_exit(200, "OK", CORS_HEADERS)
   end
 
+  local uri
+  if conf.pass_stripped_path then
+    uri = ngx.var.upstream_uri
+    ngx.req.set_uri(uri)
+  else
+    uri = kong_request_get_path()
+  end
 
   local dec, err = deco.new(
     kong_request_get_header("Content-Type"),
-    kong_request_get_path(), conf.proto)
+    uri, conf.proto)
 
   if not dec then
     kong.log.err(err)

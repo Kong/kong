@@ -11,6 +11,12 @@ return {
             default = nil,
           },
         },
+        {
+          pass_stripped_path = {
+            type = "boolean",
+            required = false,
+          },
+        },
       },
     }, },
   },
