@@ -141,7 +141,7 @@ function OICHandler.access(_, conf)
         end
 
         if sub(iss, -1) == "/" then
-          return sub(iss, 1, -2)
+          iss = sub(iss, 1, -2)
         end
       end
     end
