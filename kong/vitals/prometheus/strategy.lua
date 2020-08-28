@@ -576,11 +576,16 @@ end
 
 local function get_interval_and_start_ts(level, start_ts, scrape_interval)
   local interval
-  if vitals_utils.interval_to_duration[level] then
+  if tonumber(level) then
+    interval = level
+    if start_ts == nil then
+      start_ts = ngx_time() - 720 * 60
+    end
+  elseif vitals_utils.interval_to_duration[level] then
     interval = vitals_utils.interval_to_duration[level]
     -- backward compatibility for client that doesn't send start_ts
     if start_ts == nil then
-      start_ts = ngx_time() - interval * 60
+      start_ts = ngx_time() - 720 * 60
     end
   else
     interval = scrape_interval
