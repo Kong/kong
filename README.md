@@ -5,7 +5,7 @@
 [![Twitter](https://img.shields.io/twitter/follow/thekonginc.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=thekonginc)
 
 Kong is a cloud-native, fast, scalable, and distributed Microservice
-Abstraction Layer *(also known as an API Gateway or API Middleware)*.
+Abstraction Layer _(also known as an API Gateway or API Middleware)_.
 Made available as an open-source project in 2015, its core values are
 high performance and extensibility.
 
@@ -40,29 +40,24 @@ transformations, and more through plugins.
 
 Kong has been built with the following leading principles:
 
-* **High Performance**: Sub-millisecond processing latency to support mission 
+- **High Performance**: Sub-millisecond processing latency to support the mission
   critical use cases and high throughput.
-* **Extensibility**: With a pluggable architecture to extend Kong in Lua or GoLang 
+- **Extensibility**: With a pluggable architecture to extend Kong in Lua or GoLang
   with Kong's Plugin SDK.
-* **Portability**: To run on every platform, every cloud and to natively support 
+- **Portability**: To run on every platform, every cloud and to natively support
   Kubernetes via our modern Ingress Controller.
 
 ## Features
 
-- **Cloud-Native**: Platform agnostic, Kong can run on any platform - from bare
-  metal to containers - and it can run on every cloud natively.
-- **Kubernetes-Native**: Declaratively configure Kong with native Kubernetes CRDs
-  using the official Ingress Controller to route and connect all L4 + L7 traffic. 
-- **Dynamic Load Balancing**: Load balance traffic across multiple upstream
-  services.
-- **Hash-based Load Balancing**: Load balance with consistent hashing/sticky
-  sessions.
+- **Cloud-Native**: Platform agnostic, Kong can run on any platform - from bare metal to containers - and it can run on every cloud natively.
+- **Kubernetes-Native**: Declaratively configure Kong with native Kubernetes CRDs using the official Ingress Controller to route and connect all L4 + L7 traffic.
+- **Dynamic Load Balancing**: Load balance traffic across multiple upstream services.
+- **Hash-based Load Balancing**: Load balance with consistent hashing/sticky sessions.
 - **Circuit-Breaker**: Intelligent tracking of unhealthy upstream services.
 - **Health Checks:** Active and passive monitoring of your upstream services.
 - **Service Discovery**: Resolve SRV records in third-party DNS resolvers like
   Consul.
-- **Serverless**: Invoke and secure AWS Lambda or OpenWhisk functions directly
-  from Kong.
+- **Serverless**: Invoke and secure AWS Lambda or OpenWhisk functions directly from Kong.
 - **WebSockets**: Communicate to your upstream services via WebSockets.
 - **gRPC**: Communicate to your gRPC services and observe your traffic with logging
   and observability plugins
@@ -72,25 +67,19 @@ Kong has been built with the following leading principles:
 - **Security**: ACL, Bot detection, allow/deny IPs, etc...
 - **Syslog**: Logging to System log.
 - **SSL**: Setup a Specific SSL Certificate for an underlying service or API.
-- **Monitoring**: Live monitoring provides key load and performance server
-  metrics.
+- **Monitoring**: Live monitoring provides key load and performance server metrics.
 - **Forward Proxy**: Make Kong connect to intermediary transparent HTTP proxies.
 - **Authentications**: HMAC, JWT, Basic, and more.
 - **Rate-limiting**: Block and throttle requests based on many variables.
 - **Transformations**: Add, remove, or manipulate HTTP requests and responses.
 - **Caching**: Cache and serve responses at the proxy layer.
 - **CLI**: Control your Kong cluster from the command line.
-- **REST API**: Kong can be operated with its RESTful API for maximum
-  flexibility.
+- **REST API**: Kong can be operated with its RESTful API for maximum flexibility.
 - **Geo-Replicated**: Configs are always up-to-date across different regions.
-- **Failure Detection & Recovery**: Kong is unaffected if one of your Cassandra
-  nodes goes down.
-- **Clustering**: All Kong nodes auto-join the cluster keeping their config
-  updated across nodes.
-- **Scalability**: Distributed by nature, Kong scales horizontally by simply
-  adding nodes.
-- **Performance**: Kong handles load with ease by scaling and using NGINX at
-  the core.
+- **Failure Detection & Recovery**: Kong is unaffected if one of your Cassandra nodes goes down.
+- **Clustering**: All Kong nodes auto-join the cluster keeping their config updated across nodes.
+- **Scalability**: Distributed by nature, Kong scales horizontally by simply adding nodes.
+- **Performance**: Kong handles the load with ease by scaling and using NGINX at the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and
   APIs.
 
@@ -114,25 +103,24 @@ code, other repos are also under active development:
   for Kong.
 - [Kong CloudFormation](https://github.com/Kong/kong-dist-cloudformation):
   Kong in a 1-click deployment for AWS EC2.
-- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B06WP4TNKL): Kong AMI on
-  the AWS Marketplace.
+- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B06WP4TNKL): Kong AMI on the AWS Marketplace.
 - [Kong on Microsoft Azure](https://github.com/Kong/kong-dist-azure): Run Kong
-  using Azure Resource Manager.
+  using the Azure Resource Manager.
 - [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
   Heroku in one click.
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
-  Instaclustr manage your Cassandra cluster.
+  Instaclustr manages your Cassandra cluster.
 - [Nightly Builds][kong-nightly-master]: Builds of the master branch available
-  every morning at about 9AM PST.
+  every morning at about 9 AM PST.
 
 You can find every supported distribution at the [official installation page](https://konghq.com/install/).
 
 ## Development
 
-If you are planning on developing on Kong, you'll need a development
+If you are planning on developing in Kong, you'll need a development
 installation. The `next` branch holds the latest unreleased source code.
 
-You can read more about writing your own plugins in the [Plugin Development
+You can read more about writing your plugins in the [Plugin Development
 Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
 online version of Kong's source code documentation in the [Plugin Development
 Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
@@ -171,7 +159,7 @@ $ luarocks make
 #### Running for development
 
 Check out the [development section](https://github.com/Kong/kong/blob/next/kong.conf.default#L244)
-of the default configuration file for properties to tweak in order to ease
+of the default configuration file for properties to tweak to ease
 the development process for Kong.
 
 Modifying the [`lua_package_path`](https://github.com/openresty/lua-nginx-module#lua_package_path)
@@ -189,9 +177,9 @@ $ make dev
 
 Kong relies on three test suites using the [busted] testing library:
 
-* Unit tests
-* Integration tests, which require Postgres and Cassandra to be up and running
-* Plugins tests, which require Postgres to be running
+- Unit tests
+- Integration tests, which require Postgres and Cassandra to be up and running
+- Plugins tests, which require Postgres to be running
 
 The first can simply be run after installing busted and running:
 
@@ -238,15 +226,15 @@ $ make lint
 
 When developing, you can use the `Makefile` for doing the following operations:
 
-| Name               | Description                                            |
-| ------------------:| -------------------------------------------------------|
-| `install`          | Install the Kong luarock globally                      |
-| `dev`              | Install development dependencies                       |
-| `lint`             | Lint Lua files in `kong/` and `spec/`                  |
-| `test`             | Run the unit tests suite                               |
-| `test-integration` | Run the integration tests suite                        |
-| `test-plugins`     | Run the plugins test suite                             |
-| `test-all`         | Run all unit + integration + plugins tests at once     |
+|               Name | Description                                        |
+| -----------------: | -------------------------------------------------- |
+|          `install` | Install the Kong luarock globally                  |
+|              `dev` | Install development dependencies                   |
+|             `lint` | Lint Lua files in `kong/` and `spec/`              |
+|             `test` | Run the unit tests suite                           |
+| `test-integration` | Run the integration tests suite                    |
+|     `test-plugins` | Run the plugins test suite                         |
+|         `test-all` | Run all unit + integration + plugins tests at once |
 
 ## Enterprise Support & Demo
 
@@ -277,6 +265,5 @@ limitations under the License.
 [kong-nightly-master]: https://bintray.com/kong/kong-nightly/master
 [badge-travis-url]: https://travis-ci.org/Kong/kong/branches
 [badge-travis-image]: https://travis-ci.org/Kong/kong.svg?branch=master
-
 [busted]: https://github.com/Olivine-Labs/busted
 [luacheck]: https://github.com/mpeterv/luacheck
