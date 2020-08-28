@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixed
+
+- Added missing `json_types` configuration field for `add`, `replace` and `append` operations.
+
 ## 0.4.1
 
 ### Fixed

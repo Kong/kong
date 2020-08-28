@@ -50,6 +50,11 @@ for _, strategy in helpers.each_strategy() do
           assert.response(res).has.status(201)
           local body = assert.response(res).has.jsonbody()
           assert.same({ some_function }, body.config.transform.functions)
+
+          admin_client:send {
+            method  = "DELETE",
+            path    = "/plugins/" .. body.id,
+          }
         end)
         it("transform fails when #function is not lua code", function()
           local res = assert(admin_client:send {
@@ -93,6 +98,43 @@ for _, strategy in helpers.each_strategy() do
           local msg = "Bad return value from function, expected function type, got string"
           local expected = { config = { transform = { functions = { msg } } } }
           assert.same(expected, json["fields"])
+        end)
+        it("json_types config accepts a list of JSON types #a", function()
+          local json_types = {
+            "string", "string", "string", "number", "boolean", "boolean",
+          }
+
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name   = "response-transformer-advanced",
+              config = {
+                add = {
+                  json_types = json_types,
+                },
+                replace = {
+                  json_types = json_types,
+                },
+                append = {
+                  json_types = json_types,
+                },
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.response(res).has.status(201)
+          local res_body = assert.response(res).has.jsonbody()
+          assert.same(json_types, res_body.config.add.json_types)
+          assert.same(json_types, res_body.config.replace.json_types)
+          assert.same(json_types, res_body.config.append.json_types)
+
+          admin_client:send {
+            method  = "DELETE",
+            path    = "/plugins/" .. res_body.id,
+          }
         end)
       end)
     end)

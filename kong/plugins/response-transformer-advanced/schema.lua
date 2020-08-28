@@ -105,20 +105,22 @@ local colon_headers_array = {
 }
 
 
+local json_types_array = {
+  type = "array",
+  default = {},
+  elements = {
+    type = "string",
+    one_of = { "boolean", "number", "string" }
+  }
+}
+
+
 return {
   name = "response-transformer-advanced",
   fields = {
     { config = { type = "record", fields = {
       { remove = { type = "record", fields = {
         { json = strings_array },
-        { json_types = {
-          type = "array",
-          default = {},
-          elements = {
-            type = "string",
-            one_of = { "boolean", "number", "string" }
-          }
-        } },
         { headers = strings_array },
         { if_status = status_array },
       }}},
@@ -130,16 +132,19 @@ return {
       { replace = { type = "record", fields = {
           { body = { type = "string" } },
           { json = colon_strings_array },
+          { json_types = json_types_array },
           { headers = colon_strings_array },
           { if_status = status_array },
       }}},
       { add = { type = "record", fields = {
           { json = colon_strings_array },
+          { json_types = json_types_array },
           { headers = colon_strings_array },
           { if_status = status_array },
       }}},
       { append = { type = "record", fields = {
           { json = colon_strings_array },
+          { json_types = json_types_array },
           { headers = colon_strings_array },
           { if_status = status_array },
       }}},
