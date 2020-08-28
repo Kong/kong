@@ -12,7 +12,10 @@ local openssl_x509 = require("resty.openssl.x509")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
+local math = math
+local pairs = pairs
 local ipairs = ipairs
+local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local cjson_decode = cjson.decode
@@ -46,6 +49,9 @@ local shdict = ngx.shared.kong_clustering -- only when role == "control_plane"
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json.gz"
 local declarative_config
+
+
+local PUSH_CONFIG_CHANGES = false
 
 
 local function update_config(config_table, update_cache)
@@ -351,6 +357,23 @@ local function push_config(config_table)
 end
 
 
+local function push_config_timer(premature)
+  if premature or not PUSH_CONFIG_CHANGES then
+    return
+  end
+
+  PUSH_CONFIG_CHANGES = false
+
+  local config_table, err = declarative.export_config()
+  if not config_table then
+    ngx_log(ngx_ERR, "unable to export config from database: " .. err)
+    return
+  end
+
+  push_config(config_table)
+end
+
+
 local function init_mtls(conf)
   local f, err = io_open(conf.cluster_cert, "r")
   if not f then
@@ -465,14 +488,11 @@ function _M.init_worker(conf)
       end
     end, "dao:crud")
 
-    kong.worker_events.register(function(data)
-      local res, err = declarative.export_config()
-      if not res then
-        ngx_log(ngx_ERR, "unable to export config from database: " .. err)
-      end
-
-      push_config(res)
+    kong.worker_events.register(function()
+      PUSH_CONFIG_CHANGES = true
     end, "clustering", "push_config")
+
+    ngx.timer.every(conf.db_update_frequency or 5, push_config_timer)
   end
 end
 

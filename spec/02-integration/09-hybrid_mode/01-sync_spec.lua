@@ -17,8 +17,10 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         database = strategy,
+        db_update_frequency = 1,
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+
       }))
 
       assert(helpers.start_kong({
@@ -125,7 +127,7 @@ for _, strategy in helpers.each_strategy() do
           if status == 404 then
             return true
           end
-        end, 5)
+        end, 10)
       end)
     end)
   end)
