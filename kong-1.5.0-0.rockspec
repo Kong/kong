@@ -207,6 +207,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.006_1301_to_1500"] = "kong/enterprise_edition/db/migrations/enterprise/006_1301_to_1500.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.006_1301_to_1302"] = "kong/enterprise_edition/db/migrations/enterprise/006_1301_to_1302.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.007_1500_to_1504"] = "kong/enterprise_edition/db/migrations/enterprise/007_1500_to_1504.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.008_1504_to_1505"] = "kong/enterprise_edition/db/migrations/enterprise/008_1504_to_1505.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
