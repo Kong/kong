@@ -4,7 +4,6 @@ local gsub        = string.gsub
 local match       = string.match
 local ngx         = ngx
 local random      = math.random
-
 local plugin = {
   VERSION  = "0.1",
   -- Mocking plugin should execute after all other plugins
@@ -22,7 +21,7 @@ local function find_key(tbl, key)
     if lk == key then return lv end
     if type(lv) == "table" then
       for dk, dv in pairs(lv) do
-        if dk == key then return dk end
+        if dk == key then return dv end
         if type(dv) == "table" then
           for ek, ev in pairs(dv) do
             if ek == key then return ev end
@@ -35,21 +34,98 @@ local function find_key(tbl, key)
   return nil
 end
 
+
+-- Tokenize the string with '&' and return a table holding all the query params
+local function extractParameters(looppath)
+  local tempindex
+  local stringtable={}
+
+  while(string.find( looppath,'&'))
+  do
+      tempindex =string.find( looppath,'&')
+      --only one query param, Break the iteration and insert value in table
+      if tempindex == string.len(looppath) then
+          break
+      end
+      --Extract and insert the sub string using index of '&'
+      table.insert( stringtable, string.sub(looppath, 1,tempindex-1 ))
+      looppath = string.sub(looppath,tempindex+1,string.len( looppath ))
+  end
+  table.insert(stringtable,looppath)
+  --kong.log.inspect('paramtable',stringtable)
+  return stringtable
+end
+
+
+-- returns a boolean by comparing value of the fields supplied in query params
+local function filterexamples(example)
+  local value
+  local skey
+  local sval
+
+  local qparams = kong.request.get_raw_query()
+  -- Return true when there are no query params. This will ensure no filtering on examples.
+  if qparams == nil or qparams =='' then
+    return true
+  end
+  local params = extractParameters(qparams)
+
+  -- Filter empty response when there is/are query params
+  if  next(example) == nil then
+    return false
+
+  -- Loop through the extracted query params and do a case insensitive comparison of field values within examples
+  -- Return true if matched, false if not found
+  else
+    for _,dv in pairs(params) do
+      skey = string.sub( dv,1,string.find( dv,'=' )-1 )
+      sval = string.sub(dv,string.find( dv,'=' )+1,string.len( dv ))
+      --kong.log.inspect('skey.....sval'..skey..'.....'..sval)
+      value = find_key(example,skey)
+      --kong.log.inspect('value....'..value)
+      if(string.upper( sval ) == string.upper( value )) then
+        return true
+      end
+    end
+    return false
+  end
+end
+
+
+
 -- Extract example value in V3.0
 -- returns lua table with all the values extracted and appended from multiple examples
 local function find_example_value(tbl, key)
+
   local values = {}
-  for lk, lv in pairs(tbl) do
-    if type(lv) == "table" then
-      for dk, dv in pairs(lv) do
-        if dk == key then table.insert( values, dv) end
+  local no_qparams = (kong.request.get_raw_query() == nil or kong.request.get_raw_query() =='')
+   for _, lv in pairs(tbl) do
+     if type(lv) == "table" then
+       for dk, dv in pairs(lv) do
+        if dk == key then
+          if type(dv) == "table" then
+            --We could have empty {} value in example 
+            --Go ahead in capture it in table if there are no query params, Filter it if qparams exists
+            if (no_qparams and next(dv) == nil) then table.insert( values, dv) end
+             for _, v in pairs(dv) do
+              -- If the example values are just Key Value pairs go ahead and add them to table
+              if(type(v) ~= "table") then
+                table.insert( values, dv)
+                break
+              elseif filterexamples(v) then table.insert( values, v) end
+             end
+          end
+        end
+       end
       end
     end
-  end
+  
   if next(values) == nil then
+   -- kong.log.inspect('values....',values)
     return nil
   else
-  return values
+    --kong.log.inspect('values....',values)
+    return values
  end
 end
 
@@ -153,7 +229,7 @@ local function retrieve_example(parsed_content, uripath, accept, method)
   -- Check to make sure we have paths in the spec file, Corrupt or bad spec file
   if (paths) then
   for specpath, value in pairs(paths) do
-
+   
     -- build formatted string for exact match
     local formatted_path = gsub(specpath, "{(.-)}", "[A-Za-z0-9]+") .. "$"
     local strmatch = match(uripath, formatted_path)
@@ -180,16 +256,16 @@ function plugin:access(conf)
 
   -- Get resource information
   local uripath = kong.request.get_path()
+
   -- grab Accept header which is used to retrieve associated mock response, or default to "application/json"
   local accept = kong.request.get_header("Accept") or kong.request.get_header("accept") or "application/json"
   if accept == "*/*" then accept = "application/json" end
   local method = kong.request.get_method()
 
   local specfile, err = kong.db.files:select_by_path("specs/" .. conf.api_specification_filename)
-
   if err or (specfile == nil or specfile == '') then
     return kong.response.exit(404, { message = "API Specification file not found. " ..
-     "Check Plugin 'api_specification_filename' (" .. conf.api_specification_filename ")" })
+     "Check Plugin 'api_specification_filename' (" .. conf.api_specification_filename .. ")" })
   end
 
   local contents = specfile and specfile.contents or ""
