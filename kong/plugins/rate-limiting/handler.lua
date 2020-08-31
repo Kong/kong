@@ -71,7 +71,7 @@ local function get_identifier(conf)
   elseif conf.limit_by == "path" then
     local req_path = kong.request.get_path()
     if req_path == conf.path then
-      identifier = kong.request.get_path()
+      identifier = req_path
     end
   end
 
