@@ -226,7 +226,6 @@ end
 local function retrieve_example(parsed_content, uripath, accept, method)
   local paths = parsed_content.paths
   local found = false
-
   -- Check to make sure we have paths in the spec file, Corrupt or bad spec file
   if (paths) then
   for specpath, value in pairs(paths) do

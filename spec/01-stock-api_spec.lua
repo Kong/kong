@@ -2,7 +2,6 @@ local helpers   = require "spec.helpers"
 local pl_path   = require "pl.path"
 local cjson     = require("cjson.safe").new()
 
-
 local PLUGIN_NAME = "mocking"
 
 local fixture_path do
