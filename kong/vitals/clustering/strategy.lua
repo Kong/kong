@@ -19,8 +19,6 @@ local VITALS_TYPE_CONSUMER_STATS = 0x40
 local SHM_KEY = "vitals-clustering-buffer"
 local SHM = ngx.shared.kong
 
-local dummy_response_msg = "PONG"
-
 local datasets = {
   insert_status_codes_by_service = VITALS_TYPE_STATUS_CODE_BY_SERVICE,
   insert_status_codes_by_route = VITALS_TYPE_STATUS_CODE_BY_ROUTE,
@@ -104,7 +102,7 @@ end
 
 local function get_serve_ingest_func(self)
   local real_strategy = self.real_strategy
-  return function(msg, queued_send)
+  return function(payload)
     if not kong.configuration.vitals then
       ngx.log(ngx.WARN, _log_prefix, "received telemetry from data plane, ",
         "but vitals is not enabled on control plane")
@@ -116,21 +114,6 @@ local function get_serve_ingest_func(self)
       error("Cannot use this function in data plane", 2)
     end
 
-    local payload, err = messaging.unpack_message(msg, TELEMETRY_TYPE, TELEMETRY_VERSION)
-    if err then
-      ngx.log(ngx.ERR, _log_prefix, err)
-      return ngx.exit(400)
-    end
-
-    -- just send a empty response for now
-    -- this can be implemented into a per msgid retry in the future
-    queued_send(dummy_response_msg)
-
-    if #payload == 0 then
-      return
-    end
-
-    ngx.log(ngx.DEBUG, "recv size ", #msg.data, " sets ", #payload/2)
     local node_id = ngx.var.arg_node_id
     local node_hostname = ngx.var.arg_node_hostname
     if node_id == "" or node_hostname == "" then
@@ -145,8 +128,6 @@ local function get_serve_ingest_func(self)
     elseif ok then
       ngx.log(ngx.DEBUG, _log_prefix, "new node meta stored with ID: ", node_id, ", hostname: ", node_hostname)
     end
-
-    ngx.log(ngx.DEBUG, "recv size ", #msg.data, " sets ", #payload/2)
 
     local idx = 1
     local stats_type, flush_data

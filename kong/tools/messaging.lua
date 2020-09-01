@@ -19,6 +19,8 @@ _M.TYPE = {
   CONSUMER = 2,
 }
 
+local dummy_response_msg = "PONG"
+
 local _log_prefix = "[messaging-utils] "
 
 
@@ -178,8 +180,24 @@ function _M.new(opts)
 end
 
 function _M:register_for_messages()
-  clustering.register_server_on_message(self.message_type, function(...)
-    self.serve_ingest(...)
+  clustering.register_server_on_message(self.message_type, function(msg, queued_send)
+    -- decode message
+    local payload, err = self.unpack_message(msg, self.message_type, self.message_type_version)
+    if err then
+      ngx.log(ngx.ERR, _log_prefix, err)
+      return ngx.exit(400)
+    end
+
+    -- just send a empty response for now
+    -- this can be implemented into a per msgid retry in the future
+    queued_send(dummy_response_msg)
+
+    if #payload == 0 then
+      return
+    end
+    ngx.log(ngx.DEBUG, "recv size ", #msg.data, " sets ", #payload/2)
+
+    self.serve_ingest(payload)
   end)
   ngx.log(ngx.DEBUG, get_log_prefix(self), "registered on_message function")
 end

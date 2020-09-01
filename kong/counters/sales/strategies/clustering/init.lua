@@ -10,8 +10,6 @@ local TELEMETRY_TYPE = "counters"
 
 local COUNTERS_TYPE_STATS = 0x1
 
-local dummy_response_msg = "PONG"
-
 local SHM_KEY = "counters-clustering-buffer"
 local SHM = ngx.shared.kong
 
@@ -33,26 +31,10 @@ end
 
 local function get_serve_ingest_func(self)
   local real_strategy = self.real_strategy
-  return function(msg, queued_send)
+  return function(payload)
     if not self.hybrid_cp then
       error("Cannot use this function in data plane", 2)
     end
-
-    local payload, err = messaging.unpack_message(msg, TELEMETRY_TYPE, TELEMETRY_VERSION)
-    if err then
-      ngx.log(ngx.ERR, _log_prefix, err)
-      return ngx.exit(400)
-    end
-
-    -- just send a empty response for now
-    -- this can be implemented into a per msgid retry in the future
-    queued_send(dummy_response_msg)
-
-    if #payload == 0 then
-      return
-    end
-
-    ngx.log(ngx.DEBUG, "recv size ", #msg.data, " sets ", #payload/2)
 
     local idx = 1
     local stats_type, flush_data
