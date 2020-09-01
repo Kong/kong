@@ -55,7 +55,7 @@ jobs:
       run: make setup-kong-build-tools
 
     - name: Run Tests
-      run: pushd $KONG_BUILD_TOOLS_LOCATION && make test-kong && popd
+      run: cd $KONG_BUILD_TOOLS_LOCATION && make test-kong || make test-kong
 
   pdk:
     name: PDK

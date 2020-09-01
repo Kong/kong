@@ -7,6 +7,26 @@ function cyan() {
 function red() {
     echo -e "\033[1;31m$*\033[0m"
 }
+function retry() {
+    local result=0
+    local count=1
+    while [ $count -le 3 ]; do
+        [ $result -ne 0 ] && {
+            echo -e "\n\033[33;1mThe command \"$@\" failed. Retrying, $count of 3.\033[0m\n" >&2
+        }
+        "$@"
+        result=$?
+        [ $result -eq 0 ] && break
+        count=$(($count + 1))
+        sleep 1
+    done
+
+    [ $count -eq 3 ] && {
+        echo "\n\033[33;1mThe command \"$@\" failed 3 times.\033[0m\n" >&2
+    }
+
+    return $result
+}
 
 export BUSTED_ARGS="--no-k -o htest -v --exclude-tags=flaky,ipv6,squid"
 
@@ -30,26 +50,26 @@ fi
 if [ "$TEST_SUITE" == "integration" ]; then
     if [[ "$TEST_SPLIT" == first* ]]; then
         # GitHub Actions, run first batch of integration tests
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | head -n4)
+        retry "$TEST_CMD $(ls -d spec/02-integration/* | head -n4)"
 
     elif [[ "$TEST_SPLIT" == second* ]]; then
         # GitHub Actions, run second batch of integration tests
         # Note that the split here is chosen carefully to result
         # in a similar run time between the two batches, and should
         # be adjusted if imbalance become significant in the future
-        eval "$TEST_CMD" $(ls -d spec/02-integration/* | tail -n+5)
+        retry "$TEST_CMD $(ls -d spec/02-integration/* | tail -n+5)"
 
     else
         # Non GitHub Actions
-        eval "$TEST_CMD" spec/02-integration/
+        retry "$TEST_CMD spec/02-integration/*"
     fi
 fi
 
 if [ "$TEST_SUITE" == "dbless" ]; then
-    eval "$TEST_CMD" spec/02-integration/02-cmd \
-                     spec/02-integration/05-proxy \
-                     spec/02-integration/04-admin_api/02-kong_routes_spec.lua \
-                     spec/02-integration/04-admin_api/15-off_spec.lua
+    retry "$TEST_CMD spec/02-integration/02-cmd/*"
+    retry "$TEST_CMD spec/02-integration/05-proxy/*"
+    retry "$TEST_CMD spec/02-integration/04-admin_api/02-kong_routes_spec.lua"
+    retry "$TEST_CMD spec/02-integration/04-admin_api/15-off_spec.lua"
 fi
 if [ "$TEST_SUITE" == "plugins" ]; then
     set +ex
@@ -62,7 +82,7 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         cyan "--------------------------------------"
         echo
 
-        $TEST_CMD $p || echo "* $p" >> .failed
+        retry "$TEST_CMD $p" || echo "* $p" >> .failed
     done
 
     cat kong-*.rockspec | grep kong- | grep -v zipkin | grep -v sidecar | grep "~" | while read line ; do
@@ -81,10 +101,10 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         git clone https://github.com/Kong/$REPOSITORY.git --branch v$VERSION --single-branch /tmp/test-$REPOSITORY
         cp -R /tmp/test-$REPOSITORY/spec/fixtures/* spec/fixtures/ || true
         pushd /tmp/test-$REPOSITORY
-        luarocks make
+        retry "luarocks make"
         popd
 
-        $TEST_CMD /tmp/test-$REPOSITORY/spec/ || echo "* $REPOSITORY" >> .failed
+        retry "$TEST_CMD /tmp/test-$REPOSITORY/spec/" || echo "* $REPOSITORY" >> .failed
 
     done
 
