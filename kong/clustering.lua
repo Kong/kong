@@ -52,6 +52,13 @@ local declarative_config
 
 
 local PUSH_CONFIG_CHANGES = false
+local LAST_PUSHED = 0
+
+
+local function get_updated_time()
+  ngx.update_time()
+  return ngx.now()
+end
 
 
 local function update_config(config_table, update_cache)
@@ -353,24 +360,29 @@ local function push_config(config_table)
     n = n + 1
   end
 
+  LAST_PUSHED = get_updated_time()
+
   ngx_log(ngx_DEBUG, "config pushed to ", n, " clients")
 end
 
 
-local function push_config_timer(premature)
+local function push_config_timer(premature, delay)
   if premature or not PUSH_CONFIG_CHANGES then
     return
   end
 
-  PUSH_CONFIG_CHANGES = false
+  local now = get_updated_time()
+  if now - LAST_PUSHED >= delay then
+    PUSH_CONFIG_CHANGES = false
 
-  local config_table, err = declarative.export_config()
-  if not config_table then
-    ngx_log(ngx_ERR, "unable to export config from database: " .. err)
-    return
+    local config_table, err = declarative.export_config()
+    if not config_table then
+      ngx_log(ngx_ERR, "unable to export config from database: " .. err)
+      return
+    end
+
+    push_config(config_table)
   end
-
-  push_config(config_table)
 end
 
 
@@ -492,7 +504,7 @@ function _M.init_worker(conf)
       PUSH_CONFIG_CHANGES = true
     end, "clustering", "push_config")
 
-    ngx.timer.every(conf.db_update_frequency or 5, push_config_timer)
+    ngx.timer.every(1, push_config_timer, conf.db_update_frequency)
   end
 end
 
