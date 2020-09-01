@@ -1,6 +1,5 @@
 [![][kong-logo]][kong-url]
 
-[![Build Status][badge-travis-image]][badge-travis-url]
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Kong/kong/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/twitter/follow/thekonginc.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=thekonginc)
 
@@ -275,8 +274,6 @@ limitations under the License.
 [kong-logo]: https://konghq.com/wp-content/uploads/2018/05/kong-logo-github-readme.png
 [kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
 [kong-nightly-master]: https://bintray.com/kong/kong-nightly/master
-[badge-travis-url]: https://travis-ci.org/Kong/kong/branches
-[badge-travis-image]: https://travis-ci.org/Kong/kong.svg?branch=master
 
 [busted]: https://github.com/Olivine-Labs/busted
 [luacheck]: https://github.com/mpeterv/luacheck
