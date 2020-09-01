@@ -7,7 +7,7 @@ local reports    = require "kong.reports"
 local utils      = require "kong.tools.utils"
 local pg_strat   = require "kong.vitals.postgres.strategy"
 local feature_flags = require "kong.enterprise_edition.feature_flags"
-
+local vitals_utils = require "kong.vitals.utils"
 
 local timer_at   = ngx.timer.at
 local time       = ngx.time
@@ -98,14 +98,6 @@ local PH_STATS = {
   "v.nt",
   "v.lpra",
   "v.lua",
-}
-
-local interval_to_duration = {
-  seconds = 1,
-  minutes = 60,
-  hours = 3600,
-  days = 86400,
-  weeks = 604800
 }
 
 local worker_count = ngx.worker.count()
@@ -1178,7 +1170,7 @@ end
 
 
 function _M:get_stats(query_type, level, node_id, start_ts)
-  if kong.configuration.vitals_strategy == "influxdb" then
+  if self.tsdb_storage then
     if query_type ~= "days" and query_type ~= "hours" and query_type ~= "minutes" and query_type ~= "seconds" then
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
@@ -1199,7 +1191,7 @@ function _M:get_stats(query_type, level, node_id, start_ts)
   if start_ts and not tonumber(start_ts) then
     return nil, "Invalid query params: start_ts must be a number"
   end
-
+  
   local res, err = self.strategy:select_stats(query_type, level, node_id, start_ts)
 
   if res and not res[1] then
@@ -1224,7 +1216,7 @@ function _M:get_stats(query_type, level, node_id, start_ts)
 end
 
 function _M:get_status_codes(opts, key_by)
-  if kong.configuration.vitals_strategy == "influxdb" then
+  if self.tsdb_storage then
     if opts.duration ~= "days" and opts.duration ~= "hours" and opts.duration ~= "minutes" and opts.duration ~= "seconds" then
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
@@ -1247,7 +1239,7 @@ function _M:get_status_codes(opts, key_by)
   -- currently depending on the API (api/init.lua) to do that check
 
   local query_opts = {
-    duration = interval_to_duration[opts.duration],
+    duration = vitals_utils.interval_to_duration[opts.duration],
     start_ts = opts.start_ts,
     entity_type = opts.entity_type,
     entity_id = opts.entity_id,
@@ -1303,7 +1295,7 @@ function _M:get_consumer_stats(opts)
     return nil, "Invalid query params: consumer_id, duration, and level are required"
   end
 
-  if kong.configuration.vitals_strategy == "influxdb" then
+  if self.tsdb_storage then
     if opts.duration ~= "days" and opts.duration ~= "hours" and opts.duration ~= "minutes" and opts.duration ~= "seconds" then
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
@@ -1327,7 +1319,7 @@ function _M:get_consumer_stats(opts)
 
   local query_opts = {
     consumer_id = opts.consumer_id,
-    duration    = interval_to_duration[opts.duration],
+    duration    = vitals_utils.interval_to_duration[opts.duration],
     level       = opts.level,
     node_id     = opts.node_id,
     start_ts    = opts.start_ts,
@@ -1343,12 +1335,12 @@ function _M:get_consumer_stats(opts)
 end
 
 function _M:get_report(opts)
-  if kong.configuration.vitals_strategy ~= "influxdb" then
-    return nil, "Unsupported vitals_strategy"
+  if kong.configuration.vitals_strategy == "database" then
+    return nil, "Invalid query params: unsupported vitals_strategy"
   end
 
   if opts.entity_type ~= "consumer" and opts.entity_type ~= "service" and opts.entity_type ~= "hostname" then
-    return nil, "Unsupported vitals report"
+    return nil, "Invalid query params: unsupported vitals report"
   end
 
   if opts.entity_id ~= nil then

@@ -272,6 +272,7 @@ build = {
     ["kong.portal.render_toolset.user"] = "kong/portal/render_toolset/user/init.lua",
 
     ["kong.vitals"] = "kong/vitals/init.lua",
+    ["kong.vitals.utils"] = "kong/vitals/utils.lua",
     ["kong.vitals.off.strategy"] = "kong/vitals/off/strategy.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",
     ["kong.vitals.postgres.strategy"] = "kong/vitals/postgres/strategy.lua",
