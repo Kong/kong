@@ -333,6 +333,15 @@ end
 
 
 local function push_config(config_table)
+  if not config_table then
+    local err
+    config_table, err = declarative.export_config()
+    if not config_table then
+      ngx_log(ngx_ERR, "unable to export config from database: " .. err)
+      return
+    end
+  end
+
   local payload = cjson_encode({ type = "reconfigure",
                                  config_table = config_table,
                                })
@@ -348,6 +357,29 @@ local function push_config(config_table)
   end
 
   ngx_log(ngx_DEBUG, "config pushed to ", n, " clients")
+end
+
+
+local function push_config_timer(premature, semaphore, delay)
+  if premature then
+    return
+  end
+
+  while not exiting() do
+    local ok, err = semaphore:wait(10)
+    if ok then
+      ok, err = pcall(push_config)
+      if ok then
+        ngx.sleep(delay)
+
+      else
+        ngx_log(ngx_ERR, "export and pushing config failed: ", err)
+      end
+
+    elseif err ~= "timeout" then
+      ngx_log(ngx_ERR, "semaphore wait error: ", err)
+    end
+  end
 end
 
 
@@ -455,6 +487,8 @@ function _M.init_worker(conf)
 
     -- ROLE = "control_plane"
 
+    local push_config_semaphore = semaphore.new()
+
     kong.worker_events.register(function(data)
       -- we have to re-broadcast event using `post` because the dao
       -- events were sent using `post_local` which means not all workers
@@ -466,13 +500,15 @@ function _M.init_worker(conf)
     end, "dao:crud")
 
     kong.worker_events.register(function(data)
-      local res, err = declarative.export_config()
-      if not res then
-        ngx_log(ngx_ERR, "unable to export config from database: " .. err)
+      if push_config_semaphore:count() <= 0 then
+        -- the following line always executes immediately after the `if` check
+        -- because `:count` will never yield, end result is that the semaphore
+        -- count is guaranteed to not exceed 1
+        push_config_semaphore:post()
       end
-
-      push_config(res)
     end, "clustering", "push_config")
+
+    ngx.timer.at(0, push_config_timer, push_config_semaphore, conf.db_update_frequency)
   end
 end
 
