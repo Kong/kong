@@ -319,5 +319,126 @@ pipeline {
                 }
             }
         }
+        stage('Post Packaging Steps') {
+            when {
+                beforeAgent true
+                allOf {
+                    buildingTag()
+                    not { triggeredBy 'TimerTrigger' }
+                }
+            }
+            parallel {
+                stage('PR Docker') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        SLACK_WEBHOOK = credentials('core_team_slack_webhook')
+                        GITHUB_USER = "mashapedeployment"
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME update_docker'
+                    }
+                    post {
+                        failure {
+                            script {
+                                sh 'SLACK_MESSAGE="updating docker-kong failed" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                        success {
+                            script {
+                                sh 'SLACK_MESSAGE="updating docker-kong succeeded. Please review, approve and continue with the kong release script" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                    }
+                }
+                stage('PR Homebrew') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        SLACK_WEBHOOK = credentials('core_team_slack_webhook')
+                        GITHUB_USER = "mashapedeployment"
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME homebrew'
+                    }
+                    post {
+                        failure {
+                            script {
+                                sh 'SLACK_MESSAGE="updating homebrew-kong failed" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                        success {
+                            script {
+                                sh 'SLACK_MESSAGE="updating homebrew-kong succeeded. Please review, approve and merge the PR" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                    }
+                }
+                stage('PR Vagrant') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        SLACK_WEBHOOK = credentials('core_team_slack_webhook')
+                        GITHUB_USER = "mashapedeployment"
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME vagrant'
+                    }
+                    post {
+                        failure {
+                            script {
+                                sh 'SLACK_MESSAGE="updating kong-vagrant failed" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                        success {
+                            script {
+                                sh 'SLACK_MESSAGE="updating kong-vagrant succeeded. Please review, approve and merge the PR" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                    }
+                }
+                stage('PR Pongo') {
+                    agent {
+                        node {
+                            label 'bionic'
+                        }
+                    }
+                    environment {
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
+                        SLACK_WEBHOOK = credentials('core_team_slack_webhook')
+                        GITHUB_USER = "mashapedeployment"
+                    }
+                    steps {
+                        sh './scripts/setup-ci.sh'
+                        sh 'echo "y" | ./scripts/make-patch-release $TAG_NAME pongo'
+                    }
+                    post {
+                        always {
+                            script {
+                                sh 'SLACK_MESSAGE="pongo branch is pushed go open the PR at https://github.com/Kong/kong-pongo/branches" ./scripts/send-slack-message.sh'
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -1301,10 +1301,7 @@ do
       return
     end
 
-    local ok, err = concurrency.with_worker_mutex({ name = "dbless-worker" }, function()
-      return declarative.load_into_cache_with_events(parsed[1], parsed[2])
-    end)
-
+    local ok, err = declarative.load_into_cache_with_events(parsed[1], parsed[2])
     if not ok then
       if err == "no memory" then
         kong.log.err("not enough cache space for declarative config, " ..

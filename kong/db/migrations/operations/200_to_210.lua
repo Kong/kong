@@ -5,11 +5,65 @@
 --
 -- If you want to reuse these operations in a future migration,
 -- copy the functions over to a new versioned module.
+
+
+local ngx = ngx
 local uuid = require "resty.jit-uuid"
+local cassandra = require "cassandra"
+
+
+local default_ws_id = uuid.generate_v4()
 
 
 local function render(template, keys)
   return (template:gsub("$%(([A-Z_]+)%)", keys))
+end
+
+
+local function cassandra_get_default_ws(connector)
+  local rows, err = connector:query("SELECT id FROM workspaces WHERE name='default'")
+  if err then
+    return nil, err
+  end
+
+  if not rows
+     or not rows[1]
+     or not rows[1].id
+  then
+    return nil
+  end
+
+  return rows[1].id
+end
+
+
+local function cassandra_create_default_ws(connector)
+  local created_at = ngx.time() * 1000
+
+  local _, err = connector:query("INSERT INTO workspaces(id, name, created_at) VALUES (?, 'default', ?)", {
+    cassandra.uuid(default_ws_id),
+    cassandra.timestamp(created_at)
+  })
+  if err then
+    return nil, err
+  end
+
+  return cassandra_get_default_ws(connector) or default_ws_id
+end
+
+
+local function cassandra_ensure_default_ws(connector)
+
+  local default_ws, err = cassandra_get_default_ws(connector)
+  if err then
+    return nil, err
+  end
+
+  if default_ws then
+    return default_ws
+  end
+
+  return cassandra_create_default_ws(connector)
 end
 
 
@@ -37,19 +91,12 @@ local postgres = {
           "config"     JSONB
         );
 
-        DO $$
-        BEGIN
-          CREATE INDEX IF NOT EXISTS "workspaces_name_idx" ON "workspaces" ("name");
-        EXCEPTION WHEN UNDEFINED_COLUMN THEN
-          -- Do nothing, accept existing state
-        END$$;
-
         -- Create default workspace
         INSERT INTO workspaces(id, name)
         VALUES ('$(ID)', 'default') ON CONFLICT DO NOTHING;
 
       ]], {
-        ID = uuid.generate_v4()
+        ID = default_ws_id
       })
     end,
 
@@ -84,7 +131,7 @@ local postgres = {
         -- Ensure (id, ws_id) pair is unique
         DO $$
         BEGIN
-          ALTER TABLE "$(TABLE)" ADD CONSTRAINT "$(TABLE)_id_ws_id_unique" UNIQUE ("id", "ws_id");
+          ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD CONSTRAINT "$(TABLE)_id_ws_id_unique" UNIQUE ("id", "ws_id");
         EXCEPTION WHEN DUPLICATE_TABLE THEN
           -- Do nothing, accept existing state
         END$$;
@@ -103,12 +150,12 @@ local postgres = {
       return render([[
 
           -- Make '$(TABLE).$(FIELD)' unique per workspace
-          ALTER TABLE "$(TABLE)" DROP CONSTRAINT IF EXISTS "$(TABLE)_$(FIELD)_key";
+          ALTER TABLE IF EXISTS ONLY "$(TABLE)" DROP CONSTRAINT IF EXISTS "$(TABLE)_$(FIELD)_key";
 
           -- Ensure (ws_id, $(FIELD)) pair is unique
           DO $$
           BEGIN
-            ALTER TABLE "$(TABLE)" ADD CONSTRAINT "$(TABLE)_ws_id_$(FIELD)_unique" UNIQUE ("ws_id", "$(FIELD)");
+            ALTER TABLE IF EXISTS ONLY "$(TABLE)" ADD CONSTRAINT "$(TABLE)_ws_id_$(FIELD)_unique" UNIQUE ("ws_id", "$(FIELD)");
           EXCEPTION WHEN DUPLICATE_TABLE THEN
             -- Do nothing, accept existing state
           END$$;
@@ -120,7 +167,7 @@ local postgres = {
     end,
 
     ----------------------------------------------------------------------------
-    -- Adjust foreign key to take ws_id into account and ansure it matches
+    -- Adjust foreign key to take ws_id into account and ensure it matches
     -- @param table_name string: name of the table e.g. "routes"
     -- @param fk_prefix string: name of the foreign field in the schema,
     -- which is used as a prefix in foreign key entries in tables e.g. "service"
@@ -131,8 +178,17 @@ local postgres = {
       return render([[
 
           -- Update foreign key relationship
-          ALTER TABLE "$(TABLE)" DROP CONSTRAINT IF EXISTS "$(TABLE)_$(FK)_id_fkey";
-          ALTER TABLE "$(TABLE)" ADD FOREIGN KEY ("$(FK)_id", "ws_id") REFERENCES $(FOREIGN_TABLE)("id", "ws_id") $(CASCADE);
+          ALTER TABLE IF EXISTS ONLY "$(TABLE)" DROP CONSTRAINT IF EXISTS "$(TABLE)_$(FK)_id_fkey";
+
+          DO $$
+          BEGIN
+            ALTER TABLE IF EXISTS ONLY "$(TABLE)"
+                        ADD CONSTRAINT "$(TABLE)_$(FK)_id_fkey"
+                           FOREIGN KEY ("$(FK)_id", "ws_id")
+                            REFERENCES $(FOREIGN_TABLE)("id", "ws_id") $(CASCADE);
+          EXCEPTION WHEN DUPLICATE_OBJECT THEN
+            -- Do nothing, accept existing state
+          END$$;
 
       ]], {
         TABLE = table_name,
@@ -149,14 +205,19 @@ local postgres = {
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      assert(connector:query(render([[
+      local _, err = connector:query(render([[
         UPDATE "$(TABLE)"
         SET cache_key = CONCAT(cache_key, ':',
                                (SELECT id FROM workspaces WHERE name = 'default'))
         WHERE cache_key LIKE '%:';
       ]], {
         TABLE = table_name,
-      })))
+      }))
+      if err then
+        return nil, err
+      end
+
+      return true
     end,
 
 
@@ -164,11 +225,16 @@ local postgres = {
     -- Update keys to workspace-aware formats
     ws_update_keys = function(_, connector, table_name, unique_keys)
       -- Reset default value for ws_id once it is populated
-      assert(connector:query(render([[
+      local _, err = connector:query(render([[
         ALTER TABLE IF EXISTS ONLY "$(TABLE)" ALTER "ws_id" SET DEFAULT NULL;
       ]], {
         TABLE = table_name,
-      })))
+      }))
+      if err then
+        return nil, err
+      end
+
+      return true
     end,
 
 
@@ -177,27 +243,32 @@ local postgres = {
     fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
       local pgmoon_json = require("pgmoon.json")
 
-      for row, err in connector:iterate("SELECT * FROM plugins") do
+      for plugin, err in connector:iterate("SELECT id, name, config FROM plugins") do
         if err then
           return nil, err
         end
 
-        if row.name == plugin_name then
-          local fix = fixup_fn(row.config)
+        if plugin.name == plugin_name then
+          local fix = fixup_fn(plugin.config)
 
           if fix then
 
             local sql = render([[
               UPDATE plugins SET config = $(NEW_CONFIG)::jsonb WHERE id = '$(ID)'
             ]], {
-              NEW_CONFIG = pgmoon_json.encode_json(row.config),
-              ID = row.id,
+              NEW_CONFIG = pgmoon_json.encode_json(plugin.config),
+              ID = plugin.id,
             })
 
-            assert(connector:query(sql))
+            local _, err = connector:query(sql)
+            if err then
+              return nil, err
+            end
           end
         end
       end
+
+      return true
     end,
   },
 
@@ -217,7 +288,7 @@ local cassandra = {
     -- Add `workspaces` table.
     -- @return string: CQL
     ws_add_workspaces = function(_)
-      return render([[
+      return [[
 
           CREATE TABLE IF NOT EXISTS workspaces(
             id         uuid,
@@ -228,14 +299,10 @@ local cassandra = {
             config     text,
             PRIMARY KEY (id)
           );
+
           CREATE INDEX IF NOT EXISTS workspaces_name_idx ON workspaces(name);
 
-          -- Create default workspace
-          INSERT INTO workspaces(id, name, created_at)
-          VALUES (uuid(), 'default', $(NOW));
-      ]], {
-        NOW = ngx.time() * 1000
-      })
+      ]]
     end,
 
     ----------------------------------------------------------------------------
@@ -272,7 +339,7 @@ local cassandra = {
     end,
 
     ----------------------------------------------------------------------------
-    -- Adjust foreign key to take ws_id into account and ansure it matches
+    -- Adjust foreign key to take ws_id into account and ensure it matches
     -- @param table_name string: name of the table e.g. "routes"
     -- @param fk_prefix string: name of the foreign field in the schema,
     -- which is used as a prefix in foreign key entries in tables e.g. "service"
@@ -290,22 +357,23 @@ local cassandra = {
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      local rows, err = connector:query([[
-        SELECT * FROM workspaces WHERE name='default';
-      ]])
+      local coordinator = assert(connector:connect_migrations())
+      local default_ws, err = cassandra_ensure_default_ws(connector)
       if err then
         return nil, err
       end
-      local default_ws = rows[1].id
 
-      local coordinator = assert(connector:connect_migrations())
+      if not default_ws then
+        return nil, "unable to find a default workspace"
+      end
 
-      for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
+      for rows, err in coordinator:iterate("SELECT id, cache_key FROM " .. table_name) do
         if err then
           return nil, err
         end
 
-        for _, row in ipairs(rows) do
+        for i = 1, #rows do
+          local row = rows[i]
           if row.cache_key:match(":$") then
             local cql = render([[
               UPDATE $(TABLE) SET cache_key = '$(CACHE_KEY)' WHERE $(PARTITION) id = $(ID)
@@ -317,32 +385,38 @@ local cassandra = {
                         or  "",
               ID = row.id,
             })
-          assert(connector:query(cql))
+
+            local _, err = connector:query(cql)
+            if err then
+              return nil, err
+            end
           end
         end
       end
+
+      return true
     end,
 
     ------------------------------------------------------------------------------
     -- Update keys to workspace-aware formats
     ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned)
-
-      local rows, err = connector:query([[
-        SELECT * FROM workspaces WHERE name='default';
-      ]])
+      local coordinator = assert(connector:connect_migrations())
+      local default_ws, err = cassandra_ensure_default_ws(connector)
       if err then
         return nil, err
       end
-      local default_ws = rows[1].id
 
-      local coordinator = assert(connector:connect_migrations())
+      if not default_ws then
+        return nil, "unable to find a default workspace"
+      end
 
       for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
         if err then
           return nil, err
         end
 
-        for _, row in ipairs(rows) do
+        for i = 1, #rows do
+          local row = rows[i]
           if row.ws_id == nil then
             local set_list = { "ws_id = " .. default_ws }
             for _, key in ipairs(unique_keys) do
@@ -366,10 +440,15 @@ local cassandra = {
               ID = row.id,
             })
 
-            assert(connector:query(cql))
+            local _, err = connector:query(cql)
+            if err then
+              return nil, err
+            end
           end
         end
       end
+
+      return true
     end,
 
     ------------------------------------------------------------------------------
@@ -380,28 +459,34 @@ local cassandra = {
 
       local coordinator = assert(connector:connect_migrations())
 
-      for rows, err in coordinator:iterate("SELECT * FROM plugins") do
+      for rows, err in coordinator:iterate("SELECT id, name, config FROM plugins") do
         if err then
           return nil, err
         end
 
-        for _, row in ipairs(rows) do
-          if row.name == plugin_name then
-            assert(type(row.config) == "string")
-            local config = cjson.decode(row.config)
+        for i = 1, #rows do
+          local plugin = rows[i]
+          if plugin.name == plugin_name then
+            if type(plugin.config) ~= "string" then
+              return nil, "plugin config is not a string"
+            end
+            local config = cjson.decode(plugin.config)
             local fix = fixup_fn(config)
 
             if fix then
-              assert(connector:query([[
-                UPDATE plugins SET config = ? WHERE id = ?
-              ]], {
+              local _, err = connector:query("UPDATE plugins SET config = ? WHERE id = ?", {
                 cassandra.text(cjson.encode(config)),
-                cassandra.uuid(row.id)
-              }))
+                cassandra.uuid(plugin.id)
+              })
+              if err then
+                return nil, err
+              end
             end
           end
         end
       end
+
+      return true
     end,
 
   }
@@ -442,12 +527,19 @@ local function ws_adjust_data(ops, connector, entities)
   for _, entity in ipairs(entities) do
 
     if entity.cache_key and #entity.cache_key > 1 then
-      ops:ws_update_composite_cache_key(connector, entity.name, entity.partitioned)
+      local _, err = ops:ws_update_composite_cache_key(connector, entity.name, entity.partitioned)
+      if err then
+        return nil, err
+      end
     end
 
-    ops:ws_update_keys(connector, entity.name, entity.uniques, entity.partitioned)
-
+    local _, err = ops:ws_update_keys(connector, entity.name, entity.uniques, entity.partitioned)
+    if err then
+      return nil, err
+    end
   end
+
+  return true
 end
 
 
@@ -472,7 +564,7 @@ local function ws_migrate_plugin(plugin_entities)
 
   local function ws_migration_teardown(ops)
     return function(connector)
-      ops:ws_adjust_data(connector, plugin_entities)
+      return ops:ws_adjust_data(connector, plugin_entities)
     end
   end
 
