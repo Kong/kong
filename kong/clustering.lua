@@ -85,7 +85,6 @@ local function update_config(config_table, update_cache)
       ngx_log(ngx_ERR, "unable to open cache file: ", err)
 
     else
-      local res
       res, err = f:write(assert(deflate_gzip(cjson_encode(config_table))))
       if not res then
         ngx_log(ngx_ERR, "unable to write cache file: ", err)
@@ -187,8 +186,8 @@ local function communicate(premature, conf)
         end
 
         send_ping(c)
-
       end
+
     elseif typ == "pong" then
       ngx_log(ngx_DEBUG, "received PONG frame from control plane")
     end
@@ -330,7 +329,6 @@ function _M.get_status()
   for _, n in ipairs(shdict:get_keys()) do
     result[n] = cjson_decode(shdict:get(n))
   end
-
 
   return result
 end
