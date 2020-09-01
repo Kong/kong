@@ -241,20 +241,21 @@ function _M.handle_cp_websocket()
   clients[wb] = queue
 
   do
-    local res
+    local config_table
     -- unconditionally send config update to new clients to
     -- ensure they have latest version running
-    res, err = declarative.export_config()
-    if not res then
+    config_table, err = declarative.export_config()
+    if config_table then
+      local payload = cjson_encode({ type = "reconfigure",
+                                     config_table = config_table,
+                                   })
+      payload = assert(deflate_gzip(payload))
+      table_insert(queue, payload)
+      queue.sem:post()
+
+    else
       ngx_log(ngx_ERR, "unable to export config from database: ".. err)
     end
-
-    local payload = cjson_encode({ type = "reconfigure",
-                                   config_table = res,
-                                 })
-    payload = assert(deflate_gzip(payload))
-    table_insert(queue, payload)
-    queue.sem:post()
   end
 
   -- connection established
