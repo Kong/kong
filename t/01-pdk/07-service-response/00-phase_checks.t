@@ -42,6 +42,17 @@ qq{
                 log           = true,
                 admin_api     = "forced false",
             }, {
+                method        = "get_upstream",
+                args          = {},
+                init_worker   = false,
+                certificate   = false,
+                rewrite       = "forced false",
+                access        = "forced false",
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = "forced false",
+            }, {
                 method        = "get_headers",
                 args          = {},
                 init_worker   = false,

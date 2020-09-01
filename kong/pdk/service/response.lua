@@ -6,6 +6,7 @@
 local cjson = require "cjson.safe".new()
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
+local utils = require "kong.tools.utils"
 
 
 local ngx = ngx
@@ -21,6 +22,8 @@ local tonumber = tonumber
 local getmetatable = getmetatable
 local setmetatable = setmetatable
 local check_phase = phase_checker.check
+local split = utils.split
+local strip = utils.strip
 
 
 cjson.decode_array_with_array_mt(true)
@@ -134,6 +137,26 @@ local function new(pdk, major_version)
   local MIN_HEADERS            = 1
   local MAX_HEADERS_DEFAULT    = 100
   local MAX_HEADERS            = 1000
+
+
+  ---
+  -- Returns the upstream of the response from the Service as a string.
+  --
+  -- @function kong.service.response.get_upstream
+  -- @phases `header_filter`, `body_filter`, `log`
+  -- @treturn string|nil the ip:port from the response from the Service, or `nil`
+  -- @usage
+  -- kong.log.inspect(kong.service.response.get_upstream()) -- 127.0.0.1:80
+  function response.get_upstream()
+    check_phase(header_body_log)
+
+    local addrs = split(ngx.var.upstream_addr, ',')
+    if #addrs > 0 then
+        return strip(addrs[#addrs])
+    end
+
+    return nil
+  end
 
 
   ---
