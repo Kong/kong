@@ -470,7 +470,7 @@ function _M.init_worker(conf)
               local res
               res, err = update_config(config, false)
               if not res then
-                ngx_log(ngx_ERR, "unable to running config from cache: ", err)
+                ngx_log(ngx_ERR, "unable to update running config from cache: ", err)
               end
             end
 
