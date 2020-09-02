@@ -119,6 +119,17 @@ qq{
                 log           = false,
                 admin_api     = true,
             }, {
+                method        = "redirect",
+                args          = { "http://www.github.com" },
+                init_worker   = false,
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = true,
+                body_filter   = false,
+                log           = false,
+                admin_api     = true,
+            }, {
                 method        = "set_headers",
                 args          = { { ["X-Foo"] = "bar" } },
                 init_worker   = false,

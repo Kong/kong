@@ -12,6 +12,7 @@
 -- @module kong.response
 
 
+local url = require "socket.url"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 local checks = require "kong.pdk.private.checks"
@@ -66,6 +67,7 @@ local function new(self, major_version)
   local MAX_STATUS_CODE      = 599
   local MIN_ERR_STATUS_CODE  = 400
 
+  local LOCATION_HEADER_NAME = "Location"
   local SERVER_HEADER_NAME   = "Server"
   local SERVER_HEADER_VALUE  = meta._NAME .. "/" .. meta._VERSION
 
@@ -469,6 +471,28 @@ local function new(self, major_version)
     end
 
     ngx.header[name] = nil
+  end
+
+
+  ---
+  -- Redirect uri in the response sent to the client.
+  --
+  -- @function kong.response.redirect
+  -- @phases rewrite, access, header_filter, admin_api
+  -- @tparam string uri The name of the url to be redirect
+  -- @return Nothing; throws an error on invalid input.
+  -- @usage
+  -- kong.response.redirect("https://github.com/kong/kong")
+  function _RESPONSE.redirect(uri)
+    check_phase(rewrite_access_header)
+
+    local parsed_uri = url.parse(uri)
+    if not (parsed_uri and parsed_uri.host and parsed_uri.scheme) then
+      error("cannot parse '" .. uri .. "'", 2)
+    end
+
+    ngx.header[LOCATION_HEADER_NAME] = uri
+    return ngx.exit(301)
   end
 
 
