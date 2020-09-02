@@ -36,7 +36,7 @@ qq{
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.arg[1] = string.sub(pdk.service.response.get_upstream(),-10) .. "\n" .. 
+            ngx.arg[1] = string.sub(pdk.service.response.get_upstream(), -10) .. "\n" .. 
                          pdk.service.response.get_status()
             ngx.arg[2] = true
         }
