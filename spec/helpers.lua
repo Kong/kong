@@ -887,12 +887,12 @@ local function grpc_client(host, port, opts)
       end
 
       local opts = gen_grpcurl_opts(pl_tablex.merge(t.opts, args.opts, true))
-      local ok, err, out = exec(string.format(t.cmd_template, opts, service))
+      local ok, _, out, err = exec(string.format(t.cmd_template, opts, service), true)
 
       if ok then
-        return ok, out
+        return ok, ("%s%s"):format(out or "", err or "")
       else
-        return nil, err
+        return nil, ("%s%s"):format(out or "", err or "")
       end
     end
   })
