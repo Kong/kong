@@ -50,6 +50,7 @@ local shdict = ngx.shared.kong_clustering -- only when role == "control_plane"
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json.gz"
 local declarative_config
+local next_config
 
 
 local function update_config(config_table, update_cache)
@@ -149,6 +150,8 @@ local function communicate(premature, conf)
     return
   end
 
+  local update_config_semaphore = semaphore.new(0)
+
   -- connection established
   -- ping thread
   ngx.thread.spawn(function()
@@ -158,6 +161,35 @@ local function communicate(premature, conf)
       end
 
       ngx_sleep(PING_INTERVAL)
+    end
+  end)
+
+  -- update config thread
+  ngx.thread.spawn(function()
+    while true do
+      local ok, err = update_config_semaphore:wait(1)
+      if ok then
+        local config_table = next_config
+        if config_table then
+          local pok, res
+          pok, res, err = pcall(update_config, config_table, true)
+          if pok then
+            if not res then
+              ngx_log(ngx_ERR, "unable to update running config: ", err)
+            end
+
+          else
+            ngx_log(ngx_ERR, "unable to update running config: ", res)
+          end
+
+          if next_config == config_table then
+            next_config = nil
+          end
+        end
+
+      elseif err ~= "timeout" then
+        ngx_log(ngx_ERR, "semaphore wait error: ", err)
+      end
     end
   end)
 
@@ -178,11 +210,13 @@ local function communicate(premature, conf)
       local msg = assert(cjson_decode(data))
 
       if msg.type == "reconfigure" then
-        local config_table = assert(msg.config_table)
+        next_config = assert(msg.config_table)
 
-        local res, err = update_config(config_table, true)
-        if not res then
-          ngx_log(ngx_ERR, "unable to update running config: ", err)
+        if update_config_semaphore:count() <= 0 then
+          -- the following line always executes immediately after the `if` check
+          -- because `:count` will never yield, end result is that the semaphore
+          -- count is guaranteed to not exceed 1
+          update_config_semaphore:post()
         end
 
         send_ping(c)
