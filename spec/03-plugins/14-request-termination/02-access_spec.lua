@@ -114,6 +114,23 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      local route_grpc_1 = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        service = assert(bp.services:insert {
+          name = "grpc",
+          url = "grpc://localhost:15002",
+        }),
+      })
+
+      bp.plugins:insert {
+        name   = "request-termination",
+        route  = { id = route_grpc_1.id },
+        config = {
+          status_code = 503,
+        },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -223,6 +240,17 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(451, res)
         assert.equal([[<html><body><h1>Service is down due to content infringement</h1></body></html>]], body)
+      end)
+
+      it("status code with default message #grpc", function()
+        local ok, res = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {
+            ["-v"] = true,
+          },
+        }
+        assert.falsy(ok)
+        assert.matches("Code: Unavailable", res)
       end)
 
       it("status code with custom message", function()
