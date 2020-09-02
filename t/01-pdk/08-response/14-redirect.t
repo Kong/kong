@@ -47,7 +47,7 @@ GET /t
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            local ok, err = pcall(pdk.response.redirect,"invalid_url")
+            local ok, err = pcall(pdk.response.redirect, "invalid_url")
             if not ok then
                 ngx.ctx.err = err
             end
