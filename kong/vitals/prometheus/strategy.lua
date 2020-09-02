@@ -12,6 +12,7 @@ local WARN       = ngx.WARN
 local singletons = require "kong.singletons"
 local pl_stringx   = require "pl.stringx"
 local statsd_handler = require "kong.vitals.prometheus.statsd.handler"
+local vitals_utils = require "kong.vitals.utils"
 
 local http = require "resty.http"
 local cjson = require "cjson.safe"
@@ -26,8 +27,6 @@ local ok, new_tab = pcall(require, "table.new")
 if not ok or type(new_tab) ~= "function" then
     new_tab = function (narr, nrec) return {} end
 end
-
-local MINUTE = 60
 
 local _log_prefix = "[vitals-strategy] "
 
@@ -144,6 +143,7 @@ end
 function _M:init()
   local conf = singletons.configuration
 
+  -- hostname is statsd_address as each one should be a sidecar to every kong node
   local host, port, use_tcp
   local remainder, _, protocol = parse_option_flags(conf.vitals_statsd_address, { "udp", "tcp" })
   if remainder then
@@ -191,13 +191,7 @@ function _M:init()
 end
 
 function _M:interval_width(level)
-  if level == "seconds" then
-    return self.scrape_interval
-  elseif level == "minutes" then
-    return 60
-  else
-    return nil, "interval must be 'seconds' or 'minutes'"
-  end
+  return vitals_utils.interval_to_duration[level]
 end
 
 function _M:query(start_ts, metrics_query, interval)
@@ -238,11 +232,10 @@ function _M:query(start_ts, metrics_query, interval)
 
 
   for i, q in ipairs(metrics_query) do
-
     local res, err = client:request {
         method = "GET",
         path = "/api/v1/query_range?query=" ..  ngx_escape_uri(q[2]) .. "&start=" .. start_ts 
-                  .. "&end=" .. end_ts .. "&step=" .. interval,
+                  .. "&end=" .. end_ts .. "&step=" .. interval .. "s",
         headers = self.headers,
     }
     if not res then
@@ -289,11 +282,8 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
     stats = {},
   }
 
-  if interval == MINUTE then
-    ret.meta.interval = "minutes"
-  else
-    ret.meta.interval = "seconds"
-  end
+
+  ret.meta.interval = vitals_utils.duration_to_interval[interval]
 
   ret.meta.interval_width = interval
 
@@ -481,12 +471,7 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
     stats = {},
   }
 
-  if interval == MINUTE then
-    ret.meta.interval = "minutes"
-  else
-    ret.meta.interval = "seconds"
-  end
-
+  ret.meta.interval = vitals_utils.duration_to_interval[interval]
   ret.meta.interval_width = interval
 
   if aggregate then
@@ -494,7 +479,6 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
   else
     ret.meta.level = "node"
   end
-
   local stats = ret.stats
   local stat_labels_inserted = false
   local expected_dp_count = duration_seconds / interval
@@ -592,8 +576,13 @@ end
 
 local function get_interval_and_start_ts(level, start_ts, scrape_interval)
   local interval
-  if level == "minutes" or level == MINUTE then
-    interval = MINUTE
+  if tonumber(level) then
+    interval = level
+    if start_ts == nil then
+      start_ts = ngx_time() - 720 * 60
+    end
+  elseif vitals_utils.interval_to_duration[level] then
+    interval = vitals_utils.interval_to_duration[level]
     -- backward compatibility for client that doesn't send start_ts
     if start_ts == nil then
       start_ts = ngx_time() - 720 * 60
@@ -724,6 +713,137 @@ function _M:select_consumer_stats(opts)
     return res, err
   end
 end
+
+local function status_code_query(entity_id, entity)
+  local is_consumer = entity == "consumer"
+  local is_timeseries_report = entity_id ~= nil
+  if is_consumer then
+    if is_timeseries_report then
+      return "sum(kong_status_code_per_consumer{consumer='" .. entity_id .. "'}) by (status_code)"
+    else
+      return "sum(kong_status_code_per_consumer) by (consumer, status_code)"
+    end
+  else
+    if is_timeseries_report then
+      return "sum(kong_status_code{service='" .. entity_id .. "'}) by (status_code)"
+    else
+      return "sum(kong_status_code) by (service, status_code)"
+    end
+  end
+end
+_M.status_code_query = status_code_query
+
+-- Can produce a timeseries report for a given entity, or a summary of a given type of entity
+-- @param[type=string] entity: consumer or service
+-- @param[type=nullable-string] entity_id: UUID or nil, signifies how each row is indexed
+-- @param[type=string] interval: seconds, minutes, hours, days, weeks, months
+-- @param[type=number] start_ts: seconds from now
+function _M:status_code_report_by(entity, entity_id, interval, start_ts)
+  interval = interval or "minutes" -- query function requires an interval to get start_ts
+  local duration = vitals_utils.interval_to_duration[interval]
+  local entities = vitals_utils.get_entity_metadata(entity, entity_id)
+  local metrics_query = status_code_query(entity_id, entity)
+  local res, err = self:query(
+    start_ts,
+    {{"", metrics_query}},
+    duration
+  )
+
+  if err then
+    return err
+  end
+
+  local stats = {}
+  local is_consumer = entity == "consumer"
+  local is_timeseries_report = entity_id ~= nil
+
+  for _, series_list in ipairs(res) do
+    for _, series in ipairs(series_list) do
+      local key, entity_metadata
+      entity_metadata = entities[entity_id] or {}
+      local status_group = tostring(series.metric.status_code):sub(1, 1) .. "XX"
+      if is_timeseries_report then
+        local last_value, last_ts
+        for _, dp in ipairs(series.values) do
+          local incr_value
+          -- if we use integer as key, cjson will complain excessively sparse array
+          local timestamp_number = dp[1]
+          local timestamp = fmt("%d", dp[1])
+          -- 'NaN' will be parsed to math.nan and cjson will not encode it
+          local counter = tonumber(dp[2])
+          -- See http://lua-users.org/wiki/InfAndNanComparisons
+          local is_not_a_number = counter ~= counter
+          if is_not_a_number then
+            counter = nil
+          end
+          local counter_has_value = counter ~= null and counter ~= 0
+          if counter_has_value then
+            -- if there's missed scrape, skip the current for calculating rate
+            -- because we have zero knowledge with the previous counter value
+            if last_ts and timestamp_number - last_ts > duration then
+              last_value = nil
+            end
+            -- only it's not the first data point at beginning or missed scrape
+            if last_value ~= nil then
+              -- add the data point
+              if last_value > counter then -- detect counter reset
+                incr_value = counter
+              else
+                incr_value = counter - last_value
+              end
+
+              stats = vitals_utils.append_to_stats(stats, timestamp, status_group, incr_value, entity_metadata)
+            end
+          end
+          last_value = counter
+          last_ts = timestamp_number
+        end
+      else
+        key = series.metric[entity]
+        local has_key = key ~= nil and key ~= ''
+        if has_key then
+          entity_metadata = entities[key] or {}
+          local first_counter = tonumber(series.values[1][2])
+          local last_counter = tonumber(series.values[#series.values][2])
+          local request_count = last_counter - first_counter
+          stats = vitals_utils.append_to_stats(stats, key, status_group, request_count, entity_metadata)
+        end
+      end
+    end
+  end
+  local meta = {
+    earliest_ts = start_ts,
+    latest_ts = ngx.time(),
+    stat_labels = {
+      "name",
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    },
+  }
+  if is_consumer then
+    meta.stat_labels = {
+      "name",
+      "app_name",
+      "app_id",
+      "total",
+      "2XX",
+      "4XX",
+      "5XX"
+    }
+  end
+  return { stats=stats, meta=meta }
+end
+
+-- @param hostname: kong node hostname
+-- @param interval: seconds, minutes, hours, days, weeks, months
+-- @param start_ts: seconds from now
+function _M:latency_report(hostname, interval, start_ts)
+  -- TODO: implement
+  return nil, "Not Implemented"
+end
+
 
 function _M:log()
   self.statsd_handler:log()

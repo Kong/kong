@@ -1,4 +1,5 @@
 local operations = require "kong.enterprise_edition.db.migrations.operations.1500_to_2100"
+local log          = require "kong.cmd.utils.log"
 
 
 -- We do not read this information from the schemas because these change over time.
@@ -114,10 +115,15 @@ end
 local function ws_migration_teardown(ops)
   return function(connector)
     ops:drop_run_on(connector)
+    log.debug("run_on dropped")
     ops:ws_adjust_data(connector, ce_core_entities)
+    log.debug("adjusted core data")
     ops:ws_adjust_data(connector, ee_core_entities)
+    log.debug("adjusted EE data")
     ops:ws_clean_kong_admin_rbac_user(connector)
+    log.debug("cleaned ADMIN RBAC data")
     ops:ws_set_default_ws_for_admin_entities(connector)
+    log.debug("set default_ws_for_admin_entities")
   end
 end
 

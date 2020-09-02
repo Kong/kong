@@ -62,8 +62,8 @@ end)
 describe("status_code_query", function()
   local strategy = require "kong.vitals.influxdb.strategy"
 
-  describe("when hostname is not provided", function()
-    it("group by hostname", function()
+  describe("when service id is not provided", function()
+    it("group by service id", function()
       local expected = "SELECT count(status) FROM kong_request" ..
       " WHERE time > now() - 3600s" ..
       " GROUP BY status_f, service"
@@ -71,7 +71,7 @@ describe("status_code_query", function()
     end)
   end)
 
-  describe("when hostname is provided", function()
+  describe("when service id is provided", function()
     it("group by interval", function()
       local expected = "SELECT count(status) FROM kong_request" ..
       " WHERE time > now() - 3600s and service='f25a1190-363c-4b1e-8202-b806631d6038'" ..
@@ -79,56 +79,4 @@ describe("status_code_query", function()
       assert.are.same(expected, strategy.status_code_query("f25a1190-363c-4b1e-8202-b806631d6038", "service", "3600", "minutes"))
     end)
   end)
-end)
-
-
-describe("resolve_entity_metadata", function()
-  local strategy = require "kong.vitals.influxdb.strategy"
-
-  describe("when entity is service", function()
-    it("uses service name", function()
-      local expected = { name = "myservice" }
-      local entity = { name = "myservice" }
-      assert.are.same(expected, strategy.resolve_entity_metadata(entity))
-    end)
-  end)
-
-  describe("when entity is consumer", function()
-    it("uses consumer name with empty app_id and app_name", function()
-      local expected = { name = "myconsumer", app_id = "", app_name = "" }
-      local entity = { username = "myconsumer" }
-      assert.are.same(expected, strategy.resolve_entity_metadata(entity))
-    end)
-    describe("with underscore", function()
-      it("uses consumer name with empty app_id and app_name", function()
-        local expected = { name = "my_consumer", app_id = "", app_name = "" }
-        local entity = { username = "my_consumer" }
-        assert.are.same(expected, strategy.resolve_entity_metadata(entity))
-      end)
-    end)
-    describe("with custom_id rather than username", function()
-      it("uses consumer name with empty app_id and app_name", function()
-        local expected = { name = "my_custom_id", app_id = "", app_name = "" }
-        local entity = { custom_id = "my_custom_id" }
-        assert.are.same(expected, strategy.resolve_entity_metadata(entity))
-      end)
-    end)
-  end)
-
-
-  describe("when entity is application", function()
-    it("name is blank and adds app_id and app_name", function()
-      local expected = { name = "", app_id = "60c29e1b-3794-4c83-ad8d-b756b4d9ca69", app_name = "mycoolapp" }
-      local entity = { username = "60c29e1b-3794-4c83-ad8d-b756b4d9ca69_mycoolapp", type = 3 }
-      assert.are.same(expected, strategy.resolve_entity_metadata(entity))
-    end)
-    describe("and name has an underscore", function()
-      it("name is blank and adds app_id and app_name", function()
-        local expected = { name = "", app_id = "60c29e1b-3794-4c83-ad8d-b756b4d9ca69", app_name = "my_cool_app" }
-        local entity = { username = "60c29e1b-3794-4c83-ad8d-b756b4d9ca69_my_cool_app", type = 3 }
-        assert.are.same(expected, strategy.resolve_entity_metadata(entity))
-      end)
-    end)
-  end)
-
 end)

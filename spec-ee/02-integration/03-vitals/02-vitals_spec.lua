@@ -1052,8 +1052,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("get_status_codes() - validation", function()
-      it("when influxdb strategy rejects invalid query_type", function()
-        kong.configuration.vitals_strategy = "influxdb"
+      it("when timeseries strategy rejects invalid query_type", function()
+        vitals.tsdb_storage = true
         local res, err = vitals:get_status_codes({
           entity_type = "service",
           duration    = "foo",
@@ -1068,8 +1068,8 @@ for _, strategy in helpers.each_strategy() do
       end)
 
 
-      it("when not influxdb strategy rejects invalid query_type", function()
-        kong.configuration.vitals_strategy = "database"
+      it("when not timeseries strategy rejects invalid query_type", function()
+        vitals.tsdb_storage = false
         local res, err = vitals:get_status_codes({
           entity_type = "service",
           duration    = "foo",
