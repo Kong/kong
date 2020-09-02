@@ -120,7 +120,7 @@ qq{
                 admin_api     = true,
             }, {
                 method        = "redirect",
-                args          = { "http://www.github.com" },
+                args          = { "http://www.github.com/kong" },
                 init_worker   = false,
                 certificate   = "pending",
                 rewrite       = true,
