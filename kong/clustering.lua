@@ -155,7 +155,7 @@ local function communicate(premature, conf)
   -- connection established
   -- ping thread
   ngx.thread.spawn(function()
-    while true do
+    while not exiting() do
       if not send_ping(c) then
         return
       end
@@ -166,7 +166,7 @@ local function communicate(premature, conf)
 
   -- update config thread
   ngx.thread.spawn(function()
-    while true do
+    while not exiting() do
       local ok, err = update_config_semaphore:wait(1)
       if ok then
         local config_table = next_config
@@ -193,7 +193,7 @@ local function communicate(premature, conf)
     end
   end)
 
-  while true do
+  while not exiting() do
     local data, typ, err = c:recv_frame()
     if err then
       ngx.log(ngx.ERR, "error while receiving frame from control plane: ", err)
@@ -295,7 +295,7 @@ function _M.handle_cp_websocket()
   -- connection established
   -- ping thread
   ngx.thread.spawn(function()
-    while true do
+    while not exiting() do
       local data, typ, err = wb:recv_frame()
       if not data then
         ngx_log(ngx_ERR, "did not receive ping frame from data plane: ", err)
