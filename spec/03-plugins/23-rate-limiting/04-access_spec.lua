@@ -130,6 +130,28 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
+        local route_grpc_1 = assert(bp.routes:insert {
+          protocols = { "grpc" },
+          paths = { "/hello.HelloService/" },
+          service = assert(bp.services:insert {
+            name = "grpc",
+            url = "grpc://localhost:15002",
+          }),
+        })
+
+        bp.rate_limiting_plugins:insert({
+          route = { id = route_grpc_1.id },
+          config = {
+            policy         = policy,
+            minute         = 6,
+            fault_tolerant = false,
+            redis_host     = REDIS_HOST,
+            redis_port     = REDIS_PORT,
+            redis_password = REDIS_PASSWORD,
+            redis_database = REDIS_DATABASE,
+          }
+        })
+
         local route2 = bp.routes:insert {
           hosts      = { "test2.com" },
         }
@@ -458,6 +480,48 @@ for _, strategy in helpers.each_strategy() do
 
           local json = cjson.decode(body)
           assert.same({ message = "API rate limit exceeded" }, json)
+        end)
+      end)
+      describe("Without authentication (IP address)", function()
+        it_with_retry("blocks if exceeding limit #grpc", function()
+          for i = 1, 6 do
+            local ok, res = helpers.proxy_client_grpc(){
+              service = "hello.HelloService.SayHello",
+              opts = {
+                ["-v"] = true,
+              },
+            }
+            assert.truthy(ok)
+
+            assert.matches("x%-ratelimit%-limit%-minute: 6", res)
+            assert.matches("x%-ratelimit%-remaining%-minute: " .. (6 - i), res)
+            assert.matches("ratelimit%-limit: 6", res)
+            assert.matches("ratelimit%-remaining: " .. (6 - i), res)
+
+            local reset = tonumber(string.match(res, "ratelimit%-reset: (%d+)"))
+            assert.equal(true, reset <= 60 and reset >= 0)
+
+          end
+
+          -- Additonal request, while limit is 6/minute
+          local ok, res = helpers.proxy_client_grpc(){
+            service = "hello.HelloService.SayHello",
+            opts = {
+              ["-v"] = true,
+            },
+          }
+          assert.falsy(ok)
+          assert.matches("Code: ResourceExhausted", res)
+
+          assert.matches("ratelimit%-limit: 6", res)
+          assert.matches("ratelimit%-remaining: 0", res)
+
+          local retry = tonumber(string.match(res, "retry%-after: (%d+)"))
+          assert.equal(true, retry <= 60 and retry > 0)
+
+
+          local reset = tonumber(string.match(res, "ratelimit%-reset: (%d+)"))
+          assert.equal(true, reset <= 60 and reset > 0)
         end)
       end)
       describe("With authentication", function()
