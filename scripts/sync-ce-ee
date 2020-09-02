@@ -103,9 +103,19 @@ main() {
   # create a temporary branch to check how is the merge looking
   git checkout -B $new_branch_name "$t_repo/$t_branch"
 
-  # conflicts? bail out and you're on your own
-  if ! git merge "$f_repo/$f_branch" ; then
+
+  merge_output=$(git merge "$f_repo/$f_branch")
+  merge_exit_status=$?
+
+  if [[ "$merge_exit_status" -ne 0 ]] ; then
+    # conflicts? bail out and you're on your own
     die "Conflicts detected. git merge --abort ??"
+
+  elif echo "$merge_output" | grep "Already up to date."; then
+    # nothing to merge
+    git checkout -
+    git branch -D "$new_branch_name"
+    exit
   fi
 
   # was a clean merge (the commit is done locally)

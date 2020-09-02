@@ -272,6 +272,7 @@ build = {
     ["kong.portal.render_toolset.user"] = "kong/portal/render_toolset/user/init.lua",
 
     ["kong.vitals"] = "kong/vitals/init.lua",
+    ["kong.vitals.utils"] = "kong/vitals/utils.lua",
     ["kong.vitals.off.strategy"] = "kong/vitals/off/strategy.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",
     ["kong.vitals.postgres.strategy"] = "kong/vitals/postgres/strategy.lua",
@@ -499,6 +500,8 @@ build = {
     ["kong.plugins.acl.migrations.002_130_to_140"] = "kong/plugins/acl/migrations/002_130_to_140.lua",
     ["kong.plugins.acl.migrations.003_200_to_210"] = "kong/plugins/acl/migrations/003_200_to_210.lua",
     ["kong.plugins.acl.migrations.004_212_to_213"] = "kong/plugins/acl/migrations/004_212_to_213.lua",
+    ["kong.plugins.acl.migrations.enterprise"] = "kong/plugins/acl/migrations/enterprise/init.lua",
+    ["kong.plugins.acl.migrations.enterprise.001_1500_to_2100"] = "kong/plugins/acl/migrations/enterprise/001_1500_to_2100.lua",
     ["kong.plugins.acl.handler"] = "kong/plugins/acl/handler.lua",
     ["kong.plugins.acl.schema"] = "kong/plugins/acl/schema.lua",
     ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",

@@ -4,7 +4,7 @@ local _M = {}
 local cjson = require "cjson"
 local ffi   = require "ffi"
 local http  = require "resty.http"
-local enums = require "kong.enterprise_edition.dao.enums"
+local vitals_utils = require "kong.vitals.utils"
 
 local ipairs        = ipairs
 local math_floor    = math.floor
@@ -15,7 +15,6 @@ local table_concat  = table.concat
 local table_insert  = table.insert
 local tonumber      = tonumber
 local tostring      = tostring
-local null          = ngx.null
 
 
 local BUF_SIZE = 5000 -- number of points to buffer before flushing
@@ -39,22 +38,6 @@ local function ffi_cdef_gettimeofday()
       int gettimeofday(struct timeval* t, void* tzp);
   ]]
 end
-
-local duration_to_interval = {
-  [1] = "seconds",
-  [60] = "minutes",
-  [3600] = "hours",
-  [86400] = "days",
-  [604800] = "weeks",
-}
-
-local interval_to_duration = {
-  seconds = 1,
-  minutes = 60,
-  hours = 3600,
-  days = 86400,
-  weeks = 604800,
-}
 
 local ok = pcall(function() return ffi.C.gettimeofday end)
 if not ok then
@@ -284,7 +267,7 @@ function _M:select_consumer_stats(opts)
 
   local meta = {
     earliest_ts = opts.start_ts,
-    interval = duration_to_interval[opts.duration],
+    interval = vitals_utils.duration_to_interval[opts.duration],
     latest_ts = ngx_time(),
     level = opts.level,
     stat_labels = {
@@ -343,7 +326,7 @@ function _M:select_status_codes(opts)
   local meta = {
     earliest_ts = opts.start_ts,
     entity_type = opts.entity_type,
-    interval = duration_to_interval[opts.duration],
+    interval = vitals_utils.duration_to_interval[opts.duration],
     latest_ts = ngx_time(),
     level = "cluster",
     workspace_id = ngx.ctx.workspace,
@@ -490,7 +473,7 @@ end
 
 function _M:select_stats(query_type, level, node_id, start_ts)
   -- group by time($int)
-  local int = interval_to_duration[query_type]
+  local int = vitals_utils.interval_to_duration[query_type]
 
   if not start_ts then
     if query_type == "minutes" then
@@ -503,7 +486,7 @@ function _M:select_stats(query_type, level, node_id, start_ts)
   local meta = {
     earliest_ts = start_ts,
     interval = query_type,
-    interval_width = duration_to_interval[query_type],
+    interval_width = vitals_utils.duration_to_interval[query_type],
     latest_ts = ngx_time(),
     level = level,
     workspace_id = ngx.ctx.workspace,
@@ -629,85 +612,48 @@ local function status_code_query(entity_id, entity, seconds_from_now, interval)
     group_by = group_by .. entity
   else
     where_clause = where_clause .. " and " .. entity .. "='" .. entity_id .."'"
-    group_by = group_by .. " time(" .. interval_to_duration[interval] .. "s)"
+    group_by = group_by .. " time(" .. vitals_utils.interval_to_duration[interval] .. "s)"
   end
   return q .. where_clause .. group_by
 end
 _M.status_code_query = status_code_query
 
--- @param entity: consumer or service DAO
-local function resolve_entity_metadata(entity)
-  local is_service = not not entity.name
-  if is_service then
-    return { name = entity.name }
-  end
-  if entity.type == enums.CONSUMERS.TYPE.APPLICATION then
-    return {
-      name = "",
-      app_id = entity.username:sub(0, entity.username:find("_") - 1),
-      app_name = entity.username:sub(entity.username:find("_") + 1)
-    }
-  end
-  return {
-    name = entity.username or entity.custom_id,
-    app_id = "",
-    app_name = "",
-  }
-end
-_M.resolve_entity_metadata = resolve_entity_metadata
-
-
+-- Can produce a timeseries report for a given entity, or a summary of a given type of entity
 -- @param[type=string] entity: consumer or service
--- @param[type=nullable-string] entity_id: UUID or null, signifies how each row is indexed
+-- @param[type=nullable-string] entity_id: UUID or nil, signifies how each row is indexed
 -- @param[type=string] interval: seconds, minutes, hours, days, weeks, months
 -- @param[type=number] start_ts: seconds from now
 function _M:status_code_report_by(entity, entity_id, interval, start_ts)
-  start_ts = start_ts or 36000
-  local plural_entity = entity .. 's'
-  local is_timeseries_report = not not entity_id
-  local entities = {}
-  if is_timeseries_report then
-    local row = kong.db[plural_entity]:select({ id = entity_id }, { workspace = null })
-    entities[row.id] = resolve_entity_metadata(row)
-  else
-    for row in kong.db[plural_entity]:each(nil, { workspace = null }) do
-      entities[row.id] = resolve_entity_metadata(row)
-    end
-  end
-
+  local entities = vitals_utils.get_entity_metadata(entity, entity_id)
   local seconds_from_now = ngx.time() - start_ts
   local result = query(self, status_code_query(entity_id, entity, seconds_from_now, interval))
+  
   local stats = {}
   local is_consumer = entity == "consumer"
+  local is_timeseries_report = entity_id ~= nil
+
   for _, series in ipairs(result) do
     for _, value in ipairs(series.values) do
-      local index, entity_metadata
+      local key -- can either be a timestamp or an uuid
+      local entity_metadata -- can either be an empty table or contain metadata fetched from kong db
       if is_timeseries_report then
         local timestamp = tostring(value[1])
-        index = timestamp
+        key = timestamp
         entity_metadata = entities[entity_id] or {}
       else
         local entity_tag = {
           consumer = series.tags.consumer,
           service = series.tags.service
         }
-        local id = entity_tag[entity]
-        index = id
-        entity_metadata = entities[id] or {}
+        key = entity_tag[entity]
+        entity_metadata = entities[key] or {}
       end
-      local has_index = index ~= ''
-      if has_index then
-        stats[index] = stats[index] or { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
+      local has_key = key ~= nil and key ~= ''
+      if has_key then
         local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
         local request_count = value[2]
-        stats[index]["total"] = stats[index]["total"] + request_count
-        stats[index][status_group] = stats[index][status_group] + request_count
-        stats[index]["name"] = entity_metadata.name
-        if is_consumer then
-          stats[index]["app_id"] = entity_metadata.app_id
-          stats[index]["app_name"] = entity_metadata.app_name
-        end
-      end
+        stats = vitals_utils.append_to_stats(stats, key, status_group, request_count, entity_metadata)
+      end 
     end
   end
 
@@ -748,7 +694,7 @@ local function latency_query(hostname, seconds_from_now, interval)
     group_by = group_by .. "hostname"
   else
     where_clause = where_clause .. " AND hostname='" .. hostname .."'"
-    group_by = group_by .. "time(" .. interval_to_duration[interval] .. "s)"
+    group_by = group_by .. "time(" .. vitals_utils.interval_to_duration[interval] .. "s)"
   end
   return q .. where_clause .. group_by
 end
@@ -756,7 +702,6 @@ _M.latency_query = latency_query
 
 
 function _M:latency_report(hostname, interval, start_ts)
-  start_ts = start_ts or 36000
   local columns = {
     "proxy_max",
     "proxy_min",
