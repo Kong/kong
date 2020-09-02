@@ -36,7 +36,7 @@ qq{
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.arg[1] = pdk.service.response.get_upstream() .. "\n" .. 
+            ngx.arg[1] = string.sub(pdk.service.response.get_upstream(),-10) .. "\n" .. 
                          pdk.service.response.get_status()
             ngx.arg[2] = true
         }
@@ -44,7 +44,7 @@ qq{
 --- request
 GET /t
 --- response_body chop
-unix:/root/kong/t/servroot/html/nginx.sock
+nginx.sock
 200
 --- no_error_log
 [error]

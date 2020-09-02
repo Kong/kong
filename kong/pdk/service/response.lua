@@ -150,9 +150,11 @@ local function new(pdk, major_version)
   function response.get_upstream()
     check_phase(header_body_log)
 
-    local addrs = split(ngx.var.upstream_addr, ',')
-    if #addrs > 0 then
-        return strip(addrs[#addrs])
+    if ngx.var.upstream_addr then
+      local addrs = split(ngx.var.upstream_addr, ',')
+      if #addrs > 0 then
+          return strip(addrs[#addrs])
+      end
     end
 
     return nil
