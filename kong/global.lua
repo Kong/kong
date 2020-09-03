@@ -170,7 +170,7 @@ function _GLOBAL.init_worker_events()
   local ok, err = worker_events.configure {
     shm = "kong_process_events", -- defined by "lua_shared_dict"
     timeout = 5,            -- life time of event data in shm
-    interval = 1,           -- poll interval (seconds)
+    interval = 0.5,         -- poll interval (seconds)
 
     wait_interval = 0.010,  -- wait before retry fetching event data
     wait_max = 0.5,         -- max wait time before discarding event
