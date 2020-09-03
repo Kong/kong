@@ -46,7 +46,6 @@ local WEAK_KEY_MT = { __mode = "k", }
 local CERT_DIGEST
 local CERT, CERT_KEY
 local clients = setmetatable({}, WEAK_KEY_MT)
-local shdict = ngx.shared.kong_clustering -- only when role == "control_plane"
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json.gz"
 local declarative_config
@@ -275,16 +274,15 @@ function _M.handle_cp_websocket()
       queue.sem:post()
 
       local ok
-      ok, err = shdict:safe_set(node_id,
-                                cjson_encode({
-                                  last_seen = ngx_time(),
-                                  config_hash =
-                                    data ~= "" and data or nil,
-                                  hostname = node_hostname,
-                                  ip = node_ip,
-                                }), PING_INTERVAL * 2 + 5)
+      ok, err = kong.db.cluster_status:upsert({ id = node_id, }, {
+        last_seen = ngx_time(),
+        config_hash =
+          data ~= "" and data or nil,
+        hostname = node_hostname,
+        ip = node_ip,
+      })
       if not ok then
-        ngx_log(ngx_ERR, "unable to update in-memory cluster status: ", err)
+        ngx_log(ngx_ERR, "unable to update cluster status: ", err)
       end
     end
   end)
@@ -321,17 +319,6 @@ function _M.handle_cp_websocket()
       end
     end
   end
-end
-
-
-function _M.get_status()
-  local result = new_tab(0, 8)
-
-  for _, n in ipairs(shdict:get_keys()) do
-    result[n] = cjson_decode(shdict:get(n))
-  end
-
-  return result
 end
 
 
@@ -486,8 +473,6 @@ function _M.init_worker(conf)
     end
 
   elseif conf.role == "control_plane" then
-    assert(shdict, "kong_clustering shdict missing")
-
     -- ROLE = "control_plane"
 
     local push_config_semaphore = semaphore.new()

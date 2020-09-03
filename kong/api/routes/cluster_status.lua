@@ -1,10 +1,9 @@
-local clustering = require("kong.clustering")
-local kong = kong
+local endpoints = require "kong.api.endpoints"
 
 
 return {
-  ["/clustering/status"] = {
-    GET = function(self, db, helpers)
+  ["/cluster_status"] = {
+    GET = function(self, _, _, parent)
       if kong.configuration.role ~= "control_plane" then
         return kong.response.exit(400, {
           message = "this endpoint is only available when Kong is " ..
@@ -12,7 +11,9 @@ return {
         })
       end
 
-      return kong.response.exit(200, clustering.get_status())
+      return parent()
     end,
-  },
+
+    POST = endpoints.disable,
+  }
 }

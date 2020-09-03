@@ -124,7 +124,7 @@ build = {
     ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
     ["kong.api.routes.tags"] = "kong/api/routes/tags.lua",
-    ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
+    ["kong.api.routes.cluster_status"] = "kong/api/routes/cluster_status.lua",
 
     ["kong.status"] = "kong/status/init.lua",
 
@@ -166,6 +166,7 @@ build = {
     ["kong.db.schema.entities.tags"] = "kong/db/schema/entities/tags.lua",
     ["kong.db.schema.entities.ca_certificates"] = "kong/db/schema/entities/ca_certificates.lua",
     ["kong.db.schema.entities.workspaces"] = "kong/db/schema/entities/workspaces.lua",
+    ["kong.db.schema.entities.cluster_status"] = "kong/db/schema/entities/cluster_status.lua",
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",
@@ -199,6 +200,7 @@ build = {
     ["kong.db.migrations.core.009_200_to_210"] = "kong/db/migrations/core/009_200_to_210.lua",
     ["kong.db.migrations.core.010_210_to_211"] = "kong/db/migrations/core/010_210_to_211.lua",
     ["kong.db.migrations.core.011_212_to_213"] = "kong/db/migrations/core/011_212_to_213.lua",
+    ["kong.db.migrations.core.012_213_to_220"] = "kong/db/migrations/core/012_213_to_220.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",

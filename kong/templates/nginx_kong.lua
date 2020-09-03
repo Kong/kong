@@ -34,9 +34,6 @@ lua_shared_dict kong_db_cache_miss_2        12m;
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra              5m;
 > end
-> if role == "control_plane" then
-lua_shared_dict kong_clustering             5m;
-> end
 
 underscores_in_headers on;
 > if ssl_ciphers then
