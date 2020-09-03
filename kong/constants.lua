@@ -79,6 +79,7 @@ table.sort(protocols)
 
 local constants = {
   BUNDLED_PLUGINS = plugin_map,
+  EE_PLUGINS = dist_constants.plugins,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
   -- non-standard headers, specific to Kong
   HEADERS = {

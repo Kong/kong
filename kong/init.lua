@@ -435,8 +435,13 @@ function Kong.init()
   end
 
   -- retrieve kong_config
+  local featureset = ee.featureset() or { conf =  {}}
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
-  local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
+  local config = assert(conf_loader(conf_path, featureset.conf, { from_kong_env = true }))
+
+  -- for _, p in ipairs(constants.ee_plugins) do
+  --   config.loaded_plugins[p]=nil
+  -- end
 
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
   tracing.init(config)
@@ -486,8 +491,11 @@ function Kong.init()
 
   local reports = require "kong.reports"
   local l = kong.license and
-            kong.license.license.payload.license_key or
-            nil
+    kong.license.license and
+    kong.license.license.payload and
+    kong.license.license.payload.license_key or
+    nil
+
   reports.add_immutable_value("license_key", l)
   reports.add_immutable_value("enterprise", true)
 

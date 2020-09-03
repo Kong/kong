@@ -205,6 +205,7 @@ function _M.feature_flags_init(config)
 end
 
 _M.read_license_info = license_helpers.read_license_info
+_M.featureset = license_helpers.featureset
 
 local function write_kconfig(configs, filename)
   local kconfig_str = "window.K_CONFIG = {\n"
