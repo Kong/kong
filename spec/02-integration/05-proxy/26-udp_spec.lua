@@ -36,7 +36,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    it("proxies grpc", function()
+    it("proxies udp", function()
       local client = ngx.socket.udp()
       assert(client:setpeername("127.0.0.1", UDP_PROXY_PORT))
 
