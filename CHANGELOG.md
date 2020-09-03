@@ -257,7 +257,7 @@ release for more details.
   [#5325](https://github.com/Kong/kong/pull/5325)
 - :warning: The `nginx_upstream_keepalive_*` configuration properties have been
   renamed to `upstream_keepalive_*`. This is due to the introduction of dynamic
-  upstream keepalve pools, see below for details.
+  upstream keepalive pools, see below for details.
   [#5771](https://github.com/Kong/kong/pull/5771)
 - :warning: The default value of `worker_state_update_frequency` (previously
   `router_update_frequency`) was changed from `1` to `5`.
@@ -557,7 +557,7 @@ release for more details.
 
 ##### Configuration
 
-- Fix issue where the Postgres password from the Kong confiuration file
+- Fix issue where the Postgres password from the Kong configuration file
   would be truncated if it contained a `#` character.
   [#5822](https://github.com/Kong/kong/pull/5822)
 
@@ -3011,7 +3011,7 @@ upgrade your Kong cluster.
   Routes and Services in plugins will remove and re-create the Cassandra
   rate-limiting counters table. This means that users that were rate-limited
   because of excessive API consumption will be able to consume the API until
-  they reach their limit again. There is no such data deletion in PosgreSQL.
+  they reach their limit again. There is no such data deletion in PostgreSQL.
   [def201f](https://github.com/Kong/kong/commit/def201f566ccf2dd9b670e2f38e401a0450b1cb5)
 
 ### Changes
