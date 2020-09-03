@@ -5,23 +5,18 @@ local singletons = require "kong.singletons"
 local match = string.match
 
 
-local function close_clients(clients)
-  for idx, client in ipairs(clients) do
-    client:close()
-  end
-end
-
-
-local function client_request(params)
-  local client = assert(helpers.admin_client())
-  local res = assert(client:send(params))
-  res.body = res.body_reader()
-
-  close_clients({ client })
-
-  return res
-end
-
+local most_common_affected_tables = {
+  "files",
+  "legacy_files",
+  "rbac_users",
+  "rbac_user_roles",
+  "rbac_roles",
+  "rbac_role_entities",
+  "rbac_role_endpoints",
+  "developers",
+  "consumers",
+  "basicauth_credentials",
+}
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -50,9 +45,30 @@ for _, strategy in helpers.each_strategy() do
   describe("files API (#" .. strategy .. ")({portal_is_legacy = false}): ", function()
     local db
 
-    lazy_setup(function()
-      _, db, _ = helpers.get_db_utils(strategy)
+    local client
 
+    local function client_request(params, retries)
+      -- Use a singleton.
+      -- reuse client as much as possible
+      -- sometimes client closes (broken pipe, timeout?), retry at least once with
+      -- a new client
+      retries = retries or 0
+      client = client or assert(helpers.admin_client())
+      local res, err = client:send(params)
+      if err and retries < 1 then
+        client = nil
+        return client_request(params, retries + 1)
+      end
+
+      assert(res)
+
+      res.body = res.body_reader()
+
+      return res
+    end
+
+    lazy_setup(function()
+      _, db, _ = helpers.get_db_utils(strategy, most_common_affected_tables)
       assert(helpers.start_kong({
         database = strategy,
         portal = true,
@@ -62,28 +78,20 @@ for _, strategy in helpers.each_strategy() do
       singletons.configuration = {
         portal_is_legacy = false,
       }
+
+      configure_portal(db)
     end)
 
     lazy_teardown(function()
       helpers.stop_kong(nil, true)
-    end)
-
-    before_each(function()
-      configure_portal(db)
-    end)
-
-    after_each(function()
-      db:truncate()
+      if client then
+        client:close()
+      end
     end)
 
     describe('files', function()
       describe("GET", function ()
-        before_each(function()
-          db:truncate('files')
-          db:truncate('legacy_files')
-
-          configure_portal(db)
-
+        lazy_setup(function()
           for i = 1, 100 do
             local content_contents = "--- title: " .. i .. " ---"
             local html_contents = "<h1>" .. i .. "</h1>"
@@ -99,11 +107,6 @@ for _, strategy in helpers.each_strategy() do
               })
             end
           end
-        end)
-
-        lazy_teardown(function()
-          db:truncate('files')
-          db:truncate('legacy_files')
         end)
 
         it("retrieves the first page", function()
@@ -191,6 +194,15 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("POST", function()
+
+        -- XXX: Until these tests are reworded, we need to truncate to
+        -- avoid the unique constraint on it_content_types
+        before_each(function()
+          db:truncate("files")
+          db:truncate("rbac_roles")
+          db:truncate("rbac_role_endpoints")
+        end)
+
         it_content_types("creates a page", function(content_type)
           return function()
             local contents = [[
@@ -802,6 +814,12 @@ for _, strategy in helpers.each_strategy() do
       describe("/files/{file_splat}", function()
         local dog_file, dog_file_slash
 
+        before_each(function()
+          db:truncate("files")
+          db:truncate("rbac_roles")
+          db:truncate("rbac_role_endpoints")
+        end)
+
         describe("GET", function()
           it("retrieves by id", function()
             local res = client_request({
@@ -933,12 +951,6 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("PATCH", function()
-          before_each(function()
-            db:truncate("files")
-            db:truncate("rbac_roles")
-            db:truncate("rbac_role_endpoints")
-          end)
-
           it_content_types("updates by id", function(content_type)
             return function()
               local res = client_request({
@@ -1387,7 +1399,7 @@ for _, strategy in helpers.each_strategy() do
     local fileSlashStub
 
     lazy_setup(function()
-      _, db, _ = helpers.get_db_utils(strategy)
+      _, db, _ = helpers.get_db_utils(strategy, most_common_affected_tables)
       assert(helpers.start_kong({
         database = strategy,
         portal = true,
@@ -1397,37 +1409,38 @@ for _, strategy in helpers.each_strategy() do
       singletons.configuration = {
         portal_is_legacy = true,
       }
+
+      configure_portal(db)
+
+      client = helpers.admin_client()
     end)
 
     lazy_teardown(function()
       helpers.stop_kong(nil, true)
-    end)
-
-    before_each(function()
-      db:truncate()
-
-      fileStub = assert(db.files:insert {
-        name = "stub",
-        contents = "1",
-        type = "page"
-      })
-
-      fileSlashStub = assert(db.files:insert {
-        name = "slash/stub",
-        contents = "1",
-        type = "page"
-      })
-
-      client = helpers.admin_client()
-      configure_portal(db)
-    end)
-
-    after_each(function()
-      if client then client:close() end
+      if client then
+        client:close()
+      end
     end)
 
     describe("/files", function()
       describe("POST", function()
+        before_each(function()
+          db:truncate("files")
+          db:truncate("legacy_files")
+
+          fileStub = assert(db.files:insert {
+            name = "stub",
+            contents = "1",
+            type = "page"
+          })
+
+          fileSlashStub = assert(db.files:insert {
+            name = "slash/stub",
+            contents = "1",
+            type = "page"
+          })
+        end)
+
         it_content_types("creates a page", function(content_type)
           return function()
             local res = assert(client:send {
@@ -1669,10 +1682,10 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("GET", function ()
-        before_each(function()
-          db:truncate('files')
-          db:truncate('legacy_files')
-
+        lazy_setup(function()
+          -- XXX get rid of stubs
+          db:truncate("files")
+          db:truncate("legacy_files")
           for i = 1, 100 do
             if math.fmod(i, 2) == 0 then
               assert(db.files:insert {
@@ -1690,12 +1703,6 @@ for _, strategy in helpers.each_strategy() do
               })
             end
           end
-          configure_portal(db)
-        end)
-
-        lazy_teardown(function()
-          db:truncate('files')
-          db:truncate('legacy_files')
         end)
 
         it("retrieves the first page", function()
@@ -1776,6 +1783,22 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("/files/{file_splat}", function()
+        before_each(function()
+          db:truncate("files")
+          db:truncate("legacy_files")
+
+          fileStub = assert(db.files:insert {
+            name = "stub",
+            contents = "1",
+            type = "page"
+          })
+
+          fileSlashStub = assert(db.files:insert {
+            name = "slash/stub",
+            contents = "1",
+            type = "page"
+          })
+        end)
         describe("GET", function()
           it("retrieves by id", function()
             local res = assert(client:send {
