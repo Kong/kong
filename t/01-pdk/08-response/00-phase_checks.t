@@ -126,8 +126,8 @@ qq{
                 rewrite       = true,
                 access        = true,
                 header_filter = true,
-                body_filter   = false,
-                log           = false,
+                body_filter   = true,
+                log           = true,
                 admin_api     = true,
             }, {
                 method        = "set_headers",
