@@ -758,15 +758,22 @@ stream {
     server {
         listen 15557;
         listen 15558 ssl;
+        listen 15557 udp;
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
         ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
         content_by_lua_block {
-            local sock = assert(ngx.req.socket(true))
+            local sock = assert(ngx.req.socket())
             local data = sock:receive()  -- read a line from downstream
-            ngx.say(data) -- echo whatever was sent
+
+            if ngx.var.protocol == "TCP" then
+                ngx.say(data)
+
+            else
+                sock:send(data) -- echo whatever was sent
+            end
         }
     }
 

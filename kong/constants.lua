@@ -55,6 +55,7 @@ local protocols_with_subsystem = {
   https = "http",
   tcp = "stream",
   tls = "stream",
+  udp = "stream",
   grpc = "http",
   grpcs = "http",
 }

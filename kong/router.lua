@@ -1771,7 +1771,15 @@ function _M.new(routes)
       -- error value for non-TLS connections ignored intentionally
       local sni, _ = server_name()
 
-      return find_route(nil, nil, nil, nil,
+      local scheme
+      if var.protocol == "UDP" then
+        scheme = "udp"
+
+      else
+        scheme = sni and "tls" or "tcp"
+      end
+
+      return find_route(nil, nil, nil, scheme,
                         src_ip, src_port,
                         dst_ip, dst_port,
                         sni)

@@ -19,7 +19,7 @@ return {
                          elements = typedefs.protocol,
                          mutually_exclusive_subsets = {
                            { "http", "https" },
-                           { "tcp", "tls" },
+                           { "tcp", "tls", "udp", },
                            { "grpc", "grpcs" },
                          },
                          default = { "http", "https" }, -- TODO: different default depending on service's scheme
