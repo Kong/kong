@@ -15,5 +15,6 @@ return {
     end,
 
     POST = endpoints.disable,
+    DELETE = endpoints.disable,
   }
 }
