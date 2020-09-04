@@ -101,3 +101,55 @@ describe("kong hybrid", function()
     end)
   end)
 end)
+
+
+for _, strategy in helpers.each_strategy() do
+  if strategy ~= "off" then
+    describe("kong hybrid with #" .. strategy .. " backend", function()
+      lazy_setup(function()
+        helpers.get_db_utils(strategy, {
+        }) -- runs migrations
+
+        assert(helpers.start_kong({
+          role = "control_plane",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          database = strategy,
+          prefix = "servroot",
+          cluster_listen = "127.0.0.1:9005",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        assert(helpers.start_kong({
+          role = "data_plane",
+          database = "off",
+          prefix = "servroot2",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          cluster_control_plane = "127.0.0.1:9005",
+          proxy_listen = "0.0.0.0:9002",
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.kill_all()
+      end)
+
+      it("quits gracefully", function()
+        local ok, err, msg = helpers.kong_exec("quit --prefix servroot")
+        assert.equal("", err)
+        assert.equal("Kong stopped (gracefully)\n", msg)
+        assert.equal(true, ok)
+
+        ok, err, msg = helpers.kong_exec("quit --prefix servroot2", {
+          DATABASE="off"
+        })
+        assert.equal("", err)
+        assert.equal("Kong stopped (gracefully)\n", msg)
+        assert.equal(true, ok)
+      end)
+    end)
+  end
+end
