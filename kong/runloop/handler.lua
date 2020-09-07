@@ -1251,12 +1251,8 @@ return {
       -- executed; detect requests that need to be redirected from `proxy_pass`
       -- to `grpc_pass`. After redirection, this function will return early
       if service and var.kong_proxy_mode == "http" then
-        if service.protocol == "grpc" then
+        if service.protocol == "grpc" or service.protocol == "grpcs" then
           return ngx.exec("@grpc")
-        end
-
-        if service.protocol == "grpcs" then
-          return ngx.exec("@grpcs")
         end
 
         if http_version == 1.1 then
