@@ -429,12 +429,30 @@ local function load_certkey(conf, host)
   )
 end
 
+local function load_renew_hosts(conf)
+  local _, st, err = new_storage_adapter(conf)
+  if err then
+    return nil, err
+  end
+  local hosts, err = st:list(RENEW_KEY_PREFIX)
+  if err then
+    return nil, err
+  end
+
+  local data = {}
+  for i, host in ipairs(hosts) do
+    data[i] = string.sub(host, #RENEW_KEY_PREFIX + 1)
+  end
+  return data
+end
+
 return {
   new = new,
   create_account = create_account,
   update_certificate = update_certificate,
   renew_certificate = renew_certificate,
   store_renew_config = store_renew_config,
+  load_renew_hosts = load_renew_hosts,
   -- for dbless
   load_certkey = load_certkey,
 

@@ -1,6 +1,8 @@
 local client = require "kong.plugins.acme.client"
 local http = require "resty.http"
 
+local x509 = require "resty.openssl.x509"
+
 local function find_plugin()
   for plugin, err in kong.db.plugins:each(1000) do
     if err then
@@ -11,6 +13,37 @@ local function find_plugin()
       return plugin
     end
   end
+end
+
+local function to_hex(s)
+  s = s:gsub("(.)", function(s) return string.format("%02X:", string.byte(s)) end)
+  -- strip last ":"
+  return string.sub(s, 1, #s-1)
+end
+
+local function bn_to_hex(bn)
+  local s = bn:to_hex():gsub("(..)", function (s) return s..":" end)
+  -- strip last ":"
+  return string.sub(s, 1, #s-1)
+end
+
+local function parse_certkey(certkey)
+  local cert = x509.new(certkey.cert)
+
+  local subject_name = cert:get_subject_name()
+  local host = subject_name:find("CN")
+  local issuer_name = cert:get_issuer_name()
+  local issuer_cn = issuer_name:find("CN")
+
+  return {
+    digest = to_hex(cert:digest()),
+    host = host.blob,
+    issuer_cn = issuer_cn.blob,
+    not_before = os.date("%Y-%m-%d %H:%M:%S", cert:get_not_before()),
+    not_after = os.date("%Y-%m-%d %H:%M:%S", cert:get_not_after()),
+    valid = cert:get_not_before() < ngx.time() and cert:get_not_after() > ngx.time(),
+    serial_number = bn_to_hex(cert:get_serial_number()),
+  }
 end
 
 return {
@@ -69,6 +102,64 @@ return {
     PATCH = function()
       client.renew_certificate()
       return kong.response.exit(202, { message = "Renewal process started successfully" })
+    end,
+  },
+
+  ["/acme/certificates"] = {
+    GET = function(self)
+      local plugin, err = find_plugin()
+      if err then
+        return kong.response.exit(500, { message = err })
+      elseif not plugin then
+        return kong.response.exit(404)
+      end
+
+      local conf = plugin.config
+      local renew_hosts, err = client.load_renew_hosts(conf)
+      if err then
+        return kong.response.exit(500, { message = err })
+      end
+
+      local data = {}
+      local idx = 1
+      for i, host in ipairs(renew_hosts) do
+        local certkey, err = client.load_certkey(conf, host)
+        if err then
+          return kong.response.exit(500, { message = err })
+        end
+        if not certkey then
+          kong.log.warn("[acme]", host, "is defined in renew_config but its cert and key is missing")
+        else
+          certkey = parse_certkey(certkey)
+          if not self.params.invalid_only or not certkey.valid then
+            data[idx] = certkey
+            idx = idx + 1
+          end
+        end
+      end
+      return kong.response.exit(200, { data = data })
+    end,
+  },
+
+  ["/acme/certificates/:ceritificates"] = {
+    GET = function(self)
+      local plugin, err = find_plugin()
+      if err then
+        return kong.response.exit(500, { message = err })
+      elseif not plugin then
+        return kong.response.exit(404)
+      end
+
+      local conf = plugin.config
+      local host = self.params.ceritificates
+      local certkey, err = client.load_certkey(conf, host)
+      if err then
+        return kong.response.exit(500, { message = err })
+      end
+      if not certkey then
+        return kong.response.exit(404, { message = "Certificate for host " .. host .. "not found in storage" })
+      end
+      return kong.response.exit(200, { data = parse_certkey(certkey) })
     end,
   },
 }
