@@ -276,7 +276,7 @@ local function load_certkey(conf, host)
   if err then
     return nil, "can't read SNI entity"
   elseif not sni_entity then
-    kong.log.warn("SNI ", host, " is not found in Kong database")
+    kong.log.info("SNI ", host, " is not found in Kong database")
     return
   end
 
@@ -352,6 +352,11 @@ local function renew_certificate_storage(conf)
       kong.log.err("can't read renew conf: ", err)
       goto renew_continue
     end
+    if not renew_conf then
+      kong.log.err("renew config key ",renew_conf_key, " is empty")
+      goto renew_continue
+    end
+
     renew_conf = cjson.decode(renew_conf)
 
     local host = renew_conf.host

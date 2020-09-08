@@ -29,6 +29,7 @@ end
 
 local function parse_certkey(certkey)
   local cert = x509.new(certkey.cert)
+  local key = cert:get_pubkey()
 
   local subject_name = cert:get_subject_name()
   local host = subject_name:find("CN")
@@ -43,6 +44,7 @@ local function parse_certkey(certkey)
     not_after = os.date("%Y-%m-%d %H:%M:%S", cert:get_not_after()),
     valid = cert:get_not_before() < ngx.time() and cert:get_not_after() > ngx.time(),
     serial_number = bn_to_hex(cert:get_serial_number()),
+    pubkey_type = key:get_key_type().sn,
   }
 end
 
@@ -128,7 +130,7 @@ return {
           return kong.response.exit(500, { message = err })
         end
         if not certkey then
-          kong.log.warn("[acme]", host, "is defined in renew_config but its cert and key is missing")
+          kong.log.warn("[acme]", host, " is defined in renew_config but its cert and key is missing")
         else
           certkey = parse_certkey(certkey)
           if not self.params.invalid_only or not certkey.valid then
