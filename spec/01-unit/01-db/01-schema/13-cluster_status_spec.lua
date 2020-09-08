@@ -1,12 +1,9 @@
 require "spec.helpers" -- initializes 'kong' global for plugins
 local Entity = require "kong.db.schema.entity"
-local typedefs = require "kong.db.schema.typedefs"
-local utils = require "kong.tools.utils"
 local cluster_status_definition = require "kong.db.schema.entities.cluster_status"
 
 describe("plugins", function()
   local ClusterStatus
-  local db
   local validate
 
   lazy_setup(function()

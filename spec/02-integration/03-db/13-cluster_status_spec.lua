@@ -3,8 +3,7 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local db, bp, cs
-    local global_plugin
+    local db, bp
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
