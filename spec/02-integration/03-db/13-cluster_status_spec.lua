@@ -14,29 +14,34 @@ for _, strategy in helpers.each_strategy() do
     describe("Plugins #plugins", function()
 
       before_each(function()
-        cs = bp.cluster_status:insert()
+        cs = assert(bp.cluster_status:insert())
       end)
 
       it("can update the row", function()
-        local p, _, err_t = db.cluster_status:update({ id = cs.id, }, { config_hash = "1234567890", })
+        local p, err = db.cluster_status:update({ id = cs.id, }, { config_hash = "a9a166c59873245db8f1a747ba9a80a7", })
         assert.is_truthy(p)
-        assert.is_nil(err_t)
+        assert.is_nil(err)
       end)
     end)
 
-    describe(":upsert()", function()
-      it("returns an error when upserting mismatched plugins", function()
-        local p, _, err_t = db.cluster_status:upsert({ id = "eb51145a-aaaa-bbbb-cccc-22087fb081db", },
-                                                     { config_hash = "1234567890", })
+    describe("updates", function()
+      it(":upsert()", function()
+        local p, err = db.cluster_status:upsert({ id = "eb51145a-aaaa-bbbb-cccc-22087fb081db", },
+                                                 { config_hash = "a9a166c59873245db8f1a747ba9a80a7",
+                                                   hostname = "localhost",
+                                                   ip = "127.0.0.1",
+                                                 })
 
         assert.is_truthy(p)
-        assert.is_nil(err_t)
+        assert.is_nil(err)
+      end)
 
+      it(":update()", function()
         -- this time update instead of insert
-        p, _, err_t = db.cluster_status:upsert({ id = "eb51145a-aaaa-bbbb-cccc-22087fb081db", },
-                                                     { config_hash = "1234567890", })
+        local p, err = db.cluster_status:update({ id = "eb51145a-aaaa-bbbb-cccc-22087fb081db", },
+                                          { config_hash = "a9a166c59873245db8f1a747ba9a80a7", })
         assert.is_truthy(p)
-        assert.is_nil(err_t)
+        assert.is_nil(err)
       end)
     end)
   end) -- kong.db [strategy]

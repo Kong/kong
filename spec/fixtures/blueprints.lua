@@ -167,6 +167,7 @@ function _M.new(db)
     return {
       hostname = "dp.example.com",
       ip = "127.0.0.1",
+      config_hash = "a9a166c59873245db8f1a747ba9a80a7",
     }
   end)
 

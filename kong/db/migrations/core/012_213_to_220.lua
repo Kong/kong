@@ -11,6 +11,15 @@ return {
     ]],
   },
   cassandra = {
-    up = [[]],
+    up = [[
+      CREATE TABLE IF NOT EXISTS cluster_status(
+        id uuid,
+        hostname text,
+        ip text,
+        last_seen timestamp,
+        config_hash text,
+        PRIMARY KEY (id)
+      );
+    ]],
   }
 }
