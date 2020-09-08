@@ -47,7 +47,7 @@ for _, strategy in helpers.each_strategy() do
             admin_client:close()
           end)
 
-          local res = assert(admin_client:get("/clustering/status"))
+          local res = assert(admin_client:get("/cluster_status"))
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
@@ -56,6 +56,31 @@ for _, strategy in helpers.each_strategy() do
               return true
             end
           end
+        end, 5)
+      end)
+
+      it("disallow updates on the status endpoint", function()
+        helpers.wait_until(function()
+          local admin_client = helpers.admin_client()
+          finally(function()
+            admin_client:close()
+          end)
+
+          local res = assert(admin_client:get("/cluster_status"))
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          local id
+          for _, v in pairs(json) do
+            if v.ip == "127.0.0.1" then
+              id = v.id
+            end
+          end
+
+          res = assert(admin_client:delete("/cluster_status/" .. id))
+          assert.res_status(404, res)
+          res = assert(admin_client:update("/cluster_status/" .. id))
+          assert.res_status(404, res)
         end, 5)
       end)
     end)
