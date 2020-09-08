@@ -230,7 +230,7 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
 
   if ctx then
     old_ws = ctx.workspace
-    delay_response = phase == "access"
+    delay_response = phase == "access" or nil
     ctx.delay_response = delay_response
   end
 
@@ -292,7 +292,8 @@ end
 
 
 local function flush_delayed_response(ctx)
-  ctx.delay_response = false
+  ctx.delay_response = nil
+  ctx.buffered_proxying = nil
 
   if type(ctx.delayed_response_callback) == "function" then
     ctx.delayed_response_callback(ctx)
@@ -730,10 +731,6 @@ function Kong.access()
 
   execute_plugins_iterator(plugins_iterator, "access", ctx)
 
-  if ctx.has_response then
-    kong.ctx.core.buffered_proxying = true
-  end
-
   if ctx.delayed_response then
     ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
     ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
@@ -742,12 +739,14 @@ function Kong.access()
     return flush_delayed_response(ctx)
   end
 
-  ctx.delay_response = false
+  ctx.delay_response = nil
 
   if not ctx.service then
     ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
     ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
     ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_PROCESSING_START
+
+    ctx.buffered_proxying = nil
 
     return kong.response.exit(503, { message = "no Service found with those values"})
   end
@@ -760,7 +759,7 @@ function Kong.access()
   -- we intent to proxy, though balancer may fail on that
   ctx.KONG_PROXIED = true
 
-  if kong.ctx.core.buffered_proxying and ngx.req.http_version() < 2 then
+  if ctx.buffered_proxying and ngx.req.http_version() < 2 then
     return Kong.response()
   end
 end
@@ -809,10 +808,9 @@ do
     local headers = res.header
     local body = res.body
 
-    local core = kong.ctx.core
-    core.buffered_status = status
-    core.buffered_headers = headers
-    core.buffered_body = body
+    ctx.buffered_status = status
+    ctx.buffered_headers = headers
+    ctx.buffered_body = body
 
     -- fake response phase (this runs after the balancer)
     if not ctx.KONG_RESPONSE_START then
@@ -1136,8 +1134,8 @@ function Kong.body_filter()
 
   kong_global.set_phase(kong, PHASES.body_filter)
 
-  if kong.ctx.core.response_body then
-    arg[1] = kong.ctx.core.response_body
+  if ctx.response_body then
+    arg[1] = ctx.response_body
     arg[2] = true
   end
 

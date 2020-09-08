@@ -98,7 +98,8 @@ local function load_configuration(ctx,
                                           load_plugin_from_db,
                                           key)
   if err then
-    ctx.delay_response = false
+    ctx.delay_response = nil
+    ctx.buffered_proxying = nil
     ngx.log(ngx.ERR, tostring(err))
     return ngx.exit(ngx.ERROR)
   end
@@ -288,7 +289,7 @@ local function get_next(self)
       if cfg then
         plugins[name] = cfg
         if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
-          ctx.has_response = true
+          ctx.buffered_proxying = true
         end
       end
     end

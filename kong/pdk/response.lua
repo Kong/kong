@@ -628,7 +628,7 @@ local function new(self, major_version)
       ngx.header[CONTENT_LENGTH_NAME] = #json
 
       if is_header_filter_phase then
-        self.ctx.core.response_body = json
+        ngx.ctx.response_body = json
 
       else
         ngx.print(json)
@@ -640,7 +640,7 @@ local function new(self, major_version)
         ngx.header[GRPC_MESSAGE_NAME] = body
 
         if is_header_filter_phase then
-          self.ctx.core.response_body = ""
+          ngx.ctx.response_body = ""
 
         else
           ngx.print() -- avoid default content
@@ -653,7 +653,7 @@ local function new(self, major_version)
         end
 
         if is_header_filter_phase then
-          self.ctx.core.response_body = body
+          ngx.ctx.response_body = body
 
         else
           ngx.print(body)
@@ -668,7 +668,7 @@ local function new(self, major_version)
 
       if is_grpc then
         if is_header_filter_phase then
-          self.ctx.core.response_body = ""
+          ngx.ctx.response_body = ""
 
         else
           ngx.print() -- avoid default content
