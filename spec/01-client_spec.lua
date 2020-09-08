@@ -79,7 +79,7 @@ for _, strategy in ipairs(strategies) do
         account_email = "notme@exmaple.com",
       })
       assert.is_nil(c)
-      assert.equal(err, "account notme@exmaple.com not found in storage")
+      assert.equal(err, "shm is not defined in plugin storage config")
     end)
 
     it("creates acme client properly", function()
@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
       local new_host = "test2.com"
 
       it("returns no error", function()
-        err = client._save(new_host, key, crt)
+        err = client._save_dao(new_host, key, crt)
         assert.is_nil(err)
       end)
 
@@ -146,7 +146,7 @@ for _, strategy in helpers.each_strategy() do
       local new_sni, new_cert, err
 
       it("returns no error", function()
-        err = client._save(host, key, crt)
+        err = client._save_dao(host, key, crt)
         assert.is_nil(err)
       end)
 
@@ -174,7 +174,7 @@ for _, strategy in helpers.each_strategy() do
   end)
 end
 
-for _, strategy in ipairs(strategies) do
+for _, strategy in ipairs({"off"}) do
   describe("Plugin: acme (client.renew) [#" .. strategy .. "]", function()
     local bp
     local cert
@@ -216,6 +216,8 @@ for _, strategy in ipairs(strategies) do
       }
 
       client = require("kong.plugins.acme.client")
+      -- hack in unit test mode
+      client._set_is_dbless(strategy == "off")
     end)
 
     describe("", function()
@@ -241,13 +243,6 @@ for _, strategy in ipairs(strategies) do
       end)
 
       it("renews a certificate when it's expired", function()
-        local f
-        if strategy == "off" then
-          f = client._check_expire_dbless
-        else
-          f = client._check_expire_dao
-        end
-
         local c, err = client.new(proper_config)
 
         assert.is_nil(err)
@@ -258,22 +253,19 @@ for _, strategy in ipairs(strategies) do
           }))
           assert.is_nil(err)
         end
-        -- check renewal
-        local key, renew, clean, err = f(c.storage, host, 30 * 86400)
+
+        local certkey, err = client.load_certkey(proper_config, host)
         assert.is_nil(err)
-        assert.not_nil(key)
+        assert.not_nil(certkey)
+        assert.not_nil(certkey.cert)
+        assert.not_nil(certkey.key)
+        -- check renewal
+        local renew, err = client._check_expire(certkey.cert, 30 * 86400)
+        assert.is_nil(err)
         assert.is_truthy(renew)
-        assert.is_falsy(clean)
       end)
 
       it("does not renew a certificate when it's not expired", function()
-        local f
-        if strategy == "off" then
-          f = client._check_expire_dbless
-        else
-          f = client._check_expire_dao
-        end
-
         local c, err = client.new(proper_config)
 
         assert.is_nil(err)
@@ -284,12 +276,16 @@ for _, strategy in ipairs(strategies) do
           }))
           assert.is_nil(err)
         end
-        -- check renewal
-        local key, renew, clean, err = f(c.storage, host_not_expired, 30 * 86400)
+
+        local certkey, err = client.load_certkey(proper_config, host_not_expired)
         assert.is_nil(err)
-        assert.is_nil(key)
+        assert.not_nil(certkey)
+        assert.not_nil(certkey.cert)
+        assert.not_nil(certkey.key)
+        -- check renewal
+        local renew, err = client._check_expire(certkey.cert, 30 * 86400)
+        assert.is_nil(err)
         assert.is_falsy(renew)
-        assert.is_falsy(clean)
       end)
     end)
 

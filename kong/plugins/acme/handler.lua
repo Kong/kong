@@ -93,7 +93,7 @@ function LetsencryptHandler:certificate(conf)
     return
   end
 
-  local certkey, err = client.load_certkey(conf, host)
+  local certkey, err = client.load_certkey_cached(conf, host)
   if err then
     kong.log.warn("can't load cert and key from storage: ", err)
     return
