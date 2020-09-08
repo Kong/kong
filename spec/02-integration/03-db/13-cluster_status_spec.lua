@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local db, bp
+    local db, bp, cs
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
@@ -18,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("can update the row", function()
-        local p, _, err_t = db.cluster_status:update({ config_hash = "1234567890", })
+        local p, _, err_t = db.cluster_status:update({ id = cs.id, }, { config_hash = "1234567890", })
         assert.is_truthy(p)
         assert.is_nil(err_t)
       end)
