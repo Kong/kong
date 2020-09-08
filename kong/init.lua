@@ -199,7 +199,6 @@ do
       "kong",
       "kong_locks",
       "kong_healthchecks",
-      "kong_process_events",
       "kong_cluster_events",
       "kong_rate_limiting_counters",
       "kong_core_db_cache" .. suffix,
