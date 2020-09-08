@@ -13,8 +13,7 @@ return {
 
       return parent()
     end,
+  },
 
-    POST = endpoints.disable,
-    DELETE = endpoints.disable,
-  }
+  ["/cluster_status/:id"] = endpoints.disable,
 }
