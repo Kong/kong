@@ -34,7 +34,13 @@ local function find_key(tbl, key)
   return nil
 end
 
-
+local function table_length(ltbl)
+  local len = 0
+  for _,_ in pairs(ltbl) do
+    len = len +1
+  end
+  return len
+end
 -- Tokenize the string with '&' and return a table holding all the query params
 local function extractParameters(looppath)
   local tempindex
@@ -58,7 +64,7 @@ end
 
 
 -- returns a boolean by comparing value of the fields supplied in query params
-local function filterexamples(example)
+local function filterexamples(example, qparameters)
   local value
   local skey
   local sval
@@ -81,9 +87,28 @@ local function filterexamples(example)
       skey = string.sub( dv,1,string.find( dv,'=' )-1 )
       sval = string.sub(dv,string.find( dv,'=' )+1,string.len( dv ))
       --kong.log.inspect('skey.....sval'..skey..'.....'..sval)
+      -- Query parameters might be supplied with fields not present in examples i.e value could be nil
+      -- In a real world api design, A query parameter might only be used in api business logic and might not be returned in response
+
       value = find_key(example,skey)
       --kong.log.inspect('value....'..value)
-      if(string.upper( sval ) == string.upper( value )) then
+      local paramkeys={}
+      
+      if value == nil and qparameters then   
+        if #qparameters > 1 then 
+          for dk,dv in pairs(qparameters) do
+            if string.find(find_key(qparameters,"in"),'query') then 
+              if string.find(find_key(qparameters,"name"),skey) then return true end
+            end  
+          end
+        else
+          if string.find(find_key(qparameters,"in"),'query') then 
+            if string.upper(skey) == string.upper(find_key(qparameters,"name")) then  return true end
+          end 
+        end
+      end 
+
+      if (value and string.upper( sval ) == string.upper( value )) then
         return true
       end
     end
@@ -95,41 +120,33 @@ end
 
 -- Extract example value in V3.0
 -- returns lua table with all the values extracted and appended from multiple examples
-local function find_example_value(tbl, key)
+local function find_example_value(tbl, key, queryparams)
 
   local values = {}
   local no_qparams = (kong.request.get_raw_query() == nil or kong.request.get_raw_query() =='')
    for _, lv in pairs(tbl) do
      if type(lv) == "table" then
+      
        for dk, dv in pairs(lv) do
         if dk == key then
-          if type(dv) == "table" then
-            --We could have empty {} value in example 
-            --Go ahead in capture it in table if there are no query params, Filter it if qparams exists
-            if (no_qparams and next(dv) == nil) then table.insert( values, dv) end
-             for _, v in pairs(dv) do
-              -- If the example values are just Key Value pairs go ahead and add them to table
-              if(type(v) ~= "table") then
-                table.insert( values, dv)
-                break
-              elseif filterexamples(v) then table.insert( values, v) end
-             end
-          end
+          if no_qparams then table.insert( values, dv)  
+          elseif filterexamples(dv,queryparams) then table.insert( values, dv) end 
         end
        end
       end
     end
   
   if next(values) == nil then
-   -- kong.log.inspect('values....',values)
     return nil
-  else
-    --kong.log.inspect('values....',values)
+  elseif #values == 1 then
+    return values[1]
+  else 
     return values
- end
+  end
 end
 
-local function get_example(accept, tbl)
+
+local function get_example(accept, tbl, parameters)
   if isV2 then
     if find_key(tbl, "examples") then
       if find_key(tbl, "examples")[accept] then
@@ -149,8 +166,8 @@ local function get_example(accept, tbl)
       --Removed value :: Not required, referencing object examples in this case will return value
       if find_key(tbl, accept).examples then
        local retval = find_key(tbl, accept).examples
-        if find_example_value(retval,"value") then
-         return  (find_example_value(retval,"value"))
+        if find_example_value(retval,"value",parameters) then
+         return  (find_example_value(retval,"value",parameters))
         end
       -- Single Example use case, Go ahead and use find_key
       elseif find_key(tbl, accept).example then
@@ -186,11 +203,11 @@ local function get_method_path(path, method, accept)
   -- need to improve this
   if rtn and rtn.responses then
     if rtn.responses["200"] then
-      return get_example(accept, rtn.responses["200"]), 200
+      return get_example(accept, rtn.responses["200"], rtn.parameters), 200
     elseif rtn.responses["201"] then
-      return get_example(accept, rtn.responses["201"]), 201
+      return get_example(accept, rtn.responses["201"], rtn.parameters), 201
     elseif rtn.responses["204"] then
-      return get_example(accept, rtn.responses["204"]), 204
+      return get_example(accept, rtn.responses["204"]), rtn.parameters, 204
     end
   end
 
