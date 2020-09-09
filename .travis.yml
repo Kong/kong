@@ -26,6 +26,7 @@ addons:
   hosts:
     - grpcs_1.test
     - grpcs_2.test
+    - grpcbin
 
 env:
   global:
