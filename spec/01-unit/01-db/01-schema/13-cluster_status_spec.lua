@@ -1,13 +1,13 @@
 require "spec.helpers" -- initializes 'kong' global for plugins
 local Entity = require "kong.db.schema.entity"
-local cluster_status_definition = require "kong.db.schema.entities.cluster_status"
+local cluster_status_schema = require "kong.db.schema.entities.cluster_status"
 
 describe("plugins", function()
   local ClusterStatus
   local validate
 
   lazy_setup(function()
-    ClusterStatus = assert(Entity.new(cluster_status_definition))
+    ClusterStatus = assert(Entity.new(cluster_status_schema))
 
     validate = function(b)
       return ClusterStatus:validate(ClusterStatus:process_auto_fields(b, "insert"))
