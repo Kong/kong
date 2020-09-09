@@ -1,7 +1,7 @@
 return {
   postgres = {
     up = [[
-      CREATE TABLE IF NOT EXISTS "cluster_status" (
+      CREATE TABLE IF NOT EXISTS "clustering_data_planes" (
         id             UUID PRIMARY KEY,
         hostname       TEXT NOT NULL,
         ip             TEXT NOT NULL,
@@ -12,7 +12,7 @@ return {
   },
   cassandra = {
     up = [[
-      CREATE TABLE IF NOT EXISTS cluster_status(
+      CREATE TABLE IF NOT EXISTS clustering_data_planes(
         id uuid,
         hostname text,
         ip text,

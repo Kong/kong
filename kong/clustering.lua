@@ -272,7 +272,7 @@ function _M.handle_cp_websocket()
       queue.sem:post()
 
       local ok
-      ok, err = kong.db.cluster_status:upsert({ id = node_id, }, {
+      ok, err = kong.db.clustering_data_planes:upsert({ id = node_id, }, {
         last_seen = ngx_time(),
         config_hash =
           data ~= "" and data or nil,
@@ -280,7 +280,7 @@ function _M.handle_cp_websocket()
         ip = node_ip,
       })
       if not ok then
-        ngx_log(ngx_ERR, "unable to update cluster status: ", err)
+        ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
       end
     end
   end)

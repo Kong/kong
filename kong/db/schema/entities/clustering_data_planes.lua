@@ -1,8 +1,10 @@
 local typedefs      = require "kong.db.schema.typedefs"
 
 return {
-  name        = "cluster_status",
-  primary_key = { "id" },
+  name               = "clustering_data_planes",
+  primary_key        = { "id" },
+  db_export          = false,
+  generate_admin_api = false,
 
   fields = {
     { id = typedefs.uuid { required = true, }, },
