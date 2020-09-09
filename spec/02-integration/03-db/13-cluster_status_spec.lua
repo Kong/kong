@@ -11,7 +11,7 @@ for _, strategy in helpers.each_strategy() do
       })
     end)
 
-    describe("Plugins #plugins", function()
+    describe("Cluster Status", function()
 
       before_each(function()
         cs = assert(bp.cluster_status:insert())

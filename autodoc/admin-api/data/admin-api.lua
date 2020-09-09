@@ -445,7 +445,7 @@ return {
     config = {
       skip = true,
     },
-    clustering_data_planes = {
+    clustering = {
       skip = true,
     },
     tags = {
