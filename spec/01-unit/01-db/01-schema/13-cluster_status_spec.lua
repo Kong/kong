@@ -1,21 +1,21 @@
 require "spec.helpers" -- initializes 'kong' global for plugins
 local Entity = require "kong.db.schema.entity"
-local cluster_status_schema = require "kong.db.schema.entities.cluster_status"
+local cluster_status_schema = require "kong.db.schema.entities.clustering_data_planes"
 
 describe("plugins", function()
-  local ClusterStatus
+  local ClusterDataPlanes
   local validate
 
   lazy_setup(function()
-    ClusterStatus = assert(Entity.new(cluster_status_schema))
+    ClusterDataPlanes = assert(Entity.new(cluster_status_schema))
 
     validate = function(b)
-      return ClusterStatus:validate(ClusterStatus:process_auto_fields(b, "insert"))
+      return ClusterDataPlanes:validate(ClusterDataPlanes:process_auto_fields(b, "insert"))
     end
   end)
 
   it("does not have a cache_key", function()
-    assert.is_nil(ClusterStatus.cache_key)
+    assert.is_nil(ClusterDataPlanes.cache_key)
   end)
 
   it("checks for required fields", function()
@@ -32,6 +32,13 @@ describe("plugins", function()
 
     assert.equal("invalid value: !", err.hostname)
     assert.equal("not an ip address: aabbccdd", err.ip)
+  end)
+
+  it("rejects incorrect hash length", function()
+    local ok, err = validate({ ip = "127.0.0.1", hostname = "dp.example.com", config_hash = "aaa", })
+    assert.is_nil(ok)
+
+    assert.equal("length must be 32", err.config_hash)
   end)
 
   it("accepts correct value", function()
