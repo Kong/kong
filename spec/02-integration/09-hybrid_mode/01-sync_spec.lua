@@ -85,6 +85,16 @@ for _, strategy in helpers.each_strategy() do
           return true
         end, 5)
       end)
+
+      it("disables the auto-generated collection endpoints", function()
+        local admin_client = helpers.admin_client(10000)
+        finally(function()
+          admin_client:close()
+        end)
+
+        local res = assert(admin_client:get("/clustering_data_planes"))
+        assert.res_status(404, res)
+      end)
     end)
 
     describe("sync works", function()
