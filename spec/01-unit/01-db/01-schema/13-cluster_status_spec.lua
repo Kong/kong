@@ -1,13 +1,13 @@
 require "spec.helpers" -- initializes 'kong' global for plugins
 local Entity = require "kong.db.schema.entity"
-local cluster_status_schema = require "kong.db.schema.entities.clustering_data_planes"
+local clustering_data_planes_schema = require "kong.db.schema.entities.clustering_data_planes"
 
 describe("plugins", function()
   local ClusterDataPlanes
   local validate
 
   lazy_setup(function()
-    ClusterDataPlanes = assert(Entity.new(cluster_status_schema))
+    ClusterDataPlanes = assert(Entity.new(clustering_data_planes_schema))
 
     validate = function(b)
       return ClusterDataPlanes:validate(ClusterDataPlanes:process_auto_fields(b, "insert"))

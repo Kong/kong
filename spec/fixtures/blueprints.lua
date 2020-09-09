@@ -163,7 +163,7 @@ function _M.new(db)
     }
   end)
 
-  res.cluster_status = new_blueprint(db.cluster_status, function()
+  res.clustering_data_planes = new_blueprint(db.clustering_data_planes, function()
     return {
       hostname = "dp.example.com",
       ip = "127.0.0.1",
