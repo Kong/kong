@@ -92,7 +92,9 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     after_each(function()
-      db:truncate()
+      assert(db:truncate("developers"))
+      assert(db:truncate("consumers"))
+      assert(db:truncate("basicauth_credentials"))
     end)
 
     lazy_teardown(function()
@@ -120,10 +122,6 @@ for _, strategy in helpers.each_strategy() do
         unverified_developer = resp_body_json.developer
 
         secret = get_pending_tokens(db, unverified_developer)[1].secret
-      end)
-
-      after_each(function()
-        db:truncate()
       end)
 
       it("should return 400 if called without a token", function()
@@ -285,10 +283,6 @@ for _, strategy in helpers.each_strategy() do
         secret = get_pending_tokens(db, unverified_developer)[1].secret
       end)
 
-      after_each(function()
-        db:truncate()
-      end)
-
       it("should return 400 if called without an email", function()
         local res = api_client_request({
           method = "POST",
@@ -448,9 +442,6 @@ for _, strategy in helpers.each_strategy() do
         secret = get_pending_tokens(db, unverified_developer)[1].secret
       end)
 
-      after_each(function()
-        db:truncate()
-      end)
 
       it("should return 400 if called without a token", function()
         local res = api_client_request({

@@ -87,10 +87,25 @@ end
 
 for _, strategy in helpers.each_strategy() do
   describe("Portal Permissions [#" .. strategy .. "]", function()
+    local bp, db
+
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(strategy)
+    end)
+
+    before_each(function()
+      assert(db:truncate("rbac_role_endpoints"))
+      assert(db:truncate("rbac_roles"))
+      assert(db:truncate("developers"))
+      assert(db:truncate("consumers"))
+      assert(db:truncate("credentials"))
+      assert(db:truncate("workspaces"))
+      assert(db:truncate("files"))
+      assert(db:truncate("basicauth_credentials"))
+    end)
+
     describe("can_read", function()
-      local bp, db
       setup(function()
-        bp, db = helpers.get_db_utils(strategy)
         local s = require "kong.singletons"
         s.configuration = { portal_auth = "basic-auth" }
         local store = {}
@@ -104,16 +119,6 @@ for _, strategy in helpers.each_strategy() do
             return true
           end,
         }
-      end)
-
-      before_each(function()
-        assert(db:truncate("rbac_role_endpoints"))
-        assert(db:truncate("rbac_roles"))
-        assert(db:truncate("developers"))
-        assert(db:truncate("consumers"))
-        assert(db:truncate("files"))
-        assert(db:truncate("workspaces"))
-        assert(db:truncate("basicauth_credentials"))
       end)
 
       it("returns false if the developer has no roles (content)", function()
@@ -274,9 +279,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("set_file_permissions", function()
-      local bp, db
       setup(function()
-        bp, db = helpers.get_db_utils(strategy)
         local s = require "kong.singletons"
         s.configuration = { portal_auth = "basic-auth" }
         local store = {}
@@ -290,16 +293,6 @@ for _, strategy in helpers.each_strategy() do
             return true
           end,
         }
-      end)
-
-      before_each(function()
-        assert(db:truncate("rbac_role_endpoints"))
-        assert(db:truncate("rbac_roles"))
-        assert(db:truncate("developers"))
-        assert(db:truncate("consumers"))
-        assert(db:truncate("files"))
-        assert(db:truncate("workspaces"))
-        assert(db:truncate("basicauth_credentials"))
       end)
 
       it("returns nil, error if contents is not valid stringified yaml", function()
@@ -421,7 +414,6 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_nil(file)
         assert.equal("schema violation (could not find role: red)", err)
-        assert(db:truncate("files"))
       end)
 
       it("file is not saved if role does not exist - update_by_path", function()
@@ -447,8 +439,6 @@ for _, strategy in helpers.each_strategy() do
 
         assert.is_nil(file)
         assert.equal("schema violation (could not find role: red)", err)
-        assert(db:truncate("files"))
-
       end)
 
       it("returns true but does not set any permissions if prefix is not 'content/' or 'specs/'", function()
@@ -649,9 +639,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("delete_file_permissions", function()
-      local bp, db
       setup(function()
-        bp, db = helpers.get_db_utils(strategy)
         local s = require "kong.singletons"
         s.configuration = { portal_auth = "basic-auth" }
         local store = {}
@@ -665,16 +653,6 @@ for _, strategy in helpers.each_strategy() do
             return true
           end,
         }
-      end)
-
-      before_each(function()
-        assert(db:truncate("rbac_role_endpoints"))
-        assert(db:truncate("rbac_roles"))
-        assert(db:truncate("developers"))
-        assert(db:truncate("consumers"))
-        assert(db:truncate("files"))
-        assert(db:truncate("workspaces"))
-        assert(db:truncate("basicauth_credentials"))
       end)
 
       it("removes permissions from the file (content)", function()
@@ -803,11 +781,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       describe("Unauthenticated User", function()
-        local db
-
         lazy_setup(function()
-          _, db, _ = helpers.get_db_utils(strategy)
-
           assert(helpers.start_kong({
             database    = strategy,
             portal      = true,
@@ -819,19 +793,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          assert(db:truncate())
           helpers.stop_kong()
         end)
 
         before_each(function()
-          assert(db:truncate("rbac_role_endpoints"))
-          assert(db:truncate("rbac_roles"))
-          assert(db:truncate("developers"))
-          assert(db:truncate("consumers"))
-          assert(db:truncate("files"))
-          assert(db:truncate("workspaces"))
-          assert(db:truncate("keyauth_credentials"))
-
           assert(configure_portal(db))
 
           -- Roles
@@ -958,16 +923,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("Developer with red role", function()
-        local db
-
         local developer = {
           name = "red",
           roles = { "red" },
         }
 
         lazy_setup(function()
-          _, db, _ = helpers.get_db_utils(strategy)
-
           assert(helpers.start_kong({
             database    = strategy,
             portal      = true,
@@ -979,19 +940,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          assert(db:truncate())
           helpers.stop_kong(nil, true)
         end)
 
         before_each(function()
-          assert(db:truncate("rbac_role_endpoints"))
-          assert(db:truncate("rbac_roles"))
-          assert(db:truncate("developers"))
-          assert(db:truncate("consumers"))
-          assert(db:truncate("files"))
-          assert(db:truncate("workspaces"))
-          assert(db:truncate("keyauth_credentials"))
-
           assert(configure_portal(db))
 
           -- Conf file
@@ -1251,16 +1203,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("Developer with blue role", function()
-        local db
-
         local developer = {
           name = "blue",
           roles = { "blue" },
         }
 
         lazy_setup(function()
-          _, db, _ = helpers.get_db_utils(strategy)
-
           assert(helpers.start_kong({
             database    = strategy,
             portal      = true,
@@ -1272,19 +1220,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          assert(db:truncate())
           helpers.stop_kong()
         end)
 
         before_each(function()
-          assert(db:truncate("rbac_role_endpoints"))
-          assert(db:truncate("rbac_roles"))
-          assert(db:truncate("developers"))
-          assert(db:truncate("consumers"))
-          assert(db:truncate("files"))
-          assert(db:truncate("workspaces"))
-          assert(db:truncate("keyauth_credentials"))
-
           assert(configure_portal(db))
 
           -- Conf file
@@ -1543,16 +1482,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("Developer with red and blue roles", function()
-        local db
-
         local developer = {
           name = "red_blue",
           roles = { "red", "blue" },
         }
 
         lazy_setup(function()
-          _, db, _ = helpers.get_db_utils(strategy)
-
           assert(helpers.start_kong({
             database    = strategy,
             portal      = true,
@@ -1564,19 +1499,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          assert(db:truncate())
           helpers.stop_kong()
         end)
 
         before_each(function()
-          assert(db:truncate("rbac_role_endpoints"))
-          assert(db:truncate("rbac_roles"))
-          assert(db:truncate("developers"))
-          assert(db:truncate("consumers"))
-          assert(db:truncate("files"))
-          assert(db:truncate("workspaces"))
-          assert(db:truncate("keyauth_credentials"))
-
           assert(configure_portal(db))
 
           -- Conf file
@@ -1755,16 +1681,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("Developer with no roles", function()
-        local db
-
         local developer = {
           name = "no_roles",
           roles = {},
         }
 
         lazy_setup(function()
-          _, db, _ = helpers.get_db_utils(strategy)
-
           assert(helpers.start_kong({
             database    = strategy,
             portal      = true,
@@ -1776,19 +1698,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          assert(db:truncate())
           helpers.stop_kong()
         end)
 
         before_each(function()
-          assert(db:truncate("rbac_role_endpoints"))
-          assert(db:truncate("rbac_roles"))
-          assert(db:truncate("developers"))
-          assert(db:truncate("consumers"))
-          assert(db:truncate("files"))
-          assert(db:truncate("workspaces"))
-          assert(db:truncate("keyauth_credentials"))
-
           assert(configure_portal(db))
 
           -- Conf file
@@ -1967,16 +1880,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("portal.conf.yaml auth", function()
-        local db
-
         local developer = {
           name = "no_roles",
           roles = {},
         }
 
         lazy_setup(function()
-          _, db, _ = helpers.get_db_utils(strategy)
-
           assert(helpers.start_kong({
             database    = strategy,
             portal      = true,
@@ -1988,19 +1897,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          assert(db:truncate())
           helpers.stop_kong()
         end)
 
         before_each(function()
-          assert(db:truncate("rbac_role_endpoints"))
-          assert(db:truncate("rbac_roles"))
-          assert(db:truncate("developers"))
-          assert(db:truncate("consumers"))
-          assert(db:truncate("files"))
-          assert(db:truncate("workspaces"))
-          assert(db:truncate("keyauth_credentials"))
-
           assert(configure_portal(db))
 
           -- Conf file
