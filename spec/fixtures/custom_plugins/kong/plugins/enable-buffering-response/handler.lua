@@ -12,12 +12,12 @@ function EnableBuffering:access()
 end
 
 
-function EnableBuffering:header_filter(conf)
-  if conf.phase == "header_filter" then
+function EnableBuffering:response(conf)
+  if conf.phase == "response" then
     if conf.mode == "modify-json" then
       local body = assert(kong.service.response.get_body())
       body.modified = true
-      return kong.response.exit(kong.response.get_status(), body, {
+      return kong.response.exit(kong.service.response.get_status(), body, {
         Modified = "yes",
       })
     end
