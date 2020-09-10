@@ -19,6 +19,8 @@ _M.TYPE = {
   CONSUMER = 2,
 }
 
+local dummy_response_msg = "PONG"
+
 local _log_prefix = "[messaging-utils] "
 
 
@@ -41,8 +43,6 @@ local function get_dummy_heartbeat_msg(self)
   })
 end
 
-local ws_send_func
-
 local function flush_cp(premature, self)
   if premature then
     return
@@ -50,7 +50,7 @@ local function flush_cp(premature, self)
 
   local sent = false
 
-  if ws_send_func then
+  if self.ws_send_func then
     while true do
       local v, err = self.SHM:rpop(self.SHM_KEY)
       if err then
@@ -60,7 +60,7 @@ local function flush_cp(premature, self)
         break
       end
 
-      local _, err = ws_send_func(v)
+      local _, err = self.ws_send_func(v)
       if err then
         local _, err = self.SHM:lpush(self.SHM_KEY, v)
         ngx.log(ngx.WARN, get_log_prefix(self), "cannot putting back to shm buffer: ", err)
@@ -73,7 +73,7 @@ local function flush_cp(premature, self)
 
     -- this is like a ping in case no other data is produced
     if not sent then
-      ws_send_func(get_dummy_heartbeat_msg(self))
+      self.ws_send_func(get_dummy_heartbeat_msg(self))
     end
   else
     ngx.log(ngx.DEBUG, get_log_prefix(self), "websocket is not ready yet, waiting for next try")
@@ -93,17 +93,18 @@ local function flush_cp(premature, self)
   assert(ngx.timer.at(self.buffer_ttl, flush_cp, self))
 end
 
-local function start_ws_client(address, server_name)
-  local uri = "wss://" .. address .. "/v1/ingest?node_id=" ..
+local function start_ws_client(self, server_name)
+  local uri = "wss://" .. self.cluster_endpoint .. "/v1/ingest?node_id=" ..
     kong.node.get_id() .. "&node_hostname=" .. utils.get_hostname()
 
+  local log_prefix = get_log_prefix(self)
   assert(ngx.timer.at(0, clustering.communicate, uri, server_name, function(connected, send_func)
     if connected then
-      ngx.log(ngx.DEBUG, _log_prefix, "telemetry websocket is connected")
-      ws_send_func = send_func
+      ngx.log(ngx.DEBUG, log_prefix, "telemetry websocket is connected")
+      self.ws_send_func = send_func
     else
-      ngx.log(ngx.DEBUG, _log_prefix, "telemetry websocket is disconnected")
-      ws_send_func = nil
+      ngx.log(ngx.DEBUG, log_prefix, "telemetry websocket is disconnected")
+      self.ws_send_func = nil
     end
   end))
 end
@@ -121,7 +122,7 @@ local function check_address(address)
   end
 end
 
-local function check_opts(self, opts)
+local function check_opts(opts)
   if not opts.message_type then
     return false, "'message_type' is missing"
   end
@@ -138,8 +139,8 @@ local function check_opts(self, opts)
     return false, "'SHM_KEY' is missing"
   end
 
-  if not opts.type or (opts.type ~= self.TYPE.PRODUCER
-    and opts.type ~= self.TYPE.CONSUMER) then
+  if not opts.type or (opts.type ~= _M.TYPE.PRODUCER
+    and opts.type ~= _M.TYPE.CONSUMER) then
     return false, "'TYPE' is missing or is not supported"
   end
 
@@ -148,13 +149,13 @@ end
 
 --
 -- @param opts - configuration options
-function _M:new(opts)
-  local ok, err = check_opts(self, opts)
+function _M.new(opts)
+  local ok, err = check_opts(opts)
   if not ok then
     return nil, err
   end
 
-  if opts.type == self.TYPE.PRODUCER then
+  if opts.type == _M.TYPE.PRODUCER then
     -- validate cluster endpoint address
     check_address(opts.cluster_endpoint)
   end
@@ -166,36 +167,67 @@ function _M:new(opts)
     message_type = opts.message_type,
     message_type_version = opts.message_type_version or "v1",
     serve_ingest = opts.serve_ingest_func,
-    serve_ingest_args = opts.serve_ingest_func_args,
     SHM = opts.shm,
     SHM_KEY = opts.shm_key,
     buffer = opts.buffer or new_tab(BUFFER_SIZE, 0),
+    buffer_idx = 1,
+    buffer_age = 0,
     buffer_ttl = opts.buffer_ttl or 2,
     buffer_retry_size = opts.buffer_retry_size or 60,
   }
-  setmetatable(self, mt)
-  return self
+
+  return setmetatable(self, mt)
 end
 
 function _M:register_for_messages()
-  clustering.register_server_on_message(self.message_type, function(...)
-    self:serve_ingest(...)
+  clustering.register_server_on_message(self.message_type, function(msg, queued_send)
+    -- decode message
+    local payload, err = self.unpack_message(msg, self.message_type, self.message_type_version)
+    if err then
+      ngx.log(ngx.ERR, _log_prefix, err)
+      return ngx.exit(400)
+    end
+
+    -- just send a empty response for now
+    -- this can be implemented into a per msgid retry in the future
+    queued_send(dummy_response_msg)
+
+    if #payload == 0 then
+      return
+    end
+    ngx.log(ngx.DEBUG, "recv size ", #msg.data, " sets ", #payload/2)
+
+    self.serve_ingest(payload)
   end)
+  ngx.log(ngx.DEBUG, get_log_prefix(self), "registered on_message function")
 end
 
 function _M:start_client(server_name)
   if ngx.worker.id() == 0 then
-    start_ws_client(self.cluster_endpoint, server_name)
+    start_ws_client(self, server_name)
 
     assert(ngx.timer.at(self.buffer_ttl, flush_cp, self))
   end
   return true
 end
 
-function _M:send_message(typ, data)
-  local buffer_idx = 1
-  self.buffer[buffer_idx] = typ
-  self.buffer[buffer_idx+1] = data
+function _M:send_message(typ, data, flush_now)
+  if self.buffer_idx == 1 then
+    self.buffer_age = ngx.now()
+  end
+
+  self.buffer[self.buffer_idx] = typ
+  self.buffer[self.buffer_idx+1] = data
+  self.buffer_idx = self.buffer_idx + 2
+
+  if not flush_now then
+    ngx.update_time()
+    -- TODO: this relies on the behaviour of timer of vitals and node_stats is flushed
+    -- every 10 seconds.
+    if self.buffer_idx < BUFFER_SIZE and ngx.now() - self.buffer_age < self.buffer_ttl then
+      return true
+    end
+  end
 
   local data = cjson_encode({
     type = self.message_type,
@@ -209,6 +241,7 @@ function _M:send_message(typ, data)
       self.buffer,
     }),
   })
+  self.buffer_idx = 1
   clear_tab(self.buffer)
 
   local _, err = self.SHM:lpush(self.SHM_KEY, data)
@@ -219,12 +252,12 @@ function _M:send_message(typ, data)
   return true
 end
 
-function _M:unpack_message(msg)
+function _M.unpack_message(msg, type, version)
   local v, t, payload = unpack(mp_unpack(msg.data))
-  if v ~= self.message_type_version or t ~= self.message_type then
+  if v ~= version or t ~= type then
     return nil, "ingest version or type doesn't match, expect version "
-      .. self.message_type_version .." type "
-      .. self.message_type .. ", got version " .. v .." type " .. t
+      .. type .." type "
+      .. version .. ", got version " .. v .." type " .. t
   end
   return payload, nil
 end
