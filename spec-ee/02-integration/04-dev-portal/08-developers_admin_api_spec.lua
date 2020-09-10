@@ -974,10 +974,8 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
       end)
 
       describe("smtp = on, valid config", function()
-        before_each(function()
+        lazy_setup(function()
           helpers.stop_kong()
-          assert(db:truncate())
-
           assert(helpers.start_kong({
             database   = strategy,
             portal     = true,
@@ -993,6 +991,10 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
 
           client = assert(helpers.admin_client())
           configure_portal()
+        end)
+
+        before_each(function()
+          db:truncate("developers")
         end)
 
         it("returns 400 if not sent with emails param", function()
@@ -1136,24 +1138,24 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
     end)
 
     -- TODO DEVX: write developer plugin tests
-    describe("/developer/:developer/plugins", function()
-    end)
-
-    describe("/developer/:developer/plugins/:id", function()
-    end)
+    pending("/developer/:developer/plugins", function() end)
+    pending("/developer/:developer/plugins/:id", function() end)
   end)
 
   describe("/developers/:developers/credentials/:plugin", function()
     local developer
 
     after_each(function()
-      assert(db:truncate())
+      assert(db:truncate("rbac_roles"))
+      assert(db:truncate("developers"))
+      assert(db:truncate("consumers"))
+      assert(db:truncate("basicauth_credentials"))
+      assert(db:truncate("keyauth_credentials"))
     end)
 
-    before_each(function()
+    lazy_setup(function()
       helpers.stop_kong()
       assert(db:truncate())
-
       assert(helpers.start_kong({
         database   = strategy,
         portal     = true,
@@ -1164,6 +1166,10 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         portal_invite_email = "off",
       }))
 
+      client = assert(helpers.admin_client())
+    end)
+
+    before_each(function()
       developer = assert(db.developers:insert {
         email = "gruce@konghq.com",
         password = "kong",
@@ -1195,8 +1201,6 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
           headers = {["Content-Type"] = "application/json"},
         }))
       end
-
-      client = assert(helpers.admin_client())
     end)
 
     describe("POST", function()
@@ -1275,13 +1279,15 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
     local res, developer, basic_auth, key_auth
 
     after_each(function()
-      assert(db:truncate())
+      assert(db:truncate("rbac_roles"))
+      assert(db:truncate("developers"))
+      assert(db:truncate("consumers"))
+      assert(db:truncate("basicauth_credentials"))
+      assert(db:truncate("keyauth_credentials"))
     end)
 
-    before_each(function()
+    lazy_setup(function()
       helpers.stop_kong()
-      assert(db:truncate())
-
       assert(helpers.start_kong({
         database   = strategy,
         portal     = true,
@@ -1291,15 +1297,17 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         portal_auto_approve = "off",
         portal_invite_email = "off",
       }))
+      configure_portal()
+      client = assert(helpers.admin_client())
+    end)
 
+    before_each(function()
       developer = assert(db.developers:insert {
         email = "gruce@konghq.com",
         password = "kong",
         meta = "{\"full_name\":\"I Like Turtles\"}",
         status = enums.CONSUMERS.STATUS.APPROVED,
       })
-
-      configure_portal()
 
       res = client_request({
         method = "POST",
@@ -1323,8 +1331,6 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
       })
 
       key_auth = cjson.decode(res.body)
-
-      client = assert(helpers.admin_client())
     end)
 
     describe("GET", function()
