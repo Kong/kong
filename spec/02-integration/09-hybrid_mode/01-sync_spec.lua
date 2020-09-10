@@ -77,6 +77,10 @@ for _, strategy in helpers.each_strategy() do
             end
           end
 
+          if not id then
+            return nil
+          end
+
           res = assert(admin_client:delete("/clustering/data_planes/" .. id))
           assert.res_status(404, res)
           res = assert(admin_client:patch("/clustering/data_planes/" .. id))
