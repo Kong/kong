@@ -102,15 +102,18 @@ function LetsencryptHandler:certificate(conf)
   -- cert not found, get a new one and serve default cert for now
   if not certkey then
     ngx.timer.at(0, function()
-      local err = client.update_certificate(conf, host, nil)
+      local ok, err = client.update_certificate(conf, host, nil)
       if err then
         kong.log.err("failed to update certificate: ", err)
         return
       end
-      err = client.store_renew_config(conf, host)
-      if err then
-        kong.log.err("failed to store renew config: ", err)
-        return
+      -- if not ok and err is nil, meaning the update is running by another worker
+      if ok then
+        err = client.store_renew_config(conf, host)
+        if err then
+          kong.log.err("failed to store renew config: ", err)
+          return
+        end
       end
     end)
     return

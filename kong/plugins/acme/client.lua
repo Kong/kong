@@ -199,16 +199,28 @@ end
 local function update_certificate(conf, host, key)
   local _, st, err = new_storage_adapter(conf)
   if err then
-    kong.log.err("can't create storage adapter: ", err)
-    return
+    return false, "can't create storage adapter: " .. err
   end
+
+  local backoff_key = "kong_acme:fail_backoff:" .. host
+  local backoff_until, err = st:get(backoff_key)
+  if err then
+    kong.log.warn("failed to read backoff status for ", host, " : ", err)
+  end
+  if backoff_until and tonumber(backoff_until) then
+    local wait = tonumber(backoff_until) - ngx.time()
+    return false, "please try again in " .. wait .. " seconds for host " ..
+            host .. " because of previous failure; this is configurable " ..
+            "with config.fail_backoff_minutes"
+  end
+
   local lock_key = "kong_acme:update_lock:" .. host
   -- TODO: wait longer?
   -- This goes to the backend storage and may bring pressure, add a first pass shm cache?
   local err = st:add(lock_key, "placeholder", LOCK_TIMEOUT)
   if err then
     kong.log.info("update_certificate for ", host, " is already running: ", err)
-    return
+    return false
   end
   local acme_client, cert, err
   err = create_account(conf)
@@ -227,20 +239,27 @@ local function update_certificate(conf, host, key)
       -- cached cert/key in other node, we set the cache to be same as
       -- lock timeout, so that multiple node will not try to update certificate
       -- at the same time because they are all seeing default cert is served
-      return st:set(CERTKEY_KEY_PREFIX .. host, cjson.encode({
+      local err = st:set(CERTKEY_KEY_PREFIX .. host, cjson.encode({
         key = key,
         cert = cert,
       }))
+      return true, err
     else
       err = save_dao(host, key, cert)
     end
   end
 ::update_certificate_error::
+  local wait_seconds = conf.fail_backoff_minutes * 60
+  local err_set = st:set(backoff_key, string.format("%d", ngx.time() + wait_seconds), wait_seconds)
+  if err_set then
+    kong.log.warn("failed to set fallback key for ", host, ": ", err_set)
+  end
+
   local err_del = st:delete(lock_key)
   if err_del then
     kong.log.warn("failed to delete update_certificate lock for ", host, ": ", err_del)
   end
-  return err
+  return false, err
 end
 
 local function check_expire(cert, threshold)
@@ -397,10 +416,9 @@ local function renew_certificate_storage(conf)
     end
 
     kong.log.info("renew certificate for host ", host)
-    err = update_certificate(conf, host, certkey.key)
+    local _, err = update_certificate(conf, host, certkey.key)
     if err then
       kong.log.err("failed to renew certificate: ", err)
-      return
     end
 
 ::renew_continue::
