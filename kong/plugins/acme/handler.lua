@@ -68,6 +68,8 @@ function LetsencryptHandler:certificate(conf)
     return
   end
 
+  host = string.lower(host)
+
   -- TODO: cache me
   build_domain_matcher(conf.domains)
   if not domains_matcher or not domains_matcher[host] then
