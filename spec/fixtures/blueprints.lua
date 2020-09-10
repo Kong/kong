@@ -163,6 +163,14 @@ function _M.new(db)
     }
   end)
 
+  res.clustering_data_planes = new_blueprint(db.clustering_data_planes, function()
+    return {
+      hostname = "dp.example.com",
+      ip = "127.0.0.1",
+      config_hash = "a9a166c59873245db8f1a747ba9a80a7",
+    }
+  end)
+
   local named_service_name_seq = new_sequence("service-name-%d")
   local named_service_host_seq = new_sequence("service-host-%d.test")
   res.named_services = new_blueprint(db.services, function()

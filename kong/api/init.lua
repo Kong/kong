@@ -28,9 +28,16 @@ ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 
 -- Load core routes
-for _, v in ipairs({"kong", "health", "cache", "config", "clustering"}) do
+for _, v in ipairs({"kong", "health", "cache", "config", }) do
   local routes = require("kong.api.routes." .. v)
   api_helpers.attach_routes(app, routes)
+end
+
+
+-- Load custom DB routes
+for _, v in ipairs({"clustering", }) do
+  local routes = require("kong.api.routes." .. v)
+  api_helpers.attach_new_db_routes(app, routes)
 end
 
 

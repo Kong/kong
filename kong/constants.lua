@@ -109,6 +109,7 @@ local constants = {
     "plugins",
     "tags",
     "ca_certificates",
+    "clustering_data_planes",
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
