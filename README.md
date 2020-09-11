@@ -40,7 +40,7 @@ transformations, and more through plugins.
 
 Kong has been built with the following leading principles:
 
-- **High Performance**: Sub-millisecond processing latency to support the mission
+- **High Performance**: Sub-millisecond processing latency to support mission
   critical use cases and high throughput.
 - **Extensibility**: With a pluggable architecture to extend Kong in Lua or GoLang
   with Kong's Plugin SDK.
@@ -105,7 +105,7 @@ code, other repos are also under active development:
   Kong in a 1-click deployment for AWS EC2.
 - [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B06WP4TNKL): Kong AMI on the AWS Marketplace.
 - [Kong on Microsoft Azure](https://github.com/Kong/kong-dist-azure): Run Kong
-  using the Azure Resource Manager.
+  using Azure Resource Manager.
 - [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
   Heroku in one click.
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
