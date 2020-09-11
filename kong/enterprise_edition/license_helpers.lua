@@ -1,6 +1,7 @@
 local cjson      = require "cjson.safe"
 local pl_path    = require "pl.path"
 local log        = require "kong.cmd.utils.log"
+local dist_constants = require "kong.enterprise_edition.distributions_constants"
 
 
 local kong = kong
@@ -71,17 +72,7 @@ end
 
 
 function _M.featureset()
-  local trial_mandatory_options = {
-    conf = {
-      enforce_rbac = "off",
-      vitals = "off",
-    },
-    abilities = {
-      workspaces = false,
-      ee_plugins = false
-    }
-  }
-  return trial_mandatory_options
+  return dist_constants.featureset[_M.read_license_info() and "full" or "free"]
 end
 
 
