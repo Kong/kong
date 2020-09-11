@@ -9,6 +9,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.get_db_utils(strategy, {
         "routes",
         "services",
+        "clustering_data_planes",
       }) -- runs migrations
 
       assert(helpers.start_kong({
@@ -75,6 +76,10 @@ for _, strategy in helpers.each_strategy() do
             if v.ip == "127.0.0.1" then
               id = v.id
             end
+          end
+
+          if not id then
+            return nil
           end
 
           res = assert(admin_client:delete("/clustering/data_planes/" .. id))
