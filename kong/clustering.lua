@@ -97,7 +97,13 @@ end
 
 
 local function send_ping(c)
-  local _, err = c:send_ping(declarative.get_current_hash())
+  local hash = declarative.get_current_hash()
+
+  if hash == true then
+    hash = string.rep("0", 32)
+  end
+
+  local _, err = c:send_ping(hash)
   if err then
     ngx_log(ngx_ERR, "unable to ping control plane node: ", err)
     -- return and let the main thread handle the error
