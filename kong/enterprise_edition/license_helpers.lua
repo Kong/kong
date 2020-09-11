@@ -69,25 +69,21 @@ function _M.read_license_info()
   return license
 end
 
--- function _M.reload_license()
---   return kong.constants.foo
--- end
-
 
 function _M.featureset()
   local trial_mandatory_options = {
     conf = {
-      enforce_rbac = false,
-      vitals = false,
+      enforce_rbac = "off",
+      vitals = "off",
     },
     abilities = {
-      create_workspaces = false,
+      workspaces = false,
       ee_plugins = false
     }
   }
-  return featureset
-  -- return setmetatable(trial_mandatory_options, function() return true end)
+  return trial_mandatory_options
 end
+
 
 -- Hold a lock for the whole interval (exptime) to prevent multiple
 -- worker processes from the  simultaneously.
