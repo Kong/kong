@@ -3,7 +3,7 @@ local access = require "kong.plugins.oauth2.access"
 
 local OAuthHandler = {
   PRIORITY = 1004,
-  VERSION = "2.1.0",
+  VERSION = "2.1.1",
 }
 
 
