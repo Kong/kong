@@ -67,7 +67,7 @@ $version
 - [Docker Image](https://hub.docker.com/_/kong/)
 
 Links:
-- [$version Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md#$versionlink)
+- [$version Changelog](https://github.com/Kong/kong/blob/$version/CHANGELOG.md#$versionlink)
 EOF
 }
 
