@@ -346,12 +346,16 @@ release for more details.
   [#6000](https://github.com/Kong/kong/pull/6000)
 - Introduce new attributes to the Services entity, allowing for customizations
   in TLS verification parameters:
+  [#5976](https://github.com/Kong/kong/pull/5976)
   * `tls_verify`: whether TLS verification is enabled while handshaking
     with the upstream Service
   * `tls_verify_depth`: the maximum depth of verification when validating
     upstream Service's TLS certificate
   * `ca_certificates`: the CA trust store to use when validating upstream
     Service's TLS certificate
+- Introduce new attribute `client_certificate` in Upstreams entry, used
+  for supporting mTLS in active health checks.
+  [#5838](https://github.com/Kong/kong/pull/5838)
 
 ##### CLI
 
