@@ -1093,6 +1093,28 @@ local function execute(target, ctx)
         hash_value = create_hash(upstream, ctx)
         target.hash_value = hash_value
       end
+
+      if not ctx.service.client_certificate then
+        -- service level client_certificate is not set
+        local cert, res, err
+        local client_certificate = upstream.client_certificate
+
+        -- does the upstream object contains a client certificate?
+        if client_certificate then
+          cert, err = get_certificate(client_certificate)
+          if not cert then
+            log(ERR, "unable to fetch upstream client TLS certificate ",
+                     client_certificate.id, ": ", err)
+            return
+          end
+
+          res, err = kong.service.set_tls_cert_key(cert.cert, cert.key)
+          if not res then
+            log(ERR, "unable to apply upstream client TLS certificate ",
+                     client_certificate.id, ": ", err)
+          end
+        end
+      end
     end
   end
 
