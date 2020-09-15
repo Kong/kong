@@ -154,7 +154,12 @@ function _M.register_dao_hooks(db)
     return true
   end
 
-  local function post_upsert(row, name, options)
+  local function post_upsert(row, name, options, ws_id, is_new)
+    -- Handle updates
+    if not is_new then
+      return row
+    end
+
     local _, err = _M.add_default_role_entity_permission(row, name)
     if err then
       local err_t = db.errors:database_error("failed to add entity permissions to current user")
