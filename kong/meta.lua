@@ -2,9 +2,9 @@ local ee_meta = require "kong.enterprise_edition.meta"
 
 local version = setmetatable({
   major = 2,
-  minor = 1,
-  patch = 3,
-  --suffix = ""
+  minor = 2,
+  patch = 0,
+  suffix = "alpha.1"
 }, {
   -- our Makefile during certain releases adjusts this line. Any changes to
   -- the format need to be reflected in both places
@@ -26,6 +26,6 @@ return {
   -- third-party dependencies' required version, as they would be specified
   -- to lua-version's `set()` in the form {from, to}
   _DEPENDENCIES = {
-    nginx = { "1.15.8.1", "1.15.8.3" },
+    nginx = { "1.15.8.1", "1.17.8.2" },
   }
 }

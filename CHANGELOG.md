@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.2.0-alpha.1](#220-alpha1)
 - [2.1.3](#213)
 - [2.1.2](#212)
 - [2.1.1](#211)
@@ -46,6 +47,94 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.2.0-alpha.1]
+
+> Released 2020/09/09
+
+This is an *alpha* pre-release of the upcoming Kong 2.2 series.
+Since 2.2 is a minor release there are no breaking changes with
+respect to the 2.x series, but being an alpha pre-release, development
+is not feature-frozen at this time: and any new features introduced here
+may change between this release and 2.2.0, and new features may be
+added.
+
+### Dependencies
+
+- :warning: The required OpenResty version has been bumped to
+  [1.17.8.2](http://openresty.org/en/changelog-1017008.html), and the
+  the set of patches included has changed, including the latest release of
+  [lua-kong-nginx-module](https://github.com/Kong/lua-kong-nginx-module).
+  If you are installing Kong from one of our distribution
+  packages, you are not affected by this change.
+
+**Note:** if you are not using one of our distribution packages and compiling
+OpenResty from source, you must still apply Kong's [OpenResty
+patches](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools/openresty-patches)
+(and, as highlighted above, compile OpenResty with the new
+lua-kong-nginx-module). Our [kong-build-tools](https://github.com/Kong/kong-build-tools)
+repository will allow you to do both easily.
+
+- :warning: Cassandra 2.x support is now deprecated. If you are still
+  using Cassandra 2.x with Kong, we recommend you to upgrade, since this
+  series of Cassandra is about to be EOL with the upcoming release of
+  Cassandra 4.0.
+
+### Additions
+
+##### Core
+
+- :fireworks: **UDP support**: Kong now features support for UDP proxying
+  in its stream subsystem. The `"udp"` protocol is now accepted in the `protocols`
+  attribute of Routes and the `protocol` attribute of Services.
+  Load balancing and logging plugins support UDP as well.
+- Add `X-Forwarded-Path` header: if a trusted source provides a
+  `X-Forwarded-Path` header, it is proxied as-is. Otherwise, Kong will set
+  the content of said header to the request's path.
+  [#6251](https://github.com/Kong/kong/pull/6251)
+- Hybrid mode synchronization performance improvements: Kong now uses a
+  new internal synchronization method to push changes from the Control Plane
+  to the Data Plane, drastically reducing the amount of communication between
+  nodes during bulk updates.
+  [#6293](https://github.com/Kong/kong/pull/6293)
+
+##### PDK
+
+- New function `kong.request.get_forwarded_prefix`: returns the prefix path
+  component of the request's URL that Kong stripped before proxying to upstream,
+  respecting the value of `X-Forwarded-Prefix` when it comes from a trusted source.
+  [#6251](https://github.com/Kong/kong/pull/6251)
+
+##### Plugins
+
+- **New Response Phase**: both Go and Lua pluggins now support a new plugin
+  phase called `response` in Lua plugins and `Response` in Go. Using it
+  automatically enables response buffering, which allows you to manipulate
+  both the response headers and the response body in the same phase.
+  This enables support for response handling in Go, where header and body
+  filter phases are not available, allowing you to use PDK functions such
+  as `kong.Response.GetBody()`, and provides an equivalent simplified
+  feature for handling buffered responses from Lua plugins as well.
+  [#5991](https://github.com/Kong/kong/pull/5991)
+- grpc-web: Introduce configuration pass_stripped_path, which, if set to true,
+  causes the plugin to pass the stripped request path (see the `strip_path` Route
+  attribute) to the upstream gRPC service.
+- rate-limiting: Support for rate limiting by path, by setting the
+  `limit_by = "path"` configuration attribute.
+  Thanks [KongGuide](https://github.com/KongGuide) for the patch!
+  [#6286](https://github.com/Kong/kong/pull/6286)
+
+### Fixes
+
+##### Plugins
+
+- prometheus: Remove unnecessary `WARN` log that was seen in the Kong 2.1
+  series.
+  [#6258](https://github.com/Kong/kong/pull/6258)
+
+
+[Back to TOC](#table-of-contents)
 
 
 ## [2.1.3]
@@ -5327,6 +5416,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.2.0-alpha.1]: https://github.com/Kong/kong/compare/2.1.3...2.2.0-alpha.1
 [2.1.3]: https://github.com/Kong/kong/compare/2.1.2...2.1.3
 [2.1.2]: https://github.com/Kong/kong/compare/2.1.1...2.1.2
 [2.1.1]: https://github.com/Kong/kong/compare/2.1.0...2.1.1

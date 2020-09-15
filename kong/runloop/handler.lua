@@ -38,6 +38,9 @@ local clear_header = ngx.req.clear_header
 local unpack       = unpack
 
 
+local NOOP = function() end
+
+
 local ERR   = ngx.ERR
 local CRIT  = ngx.CRIT
 local WARN  = ngx.WARN
@@ -1038,7 +1041,8 @@ return {
         }
       end
 
-    end
+    end,
+    after = NOOP,
   },
   preread = {
     before = function(ctx)
@@ -1075,7 +1079,8 @@ return {
   certificate = {
     before = function(_)
       certificate.execute()
-    end
+    end,
+    after = NOOP,
   },
   rewrite = {
     before = function(ctx)
@@ -1086,6 +1091,7 @@ return {
       ctx.http_proxy_authorization = var.http_proxy_authorization
       ctx.http_te                  = var.http_te
     end,
+    after = NOOP,
   },
   access = {
     before = function(ctx)
@@ -1121,6 +1127,7 @@ return {
       local forwarded_proto
       local forwarded_host
       local forwarded_port
+      local forwarded_path
       local forwarded_prefix
 
       -- X-Forwarded-* Headers Parsing
@@ -1137,12 +1144,21 @@ return {
         forwarded_proto  = var.http_x_forwarded_proto  or scheme
         forwarded_host   = var.http_x_forwarded_host   or host
         forwarded_port   = var.http_x_forwarded_port   or port
+        forwarded_path   = var.http_x_forwarded_path
         forwarded_prefix = var.http_x_forwarded_prefix
 
       else
         forwarded_proto  = scheme
         forwarded_host   = host
         forwarded_port   = port
+      end
+
+      if not forwarded_path then
+        forwarded_path = var.request_uri
+        local p = find(forwarded_path, "?", 2, true)
+        if p then
+          forwarded_path = sub(forwarded_path, 1, p - 1)
+        end
       end
 
       if not forwarded_prefix and match_t.prefix ~= "/" then
@@ -1236,6 +1252,7 @@ return {
       var.upstream_x_forwarded_proto  = forwarded_proto
       var.upstream_x_forwarded_host   = forwarded_host
       var.upstream_x_forwarded_port   = forwarded_port
+      var.upstream_x_forwarded_path   = forwarded_path
       var.upstream_x_forwarded_prefix = forwarded_prefix
 
       -- At this point, the router and `balancer_setup_stage1` have been
@@ -1335,6 +1352,10 @@ return {
       end
     end
   },
+  response = {
+    before = NOOP,
+    after = NOOP,
+  },
   header_filter = {
     before = function(ctx)
       if not ctx.KONG_PROXIED then
@@ -1412,6 +1433,7 @@ return {
     end
   },
   log = {
+    before = NOOP,
     after = function(ctx)
       update_lua_mem()
 
