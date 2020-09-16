@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.2.11](#0211---20200916)
 - [0.2.10](#0210---20200812)
 - [0.2.9](#029---20200804)
 - [0.2.8](#028---20200730)
@@ -15,6 +16,13 @@
 - [0.1.1](#011---20191212)
 - [0.1.0](#010---20191212)
 
+##  [0.2.11] - 2020/09/16
+
+- Add endpoint to list certificates from storage.
+- Allow to pass a configurable wait time for each domain that fails in validation.
+- Tweak error log and format.
+- Always check with lower cased domain.
+- Wrap load_certkey for dao as well.
 
 ##  [0.2.10] - 2020/08/12
 
@@ -81,6 +89,7 @@ causing validation failures.
 - Initial release of ACME plugin for Kong.
 
 
+[0.2.11]: https://github.com/Kong/kong-plugin-acme/compare/0.2.10...0.2.11
 [0.2.10]: https://github.com/Kong/kong-plugin-acme/compare/0.2.9...0.2.10
 [0.2.9]: https://github.com/Kong/kong-plugin-acme/compare/0.2.8...0.2.9
 [0.2.8]: https://github.com/Kong/kong-plugin-acme/compare/0.2.7...0.2.8

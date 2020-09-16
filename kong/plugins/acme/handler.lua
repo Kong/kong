@@ -16,7 +16,7 @@ local LetsencryptHandler = {}
 -- otherwise acme-challenges endpoints may be blocked by auth plugins
 -- causing validation failures
 LetsencryptHandler.PRIORITY = 1007
-LetsencryptHandler.VERSION = "0.2.10"
+LetsencryptHandler.VERSION = "0.2.11"
 
 local function build_domain_matcher(domains)
   local domains_plain = {}
