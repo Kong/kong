@@ -3347,6 +3347,44 @@ describe("schema", function()
       assert.falsy(check_immutable_fields)
     end)
 
+    it("infers shorthands", function()
+      local test_schema = {
+        name = "test",
+        fields = {
+          {
+            allow = {
+              type = "array",
+              elements = {
+                type = "string"
+              },
+            },
+          },
+        },
+        shorthands = {
+          {
+            whitelist = function(value)
+              return {
+                allow = value
+              }
+            end
+          },
+        },
+      }
+
+      local test_entity = { name = "bob", whitelist = "privileged" }
+
+      local TestEntities = Schema.new(test_schema)
+
+      local test_data = TestEntities:process_auto_fields(test_entity, "update")
+
+      assert.same({
+        name = "bob",
+        allow = {
+          "privileged",
+        },
+      }, test_data)
+    end)
+
     describe("in subschemas", function()
       it("a specialized field can set a default", function()
         local Test = Schema.new({

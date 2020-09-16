@@ -105,6 +105,21 @@ describe("declarative config: process_auto_fields", function()
           }
         }, config)
       end)
+
+      it("infers shorthands", function()
+        local config = lyaml.load([[
+          _format_version: "1.1"
+          plugins:
+          - name: acl
+            config:
+              whitelist: privileged
+        ]])
+        config = DeclarativeConfig:process_auto_fields(config, "insert", false)
+        assert.same({
+          "privileged",
+        }, config.plugins[1].config.allow)
+      end)
+
     end)
 
     describe("plugins:", function()

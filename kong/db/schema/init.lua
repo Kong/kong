@@ -1,5 +1,6 @@
 local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
+local arguments    = require "kong.api.arguments"
 local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
 
@@ -1551,7 +1552,12 @@ function Schema:process_auto_fields(data, context, nulls, opts)
         local new_values = sfunc(value)
         if new_values then
           for k, v in pairs(new_values) do
-            data[k] = v
+            local f = self.fields[k]
+            if f then
+              data[k] = arguments.infer_value(v, f)
+            else
+              data[k] = v
+            end
           end
         end
       end
