@@ -40,7 +40,7 @@ local ACLHandler = {}
 
 
 ACLHandler.PRIORITY = 950
-ACLHandler.VERSION = "3.0.0"
+ACLHandler.VERSION = "3.0.1"
 
 
 function ACLHandler:access(conf)
@@ -99,7 +99,7 @@ function ACLHandler:access(conf)
       end
 
       if not consumer_groups then
-        if config.type == DENY and credential then
+        if config.type == DENY then
           consumer_groups = EMPTY
 
         else
