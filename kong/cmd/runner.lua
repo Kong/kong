@@ -1,6 +1,7 @@
 local kong_global = require "kong.global"
 local conf_loader = require "kong.conf_loader"
 local DB = require "kong.db"
+local ee = require "kong.enterprise_edition"
 
 
 local function run_file(f, args)
@@ -17,7 +18,9 @@ end
 
 local function execute(args)
   _G.kong = kong_global.new()
-  local conf = assert(conf_loader(args.conf))
+  local featureset = ee.featureset() or { conf =  {}}
+  local conf = assert(conf_loader(args.conf, featureset.conf, {from_kong_env = true}))
+
   kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
   local db = assert(DB.new(conf))
   kong.db = db
