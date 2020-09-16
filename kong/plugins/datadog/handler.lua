@@ -54,8 +54,8 @@ local function log(premature, conf, message)
     request_count    = "request.count",
   }
   local stat_value = {
-    request_size     = message.request.size,
-    response_size    = message.response.size,
+    request_size     = message.request and message.request.size,
+    response_size    = message.response and message.response.size,
     latency          = message.latencies.request,
     upstream_latency = message.latencies.proxy,
     kong_latency     = message.latencies.kong,
@@ -73,7 +73,9 @@ local function log(premature, conf, message)
     local stat_value      = stat_value[metric_config.name]
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
     local consumer_id     = get_consumer_id and get_consumer_id(message.consumer) or nil
-    local tags            = compose_tags(name, message.response.status, consumer_id, metric_config.tags)
+    local tags            = compose_tags(
+            name, message.response and message.response.status or "-",
+            consumer_id, metric_config.tags)
 
     if stat_name ~= nil then
       logger:send_statsd(stat_name, stat_value,

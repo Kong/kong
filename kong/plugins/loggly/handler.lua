@@ -94,17 +94,25 @@ local function decide_severity(conf, severity, message)
   return send_to_loggly(conf, message, pri)
 end
 
+local is_html = nil
+
 local function log(premature, conf, message)
   if premature then
     return
   end
 
-  if message.response.status >= 500 then
-    return decide_severity(conf, conf.server_errors_severity, message)
+  if is_html == nil then
+    is_html = ngx.config.subsystem == "http"
   end
 
-  if message.response.status >= 400 then
-    return decide_severity(conf, conf.client_errors_severity, message)
+  if is_html then
+    if message.response.status >= 500 then
+      return decide_severity(conf, conf.server_errors_severity, message)
+    end
+
+    if message.response.status >= 400 then
+      return decide_severity(conf, conf.client_errors_severity, message)
+    end
   end
 
   return decide_severity(conf, conf.successful_severity, message)
