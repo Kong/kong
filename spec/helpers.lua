@@ -182,6 +182,7 @@ local config_yml
 -- @name each_strategy
 -- @param strategies (optional string array) explicit list of strategies to use,
 -- defaults to `{ "postgres", "cassandra" }`.
+-- @see all_strategies
 -- @usage
 -- -- repeat all tests for each strategy
 -- for _, strategy_name in helpers.each_strategy() do
@@ -191,13 +192,71 @@ local config_yml
 --
 --   end)
 -- end
-local each_strategy do
-  local default_strategies = {"postgres", "cassandra"}
+local function each_strategy() -- luacheck: ignore   -- required to trick ldoc into processing for docs
+end
+
+--- Iterator over all strategies, the DB ones and the DB-less one.
+-- To test with DB-less, check the example.
+-- @function all_strategies
+-- @param strategies (optional string array) explicit list of strategies to use,
+-- defaults to `{ "postgres", "cassandra", "off" }`.
+-- @see each_strategy
+-- @see write_declarative_config
+-- @usage
+-- -- example of using DB-less testing
+--
+-- -- use "all_strategies" to iterate over; "postgres", "cassandra", "off"
+-- for _, strategy in helpers.all_strategies() do
+--   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
+--
+--     lazy_setup(function()
+--
+--       -- when calling "get_db_utils" with "strategy=off", we still use
+--       -- "postgres" so we can write the test setup to the database.
+--       local bp = helpers.get_db_utils(
+--                      strategy == "off" and "postgres" or strategy,
+--                      nil, { PLUGIN_NAME })
+--
+--       -- Inject a test route, when "strategy=off" it will still be written
+--       -- to Postgres.
+--       local route1 = bp.routes:insert({
+--         hosts = { "test1.com" },
+--       })
+--
+--       -- start kong
+--       assert(helpers.start_kong({
+--         -- set the strategy
+--         database   = strategy,
+--         nginx_conf = "spec/fixtures/custom_nginx.template",
+--         plugins = "bundled," .. PLUGIN_NAME,
+--
+--         -- The call to "write_declarative_config" will write the contents of
+--         -- the database to a temporary file, which filename is returned.
+--         -- But only when "strategy=off".
+--         declarative_config = strategy == "off" and helpers.write_declarative_config() or nil,
+--
+--         -- the below lines can be omitted, but are just to prove that the test
+--         -- really runs DB-less despite that Postgres was used as intermediary
+--         -- storage.
+--         pg_host = strategy == "off" and "unknownhost.konghq.com" or nil,
+--         cassandra_contact_points = strategy == "off" and "unknownhost.konghq.com" or nil,
+--       }))
+--     end)
+--
+--     ... rest of your test file
+local function all_strategies() -- luacheck: ignore   -- required to trick ldoc into processing for docs
+end
+
+do
+  local def_db_strategies = {"postgres", "cassandra"}
+  local def_all_strategies = {"postgres", "cassandra", "off"}
   local env_var = os.getenv("KONG_DATABASE")
   if env_var then
-    default_strategies = { env_var }
+    def_db_strategies = { env_var }
+    def_all_strategies = { env_var }
   end
-  local available_strategies = pl_Set(default_strategies)
+  local db_available_strategies = pl_Set(def_db_strategies)
+  local all_available_strategies = pl_Set(def_all_strategies)
 
   local function iter(strategies, i)
     i = i + 1
@@ -209,11 +268,24 @@ local each_strategy do
 
   each_strategy = function(strategies)
     if not strategies then
-      return iter, default_strategies, 0
+      return iter, def_db_strategies, 0
     end
 
     for i = #strategies, 1, -1 do
-      if not available_strategies[strategies[i]] then
+      if not db_available_strategies[strategies[i]] then
+        table.remove(strategies, i)
+      end
+    end
+    return iter, strategies, 0
+  end
+
+  all_strategies = function(strategies)
+    if not strategies then
+      return iter, def_all_strategies, 0
+    end
+
+    for i = #strategies, 1, -1 do
+      if not all_available_strategies[strategies[i]] then
         table.remove(strategies, i)
       end
     end
@@ -2508,6 +2580,21 @@ local function restart_kong(env, tables, fixtures)
 end
 
 
+--- Creates a temporary declarative config file from the current db contents.
+-- This can be used in combo with the `all_strategies` iterator to ensure the
+-- test config is automatically generated from the DB using the regular helpers.
+-- @function write_declarative_file
+-- @return filename of the written config file (format will be yaml)
+-- @see all_strategies
+local function write_declarative_config()
+  local filename = pl_path.tmpname() .. ".yml"
+  os.remove(filename)
+  assert(kong_exec("config db_export "..filename))
+  return filename
+end
+
+
+
 ----------------
 -- Variables/constants
 -- @section exported-fields
@@ -2609,7 +2696,9 @@ end
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = each_strategy,
+  all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
+  write_declarative_config = write_declarative_config,
 
   -- miscellaneous
   intercept = intercept,
