@@ -8,7 +8,7 @@ local https_server = helpers.https_server
 
 
 for _, strategy in helpers.each_strategy() do
-  local bp
+  local bp, db
 
   local DB_UPDATE_PROPAGATION = strategy == "cassandra" and 0.1 or 0
   local DB_UPDATE_FREQUENCY   = strategy == "cassandra" and 0.1 or 0.1
@@ -23,12 +23,15 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Healthcheck #" .. strategy, function()
     lazy_setup(function()
-      bp = bu.get_db_utils_for_dc_and_admin_api(strategy, {
+      bp, db = bu.get_db_utils_for_dc_and_admin_api(strategy, {
         "routes",
         "services",
         "plugins",
         "upstreams",
         "targets",
+      }, {
+        "worker-events-poll",
+        "fail-once-auth",
       })
 
       local fixtures = {
@@ -73,6 +76,10 @@ for _, strategy in helpers.each_strategy() do
         address = "127.0.0.2",
       }
 
+      db.plugins:insert({
+        name = "worker-events-poll",
+      })
+
       assert(helpers.start_kong({
         database   = strategy,
         dns_resolver = "127.0.0.1",
@@ -81,6 +88,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         db_update_frequency = DB_UPDATE_FREQUENCY,
         db_update_propagation = DB_UPDATE_PROPAGATION,
+        plugins = "bundled,fail-once-auth,worker-events-poll"
       }, nil, nil, fixtures))
 
     end)
@@ -361,11 +369,14 @@ for _, strategy in helpers.each_strategy() do
 
 
     lazy_setup(function()
-      bp = bu.get_db_utils_for_dc_and_admin_api(strategy, {
+      bp, db = bu.get_db_utils_for_dc_and_admin_api(strategy, {
         "services",
         "routes",
         "upstreams",
         "targets",
+      }, {
+        "worker-events-poll",
+        "fail-once-auth",
       })
 
       local fixtures = {
@@ -377,6 +388,10 @@ for _, strategy in helpers.each_strategy() do
         address = "127.0.0.1",
       }
 
+      db.plugins:insert({
+        name = "worker-events-poll",
+      })
+
       assert(helpers.start_kong({
         database   = strategy,
         admin_listen = default_admin_listen,
@@ -387,7 +402,7 @@ for _, strategy in helpers.each_strategy() do
         client_ssl_cert_key = "spec/fixtures/kong_spec.key",
         db_update_frequency = 0.1,
         stream_listen = "off",
-        plugins = "bundled,fail-once-auth",
+        plugins = "bundled,fail-once-auth,worker-events-poll",
       }, nil, nil, fixtures))
     end)
 
@@ -469,11 +484,18 @@ for _, strategy in helpers.each_strategy() do
   describe("Ring-balancer #" .. strategy, function()
 
     lazy_setup(function()
-      bp = bu.get_db_utils_for_dc_and_admin_api(strategy, {
+      bp, db = bu.get_db_utils_for_dc_and_admin_api(strategy, {
         "services",
         "routes",
         "upstreams",
         "targets",
+      }, {
+        "fail-once-auth",
+        "worker-events-poll",
+      })
+
+      db.plugins:insert({
+        name = "worker-events-poll",
       })
 
       assert(helpers.start_kong({
@@ -486,7 +508,7 @@ for _, strategy in helpers.each_strategy() do
         stream_listen = "off",
         db_update_frequency = DB_UPDATE_FREQUENCY,
         db_update_propagation = DB_UPDATE_PROPAGATION,
-        plugins = "bundled,fail-once-auth",
+        plugins = "bundled,fail-once-auth,worker-events-poll",
       }))
     end)
 
@@ -512,6 +534,7 @@ for _, strategy in helpers.each_strategy() do
           log_level = "debug",
           db_update_frequency = DB_UPDATE_FREQUENCY,
           db_update_propagation = DB_UPDATE_PROPAGATION,
+          plugins = "bundled,fail-once-auth,worker-events-poll",
         })
       end)
 
@@ -1053,7 +1076,7 @@ for _, strategy in helpers.each_strategy() do
                 lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
                 db_update_frequency = 0.1,
                 stream_listen = "off",
-                plugins = "bundled,fail-once-auth",
+                plugins = "bundled,fail-once-auth,worker-events-poll",
               }, nil, fixtures)
               bu.end_testcase_setup(strategy, bp)
 
@@ -1481,7 +1504,7 @@ for _, strategy in helpers.each_strategy() do
                   lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
                   db_update_frequency = 0.1,
                   stream_listen = "off",
-                  plugins = "bundled,fail-once-auth",
+                  plugins = "bundled,fail-once-auth,worker-events-poll",
                 }, nil, fixtures)
                 bu.end_testcase_setup(strategy, bp)
 
@@ -1590,7 +1613,7 @@ for _, strategy in helpers.each_strategy() do
                   lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
                   db_update_frequency = 0.1,
                   stream_listen = "off",
-                  plugins = "bundled,fail-once-auth",
+                  plugins = "bundled,fail-once-auth,worker-events-poll",
                 }, nil, fixtures)
                 bu.end_testcase_setup(strategy, bp)
 
@@ -1813,7 +1836,7 @@ for _, strategy in helpers.each_strategy() do
                 lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
                 db_update_frequency = 0.1,
                 stream_listen = "off",
-                plugins = "bundled,fail-once-auth",
+                plugins = "bundled,fail-once-auth,worker-events-poll",
               })
               bu.end_testcase_setup(strategy, bp)
 
