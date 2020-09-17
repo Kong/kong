@@ -13,11 +13,14 @@ local PLUGIN_VERSION = require("kong.plugins.exit-transformer").PLUGIN_VERSION
 
 local function get_conf()
   -- Gets plugin configuration for the ctx, no matter the priority
-  local workspace = workspaces.get_workspace()
+
+  -- detect if it's an "unknown" call, so no service. We used to rely on
+  -- request having no workspace context
+  local unknown = kong.router.get_route() == nil
+
   -- Not really needed, but a hack because get_workspace might return an
   -- empty {} to signal... something? AFAIK, this is fixed on 2.0 already,
   -- this solution makes it so it won't work on neither version of kong.
-  local workspace_id = workspace and workspace.id
 
   local plugins_iterator = runloop_handler.get_plugins_iterator()
 
@@ -31,7 +34,7 @@ local function get_conf()
     -- already have a config. Since plugin confs applying globally on
     -- different workspaces would collide here and rely only on the first
     -- match
-    if not workspace_id and not plugin_conf.handle_unknown then
+    if unknown and not plugin_conf.handle_unknown then
       goto continue
     end
 
