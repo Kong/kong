@@ -100,6 +100,9 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       hosts = { "test23.test" },
       paths = { "/request" }
     })
+    local route24 = bp.routes:insert({
+      hosts = { "test24.test" }
+    })
 
     bp.plugins:insert {
       route = { id = route1.id },
@@ -378,6 +381,16 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       route = { id = route23.id },
       name = "request-transformer",
       config = {}
+    }
+
+    bp.plugins:insert {
+      route = { id = route24.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          headers = { "x-user-agent:$(type(headers[\"User-Agent\"]) == \"table\" and headers[\"User-Agent\"][1] or headers[\"User-Agent\"])", },
+        },
+      }
     }
 
     assert(helpers.start_kong({
@@ -1810,6 +1823,26 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
         }
       })
       assert.response(r).has.status(500)
+    end)
+    it("rendering error is correctly propagated in error.log, issue #25", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "test24.test",
+        }
+      })
+      assert.response(r).has.status(500)
+
+      helpers.wait_until(function()
+        local pl_file = require "pl.file"
+
+        local cfg = helpers.test_conf
+        local logs = pl_file.read(cfg.prefix .. "/" .. cfg.proxy_error_log)
+        local _, count = logs:gsub([[error:%[string "TMP"%]:4: attempt to call global 'type' %(a nil value%)]], "")
+
+        return count == 2
+      end, 5)
     end)
     it("can inject a value from 'kong.ctx.shared'", function()
       local r = assert(client:send {

@@ -149,12 +149,12 @@ local function iter(config_array)
 
     local res, err = param_value(current_value, config_array)
     if err then
-      return error("[request-transformer] failed to render the template ",
-        current_value, ", error:", err)
+      return error("[request-transformer] failed to render the template " ..
+                   current_value .. ", error:" .. err)
     end
 
     kong.log.debug("[request-transformer] template `", current_value,
-      "` rendered to `", res, "`")
+                   "` rendered to `", res, "`")
 
     return i, current_name, res
   end, config_array, 0
