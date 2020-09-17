@@ -99,6 +99,9 @@ local __meta_environment = {
 template_environment = setmetatable({
   -- here we can optionally add functions to expose to the sandbox, eg:
   -- tostring = tostring,  -- for example
+  -- because headers may contain array elements such as duplicated headers
+  -- type is a useful function in these cases. See issue #25.
+  type = type,
 }, __meta_environment)
 
 local function clear_environment(conf)

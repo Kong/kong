@@ -103,6 +103,9 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
     local route24 = bp.routes:insert({
       hosts = { "test24.test" }
     })
+    local route25 = bp.routes:insert({
+      hosts = { "test25.test" }
+    })
 
     bp.plugins:insert {
       route = { id = route1.id },
@@ -388,7 +391,17 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       name = "request-transformer",
       config = {
         add = {
-          headers = { "x-user-agent:$(type(headers[\"User-Agent\"]) == \"table\" and headers[\"User-Agent\"][1] or headers[\"User-Agent\"])", },
+          headers = { "x-user-agent:$(foo(headers[\"User-Agent\"]) == \"table\" and headers[\"User-Agent\"][1] or headers[\"User-Agent\"])", },
+        },
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route25.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          headers = { "X-Foo-Transformed:$(type(headers[\"X-Foo\"]) == \"table\" and headers[\"X-Foo\"][1] .. \"-first\" or headers[\"X-Foo\"])", },
         },
       }
     }
@@ -1839,10 +1852,24 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
 
         local cfg = helpers.test_conf
         local logs = pl_file.read(cfg.prefix .. "/" .. cfg.proxy_error_log)
-        local _, count = logs:gsub([[error:%[string "TMP"%]:4: attempt to call global 'type' %(a nil value%)]], "")
+        local _, count = logs:gsub([[error:%[string "TMP"%]:4: attempt to call global 'foo' %(a nil value%)]], "")
 
         return count == 2
       end, 5)
+    end)
+    it("type function is available in template environment", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test25.test",
+          ["X-Foo"] = { "1", "2", },
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local h_h1 = assert.request(r).has.header("X-Foo-Transformed")
+      assert.equals("1-first", h_h1)
     end)
     it("can inject a value from 'kong.ctx.shared'", function()
       local r = assert(client:send {
