@@ -1543,6 +1543,32 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
   data = tablex.deepcopy(data)
 
+  if self.shorthand_fields then
+    local errs = {}
+    for _, shorthand in ipairs(self.shorthand_fields) do
+      local sname, sdata = next(shorthand)
+      local value = data[sname]
+      if value ~= nil then
+        local _, err = self:validate_field(sdata, value)
+        if err then
+          errs[sname] = err
+        else
+          data[sname] = nil
+          local new_values = sdata.func(value)
+          if new_values then
+            for k, v in pairs(new_values) do
+              data[k] = v
+            end
+          end
+        end
+      end
+    end
+    if next(errs) then
+      return nil, errs
+    end
+  end
+
+  -- deprecated
   if self.shorthands then
     for _, shorthand in ipairs(self.shorthands) do
       local sname, sfunc = next(shorthand)
