@@ -85,10 +85,12 @@ end
 
 local field_entity_checks = {
   -- if 'unique_across_ws' is set, then 'unique' must be set too
-  conditional = {
-    if_field = "unique_across_ws", if_match = { eq = true },
-    then_field = "unique", then_match = { eq = true, required = true },
-  }
+  {
+    conditional = {
+      if_field = "unique_across_ws", if_match = { eq = true },
+      then_field = "unique", then_match = { eq = true, required = true },
+    }
+  },
 }
 
 local fields_array = {
