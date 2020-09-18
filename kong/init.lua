@@ -70,6 +70,7 @@ local dns = require "kong.tools.dns"
 local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
+local stream_api = require "kong.tools.stream_api"
 local clustering = require "kong.clustering"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
@@ -1372,6 +1373,26 @@ function Kong.serve_cluster_listener(options)
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
   return clustering.handle_cp_websocket()
+end
+
+
+local stream_plugins_api_loaded = false
+function Kong.stream_api()
+  if not stream_plugins_api_loaded then
+    local utils = require "kong.tools.utils"
+
+    for plugin_name in pairs(kong.configuration.loaded_plugins) do
+      local loaded, custom_endpoints = utils.load_module_if_exists("kong.plugins." .. plugin_name .. ".api")
+      if loaded and custom_endpoints._stream then
+        ngx.log(ngx.DEBUG, "Register stream api for plugin: ", plugin_name)
+        stream_api.register(plugin_name, custom_endpoints._stream)
+        custom_endpoints._stream = nil
+      end
+    end
+    stream_plugins_api_loaded = true
+  end
+
+  stream_api.handle()
 end
 
 

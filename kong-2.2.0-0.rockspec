@@ -129,6 +129,7 @@ build = {
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
+    ["kong.tools.stream_api"] = "kong/tools/stream_api.lua",
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
