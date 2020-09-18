@@ -90,7 +90,7 @@ do
   for _, dao in pairs(singletons.db.daos) do
     if dao.schema.generate_admin_api ~= false and
       not dao.schema.legacy
-      and ee.featureset().abilities[dao.schema.name] ~= false
+      and ee.license_can("mount_admin_api_for_" .. schema.name)
     then
       routes = Endpoints.new(dao.schema, routes)
     end
@@ -101,7 +101,7 @@ do
     local schema = dao.schema
     local ok, custom_endpoints = utils.load_module_if_exists("kong.api.routes." .. schema.name)
     if ok
-      and ee.featureset().abilities[schema.name] ~= false
+      and ee.license_can("mount_admin_api_for_" .. schema.name)
     then
       customize_routes(routes, custom_endpoints, schema)
     end
