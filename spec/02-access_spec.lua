@@ -1824,7 +1824,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       })
       assert.response(r).has.status(500)
     end)
-    it("rendering error is correctly propagated in error.log, issue #25", function()
+    pending("rendering error is correctly propagated in error.log, issue #25", function()
       local r = assert(client:send {
         method = "GET",
         path = "/",
