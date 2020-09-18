@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.1.4](#214)
 - [2.1.3](#213)
 - [2.1.2](#212)
 - [2.1.1](#211)
@@ -48,6 +49,43 @@
 - [0.9.9 and prior](#099---20170202)
 
 
+## [2.1.4]
+
+> Released 2020/09/18
+
+This is a patch release in the 2.0 series. Being a patch release, it strictly
+contains bugfixes. The are no new features or breaking changes.
+
+### Fixes
+
+##### Core
+
+- Fix issue where `kong reload` would occasionally leave stale workers locked
+  at 100% CPU.
+  [#6300](https://github.com/Kong/kong/pull/6300)
+- Hybrid Mode: more informative error message when the Control Plane cannot
+  be reached.
+  [#6267](https://github.com/Kong/kong/pull/6267)
+
+##### CLI
+
+- `kong hybrid gen_cert` now reports "permission denied" errors correctly
+  when it fails to write the certificate files.
+  [#6368](https://github.com/Kong/kong/pull/6368)
+
+##### Plugins
+
+- acl: bumped to 3.0.1
+  * Fix regression in a scenario where an ACL plugin with a `deny` clause
+    was configured for a group that does not exist would cause a HTTP 401
+    when an authenticated plugin would match the anonymous consumer. The
+    behavior is now restored to that seen in Kong 1.x and 2.0.
+    [#6354](https://github.com/Kong/kong/pull/6354)
+- request-transformer: bumped to 1.2.7
+  * Fix the construction of the error message when a template throws a Lua error.
+    [#26](https://github.com/Kong/kong-plugin-request-transformer/pull/26)
+
+
 ## [2.1.3]
 
 > Released 2020/08/19
@@ -81,7 +119,7 @@ contains bugfixes. The are no new features or breaking changes.
 
 - request-transformer: bump from v1.2.5 to v1.2.6
   * Fix an issue where query parameters would get incorrectly URL-encoded.
-    [#24](https://github.com/Kong/kong-plugin-aws-lambda/pull/35)
+    [#24](https://github.com/Kong/kong-plugin-request-transformer/pull/24)
 - acl: Fix migration of ACLs table for the Kong 2.1 series.
   [#6250](https://github.com/Kong/kong/pull/6250)
 
@@ -5331,6 +5369,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.1.4]: https://github.com/Kong/kong/compare/2.1.3...2.1.4
 [2.1.3]: https://github.com/Kong/kong/compare/2.1.2...2.1.3
 [2.1.2]: https://github.com/Kong/kong/compare/2.1.1...2.1.2
 [2.1.1]: https://github.com/Kong/kong/compare/2.1.0...2.1.1
