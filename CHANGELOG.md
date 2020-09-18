@@ -6,6 +6,8 @@
   Because headers may contain array elements such as duplicated headers,
   `type` is a useful function in these cases.
 
+## 1.2.7
+
 ### Fixed
 
 - Fix the construction of the error message when a template throws a Lua error.
