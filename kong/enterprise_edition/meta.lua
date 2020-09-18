@@ -4,7 +4,7 @@ local version = setmetatable({
   x = 1,
   y = 5,
   z = 0,
-  e = 5,
+  e = 6,
 }, {
   __tostring = function(t)
     return string.format("%d.%d.%d.%d", t.x, t.y, t.z, t.e)
