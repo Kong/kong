@@ -90,7 +90,7 @@ do
   for _, dao in pairs(singletons.db.daos) do
     if dao.schema.generate_admin_api ~= false and
       not dao.schema.legacy
-      and ee.license_can("mount_admin_api_for_" .. schema.name)
+      and ee.license_can("mount_admin_api_for_" .. dao.schema.name)
     then
       routes = Endpoints.new(dao.schema, routes)
     end

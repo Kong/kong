@@ -55,6 +55,31 @@ local function get_license_string()
 end
 
 
+local function license_expiration_time(license)
+  local expiration_date = license and
+    license.license               and
+    license.license.payload       and
+    license.license.payload.license_expiration_date
+
+  if not expiration_date or
+  not re_find(expiration_date, "^\\d{4}-\\d{2}-\\d{2}$") then
+    return
+  end
+
+  local date_t = split(expiration_date, "-")
+  local ok, res = pcall(os.time, {
+    year = tonumber(date_t[1]),
+    month = tonumber(date_t[2]),
+    day = tonumber(date_t[3])
+  })
+  if ok then
+    return res
+  end
+
+  return nil
+end
+
+
 function _M.read_license_info()
   local license_data = get_license_string()
   if not license_data then
@@ -72,7 +97,22 @@ end
 
 
 function _M.featureset()
-  return dist_constants.featureset[_M.read_license_info() and "full" or "free"]
+  local l_type
+  local expiration_time = license_expiration_time(_M.read_license_info())
+
+  if not expiration_time then
+    l_type = "free"
+  elseif expiration_time < ngx.time() then
+    l_type = "expired"
+  else
+    l_type = "full"
+  end
+
+  return dist_constants.featureset[l_type] or dist_constants.featureset["free"]
+end
+
+function _M.license_can(ability)
+  return not (_M.featureset().abilities[ability] == false)
 end
 
 
@@ -127,24 +167,8 @@ local function license_notification_handler(premature, expiration_time)
   log_license_state(expiration_time, ngx.time())
 end
 
-
 local function report_expired_license()
-  local expiration_date = kong.license and
-    kong.license.license               and
-    kong.license.license.payload       and
-    kong.license.license.payload.license_expiration_date
-
-  if not expiration_date or
-     not re_find(expiration_date, "^\\d{4}-\\d{2}-\\d{2}$") then
-    return
-  end
-
-  local date_t = split(expiration_date, "-")
-  local expiration_time = os.time({
-    year = tonumber(date_t[1]),
-    month = tonumber(date_t[2]),
-    day = tonumber(date_t[3])
-  })
+  local expiration_time = license_expiration_time(kong.license)
 
   timer_at(0,
            license_notification_handler,
