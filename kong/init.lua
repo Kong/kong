@@ -67,6 +67,7 @@ _G.kong = kong_global.new() -- no versioned PDK for plugins for now
 
 local DB = require "kong.db"
 local dns = require "kong.tools.dns"
+local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
 local clustering = require "kong.clustering"
@@ -1330,8 +1331,18 @@ function Kong.admin_header_filter()
     end
   end
 
-  if kong.configuration.enabled_headers[constants.HEADERS.ADMIN_LATENCY] then
-    header[constants.HEADERS.ADMIN_LATENCY] = ctx.KONG_ADMIN_LATENCY
+  local enabled_headers = kong.configuration.enabled_headers
+  local headers = constants.HEADERS
+
+  if enabled_headers[headers.ADMIN_LATENCY] then
+    header[headers.ADMIN_LATENCY] = ctx.KONG_ADMIN_LATENCY
+  end
+
+  if enabled_headers[headers.SERVER] then
+    header[headers.SERVER] = meta._SERVER_TOKENS
+
+  else
+    header[headers.SERVER] = nil
   end
 
   -- this is not used for now, but perhaps we need it later?
