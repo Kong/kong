@@ -1,9 +1,9 @@
 package = "kong-plugin-request-transformer"
-version = "1.2.6-0"
+version = "1.2.7-0"
 
 source = {
   url = "git://github.com/Kong/kong-plugin-request-transformer",
-  tag = "1.2.6"
+  tag = "1.2.7"
 }
 
 supported_platforms = {"linux", "macosx"}
