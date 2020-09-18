@@ -1,4 +1,10 @@
-## 1.2.7
+## 1.3.0
+
+### Added
+
+- Include the `type` function in template environment.
+  Because headers may contain array elements such as duplicated headers,
+  `type` is a useful function in these cases.
 
 ### Fixed
 
