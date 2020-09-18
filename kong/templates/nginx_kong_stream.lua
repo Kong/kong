@@ -133,4 +133,13 @@ server {
 }
 > end -- database == "off"
 > end -- #stream_listeners > 0
+
+> if stream_api then
+server {
+    listen $(stream_api);
+    content_by_lua_block {
+        Kong.stream_api()
+    }
+}
+> end -- stream_api
 ]]

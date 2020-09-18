@@ -70,6 +70,7 @@ local dns = require "kong.tools.dns"
 local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
+local stream_api = require "kong.tools.stream_api"
 local clustering = require "kong.clustering"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
@@ -1372,6 +1373,11 @@ function Kong.serve_cluster_listener(options)
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
   return clustering.handle_cp_websocket()
+end
+
+
+function Kong.stream_api()
+  stream_api.serve()
 end
 
 
