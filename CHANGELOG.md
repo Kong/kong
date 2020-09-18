@@ -1,3 +1,10 @@
+## 1.2.7
+
+### Fixed
+
+- Fix the construction of the error message when a template throws a Lua error.
+  [#25](https://github.com/Kong/kong-plugin-request-transformer/issues/25)
+
 ## 1.2.6
 
 ### Fixed
