@@ -151,6 +151,8 @@ pg_ssl_verify = off
 pg_ssl_version = tlsv1
 pg_max_concurrent_queries = 0
 pg_semaphore_timeout = 60000
+pg_keepalive_timeout = 60000
+
 cassandra_contact_points = 127.0.0.1
 cassandra_port = 9042
 cassandra_keyspace = kong

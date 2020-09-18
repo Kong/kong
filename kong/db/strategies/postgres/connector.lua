@@ -222,7 +222,7 @@ local function connect(config)
       "SET TIME ZONE ", connection:escape_literal("UTC"), ";",
     })
     if not ok then
-      setkeepalive(connection)
+      setkeepalive(connection, config.keepalive_timeout)
       return nil, err
     end
   end
@@ -231,7 +231,7 @@ local function connect(config)
 end
 
 
-setkeepalive = function(connection)
+setkeepalive = function(connection, keepalive_timeout)
   if not connection or not connection.sock then
     return true
   end
@@ -243,7 +243,7 @@ setkeepalive = function(connection)
     end
 
   else
-    local _, err = connection:keepalive()
+    local _, err = connection:keepalive(keepalive_timeout)
     if err then
       return nil, err
     end
@@ -453,13 +453,14 @@ function _mt:close()
 end
 
 
-function _mt:setkeepalive()
-  local conn = self:get_stored_connection()
+function _mt:setkeepalive(connection)
+  local conn = connection or self:get_stored_connection()
+
   if not conn then
     return true
   end
 
-  local _, err = setkeepalive(conn)
+  local _, err = setkeepalive(conn, self.config.keepalive_timeout)
 
   self:store_connection(nil)
 
@@ -531,7 +532,7 @@ function _mt:query(sql)
 
     res, err, partial, num_queries = connection:query(sql)
 
-    setkeepalive(connection)
+    self:setkeepalive(connection)
   end
 
   self:release_query_semaphore_resource()
@@ -2052,6 +2053,7 @@ function _M.new(kong_config)
     ssl_required = kong_config.pg_ssl_required,
     ssl_verify = kong_config.pg_ssl_verify,
     ssl_version = kong_config.pg_ssl_version,
+    keepalive_timeout = kong_config.pg_keepalive_timeout,
     cafile     = kong_config.lua_ssl_trusted_certificate,
     sem_max     = kong_config.pg_max_concurrent_queries or 0,
     sem_timeout = (kong_config.pg_semaphore_timeout or 60000) / 1000,

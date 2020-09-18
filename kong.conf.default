@@ -650,6 +650,9 @@
                                  # Detailed discussion of this behavior is
                                  # available in the online documentation.
 
+#pg_keepalive_timeout = 60000    # Defines the time in milliseconds that an idle connection to
+                                 # PostreSQL server will be kept alive.
+
 #cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
                                        # points to your cluster.
                                        # You may specify IP addresses or
