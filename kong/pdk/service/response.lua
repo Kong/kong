@@ -29,7 +29,8 @@ cjson.decode_array_with_array_mt(true)
 local PHASES = phase_checker.phases
 
 
-local header_body_log = phase_checker.new(PHASES.header_filter,
+local header_body_log = phase_checker.new(PHASES.response,
+                                          PHASES.header_filter,
                                           PHASES.body_filter,
                                           PHASES.log)
 
@@ -149,8 +150,9 @@ local function new(pdk, major_version)
   function response.get_status()
     check_phase(header_body_log)
 
-    if pdk.ctx.core.buffered_status then
-      return pdk.ctx.core.buffered_status
+    local ctx = ngx.ctx
+    if ctx.buffered_status then
+      return ctx.buffered_status
     end
 
     return tonumber(sub(ngx.var.upstream_status or "", -3))
@@ -193,7 +195,7 @@ local function new(pdk, major_version)
   function response.get_headers(max_headers)
     check_phase(header_body_log)
 
-    local buffered_headers = pdk.ctx.core.buffered_headers
+    local buffered_headers = ngx.ctx.buffered_headers
 
     if max_headers == nil then
       if buffered_headers then
@@ -276,12 +278,13 @@ local function new(pdk, major_version)
   -- local body = kong.service.response.get_raw_body()
   function response.get_raw_body()
     check_phase(header_body_log)
-    if not pdk.ctx.core.buffered_proxying then
+    local ctx = ngx.ctx
+    if not ctx.buffered_proxying then
       error("service body is only available with buffered proxying " ..
             "(see: kong.service.request.enable_buffering function)", 2)
     end
 
-    return pdk.ctx.core.buffered_body or ""
+    return ctx.buffered_body or ""
   end
 
 
@@ -301,7 +304,7 @@ local function new(pdk, major_version)
   -- local body = kong.service.response.get_body()
   function response.get_body(mimetype, max_args)
     check_phase(header_body_log)
-    if not pdk.ctx.core.buffered_proxying then
+    if not ngx.ctx.buffered_proxying then
       error("service body is only available with buffered proxying " ..
             "(see: kong.service.request.enable_buffering function)", 2)
     end
@@ -352,8 +355,17 @@ local function new(pdk, major_version)
     elseif find(content_type_lower, CONTENT_TYPE_FORM_DATA, 1, true) == 1 then
       local body = response.get_raw_body()
 
-      -- TODO: multipart library doesn't support multiple fields with same name
-      return multipart(body, content_type):get_all(), nil, CONTENT_TYPE_FORM_DATA
+      local parts = multipart(body, content_type)
+      if not parts then
+        return nil, "unable to decode multipart body", CONTENT_TYPE_FORM_DATA
+      end
+
+      local margs = parts:get_all_with_arrays()
+      if not margs then
+        return nil, "unable to read multipart values", CONTENT_TYPE_FORM_DATA
+      end
+
+      return margs, nil, CONTENT_TYPE_FORM_DATA
 
     else
       return nil, "unsupported content type '" .. content_type .. "'", content_type_lower

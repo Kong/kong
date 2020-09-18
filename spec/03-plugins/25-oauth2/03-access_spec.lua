@@ -359,6 +359,38 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         service     = service16,
       }))
 
+
+      local service_grpc = assert(admin_api.services:insert {
+          name = "grpc",
+          url = "grpc://localhost:15002",
+        })
+
+      local route_grpc = assert(admin_api.routes:insert {
+        protocols = { "grpc", "grpcs" },
+        hosts     = { "oauth2_grpc.com" },
+        paths = { "/hello.HelloService/SayHello" },
+        service = service_grpc,
+      })
+
+      local route_provgrpc = assert(admin_api.routes:insert {
+        hosts     = { "oauth2_grpc.com" },
+        paths = { "/" },
+        service = service_grpc,
+      })
+
+      admin_api.oauth2_plugins:insert({
+        route = { id = route_grpc.id },
+        config   = {
+          scopes = { "email", "profile", "user.email" },
+        },
+      })
+      admin_api.oauth2_plugins:insert({
+        route = { id = route_provgrpc.id },
+        config   = {
+          scopes = { "email", "profile", "user.email" },
+        },
+      })
+
       admin_api.oauth2_plugins:insert({
         route = { id = route1.id },
         config   = { scopes = { "email", "profile", "user.email" } },
@@ -527,6 +559,18 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           assert.are.equal("no-store", res.headers["cache-control"])
           assert.are.equal("no-cache", res.headers["pragma"])
         end)
+
+        it("rejects gRPC call without credentials", function()
+          local ok, err = helpers.proxy_client_grpcs(){
+            service = "hello.HelloService.SayHello",
+            opts = {
+              ["-authority"] = "oauth2.com",
+            },
+          }
+          assert.falsy(ok)
+          assert.match("Code: Unauthenticated", err)
+        end)
+
         it("returns an error when no parameter is being sent", function()
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
@@ -2761,6 +2805,22 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.are.equal(nil, body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
+
+      it("accepts gRPC call with credentials", function()
+        local token = provision_token("oauth2_grpc.com")
+
+        local ok, res = helpers.proxy_client_grpcs(){
+          service = "hello.HelloService.SayHello",
+          opts = {
+            ["-authority"] = "oauth2_grpc.com",
+            ["-H"] = ("'authorization: bearer %s'"):format(token.access_token),
+          },
+        }
+        assert.truthy(ok)
+        assert.same({ reply = "hello noname" }, cjson.decode(res))
+      end)
+
+
       it("returns HTTP 400 when scope is not a string", function()
         local invalid_values = {
           { "email" },

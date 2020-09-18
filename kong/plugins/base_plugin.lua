@@ -26,6 +26,10 @@ if subsystem == "http" then
     ngx_log(DEBUG, "executing plugin \"", self._name, "\": access")
   end
 
+  function BasePlugin:response()
+   ngx_log(DEBUG, "executing plugin \"", self._name, "\": response")
+  end
+
   function BasePlugin:header_filter()
     ngx_log(DEBUG, "executing plugin \"", self._name, "\": header_filter")
   end

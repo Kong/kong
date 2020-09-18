@@ -29,6 +29,7 @@ addons:
   hosts:
     - grpcs_1.test
     - grpcs_2.test
+    - grpcbin
 
 env:
   global:
@@ -55,11 +56,9 @@ env:
     - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins-ee
     # enterprise matrix end
     - KONG_TEST_DATABASE=postgres TEST_SUITE=integration
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=integration
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=integration
     - KONG_TEST_DATABASE=off TEST_SUITE=dbless
     - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=2.2 TEST_SUITE=plugins
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=plugins
     - TEST_SUITE=pdk
 
@@ -91,10 +90,10 @@ jobs:
     - stage: lint and unit
       script:
       - make lint
-      # - scripts/autodoc-admin-api
+      # - scripts/autodoc
       - bin/busted -v -o htest spec/01-unit --exclude-tags=flaky
       - bin/busted -v -o htest spec-ee/01-unit --exclude-tags=flaky
-      - scripts/autodoc-admin-api
+      - scripts/autodoc
       env:
         - KONG_DATABASE=none
     # package as a test step, to see if this commit breaks our packaging
