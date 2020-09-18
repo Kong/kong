@@ -10,6 +10,9 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "clustering_data_planes",
+        "upstreams",
+        "targets",
+        "certificates",
       }) -- runs migrations
 
       assert(helpers.start_kong({
