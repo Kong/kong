@@ -57,6 +57,8 @@ for _, strategy in helpers.each_strategy() do
 
           for _, v in pairs(json.data) do
             if v.ip == "127.0.0.1" then
+              assert.near(14 * 86400, v.ttl, 3)
+
               return true
             end
           end
