@@ -323,8 +323,7 @@
                          # Not all `*_listen` values accept all formats
                          # specified in nginx's documentation.
 
-#proxy_url =
-                        # Kong Proxy URL
+#proxy_url =            # Kong Proxy URL
                         #
                         # Here you may provide the lookup, or balancer,
                         # address for your Kong Proxy nodes.
@@ -332,24 +331,19 @@
                         # This value is commonly used in a microservices
                         # or service-mesh oriented architecture.
                         #
-                        # Accepted format (parts in parenthesis are optional):
+                        # Accepted format (parts in parentheses are optional):
                         #
-                        #   <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
+                        #   `<scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))`
                         #
                         # Examples:
                         #
-                        #   - <scheme>://<IP>:<PORT>
-                        #     proxy_url = http://127.0.0.1:8000
-                        #   - SSL <scheme>://<HOSTNAME>
-                        #     proxy_url = https://proxy.domain.tld
-                        #   - <scheme>://<HOSTNAME>/<PATH>
-                        #     proxy_url = http://dev-machine/dev-285
+                        # - `<scheme>://<IP>:<PORT>` -> `proxy_url = http://127.0.0.1:8000`
+                        # - `SSL <scheme>://<HOSTNAME>` -> `proxy_url = https://proxy.domain.tld`
+                        # - `<scheme>://<HOSTNAME>/<PATH>` -> `proxy_url = http://dev-machine/dev-285`
                         #
-                        # By default:
-                        #
-                        #  Kong Manager, and Kong Portal will use
-                        #  the window request host and append the resolved
-                        #  listener port depending on the requested protocol.
+                        # By default, Kong Manager, and Kong Portal will use
+                        # the window request host and append the resolved
+                        # listener port depending on the requested protocol.
 
 #stream_listen = off
                          # Comma-separated list of addresses and ports on
@@ -946,7 +940,7 @@
 #pg_ro_ssl = <pg_ssl>            # Same as `pg_ssl`, but for the
                                  # read-only connection.
 
-#pg_ro_ssl_required = <pg_ssl_required>  
+#pg_ro_ssl_required = <pg_ssl_required>
                                  # Same as `pg_ssl_required`, but for the
                                  # read-only connection.
 
@@ -954,7 +948,7 @@
                                  # Same as `pg_ssl_verify`, but for the
                                  # read-only connection.
 
-#pg_ro_ssl_version = <pg_ssl_version>       
+#pg_ro_ssl_version = <pg_ssl_version>
                                  # Same as `pg_ssl_version`, but for the
                                  # read-only connection.
 
@@ -1314,20 +1308,25 @@
                                  #
                                  # See https://github.com/openresty/lua-nginx-module#lua_socket_pool_size
 
-#enforce_rbac = off              # Specifies whether Admin API RBAC is enforced;
-                                 # accepts one of 'entity', 'both', 'on', or
-                                 # 'off'. When 'on' is passed, only
-                                 # endpoint-level authorization is enforced;
-                                 # when 'entity' is passed, entity-level
-                                 # authorization applies; 'both' enables both
-                                 # endpoint and entity-level authorization;
-                                 # 'off' disables both. When enabled, Kong will
-                                 # deny requests to the Admin API when a
-                                 # nonexistent or invalid RBAC authorization
-                                 # token is passed, or the RBAC user with which
-                                 # the token is associated does not have
-                                 # permissions to access/modify the requested
-                                 # resource.
+#enforce_rbac = off              # Specifies whether Admin API RBAC is enforced.
+                                 # Accepts one of `entity`, `both`, `on`, or
+                                 # `off`.
+                                 #
+                                 # - `on`: only endpoint-level authorization
+                                 #   is enforced.
+                                 # - `entity`: entity-level authorization
+                                 #   applies.
+                                 # - `both`: enables both endpoint and
+                                 #   entity-level authorization.
+                                 # - `off`: disables both endpoint and
+                                 #   entity-level authorization.
+                                 #
+                                 # When enabled, Kong will deny requests to the
+                                 # Admin API when a nonexistent or invalid RBAC
+                                 # authorization token is passed, or the RBAC
+                                 # user with which the token is associated does
+                                 # not have permissions to access/modify the
+                                 # requested resource.
 
 
 #rbac_auth_header = Kong-Admin-Token  # Defines the name of the HTTP request
@@ -1336,10 +1335,10 @@
 
 #------------------------------------------------------------------------------
 # KONG MANAGER
-#
-# The admin gui for Kong Enterprise
 #------------------------------------------------------------------------------
-
+#
+# The Admin GUI for Kong Enterprise.
+#
 #admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
                         # Kong Manager Listeners
                         #
@@ -1351,35 +1350,30 @@
                         # Suffixes can be specified for each pair, similarly to
                         # the `admin_listen` directive.
 
-#admin_gui_url =
-                        # Kong Manager URL
+#admin_gui_url =        # Kong Manager URL
                         #
                         # Here you may provide the lookup, or balancer,
                         # address for Kong Manager.
                         #
-                        # Accepted format (items in parenthesis are optional):
+                        # Accepted format (items in parentheses are optional):
                         #
-                        #   <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
+                        #   `<scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))`
                         #
                         # Examples:
                         #
-                        #   - http://127.0.0.1:8003
-                        #   - https://kong-admin.test
-                        #   - http://dev-machine/dev-285
+                        # - `http://127.0.0.1:8003`
+                        # - `https://kong-admin.test`
+                        # - `http://dev-machine/dev-285`
                         #
-                        # By default:
-                        #
-                        #  Kong Manager will use the window request host and
-                        #  append the resolved listener port depending on the
-                        #  requested protocol.
+                        # By default, Kong Manager will use the window request
+                        # host and append the resolved listener port depending
+                        # on the requested protocol.
 
-#admin_gui_ssl_cert =
-                        # The absolute path to the SSL certificate for
+#admin_gui_ssl_cert =   # The absolute path to the SSL certificate for
                         # `admin_gui_listen` values with SSL enabled.
 
-#admin_gui_ssl_cert_key =
-                        # The absolute path to the SSL key for
-                        # `admin_gui_listen` values with SSL enabled.
+#admin_gui_ssl_cert_key = # The absolute path to the SSL key for
+                          # `admin_gui_listen` values with SSL enabled.
 
 #admin_gui_flags = {}
                         # Alters the layout Admin GUI (JSON)
@@ -1407,22 +1401,19 @@
                         # Granularity can be adjusted through the `log_level`
                         # directive.
 
-#admin_gui_auth =
-                        # Kong Manager Authentication Plugin Name
+#admin_gui_auth =       # Kong Manager Authentication Plugin Name
                         #
                         # Here you may secure access to Kong Manager by
                         # specifying an authentication plugin to use.
                         #
                         # Supported Plugins:
                         #
-                        # Value to Use          | Authentication Type
-                        # ----------------------+--------------------------
-                        # basic-auth            | Basic Authentication
-                        # ldap-auth-advanced    | LDAP Authentication
-                        # openid-connect        | OpenID Connect Authentication
+                        # - `basic-auth`: Basic Authentication plugin
+                        # - `ldap-auth-advanced`: LDAP Authentication plugin
+                        # - `openid-connect`: OpenID Connect Authentication
+                        #   plugin
 
-#admin_gui_auth_conf =
-                        # Kong Manager Authentication Plugin Config (JSON)
+#admin_gui_auth_conf =  # Kong Manager Authentication Plugin Config (JSON)
                         #
                         # Here you may specify the configuration for the
                         # authentication plugin you have chosen.
@@ -1432,30 +1423,33 @@
                         #
                         # Example for `basic-auth`:
                         #
-                        #  admin_gui_auth_conf = { "hide_credentials": true }
+                        # `admin_gui_auth_conf = { "hide_credentials": true }`
 
-#admin_gui_auth_password_complexity =
-                        # Kong Manager Authentication Password Complexity (JSON)
+#admin_gui_auth_password_complexity = # Kong Manager Authentication Password Complexity (JSON)
                         #
-                        # When admin_gui_auth = basic-auth, this property defines
+                        # When `admin_gui_auth = basic-auth`, this property defines
                         # the rules required for Kong Manager passwords. Choose
                         # from preset rules or write your own.
                         #
                         # Example using preset rules:
                         #
-                        # admin_gui_auth_password_complexity = { "kong-preset": "min_8" }
+                        # `admin_gui_auth_password_complexity = { "kong-preset": "min_8" }`
                         #
                         # All values for kong-preset require the password to contain
                         # characters from at least three of the following categories:
-                        # 1) Uppercase characters (A through Z)
-                        # 2) Lowercase characters (a through z)
-                        # 3) Base-10 digits (0 through 9)
-                        # 4) Special characters (for example, &, $, #, %)
                         #
-                        # Value to Use | Minimum Length
-                        # min_8        |     8
-                        # min_12       |    12
-                        # min_20       |    20
+                        # 1. Uppercase characters (A through Z)
+                        #
+                        # 2. Lowercase characters (a through z)
+                        #
+                        # 3. Base-10 digits (0 through 9)
+                        #
+                        # 4. Special characters (for example, &, $, #, %)
+                        #
+                        # Supported preset rules:
+                        # - `min_8`: minimum length of 8
+                        # - `min_12`: minimum length of 12
+                        # - `min_20`: minimum length of 20
                         #
                         # To write your own rules, see
                         # https://manpages.debian.org/jessie/passwdqc/passwdqc.conf.5.en.html.
@@ -1464,21 +1458,21 @@
                         #
                         # Example:
                         #
-                        # admin_gui_auth_password_complexity = { "min": "disabled,24,11,9,8" }
+                        # `admin_gui_auth_password_complexity = { "min": "disabled,24,11,9,8" }`
 
-#admin_gui_session_conf =
-                        # Kong Manager Session Config (JSON)
-                        #
-                        # Here you may specify the configuration for the
-                        # Session plugin as used by Kong Manager.
-                        #
-                        # For information about Plugin Configuration consult
-                        # the Kong Session Plugin documentation.
-                        #
-                        # Example:
-                        #
-                        # admin_gui_session_conf = { "cookie_name": "kookie", \
-                        #                            "secret": "changeme" }
+#admin_gui_session_conf = # Kong Manager Session Config (JSON)
+                          #
+                          # Here you may specify the configuration for the
+                          # Session plugin as used by Kong Manager.
+                          #
+                          # For information about plugin configuration, consult
+                          # the Kong Session plugin documentation.
+                          #
+                          # Example:
+                          # ```
+                          # admin_gui_session_conf = { "cookie_name": "kookie", \
+                          #                            "secret": "changeme" }
+                          # ```
 
 #admin_gui_auth_header = Kong-Admin-User
                         # Defines the name of the HTTP request header from which
@@ -1509,21 +1503,21 @@
 
 #vitals_strategy = database      # Determines whether to use the Kong database
                                  # (either PostgreSQL or Cassandra, as defined
-                                 # by the 'database' config value above), or a
+                                 # by the `database` config value above), or a
                                  # separate storage engine, for Vitals metrics.
-                                 # Accepted values are 'database', 'prometheus',
-                                 # or 'influxdb'.
+                                 # Accepted values are `database`, `prometheus`,
+                                 # or `influxdb`.
 
 #vitals_tsdb_address =           # Defines the host and port of the TSDB server
                                  # to which Vitals data is written and read.
                                  # This value is only applied when the
-                                 # 'vitals_strategy` option is set to
-                                 # 'prometheus' or 'influxdb'. This value
+                                 # `vitals_strategy` option is set to
+                                 # `prometheus` or `influxdb`. This value
                                  # accepts IPv4, IPv6, and hostname values.
-                                 # If the 'vitals_strategy' is set to
-                                 # 'prometheus', this value determines the
+                                 # If the `vitals_strategy` is set to
+                                 # `prometheus`, this value determines the
                                  # address of the Prometheus server from which
-                                 # Vitals data will be read. For 'influxdb'
+                                 # Vitals data will be read. For `influxdb`
                                  # strategies, this value controls both the read
                                  # and write source for Vitals data.
 
@@ -1533,10 +1527,10 @@
 #vitals_statsd_address =         # Defines the host and port (and an optional
                                  # protocol) of the StatsD server to which
                                  # Kong should write Vitals metics. This value
-                                 # is only applied when the 'vitals_strategy' is
-                                 # set to 'prometheus'. This value accepts IPv4,
+                                 # is only applied when the `vitals_strategy` is
+                                 # set to `prometheus`. This value accepts IPv4,
                                  # IPv6, and, hostnames. Additionally, the suffix
-                                 # 'tcp' can be specified; doing so will result
+                                 # `tcp` can be specified; doing so will result
                                  # in Kong sending StatsD metrics via TCP
                                  # instead of the UDP (default).
 
@@ -1590,8 +1584,7 @@
                         # with portal_gui_host to construct the lookup, or balancer
                         # address for your Kong Proxy nodes.
                         #
-                        # Examples: http
-                        #           https
+                        # Examples: `http`,`https`
 
 #portal_gui_host = 127.0.0.1:8003
                         # Developer Portal GUI host
@@ -1602,12 +1595,12 @@
                         #
                         # Examples:
                         #
-                        #   - <IP>:<PORT>
-                        #     portal_gui_host = 127.0.0.1:8003
-                        #   - <HOSTNAME>
-                        #     portal_gui_host = portal_api.domain.tld
-                        #   - <HOSTNAME>/<PATH>
-                        #     portal_gui_host = dev-machine/dev-285
+                        # - `<IP>:<PORT>`
+                        #   -> `portal_gui_host = 127.0.0.1:8003`
+                        # - `<HOSTNAME>`
+                        #   -> `portal_gui_host = portal_api.domain.tld`
+                        # - `<HOSTNAME>/<PATH>`
+                        #   -> `portal_gui_host = dev-machine/dev-285`
 
 #portal_cors_origins =  # Developer Portal CORS Origins
                         #
@@ -1616,45 +1609,43 @@
                         # resolve CORS issues in custom networking environments.
                         #
                         # Examples:
-                        #   - list of domains:
-                        #     portal_cors_origins = http://localhost:8003, https://localhost:8004
-                        #   - single domain:
-                        #     portal_cors_origins = http://localhost:8003
-                        #   - all domains:
-                        #     portal_cors_origins = *
+                        # - list of domains:
+                        #   `portal_cors_origins = http://localhost:8003, https://localhost:8004`
+                        # - single domain:
+                        #   `portal_cors_origins = http://localhost:8003`
+                        # - all domains:
+                        #   `portal_cors_origins = *`
                         #
                         # NOTE: In most cases, the Developer Portal is able to derive
-                        # valid CORS origins by using portal_gui_protocol, portal_gui_host,
-                        # and if applicable, portal_gui_use_subdomains. In these cases,
-                        # portal_cors_origins is not needed and can remain unset.
+                        # valid CORS origins by using `portal_gui_protocol`, `portal_gui_host`,
+                        # and if applicable, `portal_gui_use_subdomains`. In these cases,
+                        # `portal_cors_origins` is not needed and can remain unset.
 
 #portal_gui_use_subdomains = off
                         # Developer Portal GUI subdomain toggle
                         #
                         # By default Kong Portal uses the first namespace in
                         # the request path to determine workspace. By turning
-                        # portal_gui_subdomains 'on', Kong Portal will expect
+                        # `portal_gui_subdomains` on, Kong Portal will expect
                         # workspace to be included in the request url as a subdomain.
                         #
                         # Example (off):
-                        #   - <scheme>://<HOSTNAME>/<WORKSPACE>/<PATH>
-                        #     http://kong-portal.com/example-workspace/index
+                        #   - `<scheme>://<HOSTNAME>/<WORKSPACE>/<PATH>` ->
+                        #     `http://kong-portal.com/example-workspace/index`
                         #
                         # Example (on):
-                        #   - <scheme>://<WORKSPACE>.<HOSTNAME>
-                        #     http://example-workspace.kong-portal.com/index
+                        #   - `<scheme>://<WORKSPACE>.<HOSTNAME>` ->
+                        #     `http://example-workspace.kong-portal.com/index`
 
-#portal_gui_ssl_cert =
-                        # Developer Portal GUI SSL Certificate
+#portal_gui_ssl_cert =  # Developer Portal GUI SSL Certificate
                         #
                         # The absolute path to the SSL certificate for
                         # `portal_gui_listen` values with SSL enabled.
 
-#portal_gui_ssl_cert_key =
-                        # Developer Portal GUI SSL Certificate Key
-                        #
-                        # The absolute path to the SSL key for
-                        # `portal_gui_listen` values with SSL enabled.
+#portal_gui_ssl_cert_key = # Developer Portal GUI SSL Certificate Key
+                           #
+                           # The absolute path to the SSL key for
+                           # `portal_gui_listen` values with SSL enabled.
 
 #portal_gui_access_log = logs/portal_gui_access.log
                         # Developer Portal GUI Access Log location
@@ -1691,8 +1682,7 @@
                         # specified for each pair, similarly to
                         # the `admin_listen` directive.
 
-#portal_api_url =
-                        # Developer Portal API URL
+#portal_api_url =       # Developer Portal API URL
                         #
                         # Here you may provide the lookup, or balancer,
                         # address for your Developer Portal nodes.
@@ -1707,32 +1697,30 @@
                         #
                         # Accepted format (parts in parenthesis are optional):
                         #
-                        #   <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
+                        #   `<scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))`
                         #
                         # Examples:
                         #
-                        #   - <scheme>://<IP>:<PORT>
-                        #     portal_api_url = http://127.0.0.1:8003
-                        #   - SSL <scheme>://<HOSTNAME>
-                        #     portal_api_url = https://portal_api.domain.tld
-                        #   - <scheme>://<HOSTNAME>/<PATH>
-                        #     portal_api_url = http://dev-machine/dev-285
+                        # - `<scheme>://<IP>:<PORT>`
+                        #   -> `portal_api_url = http://127.0.0.1:8003`
+                        # - `SSL <scheme>://<HOSTNAME>`
+                        #   -> `portal_api_url = https://portal_api.domain.tld`
+                        # - `<scheme>://<HOSTNAME>/<PATH>`
+                        #   -> `portal_api_url = http://dev-machine/dev-285`
                         #
                         # By default this value points to the local interface:
                         #
-                        #   - http://0.0.0.0:8004
+                        # - `http://0.0.0.0:8004`
 
-#portal_api_ssl_cert =
-                        # Developer Portal API SSL Certificate
+#portal_api_ssl_cert =  # Developer Portal API SSL Certificate
                         #
                         # The absolute path to the SSL certificate for
                         # `portal_api_listen` values with SSL enabled.
 
-#portal_api_ssl_cert_key =
-                        # Developer Portal API SSL Certificate Key
-                        #
-                        # The absolute path to the SSL key for
-                        # `portal_api_listen` values with SSL enabled.
+#portal_api_ssl_cert_key = # Developer Portal API SSL Certificate Key
+                           #
+                           # The absolute path to the SSL key for
+                           # `portal_api_listen` values with SSL enabled.
 
 #portal_api_access_log = logs/portal_api_access.log
                         # Developer Portal API Access Log location
@@ -1778,13 +1766,11 @@
                         # Currently accepts kong-oauth2 or external-oauth2
 #------------------------------------------------------------------------------
 # DEFAULT DEVELOPER PORTAL AUTHENTICATION
-#
+#------------------------------------------------------------------------------
 # Referenced on workspace creation to set Dev Portal authentication defaults
 # in the database for that particular workspace.
-#------------------------------------------------------------------------------
-
-#portal_auth =
-                        # Developer Portal Authentication Plugin Name
+#
+#portal_auth =          # Developer Portal Authentication Plugin Name
                         #
                         # Here you may specify the authentication plugin
                         # to apply to your Developer Portal. Developers
@@ -1794,17 +1780,11 @@
                         #
                         # Supported Plugins:
                         #
-                        #   - Basic Authentication:
-                        #
-                        #       portal_auth = basic-auth
-                        #
-                        #   - OIDC Authentication:
-                        #
-                        #       portal_auth = openid-connect
+                        # - Basic Authentication: `portal_auth = basic-auth`
+                        # - OIDC Authentication: `portal_auth = openid-connect`
                         #
 
-#portal_auth_password_complexity =
-                        # Kong Portal Authentication Password Complexity (JSON)
+#portal_auth_password_complexity = # Kong Portal Authentication Password Complexity (JSON)
                         #
                         # When portal_auth = basic-auth, this property defines
                         # the rules required for Kong Portal passwords. Choose
@@ -1812,19 +1792,23 @@
                         #
                         # Example using preset rules:
                         #
-                        # portal_auth_password_complexity = { "kong-preset": "min_8" }
+                        # `portal_auth_password_complexity = { "kong-preset": "min_8" }`
                         #
                         # All values for kong-preset require the password to contain
                         # characters from at least three of the following categories:
-                        # 1) Uppercase characters (A through Z)
-                        # 2) Lowercase characters (a through z)
-                        # 3) Base-10 digits (0 through 9)
-                        # 4) Special characters (for example, &, $, #, %)
                         #
-                        # Value to Use | Minimum Length
-                        # min_8        |     8
-                        # min_12       |    12
-                        # min_20       |    20
+                        # 1. Uppercase characters (A through Z)
+                        #
+                        # 2. Lowercase characters (a through z)
+                        #
+                        # 3. Base-10 digits (0 through 9)
+                        #
+                        # 4. Special characters (for example, &, $, #, %)
+                        #
+                        # Supported preset rules:
+                        # - `min_8`: minimum length of 8
+                        # - `min_12`: minimum length of 12
+                        # - `min_20`: minimum length of 20
                         #
                         # To write your own rules, see
                         # https://manpages.debian.org/jessie/passwdqc/passwdqc.conf.5.en.html.
@@ -1833,7 +1817,7 @@
                         #
                         # Example:
                         #
-                        # portal_auth_password_complexity = { "min": "disabled,24,11,9,8" }
+                        # `portal_auth_password_complexity = { "min": "disabled,24,11,9,8" }`
 
 #portal_auth_conf =     # Developer Portal Authentication Plugin Config (JSON)
                         #
@@ -1846,9 +1830,9 @@
                         #
                         # Example for `basic-auth`:
                         #
-                        #  portal_auth_conf = { "hide_credentials": true }
+                        # `portal_auth_conf = { "hide_credentials": true }`
 
-#portal_auth_login_attempts  = 0
+#portal_auth_login_attempts = 0
                         # Number of times a user can attempt to login to the
                         # Dev Portal before password must be reset.
                         #
@@ -1866,15 +1850,16 @@
                         # the Kong Session Plugin documentation.
                         #
                         # Example:
-                        #
+                        # ```
                         # portal_session_conf = { "cookie_name": "portal_session", \
                         #                          "secret": "changeme", \
                         #                          "storage": "kong" }
+                        # ```
 
 #portal_auto_approve = off
                         # Developer Portal Auto Approve Access
                         #
-                        # When this flag is set to "on", a developer will
+                        # When this flag is set to `on`, a developer will
                         # automatically be marked as "approved" after completing
                         # registration. Access can still be revoked through the
                         # Admin GUI or API.
@@ -1882,7 +1867,6 @@
 #portal_token_exp = 21600
                         # Duration in seconds for the expiration of portal
                         # login reset/account validation token.
-                        # Default `21600` (6 hours)
 
 #portal_email_verification = off
                         # Portal Developer Email Verification.
@@ -1896,53 +1880,44 @@
 
 #------------------------------------------------------------------------------
 # DEFAULT PORTAL SMTP CONFIGURATION
-#
+#------------------------------------------------------------------------------
 # Referenced on workspace creation to set SMTP defaults in the database
 # for that particular workspace.
-#------------------------------------------------------------------------------
-
+#
 #portal_invite_email = on
                         # Enable or disable portal_invite_email
-                        # Default `on`
 
 #portal_access_request_email = on
                         # Enable or disable portal_access_request_email
-                        # Default `on`
 
 #portal_approved_email = on
                         # Enable or disable portal_approved_email
-                        # Default `on`
 
 #portal_reset_email = on
                         # Enable or disable portal_reset_email
-                        # Default `on`
 
 #portal_reset_success_email = on
                         # Enable or disable portal_reset_success_email
-                        # Default `on`
 
 #portal_emails_from =   # The name and email address for the `From` header
                         # for portal emails
                         #
-                        # Example
-                        # portal_emails_from = Your Name <example@example.com>
+                        # Example:
+                        # `portal_emails_from = Your Name <example@example.com>`
                         #
                         # Note: Some SMTP servers will not use
                         # this value, but instead insert the email and name
                         # associated with the account.
-                        # Default `nil`
 
-#portal_emails_reply_to =
-                        # Email address for the `Reply-To` header for
-                        # portal emails
-                        #
-                        # Example
-                        # portal_emails_reply_to = example@example.com
-                        #
-                        # Note: Some SMTP servers will not use
-                        # this value, but instead insert the email
-                        # associated with the account.
-                        # Default `nil`
+#portal_emails_reply_to = # Email address for the `Reply-To` header for
+                          # portal emails
+                          #
+                          # Example:
+                          # `portal_emails_reply_to = example@example.com`
+                          #
+                          # Note: Some SMTP servers will not use
+                          # this value, but instead insert the email
+                          # associated with the account.
 
 
 #------------------------------------------------------------------------------
@@ -1950,17 +1925,19 @@
 #------------------------------------------------------------------------------
 
 #admin_emails_from =  ""              # The email address for the `From` header
-                                      # for admin emails
+                                      # for admin emails.
 
 #admin_emails_reply_to =              # Email address for the `Reply-To` header
-                                      # for admin emails
+                                      # for admin emails.
 
 #admin_invitation_expiry = 259200     # Seconds before admin invitation link
                                       # expires. 0 means no expiration.
                                       #
                                       # Examples:
+                                      # ```
                                       # 259200 = 1 * 60 * 60 * 72
                                       #                        ^ number of hours
+                                      # ```
 
 #------------------------------------------------------------------------------
 # GENERAL SMTP CONFIGURATION
@@ -1970,102 +1947,90 @@
                        # used for testing before the SMTP client is fully
                        # configured.
                        #
-                       # Example
-                       # smtp_mock = on  - Emails will NOT attempt send.
-                       # smtp_mock = off - Emails will attempt send.
-                       #
-                       # Default `on`
+                       # Example:
+                       # - `smtp_mock = on`  - Emails will NOT attempt send.
+                       # - `smtp_mock = off` - Emails will attempt send.
 
-#smtp_host =           # The host of the SMTP server to connect to.
-                       # Default `localhost`
+#smtp_host = localhost
+                       # The host of the SMTP server to connect to.
 
-#smtp_port =           # The port number on the SMTP server to connect to.
-                       # Default `25`
+#smtp_port = 25
+                       # The port number on the SMTP server to connect to.
 
-#smtp_starttls =       # When set to `on`, STARTTLS is used to encrypt
+#smtp_starttls = off
+                       # When set to `on`, STARTTLS is used to encrypt
                        # communication with the SMTP server. This is normally
                        # used in conjunction with port 587.
-                       # Default `off`
 
 #smtp_username =       # Username used for authentication with SMTP server
-                       # Default `nil`
 
 #smtp_password =       # Password used for authentication with SMTP server
-                       # Default `nil`
 
-#smtp_ssl =            # When set to `on`, SMTPS is used to encrypt
+#smtp_ssl = off
+                       # When set to `on`, SMTPS is used to encrypt
                        # communication with the SMTP server. This is normally
                        # used in conjunction with port 465.
-                       # Default `off`
 
 #smtp_auth_type =      # The method used to authenticate with the SMTP server
                        # Valid options are `plain`, `login`, or `nil`
-                       # Default `nil`
 
 #smtp_domain = localhost.localdomain
                        # The domain used in the `EHLO` connection and part of
                        # the `Message-ID` header
-                       # Default `localhost.localdomain`
 
 #smtp_timeout_connect = 60000
                        # The timeout (in milliseconds) for connecting to the
                        # SMTP server.
-                       # Default 60000
 
 #smtp_timeout_send = 60000
                        # The timeout (in milliseconds) for sending data to the
                        # SMTP server.
-                       # Default 60000
 
 #smtp_timeout_read = 60000
                        # The timeout (in milliseconds) for reading data from
                        # the SMTP server.
-                       # Default 60000
 
 #smtp_admin_emails =   # Comma separated list of admin emails to receive
                        # notifications.
                        # Example `admin1@example.com, admin2@example.com`
-                       # Default `nil`
 
 #-------------------------------------------------------------------------------
 # DATA & ADMIN AUDIT
 #-------------------------------------------------------------------------------
-
 # When enabled, Kong will store detailed audit data regarding Admin API and
 # database access. In most cases, updates to the database are associated with
 # Admin API requests. As such, database object audit log data is tied to a
 # given HTTP via a unique identifier, providing built-in association of Admin
 # API and database traffic.
-
-# audit_log = off                # When enabled, Kong will log information about
+#
+#audit_log = off                 # When enabled, Kong will log information about
                                  # Admin API access and database row insertions,
                                  # updates, and deletes.
 
-# audit_log_ignore_methods =     # Comma-separated list of HTTP methods that
+#audit_log_ignore_methods =      # Comma-separated list of HTTP methods that
                                  # will not generate audit log entries. By
                                  # default, all HTTP requests will be logged.
 
-# audit_log_ignore_paths =       # Comma-separated list of request paths that
+#audit_log_ignore_paths =        # Comma-separated list of request paths that
                                  # will not generate audit log entries. By
                                  # default, all HTTP requests will be logged.
 
-# audit_log_ignore_tables =      # Comma-separated list of database tables that
+#audit_log_ignore_tables =       # Comma-separated list of database tables that
                                  # will not generate audit log entries. By
                                  # default, updates to all database tables will
                                  # be logged (the term "updates" refers to the
                                  # creation, update, or deletion of a row).
 
-# audit_log_payload_exclude = token, secret, password
-
+#audit_log_payload_exclude = token, secret, password
                                  # Comma-separated list of keys that will be
                                  # filtered out of the payload. Keys that were
                                  # filtered will be recorded in the audit log.
 
-# audit_log_record_ttl = 2592000 # Length, in seconds, of the TTL for audit log
+#audit_log_record_ttl = 2592000  # Length, in seconds, of the TTL for audit log
                                  # records. Records in the database older than
                                  # their TTL are automatically purged.
 
-# audit_log_signing_key =        # Defines the path to a private RSA signing key
+#audit_log_signing_key =         # Defines the path to a private RSA signing key
                                  # that can be used to insert a signature of
                                  # audit records, adjacent to the record. The
                                  # corresponding public key should be stored
@@ -2076,10 +2041,9 @@
 #-------------------------------------------------------------------------------
 # GRANULAR TRACING
 #-------------------------------------------------------------------------------
-
 # Granular tracing offers a mechanism to expose metrics and detailed debug data
 # about the lifecycle of Kong in a human- or machine-consumable format.
-
+#
 #tracing = off                   # When enabled, Kong will generate granular
                                  # debug data about various portions of the
                                  # request lifecycle, such as DB or DNS queries,
@@ -2087,35 +2051,31 @@
 
 #tracing_write_strategy = file   # Defines how Kong will write tracing data at
                                  # the conclusion of the request. The default
-                                 # option, 'file', writes a human-readable
+                                 # option, `file`, writes a human-readable
                                  # depiction of tracing data to a configurable
                                  # location on the node's file system. Other
                                  # strategies write tracing data as a JSON
                                  # document to the configured endpoint. Valid
-                                 # entries for this option are 'file',
-                                 # 'file_raw', 'http', 'tcp', 'tls', and 'udp'.
+                                 # entries for this option are `file`,
+                                 # `file_raw`, `http`, `tcp`, `tls`, and `udp`.
 
 #tracing_write_endpoint =        # Defines the endpoint to which tracing data
                                  # will be written.
                                  #
-                                 # For the 'file' and 'file_raw' tracing write
-                                 # strategies, this value must be a valid
-                                 # location on the node's file system to which
-                                 # Kong must have write access.
-                                 #
-                                 # For the 'tcp', 'tls', and
-                                 # 'udp' strategies, this value is defined as a
-                                 # string in the form of:
-                                 #
-                                 #  <HOST>:<PORT>
-                                 #
-                                 # For the 'http' strategy, this value is
-                                 # defined in the form of:
-                                 #
-                                 #  <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
+                                 # - For the `file` and `file_raw` tracing write
+                                 #   strategies, this value must be a valid
+                                 #   location on the node's file system to which
+                                 #   Kong must have write access.
+                                 # - For the `tcp`, `tls`, and
+                                 #   `udp` strategies, this value is defined as a
+                                 #   string in the form of:
+                                 #  `<HOST>:<PORT>`
+                                 # - For the `http` strategy, this value is
+                                 #   defined in the form of:
+                                 #  `<scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))`
                                  #
                                  # Traces sent via HTTP are delivered via POST
-                                 # method with an 'application/json'
+                                 # method with an `application/json`
                                  # Content-Type.
 
 #tracing_time_threshold = 0      # The minimum time, in microseconds, over which
@@ -2124,20 +2084,20 @@
                                  # configuration can be used to lower the noise
                                  # present in trace data by removing trace
                                  # objects that are not interesting from a
-                                 # timing perspective. The default value of '0'
+                                 # timing perspective. The default value of `0`
                                  # removes this limitation, causing traces of
                                  # any duration to be written.
 
 #tracing_types = all             # Defines the types of traces that are written.
                                  # Trace types not defined in this list are
                                  # ignored, regardless of their lifetime. The
-                                 # default special value of 'all' results in all
+                                 # default special value of `all` results in all
                                  # trace types being written, regardless of type.
-                                 # Included trace types are: 'query',
-                                 # 'legacy_query', `router', 'balancer.getPeer',
-                                 # 'balancer.toip', 'connect.toip',
-                                 # 'access.before', and 'access.after',
-                                 # 'cassandra_iterate, and 'plugin'.
+                                 # Included trace types are: `query`,
+                                 # `legacy_query`, `router`, `balancer.getPeer`,
+                                 # `balancer.toip`, `connect.toip`,
+                                 # `access.before`, and `access.after`,
+                                 # `cassandra_iterate`, and `plugin`.
 
 #tracing_debug_header =          # Defines the name of the HTTP request header
                                  # that must be present in order to generate
@@ -2166,41 +2126,42 @@
 #-------------------------------------------------------------------------------
 # ROUTE COLLISION DETECTION/PREVENTION
 # -------------------------------------------------------------------------------
-# route_validation_strategy = smart # The strategy used to validate
+#route_validation_strategy = smart  # The strategy used to validate
                                     # routes when creating or updating them.
                                     # Different strategies are available to tune
                                     # how to enforce splitting traffic of
                                     # workspaces.
-                                    # - 'smart' is the default option and uses the
-                                    # algorithm described in
-                                    # https://docs.konghq.com/enterprise/0.33-x/workspaces/examples/#important-note-conflicting-apis-or-routes-in-workspaces
-                                    # - 'off' disables any check
-                                    # - 'path' enforces routes to comply with the pattern
-                                    # described in config enforce_route_path_pattern
+                                    # - `smart` is the default option and uses the
+                                    #   algorithm described in
+                                    #   https://docs.konghq.com/enterprise/0.33-x/workspaces/examples/#important-note-conflicting-apis-or-routes-in-workspaces
+                                    # - `off` disables any check
+                                    # - `path` enforces routes to comply with the pattern
+                                    #   described in config enforce_route_path_pattern
 
-# enforce_route_path_pattern =  # Here you can specify Lua pattern which will
+#enforce_route_path_pattern =   # Here you can specify Lua pattern which will
                                 # be enforced on a `path` attributes of a
                                 # route object. You can also add a
                                 # placeholder for workspace in pattern, which
                                 # will be rendered during runtime based on
                                 # workspace to which `route` belongs to. It a
-                                # field if 'route_validation_strategy'
-                                # is set to 'path'
+                                # field if `route_validation_strategy`
+                                # is set to `path`.
                                 #
                                 #
                                 # Example
-                                # For Pattern '/$(workspace)/v%d/.*' valid path
+                                # For Pattern `/$(workspace)/v%d/.*` valid paths
                                 # are:
-                                # 1. '/group1/v1/' if route belongs to
-                                #   workspace 'group1'.
-                                # 2. '/group2/v1/some_path' if route belongs to
-                                #   workspace 'group2'.
+                                # 
+                                # 1. `/group1/v1/` if route belongs to
+                                #   workspace `group1`.
+                                #
+                                # 2. `/group2/v1/some_path` if route belongs to
+                                #   workspace `group2`.
 
 
 #-------------------------------------------------------------------------------
 # DATABASE ENCRYPTION & KEYRING MANAGEMENT
 #-------------------------------------------------------------------------------
-
 # When enabled, Kong will transparently encrypt sensitive fields, such as Consumer
 # credentials, TLS private keys, and RBAC user tokens, among others. A full list
 # of encrypted fields is available from the Kong Enterprise documentation site.
@@ -2211,8 +2172,8 @@
 # that this not be enabled on production clusters. No guarantees about forward-
 # compatability or stability are provided with this, and mis-management of keyring
 # data will result in irrecoverable data loss.
-
-# keyring_enabled = off          # When enabled, Kong will encrypt sensitive
+#
+#keyring_enabled = off           # When enabled, Kong will encrypt sensitive
                                  # field values before writing them to the
                                  # database, and subsuquently decrypt them when
                                  # retrieving data for the Admin API, Developer
@@ -2220,41 +2181,41 @@
                                  # encryption keys are managed based on the
                                  # strategy defined below.
 
-# keyring_strategy = cluster     # Defines the strategy implementation by which
+#keyring_strategy = cluster      # Defines the strategy implementation by which
                                  # Kong nodes will manage symmetric encryption
                                  # keys. Please see the Kong Enterprise
                                  # documentation for a detailed description of
                                  # each strategies. Acceptable values for this
                                  # option are 'cluster' and 'vault'.
 
-# keyring_public_key =           # Defines the filesystem path at which the
+#keyring_public_key =            # Defines the filesystem path at which the
                                  # public key of an RSA keypair resides. This
                                  # keypair is used for symmetric keyring import/
                                  # export, e.g., for disaster recovery and
                                  # optional bootstrapping.
 
-# keyring_private_key =          # Defines the filesystem path at which the
+#keyring_private_key =           # Defines the filesystem path at which the
                                  # private key of an RSA keypair resides. This
                                  # keypair is used for symmetric keyring import/
                                  # export, e.g., for disaster recovery and
                                  # optional bootstrapping.
 
-# keyring_blob_path =            # Defines the filesystem path at which Kong
+#keyring_blob_path =             # Defines the filesystem path at which Kong
                                  # will backup the initial keyring material.
                                  # This option is useful largely for development
                                  # purposes.
 
-# keyring_vault_host =           # Defines the Vault host at which Kong will
+#keyring_vault_host =            # Defines the Vault host at which Kong will
                                  # fetch the encryption material. This value
                                  # should be defined in the format:
                                  #
-                                 # <scheme>://<IP / HOSTNAME>:<PORT>
+                                 # `<scheme>://<IP / HOSTNAME>:<PORT>`
 
-# keyring_vault_mount =          # Defines the name of the Vault v2 KV secrets
+#keyring_vault_mount =           # Defines the name of the Vault v2 KV secrets
                                  # engine at which symmetric keys are found.
 
-# keyring_vault_path =           # Defines the names of the Vault v2 KV path
+#keyring_vault_path =            # Defines the names of the Vault v2 KV path
                                  # at which symmetric keys are found.
 
-# keyring_vault_token =          # Defines the token value used to communicate
+#keyring_vault_token =           # Defines the token value used to communicate
                                  # with the v2 KV Vault HTTP(S) API.

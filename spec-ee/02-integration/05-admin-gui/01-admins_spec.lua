@@ -16,123 +16,96 @@ local get_admin_cookie = ee_helpers.get_admin_cookie_basic_auth
 
 for _, strategy in helpers.each_strategy() do
   describe("Admin API - Admins - kong_admin #" .. strategy, function()
+    lazy_setup(function()
+      helpers.get_db_utils(strategy, {
+        "consumers",
+        "rbac_users",
+        "rbac_roles",
+        "rbac_user_roles",
+        "admins",
+      })
 
-    local function init_db()
-      local conf = utils.deep_copy(helpers.test_conf)
-      conf.cassandra_timeout = 60000 -- default used in the `migrations` cmd as well
-
-      local db = assert(kong.db.new(conf, strategy))
-      assert(db:init_connector())
-      assert(db:connect())
-      finally(function()
-        db.connector:close()
-      end)
-      assert(db.plugins:load_plugin_schemas(helpers.test_conf.loaded_plugins))
-      db:truncate()
-      return db
-    end
+      assert(helpers.start_kong({ database = strategy }))
+    end)
 
     lazy_teardown(function()
       helpers.stop_kong()
-
-      helpers.unsetenv("KONG_PASSWORD")
-      assert.equal(nil, os.getenv("KONG_PASSWORD"))
     end)
 
     it("regression test for role filtering (EBB-336)", function()
-      local db = init_db()
-
-      helpers.setenv("KONG_PASSWORD", "handyshake")
-      assert.equal("handyshake", os.getenv("KONG_PASSWORD"))
-
-      assert(db:schema_reset())
-
-      helpers.bootstrap_database(db)
-
-      assert(helpers.start_kong({
-        database = strategy,
-        admin_gui_auth="basic-auth",
-        enforce_rbac="on",
-        admin_gui_session_conf=[[{"cookie_name":"kong_manager","storage":"kong","secret":"ohyea!","cookie_secure":false,"cookie_lifetime":86400,"cookie_renew":86400}]],
-        portal_is_legacy="false",
-      }))
-
-      local headers = {
-        ["Kong-Admin-Token"] = "handyshake",
-        ["Content-Type"]     = "application/json",
-      }
-
-      local client = assert(helpers.admin_client())
+      local admin_client = helpers.admin_client()
       finally(function()
-        client:close()
+        admin_client:close()
       end)
 
-      local res = assert(client:send {
+      local res = assert(admin_client:send {
         method = "POST",
         path  = "/workspaces",
-        headers = headers,
         body  = {
           name = "ws1",
         },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
       })
       assert.res_status(201, res)
 
-      client = assert(helpers.admin_client())
-      finally(function()
-        client:close()
-      end)
+      local res = assert(admin_client:send {
+        method = "POST",
+        path  = "/admins",
+        body  = {
+          username = "some_admin",
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(200, res)
 
-      res = assert(client:send {
+      res = assert(admin_client:send {
         method = "POST",
         path  = "/ws1/rbac/roles",
-        headers = headers,
         body  = {
           name = "ws1-read-only",
         },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
       })
       assert.res_status(201, res)
 
-      client = assert(helpers.admin_client())
-      finally(function()
-        client:close()
-      end)
-
-      res = assert(client:send {
+      res = assert(admin_client:send {
         method = "POST",
         path  = "/ws1/rbac/roles/ws1-read-only/endpoints",
-        headers = headers,
         body  = {
           workspace = "ws1",
           endpoint = "*",
           actions = "read",
         },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
       })
       assert.res_status(201, res)
 
-      client = assert(helpers.admin_client())
-      finally(function()
-        client:close()
-      end)
-
-      res = assert(client:send {
+      res = assert(admin_client:send {
         method = "POST",
-        path  = "/ws1/admins/kong_admin/roles",
-        headers = headers,
+        path  = "/ws1/admins/some_admin/roles",
         body  = {
           roles = "ws1-read-only",
         },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
       })
       assert.res_status(201, res)
 
-      client = assert(helpers.admin_client())
-      finally(function()
-        client:close()
-      end)
-
-      res = assert(client:send {
+      res = assert(admin_client:send {
         method = "GET",
-        path  = "/ws1/admins/kong_admin/roles",
-        headers = headers,
+        path  = "/ws1/admins/some_admin/roles",
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
       })
       res = assert.res_status(200, res)
 

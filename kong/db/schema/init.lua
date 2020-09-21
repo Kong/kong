@@ -1568,6 +1568,23 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       data[key] = null
     end
 
+    -- XXX EE [[
+    -- XXX Maybe restrict this to only field type "string" ?
+    if field.shorthands then
+      -- XXX traversing shorthands as an  array for a field case basis is
+      -- inefficient, but compatible with the shorthands metaschema syntax
+      -- fix later
+      for _, shorthand in ipairs(field.shorthands) do
+        local sname, sfunc = next(shorthand)
+        local value = data[key]
+        if sname == value then
+          data[key] = sfunc(value)
+          break
+        end
+      end
+    end
+    -- XXX EE ]]
+
     if field.auto then
       if field.uuid then
         if (context == "insert" or context == "upsert") and data[key] == nil then

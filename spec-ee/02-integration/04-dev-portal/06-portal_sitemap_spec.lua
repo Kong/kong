@@ -129,7 +129,6 @@ local function create_workspace_files(workspace_name, files, portal_conf)
     method = "GET",
     path = "/" .. workspace_name,
   })
-
   ngx.sleep(1)
 end
 
@@ -140,25 +139,22 @@ for _, workspace in ipairs({ "default", "doggos"}) do
     local db
 
       setup(function()
-        _, db, _ = helpers.get_db_utils(strategy)
+        _, db, _ = helpers.get_db_utils(strategy, { "files" })
         assert(helpers.start_kong({
           database    = strategy,
           portal      = true,
           portal_gui_use_subdomains = false,
           portal_is_legacy = false,
         }))
+        configure_portal(db, workspace)
       end)
 
       teardown(function()
-        db:truncate()
         helpers.stop_kong(nil, true)
       end)
 
       before_each(function()
-        configure_portal(db, workspace)
-        ngx.sleep(2)
         db:truncate("files")
-        ngx.sleep(2)
       end)
 
       it("can properly display 'content' type router files", function()

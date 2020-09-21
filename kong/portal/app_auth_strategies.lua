@@ -1,5 +1,9 @@
 local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 
+local function does_plugin_map_to_service (plugin, service)
+  return plugin.service and plugin.service.id == service.id
+end
+
 return {
   ["kong-oauth2"] = {
     build_service_auth_config = function(service)
@@ -11,7 +15,7 @@ return {
           break
         end
         if plugin.name == "oauth2" then
-          if service.id == plugin.service.id then
+          if does_plugin_map_to_service(plugin, service) then
             auth_config = {
               scopes = plugin.config.scopes,
               auth_header_name = plugin.config.auth_header_name,
@@ -29,6 +33,7 @@ return {
       return auth_config
     end
   },
+
   ["external-oauth2"] = {
     build_service_auth_config = function(service, app_reg_plugin)
       local auth_config = {}
@@ -38,8 +43,8 @@ return {
           kong.log.err(err)
           break
         end
-        if plugin.name == "openid-connect" then
-          if service.id == plugin.service.id then
+        if does_plugin_map_to_service(plugin, service) then
+          if plugin.service and plugin.service.id == service.id then
             auth_config.scopes = plugin.config.scopes
             auth_config.auth_methods = plugin.config.auth_methods
             if app_reg_plugin.config.show_issuer then

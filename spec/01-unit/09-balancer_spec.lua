@@ -555,6 +555,21 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         end
       end)
 
+      it("requires hostname if that was used in the Target", function()
+        setup_it_block(consistency)
+        local ok = balancer.post_health(upstream_ph, "127.0.0.1", nil, 1111, true)
+        assert.truthy(ok) -- healthchecker does not report error...
+        local health_info = assert(balancer.get_upstream_health("ph"))
+        -- ...but health does not update
+        assert.same("UNHEALTHY", health_info["localhost:1111"].addresses[1].health)
+
+        ok = balancer.post_health(upstream_ph, "localhost", nil, 1111, true)
+        assert.truthy(ok) -- healthcheck returns true...
+        health_info = assert(balancer.get_upstream_health("ph"))
+        -- ...and health updates
+        assert.same("HEALTHY", health_info["localhost:1111"].addresses[1].health)
+      end)
+
       it("fails if upstream/balancer doesn't exist", function()
         local bad = { name = "invalid", id = "bad" }
         local ok, err = balancer.post_health(bad, "127.0.0.1", 1111, true)

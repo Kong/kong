@@ -1968,6 +1968,35 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
+          it("can GET a list of services with Application Registration applied when non service oauth2 plugin (regression)", function()
+            assert(db.plugins:insert({
+              config = {
+                enable_authorization_code = true,
+                enable_implicit_grant = true,
+              },
+              name = "oauth2",
+            }))
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services",
+              headers = {
+                ["Cookie"] = cookie,
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+            assert.equal(5, resp_body_json.total)
+
+            for i, v in ipairs(resp_body_json.data) do
+              assert.equal(v.app_registration_config.display_name, v.name)
+              assert.equal(v.auth_plugin_config.enable_authorization_code, tonumber(v.name) % 4 == 0)
+              assert.equal(v.auth_plugin_config.enable_implicit_grant, tonumber(v.name) % 4 ~= 0)
+            end
+          end)
+
           it("paginates properly", function()
             local res = assert(portal_api_client:send {
               method = "GET",
