@@ -246,6 +246,18 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route3d = bp.routes:insert {
+        hosts = { "acl3d.com" },
+      }
+
+      bp.plugins:insert {
+        name = "acl",
+        route = { id = route3d.id },
+        config = {
+          deny = { "none" }
+        }
+      }
+
       local route4 = bp.routes:insert {
         hosts = { "acl4.com" },
       }
@@ -922,6 +934,17 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "You cannot consume this service" }, json)
       end)
+
+      it("should fail denied and with no authenticated groups", function()
+        local res = assert(proxy_client:get("/request", {
+          headers = {
+            ["Host"] = "acl3d.com"
+          }
+        }))
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Unauthorized" }, json)
+      end)
     end)
 
     describe("Multi lists", function()
@@ -1595,7 +1618,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("with authentication without groups", function()
-      it("returns 401", function()
+      it("returns 401 with allow groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             Host = "allow-everyone-anonymous.test"
@@ -1613,24 +1636,24 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(401, res))
         assert.equal(nil, body.headers)
         assert.equal("Unauthorized", body.message)
+      end)
 
+      it("returns 200 with deny groups", function()
         local res = assert(proxy_client:get("/request", {
           headers = {
             Host = "deny-everyone-anonymous.test"
           }
         }))
-        local body = cjson.decode(assert.res_status(401, res))
-        assert.equal(nil, body.headers)
-        assert.equal("Unauthorized", body.message)
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal("", body.headers["x-consumer-groups"])
 
         local res = assert(proxy_client:get("/request", {
           headers = {
             Host = "deny-none-anonymous.test"
           }
         }))
-        local body = cjson.decode(assert.res_status(401, res))
-        assert.equal(nil, body.headers)
-        assert.equal("Unauthorized", body.message)
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal("", body.headers["x-consumer-groups"])
       end)
     end)
 
