@@ -1009,6 +1009,28 @@ describe("Configuration loader", function()
     end)
   end)
 
+  describe("clustering properties", function()
+    it("cluster_data_plane_purge_delay is accepted", function()
+      local conf = assert(conf_loader(nil, {
+        cluster_data_plane_purge_delay = 100,
+      }))
+      assert.equal(100, conf.cluster_data_plane_purge_delay)
+
+      conf = assert(conf_loader(nil, {
+        cluster_data_plane_purge_delay = 60,
+      }))
+      assert.equal(60, conf.cluster_data_plane_purge_delay)
+    end)
+
+    it("cluster_data_plane_purge_delay < 60 is rejected", function()
+      local conf, err = conf_loader(nil, {
+        cluster_data_plane_purge_delay = 59,
+      })
+      assert.is_nil(conf)
+      assert.equal("cluster_data_plane_purge_delay must be 60 or greater", err)
+    end)
+  end)
+
   describe("upstream keepalive properties", function()
     it("are accepted", function()
       local conf = assert(conf_loader(nil, {

@@ -324,7 +324,7 @@ function _M.handle_cp_websocket()
           data ~= "" and data or nil,
         hostname = node_hostname,
         ip = node_ip,
-      })
+      }, { ttl = kong.configuration.cluster_data_plane_purge_delay, })
       if not ok then
         ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
       end

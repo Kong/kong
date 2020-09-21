@@ -6,8 +6,10 @@ return {
         hostname       TEXT NOT NULL,
         ip             TEXT NOT NULL,
         last_seen      TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
-        config_hash    TEXT NOT NULL
+        config_hash    TEXT NOT NULL,
+        ttl            TIMESTAMP WITH TIME ZONE
       );
+      CREATE INDEX IF NOT EXISTS clustering_data_planes_ttl_idx ON clustering_data_planes (ttl);
 
       DO $$
       BEGIN
@@ -35,7 +37,7 @@ return {
         last_seen timestamp,
         config_hash text,
         PRIMARY KEY (id)
-      );
+      ) WITH default_time_to_live = 1209600;
 
       ALTER TABLE routes ADD request_buffering boolean;
       ALTER TABLE routes ADD response_buffering boolean;
