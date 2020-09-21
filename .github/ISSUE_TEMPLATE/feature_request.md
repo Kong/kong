@@ -1,6 +1,9 @@
 ---
-name: "Feature request"
+name: Feature request
 about: Suggest an idea that will improve the project
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
