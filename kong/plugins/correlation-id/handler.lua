@@ -13,6 +13,7 @@ local generators
 do
   local worker_pid = ngx.worker.pid()
   local now = ngx.now
+  local var = ngx.var
   local fmt = string.format
 
   generators = {
@@ -24,8 +25,6 @@ do
       return worker_uuid .. "#" .. worker_counter
     end,
     ["tracker"] = function()
-      local var = ngx.var
-
       return fmt("%s-%s-%d-%s-%s-%0.3f",
         var.server_addr,
         var.server_port,
@@ -43,7 +42,7 @@ local CorrelationIdHandler = {}
 
 
 CorrelationIdHandler.PRIORITY = 1
-CorrelationIdHandler.VERSION = "2.0.1"
+CorrelationIdHandler.VERSION = "2.0.2"
 
 
 function CorrelationIdHandler:init_worker()
@@ -55,7 +54,7 @@ end
 function CorrelationIdHandler:access(conf)
   -- Set header for upstream
   local correlation_id = kong.request.get_header(conf.header_name)
-  if not correlation_id then
+  if not correlation_id or correlation_id == "" then
     -- Generate the header value
     correlation_id = generators[conf.generator]()
     if correlation_id then
@@ -76,8 +75,11 @@ function CorrelationIdHandler:header_filter(conf)
   end
 
   local correlation_id = kong.ctx.plugin.correlation_id or
-                         kong.request.get_header(conf.header_name) or
-                         generators[conf.generator]()
+                         kong.request.get_header(conf.header_name)
+
+  if not correlation_id or correlation_id == "" then
+    correlation_id = generators[conf.generator]()
+  end
 
   kong.response.set_header(conf.header_name, correlation_id)
 end
