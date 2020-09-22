@@ -697,6 +697,9 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("executes successfully when route does not exist", function()
+      local pl_file = require "pl.file"
+      pl_file.write(helpers.test_conf.nginx_err_logs, "")
+
       local res = assert(proxy_client:send({
         method  = "GET",
         path    = "/nonexistant/proxy/path",
@@ -729,7 +732,6 @@ for _, strategy in helpers.each_strategy() do
       -- resulting from attempting to reference the id on
       -- a route when no such value exists after http-log execution
 
-      local pl_file = require "pl.file"
       local logs = pl_file.read(helpers.test_conf.nginx_err_logs)
 
       for line in logs:gmatch("[^\r\n]+") do
