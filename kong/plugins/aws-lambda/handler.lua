@@ -36,6 +36,7 @@ local tonumber             = tonumber
 local type                 = type
 local fmt                  = string.format
 local ngx_encode_base64    = ngx.encode_base64
+local ngx_decode_base64    = ngx.decode_base64
 local ngx_update_time      = ngx.update_time
 local ngx_now              = ngx.now
 local kong                 = kong
@@ -94,6 +95,11 @@ local function extract_proxy_response(content)
 
   local headers = serialized_content.headers or {}
   local body = serialized_content.body or ""
+  local isBase64Encoded = serialized_content.isBase64Encoded or false
+  if isBase64Encoded then
+    body = ngx_decode_base64(body)
+  end
+
   headers["Content-Length"] = #body
 
   return {

@@ -1,5 +1,10 @@
 # Kong AWS Lambda plugin changelog
 
+## unreleased
+
+- feat(body) adding support for 'isBase64Encoded' flag in Lambda function
+  responses
+
 ## aws-lambda 3.4.0 12-May-2020
 
 - Change `luaossl` to `lua-resty-openssl`

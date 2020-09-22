@@ -42,6 +42,9 @@ local fixtures = {
                     elseif string.match(ngx.var.uri, "functionWithNoResponse") then
                       ngx.header["Content-Length"] = 0
 
+                    elseif string.match(ngx.var.uri, "functionWithBase64EncodedResponse") then
+                      ngx.say("{\"statusCode\": 200, \"body\": \"dGVzdA==\", \"isBase64Encoded\": true}")
+
                     elseif type(res) == 'string' then
                       ngx.header["Content-Length"] = #res + 1
                       ngx.say(res)
@@ -180,6 +183,12 @@ for _, strategy in helpers.each_strategy() do
 
       local route15 = bp.routes:insert {
         hosts       = { "lambda15.com" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+      local route16 = bp.routes:insert {
+        hosts       = { "lambda16.com" },
         protocols   = { "http", "https" },
         service     = null,
       }
@@ -391,6 +400,19 @@ for _, strategy in helpers.each_strategy() do
           aws_region    = "ab-cdef-1",
           function_name = "kongLambdaTest",
         },
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route16.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithBase64EncodedResponse",
+          is_proxy_integration = true,
+        }
       }
 
       assert(helpers.start_kong({
@@ -945,6 +967,18 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(res.headers["x-amzn-RequestId"])
         assert.equal("some_value1", body.key1)
         assert.is_nil(res.headers["X-Amz-Function-Error"])
+      end)
+
+      it("returns decoded base64 response from a Lambda function", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+          headers = {
+            ["Host"] = "lambda16.com"
+          }
+        })
+        assert.res_status(200, res)
+        assert.equal("test", res:read_body())
       end)
     end)
   end)
