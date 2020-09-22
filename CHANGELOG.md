@@ -1,6 +1,18 @@
 # Kong AWS Lambda plugin changelog
 
-## aws-lambda UNRELEASED
+### Releasing new versions
+
+- update changelog below
+- update rockspec version
+- update version in `handler.lua`
+- commit as `chore(*) release x.y.z`
+- tag commit as `x.y.z`
+- push commit and tags
+- upload to luarocks; `luarocks upload kong-plugin-aws-lambda-x.y.z-1.rockspec --api-key=abc...`
+- test rockspec; `luarocks install kong-plugin-aws-lambda`
+
+
+## aws-lambda 3.5.0 22-Sep-2020
 
 - feat: adding support for 'isBase64Encoded' flag in Lambda function responses
 - fix: respect `skip_large_bodies` config setting even when not using

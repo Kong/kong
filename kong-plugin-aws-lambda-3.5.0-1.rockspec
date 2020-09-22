@@ -1,10 +1,10 @@
 package = "kong-plugin-aws-lambda"
-version = "3.4.0-1"
+version = "3.5.0-1"
 
 supported_platforms = {"linux", "macosx"}
 source = {
-  url = "https://github.com/Kong/kong-plugin-aws-lambda/archive/3.4.0.tar.gz",
-  dir = "kong-plugin-aws-lambda-3.4.0"
+  url = "git://github.com/kong/kong-plugin-aws-lambda",
+  tag = "3.5.0",
 }
 
 description = {
