@@ -6,6 +6,7 @@ local http = require "kong.plugins.aws-lambda.http.connect-better"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 local constants = require "kong.constants"
+local request_util = require "kong.plugins.aws-lambda.request-util"
 
 
 local VIA_HEADER = constants.HEADERS.VIA
@@ -141,7 +142,8 @@ function AWSLambdaHandler:access(conf)
 
     if conf.forward_request_body then
       local content_type = kong.request.get_header("content-type")
-      local body_raw = kong.request.get_raw_body()
+      local skip_large_bodies = conf and conf.skip_large_bodies or true
+      local body_raw = request_util.read_request_body(skip_large_bodies)
       local body_args, err = kong.request.get_body()
       if err and err:match("content type") then
         body_args = {}

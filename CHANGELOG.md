@@ -1,9 +1,10 @@
 # Kong AWS Lambda plugin changelog
 
-## unreleased
+## aws-lambda UNRELEASED
 
-- feat(body) adding support for 'isBase64Encoded' flag in Lambda function
-  responses
+- feat: adding support for 'isBase64Encoded' flag in Lambda function responses
+- fix: respect `skip_large_bodies` config setting even when not using
+  AWS API Gateway compatibility
 
 ## aws-lambda 3.4.0 12-May-2020
 
