@@ -3,8 +3,8 @@ local strip = (require "pl.stringx").strip
 local version = setmetatable({
   x = 2,
   y = 1,
-  z = 3,
-  e = 2,
+  z = 4,
+  e = 0,
 }, {
   __tostring = function(t)
     return string.format("%d.%d.%d.%d", t.x, t.y, t.z, t.e)
