@@ -169,10 +169,11 @@ end
 
 local function report_expired_license()
   local expiration_time = license_expiration_time(kong.license)
-
-  timer_at(0,
-           license_notification_handler,
-           expiration_time)
+  if expiration_time then
+    timer_at(0,
+      license_notification_handler,
+      expiration_time)
+  end
 end
 _M.report_expired_license = report_expired_license
 
