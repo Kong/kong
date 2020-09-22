@@ -914,6 +914,9 @@
                                  # Detailed discussion of this behavior is
                                  # available in the online documentation.
 
+#pg_keepalive_timeout = 60000    # Defines the time in milliseconds that an idle connection to
+                                 # PostreSQL server will be kept alive.
+
 #pg_ro_host =                    # Same as `pg_host`, but for the
                                  # read-only connection.
                                  # **Note:** Refer to the documentation
@@ -960,6 +963,10 @@
 
 #pg_ro_semaphore_timeout = <pg_semaphore_timeout>
                                  # Same as `pg_semaphore_timeout`, but for the
+                                 # read-only connection.
+
+#pg_ro_keepalive_timeout = <pg_keepalive_timeout>
+                                 # Same as `pg_keepalive_timeout`, but for the
                                  # read-only connection.
 
 #cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
@@ -2151,7 +2158,7 @@
                                 # Example
                                 # For Pattern `/$(workspace)/v%d/.*` valid paths
                                 # are:
-                                # 
+                                #
                                 # 1. `/group1/v1/` if route belongs to
                                 #   workspace `group1`.
                                 #
