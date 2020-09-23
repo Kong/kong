@@ -162,7 +162,7 @@ describe("Log Serializer", function()
       local res = kong.log.serialize({ngx = ngx, kong = kong, })
       assert.is_table(res)
 
-      assert.is_nil(res.tries)
+      assert.is_table(res.tries)
     end)
 
     it("basic serializer proxy works with a deprecation warning", function()
