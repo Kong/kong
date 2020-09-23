@@ -14,25 +14,63 @@ for _, strategy in helpers.each_strategy() do
           "plugins",
         }, {
           "ctx-tests",
+          "ctx-tests-response",
         })
 
-        bp.routes:insert {
+        local unbuff_route = bp.routes:insert {
           paths   = { "/" },
         }
 
         bp.plugins:insert {
           name = "ctx-tests",
-          route = null,
+          route = { id = unbuff_route.id },
           service = null,
           consumer = null,
           protocols = {
             "http", "https", "tcp", "tls", "grpc", "grpcs"
           },
+          config = {
+            buffered = false,
+          }
+        }
+
+        local buffered_route = bp.routes:insert {
+          paths   = { "/buffered" },
+        }
+
+        bp.plugins:insert {
+          name = "ctx-tests",
+          route = { id = buffered_route.id },
+          service = null,
+          consumer = null,
+          protocols = {
+            "http", "https", "tcp", "tls", "grpc", "grpcs"
+          },
+          config = {
+            buffered = true,
+          }
+        }
+
+        local response_route = bp.routes:insert {
+          paths = { "/response" },
+        }
+
+        bp.plugins:insert {
+          name = "ctx-tests-response",
+          route = { id = response_route.id },
+          service = null,
+          consumer = null,
+          protocols = {
+            "http", "https", "tcp", "tls", "grpc", "grpcs"
+          },
+          config = {
+            buffered = false,
+          }
         }
 
         assert(helpers.start_kong({
           database      = strategy,
-          plugins       = "bundled,ctx-tests",
+          plugins       = "bundled,ctx-tests,ctx-tests-response",
           nginx_conf    = "spec/fixtures/custom_nginx.template",
           stream_listen = "off",
           admin_listen  = "off",
@@ -54,8 +92,40 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("context values are correctly calculated", function()
-        local res = assert(proxy_client:get("/status/278"))
-        assert.res_status(278, res)
+        local res = proxy_client:get("/status/231")
+        assert.truthy(res)
+        assert.res_status(231, res)
+
+        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+        assert.not_matches("[ctx-tests]", err_log, nil, true)
+      end)
+
+      it("context values are correctly calculated (buffered)", function()
+        local res = assert(proxy_client:get("/buffered/status/232"))
+        assert.res_status(232, res)
+
+        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+        assert.not_matches("[ctx-tests]", err_log, nil, true)
+      end)
+
+      it("context values are correctly calculated (response)", function()
+        local res = assert(proxy_client:get("/response/status/233"))
+        assert.res_status(233, res)
+
+        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+        assert.not_matches("[ctx-tests]", err_log, nil, true)
+      end)
+
+      it("can run unbuffered request after a \"response\" one", function()
+        local res = assert(proxy_client:get("/response/status/234"))
+        assert.res_status(234, res)
+
+        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+        assert.not_matches("[ctx-tests]", err_log, nil, true)
+
+        local res = proxy_client:get("/status/235")
+        assert.truthy(res)
+        assert.res_status(235, res)
 
         local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
         assert.not_matches("[ctx-tests]", err_log, nil, true)

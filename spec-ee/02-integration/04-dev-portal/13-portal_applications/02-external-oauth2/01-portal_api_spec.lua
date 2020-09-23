@@ -4,7 +4,6 @@ local helpers    = require "spec.helpers"
 local utils      = require "kong.tools.utils"
 local ee_helpers = require "spec-ee.helpers"
 
-
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
 local DEFAULT_CONSUMER = {
   ["basic-auth"] = {

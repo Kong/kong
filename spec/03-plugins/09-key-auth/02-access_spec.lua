@@ -73,6 +73,15 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "key-auth10.com" },
       }
 
+      local route_grpc = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        service = assert(bp.services:insert {
+          name = "grpc",
+          url = "grpc://localhost:15002",
+        }),
+      })
+
       bp.plugins:insert {
         name     = "key-auth",
         route = { id = route1.id },
@@ -154,6 +163,11 @@ for _, strategy in helpers.each_strategy() do
         config = {
           anonymous = anonymous_user.username,
         },
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route_grpc.id },
       }
 
       assert(helpers.start_kong({
@@ -402,6 +416,27 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid authentication credentials" }, json)
+      end)
+    end)
+
+    describe("key in gRPC headers", function()
+      it("rejects call without credentials", function()
+        local ok, err = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {},
+        }
+        assert.falsy(ok)
+        assert.matches("Code: Unauthenticated", err)
+      end)
+      it("accepts authorized calls", function()
+        local ok, res = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {
+            ["-H"] = "'apikey: kong'",
+          },
+        }
+        assert.truthy(ok)
+        assert.same({ reply = "hello noname" }, cjson.decode(res))
       end)
     end)
 

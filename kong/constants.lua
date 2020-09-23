@@ -67,6 +67,7 @@ local protocols_with_subsystem = {
   https = "http",
   tcp = "stream",
   tls = "stream",
+  udp = "stream",
   grpc = "http",
   grpcs = "http",
 }
@@ -78,6 +79,7 @@ table.sort(protocols)
 
 local constants = {
   BUNDLED_PLUGINS = plugin_map,
+  EE_PLUGINS = dist_constants.plugins,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
   -- non-standard headers, specific to Kong
   HEADERS = {
@@ -97,6 +99,7 @@ local constants = {
     CONSUMER_GROUPS = "X-Consumer-Groups",
     AUTHENTICATED_GROUPS = "X-Authenticated-Groups",
     FORWARDED_HOST = "X-Forwarded-Host",
+    FORWARDED_PATH = "X-Forwarded-Path",
     FORWARDED_PREFIX = "X-Forwarded-Prefix",
     ANONYMOUS = "X-Anonymous-Consumer",
     VIA = "Via",
@@ -119,6 +122,7 @@ local constants = {
     "plugins",
     "tags",
     "ca_certificates",
+    "clustering_data_planes",
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
@@ -161,13 +165,13 @@ local constants = {
     "kong_rate_limiting_counters",
   },
   DATABASE = {
+    -- These constants are not used anywhere in the Kong code. They're here as a useful reference
     POSTGRES = {
       MIN = "9.5",
-      -- also accepts a DEPRECATED key, i.e. DEPRECATED = "9.4"
     },
     CASSANDRA = {
-      MIN = "2.2",
-      -- also accepts a DEPRECATED key
+      MIN = "3.0",
+      DEPRECATED = "2.2",
     }
   },
   PROTOCOLS = protocols,

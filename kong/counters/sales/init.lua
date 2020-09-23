@@ -59,7 +59,9 @@ persistence_handler = function(premature, self)
 end
 
 local function get_license_data()
-  return kong.license and kong.license.license.payload or nil
+  return kong.license and
+         kong.license.license and
+         kong.license.license.payload
 end
 
 -- retrieves all merged counters data from all nodes that is stored in the database

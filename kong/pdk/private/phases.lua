@@ -14,6 +14,7 @@ local PHASES = {
   rewrite           = 0x00000010,
   access            = 0x00000020,
   balancer          = 0x00000040,
+  response          = 0x00000080,
   --content         = 0x00000100,
   header_filter     = 0x00000200,
   body_filter       = 0x00000400,

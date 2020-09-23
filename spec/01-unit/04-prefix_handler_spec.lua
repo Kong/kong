@@ -864,7 +864,7 @@ describe("NGINX conf compiler", function()
                            nil, true)
             assert.matches("daemon on;", contents, nil, true)
             assert.matches("listen 0.0.0.0:9000;", contents, nil, true)
-            assert.matches("keepalive 60;", contents, nil, true)
+            assert.not_matches("keepalive", contents, nil, true)
           end)
 
           it("'upstream_keepalive = 0' disables keepalive", function()
@@ -901,6 +901,7 @@ describe("NGINX conf compiler", function()
               prefix = tmp_config.prefix,
               nginx_http_upstream_keepalive = "NONE", -- not used by template
               upstream_keepalive = 60,
+              upstream_keepalive_pool_size = 0,
             }))
 
             assert(prefix_handler.prepare_prefix(conf, templ_fixture))

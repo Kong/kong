@@ -24,6 +24,13 @@ describe("Plugin: rate-limiting (schema)", function()
     assert.is_nil(err)
   end)
 
+  it("proper config validates (path)", function()
+    local config = { second = 10, limit_by = "path", path = "/request" }
+    local ok, _, err = v(config, schema_def)
+    assert.truthy(ok)
+    assert.is_nil(err)
+  end)
+
   describe("errors", function()
     it("limits: smaller unit is less than bigger unit", function()
       local config = { second = 20, hour = 10 }
@@ -52,6 +59,13 @@ describe("Plugin: rate-limiting (schema)", function()
       local ok, err = v(config, schema_def)
       assert.falsy(ok)
       assert.equal("required field missing", err.config.header_name)
+    end)
+
+    it("is limited by path but the path field is missing", function()
+      local config = { second = 10, limit_by = "path", path =  nil }
+      local ok, err = v(config, schema_def)
+      assert.falsy(ok)
+      assert.equal("required field missing", err.config.path)
     end)
   end)
 end)

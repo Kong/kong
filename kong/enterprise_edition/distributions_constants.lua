@@ -2,4 +2,16 @@
 -- process. Returning an empty 2 level dictionary to comply with the
 -- interface.
 
-return setmetatable({}, {__index = function() return {} end })
+local constants = {
+  featureset = {
+    full = {
+      conf = {},
+      abilities = {}
+    },
+    free = {
+      conf = {},
+      abilities = {}
+    },
+  }
+}
+return setmetatable(constants, {__index = function() return {} end })

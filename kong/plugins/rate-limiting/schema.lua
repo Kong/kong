@@ -39,9 +39,10 @@ return {
           { limit_by = {
               type = "string",
               default = "consumer",
-              one_of = { "consumer", "credential", "ip", "service", "header" },
+              one_of = { "consumer", "credential", "ip", "service", "header", "path" },
           }, },
           { header_name = typedefs.header_name },
+          { path = typedefs.path },
           { policy = {
               type = "string",
               default = "cluster",
@@ -73,6 +74,10 @@ return {
     { conditional = {
       if_field = "config.limit_by", if_match = { eq = "header" },
       then_field = "config.header_name", then_match = { required = true },
+    } },
+    { conditional = {
+      if_field = "config.limit_by", if_match = { eq = "path" },
+      then_field = "config.path", then_match = { required = true },
     } },
     { conditional = {
       if_field = "config.policy", if_match = { eq = "redis" },

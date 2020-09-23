@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
+local cjson = require "cjson"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -44,6 +45,15 @@ for _, strategy in helpers.each_strategy() do
         hosts   = { "datadog4.com" },
         service = bp.services:insert { name = "dd4" }
       }
+
+      local route_grpc = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        service = assert(bp.services:insert {
+          name = "grpc",
+          url = "grpc://localhost:15002",
+        }),
+      })
 
       bp.plugins:insert {
         name     = "key-auth",
@@ -113,6 +123,20 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      bp.plugins:insert {
+        name       = "key-auth",
+        route = { id = route_grpc.id },
+      }
+
+      bp.plugins:insert {
+        name     = "datadog",
+        route = { id = route_grpc.id },
+        config   = {
+          host   = "127.0.0.1",
+          port   = 9999,
+        },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -149,6 +173,29 @@ for _, strategy in helpers.each_strategy() do
       assert.contains("kong.response.size:%d+|ms|#name:dd1,status:200,consumer:bar,app:kong", gauges, true)
       assert.contains("kong.upstream_latency:%d+|ms|#name:dd1,status:200,consumer:bar,app:kong", gauges, true)
       assert.contains("kong.kong_latency:%d*|ms|#name:dd1,status:200,consumer:bar,app:kong", gauges, true)
+    end)
+
+    it("logs metrics over UDP #grpc", function()
+      local thread = helpers.udp_server(9999, 6)
+
+      local ok, res = helpers.proxy_client_grpc(){
+        service = "hello.HelloService.SayHello",
+        opts = {
+          ["-H"] = "'apikey: kong'",
+        },
+      }
+      assert.truthy(ok)
+      assert.same({ reply = "hello noname" }, cjson.decode(res))
+
+      local ok, gauges = thread:join()
+      assert.True(ok)
+      assert.equal(6, #gauges)
+      assert.contains("kong.request.count:1|c|#name:grpc,status:200,consumer:bar,app:kong" , gauges)
+      assert.contains("kong.latency:%d+|ms|#name:grpc,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.request.size:%d+|ms|#name:grpc,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.response.size:%d+|ms|#name:grpc,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.upstream_latency:%d+|ms|#name:grpc,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.kong_latency:%d*|ms|#name:grpc,status:200,consumer:bar,app:kong", gauges, true)
     end)
 
     it("logs metrics over UDP with custom prefix", function()
