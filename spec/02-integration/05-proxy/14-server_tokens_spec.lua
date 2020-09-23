@@ -25,6 +25,32 @@ describe("headers [#" .. strategy .. "]", function()
           hosts = { "headers-inspect.com" },
         }
 
+        local route = bp.routes:insert {
+          hosts = { "short-circuit.test" },
+        }
+
+        bp.plugins:insert {
+          route = route,
+          name = "request-termination",
+          config = {
+            status_code = 200,
+            message = "Terminated"
+          },
+        }
+
+        bp.plugins:insert {
+          route = route,
+          name = "response-transformer",
+          config = {
+            add = {
+              headers = {
+                "Via:" .. default_server_header,
+                "Server:" .. "Demo",
+              },
+            },
+          },
+        }
+
         config = config or {}
         config.database   = strategy
         config.nginx_conf = "spec/fixtures/custom_nginx.template"
@@ -52,7 +78,7 @@ describe("headers [#" .. strategy .. "]", function()
       end
     end)
 
-    describe("(with default configration values)", function()
+    describe("(with default configuration values)", function()
 
       lazy_setup(start())
 
@@ -84,6 +110,20 @@ describe("headers [#" .. strategy .. "]", function()
         assert.res_status(404, res)
         assert.equal(default_server_header, res.headers["server"])
         assert.is_nil(res.headers["via"])
+      end)
+
+      it("should not return Kong 'Server' header when short-circuited with a matching Kong 'Via' #new", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host  = "short-circuit.test",
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.equal(default_server_header, res.headers["Via"])
+        assert.equal("Demo", res.headers["Server"])
       end)
 
     end)
@@ -862,7 +902,7 @@ describe("headers [#" .. strategy .. "]", function()
     end)
   end)
 
-  describe("X-Kong-Admin-Latency", function()
+  describe("Admin API", function()
     local admin_client
 
     local function start(config)
@@ -885,53 +925,107 @@ describe("headers [#" .. strategy .. "]", function()
       end
     end)
 
-    describe("(with default configration values)", function()
-      lazy_setup(start())
-      lazy_teardown(stop)
+    describe("Server", function()
+      describe("(with default configration values)", function()
+        lazy_setup(start())
+        lazy_teardown(stop)
 
-      it("should be returned when admin api is requested", function()
-        local res = assert(admin_client:get("/"))
-        assert.res_status(200, res)
-        assert.is_not_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+        it("should be returned when admin api is requested", function()
+          local res = assert(admin_client:get("/"))
+          assert.res_status(200, res)
+          assert.is_not_nil(res.headers[constants.HEADERS.SERVER])
+        end)
+      end)
+
+      describe("(with headers = server_tokens)", function()
+        lazy_setup(start {
+          headers = "server_tokens",
+        })
+        lazy_teardown(stop)
+
+        it("should be returned when admin api is requested", function()
+          local res = assert(admin_client:get("/"))
+          assert.res_status(200, res)
+          assert.is_not_nil(res.headers[constants.HEADERS.SERVER])
+        end)
+      end)
+
+      describe("(with headers = Server)", function()
+        lazy_setup(start {
+          headers = "Server",
+        })
+        lazy_teardown(stop)
+
+        it("should be returned when admin api is requested", function()
+          local res = assert(admin_client:get("/"))
+          assert.res_status(200, res)
+          assert.is_not_nil(res.headers[constants.HEADERS.SERVER])
+        end)
+      end)
+
+      describe("(with headers = off)", function()
+        lazy_setup(start {
+          headers = "off",
+        })
+        lazy_teardown(stop)
+
+        it("should not be returned when admin api is requested", function()
+          local res = assert(admin_client:get("/"))
+          assert.res_status(200, res)
+          assert.is_nil(res.headers[constants.HEADERS.SERVER])
+        end)
       end)
     end)
 
-    describe("(with headers = latency_tokens)", function()
-      lazy_setup(start {
-        headers = "latency_tokens",
-      })
-      lazy_teardown(stop)
+    describe("X-Kong-Admin-Latency", function()
+      describe("(with default configration values)", function()
+        lazy_setup(start())
+        lazy_teardown(stop)
 
-      it("should be returned when admin api is requested", function()
-        local res = assert(admin_client:get("/"))
-        assert.res_status(200, res)
-        assert.is_not_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+        it("should be returned when admin api is requested", function()
+          local res = assert(admin_client:get("/"))
+          assert.res_status(200, res)
+          assert.is_not_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+        end)
       end)
-    end)
 
-    describe("(with headers = X-Kong-Admin-Latency)", function()
-      lazy_setup(start {
-        headers = "latency_tokens",
-      })
-      lazy_teardown(stop)
+      describe("(with headers = latency_tokens)", function()
+        lazy_setup(start {
+          headers = "latency_tokens",
+        })
+        lazy_teardown(stop)
 
-      it("should be returned when admin api is requested", function()
-        local res = assert(admin_client:get("/"))
-        assert.res_status(200, res)
-        assert.is_not_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+        it("should be returned when admin api is requested", function()
+          local res = assert(admin_client:get("/"))
+          assert.res_status(200, res)
+          assert.is_not_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+        end)
       end)
-    end)
 
-    describe("(with headers = off)", function()
-      lazy_setup(start {
-        headers = "off",
-      })
-      lazy_teardown(stop)
+      describe("(with headers = X-Kong-Admin-Latency)", function()
+        lazy_setup(start {
+          headers = "latency_tokens",
+        })
+        lazy_teardown(stop)
 
-      it("should not be returned when admin api is requested", function()
-        local res = assert(admin_client:get("/"))
-        assert.res_status(200, res)
-        assert.is_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+        it("should be returned when admin api is requested", function()
+          local res = assert(admin_client:get("/"))
+          assert.res_status(200, res)
+          assert.is_not_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+        end)
+      end)
+
+      describe("(with headers = off)", function()
+        lazy_setup(start {
+          headers = "off",
+        })
+        lazy_teardown(stop)
+
+        it("should not be returned when admin api is requested", function()
+          local res = assert(admin_client:get("/"))
+          assert.res_status(200, res)
+          assert.is_nil(res.headers[constants.HEADERS.ADMIN_LATENCY])
+        end)
       end)
     end)
   end)

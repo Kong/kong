@@ -13,7 +13,6 @@
 
 
 local cjson = require "cjson.safe"
-local meta = require "kong.meta"
 local checks = require "kong.pdk.private.checks"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
@@ -67,9 +66,6 @@ local function new(self, major_version)
   local MIN_STATUS_CODE      = 100
   local MAX_STATUS_CODE      = 599
   local MIN_ERR_STATUS_CODE  = 400
-
-  local SERVER_HEADER_NAME   = "Server"
-  local SERVER_HEADER_VALUE  = meta._NAME .. "/" .. meta._VERSION
 
   local GRPC_STATUS_UNKNOWN  = 2
   local GRPC_STATUS_NAME     = "grpc-status"
@@ -544,12 +540,6 @@ local function new(self, major_version)
     end
 
     ngx.status = status
-
-    if self.ctx.core.phase == phase_checker.phases.error or
-       self.ctx.core.phase == phase_checker.phases.admin_api
-    then
-      ngx.header[SERVER_HEADER_NAME] = SERVER_HEADER_VALUE
-    end
 
     local has_content_type
     if headers ~= nil then
