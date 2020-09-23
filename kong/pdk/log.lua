@@ -561,7 +561,7 @@ do
 
     local host_port = ctx.host_port or var.server_port
     
-    tries = (ctx.balancer_data or {tries = {}}).tries
+    local tries = (ctx.balancer_data or {}).tries or {}
     setmetatable(tries, cjson.array_mt)
 
     return {
