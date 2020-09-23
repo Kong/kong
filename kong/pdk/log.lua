@@ -15,6 +15,7 @@ local ngx_re = require "ngx.re"
 local inspect = require "inspect"
 local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
+local cjson = require "cjson"
 
 
 local sub = string.sub
@@ -559,6 +560,9 @@ do
     end
 
     local host_port = ctx.host_port or var.server_port
+    
+    tries = (ctx.balancer_data or {tries = {}}).tries
+    setmetatable(tries, cjson.array_mt)
 
     return {
       request = {
@@ -576,7 +580,7 @@ do
         headers = resp_headers,
         size = var.bytes_sent
       },
-      tries = (ctx.balancer_data or {}).tries,
+      tries = tries,
       latencies = {
         kong = (ctx.KONG_ACCESS_TIME or 0) +
                (ctx.KONG_RECEIVE_TIME or 0) +
