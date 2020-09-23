@@ -61,6 +61,32 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "ip-restriction11.com" },
       }
 
+      local grpc_service = bp.services:insert {
+          name = "grpc1",
+          url = "grpc://localhost:15002",
+      }
+
+      local route_grpc_deny = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        hosts = { "ip-restriction-grpc1.com" },
+        service = grpc_service,
+      })
+
+      local route_grpc_allow = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        hosts = { "ip-restriction-grpc2.com" },
+        service = grpc_service,
+      })
+
+      local route_grpc_xforwarded_deny = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        hosts = { "ip-restriction-grpc3.com" },
+        service = grpc_service,
+      })
+
       bp.plugins:insert {
         name     = "ip-restriction",
         route = { id = route1.id },
@@ -152,6 +178,30 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route_grpc_deny.id },
+        config   = {
+          deny = { "127.0.0.1", "127.0.0.2" }
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route_grpc_allow.id },
+        config   = {
+          deny = { "127.0.0.2" }
+        },
+      })
+
+      assert(db.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route_grpc_xforwarded_deny.id },
+        config   = {
+          allow = { "127.0.0.4" },
+        },
+      })
+
       assert(helpers.start_kong {
         database          = strategy,
         real_ip_header    = "X-Forwarded-For",
@@ -186,6 +236,19 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "Your IP address is not allowed" }, json)
       end)
+
+      it("blocks a request when the IP is denied #grpc", function()
+        local ok, err =   helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {
+            ["-authority"] = "ip-restriction-grpc1.com",
+            ["-v"] = true,
+          },
+        }
+        assert.falsy(ok)
+        assert.matches("Code: PermissionDenied", err)
+      end)
+
       it("allows a request when the IP is not denied", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -198,6 +261,18 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.equal("127.0.0.1", json.vars.remote_addr)
       end)
+
+      it("allows a request when the IP is not denied #grpc", function()
+        local ok = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {
+            ["-authority"] = "ip-restriction-grpc2.com",
+            ["-v"] = true,
+          },
+        }
+        assert.truthy(ok)
+      end)
+
       it("blocks IP with CIDR", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -339,6 +414,17 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.same({ message = "Your IP address is not allowed" }, json)
         end)
+        it("block with not allowed X-Forwarded-For header #grpc", function()
+          local ok, err = helpers.proxy_client_grpc(){
+            service = "hello.HelloService.SayHello",
+            opts = {
+              ["-authority"] = "ip-restriction-grpc3.com",
+              ["-v"] = true,
+            },
+          }
+          assert.falsy(ok)
+          assert.matches("Code: PermissionDenied", err)
+        end)
         it("allows with allowed X-Forwarded-For header", function()
           local res = assert(proxy_client:send {
             method  = "GET",
@@ -349,6 +435,16 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           assert.res_status(200, res)
+        end)
+        it("allows with allowed X-Forwarded-For header #grpc", function()
+          assert.truthy(helpers.proxy_client_grpc(){
+            service = "hello.HelloService.SayHello",
+            opts = {
+              ["-authority"] = "ip-restriction-grpc3.com",
+              ["-v"] = true,
+              ["-H"] = "'X-Forwarded-For: 127.0.0.4'",
+            },
+          })
         end)
         it("allows with allowed complex X-Forwarded-For header", function()
           local res = assert(proxy_client:send {

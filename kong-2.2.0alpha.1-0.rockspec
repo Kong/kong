@@ -1,9 +1,9 @@
 package = "kong"
-version = "2.1.3-0"
+version = "2.2.0alpha.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.1.3"
+  tag = "2.2.0-alpha.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -53,13 +53,13 @@ dependencies = {
   "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-zipkin ~> 1.1",
   "kong-plugin-serverless-functions ~> 1.0",
-  "kong-prometheus-plugin ~> 0.9",
   "kong-plugin-session ~> 2.4",
+  "kong-prometheus-plugin ~> 1.0",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.2",
   "kong-plugin-aws-lambda ~> 3.4",
   "kong-plugin-acme ~> 0.2",
-  "kong-plugin-grpc-web ~> 0.1",
+  "kong-plugin-grpc-web ~> 0.2",
   "kong-plugin-grpc-gateway ~> 0.1",
 }
 build = {
@@ -332,6 +332,8 @@ build = {
     ["kong.db.schema.entities.keyring_meta"] = "kong/db/schema/entities/keyring_meta.lua",
     ["kong.db.schema.entities.tags"] = "kong/db/schema/entities/tags.lua",
     ["kong.db.schema.entities.ca_certificates"] = "kong/db/schema/entities/ca_certificates.lua",
+    ["kong.db.schema.entities.workspaces"] = "kong/db/schema/entities/workspaces.lua",
+    ["kong.db.schema.entities.clustering_data_planes"] = "kong/db/schema/entities/clustering_data_planes.lua",
     ["kong.db.schema.entities.groups"] = "kong/db/schema/entities/groups.lua",
     ["kong.db.schema.entities.group_rbac_roles"] = "kong/db/schema/entities/group_rbac_roles.lua",
     ["kong.db.schema.entities.event_hooks"] = "kong/db/schema/entities/event_hooks.lua",
@@ -375,6 +377,7 @@ build = {
     ["kong.db.migrations.core.009_200_to_210"] = "kong/db/migrations/core/009_200_to_210.lua",
     ["kong.db.migrations.core.010_210_to_211"] = "kong/db/migrations/core/010_210_to_211.lua",
     ["kong.db.migrations.core.011_212_to_213"] = "kong/db/migrations/core/011_212_to_213.lua",
+    ["kong.db.migrations.core.012_213_to_220"] = "kong/db/migrations/core/012_213_to_220.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",

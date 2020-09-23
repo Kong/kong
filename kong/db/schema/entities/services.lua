@@ -48,7 +48,7 @@ return {
 
   entity_checks = {
     { conditional = { if_field = "protocol",
-                      if_match = { one_of = { "tcp", "tls", "grpc", "grpcs" }},
+                      if_match = { one_of = { "tcp", "tls", "udp", "grpc", "grpcs" }},
                       then_field = "path",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",

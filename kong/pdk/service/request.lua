@@ -90,7 +90,7 @@ local function new(self)
     end
 
 
-    self.ctx.core.buffered_proxying = true
+    ngx.ctx.buffered_proxying = true
   end
 
   ---

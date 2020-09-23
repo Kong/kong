@@ -298,6 +298,30 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
       }
     })
 
+    local grpc_service = assert(bp.services:insert {
+      name = "grpc",
+      url = "grpc://localhost:15002",
+    })
+
+    assert(bp.routes:insert {
+      protocols = { "grpc" },
+      paths = { "/hello.HelloService/" },
+      service = grpc_service,
+    })
+
+    bp.response_ratelimiting_plugins:insert({
+      service = { id = grpc_service.id },
+      config = {
+        fault_tolerant = false,
+        policy         = policy,
+        redis_host     = REDIS_HOST,
+        redis_port     = REDIS_PORT,
+        redis_password = REDIS_PASSWORD,
+        redis_database = REDIS_DATABASE,
+        limits         = { video = { second = ITERATIONS } },
+      }
+    })
+
     assert(helpers.start_kong({
       database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -328,6 +352,25 @@ describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: #%s [#%
       assert.res_status(200, res)
       assert.equal(ITERATIONS, tonumber(res.headers["x-ratelimit-limit-video-second"]))
       assert.equal(ITERATIONS - n - 1, tonumber(res.headers["x-ratelimit-remaining-video-second"]))
+    end)
+
+    it("returns remaining counter #grpc", function()
+      wait()
+
+      local ok, res = helpers.proxy_client_grpc(){
+        service = "hello.HelloService.SayHello",
+        opts = {
+          ["-v"] = true,
+        },
+      }
+      assert.truthy(ok)
+      assert.matches("x%-ratelimit%-limit%-video%-second: %d+", res)
+      assert.matches("x%-ratelimit%-remaining%-video%-second: %d+", res)
+
+      -- Note: tests for this plugin rely on the ability to manipulate
+      -- upstream response headers, which is not currently possible with
+      -- the grpc service we use. Therefore, we are only testing that
+      -- headers are indeed inserted.
     end)
 
     it("blocks if exceeding limit", function()

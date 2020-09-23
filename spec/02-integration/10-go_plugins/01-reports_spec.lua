@@ -131,5 +131,15 @@ for _, strategy in helpers.each_strategy() do
       assert.match("go_version=%d+.%d+.%d*", reports_data)
       proxy_client:close()
     end)
+
+    it("runs fake 'response' phase", function()
+      local proxy_client = assert(helpers.proxy_client())
+      local res = proxy_client:get("/", {
+        headers = { host  = "http-service.test" }
+      })
+      assert.res_status(200, res)
+      assert.equal("got from server 'openresty'", res.headers['x-hello-from-go-at-response'])
+
+    end)
   end)
 end

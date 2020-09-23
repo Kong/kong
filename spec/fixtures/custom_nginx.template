@@ -160,6 +160,7 @@ http {
             set $upstream_x_forwarded_proto  '';
             set $upstream_x_forwarded_host   '';
             set $upstream_x_forwarded_port   '';
+            set $upstream_x_forwarded_path   '';
             set $upstream_x_forwarded_prefix '';
             set $kong_proxy_mode             'http';
 
@@ -174,6 +175,7 @@ http {
             proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
             proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
             proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+            proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
             proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
             proxy_set_header      X-Real-IP          $remote_addr;
             proxy_pass_header     Server;
@@ -198,6 +200,7 @@ http {
             grpc_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
             grpc_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
             grpc_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+            grpc_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
             grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
             grpc_set_header      X-Real-IP          $remote_addr;
             grpc_pass_header     Server;
@@ -216,6 +219,7 @@ http {
             grpc_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
             grpc_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
             grpc_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+            grpc_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
             grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
             grpc_set_header      X-Real-IP          $remote_addr;
             grpc_pass_header     Server;
@@ -249,6 +253,7 @@ http {
             proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
             proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
             proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+            proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
             proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
             proxy_set_header      X-Real-IP          $remote_addr;
             proxy_pass_header     Server;
@@ -796,15 +801,22 @@ stream {
     server {
         listen 15557;
         listen 15558 ssl;
+        listen 15557 udp;
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
         ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
         content_by_lua_block {
-            local sock = assert(ngx.req.socket(true))
+            local sock = assert(ngx.req.socket())
             local data = sock:receive()  -- read a line from downstream
-            ngx.say(data) -- echo whatever was sent
+
+            if ngx.var.protocol == "TCP" then
+                ngx.say(data)
+
+            else
+                sock:send(data) -- echo whatever was sent
+            end
         }
     }
 

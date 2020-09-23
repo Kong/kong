@@ -4,6 +4,7 @@ local singletons  = require "kong.singletons"
 local api_helpers = require "kong.api.api_helpers"
 local Endpoints   = require "kong.api.endpoints"
 local hooks       = require "kong.hooks"
+local ee = require "kong.enterprise_edition"
 
 
 local ngx      = ngx
@@ -28,9 +29,16 @@ ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 
 -- Load core routes
-for _, v in ipairs({"kong", "health", "cache", "config", "clustering"}) do
+for _, v in ipairs({"kong", "health", "cache", "config", }) do
   local routes = require("kong.api.routes." .. v)
   api_helpers.attach_routes(app, routes)
+end
+
+
+-- Load custom DB routes
+for _, v in ipairs({"clustering", }) do
+  local routes = require("kong.api.routes." .. v)
+  api_helpers.attach_new_db_routes(app, routes)
 end
 
 
@@ -80,7 +88,10 @@ do
 
   -- DAO Routes
   for _, dao in pairs(singletons.db.daos) do
-    if dao.schema.generate_admin_api ~= false and not dao.schema.legacy then
+    if dao.schema.generate_admin_api ~= false and
+      not dao.schema.legacy
+      and ee.license_can("mount_admin_api_for_" .. dao.schema.name)
+    then
       routes = Endpoints.new(dao.schema, routes)
     end
   end
@@ -89,7 +100,9 @@ do
   for _, dao in pairs(singletons.db.daos) do
     local schema = dao.schema
     local ok, custom_endpoints = utils.load_module_if_exists("kong.api.routes." .. schema.name)
-    if ok then
+    if ok
+      and ee.license_can("mount_admin_api_for_" .. schema.name)
+    then
       customize_routes(routes, custom_endpoints, schema)
     end
   end

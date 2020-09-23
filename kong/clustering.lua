@@ -12,7 +12,10 @@ local openssl_x509 = require("resty.openssl.x509")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
-local ipairs = ipairs
+local math = math
+local pcall = pcall
+local pairs = pairs
+local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local cjson_decode = cjson.decode
@@ -21,7 +24,6 @@ local kong = kong
 local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
-local new_tab = require("table.new")
 local ngx_var = ngx.var
 local io_open = io.open
 local table_insert = table.insert
@@ -42,13 +44,13 @@ local WEAK_KEY_MT = { __mode = "k", }
 local CERT_DIGEST
 local CERT, CERT_KEY
 local clients = setmetatable({}, WEAK_KEY_MT)
-local shdict = ngx.shared.kong_clustering -- only when role == "control_plane"
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json.gz"
-local RECONFIGURE_TYPE_KEY = "reconfigure"
 local declarative_config
+local next_config
 
 local server_on_message_callbacks = {}
+
 
 local function update_config(config_table, update_cache)
   assert(type(config_table) == "table")
@@ -83,7 +85,6 @@ local function update_config(config_table, update_cache)
       ngx_log(ngx_ERR, "unable to open cache file: ", err)
 
     else
-      local res
       res, err = f:write(assert(deflate_gzip(cjson_encode(config_table))))
       if not res then
         ngx_log(ngx_ERR, "unable to write cache file: ", err)
@@ -98,7 +99,13 @@ end
 
 
 local function send_ping(c)
-  local _, err = c:send_ping(declarative.get_current_hash())
+  local hash = declarative.get_current_hash()
+
+  if hash == true then
+    hash = string.rep("0", 32)
+  end
+
+  local _, err = c:send_ping(hash)
   if err then
     ngx_log(ngx_ERR, "unable to ping control plane node: ", err)
     -- return and let the main thread handle the error
@@ -110,6 +117,146 @@ local function send_ping(c)
   return true
 end
 
+
+local function communicate(premature, conf)
+  if premature then
+    -- worker wants to exit
+    return
+  end
+
+  -- TODO: pick one random CP
+  local address = conf.cluster_control_plane
+
+  local c = assert(ws_client:new(WS_OPTS))
+  local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
+              kong.node.get_id() .. "&node_hostname=" .. utils.get_hostname()
+
+  local opts = {
+    ssl_verify = true,
+    client_cert = CERT,
+    client_priv_key = CERT_KEY,
+  }
+  if conf.cluster_mtls == "shared" then
+    opts.server_name = "kong_clustering"
+  else
+    -- server_name will be set to the host if it is not explicitly defined here
+    if conf.cluster_server_name ~= "" then
+      opts.server_name = conf.cluster_server_name
+    end
+  end
+
+  local res, err = c:connect(uri, opts)
+  if not res then
+    local delay = math.random(5, 10)
+
+    ngx_log(ngx_ERR, "connection to control plane ", uri, " broken: ", err,
+            " retrying after ", delay , " seconds")
+    assert(ngx.timer.at(delay, communicate, conf))
+    return
+  end
+
+  local update_config_semaphore = semaphore.new(0)
+
+  -- connection established
+  -- ping thread
+  ngx.thread.spawn(function()
+    while not exiting() do
+      if not send_ping(c) then
+        return
+      end
+
+      ngx_sleep(PING_INTERVAL)
+    end
+  end)
+
+  -- update config thread
+  ngx.thread.spawn(function()
+    while not exiting() do
+      local ok, err = update_config_semaphore:wait(1)
+      if ok then
+        local config_table = next_config
+        if config_table then
+          local pok, res
+          pok, res, err = pcall(update_config, config_table, true)
+          if pok then
+            if not res then
+              ngx_log(ngx_ERR, "unable to update running config: ", err)
+            end
+
+          else
+            ngx_log(ngx_ERR, "unable to update running config: ", res)
+          end
+
+          if next_config == config_table then
+            next_config = nil
+          end
+        end
+
+      elseif err ~= "timeout" then
+        ngx_log(ngx_ERR, "semaphore wait error: ", err)
+      end
+    end
+  end)
+
+  while not exiting() do
+    local data, typ, err = c:recv_frame()
+    if err then
+      ngx.log(ngx.ERR, "error while receiving frame from control plane: ", err)
+      c:close()
+
+      local delay = 9 + math.random()
+      assert(ngx.timer.at(delay, communicate, conf))
+      return
+    end
+
+    if typ == "binary" then
+      data = assert(inflate_gzip(data))
+
+      local msg = assert(cjson_decode(data))
+
+      if msg.type == "reconfigure" then
+        next_config = assert(msg.config_table)
+
+        if update_config_semaphore:count() <= 0 then
+          -- the following line always executes immediately after the `if` check
+          -- because `:count` will never yield, end result is that the semaphore
+          -- count is guaranteed to not exceed 1
+          update_config_semaphore:post()
+        end
+
+        send_ping(c)
+      end
+
+    elseif typ == "pong" then
+      ngx_log(ngx_DEBUG, "received PONG frame from control plane")
+    end
+  end
+end
+
+_M.communicate = communicate
+
+local function validate_shared_cert()
+  local cert = ngx_var.ssl_client_raw_cert
+
+  if not cert then
+    ngx_log(ngx_ERR, "Data Plane failed to present client certificate " ..
+                     "during handshake")
+    return ngx_exit(444)
+  end
+
+  cert = assert(openssl_x509.new(cert, "PEM"))
+  local digest = assert(cert:digest("sha256"))
+
+  if digest ~= CERT_DIGEST then
+    ngx_log(ngx_ERR, "Data Plane presented incorrect client certificate " ..
+                     "during handshake, expected digest: " .. CERT_DIGEST ..
+                     " got: " .. digest)
+    return ngx_exit(444)
+  end
+end
+
+
+-- XXX EE only used for telemetry, remove cruft
 local function ws_event_loop(ws, on_connection, on_error, on_message)
   local sem = semaphore.new()
   local queue = { sem = sem, }
@@ -218,15 +365,14 @@ local function ws_event_loop(ws, on_connection, on_error, on_message)
 
 end
 
-
-local function communicate(premature, uri, server_name, on_connection, on_message)
+local function telemetry_communicate(premature, uri, server_name, on_connection, on_message)
   if premature then
     -- worker wants to exit
     return
   end
 
   local reconnect = function(delay)
-    return ngx.timer.at(delay, communicate, uri, server_name, on_connection, on_message)
+    return ngx.timer.at(delay, telemetry_communicate, uri, server_name, on_connection, on_message)
   end
 
   local c = assert(ws_client:new(WS_OPTS))
@@ -268,31 +414,45 @@ local function communicate(premature, uri, server_name, on_connection, on_messag
 
 end
 
-_M.communicate = communicate
+_M.telemetry_communicate = telemetry_communicate
 
 
-local function validate_shared_cert()
-  local cert = ngx_var.ssl_client_raw_cert
 
-  if not cert then
-    ngx_log(ngx_ERR, "Data Plane failed to present client certificate " ..
-                     "during handshake")
+
+function _M.handle_cp_telemetry_websocket()
+  -- use mutual TLS authentication
+  if kong.configuration.cluster_mtls == "shared" then
+    validate_shared_cert()
+  end
+
+  local node_id = ngx_var.arg_node_id
+  if not node_id then
+    ngx_exit(400)
+  end
+
+  local wb, err = ws_server:new(WS_OPTS)
+  if not wb then
+    ngx_log(ngx_ERR, "failed to perform server side WebSocket handshake: ", err)
     return ngx_exit(444)
   end
 
-  cert = assert(openssl_x509.new(cert, "PEM"))
-  local digest = assert(cert:digest("sha256"))
-
-  if digest ~= CERT_DIGEST then
-    ngx_log(ngx_ERR, "Data Plane presented incorrect client certificate " ..
-                     "during handshake, expected digest: " .. CERT_DIGEST ..
-                     " got: " .. digest)
-    return ngx_exit(444)
+  local current_on_message_callbacks = {}
+  for k, v in pairs(server_on_message_callbacks) do
+    current_on_message_callbacks[k] = v
   end
+
+  local _, wait = ws_event_loop(wb,
+    nil,
+    function(_)
+      return ngx_exit(ngx_ERR)
+    end,
+    current_on_message_callbacks)
+
+  wait()
 end
 
 
-function _M.handle_cp_websocket(is_telemetry)
+function _M.handle_cp_websocket()
   -- use mutual TLS authentication
   if kong.configuration.cluster_mtls == "shared" then
     validate_shared_cert()
@@ -312,87 +472,141 @@ function _M.handle_cp_websocket(is_telemetry)
     return ngx_exit(444)
   end
 
-  local current_on_message_callbacks = {}
-  for k, v in pairs(server_on_message_callbacks) do
-    current_on_message_callbacks[k] = v
-  end
+  local sem = semaphore.new()
+  local queue = { sem = sem, }
+  clients[wb] = queue
 
-  if not is_telemetry then
-    current_on_message_callbacks["ping"] = {
-      function(data, queued_send)
-        queued_send("PONG")
-
-        local ok
-        ok, err = shdict:safe_set(node_id,
-                                  cjson_encode({
-                                    last_seen = ngx_time(),
-                                    config_hash =
-                                      data ~= "" and data or nil,
-                                    hostname = node_hostname,
-                                    ip = node_ip,
-                                  }), PING_INTERVAL * 2 + 5)
-        if not ok then
-          ngx_log(ngx_ERR, "unable to update in-memory cluster status: ", err)
-        end
-      end
-    }
-  end
-
-  local queued_send, wait = ws_event_loop(wb,
-    nil,
-    function(_)
-      return ngx_exit(ngx_ERR)
-    end,
-    current_on_message_callbacks)
-
-  if not is_telemetry then
-    -- is a config sync client
-    clients[wb] = queued_send
-
-    local res
+  do
+    local config_table
     -- unconditionally send config update to new clients to
     -- ensure they have latest version running
-    res, err = declarative.export_config()
-    if not res then
+    config_table, err = declarative.export_config()
+    if config_table then
+      local payload = cjson_encode({ type = "reconfigure",
+                                     config_table = config_table,
+                                   })
+      payload = assert(deflate_gzip(payload))
+      table_insert(queue, payload)
+      queue.sem:post()
+
+    else
       ngx_log(ngx_ERR, "unable to export config from database: ".. err)
     end
-
-    local payload = cjson_encode({ type = RECONFIGURE_TYPE_KEY,
-                                   config_table = res,
-                                 })
-    queued_send(payload)
   end
 
-  wait()
-end
+  -- connection established
+  -- ping thread
+  ngx.thread.spawn(function()
+    while not exiting() do
+      local data, typ, err = wb:recv_frame()
+      if not data then
+        ngx_log(ngx_ERR, "did not receive ping frame from data plane: ", err)
+        return ngx_exit(ngx_ERR)
+      end
 
+      assert(typ == "ping")
 
-function _M.get_status()
-  local result = new_tab(0, 8)
+      -- queue PONG to avoid races
+      table_insert(queue, "PONG")
+      queue.sem:post()
 
-  for _, n in ipairs(shdict:get_keys()) do
-    result[n] = cjson_decode(shdict:get(n))
+      local ok
+      ok, err = kong.db.clustering_data_planes:upsert({ id = node_id, }, {
+        last_seen = ngx_time(),
+        config_hash =
+          data ~= "" and data or nil,
+        hostname = node_hostname,
+        ip = node_ip,
+      })
+      if not ok then
+        ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
+      end
+    end
+  end)
+
+  while not exiting() do
+    local ok, err = sem:wait(10)
+    if ok then
+      local payload = table_remove(queue, 1)
+      assert(payload, "config queue can not be empty after semaphore returns")
+
+      if payload == "PONG" then
+        local _
+        _, err = wb:send_pong()
+        if err then
+          ngx_log(ngx_ERR, "failed to send PONG back to data plane: ", err)
+          return ngx_exit(ngx_ERR)
+        end
+
+        ngx_log(ngx_DEBUG, "sent PONG packet to data plane")
+
+      else -- config update
+        local _, err = wb:send_binary(payload)
+        if err then
+          ngx_log(ngx_ERR, "unable to send updated configuration to node: ", err)
+
+        else
+          ngx_log(ngx_DEBUG, "sent config update to node")
+        end
+      end
+
+    else -- not ok
+      if err ~= "timeout" then
+        ngx_log(ngx_ERR, "semaphore wait error: ", err)
+      end
+    end
   end
-
-
-  return result
 end
 
 
 local function push_config(config_table)
-  local payload = cjson_encode({ type = RECONFIGURE_TYPE_KEY,
+  if not config_table then
+    local err
+    config_table, err = declarative.export_config()
+    if not config_table then
+      ngx_log(ngx_ERR, "unable to export config from database: " .. err)
+      return
+    end
+  end
+
+  local payload = cjson_encode({ type = "reconfigure",
                                  config_table = config_table,
                                })
+  payload = assert(deflate_gzip(payload))
 
   local n = 0
 
-  for _, queued_send in pairs(clients) do
-    queued_send(payload)
+  for _, queue in pairs(clients) do
+    table_insert(queue, payload)
+    queue.sem:post()
 
     n = n + 1
   end
 
   ngx_log(ngx_DEBUG, "config pushed to ", n, " clients")
+end
+
+
+local function push_config_timer(premature, semaphore, delay)
+  if premature then
+    return
+  end
+
+  while not exiting() do
+    local ok, err = semaphore:wait(10)
+    if ok then
+      ok, err = pcall(push_config)
+      if ok then
+        ngx.sleep(delay)
+
+      else
+        ngx_log(ngx_ERR, "export and pushing config failed: ", err)
+      end
+
+    elseif err ~= "timeout" then
+      ngx_log(ngx_ERR, "semaphore wait error: ", err)
+    end
+  end
 end
 
 
@@ -452,59 +666,6 @@ function _M.init(conf)
 end
 
 
-local function start_conf_sync_client(conf)
-  -- TODO: pick one random CP
-  local address = conf.cluster_control_plane
-
-  local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
-              kong.node.get_id() .. "&node_hostname=" .. utils.get_hostname()
-  local server_name
-  if conf.cluster_mtls == "shared" then
-    server_name = "kong_clustering"
-  else
-    -- server_name will be set to the host if it is not explicitly defined here
-    if conf.cluster_server_name ~= "" then
-      server_name = conf.cluster_server_name
-    end
-  end
-
-  local on_message = {
-    [RECONFIGURE_TYPE_KEY] = {
-      function(msg, queued_send)
-        local config_table = assert(msg.config_table)
-
-        local res, err = update_config(config_table, true)
-        if not res then
-          ngx_log(ngx_ERR, "unable to update running config: ", err)
-        end
-
-        queued_send("PING")
-      end,
-    }
-  }
-
-  local ping_thread_cookie
-
-  local on_connection = function(connected, queued_send)
-    if not connected then
-      return
-    end
-    ping_thread_cookie = utils.uuid()
-
-    ngx.thread.spawn(function(cookie)
-      -- make sure the old thread clean up by itself
-      while cookie == ping_thread_cookie do
-        queued_send("PING")
-
-        ngx_sleep(PING_INTERVAL)
-      end
-    end, ping_thread_cookie)
-  end
-
-  assert(ngx.timer.at(0, communicate, uri, server_name, on_connection, on_message))
-end
-
-
 function _M.init_worker(conf)
   assert(conf, "conf can not be nil", 2)
 
@@ -534,7 +695,7 @@ function _M.init_worker(conf)
               local res
               res, err = update_config(config, false)
               if not res then
-                ngx_log(ngx_ERR, "unable to running config from cache: ", err)
+                ngx_log(ngx_ERR, "unable to update running config from cache: ", err)
               end
             end
 
@@ -545,14 +706,13 @@ function _M.init_worker(conf)
         end
       end
 
-      start_conf_sync_client(conf)
-
+      assert(ngx.timer.at(0, communicate, conf))
     end
 
   elseif conf.role == "control_plane" then
-    assert(shdict, "kong_clustering shdict missing")
-
     -- ROLE = "control_plane"
+
+    local push_config_semaphore = semaphore.new()
 
     kong.worker_events.register(function(data)
       -- we have to re-broadcast event using `post` because the dao
@@ -565,15 +725,18 @@ function _M.init_worker(conf)
     end, "dao:crud")
 
     kong.worker_events.register(function(data)
-      local res, err = declarative.export_config()
-      if not res then
-        ngx_log(ngx_ERR, "unable to export config from database: " .. err)
+      if push_config_semaphore:count() <= 0 then
+        -- the following line always executes immediately after the `if` check
+        -- because `:count` will never yield, end result is that the semaphore
+        -- count is guaranteed to not exceed 1
+        push_config_semaphore:post()
       end
-
-      push_config(res)
     end, "clustering", "push_config")
+
+    ngx.timer.at(0, push_config_timer, push_config_semaphore, conf.db_update_frequency)
   end
 end
+
 
 function _M.register_server_on_message(typ, cb)
   if not server_on_message_callbacks[typ] then
@@ -582,6 +745,5 @@ function _M.register_server_on_message(typ, cb)
     table.insert(server_on_message_callbacks[typ], cb)
   end
 end
-
 
 return _M

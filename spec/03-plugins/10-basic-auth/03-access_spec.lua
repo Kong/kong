@@ -45,9 +45,23 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "basic-auth5.com" },
       }
 
+      local route_grpc = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        service = assert(bp.services:insert {
+          name = "grpc",
+          url = "grpc://localhost:15002",
+        }),
+      })
+
       bp.plugins:insert {
         name     = "basic-auth",
         route = { id = route1.id },
+      }
+
+      bp.plugins:insert {
+        name     = "basic-auth",
+        route = { id = route_grpc.id },
       }
 
       bp.plugins:insert {
@@ -202,6 +216,26 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid authentication credentials" }, json)
+      end)
+
+      it("rejects gRPC call without credentials", function()
+        local ok, err = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {},
+        }
+        assert.falsy(ok)
+        assert.matches("Code: Unauthenticated", err)
+      end)
+
+      it("accepts authorized gRPC calls", function()
+        local ok, res = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {
+            ["-H"] = "'Authorization: Basic Ym9iOmtvbmc='",
+          },
+        }
+        assert.truthy(ok)
+        assert.same({ reply = "hello noname" }, cjson.decode(res))
       end)
 
       it("authenticates valid credentials in Authorization", function()

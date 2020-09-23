@@ -44,6 +44,15 @@ for _, strategy in helpers.each_strategy() do
         }
       end
 
+      local route_grpc = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        service = assert(bp.services:insert {
+          name = "grpc",
+          url = "grpc://localhost:15002",
+        }),
+      })
+
       local consumers      = bp.consumers
       local consumer1      = consumers:insert({ username = "jwt_tests_consumer" })
       local consumer2      = consumers:insert({ username = "jwt_tests_base64_consumer" })
@@ -140,6 +149,20 @@ for _, strategy in helpers.each_strategy() do
         route = { id = routes[1].id },
         config   = { ctx_check_field = "authenticated_jwt_token" },
       })
+
+      plugins:insert({
+        name     = "jwt",
+        route = { id = route_grpc.id },
+        config   = {},
+      })
+
+      plugins:insert({
+        name     = "ctx-checker",
+        route = { id = route_grpc.id },
+        config   = { ctx_check_field = "authenticated_jwt_token" },
+      })
+
+
 
       jwt_secret        = bp.jwt_secrets:insert { consumer = { id = consumer1.id } }
       jwt_secret_2      = bp.jwt_secrets:insert { consumer = { id = consumer6.id } }
@@ -345,6 +368,15 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
+
+      it("rejects gRPC call without credentials", function()
+        local ok, err = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {},
+        }
+        assert.falsy(ok)
+        assert.match("Code: Unauthenticated", err)
+      end)
     end)
 
     describe("HS256", function()
@@ -367,6 +399,21 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(nil, body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
+
+      it("accepts gRPC call with credentials", function()
+        PAYLOAD.iss = jwt_secret.key
+        local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+        local authorization = "Bearer " .. jwt
+        local ok, res = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {
+            ["-H"] = ("'Authorization: %s'"):format(authorization),
+          },
+        }
+        assert.truthy(ok)
+        assert.same({ reply = "hello noname" }, cjson.decode(res))
+      end)
+
       it("proxies the request if the key is found in headers", function()
         local header = {typ = "JWT", alg = "HS256", kid = jwt_secret_2.key}
         local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret_2.secret, "HS256", header)

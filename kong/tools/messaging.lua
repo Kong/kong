@@ -98,7 +98,7 @@ local function start_ws_client(self, server_name)
     kong.node.get_id() .. "&node_hostname=" .. utils.get_hostname()
 
   local log_prefix = get_log_prefix(self)
-  assert(ngx.timer.at(0, clustering.communicate, uri, server_name, function(connected, send_func)
+  assert(ngx.timer.at(0, clustering.telemetry_communicate, uri, server_name, function(connected, send_func)
     if connected then
       ngx.log(ngx.DEBUG, log_prefix, "telemetry websocket is connected")
       self.ws_send_func = send_func

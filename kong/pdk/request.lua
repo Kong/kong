@@ -54,6 +54,7 @@ local function new(self)
   local X_FORWARDED_PROTO      = "X-Forwarded-Proto"
   local X_FORWARDED_HOST       = "X-Forwarded-Host"
   local X_FORWARDED_PORT       = "X-Forwarded-Port"
+  local X_FORWARDED_PATH       = "X-Forwarded-Path"
   local X_FORWARDED_PREFIX     = "X-Forwarded-Prefix"
 
 
@@ -252,18 +253,17 @@ local function new(self)
 
   ---
   -- Returns the path component of the request's URL, but also considers
-  -- `X-Forwarded-Prefix` if it comes from a trusted source. The value
+  -- `X-Forwarded-Path` if it comes from a trusted source. The value
   -- is returned as a Lua string.
   --
-  -- Whether this function considers `X-Forwarded-Prefix` or not depends on
+  -- Whether this function considers `X-Forwarded-Path` or not depends on
   -- several Kong configuration parameters:
   --
   -- * [trusted\_ips](https://getkong.org/docs/latest/configuration/#trusted_ips)
   -- * [real\_ip\_header](https://getkong.org/docs/latest/configuration/#real_ip_header)
   -- * [real\_ip\_recursive](https://getkong.org/docs/latest/configuration/#real_ip_recursive)
   --
-  -- **Note**: we do not currently do any normalization on the request
-  --           path except return `"/"` on empty path.
+  -- **Note**: we do not currently do any normalization on the request path.
   --
   -- @function kong.request.get_forwarded_path
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
@@ -274,14 +274,54 @@ local function new(self)
     check_phase(PHASES.request)
 
     if self.ip.is_trusted(self.client.get_ip()) then
-      local prefix = _REQUEST.get_header(X_FORWARDED_PREFIX)
+      local path = _REQUEST.get_header(X_FORWARDED_PATH)
+      if path then
+        return path
+      end
+    end
+
+    local path = _REQUEST.get_path()
+    return path
+  end
+
+
+  ---
+  -- Returns the prefix path component of the request's URL that Kong stripped
+  -- before proxying to upstream. It also checks if `X-Forwarded-Prefix` comes
+  -- from a trusted source, and uses it as is when given. The value is returned
+  -- as a Lua string.
+  --
+  -- If a trusted `X-Forwarded-Prefix` is not passed, this function must be called after Kong has ran its router (`access` phase),
+  -- as the Kong router may strip the prefix of the request path. That stripped
+  -- path will become the return value of this function, unless there was already
+  -- a trusted `X-Forwarded-Prefix` header in the request.
+  --
+  -- Whether this function considers `X-Forwarded-Prefix` or not depends on
+  -- several Kong configuration parameters:
+  --
+  -- * [trusted\_ips](https://getkong.org/docs/latest/configuration/#trusted_ips)
+  -- * [real\_ip\_header](https://getkong.org/docs/latest/configuration/#real_ip_header)
+  -- * [real\_ip\_recursive](https://getkong.org/docs/latest/configuration/#real_ip_recursive)
+  --
+  -- **Note**: we do not currently do any normalization on the request path prefix.
+  --
+  -- @function kong.request.get_forwarded_prefix
+  -- @phases access
+  -- @treturn string|nil the forwarded path prefix or nil if prefix was not stripped
+  -- @usage
+  -- kong.request.get_forwarded_prefix() -- /prefix
+  function _REQUEST.get_forwarded_prefix()
+    check_phase(PHASES.request)
+
+    local prefix
+    if self.ip.is_trusted(self.client.get_ip()) then
+      prefix = _REQUEST.get_header(X_FORWARDED_PREFIX)
       if prefix then
         return prefix
       end
     end
 
-    local path = _REQUEST.get_path()
-    return path == "" and "/" or path
+    return ngx.var.upstream_x_forwarded_prefix
   end
 
 
@@ -729,14 +769,22 @@ local function new(self)
         return nil, err, CONTENT_TYPE_FORM_DATA
       end
 
-      -- TODO: multipart library doesn't support multiple fields with same name
-      return multipart(body, content_type):get_all(), nil, CONTENT_TYPE_FORM_DATA
+      local parts = multipart(body, content_type)
+      if not parts then
+        return nil, "unable to decode multipart body", CONTENT_TYPE_FORM_DATA
+      end
+
+      local margs = parts:get_all_with_arrays()
+      if not margs then
+        return nil, "unable to read multipart values", CONTENT_TYPE_FORM_DATA
+      end
+
+      return margs, nil, CONTENT_TYPE_FORM_DATA
 
     else
       return nil, "unsupported content type '" .. content_type .. "'", content_type_lower
     end
   end
-
 
   return _REQUEST
 end
