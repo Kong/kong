@@ -775,6 +775,10 @@ local function new(self, major_version)
     -- return kong.response.exit(200, "Success")
     -- ```
     function _RESPONSE.exit(status, body, headers)
+      if self.worker_events and ngx.get_phase() == "content" then
+        self.worker_events.poll()
+      end
+
       check_phase(rewrite_access_header)
 
       if ngx.headers_sent then
@@ -947,6 +951,10 @@ local function new(self, major_version)
   --
   -- return kong.response.error(403)
   function _RESPONSE.error(status, message, headers)
+    if self.worker_events and ngx.get_phase() == "content" then
+      self.worker_events.poll()
+    end
+
     check_phase(rewrite_access_header)
 
     if ngx.headers_sent then
