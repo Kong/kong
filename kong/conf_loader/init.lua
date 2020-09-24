@@ -566,6 +566,7 @@ local CONF_INFERENCES = {
     deprecated = { replacement = false }
   },
 
+  lua_ssl_trusted_certificate = { typ = "array" },
   lua_ssl_verify_depth = { typ = "number" },
   lua_socket_pool_size = { typ = "number" },
 
@@ -800,11 +801,13 @@ local function check_and_infer(conf, opts)
     end
   end
 
-  if conf.lua_ssl_trusted_certificate and
-     not pl_path.exists(conf.lua_ssl_trusted_certificate)
-  then
-    errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " ..
-                        conf.lua_ssl_trusted_certificate
+  if conf.lua_ssl_trusted_certificate then
+    for _, path in ipairs(conf.lua_ssl_trusted_certificate) do
+      if not pl_path.exists(path) then
+        errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " ..
+                               path
+      end
+    end
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
@@ -1508,9 +1511,13 @@ local function load(path, custom_conf, opts)
     conf.admin_ssl_cert_key = pl_path.abspath(conf.admin_ssl_cert_key)
   end
 
-  if conf.lua_ssl_trusted_certificate then
+  if conf.lua_ssl_trusted_certificate
+     and #conf.lua_ssl_trusted_certificate > 0 then
     conf.lua_ssl_trusted_certificate =
-      pl_path.abspath(conf.lua_ssl_trusted_certificate)
+      tablex.map(pl_path.abspath, conf.lua_ssl_trusted_certificate)
+
+    conf.lua_ssl_trusted_certificate_combined =
+      pl_path.abspath(pl_path.join(conf.prefix, ".ca_combined"))
   end
 
   if conf.cluster_cert and conf.cluster_cert_key then

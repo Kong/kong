@@ -1213,12 +1213,13 @@
 # See the lua-nginx-module documentation for more information:
 # https://github.com/openresty/lua-nginx-module
 
-#lua_ssl_trusted_certificate =   # Absolute path to the certificate
-                                 # authority file for Lua cosockets in PEM
-                                 # format. This certificate will be the one
-                                 # used for verifying Kong's database
-                                 # connections, when `pg_ssl_verify` or
-                                 # `cassandra_ssl_verify` are enabled.
+
+#lua_ssl_trusted_certificate =   # Comma-separated list of paths to certificate
+                                 # authority files for Lua cosockets in PEM format.
+                                 #
+                                 # When `pg_ssl_verify` or `cassandra_ssl_verify`
+                                 # are enabled, these certificate authority files will be
+                                 # used for verifying Kong's database connections.
                                  #
                                  # See https://github.com/openresty/lua-nginx-module#lua_ssl_trusted_certificate
 
