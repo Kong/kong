@@ -35,6 +35,7 @@ local deflate_gzip = utils.deflate_gzip
 local MAX_PAYLOAD = 4 * 1024 * 1024 -- 4MB
 local PING_INTERVAL = 30 -- 30 seconds
 local WS_OPTS = {
+  timeout = 5000,
   max_payload_len = MAX_PAYLOAD,
 }
 local ngx_ERR = ngx.ERR
@@ -163,7 +164,12 @@ local function communicate(premature, conf)
         return
       end
 
-      ngx_sleep(PING_INTERVAL)
+      for _ = 1, PING_INTERVAL do
+        ngx_sleep(1)
+        if exiting() then
+          return
+        end
+      end
     end
   end)
 
@@ -326,7 +332,10 @@ function _M.handle_cp_websocket()
   end)
 
   while not exiting() do
-    local ok, err = sem:wait(10)
+    local ok, err = sem:wait(5)
+    if exiting() then
+      return
+    end
     if ok then
       local payload = table_remove(queue, 1)
       assert(payload, "config queue can not be empty after semaphore returns")
@@ -351,10 +360,8 @@ function _M.handle_cp_websocket()
         end
       end
 
-    else -- not ok
-      if err ~= "timeout" then
-        ngx_log(ngx_ERR, "semaphore wait error: ", err)
-      end
+    elseif err ~= "timeout" then
+      ngx_log(ngx_ERR, "semaphore wait error: ", err)
     end
   end
 end
@@ -394,11 +401,28 @@ local function push_config_timer(premature, semaphore, delay)
   end
 
   while not exiting() do
-    local ok, err = semaphore:wait(10)
+    local ok, err = semaphore:wait(1)
+    if exiting() then
+      return
+    end
     if ok then
       ok, err = pcall(push_config)
       if ok then
-        ngx.sleep(delay)
+        local sleep_left = delay
+        while sleep_left > 0 do
+          if sleep_left <= 1 then
+            ngx.sleep(sleep_left)
+            break
+          end
+
+          ngx.sleep(1)
+
+          if exiting() then
+            return
+          end
+
+          sleep_left = sleep_left - 1
+        end
 
       else
         ngx_log(ngx_ERR, "export and pushing config failed: ", err)
