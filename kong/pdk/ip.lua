@@ -11,7 +11,8 @@
 -- See [docs.konghq.com/latest/configuration/#trusted_ips](https://docs.konghq.com/latest/configuration/#trusted_ips)
 --
 -- @module kong.ip
-local ip = require "resty.mediador.ip"
+local utils = require "kong.tools.utils"
+local ipmatcher = require "resty.ipmatcher"
 
 ---
 -- Depending on the `trusted_ips` configuration property,
@@ -45,7 +46,7 @@ local function new(self)
   for i = 1, n_ips do
     local address = ips[i]
 
-    if ip.valid(address) then
+    if utils.is_valid_ip_or_cidr(address) then
       trusted_ips[idx] = address
       idx = idx + 1
 
@@ -66,9 +67,10 @@ local function new(self)
 
   else
     -- do not load if not needed
-    local px = require "resty.mediador.proxy"
-
-    _IP.is_trusted = px.compile(trusted_ips)
+    local matcher = ipmatcher.new(trusted_ips)
+    _IP.is_trusted = function(ip)
+      return not not matcher:match(ip)
+    end
   end
 
   return _IP

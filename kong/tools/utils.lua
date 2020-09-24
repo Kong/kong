@@ -676,6 +676,93 @@ function _M.validate_utf8(val)
   return true
 end
 
+
+do
+  local ipmatcher =  require "resty.ipmatcher"
+  local sub = string.sub
+
+  local ipv4_prefixes = {}
+  for i = 0, 32 do
+    ipv4_prefixes[tostring(i)] = i
+  end
+
+  local ipv6_prefixes = {}
+  for i = 0, 128 do
+    ipv6_prefixes[tostring(i)] = i
+  end
+
+  local function split_cidr(cidr, prefixes)
+    local p = find(cidr, "/", 3, true)
+    if not p then
+      return
+    end
+
+    return sub(cidr, 1, p - 1), prefixes[sub(cidr, p + 1)]
+  end
+
+  local validate = function(input, f1, f2, prefixes)
+    if type(input) ~= "string" then
+      return false
+    end
+
+    if prefixes then
+      local ip, prefix = split_cidr(input, prefixes)
+      if not ip or not prefix then
+        return false
+      end
+
+      input = ip
+    end
+
+    if f1(input) then
+      return true
+    end
+
+    if f2 and f2(input) then
+      return true
+    end
+
+    return false
+  end
+
+  _M.is_valid_ipv4 = function(ipv4)
+    return validate(ipv4, ipmatcher.parse_ipv4)
+  end
+
+  _M.is_valid_ipv6 = function(ipv6)
+    return validate(ipv6, ipmatcher.parse_ipv6)
+  end
+
+  _M.is_valid_ip = function(ip)
+    return validate(ip, ipmatcher.parse_ipv4, ipmatcher.parse_ipv6)
+  end
+
+  _M.is_valid_cidr_v4 = function(cidr_v4)
+    return validate(cidr_v4, ipmatcher.parse_ipv4, nil, ipv4_prefixes)
+  end
+
+  _M.is_valid_cidr_v6 = function(cidr_v6)
+    return validate(cidr_v6, ipmatcher.parse_ipv6, nil, ipv6_prefixes)
+  end
+
+  _M.is_valid_cidr = function(cidr)
+    return validate(cidr, _M.is_valid_cidr_v4, _M.is_valid_cidr_v6)
+  end
+
+  _M.is_valid_ip_or_cidr_v4 = function(ip_or_cidr_v4)
+    return validate(ip_or_cidr_v4, ipmatcher.parse_ipv4, _M.is_valid_cidr_v4)
+  end
+
+  _M.is_valid_ip_or_cidr_v6 = function(ip_or_cidr_v6)
+    return validate(ip_or_cidr_v6, ipmatcher.parse_ipv6, _M.is_valid_cidr_v6)
+  end
+
+  _M.is_valid_ip_or_cidr = function(ip_or_cidr)
+    return validate(ip_or_cidr, _M.is_valid_ip,  _M.is_valid_cidr)
+  end
+end
+
+
 --- checks the hostname type; ipv4, ipv6, or name.
 -- Type is determined by exclusion, not by validation. So if it returns 'ipv6' then
 -- it can only be an ipv6, but it is not necessarily a valid ipv6 address.
