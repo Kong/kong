@@ -189,6 +189,20 @@ for _, strategy in helpers.each_strategy() do
         db_readonly = false,
       }, infos)
     end)
+
+    if strategy ~= "off" then
+      it("calls :check_version_compat with constants", function()
+        local constants = require "kong.constants"
+        local versions = constants.DATABASE[strategy:upper()]
+
+        local db, _ = DB.new(helpers.test_conf, strategy)
+        local s = spy.on(db, "check_version_compat")
+        assert(db:init_connector())
+        -- called_with goes on forever when checking for self
+        assert.equal(versions.MIN, s.calls[1].refs[2])
+        assert.equal(versions.DEPRECATED, s.calls[1].refs[3])
+      end)
+    end
   end)
 
 
