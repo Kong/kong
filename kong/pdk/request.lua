@@ -5,7 +5,6 @@
 -- @module kong.request
 
 
-local ck = require "resty.cookie"
 local cjson = require "cjson.safe".new()
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
@@ -20,6 +19,7 @@ local error = error
 local tonumber = tonumber
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
+local ngx_gmatch = ngx.re.gmatch
 
 
 local PHASES = phase_checker.phases
@@ -56,6 +56,8 @@ local function new(self)
   local X_FORWARDED_HOST       = "X-Forwarded-Host"
   local X_FORWARDED_PORT       = "X-Forwarded-Port"
   local X_FORWARDED_PREFIX     = "X-Forwarded-Prefix"
+
+  local COOKIE_HEADER          = "Cookie"
 
 
   ---
@@ -520,7 +522,7 @@ local function new(self)
       error("cookie name must be a string", 2)
     end
 
-    return ck:new():get(name)
+    return ngx.var["cookie_" .. name]
   end
 
 
@@ -638,9 +640,30 @@ local function new(self)
   function _REQUEST.get_cookies()
     check_phase(PHASES.request)
 
-    return ck:new():get_all()
+    local cookie = _REQUEST.get_header(COOKIE_HEADER)
+    if cookie == nil then
+      return nil
+    end
+
+    local iterator, err = ngx_gmatch(cookie, "(.*?)=(.*?)(;|$)", "ajo")
+    if not iterator then
+      return nil
+    end
+
+    return cookie_iterator_to_tab(iterator)
   end
 
+  local function cookie_iterator_to_tab(iterator)
+    local cookie_tab = {}
+    while true do
+        local match, err = iterator()
+        if not match then
+            break
+        end
+        cookie_tab[pl_stringx.strip(match[1],' ')] = match[2]
+    end
+    return cookie_tab
+  end
 
   local before_content = phase_checker.new(PHASES.rewrite,
                                            PHASES.access,
