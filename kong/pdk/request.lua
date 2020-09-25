@@ -5,6 +5,7 @@
 -- @module kong.request
 
 
+local pl_stringx = require "pl.stringx"
 local cjson = require "cjson.safe".new()
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
@@ -19,7 +20,7 @@ local error = error
 local tonumber = tonumber
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
-local ngx_gmatch = ngx.re.gmatch
+local re_gmatch = ngx.re.gmatch
 
 
 local PHASES = phase_checker.phases
@@ -658,7 +659,7 @@ local function new(self)
       return nil
     end
 
-    local iterator, err = ngx_gmatch(cookie, "(.*?)=(.*?)(;|$)", "ajo")
+    local iterator, err = re_gmatch(cookie, "(.*?)=(.*?)(;|$)", "ajo")
     if not iterator then
       return nil
     end
