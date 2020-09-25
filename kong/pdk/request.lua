@@ -620,6 +620,19 @@ local function new(self)
   end
 
 
+  local function cookie_iterator_to_tab(iterator)
+    local cookie_tab = {}
+    while true do
+        local match, err = iterator()
+        if not match then
+            break
+        end
+        cookie_tab[pl_stringx.strip(match[1],' ')] = match[2]
+    end
+    return cookie_tab
+  end
+
+
   ---
   -- Returns a Lua table holding the request cookies. Keys are cookie names.
   -- Values are strings with the cookie value.
@@ -651,18 +664,6 @@ local function new(self)
     end
 
     return cookie_iterator_to_tab(iterator)
-  end
-
-  local function cookie_iterator_to_tab(iterator)
-    local cookie_tab = {}
-    while true do
-        local match, err = iterator()
-        if not match then
-            break
-        end
-        cookie_tab[pl_stringx.strip(match[1],' ')] = match[2]
-    end
-    return cookie_tab
   end
 
   local before_content = phase_checker.new(PHASES.rewrite,
