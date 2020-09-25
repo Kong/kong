@@ -1,3 +1,5 @@
+local version      = require "version"
+
 local DAO          = require "kong.db.dao"
 local Entity       = require "kong.db.schema.entity"
 local Errors       = require "kong.db.errors"
@@ -143,6 +145,16 @@ function DB:init_connector()
 
   self.infos = self.connector:infos()
 
+  local version_constants = constants.DATABASE[self.strategy:upper()]
+
+  if version_constants then
+    ok, err = self:check_version_compat(version_constants.MIN,
+                                        version_constants.DEPRECATED)
+    if not ok then
+      return nil, prefix_err(self, err)
+    end
+  end
+
   return ok
 end
 
@@ -230,6 +242,32 @@ function DB:set_events_handler(events)
   for _, dao in pairs(self.daos) do
     dao.events = events
   end
+end
+
+
+function DB:check_version_compat(_min, _deprecated)
+  local _major_minor = self.connector.major_minor_version
+
+  if not _major_minor then
+    return false, "no version info on connector"
+  end
+
+  local major_minor = version(_major_minor)
+  local min = version(_min)
+  local deprecated = _deprecated and version(_deprecated)
+
+  if major_minor < min then
+    -- Deprecated is "ok"
+    if deprecated and major_minor >= deprecated then
+      log.warn("Currently using %s %s which is considered deprecated, " ..
+               "please use %s or greater", self.strategy, _major_minor, _min)
+    else
+      return false, fmt("Kong requires %s %s or greater (currently using %s)",
+                        self.strategy, _min, _major_minor)
+    end
+  end
+
+  return true
 end
 
 
