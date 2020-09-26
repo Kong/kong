@@ -11,6 +11,7 @@ local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
 
 
+local re_gmatch = ngx.re.gmatch
 local ngx = ngx
 local sub = string.sub
 local find = string.find
@@ -20,7 +21,6 @@ local error = error
 local tonumber = tonumber
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
-local re_gmatch = ngx.re.gmatch
 
 
 local PHASES = phase_checker.phases
