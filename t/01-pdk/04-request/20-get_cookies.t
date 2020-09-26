@@ -63,10 +63,9 @@ X-Cookie-Bar => World
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            local cookies, err = pdk.request.get_cookies()
+            local cookies = pdk.request.get_cookies()
             if not cookies then
                 ngx.say(cookies)
-                ngx.say(err)
                 return
             end
         }
@@ -76,6 +75,5 @@ GET /t
 --- more_headers
 --- response_body
 nil
-no cookie found in the current request
 --- no_error_log
 [error]

@@ -30,7 +30,7 @@ Cookie value: Hello
 [error]
 
 
-=== TEST 2: request.get_cookie() returns nil with case-sensitive
+=== TEST 2: request.get_cookie() returns nil with case-insensitive
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -38,11 +38,8 @@ Cookie value: Hello
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
  
-            local cookie, err = pdk.request.get_cookie("X-Cookie-foo")
-            if not cookie then
-                ngx.say(err)
-                return
-            end
+            local cookie = pdk.request.get_cookie("X-Cookie-foo")
+            ngx.say(cookie)
         }
     }
 --- request
@@ -50,7 +47,7 @@ GET /t
 --- more_headers
 Cookie: X-Cookie-Foo=Hello; X-Cookie-Bar=World
 --- response_body
-nil
+Hello
 --- no_error_log
 [error]
 
@@ -63,11 +60,8 @@ nil
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
  
-            local cookie, err = pdk.request.get_cookie("X-Cookie-Missing")
-            if not cookie then
-                ngx.say(err)
-                return
-            end
+            local cookie = pdk.request.get_cookie("X-Cookie-Missing")
+            ngx.say(cookie)
         }
     }
 --- request
@@ -88,17 +82,14 @@ nil
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
  
-            local cookie, err = pdk.request.get_cookie("X-Cookie-Foo")
-            if not cookie then
-                ngx.say(err)
-                return
-            end
+            local cookie = pdk.request.get_cookie("X-Cookie-Foo")
+            ngx.say(cookie)
         }
     }
 --- request
 GET /t
 --- more_headers
 --- response_body
-no cookie found in the current request
+nil
 --- no_error_log
 [error]

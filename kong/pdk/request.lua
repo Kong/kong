@@ -501,7 +501,7 @@ local function new(self)
   -- The returned value is either a `string`, or can be `nil` if a cookie with
   -- `name` was not found in the request.
   --
-  -- Cookie names are case-sensitive.
+  -- Cookie names are case-insensitive.
   --
   -- @function kong.request.get_cookie
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
@@ -514,7 +514,7 @@ local function new(self)
   --
   -- kong.request.get_cookie("X-Cookie-Foo")        -- "Hello"
   -- kong.request.get_cookie("X-Cookie-Bar")        -- "World"
-  -- kong.request.get_cookie("X-Cookie-foo")        --  nil
+  -- kong.request.get_cookie("X-Cookie-foo")        -- "Hello"
   -- kong.request.get_cookie("X-Cookie-Missing")    --  nil
   function _REQUEST.get_cookie(name)
     check_phase(PHASES.request)
