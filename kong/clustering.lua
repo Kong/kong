@@ -455,17 +455,30 @@ function _M.init_worker(conf)
 
     -- ROLE = "control_plane"
 
-    kong.worker_events.register(function(data)
-      -- we have to re-broadcast event using `post` because the dao
-      -- events were sent using `post_local` which means not all workers
-      -- can receive it
+    -- Sends "clustering", "push_config" to all workers in the same node, including self
+    local post_push_config_event_to_node_workers = function(_)
       local res, err = kong.worker_events.post("clustering", "push_config")
       if not res then
         ngx_log(ngx_ERR, "unable to broadcast event: " .. err)
       end
-    end, "dao:crud")
+    end
 
-    kong.worker_events.register(function(data)
+    -- The "invalidations" cluster event gets inserted in the cluster when there's a crud change
+    -- (like an insertion or deletion). Only one worker per kong node receives this callback.
+    -- This makes such node post push_config events to all the cp workers on its node
+    kong.cluster_events:subscribe("invalidations", post_push_config_event_to_node_workers)
+
+    -- The "dao:crud" event is triggered using post_local, which eventually generates an
+    -- "invalidations" cluster event. It is assumed that the workers in the
+    -- same node where the dao:crud event originated will "know" about the update mostly via
+    -- changes in the cache shared dict. Since DPs don't use the cache, nodes in the same
+    -- kong node where the event originated will need to be notified so they push config to
+    -- their DPs
+    kong.worker_events.register(post_push_config_event_to_node_workers, "dao:crud")
+
+    -- When "clustering", "push_config" worker event is received by a worker,
+    -- it loads and pushes the config to its the connected DPs
+    kong.worker_events.register(function(_)
       local res, err = declarative.export_config()
       if not res then
         ngx_log(ngx_ERR, "unable to export config from database: " .. err)
