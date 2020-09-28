@@ -97,7 +97,7 @@ local __meta_environment = {
     rawset(self, key, value)
     return value
   end,
-  __new_index = function(self)
+  __newindex = function(self)
     error("This environment is read-only.")
   end,
 }
