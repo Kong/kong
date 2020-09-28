@@ -98,6 +98,7 @@ end
 
 function _M.featureset()
   local l_type
+  -- TODO: cache this
   local expiration_time = license_expiration_time(_M.read_license_info())
 
   if not expiration_time then
@@ -114,6 +115,11 @@ end
 function _M.license_can(ability)
   if ability == "sentinel" then
     return true
+  end
+
+  local expiration_time = license_expiration_time(kong.license) or 0
+  if ability == "write_admin_api" then
+    return expiration_time < ngx.time()
   end
 
   return not (_M.featureset().abilities[ability] == false)
