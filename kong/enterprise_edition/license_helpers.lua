@@ -103,7 +103,7 @@ function _M.featureset()
   if not expiration_time then
     l_type = "free"
   elseif expiration_time < ngx.time() then
-    l_type = "expired"
+    l_type = "full_expired"
   else
     l_type = "full"
   end
@@ -112,6 +112,10 @@ function _M.featureset()
 end
 
 function _M.license_can(ability)
+  if ability == "sentinel" then
+    return true
+  end
+
   return not (_M.featureset().abilities[ability] == false)
 end
 
