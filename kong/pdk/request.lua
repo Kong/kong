@@ -11,8 +11,10 @@ local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
 
 
-local re_gmatch = ngx.re.gmatch
 local ngx = ngx
+local re_gmatch = ngx.re.gmatch
+
+
 local sub = string.sub
 local find = string.find
 local lower = string.lower
@@ -624,7 +626,7 @@ local function new(self)
   local function cookie_iterator_to_tab(iterator)
     local cookie_tab = {}
     while true do
-        local match, err = iterator()
+        local match = iterator()
         if not match then
             break
         end
@@ -659,7 +661,7 @@ local function new(self)
       return nil
     end
 
-    local iterator, err = re_gmatch(cookie, "(.*?)=(.*?)(;|$)", "ajo")
+    local iterator = re_gmatch(cookie, "(.*?)=(.*?)(;|$)", "ajo")
     if not iterator then
       return nil
     end
