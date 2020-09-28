@@ -9,18 +9,6 @@ local fixtures = {
         server_name collector;
         listen 5000;
 
-        location /service-map {
-          content_by_lua_block {
-            local cjson = require("cjson")
-            local query_args = ngx.req.get_uri_args()
-            if query_args.response_code then
-              ngx.status = query_args.response_code
-            end
-
-            ngx.say(cjson.encode({ endpoint = "/service-map", query = query_args }))
-          }
-        }
-
         location /alerts {
           content_by_lua_block {
             local cjson = require("cjson")
@@ -98,10 +86,6 @@ local fixtures = {
               immunity = {
                 available = true,
                 version = "1.7.1"
-              },
-              brain = {
-                available = true,
-                version = "1.7.1"
               }
             }
             if query_args.response_code then
@@ -172,22 +156,6 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/service_maps", function()
       describe("GET", function()
-        it("forwards query parameters and adds workspace_name", function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/workspace2/service_maps?service_id=123"
-          })
-          local body = assert.res_status(200, res)
-          local expected_params = {
-            endpoint = "/service-map",
-            query = {
-              workspace_name = workspace2.name,
-              service_id = "123",
-            }
-          }
-          assert.are.same(cjson.decode(body), expected_params)
-        end)
-
         it("returns whatever response code returned by upstream", function()
           local res = assert(admin_client:send {
             method  = "GET",
@@ -320,10 +288,6 @@ for _, strategy in helpers.each_strategy() do
 
           local expected_status = {
             immunity = {
-              available = true,
-              version = "1.7.1"
-            },
-            brain = {
               available = true,
               version = "1.7.1"
             }
