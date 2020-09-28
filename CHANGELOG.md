@@ -1,3 +1,7 @@
+## Unreleased
+
+- Use allow / deny for consumer restriction
+
 ## 0.4.1
 
 - Remove run_on
