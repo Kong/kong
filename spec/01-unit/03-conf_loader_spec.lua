@@ -1,6 +1,8 @@
 local conf_loader = require "kong.conf_loader"
+local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
+local pl_path = require "pl.path"
 
 
 local function search_directive(tbl, directive_name, directive_value)
@@ -740,6 +742,41 @@ describe("Configuration loader", function()
           assert.equal(1, #errors)
           assert.contains("lua_ssl_trusted_certificate: no such file at /path/cert.pem", errors)
           assert.is_nil(conf)
+        end)
+        it("accepts several CA certs in lua_ssl_trusted_certificate, setting lua_ssl_trusted_certificate_combined", function()
+          local conf, _, errors = conf_loader(nil, {
+            lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt,spec/fixtures/kong_clustering.crt",
+          })
+          assert.is_nil(errors)
+          assert.same({
+            pl_path.abspath("spec/fixtures/kong_spec.crt"),
+            pl_path.abspath("spec/fixtures/kong_clustering.crt"),
+          }, conf.lua_ssl_trusted_certificate)
+          assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
+        end)
+        it("expands the `system` property in lua_ssl_trusted_certificate", function()
+          local old_gstcf = utils.get_system_trusted_certs_filepath
+          local old_exists = pl_path.exists
+          finally(function()
+            utils.get_system_trusted_certs_filepath = old_gstcf
+            pl_path.exists = old_exists
+          end)
+          local system_path = "spec/fixtures/kong_spec.crt"
+          utils.get_system_trusted_certs_filepath = function()
+            return system_path
+          end
+          pl_path.exists = function(path)
+            return path == system_path or old_exists(path)
+          end
+
+          local conf, _, errors = conf_loader(nil, {
+            lua_ssl_trusted_certificate = "system",
+          })
+          assert.is_nil(errors)
+          assert.same({
+            pl_path.abspath(system_path),
+          }, conf.lua_ssl_trusted_certificate)
+          assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
         it("resolves SSL cert/key to absolute path", function()
           local conf, err = conf_loader(nil, {
