@@ -1081,10 +1081,6 @@ function Kong.body_filter()
                                                              ctx.KONG_BALANCER_ENDED_AT or
                                                              ctx.KONG_BALANCER_START or
                                                              ctx.KONG_ACCESS_ENDED_AT)
-    if not ctx.KONG_WAITING_TIME then
-      ctx.KONG_WAITING_TIME = ctx.KONG_BODY_FILTER_START -
-                              (ctx.KONG_BALANCER_ENDED_AT or ctx.KONG_ACCESS_ENDED_AT)
-    end
   end
 end
 
