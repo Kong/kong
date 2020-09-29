@@ -175,6 +175,14 @@ for _, strategy in helpers.each_strategy() do
           end
         end, 5)
       end)
+
+      it("local cached config file has correct permission", function()
+        local handle = io.popen("stat servroot2/config.cache.json.gz")
+        local result = handle:read("*a")
+        handle:close()
+
+        assert.matches("Access: (0600/-rw-------)", result, nil, true)
+      end)
     end)
   end)
 
