@@ -142,28 +142,12 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
     end)
 
-    before_each(function()
-      db:truncate("service_maps")
-    end)
-
     teardown(function()
       if admin_client then
         admin_client:close()
       end
 
       helpers.stop_kong()
-    end)
-
-    describe("/service_maps", function()
-      describe("GET", function()
-        it("returns whatever response code returned by upstream", function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/workspace2/service_maps?response_code=300"
-          })
-          assert.res_status(300, res)
-        end)
-      end)
     end)
 
     describe("/collector/alerts", function()

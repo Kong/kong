@@ -1,4 +1,3 @@
-local basic_serializer = require "kong.plugins.log-serializers.basic"
 local BasePlugin = require "kong.plugins.base_plugin"
 local BatchQueue = require "kong.tools.batch_queue"
 local utils = require "kong.tools.utils"
@@ -167,7 +166,7 @@ function CollectorHandler:body_filter(conf)
 end
 
 function CollectorHandler:log(conf)
-  local entry = basic_serializer.serialize(ngx)
+  local entry = kong.log.serialize()
   entry["request"]["post_data"] = kong.ctx.plugin.request_body
   entry = cjson.encode(entry)
 

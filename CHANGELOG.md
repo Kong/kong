@@ -17,6 +17,7 @@
 ## [2.0.0] - 2020/09/28
 ### Fixed
 - Remove /service_maps endpoint
+- Update serializer (drops basic_serializer)
 
 ## [1.7.9] - 2020/07/03
 ### Fixed
