@@ -145,20 +145,5 @@ return {
     GET = function(self, db) end,
     PATCH = function(self, db) end,
     DELETE = function(self, db) end,
-  },
-  ["/service_maps"] = {
-    before = set_workspace_url,
-    GET = function(self, db)
-      local query = build_params_with_workspace(self.url_params.workspace_name)
-      local path = self.collector_url .. "/service-map?" .. query
-      local res, err = backend.http_request("GET", path)
-
-      if err then
-        kong.log.notice(err)
-        kong.response.exit(500, { message = "Communication with collector failed." })
-      else
-        return kong.response.exit(res.status, res.body)
-      end
-    end
   }
 }
