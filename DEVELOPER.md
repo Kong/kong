@@ -6,7 +6,7 @@ These are the steps we follow at Kong to set up a development environment.
 
 Final deployments are typically on a Linux machine or container, so even if all components are multiplatform, it's easier to use it for development too.  If you use MacOS or Windows machines, setting a virtual machine is easy enough now.  Most of us use the freely available VirtualBox without any trouble.
 
-If you use Linux for your desktop, you can skip this section.
+If you use Linux for your desktop, you may skip this section and jump to another.
 
 There are no "hard" requirements on any Linux distro, but RHEL and CentOS can be more of a challenge to get recent versions of many packages; Fedora, Debian or Ubuntu are easier for this.
 
