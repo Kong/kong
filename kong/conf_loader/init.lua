@@ -412,6 +412,7 @@ local CONF_INFERENCES = {
   pg_ssl_version = { typ = "string"},
   pg_max_concurrent_queries = { typ = "number" },
   pg_semaphore_timeout = { typ = "number" },
+  pg_keepalive_timeout = { typ = "number" },
 
   pg_ro_port = { typ = "number" },
   pg_ro_timeout = { typ = "number" },
@@ -422,6 +423,7 @@ local CONF_INFERENCES = {
   pg_ro_ssl_version = { typ = "string"},
   pg_ro_max_concurrent_queries = { typ = "number" },
   pg_ro_semaphore_timeout = { typ = "number" },
+  pg_ro_keepalive_timeout = { typ = "number" },
 
   cassandra_contact_points = { typ = "array" },
   cassandra_port = { typ = "number" },
