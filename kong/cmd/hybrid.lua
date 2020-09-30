@@ -45,11 +45,11 @@ local function generate_cert(duration, cert_file, key_file)
 
   assert(crt:sign(key))
 
-  pl_file.write(cert_file, crt:to_PEM())
-  pl_file.write(key_file, key:to_PEM("private"))
+  assert(pl_file.write(cert_file, crt:to_PEM()))
+  assert(pl_file.write(key_file, key:to_PEM("private")))
 
-  os.execute("chmod 644 " .. cert_file)
-  os.execute("chmod 600 " .. key_file)
+  assert(os.execute("chmod 644 " .. cert_file))
+  assert(os.execute("chmod 600 " .. key_file))
 
   log("Successfully generated certificate/key pairs, " ..
       "they have been written to: '" .. cert_file .. "' and '" ..

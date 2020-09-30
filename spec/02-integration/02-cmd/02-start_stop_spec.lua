@@ -181,6 +181,9 @@ describe("kong start/stop #" .. strategy, function()
   end)
 
   describe("custom --nginx-conf", function()
+    lazy_setup(function()
+      helpers.clean_prefix()
+    end)
     local templ_fixture = "spec/fixtures/custom_nginx.template"
 
     it("accept a custom Nginx configuration", function()
