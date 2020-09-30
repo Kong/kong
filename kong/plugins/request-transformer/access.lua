@@ -35,6 +35,12 @@ local HOST = "host"
 local JSON, MULTI, ENCODED = "json", "multi_part", "form_encoded"
 local EMPTY = pl_tablex.readonly({})
 
+
+local compile_opts = {
+  escape = "\xff", -- disable '#' as a valid template escape
+}
+
+
 local function parse_json(body)
   if body then
     local status, res = pcall(cjson.decode, body)
@@ -126,7 +132,7 @@ local function param_value(source_template, config_array)
   -- Find or compile the specific template
   local compiled_template = compiled_templates[source_template]
   if not compiled_template then
-    compiled_template = pl_template.compile(source_template)
+    compiled_template = pl_template.compile(source_template, compile_opts)
     compiled_templates[source_template] = compiled_template
   end
 
