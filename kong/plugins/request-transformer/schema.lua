@@ -3,6 +3,12 @@ local tx = require "pl.tablex"
 local typedefs = require "kong.db.schema.typedefs"
 local validate_header_name = require("kong.tools.utils").validate_header_name
 
+
+local compile_opts = {
+  escape = "\xff", -- disable '#' as a valid template escape
+}
+
+
 -- entries must have colons to set the key and value apart
 local function check_for_value(entry)
   local name, value = entry:match("^([^:]+):*(.-)$")
@@ -10,7 +16,7 @@ local function check_for_value(entry)
     return false, "key '" ..name.. "' has no value"
   end
 
-  local status, res, err = pcall(pl_template.compile, value)
+  local status, res, err = pcall(pl_template.compile, value, compile_opts)
   if not status or err then
     return false, "value '" .. value ..
             "' is not in supported format, error:" ..

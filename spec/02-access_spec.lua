@@ -1,3 +1,4 @@
+local admin_api = require "spec.fixtures.admin_api"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
@@ -1351,6 +1352,35 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       local h_h1 = assert.request(r).has.header("h1")
       assert.same({"v1", "v2"}, h_h1)
     end)
+
+    it("can append a value with '#' (regression test for #29)", function()
+      local route = admin_api.routes:insert({
+        hosts = { "test_append_hash.test" }
+      })
+      admin_api.plugins:insert {
+        route = { id = route.id },
+        name = "request-transformer",
+        config = {
+          append = {
+            headers = {"h1:v1", "h1:v2", "h1:#value_with_hash", "h2:v1",},
+            querystring = {"q1:v1", "q1:v2", "q2:v1"},
+            body = {"p1:v1", "p1:v2", "p2:value:1"}     -- payload containing a colon
+          }
+        }
+      }
+      local r = assert( client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test_append_hash.test"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local h_h1 = assert.request(r).has.header("h1")
+      assert.same({"v1", "v2", "#value_with_hash"}, h_h1)
+    end)
+
     it("new querystring if querystring does not exists", function()
       local r = assert(client:send {
         method = "POST",
@@ -1837,7 +1867,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       })
       assert.response(r).has.status(500)
     end)
-    it("rendering error is correctly propagated in error.log, issue #25", function()
+    pending("rendering error is correctly propagated in error.log, issue #25", function()
       local r = assert(client:send {
         method = "GET",
         path = "/",
