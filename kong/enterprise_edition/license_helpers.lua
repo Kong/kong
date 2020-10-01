@@ -98,14 +98,13 @@ end
 
 function _M.featureset()
   local l_type
-  -- TODO: cache this
   local expiration_time = license_expiration_time(kong.license)
 
   if not expiration_time then
     l_type = "free"
     -- as of now, there's no config that changes in case we know it is expired from the start'
-    -- elseif expiration_time < ngx.time() then
-    --   l_type = "full_expired"
+  elseif expiration_time < ngx.time() then
+    l_type = "full_expired"
   else
     l_type = "full"
   end
@@ -114,11 +113,6 @@ function _M.featureset()
 end
 
 function _M.license_can(ability)
-  local expiration_time = license_expiration_time(kong.license) or 0
-  if ability == "write_admin_api" then
-    return expiration_time < ngx.time()
-  end
-
   return not (_M.featureset().abilities[ability] == false)
 end
 
