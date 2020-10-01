@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.2.0-alpha.1](#220-alpha1)
+- [2.2.0-beta.1](#220-beta1)
 - [2.1.3](#213)
 - [2.1.2](#212)
 - [2.1.1](#211)
@@ -49,25 +49,30 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.2.0-alpha.1]
+## [2.2.0-beta.1]
 
-> Released 2020/09/09
+> Released 2020/10/02
 
-This is an *alpha* pre-release of the upcoming Kong 2.2 series.
-Since 2.2 is a minor release there are no breaking changes with
-respect to the 2.x series, but being an alpha pre-release, development
-is not feature-frozen at this time: and any new features introduced here
-may change between this release and 2.2.0, and new features may be
-added.
+This is a *beta* pre-release of the upcoming Kong 2.2 series. There are no
+breaking changes with respect to the 2.x series. Being a beta pre-release,
+development for 2.2 is now in *feature freeze*: only bugfixes are going to be
+merged between this release and Kong 2.2.0. This is now the time to test the
+new features and report any issues!
+
+This changelog entry all new features and fixes for the 2.2.0 series, including
+changes previously added in the 2.2.0-alpha.1 release.
+, and all fixes from Kong 2.1.4.
 
 ### Dependencies
 
-- :warning: The required OpenResty version has been bumped to
+- :warning: For Kong 2.2, the required OpenResty version has been bumped to
   [1.17.8.2](http://openresty.org/en/changelog-1017008.html), and the
   the set of patches included has changed, including the latest release of
   [lua-kong-nginx-module](https://github.com/Kong/lua-kong-nginx-module).
   If you are installing Kong from one of our distribution
   packages, you are not affected by this change.
+- Bump OpenSSL version from `1.1.1g` to `1.1.1h`.
+  [#6382](https://github.com/Kong/kong/pull/6382)
 
 **Note:** if you are not using one of our distribution packages and compiling
 OpenResty from source, you must still apply Kong's [OpenResty
@@ -89,6 +94,20 @@ repository will allow you to do both easily.
   in its stream subsystem. The `"udp"` protocol is now accepted in the `protocols`
   attribute of Routes and the `protocol` attribute of Services.
   Load balancing and logging plugins support UDP as well.
+  [#6215](https://github.com/Kong/kong/pull/6215)
+- **Configurable Request and Response Buffering**: The buffering of requests
+  or responses can now be enabled or disabled on a per-route basis, through
+  setting attributes `Route.request_buffering` or `Route.response_buffering`
+  to `true` or `false`. Default behavior remains the same: buffering is enabled
+  by default for requests and responses.
+  [#6057](https://github.com/Kong/kong/pull/6057)
+- **Option to Automatically Load OS Certificates**: The configuration
+  attribute `lua_ssl_trusted_certificate` was extended to accept a
+  comma-separated list of certificate paths, as well as a special `system`
+  value, which expands to the "system default" certificates file installed
+  by the operating system. This follows a very simple heuristic to try to
+  use the most common certificate file in most popular distros.
+  [#6342](https://github.com/Kong/kong/pull/6342)
 - Add `X-Forwarded-Path` header: if a trusted source provides a
   `X-Forwarded-Path` header, it is proxied as-is. Otherwise, Kong will set
   the content of said header to the request's path.
@@ -98,6 +117,28 @@ repository will allow you to do both easily.
   to the Data Plane, drastically reducing the amount of communication between
   nodes during bulk updates.
   [#6293](https://github.com/Kong/kong/pull/6293)
+- The `Upstream.client_certificate` attribute can now be used from proxying:
+  This allows `client_certificate` setting used for mTLS handshaking with
+  the `Upstream` server to be shared easily among different Services.
+  However, `Service.client_certificate` will take precedence over
+  `Upstream.client_certificate` if both are set simultaneously.
+  In previous releases, `Upstream.client_certificate` was only used for
+  mTLS in active health checks.
+  [#6348](https://github.com/Kong/kong/pull/6348)
+- New `shorthand_fields` top-level attribute in schema definitions, which
+  deprecates `shorthands` and includes type definitions in addition to the
+  shorthand callback.
+  [#6364](https://github.com/Kong/kong/pull/6364)
+- Hybrid Mode: the table of Data Plane nodes at the Control Plane is now
+  cleaned up automatically, according to a delay value configurable via
+  the `cluster_data_plane_purge_delay` attribute, set to 14 days by default.
+  [#6376](https://github.com/Kong/kong/pull/6376)
+
+##### Admin API
+
+- Admin API responses now honor the `headers` configuration setting for
+  including or removing the `Server` header.
+  [#6371](https://github.com/Kong/kong/pull/6371)
 
 ##### PDK
 
@@ -105,6 +146,9 @@ repository will allow you to do both easily.
   component of the request's URL that Kong stripped before proxying to upstream,
   respecting the value of `X-Forwarded-Prefix` when it comes from a trusted source.
   [#6251](https://github.com/Kong/kong/pull/6251)
+- `kong.response.exit` now honors the `headers` configuration setting for
+  including or removing the `Server` header.
+  [#6371](https://github.com/Kong/kong/pull/6371)
 
 ##### Plugins
 
@@ -117,21 +161,42 @@ repository will allow you to do both easily.
   as `kong.Response.GetBody()`, and provides an equivalent simplified
   feature for handling buffered responses from Lua plugins as well.
   [#5991](https://github.com/Kong/kong/pull/5991)
-- grpc-web: Introduce configuration pass_stripped_path, which, if set to true,
+- aws-lambda: bump to version 3.5.0:
+  [#6379](https://github.com/Kong/kong/pull/6379)
+  * support for 'isBase64Encoded' flag in Lambda function responses
+- grpc-web: introduce configuration pass_stripped_path, which, if set to true,
   causes the plugin to pass the stripped request path (see the `strip_path` Route
   attribute) to the upstream gRPC service.
 - rate-limiting: Support for rate limiting by path, by setting the
   `limit_by = "path"` configuration attribute.
   Thanks [KongGuide](https://github.com/KongGuide) for the patch!
   [#6286](https://github.com/Kong/kong/pull/6286)
+- correlation-id: the plugin now generates a correlation-id value by default
+  if the correlation id header arrives but is empty.
+  [#6358](https://github.com/Kong/kong/pull/6358)
 
 ### Fixes
 
+##### Core
+
+- Improve graceful exit of Control Plane and Data Plane nodes in Hybrid Mode.
+  [#6306](https://github.com/Kong/kong/pull/6306)
+
 ##### Plugins
 
+- datadog, loggly, statsd: fixes for supporting logging TCP/UDP services.
+  [#6344](https://github.com/Kong/kong/pull/6344)
+- Logging plugins: request and response sizes are now reported
+  by the log serializer as number attributes instead of string.
+  [#6356](https://github.com/Kong/kong/pull/6356)
 - prometheus: Remove unnecessary `WARN` log that was seen in the Kong 2.1
   series.
   [#6258](https://github.com/Kong/kong/pull/6258)
+- key-auth: no longer trigger HTTP 400 error when the body cannot be decoded.
+  [#6357](https://github.com/Kong/kong/pull/6357)
+- aws-lambda: respect `skip_large_bodies` config setting even when not using
+  AWS API Gateway compatibility.
+  [#6379](https://github.com/Kong/kong/pull/6379)
 
 
 [Back to TOC](#table-of-contents)
@@ -5416,7 +5481,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.2.0-alpha.1]: https://github.com/Kong/kong/compare/2.1.3...2.2.0-alpha.1
+[2.2.0-beta.1]: https://github.com/Kong/kong/compare/2.1.3...2.2.0-beta.1
 [2.1.3]: https://github.com/Kong/kong/compare/2.1.2...2.1.3
 [2.1.2]: https://github.com/Kong/kong/compare/2.1.1...2.1.2
 [2.1.1]: https://github.com/Kong/kong/compare/2.1.0...2.1.1
