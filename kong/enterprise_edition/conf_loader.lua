@@ -738,12 +738,9 @@ local function load(conf)
 end
 
 
-local ee = require 'kong.enterprise_edition'
 local function add(dst, src)
-  if ee.license_can("sentinel") then
-    for k, v in pairs(src) do
-      dst[k] = v
-    end
+  for k, v in pairs(src) do
+    dst[k] = v
   end
 end
 

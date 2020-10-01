@@ -113,10 +113,6 @@ function _M.featureset()
 end
 
 function _M.license_can(ability)
-  if ability == "sentinel" then
-    return true
-  end
-
   local expiration_time = license_expiration_time(kong.license) or 0
   if ability == "write_admin_api" then
     return expiration_time < ngx.time()
