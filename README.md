@@ -108,6 +108,8 @@ code, other repos are also under active development:
   running Kong in Docker.
 - [Kong Packages](https://github.com/Kong/kong/releases): Pre-built packages
   for Debian, Red Hat, and OS X distributions (shipped with each release).
+- [Kong Gojira](https://github.com/Kong/gojira): a tool for
+  testing/developing multiple versions of Kong using containers.
 - [Kong Vagrant](https://github.com/Kong/kong-vagrant): A Vagrantfile for
   provisioning a development-ready environment for Kong.
 - [Kong Homebrew](https://github.com/Kong/homebrew-kong): Homebrew Formula
@@ -141,6 +143,15 @@ Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
 
 You can use Docker / docker-compose and a mounted volume to develop Kong by
 following the instructions on [Kong/kong-build-tools](https://github.com/Kong/kong-build-tools#developing-kong).
+
+#### Kong Gojira
+
+[Gojira](https://github.com/Kong/gojira) is a CLI that uses docker-compose
+internally to make the necessary setup of containers to get all
+dependencies needed to run a particular branch of Kong locally, as well
+as easily switching across versions, configurations and dependencies. It
+has support for running Kong in Hybrid (CP/DP) mode, testing migrations,
+running a Kong cluster, among other [features](https://github.com/Kong/gojira/blob/master/doc/manual.md).
 
 #### Vagrant
 
