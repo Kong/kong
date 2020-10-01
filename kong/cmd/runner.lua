@@ -18,8 +18,7 @@ end
 
 local function execute(args)
   _G.kong = kong_global.new()
-  local featureset = ee.featureset() or { conf =  {}}
-  local conf = assert(conf_loader(args.conf, featureset.conf, {from_kong_env = true}))
+  local conf = assert(conf_loader(args.conf, ee.license_conf(), {from_kong_env = true}))
 
   kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
   local db = assert(DB.new(conf))

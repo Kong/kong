@@ -438,11 +438,11 @@ function Kong.init()
   end
 
   -- retrieve kong_config
-  local featureset = ee.featureset() or { conf =  {}}
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
-  local config = assert(conf_loader(conf_path, featureset.conf, { from_kong_env = true }))
+  local config = assert(conf_loader(conf_path, ee.license_conf(), { from_kong_env = true }))
 
-  if false == featureset.abilities.ee_plugins then
+
+  if not ee.license_can("ee_plugins") then
     for _, p in ipairs(constants.EE_PLUGINS) do
       config.loaded_plugins[p]=nil
     end

@@ -125,6 +125,11 @@ function _M.license_can(ability)
   return not (_M.featureset().abilities[ability] == false)
 end
 
+function _M.license_conf()
+  return _M.featureset().conf
+end
+
+
 
 -- Hold a lock for the whole interval (exptime) to prevent multiple
 -- worker processes from the  simultaneously.

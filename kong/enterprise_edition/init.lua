@@ -205,7 +205,7 @@ function _M.feature_flags_init(config)
 end
 
 _M.read_license_info = license_helpers.read_license_info
-_M.featureset = license_helpers.featureset
+_M.license_conf = license_helpers.license_conf
 _M.license_can = license_helpers.license_can
 
 local function write_kconfig(configs, filename)
