@@ -40,31 +40,46 @@ local function get_timetable(now)
   return tt_from_timestamp(timestamp)
 end
 
+
 --- Creates a timestamp table containing time by different precision levels.
 -- @param now (optional) Time to generate timestamps from, if omitted current UTC time will be used
+-- @param tracked_timestamp (optional) Timestamp tracked, pairs of key/value in : {["second"]= true, ["minute"]= true, ["hour"]= true, ["day"]= true, ["month"]= true, ["year"]= true}
 -- @return Timestamp table containing fields/precisions; second, minute, hour, day, month, year
-local function get_timestamps(now)
+local function get_timestamps(now, tracked_timestamp)
   local timetable = get_timetable(now)
+  local tracked_timestamp = tracked_timestamp or {["second"]= true, ["minute"]= true, ["hour"]= true, ["day"]= true, ["month"]= true, ["year"]= true}
   local stamps = {}
 
   timetable.sec = math_floor(timetable.sec)   -- reduce to second precision
-  stamps.second = timetable:timestamp() * 1000
+  if tracked_timestamp["second"] ~= nil  then
+    stamps.second = timetable:timestamp() * 1000
+  end
 
   timetable.sec = 0
-  stamps.minute = timetable:timestamp() * 1000
-
+  if tracked_timestamp["minute"] ~= nil then
+    stamps.minute = timetable:timestamp() * 1000
+  end
+  
   timetable.min = 0
-  stamps.hour = timetable:timestamp() * 1000
-
+  if tracked_timestamp["hour"] ~= nil then
+    stamps.hour = timetable:timestamp() * 1000
+  end
+  
   timetable.hour = 0
-  stamps.day = timetable:timestamp() * 1000
+  if tracked_timestamp["day"] ~= nil then
+    stamps.day = timetable:timestamp() * 1000
+  end
 
   timetable.day = 1
-  stamps.month = timetable:timestamp() * 1000
+  if tracked_timestamp["month"] ~= nil then
+    stamps.month = timetable:timestamp() * 1000
+  end
 
   timetable.month = 1
-  stamps.year = timetable:timestamp() * 1000
-
+  if tracked_timestamp["year"] ~= nil then
+    stamps.year = timetable:timestamp() * 1000
+  end
+  
   return stamps
 end
 

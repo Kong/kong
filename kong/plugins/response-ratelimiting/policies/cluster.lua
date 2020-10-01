@@ -13,8 +13,8 @@ local tonumber = tonumber
 
 return {
   cassandra = {
-    increment = function(connector, identifier, name, current_timestamp, service_id, route_id, value)
-      local periods = timestamp.get_timestamps(current_timestamp)
+    increment = function(connector, identifier, name, current_timestamp, service_id, route_id, value, tracked_periods)
+      local periods = timestamp.get_timestamps(current_timestamp, tracked_periods)
 
       for period, period_date in pairs(periods) do
         local res, err = connector:query([[
@@ -41,8 +41,8 @@ return {
 
       return true
     end,
-    find = function(connector, identifier, name, period, current_timestamp, service_id, route_id)
-      local periods = timestamp.get_timestamps(current_timestamp)
+    find = function(connector, identifier, name, period, current_timestamp, service_id, route_id, tracked_periods)
+      local periods = timestamp.get_timestamps(current_timestamp, tracked_periods)
 
       local rows, err = connector:query([[
         SELECT value
@@ -72,10 +72,10 @@ return {
     end,
   },
   postgres = {
-    increment = function(connector, identifier, name, current_timestamp, service_id, route_id, value)
+    increment = function(connector, identifier, name, current_timestamp, service_id, route_id, value, tracked_periods)
       local buf = { "BEGIN" }
       local len = 1
-      local periods = timestamp.get_timestamps(current_timestamp)
+      local periods = timestamp.get_timestamps(current_timestamp, tracked_periods)
 
       for _, period in ipairs(timestamp.timestamp_table_fields) do
         local period_date = periods[period]
@@ -112,8 +112,8 @@ return {
 
       return true
     end,
-    find = function(connector, identifier, name, period, current_timestamp, service_id, route_id)
-      local periods = timestamp.get_timestamps(current_timestamp)
+    find = function(connector, identifier, name, period, current_timestamp, service_id, route_id, tracked_periods)
+      local periods = timestamp.get_timestamps(current_timestamp, tracked_periods)
 
       local q = fmt([[
         SELECT "value"

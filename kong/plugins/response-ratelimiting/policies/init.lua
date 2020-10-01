@@ -42,6 +42,22 @@ local function get_service_and_route_ids(conf)
   return service_id, route_id
 end
 
+local function get_tracked_periods(conf)
+  conf = conf or {}
+  local tracked_periods = nil
+
+  if conf.limits ~= nil  then 
+    tracked_periods = {}
+    
+    for k, v in pairs(conf.limits) do -- Iterate over limit names
+      for lk, lv in pairs(v) do -- Iterare over periods and add each periods to tracked periods
+        tracked_periods[lk] = true
+      end
+    end
+  end 
+
+  return tracked_periods
+end
 
 local get_local_key = function(conf, identifier, name, period, period_date)
   local service_id, route_id = get_service_and_route_ids(conf)
@@ -146,10 +162,11 @@ return {
       local db = kong.db
       local service_id, route_id = get_service_and_route_ids(conf)
       local policy = policy_cluster[db.strategy]
+      local tracked_periods = get_tracked_periods(conf)
 
       local ok, err = policy.increment(db.connector, identifier, name,
                                        current_timestamp, service_id, route_id,
-                                       value)
+                                       value, tracked_periods)
 
       if not ok then
         kong.log.err("cluster policy: could not increment ", db.strategy,
@@ -162,9 +179,11 @@ return {
       local db = kong.db
       local service_id, route_id = get_service_and_route_ids(conf)
       local policy = policy_cluster[db.strategy]
+      local tracked_periods = get_tracked_periods(conf)
 
       local row, err = policy.find(db.connector, identifier, name, period,
-                                    current_timestamp, service_id, route_id)
+                                    current_timestamp, service_id, route_id, 
+                                    tracked_periods)
 
       if err then
         return nil, err
