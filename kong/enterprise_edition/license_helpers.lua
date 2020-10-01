@@ -103,13 +103,14 @@ function _M.featureset()
 
   if not expiration_time then
     l_type = "free"
-  elseif expiration_time < ngx.time() then
-    l_type = "full_expired"
+    -- as of now, there's no config that changes in case we know it is expired from the start'
+    -- elseif expiration_time < ngx.time() then
+    --   l_type = "full_expired"
   else
     l_type = "full"
   end
 
-  return dist_constants.featureset[l_type] or dist_constants.featureset["free"]
+  return dist_constants.featureset[l_type]
 end
 
 function _M.license_can(ability)
