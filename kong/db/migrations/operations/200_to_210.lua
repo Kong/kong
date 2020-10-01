@@ -21,7 +21,9 @@ end
 
 
 local function cassandra_get_default_ws(coordinator)
-  local rows, err = coordinator:execute("SELECT id FROM workspaces WHERE name='default'")
+  local rows, err = coordinator:execute("SELECT id FROM workspaces WHERE name='default'", nil, {
+    consistency = cassandra.consistencies.serial,
+  })
   if err then
     return nil, err
   end
@@ -42,18 +44,19 @@ local function cassandra_create_default_ws(coordinator)
 
   local _, err = coordinator:execute("INSERT INTO workspaces(id, name, created_at) VALUES (?, 'default', ?)", {
     cassandra.uuid(default_ws_id),
-    cassandra.timestamp(created_at)
+    cassandra.timestamp(created_at),
+  }, {
+    consistency = cassandra.consistencies.quorum,
   })
   if err then
     return nil, err
   end
 
-  return cassandra_get_default_ws(coordinator) or default_ws_id
+  return cassandra_get_default_ws(coordinator)
 end
 
 
 local function cassandra_ensure_default_ws(coordinator)
-
   local default_ws, err = cassandra_get_default_ws(coordinator)
   if err then
     return nil, err
