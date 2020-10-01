@@ -1298,6 +1298,8 @@ end
 
 
 function Kong.admin_content(options)
+  kong.worker_events.poll()
+
   local ctx = ngx.ctx
   if not ctx.workspace then
     ctx.workspace = kong.default_workspace
