@@ -20,8 +20,8 @@ local function render(template, keys)
 end
 
 
-local function cassandra_get_default_ws(connector)
-  local rows, err = connector:query("SELECT id FROM workspaces WHERE name='default'")
+local function cassandra_get_default_ws(coordinator)
+  local rows, err = coordinator:execute("SELECT id FROM workspaces WHERE name='default'")
   if err then
     return nil, err
   end
@@ -37,10 +37,10 @@ local function cassandra_get_default_ws(connector)
 end
 
 
-local function cassandra_create_default_ws(connector)
+local function cassandra_create_default_ws(coordinator)
   local created_at = ngx.time() * 1000
 
-  local _, err = connector:query("INSERT INTO workspaces(id, name, created_at) VALUES (?, 'default', ?)", {
+  local _, err = coordinator:execute("INSERT INTO workspaces(id, name, created_at) VALUES (?, 'default', ?)", {
     cassandra.uuid(default_ws_id),
     cassandra.timestamp(created_at)
   })
@@ -48,13 +48,13 @@ local function cassandra_create_default_ws(connector)
     return nil, err
   end
 
-  return cassandra_get_default_ws(connector) or default_ws_id
+  return cassandra_get_default_ws(coordinator) or default_ws_id
 end
 
 
-local function cassandra_ensure_default_ws(connector)
+local function cassandra_ensure_default_ws(coordinator)
 
-  local default_ws, err = cassandra_get_default_ws(connector)
+  local default_ws, err = cassandra_get_default_ws(coordinator)
   if err then
     return nil, err
   end
@@ -63,7 +63,7 @@ local function cassandra_ensure_default_ws(connector)
     return default_ws
   end
 
-  return cassandra_create_default_ws(connector)
+  return cassandra_create_default_ws(coordinator)
 end
 
 
@@ -117,7 +117,7 @@ local cassandra = {
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
       local coordinator = assert(connector:connect_migrations())
-      local default_ws, err = cassandra_ensure_default_ws(connector)
+      local default_ws, err = cassandra_ensure_default_ws(coordinator)
       if err then
         return nil, err
       end
@@ -145,7 +145,7 @@ local cassandra = {
               ID = row.id,
             })
 
-            local _, err = connector:query(cql)
+            local _, err = coordinator:execute(cql)
             if err then
               return nil, err
             end

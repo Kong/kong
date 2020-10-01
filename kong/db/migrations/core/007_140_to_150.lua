@@ -30,7 +30,7 @@ return {
         for i = 1, #rows do
           local route = rows[i]
           if route.path_handling ~= "v0" and route.path_handling ~= "v1" then
-            local _, err = connector:query(
+            local _, err = coordinator:execute(
               "UPDATE routes SET path_handling = 'v1' WHERE partition = 'routes' AND id = ?",
               { cassandra.uuid(route.id) }
             )

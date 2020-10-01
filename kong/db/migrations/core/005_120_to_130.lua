@@ -141,7 +141,7 @@ return {
             algorithm = "consistent-hashing"
           end
 
-          local _, err = connector:query([[
+          local _, err = coordinator:execute([[
             UPDATE upstreams
             SET algorithm = ?
             WHERE id = ?

@@ -64,7 +64,7 @@ local function clean_cassandra_fields(connector, entities)
             ID = row.id,
           })
 
-          local _, err = connector:query(cql)
+          local _, err = coordinator:execute(cql)
           if err then
             return nil, err
           end

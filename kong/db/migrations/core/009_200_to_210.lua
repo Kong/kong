@@ -62,7 +62,7 @@ local function c_ca_certificates_migration(connector)
       end
 
       if digest ~= ca_cert.cert_digest then
-        local _, err = connector:query(
+        local _, err = coordinator:execute(
           "UPDATE ca_certificates SET cert_digest = ? WHERE partition = 'ca_certificates' AND id = ?", {
             cassandra.text(digest),
             cassandra.uuid(ca_cert.id)

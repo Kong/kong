@@ -243,7 +243,7 @@ do
 
     local column_declarations_cql = table_concat(column_declarations, ", ")
 
-    local cql = fmt("CREATE TABLE IF NOT EXISTS %s(%s%s);",
+    local cql = fmt("CREATE TABLE IF NOT EXISTS %s(%s%s)",
                     table_def.name,
                     column_declarations_cql,
                     primary_key_cql)
@@ -252,7 +252,7 @@ do
 
 
   local function drop_table_if_exists(coordinator, table_name)
-    local cql = fmt("DROP TABLE IF EXISTS %s;", table_name)
+    local cql = fmt("DROP TABLE IF EXISTS %s", table_name)
 
     return coordinator:execute(cql, {}, CASSANDRA_EXECUTE_OPTS)
   end
