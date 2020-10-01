@@ -24,7 +24,6 @@ for _, strategy in helpers.each_strategy() do
 
 describe("Admin API #" .. strategy, function()
   local bp
-  local db
   local client
   local weight_default, weight_min, weight_max = 100, 0, 65535
   local default_port = 8000
@@ -38,7 +37,7 @@ describe("Admin API #" .. strategy, function()
       address = "127.0.0.1",
     }
 
-    bp, db = helpers.get_db_utils(strategy, {
+    bp = helpers.get_db_utils(strategy, {
       "upstreams",
       "targets",
     })
@@ -112,67 +111,6 @@ describe("Admin API #" .. strategy, function()
           assert.is_string(json.id)
           assert.are.equal(99, json.weight)
         end
-      end)
-      it("cleans up old target entries", function()
-        local upstream = bp.upstreams:insert { slots = 10 }
-        -- insert elements in two targets alternately to build up a history
-        for i = 1, 11 do
-          local res = assert(client:send {
-            method = "POST",
-            path = "/upstreams/" .. upstream.name .. "/targets/",
-            body = {
-              target = "mashape.com:1111",
-              weight = i,
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            },
-          })
-          assert.response(res).has.status(201)
-
-          local res = assert(client:send {
-            method = "POST",
-            path = "/upstreams/" .. upstream.name .. "/targets/",
-            body = {
-              target = "mashape.com:2222",
-              weight = i,
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            },
-          })
-          assert.response(res).has.status(201)
-        end
-
-        -- now insert a few more elements only in the second target, to trigger a cleanup
-        for i = 12, 13 do
-          local res = assert(client:send {
-            method = "POST",
-            path = "/upstreams/" .. upstream.name .. "/targets/",
-            body = {
-              target = "mashape.com:2222",
-              weight = i,
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            },
-          })
-          assert.response(res).has.status(201)
-        end
-
-        local history = assert(db.targets:select_by_upstream_raw({ id = upstream.id }))
-        -- cleanup took place
-        assert(#history <= 5)
-
-        -- the remaining entries should be the correct ones
-        -- (i.e. the target not involved in the operation that triggered the cleanup
-        -- should not be corrupted)
-        local targets = assert(db.targets:page_for_upstream({ id = upstream.id }))
-        table.sort(targets, function(a,b) return a.target < b.target end)
-        assert.same("mashape.com:1111", targets[1].target)
-        assert.same(11, targets[1].weight)
-        assert.same("mashape.com:2222", targets[2].target)
-        assert.same(13, targets[2].weight)
       end)
 
       describe("errors", function()
@@ -808,17 +746,24 @@ describe("Admin API #" .. strategy, function()
         }
       end)
 
-      it("is disallowed", function()
+      it("is allowed and works", function()
         local res = client:patch("/upstreams/" .. upstream.name .. "/targets/" .. target.target, {
           body = {
-            weight = 100,
+            weight = 659,
           },
           headers = { ["Content-Type"] = "application/json" }
         })
+        assert.response(res).has.status(204)
 
-        assert.response(res).has.status(405)
+        local res = assert(client:send {
+          method = "GET",
+          path = "/upstreams/" .. upstream.name .. "/targets/"  .. target.target,
+        })
+        assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
-        assert.same({ message = "Method not allowed" }, json)
+        assert.is_string(json.id)
+        assert.are.equal(659, json.weight)
+
       end)
     end)
 
@@ -909,7 +854,15 @@ describe("Admin API #" .. strategy, function()
         }
       end)
 
-      it("acts as a sugar method to POST a target with 0 weight (by target)", function()
+      it("method DELETE actually deletes targets (by target)", function()
+        local targets = assert(client:send {
+          method = "GET",
+          path = "/upstreams/" .. upstream.name .. "/targets/all",
+        })
+        assert.response(targets).has.status(200)
+        local json = assert.response(targets).has.jsonbody()
+        assert.equal(2, #json.data)
+
         local res = assert(client:send {
           method = "DELETE",
           path = "/upstreams/" .. upstream.name .. "/targets/" .. target.target
@@ -922,7 +875,7 @@ describe("Admin API #" .. strategy, function()
         })
         assert.response(targets).has.status(200)
         local json = assert.response(targets).has.jsonbody()
-        assert.equal(3, #json.data)
+        assert.equal(1, #json.data)
 
         local active = assert(client:send {
           method = "GET",
@@ -934,7 +887,15 @@ describe("Admin API #" .. strategy, function()
         assert.equal("api-1:80", json.data[1].target)
       end)
 
-      it("acts as a sugar method to POST a target with 0 weight (by id)", function()
+      it("method DELETE actually deletes targets (by id)", function()
+        local targets = assert(client:send {
+          method = "GET",
+          path = "/upstreams/" .. upstream.name .. "/targets/all",
+        })
+        assert.response(targets).has.status(200)
+        local json = assert.response(targets).has.jsonbody()
+        assert.equal(2, #json.data)
+
         local res = assert(client:send {
           method = "DELETE",
           path = "/upstreams/" .. upstream.name .. "/targets/" .. target.id
@@ -947,7 +908,7 @@ describe("Admin API #" .. strategy, function()
         })
         assert.response(targets).has.status(200)
         local json = assert.response(targets).has.jsonbody()
-        assert.equal(3, #json.data)
+        assert.equal(1, #json.data)
 
         local active = assert(client:send {
           method = "GET",
