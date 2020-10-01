@@ -10,13 +10,18 @@ local REDIS_PASSWORD = nil
 local floor = math.floor
 local time = ngx.time
 
-for i, policy in ipairs({"cluster", "redis"}) do
+-- all_strategries is not available on earlier versions spec.helpers in Kong
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
+  local policy = strategy == "off" and "redis" or "cluster"
   local MOCK_RATE = 3
 
   local s = "rate-limiting-advanced (access) with policy: " .. policy
   if policy == "redis" then
     s = "#flaky " .. s
   end
+  s = s .. " using database strategy " .. strategy
 
   describe(s, function()
     local bp, consumer1, consumer2
@@ -25,7 +30,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
       helpers.kill_all()
       redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, REDIS_PASSWORD)
 
-      bp = helpers.get_db_utils(nil, nil, {"rate-limiting-advanced"})
+      bp = helpers.get_db_utils(strategy ~= "off" and strategy or nil,
+                                nil,
+                                {"rate-limiting-advanced"})
 
       consumer1 = assert(bp.consumers:insert {
         custom_id = "provider_123"
@@ -366,6 +373,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
       assert(helpers.start_kong{
         plugins = "rate-limiting-advanced,key-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        database = strategy ~= "off" and strategy or nil,
+        db_update_propagation = strategy == "cassandra" and 1 or 0,
+        declarative_config = strategy == "off" and helpers.write_declarative_config() or nil,
       })
     end)
 
