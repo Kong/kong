@@ -420,6 +420,9 @@ local Kong = {}
 function Kong.init()
   reset_kong_shm()
 
+  -- EE needs to know which kind of featureset to run ASAP
+  kong.license = ee.read_license_info()
+
   -- special math.randomseed from kong.globalpatches not taking any argument.
   -- Must only be called in the init or init_worker phases, to avoid
   -- duplicated seeds.
@@ -486,7 +489,6 @@ function Kong.init()
   kong.dns = singletons.dns
 
   -- XXX EE [[
-  kong.license = ee.read_license_info()
   kong.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
   singletons.admin_emails = admin_emails.new(config)

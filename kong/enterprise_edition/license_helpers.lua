@@ -99,7 +99,7 @@ end
 function _M.featureset()
   local l_type
   -- TODO: cache this
-  local expiration_time = license_expiration_time(_M.read_license_info())
+  local expiration_time = license_expiration_time(kong.license)
 
   if not expiration_time then
     l_type = "free"
