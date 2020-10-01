@@ -1,3 +1,28 @@
+-- License cycle
+--
+-- The license is put in the global kong.license if it exists.  All
+-- kong code assumes what is in kong.license is the license that was
+-- in the system when kong started.
+--
+-- get_license_string fetches the license from ENV or FILE. It should
+-- be called once (or very carfully) due to it migth be fetching a
+-- tampered LICENSE FILE (in case the user modified after kong
+-- started).
+--
+-- featureset is a table with 2 keys
+-- - conf: overrides from kong.conf
+-- - abilities: custom abilities
+--
+-- Access to the features is done via `license_can` and
+-- `license_conf` public methods.
+--
+-- `license_can` is responsible for giving a boolean answer to any
+-- part of the code that asks for a particular license ability. It can
+-- override values in the featureset table, or make programatic
+-- decisions. Another trick is to supercharge the featureset table
+-- with lambdas in case we need it.
+--
+
 local cjson      = require "cjson.safe"
 local pl_path    = require "pl.path"
 local log        = require "kong.cmd.utils.log"
