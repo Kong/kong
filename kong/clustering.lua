@@ -9,6 +9,8 @@ local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
 local openssl_x509 = require("resty.openssl.x509")
+local system_constants = require("lua_system_constants")
+local ffi = require("ffi")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
@@ -507,7 +509,7 @@ function _M.init_worker(conf)
 
         f:close()
 
-        if config then
+        if config and #config > 0 then
           ngx_log(ngx_INFO, "found cached copy of data-plane config, loading..")
 
           local err
@@ -528,6 +530,20 @@ function _M.init_worker(conf)
             ngx_log(ngx_ERR, "unable to inflate cached config: ",
                     err, ", ignoring...")
           end
+        end
+
+      else
+        -- CONFIG_CACHE does not exist, pre create one with 0600 permission
+        local fd = ffi.C.open(CONFIG_CACHE, bit.bor(system_constants.O_RDONLY(),
+                                                    system_constants.O_CREAT()),
+                                            bit.bor(system_constants.S_IRUSR(),
+                                                    system_constants.S_IWUSR()))
+        if fd == -1 then
+          ngx_log(ngx_ERR, "unable to pre-create cached config file: ",
+                  ffi.string(ffi.C.strerror(ffi.errno())))
+
+        else
+          ffi.C.close(fd)
         end
       end
 
