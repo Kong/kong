@@ -10,6 +10,7 @@ pipeline {
         DOCKER_USERNAME = "${env.DOCKER_CREDENTIALS_USR}"
         DOCKER_PASSWORD = "${env.DOCKER_CREDENTIALS_PSW}"
         KONG_PACKAGE_NAME = "kong"
+        DOCKER_CLI_EXPERIMENTAL = "enabled"
     }
     stages {
         stage('Build Kong') {
