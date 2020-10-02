@@ -556,21 +556,32 @@ function _M.deep_copy(orig, copy_mt)
   return copy
 end
 
---- Copies a table into a new table.
--- neither sub tables nor metatables will be copied.
--- @param orig The table to copy
--- @return Returns a copy of the input table
-function _M.shallow_copy(orig)
-  local copy
-  if type(orig) == "table" then
-    copy = {}
-    for orig_key, orig_value in pairs(orig) do
-      copy[orig_key] = orig_value
+
+do
+  local ok, clone = pcall(require, "table.clone")
+  if not ok then
+    clone = function(t)
+      local copy = {}
+      for key, value in pairs(t) do
+        copy[key] = value
+      end
+      return copy
     end
-  else -- number, string, boolean, etc
-    copy = orig
   end
-  return copy
+
+  --- Copies a table into a new table.
+  -- neither sub tables nor metatables will be copied.
+  -- @param orig The table to copy
+  -- @return Returns a copy of the input table
+  function _M.shallow_copy(orig)
+    local copy
+    if type(orig) == "table" then
+      copy = clone(orig)
+    else -- number, string, boolean, etc
+      copy = orig
+    end
+    return copy
+  end
 end
 
 --- Merges two tables recursively
