@@ -1223,6 +1223,11 @@ function Kong.log()
         ctx.KONG_BODY_FILTER_TIME = ctx.KONG_BODY_FILTER_ENDED_AT -
                                     ctx.KONG_BODY_FILTER_START
       end
+
+      if ctx.KONG_PROXIED and not ctx.KONG_WAITING_TIME then
+        ctx.KONG_WAITING_TIME = ctx.KONG_LOG_START -
+                                (ctx.KONG_BALANCER_ENDED_AT or ctx.KONG_ACCESS_ENDED_AT)
+      end
     end
   end
 
