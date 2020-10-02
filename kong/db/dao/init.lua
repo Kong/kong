@@ -769,6 +769,7 @@ local function generate_foreign_key_methods(schema)
         local params = {[name] = unique_value}
 
         local workspace = workspaces.apply_unique_per_ws(self.schema.name, params, constraints)
+        workspaces.apply_unique_per_ws(self.schema.name, entity_to_upsert, constraints)
 
         local row, err_t = self.strategy:upsert_by_field(name, params[name],
                                                          entity_to_upsert, options)
