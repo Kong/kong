@@ -402,9 +402,9 @@ describe("Configuration loader", function()
   end)
 
   describe("nginx_main_user", function()
-    it("is nil by default", function()
+    it("is 'kong' by default", function()
       local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.is_nil(conf.nginx_main_user)
+      assert.equal("kong", conf.nginx_main_user)
     end)
     it("is nil when 'nobody'", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
@@ -427,6 +427,10 @@ describe("Configuration loader", function()
   end)
 
   describe("nginx_user", function()
+    it("is 'kong' by default", function()
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      assert.equal("kong", conf.nginx_user)
+    end)
     it("is nil when 'nobody'", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         nginx_user = "nobody"
