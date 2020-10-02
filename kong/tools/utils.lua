@@ -514,11 +514,78 @@ function _M.table_contains(arr, val)
   return false
 end
 
+
+do
+  local floor = math.floor
+  local max = math.max
+
+  local ok, is_array_fast = pcall(require, "table.isarray")
+  if not ok then
+    is_array_fast = function(t)
+      for k in pairs(t) do
+          if type(k) ~= "number" or floor(k) ~= k then
+            return false
+          end
+      end
+      return true
+    end
+  end
+
+  local is_array_strict = function(t)
+    local m, c = 0, 0
+    for k in pairs(t) do
+        if type(k) ~= "number" or k < 1 or floor(k) ~= k then
+          return false
+        end
+        m = max(m, k)
+        c = c + 1
+    end
+    return c == m
+  end
+
+  local is_array_lapis = function(t)
+    if type(t) ~= "table" then
+      return false
+    end
+    local i = 0
+    for _ in pairs(t) do
+      i = i + 1
+      if t[i] == nil and t[tostring(i)] == nil then
+        return false
+      end
+    end
+    return true
+  end
+
+  --- Checks if a table is an array and not an associative array.
+  -- @param t The table to check
+  -- @param mode: `"strict"`: only sequential indices starting from 1 are allowed (no holes)
+  --                `"fast"`: OpenResty optimized version (holes and negative indices are ok)
+  --               `"lapis"`: Allows numeric indices as strings (no holes)
+  -- @return Returns `true` if the table is an array, `false` otherwise
+  function _M.is_array(t, mode)
+    if type(t) ~= "table" then
+      return false
+    end
+
+    if mode == "lapis" then
+      return is_array_lapis(t)
+    end
+
+    if mode == "fast" then
+      return is_array_fast(t)
+    end
+
+    return is_array_strict(t)
+  end
+end
+
+
 --- Checks if a table is an array and not an associative array.
 -- *** NOTE *** string-keys containing integers are considered valid array entries!
 -- @param t The table to check
 -- @return Returns `true` if the table is an array, `false` otherwise
-function _M.is_array(t)
+function _M.is_lapis_array(t)
   if type(t) ~= "table" then
     return false
   end
@@ -531,6 +598,7 @@ function _M.is_array(t)
   end
   return true
 end
+
 
 --- Deep copies a table into a new table.
 -- Tables used as keys are also deep copied, as are metatables
