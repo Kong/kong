@@ -103,6 +103,23 @@ local function gen_default_ssl_cert(kong_config, target)
   return true
 end
 
+
+local function gen_trusted_certs_combined_file(combined_filepath, paths)
+
+  log.verbose("generating trusted certs combined file in ",
+              combined_filepath)
+
+  local fd = assert(io.open(combined_filepath, "w"))
+
+  for _, path in ipairs(paths) do
+    fd:write(pl_file.read(path))
+    fd:write("\n")
+  end
+
+  io.close(fd)
+end
+
+
 local function get_ulimit()
   local ok, _, stdout, stderr = pl_utils.executeex "ulimit -n"
   if not ok then
@@ -302,6 +319,13 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     end
     kong_config.status_ssl_cert = kong_config.status_ssl_cert_default
     kong_config.status_ssl_cert_key = kong_config.status_ssl_cert_key_default
+  end
+
+  if kong_config.lua_ssl_trusted_certificate_combined then
+    gen_trusted_certs_combined_file(
+      kong_config.lua_ssl_trusted_certificate_combined,
+      kong_config.lua_ssl_trusted_certificate
+    )
   end
 
   -- check ulimit

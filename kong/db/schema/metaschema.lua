@@ -85,10 +85,12 @@ end
 
 local field_entity_checks = {
   -- if 'unique_across_ws' is set, then 'unique' must be set too
-  conditional = {
-    if_field = "unique_across_ws", if_match = { eq = true },
-    then_field = "unique", then_match = { eq = true, required = true },
-  }
+  {
+    conditional = {
+      if_field = "unique_across_ws", if_match = { eq = true },
+      then_field = "unique", then_match = { eq = true, required = true },
+    }
+  },
 }
 
 local fields_array = {
@@ -101,6 +103,7 @@ local fields_array = {
     len_eq = 1,
   },
 }
+
 
 local transformations_array = {
   type = "array",
@@ -245,8 +248,21 @@ local shorthands_array = {
   nilable = true,
 }
 
+local shorthand_fields_array = {
+  type = "array",
+  elements = {
+    type = "map",
+    keys = { type = "string" },
+    -- values are defined below after field_schema definition is complete
+    required = true,
+    len_eq = 1,
+  },
+  nilable = true,
+}
+
 table.insert(field_schema, { entity_checks = entity_checks_schema })
 table.insert(field_schema, { shorthands = shorthands_array })
+table.insert(field_schema, { shorthand_fields = shorthand_fields_array })
 
 local meta_errors = {
   ATTRIBUTE = "field of type '%s' cannot have attribute '%s'",
@@ -438,6 +454,44 @@ local function has_schema_field(schema, name)
 end
 
 
+-- Build a variant of the field_schema, adding a 'func' attribute
+-- and restricting the set of valid types.
+local function make_shorthand_field_schema()
+  local shorthand_field_schema = {}
+  for k, v in pairs(field_schema) do
+    shorthand_field_schema[k] = v
+  end
+
+  -- do not accept complex/recursive types
+  -- which require additional schema processing as shorthands
+  local invalid_as_shorthand = {
+    record = true,
+    foreign = true,
+    ["function"] = true,
+  }
+
+  local shorthand_field_types = {}
+  for k, _ in pairs(Schema.valid_types) do
+    if not invalid_as_shorthand[k] then
+      table.insert(shorthand_field_types, k)
+    end
+  end
+
+  assert(next(shorthand_field_schema[1]) == "type")
+  shorthand_field_schema[1] = { type = { type = "string", one_of = shorthand_field_types, required = true }, }
+
+  table.insert(shorthand_field_schema, { func = { type = "function", required = true } })
+  return shorthand_field_schema
+end
+
+
+shorthand_fields_array.elements.values = {
+  type = "record",
+  fields = make_shorthand_field_schema(),
+  entity_checks = field_entity_checks
+}
+
+
 local MetaSchema = Schema.new({
 
   name = "metaschema",
@@ -537,6 +591,9 @@ local MetaSchema = Schema.new({
       shorthands = shorthands_array,
     },
     {
+      shorthand_fields = shorthand_fields_array,
+    },
+    {
       check = {
         type = "function",
         nilable = true
@@ -551,6 +608,10 @@ local MetaSchema = Schema.new({
     {
       transformations = transformations_array,
     },
+  },
+
+  entity_checks = {
+    { only_one_of = { "shorthands", "shorthand_fields" } },
   },
 
   check = function(schema)

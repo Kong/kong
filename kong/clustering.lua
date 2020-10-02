@@ -9,6 +9,8 @@ local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
 local openssl_x509 = require("resty.openssl.x509")
+local system_constants = require("lua_system_constants")
+local ffi = require("ffi")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
@@ -35,6 +37,7 @@ local deflate_gzip = utils.deflate_gzip
 local MAX_PAYLOAD = 4 * 1024 * 1024 -- 4MB
 local PING_INTERVAL = 30 -- 30 seconds
 local WS_OPTS = {
+  timeout = 5000,
   max_payload_len = MAX_PAYLOAD,
 }
 local ngx_ERR = ngx.ERR
@@ -163,7 +166,12 @@ local function communicate(premature, conf)
         return
       end
 
-      ngx_sleep(PING_INTERVAL)
+      for _ = 1, PING_INTERVAL do
+        ngx_sleep(1)
+        if exiting() then
+          return
+        end
+      end
     end
   end)
 
@@ -318,7 +326,7 @@ function _M.handle_cp_websocket()
           data ~= "" and data or nil,
         hostname = node_hostname,
         ip = node_ip,
-      })
+      }, { ttl = kong.configuration.cluster_data_plane_purge_delay, })
       if not ok then
         ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
       end
@@ -326,7 +334,10 @@ function _M.handle_cp_websocket()
   end)
 
   while not exiting() do
-    local ok, err = sem:wait(10)
+    local ok, err = sem:wait(5)
+    if exiting() then
+      return
+    end
     if ok then
       local payload = table_remove(queue, 1)
       assert(payload, "config queue can not be empty after semaphore returns")
@@ -351,10 +362,8 @@ function _M.handle_cp_websocket()
         end
       end
 
-    else -- not ok
-      if err ~= "timeout" then
-        ngx_log(ngx_ERR, "semaphore wait error: ", err)
-      end
+    elseif err ~= "timeout" then
+      ngx_log(ngx_ERR, "semaphore wait error: ", err)
     end
   end
 end
@@ -394,11 +403,28 @@ local function push_config_timer(premature, semaphore, delay)
   end
 
   while not exiting() do
-    local ok, err = semaphore:wait(10)
+    local ok, err = semaphore:wait(1)
+    if exiting() then
+      return
+    end
     if ok then
       ok, err = pcall(push_config)
       if ok then
-        ngx.sleep(delay)
+        local sleep_left = delay
+        while sleep_left > 0 do
+          if sleep_left <= 1 then
+            ngx.sleep(sleep_left)
+            break
+          end
+
+          ngx.sleep(1)
+
+          if exiting() then
+            return
+          end
+
+          sleep_left = sleep_left - 1
+        end
 
       else
         ngx_log(ngx_ERR, "export and pushing config failed: ", err)
@@ -483,7 +509,7 @@ function _M.init_worker(conf)
 
         f:close()
 
-        if config then
+        if config and #config > 0 then
           ngx_log(ngx_INFO, "found cached copy of data-plane config, loading..")
 
           local err
@@ -504,6 +530,20 @@ function _M.init_worker(conf)
             ngx_log(ngx_ERR, "unable to inflate cached config: ",
                     err, ", ignoring...")
           end
+        end
+
+      else
+        -- CONFIG_CACHE does not exist, pre create one with 0600 permission
+        local fd = ffi.C.open(CONFIG_CACHE, bit.bor(system_constants.O_RDONLY(),
+                                                    system_constants.O_CREAT()),
+                                            bit.bor(system_constants.S_IRUSR(),
+                                                    system_constants.S_IWUSR()))
+        if fd == -1 then
+          ngx_log(ngx_ERR, "unable to pre-create cached config file: ",
+                  ffi.string(ffi.C.strerror(ffi.errno())))
+
+        else
+          ffi.C.close(fd)
         end
       end
 

@@ -108,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
       -- Go hit the api with requests, 1x round the balancer
       local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
       assert.same(0, oks)
-      assert.same(10, fails)
+      assert.same(bu.SLOTS, fails)
       assert.same(503, last_status)
 
       local health = bu.get_upstream_health(upstream_name)
@@ -134,14 +134,14 @@ for _, strategy in helpers.each_strategy() do
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
       bu.add_target(bp, upstream_id, "multiple-ips.test", 80)
-      local api_host = bu.add_api(bp, upstream_name)
+      local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
       -- we do not set up servers, since we want the connection to get refused
-      -- Go hit the api with requests, 1x round the balancer
+      -- Go hit the api with requests
       local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
       assert.same(0, oks)
-      assert.same(10, fails)
+      assert.same(bu.SLOTS, fails)
       assert.same(503, last_status)
 
       local health = bu.get_upstream_health(upstream_name)
@@ -199,14 +199,14 @@ for _, strategy in helpers.each_strategy() do
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
       bu.add_target(bp, upstream_id, "multiple-ips.test", 80)
-      local api_host = bu.add_api(bp, upstream_name)
+      local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
       -- we do not set up servers, since we want the connection to get refused
       -- Go hit the api with requests, 1x round the balancer
       local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
       assert.same(0, oks)
-      assert.same(10, fails)
+      assert.same(bu.SLOTS, fails)
       assert.same(503, last_status)
 
       local health = bu.get_upstream_health(upstream_name)
@@ -264,14 +264,14 @@ for _, strategy in helpers.each_strategy() do
       -- the following port will not be used, will be overwritten by
       -- the mocked SRV record.
       bu.add_target(bp, upstream_id, "srv-changes-port.test", 80)
-      local api_host = bu.add_api(bp, upstream_name)
+      local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
       bu.end_testcase_setup(strategy, bp)
 
       -- we do not set up servers, since we want the connection to get refused
       -- Go hit the api with requests, 1x round the balancer
       local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
       assert.same(0, oks)
-      assert.same(10, fails)
+      assert.same(bu.SLOTS, fails)
       assert.same(503, last_status)
 
       local health = bu.get_upstream_health(upstream_name)
@@ -508,7 +508,7 @@ for _, strategy in helpers.each_strategy() do
 
         describe("#" .. mode, function()
 
-          it("does not perform health checks when disabled (#3304)", function()
+          it("#flaky does not perform health checks when disabled (#3304)", function()
 
             bu.begin_testcase_setup(strategy, bp)
             local old_rv = bu.get_router_version(admin_port_2)
@@ -643,7 +643,7 @@ for _, strategy in helpers.each_strategy() do
                 bu.begin_testcase_setup(strategy, bp)
                 local upstream_name, upstream_id = bu.add_upstream(bp, { host_header = "localhost" })
                 local target_port = bu.add_target(bp, upstream_id, "localhost")
-                local api_host = bu.add_api(bp, upstream_name)
+                local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
                 bu.end_testcase_setup(strategy, bp, consistency)
 
                 local server = bu.http_server("127.0.0.1", target_port, { 5 }, "false", "http", "true")
@@ -791,7 +791,9 @@ for _, strategy in helpers.each_strategy() do
               -- for a PATCH operation.
               -- TODO produce an equivalent test when upstreams are preserved
               -- (not rebuilt) across declarative config updates.
-              it("#db do not leave a stale healthchecker when renamed", function()
+              -- FIXME sometimes it takes a long time to stop the original
+              -- health checker, it may be a bug or not.
+              it("#flaky #db do not leave a stale healthchecker when renamed", function()
 
                 bu.begin_testcase_setup(strategy, bp)
 
@@ -887,7 +889,7 @@ for _, strategy in helpers.each_strategy() do
               })
               local port1 = bu.add_target(bp, upstream_id, localhost)
               local port2 = bu.add_target(bp, upstream_id, localhost)
-              local api_host, service_id = bu.add_api(bp, upstream_name)
+              local api_host, service_id = bu.add_api(bp, upstream_name, { connect_timeout = 50, })
 
               -- add a plugin
               local plugin_id = utils.uuid()
@@ -1180,7 +1182,7 @@ for _, strategy in helpers.each_strategy() do
                 })
                 bu.add_target(bp, upstream_id, localhost, port1)
                 bu.add_target(bp, upstream_id, localhost, port2)
-                local api_host = bu.add_api(bp, upstream_name)
+                local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 50, })
                 bu.end_testcase_setup(strategy, bp)
 
                 -- Phase 1: server1 and server2 take requests
@@ -2075,15 +2077,13 @@ for _, strategy in helpers.each_strategy() do
               local port2 = bu.add_target(bp, upstream_id, localhost)
               bu.end_testcase_setup(strategy, bp)
 
-              local server2 = bu.http_server(localhost, port2, {
-                10,
-              })
+              local server2 = bu.http_server(localhost, port2, { bu.SLOTS })
 
-              _, _, last_status = bu.client_requests(10, api_host)
+              _, _, last_status = bu.client_requests(bu.SLOTS, api_host)
               assert.same(200, last_status)
 
               local _, oks2, fails2 = server2:done()
-              assert.same(10, oks2)
+              assert.same(bu.SLOTS, oks2)
               assert.same(0, fails2)
             end)
 

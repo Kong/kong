@@ -8,8 +8,11 @@ local error = error
 
 local KeyAuthHandler = {
   PRIORITY = 1003,
-  VERSION = "2.2.0",
+  VERSION = "2.3.0",
 }
+
+
+local EMPTY = {}
 
 
 local _realm = 'Key realm="' .. _KONG._NAME .. '"'
@@ -65,6 +68,17 @@ local function set_consumer(consumer, credential)
 end
 
 
+local function get_body()
+  local body, err = kong.request.get_body()
+  if err then
+    kong.log.info("Cannot process request body: ", err)
+    return EMPTY
+  end
+
+  return body
+end
+
+
 local function do_authentication(conf)
   if type(conf.key_names) ~= "table" then
     kong.log.err("no conf.key_names set, aborting plugin execution")
@@ -75,17 +89,6 @@ local function do_authentication(conf)
   local query = kong.request.get_query()
   local key
   local body
-
-  -- read in the body if we want to examine POST args
-  if conf.key_in_body then
-    local err
-    body, err = kong.request.get_body()
-
-    if err then
-      kong.log.err("Cannot process request body: ", err)
-      return nil, { status = 400, message = "Cannot process request body" }
-    end
-  end
 
   -- search in headers & querystring
   for i = 1, #conf.key_names do
@@ -98,6 +101,10 @@ local function do_authentication(conf)
 
     -- search the body, if we asked to
     if not v and conf.key_in_body then
+      if not body then
+        body = get_body()
+      end
+
       v = body[name]
     end
 
@@ -110,8 +117,17 @@ local function do_authentication(conf)
         kong.service.request.clear_header(name)
 
         if conf.key_in_body then
-          body[name] = nil
-          kong.service.request.set_body(body)
+          if not body then
+            body = get_body()
+          end
+
+          if body ~= EMPTY then
+            if body then
+              body[name] = nil
+            end
+
+            kong.service.request.set_body(body)
+          end
         end
       end
 

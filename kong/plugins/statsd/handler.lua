@@ -24,10 +24,11 @@ local get_consumer_id = {
 
 local metrics = {
   status_count = function (service_name, message, metric_config, logger)
+    local response_status = message.response and message.response.status or 0
     local format = fmt("%s.request.status", service_name,
-                       message.response.status)
+                       response_status)
 
-    logger:send_statsd(fmt("%s.%s", format, message.response.status),
+    logger:send_statsd(fmt("%s.%s", format, response_status),
                        1, logger.stat_types.counter, metric_config.sample_rate)
 
     logger:send_statsd(fmt("%s.%s", format, "total"), 1,
@@ -91,8 +92,8 @@ local function log(premature, conf, message)
     request_count    = name .. ".request.count",
   }
   local stat_value = {
-    request_size     = message.request.size,
-    response_size    = message.response.size,
+    request_size     = message.request and message.request.size,
+    response_size    = message.response and message.response.size,
     latency          = message.latencies.request,
     upstream_latency = message.latencies.proxy,
     kong_latency     = message.latencies.kong,

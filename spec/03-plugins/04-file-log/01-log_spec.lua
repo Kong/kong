@@ -121,6 +121,8 @@ for _, strategy in helpers.each_strategy() do
       local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
       assert.same("127.0.0.1", log_message.client_ip)
       assert.same(uuid, log_message.request.headers["file-log-uuid"])
+      assert.is_number(log_message.request.size)
+      assert.is_number(log_message.response.size)
     end)
 
     it("logs to file #grpc", function()

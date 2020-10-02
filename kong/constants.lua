@@ -152,7 +152,6 @@ local constants = {
     "kong_rate_limiting_counters",
   },
   DATABASE = {
-    -- These constants are not used anywhere in the Kong code. They're here as a useful reference
     POSTGRES = {
       MIN = "9.5",
     },

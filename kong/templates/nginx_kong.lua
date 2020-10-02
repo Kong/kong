@@ -11,8 +11,8 @@ lua_socket_log_errors  off;
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 lua_ssl_verify_depth   ${{LUA_SSL_VERIFY_DEPTH}};
-> if lua_ssl_trusted_certificate then
-lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
+> if lua_ssl_trusted_certificate_combined then
+lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
 > end
 
 lua_shared_dict kong                        5m;
@@ -135,7 +135,103 @@ server {
         set $upstream_x_forwarded_prefix '';
         set $kong_proxy_mode             'http';
 
-        proxy_http_version    1.1;
+        proxy_http_version      1.1;
+        proxy_buffering          on;
+        proxy_request_buffering  on;
+
+        proxy_set_header      TE                 $upstream_te;
+        proxy_set_header      Host               $upstream_host;
+        proxy_set_header      Upgrade            $upstream_upgrade;
+        proxy_set_header      Connection         $upstream_connection;
+        proxy_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
+        proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
+        proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
+        proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+        proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
+        proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
+        proxy_set_header      X-Real-IP          $remote_addr;
+        proxy_pass_header     Server;
+        proxy_pass_header     Date;
+        proxy_ssl_name        $upstream_host;
+        proxy_ssl_server_name on;
+> if client_ssl then
+        proxy_ssl_certificate ${{CLIENT_SSL_CERT}};
+        proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
+> end
+        proxy_pass            $upstream_scheme://kong_upstream$upstream_uri;
+    }
+
+    location @unbuffered {
+        internal;
+        default_type         '';
+        set $kong_proxy_mode 'unbuffered';
+
+        proxy_http_version      1.1;
+        proxy_buffering         off;
+        proxy_request_buffering off;
+
+        proxy_set_header      TE                 $upstream_te;
+        proxy_set_header      Host               $upstream_host;
+        proxy_set_header      Upgrade            $upstream_upgrade;
+        proxy_set_header      Connection         $upstream_connection;
+        proxy_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
+        proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
+        proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
+        proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+        proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
+        proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
+        proxy_set_header      X-Real-IP          $remote_addr;
+        proxy_pass_header     Server;
+        proxy_pass_header     Date;
+        proxy_ssl_name        $upstream_host;
+        proxy_ssl_server_name on;
+> if client_ssl then
+        proxy_ssl_certificate ${{CLIENT_SSL_CERT}};
+        proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
+> end
+        proxy_pass            $upstream_scheme://kong_upstream$upstream_uri;
+    }
+
+    location @unbuffered_request {
+        internal;
+        default_type         '';
+        set $kong_proxy_mode 'unbuffered';
+
+        proxy_http_version      1.1;
+        proxy_buffering          on;
+        proxy_request_buffering off;
+
+        proxy_set_header      TE                 $upstream_te;
+        proxy_set_header      Host               $upstream_host;
+        proxy_set_header      Upgrade            $upstream_upgrade;
+        proxy_set_header      Connection         $upstream_connection;
+        proxy_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
+        proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
+        proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
+        proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+        proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
+        proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
+        proxy_set_header      X-Real-IP          $remote_addr;
+        proxy_pass_header     Server;
+        proxy_pass_header     Date;
+        proxy_ssl_name        $upstream_host;
+        proxy_ssl_server_name on;
+> if client_ssl then
+        proxy_ssl_certificate ${{CLIENT_SSL_CERT}};
+        proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
+> end
+        proxy_pass            $upstream_scheme://kong_upstream$upstream_uri;
+    }
+
+    location @unbuffered_response {
+        internal;
+        default_type         '';
+        set $kong_proxy_mode 'unbuffered';
+
+        proxy_http_version      1.1;
+        proxy_buffering         off;
+        proxy_request_buffering  on;
+
         proxy_set_header      TE                 $upstream_te;
         proxy_set_header      Host               $upstream_host;
         proxy_set_header      Upgrade            $upstream_upgrade;

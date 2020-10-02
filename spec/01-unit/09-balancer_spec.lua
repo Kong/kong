@@ -51,12 +51,8 @@ for _, consistency in ipairs({"strict", "eventual"}) do
     local singletons, balancer
     local UPSTREAMS_FIXTURES
     local TARGETS_FIXTURES
-    local crc32 = ngx.crc32_short
-    local uuid = require("kong.tools.utils").uuid
     local upstream_hc
     local upstream_ph
-    local upstream_otes
-    local upstream_otee
 
     lazy_teardown(function()
       ngx.log:revert() -- luacheck: ignore
@@ -132,8 +128,6 @@ for _, consistency in ipairs({"strict", "eventual"}) do
       }
       upstream_hc = UPSTREAMS_FIXTURES[7]
       upstream_ph = UPSTREAMS_FIXTURES[8]
-      upstream_otes = UPSTREAMS_FIXTURES[9]
-      upstream_otee = UPSTREAMS_FIXTURES[10]
 
       TARGETS_FIXTURES = {
         -- 1st upstream; a
@@ -344,13 +338,6 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         setup_it_block(consistency)
         local my_balancer = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1]))
         local hc = assert(balancer._get_healthchecker(my_balancer))
-        local target_history = {
-          { name = "localhost", port = 80, order = "1000:a3", weight = 10 },
-          { name = "localhost", port = 80, order = "2000:a2", weight = 10 },
-          { name = "localhost", port = 80, order = "2000:a4", weight = 10 },
-          { name = "localhost", port = 80, order = "3000:a1", weight = 10 },
-        }
-        assert.same(target_history, balancer._get_target_history(my_balancer))
         hc:stop()
       end)
 
@@ -368,19 +355,10 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         local b1 = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1], true))
         local hc1 = balancer._get_healthchecker(b1)
         assert(hc1:stop())
-        local b1_target_history = balancer._get_target_history(b1)
         local b2 = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1], true))
         local hc2 = balancer._get_healthchecker(b2)
         assert(hc2:stop())
-        local target_history = {
-          { name = "localhost", port = 80, order = "1000:a3", weight = 10 },
-          { name = "localhost", port = 80, order = "2000:a2", weight = 10 },
-          { name = "localhost", port = 80, order = "2000:a4", weight = 10 },
-          { name = "localhost", port = 80, order = "3000:a1", weight = 10 },
-        }
         assert.not_same(b1, b2)
-        assert.same(target_history, b1_target_history)
-        assert.same(target_history, balancer._get_target_history(b2))
       end)
     end)
 
@@ -393,12 +371,6 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         local my_balancer = assert(balancer._get_balancer({
           host = "upstream_e"
         }, true))
-        local target_history = {
-          { name = "127.0.0.1", port = 2112, order = "1000:e1", weight = 10 },
-          { name = "127.0.0.1", port = 2112, order = "2000:e2", weight = 0  },
-          { name = "127.0.0.1", port = 2112, order = "3000:e3", weight = 10 },
-        }
-        assert.same(target_history, balancer._get_target_history(my_balancer))
         local hc = assert(balancer._get_healthchecker(my_balancer))
         assert.same(1, #hc.targets)
         assert.truthy(hc.targets["127.0.0.1"])
@@ -410,12 +382,6 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         local my_balancer = assert(balancer._get_balancer({
           host = "upstream_f"
         }, true))
-        local target_history = {
-          { name = "127.0.0.1", port = 5150, order = "1000:f1", weight = 10 },
-          { name = "127.0.0.1", port = 5150, order = "2000:f2", weight = 0  },
-          { name = "127.0.0.1", port = 2112, order = "3000:f3", weight = 10 },
-        }
-        assert.same(target_history, balancer._get_target_history(my_balancer))
         local hc = assert(balancer._get_healthchecker(my_balancer))
         assert.same(1, #hc.targets)
         assert.truthy(hc.targets["127.0.0.1"])
@@ -476,51 +442,6 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         assert(targets[2].id == "a2")
         assert(targets[3].id == "a4")
         assert(targets[4].id == "a1")
-      end)
-    end)
-
-    describe("on_target_event()", function()
-      it("adding a target does not recreate a balancer", function()
-        if consistency == "strict" then
-          setup_it_block(consistency)
-          balancer._load_targets_into_memory("otes")
-          local b1 = balancer._create_balancer(upstream_otes)
-          assert.same(1, #(balancer._get_target_history(b1)))
-
-          table.insert(TARGETS_FIXTURES, {
-            id = "otes2",
-            ws_id = ws_id,
-            created_at = "002",
-            upstream = { id = "otes", ws_id = ws_id },
-            target = "localhost:1112",
-            weight = 10,
-          })
-          balancer.on_target_event("create", { upstream = { id = "otes" } })
-
-          local b2 = balancer._create_balancer(upstream_otes)
-          assert.same(2, #(balancer._get_target_history(b2)))
-
-          assert(b1 == b2)
-        else
-          setup_it_block(consistency)
-          balancer._load_targets_into_memory("otee")
-          local b1 = balancer._create_balancer(upstream_otee)
-          assert.same(1, #(balancer._get_target_history(b1)))
-
-          table.insert(TARGETS_FIXTURES, {
-            id = "otee2",
-            created_at = "002",
-            upstream = { id = "otee" },
-            target = "localhost:1112",
-            weight = 10,
-          })
-          balancer.on_target_event("create", { upstream = { id = "otee" } })
-
-          local b2 = balancer._create_balancer(upstream_otee)
-          assert.same(2, #(balancer._get_target_history(b2)))
-
-          assert(b1 == b2)
-        end
       end)
     end)
 
@@ -614,166 +535,6 @@ for _, consistency in ipairs({"strict", "eventual"}) do
           health = "healthy"
         }, data[2])
         assert.same(nil, data[3])
-      end)
-    end)
-
-    describe("creating hash values", function()
-      local headers
-      local backup
-      before_each(function()
-        headers = setmetatable({}, {
-            __newindex = function(self, key, value)
-              rawset(self, key:upper(), value)
-            end,
-            __index = function(self, key)
-              return rawget(self, key:upper())
-            end,
-        })
-        backup = { ngx.req, ngx.var, ngx.ctx }
-        ngx.req = { get_headers = function() return headers end } -- luacheck: ignore
-        ngx.var = {}
-        ngx.ctx = {}
-      end)
-      after_each(function()
-        ngx.req = backup[1] -- luacheck: ignore
-        ngx.var = backup[2]
-        ngx.ctx = backup[3]
-      end)
-      it("none", function()
-        local hash = balancer._create_hash({
-            hash_on = "none",
-        })
-        assert.is_nil(hash)
-      end)
-      it("consumer", function()
-        local value = uuid()
-        ngx.ctx.authenticated_consumer = { id = value }
-        local hash = balancer._create_hash({
-            hash_on = "consumer",
-        })
-        assert.are.same(crc32(value), hash)
-      end)
-      it("ip", function()
-        local value = "1.2.3.4"
-        ngx.var.remote_addr = value
-        local hash = balancer._create_hash({
-            hash_on = "ip",
-        })
-        assert.are.same(crc32(value), hash)
-      end)
-      it("header", function()
-        local value = "some header value"
-        headers.HeaderName = value
-        local hash = balancer._create_hash({
-            hash_on = "header",
-            hash_on_header = "HeaderName",
-        })
-        assert.are.same(crc32(value), hash)
-      end)
-      describe("cookie", function()
-        it("uses the cookie when present in the request", function()
-          local value = "some cookie value"
-          ngx.var.cookie_Foo = value
-          ngx.ctx.balancer_data = {}
-          local hash = balancer._create_hash({
-            hash_on = "cookie",
-            hash_on_cookie = "Foo",
-          })
-          assert.are.same(crc32(value), hash)
-          assert.is_nil(ngx.ctx.balancer_data.hash_cookie)
-        end)
-        it("creates the cookie when not present in the request", function()
-          ngx.ctx.balancer_data = {}
-          balancer._create_hash({
-            hash_on = "cookie",
-            hash_on_cookie = "Foo",
-            hash_on_cookie_path = "/",
-          })
-          assert.are.same(ngx.ctx.balancer_data.hash_cookie.key, "Foo")
-          assert.are.same(ngx.ctx.balancer_data.hash_cookie.path, "/")
-        end)
-      end)
-      it("multi-header", function()
-        local value = { "some header value", "another value" }
-        headers.HeaderName = value
-        local hash = balancer._create_hash({
-            hash_on = "header",
-            hash_on_header = "HeaderName",
-        })
-        assert.are.same(crc32(table.concat(value)), hash)
-      end)
-      describe("fallback", function()
-        it("none", function()
-          local hash = balancer._create_hash({
-              hash_on = "consumer",
-              hash_fallback = "none",
-          })
-          assert.is_nil(hash)
-        end)
-        it("consumer", function()
-          local value = uuid()
-          ngx.ctx.authenticated_consumer = { id = value }
-          local hash = balancer._create_hash({
-              hash_on = "header",
-              hash_on_header = "non-existing",
-              hash_fallback = "consumer",
-          })
-          assert.are.same(crc32(value), hash)
-        end)
-        it("ip", function()
-          local value = "1.2.3.4"
-          ngx.var.remote_addr = value
-          local hash = balancer._create_hash({
-              hash_on = "consumer",
-              hash_fallback = "ip",
-          })
-          assert.are.same(crc32(value), hash)
-        end)
-        it("header", function()
-          local value = "some header value"
-          headers.HeaderName = value
-          local hash = balancer._create_hash({
-              hash_on = "consumer",
-              hash_fallback = "header",
-              hash_fallback_header = "HeaderName",
-          })
-          assert.are.same(crc32(value), hash)
-        end)
-        it("multi-header", function()
-          local value = { "some header value", "another value" }
-          headers.HeaderName = value
-          local hash = balancer._create_hash({
-              hash_on = "consumer",
-              hash_fallback = "header",
-              hash_fallback_header = "HeaderName",
-          })
-          assert.are.same(crc32(table.concat(value)), hash)
-        end)
-        describe("cookie", function()
-          it("uses the cookie when present in the request", function()
-            local value = "some cookie value"
-            ngx.var.cookie_Foo = value
-            ngx.ctx.balancer_data = {}
-            local hash = balancer._create_hash({
-              hash_on = "consumer",
-              hash_fallback = "cookie",
-              hash_on_cookie = "Foo",
-            })
-            assert.are.same(crc32(value), hash)
-            assert.is_nil(ngx.ctx.balancer_data.hash_cookie)
-          end)
-          it("creates the cookie when not present in the request", function()
-            ngx.ctx.balancer_data = {}
-            balancer._create_hash({
-              hash_on = "consumer",
-              hash_fallback = "cookie",
-              hash_on_cookie = "Foo",
-              hash_on_cookie_path = "/",
-            })
-            assert.are.same(ngx.ctx.balancer_data.hash_cookie.key, "Foo")
-            assert.are.same(ngx.ctx.balancer_data.hash_cookie.path, "/")
-          end)
-        end)
       end)
     end)
 
