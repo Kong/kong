@@ -121,9 +121,18 @@ function _M.read_license_info()
 end
 
 
-function _M.featureset()
+local function featureset()
   local l_type
-  local expiration_time = license_expiration_time(kong.license)
+  local lic
+  -- HACK: when called from runner, the license is not read yet, and
+  -- even when read there at the call site,
+  if not kong then
+    lic = _M.read_license_info()
+  else
+    lic = kong.license
+  end
+
+  local expiration_time = license_expiration_time(lic)
 
   if not expiration_time then
     l_type = "free"
@@ -138,11 +147,11 @@ function _M.featureset()
 end
 
 function _M.license_can(ability)
-  return not (_M.featureset().abilities[ability] == false)
+  return not (featureset().abilities[ability] == false)
 end
 
 function _M.license_conf()
-  return _M.featureset().conf
+  return featureset().conf
 end
 
 
