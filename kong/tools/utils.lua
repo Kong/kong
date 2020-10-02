@@ -158,7 +158,7 @@ do
            "any of the `system`-predefined locations. " ..
            "Please install a certs file there or set " ..
            "lua_ssl_trusted_certificate to an " ..
-           "specific filepath instead of `auto`"
+           "specific filepath instead of `system`"
   end
 end
 
