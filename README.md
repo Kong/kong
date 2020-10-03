@@ -162,8 +162,7 @@ You can use a Vagrant box running Kong and Postgres that you can find at
 
 Kong mostly is an OpenResty application made of Lua source files, but also
 requires some additional third-party dependencies. We recommend installing
-those by following the source install instructions at
-https://docs.konghq.com/install/source/.
+those by following the [source install instructions](https://docs.konghq.com/install/source/).
 
 Instead of following the second step (Install Kong), clone this repository
 and install the latest Lua sources instead of the currently released ones:
@@ -272,6 +271,7 @@ Copyright 2016-2020 Kong Inc.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the [License](http://www.apache.org/licenses/LICENSE-2.0).
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
