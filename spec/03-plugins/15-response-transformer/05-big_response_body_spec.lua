@@ -11,80 +11,84 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: response-transformer [#" .. strategy .. "]", function()
-    local proxy_client
+  for buffering_request, buffering_response, buffering_label in helpers.each_buffering() do
+    describe("Plugin: response-transformer [#" .. strategy .. "]", function()
+      local proxy_client
 
-    lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-        "plugins",
-      })
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        })
 
-      local route = bp.routes:insert({
-        hosts   = { "response.com" },
-        methods = { "POST" },
-      })
+        local route = bp.routes:insert({
+          hosts   = { "response.com" },
+          methods = { "POST" },
+          request_buffering = buffering_request,
+          response_buffering = buffering_response,
+        })
 
-      bp.plugins:insert {
-        route = { id = route.id },
-        name     = "response-transformer",
-        config   = {
-          add    = {
-            json = {"p1:v1"},
+        bp.plugins:insert {
+          route = { id = route.id },
+          name     = "response-transformer",
+          config   = {
+            add    = {
+              json = {"p1:v1"},
+            },
+            remove = {
+              json = {"params"},
+            }
           },
-          remove = {
-            json = {"params"},
+        }
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then proxy_client:close() end
+      end)
+
+      it("add new parameters on large POST", function()
+        local res = assert(proxy_client:send {
+          method  = "POST",
+          path    = "/post",
+          body    = create_big_data(1024 * 1024),
+          headers = {
+            host             = "response.com",
+            ["content-type"] = "application/json",
           }
-        },
-      }
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("v1", json.p1)
+      end)
 
-      assert(helpers.start_kong({
-        database   = strategy,
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      it("remove parameters on large POST", function()
+        local res = assert(proxy_client:send {
+          method  = "POST",
+          path    = "/post",
+          body    = create_big_data(1024 * 1024),
+          headers = {
+            host             = "response.com",
+            ["content-type"] = "application/json",
+          }
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.is_nil(json.params)
+      end)
     end)
-
-    lazy_teardown(function()
-      helpers.stop_kong()
-    end)
-
-    before_each(function()
-      proxy_client = helpers.proxy_client()
-    end)
-
-    after_each(function()
-      if proxy_client then proxy_client:close() end
-    end)
-
-    it("add new parameters on large POST", function()
-      local res = assert(proxy_client:send {
-        method  = "POST",
-        path    = "/post",
-        body    = create_big_data(1024 * 1024),
-        headers = {
-          host             = "response.com",
-          ["content-type"] = "application/json",
-        }
-      })
-      assert.response(res).has.status(200)
-      local json = assert.response(res).has.jsonbody()
-      assert.equal("v1", json.p1)
-    end)
-
-    it("remove parameters on large POST", function()
-      local res = assert(proxy_client:send {
-        method  = "POST",
-        path    = "/post",
-        body    = create_big_data(1024 * 1024),
-        headers = {
-          host             = "response.com",
-          ["content-type"] = "application/json",
-        }
-      })
-      assert.response(res).has.status(200)
-      local json = assert.response(res).has.jsonbody()
-      assert.is_nil(json.params)
-    end)
-  end)
+  end
 end

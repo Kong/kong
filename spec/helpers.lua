@@ -293,6 +293,30 @@ do
   end
 end
 
+local each_buffering
+do
+  local bufferedness = {
+    {true, true, "buffered"},
+    {true, false, "#unbuffered response"},
+    {false, true, "#unbuffered request"},
+    {false, false, "#unbuffered req/res"},
+  }
+
+  function each_buffering()
+    local i = 0
+
+    local function iter_unpack(t)
+      i = i + 1
+      local row = t[i]
+      if type(row) == "table" then
+        return unpack(row)
+      end
+    end
+
+    return iter_unpack, bufferedness
+  end
+end
+
 local function truncate_tables(db, tables)
   if not tables then
     return
@@ -2696,6 +2720,7 @@ end
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = each_strategy,
+  each_buffering = each_buffering,
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
   write_declarative_config = write_declarative_config,
