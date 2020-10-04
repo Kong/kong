@@ -231,7 +231,7 @@ do
   local exposed_api = {
     kong = kong,
     ["kong.log.serialize"] = function()
-      return cjson_encode(preloaded_stuff.basic_serializer or basic_serializer.serialize(ngx))
+      return cjson_encode(preloaded_stuff.basic_serializer or basic_serializer.serialize(ngx, kong))
     end,
 
     ["kong.nginx.get_var"] = function(v)
@@ -481,7 +481,7 @@ local get_plugin do
     for _, phase in ipairs(plugin_info.Phases) do
       if phase == "log" then
         plugin[phase] = function(self, conf)
-          preloaded_stuff.basic_serializer = basic_serializer.serialize(ngx)
+          preloaded_stuff.basic_serializer = basic_serializer.serialize(ngx, kong)
           ngx_timer_at(0, function()
             local instance_id = get_instance(plugin_name, conf)
             local _, err = bridge_loop(instance_id, phase)
