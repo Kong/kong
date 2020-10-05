@@ -23,8 +23,8 @@ return {
   },
   cassandra = {
     up = [[]],
-    teardown = function(connector)
-      return operations.clean_cassandra_fields(connector, plugin_entities)
+    teardown = function(connector, connection)
+      return operations.clean_cassandra_fields(connector, connection, plugin_entities)
     end
   }
 }

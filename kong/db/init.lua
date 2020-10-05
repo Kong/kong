@@ -511,8 +511,8 @@ do
       error("options.run_up or options.run_teardown must be given", 2)
     end
 
-    local ok, err = self.connector:connect_migrations()
-    if not ok then
+    local connection, err = self.connector:connect_migrations()
+    if not connection then
       return nil, prefix_err(self, err)
     end
 
@@ -585,7 +585,7 @@ do
           -- kong migrations teardown
           local f = strategy_migration.teardown
 
-          local pok, perr, err = xpcall(f, debug.traceback, self.connector)
+          local pok, perr, err = xpcall(f, debug.traceback, self.connector, connection)
           if not pok or err then
             self.connector:close()
             return nil, fmt_err(self, "failed to run migration '%s' teardown: %s",
@@ -627,7 +627,7 @@ do
         -- wait for schema consensus after the last migration has run
         -- (only if `run_up`, since if not, we just called it from the
         -- teardown step)
-        ok, err = self.connector:wait_for_schema_consensus()
+        local ok, err = self.connector:wait_for_schema_consensus()
         if not ok then
           self.connector:close()
           return nil, prefix_err(self, err)

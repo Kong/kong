@@ -43,9 +43,8 @@ local function pg_ca_certificates_migration(connector)
   return true
 end
 
-local function c_ca_certificates_migration(connector)
+local function c_ca_certificates_migration(coordinator)
   local cassandra = require "cassandra"
-  local coordinator = connector:connect_migrations()
 
   for rows, err in coordinator:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
     if err then
@@ -145,8 +144,8 @@ end
 -- for the database (each function receives a connector).
 -- @return a function that receives a connector
 local function ws_migration_teardown(ops)
-  return function(connector)
-    return ops:ws_adjust_data(connector, core_entities)
+  return function(connector, connection)
+    return ops:ws_adjust_data(connector, connection, core_entities)
   end
 end
 
@@ -208,14 +207,14 @@ return {
             -- Do nothing, accept existing state
         END$$;
     ]] .. ws_migration_up(operations.postgres.up),
-    teardown = function(connector)
-      local _, err = ws_migration_teardown(operations.postgres.teardown)(connector)
+    teardown = function(connector, connection)
+      local _, err = ws_migration_teardown(operations.postgres.teardown)(connector, connection)
       if err then
         return nil, err
       end
 
       -- add `cert_digest` field for `ca_certificates` table
-      _, err = pg_ca_certificates_migration(connector)
+      _, err = pg_ca_certificates_migration(connector, connection)
       if err then
         return nil, err
       end
@@ -239,14 +238,14 @@ return {
       ALTER TABLE upstreams ADD client_certificate_id uuid;
       CREATE INDEX IF NOT EXISTS upstreams_client_certificate_id_idx ON upstreams(client_certificate_id);
     ]] .. ws_migration_up(operations.cassandra.up),
-    teardown = function(connector)
-      local _, err = ws_migration_teardown(operations.cassandra.teardown)(connector)
+    teardown = function(connector, coordinator)
+      local _, err = ws_migration_teardown(operations.cassandra.teardown)(connector, coordinator)
       if err then
         return nil, err
       end
 
       -- add `cert_digest` field for `ca_certificates` table
-      _, err = c_ca_certificates_migration(connector)
+      _, err = c_ca_certificates_migration(coordinator)
       if err then
         return nil, err
       end

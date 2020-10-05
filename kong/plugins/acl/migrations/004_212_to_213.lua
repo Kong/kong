@@ -12,8 +12,8 @@ local plugin_entities = {
 }
 
 local function ws_migration_teardown(ops)
-  return function(connector)
-    local _, err = ops:ws_adjust_data(connector, plugin_entities)
+  return function(connector, connection)
+    local _, err = ops:ws_adjust_data(connector, connection, plugin_entities)
     if err then
       return nil, err
     end

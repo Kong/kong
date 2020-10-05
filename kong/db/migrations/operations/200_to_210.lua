@@ -207,7 +207,7 @@ local postgres = {
 
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
-    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
+    ws_update_composite_cache_key = function(_, connector, connection, table_name, is_partitioned)
       local _, err = connector:query(render([[
         UPDATE "$(TABLE)"
         SET cache_key = CONCAT(cache_key, ':',
@@ -226,7 +226,7 @@ local postgres = {
 
     ------------------------------------------------------------------------------
     -- Update keys to workspace-aware formats
-    ws_update_keys = function(_, connector, table_name, unique_keys)
+    ws_update_keys = function(_, connector, connection, table_name, unique_keys)
       -- Reset default value for ws_id once it is populated
       local _, err = connector:query(render([[
         ALTER TABLE IF EXISTS ONLY "$(TABLE)" ALTER "ws_id" SET DEFAULT NULL;
@@ -243,9 +243,8 @@ local postgres = {
 
     ------------------------------------------------------------------------------
     -- General function to fixup a plugin configuration
-    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
+    fixup_plugin_config = function(_, connector, connection, plugin_name, fixup_fn)
       local pgmoon_json = require("pgmoon.json")
-
       for plugin, err in connector:iterate("SELECT id, name, config FROM plugins") do
         if err then
           return nil, err
@@ -359,8 +358,7 @@ local cassandra = {
 
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
-    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      local coordinator = assert(connector:connect_migrations())
+    ws_update_composite_cache_key = function(_, connector, coordinator, table_name, is_partitioned)
       local default_ws, err = cassandra_ensure_default_ws(coordinator)
       if err then
         return nil, err
@@ -400,8 +398,7 @@ local cassandra = {
 
     ------------------------------------------------------------------------------
     -- Update keys to workspace-aware formats
-    ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned)
-      local coordinator = assert(connector:connect_migrations())
+    ws_update_keys = function(_, connector, coordinator, table_name, unique_keys, is_partitioned)
       local default_ws, err = cassandra_ensure_default_ws(coordinator)
       if err then
         return nil, err
@@ -452,11 +449,9 @@ local cassandra = {
 
     ------------------------------------------------------------------------------
     -- General function to fixup a plugin configuration
-    fixup_plugin_config = function(_, connector, plugin_name, fixup_fn)
+    fixup_plugin_config = function(_, connector, coordinator, plugin_name, fixup_fn)
       local cassandra = require("cassandra")
       local cjson = require("cjson")
-
-      local coordinator = assert(connector:connect_migrations())
 
       for rows, err in coordinator:iterate("SELECT id, name, config FROM plugins") do
         if err then
@@ -522,17 +517,16 @@ local function ws_adjust_fields(ops, entities)
 end
 
 
-local function ws_adjust_data(ops, connector, entities)
+local function ws_adjust_data(ops, connector, connection, entities)
   for _, entity in ipairs(entities) do
-
     if entity.cache_key and #entity.cache_key > 1 then
-      local _, err = ops:ws_update_composite_cache_key(connector, entity.name, entity.partitioned)
+      local _, err = ops:ws_update_composite_cache_key(connector, connection, entity.name, entity.partitioned)
       if err then
         return nil, err
       end
     end
 
-    local _, err = ops:ws_update_keys(connector, entity.name, entity.uniques, entity.partitioned)
+    local _, err = ops:ws_update_keys(connector, connection, entity.name, entity.uniques, entity.partitioned)
     if err then
       return nil, err
     end
@@ -562,8 +556,8 @@ local function ws_migrate_plugin(plugin_entities)
   end
 
   local function ws_migration_teardown(ops)
-    return function(connector)
-      return ops:ws_adjust_data(connector, plugin_entities)
+    return function(connector, connection)
+      return ops:ws_adjust_data(connector, connection, plugin_entities)
     end
   end
 

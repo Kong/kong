@@ -46,9 +46,9 @@ local function pg_remove_unused_targets(connector)
 end
 
 
-local function c_clean_repeated_targets(connector, upstream_id)
+local function c_clean_repeated_targets(coordinator, upstream_id)
   local cassandra = require 'cassandra'
-  local rows, err = connector:query(
+  local rows, err = coordinator:execute(
     "SELECT id, created_at, target FROM targets WHERE upstream_id = ?",
     { cassandra.uuid(upstream_id), }
   )
@@ -58,7 +58,7 @@ local function c_clean_repeated_targets(connector, upstream_id)
 
   for i = 1, #rows do
     local target = rows[i]
-    local rep_tgt_rows, err = connector:query(
+    local rep_tgt_rows, err = coordinator:execute(
       "SELECT id, created_at, target FROM targets "..
       "WHERE upstream_id = ? AND target = ? ALLOW FILTERING",
       {
@@ -80,7 +80,7 @@ local function c_clean_repeated_targets(connector, upstream_id)
           tgt_to_clean = target
         end
 
-        local _, err = connector:query(
+        local _, err = coordinator:execute(
           "DELETE FROM targets WHERE id = ?",
           { cassandra.uuid(tgt_to_clean.id) }
         )
@@ -98,9 +98,7 @@ end
 -- remove repeated targets, the older ones are not useful anymore. targets with
 -- weight 0 will be kept, as we cannot tell which were deleted and which were
 -- explicitly set as 0.
-local function c_remove_unused_targets(connector)
-  local coordinator = assert(connector:connect_migrations())
-
+local function c_remove_unused_targets(coordinator)
   for rows, err in coordinator:iterate("SELECT id FROM upstreams") do
     for i = 1, #rows do
       local upstream_id = rows[i] and rows[i].id
@@ -108,7 +106,7 @@ local function c_remove_unused_targets(connector)
         return nil, err
       end
 
-      local _, err = c_clean_repeated_targets(connector, upstream_id)
+      local _, err = c_clean_repeated_targets(coordinator, upstream_id)
       if err then
         return nil, err
       end
@@ -149,7 +147,7 @@ return {
       END;
       $$;
     ]],
-    teardown = function(connector)
+    teardown = function(connector, connection)
       local _, err = pg_remove_unused_targets(connector)
       if err then
         return nil, err
@@ -172,8 +170,8 @@ return {
       ALTER TABLE routes ADD request_buffering boolean;
       ALTER TABLE routes ADD response_buffering boolean;
     ]],
-    teardown = function(connector)
-      local _, err = c_remove_unused_targets(connector)
+    teardown = function(connector, coordinator)
+      local _, err = c_remove_unused_targets(coordinator)
       if err then
         return nil, err
       end

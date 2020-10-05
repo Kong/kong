@@ -4,7 +4,7 @@ return {
       ALTER TABLE IF EXISTS ONLY "routes" ALTER COLUMN "path_handling" SET DEFAULT 'v0';
     ]],
 
-    teardown = function(connector)
+    teardown = function(connector, connection)
       local _, err = connector:query([[
         DO $$
         BEGIN
@@ -34,8 +34,7 @@ return {
     up = [[
     ]],
 
-    teardown = function(connector)
-      local coordinator = assert(connector:connect_migrations())
+    teardown = function(connector, coordinator)
       local _, err = coordinator:execute("DROP INDEX IF EXISTS plugins_run_on_idx")
       if err then
         return nil, err

@@ -2,8 +2,8 @@ local operations = require "kong.db.migrations.operations.200_to_210"
 
 
 local function ws_migration_teardown(ops)
-  return function(connector)
-    ops:fixup_plugin_config(connector, "ip-restriction", function(config)
+  return function(connector, connection)
+    return ops:fixup_plugin_config(connector, connection, "ip-restriction", function(config)
       config.allow = config.whitelist
       config.whitelist = nil
       config.deny = config.blacklist

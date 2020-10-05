@@ -35,8 +35,8 @@ end
 
 
 local function ws_migration_teardown(ops)
-  return function(connector)
-    return ops:ws_adjust_data(connector, plugin_entities)
+  return function(connector, connection)
+    return ops:ws_adjust_data(connector, connection, plugin_entities)
   end
 end
 

@@ -2,8 +2,8 @@ local operations = require "kong.db.migrations.operations.200_to_210"
 
 
 local function ws_migration_teardown(ops)
-  return function(connector)
-    return ops:fixup_plugin_config(connector, "bot-detection", function(config)
+  return function(connector, connection)
+    return ops:fixup_plugin_config(connector, connection, "bot-detection", function(config)
       config.allow = config.whitelist
       config.whitelist = nil
       config.deny = config.blacklist

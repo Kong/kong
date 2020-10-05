@@ -84,7 +84,7 @@ local postgres = {
 
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
-    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
+    ws_update_composite_cache_key = function(_, connector, connection, table_name, is_partitioned)
       local _, err = connector:query(render([[
         UPDATE "$(TABLE)"
         SET cache_key = CONCAT(cache_key, ':',
@@ -118,8 +118,7 @@ local cassandra = {
 
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
-    ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
-      local coordinator = assert(connector:connect_migrations())
+    ws_update_composite_cache_key = function(_, connector, coordinator, table_name, is_partitioned)
       local default_ws, err = cassandra_ensure_default_ws(coordinator)
       if err then
         return nil, err
@@ -168,11 +167,10 @@ local cassandra = {
 -- Higher-level operations for Workspace migration
 --------------------------------------------------------------------------------
 
-local function ws_adjust_data(ops, connector, entities)
+local function ws_adjust_data(ops, connector, connection, entities)
   for _, entity in ipairs(entities) do
-
     if entity.cache_key and #entity.cache_key > 1 then
-      local _, err = ops:ws_update_composite_cache_key(connector, entity.name, entity.partitioned)
+      local _, err = ops:ws_update_composite_cache_key(connector, connection, entity.name, entity.partitioned)
       if err then
         return nil, err
       end

@@ -10,7 +10,7 @@ return {
       $$;
     ]],
 
-    teardown = function(connector, _)
+    teardown = function(connector, connection)
       for rows, err in connector:iterate('SELECT * FROM "foos";') do
         if err then
           return nil, err
@@ -24,6 +24,8 @@ return {
           assert(connector:query(sql))
         end
       end
+
+      return true
     end,
   },
 
@@ -33,9 +35,7 @@ return {
       CREATE INDEX IF NOT EXISTS foos_shape_idx ON foos(shape);
     ]],
 
-    teardown = function(connector, _)
-      local coordinator = assert(connector:connect_migrations())
-
+    teardown = function(connector, coordinator)
       for rows, err in coordinator:iterate("SELECT * FROM foos") do
         if err then
           return nil, err
@@ -46,9 +46,11 @@ return {
           local cql = string.format([[
             UPDATE foos SET shape = '%s' WHERE color = '%s'
           ]], shape, row.color)
-          assert(connector:query(cql))
+          assert(coordinator:execute(cql))
         end
       end
+
+      return true
     end,
   },
 }

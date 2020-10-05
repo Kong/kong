@@ -18,10 +18,8 @@ return {
       ALTER TABLE routes ADD path_handling text;
     ]],
 
-    teardown = function(connector)
+    teardown = function(connector, coordinator)
       local cassandra = require "cassandra"
-      local coordinator = assert(connector:connect_migrations())
-
       for rows, err in coordinator:iterate("SELECT id, path_handling FROM routes") do
         if err then
           return nil, err
