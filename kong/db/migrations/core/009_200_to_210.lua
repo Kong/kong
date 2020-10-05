@@ -5,8 +5,6 @@ local openssl_x509  = require "resty.openssl.x509"
 local str           = require "resty.string"
 
 local function pg_ca_certificates_migration(connector)
-  assert(connector:connect_migrations())
-
   for ca_cert, err in connector:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
     if err then
       return nil, err

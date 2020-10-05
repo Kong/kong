@@ -29,8 +29,6 @@ end
 -- weight 0 will be kept, as we cannot tell which were deleted and which were
 -- explicitly set as 0.
 local function pg_remove_unused_targets(connector)
-  assert(connector:connect_migrations())
-
   for upstream, err in connector:iterate("SELECT id FROM upstreams") do
     local upstream_id = upstream and upstream.id
     if not upstream_id then
