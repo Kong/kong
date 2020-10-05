@@ -420,7 +420,6 @@ end
 do
   -- migrations
   local utils = require "kong.tools.utils"
-  local MigrationHelpers = require "kong.db.migrations.helpers"
   local MigrationsState = require "kong.db.migrations.state"
 
 
@@ -517,8 +516,6 @@ do
       return nil, prefix_err(self, err)
     end
 
-    local mig_helpers = MigrationHelpers.new(self.connector)
-
     local n_migrations = 0
     local n_pending = 0
 
@@ -588,8 +585,7 @@ do
           -- kong migrations teardown
           local f = strategy_migration.teardown
 
-          local pok, perr, err = xpcall(f, debug.traceback, self.connector,
-                                        mig_helpers)
+          local pok, perr, err = xpcall(f, debug.traceback, self.connector)
           if not pok or err then
             self.connector:close()
             return nil, fmt_err(self, "failed to run migration '%s' teardown: %s",
