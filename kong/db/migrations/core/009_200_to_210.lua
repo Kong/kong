@@ -1,8 +1,10 @@
 local operations = require "kong.db.migrations.operations.200_to_210"
 
+
 local fmt           = string.format
 local openssl_x509  = require "resty.openssl.x509"
 local str           = require "resty.string"
+
 
 local function pg_ca_certificates_migration(connector)
   for ca_cert, err in connector:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
@@ -42,6 +44,7 @@ local function pg_ca_certificates_migration(connector)
 
   return true
 end
+
 
 local function c_ca_certificates_migration(coordinator)
   local cassandra = require "cassandra"
@@ -239,6 +242,15 @@ return {
       CREATE INDEX IF NOT EXISTS upstreams_client_certificate_id_idx ON upstreams(client_certificate_id);
     ]] .. ws_migration_up(operations.cassandra.up),
     teardown = function(connector, coordinator)
+      local default_ws, err = operations.cassandra_ensure_default_ws(coordinator)
+      if err then
+        return nil, err
+      end
+
+      if not default_ws then
+        return nil, "unable to find a default workspace"
+      end
+
       local _, err = ws_migration_teardown(operations.cassandra.teardown)(connector, coordinator)
       if err then
         return nil, err

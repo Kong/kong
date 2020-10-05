@@ -138,11 +138,7 @@ return {
             algorithm = "consistent-hashing"
           end
 
-          local _, err = coordinator:execute([[
-            UPDATE upstreams
-            SET algorithm = ?
-            WHERE id = ?
-          ]], {
+          local _, err = coordinator:execute("UPDATE upstreams SET algorithm = ? WHERE id = ?", {
             cassandra.text(algorithm),
             cassandra.uuid(upstream.id),
           })

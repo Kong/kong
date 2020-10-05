@@ -82,7 +82,7 @@ local postgres = {
     ----------------------------------------------------------------------------
     -- Add `workspaces` table.
     -- @return string: SQL
-    ws_add_workspaces = function()
+    ws_add_workspaces = function(_)
       return render([[
 
         CREATE TABLE IF NOT EXISTS "workspaces" (
@@ -359,7 +359,7 @@ local cassandra = {
     ------------------------------------------------------------------------------
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, coordinator, table_name, is_partitioned)
-      local default_ws, err = cassandra_ensure_default_ws(coordinator)
+      local default_ws, err = cassandra_get_default_ws(coordinator)
       if err then
         return nil, err
       end
@@ -399,7 +399,7 @@ local cassandra = {
     ------------------------------------------------------------------------------
     -- Update keys to workspace-aware formats
     ws_update_keys = function(_, connector, coordinator, table_name, unique_keys, is_partitioned)
-      local default_ws, err = cassandra_ensure_default_ws(coordinator)
+      local default_ws, err = cassandra_get_default_ws(coordinator)
       if err then
         return nil, err
       end
@@ -582,4 +582,7 @@ return {
   postgres = postgres,
   cassandra = cassandra,
   ws_migrate_plugin = ws_migrate_plugin,
+  cassandra_get_default_ws = cassandra_get_default_ws,
+  cassandra_create_default_ws = cassandra_create_default_ws,
+  cassandra_ensure_default_ws = cassandra_ensure_default_ws,
 }
