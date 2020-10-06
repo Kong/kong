@@ -1,4 +1,4 @@
-[![Build Status][badge-travis-image]][badge-travis-url]
+[![Build Status](https://travis-ci.com/Kong/kong-plugin-serverless-functions.svg?branch=master)](https://travis-ci.com/Kong/kong-plugin-serverless-functions)
 
 # Kong Serverless Functions Plugin
 
@@ -13,7 +13,3 @@ usage.
 See [changelog](https://github.com/Kong/kong-plugin-serverless-functions/blob/master/CHANGELOG.md).
 
 [docs]: https://docs.konghq.com/plugins/serverless-functions/
-
-
-[badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-serverless-functions/branches
-[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-serverless-functions.svg
