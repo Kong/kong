@@ -34,8 +34,7 @@ return {
     ]],
 
     teardown = function(connector, _)
-      local coordinator = assert(connector:connect_migrations())
-
+      local coordinator = assert(connector:get_stored_connection())
       for rows, err in coordinator:iterate("SELECT * FROM foos") do
         if err then
           return nil, err
@@ -46,7 +45,7 @@ return {
           local cql = string.format([[
             UPDATE foos SET shape = '%s' WHERE color = '%s'
           ]], shape, row.color)
-          assert(connector:query(cql))
+          assert(coordinator:execute(cql))
         end
       end
     end,

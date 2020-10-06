@@ -35,8 +35,7 @@ end
 
 -- clean Cassandra fields that should not have been migrated
 local function clean_cassandra_fields(connector, entities)
-  local coordinator = assert(connector:connect_migrations())
-
+  local coordinator = assert(connector:get_stored_connection())
   for _, entity in ipairs(entities) do
     for rows, err in coordinator:iterate("SELECT * FROM " .. entity.name) do
       if err then
@@ -64,12 +63,11 @@ local function clean_cassandra_fields(connector, entities)
             ID = row.id,
           })
 
-          local _, err = connector:query(cql)
+          local _, err = coordinator:execute(cql)
           if err then
             return nil, err
           end
         end
-
       end
     end
   end
