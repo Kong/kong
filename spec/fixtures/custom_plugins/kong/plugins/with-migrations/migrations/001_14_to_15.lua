@@ -11,8 +11,6 @@ return {
     ]],
 
     teardown = function(connector, _)
-      assert(connector:connect_migrations())
-
       for rows, err in connector:iterate('SELECT * FROM "foos";') do
         if err then
           return nil, err

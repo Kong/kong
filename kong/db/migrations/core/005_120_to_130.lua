@@ -58,7 +58,6 @@ return {
       END$$;
     ]],
     teardown = function(connector)
-      assert(connector:connect_migrations())
       for upstream, err in connector:iterate("SELECT id, algorithm, hash_on FROM upstreams") do
         if err then
           return nil, err
