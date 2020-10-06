@@ -12,6 +12,10 @@
 - test rockspec; `luarocks install kong-plugin-aws-lambda`
 
 
+## aws-lambda 3.5.1 6-Okt-2020
+
+- fix: `skip_large_bodies` to honor config setting
+
 ## aws-lambda 3.5.0 22-Sep-2020
 
 - feat: adding support for 'isBase64Encoded' flag in Lambda function responses
