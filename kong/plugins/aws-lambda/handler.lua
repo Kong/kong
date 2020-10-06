@@ -142,8 +142,7 @@ function AWSLambdaHandler:access(conf)
 
     if conf.forward_request_body then
       local content_type = kong.request.get_header("content-type")
-      local skip_large_bodies = conf and conf.skip_large_bodies or true
-      local body_raw = request_util.read_request_body(skip_large_bodies)
+      local body_raw = request_util.read_request_body(conf.skip_large_bodies)
       local body_args, err = kong.request.get_body()
       if err and err:match("content type") then
         body_args = {}
