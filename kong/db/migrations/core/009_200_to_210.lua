@@ -45,10 +45,10 @@ local function pg_ca_certificates_migration(connector)
   return true
 end
 
-local function c_ca_certificates_migration(connector)
-  local cassandra = require "cassandra"
-  local coordinator = connector:connect_migrations()
 
+local function c_ca_certificates_migration(connector)
+  local coordinator = assert(connector:get_stored_connection())
+  local cassandra = require "cassandra"
   for rows, err in coordinator:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
     if err then
       return nil, err
@@ -62,7 +62,7 @@ local function c_ca_certificates_migration(connector)
       end
 
       if digest ~= ca_cert.cert_digest then
-        local _, err = connector:query(
+        local _, err = coordinator:execute(
           "UPDATE ca_certificates SET cert_digest = ? WHERE partition = 'ca_certificates' AND id = ?", {
             cassandra.text(digest),
             cassandra.uuid(ca_cert.id)

@@ -159,7 +159,7 @@ Note: In Cassandra, INSERT does "insert if not exists or update using pks if exi
 function _M:copy_cassandra_records(source_table_def,
                                    destination_table_def,
                                    columns_to_copy)
-  local coordinator, err = self.connector:connect_migrations()
+  local coordinator, err = self.connector:get_stored_connection()
   if not coordinator then
     return nil, err
   end
