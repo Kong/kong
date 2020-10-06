@@ -82,7 +82,7 @@ local postgres = {
     ----------------------------------------------------------------------------
     -- Add `workspaces` table.
     -- @return string: SQL
-    ws_add_workspaces = function()
+    ws_add_workspaces = function(_)
       return render([[
 
         CREATE TABLE IF NOT EXISTS "workspaces" (
@@ -520,7 +520,6 @@ end
 
 local function ws_adjust_data(ops, connector, entities)
   for _, entity in ipairs(entities) do
-
     if entity.cache_key and #entity.cache_key > 1 then
       local _, err = ops:ws_update_composite_cache_key(connector, entity.name, entity.partitioned)
       if err then

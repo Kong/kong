@@ -52,6 +52,7 @@ local cassandra = {
 -- Higher-level operations for Workspace migration
 --------------------------------------------------------------------------------
 
+
 local function ws_adjust_data(ops, connector, entities)
   for _, entity in ipairs(entities) do
     if entity.cache_key and #entity.cache_key > 1 then
@@ -64,6 +65,7 @@ local function ws_adjust_data(ops, connector, entities)
 
   return true
 end
+
 
 postgres.teardown.ws_adjust_data = ws_adjust_data
 cassandra.teardown.ws_adjust_data = ws_adjust_data
