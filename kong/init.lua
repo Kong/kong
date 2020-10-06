@@ -441,14 +441,6 @@ function Kong.init()
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path, ee.license_conf(), { from_kong_env = true }))
 
-
-  if not ee.license_can("ee_plugins") then
-    for _, p in ipairs(constants.EE_PLUGINS) do
-      config.loaded_plugins[p]=nil
-    end
-  end
-
-
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
   tracing.init(config)
 

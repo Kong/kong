@@ -2,7 +2,6 @@ local kong_global = require "kong.global"
 local conf_loader = require "kong.conf_loader"
 local DB = require "kong.db"
 local ee = require "kong.enterprise_edition"
-local constants = require "kong.constants"
 
 
 local function run_file(f, args)
@@ -20,12 +19,6 @@ end
 local function execute(args)
   _G.kong = kong_global.new()
   local config = assert(conf_loader(args.config, ee.license_conf(), {from_kong_env = true}))
-
-  if not ee.license_can("ee_plugins") then
-    for _, p in ipairs(constants.EE_PLUGINS) do
-      config.loaded_plugins[p]=nil
-    end
-  end
 
   kong_global.init_pdk(_G.kong, config, nil) -- nil: latest PDK
   local db = assert(DB.new(config))
