@@ -21,7 +21,9 @@ end
 
 
 local function cassandra_get_default_ws(coordinator)
-  local rows, err = coordinator:execute("SELECT id FROM workspaces WHERE name='default'")
+  local rows, err = coordinator:execute("SELECT id FROM workspaces WHERE name='default'", nil, {
+    consistency = cassandra.consistencies.serial,
+  })
   if err then
     return nil, err
   end
@@ -43,12 +45,14 @@ local function cassandra_create_default_ws(coordinator)
   local _, err = coordinator:execute("INSERT INTO workspaces(id, name, created_at) VALUES (?, 'default', ?)", {
     cassandra.uuid(default_ws_id),
     cassandra.timestamp(created_at),
+  }, {
+    consistency = cassandra.consistencies.quorum,
   })
   if err then
     return nil, err
   end
 
-  return cassandra_get_default_ws(coordinator) or default_ws_id
+  return cassandra_get_default_ws(coordinator)
 end
 
 
@@ -354,7 +358,7 @@ local cassandra = {
     -- Update composite cache keys to workspace-aware formats
     ws_update_composite_cache_key = function(_, connector, table_name, is_partitioned)
       local coordinator = assert(connector:get_stored_connection())
-      local default_ws, err = cassandra_ensure_default_ws(coordinator)
+      local default_ws, err = cassandra_get_default_ws(coordinator)
       if err then
         return nil, err
       end
@@ -395,7 +399,7 @@ local cassandra = {
     -- Update keys to workspace-aware formats
     ws_update_keys = function(_, connector, table_name, unique_keys, is_partitioned)
       local coordinator = assert(connector:get_stored_connection())
-      local default_ws, err = cassandra_ensure_default_ws(coordinator)
+      local default_ws, err = cassandra_get_default_ws(coordinator)
       if err then
         return nil, err
       end
@@ -580,4 +584,7 @@ return {
   postgres = postgres,
   cassandra = cassandra,
   ws_migrate_plugin = ws_migrate_plugin,
+  cassandra_get_default_ws = cassandra_get_default_ws,
+  cassandra_create_default_ws = cassandra_create_default_ws,
+  cassandra_ensure_default_ws = cassandra_ensure_default_ws,
 }

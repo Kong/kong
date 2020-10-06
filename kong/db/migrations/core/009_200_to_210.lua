@@ -46,8 +46,7 @@ local function pg_ca_certificates_migration(connector)
 end
 
 
-local function c_ca_certificates_migration(connector)
-  local coordinator = assert(connector:get_stored_connection())
+local function c_ca_certificates_migration(coordinator)
   local cassandra = require "cassandra"
   for rows, err in coordinator:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
     if err then
@@ -242,13 +241,23 @@ return {
       CREATE INDEX IF NOT EXISTS upstreams_client_certificate_id_idx ON upstreams(client_certificate_id);
     ]] .. ws_migration_up(operations.cassandra.up),
     teardown = function(connector)
+      local coordinator = assert(connector:get_stored_connection())
+      local default_ws, err = operations.cassandra_ensure_default_ws(coordinator)
+      if err then
+        return nil, err
+      end
+
+      if not default_ws then
+        return nil, "unable to find a default workspace"
+      end
+
       local _, err = ws_migration_teardown(operations.cassandra.teardown)(connector)
       if err then
         return nil, err
       end
 
       -- add `cert_digest` field for `ca_certificates` table
-      _, err = c_ca_certificates_migration(connector)
+      _, err = c_ca_certificates_migration(coordinator)
       if err then
         return nil, err
       end
