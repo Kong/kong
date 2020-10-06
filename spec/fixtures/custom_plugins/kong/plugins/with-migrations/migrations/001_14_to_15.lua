@@ -24,6 +24,8 @@ return {
           assert(connector:query(sql))
         end
       end
+
+      return true
     end,
   },
 
@@ -48,6 +50,8 @@ return {
           assert(coordinator:execute(cql))
         end
       end
+
+      return true
     end,
   },
 }
