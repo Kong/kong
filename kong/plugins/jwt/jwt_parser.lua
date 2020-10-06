@@ -41,6 +41,11 @@ local alg_sign = {
     assert(digest:update(data))
     return assert(openssl_pkey.new(key):sign(digest))
   end,
+  RS384 = function(data, key)
+    local digest = openssl_digest.new("sha384")
+    assert(digest:update(data))
+    return assert(openssl_pkey.new(key):sign(digest))
+  end,
   RS512 = function(data, key)
     local digest = openssl_digest.new("sha512")
     assert(digest:update(data))
@@ -71,6 +76,13 @@ local alg_verify = {
     local pkey, _ = openssl_pkey.new(key)
     assert(pkey, "Consumer Public Key is Invalid")
     local digest = openssl_digest.new("sha256")
+    assert(digest:update(data))
+    return pkey:verify(signature, digest)
+  end,
+  RS384 = function(data, signature, key)
+    local pkey, _ = openssl_pkey.new(key)
+    assert(pkey, "Consumer Public Key is Invalid")
+    local digest = openssl_digest.new("sha384")
     assert(digest:update(data))
     return pkey:verify(signature, digest)
   end,
