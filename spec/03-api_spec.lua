@@ -5,6 +5,19 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: response-transformer (API) [#" .. strategy .. "]", function()
     local admin_client
 
+    lazy_setup(function()
+      helpers.get_db_utils(strategy, {
+        "plugins"
+      })
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      admin_client = helpers.admin_client()
+    end)
+
     lazy_teardown(function()
       if admin_client then
         admin_client:close()
@@ -13,18 +26,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("POST", function()
-      lazy_setup(function()
-        helpers.get_db_utils(strategy, {
-          "plugins"
-        })
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
-
-        admin_client = helpers.admin_client()
-      end)
 
       describe("validate config parameters", function()
         it("remove succeeds without colons", function()

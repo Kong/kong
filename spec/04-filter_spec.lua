@@ -2,10 +2,10 @@ local helpers = require "spec.helpers"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: response-transformer-advanced (filter)", function()
+  describe("Plugin: response-transformer-advanced (filter) [#" .. strategy .. "]", function()
     local proxy_client
 
-    setup(function()
+    lazy_setup(function()
       local bp = helpers.get_db_utils(strategy)
 
 
@@ -64,7 +64,7 @@ for _, strategy in helpers.each_strategy() do
       }))
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
     end)
 

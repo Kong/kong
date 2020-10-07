@@ -5,7 +5,19 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: response-transformer-advanced (API) [#" .. strategy .. "]", function()
     local admin_client
 
-    teardown(function()
+    lazy_setup(function()
+      helpers.get_db_utils(strategy)
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled, response-transformer-advanced",
+      }))
+
+      admin_client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
       if admin_client then
         admin_client:close()
       end
@@ -13,17 +25,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("POST", function()
-      setup(function()
-        helpers.get_db_utils(strategy)
-
-        assert(helpers.start_kong({
-          database   = strategy,
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-          plugins = "bundled, response-transformer-advanced",
-        }))
-
-        admin_client = helpers.admin_client()
-      end)
 
       describe("validate config parameters", function()
         it("transform accepts a #function that returns a function", function()

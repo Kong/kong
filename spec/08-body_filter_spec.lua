@@ -4,7 +4,7 @@ local helpers = require "spec.helpers"
 describe("Plugin: response-transformer-advanced (filter)", function()
   local proxy_client
 
-  setup(function()
+  lazy_setup(function()
     local bp = helpers.get_db_utils()
 
     local route1 = bp.routes:insert({
@@ -38,7 +38,7 @@ describe("Plugin: response-transformer-advanced (filter)", function()
     }))
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     helpers.stop_kong()
   end)
 
