@@ -1010,7 +1010,7 @@ local function execute(target, ctx)
         target.hash_value = hash_value
       end
 
-      if not ctx.service.client_certificate then
+      if ctx and ctx.service and not ctx.service.client_certificate then
         -- service level client_certificate is not set
         local cert, res, err
         local client_certificate = upstream.client_certificate
