@@ -829,6 +829,7 @@ function _M:insert_status_code_classes(data)
 end
 
 function _M:delete_status_code_classes(cutoff_times)
+  -- XXX remove once cassandra 2.2 is abandoned (not deprecated)
   if self.connector.major_version < 3 then
     -- the delete algorithm implemented below doesn't work on 2.x
     -- this is documented as a known issue, so we aren't going to log it
@@ -977,6 +978,7 @@ function _M:delete_status_codes(opts)
   local seconds_before = opts.seconds_before
   local minutes_before = opts.minutes_before
 
+  -- XXX remove once cassandra 2.2 is abandoned (not deprecated)
   if self.connector.major_version < 3 then
     -- the delete algorithm implemented below doesn't work on 2.x
     -- this is documented as a known issue, so we aren't going to log it
@@ -1216,6 +1218,7 @@ end
 
 
 function _M:delete_consumer_stats(consumers, cutoff_times)
+  -- XXX remove once cassandra 2.2 is abandoned (not deprecated)
   if self.connector.major_version < 3 then
     -- the delete algorithm implemented below doesn't work on 2.x
     -- this is documented as a known issue, so we aren't going to log it

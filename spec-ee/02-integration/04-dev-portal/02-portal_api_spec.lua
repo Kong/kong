@@ -109,21 +109,14 @@ for _, strategy in helpers.each_strategy() do
       local portal_api_client
       local _, db, _ = helpers.get_db_utils(strategy)
 
-      -- do not run tests for cassandra < 3
-      if strategy == "cassandra" and db.connector.major_version < 3 then
-        return
-      end
-
       lazy_teardown(function()
         helpers.stop_kong()
         assert(db:truncate())
       end)
 
       describe("CORS", function()
-        local db
 
         lazy_setup(function()
-          _, db, _ = helpers.get_db_utils(strategy)
           configure_portal(db, {
             portal = true,
             portal_auth = "basic-auth",

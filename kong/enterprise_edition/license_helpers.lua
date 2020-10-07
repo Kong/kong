@@ -1,3 +1,28 @@
+-- License cycle
+--
+-- The license is put in the global kong.license if it exists.  All
+-- kong code assumes what is in kong.license is the license that was
+-- in the system when kong started.
+--
+-- get_license_string fetches the license from ENV or FILE. It should
+-- be called once (or very carfully) due to it migth be fetching a
+-- tampered LICENSE FILE (in case the user modified after kong
+-- started).
+--
+-- featureset is a table with 2 keys
+-- - conf: overrides from kong.conf
+-- - abilities: custom abilities
+--
+-- Access to the features is done via `license_can` and
+-- `license_conf` public methods.
+--
+-- `license_can` is responsible for giving a boolean answer to any
+-- part of the code that asks for a particular license ability. It can
+-- override values in the featureset table, or make programatic
+-- decisions. Another trick is to supercharge the featureset table
+-- with lambdas in case we need it.
+--
+
 local cjson      = require "cjson.safe"
 local pl_path    = require "pl.path"
 local log        = require "kong.cmd.utils.log"
@@ -96,24 +121,39 @@ function _M.read_license_info()
 end
 
 
-function _M.featureset()
+local function featureset()
   local l_type
-  local expiration_time = license_expiration_time(_M.read_license_info())
+  local lic
+  -- HACK: when called from runner, the license is not read yet, and
+  -- even when read there at the call site,
+  if not kong then
+    lic = _M.read_license_info()
+  else
+    lic = kong.license
+  end
+
+  local expiration_time = license_expiration_time(lic)
 
   if not expiration_time then
     l_type = "free"
+    -- as of now, there's no config that changes in case we know it is expired from the start'
   elseif expiration_time < ngx.time() then
-    l_type = "expired"
+    l_type = "full_expired"
   else
     l_type = "full"
   end
 
-  return dist_constants.featureset[l_type] or dist_constants.featureset["free"]
+  return dist_constants.featureset[l_type]
 end
 
 function _M.license_can(ability)
-  return not (_M.featureset().abilities[ability] == false)
+  return not (featureset().abilities[ability] == false)
 end
+
+function _M.license_conf()
+  return featureset().conf
+end
+
 
 
 -- Hold a lock for the whole interval (exptime) to prevent multiple

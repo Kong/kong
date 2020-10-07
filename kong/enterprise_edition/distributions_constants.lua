@@ -6,11 +6,18 @@ local constants = {
   featureset = {
     full = {
       conf = {},
-      abilities = {}
+      abilities = {
+      },
+    },
+    full_expired = {
+      conf = {},
+      abilities = {
+      },
     },
     free = {
       conf = {},
-      abilities = {}
+      abilities = {
+      },
     },
   }
 }
