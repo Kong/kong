@@ -649,13 +649,7 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
         expected[1]["v.lprx"] = 5
         expected[1]["v.lun"] = 5
         expected[1]["v.lux"] = 10
-
-        if tonumber(db.major_version) >= 3 then
-          expected[1]["v.nt"] = 3
-        else
-          -- 2.x can't do the node count query. Per PO, leave it out
-          expected[1]["v.nt"] = nil
-        end
+        expected[1]["v.nt"] = 3
 
         -- test data is set up to test rounding down: 150 / 16 = 9.375
         expected[1]["v.lpra"] = 9
@@ -930,12 +924,9 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
         assert.is_nil(err)
         assert.is_true(results > 0)
 
-        -- delete only really does something in cassandra 3+
-        if db.major_version >= 3 then
-          local res, err = cluster:execute("select * from vitals_consumers")
-          assert.is_nil(err)
-          assert.same(3, #res)
-        end
+        local res, err = cluster:execute("select * from vitals_consumers")
+        assert.is_nil(err)
+        assert.same(3, #res)
       end)
     end)
 
@@ -1044,13 +1035,10 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
         assert.is_nil(err)
         assert.is_true(results > 0)
 
-        -- delete only really does something in cassandra 3+
-        if db.major_version >= 3 then
-          local res, err = cluster:execute("select * from vitals_code_classes_by_cluster")
-          assert.is_nil(err)
+        local res, err = cluster:execute("select * from vitals_code_classes_by_cluster")
+        assert.is_nil(err)
 
-          assert.same(3, #res)
-        end
+        assert.same(3, #res)
       end)
     end)
 
@@ -2048,12 +2036,10 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
         assert.is_true(results > 0)
 
         -- delete only really does something in cassandra 3+
-        if db.major_version >= 3 then
-          local res, err = cluster:execute("select * from vitals_codes_by_route")
-          assert.is_nil(err)
+        local res, err = cluster:execute("select * from vitals_codes_by_route")
+        assert.is_nil(err)
 
-          assert.same(3, #res)
-        end
+        assert.same(3, #res)
       end)
     end)
 
@@ -2100,12 +2086,10 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
         assert.is_true(results > 0)
 
         -- delete only really does something in cassandra 3+
-        if db.major_version >= 3 then
-          local res, err = cluster:execute("select * from vitals_codes_by_service")
-          assert.is_nil(err)
+        local res, err = cluster:execute("select * from vitals_codes_by_service")
+        assert.is_nil(err)
 
-          assert.same(3, #res)
-        end
+        assert.same(3, #res)
       end)
 
       it("cleans up vitals_code_classes_by_workspace", function()
@@ -2150,20 +2134,13 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
         assert.is_true(results > 0)
 
         -- delete only really does something in cassandra 3+
-        if db.major_version >= 3 then
-          local res, err = cluster:execute("select * from vitals_code_classes_by_workspace")
-          assert.is_nil(err)
+        local res, err = cluster:execute("select * from vitals_code_classes_by_workspace")
+        assert.is_nil(err)
 
-          assert.same(3, #res)
-        end
+        assert.same(3, #res)
       end)
 
       it("does not clean up status codes for an invalid entity type", function()
-        if db.major_version < 3 then
-          -- delete not implemented for Cassandra 2.x
-          return
-        end
-
         local opts = {
           entity_type    = "foo",
           entities       = {},

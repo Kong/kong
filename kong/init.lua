@@ -420,6 +420,9 @@ local Kong = {}
 function Kong.init()
   reset_kong_shm()
 
+  -- EE needs to know which kind of featureset to run ASAP
+  kong.license = ee.read_license_info()
+
   -- special math.randomseed from kong.globalpatches not taking any argument.
   -- Must only be called in the init or init_worker phases, to avoid
   -- duplicated seeds.
@@ -435,11 +438,11 @@ function Kong.init()
   end
 
   -- retrieve kong_config
-  local featureset = ee.featureset() or { conf =  {}}
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
-  local config = assert(conf_loader(conf_path, featureset.conf, { from_kong_env = true }))
+  local config = assert(conf_loader(conf_path, ee.license_conf(), { from_kong_env = true }))
 
-  if false == featureset.abilities.ee_plugins then
+
+  if not ee.license_can("ee_plugins") then
     for _, p in ipairs(constants.EE_PLUGINS) do
       config.loaded_plugins[p]=nil
     end
@@ -486,7 +489,6 @@ function Kong.init()
   kong.dns = singletons.dns
 
   -- XXX EE [[
-  kong.license = ee.read_license_info()
   kong.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
   singletons.admin_emails = admin_emails.new(config)

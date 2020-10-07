@@ -44,7 +44,7 @@ pipeline {
         sh "docker login -u ${env.DOCKER_REGISTRY_USR} -p ${env.DOCKER_REGISTRY_PSW} registry.kongcloud.io"
         sh "mkdir -p ~/.local/bin"
 
-        sh "git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-gojira.git /tmp/gojira"
+        sh "git clone https://$GITHUB_TOKEN:@github.com/Kong/gojira-enterprise.git /tmp/gojira"
         sh 'ln -s $(realpath /tmp/gojira/gojira.sh) $(realpath ~/.local/bin/gojira)'
 
         sh "git clone https://$GITHUB_TOKEN:@github.com/Kong/sealy.git /tmp/sealy"

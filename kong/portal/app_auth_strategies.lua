@@ -43,8 +43,8 @@ return {
           kong.log.err(err)
           break
         end
-        if does_plugin_map_to_service(plugin, service) then
-          if plugin.service and plugin.service.id == service.id then
+        if plugin.name == "openid-connect" then
+          if does_plugin_map_to_service(plugin, service) then
             auth_config.scopes = plugin.config.scopes
             auth_config.auth_methods = plugin.config.auth_methods
             if app_reg_plugin.config.show_issuer then

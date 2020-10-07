@@ -16,10 +16,23 @@ local ipairs   = ipairs
 local app = lapis.Application()
 
 
+local function license_can_proceed(self)
+  local method = ngx.req.get_method()
+  if not ee.license_can("write_admin_api")
+    and (method == "POST" or
+         method == "PUT" or
+         method == "PATCH" or
+         method == "DELETE") then
+      kong.response.exit(403, {message = "Forbidden"})
+  end
+end
+
 app.default_route = api_helpers.default_route
 app.handle_404 = api_helpers.handle_404
 app.handle_error = api_helpers.handle_error
 app:before_filter(api_helpers.before_filter)
+
+app:before_filter(license_can_proceed)
 
 
 assert(hooks.run_hook("api:init:pre", app))
