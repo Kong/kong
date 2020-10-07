@@ -60,6 +60,10 @@ local function up(schema_state, db, opts)
     error("Cannot run migrations: " .. NEEDS_BOOTSTRAP_MSG)
   end
 
+  if not opts.force and schema_state.pending_migrations then
+    error("Database has pending migrations; run 'kong migrations finish'")
+  end
+
   local ok, err = db:cluster_mutex(MIGRATIONS_MUTEX_KEY, opts, function()
     schema_state = assert(db:schema_state())
 
