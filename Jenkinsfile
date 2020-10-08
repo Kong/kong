@@ -147,6 +147,10 @@ pipeline {
                 KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                 BINTRAY_USR = 'kong-inc_travis-ci@kong'
                 BINTRAY_KEY = credentials('bintray_travis_key')
+                AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
+                AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+                CACHE = false
+                UPDATE_CACHE = true
                 DEBUG = 0
             }
             steps {
