@@ -152,11 +152,15 @@ pipeline {
                 CACHE = false
                 UPDATE_CACHE = true
                 DEBUG = 0
+                RELEASE_DOCKER_ONLY=true
+                PACKAGE_TYPE=apk
+                RESTY_IMAGE_BASE=alpine
+                RESTY_IMAGE_TAG=latest
             }
             steps {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                 sh 'make setup-kong-build-tools'
-                sh 'KONG_VERSION=`git rev-parse --short HEAD` RELEASE_DOCKER_ONLY=true PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=latest make release'
+                sh 'KONG_VERSION=`git rev-parse --short HEAD` DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` make release'
             }
         }
         stage('Release') {
