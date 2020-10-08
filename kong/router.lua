@@ -1,7 +1,7 @@
 local constants     = require "kong.constants"
+local ipmatcher     = require "resty.ipmatcher"
 local lrucache      = require "resty.lrucache"
 local utils         = require "kong.tools.utils"
-local px            = require "resty.mediador.proxy"
 local bit           = require "bit"
 
 
@@ -497,7 +497,8 @@ local function marshall_route(r)
         local range_f
 
         if source.ip and find(source.ip, "/", nil, true) then
-          range_f = px.compile(source.ip)
+          local matcher = ipmatcher.new({ source.ip })
+          range_f = function(ip) return matcher:match(ip) end
         end
 
         insert(route_t.sources, {
@@ -530,7 +531,8 @@ local function marshall_route(r)
         local range_f
 
         if destination.ip and find(destination.ip, "/", nil, true) then
-          range_f = px.compile(destination.ip)
+          local matcher = ipmatcher.new({ destination.ip })
+          range_f = function(ip) return matcher:match(ip) end
         end
 
         insert(route_t.destinations, {

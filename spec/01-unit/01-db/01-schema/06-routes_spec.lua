@@ -930,8 +930,7 @@ describe("routes schema", function()
 
         it("'" .. v .. "' accepts valid 'ip cidr' values", function()
           -- valid CIDRs
-          for _, ip_val in ipairs({ "1/0", "2130706433/2", "4294967295/3",
-                                    "0.0.0.0/0", "::/0", "0.0.0.0/1", "::/1",
+          for _, ip_val in ipairs({ "0.0.0.0/0", "::/0", "0.0.0.0/1", "::/1",
                                     "0.0.0.0/32", "::/128" }) do
             for _, protocol in ipairs({ "tcp", "tls", "udp" }) do
               local route = Routes:process_auto_fields({
@@ -951,7 +950,8 @@ describe("routes schema", function()
 
         it("'" .. v .. "' rejects invalid 'ip cidr' values", function()
           -- invalid CIDRs
-          for _, ip_val in ipairs({ "-1/0", "4294967296/2", "0.0.0.0/a",
+          for _, ip_val in ipairs({ "1/0", "2130706433/2", "4294967295/3",
+                                    "-1/0", "4294967296/2", "0.0.0.0/a",
                                     "::/a", "0.0.0.0/-1", "::/-1",
                                     "0.0.0.0/33", "::/129" }) do
             for _, protocol in ipairs({ "tcp", "tls", "udp" }) do
