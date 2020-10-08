@@ -100,7 +100,8 @@ for _, strategy in helpers.each_strategy() do
                                     .. ":"
                                     .. helpers.mock_upstream_port
                                     .. "/post_auth_log/basic_auth"
-                                    .. "/testuser/testpassword"
+                                    .. "/testuser/testpassword",
+          headers = { ["Hello-World"] = { "hi!", "there" } },
         }
       }
 
@@ -383,7 +384,7 @@ for _, strategy in helpers.each_strategy() do
       end, 2)
     end)
 
-    it("adds authorization if userinfo is present", function()
+    it("adds authorization if userinfo and/or header is present", function()
       local res = assert(proxy_client:send({
         method  = "GET",
         path    = "/status/200",
@@ -407,11 +408,19 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, res))
 
         if #body.entries == 1 then
+          local ok = 0
           for name, value in pairs(body.entries[1].log_req_headers) do
             if name == "authorization" then
               assert.same("Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk", value)
-              return true
+              ok = ok + 1
             end
+            if name == "hello-world" then
+              assert.same({ "hi!", "there" }, value)
+              ok = ok + 1
+            end
+          end
+          if ok == 2 then
+            return true
           end
         end
       end, 10)
