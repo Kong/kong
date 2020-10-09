@@ -30,7 +30,10 @@ local function cached_get(storage, key, deserializer, ttl, neg_ttl)
   local cache_key = kong.db.acme_storage:cache_key(key)
   return kong.cache:get(cache_key, {
     l1_serializer = deserializer,
-    ttl = ttl,
+    -- in dbless mode, kong.cache has mlcache set to 0 as ttl
+    -- we override the default setting here so that cert can be invalidated
+    -- with renewal.
+    ttl = math.max(ttl or 3600, 0),
     neg_ttl = neg_ttl,
   }, storage.get, storage, key)
 end
