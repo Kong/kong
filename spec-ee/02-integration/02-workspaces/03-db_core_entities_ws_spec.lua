@@ -63,6 +63,8 @@ for _, strategy in helpers.each_strategy() do
             strip_path      = true,
             service         = route.service,
             https_redirect_status_code = 426,
+            request_buffering = route.request_buffering,
+            response_buffering = route.response_buffering,
           }, route)
 
           local rel = db.routes:select({
@@ -105,6 +107,8 @@ for _, strategy in helpers.each_strategy() do
               strip_path      = true,
               service         = route.service,
               https_redirect_status_code = 426,
+              request_buffering = route.request_buffering,
+              response_buffering = route.response_buffering,
             }, route)
 
             -- validate it is present in this workspace
@@ -247,6 +251,8 @@ for _, strategy in helpers.each_strategy() do
               preserve_host   = route.preserve_host,
               service         = route.service,
               https_redirect_status_code = 426,
+              request_buffering = route.request_buffering,
+              response_buffering = route.response_buffering,
             }, new_route)
           end, db)
         end)
@@ -290,6 +296,8 @@ for _, strategy in helpers.each_strategy() do
               preserve_host   = route.preserve_host,
               service         = route.service,
               https_redirect_status_code = 426,
+              request_buffering = route.request_buffering,
+              response_buffering = route.response_buffering,
             }, new_route)
 
             local new_route, err, err_t = db.routes:update({ id = route.id }, {
@@ -1010,6 +1018,8 @@ for _, strategy in helpers.each_strategy() do
               id = service.id
             },
             https_redirect_status_code = 426,
+            request_buffering = route.request_buffering,
+            response_buffering = route.response_buffering,
           }, route)
 
           local route_in_db, err, err_t = db.routes:select({ id = route.id })
