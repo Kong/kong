@@ -1,17 +1,9 @@
 package = "kong"
-<<<<<<< HEAD:kong-2.2.0alpha.1-0.rockspec
-version = "2.2.0alpha.1-0"
-supported_platforms = {"linux", "macosx"}
-source = {
-  url = "git://github.com/Kong/kong",
-  tag = "2.2.0-alpha.1"
-=======
 version = "2.2.0beta.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
   tag = "2.2.0-beta.1"
->>>>>>> kong/release/2.2.0:kong-2.2.0beta.1-0.rockspec
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -37,17 +29,13 @@ dependencies = {
   "lyaml == 6.2.5",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-<<<<<<< HEAD:kong-2.2.0alpha.1-0.rockspec
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.08",
   "lua-resty-rsa == 0.04",
   "bcrypt == 2.1",
   "lpeg_patterns == 0.5",
   "http == 0.3",
-  "lua-resty-dns-client == 4.2.0",
-=======
   "lua-resty-dns-client == 5.1.0",
->>>>>>> kong/release/2.2.0:kong-2.2.0beta.1-0.rockspec
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 1.3.0",
@@ -64,16 +52,11 @@ dependencies = {
   "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-zipkin ~> 1.1",
   "kong-plugin-serverless-functions ~> 1.0",
-  "kong-plugin-session ~> 2.4",
   "kong-prometheus-plugin ~> 1.0",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.2",
-<<<<<<< HEAD:kong-2.2.0alpha.1-0.rockspec
-  "kong-plugin-aws-lambda ~> 3.4",
-=======
   "kong-plugin-session ~> 2.4",
   "kong-plugin-aws-lambda ~> 3.5",
->>>>>>> kong/release/2.2.0:kong-2.2.0beta.1-0.rockspec
   "kong-plugin-acme ~> 0.2",
   "kong-plugin-grpc-web ~> 0.2",
   "kong-plugin-grpc-gateway ~> 0.1",
