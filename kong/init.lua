@@ -66,6 +66,7 @@ _G.kong = kong_global.new() -- no versioned PDK for plugins for now
 
 local DB = require "kong.db"
 local dns = require "kong.tools.dns"
+local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
 local tracing = require "kong.tracing"
@@ -758,8 +759,9 @@ end
 
 
 function Kong.rewrite()
-  if var.kong_proxy_mode == "grpc" then
-    kong_resty_ctx.apply_ref() -- if kong_proxy_mode is gRPC, this is executing
+  local proxy_mode = var.kong_proxy_mode
+  if proxy_mode == "grpc" or proxy_mode == "unbuffered"  then
+    kong_resty_ctx.apply_ref() -- if kong_proxy_mode is gRPC/unbuffered, this is executing
     kong_resty_ctx.stash_ref() -- after an internal redirect. Restore (and restash)
                                -- context to avoid re-executing phases
 
@@ -1331,6 +1333,11 @@ function Kong.log()
         ctx.KONG_BODY_FILTER_TIME = ctx.KONG_BODY_FILTER_ENDED_AT -
                                     ctx.KONG_BODY_FILTER_START
       end
+
+      if ctx.KONG_PROXIED and not ctx.KONG_WAITING_TIME then
+        ctx.KONG_WAITING_TIME = ctx.KONG_LOG_START -
+                                (ctx.KONG_BALANCER_ENDED_AT or ctx.KONG_ACCESS_ENDED_AT)
+      end
     end
   end
 
@@ -1423,6 +1430,8 @@ end
 
 
 function Kong.admin_content(options)
+  kong.worker_events.poll()
+
   local ctx = ngx.ctx
   if not ctx.workspace then
     ctx.workspace = kong.default_workspace
@@ -1456,8 +1465,18 @@ function Kong.admin_header_filter()
     end
   end
 
-  if kong.configuration.enabled_headers[constants.HEADERS.ADMIN_LATENCY] then
-    header[constants.HEADERS.ADMIN_LATENCY] = ctx.KONG_ADMIN_LATENCY
+  local enabled_headers = kong.configuration.enabled_headers
+  local headers = constants.HEADERS
+
+  if enabled_headers[headers.ADMIN_LATENCY] then
+    header[headers.ADMIN_LATENCY] = ctx.KONG_ADMIN_LATENCY
+  end
+
+  if enabled_headers[headers.SERVER] then
+    header[headers.SERVER] = meta._SERVER_TOKENS
+
+  else
+    header[headers.SERVER] = nil
   end
 
   -- this is not used for now, but perhaps we need it later?

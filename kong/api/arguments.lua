@@ -224,6 +224,16 @@ local function infer_value(value, field)
             end
           end
         end
+
+        if field.shorthand_fields then
+          for _, item in ipairs(field.shorthand_fields) do
+            local key = next(item)
+            local fld = item[key]
+            if k == key then
+              value[k] = infer_value(v, fld)
+            end
+          end
+        end
       end
     end
   end
@@ -245,6 +255,18 @@ infer = function(args, schema)
     local value = args[field_name]
     if value then
       args[field_name] = infer_value(value, field)
+    end
+  end
+
+  if schema.shorthand_fields then
+    for _, v in ipairs(schema.shorthand_fields) do
+      local field_name = next(v)
+      local field = v[field_name]
+
+      local value = args[field_name]
+      if value then
+        args[field_name] = infer_value(value, field)
+      end
     end
   end
 

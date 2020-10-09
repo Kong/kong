@@ -102,6 +102,33 @@ describe("arguments.infer", function()
       comments = ngx.null
     }, infer(args, schema))
   end)
+
+  it("infers shorthand_fields but does not run the func", function()
+    local schema = Schema.new({
+      fields = {
+        { name = { type = "string" } },
+        { another_array = { type = "array", elements = { type = { "string" } } } },
+      },
+      shorthand_fields = {
+        { an_array = {
+            type = "array",
+            elements = { type = { "string" } },
+            func = function(value)
+              return { another_array = value:upper() }
+            end,
+          }
+        },
+      }
+    })
+
+    local args = { name = "peter",
+                   an_array = "something" }
+    assert.same({
+      name = "peter",
+      an_array = { "something" },
+    }, infer(args, schema))
+  end)
+
 end)
 
 describe("arguments.combine", function()

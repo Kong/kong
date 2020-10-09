@@ -923,12 +923,12 @@ function _M.new(kong_config)
     password   = kong_config.pg_password,
     database   = kong_config.pg_database,
     schema      = kong_config.pg_schema or "",
-    ssl        = kong_config.pg_ssl,
+    ssl         = kong_config.pg_ssl,
     ssl_required = kong_config.pg_ssl_required,
     ssl_verify = kong_config.pg_ssl_verify,
     ssl_version = kong_config.pg_ssl_version,
     keepalive_timeout = kong_config.pg_keepalive_timeout,
-    cafile     = kong_config.lua_ssl_trusted_certificate,
+    cafile      = kong_config.lua_ssl_trusted_certificate_combined,
     sem_max     = kong_config.pg_max_concurrent_queries or 0,
     sem_timeout = (kong_config.pg_semaphore_timeout or 60000) / 1000,
   }
@@ -968,7 +968,7 @@ function _M.new(kong_config)
       ssl_verify  = kong_config.pg_ro_ssl_verify,
       ssl_version = kong_config.pg_ro_ssl_version,
       keepalive_timeout = kong_config.pg_ro_keepalive_timeout,
-      cafile      = kong_config.lua_ssl_trusted_certificate,
+      cafile      = kong_config.lua_ssl_trusted_certificate_combined,
       sem_max     = kong_config.pg_ro_max_concurrent_queries,
       sem_timeout = kong_config.pg_ro_semaphore_timeout and
                     (kong_config.pg_ro_semaphore_timeout / 1000) or nil,
