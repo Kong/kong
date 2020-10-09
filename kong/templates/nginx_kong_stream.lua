@@ -79,7 +79,11 @@ server {
     listen $(entry.listener);
 > end
 
+> if proxy_access_log == "off" then
+    access_log off;
+> else
     access_log ${{PROXY_ACCESS_LOG}} basic;
+> end
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > for _, ip in ipairs(trusted_ips) do
