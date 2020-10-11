@@ -12,6 +12,7 @@ local RENEW_LAST_RUN_KEY = "kong_acme:renew_last_run"
 local CERTKEY_KEY_PREFIX = "kong_acme:cert_key:"
 
 local LOCK_TIMEOUT = 30 -- in seconds
+local CACHE_TTL = 3600 -- in seconds
 
 local function account_name(conf)
   return "kong_acme:account:" .. conf.api_uri .. ":" ..
@@ -26,6 +27,26 @@ local function deserialize_account(j)
   return j
 end
 
+local function deserialize_certkey(j)
+  local certkey = cjson.decode(j)
+  if not certkey.key or not certkey.key then
+    return nil, "key or cert found in storage"
+  end
+
+  local cert, err = ngx_ssl.cert_pem_to_der(certkey.cert)
+  if err then
+    return nil, err
+  end
+  local key, err = ngx_ssl.priv_key_pem_to_der(certkey.key)
+  if err then
+    return nil, err
+  end
+  return {
+    key = key,
+    cert = cert,
+  }
+end
+
 local function cached_get(storage, key, deserializer, ttl, neg_ttl)
   local cache_key = kong.db.acme_storage:cache_key(key)
   return kong.cache:get(cache_key, {
@@ -33,7 +54,7 @@ local function cached_get(storage, key, deserializer, ttl, neg_ttl)
     -- in dbless mode, kong.cache has mlcache set to 0 as ttl
     -- we override the default setting here so that cert can be invalidated
     -- with renewal.
-    ttl = math.max(ttl or 3600, 0),
+    ttl = math.max(ttl or CACHE_TTL, 0),
     neg_ttl = neg_ttl,
   }, storage.get, storage, key)
 end
@@ -262,7 +283,7 @@ local function update_certificate(conf, host, key)
   if err_del then
     kong.log.warn("failed to delete update_certificate lock for ", host, ": ", err_del)
   end
-  return false, err
+  return true, err
 end
 
 local function check_expire(cert, threshold)
@@ -322,33 +343,13 @@ local function load_certkey(conf, host)
   }
 end
 
-local function deserialize_certkey(certkey)
-  if not certkey.key or not certkey.key then
-    return nil, "key or cert found in storage"
-  end
-
-  local cert, err = ngx_ssl.cert_pem_to_der(certkey.cert)
-  if err then
-    return nil, err
-  end
-  local key, err = ngx_ssl.priv_key_pem_to_der(certkey.key)
-  if err then
-    return nil, err
-  end
-  return {
-    key = key,
-    cert = cert,
-  }
-end
-
 local function load_certkey_cached(conf, host)
-  local cache_key = kong.db.acme_storage:cache_key(host)
-  -- see L208: we set neg ttl to be same as LOCK_TIMEOUT
-  return kong.cache:get(cache_key, {
-    l1_serializer = deserialize_certkey,
-    ttl = nil,
-    neg_ttl = LOCK_TIMEOUT,
-  }, load_certkey, conf, host)
+  local _, st, err = new_storage_adapter(conf)
+  if err then
+    return nil, err
+  end
+  local key = CERTKEY_KEY_PREFIX .. host
+  return cached_get(st, key, deserialize_certkey)
 end
 
 local function renew_certificate_storage(conf)

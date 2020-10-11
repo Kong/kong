@@ -121,6 +121,7 @@ function LetsencryptHandler:certificate(conf)
     return
   end
 
+  -- this will only be run in dbless
   kong.log.debug("set certificate for host: ", host)
   local _, err
   _, err = ngx_ssl.clear_certs()

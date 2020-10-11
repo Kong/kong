@@ -89,7 +89,7 @@ return {
         return kong.response.exit(400, { message = "problem found running sanity check for " .. host .. ": " .. err})
       end
 
-      err = client.update_certificate(conf, host, nil)
+      local _, err = client.update_certificate(conf, host, nil)
       if err then
         return kong.response.exit(500, { message = "failed to update certificate: " .. err })
       end
@@ -102,7 +102,7 @@ return {
     end,
 
     PATCH = function()
-      client.renew_certificate()
+      ngx.timer.at(0, client.renew_certificate)
       return kong.response.exit(202, { message = "Renewal process started successfully" })
     end,
   },
