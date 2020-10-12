@@ -149,13 +149,13 @@ pipeline {
                 BINTRAY_KEY = credentials('bintray_travis_key')
                 AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
                 AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-                CACHE = false
-                UPDATE_CACHE = true
-                DEBUG = 0
-                RELEASE_DOCKER_ONLY=true
-                PACKAGE_TYPE=apk
-                RESTY_IMAGE_BASE=alpine
-                RESTY_IMAGE_TAG=latest
+                CACHE = "false"
+                UPDATE_CACHE = "true"
+                DEBUG = "0"
+                RELEASE_DOCKER_ONLY="true"
+                PACKAGE_TYPE="apk"
+                RESTY_IMAGE_BASE="alpine"
+                RESTY_IMAGE_TAG="latest"
             }
             steps {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
