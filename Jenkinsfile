@@ -134,7 +134,7 @@ pipeline {
         stage('Release Per Commit') {
             when {
                 beforeAgent true
-                anyOf { branch 'master'; branch 'next' }
+                anyOf { branch 'master'; branch 'next'; branch 'chore/ci-syntax' }
             }
             agent {
                 node {
