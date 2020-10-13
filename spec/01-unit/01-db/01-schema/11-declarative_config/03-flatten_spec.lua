@@ -197,6 +197,8 @@ describe("declarative config: flatten", function()
               strip_path = true,
               path_handling = "v1",
               updated_at = 1234567890,
+              request_buffering = true,
+              response_buffering = true,
               ws_id = null,
             }
           }
@@ -442,7 +444,9 @@ describe("declarative config: flatten", function()
               sources = null,
               strip_path = true,
               path_handling = "v1",
-              updated_at = 1234567890
+              updated_at = 1234567890,
+              request_buffering = true,
+              response_buffering = true,
             }
           },
           services = {
@@ -736,6 +740,8 @@ describe("declarative config: flatten", function()
                 path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890,
+                request_buffering = true,
+                response_buffering = true,
                 ws_id = null,
               } },
             services = { {
@@ -816,6 +822,8 @@ describe("declarative config: flatten", function()
                 path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890,
+                request_buffering = true,
+                response_buffering = true,
                 ws_id = null,
               }, {
                 created_at = 1234567890,
@@ -839,6 +847,8 @@ describe("declarative config: flatten", function()
                 path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890,
+                request_buffering = true,
+                response_buffering = true,
                 ws_id = null,
               }, {
                 created_at = 1234567890,
@@ -862,6 +872,8 @@ describe("declarative config: flatten", function()
                 path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890,
+                request_buffering = true,
+                response_buffering = true,
                 ws_id = null,
               }, {
                 created_at = 1234567890,
@@ -885,6 +897,8 @@ describe("declarative config: flatten", function()
                 path_handling = "v1",
                 tags = null,
                 updated_at = 1234567890,
+                request_buffering = true,
+                response_buffering = true,
                 ws_id = null,
               } },
             services = { {
@@ -969,6 +983,8 @@ describe("declarative config: flatten", function()
                 strip_path = true,
                 path_handling = "v1",
                 updated_at = 1234567890,
+                request_buffering = true,
+                response_buffering = true,
                 ws_id = null,
               }
             },
@@ -1134,8 +1150,10 @@ describe("declarative config: flatten", function()
                 strip_path = true,
                 path_handling = "v1",
                 tags = null,
+                updated_at = 1234567890,
+                request_buffering = true,
+                response_buffering = true,
                 ws_id = null,
-                updated_at = 1234567890
               }, {
                 created_at = 1234567890,
                 destinations = null,
@@ -1157,8 +1175,10 @@ describe("declarative config: flatten", function()
                 strip_path = true,
                 path_handling = "v1",
                 tags = null,
+                updated_at = 1234567890,
+                request_buffering = true,
+                response_buffering = true,
                 ws_id = null,
-                updated_at = 1234567890
               } },
             services = { {
                 connect_timeout = 60000,

@@ -576,6 +576,7 @@ local CONF_INFERENCES = {
     deprecated = { replacement = false }
   },
 
+  lua_ssl_trusted_certificate = { typ = "array" },
   lua_ssl_verify_depth = { typ = "number" },
   lua_socket_pool_size = { typ = "number" },
 
@@ -587,6 +588,7 @@ local CONF_INFERENCES = {
   cluster_mtls = { enum = { "shared", "pki" } },
   cluster_ca_cert = { typ = "string" },
   cluster_server_name = { typ = "string" },
+  cluster_data_plane_purge_delay = { typ = "number" },
   kic = { typ = "boolean" },
 }
 
@@ -819,11 +821,31 @@ local function check_and_infer(conf, opts)
   -- enterprise validations
   ee_conf_loader.validate(conf, errors)
 
-  if conf.lua_ssl_trusted_certificate and
-     not pl_path.exists(conf.lua_ssl_trusted_certificate)
-  then
-    errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " ..
-                        conf.lua_ssl_trusted_certificate
+  if conf.lua_ssl_trusted_certificate then
+    local new_paths = {}
+
+    for i, path in ipairs(conf.lua_ssl_trusted_certificate) do
+      if path == "system" then
+        local system_path, err = utils.get_system_trusted_certs_filepath()
+        if system_path then
+          path = system_path
+
+        else
+          errors[#errors + 1] =
+            "lua_ssl_trusted_certificate: unable to locate system bundle - " ..
+            err
+        end
+      end
+
+      if not pl_path.exists(path) then
+        errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " ..
+                               path
+      end
+
+      new_paths[i] = path
+    end
+
+    conf.lua_ssl_trusted_certificate = new_paths
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
@@ -957,6 +979,10 @@ local function check_and_infer(conf, opts)
       errors[#errors + 1] = "only in-memory storage can be used when role = \"data_plane\"\n" ..
                             "Hint: set database = off in your kong.conf"
     end
+  end
+
+  if conf.cluster_data_plane_purge_delay < 60 then
+    errors[#errors + 1] = "cluster_data_plane_purge_delay must be 60 or greater"
   end
 
   if conf.role == "control_plane" or conf.role == "data_plane" then
@@ -1532,9 +1558,13 @@ local function load(path, custom_conf, opts)
     return nil, err
   end
 
-  if conf.lua_ssl_trusted_certificate then
+  if conf.lua_ssl_trusted_certificate
+     and #conf.lua_ssl_trusted_certificate > 0 then
     conf.lua_ssl_trusted_certificate =
-      pl_path.abspath(conf.lua_ssl_trusted_certificate)
+      tablex.map(pl_path.abspath, conf.lua_ssl_trusted_certificate)
+
+    conf.lua_ssl_trusted_certificate_combined =
+      pl_path.abspath(pl_path.join(conf.prefix, ".ca_combined"))
   end
 
   if conf.cluster_cert and conf.cluster_cert_key then

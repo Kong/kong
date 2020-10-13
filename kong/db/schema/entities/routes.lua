@@ -36,6 +36,8 @@ return {
     { strip_path     = { type = "boolean", default = true }, },
     { path_handling  = { type = "string", default = "v0", one_of = { "v0", "v1" }, }, },
     { preserve_host  = { type = "boolean", default = false }, },
+    { request_buffering  = { type = "boolean", required = true, default = true }, },
+    { response_buffering  = { type = "boolean", required = true, default = true }, },
     { snis = { type = "set",
                elements = typedefs.sni }, },
     { sources = typedefs.sources },

@@ -10,7 +10,7 @@ LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 GO_PLUGINSERVER=$(dep_version KONG_GO_PLUGINSERVER_VERSION)
 
-DEPS_HASH=$(cat .ci/setup_env.sh .travis.yml .requirements | md5sum | awk '{ print $1 }')
+DEPS_HASH=$({ cat .ci/setup_env.sh .travis.yml .requirements Makefile; cat kong-*.rockspec | awk '/dependencies/,/}/'; } | md5sum | awk '{ print $1 }')
 INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
 

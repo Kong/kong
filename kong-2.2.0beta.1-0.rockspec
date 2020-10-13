@@ -1,9 +1,9 @@
 package = "kong"
-version = "2.2.0alpha.1-0"
+version = "2.2.0beta.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.2.0-alpha.1"
+  tag = "2.2.0-beta.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -14,7 +14,7 @@ dependencies = {
   "inspect == 3.1.1",
   "luasec == 0.9",
   "luasocket == 3.0-rc1",
-  "penlight == 1.7.0",
+  "penlight == 1.9.2",
   "lua-resty-http == 0.15",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
@@ -27,7 +27,6 @@ dependencies = {
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.5",
-  "lua-resty-iputils == 0.3.0",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
   "lua-resty-mail == 1.0.2",
@@ -36,14 +35,14 @@ dependencies = {
   "bcrypt == 2.1",
   "lpeg_patterns == 0.5",
   "http == 0.3",
-  "lua-resty-dns-client == 4.2.0",
+  "lua-resty-dns-client == 5.1.0",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 1.3.0",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.1",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.6.2",
+  "lua-resty-openssl == 0.6.5",
   "lua-resty-counter == 0.2.1",
   "lua-resty-template == 1.9-1",
   "lua-resty-passwdqc == 1.1-1",
@@ -53,11 +52,11 @@ dependencies = {
   "kong-plugin-azure-functions ~> 0.4",
   "kong-plugin-zipkin ~> 1.1",
   "kong-plugin-serverless-functions ~> 1.0",
-  "kong-plugin-session ~> 2.4",
   "kong-prometheus-plugin ~> 1.0",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.2",
-  "kong-plugin-aws-lambda ~> 3.4",
+  "kong-plugin-session ~> 2.4",
+  "kong-plugin-aws-lambda ~> 3.5",
   "kong-plugin-acme ~> 0.2",
   "kong-plugin-grpc-web ~> 0.2",
   "kong-plugin-grpc-gateway ~> 0.1",
@@ -202,7 +201,6 @@ build = {
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
-    ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
     ["kong.tools.messaging"] = "kong/tools/messaging.lua",

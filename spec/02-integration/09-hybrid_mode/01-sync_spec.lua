@@ -10,6 +10,9 @@ for _, strategy in helpers.each_strategy() do
         "routes",
         "services",
         "clustering_data_planes",
+        "upstreams",
+        "targets",
+        "certificates",
       }) -- runs migrations
 
       assert(helpers.start_kong({
@@ -54,6 +57,8 @@ for _, strategy in helpers.each_strategy() do
 
           for _, v in pairs(json.data) do
             if v.ip == "127.0.0.1" then
+              assert.near(14 * 86400, v.ttl, 3)
+
               return true
             end
           end
@@ -169,6 +174,14 @@ for _, strategy in helpers.each_strategy() do
             return true
           end
         end, 5)
+      end)
+
+      it("local cached config file has correct permission", function()
+        local handle = io.popen("ls -l servroot2/config.cache.json.gz")
+        local result = handle:read("*a")
+        handle:close()
+
+        assert.matches("-rw-------", result, nil, true)
       end)
     end)
   end)

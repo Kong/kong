@@ -5,6 +5,7 @@ return {
   primary_key        = { "id" },
   db_export          = false,
   generate_admin_api = false,
+  ttl                = true,
 
   fields = {
     { id = typedefs.uuid { required = true, }, },

@@ -1,10 +1,4 @@
-local singletons = require "kong.singletons"
-local constants = require "kong.constants"
-local meta = require "kong.meta"
-
-
 local kong = kong
-local server_header = meta._SERVER_TOKENS
 
 
 local DEFAULT_RESPONSE = {
@@ -21,7 +15,7 @@ local RequestTerminationHandler = {}
 
 
 RequestTerminationHandler.PRIORITY = 2
-RequestTerminationHandler.VERSION = "2.0.0"
+RequestTerminationHandler.VERSION = "2.0.1"
 
 
 function RequestTerminationHandler:access(conf)
@@ -32,10 +26,6 @@ function RequestTerminationHandler:access(conf)
     local headers = {
       ["Content-Type"] = conf.content_type
     }
-
-    if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
-      headers[constants.HEADERS.SERVER] = server_header
-    end
 
     return kong.response.exit(status, content, headers)
   end
