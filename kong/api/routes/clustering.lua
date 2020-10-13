@@ -5,7 +5,7 @@ local dp_collection_endpoint = endpoints.get_collection_endpoint(kong.db.cluster
 
 
 return {
-  ["/clustering/data_planes"] = {
+  ["/clustering/data-planes"] = {
     schema = kong.db.clustering_data_planes.schema,
     methods = {
       GET = function(self, dao, helpers)

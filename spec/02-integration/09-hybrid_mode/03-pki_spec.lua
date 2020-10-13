@@ -53,7 +53,7 @@ for _, strategy in helpers.each_strategy() do
             admin_client:close()
           end)
 
-          local res = assert(admin_client:get("/clustering/data_planes"))
+          local res = assert(admin_client:get("/clustering/data-planes"))
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
