@@ -1052,9 +1052,35 @@ for _, strategy in helpers.each_strategy() do
 
 describe("Admin API #" .. strategy, function()
   local client
-  local bp
+  local bp, db, _
+
+  local function post(path, body, headers, expected_status)
+    headers = headers or {}
+    headers["Content-Type"] = "application/json"
+    local res = assert(client:send{
+      method = "POST",
+      path = path,
+      body = body or {},
+      headers = headers
+    })
+    return cjson.decode(assert.res_status(expected_status or 201, res))
+  end
+
+
+  local function put(path, body, headers, expected_status) -- luacheck: ignore
+    headers = headers or {}
+    headers["Content-Type"] = "application/json"
+    local res = assert(client:send{
+      method = "PUT",
+      path = path,
+      body = body or {},
+      headers = headers
+    })
+    return cjson.decode(assert.res_status(expected_status or 200, res))
+  end
+
   lazy_setup(function()
-    bp = helpers.get_db_utils(strategy)
+    bp, db, _ = helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong{
       database = strategy
@@ -1218,6 +1244,22 @@ describe("Admin API #" .. strategy, function()
       end)
     end)
   end)
+
+  describe("PUT /consumers", function()
+    before_each(function()
+      db:truncate("consumers")
+    end)
+
+    -- FTI-1874 regression test
+    it("uniquifies non-path attributes", function()
+      local consumer_data = { custom_id = "c"}
+      post("/workspaces", { name="foo"})
+      post("/workspaces", { name="bar"})
+      put("/foo/consumers/c1", consumer_data)
+      put("/bar/consumers/c1", consumer_data)
+    end)
+  end)
+
 end) -- end describe
 
 end -- end for
