@@ -156,6 +156,34 @@ function _M.replace_body(conf, resp_body, resp_code)
   return resp_body
 end
 
+-- Navigate json to the value(s) pointed to by path and apply function f to it.
+local function navigate_and_apply(conf, json, path, f)
+  local head, tail
+  if not conf.dots_in_keys then
+    -- Split on first '.' if exists
+    head = string.match(path, "%w+")
+    tail = string.match(path, "%..+")
+    if tail ~= nil then
+      tail = string.sub(tail, 2)
+    end
+  end
+
+  if type(json) == "table" then
+    if json[1] ~= nil then
+      -- Loop over arrays
+      for k, v in pairs(json) do
+        if type(v) == "table" then
+          navigate_and_apply(conf, v, path, f)
+        end
+      end
+    elseif tail ~= nil and json[head] ~= nil then
+      -- Navigate into nested JSON
+      navigate_and_apply(conf, json[head], tail, f)
+    else
+      f(json, path)
+    end
+  end
+end
 
 function _M.transform_json_body(conf, buffered_data, resp_code)
   local json_body, err = read_json_body(buffered_data)
@@ -165,14 +193,14 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
   end
 
   -- remove key:value to body
-  if not skip_transform(resp_code, conf.remove.if_status) then
+  if conf.remove and not skip_transform(resp_code, conf.remove.if_status) then
     for _, name in iter(conf.remove.json) do
-      json_body[name] = nil
+      navigate_and_apply(conf, json_body, name, function (o, p) o[p] = nil end)
     end
   end
 
   -- replace key:value to body
-  if not skip_transform(resp_code, conf.replace.if_status) then
+  if conf.replace and not skip_transform(resp_code, conf.replace.if_status) then
     for i, name, value in iter(conf.replace.json) do
       local v = cjson.encode(value)
       if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
@@ -186,14 +214,14 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
         v = cast_value(v, v_type)
       end
 
-      if json_body[name] and v ~= nil then
-        json_body[name] = v
+      if v ~= nil then
+        navigate_and_apply(conf, json_body, name, function (o, p) if o[p] then o[p] = v end end)
       end
     end
   end
 
   -- add new key:value to body
-  if not skip_transform(resp_code, conf.add.if_status) then
+  if conf.add and not skip_transform(resp_code, conf.add.if_status) then
     for i, name, value in iter(conf.add.json) do
       local v = cjson.encode(value)
       if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
@@ -207,14 +235,14 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
         v = cast_value(v, v_type)
       end
 
-      if not json_body[name] and v ~= nil then
-        json_body[name] = v
+      if v ~= nil then
+        navigate_and_apply(conf, json_body, name, function (o, p) if not o[p] then o[p] = v end end)
       end
     end
   end
 
   -- append new key:value or value to existing key
-  if not skip_transform(resp_code, conf.append.if_status) then
+  if conf.append and not skip_transform(resp_code, conf.append.if_status) then
     for i, name, value in iter(conf.append.json) do
       local v = cjson.encode(value)
       if v and sub(v, 1, 1) == [["]] and sub(v, -1, -1) == [["]] then
@@ -229,13 +257,13 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
       end
 
       if v ~= nil then
-        json_body[name] = append_value(json_body[name],v)
+        navigate_and_apply(conf, json_body, name, function (o, p) o[p] = append_value(o[p], v) end)
       end
     end
   end
 
   -- filter body
-  if conf.allow.json and not skip_transform(resp_code, conf.remove.if_status) then
+  if conf.allow and conf.allow.json and not skip_transform(resp_code, conf.remove.if_status) then
     local filtered_json_body = {}
     local filtered = false
     for _, name in iter(conf.allow.json) do
@@ -250,7 +278,7 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
 
   local err, data
   -- perform arbitrary transformations on a json
-  if not skip_transform(resp_code, conf.transform.if_status) then
+  if conf.transform and not skip_transform(resp_code, conf.transform.if_status) then
     for _, fn in get_transform_functions(conf) do
       data, err = transform_data(json_body, fn)
       if err then

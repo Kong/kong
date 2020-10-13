@@ -164,6 +164,7 @@ return {
           { functions = functions_array },
           { if_status = status_array },
       }}},
+      { dots_in_keys = { type = "boolean", default = false }, },
   },
   shorthands = {
     -- deprecated forms, to be removed in Kong EE 3.x

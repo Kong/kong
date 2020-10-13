@@ -101,6 +101,33 @@ describe("Plugin: response-transformer-advanced", function()
         body_json = cjson.decode(body)
         assert.same({p2 = "v1"}, body_json)
       end)
+
+      it("array", function()
+        local json = [=[ [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] ]=]
+        local config = { add = { json = { "p2:v2" } } }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({{ p1 = "v1", p2 = "v2" }, { p1 = "v1", p2 = "v2" }, { p2 = "v1" }}, body_json)
+      end)
+
+      it("nested", function()
+        local json = [[ { "p1": { "p1": "v1" }} ]]
+        local config = { add = { json = { "p1.p2:v2" } } }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({ p1 = { p1 = "v1", p2 = "v2" }}, body_json)
+      end)
+
+      it("dots in keys", function()
+        local json = [[ { "p1": { "p1": "v1" }} ]]
+        local config = { add = { json = { "p1.p2:v2" } }, dots_in_keys = true }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({ p1 = { p1 = "v1" }, ["p1.p2"] = "v2" }, body_json)
+      end)
     end)
 
     describe("append", function()
@@ -191,6 +218,33 @@ describe("Plugin: response-transformer-advanced", function()
         body_json = cjson.decode(body)
         assert.same({p1 = "v2"}, body_json)
       end)
+
+      it("array", function()
+        local json = [=[ [{"p1": "v1"}, {"p1": "v1"}, {"p2": "v2"}] ]=]
+        local config = { append = { json = { "p1:v2" } } }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({{ p1 = { "v1", "v2" } }, { p1 = { "v1", "v2" } }, { p1 = { "v2" }, p2 = "v2" }}, body_json)
+      end)
+
+      it("nested", function()
+        local json = [[ { "p1": { "p1": "v1" }} ]]
+        local config = { append = { json = { "p1.p1:v2" } } }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({ p1 = { p1 = { "v1", "v2" }}}, body_json)
+      end)
+
+      it("dots in keys", function()
+        local json = [[ { "p1": { "p1": "v1" }} ]]
+        local config = { append = { json = { "p1.p1:v2" } }, dots_in_keys = true }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({ p1 = { p1 = "v1" }, ["p1.p1"] = { "v2" }}, body_json)
+      end)
     end)
 
     describe("remove", function()
@@ -237,6 +291,33 @@ describe("Plugin: response-transformer-advanced", function()
         body_json = cjson.decode(body)
         assert.same({p1 = "v1", p2 = "v1", a = {}}, body_json)
         assert.equals('[]', cjson.encode(body_json.a))
+      end)
+
+      it("array", function()
+        local json = [=[ [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] ]=]
+        local config = { remove = { json = { "p1" } } }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({ {}, {}, { p2 = "v1" }}, body_json)
+      end)
+
+      it("nested", function()
+        local json = [[ { "p1": { "p1": "v1" }} ]]
+        local config = { remove = { json = { "p1.p1" } } }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({ p1 = { } }, body_json)
+      end)
+
+      it("dots in keys", function()
+        local json = [[ { "p1": { "p1": "v1" }} ]]
+        local config = { remove = { json = { "p1.p1" } }, dots_in_keys = true }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({ p1 = { p1 = "v1" } }, body_json)
       end)
     end)
 
@@ -360,6 +441,33 @@ describe("Plugin: response-transformer-advanced", function()
         body = body_transformer.transform_json_body(conf_skip, json, 200)
         body_json = cjson.decode(body)
         assert.same({p4 = "v4", p5 = "v5"}, body_json)
+      end)
+
+      it("array", function()
+        local json = [=[ [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] ]=]
+        local config = { replace = { json = { "p1:v2" } } }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({{ p1 = "v2" }, { p1 = "v2" }, { p2 = "v1" }}, body_json)
+      end)
+
+      it("nested", function()
+        local json = [[ { "p1": { "p1": "v1" }} ]]
+        local config = { replace = { json = { "p1.p1:v2" } } }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({ p1 = { p1 = "v2" } }, body_json)
+      end)
+
+      it("dots in keys", function()
+        local json = [[ { "p1": { "p1": "v1" }} ]]
+        local config = { replace = { json = { "p1.p1:v2" } }, dots_in_keys = true }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({ p1 = { p1 = "v1" } }, body_json)
       end)
     end)
 
