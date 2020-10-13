@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.2.12](#0212---20201013)
 - [0.2.11](#0211---20200916)
 - [0.2.10](#0210---20200812)
 - [0.2.9](#029---20200804)
@@ -15,6 +16,12 @@
 - [0.1.2](#012---20191216)
 - [0.1.1](#011---20191212)
 - [0.1.0](#010---20191212)
+
+##  [0.2.12] - 2020/10/13
+
+- Fix cache to use non-nil TTL in dbless. This fixes a bug for renewals not updating the cert
+after Kong 2.0.5.
+- Fix a bug in database mode the renewal config is not properly stored.
 
 ##  [0.2.11] - 2020/09/16
 
@@ -89,6 +96,7 @@ causing validation failures.
 - Initial release of ACME plugin for Kong.
 
 
+[0.2.12]: https://github.com/Kong/kong-plugin-acme/compare/0.2.11...0.2.12
 [0.2.11]: https://github.com/Kong/kong-plugin-acme/compare/0.2.10...0.2.11
 [0.2.10]: https://github.com/Kong/kong-plugin-acme/compare/0.2.9...0.2.10
 [0.2.9]: https://github.com/Kong/kong-plugin-acme/compare/0.2.8...0.2.9
