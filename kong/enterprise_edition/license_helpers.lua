@@ -57,20 +57,20 @@ local function get_license_string()
   else
     license_path = os.getenv("KONG_LICENSE_PATH")
     if not license_path then
-      ngx.log(ngx.CRIT, "KONG_LICENSE_PATH is not set")
+      ngx.log(ngx.NOTICE, "KONG_LICENSE_PATH is not set")
       return nil
     end
   end
 
   local license_file = io.open(license_path, "r")
   if not license_file then
-    ngx.log(ngx.CRIT, "could not open license file")
+    ngx.log(ngx.NOTICE, "could not open license file")
     return nil
   end
 
   local license_data = license_file:read("*a")
   if not license_data then
-    ngx.log(ngx.CRIT, "could not read license file contents")
+    ngx.log(ngx.NOTICE, "could not read license file contents")
     return nil
   end
 

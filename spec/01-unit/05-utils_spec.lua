@@ -1,4 +1,5 @@
 local utils = require "kong.tools.utils"
+local pl_path = require "pl.path"
 
 describe("Utils", function()
 
@@ -22,6 +23,40 @@ describe("Utils", function()
         utils.get_system_infos(),
         utils.get_system_infos()
       )
+    end)
+  end)
+
+  describe("get_system_trusted_certs_filepath()", function()
+    local old_exists = pl_path.exists
+    after_each(function()
+      pl_path.exists = old_exists
+    end)
+    local tests = {
+      Debian = "/etc/ssl/certs/ca-certificates.crt",
+      Fedora = "/etc/pki/tls/certs/ca-bundle.crt",
+      OpenSuse = "/etc/ssl/ca-bundle.pem",
+      OpenElec = "/etc/pki/tls/cacert.pem",
+      CentOS = "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+      Alpine = "/etc/ssl/cert.pem",
+    }
+
+    for distro, test_path in pairs(tests) do
+      it("retrieves the default filepath in " .. distro, function()
+        pl_path.exists = function(path)
+          return path == test_path
+        end
+        assert.same(test_path, utils.get_system_trusted_certs_filepath())
+      end)
+    end
+
+    it("errors if file is somewhere else", function()
+      pl_path.exists = function(path)
+        return path == "/some/unknown/location.crt"
+      end
+
+      local ok, err = utils.get_system_trusted_certs_filepath()
+      assert.is_nil(ok)
+      assert.matches("Could not find trusted certs file", err)
     end)
   end)
 

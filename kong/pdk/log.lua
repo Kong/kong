@@ -562,6 +562,16 @@ do
 
       local host_port = ctx.host_port or var.server_port
 
+      local request_size = var.request_length
+      if tonumber(request_size, 10) then
+        request_size = tonumber(request_size, 10)
+      end
+
+      local response_size = var.bytes_sent
+      if tonumber(response_size, 10) then
+        response_size = tonumber(response_size, 10)
+      end
+
       return {
         request = {
           uri = request_uri,
@@ -569,14 +579,14 @@ do
           querystring = okong.request.get_query(), -- parameters, as a table
           method = okong.request.get_method(), -- http method
           headers = req_headers,
-          size = var.request_length,
+          size = request_size,
           tls = request_tls
         },
         upstream_uri = var.upstream_uri,
         response = {
           status = ongx.status,
           headers = resp_headers,
-          size = var.bytes_sent
+          size = response_size,
         },
         tries = (ctx.balancer_data or {}).tries,
         latencies = {

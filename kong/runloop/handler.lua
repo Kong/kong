@@ -1266,6 +1266,20 @@ return {
         if service.protocol == "grpcs" then
           return ngx.exec("@grpcs")
         end
+
+        if http_version == 1.1 then
+          if route.request_buffering == false then
+            if route.response_buffering == false then
+              return ngx.exec("@unbuffered")
+            end
+
+            return ngx.exec("@unbuffered_request")
+          end
+
+          if route.response_buffering == false then
+            return ngx.exec("@unbuffered_response")
+          end
+        end
       end
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
@@ -1405,29 +1419,35 @@ return {
     end,
     after = function(ctx)
       local enabled_headers = kong.configuration.enabled_headers
+      local headers = constants.HEADERS
       if ctx.KONG_PROXIED then
-        if enabled_headers[constants.HEADERS.UPSTREAM_LATENCY] then
-          header[constants.HEADERS.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
+        if enabled_headers[headers.UPSTREAM_LATENCY] then
+          header[headers.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
         end
 
-        if enabled_headers[constants.HEADERS.PROXY_LATENCY] then
-          header[constants.HEADERS.PROXY_LATENCY] = ctx.KONG_PROXY_LATENCY
+        if enabled_headers[headers.PROXY_LATENCY] then
+          header[headers.PROXY_LATENCY] = ctx.KONG_PROXY_LATENCY
         end
 
-        if enabled_headers[constants.HEADERS.VIA] then
-          header[constants.HEADERS.VIA] = server_header
+        if enabled_headers[headers.VIA] then
+          header[headers.VIA] = server_header
         end
 
       else
-        if enabled_headers[constants.HEADERS.RESPONSE_LATENCY] then
-          header[constants.HEADERS.RESPONSE_LATENCY] = ctx.KONG_RESPONSE_LATENCY
+        if enabled_headers[headers.RESPONSE_LATENCY] then
+          header[headers.RESPONSE_LATENCY] = ctx.KONG_RESPONSE_LATENCY
         end
 
-        if enabled_headers[constants.HEADERS.SERVER] then
-          header[constants.HEADERS.SERVER] = server_header
+        -- Some plugins short-circuit the request with Via-header, and in those cases
+        -- we don't want to set the Server-header, if the Via-header matches with
+        -- the Kong server header.
+        if not (enabled_headers[headers.VIA] and header[headers.VIA] == server_header) then
+          if enabled_headers[headers.SERVER] then
+            header[headers.SERVER] = server_header
 
-        else
-          header[constants.HEADERS.SERVER] = nil
+          else
+            header[headers.SERVER] = nil
+          end
         end
       end
     end
