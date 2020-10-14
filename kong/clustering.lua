@@ -456,7 +456,7 @@ function _M.init_worker(conf)
     -- ROLE = "control_plane"
 
     -- Sends "clustering", "push_config" to all workers in the same node, including self
-    local post_push_config_event_to_node_workers = function(_)
+    local function post_push_config_event_to_node_workers(_)
       local res, err = kong.worker_events.post("clustering", "push_config")
       if not res then
         ngx_log(ngx_ERR, "unable to broadcast event: " .. err)
