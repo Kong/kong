@@ -908,6 +908,26 @@ do
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/get?a&b",
+        headers = {
+          host = "route-1.com",
+        }
+      })
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/get?a&b",
+        headers = {
+          host = "route-1.com",
+        }
+      })
+      assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
     end)
 
     it("can focus only in a subset of the query arguments", function()
