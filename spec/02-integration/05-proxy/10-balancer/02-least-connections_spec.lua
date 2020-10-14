@@ -198,7 +198,11 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.is_nil(err)
-        assert.same(204, res.status)
+        assert.same(200, res.status)
+        local json = assert.response(res).has.jsonbody()
+        assert.is_string(json.id)
+        assert.are.equal("127.0.0.1:10003", json.target)
+        assert.are.equal(0, json.weight)
         api_client:close()
 
         api_client = helpers.admin_client()

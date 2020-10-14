@@ -59,12 +59,12 @@ end
 
 local function update_target_cb(self, db, upstream, target)
   self.params.targets = db.targets.schema:extract_pk_values(target)
-  local _, _, err_t = endpoints.update_entity(self, db, db.targets.schema)
+  local entity, _, err_t = endpoints.update_entity(self, db, db.targets.schema)
   if err_t then
     return endpoints.handle_error(err_t)
   end
 
-  return kong.response.exit(204) -- no content
+  return kong.response.exit(200, entity)
 end
 
 
