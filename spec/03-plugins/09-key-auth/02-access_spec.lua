@@ -311,6 +311,33 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.res_status(200, res)
           end)
+          it("authenticates valid credentials in query", function()
+            local res = assert(proxy_client:send {
+              path    = "/request?apikey=kong",
+              headers = {
+                ["Host"]         = "key-auth5.com",
+                ["Content-Type"] = type,
+              },
+              body    = {
+                non_apikey = "kong",
+              }
+            })
+            assert.res_status(200, res)
+          end)
+          it("authenticates valid credentials in header", function()
+            local res = assert(proxy_client:send {
+              path    = "/request?apikey=kong",
+              headers = {
+                ["Host"]         = "key-auth5.com",
+                ["Content-Type"] = type,
+                ["apikey"]       = "kong",
+              },
+              body    = {
+                non_apikey = "kong",
+              }
+            })
+            assert.res_status(200, res)
+          end)
           it("returns 401 Unauthorized on invalid key", function()
             local res = assert(proxy_client:send {
               path    = "/status/200",
@@ -604,21 +631,20 @@ for _, strategy in helpers.each_strategy() do
         end)
       end
 
-      -- EE: FT-891
-      -- it("fails with 'key_in_body' and unsupported content type", function()
-      --   local res = assert(proxy_client:send {
-      --     path = "/status/200",
-      --     headers = {
-      --       ["Host"] = "key-auth6.com",
-      --       ["Content-Type"] = "text/plain",
-      --     },
-      --     body = "foobar",
-      --   })
+      it("fails with 'key_in_body' and unsupported content type", function()
+        local res = assert(proxy_client:send {
+          path = "/status/200",
+          headers = {
+            ["Host"] = "key-auth6.com",
+            ["Content-Type"] = "text/plain",
+          },
+          body = "foobar",
+        })
 
-      --   local body = assert.res_status(400, res)
-      --   local json = cjson.decode(body)
-      --   assert.same({ message = "Cannot process request body" }, json)
-      -- end)
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "No API key found in request" }, json)
+      end)
     end)
 
     describe("config.anonymous", function()

@@ -257,6 +257,8 @@ local function parse_params(fn)
 
     local res, err = fn(self, ...)
 
+    kong.worker_events.poll()
+
     if err then
       kong.log.err(err)
       return ngx.exit(500)

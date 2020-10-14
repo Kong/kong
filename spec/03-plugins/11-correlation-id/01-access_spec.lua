@@ -359,6 +359,36 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("foobar", id)
     end)
 
+    it("does not preserve an already existing empty header", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"]            = "correlation2.com",
+          ["Kong-Request-ID"] = ""
+        }
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      local id   = json.headers["kong-request-id"]
+      assert.not_equal("foobar", id)
+    end)
+
+    it("does not preserve an already existing header with space only", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"]            = "correlation2.com",
+          ["Kong-Request-ID"] = " "
+        }
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      local id   = json.headers["kong-request-id"]
+      assert.not_equal("foobar", id)
+    end)
+
     it("executes with echo_downstream when access did not execute", function()
       local res = assert(proxy_client:send {
         method  = "GET",

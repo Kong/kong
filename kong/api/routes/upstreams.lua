@@ -61,7 +61,13 @@ end
 
 
 local function update_target_cb(self, db, upstream, target)
-  return kong.response.exit(405, { message = "Method not allowed" })
+  self.params.targets = db.targets.schema:extract_pk_values(target)
+  local _, _, err_t = endpoints.update_entity(self, db, db.targets.schema)
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+
+  return kong.response.exit(204) -- no content
 end
 
 
@@ -162,6 +168,11 @@ return {
                                             kong.db.upstreams.schema,
                                             "upstream",
                                             "page_for_upstream"),
+    POST = function(self, db)
+      local create = endpoints.post_collection_endpoint(kong.db.targets.schema,
+                        kong.db.upstreams.schema, "upstream")
+      return create(self, db)
+    end
   },
 
   ["/upstreams/:upstreams/targets/all"] = {

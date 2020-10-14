@@ -118,6 +118,7 @@ cluster_cert_key = NONE
 cluster_mtls = shared
 cluster_ca_cert = NONE
 cluster_server_name = NONE
+cluster_data_plane_purge_delay = 1209600
 mem_cache_size = 128m
 ssl_cert = NONE
 ssl_cert_key = NONE
@@ -290,4 +291,5 @@ kic = off
 
 cluster_telemetry_listen = 0.0.0.0:8006
 cluster_telemetry_endpoint = 127.0.0.1:8006
+cluster_telemetry_server_name = NONE
 ]]
