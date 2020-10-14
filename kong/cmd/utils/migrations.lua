@@ -60,6 +60,9 @@ local function up(schema_state, db, opts)
     error("Cannot run migrations: " .. NEEDS_BOOTSTRAP_MSG)
   end
 
+  -- see #6105 for background, this is a workaround that gives a better
+  -- error message (one w/o the long stacktrace) when the pending
+  -- migration checks failed
   if not opts.force and schema_state.pending_migrations then
     error("Database has pending migrations; run 'kong migrations finish'")
   end
