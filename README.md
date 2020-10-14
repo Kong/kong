@@ -31,7 +31,7 @@ IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 ## Why Kong?
 
 If you are building for the web, mobile, or IoT (Internet of Things) you will
-likely end up needing common functionality to run your actual software. Kong
+likely end up needing common functionality to run your actual software. In that case, Kong
 can help by acting as a gateway (or a sidecar) for microservices requests while
 providing load balancing, logging, authentication, rate-limiting,
 transformations, and more through plugins.
@@ -95,7 +95,7 @@ Kong has been built with the following leading principles:
   APIs.
 
 For more info about plugins and integrations, you can check out the [Kong
-Hub](https://docs.konghq.com/hub/).
+Hub](https://docs.konghq.com/hub/). This may help you.😀
 
 ## Distributions
 
