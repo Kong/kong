@@ -456,7 +456,7 @@ function Kong.init()
   kong.db = db
   kong.dns = singletons.dns
 
-  if subsystem == "stream" or config.proxy_ssl_enabled then
+  if config.proxy_ssl_enabled or config.stream_ssl_enabled then
     certificate.init()
   end
 

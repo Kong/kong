@@ -759,6 +759,7 @@ describe("NGINX conf compiler", function()
           prefix = tmp_config.prefix,
           proxy_listen = "127.0.0.1:8000 ssl",
           admin_listen = "127.0.0.1:8001 ssl",
+          ssl_cipher_suite = "custom",
           ssl_cert = "spec/fixtures/kong_spec.crt",
           ssl_cert_key = "spec/fixtures/kong_spec.key",
           admin_ssl_cert = "spec/fixtures/kong_spec.crt",
@@ -784,6 +785,21 @@ describe("NGINX conf compiler", function()
         assert.truthy(exists(conf.admin_ssl_cert_key_default))
         assert.truthy(exists(conf.status_ssl_cert_default))
         assert.truthy(exists(conf.status_ssl_cert_key_default))
+      end)
+      it("generates default SSL DH params", function()
+        local conf = conf_loader(nil, {
+          prefix = tmp_config.prefix,
+          proxy_listen  = "127.0.0.1:8000 ssl",
+          admin_listen  = "127.0.0.1:8001 ssl",
+          status_listen = "127.0.0.1:8002 ssl",
+          stream_listen = "127.0.0.1:7000 ssl",
+        })
+
+        assert(prefix_handler.prepare_prefix(conf))
+        assert.truthy(exists(join(conf.prefix, "ssl")))
+        assert.truthy(exists(join(conf.prefix, "ssl", conf.ssl_dhparam .. ".pem")))
+        assert.truthy(exists(join(conf.prefix, "ssl", conf.nginx_http_ssl_dhparam .. ".pem")))
+        assert.truthy(exists(join(conf.prefix, "ssl", conf.nginx_stream_ssl_dhparam .. ".pem")))
       end)
     end)
 

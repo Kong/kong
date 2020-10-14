@@ -19,6 +19,53 @@ local ffi = require "ffi"
 local bit = require "bit"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
+
+local tonumber = tonumber
+local tostring = tostring
+local assert = assert
+local string = string
+local ipairs = ipairs
+local pairs = pairs
+local table = table
+local type = type
+local math = math
+local io = io
+local os = os
+
+
+local function gen_default_dhparams(kong_config)
+  for _, name in ipairs({ kong_config.nginx_http_ssl_dhparam, kong_config.nginx_stream_ssl_dhparam }) do
+    local pem
+    if name then
+      pem = openssl_pkey.paramgen({
+        type = "DH",
+        group = name,
+      })
+    end
+
+    if pem then
+      local ssl_path = pl_path.join(kong_config.prefix, "ssl")
+      if not pl_path.exists(ssl_path) then
+        local ok, err = pl_dir.makepath(ssl_path)
+        if not ok then
+          return nil, err
+        end
+      end
+
+      local param_file = pl_path.join(ssl_path, name .. ".pem")
+      if not pl_path.exists(param_file) then
+        log.verbose("generating %s DH parameters", name)
+        local fd = assert(io.open(param_file, "w+b"))
+        assert(fd:write(pem))
+        fd:close()
+      end
+    end
+  end
+
+  return true
+end
+
+
 local function gen_default_ssl_cert(kong_config, target)
   -- create SSL folder
   local ok, err = pl_dir.makepath(pl_path.join(kong_config.prefix, "ssl"))
@@ -145,7 +192,7 @@ local function compile_conf(kong_config, conf_template)
   do
     local worker_rlimit_nofile_auto
     if kong_config.nginx_main_directives then
-      for _, directive in pairs(kong_config.nginx_main_directives) do
+      for _, directive in ipairs(kong_config.nginx_main_directives) do
         if directive.name == "worker_rlimit_nofile" then
           if directive.value == "auto" then
             worker_rlimit_nofile_auto = directive
@@ -157,7 +204,7 @@ local function compile_conf(kong_config, conf_template)
 
     local worker_connections_auto
     if kong_config.nginx_events_directives then
-      for _, directive in pairs(kong_config.nginx_events_directives) do
+      for _, directive in ipairs(kong_config.nginx_events_directives) do
         if directive.name == "worker_connections" then
           if directive.value == "auto" then
             worker_connections_auto = directive
@@ -289,7 +336,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
 
   -- generate default SSL certs if needed
   if not kong_config.ssl_cert and not kong_config.ssl_cert_key and
-    (kong_config.proxy_ssl_enabled or kong_config.stream_listeners[1] ~= nil) then
+    (kong_config.proxy_ssl_enabled or kong_config.stream_proxy_ssl_enabled) then
     log.verbose("SSL enabled, no custom certificate set: using default certificate")
     local ok, err = gen_default_ssl_cert(kong_config)
     if not ok then
@@ -343,6 +390,14 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
       return nil, "no such file: " .. nginx_custom_template_path
     end
     nginx_template = pl_file.read(nginx_custom_template_path)
+  end
+
+  if kong_config.proxy_ssl_enabled or
+     kong_config.stream_proxy_ssl_enabled or
+     kong_config.admin_ssl_enabled or
+     kong_config.status_ssl_enabled
+  then
+    gen_default_dhparams(kong_config)
   end
 
   -- write NGINX conf
