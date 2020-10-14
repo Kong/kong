@@ -1,4 +1,5 @@
 local kong_default_conf = require "kong.templates.kong_defaults"
+local openssl_pkey = require "resty.openssl.pkey"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
@@ -34,6 +35,7 @@ local cipher_suites = {
                          .. "ECDHE-RSA-CHACHA20-POLY1305:"
                          .. "DHE-RSA-AES128-GCM-SHA256:"
                          .. "DHE-RSA-AES256-GCM-SHA384",
+                 dhparams = "ffdhe2048",
     prefer_server_ciphers = "off",
   },
                       old = {
@@ -187,6 +189,18 @@ local PREFIX_PATHS = {
   status_ssl_cert_default = {"ssl", "status-kong-default.crt"},
   status_ssl_cert_key_default = {"ssl", "status-kong-default.key"},
 }
+
+
+local function is_predefined_dhgroup(group)
+  if type(group) ~= "string" then
+    return false
+  end
+
+  return not not openssl_pkey.paramgen({
+    type = "DH",
+    group = group,
+  })
+end
 
 
 local function upstream_keepalive_deprecated_properties(conf)
@@ -524,6 +538,13 @@ local CONF_INFERENCES = {
       "nginx_stream_ssl_prefer_server_ciphers",
     },
   },
+  ssl_dhparam = {
+    typ = "string",
+    directives = {
+      "nginx_http_ssl_dhparam",
+      "nginx_stream_ssl_dhparam",
+    },
+  },
   ssl_session_tickets = {
     typ = "ngx_boolean",
     directives = {
@@ -837,8 +858,31 @@ local function check_and_infer(conf, opts)
       conf.nginx_stream_ssl_protocols = suite.protocols
       conf.nginx_stream_ssl_prefer_server_ciphers = suite.prefer_server_ciphers
 
+      -- There is no secure predefined one for old at the moment (and it's too slow to generate one).
+      -- Intermediate (the default) forcibly sets this to predefined ffdhe2048 group.
+      -- Modern just forcibly sets this to nil as there are no ciphers that need it.
+      if conf.ssl_cipher_suite ~= "old" then
+        conf.ssl_dhparam = suite.dhparams
+        conf.nginx_http_ssl_dhparam = suite.dhparams
+        conf.nginx_stream_ssl_dhparam = suite.dhparams
+      end
+
     else
       errors[#errors + 1] = "Undefined cipher suite " .. tostring(conf.ssl_cipher_suite)
+    end
+  end
+
+  if conf.ssl_dhparam then
+    if not is_predefined_dhgroup(conf.ssl_dhparam) and not pl_path.exists(conf.ssl_dhparam) then
+      errors[#errors + 1] = "ssl_dhparam: no such file at " .. conf.ssl_dhparam
+    end
+
+  else
+    for _, key in ipairs({ "nginx_http_ssl_dhparam", "nginx_stream_ssl_dhparam" }) do
+      local file = conf[key]
+      if file and not is_predefined_dhgroup(file) and not pl_path.exists(file) then
+        errors[#errors + 1] = key .. ": no such file at " .. file
+      end
     end
   end
 
@@ -1531,6 +1575,31 @@ local function load(path, custom_conf, opts)
   if conf.admin_ssl_cert and conf.admin_ssl_cert_key then
     conf.admin_ssl_cert = pl_path.abspath(conf.admin_ssl_cert)
     conf.admin_ssl_cert_key = pl_path.abspath(conf.admin_ssl_cert_key)
+  end
+
+  local ssl_enabled = conf.proxy_ssl_enabled or
+                      conf.stream_proxy_ssl_enabled or
+                      conf.admin_ssl_enabled or
+                      conf.status_ssl_enabled
+
+  for _, name in ipairs({ "nginx_http_directives", "nginx_stream_directives" }) do
+    for i, directive in ipairs(conf[name]) do
+      if directive.name == "ssl_dhparam" then
+        if is_predefined_dhgroup(directive.value) then
+          if ssl_enabled then
+            directive.value = pl_path.abspath(pl_path.join(conf.prefix, "ssl", directive.value .. ".pem"))
+
+          else
+            table.remove(conf[name], i)
+          end
+
+        else
+          directive.value = pl_path.abspath(directive.value)
+        end
+
+        break
+      end
+    end
   end
 
   if conf.lua_ssl_trusted_certificate

@@ -735,6 +735,25 @@ describe("Configuration loader", function()
           assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
+        it("requires SSL DH param file to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            ssl_cipher_suite = "custom",
+            ssl_dhparam = "/path/dhparam.pem"
+          })
+          assert.equal(1, #errors)
+          assert.contains("ssl_dhparam: no such file at /path/dhparam.pem", errors)
+          assert.is_nil(conf)
+
+          conf, _, errors = conf_loader(nil, {
+            ssl_cipher_suite = "custom",
+            nginx_http_ssl_dhparam = "/path/dhparam-http.pem",
+            nginx_stream_ssl_dhparam = "/path/dhparam-stream.pem",
+          })
+          assert.equal(2, #errors)
+          assert.contains("nginx_http_ssl_dhparam: no such file at /path/dhparam-http.pem", errors)
+          assert.contains("nginx_stream_ssl_dhparam: no such file at /path/dhparam-stream.pem", errors)
+          assert.is_nil(conf)
+        end)
         it("requires trusted CA cert file to exist", function()
           local conf, _, errors = conf_loader(nil, {
             lua_ssl_trusted_certificate = "/path/cert.pem",
@@ -823,6 +842,36 @@ describe("Configuration loader", function()
           })
           assert.is_nil(err)
           assert.same(nil, conf.ssl_ciphers)
+        end)
+        it("defines ssl_dhparam with default cipher suite", function()
+          local conf, err = conf_loader()
+          assert.is_nil(err)
+          assert.equal("ffdhe2048", conf.nginx_http_ssl_dhparam)
+          assert.equal("ffdhe2048", conf.nginx_stream_ssl_dhparam)
+        end)
+        it("defines ssl_dhparam with intermediate cipher suite", function()
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "intermediate",
+          })
+          assert.is_nil(err)
+          assert.equal("ffdhe2048", conf.nginx_http_ssl_dhparam)
+          assert.equal("ffdhe2048", conf.nginx_stream_ssl_dhparam)
+        end)
+        it("doesn't define ssl_dhparam with modern cipher suite", function()
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "modern",
+          })
+          assert.is_nil(err)
+          assert.equal(nil, conf.nginx_http_ssl_dhparam)
+          assert.equal(nil, conf.nginx_stream_ssl_dhparam)
+        end)
+        it("doesn't define ssl_dhparam with old cipher suite (#todo)", function()
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "old",
+          })
+          assert.is_nil(err)
+          assert.equal(nil, conf.nginx_http_ssl_dhparam)
+          assert.equal(nil, conf.nginx_stream_ssl_dhparam)
         end)
       end)
       describe("client", function()

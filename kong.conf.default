@@ -500,6 +500,18 @@
                                  #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_prefer_server_ciphers
 
+#ssl_dhparam =                   # Defines DH parameters for DHE ciphers from the
+                                 # predefined groups: `ffdhe2048`, `ffdhe3072`,
+                                 # `ffdhe4096`, `ffdhe6144`, `ffdhe8192`, or
+                                 # from the absolute path to a parameters file.
+                                 #
+                                 # This value is ignored if `ssl_cipher_suite`
+                                 # is `modern` or `intermediate`. The reason is
+                                 # that `modern` has no ciphers that needs this,
+                                 # and `intermediate` uses `ffdhe2048`.
+                                 #
+                                 # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_dhparam
+
 #ssl_session_tickets = on        # Enables or disables session resumption through
                                  # TLS session tickets. This has no impact when
                                  # used with TLSv1.3.
