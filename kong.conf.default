@@ -246,7 +246,7 @@
                          # How many seconds must pass from the time a DP node
                          # becomes offline to the time its entry gets removed
                          # from the database, as returned by the
-                         # /clustering/data_planes Admin API endpoint.
+                         # /clustering/data-planes Admin API endpoint.
                          #
                          # This is to prevent the cluster data plane table from
                          # growing indefinitely. The default is set to
