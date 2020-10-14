@@ -1,4 +1,5 @@
 local fmt = string.format
+local ipairs = ipairs
 local md5 = ngx.md5
 local type = type
 local pairs = pairs
@@ -31,15 +32,18 @@ end
 local function generate_key_from(args, vary_fields)
   local cache_key = {}
 
-  for _, field in pairs(vary_fields or {}) do
+  for _, field in ipairs(vary_fields or {}) do
     local arg = args[field]
     if arg then
       if type(arg) == "table" then
         sort(arg)
         insert(cache_key, field .. "=" .. concat(arg, ","))
 
+      elseif arg == true then
+        insert(cache_key, field)
+
       else
-        insert(cache_key, field .. "=" .. arg)
+        insert(cache_key, field .. "=" .. tostring(arg))
       end
     end
   end
