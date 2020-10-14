@@ -1,132 +1,42 @@
-local fmt = string.format
-
-
-local function pg_clean_repeated_targets(connector, upstream_id)
-  local targets_query = fmt("SELECT id, created_at, target FROM targets WHERE upstream_id = '%s'", upstream_id)
-  for target, err in connector:iterate(targets_query) do
-    if err then
-      return nil, err
-    end
-    local rep_tgt_query = fmt("SELECT id, created_at, target FROM targets WHERE upstream_id = '%s' AND target = '%s' AND id <> '%s'",
-                              upstream_id, target.target, target.id)
-    for rep_tgt, err in connector:iterate(rep_tgt_query) do
-      if err then
-        return nil, err
-      end
-      local tgt_to_clean
-      if target.created_at >= rep_tgt.created_at then
-        tgt_to_clean = rep_tgt
-      else
-        tgt_to_clean = target
-      end
-
-      local del_tgt_query = fmt("DELETE FROM targets WHERE id = '%s';", tgt_to_clean.id)
-      local _, err = connector:query(del_tgt_query)
-      if err then
-        return nil, err
-      end
-    end
-  end
-
-  return true
-end
-
-
 -- remove repeated targets, the older ones are not useful anymore. targets with
 -- weight 0 will be kept, as we cannot tell which were deleted and which were
 -- explicitly set as 0.
-local function pg_remove_unused_targets(connector)
-  for upstream, err in connector:iterate("SELECT id FROM upstreams") do
+local function c_remove_unused_targets(coordinator)
+  local cassandra = require "cassandra"
+  local upstream_targets = {}
+  for row, err in coordinator:iterate("SELECT id, upstream_id, target, created_at FROM targets") do
     if err then
       return nil, err
     end
 
-    local upstream_id = upstream and upstream.id
-    if not upstream_id then
-      return nil, err
+    local key = string.format("%s:%s", row.upstream_id, row.target)
+
+    if not upstream_targets[key] then
+      upstream_targets[key] = { n = 0 }
     end
 
-    local _, err = pg_clean_repeated_targets(connector, upstream_id)
-    if err then
-      return nil, err
-    end
-
+    upstream_targets[key].n = upstream_targets[key].n + 1
+    upstream_targets[key][upstream_targets[key].n] = { row.id, row.created_at }
   end
 
-  return true
-end
-
-
-local function c_clean_repeated_targets(coordinator, upstream_id)
-  local cassandra = require 'cassandra'
-  local rows, err = coordinator:execute(
-    "SELECT id, created_at, target FROM targets WHERE upstream_id = ?",
-    { cassandra.uuid(upstream_id), }
-  )
-  if err then
-    return nil, err
+  local sort = function(a, b)
+    return a[2] > b[2]
   end
 
-  for i = 1, #rows do
-    local target = rows[i]
-    local rep_tgt_rows, err = coordinator:execute(
-      "SELECT id, created_at, target FROM targets "..
-      "WHERE upstream_id = ? AND target = ? ALLOW FILTERING",
-      {
-        cassandra.uuid(upstream_id),
-        cassandra.text(target.target),
-      }
-    )
-    if err then
-      return nil, err
-    end
+  for _, targets in pairs(upstream_targets) do
+    if targets.n > 1 then
+      table.sort(targets, sort)
 
-    for j = i, #rep_tgt_rows do
-      local rep_tgt = rep_tgt_rows[j]
-      if rep_tgt.id ~= target.id then
-        local tgt_to_clean
-        if target.created_at >= rep_tgt.created_at then
-          tgt_to_clean = rep_tgt
-        else
-          tgt_to_clean = target
-        end
+      for i = 2, targets.n do
+        local _, err = coordinator.execute("DELETE FROM targets WHERE id = ?", {
+          cassandra.uuid(targets[i][1])
+        })
 
-        local _, err = coordinator:execute(
-          "DELETE FROM targets WHERE id = ?",
-          { cassandra.uuid(tgt_to_clean.id) }
-        )
         if err then
           return nil, err
         end
       end
     end
-  end
-
-  return true
-end
-
-
--- remove repeated targets, the older ones are not useful anymore. targets with
--- weight 0 will be kept, as we cannot tell which were deleted and which were
--- explicitly set as 0.
-local function c_remove_unused_targets(coordinator)
-  for rows, err in coordinator:iterate("SELECT id FROM upstreams") do
-    if err then
-      return nil, err
-    end
-
-    for i = 1, #rows do
-      local upstream_id = rows[i] and rows[i].id
-      if not upstream_id then
-        return nil, err
-      end
-
-      local _, err = c_clean_repeated_targets(coordinator, upstream_id)
-      if err then
-        return nil, err
-      end
-    end
-
   end
 
   return true
@@ -163,7 +73,14 @@ return {
       $$;
     ]],
     teardown = function(connector)
-      local _, err = pg_remove_unused_targets(connector)
+      local _, err = connector:query([[
+        DELETE FROM targets t1
+              USING targets t2
+              WHERE t1.created_at < t2.created_at
+                AND t1.upstream_id = t2.upstream_id
+                AND t1.target = t2.target;
+        ]])
+
       if err then
         return nil, err
       end
