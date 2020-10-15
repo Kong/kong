@@ -13,6 +13,7 @@ local cassandra = require "cassandra"
 
 
 local default_ws_id = uuid.generate_v4()
+local ws_id
 
 
 local function render(template, keys)
@@ -21,6 +22,10 @@ end
 
 
 local function cassandra_get_default_ws(coordinator)
+  if ws_id then
+    return ws_id
+  end
+
   local rows, err = coordinator:execute("SELECT id FROM workspaces WHERE name='default'", nil, {
     consistency = cassandra.consistencies.serial,
   })
@@ -29,13 +34,15 @@ local function cassandra_get_default_ws(coordinator)
   end
 
   if not rows
-     or not rows[1]
-     or not rows[1].id
+  or not rows[1]
+  or not rows[1].id
   then
     return nil
   end
 
-  return rows[1].id
+  ws_id = rows[1].id
+
+  return ws_id
 end
 
 
