@@ -754,14 +754,18 @@ describe("Admin API #" .. strategy, function()
           },
           headers = { ["Content-Type"] = "application/json" }
         })
-        assert.response(res).has.status(204)
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.is_string(json.id)
+        assert.are.equal(target.target, json.target)
+        assert.are.equal(659, json.weight)
 
         local res = assert(client:send {
           method = "GET",
           path = "/upstreams/" .. upstream.name .. "/targets/"  .. target.target,
         })
         assert.response(res).has.status(200)
-        local json = assert.response(res).has.jsonbody()
+        json = assert.response(res).has.jsonbody()
         assert.is_string(json.id)
         assert.are.equal(659, json.weight)
 
