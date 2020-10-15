@@ -17,6 +17,13 @@ return {
             required = false,
           },
         },
+        {
+          allow_origin_header = {
+            type = "string",
+            required = false,
+            default = "*",
+          },
+        },
       },
     }, },
   },

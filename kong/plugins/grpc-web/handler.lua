@@ -34,9 +34,10 @@ local CORS_HEADERS = {
 }
 
 function grpc_web:access(conf)
-  kong_response_set_header("Access-Control-Allow-Origin", "*")
+  kong_response_set_header("Access-Control-Allow-Origin", conf.allow_origin_header)
 
   if kong_request_get_method() == "OPTIONS" then
+    CORS_HEADERS["Access-Control-Allow-Origin"] = conf.allow_origin_header
     return kong_response_exit(200, "OK", CORS_HEADERS)
   end
 
