@@ -33,7 +33,6 @@ local function cassandra_get_default_ws(coordinator)
     return nil, err
   end
 
-  if not rows
   if not rows or not rows[1] or not rows[1].id then
     return nil
   end
