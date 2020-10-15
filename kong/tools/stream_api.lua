@@ -19,9 +19,10 @@ function stream_api.serve()
   local handler = path and _endpoints[path]
   if handler then
     req:exit(handler(req))
-  end
 
-  req:exit(req:response("404 Not Found"))
+  else
+    req:exit(req:response("404 Not Found"))
+  end
 end
 
 
