@@ -8,7 +8,7 @@ contributors and maintainers.
 
 Consult the Table of Contents below, and jump to the desired section.
 
-## Table of Contents
+## Table of Contents:
 
 - [Where to seek for help?](#where-to-seek-for-help)
   - [Enterprise Edition](#enterprise-edition)
@@ -30,7 +30,7 @@ Consult the Table of Contents below, and jump to the desired section.
 
 ## Where to seek for help?
 
-### Enterprise Edition
+### Enterprise Edition:
 
 If you are a Kong Enterprise customer, contact the Enterprise Support channels
 by opening an Enterprise support ticket on
@@ -46,7 +46,7 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 
 [Back to TOC](#table-of-contents)
 
-### Community Edition
+### Community Edition:
 
 There are several channels where you can get answers from the community
 or the maintainers of this project:
@@ -112,7 +112,7 @@ patch](#submitting-a-patch) section.
 
 [Back to TOC](#table-of-contents)
 
-### Improving the documentation
+### Improving the documentation:
 
 The documentation hosted at https://docs.konghq.com is open source and built
 with [Jekyll](https://jekyllrb.com/). You are welcome to propose changes to it
@@ -124,7 +124,7 @@ https://github.com/Kong/docs.konghq.com/
 
 [Back to TOC](#table-of-contents)
 
-### Proposing a new plugin
+### Proposing a new plugin:
 
 We **do not** accept new plugins into the core repository. The plugins that are
 currently part of this repository are there because of historical reasons, but
@@ -152,7 +152,7 @@ To give visibility to your plugin, we advise that you:
 
 [Back to TOC](#table-of-contents)
 
-### Submitting a patch
+### Submitting a patch:
 
 Feel free to contribute fixes or minor features, we love to receive Pull
 Requests! If you are planning to develop a larger feature, come talk to us
@@ -197,7 +197,7 @@ not forget to include your name if you are an external contributor. :wink:
 
 [Back to TOC](#table-of-contents)
 
-#### Git branches
+#### Git branches:
 
 We work on two branches: `master`, where non-breaking changes land, and `next`,
 where important features or breaking changes land in-between major releases.
@@ -218,7 +218,7 @@ naming scheme when pushing your branch(es):
 
 [Back to TOC](#table-of-contents)
 
-#### Commit atomicity
+#### Commit atomicity:
 
 When submitting patches, it is important that you organize your commits in
 logical units of work. You are free to propose a patch with one or many
@@ -241,7 +241,7 @@ also help you respect this mantra (see the below section).
 
 [Back to TOC](#table-of-contents)
 
-#### Commit message format
+#### Commit message format:
 
 To maintain a healthy Git history, we ask of you that you write your commit
 messages as follows:
@@ -262,7 +262,7 @@ Here is a template of what your commit message should look like:
 <footer>
 ```
 
-##### Type
+##### Type:
 
 The type of your commit indicates what type of change this commit is about. The
 accepted types are:
@@ -282,7 +282,7 @@ accepted types are:
   considered part of a refactor, build process updates, dependency bumps, or
   auxiliary tools and libraries updates (LuaRocks, Travis-ci, etc...).
 
-##### Scope
+##### Scope:
 
 The scope is the part of the codebase that is affected by your change. Choosing
 it is at your discretion, but here are some of the most frequent ones:
@@ -304,7 +304,7 @@ it is at your discretion, but here are some of the most frequent ones:
 - `*`: When the change affects too many parts of the codebase at once (this
   should be rare and avoided)
 
-##### Subject
+##### Subject:
 
 Your subject should contain a succinct description of the change. It should be
 written so that:
@@ -313,7 +313,7 @@ written so that:
 - It is **not** capitalized: "fix typo", and not "Fix typo"
 - It does **not** include a period. :smile:
 
-##### Body
+##### Body:
 
 The body of your commit message should contain a detailed description of your
 changes. Ideally, if the change is significant, you should explain its
@@ -322,7 +322,7 @@ motivation, the chosen implementation, and justify it.
 As previously mentioned, lines in the commit messages should not exceed 72
 characters.
 
-##### Footer
+##### Footer:
 
 The footer is the ideal place to link to related material about the change:
 related GitHub issues, Pull Requests, fixed bug reports, etc...
@@ -359,7 +359,7 @@ the case.
 
 [Back to TOC](#table-of-contents)
 
-#### Static linting
+#### Static linting:
 
 As mentioned in the guidelines to submit a patch, the linter must succeed. We
 use [Luacheck](https://github.com/mpeterv/luacheck) to statically lint our Lua
@@ -493,7 +493,7 @@ language you are using. :smile:
 
 [Back to TOC](#table-of-contents)
 
-### Contributor T-shirt
+### Contributor T-shirt:
 
 If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was
 accepted, and it fixes a bug, adds functionality, or makes it significantly
@@ -508,7 +508,7 @@ Proudly wear your T-shirt and show it to us by tagging
 
 [Back to TOC](#table-of-contents)
 
-## Code style
+## Code style:
 
 In order to ensure a healthy and consistent codebase, we ask of you that you
 respect the adopted code style. This section contains a non-exhaustive list
@@ -528,7 +528,7 @@ the recommended style are welcome!**
 
 [Back to TOC](#table-of-contents)
 
-### Table of Contents - Code style
+### Table of Contents - Code style:
 
 - [Modules](#modules)
 - [Variables](#variables)
@@ -653,7 +653,7 @@ local str = "hello " .. "world"
 
 [Back to code style TOC](#table-of-contents---code-style)
 
-### Functions
+### Functions:
 
 Prefer the function syntax over variable syntax:
 
