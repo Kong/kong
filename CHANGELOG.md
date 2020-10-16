@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.2.0-beta.1](#220-beta1)
+- [2.2.0-rc.1](#220-rc1)
 - [2.1.4](#214)
 - [2.1.3](#213)
 - [2.1.2](#212)
@@ -50,19 +50,17 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.2.0-beta.1]
+## [2.2.0-rc.1]
 
 > Released 2020/10/02
 
-This is a *beta* pre-release of the upcoming Kong 2.2 series. There are no
-breaking changes with respect to the 2.x series. Being a beta pre-release,
-development for 2.2 is now in *feature freeze*: only bugfixes are going to be
-merged between this release and Kong 2.2.0. This is now the time to test the
-new features and report any issues!
+This is a release candidate for the upcoming Kong 2.2 release. There are no
+breaking changes with respect to the 2.x series. If no serious issues are
+reported, this release will effectively be promoted to the stable 2.2.0 release.
+This is now the time to test the new features and report any issues!
 
 This changelog entry all new features and fixes for the 2.2.0 series, including
-changes previously added in the 2.2.0-alpha.1 release.
-, and all fixes from Kong 2.1.4.
+changes previously added in the 2.2.0-alpha.1 and 2.2.0-beta.1 releases.
 
 ### Dependencies
 
@@ -137,6 +135,13 @@ repository will allow you to do both easily.
 
 ##### Admin API
 
+- Hybrid Mode: new endpoint `/clustering/data-planes` which returns complete
+  information about all Data Plane nodes that are connected to the Control
+  Plane cluster, regardless of the Control Plane node to which they connected.
+  * :warning: The `/clustering/status` endpoint is now deprecated, since it
+    returns only information about Data Plane nodes directly connected to the
+    Control Plane node to which the Admin API request was made, and is
+    superseded by `/clustering/data-planes`.
 - Admin API responses now honor the `headers` configuration setting for
   including or removing the `Server` header.
   [#6371](https://github.com/Kong/kong/pull/6371)
@@ -175,6 +180,8 @@ repository will allow you to do both easily.
 - correlation-id: the plugin now generates a correlation-id value by default
   if the correlation id header arrives but is empty.
   [#6358](https://github.com/Kong/kong/pull/6358)
+
+
 ## [2.1.4]
 
 > Released 2020/09/18
@@ -5516,7 +5523,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.2.0-beta.1]: https://github.com/Kong/kong/compare/2.1.3...2.2.0-beta.1
+[2.2.0-rc.1]: https://github.com/Kong/kong/compare/2.1.3...2.2.0-rc.1
 [2.1.4]: https://github.com/Kong/kong/compare/2.1.3...2.1.4
 [2.1.3]: https://github.com/Kong/kong/compare/2.1.2...2.1.3
 [2.1.2]: https://github.com/Kong/kong/compare/2.1.1...2.1.2
