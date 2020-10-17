@@ -267,18 +267,18 @@ Here is a template of what your commit message should look like:
 The type of your commit indicates what type of change this commit is about. The
 accepted types are:
 
-- **feat**: A new feature
-- **fix**: A bug fix
-- **hotfix**: An urgent bug fix during a release process
-- **tests**: A change that is purely related to the test suite only (fixing
+- **Feat**: A new feature
+- **Fix**: A bug fix
+- **Hotfix**: An urgent bug fix during a release process
+- **Tests**: A change that is purely related to the test suite only (fixing
   a test, adding a test, improving its reliability, etc...)
-- **docs**: Changes to the README.md, this file, or other such documents
-- **style**: Changes that do not affect the meaning of the code (white-space
+- **Docs**: Changes to the README.md, this file, or other such documents
+- **Style**: Changes that do not affect the meaning of the code (white-space
   trimming, formatting, etc...)
-- **perf**: A code change that significantly improves performance
-- **refactor**: A code change that neither fixes a bug nor adds a feature, and
+- **Perf**: A code change that significantly improves performance
+- **Refactor**: A code change that neither fixes a bug nor adds a feature, and
   is too big to be considered just `perf`
-- **chore**: Maintenance changes related to code cleaning that isn't
+- **Chore**: Maintenance changes related to code cleaning that isn't
   considered part of a refactor, build process updates, dependency bumps, or
   auxiliary tools and libraries updates (LuaRocks, Travis-ci, etc...).
 
@@ -287,19 +287,19 @@ accepted types are:
 The scope is the part of the codebase that is affected by your change. Choosing
 it is at your discretion, but here are some of the most frequent ones:
 
-- **proxy**: A change that affects the proxying of requests
+- **Proxy**: A change that affects the proxying of requests
 - **router**: A change that affects the router, which matches a request to the
   desired configured API
-- **admin**: A change to the Admin API
+- **Admin**: A change to the Admin API
 - **balancer**: Changes related to the internal Load Balancer
-- **core**: Changes affecting a large part of the core, and touching many parts
+- **Core**: Changes affecting a large part of the core, and touching many parts
   such as `proxy`, `balancer`, `dns`
 - **dns**: Changes related to internal DNS resolution
-- **dao**: A change related to the DAO, the interface to the datastores
+- **DAO**: A change related to the DAO, the interface to the datastores
 - **cli**: Changes to the CLI
-- **cache**: Changes to the configuration entities caching (datastore entities)
-- **deps**: When updating dependencies (to be used with the `chore` prefix)
-- **conf**: Configuration-related changes (new values, improvements...)
+- **Cache**: Changes to the configuration entities caching (datastore entities)
+- **Deps**: When updating dependencies (to be used with the `chore` prefix)
+- **Conf**: Configuration-related changes (new values, improvements...)
 - **`<plugin-name>`**: This could be `basic-auth`, or `ldap` for example
 - `*`: When the change affects too many parts of the codebase at once (this
   should be rare and avoided)
