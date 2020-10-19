@@ -264,6 +264,10 @@ When developing, you can use the `Makefile` for doing the following operations:
 If you are working in a large organization you should learn more about [Kong
 Enterprise](https://konghq.com/kong-enterprise-edition/).
 
+## Contributions
+
+Contribution to this repository is always welcome. Please read [contributing.md](https://github.com/Kong/kong/blob/master/CONTRIBUTING.md) , [Code-of-Conduct.md](https://github.com/Kong/kong/blob/master/CODE_OF_CONDUCT.md), [Copyrights.md](https://github.com/Kong/kong/blob/master/COPYRIGHT) and [Developer.md](https://github.com/Kong/kong/blob/master/COPYRIGHT) before contributing.
+
 ## License
 
 ```
