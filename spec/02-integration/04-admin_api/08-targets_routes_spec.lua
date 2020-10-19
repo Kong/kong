@@ -113,6 +113,43 @@ describe("Admin API #" .. strategy, function()
         end
       end)
 
+      it_content_types("updates and does not create duplicated targets (#deprecated)", function(content_type)
+        return function()
+          local upstream = bp.upstreams:insert { slots = 10 }
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams/" .. upstream.name .. "/targets/",
+            body = {
+              target = "single-target.test:8080",
+              weight = 1,
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("single-target.test:8080", json.target)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          local id = json.id
+          assert.are.equal(1, json.weight)
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams/" .. upstream.name .. "/targets/",
+            body = {
+              target = "single-target.test:8080",
+              weight = 100,
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.response(res).has.status(200)
+          local json = cjson.decode(body)
+          assert.are.equal(100, json.weight)
+          assert.are.equal(id, json.id)
+          assert.equal("true", res.headers["Deprecation"])
+        end
+      end)
+
       describe("errors", function()
         it("handles malformed JSON body", function()
           local upstream = bp.upstreams:insert { slots = 10 }
@@ -201,28 +238,26 @@ describe("Admin API #" .. strategy, function()
       before_each(function()
         upstream = bp.upstreams:insert {}
 
-        -- testing various behaviors
-        -- for each index in weights, create a number of targets,
-        -- each with its weight as each element of the sub-array
-        local weights = {
-          { 10, 0 },        -- two targets, eventually resulting in down
-          { 10, 0, 10 },    -- three targets, eventually resulting in up
-          { 10 },           -- one target, up
-          { 10, 10 },       -- two targets, up (we should only see one)
-          { 10, 50, 0 },    -- three targets, two up in a row, eventually down
-          { 10, 0, 20, 0 }, -- four targets, eventually down
+        apis[1] = bp.targets:insert {
+          target = "api-1:80",
+          weight = 10,
+          upstream = { id = upstream.id },
         }
-
-        for i = 1, #weights do
-          for j = 1, #weights[i] do
-            ngx.sleep(0.01)
-            apis[i] = bp.targets:insert {
-              target = "api-" .. tostring(i) .. ":80",
-              weight = weights[i][j],
-              upstream = { id = upstream.id },
-            }
-          end
-        end
+        apis[2] = bp.targets:insert {
+          target = "api-2:80",
+          weight = 0,
+          upstream = { id = upstream.id },
+        }
+        apis[3] = bp.targets:insert {
+          target = "api-3:80",
+          weight = 50,
+          upstream = { id = upstream.id },
+        }
+        apis[4] = bp.targets:insert {
+          target = "api-4:80",
+          weight = 10,
+          upstream = { id = upstream.id },
+        }
       end)
 
       it("only shows active targets", function()
@@ -241,9 +276,8 @@ describe("Admin API #" .. strategy, function()
           assert.equal(apis[4].id, json.data[1].id)
 
           -- validate the remaining returned targets
-          -- note the backwards order, because we walked the targets backwards
           assert.equal(apis[3].target, json.data[2].target)
-          assert.equal(apis[2].target, json.data[3].target)
+          assert.equal(apis[1].target, json.data[3].target)
         end
       end)
 
@@ -269,29 +303,22 @@ describe("Admin API #" .. strategy, function()
 
       local function add_targets(target_fmt)
         local targets = {}
-        local weights = {
-          { 10, 0 },
-          { 10 },
-          { 10 },
-          { 10, 10 },
-        }
+        local weights = { 0, 10, 10, 10 }
 
         for i = 1, #weights do
-          for j = 1, #weights[i] do
-            local status, body = client_send({
-              method = "POST",
-              path = "/upstreams/" .. upstream.name .. "/targets",
-              headers = {
-                ["Content-Type"] = "application/json",
-              },
-              body = {
-                target = string.format(target_fmt, i),
-                weight = weights[i][j],
-              }
-            })
-            assert.same(201, status)
-            targets[i] = assert(cjson.decode(body))
-          end
+          local status, body = client_send({
+            method = "POST",
+            path = "/upstreams/" .. upstream.name .. "/targets",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              target = string.format(target_fmt, i),
+              weight = weights[i],
+            }
+          })
+          assert.same(201, status)
+          targets[i] = assert(cjson.decode(body))
         end
         return targets
       end
@@ -791,7 +818,9 @@ describe("Admin API #" .. strategy, function()
         }
       end)
 
-      it("acts as a sugar method to POST (by id)", function()
+      it("updates target (by id)", function()
+        -- update the target port
+        target.target = target.target .. "1"
         local res = client:put("/upstreams/" .. upstream.name .. "/targets/" .. target.id, {
           body = {
             target = target.target
@@ -799,37 +828,31 @@ describe("Admin API #" .. strategy, function()
           headers = { ["Content-Type"] = "application/json" }
         })
 
-        -- the targets cannot be updated nor deleted, they are only rotated
-        assert.response(res).has.status(400)
-        local err = assert.response(res).has.jsonbody()
-        assert.equal("primary key violation on key '{id=\"" .. target.id .. "\"}'", err.message)
-
+        assert.response(res).has.status(200)
         res = client:get("/upstreams/" .. upstream.name .. "/targets/" .. target.id)
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
         json.tags = nil
         assert.same(target, json)
+      end)
 
-        local uuid = utils.uuid()
-        local res = client:put("/upstreams/" .. upstream.name .. "/targets/" .. uuid, {
+      it("updates target (by target)", function()
+        local res = client:put("/upstreams/" .. upstream.name .. "/targets/" .. target.target, {
           body = {
-            target = target.target
+            -- update the target port
+            target = target.target .. "1"
           },
           headers = { ["Content-Type"] = "application/json" }
         })
         assert.response(res).has.status(200)
         local tgt = assert.response(res).has.jsonbody()
 
-        res = client:get("/upstreams/" .. upstream.name .. "/targets/" .. uuid)
-        assert.response(res).has.status(200)
-        local json = assert.response(res).has.jsonbody()
-        assert.same(tgt, json)
-      end)
+        -- the previous one should not exist now
+        res = client:get("/upstreams/" .. upstream.name .. "/targets/" .. target.target)
+        assert.response(res).has.status(404)
 
-      it("acts as a sugar method to POST (by target)", function()
-        local res = client:put("/upstreams/" .. upstream.name .. "/targets/" .. target.target)
-        assert.response(res).has.status(200)
-        local tgt = assert.response(res).has.jsonbody()
+        -- now check the updated one
+        target.target = target.target .. "1"
         res = client:get("/upstreams/" .. upstream.name .. "/targets/" .. target.target)
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()

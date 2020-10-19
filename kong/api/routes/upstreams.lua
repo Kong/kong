@@ -112,6 +112,21 @@ local function target_endpoint(self, db, callback)
 end
 
 
+local function update_existent_target(self, db)
+  local upstream = endpoints.select_entity(self, db, db.upstreams.schema)
+  local filter = { target = unescape_uri(self.params.target) }
+  local opts = endpoints.extract_options(self.args.uri, db.targets.schema, "select")
+  local target = db.targets:select_by_upstream_filter(upstream, filter, opts)
+
+  if target then
+    self.params.targets = db.targets.schema:extract_pk_values(target)
+    return endpoints.update_entity(self, db, db.targets.schema)
+  end
+
+  return nil
+end
+
+
 return {
   ["/upstreams/:upstreams/health"] = {
     GET = function(self, db)
@@ -166,6 +181,16 @@ return {
                                             "upstream",
                                             "page_for_upstream"),
     POST = function(self, db)
+      -- updating a target using POST is a compatibility with existent API and
+      -- should be deprecated in next major version
+      local entity, _, err_t = update_existent_target(self, db)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+      if entity then
+        return kong.response.exit(200, entity, { ["Deprecation"] = "true" })
+      end
+
       local create = endpoints.post_collection_endpoint(kong.db.targets.schema,
                         kong.db.upstreams.schema, "upstream")
       return create(self, db)
@@ -211,6 +236,9 @@ return {
       return target_endpoint(self, db, select_target_cb)
     end,
     PATCH = function(self, db)
+      return target_endpoint(self, db, update_target_cb)
+    end,
+    PUT = function(self, db)
       return target_endpoint(self, db, update_target_cb)
     end,
   },
