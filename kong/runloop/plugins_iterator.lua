@@ -132,13 +132,13 @@ local function load_configuration_through_combos(ctx, combos, plugin)
   local service  = ctx.service
   local consumer = ctx.authenticated_consumer
 
-  if route and plugin.no_route then
+  if route and plugin.handler.no_route then
     route = nil
   end
-  if service and plugin.no_service then
+  if service and plugin.handler.no_service then
     service = nil
   end
-  if consumer and plugin.no_consumer then
+  if consumer and plugin.handler.no_consumer then
     consumer = nil
   end
 
