@@ -123,9 +123,15 @@ dependencies: grpcurl
 	done;
 
 grpcurl:
+ifeq ($(MACHINE) , ppc64le)
+	@git clone https://github.com/fullstorydev/grpcurl  
+	@go get github.com/fullstorydev/grpcurl/... 	
+	@go install github.com/fullstorydev/grpcurl/cmd/grpcurl
+else
 	@curl -s -S -L \
 		https://github.com/fullstorydev/grpcurl/releases/download/v1.3.0/grpcurl_1.3.0_$(GRPCURL_OS)_$(MACHINE).tar.gz | tar xz -C bin;
 	@rm bin/LICENSE
+endif
 
 dev: remove install dependencies
 
