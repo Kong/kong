@@ -146,6 +146,7 @@ describe("Admin API #" .. strategy, function()
           local json = cjson.decode(body)
           assert.are.equal(100, json.weight)
           assert.are.equal(id, json.id)
+          assert.equal("true", res.headers["Deprecation"])
         end
       end)
 
