@@ -912,19 +912,30 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
       }), true))
 
     elseif args.grant_type == "client_credentials" then
-      if not args.client_id or not args.client_secret then
+      if not ((args.client_id and args.client_secret) or args.assertion) then
         return nil, "no credentials given for client credentials grant"
       end
 
-      key = cache_key(encode_base64(hash.S256(concat {
-        iss,
-        "#grant_type=client_credentials&",
-        args.client_id,
-        "&",
-        args.client_secret,
-        salt and "&",
-        salt,
-      }), true))
+      if args.assertion then
+        key = cache_key(encode_base64(hash.S256(concat {
+          iss,
+          "#grant_type=client_credentials&",
+          args.assertion,
+          salt and "&",
+          salt,
+        }), true))
+
+      else
+        key = cache_key(encode_base64(hash.S256(concat {
+          iss,
+          "#grant_type=client_credentials&",
+          args.client_id,
+          "&",
+          args.client_secret,
+          salt and "&",
+          salt,
+        }), true))
+      end
     end
 
     if flush and key then

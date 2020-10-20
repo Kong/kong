@@ -47,6 +47,9 @@ local TOKEN_DECODE_OPTS = {
 }
 
 
+local JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+
+
 local function rediscover_keys(issuer, options)
   return function()
     return cache.issuers.rediscover(issuer, options)
@@ -549,10 +552,13 @@ function OICHandler.access(_, conf)
             usr, pwd, loc1 = args.get_credentials("password", "username",  "password")
           end
 
-          local cid, sec, loc2
+          local cid, sec, loc2, assertion, loc3
           if auth_methods.client_credentials then
             log("trying to find credentials for client credentials grant")
             cid, sec, loc2 = args.get_credentials("client_credentials", "client_id", "client_secret")
+            if not cid or not sec then
+              assertion, loc3 = args.get_credentials(JWT_BEARER_GRANT, "assertion")
+            end
           end
 
           if usr and pwd and cid and sec then
@@ -569,6 +575,23 @@ function OICHandler.access(_, conf)
                 client_id        = cid,
                 client_secret    = sec,
                 grant_type       = "client_credentials",
+                ignore_signature = ignore_signature.client_credentials,
+              },
+            }
+
+          elseif usr and pwd and assertion then
+            log("found credentials and will try both password and client credentials (via assertion) grants")
+
+            token_endpoint_args = {
+              {
+                username         = usr,
+                password         = pwd,
+                grant_type       = "password",
+                ignore_signature = ignore_signature.password,
+              },
+              {
+                assertion        = assertion,
+                grant_type       = JWT_BEARER_GRANT,
                 ignore_signature = ignore_signature.client_credentials,
               },
             }
@@ -597,6 +620,16 @@ function OICHandler.access(_, conf)
               },
             }
 
+          elseif assertion then
+            log("found credentials via assertion for client credentials grant")
+
+            token_endpoint_args = {
+              {
+                assertion        = assertion,
+                grant_type       = JWT_BEARER_GRANT,
+                ignore_signature = ignore_signature.client_credentials,
+              },
+            }
           else
             log("credentials for client credentials or password grants were not found")
           end
@@ -606,6 +639,11 @@ function OICHandler.access(_, conf)
               args.clear_header("Authorization", "X")
               args.clear_header("Grant-Type",    "X")
               args.clear_header("Grant_Type",    "X")
+            end
+
+            if loc3 == "header" then
+              args.clear_header("Assertion",  "X")
+              args.clear_header("Grant-Type", "X")
             end
 
             if loc1 then
@@ -629,6 +667,18 @@ function OICHandler.access(_, conf)
 
               elseif loc2 == "json" then
                 args.clear_json_arg("client_id", "client_secret", "grant_type")
+              end
+            end
+
+            if loc3 then
+              if loc3 == "query" then
+                args.clear_uri_arg("assertion", "grant_type")
+
+              elseif loc2 == "post" then
+                args.clear_post_arg("assertion", "grant_type")
+
+              elseif loc2 == "json" then
+                args.clear_json_arg("assertion", "grant_type")
               end
             end
           end
@@ -1098,10 +1148,11 @@ function OICHandler.access(_, conf)
           log("trying to exchange credentials using token endpoint with caching enabled")
           tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true, false, salt)
 
-          if type(tokens_encoded) == "table"   and
-            (arg.grant_type == "refresh_token" or
-             arg.grant_type == "password"      or
-             arg.grant_type == "client_credentials")
+          if type(tokens_encoded) == "table"        and
+            (arg.grant_type == "refresh_token"      or
+             arg.grant_type == "password"           or
+             arg.grant_type == "client_credentials" or
+             arg.grant_type == JWT_BEARER_GRANT)
           then
             log("verifying tokens")
             tokens_decoded, err = oic.token:verify(tokens_encoded, arg)
@@ -1122,7 +1173,12 @@ function OICHandler.access(_, conf)
 
         if type(tokens_encoded) == "table" then
           log("exchanged credentials with tokens")
-          auth_method = arg.grant_type or "authorization_code"
+          if arg.grant_type == JWT_BEARER_GRANT then
+            auth_method = "client_credentials"
+          else
+            auth_method = arg.grant_type or "authorization_code"
+          end
+
           auth_params = arg
           break
         end

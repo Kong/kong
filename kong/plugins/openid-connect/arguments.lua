@@ -577,32 +577,59 @@ local function create_get_credentials(get_conf_arg, get_header, get_uri_arg, get
   return function(credential_type, usr_arg, pwd_arg)
     local password_param_type = get_conf_arg(credential_type .. "_param_type", PARAM_TYPES_ALL)
     for _, location in ipairs(password_param_type) do
-      if location == "header" then
-        local grant_type = get_header("Grant-Type", "X")
-        if not grant_type or grant_type == credential_type then
-          local username, password = decode_basic_auth(get_header("authorization:basic"))
-          if username and password then
-            return username, password, "header"
+      if pwd_arg then
+        if location == "header" then
+          local grant_type = get_header("Grant-Type", "X")
+          if not grant_type or grant_type == credential_type then
+            local username, password = decode_basic_auth(get_header("authorization:basic"))
+            if username and password then
+              return username, password, "header"
+            end
+          end
+
+        elseif location == "query" then
+          local grant_type = get_uri_arg("grant_type")
+          if not grant_type or grant_type == credential_type then
+            local username = get_uri_arg(usr_arg)
+            local password = get_uri_arg(pwd_arg)
+            if username and password then
+              return username, password, "query"
+            end
+          end
+
+        elseif location == "body" then
+          local grant_type = get_body_arg("grant_type")
+          if not grant_type or grant_type == credential_type then
+            local username, loc = get_body_arg(usr_arg)
+            local password = get_body_arg(pwd_arg)
+            if username and password then
+              return username, password, loc
+            end
           end
         end
 
-      elseif location == "query" then
-        local grant_type = get_uri_arg("grant_type")
-        if not grant_type or grant_type == credential_type then
-          local username = get_uri_arg(usr_arg)
-          local password = get_uri_arg(pwd_arg)
-          if username and password then
-            return username, password, "query"
+      else
+        if location == "header" then
+          local assertion = get_header(usr_arg, "X")
+          if assertion then
+            return assertion, nil, "header"
           end
-        end
 
-      elseif location == "body" then
-        local grant_type = get_body_arg("grant_type")
-        if not grant_type or grant_type == credential_type then
-          local username, loc = get_body_arg(usr_arg)
-          local password = get_body_arg(pwd_arg)
-          if username and password then
-            return username, password, loc
+        elseif location == "query" then
+          local grant_type = get_uri_arg("grant_type")
+          if not grant_type or grant_type == credential_type then
+            local assertion = get_uri_arg(usr_arg)
+            if assertion then
+              return assertion, "query"
+            end
+          end
+        elseif location == "body" then
+          local grant_type = get_body_arg("grant_type")
+          if not grant_type or grant_type == credential_type then
+            local assertion, loc = get_body_arg(usr_arg)
+            if assertion then
+              return assertion, nil, loc
+            end
           end
         end
       end
