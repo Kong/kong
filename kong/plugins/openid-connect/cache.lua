@@ -876,7 +876,7 @@ local function tokens_load(oic, args, ttl)
 end
 
 
-function tokens.load(oic, args, ttl, use_cache, flush)
+function tokens.load(oic, args, ttl, use_cache, flush, salt)
   local iss = oic.configuration.issuer
   local key
   local res
@@ -892,6 +892,8 @@ function tokens.load(oic, args, ttl, use_cache, flush)
         iss,
         "#grant_type=refresh_token&",
         args.refresh_token,
+        salt and "&",
+        salt,
       }), true))
 
     elseif args.grant_type == "password" then
@@ -905,6 +907,8 @@ function tokens.load(oic, args, ttl, use_cache, flush)
         args.username,
         "&",
         args.password,
+        salt and "&",
+        salt,
       }), true))
 
     elseif args.grant_type == "client_credentials" then
@@ -918,6 +922,8 @@ function tokens.load(oic, args, ttl, use_cache, flush)
         args.client_id,
         "&",
         args.client_secret,
+        salt and "&",
+        salt,
       }), true))
     end
 

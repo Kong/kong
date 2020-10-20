@@ -1491,6 +1491,13 @@ local config = {
             },
           },
           {
+            cache_tokens_salt = {
+              required = false,
+              type     = "string",
+              auto     = true,
+            },
+          },
+          {
             cache_introspection = {
               required = false,
               type     = "boolean",

@@ -1093,8 +1093,10 @@ function OICHandler.access(_, conf)
         end
 
         if args.get_conf_arg("cache_tokens") then
+          local salt = args.get_conf_arg("cache_tokens_salt")
+
           log("trying to exchange credentials using token endpoint with caching enabled")
-          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true)
+          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true, false, salt)
 
           if type(tokens_encoded) == "table"   and
             (arg.grant_type == "refresh_token" or
@@ -1106,7 +1108,7 @@ function OICHandler.access(_, conf)
             if type(tokens_decoded) ~= "table" then
               log("token verification failed, trying to exchange credentials ",
                   "using token endpoint with cache flushed")
-              tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true, true)
+              tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true, true, salt)
 
             else
               log("tokens verified")
@@ -1115,7 +1117,7 @@ function OICHandler.access(_, conf)
 
         else
           log("trying to exchange credentials using token endpoint")
-          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, false)
+          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, false, false)
         end
 
         if type(tokens_encoded) == "table" then
