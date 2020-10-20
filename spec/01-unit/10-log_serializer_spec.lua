@@ -196,7 +196,7 @@ describe("kong.log.serialize", function()
       it("serializes request and response bodies present in the ngx context", function()
         kong.ctx.plugin = {
           request_body = "request body",
-          response_body = "response body",
+          response_body = {"response body"},
         }
 
         local res = kong.log.serialize({ngx = ngx, kong = kong, })
