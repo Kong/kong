@@ -900,6 +900,8 @@
 
 #pg_ssl_required = off           # When `pg_ssl` is on this determines if
                                  # TLS must be used between Kong and PostgreSQL.
+                                 # It aborts the connection if the server does
+                                 # not support SSL connections.
 
 #pg_ssl_verify = off             # Toggles server certificate verification if
                                  # `pg_ssl` is enabled.
