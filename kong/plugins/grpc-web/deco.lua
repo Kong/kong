@@ -4,6 +4,7 @@ require"lua_pack"
 local cjson = require "cjson"
 local protoc = require "protoc"
 local pb = require "pb"
+local pl_path = require "pl.path"
 
 local setmetatable = setmetatable
 
@@ -61,8 +62,11 @@ local function get_proto_info(fname)
     return info
   end
 
+  local dir, name = pl_path.splitpath(pl_path.abspath(fname))
   local p = protoc.new()
-  local parsed = p:parsefile(fname)
+  p.include_imports = true
+  p:addpath(dir)
+  local parsed = p:parsefile(name)
 
   info = {}
 
@@ -77,7 +81,7 @@ local function get_proto_info(fname)
 
   _proto_info[fname] = info
 
-  p:loadfile(fname)
+  p:loadfile(name)
   return info
 end
 
