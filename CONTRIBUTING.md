@@ -859,5 +859,5 @@ then
 
 end
 ```
-
+Thank you for contributing 😄
 [Back to code style TOC](#table-of-contents---code-style)
