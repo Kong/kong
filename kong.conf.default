@@ -232,7 +232,7 @@
 
 #cluster_telemetry_endpoint =    # To be used by data plane nodes only:
                                  # telemetry address of the control plane node
-                                 # from which telemetry updates will be posted
+                                 # to which telemetry updates will be posted
                                  # in `host:port` format.
 
 #cluster_listen = 0.0.0.0:8005
