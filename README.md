@@ -61,7 +61,7 @@ Kong has been built with the following leading principles:
 - **Health Checks:** Active and passive monitoring of your upstream services.
 - **Service Discovery**: Resolve SRV records in third-party DNS resolvers like
   Consul.
-- **Serverless**: Invoke and secure AWS Lambda or OpenWhisk functions directly
+- **Serverless**: Invoke and secure AWS Lambda or OpenWhisk(Open source distributed Serverless platform) functions directly
   from Kong.
 - **WebSockets**: Communicate to your upstream services via WebSockets.
 - **gRPC**: Communicate to your gRPC services and observe your traffic with logging
@@ -78,6 +78,7 @@ Kong has been built with the following leading principles:
 - **Authentications**: HMAC, JWT, Basic, and more.
 - **Rate-limiting**: Block and throttle requests based on many variables.
 - **Transformations**: Add, remove, or manipulate HTTP requests and responses.
+- **Traffic Control**: Manage, throttle, and restrict inbound and outbound API traffic.
 - **Caching**: Cache and serve responses at the proxy layer.
 - **CLI**: Control your Kong cluster from the command line.
 - **REST API**: Kong can be operated with its RESTful API for maximum
@@ -89,10 +90,12 @@ Kong has been built with the following leading principles:
   updated across nodes.
 - **Scalability**: Distributed by nature, Kong scales horizontally by simply
   adding nodes.
-- **Performance**: Kong handles load with ease by scaling and using NGINX at
+- **Performance**: Kong handles load with ease by scaling and using NGINX(Web server or engine) at
   the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and
   APIs.
+- **Analytics**: Visualize, inspect, and monitor APIs and microservices traffic.
+ 
 
 For more info about plugins and integrations, you can check out the [Kong
 Hub](https://docs.konghq.com/hub/).
