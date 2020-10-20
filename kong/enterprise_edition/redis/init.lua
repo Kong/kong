@@ -59,6 +59,9 @@ _M.config_schema = {
     { sentinel_role = { type = "string", one_of = { "master", "slave", "any" }, } },
     { sentinel_addresses = { type = "array", elements = { type = "string" }, len_min = 1, custom_validator =  validate_addresses } },
     { cluster_addresses = { type = "array", elements = { type = "string" }, len_min = 1, custom_validator =  validate_addresses } },
+    { ssl = { type = "boolean", required = false, default = false } },
+    { ssl_verify = { type = "boolean", required = false, default = false } },
+    { server_name = typedefs.sni { required = false } },
   },
 
   entity_checks = {
@@ -179,7 +182,13 @@ function _M.connection(conf)
     red = redis:new()
     red:set_timeout(conf.redis_timeout)
 
-    local ok, err = red:connect(conf.host, conf.port)
+    local options_table = {
+      ssl = conf.ssl,
+      ssl_verify = conf.ssl_verify,
+      server_name = conf.server_name
+    }
+
+    local ok, err = red:connect(conf.host, conf.port, options_table)
     if not ok then
       log(ERR, "failed to connect to Redis: ", err)
       return nil, err
