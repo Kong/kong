@@ -43,9 +43,9 @@ for _, strategy in helpers.each_strategy() do
         }, },
       }
 
-
       local route2 = bp.routes:insert {
-        hosts = { "tcp_logging_tls.com" },
+        hosts = { "tcp_logging.com" },
+        paths = { "/log_body" },
       }
 
       bp.plugins:insert {
@@ -54,7 +54,37 @@ for _, strategy in helpers.each_strategy() do
         config   = {
           host   = "127.0.0.1",
           port   = TCP_PORT,
+          log_body = true,
+        },
+      }
+
+      local route3 = bp.routes:insert {
+        hosts = { "tcp_logging_tls.com" },
+      }
+
+      bp.plugins:insert {
+        route = { id = route3.id },
+        name     = "tcp-log",
+        config   = {
+          host   = "127.0.0.1",
+          port   = TCP_PORT,
           tls    = true,
+        },
+      }
+
+      local route4 = bp.routes:insert {
+        hosts = { "tcp_logging_tls.com" },
+        paths = { "/log_body" },
+      }
+
+      bp.plugins:insert {
+        route = { id = route4.id },
+        name     = "tcp-log",
+        config   = {
+          host   = "127.0.0.1",
+          port   = TCP_PORT,
+          tls    = true,
+          log_body = true,
         },
       }
 
@@ -63,14 +93,14 @@ for _, strategy in helpers.each_strategy() do
         url = "grpc://localhost:15002",
       })
 
-      local route3 = assert(bp.routes:insert {
+      local route5 = assert(bp.routes:insert {
         service = grpc_service,
         protocols = { "grpc" },
         hosts = { "tcp_logging_grpc.test" },
       })
 
       bp.plugins:insert {
-        route = { id = route3.id },
+        route = { id = route5.id },
         name     = "tcp-log",
         config   = {
           host   = "127.0.0.1",
@@ -83,14 +113,14 @@ for _, strategy in helpers.each_strategy() do
         url = "grpcs://localhost:15003",
       })
 
-      local route4 = assert(bp.routes:insert {
+      local route6 = assert(bp.routes:insert {
         service = grpcs_service,
         protocols = { "grpcs" },
         hosts = { "tcp_logging_grpcs.test" },
       })
 
       bp.plugins:insert {
-        route = { id = route4.id },
+        route = { id = route6.id },
         name     = "tcp-log",
         config   = {
           host   = "127.0.0.1",
@@ -195,6 +225,41 @@ for _, strategy in helpers.each_strategy() do
 
       -- Since it's over HTTP, let's make sure there are no TLS information
       assert.is_nil(log_message.request.tls)
+
+      -- Since log_body is false, let's make sure there are no bodies information
+      assert.is_nil(log_message.request.body)
+      assert.is_nil(log_message.response.body)
+    end)
+
+    it("logs(with body) to TCP", function()
+      local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+
+      -- Making the request
+      local r = assert(proxy_client:send {
+        method = "POST",
+        path = "/log_body/request",
+        headers = {
+          host = "tcp_logging.com",
+        },
+        body = "request body",
+      })
+      assert.response(r).has.status(200)
+
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+      assert.equal("127.0.0.1", log_message.client_ip)
+
+      -- Since it's over HTTP, let's make sure there are no TLS information
+      assert.is_nil(log_message.request.tls)
+
+      -- Since log_body is true, let's make sure there are right bodies information
+      assert.equal("request body", log_message.request.body);
+      assert.is_string(log_message.response.body)
     end)
 
     it("logs to TCP (#grpc)", function()
@@ -355,6 +420,38 @@ for _, strategy in helpers.each_strategy() do
       -- Making sure it's alright
       local log_message = cjson.decode(res)
       assert.equal("127.0.0.1", log_message.client_ip)
+
+      -- Since log_body is false, let's make sure there are no bodies information
+      assert.is_nil(log_message.request.body)
+      assert.is_nil(log_message.response.body)
+    end)
+
+    it("performs a TLS handshake(with body) on the remote TCP server", function()
+      local thread = helpers.tcp_server(TCP_PORT, { tls = true })
+
+      -- Making the request
+      local r = assert(proxy_client:send {
+        method = "POST",
+        path = "/log_body/request",
+        headers = {
+          host = "tcp_logging_tls.com",
+        },
+        body = "request body",
+      })
+      assert.response(r).has.status(200)
+
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.is_string(res)
+
+      -- Making sure it's alright
+      local log_message = cjson.decode(res)
+      assert.equal("127.0.0.1", log_message.client_ip)
+
+      -- Since log_body is true, let's make sure there are right bodies information
+      assert.equal("request body", log_message.request.body);
+      assert.is_string(log_message.response.body)
     end)
 
     it("logs TLS info", function()

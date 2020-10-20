@@ -591,7 +591,8 @@ describe("declarative config: flatten", function()
                   port = 10000,
                   timeout = 10000,
                   tls = false,
-                  tls_sni = null
+                  tls_sni = null,
+                  log_body = false,
                 },
                 consumer = null,
                 created_at = 1234567890,
@@ -1077,7 +1078,8 @@ describe("declarative config: flatten", function()
                   port = 10000,
                   timeout = 10000,
                   tls = false,
-                  tls_sni = null
+                  tls_sni = null,
+                  log_body = false,
                 },
                 consumer = null,
                 created_at = 1234567890,

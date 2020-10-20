@@ -52,6 +52,29 @@ local TcpLogHandler = {
 }
 
 
+function TcpLogHandler:access(conf)
+  if conf.log_body then
+    local body, err = kong.request.get_raw_body()
+    if err then
+      kong.log.err(err)
+      kong.ctx.plugin.request_body = ""
+    else
+      kong.ctx.plugin.request_body = body
+    end
+    kong.ctx.plugin.response_body = {}
+  end
+end
+
+
+function TcpLogHandler:body_filter(conf)
+  if conf.log_body then
+    local chunk = ngx.arg[1]
+    local body = kong.ctx.plugin.response_body
+    body[#body + 1] = chunk
+  end
+end
+
+
 function TcpLogHandler:log(conf)
   local message = kong.log.serialize()
   local ok, err = timer_at(0, log, conf, message)

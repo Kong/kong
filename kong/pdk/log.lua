@@ -572,6 +572,13 @@ do
         response_size = tonumber(response_size, 10)
       end
 
+      local request_body
+      local response_body
+      if kong.ctx.plugin then
+        request_body = kong.ctx.plugin.request_body
+        response_body = table.concat(kong.ctx.plugin.response_body)
+      end
+
       return {
         request = {
           uri = request_uri,
@@ -580,6 +587,7 @@ do
           method = okong.request.get_method(), -- http method
           headers = req_headers,
           size = request_size,
+          body = request_body,
           tls = request_tls
         },
         upstream_uri = var.upstream_uri,
@@ -587,6 +595,7 @@ do
           status = ongx.status,
           headers = resp_headers,
           size = response_size,
+          body = response_body,
         },
         tries = (ctx.balancer_data or {}).tries,
         latencies = {
