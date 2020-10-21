@@ -134,6 +134,8 @@ You can find every supported distribution at the [official installation page](ht
 If you are planning on developing on Kong, you'll need a development
 installation. The `next` branch holds the latest unreleased source code.
 
+Read the developer documentation before you proceed. visit [Developer.md](DEVELOPER.md)
+
 You can read more about writing your own plugins in the [Plugin Development
 Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
 online version of Kong's source code documentation in the [Plugin Development
@@ -266,7 +268,7 @@ Enterprise](https://konghq.com/kong-enterprise-edition/).
 
 ## Contributions
 
-Contribution to this repository is always welcome. Please read [contributing.md](https://github.com/Kong/kong/blob/master/CONTRIBUTING.md) , [Code-of-Conduct.md](https://github.com/Kong/kong/blob/master/CODE_OF_CONDUCT.md), [Copyrights.md](https://github.com/Kong/kong/blob/master/COPYRIGHT) and [Developer.md](https://github.com/Kong/kong/blob/master/DEVELOPER.md) before contributing.
+Contribution to this repository is always welcome. Please read [contributing.md](CONTRIBUTING.md) , [Code-of-Conduct.md](CODE_OF_CONDUCT.md) and [Copyrights.md](COPYRIGHT) before contributing.
 
 ## License
 
