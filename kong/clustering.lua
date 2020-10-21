@@ -755,6 +755,10 @@ function _M.init_worker(conf)
     local push_config_semaphore = semaphore.new()
 
     kong.worker_events.register(function(data)
+      if data and data.schema and data.schema.db_export == false then
+        return
+      end
+
       -- we have to re-broadcast event using `post` because the dao
       -- events were sent using `post_local` which means not all workers
       -- can receive it
