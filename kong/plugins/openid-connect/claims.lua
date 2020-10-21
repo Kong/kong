@@ -3,6 +3,7 @@ local ipairs   = ipairs
 local concat   = table.concat
 local tostring = tostring
 local tonumber = tonumber
+local floor    = math.floor
 
 
 local function find_claim(token, search)
@@ -13,18 +14,28 @@ local function find_claim(token, search)
   local search_t = type(search)
   local t = token
   if search_t == "string" then
-    if not t[search] then
-      return nil
-    end
-    t = t[search]
-
-  elseif search_t == "table" then
-    for _, claim in ipairs(search) do
-      if not t[claim] then
+    if t[search] then
+      t = t[search]
+    else
+      local search_n = tonumber(search, 10)
+      if search_n and floor(search_n) == search_n and t[search_n] then
+        t = t[search_n]
+      else
         return nil
       end
-
-      t = t[claim]
+    end
+  elseif search_t == "table" then
+    for _, claim in ipairs(search) do
+      if t[claim] then
+        t = t[claim]
+      else
+        local claim_n = tonumber(claim, 10)
+        if claim_n and floor(claim_n) == claim_n and t[claim_n] then
+          t = t[claim_n]
+        else
+          return nil
+        end
+      end
     end
 
   else
