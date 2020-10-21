@@ -3,6 +3,7 @@ local ngx_ssl = require("ngx.ssl")
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local msgpack = require "MessagePack"
 local reports = require "kong.reports"
+local errlog = require "ngx.errlog"
 
 
 local kong = kong
@@ -62,6 +63,20 @@ do
     return out:match("Runtime Version: go(.+)\n$")
   end
 
+  local function grab_logs(proc)
+    while true do
+      local data, err, partial = proc:stdout_read_line()
+      local line = data or partial
+      if line and line ~= "" then
+        errlog.raw_log(ngx.INFO, "[go-pluginserver] " .. line)
+      end
+
+      if not data and err == "closed" then
+        return
+      end
+    end
+  end
+
   local pluginserver_proc
 
   function go.manage_pluginserver()
@@ -88,10 +103,13 @@ do
           kong.configuration.go_pluginserver_exe,
           "-kong-prefix", kong.configuration.prefix,
           "-plugins-directory", kong.configuration.go_plugins_dir,
+        }, {
+          merge_stderr = true,
         }))
         pluginserver_proc:set_timeouts(nil, nil, nil, 0)     -- block until something actually happens
 
         while true do
+          grab_logs(pluginserver_proc)
           local ok, reason, status = pluginserver_proc:wait()
           if ok ~= nil or reason == "exited" then
             kong.log.notice("go-pluginserver terminated: ", tostring(reason), " ", tostring(status))
