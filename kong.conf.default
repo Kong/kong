@@ -882,6 +882,10 @@
 
 #pg_ssl = off                    # Toggles client-server TLS connections
                                  # between Kong and PostgreSQL.
+                                 # Since PostgreSQL uses the same port for TLS
+                                 # and non-TLS this is only a hint. If the
+                                 # server does not support TLS the established
+                                 # connection will be a plain one.
 
 #pg_ssl_version = tlsv1          # When using ssl between Kong and PostgreSQL,
                                  # the version of tls to use. Accepted values are
