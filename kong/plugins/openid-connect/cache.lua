@@ -123,13 +123,35 @@ local function get_secret()
 end
 
 
+local function cache_issuer(discovery)
+  return discovery
+end
+
+
 local function init_worker()
+  if kong.db and kong.db.oic_issuers and ngx.worker.id() == 0 then
+    for discovery, err in kong.db.oic_issuers:each() do
+      if err then
+        log.warn("warmup of issuer cache failed with: ", err)
+        break
+      end
+
+      local key = cache_key(discovery.issuer, "oic_issuers")
+      cache_get(key, nil, cache_issuer, discovery)
+    end
+  end
+
   if not kong.worker_events or not kong.worker_events.register then
     return
   end
 
   kong.worker_events.register(function(data)
-    log("consumer updated, invalidating cache")
+    local operation = data.operation
+    if operation == "create" then
+      return
+    end
+
+    log("consumer ", data.operation or "update", "d, invalidating cache")
 
     local old_entity = data.old_entity
     local old_username
@@ -159,6 +181,26 @@ local function init_worker()
       end
     end
   end, "crud", "consumers")
+
+  kong.worker_events.register(function(data)
+    local operation = data.operation
+    if operation == "create" then
+      return
+    end
+
+    log("issuer ", data.operation or "update", "d, invalidating cache")
+    local old_issuer
+    local old_entity = data.old_entity
+    if old_entity then
+      old_issuer = old_entity.issuer
+      kong.cache:invalidate(cache_key(old_issuer, "oic_issuers"))
+    end
+
+    local entity = data.entity
+    if entity and entity.issuer ~= old_issuer then
+      kong.cache:invalidate(cache_key(entity.issuer, "oic_issuers"))
+    end
+  end, "crud", "oic_issuers")
 
   if kong.configuration.database == "off" then
     local remove = table.remove
@@ -401,11 +443,16 @@ function issuers.rediscover(issuer, opts)
 
   issuer = normalize_issuer(issuer)
 
-  local discovery = kong.db.oic_issuers:select_by_issuer(issuer) or discovery_data[issuer]
+  local discovery, err = kong.db.oic_issuers:select_by_issuer(issuer) or discovery_data[issuer]
+  if err then
+    log.notice("unable to load discovery data (", err, ")")
+  end
+
   local now = time()
 
   if discovery then
-    local cdec, err = json.decode(discovery.configuration)
+    local cdec
+    cdec, err = json.decode(discovery.configuration)
     if not cdec then
       return nil, "decoding discovery document failed with " .. err
     end
@@ -424,7 +471,6 @@ function issuers.rediscover(issuer, opts)
   local claims, jwks = discover(issuer, opts, now, discovery)
   if not claims then
     return nil, "openid connect rediscovery failed"
-
   end
 
   if discovery then
@@ -443,9 +489,10 @@ function issuers.rediscover(issuer, opts)
       discovery_data[issuer] = data
 
     else
-      local stored_data, err = kong.db.oic_issuers:update({ id = discovery.id }, data)
+      local stored_data
+      stored_data, err = kong.db.oic_issuers:update({ id = discovery.id }, data)
       if not stored_data then
-        log.warn("unable to update issuer ", issuer, " discovery documents in database (", err , ")")
+        log.warn("unable to update issuer ", issuer, " discovery documents in database (", err or "unknown error", ")")
       else
         data = stored_data
       end
@@ -472,9 +519,15 @@ function issuers.rediscover(issuer, opts)
       discovery_data[issuer] = data
 
     else
-      local stored_data, err = kong.db.oic_issuers:insert(data)
+      local stored_data
+      stored_data, err = kong.db.oic_issuers:insert(data)
       if not stored_data then
-        log.warn("unable to store issuer ", issuer, " discovery documents in database (", err , ")")
+        log.warn("unable to store issuer ", issuer, " discovery documents in database (", err or "unknown error", ")")
+        discovery = kong.db.oic_issuers:select_by_issuer(issuer)
+        if discovery then
+          return discovery.keys
+        end
+
       else
         data = stored_data
       end
@@ -490,14 +543,13 @@ local function issuers_init(issuer, opts)
 
   log.notice("loading configuration for ", issuer, " from database")
 
-  local discovery = kong.db.oic_issuers:select_by_issuer(issuer) or discovery_data[issuer]
+  local discovery, err = kong.db.oic_issuers:select_by_issuer(issuer) or discovery_data[issuer]
+  if err then
+    log.notice("unable to load discovery data (", err, ")")
+  end
+
   if discovery then
-    return {
-      issuer        = issuer,
-      configuration = discovery.configuration,
-      keys          = discovery.keys,
-      secret        = discovery.secret,
-    }
+    return discovery
   end
 
   local claims, jwks = discover(issuer, opts)
@@ -525,11 +577,30 @@ local function issuers_init(issuer, opts)
     discovery_data[issuer] = data
 
   else
-    local err
-    data, err = kong.db.oic_issuers:insert(data)
-    if not data then
-      log.err("unable to store issuer ", issuer, " discovery documents in database (", err , ")")
-      return nil
+    local inserted_data, err = kong.db.oic_issuers:insert(data)
+    if not inserted_data then
+      log.err("unable to store issuer ", issuer, " discovery documents in database (", err, ")")
+
+      discovery = kong.db.oic_issuers:select_by_issuer(issuer)
+      if discovery then
+        return discovery
+      end
+
+      if not data.id then
+        data.id = utils.uuid()
+      end
+
+      if not data.created_at
+      or not data.updated_at
+      then
+        local now = time()
+        if not data.created_at then
+          data.created_at = now
+        end
+        if not data.updated_at then
+          data.updated_at = now
+        end
+      end
     end
   end
 
