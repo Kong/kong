@@ -104,7 +104,7 @@ describe("Plugin: response-transformer-advanced", function()
 
       it("array", function()
         local json = [=[ [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] ]=]
-        local config = { add = { json = { "p2:v2" } } }
+        local config = { add = { json = { "[*].p2:v2" } } }
 
         local body = body_transformer.transform_json_body(config, json, 500)
         local body_json = cjson.decode(body)
@@ -220,12 +220,12 @@ describe("Plugin: response-transformer-advanced", function()
       end)
 
       it("array", function()
-        local json = [=[ [{"p1": "v1"}, {"p1": "v1"}, {"p2": "v2"}] ]=]
-        local config = { append = { json = { "p1:v2" } } }
+        local json = [=[ [{"p1": "v1"}, {"p1": "v1"}, {"p1": "v1"}] ]=]
+        local config = { append = { json = { "[3].p1:v2" } } }
 
         local body = body_transformer.transform_json_body(config, json, 500)
         local body_json = cjson.decode(body)
-        assert.same({{ p1 = { "v1", "v2" } }, { p1 = { "v1", "v2" } }, { p1 = { "v2" }, p2 = "v2" }}, body_json)
+        assert.same({{ p1 = "v1" }, { p1 = "v1" }, { p1 = { "v1", "v2" }}}, body_json)
       end)
 
       it("nested", function()
@@ -294,12 +294,12 @@ describe("Plugin: response-transformer-advanced", function()
       end)
 
       it("array", function()
-        local json = [=[ [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] ]=]
-        local config = { remove = { json = { "p1" } } }
+        local json = [=[{ "results": [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] }]=]
+        local config = { remove = { json = { "results[1].p1", "results[2].p1" } } }
 
         local body = body_transformer.transform_json_body(config, json, 500)
         local body_json = cjson.decode(body)
-        assert.same({ {}, {}, { p2 = "v1" }}, body_json)
+        assert.same({ results = {{}, {}, { p2 = "v1" }}}, body_json)
       end)
 
       it("nested", function()
@@ -445,7 +445,7 @@ describe("Plugin: response-transformer-advanced", function()
 
       it("array", function()
         local json = [=[ [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] ]=]
-        local config = { replace = { json = { "p1:v2" } } }
+        local config = { replace = { json = { "[*].p1:v2" } } }
 
         local body = body_transformer.transform_json_body(config, json, 500)
         local body_json = cjson.decode(body)

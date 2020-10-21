@@ -9,6 +9,7 @@ local transform_utils = require "kong.plugins.response-transformer-advanced.tran
 
 local cjson = require("cjson.safe").new()
 local inspect = require("inspect")
+local ngx_re = require("ngx.re")
 
 local skip_transform = transform_utils.skip_transform
 local insert = table.insert
@@ -158,29 +159,58 @@ end
 
 -- Navigate json to the value(s) pointed to by path and apply function f to it.
 local function navigate_and_apply(conf, json, path, f)
-  local head, tail
-  if not conf.dots_in_keys then
-    -- Split on first '.' if exists
-    head = string.match(path, "%w+")
-    tail = string.match(path, "%..+")
-    if tail ~= nil then
-      tail = string.sub(tail, 2)
+  local head, index, tail
+
+  if conf.dots_in_keys then
+    head = path
+  else
+    -- Split into a table with three values, e.g. Results[*].info.name becomes {"Results", "[*]", "info.name"}
+    local res = ngx_re.split(path, "(\\[[\\d|\\*]*\\])?\\.", nil, nil, 2)
+
+    if res then
+      head = res[1]
+      if res[2] and res[3] then
+        -- Extract index, e.g. "2" from "[2]"
+        index = string.sub(res[2], 2, -2)
+        tail = res[3]
+      else
+        tail = res[2]
+      end
     end
   end
 
   if type(json) == "table" then
-    if json[1] ~= nil then
-      -- Loop over arrays
-      for k, v in pairs(json) do
+    if index == '*' then
+      -- Loop through array
+      local array = json
+      if head ~= '' then
+        array = json[head]
+      end
+
+      for k, v in ipairs(array) do
         if type(v) == "table" then
-          navigate_and_apply(conf, v, path, f)
+          navigate_and_apply(conf, v, tail, f)
         end
       end
-    elseif tail ~= nil and json[head] ~= nil then
+
+    elseif index and index ~= '' then
+      -- Access specific array element by index
+      index = tonumber(index)
+      local element = json[index]
+      if head ~= '' and json[head] and type(json[head]) == "table" then
+        element = json[head][index]
+      end
+
+      navigate_and_apply(conf, element, tail, f)
+
+    elseif tail and tail ~= '' then
       -- Navigate into nested JSON
       navigate_and_apply(conf, json[head], tail, f)
-    else
-      f(json, path)
+
+    elseif head and head ~= '' then
+      -- Apply passed-in function
+      f(json, head)
+
     end
   end
 end
