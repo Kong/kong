@@ -7,7 +7,7 @@ local PENDING = enums.TOKENS.STATUS.PENDING
 local CONSUMED = enums.TOKENS.STATUS.CONSUMED
 
 local _M = {}
-
+local null = ngx.null
 
 function _M.create(consumer, client_addr, expiry)
   -- Invalidate pending resets
@@ -20,7 +20,7 @@ function _M.create(consumer, client_addr, expiry)
   local row, err = kong.db.consumer_reset_secrets:insert({
     consumer = { id = consumer.id },
     client_addr = client_addr,
-  })
+  }, { workspace = null })
 
   if err then
     return nil, err
