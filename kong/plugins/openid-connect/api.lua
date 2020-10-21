@@ -100,15 +100,17 @@ return {
       DELETE = function(_, db)
         if db.strategy == "off" then
           local ok, err = kong.worker_events.post("openid-connect", "purge-discovery")
-          if ok ~= "done" then
-            return endpoints.handle_error("failed to reset openid-connect discovery: " .. (err or ok))
+          if not ok then
+            return endpoints.handle_error("failed to reset openid-connect discovery: " .. (err or "unkown error"))
           end
 
           ok, err = kong.worker_events.poll()
           if not ok then
-            return endpoints.handle_error("failed to poll worker-events when resetting " ..
+            return endpoints.handle_error("failed to poll worker-events while resetting " ..
                                           "openid-connect discovery: " .. err)
           end
+
+          return kong.response.exit(204)
         end
 
         local ids = {}
@@ -157,17 +159,22 @@ return {
         return kong.response.exit(200, issuer(entity))
       end,
       DELETE = function(self, db, ...)
-        if db.strategy == "off" and cache.discovery_data and cache.discovery_data[self.params.oic_issuers] then
-          local ok, err = kong.worker_events.post("openid-connect", "delete-discovery", self.params.oic_issuers)
-          if ok ~= "done" then
-            return endpoints.handle_error("failed to reset openid-connect discovery: " .. (err or ok))
+        if db.strategy == "off" then
+          if cache.discovery_data and cache.discovery_data[self.params.oic_issuers] then
+            local ok, err = kong.worker_events.post("openid-connect", "delete-discovery", self.params.oic_issuers)
+            if not ok then
+              return endpoints.handle_error("failed to delete openid-connect discovery (" ..
+                                            self.params.oic_issuers .. "): " .. (err or "unknown error"))
+            end
+
+            ok, err = kong.worker_events.poll()
+            if not ok then
+              return endpoints.handle_error("failed to poll worker-events while deleting " ..
+                                            "openid-connect discovery: " .. err)
+            end
           end
 
-          ok, err = kong.worker_events.poll()
-          if not ok then
-            return endpoints.handle_error("failed to poll worker-events when resetting " ..
-                                          "openid-connect discovery: " .. err)
-          end
+          return kong.response.exit(204)
         end
 
         return delete_issuer(self, db, ...)
