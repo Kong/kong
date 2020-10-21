@@ -20,7 +20,7 @@ dependencies = {
   "lua-ffi-zlib == 0.5",
   "multipart == 0.5.9",
   "version == 1.0.1",
-  "kong-redis-cluster == 1.1-0",
+  "resty-redis-cluster == 1.02-4",
   "kong-lapis == 1.8.1.2",
   "lua-cassandra == 1.5.0",
   "pgmoon == 1.11.0",
