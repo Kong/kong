@@ -4,6 +4,8 @@ set -euo pipefail
 LOCAL_PATH=$(dirname $(realpath $0))
 source $LOCAL_PATH/common.sh
 
+ACTION=merge
+
 usage() {
   echo -e "PR issuer to \033[5msync\033[0m branches between kong repos."
   echo
@@ -37,6 +39,11 @@ function die {
 
 
 parse_args() {
+  if [[ "$1" == "dryrun" ]] || [[ "$1" == "dry-run" ]]; then
+    ACTION=dryrun
+    shift
+  fi
+
   while getopts "f:t:h" option; do
     case $option in
       h)
@@ -98,41 +105,54 @@ main() {
   git fetch $f_repo
   git fetch $t_repo
 
+  # create a temporary branch to check how is the merge looking
   local new_branch_name
   new_branch_name=$(to_branch_name "merge-$from-into-$to-$today")
-  # create a temporary branch to check how is the merge looking
   git checkout -B $new_branch_name "$t_repo/$t_branch"
 
+  # Determine if we should merge or show a diff
+  if [[ "$ACTION" == "merge" ]]; then
+    merge_output=$(git merge "$f_repo/$f_branch")
+    merge_exit_status=$?
 
-  merge_output=$(git merge "$f_repo/$f_branch")
-  merge_exit_status=$?
+    if [[ "$merge_exit_status" -ne 0 ]] ; then
+      # conflicts? bail out and you're on your own
+      die "Conflicts detected. git merge --abort ??"
 
-  if [[ "$merge_exit_status" -ne 0 ]] ; then
-    # conflicts? bail out and you're on your own
-    die "Conflicts detected. git merge --abort ??"
+    elif echo "$merge_output" | grep "Already up to date."; then
+      # nothing to merge
+      git checkout -
+      git branch -D "$new_branch_name"
+      exit
+    fi
 
-  elif echo "$merge_output" | grep "Already up to date."; then
-    # nothing to merge
-    git checkout -
-    git branch -D "$new_branch_name"
-    exit
-  fi
+    # was a clean merge (the commit is done locally)
 
-  # was a clean merge (the commit is done locally)
+    # we leave the merge to github to not have a doublemerge
+    git push $t_repo $new_branch_name
 
-  # we leave the merge to github to not have a doublemerge
-  git push $t_repo $new_branch_name
+    repo_text=""
+    [[ $f_repo == "kong" ]] && repo_text="kong "
 
-  repo_text=""
-  [[ $f_repo == "kong" ]] && repo_text="kong "
-
-  title="Merge ${repo_text}$f_branch into $t_branch $today"
-  body="BE CAREFUL RESOLVING CONFLICTS IN GH WEB INTERFACE: https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/resolving-a-merge-conflict-on-github
+    title="Merge ${repo_text}$f_branch into $t_branch $today"
+    body="BE CAREFUL RESOLVING CONFLICTS IN GH WEB INTERFACE: https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/resolving-a-merge-conflict-on-github
 
 --
 $(curl https://quotebot.raimonster.workers.dev/ | jq -r .message)"
 
-  browser "https://github.com/Kong/kong-ee/compare/${t_branch}...${new_branch_name}?expand=1&pull_request[title]=$title&pull_request[body]=$body"
+    browser "https://github.com/Kong/kong-ee/compare/${t_branch}...${new_branch_name}?expand=1&pull_request[title]=$title&pull_request[body]=$body"
+  else
+    set +eo pipefail
+    {
+      git merge --no-commit --no-ff "$f_repo/$f_branch";
+      git status;
+      git diff --color=always HEAD;
+    } | less -r
+    git merge --abort
+    git checkout -
+    git branch -D "$new_branch_name"
+    set -eo pipefail
+  fi
 }
 
 main "$@"
