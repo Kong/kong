@@ -4,6 +4,9 @@ local Cluster   = require "resty.cassandra.cluster"
 local pl_stringx = require "pl.stringx"
 
 
+local ngx = ngx
+
+
 local CassandraConnector   = {}
 CassandraConnector.__index = CassandraConnector
 
@@ -402,10 +405,38 @@ function CassandraConnector:wait_for_schema_consensus()
   log.verbose("waiting for Cassandra schema consensus (%dms timeout)...",
               self.cluster.max_schema_consensus_wait)
 
-  local ok, err = self.cluster:wait_schema_consensus(conn)
+  ngx.update_time()
 
-  log.verbose("Cassandra schema consensus: %s",
-              ok and "reached" or "not reached")
+  local ok, err
+  local start = ngx.now() * 1000
+  local max_wait = self.cluster.max_schema_consensus_wait
+  local waited
+
+  while true do
+    -- we want to run the library function not try more than
+    -- once as we implement our own timeout here with a proper
+    -- sleep in between, and we don't care about errors as
+    -- we want to try until the timeout
+    ok, err = self.cluster:wait_schema_consensus(conn, -1)
+
+    ngx.update_time()
+    waited = ngx.now() * 1000 - start
+
+    if ok then
+      break
+    end
+
+    if waited >= max_wait then
+      break
+    end
+
+    -- just some arbitrary sleep (100ms) between the tries
+    ngx.sleep(0.1)
+  end
+
+  log.verbose("Cassandra schema consensus: %s in %dms",
+              ok and "reached" or "not reached",
+              waited)
 
   if err then
     return nil, "failed to wait for schema consensus: " .. err
