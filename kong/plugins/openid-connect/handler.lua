@@ -120,6 +120,7 @@ function OICHandler.access(_, conf)
       leeway                 = args.get_conf_arg("leeway", 0),
       authorization_endpoint = args.get_conf_arg("authorization_endpoint"),
       token_endpoint         = args.get_conf_arg("token_endpoint"),
+      userinfo_endpoint      = args.get_conf_arg("userinfo_endpoint"),
       verify_parameters      = args.get_conf_arg("verify_parameters"),
       verify_nonce           = args.get_conf_arg("verify_nonce"),
       verify_signature       = args.get_conf_arg("verify_signature"),

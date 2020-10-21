@@ -714,6 +714,11 @@ local config = {
             },
           },
           {
+            userinfo_endpoint = typedefs.url {
+              required = false,
+            },
+          },
+          {
             token_exchange_endpoint = typedefs.url {
               required = false,
             },
