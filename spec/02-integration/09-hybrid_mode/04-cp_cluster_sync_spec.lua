@@ -34,6 +34,9 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         database = strategy,
+        admin_gui_listen      = "off",
+        portal_gui_listen     = "off",
+        portal_api_listen     = "off",
       }))
 
       assert(helpers.start_kong({
@@ -46,6 +49,10 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         database = strategy,
+        admin_gui_listen      = "off",
+        portal_gui_listen     = "off",
+        portal_api_listen     = "off",
+        cluster_telemetry_listen = "localhost:9008",
       }))
 
     end)
