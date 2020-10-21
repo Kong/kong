@@ -1208,7 +1208,7 @@
                                  # to each individual worker.
 
 #------------------------------------------------------------------------------
-# DEVELOPMENT & MISCELLANEOUS
+# MISCELLANEOUS
 #------------------------------------------------------------------------------
 
 # Additional settings inherited from lua-nginx-module allowing for more
