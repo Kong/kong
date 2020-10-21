@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Support for gzipped content
+- Support for manipulating arrays and nested JSON
 
 ## 0.4.3
 
