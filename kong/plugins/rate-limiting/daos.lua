@@ -4,6 +4,7 @@ return {
     primary_key        = { "identifier", "period", "period_date", "service_id", "route_id" },
     generate_admin_api = false,
     ttl                = true,
+    db_export          = false,
     fields             = {
       {
         identifier = {

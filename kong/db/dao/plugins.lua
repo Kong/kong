@@ -253,14 +253,18 @@ local function load_plugin(self, plugin)
     return nil, err
   end
 
-  if schema.fields.consumer and schema.fields.consumer.eq == null then
-    plugin.no_consumer = true
-  end
-  if schema.fields.route and schema.fields.route.eq == null then
-    plugin.no_route = true
-  end
-  if schema.fields.service and schema.fields.service.eq == null then
-    plugin.no_service = true
+  for _, field in ipairs(schema.fields) do
+    if field.consumer and field.consumer.eq == null then
+      handler.no_consumer = true
+    end
+
+    if field.route and field.route.eq == null then
+      handler.no_route = true
+    end
+
+    if field.service and field.service.eq == null then
+      handler.no_service = true
+    end
   end
 
   ngx_log(ngx_DEBUG, "Loading plugin: ", plugin)

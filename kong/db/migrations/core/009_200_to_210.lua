@@ -1,12 +1,12 @@
 local operations = require "kong.db.migrations.operations.200_to_210"
 
+
 local fmt           = string.format
 local openssl_x509  = require "resty.openssl.x509"
 local str           = require "resty.string"
 
-local function pg_ca_certificates_migration(connector)
-  assert(connector:connect_migrations())
 
+local function pg_ca_certificates_migration(connector)
   for ca_cert, err in connector:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
     if err then
       return nil, err
@@ -45,10 +45,9 @@ local function pg_ca_certificates_migration(connector)
   return true
 end
 
-local function c_ca_certificates_migration(connector)
-  local cassandra = require "cassandra"
-  local coordinator = connector:connect_migrations()
 
+local function c_ca_certificates_migration(coordinator)
+  local cassandra = require "cassandra"
   for rows, err in coordinator:iterate("SELECT id, cert, cert_digest FROM ca_certificates") do
     if err then
       return nil, err
@@ -62,7 +61,7 @@ local function c_ca_certificates_migration(connector)
       end
 
       if digest ~= ca_cert.cert_digest then
-        local _, err = connector:query(
+        local _, err = coordinator:execute(
           "UPDATE ca_certificates SET cert_digest = ? WHERE partition = 'ca_certificates' AND id = ?", {
             cassandra.text(digest),
             cassandra.uuid(ca_cert.id)
@@ -242,13 +241,23 @@ return {
       CREATE INDEX IF NOT EXISTS upstreams_client_certificate_id_idx ON upstreams(client_certificate_id);
     ]] .. ws_migration_up(operations.cassandra.up),
     teardown = function(connector)
+      local coordinator = assert(connector:get_stored_connection())
+      local default_ws, err = operations.cassandra_ensure_default_ws(coordinator)
+      if err then
+        return nil, err
+      end
+
+      if not default_ws then
+        return nil, "unable to find a default workspace"
+      end
+
       local _, err = ws_migration_teardown(operations.cassandra.teardown)(connector)
       if err then
         return nil, err
       end
 
       -- add `cert_digest` field for `ca_certificates` table
-      _, err = c_ca_certificates_migration(connector)
+      _, err = c_ca_certificates_migration(coordinator)
       if err then
         return nil, err
       end
