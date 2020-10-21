@@ -15,8 +15,6 @@ return {
         return nil, err
       end
 
-      assert(connector:connect_migrations())
-
       local insert_query = string.format([[
         INSERT INTO "oic_jwks" ("id", "jwks")
              VALUES ('c3cfba2d-1617-453f-a416-52e6edb5f9a0', '%s')
@@ -42,12 +40,11 @@ return {
       );
     ]],
     teardown = function(connector)
+      local coordinator = assert(connector:get_stored_connection())
       local generated_jwks, err = jwks.new({ json = true })
       if not generated_jwks then
         return nil, err
       end
-
-      assert(connector:connect_migrations())
 
       local insert_query = string.format([[
         INSERT INTO oic_jwks (id, jwks)
@@ -55,7 +52,7 @@ return {
       ]], generated_jwks)
 
       local _
-      _, err = connector:query(insert_query)
+      _, err = coordinator:execute(insert_query)
       if err then
         return nil, err
       end
