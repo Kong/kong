@@ -320,6 +320,20 @@ function _M.new(db)
     }
   end)
 
+  local keyauth_enc_key_seq = new_sequence("keyauth-enc-key-%d")
+  res.keyauth_enc_credentials = new_blueprint(db.keyauth_enc_credentials, function()
+    return {
+      key = keyauth_enc_key_seq:next(),
+    }
+  end)
+
+  res.keyauth_enc_plugins = new_blueprint(db.plugins, function()
+    return {
+      name   = "key-auths-enc",
+      config = {},
+    }
+  end)
+
   res.basicauth_credentials = new_blueprint(db.basicauth_credentials, function()
     return {}
   end)

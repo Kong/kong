@@ -51,7 +51,7 @@ for _, strategy in helpers.each_strategy() do
             admin_client:close()
           end)
 
-          local res = assert(admin_client:get("/clustering/data_planes"))
+          local res = assert(admin_client:get("/clustering/data-planes"))
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
@@ -65,6 +65,25 @@ for _, strategy in helpers.each_strategy() do
         end, 5)
       end)
 
+      it("shows DP status (#deprecated)", function()
+        helpers.wait_until(function()
+          local admin_client = helpers.admin_client()
+          finally(function()
+            admin_client:close()
+          end)
+
+          local res = assert(admin_client:get("/clustering/status"))
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          for _, v in pairs(json) do
+            if v.ip == "127.0.0.1" then
+              return true
+            end
+          end
+        end, 5)
+      end)
+
       it("disallow updates on the status endpoint", function()
         helpers.wait_until(function()
           local admin_client = helpers.admin_client()
@@ -72,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
             admin_client:close()
           end)
 
-          local res = assert(admin_client:get("/clustering/data_planes"))
+          local res = assert(admin_client:get("/clustering/data-planes"))
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
@@ -87,9 +106,9 @@ for _, strategy in helpers.each_strategy() do
             return nil
           end
 
-          res = assert(admin_client:delete("/clustering/data_planes/" .. id))
+          res = assert(admin_client:delete("/clustering/data-planes/" .. id))
           assert.res_status(404, res)
-          res = assert(admin_client:patch("/clustering/data_planes/" .. id))
+          res = assert(admin_client:patch("/clustering/data-planes/" .. id))
           assert.res_status(404, res)
 
           return true

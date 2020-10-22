@@ -19,9 +19,8 @@ return {
     ]],
 
     teardown = function(connector)
+      local coordinator = assert(connector:get_stored_connection())
       local cassandra = require "cassandra"
-      local coordinator = assert(connector:connect_migrations())
-
       for rows, err in coordinator:iterate("SELECT id, path_handling FROM routes") do
         if err then
           return nil, err
@@ -30,7 +29,7 @@ return {
         for i = 1, #rows do
           local route = rows[i]
           if route.path_handling ~= "v0" and route.path_handling ~= "v1" then
-            local _, err = connector:query(
+            local _, err = coordinator:execute(
               "UPDATE routes SET path_handling = 'v1' WHERE partition = 'routes' AND id = ?",
               { cassandra.uuid(route.id) }
             )
