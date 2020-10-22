@@ -73,78 +73,85 @@ local function gen_default_ssl_cert(kong_config, target)
     return nil, err
   end
 
-  local ssl_cert, ssl_cert_key
-  if target == "admin" then
-    ssl_cert = kong_config.admin_ssl_cert_default
-    ssl_cert_key = kong_config.admin_ssl_cert_key_default
+  for _, suffix in ipairs({ "", "_ecdsa" }) do
+    local ssl_cert, ssl_cert_key
+    if target == "admin" then
+      ssl_cert = kong_config["admin_ssl_cert_default" .. suffix]
+      ssl_cert_key = kong_config["admin_ssl_cert_key_default" .. suffix]
 
-  elseif target == "status" then
-    ssl_cert = kong_config.status_ssl_cert_default
-    ssl_cert_key = kong_config.status_ssl_cert_key_default
+    elseif target == "status" then
+      ssl_cert = kong_config["status_ssl_cert_default" .. suffix]
+      ssl_cert_key = kong_config["status_ssl_cert_key_default" .. suffix]
 
-  else
-    ssl_cert = kong_config.ssl_cert_default
-    ssl_cert_key = kong_config.ssl_cert_key_default
-  end
-
-  if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
-    log.verbose("generating %s SSL certificate and key", target or "default")
-
-    local key = openssl_pkey.new { bits = 2048 }
-
-    local crt = x509.new()
-    assert(crt:set_pubkey(key))
-    assert(crt:set_version(3))
-    assert(crt:set_serial_number(openssl_bignum.from_binary(openssl_rand.bytes(16))))
-
-    -- last for 20 years
-    local now = os.time()
-    assert(crt:set_not_before(now))
-    assert(crt:set_not_after(now + 86400 * 20 * 365))
-
-    local name = assert(x509_name.new()
-      :add("C", "US")
-      :add("ST", "California")
-      :add("L", "San Francisco")
-      :add("O", "Kong")
-      :add("OU", "IT Department")
-      :add("CN", "localhost"))
-
-    assert(crt:set_subject_name(name))
-    assert(crt:set_issuer_name(name))
-
-    -- Not a CA
-    assert(crt:set_basic_constraints { CA = false })
-    assert(crt:set_basic_constraints_critical(true))
-
-    -- Only allowed to be used for TLS connections (client or server)
-    assert(crt:add_extension(x509_extension.new("extendedKeyUsage",
-                                                "serverAuth,clientAuth")))
-
-    -- RFC-3280 4.2.1.2
-    assert(crt:add_extension(x509_extension.new("subjectKeyIdentifier", "hash", {
-      subject = crt
-    })))
-
-    -- All done; sign
-    assert(crt:sign(key))
-
-    do -- write key out
-      local fd = assert(io.open(ssl_cert_key, "w+b"))
-      local pem = assert(key:to_PEM("private"))
-      assert(fd:write(pem))
-      fd:close()
+    else
+      ssl_cert = kong_config["ssl_cert_default" .. suffix]
+      ssl_cert_key = kong_config["ssl_cert_key_default" .. suffix]
     end
 
-    do -- write cert out
-      local fd = assert(io.open(ssl_cert, "w+b"))
-      local pem = assert(crt:to_PEM("private"))
-      assert(fd:write(pem))
-      fd:close()
-    end
+    if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
+      log.verbose("generating %s SSL certificate (", ssl_cert, ") and key (", ssl_cert_key, ") for ", target or "proxy", " listener")
 
-  else
-    log.verbose("%s SSL certificate found at %s", target or "default", ssl_cert)
+      local key
+      if suffix == "_ecdsa" then
+        key = openssl_pkey.new { type = "EC", curve = "prime256v1" }
+      else
+        key = openssl_pkey.new { bits = 2048 }
+      end
+
+      local crt = x509.new()
+      assert(crt:set_pubkey(key))
+      assert(crt:set_version(3))
+      assert(crt:set_serial_number(openssl_bignum.from_binary(openssl_rand.bytes(16))))
+
+      -- last for 20 years
+      local now = os.time()
+      assert(crt:set_not_before(now))
+      assert(crt:set_not_after(now + 86400 * 20 * 365))
+
+      local name = assert(x509_name.new()
+        :add("C", "US")
+        :add("ST", "California")
+        :add("L", "San Francisco")
+        :add("O", "Kong")
+        :add("OU", "IT Department")
+        :add("CN", "localhost"))
+
+      assert(crt:set_subject_name(name))
+      assert(crt:set_issuer_name(name))
+
+      -- Not a CA
+      assert(crt:set_basic_constraints { CA = false })
+      assert(crt:set_basic_constraints_critical(true))
+
+      -- Only allowed to be used for TLS connections (client or server)
+      assert(crt:add_extension(x509_extension.new("extendedKeyUsage",
+                                                  "serverAuth,clientAuth")))
+
+      -- RFC-3280 4.2.1.2
+      assert(crt:add_extension(x509_extension.new("subjectKeyIdentifier", "hash", {
+        subject = crt
+      })))
+
+      -- All done; sign
+      assert(crt:sign(key))
+
+      do -- write key out
+        local fd = assert(io.open(ssl_cert_key, "w+b"))
+        local pem = assert(key:to_PEM("private"))
+        assert(fd:write(pem))
+        fd:close()
+      end
+
+      do -- write cert out
+        local fd = assert(io.open(ssl_cert, "w+b"))
+        local pem = assert(crt:to_PEM("private"))
+        assert(fd:write(pem))
+        fd:close()
+      end
+
+    else
+      log.verbose("%s SSL certificate found at %s", target or "default", ssl_cert)
+    end
   end
 
   return true
@@ -335,37 +342,36 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   end
 
   -- generate default SSL certs if needed
-  if not kong_config.ssl_cert and not kong_config.ssl_cert_key and
-    (kong_config.proxy_ssl_enabled or kong_config.stream_proxy_ssl_enabled) then
-    log.verbose("SSL enabled, no custom certificate set: using default certificate")
-    local ok, err = gen_default_ssl_cert(kong_config)
-    if not ok then
-      return nil, err
-    end
-    kong_config.ssl_cert = kong_config.ssl_cert_default
-    kong_config.ssl_cert_key = kong_config.ssl_cert_key_default
-  end
+  do
+    for _, target in ipairs({ "proxy", "admin", "status" }) do
+      local ssl_enabled = kong_config[target .. "_ssl_enabled"]
+      if not ssl_enabled and target == "proxy" then
+        ssl_enabled = kong_config.stream_proxy_ssl_enabled
+      end
 
-  if kong_config.admin_ssl_enabled and not kong_config.admin_ssl_cert and
-     not kong_config.admin_ssl_cert_key then
-    log.verbose("Admin SSL enabled, no custom certificate set: using default certificate")
-    local ok, err = gen_default_ssl_cert(kong_config, "admin")
-    if not ok then
-      return nil, err
-    end
-    kong_config.admin_ssl_cert = kong_config.admin_ssl_cert_default
-    kong_config.admin_ssl_cert_key = kong_config.admin_ssl_cert_key_default
-  end
+      local prefix
+      if target == "proxy" then
+        prefix = ""
+      else
+        prefix = target .. "_"
+      end
 
-  if kong_config.status_ssl_enabled and not kong_config.status_ssl_cert and
-     not kong_config.status_ssl_cert_key then
-    log.verbose("Status SSL enabled, no custom certificate set: using default certificate")
-    local ok, err = gen_default_ssl_cert(kong_config, "status")
-    if not ok then
-      return nil, err
+      local ssl_cert = kong_config[prefix .. "ssl_cert"]
+      local ssl_cert_key = kong_config[prefix .. "ssl_cert_key"]
+
+      if ssl_enabled and #ssl_cert == 0 and #ssl_cert_key == 0 then
+        log.verbose("SSL enabled on ", target, ", no custom certificate set: using default certificates")
+        local ok, err = gen_default_ssl_cert(kong_config, target)
+        if not ok then
+          return nil, err
+        end
+
+        ssl_cert[1]     = kong_config[prefix .. "ssl_cert_default"]
+        ssl_cert_key[1] = kong_config[prefix .. "ssl_cert_key_default"]
+        ssl_cert[2]     = kong_config[prefix .. "ssl_cert_default_ecdsa"]
+        ssl_cert_key[2] = kong_config[prefix .. "ssl_cert_key_default_ecdsa"]
+      end
     end
-    kong_config.status_ssl_cert = kong_config.status_ssl_cert_default
-    kong_config.status_ssl_cert_key = kong_config.status_ssl_cert_key_default
   end
 
   if kong_config.lua_ssl_trusted_certificate_combined then

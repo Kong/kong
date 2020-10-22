@@ -96,8 +96,10 @@ server {
 > end
 
 > if stream_proxy_ssl_enabled then
-    ssl_certificate     ${{SSL_CERT}};
-    ssl_certificate_key ${{SSL_CERT_KEY}};
+> for i = 1, #ssl_cert do
+    ssl_certificate     $(ssl_cert[i]);
+    ssl_certificate_key $(ssl_cert_key[i]);
+> end
     ssl_session_cache   shared:StreamSSL:10m;
     ssl_certificate_by_lua_block {
         Kong.ssl_certificate()
