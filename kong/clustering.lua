@@ -752,8 +752,19 @@ function _M.init_worker(conf)
   elseif conf.role == "control_plane" then
     -- ROLE = "control_plane"
 
+    local push_config_semaphore = semaphore.new()
+
     -- Sends "clustering", "push_config" to all workers in the same node, including self
-    local function post_push_config_event_to_node_workers(_)
+    local function post_push_config_event_to_node_workers(data)
+      if type(data) == "table" and data.schema and
+         data.schema.db_export == false
+      then
+        return
+      end
+
+      -- we have to re-broadcast event using `post` because the dao
+      -- events were sent using `post_local` which means not all workers
+      -- can receive it
       local res, err = kong.worker_events.post("clustering", "push_config")
       if not res then
         ngx_log(ngx_ERR, "unable to broadcast event: " .. err)
@@ -775,9 +786,7 @@ function _M.init_worker(conf)
 
     -- When "clustering", "push_config" worker event is received by a worker,
     -- it loads and pushes the config to its the connected DPs
-    local push_config_semaphore = semaphore.new()
-
-    kong.worker_events.register(function(data)
+    kong.worker_events.register(function(_)
       if push_config_semaphore:count() <= 0 then
         -- the following line always executes immediately after the `if` check
         -- because `:count` will never yield, end result is that the semaphore
