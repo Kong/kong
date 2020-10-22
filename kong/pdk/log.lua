@@ -572,11 +572,11 @@ do
         response_size = tonumber(response_size, 10)
       end
 
-      local request_body
-      local response_body
-      if kong.ctx.plugin then
-        request_body = kong.ctx.plugin.request_body
-        response_body = table.concat(kong.ctx.plugin.response_body)
+      local request_body, response_body
+      local ctx_plugin = kong.ctx.plugin
+      if ctx_plugin and ctx_plugin.response_body then
+        request_body = ctx_plugin.request_body
+        response_body = table.concat(ctx_plugin.response_body)
       end
 
       return {
