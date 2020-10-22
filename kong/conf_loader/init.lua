@@ -176,18 +176,24 @@ local PREFIX_PATHS = {
 
   kong_env = {".kong_env"},
 
+  ssl_cert_csr_default = {"ssl", "kong-default.csr"},
   ssl_cert_default = {"ssl", "kong-default.crt"},
   ssl_cert_key_default = {"ssl", "kong-default.key"},
-  ssl_cert_csr_default = {"ssl", "kong-default.csr"},
+  ssl_cert_default_ecdsa = {"ssl", "kong-default-ecdsa.crt"},
+  ssl_cert_key_default_ecdsa = {"ssl", "kong-default-ecdsa.key"},
 
   client_ssl_cert_default = {"ssl", "kong-default.crt"},
   client_ssl_cert_key_default = {"ssl", "kong-default.key"},
 
   admin_ssl_cert_default = {"ssl", "admin-kong-default.crt"},
   admin_ssl_cert_key_default = {"ssl", "admin-kong-default.key"},
+  admin_ssl_cert_default_ecdsa = {"ssl", "admin-kong-default-ecdsa.crt"},
+  admin_ssl_cert_key_default_ecdsa = {"ssl", "admin-kong-default-ecdsa.key"},
 
   status_ssl_cert_default = {"ssl", "status-kong-default.crt"},
   status_ssl_cert_key_default = {"ssl", "status-kong-default.key"},
+  status_ssl_cert_default_ecdsa = {"ssl", "status-kong-default-ecdsa.crt"},
+  status_ssl_cert_key_default_ecdsa = {"ssl", "status-kong-default-ecdsa.key"},
 }
 
 
@@ -283,6 +289,12 @@ local CONF_INFERENCES = {
   status_listen = { typ = "array" },
   stream_listen = { typ = "array" },
   cluster_listen = { typ = "array" },
+  ssl_cert = { typ = "array" },
+  ssl_cert_key = { typ = "array" },
+  admin_ssl_cert = { typ = "array" },
+  admin_ssl_cert_key = { typ = "array" },
+  status_ssl_cert = { typ = "array" },
+  status_ssl_cert_key = { typ = "array" },
   db_update_frequency = {  typ = "number"  },
   db_update_propagation = {  typ = "number"  },
   db_cache_ttl = {  typ = "number"  },
@@ -767,20 +779,50 @@ local function check_and_infer(conf, opts)
     end
   end
 
-  if (concat(conf.proxy_listen, ",") .. " "):find("%sssl[%s,]") then
-    if conf.ssl_cert and not conf.ssl_cert_key then
-      errors[#errors + 1] = "ssl_cert_key must be specified"
+  for _, prefix in ipairs({ "proxy_", "admin_", "status_" }) do
+    local listen = conf[prefix .. "listen"]
 
-    elseif conf.ssl_cert_key and not conf.ssl_cert then
-      errors[#errors + 1] = "ssl_cert must be specified"
+    local ssl_enabled = (concat(listen, ",") .. " "):find("%sssl[%s,]") ~= nil
+    if not ssl_enabled and prefix == "proxy_" then
+      ssl_enabled = (concat(conf.stream_listen, ",") .. " "):find("%sssl[%s,]") ~= nil
     end
 
-    if conf.ssl_cert and not pl_path.exists(conf.ssl_cert) then
-      errors[#errors + 1] = "ssl_cert: no such file at " .. conf.ssl_cert
+    if prefix == "proxy_" then
+      prefix = ""
     end
 
-    if conf.ssl_cert_key and not pl_path.exists(conf.ssl_cert_key) then
-      errors[#errors + 1] = "ssl_cert_key: no such file at " .. conf.ssl_cert_key
+    if ssl_enabled then
+      conf.ssl_enabled = true
+
+      local ssl_cert = conf[prefix .. "ssl_cert"]
+      local ssl_cert_key = conf[prefix .. "ssl_cert_key"]
+
+      if #ssl_cert > 0 and #ssl_cert_key == 0 then
+        errors[#errors + 1] = prefix .. "ssl_cert_key must be specified"
+
+      elseif #ssl_cert_key > 0 and #ssl_cert == 0 then
+        errors[#errors + 1] = prefix .. "ssl_cert must be specified"
+
+      elseif #ssl_cert ~= #ssl_cert_key then
+        errors[#errors + 1] = prefix .. "ssl_cert was specified " .. #ssl_cert .. " times while " ..
+          prefix .. "ssl_cert_key was specified " .. #ssl_cert_key .. " times"
+      end
+
+      if ssl_cert then
+        for _, cert in ipairs(ssl_cert) do
+          if not pl_path.exists(cert) then
+            errors[#errors + 1] = prefix .. "ssl_cert: no such file at " .. cert
+          end
+        end
+      end
+
+      if ssl_cert_key then
+        for _, cert_key in ipairs(ssl_cert_key) do
+          if not pl_path.exists(cert_key) then
+            errors[#errors + 1] = prefix .. "ssl_cert_key: no such file at " .. cert_key
+          end
+        end
+      end
     end
   end
 
@@ -800,25 +842,6 @@ local function check_and_infer(conf, opts)
     if conf.client_ssl_cert_key and not pl_path.exists(conf.client_ssl_cert_key) then
       errors[#errors + 1] = "client_ssl_cert_key: no such file at " ..
                           conf.client_ssl_cert_key
-    end
-  end
-
-  if (concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]") then
-    if conf.admin_ssl_cert and not conf.admin_ssl_cert_key then
-      errors[#errors + 1] = "admin_ssl_cert_key must be specified"
-
-    elseif conf.admin_ssl_cert_key and not conf.admin_ssl_cert then
-      errors[#errors + 1] = "admin_ssl_cert must be specified"
-    end
-
-    if conf.admin_ssl_cert and not pl_path.exists(conf.admin_ssl_cert) then
-      errors[#errors + 1] = "admin_ssl_cert: no such file at " ..
-                          conf.admin_ssl_cert
-    end
-
-    if conf.admin_ssl_cert_key and not pl_path.exists(conf.admin_ssl_cert_key) then
-      errors[#errors + 1] = "admin_ssl_cert_key: no such file at " ..
-                          conf.admin_ssl_cert_key
     end
   end
 
@@ -1562,19 +1585,33 @@ local function load(path, custom_conf, opts)
     conf.go_plugins_dir = pl_path.abspath(conf.go_plugins_dir)
   end
 
-  if conf.ssl_cert and conf.ssl_cert_key then
-    conf.ssl_cert = pl_path.abspath(conf.ssl_cert)
-    conf.ssl_cert_key = pl_path.abspath(conf.ssl_cert_key)
+  for _, prefix in ipairs({ "ssl", "admin_ssl", "status_ssl", "client_ssl", "cluster" }) do
+    local ssl_cert = conf[prefix .. "_cert"]
+    local ssl_cert_key = conf[prefix .. "_cert_key"]
+
+    if ssl_cert and ssl_cert_key then
+      if type(ssl_cert) == "table" then
+        for i, cert in ipairs(ssl_cert) do
+          ssl_cert[i] = pl_path.abspath(cert)
+        end
+
+      else
+        conf[prefix .. "_cert"] = pl_path.abspath(ssl_cert)
+      end
+
+      if type(ssl_cert) == "table" then
+        for i, key in ipairs(ssl_cert_key) do
+          ssl_cert_key[i] = pl_path.abspath(key)
+        end
+
+      else
+        conf[prefix .. "_cert_key"] = pl_path.abspath(ssl_cert_key)
+      end
+    end
   end
 
-  if conf.client_ssl_cert and conf.client_ssl_cert_key then
-    conf.client_ssl_cert = pl_path.abspath(conf.client_ssl_cert)
-    conf.client_ssl_cert_key = pl_path.abspath(conf.client_ssl_cert_key)
-  end
-
-  if conf.admin_ssl_cert and conf.admin_ssl_cert_key then
-    conf.admin_ssl_cert = pl_path.abspath(conf.admin_ssl_cert)
-    conf.admin_ssl_cert_key = pl_path.abspath(conf.admin_ssl_cert_key)
+  if conf.cluster_ca_cert then
+    conf.cluster_ca_cert = pl_path.abspath(conf.cluster_ca_cert)
   end
 
   local ssl_enabled = conf.proxy_ssl_enabled or
@@ -1609,15 +1646,6 @@ local function load(path, custom_conf, opts)
 
     conf.lua_ssl_trusted_certificate_combined =
       pl_path.abspath(pl_path.join(conf.prefix, ".ca_combined"))
-  end
-
-  if conf.cluster_cert and conf.cluster_cert_key then
-    conf.cluster_cert = pl_path.abspath(conf.cluster_cert)
-    conf.cluster_cert_key = pl_path.abspath(conf.cluster_cert_key)
-  end
-
-  if conf.cluster_ca_cert then
-    conf.cluster_ca_cert = pl_path.abspath(conf.cluster_ca_cert)
   end
 
   -- attach prefix files paths

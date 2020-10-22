@@ -81,8 +81,10 @@ server {
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if proxy_ssl_enabled then
-    ssl_certificate     ${{SSL_CERT}};
-    ssl_certificate_key ${{SSL_CERT_KEY}};
+> for i = 1, #ssl_cert do
+    ssl_certificate     $(ssl_cert[i]);
+    ssl_certificate_key $(ssl_cert_key[i]);
+> end
     ssl_session_cache   shared:SSL:10m;
     ssl_certificate_by_lua_block {
         Kong.ssl_certificate()
@@ -343,8 +345,10 @@ server {
     client_body_buffer_size 10m;
 
 > if admin_ssl_enabled then
-    ssl_certificate     ${{ADMIN_SSL_CERT}};
-    ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
+> for i = 1, #admin_ssl_cert do
+    ssl_certificate     $(admin_ssl_cert[i]);
+    ssl_certificate_key $(admin_ssl_cert_key[i]);
+> end
     ssl_session_cache   shared:AdminSSL:10m;
 > end
 
@@ -386,8 +390,10 @@ server {
     error_log  ${{STATUS_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if status_ssl_enabled then
-    ssl_certificate     ${{STATUS_SSL_CERT}};
-    ssl_certificate_key ${{STATUS_SSL_CERT_KEY}};
+> for i = 1, #status_ssl_cert do
+    ssl_certificate     $(status_ssl_cert[i]);
+    ssl_certificate_key $(status_ssl_cert_key[i]);
+> end
     ssl_session_cache   shared:StatusSSL:1m;
 > end
 

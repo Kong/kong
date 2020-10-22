@@ -172,10 +172,12 @@ local get_ca_store_opts = {
 
 
 local function init()
-  default_cert_and_key = parse_key_and_cert {
-    cert = assert(pl_utils.readfile(singletons.configuration.ssl_cert)),
-    key = assert(pl_utils.readfile(singletons.configuration.ssl_cert_key)),
-  }
+  if singletons.configuration.ssl_cert[1] then
+    default_cert_and_key = parse_key_and_cert {
+      cert = assert(pl_utils.readfile(singletons.configuration.ssl_cert[1])),
+      key = assert(pl_utils.readfile(singletons.configuration.ssl_cert_key[1])),
+    }
+  end
 end
 
 
