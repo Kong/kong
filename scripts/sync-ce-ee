@@ -18,19 +18,6 @@ $0 -f kong-ee:next/2.1.0.x -t kong-ee:master
 EOF
 }
 
-function browser() {
-   if which open &> /dev/null
-   then
-      open "$1" &
-   elif which xdg-open &> /dev/null
-   then
-      xdg-open "$1" &
-   elif which firefox &> /dev/null
-   then
-      firefox "$1" &
-   fi
-}
-
 
 function die {
   >&2 echo "$@"

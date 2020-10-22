@@ -112,7 +112,7 @@ function get_distributions {
 function __open {
   local index=$1
   local url=$(echo $entry | jq -r '.github_url')
-  open https://github.com/kong/${repo}
+  browser https://github.com/kong/${repo}
 }
 
 function check {
