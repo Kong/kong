@@ -164,7 +164,6 @@ function _M:copy_cassandra_records(source_table_def,
   log.warn("migration helpers are deprecated: ",
            "copy_cassandra_records function may not be available on a next major version")
 
-
   local coordinator, err = self.connector:get_stored_connection()
   if not coordinator then
     return nil, err
