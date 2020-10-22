@@ -17,6 +17,7 @@ DO_PR=${DO_PR:-0}
 # XXX still not used. The idea would be to use scripts/bump-plugin to try and
 # bump the plugin and make a PR
 DO_BUMP=${DO_BUMP:-0}
+DO_HTTP=${DO_HTTP:-0}
 
 # Entities to ignore
 IGNORE=(
@@ -94,6 +95,9 @@ function parse_args {
       --pr)
         DO_PR=1
         ;;
+      --http|--https)
+        DO_HTTP=1
+        ;;
     esac
     shift
   done
@@ -125,7 +129,11 @@ function check {
   local repo=$(basename $url)
   local tmpath=$(mktemp -d "/tmp/kong-$repo-XXXXX")
 
-  git clone https://"$GITHUB_TOKEN"@github.com/Kong/${repo} $tmpath 2> /dev/null
+  if [[ $DO_HTTP -eq 1 ]]; then
+    git clone https://"$GITHUB_TOKEN"@github.com/Kong/${repo} $tmpath 2> /dev/null
+  else
+    git clone git@github.com:Kong/${repo} $tmpath 2> /dev/null
+  fi
   on_exit "rm -rf $tmpath"
 
   local from to
