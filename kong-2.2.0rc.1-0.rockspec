@@ -1,9 +1,9 @@
 package = "kong"
-version = "2.2.0beta.1-0"
+version = "2.2.0rc.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.2.0-beta.1"
+  tag = "2.2.0-rc.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -20,7 +20,7 @@ dependencies = {
   "lua-ffi-zlib == 0.5",
   "multipart == 0.5.9",
   "version == 1.0.1",
-  "kong-redis-cluster == 1.1-0",
+  "resty-redis-cluster == 1.02-4",
   "kong-lapis == 1.8.1.2",
   "lua-cassandra == 1.5.0",
   "pgmoon == 1.11.0",
@@ -42,7 +42,7 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.1",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.6.5",
+  "lua-resty-openssl == 0.6.8-1",
   "lua-resty-counter == 0.2.1",
   "lua-resty-template == 1.9-1",
   "lua-resty-passwdqc == 1.1-1",
@@ -220,6 +220,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.007_1500_to_2100"] = "kong/enterprise_edition/db/migrations/enterprise/007_1500_to_2100.lua",
 
     ["kong.enterprise_edition.db.migrations.enterprise.008_1504_to_1505"] = "kong/enterprise_edition/db/migrations/enterprise/008_1504_to_1505.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.009_2100_to_2200"] = "kong/enterprise_edition/db/migrations/enterprise/009_2100_to_2200.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",

@@ -232,7 +232,7 @@
 
 #cluster_telemetry_endpoint =    # To be used by data plane nodes only:
                                  # telemetry address of the control plane node
-                                 # from which telemetry updates will be posted
+                                 # to which telemetry updates will be posted
                                  # in `host:port` format.
 
 #cluster_listen = 0.0.0.0:8005
@@ -262,7 +262,7 @@
                          # How many seconds must pass from the time a DP node
                          # becomes offline to the time its entry gets removed
                          # from the database, as returned by the
-                         # /clustering/data_planes Admin API endpoint.
+                         # /clustering/data-planes Admin API endpoint.
                          #
                          # This is to prevent the cluster data plane table from
                          # growing indefinitely. The default is set to
@@ -893,6 +893,10 @@
 
 #pg_ssl = off                    # Toggles client-server TLS connections
                                  # between Kong and PostgreSQL.
+                                 # Since PostgreSQL uses the same port for TLS
+                                 # and non-TLS this is only a hint. If the
+                                 # server does not support TLS the established
+                                 # connection will be a plain one.
 
 #pg_ssl_version = tlsv1          # When using ssl between Kong and PostgreSQL,
                                  # the version of tls to use. Accepted values are
@@ -900,6 +904,8 @@
 
 #pg_ssl_required = off           # When `pg_ssl` is on this determines if
                                  # TLS must be used between Kong and PostgreSQL.
+                                 # It aborts the connection if the server does
+                                 # not support SSL connections.
 
 #pg_ssl_verify = off             # Toggles server certificate verification if
                                  # `pg_ssl` is enabled.

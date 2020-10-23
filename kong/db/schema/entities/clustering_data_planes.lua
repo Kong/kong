@@ -5,6 +5,7 @@ return {
   primary_key        = { "id" },
   db_export          = false,
   generate_admin_api = false,
+  admin_api_name     = "clustering/data-planes", -- we don't generate this, so just for reference
   ttl                = true,
 
   fields = {

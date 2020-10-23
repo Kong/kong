@@ -1,9 +1,6 @@
 local redis = require "kong.enterprise_edition.redis".config_schema
 local Entity = require "kong.db.schema.entity"
-local redis_connection = require "kong.enterprise_edition.redis".connection
 local redis_init_conf = require "kong.enterprise_edition.redis".init_conf
-
-require("resty.dns.client").init(nil)
 
 describe("redis schema", function()
   local Redis = assert(Entity.new(redis))
@@ -63,8 +60,12 @@ describe("redis schema", function()
     }
 
     redis_init_conf(configA.redis)
-    local connectionA = redis_connection(configA.redis)
-    assert.same("redis-clusterredis:6379", connectionA.config.name)
+
+    local redis_cluster_obj = {
+      name = "redis-cluster" .. table.concat(configA.redis.cluster_addresses),
+    }
+
+    assert.same("redis-clusterredis:6379", redis_cluster_obj.name)
 
     -- Simulate the creation of another plugin configuration with redis cluster
     local configB = {
@@ -74,22 +75,37 @@ describe("redis schema", function()
     }
 
     redis_init_conf(configB.redis)
-    local connectionB = redis_connection(configB.redis)
-    assert.same("redis-clusterredis:6380", connectionB.config.name)
 
-    -- Make sure that `cluster_addresses` is sorted
-    local configC = {
+    local redis_cluster_obj = {
+      name = "redis-cluster" .. table.concat(configB.redis.cluster_addresses),
+    }
+
+    assert.same("redis-clusterredis:6380", redis_cluster_obj.name)
+  end)
+
+  it("cluster_addresses must be sorted", function()
+    local config = {
       redis = {
         cluster_addresses = {
-          "redis:6380",
           "redis:6379",
+          "redis:6375",
+          "redis:6378",
+          "redis:6376",
+          "redis:6377",
         }
       }
     }
 
-    redis_init_conf(configC.redis)
-    local connectionC = redis_connection(configC.redis)
-    assert.same("redis-clusterredis:6379redis:6380", connectionC.config.name)
+    local expected = {
+      "redis:6375",
+      "redis:6376",
+      "redis:6377",
+      "redis:6378",
+      "redis:6379",
+    }
+
+    redis_init_conf(config.redis)
+    assert.same(expected, config.redis.cluster_addresses)
   end)
 
   it("errors with invalid redis sentinel data", function()

@@ -13,6 +13,7 @@ local cassandra = require "cassandra"
 
 
 local default_ws_id = uuid.generate_v4()
+local ws_id
 
 
 local function render(template, keys)
@@ -20,41 +21,47 @@ local function render(template, keys)
 end
 
 
-local function cassandra_get_default_ws(connector)
-  local rows, err = connector:query("SELECT id FROM workspaces WHERE name='default'")
-  if err then
-    return nil, err
+local function cassandra_get_default_ws(coordinator)
+  if ws_id then
+    return ws_id
   end
 
-  if not rows
-     or not rows[1]
-     or not rows[1].id
-  then
-    return nil
-  end
-
-  return rows[1].id
-end
-
-
-local function cassandra_create_default_ws(connector)
-  local created_at = ngx.time() * 1000
-
-  local _, err = connector:query("INSERT INTO workspaces(id, name, created_at) VALUES (?, 'default', ?)", {
-    cassandra.uuid(default_ws_id),
-    cassandra.timestamp(created_at)
+  local rows, err = coordinator:execute("SELECT id FROM workspaces WHERE name='default'", nil, {
+    consistency = cassandra.consistencies.serial,
   })
   if err then
     return nil, err
   end
 
-  return cassandra_get_default_ws(connector) or default_ws_id
+  if not rows or not rows[1] or not rows[1].id then
+    return nil
+  end
+
+  ws_id = rows[1].id
+
+  return ws_id
 end
 
 
-local function cassandra_ensure_default_ws(connector)
+local function cassandra_create_default_ws(coordinator)
+  local created_at = ngx.time() * 1000
 
-  local default_ws, err = cassandra_get_default_ws(connector)
+  local _, err = coordinator:execute("INSERT INTO workspaces(id, name, created_at) VALUES (?, 'default', ?)", {
+    cassandra.uuid(default_ws_id),
+    cassandra.timestamp(created_at),
+  }, {
+    consistency = cassandra.consistencies.quorum,
+  })
+  if err then
+    return nil, err
+  end
+
+  return cassandra_get_default_ws(coordinator)
+end
+
+
+local function cassandra_ensure_default_ws(coordinator)
+  local default_ws, err = cassandra_get_default_ws(coordinator)
   if err then
     return nil, err
   end
@@ -63,7 +70,7 @@ local function cassandra_ensure_default_ws(connector)
     return default_ws
   end
 
-  return cassandra_create_default_ws(connector)
+  return cassandra_create_default_ws(coordinator)
 end
 
 
@@ -266,7 +273,6 @@ local postgres = {
     -- General function to fixup a plugin configuration
     fixup_plugin_config = function(_, connector, plugin_name, fixup_fn) -- XXX EE Always (idcare)
       local pgmoon_json = require("pgmoon.json")
-
       for plugin, err in connector:iterate("SELECT id, name, config FROM plugins") do
         if err then
           return nil, err
@@ -276,10 +282,8 @@ local postgres = {
           local fix = fixup_fn(plugin.config)
 
           if fix then
-
-            local sql = render([[
-              UPDATE plugins SET config = $(NEW_CONFIG)::jsonb WHERE id = '$(ID)'
-            ]], {
+            local sql = render(
+              "UPDATE plugins SET config = $(NEW_CONFIG)::jsonb WHERE id = '$(ID)'", {
               NEW_CONFIG = pgmoon_json.encode_json(plugin.config),
               ID = plugin.id,
             })
@@ -398,9 +402,7 @@ local cassandra = {
         for i = 1, #rows do
           local row = rows[i]
           if row.cache_key:match(":$") then
-            local cql = render([[
-              UPDATE $(TABLE) SET cache_key = '$(CACHE_KEY)' WHERE $(PARTITION) id = $(ID)
-            ]], {
+            local cql = render("UPDATE $(TABLE) SET cache_key = '$(CACHE_KEY)' WHERE $(PARTITION) id = $(ID)", {
               TABLE = table_name,
               CACHE_KEY = row.cache_key .. ":" .. default_ws,
               PARTITION = is_partitioned
@@ -409,7 +411,7 @@ local cassandra = {
               ID = row.id,
             })
 
-            local _, err = connector:query(cql)
+            local _, err = coordinator:execute(cql)
             if err then
               return nil, err
             end
@@ -452,9 +454,7 @@ local cassandra = {
               end
             end
 
-            local cql = render([[
-              UPDATE $(TABLE) SET $(SET_LIST) WHERE $(PARTITION) id = $(ID)
-            ]], {
+            local cql = render("UPDATE $(TABLE) SET $(SET_LIST) WHERE $(PARTITION) id = $(ID)", {
               PARTITION = is_partitioned
                           and "partition = '" .. table_name .. "' AND"
                           or  "",
@@ -463,7 +463,7 @@ local cassandra = {
               ID = row.id,
             })
 
-            local _, err = connector:query(cql)
+            local _, err = coordinator:execute(cql)
             if err then
               return nil, err
             end
@@ -477,10 +477,9 @@ local cassandra = {
     ------------------------------------------------------------------------------
     -- General function to fixup a plugin configuration
     fixup_plugin_config = function(_, connector, plugin_name, fixup_fn) -- XXX EE only boot (or none)
+      local coordinator = assert(connector:get_stored_connection())
       local cassandra = require("cassandra")
       local cjson = require("cjson")
-
-      local coordinator = assert(connector:connect_migrations())
 
       for rows, err in coordinator:iterate("SELECT id, name, config FROM plugins") do
         if err then
@@ -497,7 +496,7 @@ local cassandra = {
             local fix = fixup_fn(config)
 
             if fix then
-              local _, err = connector:query("UPDATE plugins SET config = ? WHERE id = ?", {
+              local _, err = coordinator:execute("UPDATE plugins SET config = ? WHERE id = ?", {
                 cassandra.text(cjson.encode(config)),
                 cassandra.uuid(plugin.id)
               })
@@ -548,7 +547,6 @@ end
 
 local function ws_adjust_data(ops, connector, entities)
   for _, entity in ipairs(entities) do
-
     if entity.cache_key and #entity.cache_key > 1 then
       local _, err = ops:ws_update_composite_cache_key(connector, entity.name, entity.partitioned)
       if err then
@@ -634,4 +632,7 @@ return {
   postgres = postgres,
   cassandra = cassandra,
   ws_migrate_plugin = ws_migrate_plugin,
+  cassandra_get_default_ws = cassandra_get_default_ws,
+  cassandra_create_default_ws = cassandra_create_default_ws,
+  cassandra_ensure_default_ws = cassandra_ensure_default_ws,
 }
