@@ -55,7 +55,10 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         dns_hostsfile = dns_hostsfile,
         plugins = "bundled,reports-api,go-hello",
-        go_plugins_dir = helpers.go_plugin_path,
+        pluginserver_names = "test",
+        pluginserver_test_socket = "/tmp/go_pluginserver.sock",
+        pluginserver_test_query_cmd = "go-pluginserver -plugins-directory " .. helpers.go_plugin_path .. " -dump-all-plugins",
+        pluginserver_test_start_cmd = "go-pluginserver -plugins-directory " .. helpers.go_plugin_path .. " -kong-prefix /tmp",
         anonymous_reports = true,
       }))
 
@@ -113,22 +116,6 @@ for _, strategy in helpers.each_strategy() do
 
       assert.match("go_plugin_reqs=1", reports_data)
       assert.match("go_plugin_reqs=1", reports_data)
-      proxy_client:close()
-    end)
-
-    it("logs the go version in use", function()
-      local proxy_client = assert(helpers.proxy_client())
-      local res = proxy_client:get("/", {
-        headers = { host  = "http-service.test" }
-      })
-      assert.res_status(200, res)
-
-      reports_send_ping(NEW_STATS_PORT)
-
-      local _, reports_data = assert(reports_server:stop())
-      reports_data = cjson.encode(reports_data)
-
-      assert.match("go_version=%d+.%d+.%d*", reports_data)
       proxy_client:close()
     end)
 

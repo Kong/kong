@@ -157,6 +157,10 @@ local DYNAMIC_KEY_NAMESPACES = {
     prefix = "nginx_sproxy_",
     ignore = EMPTY,
   },
+  {
+    prefix = "pluginserver_",
+    ignore = EMPTY,
+  },
 }
 
 
@@ -618,6 +622,7 @@ local CONF_INFERENCES = {
   cluster_server_name = { typ = "string" },
   cluster_data_plane_purge_delay = { typ = "number" },
   kic = { typ = "boolean" },
+  pluginserver_names = { typ = "array" },
 }
 
 
@@ -1335,7 +1340,7 @@ local function load(path, custom_conf, opts)
       t = t or {}
 
       for k, v in pairs(t) do
-        local directive = string.match(k, "(" .. dyn_prefix .. ".+)")
+        local directive = string.match(k, "^(" .. dyn_prefix .. ".+)")
         if directive then
           dynamic_keys[directive] = true
 
@@ -1448,12 +1453,14 @@ local function load(path, custom_conf, opts)
 
     -- nginx directives from conf
     for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
-      injected_in_namespace[dyn_namespace.injected_conf_name] = true
+      if dyn_namespace.injected_conf_name then
+        injected_in_namespace[dyn_namespace.injected_conf_name] = true
 
-      local directives = parse_nginx_directives(dyn_namespace, conf,
-                                                injected_in_namespace)
-      conf[dyn_namespace.injected_conf_name] = setmetatable(directives,
-                                                            _nop_tostring_mt)
+        local directives = parse_nginx_directives(dyn_namespace, conf,
+          injected_in_namespace)
+        conf[dyn_namespace.injected_conf_name] = setmetatable(directives,
+          _nop_tostring_mt)
+      end
     end
 
     -- TODO: Deprecated, but kept for backward compatibility.
@@ -1554,9 +1561,11 @@ local function load(path, custom_conf, opts)
   end
 
   for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
-    table.sort(conf[dyn_namespace.injected_conf_name], function(a, b)
-      return a.name < b.name
-    end)
+    if dyn_namespace.injected_conf_name then
+      table.sort(conf[dyn_namespace.injected_conf_name], function(a, b)
+        return a.name < b.name
+      end)
+    end
   end
 
   ok, err = listeners.parse(conf, {
@@ -1603,12 +1612,6 @@ local function load(path, custom_conf, opts)
 
   -- load absolute paths
   conf.prefix = pl_path.abspath(conf.prefix)
-
-  conf.go_pluginserver_exe = pl_path.abspath(conf.go_pluginserver_exe)
-
-  if conf.go_plugins_dir ~= "off" then
-    conf.go_plugins_dir = pl_path.abspath(conf.go_plugins_dir)
-  end
 
   for _, prefix in ipairs({ "ssl", "admin_ssl", "status_ssl", "client_ssl", "cluster" }) do
     local ssl_cert = conf[prefix .. "_cert"]

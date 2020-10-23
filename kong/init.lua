@@ -82,8 +82,7 @@ local cache_warmup = require "kong.cache.warmup"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
-local go = require "kong.db.dao.plugins.go"
-
+local plugin_servers = require "kong.runloop.plugin_servers"
 
 local kong             = kong
 local ngx              = ngx
@@ -597,9 +596,7 @@ function Kong.init_worker()
 
   runloop.init_worker.after()
 
-  if go.is_on() then
-    go.manage_pluginserver()
-  end
+  plugin_servers.start()
 
   if subsystem == "http" then
     clustering.init_worker(kong.configuration)

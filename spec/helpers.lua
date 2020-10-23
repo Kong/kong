@@ -2508,17 +2508,11 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   local prefix = env.prefix or conf.prefix
 
   -- go plugins are enabled
-  --  set pluginserver dir (making sure it's in the PATH)
-  --  compile fixture go plugins
-  if env.go_plugins_dir then
-    if env.go_plugins_dir == GO_PLUGIN_PATH then
+  --  compile fixture go plugins if any setting mentions it
+  for _,v in pairs(env) do
+    if type(v) == "string" and v:find(GO_PLUGIN_PATH) then
       build_go_plugins(GO_PLUGIN_PATH)
-    end
-
-    if not env.go_pluginserver_exe and not os.getenv("KONG_GO_PLUGINSERVER_EXE") then
-      local ok, _, pluginserver_path, _ = pl_utils.executeex(string.format("which go-pluginserver"))
-      assert(ok, "did not find go-pluginserver in PATH")
-      env.go_pluginserver_exe = pluginserver_path
+      break
     end
   end
 
