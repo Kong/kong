@@ -74,7 +74,7 @@ local function find_client(args)
   local logout_redirect_uris       = args.get_conf_arg("logout_redirect_uri",       {})
   local forbidden_redirect_uris    = args.get_conf_arg("forbidden_redirect_uri",    {})
   local unauthorized_redirect_uris = args.get_conf_arg("unauthorized_redirect_uri", {})
-  local unexpected_redirect_uris   = args.get_conf_arg("unexpected_redirect_uris",  {})
+  local unexpected_redirect_uris   = args.get_conf_arg("unexpected_redirect_uri",   {})
 
   clients.n = #clients
 
