@@ -107,6 +107,11 @@ repository will allow you to do both easily.
   by the operating system. This follows a very simple heuristic to try to
   use the most common certificate file in most popular distros.
   [#6342](https://github.com/Kong/kong/pull/6342)
+- Consistent-Hashing load balancing algorithm does not require to use the entire
+  target history to build the same proxying destinations table on all Kong nodes
+  anymore. Now deleted targets are actually removed from the database and the
+  targets entities can be manipulated by the Admin API as any other entity.
+  [#6336](https://github.com/Kong/kong/pull/6336)
 - Add `X-Forwarded-Path` header: if a trusted source provides a
   `X-Forwarded-Path` header, it is proxied as-is. Otherwise, Kong will set
   the content of said header to the request's path.
@@ -132,12 +137,16 @@ repository will allow you to do both easily.
   cleaned up automatically, according to a delay value configurable via
   the `cluster_data_plane_purge_delay` attribute, set to 14 days by default.
   [#6376](https://github.com/Kong/kong/pull/6376)
+- Hybrid Mode: Data Plane nodes now apply only the last config when receiving
+  several updates in sequence, improving the performance when large configs are
+  in use. [#6299](https://github.com/Kong/kong/pull/6299)
 
 ##### Admin API
 
 - Hybrid Mode: new endpoint `/clustering/data-planes` which returns complete
   information about all Data Plane nodes that are connected to the Control
   Plane cluster, regardless of the Control Plane node to which they connected.
+  [#6308](https://github.com/Kong/kong/pull/6308)
   * :warning: The `/clustering/status` endpoint is now deprecated, since it
     returns only information about Data Plane nodes directly connected to the
     Control Plane node to which the Admin API request was made, and is
@@ -155,6 +164,11 @@ repository will allow you to do both easily.
 - `kong.response.exit` now honors the `headers` configuration setting for
   including or removing the `Server` header.
   [#6371](https://github.com/Kong/kong/pull/6371)
+- `kong.log.serialize` function now can be called using the stream subsystem,
+  allowing various logging plugins to work under TCP and TLS proxy modes.
+  [#6036](https://github.com/Kong/kong/pull/6036)
+- Requests with `multipart/form-data` MIME type now can use the same part name
+  multiple times. [#6054](https://github.com/Kong/kong/pull/6054)
 
 ##### Plugins
 
