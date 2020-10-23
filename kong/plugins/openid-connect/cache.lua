@@ -151,7 +151,7 @@ local function init_worker()
       return
     end
 
-    log("consumer ", data.operation or "update", "d, invalidating cache")
+    log("consumer ", operation or "update", "d, invalidating cache")
 
     local old_entity = data.old_entity
     local old_username
@@ -188,7 +188,7 @@ local function init_worker()
       return
     end
 
-    log("issuer ", data.operation or "update", "d, invalidating cache")
+    log("issuer ", operation or "update", "d, invalidating cache")
     local old_issuer
     local old_entity = data.old_entity
     if old_entity then
