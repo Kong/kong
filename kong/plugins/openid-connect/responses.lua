@@ -6,7 +6,17 @@ local consumers = require "kong.plugins.openid-connect.consumers"
 local kong      = kong
 local select    = select
 local concat    = table.concat
-local redirect  = ngx.redirect
+
+
+local REDIRECT_HEADERS = {
+  Location = ""
+}
+
+
+local function redirect(location, status)
+  REDIRECT_HEADERS.Location = location
+  return kong.response.exit(status or 302, "", REDIRECT_HEADERS)
+end
 
 
 local function unauthorized(err, msg, ctx, issuer, client, anonymous, session)

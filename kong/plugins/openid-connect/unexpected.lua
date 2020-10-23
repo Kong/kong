@@ -1,10 +1,10 @@
 local log       = require "kong.plugins.openid-connect.log"
+local responses = require "kong.plugins.openid-connect.responses"
 
 
 local kong      = kong
 local select    = select
 local concat    = table.concat
-local redirect  = ngx.redirect
 
 
 return function(client, ...)
@@ -15,7 +15,7 @@ return function(client, ...)
   end
 
   if client.unexpected_redirect_uri then
-    return redirect(client.unexpected_redirect_uri)
+    return responses.redirect(client.unexpected_redirect_uri)
   end
 
   local message = "An unexpected error occurred"
