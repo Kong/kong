@@ -216,6 +216,10 @@
                                  # Required if `cluster_mtls` is set to `pki`,
                                  # ignored otherwise.
 
+#------------------------------------------------------------------------------
+# HYBRID MODE DATA PLANE
+#------------------------------------------------------------------------------
+
 #cluster_server_name =           # The server name used in the SNI of the TLS
                                  # connection from a DP node to a CP node.
                                  # Must match the Common Name (CN) or Subject
@@ -229,6 +233,10 @@
                                  # address of the control plane node from
                                  # which configuration updates will be fetched,
                                  # in `host:port` format.
+
+#------------------------------------------------------------------------------
+# HYBRID MODE CONTROL PLANE
+#------------------------------------------------------------------------------
 
 #cluster_listen = 0.0.0.0:8005
                          # Comma-separated list of addresses and ports on
@@ -1219,7 +1227,7 @@
                                  # to each individual worker.
 
 #------------------------------------------------------------------------------
-# DEVELOPMENT & MISCELLANEOUS
+# MISCELLANEOUS
 #------------------------------------------------------------------------------
 
 # Additional settings inherited from lua-nginx-module allowing for more
