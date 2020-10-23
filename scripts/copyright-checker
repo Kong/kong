@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+#
+# Running this script from kong-ee repo, with github credentials will
+# download KD for the current worktree (it's in .requirements), and
+# from it it will download all plugins from its build.yml.
+#
+# For each of the kong-ee and plugins, it will check that all lua
+# files have the word COPYRIGHT in the first line. If not, it will add
+# the copyright line, and mark that repo as dirty by printing the
+# directory path (It's a temporary one)
+
+LOCAL_PATH=$(dirname $(realpath $0))
+source $LOCAL_PATH/common.sh
+
+function get_distributions {
+  DISTRIBUTIONS_PATH=$($LOCAL_PATH/../dist/dist.sh get)
+  [[ $DISTRIBUTIONS_PATH == /tmp/* ]] && on_exit "rm -rf $DISTRIBUTIONS_PATH"
+  echo $DISTRIBUTIONS_PATH
+}
+
+function add_copyright {
+  local ret=0
+  for f in $(find "." -type f -name "*.lua"); do
+    head -n1 $f | grep -q COPYRIGHT || {
+      ret=1
+      RET=1
+      cat <(echo '-- Kong 2020 COPYRIGHT') <(echo) $f >${f}.new
+      mv $f.new $f
+    }
+  done
+
+  [[ $ret -ne 0 ]] &&
+    echo "$PWD plugin $(echo $2 | jq -r '.name') has pending modifications."
+}
+
+CURR_PATH=
+function plugin_tmp_clone {
+  mkdir -p  /tmp/kong-tmp
+  local tmpath=$(mktemp -d "/tmp/kong-tmp/kong-$repo-XXXXX")
+  CURR_PATH=$tmpath
+
+  local name=$(echo $entry | jq -r '.name')
+  local url=$(echo $entry | jq -r '.github_url')
+  local version=$(echo $entry | jq -r '.version')
+  local repo=$(basename $url)
+
+  if [[ $DO_HTTP -eq 1 ]]; then
+    git clone -b "${version}" https://"$GITHUB_TOKEN"@github.com/Kong/${repo} "$tmpath" 2> /dev/null
+  else
+    git clone -b "${version}" git@github.com:Kong/${repo} $tmpath 2> /dev/null
+  fi
+}
+
+# gets a callback ()
+function foreach_plugin_with_index {
+  local counter=0
+  local build_json=$(yq r kong-images/build.yml -j)
+  for entry in $(echo $build_json| jq -c '.kong'; echo $build_json | jq -c '.enterprise[]'); do
+    (plugin_tmp_clone $entry
+     cd $CURR_PATH
+     $1 $counter $entry
+    )
+    ((counter=counter+1))
+  done
+}
+
+main() {
+  [[ -n $DISTRIBUTIONS_PATH ]] || DISTRIBUTIONS_PATH=$(get_distributions)
+  [[ -d $DISTRIBUTIONS_PATH ]] || err "$DISTRIBUTIONS_PATH does not exist"
+
+  pushd $DISTRIBUTIONS_PATH
+    foreach_plugin_with_index add_copyright
+  popd
+  return $ret
+}
+
+main "$@"
