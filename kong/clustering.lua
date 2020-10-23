@@ -270,7 +270,7 @@ local function communicate(premature, conf)
     end
   end)
 
-  local _, err = ngx.thread.wait(read_thread, write_thread, config_thread)
+  local ok, err, perr = ngx.thread.wait(read_thread, write_thread, config_thread)
 
   ngx.thread.kill(read_thread)
   ngx.thread.kill(write_thread)
@@ -278,8 +278,11 @@ local function communicate(premature, conf)
 
   c:close()
 
-  if err then
+  if not ok then
     ngx_log(ngx_ERR, err)
+
+  elseif perr then
+    ngx_log(ngx_ERR, perr)
   end
 
   if not exiting() then
@@ -476,15 +479,20 @@ function _M.handle_cp_websocket()
     end
   end)
 
-  local _, err = ngx.thread.wait(write_thread, read_thread)
+  local ok, err, perr = ngx.thread.wait(write_thread, read_thread)
 
   ngx.thread.kill(write_thread)
   ngx.thread.kill(read_thread)
 
   wb:send_close()
 
-  if err then
+  if not ok then
     ngx_log(ngx_ERR, err)
+    return ngx_exit(ngx_ERR)
+  end
+
+  if perr then
+    ngx_log(ngx_ERR, perr)
     return ngx_exit(ngx_ERR)
   end
 
