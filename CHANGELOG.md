@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.2.0-rc.1](#220-rc1)
+- [2.2.0](#220)
 - [2.1.4](#214)
 - [2.1.3](#213)
 - [2.1.2](#212)
@@ -50,17 +50,13 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.2.0-rc.1]
+## [2.2.0]
 
-> Released 2020/10/02
+> Released 2020/10/23
 
-This is a release candidate for the upcoming Kong 2.2 release. There are no
-breaking changes with respect to the 2.x series. If no serious issues are
-reported, this release will effectively be promoted to the stable 2.2.0 release.
-This is now the time to test the new features and report any issues!
-
-This changelog entry all new features and fixes for the 2.2.0 series, including
-changes previously added in the 2.2.0-alpha.1 and 2.2.0-beta.1 releases.
+This is a new major release of Kong, including new features such as **UDP support**,
+**Configurable Request and Response Buffering**, **Dynamically Loading of OS
+Certificates**, and much more.
 
 ### Dependencies
 
@@ -5537,7 +5533,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.2.0-rc.1]: https://github.com/Kong/kong/compare/2.1.3...2.2.0-rc.1
+[2.2.0]: https://github.com/Kong/kong/compare/2.1.3...2.2.0
 [2.1.4]: https://github.com/Kong/kong/compare/2.1.3...2.1.4
 [2.1.3]: https://github.com/Kong/kong/compare/2.1.2...2.1.3
 [2.1.2]: https://github.com/Kong/kong/compare/2.1.1...2.1.2
