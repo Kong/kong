@@ -136,6 +136,9 @@ build = {
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
     ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",
+    ["kong.runloop.plugin_servers"] = "kong/runloop/plugin_servers/init.lua",
+    ["kong.runloop.plugin_servers.process"] = "kong/runloop/plugin_servers/process.lua",
+    ["kong.runloop.plugin_servers.mp_rpc"] = "kong/runloop/plugin_servers/mp_rpc.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
 
