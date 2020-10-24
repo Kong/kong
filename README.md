@@ -35,8 +35,13 @@ likely end up needing common functionality to run your actual software. Kong
 can help by acting as a gateway (or a sidecar) for microservices requests while
 providing load balancing, logging, authentication, rate-limiting,
 transformations, and more through plugins.
+  Kong is a scalable, open source API Layer (also known as an API Gateway, or API Middleware). Kong runs in front of any RESTful API and is extended through Plugins, which provide extra functionality and services beyond the core platform.
 
 [![][kong-benefits]][kong-url]
+
+Once Kong is running, every request being made to the API will hit Kong first, and then it will be proxied to the final API. In between requests and responses Kong will execute any plugin that you decided to install, empowering your APIs. Kong effectively becomes the entry point for every API request.
+The Powerful of Kong is also supported by plugins from authentication, security, traffic control, logging, and etc…
+
 
 Kong has been built with the following leading principles:
 
