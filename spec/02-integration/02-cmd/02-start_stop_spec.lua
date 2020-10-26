@@ -57,6 +57,46 @@ describe("kong start/stop #" .. strategy, function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
     assert.truthy(helpers.path.exists(helpers.test_conf.kong_env))
   end)
+  if strategy == "cassandra" then
+    it("should not add [emerg], [alert], [crit], or [error] lines to error log", function()
+      assert(helpers.kong_exec("start ", {
+        prefix = helpers.test_conf.prefix,
+        stream_listen = "127.0.0.1:9022",
+        status_listen = "0.0.0.0:8100",
+      }))
+      assert(helpers.kong_exec("stop", {
+        prefix = helpers.test_conf.prefix
+      }))
+
+      local pl_file = require "pl.file"
+      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+
+      assert.not_matches("[emerg]", err_log, nil, true)
+      assert.not_matches("[alert]", err_log, nil, true)
+      assert.not_matches("[crit]", err_log, nil, true)
+      assert.not_matches("[error]", err_log, nil, true)
+    end)
+  else
+    it("should not add [emerg], [alert], [crit], [error] or [warn] lines to error log", function()
+      assert(helpers.kong_exec("start ", {
+        prefix = helpers.test_conf.prefix,
+        stream_listen = "127.0.0.1:9022",
+        status_listen = "0.0.0.0:8100",
+      }))
+      assert(helpers.kong_exec("stop", {
+        prefix = helpers.test_conf.prefix
+      }))
+
+      local pl_file = require "pl.file"
+      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+
+      assert.not_matches("[emerg]", err_log, nil, true)
+      assert.not_matches("[alert]", err_log, nil, true)
+      assert.not_matches("[crit]", err_log, nil, true)
+      assert.not_matches("[error]", err_log, nil, true)
+      assert.not_matches("[warn]", err_log, nil, true)
+    end)
+  end
 
   if strategy == "cassandra" then
     it("start resolves cassandra contact points", function()
@@ -401,24 +441,6 @@ describe("kong start/stop #" .. strategy, function()
           "are you using a custom template? Make sure the 'lua_shared_dict " ..
           dict .. " [SIZE];' directive is defined.", err, nil, true)
       end
-    end)
-    it("ensures lua-resty-core is loaded", function()
-        finally(function()
-          helpers.stop_kong()
-        end)
-
-        local ok, err = helpers.start_kong({
-          prefix = helpers.test_conf.prefix,
-          database = helpers.test_conf.database,
-          pg_database = helpers.test_conf.pg_database,
-          cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
-          nginx_http_lua_load_resty_core = "off",
-        })
-        assert.falsy(ok)
-        assert.matches(helpers.unindent([[
-          lua-resty-core must be loaded; make sure 'lua_load_resty_core'
-          is not disabled.
-        ]], nil, true), err, nil, true)
     end)
 
     if strategy == "cassandra" then

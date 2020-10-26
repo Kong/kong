@@ -39,6 +39,7 @@ local WSS_REQUEST_COUNT_KEY   = "events:requests:wss"
 local STREAM_COUNT_KEY        = "events:streams"
 local TCP_STREAM_COUNT_KEY    = "events:streams:tcp"
 local TLS_STREAM_COUNT_KEY    = "events:streams:tls"
+local UDP_STREAM_COUNT_KEY    = "events:streams:udp"
 
 
 local GO_PLUGINS_REQUEST_COUNT_KEY = "events:requests:go_plugins"
@@ -203,21 +204,16 @@ end
 
 
 -- returns a string indicating the "kind" of the current request/stream:
--- "http", "https", "h2c", "h2", "grpc", "grpcs", "ws", "wss", "tcp", "tls"
+-- "http", "https", "h2c", "h2", "grpc", "grpcs", "ws", "wss", "tcp", "tls", "udp"
 -- or nil + error message if the suffix could not be determined
-local function get_current_suffix(ctx)
-  if subsystem == "stream" then
-    if var.ssl_protocol then
-      return "tls"
-    end
+local get_current_suffix
 
-    return "tcp"
-  end
-
+if subsystem == "http" then
+function get_current_suffix(ctx)
   local scheme = var.scheme
   local proxy_mode = var.kong_proxy_mode
   if scheme == "http" or scheme == "https" then
-    if proxy_mode == "http" then
+    if proxy_mode == "http" or proxy_mode == "unbuffered" then
       local http_upgrade = var.http_upgrade
       if http_upgrade and lower(http_upgrade) == "websocket" then
         if scheme == "http" then
@@ -257,6 +253,16 @@ local function get_current_suffix(ctx)
             ", proxy_mode=", tostring(proxy_mode), ")")
 end
 
+else -- subsystem == "stream"
+  function get_current_suffix(ctx)
+    if var.ssl_protocol then
+      return "tls"
+    end
+
+    return lower(var.protocol)
+  end
+end
+
 
 local function send_ping(host, port)
   _ping_infos.unique_id = _unique_str
@@ -264,6 +270,7 @@ local function send_ping(host, port)
   if subsystem == "stream" then
     _ping_infos.streams     = get_counter(STREAM_COUNT_KEY)
     _ping_infos.tcp_streams = get_counter(TCP_STREAM_COUNT_KEY)
+    _ping_infos.udp_streams = get_counter(UDP_STREAM_COUNT_KEY)
     _ping_infos.tls_streams = get_counter(TLS_STREAM_COUNT_KEY)
     _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
 
@@ -271,6 +278,7 @@ local function send_ping(host, port)
 
     reset_counter(STREAM_COUNT_KEY, _ping_infos.streams)
     reset_counter(TCP_STREAM_COUNT_KEY, _ping_infos.tcp_streams)
+    reset_counter(UDP_STREAM_COUNT_KEY, _ping_infos.udp_streams)
     reset_counter(TLS_STREAM_COUNT_KEY, _ping_infos.tls_streams)
     reset_counter(GO_PLUGINS_REQUEST_COUNT_KEY, _ping_infos.go_plugin_reqs)
 

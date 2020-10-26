@@ -56,8 +56,8 @@ http {
     lua_shared_dict kong_cassandra      5m;
 > end
     lua_socket_log_errors off;
-> if lua_ssl_trusted_certificate then
-    lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
+> if lua_ssl_trusted_certificate_combined then
+    lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
 > end
     lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 
@@ -83,7 +83,7 @@ http {
         balancer_by_lua_block {
             Kong.balancer()
         }
-> if upstream_keepalive > 0 then
+> if upstream_keepalive and upstream_keepalive > 0 then
         keepalive ${{UPSTREAM_KEEPALIVE}};
 > end
     }

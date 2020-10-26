@@ -144,7 +144,7 @@ function CassandraConnector.new(kong_config)
     max_schema_consensus_wait = kong_config.cassandra_schema_consensus_timeout,
     ssl                       = kong_config.cassandra_ssl,
     verify                    = kong_config.cassandra_ssl_verify,
-    cafile                    = kong_config.lua_ssl_trusted_certificate,
+    cafile                    = kong_config.lua_ssl_trusted_certificate_combined,
     lock_timeout              = 30,
     silent                    = ngx.IS_CLI,
   }

@@ -28,3 +28,12 @@ func (conf Config) Access(kong *pdk.PDK) {
 	}
 	kong.Response.SetHeader("x-hello-from-go", fmt.Sprintf("Go says %s to %s", message, host))
 }
+
+func (conf Config) Response(kong *pdk.PDK) {
+  srvr, err := kong.ServiceResponse.GetHeader("Server")
+  if err != nil {
+    kong.Log.Err(err.Error())
+  }
+
+  kong.Response.SetHeader("x-hello-from-go-at-response", fmt.Sprintf("got from server '%s'", srvr))
+}

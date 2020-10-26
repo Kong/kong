@@ -141,6 +141,14 @@ function Plugins:check_db_against_config(plugin_set)
   return true
 end
 
+local function implements(plugin, method)
+  if type(plugin) ~= "table" then
+    return false
+  end
+
+  local m = plugin[method]
+  return type(m) == "function" and m ~= BasePlugin[method]
+end
 
 local function load_plugin_handler(plugin)
   -- NOTE: no version _G.kong (nor PDK) in plugins main chunk
@@ -155,6 +163,14 @@ local function load_plugin_handler(plugin)
   end
   if not ok then
     return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
+  end
+
+  if implements(handler, "response") and
+      (implements(handler, "header_filter") or implements(handler, "body_filter"))
+  then
+    return nil, fmt(
+      "Plugin %q can't be loaded because it implements both `response` " ..
+      "and `header_filter` or `body_filter` methods.\n", plugin)
   end
 
   return handler

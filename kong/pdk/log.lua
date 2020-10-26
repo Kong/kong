@@ -25,6 +25,7 @@ local concat = table.concat
 local getinfo = debug.getinfo
 local reverse = string.reverse
 local tostring = tostring
+local tonumber = tonumber
 local setmetatable = setmetatable
 local ngx = ngx
 local kong = kong
@@ -513,85 +514,154 @@ do
   -- @phases log
   -- @treturn table the request information table
   -- @usage
-  -- local tbl = kong.log.serialize()
-  function serialize(options)
-    check_phase(PHASES_LOG)
+  -- kong.log.serialize()
+  if ngx.config.subsystem == "http" then
+    function serialize(options)
+      check_phase(PHASES_LOG)
 
-    local ongx = (options or {}).ngx or ngx
-    local okong = (options or {}).kong or kong
+      local ongx = (options or {}).ngx or ngx
+      local okong = (options or {}).kong or kong
 
-    local ctx = ongx.ctx
-    local var = ongx.var
-    local req = ongx.req
+      local ctx = ongx.ctx
+      local var = ongx.var
+      local req = ongx.req
 
-    local authenticated_entity
-    if ctx.authenticated_credential ~= nil then
-      authenticated_entity = {
-        id = ctx.authenticated_credential.id,
-        consumer_id = ctx.authenticated_credential.consumer_id
+      local authenticated_entity
+      if ctx.authenticated_credential ~= nil then
+        authenticated_entity = {
+          id = ctx.authenticated_credential.id,
+          consumer_id = ctx.authenticated_credential.consumer_id
+        }
+      end
+
+      local request_tls
+      local request_tls_ver = ngx_ssl.get_tls1_version_str()
+      if request_tls_ver then
+        request_tls = {
+          version = request_tls_ver,
+          cipher = var.ssl_cipher,
+          client_verify = ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
+        }
+      end
+
+      local request_uri = var.request_uri or ""
+
+      local req_headers = okong.request.get_headers()
+      for _, header in ipairs(REDACTED_REQUEST_HEADERS) do
+        if req_headers[header] then
+          req_headers[header] = "REDACTED"
+        end
+      end
+
+      local resp_headers = ongx.resp.get_headers()
+      for _, header in ipairs(REDACTED_RESPONSE_HEADERS) do
+        if resp_headers[header] then
+          resp_headers[header] = "REDACTED"
+        end
+      end
+
+      local host_port = ctx.host_port or var.server_port
+
+      local request_size = var.request_length
+      if tonumber(request_size, 10) then
+        request_size = tonumber(request_size, 10)
+      end
+
+      local response_size = var.bytes_sent
+      if tonumber(response_size, 10) then
+        response_size = tonumber(response_size, 10)
+      end
+
+      return {
+        request = {
+          uri = request_uri,
+          url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
+          querystring = okong.request.get_query(), -- parameters, as a table
+          method = okong.request.get_method(), -- http method
+          headers = req_headers,
+          size = request_size,
+          tls = request_tls
+        },
+        upstream_uri = var.upstream_uri,
+        response = {
+          status = ongx.status,
+          headers = resp_headers,
+          size = response_size,
+        },
+        tries = (ctx.balancer_data or {}).tries,
+        latencies = {
+          kong = (ctx.KONG_ACCESS_TIME or 0) +
+                 (ctx.KONG_RECEIVE_TIME or 0) +
+                 (ctx.KONG_REWRITE_TIME or 0) +
+                 (ctx.KONG_BALANCER_TIME or 0),
+          proxy = ctx.KONG_WAITING_TIME or -1,
+          request = var.request_time * 1000
+        },
+        authenticated_entity = authenticated_entity,
+        route = ctx.route,
+        service = ctx.service,
+        consumer = ctx.authenticated_consumer,
+        client_ip = var.remote_addr,
+        started_at = req.start_time() * 1000
       }
     end
 
-    local request_tls
-    local request_tls_ver = ngx_ssl.get_tls1_version_str()
-    if request_tls_ver then
-      request_tls = {
-        version = request_tls_ver,
-        cipher = var.ssl_cipher,
-        client_verify = ngx.ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
+  else
+    function serialize(options)
+      check_phase(PHASES_LOG)
+
+      local ongx = (options or {}).ngx or ngx
+
+      local ctx = ongx.ctx
+      local var = ongx.var
+      local req = ongx.req
+
+      local authenticated_entity
+      if ctx.authenticated_credential ~= nil then
+        authenticated_entity = {
+          id = ctx.authenticated_credential.id,
+          consumer_id = ctx.authenticated_credential.consumer_id
+        }
+      end
+
+      local session_tls
+      local session_tls_ver = ngx_ssl.get_tls1_version_str()
+      if session_tls_ver then
+        session_tls = {
+          version = session_tls_ver,
+          cipher = var.ssl_cipher,
+          client_verify = ngx.ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
+        }
+      end
+
+      local host_port = ctx.host_port or var.server_port
+
+      return {
+        session = {
+          tls = session_tls,
+          received = tonumber(var.bytes_received, 10),
+          sent = tonumber(var.bytes_sent, 10),
+          status = ongx.status,
+          server_port = tonumber(host_port, 10),
+        },
+        upstream = {
+          received = tonumber(var.upstream_bytes_received, 10),
+          sent = tonumber(var.upstream_bytes_sent, 10),
+        },
+        tries = (ctx.balancer_data or {}).tries,
+        latencies = {
+          kong = (ctx.KONG_PREREAD_TIME or 0) +
+                 (ctx.KONG_BALANCER_TIME or 0),
+          session = var.session_time * 1000,
+        },
+        authenticated_entity = authenticated_entity,
+        route = ctx.route,
+        service = ctx.service,
+        consumer = ctx.authenticated_consumer,
+        client_ip = var.remote_addr,
+        started_at = req.start_time() * 1000
       }
     end
-
-    local request_uri = var.request_uri or ""
-
-    local req_headers = okong.request.get_headers()
-    for _, header in ipairs(REDACTED_REQUEST_HEADERS) do
-      if req_headers[header] then
-        req_headers[header] = "REDACTED"
-      end
-    end
-
-    local resp_headers = ongx.resp.get_headers()
-    for _, header in ipairs(REDACTED_RESPONSE_HEADERS) do
-      if resp_headers[header] then
-        resp_headers[header] = "REDACTED"
-      end
-    end
-
-    local host_port = ctx.host_port or var.server_port
-
-    return {
-      request = {
-        uri = request_uri,
-        url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
-        querystring = okong.request.get_query(), -- parameters, as a table
-        method = okong.request.get_method(), -- http method
-        headers = req_headers,
-        size = var.request_length,
-        tls = request_tls
-      },
-      upstream_uri = var.upstream_uri,
-      response = {
-        status = ongx.status,
-        headers = resp_headers,
-        size = var.bytes_sent
-      },
-      tries = (ctx.balancer_data or {}).tries,
-      latencies = {
-        kong = (ctx.KONG_ACCESS_TIME or 0) +
-               (ctx.KONG_RECEIVE_TIME or 0) +
-               (ctx.KONG_REWRITE_TIME or 0) +
-               (ctx.KONG_BALANCER_TIME or 0),
-        proxy = ctx.KONG_WAITING_TIME or -1,
-        request = var.request_time * 1000
-      },
-      authenticated_entity = authenticated_entity,
-      route = ctx.route,
-      service = ctx.service,
-      consumer = ctx.authenticated_consumer,
-      client_ip = var.remote_addr,
-      started_at = req.start_time() * 1000
-    }
   end
 end
 

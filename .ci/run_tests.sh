@@ -79,6 +79,8 @@ if [ "$TEST_SUITE" == "plugins" ]; then
 
         git clone https://github.com/Kong/$REPOSITORY.git --branch $VERSION --single-branch /tmp/test-$REPOSITORY || \
         git clone https://github.com/Kong/$REPOSITORY.git --branch v$VERSION --single-branch /tmp/test-$REPOSITORY
+        sed -i 's/grpcbin:9000/localhost:15002/g' /tmp/test-$REPOSITORY/spec/*.lua
+        sed -i 's/grpcbin:9001/localhost:15003/g' /tmp/test-$REPOSITORY/spec/*.lua
         cp -R /tmp/test-$REPOSITORY/spec/fixtures/* spec/fixtures/ || true
         pushd /tmp/test-$REPOSITORY
         luarocks make
@@ -104,7 +106,7 @@ if [ "$TEST_SUITE" == "pdk" ]; then
 fi
 if [ "$TEST_SUITE" == "unit" ]; then
     unset KONG_TEST_NGINX_USER KONG_PG_PASSWORD KONG_TEST_PG_PASSWORD
-    scripts/autodoc-admin-api
+    scripts/autodoc
     bin/busted -v -o gtest spec/01-unit
     make lint
 fi

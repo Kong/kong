@@ -185,14 +185,24 @@ for _, strategy in helpers.each_strategy() do
         end
         assert.is_true(found)
 
-        -- delete the target and assert that it still exists with weight == 0
+        -- update the target and assert that it still exists with weight == 0
         api_client = helpers.admin_client()
         res, err = api_client:send({
-          method = "DELETE",
+          method = "PATCH",
           path = "/upstreams/" .. upstream1_id .. "/targets/127.0.0.1:10003",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            weight = 0
+          },
         })
         assert.is_nil(err)
-        assert.same(204, res.status)
+        assert.same(200, res.status)
+        local json = assert.response(res).has.jsonbody()
+        assert.is_string(json.id)
+        assert.are.equal("127.0.0.1:10003", json.target)
+        assert.are.equal(0, json.weight)
         api_client:close()
 
         api_client = helpers.admin_client()
@@ -280,7 +290,7 @@ for _, strategy in helpers.each_strategy() do
         end
         assert.is_true(found)
 
-        -- delete the target and assert that it still exists with weight == 0
+        -- delete the target and assert that it is gone
         api_client = helpers.admin_client()
         res, err = api_client:send({
           method = "DELETE",
@@ -306,7 +316,7 @@ for _, strategy in helpers.each_strategy() do
             break
           end
         end
-        assert.is_true(found)
+        assert.is_false(found)
       end)
     end)
   end

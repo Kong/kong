@@ -190,7 +190,7 @@ describe("declarative config: validate", function()
               ["host"] = "expected a string",
               ["path"] = "must not have empty segments",
               ["port"] = "value should be between 0 and 65535",
-              ["protocol"] = "expected one of: grpc, grpcs, http, https, tcp, tls",
+              ["protocol"] = "expected one of: grpc, grpcs, http, https, tcp, tls, udp",
               ["retries"] = "value should be between 0 and 32767",
             }
           }

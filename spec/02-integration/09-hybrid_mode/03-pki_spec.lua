@@ -16,6 +16,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        db_update_frequency = 0.1,
         database = strategy,
         cluster_listen = "127.0.0.1:9005",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -46,6 +47,24 @@ for _, strategy in helpers.each_strategy() do
 
     describe("status API", function()
       it("shows DP status", function()
+        helpers.wait_until(function()
+          local admin_client = helpers.admin_client()
+          finally(function()
+            admin_client:close()
+          end)
+
+          local res = assert(admin_client:get("/clustering/data-planes"))
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          for _, v in pairs(json.data) do
+            if v.ip == "127.0.0.1" then
+              return true
+            end
+          end
+        end, 5)
+      end)
+      it("shows DP status (#deprecated)", function()
         helpers.wait_until(function()
           local admin_client = helpers.admin_client()
           finally(function()

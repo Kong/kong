@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 
 
 local lower = string.lower
@@ -73,6 +74,15 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           local route7 = bp.routes:insert {
             hosts = { "ldap7.com" },
           }
+
+          assert(bp.routes:insert {
+            protocols = { "grpc" },
+            paths = { "/hello.HelloService/" },
+            service = assert(bp.services:insert {
+              name = "grpc",
+              url = "grpc://localhost:15002",
+            }),
+          })
 
           local anonymous_user = bp.consumers:insert {
             username = "no-body"
@@ -207,6 +217,16 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           local json = assert.response(res).has.jsonbody()
           assert.equal("Unauthorized", json.message)
         end)
+
+        it("rejects gRPC call without credentials", function()
+          local ok, err = helpers.proxy_client_grpc(){
+            service = "hello.HelloService.SayHello",
+            opts = {},
+          }
+          assert.falsy(ok)
+          assert.matches("Code: Unauthenticated", err)
+        end)
+
         it("returns 'invalid credentials' when credential value is in wrong format in authorization header", function()
           local res = assert(proxy_client:send {
             method  = "GET",
@@ -259,6 +279,18 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
           assert.response(res).has.status(200)
         end)
+
+        it("accepts authorized gRPC calls", function()
+          local ok, res = helpers.proxy_client_grpc(){
+            service = "hello.HelloService.SayHello",
+            opts = {
+              ["-H"] = ("'Authorization: ldap %s'"):format(ngx.encode_base64("einstein:password")),
+            },
+          }
+          assert.truthy(ok)
+          assert.same({ reply = "hello noname" }, cjson.decode(res))
+        end)
+
         it("fails if credential type is invalid in post request", function()
           local r = assert(proxy_client:send {
             method = "POST",

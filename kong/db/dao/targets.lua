@@ -2,6 +2,7 @@ local singletons = require "kong.singletons"
 local balancer = require "kong.runloop.balancer"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
+local workspaces   = require "kong.workspaces"
 
 
 local setmetatable = setmetatable
@@ -27,62 +28,6 @@ local function sort_targets(a, b)
 end
 
 
-local function clean_history(self, upstream_pk)
-  -- when to cleanup: when less than 10 percent of the entries are valid
-  local cleanup_factor = 0.1
-
-  --cleaning up history, check if it's necessary...
-  local targets, err, err_t = self:select_by_upstream_raw(upstream_pk)
-  if not targets then
-    return nil, err, err_t
-  end
-
-  -- do clean up
-  local seen = {}
-  local delete = {}
-
-  -- Read the history in reverse order, to obtain the most
-  -- recent state of each target.
-  for i = #targets, 1, -1 do
-    local entry = targets[i]
-
-    if seen[entry.target] then
-      -- we got a newer entry for this target than this, so this one can go
-      delete[#delete+1] = entry
-
-    else
-      -- haven't got this one, so this is the current state for this target
-      seen[entry.target] = true
-      if entry.weight == 0 then
-        delete[#delete+1] = entry
-      end
-    end
-  end
-
-  -- do we need to cleanup?
-  if #delete > #targets * (1 - cleanup_factor) then
-
-    ngx.log(ngx.NOTICE, "[Target DAO] Starting cleanup of target table for upstream ",
-               tostring(upstream_pk.id))
-    local cnt = 0
-    -- reverse again; so deleting oldest entries first
-    for i = #delete, 1, -1 do
-      local entry = delete[i]
-
-      -- notice super - this is real delete (not creating a new entity with weight = 0)
-      self.super.delete(self, { id = entry.id })
-      -- ignoring errors here, deleted by id, so should not matter
-      -- in case another kong-node does the same cleanup simultaneously
-      cnt = cnt + 1
-    end
-
-    ngx.log(ngx.INFO, "[Target DAO] Finished cleanup of target table",
-      " for upstream ", tostring(upstream_pk.id),
-      " removed ", tostring(cnt), " target entries")
-  end
-end
-
-
 local function format_target(target)
   local p = utils.normalize_ip(target)
   if not p then
@@ -102,10 +47,14 @@ function _TARGETS:insert(entity, options)
     entity.target = formatted_target
   end
 
-  -- cleaning up will NOT send invalidation events, hence we only add the new
-  -- entry AFTER the cleanup, such that the cleanup will be picked up by the
-  -- other nodes based on the event of the newly added entry
-  clean_history(self, entity.upstream)
+  local workspace = workspaces.get_workspace_id()
+  local opts = { nulls = true, workspace = workspace }
+  for existent in self:each_for_upstream(entity.upstream, nil, opts) do
+    if existent.target == entity.target then
+      local err_t = self.errors:unique_violation({ target = existent.target })
+      return nil, tostring(err_t), err_t
+    end
+  end
 
   return self.super.insert(self, entity, options)
 end
@@ -120,20 +69,6 @@ end
 function _TARGETS:upsert_by_target(unique_key, entity, options)
   entity.target = unique_key
   return self:insert(entity, options)
-end
-
-
-function _TARGETS:delete(pk)
-  local target, err, err_t = self:select(pk)
-  if err then
-    return nil, err, err_t
-  end
-
-  return self:insert({
-    target   = target.target,
-    upstream = target.upstream,
-    weight   = 0,
-  })
 end
 
 
@@ -161,18 +96,12 @@ function _TARGETS:delete_by_target(tgt, options)
     return nil, err, err_t
   end
 
-  return self:insert({
-    target   = target.target,
-    upstream = target.upstream,
-    weight   = 0,
-  }, options)
+  return self.super.delete(self, target, options)
 end
 
 
--- Paginate through the target history for an upstream,
--- including entries that have been since overriden, and those
--- with weight=0 (i.e. the "raw" representation of targets in
--- the database)
+-- Paginate through the targets for an upstream, including those with
+-- weight=0 (i.e. the "raw" representation of targets in the database)
 function _TARGETS:page_for_upstream_raw(upstream_pk, ...)
   local page, err, err_t, offset =
     self.super.page_for_upstream(self, upstream_pk, ...)
@@ -193,10 +122,8 @@ function _TARGETS:page_for_upstream_raw(upstream_pk, ...)
 end
 
 
--- Return the entire target history for an upstream,
--- including entries that have been since overriden, and those
--- with weight=0 (i.e. the "raw" representation of targets in
--- the database)
+-- Return the entire list of targets for an upstream, including entries with
+-- weight=0 (i.e. the "raw" representation of targets in the database)
 function _TARGETS:select_by_upstream_raw(upstream_pk, options)
   local targets = {}
 
@@ -221,13 +148,10 @@ function _TARGETS:select_by_upstream_raw(upstream_pk, options)
 end
 
 
--- Paginate through targets for an upstream, returning only the
--- latest state of each active (weight>0) target.
+-- Paginate through targets for an upstream, returning only the active
+-- (weight>0) target.
 function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
-  -- We need to read all targets, then filter the history, then
-  -- extract the page requested by the user.
-
-  -- Read all targets; this returns the target history sorted chronologically
+  -- Read all targets
   local targets, err, err_t = self:select_by_upstream_raw(upstream_pk, options)
   if not targets then
     return nil, err, err_t
@@ -237,8 +161,6 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
   local seen = {}
   local len = 0
 
-  -- Read the history in reverse order, to obtain the most
-  -- recent state of each target.
   for i = #targets, 1, -1 do
     local entry = targets[i]
     if not seen[entry.target] then

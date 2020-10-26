@@ -51,8 +51,8 @@ return function(ctx)
   end
 
   -- Reset relevant context values
-  kong.ctx.core.buffered_proxying = nil
-  kong.ctx.core.response_body = nil
+  ctx.buffered_proxying = nil
+  ctx.response_body = nil
 
   if ctx then
     ctx.delay_response = nil

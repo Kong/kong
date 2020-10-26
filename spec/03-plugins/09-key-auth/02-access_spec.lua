@@ -73,6 +73,15 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "key-auth10.com" },
       }
 
+      local route_grpc = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        service = assert(bp.services:insert {
+          name = "grpc",
+          url = "grpc://localhost:15002",
+        }),
+      })
+
       bp.plugins:insert {
         name     = "key-auth",
         route = { id = route1.id },
@@ -154,6 +163,11 @@ for _, strategy in helpers.each_strategy() do
         config = {
           anonymous = anonymous_user.username,
         },
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route_grpc.id },
       }
 
       assert(helpers.start_kong({
@@ -297,6 +311,33 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.res_status(200, res)
           end)
+          it("authenticates valid credentials in query", function()
+            local res = assert(proxy_client:send {
+              path    = "/request?apikey=kong",
+              headers = {
+                ["Host"]         = "key-auth5.com",
+                ["Content-Type"] = type,
+              },
+              body    = {
+                non_apikey = "kong",
+              }
+            })
+            assert.res_status(200, res)
+          end)
+          it("authenticates valid credentials in header", function()
+            local res = assert(proxy_client:send {
+              path    = "/request?apikey=kong",
+              headers = {
+                ["Host"]         = "key-auth5.com",
+                ["Content-Type"] = type,
+                ["apikey"]       = "kong",
+              },
+              body    = {
+                non_apikey = "kong",
+              }
+            })
+            assert.res_status(200, res)
+          end)
           it("returns 401 Unauthorized on invalid key", function()
             local res = assert(proxy_client:send {
               path    = "/status/200",
@@ -402,6 +443,27 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(401, res)
         local json = cjson.decode(body)
         assert.same({ message = "Invalid authentication credentials" }, json)
+      end)
+    end)
+
+    describe("key in gRPC headers", function()
+      it("rejects call without credentials", function()
+        local ok, err = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {},
+        }
+        assert.falsy(ok)
+        assert.matches("Code: Unauthenticated", err)
+      end)
+      it("accepts authorized calls", function()
+        local ok, res = helpers.proxy_client_grpc(){
+          service = "hello.HelloService.SayHello",
+          opts = {
+            ["-H"] = "'apikey: kong'",
+          },
+        }
+        assert.truthy(ok)
+        assert.same({ reply = "hello noname" }, cjson.decode(res))
       end)
     end)
 
@@ -579,9 +641,9 @@ for _, strategy in helpers.each_strategy() do
           body = "foobar",
         })
 
-        local body = assert.res_status(400, res)
+        local body = assert.res_status(401, res)
         local json = cjson.decode(body)
-        assert.same({ message = "Cannot process request body" }, json)
+        assert.same({ message = "No API key found in request" }, json)
       end)
     end)
 

@@ -10,7 +10,6 @@ local get_certificate = require("kong.runloop.certificate").get_certificate
 local dns_client = require "resty.dns.client"
 
 
-local crc32 = ngx.crc32_short
 local toip = dns_client.toip
 local log = ngx.log
 local sleep = ngx.sleep
@@ -59,7 +58,6 @@ local balancers = {}
 -- objects whose lifetimes are bound to that of a balancer
 local healthcheckers = {}
 local healthchecker_callbacks = {}
-local target_histories = {}
 local upstream_ids = {}
 
 
@@ -77,9 +75,7 @@ local noop = function() end
 -- 2) `"balancer:upstreams:" .. id` - individual upstreams
 --    to be invalidated on individual basis
 -- 3) `"balancer:targets:" .. id`
---    target history for an upstream, invalidated:
---    a) along with the upstream it belongs to
---    b) upon any target change for the upstream (can only add entries)
+--    target for an upstream along with the upstream it belongs to
 --
 -- Distinction between 1 and 2 makes it possible to invalidate individual
 -- upstreams, instead of all at once forcing to rebuild all balancers
@@ -96,7 +92,6 @@ local function set_balancer(upstream_id, balancer)
   if prev then
     healthcheckers[prev] = nil
     healthchecker_callbacks[prev] = nil
-    target_histories[prev] = nil
     upstream_ids[prev] = nil
   end
   balancers[upstream_id] = balancer
@@ -146,36 +141,36 @@ end
 
 
 ------------------------------------------------------------------------------
--- Loads the target history from the DB.
--- @param upstream_id Upstream uuid for which to load the target history
--- @return The target history array, with target entity tables.
+-- Loads the targets from the DB.
+-- @param upstream_id Upstream uuid for which to load the target
+-- @return The target array, with target entity tables.
 local function load_targets_into_memory(upstream_id)
 
-  local target_history, err, err_t =
+  local targets, err, err_t =
     singletons.db.targets:select_by_upstream_raw({ id = upstream_id }, GLOBAL_QUERY_OPTS)
 
-  if not target_history then
+  if not targets then
     return nil, err, err_t
   end
 
   -- perform some raw data updates
-  for _, target in ipairs(target_history) do
+  for _, target in ipairs(targets) do
     -- split `target` field into `name` and `port`
     local port
     target.name, port = match(target.target, "^(.-):(%d+)$")
     target.port = tonumber(port)
   end
 
-  return target_history
+  return targets
 end
 _load_targets_into_memory = load_targets_into_memory
 
 
 ------------------------------------------------------------------------------
--- Fetch target history, from cache or the DB.
+-- Fetch targets, from cache or the DB.
 -- @param upstream The upstream entity object
--- @return The target history array, with target entity tables.
-local function fetch_target_history(upstream)
+-- @return The targets array, with target entity tables.
+local function fetch_targets(upstream)
   local targets_cache_key = "balancer:targets:" .. upstream.id
 
   return singletons.core_cache:get(targets_cache_key, nil,
@@ -184,27 +179,18 @@ end
 
 
 --------------------------------------------------------------------------------
--- Applies the history of lb transactions from index `start` forward.
--- @param rb ring balancer object
--- @param history list of targets/transactions to be applied
--- @param start the index where to start in the `history` parameter
-local function apply_history(rb, history, start)
+-- Add targets to the balancer.
+-- @param balancer balancer object
+-- @param targets list of targets to be applied
+local function add_targets(balancer, targets)
 
-  for i = start, #history do
-    local target = history[i]
-
+  for _, target in ipairs(targets) do
     if target.weight > 0 then
-      assert(rb:addHost(target.name, target.port, target.weight))
+      assert(balancer:addHost(target.name, target.port, target.weight))
     else
-      assert(rb:removeHost(target.name, target.port))
+      assert(balancer:removeHost(target.name, target.port))
     end
 
-    target_histories[rb][i] = {
-      name = target.name,
-      port = target.port,
-      weight = target.weight,
-      order = target.order,
-    }
   end
 end
 
@@ -221,7 +207,7 @@ local function populate_healthchecker(hc, balancer, upstream)
         -- with data from another worker, and apply to the new balancer.
         local tgt_status = hc:get_target_status(ipaddr, port, host.hostname)
         if tgt_status ~= nil then
-          balancer:setAddressStatus(tgt_status, ipaddr, port)
+          balancer:setAddressStatus(tgt_status, ipaddr, port, host.hostname)
         end
 
       else
@@ -235,7 +221,7 @@ end
 local create_balancer
 do
   local balancer_types = {
-    ["consistent-hashing"] = require("resty.dns.balancer.ring"),
+    ["consistent-hashing"] = require("resty.dns.balancer.consistent_hashing"),
     ["least-connections"] = require("resty.dns.balancer.least_connections"),
     ["round-robin"] = require("resty.dns.balancer.ring"),
   }
@@ -429,7 +415,6 @@ do
 
       attach_healthchecker_to_balancer(healthchecker, balancer, upstream.id)
 
-      -- only enable the callback after the target history has been replayed.
       balancer:setCallback(ring_balancer_callback)
 
       return true
@@ -461,10 +446,8 @@ do
   -- The mutually-exclusive section used internally by the
   -- 'create_balancer' operation.
   -- @param upstream (table) A db.upstreams entity
-  -- @param history (table, optional) history of target updates
-  -- @param start (integer, optional) from where to start reading the history
   -- @return The new balancer object, or nil+error
-  local function create_balancer_exclusive(upstream, history, start)
+  local function create_balancer_exclusive(upstream)
     local health_threshold = upstream.healthchecks and
                               upstream.healthchecks.threshold or nil
 
@@ -478,17 +461,12 @@ do
       return nil, "failed creating balancer:" .. err
     end
 
-    target_histories[balancer] = {}
-
-    if not history then
-      history, err = fetch_target_history(upstream)
-      if not history then
-        return nil, "failed fetching target history:" .. err
-      end
-      start = 1
+    local targets, err = fetch_targets(upstream)
+    if not targets then
+      return nil, "failed fetching targets:" .. err
     end
 
-    apply_history(balancer, history, start)
+    add_targets(balancer, targets)
 
     upstream_ids[balancer] = upstream.id
 
@@ -511,10 +489,8 @@ do
   -- same balancer at the same time.
   -- @param upstream (table) A db.upstreams entity
   -- @param recreate (boolean, optional) create new balancer even if one exists
-  -- @param history (table, optional) history of target updates
-  -- @param start (integer, optional) from where to start reading the history
   -- @return The new balancer object, or nil+error
-  create_balancer = function(upstream, recreate, history, start)
+  create_balancer = function(upstream, recreate)
 
     if balancers[upstream.id] and not recreate then
       return balancers[upstream.id]
@@ -530,7 +506,7 @@ do
 
     creating[upstream.id] = true
 
-    local balancer, err = create_balancer_exclusive(upstream, history, start)
+    local balancer, err = create_balancer_exclusive(upstream)
 
     if kong.configuration.worker_consistency == "eventual" then
       local _, err = singletons.core_cache:get(
@@ -547,72 +523,6 @@ do
 
     return balancer, err
   end
-end
-
-
---------------------------------------------------------------------------------
--- Compare the target history of the upstream with that of the
--- current balancer object, updating or recreating the balancer if necessary.
--- @param upstream The upstream entity object
--- @param balancer The ring balancer object
--- @return true if all went well, or nil + error in case of failures.
-local function check_target_history(upstream, balancer)
-  -- Fetch the upstream's targets, from cache or the db
-  local new_history, err = fetch_target_history(upstream)
-  if err then
-    return nil, err
-  end
-
-  local old_history = target_histories[balancer]
-
-  -- check history state
-  local old_size = #old_history
-  local new_size = #new_history
-
-  if new_size >= old_size then
-    -- compare balancer history with db-loaded history
-    local last_equal_index = 0  -- last index where history is the same
-    for i, entry in ipairs(old_history) do
-      local new_entry = new_history[i]
-      if new_entry and
-        new_entry.name == entry.name and
-        new_entry.port == entry.port and
-        new_entry.weight == entry.weight
-      then
-        last_equal_index = i
-      else
-        break
-      end
-    end
-
-    if last_equal_index == old_size then
-      -- The history from which our balancer was build is still identical
-      if new_size == old_size then
-        -- No new targets, so no update is necessary in the balancer object
-        return true
-      end
-
-      -- new_size > old_size in this case
-      -- history is the same, but we now have additional entries, apply them
-      apply_history(balancer, new_history, last_equal_index + 1)
-      return true
-    end
-  end
-
-  -- History not the same. Either a history-cleanup happened, or due to
-  -- eventual-consistency a target showed up "in the past".
-  -- TODO: ideally we would undo the last ones until we're equal again
-  -- and can replay changes, but not supported by ring-balancer yet.
-  -- for now; create a new balancer from scratch
-
-  stop_healthchecker(balancer)
-
-  local new_balancer, err = create_balancer(upstream, true, new_history, 1)
-  if not new_balancer then
-    return nil, err
-  end
-
-  return true
 end
 
 
@@ -717,41 +627,47 @@ end
 --==============================================================================
 
 
-local function do_target_event(operation, upstream_id, upstream_name)
-  singletons.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
-
-  local upstream = get_upstream_by_id(upstream_id)
-  if not upstream then
-    log(ERR, "target ", operation, ": upstream not found for ", upstream_id)
-    return
-  end
-
-  local balancer = balancers[upstream_id]
-  if not balancer then
-    log(ERR, "target ", operation, ": balancer not found for ", upstream_name)
-    return
-  end
-
-  local ok, err = check_target_history(upstream, balancer)
-  if not ok then
-    log(ERR, "failed checking target history for ", upstream_name, ":  ", err)
-  end
-end
-
 --------------------------------------------------------------------------------
 -- Called on any changes to a target.
 -- @param operation "create", "update" or "delete"
 -- @param target Target table with `upstream.id` field
 local function on_target_event(operation, target)
-  do_target_event(operation, target.upstream.id, target.upstream.name)
+  local upstream_id = target.upstream.id
+  local upstream_name = target.upstream.name
+
+  log(DEBUG, "target ", operation, " for upstream ", upstream_id,
+      upstream_name and " (" .. upstream_name ..")" or "")
+
+  singletons.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
+
+  local upstream = get_upstream_by_id(upstream_id)
+  if not upstream then
+    log(ERR, "target ", operation, ": upstream not found for ", upstream_id,
+        upstream_name and " (" .. upstream_name ..")" or "")
+    return
+  end
+
+  local balancer = balancers[upstream_id]
+  if not balancer then
+    log(ERR, "target ", operation, ": balancer not found for ", upstream_id,
+        upstream_name and " (" .. upstream_name ..")" or "")
+    return
+  end
+
+  local new_balancer, err = create_balancer(upstream, true)
+  if not new_balancer then
+    return nil, err
+  end
+
+  return true
 end
 
 
 -- Calculates hash-value.
 -- Will only be called once per request, on first try.
--- @param upstream the upstream enity
+-- @param upstream the upstream entity
 -- @return integer value or nil if there is no hash to calculate
-local create_hash = function(upstream, ctx)
+local get_value_to_hash = function(upstream, ctx)
   local hash_on = upstream.hash_on
   if hash_on == "none" or hash_on == nil or hash_on == null then
     return -- not hashing, exit fast
@@ -802,7 +718,7 @@ local create_hash = function(upstream, ctx)
     end
 
     if identifier then
-      return crc32(identifier)
+      return identifier
     end
 
     -- we missed the first, so now try the fallback
@@ -1090,8 +1006,30 @@ local function execute(target, ctx)
       -- only add it if it doesn't exist, in case a plugin inserted one
       hash_value = target.hash_value
       if not hash_value then
-        hash_value = create_hash(upstream, ctx)
+        hash_value = get_value_to_hash(upstream, ctx)
         target.hash_value = hash_value
+      end
+
+      if not ctx.service.client_certificate then
+        -- service level client_certificate is not set
+        local cert, res, err
+        local client_certificate = upstream.client_certificate
+
+        -- does the upstream object contains a client certificate?
+        if client_certificate then
+          cert, err = get_certificate(client_certificate)
+          if not cert then
+            log(ERR, "unable to fetch upstream client TLS certificate ",
+                     client_certificate.id, ": ", err)
+            return
+          end
+
+          res, err = kong.service.set_tls_cert_key(cert.cert, cert.key)
+          if not res then
+            log(ERR, "unable to apply upstream client TLS certificate ",
+                     client_certificate.id, ": ", err)
+          end
+        end
       end
     end
   end
@@ -1333,13 +1271,6 @@ local function _get_healthchecker(balancer)
 end
 
 
---------------------------------------------------------------------------------
--- for unit-testing purposes only
-local function _get_target_history(balancer)
-  return target_histories[balancer]
-end
-
-
 return {
   init = init,
   execute = execute,
@@ -1359,9 +1290,8 @@ return {
   _create_balancer = create_balancer,
   _get_balancer = get_balancer,
   _get_healthchecker = _get_healthchecker,
-  _get_target_history = _get_target_history,
   _load_upstreams_dict_into_memory = _load_upstreams_dict_into_memory,
   _load_upstream_into_memory = _load_upstream_into_memory,
   _load_targets_into_memory = _load_targets_into_memory,
-  _create_hash = create_hash,
+  _get_value_to_hash = get_value_to_hash,
 }

@@ -48,7 +48,7 @@ return {
 
   entity_checks = {
     { conditional = { if_field = "protocol",
-                      if_match = { one_of = { "tcp", "tls", "grpc", "grpcs" }},
+                      if_match = { one_of = { "tcp", "tls", "udp", "grpc", "grpcs" }},
                       then_field = "path",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
@@ -69,34 +69,37 @@ return {
                       then_match = { eq = null }}},
   },
 
-  shorthands = {
-    { url = function(sugar_url)
-              local parsed_url = url.parse(tostring(sugar_url))
-              if not parsed_url then
-                return
-              end
+  shorthand_fields = {
+    { url = {
+      type = "string",
+      func = function(sugar_url)
+        local parsed_url = url.parse(tostring(sugar_url))
+        if not parsed_url then
+          return
+        end
 
-              local port = tonumber(parsed_url.port)
+        local port = tonumber(parsed_url.port)
 
-              local prot
-              if port == 80 then
-                prot = "http"
-              elseif port == 443 then
-                prot = "https"
-              end
+        local prot
+        if port == 80 then
+          prot = "http"
+        elseif port == 443 then
+          prot = "https"
+        end
 
-              local protocol = parsed_url.scheme or prot or default_protocol
+        local protocol = parsed_url.scheme or prot or default_protocol
 
-              return {
-                protocol = protocol,
-                host = parsed_url.host or null,
-                port = port or
-                       parsed_url.port or
-                       (protocol == "http"  and 80)  or
-                       (protocol == "https" and 443) or
-                       default_port,
-                path = parsed_url.path or null,
-              }
-            end },
+        return {
+          protocol = protocol,
+          host = parsed_url.host or null,
+          port = port or
+                 parsed_url.port or
+                 (protocol == "http"  and 80)  or
+                 (protocol == "https" and 443) or
+                 default_port,
+          path = parsed_url.path or null,
+        }
+      end
+    }, },
   }
 }

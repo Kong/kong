@@ -447,6 +447,8 @@ describe("declarative config: process_auto_fields", function()
                     path_handling = "v1",
                     protocols = { "http", "https" },
                     https_redirect_status_code = 426,
+                    request_buffering = true,
+                    response_buffering = true,
                   },
                   {
                     hosts = { "example.com" },
@@ -456,6 +458,8 @@ describe("declarative config: process_auto_fields", function()
                     path_handling = "v1",
                     protocols = { "http", "https" },
                     https_redirect_status_code = 426,
+                    request_buffering = true,
+                    response_buffering = true,
                   },
                   {
                     methods = { "GET", "POST" },
@@ -465,6 +469,8 @@ describe("declarative config: process_auto_fields", function()
                     path_handling = "v1",
                     protocols = { "http", "https" },
                     https_redirect_status_code = 426,
+                    request_buffering = true,
+                    response_buffering = true,
                   },
                 }
               },
@@ -488,6 +494,8 @@ describe("declarative config: process_auto_fields", function()
                     path_handling = "v1",
                     protocols = { "http", "https" },
                     https_redirect_status_code = 426,
+                    request_buffering = true,
+                    response_buffering = true,
                   },
                 }
               }
@@ -534,7 +542,9 @@ describe("declarative config: process_auto_fields", function()
                     protocols = { "http", "https" },
                     regex_priority = 0,
                     https_redirect_status_code = 426,
-                    plugins = {}
+                    request_buffering = true,
+                    response_buffering = true,
+                    plugins = {},
                   }
                 }
               }
@@ -597,6 +607,8 @@ describe("declarative config: process_auto_fields", function()
                     protocols = { "http", "https" },
                     regex_priority = 0,
                     https_redirect_status_code = 426,
+                    request_buffering = true,
+                    response_buffering = true,
                     plugins = {
                       {
                         name = "key-auth",
@@ -647,6 +659,8 @@ describe("declarative config: process_auto_fields", function()
                     protocols = { "http", "https" },
                     regex_priority = 0,
                     https_redirect_status_code = 426,
+                    request_buffering = true,
+                    response_buffering = true,
                     plugins = {
                       {
                         name = "basic-auth",

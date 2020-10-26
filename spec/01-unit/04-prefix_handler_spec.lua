@@ -206,14 +206,20 @@ describe("NGINX conf compiler", function()
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.not_matches("lua_ssl_trusted_certificate", kong_nginx_conf, nil, true)
     end)
-    it("sets lua_ssl_trusted_certificate", function()
+    it("sets lua_ssl_trusted_certificate to a combined file (single entry)", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("lua_ssl_trusted_certificate%s+.*spec/fixtures/kong_spec%.key", kong_nginx_conf)
+      assert.matches("lua_ssl_trusted_certificate%s+.*ca_combined", kong_nginx_conf)
     end)
-
+    it("sets lua_ssl_trusted_certificate to a combined file (multiple entries)", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_ca.crt,spec/fixtures/kong_clustering.crt",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("lua_ssl_trusted_certificate%s+.*ca_combined", kong_nginx_conf)
+    end)
     it("defines the client_max_body_size by default", function()
       local conf = assert(conf_loader(nil, {}))
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
@@ -837,7 +843,7 @@ describe("NGINX conf compiler", function()
                            nil, true)
             assert.matches("daemon on;", contents, nil, true)
             assert.matches("listen 0.0.0.0:9000;", contents, nil, true)
-            assert.matches("keepalive 60;", contents, nil, true)
+            assert.not_matches("keepalive", contents, nil, true)
           end)
 
           it("'upstream_keepalive = 0' disables keepalive", function()
@@ -874,6 +880,7 @@ describe("NGINX conf compiler", function()
               prefix = tmp_config.prefix,
               nginx_http_upstream_keepalive = "NONE", -- not used by template
               upstream_keepalive = 60,
+              upstream_keepalive_pool_size = 0,
             }))
 
             assert(prefix_handler.prepare_prefix(conf, templ_fixture))

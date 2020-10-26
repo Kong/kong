@@ -157,13 +157,13 @@ for _, consistency in ipairs(bu.consistencies) do
         assert.are.equal(requests * 0.2, count3)
       end)
 
-      it("removing a target", function()
+      it("removing a target #db", function()
         local requests = bu.SLOTS * 2 -- go round the balancer twice
 
         bu.begin_testcase_setup(strategy, bp)
         local upstream_name, upstream_id = bu.add_upstream(bp)
         local port1 = bu.add_target(bp, upstream_id, "127.0.0.1")
-        local port2 = bu.add_target(bp, upstream_id, "127.0.0.1")
+        local port2, target2 = bu.add_target(bp, upstream_id, "127.0.0.1")
         local api_host = bu.add_api(bp, upstream_name)
         bu.end_testcase_setup(strategy, bp, consistency)
 
@@ -185,7 +185,8 @@ for _, consistency in ipairs(bu.consistencies) do
 
         -- modify weight for target 2, set to 0
         bu.begin_testcase_setup_update(strategy, bp)
-        bu.add_target(bp, upstream_id, "127.0.0.1", port2, {
+        bu.update_target(bp, upstream_id, "127.0.0.1", port2, {
+          id = target2.id,
           weight = 0, -- disable this target
         })
         bu.end_testcase_setup(strategy, bp, consistency)
@@ -206,7 +207,7 @@ for _, consistency in ipairs(bu.consistencies) do
         -- verify all requests hit server 1
         assert.are.equal(requests, count1)
       end)
-      it("modifying target weight", function()
+      it("modifying target weight #db", function()
         local requests = bu.SLOTS * 2 -- go round the balancer twice
 
         bu.begin_testcase_setup(strategy, bp)
@@ -234,7 +235,7 @@ for _, consistency in ipairs(bu.consistencies) do
 
         -- modify weight for target 2
         bu.begin_testcase_setup_update(strategy, bp)
-        bu.add_target(bp, upstream_id, "127.0.0.1", port2, {
+        bu.update_target(bp, upstream_id, "127.0.0.1", port2, {
           weight = 15,   -- shift proportions from 50/50 to 40/60
         })
         bu.end_testcase_setup(strategy, bp, consistency)
@@ -259,7 +260,7 @@ for _, consistency in ipairs(bu.consistencies) do
         assert.are.equal(requests * 0.6, count2)
       end)
 
-      it("failure due to targets all 0 weight", function()
+      it("failure due to targets all 0 weight #db", function()
         local requests = bu.SLOTS * 2 -- go round the balancer twice
 
         bu.begin_testcase_setup(strategy, bp)
@@ -287,12 +288,28 @@ for _, consistency in ipairs(bu.consistencies) do
 
         -- modify weight for both targets, set to 0
         bu.begin_testcase_setup_update(strategy, bp)
-        bu.add_target(bp, upstream_id, "127.0.0.1", port1, { weight = 0 })
-        bu.add_target(bp, upstream_id, "127.0.0.1", port2, { weight = 0 })
+        bu.update_target(bp, upstream_id, "127.0.0.1", port1, { weight = 0 })
+        bu.update_target(bp, upstream_id, "127.0.0.1", port2, { weight = 0 })
         bu.end_testcase_setup(strategy, bp, consistency)
 
         -- now go and hit the same balancer again
         -----------------------------------------
+
+        local _, _, status = bu.client_requests(1, api_host)
+        assert.same(503, status)
+      end)
+
+      it("failure due to targets all 0 weight #off", function()
+        bu.begin_testcase_setup(strategy, bp)
+        local upstream_name, upstream_id = bu.add_upstream(bp)
+        local port1 = bu.add_target(bp, upstream_id, "127.0.0.1", nil, { weight = 0 })
+        local port2 = bu.add_target(bp, upstream_id, "127.0.0.1", nil, { weight = 0 })
+        local api_host = bu.add_api(bp, upstream_name)
+        bu.end_testcase_setup(strategy, bp, consistency)
+
+        -- setup target servers
+        bu.http_server("127.0.0.1", port1, 1)
+        bu.http_server("127.0.0.1", port2, 1)
 
         local _, _, status = bu.client_requests(1, api_host)
         assert.same(503, status)
@@ -336,7 +353,7 @@ for _, consistency in ipairs(bu.consistencies) do
       end)
 
       for mode, localhost in pairs(bu.localhosts) do
-        it("removing and adding the same target #" .. mode, function()
+        it("removing and adding the same target #db #" .. mode, function()
 
           bu.begin_testcase_setup(strategy, bp)
           local upstream_name, upstream_id = bu.add_upstream(bp)
@@ -354,7 +371,7 @@ for _, consistency in ipairs(bu.consistencies) do
 
           -- remove target
           bu.begin_testcase_setup_update(strategy, bp)
-          bu.add_target(bp, upstream_id, localhost, port, {
+          bu.update_target(bp, upstream_id, localhost, port, {
             weight = 0,
           })
           bu.end_testcase_setup(strategy, bp, consistency)
@@ -367,7 +384,7 @@ for _, consistency in ipairs(bu.consistencies) do
 
           -- add the target back with same weight as initial weight
           bu.begin_testcase_setup_update(strategy, bp)
-          bu.add_target(bp, upstream_id, localhost, port, {
+          bu.update_target(bp, upstream_id, localhost, port, {
             weight = 100,
           })
           bu.end_testcase_setup(strategy, bp, consistency)
