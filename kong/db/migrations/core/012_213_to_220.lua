@@ -4,19 +4,21 @@
 local function c_remove_unused_targets(coordinator)
   local cassandra = require "cassandra"
   local upstream_targets = {}
-  for row, err in coordinator:iterate("SELECT id, upstream_id, target, created_at FROM targets") do
+  for rows, err in coordinator:iterate("SELECT id, upstream_id, target, created_at FROM targets") do
     if err then
       return nil, err
     end
 
-    local key = string.format("%s:%s", row.upstream_id, row.target)
+    for _, row in ipairs(rows) do
+      local key = string.format("%s:%s", row.upstream_id, row.target)
 
-    if not upstream_targets[key] then
-      upstream_targets[key] = { n = 0 }
+      if not upstream_targets[key] then
+        upstream_targets[key] = { n = 0 }
+      end
+
+      upstream_targets[key].n = upstream_targets[key].n + 1
+      upstream_targets[key][upstream_targets[key].n] = { row.id, row.created_at }
     end
-
-    upstream_targets[key].n = upstream_targets[key].n + 1
-    upstream_targets[key][upstream_targets[key].n] = { row.id, row.created_at }
   end
 
   local sort = function(a, b)
@@ -28,7 +30,7 @@ local function c_remove_unused_targets(coordinator)
       table.sort(targets, sort)
 
       for i = 2, targets.n do
-        local _, err = coordinator.execute("DELETE FROM targets WHERE id = ?", {
+        local _, err = coordinator:execute("DELETE FROM targets WHERE id = ?", {
           cassandra.uuid(targets[i][1])
         })
 
