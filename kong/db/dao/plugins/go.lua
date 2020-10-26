@@ -3,7 +3,7 @@ local ngx_ssl = require("ngx.ssl")
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local msgpack = require "MessagePack"
 local reports = require "kong.reports"
-local errlog = require "ngx.errlog"
+local raw_log = require "ngx.errlog".raw_log
 
 
 local kong = kong
@@ -12,7 +12,7 @@ local ngx_timer_at = ngx.timer.at
 local cjson_encode = cjson.encode
 local mp_pack = msgpack.pack
 local mp_unpacker = msgpack.unpacker
-
+local ngx_INFO = ngx.INFO
 
 local go = {}
 
@@ -68,7 +68,7 @@ do
       local data, err, partial = proc:stdout_read_line()
       local line = data or partial
       if line and line ~= "" then
-        errlog.raw_log(ngx.INFO, "[go-pluginserver] " .. line)
+        raw_log(ngx_INFO, "[go-pluginserver] " .. line)
       end
 
       if not data and err == "closed" then
