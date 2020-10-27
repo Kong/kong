@@ -1,6 +1,6 @@
 [![][kong-logo]][kong-url]
 
-[![Build Status][badge-travis-image]][badge-travis-url]
+[![Build Status][badge-action-image]][badge-action-url]
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Kong/kong/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/twitter/follow/thekonginc.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=thekonginc)
 
@@ -23,12 +23,20 @@ IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 
 ## Summary
 
-- [**Why Kong?**](#why-kong)
-- [**Features**](#features)
-- [**Distributions**](#distributions)
-- [**Development**](#development)
-- [**Enterprise Support & Demo**](#enterprise-support--demo)
-- [**License**](#license)
+- [Summary](#summary)
+- [Why Kong?](#why-kong)
+- [Features](#features)
+- [Distributions](#distributions)
+- [Development](#development)
+    - [Docker](#docker)
+    - [Kong Gojira](#kong-gojira)
+    - [Vagrant](#vagrant)
+    - [Source Install](#source-install)
+    - [Running for development](#running-for-development)
+    - [Tests](#tests)
+    - [Makefile](#makefile)
+- [Enterprise Support & Demo](#enterprise-support--demo)
+- [License](#license)
 
 ## Why Kong?
 
