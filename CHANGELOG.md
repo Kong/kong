@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.2.0-rc.1](#220-rc1)
+- [2.2.0](#220)
 - [2.1.4](#214)
 - [2.1.3](#213)
 - [2.1.2](#212)
@@ -50,17 +50,13 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.2.0-rc.1]
+## [2.2.0]
 
-> Released 2020/10/02
+> Released 2020/10/23
 
-This is a release candidate for the upcoming Kong 2.2 release. There are no
-breaking changes with respect to the 2.x series. If no serious issues are
-reported, this release will effectively be promoted to the stable 2.2.0 release.
-This is now the time to test the new features and report any issues!
-
-This changelog entry all new features and fixes for the 2.2.0 series, including
-changes previously added in the 2.2.0-alpha.1 and 2.2.0-beta.1 releases.
+This is a new major release of Kong, including new features such as **UDP support**,
+**Configurable Request and Response Buffering**, **Dynamically Loading of OS
+Certificates**, and much more.
 
 ### Dependencies
 
@@ -107,6 +103,11 @@ repository will allow you to do both easily.
   by the operating system. This follows a very simple heuristic to try to
   use the most common certificate file in most popular distros.
   [#6342](https://github.com/Kong/kong/pull/6342)
+- Consistent-Hashing load balancing algorithm does not require to use the entire
+  target history to build the same proxying destinations table on all Kong nodes
+  anymore. Now deleted targets are actually removed from the database and the
+  targets entities can be manipulated by the Admin API as any other entity.
+  [#6336](https://github.com/Kong/kong/pull/6336)
 - Add `X-Forwarded-Path` header: if a trusted source provides a
   `X-Forwarded-Path` header, it is proxied as-is. Otherwise, Kong will set
   the content of said header to the request's path.
@@ -132,12 +133,16 @@ repository will allow you to do both easily.
   cleaned up automatically, according to a delay value configurable via
   the `cluster_data_plane_purge_delay` attribute, set to 14 days by default.
   [#6376](https://github.com/Kong/kong/pull/6376)
+- Hybrid Mode: Data Plane nodes now apply only the last config when receiving
+  several updates in sequence, improving the performance when large configs are
+  in use. [#6299](https://github.com/Kong/kong/pull/6299)
 
 ##### Admin API
 
 - Hybrid Mode: new endpoint `/clustering/data-planes` which returns complete
   information about all Data Plane nodes that are connected to the Control
   Plane cluster, regardless of the Control Plane node to which they connected.
+  [#6308](https://github.com/Kong/kong/pull/6308)
   * :warning: The `/clustering/status` endpoint is now deprecated, since it
     returns only information about Data Plane nodes directly connected to the
     Control Plane node to which the Admin API request was made, and is
@@ -155,6 +160,11 @@ repository will allow you to do both easily.
 - `kong.response.exit` now honors the `headers` configuration setting for
   including or removing the `Server` header.
   [#6371](https://github.com/Kong/kong/pull/6371)
+- `kong.log.serialize` function now can be called using the stream subsystem,
+  allowing various logging plugins to work under TCP and TLS proxy modes.
+  [#6036](https://github.com/Kong/kong/pull/6036)
+- Requests with `multipart/form-data` MIME type now can use the same part name
+  multiple times. [#6054](https://github.com/Kong/kong/pull/6054)
 
 ##### Plugins
 
@@ -5522,7 +5532,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.2.0-rc.1]: https://github.com/Kong/kong/compare/2.1.3...2.2.0-rc.1
+[2.2.0]: https://github.com/Kong/kong/compare/2.1.3...2.2.0
 [2.1.4]: https://github.com/Kong/kong/compare/2.1.3...2.1.4
 [2.1.3]: https://github.com/Kong/kong/compare/2.1.2...2.1.3
 [2.1.2]: https://github.com/Kong/kong/compare/2.1.1...2.1.2
