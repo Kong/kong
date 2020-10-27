@@ -820,6 +820,17 @@ local config = {
             },
           },
           {
+            session_compressor = {
+              required = false,
+              type     = "string",
+              default  = "none",
+              one_of   = {
+                "none",
+                "zlib",
+              },
+            },
+          },
+          {
             session_storage = {
               required = false,
               type     = "string",

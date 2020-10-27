@@ -5,6 +5,8 @@
   when `config.client_secret` was undefined and `config.auth_methods=bearer` was enabled.
 - Change the HS* signature verification is now disabled by default
 - Add `config.enable_hs_signatures` (`false` is the default)
+- Add `config.session_compressor`
+- Bump `lua-resty-session` dependency to `3.7`
 
 
 ## v1.7.0

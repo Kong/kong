@@ -19,12 +19,14 @@ local function new(args, secret)
   local initialized
   local strategy
   local storage
+  local compressor
   local redis
   local memcache
   return function(options)
     if not initialized then
-      strategy = args.get_conf_arg("session_strategy", "default")
-      storage  = args.get_conf_arg("session_storage", "cookie")
+      strategy   = args.get_conf_arg("session_strategy", "default")
+      storage    = args.get_conf_arg("session_storage", "cookie")
+      compressor = args.get_conf_arg("session_compressor", "none")
 
       if not memcache and storage == "memcache" then
         log("loading configuration for memcache session storage")
@@ -85,11 +87,12 @@ local function new(args, secret)
       initialized = true
     end
 
-    options.strategy = strategy
-    options.storage  = storage
-    options.memcache = memcache
-    options.redis    = redis
-    options.secret   = secret
+    options.strategy   = strategy
+    options.storage    = storage
+    options.memcache   = memcache
+    options.compressor = compressor
+    options.redis      = redis
+    options.secret     = secret
 
     log("trying to open session using cookie named '", options.name, "'")
     return session.open(options)
