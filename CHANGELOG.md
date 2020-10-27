@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.2
 
 - Use allow / deny for consumer restriction
 
