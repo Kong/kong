@@ -856,9 +856,9 @@
 
 #pg_ssl = off                    # Toggles client-server TLS connections
                                  # between Kong and PostgreSQL.
-                                 # Since PostgreSQL uses the same port for TLS
-                                 # and non-TLS this is only a hint. If the
-                                 # server does not support TLS the established
+                                 # Because PostgreSQL uses the same port for TLS
+                                 # and non-TLS, this is only a hint. If the
+                                 # server does not support TLS, the established
                                  # connection will be a plain one.
 
 #pg_ssl_verify = off             # Toggles server certificate verification if
@@ -1246,12 +1246,12 @@
                                  # The following pathnames will be tested in order,
                                  # and the first one found will be used:
                                  #
-                                 # * /etc/ssl/certs/ca-certificates.crt (Debian/Ubuntu/Gentoo)
-                                 # * /etc/pki/tls/certs/ca-bundle.crt (Fedora/RHEL 6)
-                                 # * /etc/ssl/ca-bundle.pem (OpenSUSE)
-                                 # * /etc/pki/tls/cacert.pem (OpenELEC)
-                                 # * /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem (CentOS/RHEL 7)
-                                 # * /etc/ssl/cert.pem (OpenBSD, Alpine)
+                                 # - /etc/ssl/certs/ca-certificates.crt (Debian/Ubuntu/Gentoo)
+                                 # - /etc/pki/tls/certs/ca-bundle.crt (Fedora/RHEL 6)
+                                 # - /etc/ssl/ca-bundle.pem (OpenSUSE)
+                                 # - /etc/pki/tls/cacert.pem (OpenELEC)
+                                 # - /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem (CentOS/RHEL 7)
+                                 # - /etc/ssl/cert.pem (OpenBSD, Alpine)
                                  #
                                  # If no file is found on any of these paths, an error will
                                  # be raised.
