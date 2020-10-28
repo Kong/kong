@@ -103,9 +103,8 @@ local function rotate_keys(name, row, update, force)
         return nil, err
       end
 
-      row, err = kong.db.jwt_signer_jwks:insert({
-        name       = name,
-        keys       = row,
+      row, err = kong.db.jwt_signer_jwks:upsert_by_name(name, {
+        keys = row,
       })
 
       if not row then
@@ -132,7 +131,7 @@ local function rotate_keys(name, row, update, force)
         local data = { keys = current_keys, previous = previous_keys, updated_at = now }
         local id = { id = row.id }
 
-        row, err = kong.db.jwt_signer_jwks:update(id, data)
+        row, err = kong.db.jwt_signer_jwks:upsert(id, data)
         if not row then
           return nil, err
         end
@@ -154,9 +153,8 @@ local function rotate_keys(name, row, update, force)
         return nil, err
       end
 
-      row, err = kong.db.jwt_signer_jwks:insert({
-        name       = name,
-        keys       = row,
+      row, err = kong.db.jwt_signer_jwks:upsert_by_name(name, {
+        keys = row,
       })
 
       if not row then
@@ -177,7 +175,7 @@ local function rotate_keys(name, row, update, force)
       local data = { keys = current_keys, previous = previous_keys, updated_at = now }
       local id = { id = row.id }
 
-      row, err = kong.db.jwt_signer_jwks:update(id, data)
+      row, err = kong.db.jwt_signer_jwks:upsert(id, data)
       if not row then
         return nil, err
       end
