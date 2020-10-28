@@ -22,6 +22,18 @@ function clear_exit {
   trap - EXIT SIGINT
 }
 
+function browser() {
+   if which open &> /dev/null
+   then
+      open "$1" &
+   elif which xdg-open &> /dev/null
+   then
+      xdg-open "$1" &
+   elif which firefox &> /dev/null
+   then
+      firefox "$1" &
+   fi
+}
 
 function colorize() {
   local color="39" # default
