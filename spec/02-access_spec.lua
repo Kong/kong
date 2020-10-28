@@ -3,6 +3,9 @@ local pl_file = require "pl.file"
 local cjson   = require "cjson"
 
 
+local UDP_PORT = 35001
+
+
 local CA = [[
 -----BEGIN CERTIFICATE-----
 MIIFoTCCA4mgAwIBAgIUQDBLwIychoRbVRO44IzBBk9R4oYwDQYJKoZIhvcNAQEL
@@ -39,12 +42,47 @@ wWaPbub8SN2jKnT0g6ZWuca4VwEo1fRaBkzSZDqXwhkBDWP8UBqLXMXWHdZaT8NK
 -----END CERTIFICATE-----
 ]]
 
+local mtls_fixtures = { http_mock = {
+  mtls_server_block = [[
+    server {
+        server_name mtls_test_client;
+        listen 10121;
+
+        location = /example_client {
+            proxy_ssl_certificate ../spec-ee/03-plugins/20-mtls-auth/fixtures/client_example.com.crt;
+            proxy_ssl_certificate_key ../spec-ee/03-plugins/20-mtls-auth/fixtures/client_example.com.key;
+            proxy_ssl_name example.com;
+            proxy_set_header Host example.com;
+
+            proxy_pass https://127.0.0.1:9443/get;
+        }
+
+        location = /bad_client {
+            proxy_ssl_certificate ../spec-ee/03-plugins/20-mtls-auth/fixtures/bad_client.crt;
+            proxy_ssl_certificate_key ../spec-ee/03-plugins/20-mtls-auth/fixtures/bad_client.key;
+            proxy_ssl_name example.com;
+            proxy_set_header Host example.com;
+
+            proxy_pass https://127.0.0.1:9443/get;
+        }
+
+        location = /no_san_client {
+            proxy_ssl_certificate ../spec-ee/03-plugins/20-mtls-auth/fixtures/no_san.crt;
+            proxy_ssl_certificate_key ../spec-ee/03-plugins/20-mtls-auth/fixtures/no_san.key;
+            proxy_ssl_name example.com;
+            proxy_set_header Host example.com;
+
+            proxy_pass https://127.0.0.1:9443/get;
+        }
+    }
+  ]], }
+}
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: mtls-auth (access) [#" .. strategy .. "]", function()
     local proxy_client, admin_client, proxy_ssl_client, mtls_client
     local bp, db
-    local anonymous_user, consumer, customized_consumer, service, route
+    local anonymous_user, consumer, customized_consumer, service, route, route_log
     local plugin
     local ca_cert
 
@@ -91,11 +129,21 @@ for _, strategy in helpers.each_strategy() do
         config = { ca_certificates = { ca_cert.id, }, },
       })
 
+      bp.plugins:insert {
+        route = { id = route.id },
+        name     = "udp-log",
+        config   = {
+          host   = "127.0.0.1",
+          port   = UDP_PORT
+        },
+      }
+
+
       assert(helpers.start_kong({
         database   = strategy,
         plugins = "bundled,mtls-auth",
-        nginx_conf = "spec-ee/03-plugins/20-mtls-auth/fixtures/custom_nginx.template",
-      }))
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, mtls_fixtures))
 
       proxy_client = helpers.proxy_client()
       proxy_ssl_client = helpers.proxy_ssl_client()
@@ -180,6 +228,25 @@ for _, strategy in helpers.each_strategy() do
           path    = "/no_san_client",
         })
         assert.res_status(401, res)
+      end)
+
+      it("overrides client_verify field in basic log serialize so it contains sensible content #4626", function()
+        local udp_thread = helpers.udp_server(UDP_PORT)
+
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/example_client",
+        })
+        local body = assert.res_status(200, res)
+
+        -- Getting back the UDP server input
+        local ok, res = udp_thread:join()
+        assert.True(ok)
+        assert.is_string(res)
+
+        -- Making sure it's alright
+        local log_message = cjson.decode(res)
+        assert.equal("SUCCESS", log_message.request.tls.client_verify)
       end)
     end)
 
@@ -302,20 +369,24 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("true", json.headers["X-Anonymous-Consumer"])
       end)
 
-      it("works with https (no mTLS handshake)", function()
-        local res = assert(proxy_ssl_client:send {
+      it("logging with wrong credentials and anonymous", function()
+        local udp_thread = helpers.udp_server(UDP_PORT)
+
+        local res = assert(mtls_client:send {
           method  = "GET",
-          path    = "/get",
-          headers = {
-            ["Host"] = "example.com"
-          }
+          path    = "/bad_client",
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("anonymous@example.com", json.headers["X-Consumer-Username"])
-        assert.equal(anonymous_user.id, json.headers["X-Consumer-Id"])
-        assert.equal("consumer-id-1", json.headers["X-Consumer-Custom-Id"])
-        assert.equal("true", json.headers["X-Anonymous-Consumer"])
+
+        -- Getting back the UDP server input
+        local ok, res = udp_thread:join()
+        assert.True(ok)
+        assert.is_string(res)
+
+        -- Making sure it's alright
+        local log_message = cjson.decode(res)
+        assert.equal("FAILED:self signed certificate", log_message.request.tls.client_verify)
       end)
 
       it("works with http (no mTLS handshake)", function()
@@ -333,6 +404,36 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("consumer-id-1", json.headers["X-Consumer-Custom-Id"])
         assert.equal("true", json.headers["X-Anonymous-Consumer"])
       end)
+
+      it("logging with https (no mTLS handshake)", function()
+        local udp_thread = helpers.udp_server(UDP_PORT)
+
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"] = "example.com"
+          }
+        })
+        local body = assert.res_status(200, res)
+
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/bad_client",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        -- Getting back the UDP server input
+        local ok, res = udp_thread:join()
+        assert.True(ok)
+        assert.is_string(res)
+
+        -- Making sure it's alright
+        local log_message = cjson.decode(res)
+        assert.equal("NONE", log_message.request.tls.client_verify)
+      end)
+
 
       it("errors when anonymous user doesn't exist", function()
         local res = assert(admin_client:send({
@@ -465,8 +566,8 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database   = strategy,
         plugins = "bundled,mtls-auth",
-        nginx_conf = "spec-ee/03-plugins/20-mtls-auth/fixtures/custom_nginx.template",
-      }))
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, mtls_fixtures))
 
       proxy_client = helpers.proxy_client()
       proxy_ssl_client_foo = helpers.proxy_ssl_client(nil, "foo.com")
@@ -555,7 +656,7 @@ for _, strategy in helpers.each_strategy() do
 
       end)
     end)
-    describe("request certs for all routes #t", function()
+    describe("request certs for all routes", function()
       it("request cert for all request", function()
         local res = assert(admin_client:send {
           method  = "POST",

@@ -17,6 +17,7 @@ local x509_r = require("resty.openssl.x509")
 
 
 local kong = kong
+local ngx = ngx
 local ngx_re_gmatch = ngx.re.gmatch
 local ipairs = ipairs
 local pairs = pairs
@@ -350,6 +351,7 @@ local function do_authentication(conf)
 
   if not pem then
     -- client failed to provide certificate while handshaking
+    ngx.ctx.CLIENT_VERIFY_OVERRIDE = "NONE"
     return nil, "No required TLS certificate was sent"
   end
 
@@ -440,6 +442,7 @@ local function do_authentication(conf)
       end
 
       if revoked == true then
+        ngx.ctx.CLIENT_VERIFY_OVERRIDE = "FAILED:certificate revoked"
         return nil, "TLS certificate failed verification"
       end
     end
@@ -491,9 +494,11 @@ local function do_authentication(conf)
     kong.log.warn("certificate is valid but consumer matching failed, ",
                   "using cn = ", cn,
                   " fields = ", tb_concat(consumer_by, ", "))
+    ngx.ctx.CLIENT_VERIFY_OVERRIDE = "FAILED:consumer not found"
   end
 
   kong.log.err("client certificate verify failed: ", err)
+  ngx.ctx.CLIENT_VERIFY_OVERRIDE = "FAILED:" .. err
 
   return nil, "TLS certificate failed verification"
 end
@@ -522,6 +527,9 @@ function _M.execute(conf)
     else
       return kong.response.exit(401, { message = message })
     end
+
+  else
+    ngx.ctx.CLIENT_VERIFY_OVERRIDE = "SUCCESS"
   end
 end
 
