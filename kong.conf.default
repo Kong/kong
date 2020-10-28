@@ -216,6 +216,10 @@
                                  # Required if `cluster_mtls` is set to `pki`,
                                  # ignored otherwise.
 
+#------------------------------------------------------------------------------
+# HYBRID MODE DATA PLANE
+#------------------------------------------------------------------------------
+
 #cluster_server_name =           # The server name used in the SNI of the TLS
                                  # connection from a DP node to a CP node.
                                  # Must match the Common Name (CN) or Subject
@@ -234,6 +238,10 @@
                                  # telemetry address of the control plane node
                                  # to which telemetry updates will be posted
                                  # in `host:port` format.
+
+#------------------------------------------------------------------------------
+# HYBRID MODE CONTROL PLANE
+#------------------------------------------------------------------------------
 
 #cluster_listen = 0.0.0.0:8005
                          # Comma-separated list of addresses and ports on
@@ -1288,7 +1296,7 @@
                                  # to each individual worker.
 
 #------------------------------------------------------------------------------
-# DEVELOPMENT & MISCELLANEOUS
+# MISCELLANEOUS
 #------------------------------------------------------------------------------
 
 # Additional settings inherited from lua-nginx-module allowing for more
@@ -1976,14 +1984,10 @@
 #admin_emails_reply_to =              # Email address for the `Reply-To` header
                                       # for admin emails.
 
-#admin_invitation_expiry = 259200     # Seconds before admin invitation link
-                                      # expires. 0 means no expiration.
+#admin_invitation_expiry = 259200     # Expiration time for the admin invitation link
+                                      # (in seconds). 0 means no expiration.
                                       #
-                                      # Examples:
-                                      # ```
-                                      # 259200 = 1 * 60 * 60 * 72
-                                      #                        ^ number of hours
-                                      # ```
+                                      # Example, 72 hours: `72 * 60 * 60 = 259200`
 
 #------------------------------------------------------------------------------
 # GENERAL SMTP CONFIGURATION
@@ -1992,13 +1996,9 @@
 #smtp_mock = on        # This flag will mock the sending of emails. This can be
                        # used for testing before the SMTP client is fully
                        # configured.
-                       #
-                       # Example:
-                       # - `smtp_mock = on`  - Emails will NOT attempt send.
-                       # - `smtp_mock = off` - Emails will attempt send.
 
 #smtp_host = localhost
-                       # The host of the SMTP server to connect to.
+                       # The hostname of the SMTP server to connect to.
 
 #smtp_port = 25
                        # The port number on the SMTP server to connect to.
@@ -2179,19 +2179,19 @@
                                     # workspaces.
                                     # - `smart` is the default option and uses the
                                     #   algorithm described in
-                                    #   https://docs.konghq.com/enterprise/0.33-x/workspaces/examples/#important-note-conflicting-apis-or-routes-in-workspaces
+                                    #   https://docs.konghq.com/enterprise/latest/admin-api/workspaces/examples/#important-note-conflicting-services-or-routes-in-workspaces
                                     # - `off` disables any check
                                     # - `path` enforces routes to comply with the pattern
                                     #   described in config enforce_route_path_pattern
 
-#enforce_route_path_pattern =   # Here you can specify Lua pattern which will
-                                # be enforced on a `path` attributes of a
-                                # route object. You can also add a
-                                # placeholder for workspace in pattern, which
-                                # will be rendered during runtime based on
-                                # workspace to which `route` belongs to. It a
-                                # field if `route_validation_strategy`
-                                # is set to `path`.
+#enforce_route_path_pattern =   # Specifies the Lua pattern which will
+                                # be enforced on the `paths` attribute of a
+                                # Route object. You can also add a placeholder
+                                # for the workspace in the pattern, which
+                                # will be rendered during runtime based on the
+                                # workspace to which the `route` belongs.
+                                # This setting is only relevant if
+                                # `route_validation_strategy` is set to `path`.
                                 #
                                 #
                                 # Example

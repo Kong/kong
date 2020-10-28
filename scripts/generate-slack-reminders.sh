@@ -8,11 +8,13 @@ reminder() {
 
 main() {
   LATEST="next/2.2.x.x"
-  reminder "next/2.1.x.x" "next/2.2.x.x" "Friday"
-  reminder "next/1.3.0.x" "next/1.5.0.x" "Friday"
+#  reminder "next/1.3.0.x" "next/1.5.0.x" "Monday"
   reminder "next/1.5.0.x" "next/2.1.x.x" "Tuesday"
-  reminder "$LATEST" "master" "Wednesday"
-  reminder "kong:release/2.2.0" "kong-ee:$LATEST" "Thursday"
+  reminder "next/2.1.x.x" "next/2.2.x.x" "Wednesday"
+  reminder "kong:master" "kong-ee:$LATEST" "Thursday"
+  reminder "kong:next" "kong-ee:master" "Thursday"
+  reminder "$LATEST" "master" "Friday"
+#  reminder "kong:release/2.2.0" "kong-ee:$LATEST" "Thursday"
 }
 
 main "$@"
