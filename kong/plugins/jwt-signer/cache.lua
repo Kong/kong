@@ -332,8 +332,8 @@ local function introspect(endpoint, opaque_token, hint, authorization, args, cac
 
   if cache then
     local cache_key = {
-        endpoint,
-        opaque_token,
+      endpoint,
+      opaque_token,
     }
 
     local i = 2
