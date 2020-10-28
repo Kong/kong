@@ -16,7 +16,10 @@ local function get_conf()
 
   -- detect if it's an "unknown" call, so no service. We used to rely on
   -- request having no workspace context
-  local unknown = kong.router.get_route() == nil
+  -- XXX: this is not using the pdk call. The pdk call cannot be run on the
+  -- error phase, which funnily enough is most of the cases we want this
+  -- plugin to run :) be attentive of route being on any other ctx
+  local unknown = ngx.ctx.route == nil
 
   -- Not really needed, but a hack because get_workspace might return an
   -- empty {} to signal... something? AFAIK, this is fixed on 2.0 already,
