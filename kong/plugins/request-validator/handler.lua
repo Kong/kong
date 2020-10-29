@@ -309,6 +309,6 @@ function RequestValidator:access(conf)
 end
 
 RequestValidator.PRIORITY = 999
-RequestValidator.VERSION = "1.1.0"
+RequestValidator.VERSION = "1.1.1"
 
 return RequestValidator

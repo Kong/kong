@@ -173,7 +173,9 @@ describe("request-validator schema", function()
           }
         }
       }, request_validator_schema)
-      assert.same("not a valid JSONschema draft 4 schema: property type validation failed: object matches none of the alternatives", err.config.parameter_schema[2].schema)
+
+      assert.is_truthy(string.match(err.config.parameter_schema[2].schema,
+                                    "not a valid JSONschema draft 4 schema: property type validation failed:"))
       assert.is_nil(ok)
     end)
 
