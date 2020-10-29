@@ -1376,7 +1376,22 @@ function Kong.serve_cluster_listener(options)
 end
 
 
+local stream_plugins_api_loaded = false
 function Kong.stream_api()
+  if not stream_plugins_api_loaded then
+    local utils = require "kong.tools.utils"
+
+    for k in pairs(kong.configuration.loaded_plugins) do
+      local loaded, custom_endpoints = utils.load_module_if_exists("kong.plugins." .. k .. ".api")
+      if loaded and type(custom_endpoints._stream) == "table" then
+        ngx.log(ngx.DEBUG, "---------------------------- have stream --------------")
+        stream_api.register(custom_endpoints._stream)
+        custom_endpoints._stream = nil
+      end
+    end
+    stream_plugins_api_loaded = true
+  end
+
   stream_api.serve()
 end
 

@@ -4,8 +4,12 @@ local stream_api = {}
 local _endpoints = {}
 
 
-function stream_api.register_endpoint(path, handler)
-  _endpoints[path] = handler
+function stream_api.register(t)
+  for path, handler in pairs(t) do
+    if type(path) == "string" and type(handler) == "function" then
+      _endpoints[path] = handler
+    end
+  end
 end
 
 
