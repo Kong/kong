@@ -216,6 +216,10 @@
                                  # Required if `cluster_mtls` is set to `pki`,
                                  # ignored otherwise.
 
+#------------------------------------------------------------------------------
+# HYBRID MODE DATA PLANE
+#------------------------------------------------------------------------------
+
 #cluster_server_name =           # The server name used in the SNI of the TLS
                                  # connection from a DP node to a CP node.
                                  # Must match the Common Name (CN) or Subject
@@ -229,6 +233,10 @@
                                  # address of the control plane node from
                                  # which configuration updates will be fetched,
                                  # in `host:port` format.
+
+#------------------------------------------------------------------------------
+# HYBRID MODE CONTROL PLANE
+#------------------------------------------------------------------------------
 
 #cluster_listen = 0.0.0.0:8005
                          # Comma-separated list of addresses and ports on
@@ -246,7 +254,7 @@
                          # How many seconds must pass from the time a DP node
                          # becomes offline to the time its entry gets removed
                          # from the database, as returned by the
-                         # /clustering/data_planes Admin API endpoint.
+                         # /clustering/data-planes Admin API endpoint.
                          #
                          # This is to prevent the cluster data plane table from
                          # growing indefinitely. The default is set to
@@ -848,6 +856,10 @@
 
 #pg_ssl = off                    # Toggles client-server TLS connections
                                  # between Kong and PostgreSQL.
+                                 # Because PostgreSQL uses the same port for TLS
+                                 # and non-TLS, this is only a hint. If the
+                                 # server does not support TLS, the established
+                                 # connection will be a plain one.
 
 #pg_ssl_verify = off             # Toggles server certificate verification if
                                  # `pg_ssl` is enabled.
@@ -1215,7 +1227,7 @@
                                  # to each individual worker.
 
 #------------------------------------------------------------------------------
-# DEVELOPMENT & MISCELLANEOUS
+# MISCELLANEOUS
 #------------------------------------------------------------------------------
 
 # Additional settings inherited from lua-nginx-module allowing for more
@@ -1234,12 +1246,12 @@
                                  # The following pathnames will be tested in order,
                                  # and the first one found will be used:
                                  #
-                                 # * /etc/ssl/certs/ca-certificates.crt (Debian/Ubuntu/Gentoo)
-                                 # * /etc/pki/tls/certs/ca-bundle.crt (Fedora/RHEL 6)
-                                 # * /etc/ssl/ca-bundle.pem (OpenSUSE)
-                                 # * /etc/pki/tls/cacert.pem (OpenELEC)
-                                 # * /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem (CentOS/RHEL 7)
-                                 # * /etc/ssl/cert.pem (OpenBSD, Alpine)
+                                 # - /etc/ssl/certs/ca-certificates.crt (Debian/Ubuntu/Gentoo)
+                                 # - /etc/pki/tls/certs/ca-bundle.crt (Fedora/RHEL 6)
+                                 # - /etc/ssl/ca-bundle.pem (OpenSUSE)
+                                 # - /etc/pki/tls/cacert.pem (OpenELEC)
+                                 # - /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem (CentOS/RHEL 7)
+                                 # - /etc/ssl/cert.pem (OpenBSD, Alpine)
                                  #
                                  # If no file is found on any of these paths, an error will
                                  # be raised.

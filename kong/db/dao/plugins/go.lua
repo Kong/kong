@@ -1,6 +1,5 @@
 local cjson = require("cjson.safe")
 local ngx_ssl = require("ngx.ssl")
-local basic_serializer = require "kong.plugins.log-serializers.basic"
 local msgpack = require "MessagePack"
 local reports = require "kong.reports"
 local raw_log = require "ngx.errlog".raw_log
@@ -173,7 +172,7 @@ do
       local ok, data = reader()
       if not ok then
         c:setkeepalive()
-        return nil, data
+        return nil, "no data"
       end
 
       if data[1] == 2 then
@@ -249,7 +248,7 @@ do
   local exposed_api = {
     kong = kong,
     ["kong.log.serialize"] = function()
-      return cjson_encode(preloaded_stuff.basic_serializer or basic_serializer.serialize(ngx))
+      return cjson_encode(preloaded_stuff[coroutine.running()] or kong.log.serialize())
     end,
 
     ["kong.nginx.get_var"] = function(v)
@@ -412,9 +411,7 @@ do
     while instance_info and not instance_info.id do
       -- some other thread is already starting an instance
       ngx.sleep(0)
-      if not instances[key] then
-        break
-      end
+      instance_info = instances[key]
     end
 
     if instance_info
@@ -499,15 +496,20 @@ local get_plugin do
     for _, phase in ipairs(plugin_info.Phases) do
       if phase == "log" then
         plugin[phase] = function(self, conf)
-          preloaded_stuff.basic_serializer = basic_serializer.serialize(ngx)
+          local serialize_data = kong.log.serialize()
+
           ngx_timer_at(0, function()
+            local co = coroutine.running()
+            preloaded_stuff[co] = serialize_data
+
             local instance_id = get_instance(plugin_name, conf)
             local _, err = bridge_loop(instance_id, phase)
             if err and string.match(err, "No plugin instance") then
               instance_id = reset_and_get_instance(plugin_name, conf)
               bridge_loop(instance_id, phase)
             end
-            preloaded_stuff.basic_serializer = nil
+
+            preloaded_stuff[co] = nil
           end)
         end
 
