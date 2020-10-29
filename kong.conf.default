@@ -593,7 +593,9 @@
                                  # to `off`, which prevents Kong from injecting
                                  # any of the above headers. Note that this
                                  # does not prevent plugins from injecting
-                                 # headers of their own.
+                                 # headers of their own. When using 'off' it
+                                 # makes sense to also review the
+                                 # `nginx_http_more_clear_headers` setting.
                                  #
                                  # Example: `headers = via, latency_tokens`
 
@@ -795,6 +797,17 @@
                                           # allocations to process many
                                           # concurrent large request bodies.
                                           # See http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size
+
+#nginx_http_more_clear_headers =
+                            # Allows modification of standard nginx headers.
+                            # When disabling the server tokens using the
+                            # `headers` setting, then this setting should
+                            # probably be set to `Server` to clear any
+                            # information that might expose the server and
+                            # server version to the client. These headers are
+                            # typically injected by Nginx when an error occurs
+                            # that does not reach Kong.
+                            # See https://github.com/openresty/headers-more-nginx-module#readme
 
 #------------------------------------------------------------------------------
 # DATASTORE
