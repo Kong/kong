@@ -49,7 +49,6 @@ function stream_mt:get_headers()
     while true do
       local l = self.socket:receive("*l")
       if l == "" then
-        self.headers = headers
         break
       end
 
