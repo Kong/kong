@@ -37,7 +37,6 @@ dependencies = {
   "http == 0.3",
   "lua-resty-dns-client == 5.1.0",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 1.3.0",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.4.1",

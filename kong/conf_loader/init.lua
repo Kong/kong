@@ -11,7 +11,6 @@ local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
-local ip = require "resty.mediador.ip"
 local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
 
@@ -906,7 +905,7 @@ local function check_and_infer(conf, opts)
 
   -- checking the trusted ips
   for _, address in ipairs(conf.trusted_ips) do
-    if not ip.valid(address) and address ~= "unix:" then
+    if not utils.is_valid_ip_or_cidr(address) and address ~= "unix:" then
       errors[#errors + 1] = "trusted_ips must be a comma separated list in " ..
                             "the form of IPv4 or IPv6 address or CIDR "      ..
                             "block or 'unix:', got '" .. address .. "'"
