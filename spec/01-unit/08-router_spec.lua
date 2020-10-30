@@ -3361,7 +3361,7 @@ describe("Router", function()
         assert.same(use_case[1].route, match_t.route)
       end)
 
-      it("[sni] is ignored for http request but does not shadow `protocols={'http'}` only routes", function()
+      it("[sni] is ignored for http request without shadowing routes with `protocols={'http'}`. Fixes #6425", function()
         local match_t = router_ignore_sni.select(nil, nil, "sni.example.com",
                                                  "http", nil, nil, nil, nil,
                                                  nil)
