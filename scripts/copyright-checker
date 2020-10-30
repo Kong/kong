@@ -20,11 +20,14 @@ function get_distributions {
 
 function add_copyright {
   local ret=0
+  local header="$LOCAL_PATH/COPYRIGHT-HEADER"
+  local sha=$(shasum $header | cut -f1 -d' ')
+  local eol="-- [ END OF LICENSE $sha ]"
   for f in $(find "." -type f -name "*.lua"); do
-    head -n1 $f | grep -q COPYRIGHT || {
+    grep -Fq "$sha" $f || {
       ret=1
       RET=1
-      cat <(echo '-- Kong 2020 COPYRIGHT') <(echo) $f >${f}.new
+      cat "$header" <(echo "$eol") <(echo) $f >${f}.new
       mv $f.new $f
     }
   done
