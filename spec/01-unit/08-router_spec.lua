@@ -3305,15 +3305,74 @@ describe("Router", function()
             snis = { "www.example.org" }
           }
         },
+        -- see #6425
+        {
+          service = service,
+          route   = {
+            hosts = {
+              "sni.example.com",
+            },
+            protocols = {
+              "http", "https",
+            },
+            snis = {
+              "sni.example.com",
+            },
+          },
+        },
+        {
+          service = service,
+          route   = {
+            hosts = {
+              "sni.example.com",
+            },
+            protocols = {
+              "http",
+            },
+          },
+        },
+      }
+
+      local use_case_ignore_sni = {
+        -- see #6425
+        {
+          service = service,
+          route   = {
+            hosts = {
+              "sni.example.com",
+            },
+            protocols = {
+              "http", "https",
+            },
+            snis = {
+              "sni.example.com",
+            },
+          },
+        },
       }
 
       local router = assert(Router.new(use_case))
+      local router_ignore_sni = assert(Router.new(use_case_ignore_sni))
 
       it("[sni]", function()
         local match_t = router.select(nil, nil, nil, "tcp", nil, nil, nil, nil,
                                       "www.example.org")
         assert.truthy(match_t)
         assert.same(use_case[1].route, match_t.route)
+      end)
+
+      it("[sni] is ignored for http request without shadowing routes with `protocols={'http'}`. Fixes #6425", function()
+        local match_t = router_ignore_sni.select(nil, nil, "sni.example.com",
+                                                 "http", nil, nil, nil, nil,
+                                                 nil)
+        assert.truthy(match_t)
+        assert.same(use_case_ignore_sni[1].route, match_t.route)
+
+        match_t = router.select(nil, nil, "sni.example.com",
+                                "http", nil, nil, nil, nil,
+                                nil)
+        assert.truthy(match_t)
+        assert.same(use_case[3].route, match_t.route)
       end)
     end)
 
