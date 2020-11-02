@@ -7,6 +7,7 @@
 
 local cjson = require "cjson.safe".new()
 local multipart = require "multipart"
+local pl_stringx = require "pl.stringx"
 local phase_checker = require "kong.pdk.private.phases"
 
 
@@ -622,6 +623,85 @@ local function new(self)
     end
 
     return ngx.req.get_headers(max_headers)
+  end
+
+
+  ---
+  -- Returns the value of the specified request cookie.
+  --
+  -- The returned value is either a `string`, or can be `nil` if a cookie with
+  -- `name` was not found in the request.
+  --
+  -- Cookie names are case-insensitive.
+  --
+  -- @function kong.request.get_cookie
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
+  -- @tparam string name the name of the cookie to be returned
+  -- @treturn string|nil the value of the cookie or nil if not present
+  -- @usage
+  -- -- Given a request with the following cookies:
+  --
+  -- -- Cookie: X-Cookie-Foo=Hello; X-Cookie-Bar=World
+  --
+  -- kong.request.get_cookie("X-Cookie-Foo")        -- "Hello"
+  -- kong.request.get_cookie("X-Cookie-Bar")        -- "World"
+  -- kong.request.get_cookie("X-Cookie-foo")        -- "Hello"
+  -- kong.request.get_cookie("X-Cookie-Missing")    --  nil
+  function _REQUEST.get_cookie(name)
+    check_phase(PHASES.request)
+
+    if type(name) ~= "string" then
+      error("cookie name must be a string", 2)
+    end
+
+    return ngx.var["cookie_" .. name]
+  end
+
+
+  local function cookie_iterator_to_tab(iterator)
+    local cookie_tab = {}
+    while true do
+        local match = iterator()
+        if not match then
+            break
+        end
+        cookie_tab[pl_stringx.strip(match[1],' ')] = match[2]
+    end
+    return cookie_tab
+  end
+
+
+  ---
+  -- Returns a Lua table holding the request cookies. Keys are cookie names.
+  -- Values are strings with the cookie value.
+  --
+  -- @function kong.request.get_cookies
+  -- @phases rewrite, access, header_filter, body_filter, log, admin_api
+  -- @treturn table the request cookies in table form
+  -- @usage
+  -- -- Given a request with the following cookies:
+  --
+  -- -- Cookie: X-Cookie-Foo=Hello; X-Cookie-Bar=World
+  --
+  -- local cookies = kong.request.get_cookies()
+  --
+  -- cookies.X-Cookie-Foo      -- "Hello"
+  -- cookies.X-Cookie-Bar      -- "World"
+  -- cookies.X-Cookie-Missing  -- nil
+  function _REQUEST.get_cookies()
+    check_phase(PHASES.request)
+
+    local cookie = _REQUEST.get_header(COOKIE_HEADER)
+    if cookie == nil then
+      return nil
+    end
+
+    local iterator = re_gmatch(cookie, "(.*?)=(.*?)(;|$)", "ajo")
+    if not iterator then
+      return nil
+    end
+
+    return cookie_iterator_to_tab(iterator)
   end
 
 
