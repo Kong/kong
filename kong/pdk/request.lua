@@ -691,7 +691,7 @@ local function new(self)
   function _REQUEST.get_cookies()
     check_phase(PHASES.request)
 
-    local cookie = _REQUEST.get_header(COOKIE_HEADER)
+    local cookie = _REQUEST.get_header("Cookie")
     if cookie == nil then
       return nil
     end
