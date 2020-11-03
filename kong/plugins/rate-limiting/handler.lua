@@ -49,6 +49,13 @@ local RateLimitingHandler = {}
 RateLimitingHandler.PRIORITY = 901
 RateLimitingHandler.VERSION = "2.2.0"
 
+local function validate_policy_if_db_less(conf)
+  if kong.db.strategy == "off" and conf.policy == "cluster" then
+    return kong.response.error(500, "policy is only allowed to be set to 'local' or 'redis' with DB-less mode")
+  end
+
+  return nil
+end
 
 local function get_identifier(conf)
   local identifier
@@ -117,6 +124,11 @@ end
 
 
 function RateLimitingHandler:access(conf)
+  local db_less_check = validate_policy_if_db_less(conf)
+  if db_less_check then
+    return db_less_check
+  end
+
   local current_timestamp = time() * 1000
 
   -- Consumer is identified by ip address or authenticated_credential id
@@ -216,6 +228,5 @@ function RateLimitingHandler:log(_)
     kong.ctx.plugin.timer()
   end
 end
-
 
 return RateLimitingHandler
