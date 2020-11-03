@@ -19,12 +19,32 @@ local constants = {
     full_expired = {
       conf = {},
       abilities = {
+        -- write_admin_api = false,
       },
     },
     free = {
-      conf = {},
-      abilities = {
+      conf = {
+        -- enforce_rbac = "off",
+        -- vitals = "off",
+        -- anonymous_reports = "on",
       },
+      abilities = {
+        -- -- not really necessary but explicit
+        -- mount_admin_api_for_workspaces = true,
+        -- -- Granular allow. Will deny anything not on a sublevel
+        -- allow_admin_api = {
+        --   -- ie: this only allows GET /workspaces
+        --   ["/workspaces"] = { GET = true },
+        --   -- and GET /workspaces/:workspaces
+        --   ["/workspaces/:workspaces"] = { GET = true },
+        --   -- A route not specified here is left untouched
+        -- },
+        -- deny_admin_api = {
+        --   -- Here we could deny a particular route, like
+        --   -- [ "/workspaces/:workspaces/meta" ] = { GET = true }
+        -- },
+        -- ee_plugins = false
+      }
     },
   }
 }
