@@ -36,7 +36,6 @@ local log        = require "kong.cmd.utils.log"
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
 
 
-local kong = kong
 local timer_at = ngx.timer.at
 local split = require('kong.tools.utils').split
 local re_find = ngx.re.find
@@ -128,7 +127,7 @@ function _M.read_license_info()
 end
 
 
-local function featureset()
+function _M.featureset()
   local l_type
   local lic
   -- HACK: when called from runner, the license is not read yet, and
@@ -154,11 +153,16 @@ local function featureset()
 end
 
 function _M.license_can(ability)
-  return not (featureset().abilities[ability] == false)
+  return not (_M.featureset().abilities[ability] == false)
+end
+
+function _M.ability(ability)
+  local featureset = _M.featureset()
+  return featureset.abilities and featureset.abilities[ability]
 end
 
 function _M.license_conf()
-  return featureset().conf
+  return _M.featureset().conf
 end
 
 
@@ -224,5 +228,30 @@ local function report_expired_license()
 end
 _M.report_expired_license = report_expired_license
 
+-- A before_filter callback that can be applied to a lapis router
+function _M.license_can_proceed(self)
+  local method = ngx.req.get_method()
+
+  local route = self.route_name
+  local allow = _M.ability("allow_admin_api") or {}
+  local deny = _M.ability("deny_admin_api") or {}
+
+  if (allow[route] and not allow[route][method])
+    or (deny[route] and deny[route][method])
+  then
+    return kong.response.exit(403, { message = "Forbidden" })
+  end
+
+  if not _M.license_can("write_admin_api")
+    and (method == "POST" or
+         method == "PUT" or
+         method == "PATCH" or
+         method == "DELETE")
+    -- Maybe this operation is allowed even with write_admin_api off
+    and not (allow[route] and allow[route][method])
+  then
+    return kong.response.exit(403, { message = "Forbidden" })
+  end
+end
 
 return _M

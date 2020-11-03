@@ -53,6 +53,9 @@ _M.handlers = {
         app:match("ws_root" .. "/", "/:workspace_name/kong",
         app_helpers.respond_to(slash_handler))
 
+        -- license API allow / deny
+        app:before_filter(license_helpers.license_can_proceed)
+
         return true
       end)
 
