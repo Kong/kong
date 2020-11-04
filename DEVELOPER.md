@@ -168,4 +168,73 @@ Verify the three new containers are up and running with `docker ps` on a separat
 
 Now run unit tests with `make test` and integration test with `make test-integration`.
 
+### Install kong on ubuntu 
+
+In this post, we will discuss the API Gateway uses and the installation of open-source KONG API Gateway.
+
+API Gateways provides security and control over the access by sitting in front of any number of API services. KONG, Tyk, API Umbrella, Ambassador, Gravitee.io, etc., are some of the API Gateways currently available in the market. These Gateways provide services like Authentication, rate-limiting, API keys, analysis, logging, etc., to your API endpoints.
+
+Image for post
+
+Flowchart diagram to illustrate the API Gateway usage
+
+Why choosing KONG over other gateways? Because, it is most straightforward of the choices above and the community is very much alive.
+
+The latest version of the Kong 0.14.x comes with the support of various platforms. Click here to choose. We proceed further with Installing Kong on the Ubuntu platform.
+
+Installing kong on Ubuntu
+Installation of deb file
+
+download the Debian file here.
+After downloading at the file location, do the following.
+$ sudo apt-get update
+$ sudo apt-get install openssl libpcre3 procps perl
+$ sudo dpkg -i kong-community-edition-0.14.1.zesty.all.deb
+
+Database setup
+Now, we have to set up the database. Kong supports PostgreSQL and Cassandra
+
+Lets set up PostgreSQL for KONG with the user, database name and password.
+$ sudo apt-get install postgresql postgresql-contrib
+Switch over to the postgres an account on your server which created at the time of installation procedure by typing:
+$ sudo -i -u postgres
+
+Type psql to access a Postgres prompt and \q to exit the prompt.
+Setup USER, DATABASE with password
+postgres=# CREATE USER kong; CREATE DATABASE kong OWNER kong;
+postgres=# ALTER USER kong WITH PASSWORD 'password you set';
+
+Update Kong configuration and run migrations
+Generally, the Kong configuration path will be at /etc/kong/kong.conf.default
+$ sudo cp /etc/kong/kong.conf.default /etc/kong/kong.conf
+
+run the migrations job before the start
+$ sudo kong migrations up -c /etc/kong/kong.conf
+Error: missing password, required for connect
+Run with — v (verbose) or — vv (debug) for more details
+
+The above error might encounter if you don't update the Kong configuration file. For this, you have to do the following steps.
+$ sudo nano /etc/kong/kong.conf
+and paste the below lines
+pg_user = kong
+pg_password = password you set
+pg_database = kong
+
+Running Kong migrations
+$ sudo kong migrations up -c /etc/kong/kong.conf
+If this throws an error Error: [postgres error] could not retrieve current migrations: [postgres error] ERROR: function to_regclass(unknown) does not exist (8) , check the PostgreSQL version here.
+$ sudo service postgresql status
+Kong requires PostgreSQL 9.5 or later. Upgrade the older version here.
+
+If you upgrade to PostgreSQL 9.5 or later, then you don't have to set up the database, user and password. If you install, you should set up again.
+Start Kong
+$ sudo kong start -c /etc/kong/kong.conf
+Stop Kong
+$ sudo kong stop #To stop the Kong
+The final step to make sure the installation and setup process succeeded is:
+$ curl -i http://localhost:8001/ or http://localhost:8001/ in the browser
+Image for post
+Welcome to Kong
+That’s the end of the Kong setup.
+
 Hack on!
