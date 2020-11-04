@@ -194,7 +194,7 @@ do
     end
 
     local current_page = preserved["kong:cache:kong_db_cache:curr_mlcache"] or 1
-    local suffix = current_page == 1 and "" or "_2"
+    local suffix = current_page == 1 and "_2" or ""
 
     local shms = {
       "kong",
@@ -342,10 +342,13 @@ local function load_declarative_config(kong_config, entities, meta)
   local ok, err = concurrency.with_worker_mutex(opts, function()
     local value = ngx.shared.kong:get("declarative_config:loaded")
     if value then
+      kong.cache:flip()
+      kong.core_cache:flip()
+
       return true
     end
 
-    local ok, err = declarative.load_into_cache(entities, meta)
+    local ok, err = declarative.load_into_cache(entities, meta, nil, true)
     if not ok then
       return nil, err
     end
@@ -353,6 +356,14 @@ local function load_declarative_config(kong_config, entities, meta)
     if kong_config.declarative_config then
       kong.log.notice("declarative config loaded from ",
                       kong_config.declarative_config)
+    end
+
+    kong.cache:flip()
+    kong.core_cache:flip()
+
+    ok, err = kong.cache:save_curr_page()
+    if not ok then
+      return nil, "failed to persist cache page number inside shdict: " .. err
     end
 
     ok, err = ngx.shared.kong:safe_set("declarative_config:loaded", true)

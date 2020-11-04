@@ -818,7 +818,7 @@ do
       return nil, err
     end
 
-    ok, err = kong.core_cache:save_curr_page()
+    ok, err = kong.cache:save_curr_page()
     if not ok then
       return nil, "failed to persist cache page number inside shdict: " .. err
     end
