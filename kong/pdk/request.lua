@@ -18,7 +18,6 @@ local lower = string.lower
 local type = type
 local error = error
 local tonumber = tonumber
-local re_gmatch = ngx.re.gmatch
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
 
@@ -697,7 +696,7 @@ local function new(self)
       return nil
     end
 
-    local iterator = re_gmatch(cookie, "(.*?)=(.*?)(;|$)", "ajo")
+    local iterator = ngx.re.gmatch(cookie, "(.*?)=(.*?)(;|$)", "ajo")
     if not iterator then
       return nil
     end
