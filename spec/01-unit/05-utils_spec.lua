@@ -194,6 +194,12 @@ describe("Utils", function()
       assert.True(utils.validate_utf8(123))
       assert.True(utils.validate_utf8(true))
       assert.False(utils.validate_utf8(string.char(105, 213, 205, 149)))
+      assert.False(utils.validate_utf8(string.char(128))) -- unexpected continuation byte
+      assert.False(utils.validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
+      assert.False(utils.validate_utf8(string.char(192))) -- 2-byte sequence with last byte missing
+      assert.False(utils.validate_utf8(string.char(254))) -- impossible byte
+      assert.False(utils.validate_utf8(string.char(255))) -- impossible byte
+      assert.False(utils.validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
     end)
     describe("random_string()", function()
       it("should return a random string", function()

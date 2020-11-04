@@ -28,7 +28,7 @@ return {
     { id                 = typedefs.uuid, },
     { created_at         = typedefs.auto_timestamp_s },
     { updated_at         = typedefs.auto_timestamp_s },
-    { name               = typedefs.name },
+    { name               = typedefs.utf8_name },
     { retries            = { type = "integer", default = 5, between = { 0, 32767 } }, },
     -- { tags             = { type = "array", array = { type = "string" } }, },
     { protocol           = typedefs.protocol { required = true, default = default_protocol } },
