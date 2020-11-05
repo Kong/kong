@@ -1,3 +1,7 @@
+## 0.2.3
+
+- chore(*) add copyright
+
 ## 0.2.2
 
 - fix configuration transformations that breaks in cp-dp mode
