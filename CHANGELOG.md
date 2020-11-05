@@ -1,3 +1,7 @@
+## 0.2.2
+
+- chore(*) add copyright
+
 ## 0.2.1
 
 - support off strategy on hybrid
