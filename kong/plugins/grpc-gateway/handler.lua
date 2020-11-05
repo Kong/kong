@@ -84,10 +84,14 @@ function grpc_gateway:body_filter(conf)
   end
 
   local ret = dec:downstream(ngx_arg[1])
-  -- fall through if we can't decode response
-  -- or it's empty
   if not ret or #ret == 0 then
-    return
+    if ngx_arg[2] then
+      -- it's eof and we still cannot decode, fall through
+      ret = deco:get_raw_downstream_body()
+    else
+      -- clear output if we cannot decode, it could be body is not complete yet
+      ret = nil
+    end
   end
   ngx_arg[1] = ret
 end
