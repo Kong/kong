@@ -1,3 +1,7 @@
+## 1.0.3
+
+- add copyright
+
 ## 1.0.2
 
 ### Changed
