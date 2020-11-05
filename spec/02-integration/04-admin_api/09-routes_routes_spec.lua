@@ -359,7 +359,7 @@ for _, strategy in helpers.each_strategy() do
                 body = {
                   methods   = { "GET" },
                   protocols = { "foo", "http" },
-                  service = { name = [[\o/]] },
+                  service = { protocol = "foo" },
                 },
                 headers = { ["Content-Type"] = content_type }
               })
@@ -369,11 +369,11 @@ for _, strategy in helpers.each_strategy() do
                 name    = "schema violation",
                 message = "2 schema violations " ..
                   "(protocols.1: expected one of: grpc, grpcs, http, https, tcp, tls, udp; " ..
-                  [[service.name: invalid value '\o/': it must only contain alphanumeric and '., -, _, ~' characters)]],
+                  "service.protocol: expected one of: grpc, grpcs, http, https, tcp, tls, udp)",
                 fields = {
                   protocols = { "expected one of: grpc, grpcs, http, https, tcp, tls, udp" },
                   service = {
-                    name = [[invalid value '\o/': it must only contain alphanumeric and '., -, _, ~' characters]]
+                    protocol = "expected one of: grpc, grpcs, http, https, tcp, tls, udp"
                   }
                 }
               }, cjson.decode(body))
@@ -616,6 +616,21 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
 
             local json = cjson.decode(body)
+            assert.same(route, json)
+          end)
+
+          it("retrieves by utf-8 name and percent-escaped utf-8 name", function()
+            local route = bp.routes:insert({ methods = {"GET"}, name = "円" }, { nulls = true })
+            local res  = client:get("/routes/" .. route.name)
+            local body = assert.res_status(200, res)
+
+            local json = cjson.decode(body)
+            assert.same(route, json)
+
+            res  = client:get("/routes/%E5%86%86")
+            body = assert.res_status(200, res)
+
+            json = cjson.decode(body)
             assert.same(route, json)
           end)
 
