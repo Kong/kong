@@ -1,3 +1,7 @@
+## 0.2.2
+
+- chore(*) add copyright
+
 ## 0.2.1
 
 - fix logging; ensure basic serializer generates `request.tls.client_verify`
