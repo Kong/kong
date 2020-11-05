@@ -1,3 +1,7 @@
+## 1.0.4
+
+- chore(*) add copyright
+
 ## 1.0.3
 
 ### Fixed
