@@ -1384,7 +1384,7 @@ function Kong.stream_api()
     for k in pairs(kong.configuration.loaded_plugins) do
       local loaded, custom_endpoints = utils.load_module_if_exists("kong.plugins." .. k .. ".api")
       if loaded and type(custom_endpoints._stream) == "table" then
-        ngx.log(ngx.DEBUG, "---------------------------- have stream --------------")
+        ngx.log(ngx.DEBUG, "Register stream api for plugin: ", k)
         stream_api.register(custom_endpoints._stream)
         custom_endpoints._stream = nil
       end

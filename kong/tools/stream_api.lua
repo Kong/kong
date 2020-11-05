@@ -1,4 +1,10 @@
 
+local pairs = pairs
+local st_format = string.format
+local tb_concat = table.concat
+local setmetatable = setmetatable
+
+
 local stream_api = {}
 
 local _endpoints = {}
@@ -84,22 +90,18 @@ function stream_mt:get_body()
 end
 
 function stream_mt:response(status, headers, body)
-  local o = {"HTTP/1.1 " .. tostring(status)}
+  local o = {"HTTP/1.0 " .. tostring(status)}
 
   if headers then
-    if type(body) == "string" then
-      headers["Content-Length"] = #body
-    end
-
     for k, v in pairs(headers or {}) do
-      o[#o + 1] = string.format("%s: %s", k, v)
+      o[#o + 1] = st_format("%s: %s", k, v)
     end
   end
 
   o[#o + 1] = ""
   o[#o + 1] = body or ""
 
-  return table.concat(o, "\r\n")
+  return tb_concat(o, "\r\n")
 end
 
 function stream_mt:exit(payload)
@@ -108,6 +110,11 @@ function stream_mt:exit(payload)
   end
 
   self.socket:shutdown("send")
+  if self.content_length then
+    self.socket:receive("*a")
+  end
+
+  return ngx.exit(ngx.OK)
 end
 
 
