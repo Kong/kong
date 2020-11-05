@@ -1,3 +1,8 @@
+## 0.3.1
+
+- chore(test) remove C*2.2 test
+- chore(*) add copyright
+
 ## 0.3.0
 
 ### Changed
