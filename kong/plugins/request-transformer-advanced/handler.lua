@@ -16,7 +16,7 @@ function RequestTransformerHandler:access(conf)
 end
 
 
-RequestTransformerHandler.VERSION  = "0.37.3"
+RequestTransformerHandler.VERSION  = "0.37.4"
 RequestTransformerHandler.PRIORITY = 802
 
 

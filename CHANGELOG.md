@@ -1,3 +1,7 @@
+## 0.37.4
+
+- chore(*) add copyright
+
 ## 0.37.3
 
 ### Changed
