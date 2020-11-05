@@ -1,3 +1,9 @@
+## 1.3.8
+
+- add copyright
+- add dbless integration testing
+- switch to Pongo
+
 ## 1.3.7
 
 - feat(handler) add RateLimit headers for draft RFC (FTI-1447)
