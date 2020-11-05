@@ -1,3 +1,9 @@
+## 0.2.1
+
+- add copyright
+- update ci to Pongo
+- fixes to spec files
+
 ## 0.2
 
 ### Added
