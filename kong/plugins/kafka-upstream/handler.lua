@@ -14,7 +14,7 @@ local ngx_encode_base64 = ngx.encode_base64
 local KafkaUpstreamHandler = {}
 
 KafkaUpstreamHandler.PRIORITY = 751
-KafkaUpstreamHandler.VERSION = "0.0.1"
+KafkaUpstreamHandler.VERSION = "0.0.2"
 
 
 local raw_content_types = {
