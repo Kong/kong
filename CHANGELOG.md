@@ -1,3 +1,7 @@
+## 1.1.2
+
+- chore(*) add copyright
+
 ## 1.1.1
 
 - Bump jsonSchema lib to [1.1.1][1.1.1-changelog]
