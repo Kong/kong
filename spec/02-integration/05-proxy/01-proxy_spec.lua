@@ -6,7 +6,7 @@ local http = require "resty.http"
 
 local function count_server_blocks(filename)
   local file = assert(utils.readfile(filename))
-  local _, count = file:gsub("[%\n%s]+server%s{","")
+  local _, count = file:gsub("[%\n%s]+server%s{%s*\n","")
   return count
 end
 
