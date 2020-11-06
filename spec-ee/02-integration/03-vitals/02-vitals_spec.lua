@@ -450,6 +450,8 @@ for _, strategy in helpers.each_strategy() do
 
     describe("flush_vitals_cache()", function()
       before_each(function()
+        vitals.counter_cache:flush_all() -- mark expired
+        vitals.counter_cache:flush_expired() -- really clean them up
         if db.strategy == "cassandra" then
           assert(db:truncate("vitals_consumers"))
           assert(db:truncate("vitals_codes_by_service"))

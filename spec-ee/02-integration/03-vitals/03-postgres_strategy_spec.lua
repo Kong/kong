@@ -39,6 +39,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
     before_each(function()
       snapshot = assert:snapshot()
 
+      assert(db:query("truncate table vitals_stats_days"))
       assert(db:query("truncate table vitals_stats_minutes"))
       assert(db:query("truncate table vitals_stats_seconds"))
       assert(db:query("truncate table vitals_stats_seconds_2"))
@@ -58,6 +59,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
 
     teardown(function()
+      assert(db:query("truncate table vitals_stats_days"))
       assert(db:query("truncate table vitals_stats_minutes"))
       assert(db:query("truncate table vitals_stats_seconds"))
       assert(db:query("truncate table vitals_stats_seconds_2"))
@@ -224,6 +226,28 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         local expected = {
           {
             at       = 1505964660,
+            node_id  = node_id,
+            l2_hit   = 19,
+            l2_miss  = 99,
+            plat_min = 0,
+            plat_max = 120,
+            ulat_min = 12,
+            ulat_max = 47,
+            requests = 7,
+            plat_count = 7,
+            plat_total = 294,
+            ulat_count = 6,
+            ulat_total = 193,
+          }
+        }
+
+        assert.same(expected, res)
+
+        local res, _ = db:query("select * from vitals_stats_days")
+
+        local expected = {
+          {
+            at       = 1505952000,
             node_id  = node_id,
             l2_hit   = 19,
             l2_miss  = 99,
@@ -816,6 +840,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         local now = time()
 
         local data_to_insert = {
+          {now - 63072000, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, },
           {now - 4000, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, },
           {now, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, },
         }
@@ -823,9 +848,9 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         strategy:insert_stats(data_to_insert, node_id)
 
         -- remove everything older than one hour
-        local res, err = strategy:delete_stats({ minutes = 3600 })
+        local res, err = strategy:delete_stats({ minutes = 3600, days = 86400 })
 
-        assert.same(1, res)
+        assert.same(3, res)
         assert.is_nil(err)
       end)
     end)
