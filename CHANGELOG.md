@@ -12,7 +12,11 @@
 - test rockspec; `luarocks install kong-plugin-aws-lambda`
 
 
-## aws-lambda 3.5.1 6-Okt-2020
+## aws-lambda 3.5.2 6-Nov-2020
+
+- tests: just fix test suite for upcoming change to `ssl_cert` on Kong project
+
+## aws-lambda 3.5.1 6-Oct-2020
 
 - fix: `skip_large_bodies` to honor config setting
 
