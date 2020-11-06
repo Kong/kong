@@ -33,6 +33,7 @@ local setup_client = function(conf)
     staleTtl = conf.dns_stale_ttl,     -- ttl in seconds for records once they become stale
     order = conf.dns_order,            -- order of trying record types
     noSynchronisation = conf.dns_no_sync,
+    cacheSize = 60000,
   }
 
   assert(dns_client.init(opts))
