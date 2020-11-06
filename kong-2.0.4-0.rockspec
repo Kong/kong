@@ -28,7 +28,12 @@ dependencies = {
   "lua-resty-iputils == 0.3.0",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 4.1.3",
+
+  -- lua-resty-dns-client 5.0.1 dependencies
+  "lrandom",
+  "lua-resty-timer < 1.0",
+  "binaryheap >= 0.4",
+
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 1.2.0",
@@ -334,5 +339,13 @@ build = {
 
     ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
     ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",
+
+    -- vendorized lua-resty-dns-client files:
+    ["resty.dns.utils"] = "resty/dns/utils.lua",
+    ["resty.dns.client"] = "resty/dns/client.lua",
+    ["resty.dns.balancer.base"] = "resty/dns/balancer/base.lua",
+    ["resty.dns.balancer.ring"] = "resty/dns/balancer/ring.lua",
+    ["resty.dns.balancer.least_connections"] = "resty/dns/balancer/least_connections.lua",
+    ["resty.dns.balancer.handle"] = "resty/dns/balancer/handle.lua",
   }
 }
