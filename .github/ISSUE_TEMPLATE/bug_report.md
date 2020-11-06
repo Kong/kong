@@ -1,10 +1,16 @@
 ---
-name: "Bug report"
+name: Bug report
 about: Create a report to help improve the project
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
 <!--
+Make sure you upgrade to the latest version of Kong, it might already get fixed.
+https://github.com/Kong/kong/releases
+
 Please read the CONTRIBUTING.md guidelines to learn on which channels you can
 seek for help and ask general questions:
 https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#where-to-seek-for-help
