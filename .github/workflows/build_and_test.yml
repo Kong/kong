@@ -12,9 +12,8 @@ jobs:
       run: |
           echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
           echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-
+        
     - uses: azure/docker-login@v1
-      continue-on-error: true
       with:
         username: ${{ secrets.KONG_USERNAME }}
         password: ${{ secrets.KONG_PASSWORD }}
@@ -41,9 +40,8 @@ jobs:
       run: |
           echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
           echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-
+        
     - uses: azure/docker-login@v1
-      continue-on-error: true
       with:
         username: ${{ secrets.KONG_USERNAME }}
         password: ${{ secrets.KONG_PASSWORD }}
@@ -60,7 +58,7 @@ jobs:
   pdk:
     name: PDK
     runs-on: ubuntu-18.04
-    needs: build
+    needs: lint-unit-tests
 
     env:
       TEST_SUITE: pdk
@@ -71,9 +69,8 @@ jobs:
       run: |
           echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
           echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-
+        
     - uses: azure/docker-login@v1
-      continue-on-error: true
       with:
         username: ${{ secrets.KONG_USERNAME }}
         password: ${{ secrets.KONG_PASSWORD }}
@@ -87,52 +84,22 @@ jobs:
     - name: Run Tests
       run: pushd $KONG_BUILD_TOOLS_LOCATION && make test-kong && popd
 
-# package-and-smoke-test:
-#   name: Package and smoke test Kong
-#   runs-on: ubuntu-18.04
-#   needs: build
-#
-#   steps:
-#   - name: Set env
-#     run: |
-#         echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
-#         echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-#
-#   - uses: azure/docker-login@v1
-#     continue-on-error: true
-#     with:
-#       username: ${{ secrets.KONG_USERNAME }}
-#       password: ${{ secrets.KONG_PASSWORD }}
-#
-#   - name: Checkout Kong source code
-#     uses: actions/checkout@v2
-#
-#   - name: Setup Kong Build Tools
-#     run: make setup-kong-build-tools
-#
-#   - name: Package Kong
-#     run: pushd $HOME/kong-build-tools && make package-kong
-#
-#   - name: Smoke Test Kong
-#     run: pushd $HOME/kong-build-tools && make test
-
   integration-tests-dbless:
     name: DB-less integration tests
     runs-on: ubuntu-18.04
-    needs: build
+    needs: lint-unit-tests
 
     env:
       TEST_DATABASE: 'off'
       TEST_SUITE: dbless
-
+      
     steps:
     - name: Set env
       run: |
           echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
           echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-
+        
     - uses: azure/docker-login@v1
-      continue-on-error: true
       with:
         username: ${{ secrets.KONG_USERNAME }}
         password: ${{ secrets.KONG_PASSWORD }}
@@ -149,7 +116,7 @@ jobs:
   integration-tests-with-databases:
     name: ${{matrix.database}} (${{ matrix.suite }}) ${{ matrix.split }} integration tests
     runs-on: ubuntu-18.04
-    needs: build
+    needs: lint-unit-tests
 
     strategy:
       matrix:
@@ -174,9 +141,8 @@ jobs:
       run: |
           echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
           echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-
+        
     - uses: azure/docker-login@v1
-      continue-on-error: true
       with:
         username: ${{ secrets.KONG_USERNAME }}
         password: ${{ secrets.KONG_PASSWORD }}
