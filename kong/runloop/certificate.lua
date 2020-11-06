@@ -1,3 +1,10 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
 local singletons = require "kong.singletons"
 local ngx_ssl = require "ngx.ssl"
 local pl_utils = require "pl.utils"
@@ -5,6 +12,7 @@ local mlcache = require "resty.mlcache"
 local new_tab = require "table.new"
 local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
+local workspaces = require "kong.workspaces" -- XXX EE: Needed for certificates on workspaces
 
 if jit.arch == 'arm64' then
   jit.off(mlcache.get_bulk)        -- "temporary" workaround for issue #5748 on ARM
@@ -106,16 +114,25 @@ end
 
 
 local function fetch_sni(sni, i)
-  local row, err = singletons.db.snis:select_by_name(sni)
-  if err then
-    return nil, "failed to fetch '" .. sni .. "' SNI: " .. err, i
+  -- XXX EE [[
+  -- SNIs need to be gathered from each workspace
+  local orig_ws = workspaces.get_workspace()
+  for workspace, _ in singletons.db.workspaces:each() do
+    workspaces.set_workspace(workspace)
+  -- XXX EE ]]
+    local row, err = singletons.db.snis:select_by_name(sni)
+    workspaces.set_workspace(orig_ws) -- XXX EE: Reset the workspace
+    if err then
+      return nil, "failed to fetch '" .. sni .. "' SNI: " .. err, i, nil
+    end
+
+    if row then
+      row["workspace"] = workspace -- XXX EE: add the workspace information to the table
+      return row, nil, i
+    end
   end
 
-  if not row then
-    return false, nil, i
-  end
-
-  return row, nil, i
+  return false, nil, i, nil
 end
 
 
@@ -210,18 +227,20 @@ local function find_certificate(sni)
 
   local res, err = kong.core_cache:get_bulk(bulk)
   if err then
+    workspaces.set_workspace(kong.default_workspace)
     return nil, err
   end
 
   for _, sni, err in mlcache.each_bulk_res(res) do
     if err then
       log(ERR, "failed to fetch SNI: ", err)
-
     elseif sni then
+      workspaces.set_workspace(sni.workspace) -- XXX EE: Ensure the workspace set
       return get_certificate(sni.certificate, sni.name)
     end
   end
 
+  workspaces.set_workspace(kong.default_workspace) -- XXX EE: Reset the workspace
   return default_cert_and_key
 end
 

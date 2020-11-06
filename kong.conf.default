@@ -344,8 +344,7 @@
 
 #proxy_url =            # Kong Proxy URL
                         #
-                        # Here you may provide the lookup, or balancer,
-                        # address for your Kong Proxy nodes.
+                        # The lookup, or balancer, address for your Kong Proxy nodes.
                         #
                         # This value is commonly used in a microservices
                         # or service-mesh oriented architecture.
@@ -1404,8 +1403,7 @@
 
 #admin_gui_url =        # Kong Manager URL
                         #
-                        # Here you may provide the lookup, or balancer,
-                        # address for Kong Manager.
+                        # The lookup, or balancer, address for Kong Manager.
                         #
                         # Accepted format (items in parentheses are optional):
                         #
@@ -1457,8 +1455,8 @@
 
 #admin_gui_auth =       # Kong Manager Authentication Plugin Name
                         #
-                        # Here you may secure access to Kong Manager by
-                        # specifying an authentication plugin to use.
+                        # Secures access to Kong Manager by specifying an
+                        # authentication plugin to use.
                         #
                         # Supported Plugins:
                         #
@@ -1469,8 +1467,8 @@
 
 #admin_gui_auth_conf =  # Kong Manager Authentication Plugin Config (JSON)
                         #
-                        # Here you may specify the configuration for the
-                        # authentication plugin you have chosen.
+                        # Specifies the configuration for the authentication
+                        # plugin specified in `admin_gui_auth`.
                         #
                         # For information about Plugin Configuration
                         # consult the associated plugin documentation.
@@ -1516,8 +1514,8 @@
 
 #admin_gui_session_conf = # Kong Manager Session Config (JSON)
                           #
-                          # Here you may specify the configuration for the
-                          # Session plugin as used by Kong Manager.
+                          # Specifies the configuration for the Session plugin as
+                          # used by Kong Manager.
                           #
                           # For information about plugin configuration, consult
                           # the Kong Session plugin documentation.
@@ -1634,8 +1632,8 @@
 #portal_gui_protocol = http
                         # Developer Portal GUI protocol
                         #
-                        # Here you may provide the protocol used in conjunction
-                        # with portal_gui_host to construct the lookup, or balancer
+                        # The protocol used in conjunction with
+                        # `portal_gui_host` to construct the lookup, or balancer
                         # address for your Kong Proxy nodes.
                         #
                         # Examples: `http`,`https`
@@ -1643,8 +1641,8 @@
 #portal_gui_host = 127.0.0.1:8003
                         # Developer Portal GUI host
                         #
-                        # Here you may provide the host used in conjunction
-                        # with portal_gui_protocol to construct the lookup,
+                        # The host used in conjunction with
+                        # `portal_gui_protocol` to construct the lookup,
                         # or balancer address for your Kong Proxy nodes.
                         #
                         # Examples:
@@ -1738,13 +1736,13 @@
 
 #portal_api_url =       # Developer Portal API URL
                         #
-                        # Here you may provide the lookup, or balancer,
-                        # address for your Developer Portal nodes.
+                        # The lookup, or balancer, address for your Developer
+                        # Portal nodes.
                         #
                         # This value is commonly used in a microservices
                         # or service-mesh oriented architecture.
                         #
-                        # portal_api_url is the address on which your
+                        # `portal_api_url` is the address on which your
                         # Kong Dev Portal API is accessible by Kong. You
                         # should only set this value if your Kong Dev Portal API
                         # lives on a different node than your Kong Proxy.
@@ -1826,7 +1824,7 @@
 #
 #portal_auth =          # Developer Portal Authentication Plugin Name
                         #
-                        # Here you may specify the authentication plugin
+                        # Specifies the authentication plugin
                         # to apply to your Developer Portal. Developers
                         # will use the specified form of authentication
                         # to request access, register, and login to your
@@ -1875,7 +1873,7 @@
 
 #portal_auth_conf =     # Developer Portal Authentication Plugin Config (JSON)
                         #
-                        # Here you may specify the plugin configuration object
+                        # Specifies the plugin configuration object
                         # in JSON format to be applied to your Developer
                         # Portal authentication.
                         #
@@ -1897,7 +1895,7 @@
 
 #portal_session_conf =  # Portal Session Config (JSON)
                         #
-                        # Here you may specify the configuration for the
+                        # Specifies the configuration for the
                         # Session plugin as used by Kong Portal.
                         #
                         # For information about Plugin Configuration consult
