@@ -95,14 +95,14 @@ function stream_mt:get_headers()
   return self.headers
 end
 
---- Returns the request body. If there was a content_length header, reads this
---- many bytes. Otherwise, reads until the end of the connection.
-function stream_mt:get_body()
+--- Returns the request body.
+function stream_mt:get_body(len)
   if not self.body then
-    if not self.content_length then
-      self.content_length = tonumber(self:get_headers().content_length)
-    end
-    self.body = self.socket:receive(self.content_length or "*a")
+    len = len
+        or self.content_length
+        or tonumber(self:get_headers().content_length)
+        or "*a"
+    self.body = self.socket:receive(len)
   end
 
   return self.body
