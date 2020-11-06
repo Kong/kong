@@ -17,9 +17,15 @@ local fixtures = {
       server {
           server_name mock_aws_lambda;
           listen 10001 ssl;
-
+> if ssl_cert[1] then
+> for i = 1, #ssl_cert do
+          ssl_certificate     $(ssl_cert[i]);
+          ssl_certificate_key $(ssl_cert_key[i]);
+> end
+> else
           ssl_certificate ${{SSL_CERT}};
           ssl_certificate_key ${{SSL_CERT_KEY}};
+> end
           ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 
           location ~ "/2015-03-31/functions/(?:[^/])*/invocations" {
