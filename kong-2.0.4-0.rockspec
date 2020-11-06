@@ -31,7 +31,7 @@ dependencies = {
 
   -- lua-resty-dns-client 5.0.1 dependencies
   "lrandom",
-  "lua-resty-timer < 1.0",
+  "lua-resty-timer == 1.0.0",
   "binaryheap >= 0.4",
 
   "lua-resty-worker-events == 1.0.0",
