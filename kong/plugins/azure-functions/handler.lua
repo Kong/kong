@@ -89,18 +89,17 @@ function azure:access(config)
     end
   end
 
+  request_headers["host"] = nil  -- NOTE: OR return lowercase!
+  request_headers["x-functions-key"] = config.apikey
+  request_headers["x-functions-clientid"] = config.clientid
+
   local res
   res, err = client:request {
     method  = request_method,
     path    = path,
     body    = request_body,
     query   = request_args,
-    headers = {
-      ["Content-Length"] = #(request_body or ""),
-      ["Content-Type"]  = request_headers["Content-Type"],
-      ["x-functions-key"] = config.apikey,
-      ["x-functions-clientid"] = config.clientid,
-    }
+    headers = request_headers,
   }
 
   if not res then

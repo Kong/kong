@@ -91,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
       assert.same(body, json.data)
     end)
 
-    it("#only passes the path parameters", function()
+    it("passes the path parameters", function()
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/and/then/some",
@@ -117,6 +117,21 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
       assert.same("POST", json.method)
+    end)
+
+    it("passes the headers", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/and/then/some",
+        headers = {
+          ["Host"] = "azure2.com",
+          ["Just-A-Header"] = "just a value",
+        }
+      })
+
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.same("just a value", json.headers["Just-A-Header"])
     end)
 
     it("injects the apikey and clientid", function()
