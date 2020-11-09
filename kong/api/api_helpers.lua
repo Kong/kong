@@ -369,6 +369,9 @@ function _M.attach_routes(app, routes)
       methods[method_name] = parse_params(wrapped_handler)
     end
 
+    assert(hooks.run_hook("api:helpers:attach_routes:before",
+      app, route_path, methods))
+
     app:match(route_path, route_path, app_helpers.respond_to(methods))
 
     assert(hooks.run_hook("api:helpers:attach_routes",
@@ -383,6 +386,9 @@ function _M.attach_new_db_routes(app, routes)
     local methods = definition.methods
 
     methods.on_error = methods.on_error or new_db_on_error
+
+    assert(hooks.run_hook("api:helpers:attach_new_db_routes:before",
+      app, route_path, methods, schema))
 
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)

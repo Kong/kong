@@ -309,4 +309,56 @@ describe("licensing", function()
       end)
     end)
   end)
+
+  describe("deny_entity", function()
+    local ee = require "kong.enterprise_edition"
+    local Entity = require "kong.db.schema.entity"
+
+    local featureset, SomeEntity, AnotherEntity
+
+    lazy_setup(function()
+      featureset = {
+        abilities = {
+          deny_admin_api = {},
+          allow_admin_api = {},
+          deny_entity = { ["some_entity"] = true, },
+        }
+      }
+
+      assert(stub(lic_helper, "get_featureset").returns(featureset))
+      lic_helper.featureset:reload()
+
+      ee.license_hooks()
+
+      SomeEntity = assert(Entity.new({
+        name = "some_entity",
+        fields = {},
+      }))
+
+      AnotherEntity = assert(Entity.new({
+        name = "another_entity",
+        fields = {},
+      }))
+    end)
+
+    lazy_teardown(function()
+      assert(lic_helper.get_featureset:revert())
+    end)
+
+    it("makes denied entities never validate", function()
+      local ok, err = SomeEntity:validate({})
+      assert.is_falsy(ok)
+      assert.same({
+        licensing = "'some_entity' is an enterprise only entity",
+      }, err)
+    end)
+
+    it("leaves non denied entities alone", function()
+      assert(AnotherEntity:validate({}))
+    end)
+
+    pending("does not allow API calls on entity level")
+  end)
+
+  pending("ee_plugins = false")
 end)

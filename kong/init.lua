@@ -461,6 +461,11 @@ function Kong.init()
   -- EE needs to know which kind of featureset to run ASAP
   kong.license = ee.read_license_info()
 
+  -- EE register license hooks as early as possible.
+  -- Hook handlers won't run unless the hook runs (on which case, we want that
+  -- to happen). Doing it early should not be a problem.
+  ee.license_hooks()
+
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))

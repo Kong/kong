@@ -58,6 +58,11 @@ for i = 1, #plugins do
   plugin_map[plugins[i]] = true
 end
 
+local ee_plugin_map = {}
+for i = 1, #dist_constants.plugins do
+  ee_plugin_map[dist_constants.plugins[i]] = true
+end
+
 local deprecated_plugins = {} -- no currently deprecated plugin
 
 for _, plugin in ipairs(ee_constants.EE_DEPRECATED_PLUGIN_LIST) do
@@ -87,6 +92,7 @@ table.sort(protocols)
 local constants = {
   BUNDLED_PLUGINS = plugin_map,
   EE_PLUGINS = dist_constants.plugins,
+  EE_PLUGINS_MAP = ee_plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
   -- non-standard headers, specific to Kong
   HEADERS = {

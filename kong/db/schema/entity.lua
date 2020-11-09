@@ -9,6 +9,7 @@ local Schema = require("kong.db.schema")
 
 
 -- EE [[
+local hooks = require("kong.hooks")
 local keyring = require("kong.keyring")
 -- EE ]]
 
@@ -166,6 +167,14 @@ function Entity.new(definition)
   end
 
   self.new_subschema = Entity.new_subschema
+
+  -- EE [[
+  assert(hooks.run_hook("db:schema:entity:new", self, self.name))
+
+  if self.name then
+    assert(hooks.run_hook("db:schema:".. self.name .. ":new", self))
+  end
+  -- EE ]]
 
   return self
 end

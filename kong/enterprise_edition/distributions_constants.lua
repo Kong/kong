@@ -43,6 +43,9 @@ local constants = {
           -- ["/workspaces"] = { ["*"] = true },
           -- ["/workspaces/:workspaces"] = { ["*"] = true },
         },
+        deny_entity = {
+          -- ['entity_name'] = true,
+        },
         ee_plugins = false
       }
     },

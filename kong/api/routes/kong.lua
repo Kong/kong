@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
 local ee_api = require "kong.enterprise_edition.api_helpers"
@@ -17,6 +16,7 @@ local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
 local endpoints  = require "kong.api.endpoints"
+local hooks = require "kong.hooks"
 
 local kong = kong
 local knode  = (kong and kong.node) and kong.node or
@@ -170,24 +170,15 @@ return {
         end
       end
 
-      local license
-      if kong.license then
-        license = utils.deep_copy(kong.license).license.payload
-        license.license_key = nil
-      end
-
       local node_id, err = knode.get_id()
       if node_id == nil then
         ngx.log(ngx.ERR, "could not get node id: ", err)
       end
 
-      local lh = require "kong.enterprise_edition.license_helpers"
-      local conf = conf_loader.remove_sensitive(singletons.configuration)
-      for k, v in pairs(lh.license_conf()) do
-        conf[k] = v
-      end
-
-      return kong.response.exit(200, {
+      -- [[ XXX EE
+      -- decorate kong info with EE data
+      return kong.response.exit(200, assert(hooks.run_hook("api:kong:info", {
+        -- XXX EE ]]
         tagline = tagline,
         version = version,
         hostname = knode.get_hostname(),
@@ -201,10 +192,9 @@ return {
           enabled_in_cluster = distinct_plugins
         },
         lua_version = lua_version,
-        configuration = conf,
+        configuration = conf_loader.remove_sensitive(singletons.configuration),
         prng_seeds = prng_seeds,
-        license = license,
-      })
+      })))
     end
   },
   --- Retrieves current user info, either an admin or an rbac user
