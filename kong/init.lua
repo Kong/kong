@@ -467,6 +467,10 @@ function Kong.init()
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
+  if subsystem == "stream" then
+    stream_api.load_handlers()
+  end
+
   if kong.configuration.database == "off" then
 
     local err
@@ -1376,22 +1380,7 @@ function Kong.serve_cluster_listener(options)
 end
 
 
-local stream_plugins_api_loaded = false
 function Kong.stream_api()
-  if not stream_plugins_api_loaded then
-    local utils = require "kong.tools.utils"
-
-    for plugin_name in pairs(kong.configuration.loaded_plugins) do
-      local loaded, custom_endpoints = utils.load_module_if_exists("kong.plugins." .. plugin_name .. ".api")
-      if loaded and custom_endpoints._stream then
-        ngx.log(ngx.DEBUG, "Register stream api for plugin: ", plugin_name)
-        stream_api.register(plugin_name, custom_endpoints._stream)
-        custom_endpoints._stream = nil
-      end
-    end
-    stream_plugins_api_loaded = true
-  end
-
   stream_api.handle()
 end
 
