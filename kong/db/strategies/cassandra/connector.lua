@@ -272,7 +272,7 @@ end
 
 function CassandraConnector:init_worker()
   if self.refresh_frequency > 0 then
-    local hdl, err = ngx.timer.every(self.refresh_frequency, function()
+    local ok, err = kong.async:every(self.refresh_frequency, function()
       local ok, err, topology = self.cluster:refresh(self.refresh_frequency)
       if not ok then
         ngx.log(ngx.ERR, "[cassandra] failed to refresh cluster topology: ",
@@ -290,7 +290,7 @@ function CassandraConnector:init_worker()
         end
       end
     end)
-    if not hdl then
+    if not ok then
       return nil, "failed to initialize Cassandra topology refresh timer: " ..
                   err
     end
