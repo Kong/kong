@@ -47,6 +47,7 @@ build = {
   modules = {
     ["kong"] = "kong/init.lua",
     ["kong.meta"] = "kong/meta.lua",
+    ["kong.async"] = "kong/async.lua",
     ["kong.cache"] = "kong/cache/init.lua",
     ["kong.cache.warmup"] = "kong/cache/warmup.lua",
     ["kong.cache.marshall"] = "kong/cache/marshall.lua",
