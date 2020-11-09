@@ -200,6 +200,11 @@ describe("cache_warmup", function()
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         services = mock_entity(db_data, "services", "name"),
       },
+      async = {
+        run = function(_, func, ...)
+          return func(false, ...)
+        end
+      },
       core_cache = mock_cache(cache_table),
       cache = mock_cache({}),
       dns = {
