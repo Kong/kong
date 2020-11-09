@@ -9,7 +9,6 @@ local knode = (kong and kong.node) and kong.node or
 local kong_dict = ngx.shared.kong
 local ngx = ngx
 local tcp_sock = ngx.socket.tcp
-local timer_at = ngx.timer.at
 local ngx_log = ngx.log
 local var = ngx.var
 local subsystem = ngx.config.subsystem
@@ -179,7 +178,7 @@ end
 
 
 local function create_timer(...)
-  local ok, err = timer_at(...)
+  local ok, err = kong.async:every(...)
   if not ok then
     log(WARN, "could not create ping timer: ", err)
   end
@@ -335,10 +334,6 @@ local function ping_handler(premature)
   if premature then
     return
   end
-
-  -- all workers need to register a recurring timer, in case one of them
-  -- crashes. Hence, this must be called before the `get_lock()` call.
-  create_timer(PING_INTERVAL, ping_handler)
 
   if not get_lock(PING_KEY, PING_INTERVAL) then
     return
