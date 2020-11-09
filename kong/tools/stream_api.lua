@@ -7,6 +7,7 @@ local st_pack    = string.pack      -- luacheck: ignore string
 local st_unpack  = string.unpack    -- luacheck: ignore string
 local st_format  = string.format
 
+local MAX_DATA_LEN = 8000
 local PREFIX = ngx.config.prefix()
 
 local stream_api = {}
@@ -20,7 +21,7 @@ function stream_api.load_handlers()
   for plugin_name in pairs(kong.configuration.loaded_plugins) do
     local loaded, custom_endpoints = utils.load_module_if_exists("kong.plugins." .. plugin_name .. ".api")
     if loaded and custom_endpoints._stream then
-      ngx.log(ngx.DEBUG, "Register stream api for plugin: ", plugin_name)
+      kong.log.debug("Register stream api for plugin: ", plugin_name)
       _handlers[plugin_name] = custom_endpoints._stream
       custom_endpoints._stream = nil
     end
@@ -28,6 +29,14 @@ function stream_api.load_handlers()
 end
 
 function stream_api.request(key, data, socket_path)
+  if type(key) ~= "string" or type(data) ~= "string" then
+    error("key and data must be strings")
+    return
+  end
+  if #data > MAX_DATA_LEN then
+    error("too much data")
+  end
+
   local socket = assert(ngx.socket.udp())
   assert(socket:setpeername(socket_path or "unix:" .. PREFIX .. "/stream_rpc.sock"))
 
@@ -44,7 +53,7 @@ function stream_api.request(key, data, socket_path)
   end
 
   local _, status, payload = st_unpack(data, "=SP")
-  if status == 0 then
+  if status ~= 0 then
     socket:close()
     return nil, payload
   end
@@ -55,7 +64,6 @@ end
 
 
 function stream_api.handle()
-
   local socket = ngx.req.socket()
   local data, err = socket:receive()
   if not data then
@@ -67,7 +75,7 @@ function stream_api.handle()
 
   local f = _handlers[key]
   if not f then
-    socket:send(st_pack("=SP", 0, "no handler"))
+    socket:send(st_pack("=SP", 1, "no handler"))
     return
   end
 
@@ -75,11 +83,21 @@ function stream_api.handle()
   res, err = f(payload)
   if not res then
     kong.log.error(st_format("stream_api handler %q returned error: %q", key, err))
-    socket:send(st_pack("=SP", 0, tostring(err)))
+    socket:send(st_pack("=SP", 2, tostring(err)))
     return
   end
 
-  socket:send(st_pack("=SP", 1, tostring(res)))
+  if type(res) ~= "string" then
+    error(st_format("stream_api handler %q response is not a string", key))
+  end
+
+  if #res > MAX_DATA_LEN then
+    error(st_format(
+      "stream_api handler %q response is %d bytes.  Only %d bytes is supported",
+      key, #res, MAX_DATA_LEN))
+  end
+
+  socket:send(st_pack("=SP", 0, res))
 end
 
 
