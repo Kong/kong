@@ -3,6 +3,7 @@ local semaphore = require "ngx.semaphore"
 
 local ngx = ngx
 local kong = kong
+local math = math
 local type = type
 local pcall = pcall
 local string = string
@@ -308,6 +309,36 @@ function async:every(delay, func, ...)
   bucket.jobs[bucket.head] = create_recurring_job(create_job(func, ...))
 
   return true
+end
+
+
+---
+-- Kong async raw metrics data
+--
+-- @tparam  from[opt]  data start time (from unix epoch)
+-- @tparam  to[opt]    data end time (from unix epoch)
+-- @treturn table      a table containing the metrics
+-- @treturn number     number of metrics returned
+function async:data(from, to)
+  local time = self.time
+  local done = math.min(self.done, QUEUE_SIZE)
+  if not from and not to then
+    return time, done
+  end
+
+  from = from and from * 1000 or 0
+  to   = to   and to   * 1000 or math.huge
+
+  local data = kong.table.new(done, 0)
+  local size = 0
+  for i = 1, done do
+    if time[i][1] >= from and time[i][3] <= to then
+      size = size + 1
+      data[size] = time[i]
+    end
+  end
+
+  return data, size
 end
 
 
