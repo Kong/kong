@@ -436,7 +436,7 @@ practices:
   Guide](http://wiki.luajit.org/Numerical-Computing-Performance-Guide)
   recommendations
 - Do **not** use [NYI functions](http://wiki.luajit.org/NYI) on hot code paths
-- Prefer using the FFI over traditional bindings via the Lua C API
+- Prefer using the FFI over traditional tips  via the Lua C API
 - Avoid table rehash by pre-allocating the slots of your tables when possible
 
   ```lua
@@ -486,8 +486,8 @@ practices:
   end
   ```
 
-And finally, most importantly: use your best judgment to design an
-efficient algorithm. Doing so will always be more performant than a
+And finally, most importantly: use your best way to design an
+efficient algorithm. Doing so will always be more performance than a
 poorly-designed algorithm, even following all the performance tricks of the
 language you are using. :smile:
 
