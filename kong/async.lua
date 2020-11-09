@@ -5,14 +5,16 @@ local ngx = ngx
 local kong = kong
 local type = type
 local pcall = pcall
+local string = string
 local select = select
 local unpack = unpack
 local assert = assert
 local setmetatable = setmetatable
 
 
-local BUCKET_SIZE = 1000
-local QUEUE_SIZE  = 100000
+local LOG_INTERVAL = 60
+local BUCKET_SIZE  = 1000
+local QUEUE_SIZE   = 100000
 
 
 local RECURRING = {
@@ -45,8 +47,12 @@ local function job_thread(self, index)
         local job = self.jobs[tail]
         self.tail = tail
         self.jobs[tail] = nil
+        self.running = self.running + 1
         ok, err = job()
+        self.running = self.running - 1
+        self.done = self.done + 1
         if not ok then
+          self.errored = self.errored + 1
           kong.log.err("async thread #", index, " job error: ", err)
         end
       end
@@ -54,6 +60,39 @@ local function job_thread(self, index)
     elseif err ~= "timeout" then
       kong.log.err("async thread #", index, " wait error: ", err)
     end
+  end
+
+  return true
+end
+
+
+local function log_timer(premature, self)
+  if premature then
+    return true
+  end
+
+  local debug  = QUEUE_SIZE / 10000
+  local info   = QUEUE_SIZE / 1000
+  local notice = QUEUE_SIZE / 100
+  local warn   = QUEUE_SIZE / 10
+  local err    = QUEUE_SIZE
+
+  local pending = get_pending(self)
+
+  local msg = string.format("async jobs: %u running, %u pending, %u errored, %u refused, %u done",
+                            self.running, pending, self.errored, self.refused, self.done)
+  if pending <= debug then
+    kong.log.debug(msg)
+  elseif pending <= info then
+    kong.log.info(msg)
+  elseif pending <= notice then
+    kong.log.notice(msg)
+  elseif pending < warn then
+    kong.log.warn(msg)
+  elseif pending < err then
+    kong.log.err(msg)
+  else
+    kong.log.crit(msg)
   end
 
   return true
@@ -177,6 +216,10 @@ function async.new()
     jobs = kong.table.new(QUEUE_SIZE, 0),
     work = semaphore.new(),
     buckets = {},
+    running = 0,
+    errored = 0,
+    refused = 0,
+    done = 0,
     head = 0,
     tail = 0,
   }, async)
@@ -194,7 +237,7 @@ function async:start()
     return nil, err
   end
 
-  return true
+  return self:every(LOG_INTERVAL, log_timer, self)
 end
 
 
@@ -207,6 +250,7 @@ end
 -- @treturn string|nil `nil` on success, error message `string` on error
 function async:run(func, ...)
   if get_pending(self) == QUEUE_SIZE then
+    self.refused = self.refused + 1
     return nil, "async queue is full"
   end
 
@@ -236,6 +280,7 @@ function async:every(delay, func, ...)
   local bucket = self.buckets[delay]
   if bucket then
     if bucket.head == BUCKET_SIZE then
+      self.refused = self.refused + 1
       return nil, "async bucket (" .. delay .. ") is full"
     end
 
