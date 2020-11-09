@@ -35,8 +35,6 @@ local log          = ngx.log
 local exit         = ngx.exit
 local exec         = ngx.exec
 local header       = ngx.header
-local timer_at     = ngx.timer.at
-local timer_every  = ngx.timer.every
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
 local http_version = ngx.req.http_version
@@ -1065,9 +1063,10 @@ return {
       end
 
       -- initialize balancers for active healthchecks
-      timer_at(0, function()
-        balancer.init()
-      end)
+      local ok, err = kong.async:run(balancer.init)
+      if not ok then
+        kong.log.err("failed to initialize balancer: ", err)
+      end
 
       local strategy = kong.db.strategy
 
@@ -1113,7 +1112,7 @@ return {
           on_timeout = "return_true",
         }
 
-        timer_every(worker_state_update_frequency, function(premature)
+        kong.async:every(worker_state_update_frequency, function(premature)
           if premature then
             return
           end
@@ -1134,7 +1133,7 @@ return {
           on_timeout = "return_true",
         }
 
-        timer_every(worker_state_update_frequency, function(premature)
+        kong.async:every(worker_state_update_frequency, function(premature)
           if premature then
             return
           end
