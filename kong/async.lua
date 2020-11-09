@@ -48,7 +48,9 @@ local function job_thread(self, index)
         self.tail = tail
         self.jobs[tail] = nil
         self.running = self.running + 1
+        self.time[tail][2] = ngx.now() * 1000
         ok, err = job()
+        self.time[tail][3] = ngx.now() * 1000
         self.running = self.running - 1
         self.done = self.done + 1
         if not ok then
@@ -183,6 +185,7 @@ local function queue_job(self, recurring, func, ...)
 
   self.head = self.head == QUEUE_SIZE and 1 or self.head + 1
   self.jobs[self.head] = recurring and func or create_job(func, ...)
+  self.time[self.head][1] = ngx.now() * 1000
   self.work:post()
 
   return true
@@ -218,8 +221,14 @@ async.__index = async
 --
 -- @treturn table an instance of `kong.async`
 function async.new()
+  local time = kong.table.new(QUEUE_SIZE, 0)
+  for i = 1, QUEUE_SIZE do
+    time[i] = kong.table.new(3, 0)
+  end
+
   return setmetatable({
     jobs = kong.table.new(QUEUE_SIZE, 0),
+    time = time,
     work = semaphore.new(),
     buckets = {},
     running = 0,
