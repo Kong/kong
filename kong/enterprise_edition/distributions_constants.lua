@@ -29,8 +29,6 @@ local constants = {
         -- anonymous_reports = "on",
       },
       abilities = {
-        -- -- not really necessary but explicit
-        -- mount_admin_api_for_workspaces = true,
         -- -- Granular allow. Will deny anything not on a sublevel
         -- allow_admin_api = {
         --   -- ie: this only allows GET /workspaces
