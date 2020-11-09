@@ -6,6 +6,7 @@ local kong = kong
 local math = math
 local type = type
 local pcall = pcall
+local table = table
 local string = string
 local select = select
 local unpack = unpack
@@ -213,6 +214,69 @@ local function create_recurring_job(job)
 end
 
 
+local function get_stats(self, from, to)
+  local data, size = self:data(from, to)
+  local names = { "max", "min", "mean", "median", "p95", "p99", "p999" }
+  local stats = kong.table.new(2, 0)
+
+  for i = 1, 2 do
+    stats[i] = kong.table.new(0, #names + 1)
+    stats[i].size = size
+    if size == 0 then
+      for j = 1, #names do
+        stats[i][names[j]] = 0
+      end
+
+    elseif size == 1 then
+      local time = i == 1 and data[1][2] - data[1][1]
+                           or data[1][3] - data[1][2]
+
+      for j = 1, #names do
+        stats[i][names[j]] = time
+      end
+
+    elseif size > 1 then
+      local tot = 0
+      local raw = kong.table.new(size, 0)
+      local max
+      local min
+
+      for j = 1, size do
+        local time = i == 1 and data[j][2] - data[j][1]
+                             or data[j][3] - data[j][2]
+        raw[j] = time
+        tot = tot + time
+        max = math.max(time, max or time)
+        min = math.min(time, min or time)
+      end
+
+      stats[i].max = max
+      stats[i].min = min
+      stats[i].mean = math.floor(tot / size + 0.5)
+
+      table.sort(raw)
+
+      local n = { "median", "p95", "p99", "p999" }
+      local m = { 0.5, 0.95, 0.99, 0.999 }
+
+      for j = 1, #n do
+        local idx = size * m[j]
+        if idx == math.floor(idx) then
+          stats[i][n[j]] = math.floor((raw[idx] + raw[idx + 1]) / 2 + 0.5)
+        else
+          stats[i][n[j]] = raw[math.floor(idx + 0.5)]
+        end
+      end
+    end
+  end
+
+  return {
+    latency = stats[1],
+    runtime = stats[2],
+  }
+end
+
+
 local async = {}
 async.__index = async
 
@@ -339,6 +403,59 @@ function async:data(from, to)
   end
 
   return data, size
+end
+
+
+---
+-- Return statistics
+--
+-- @tparam  opts[opt] data start time (from unix epoch)
+-- @treturn table     a table containing calculated statistics
+function async:stats(opts)
+  local stats
+  local pending = get_pending(self)
+  if not opts then
+    stats = get_stats(self)
+    stats.done    = self.done
+    stats.pending = pending
+    stats.running = self.running
+    stats.errored = self.errored
+    stats.refused = self.refused
+
+  else
+    local now = ngx.now()
+
+    local all    = opts.all    and get_stats(self)
+    local minute = opts.minute and get_stats(self, now - RECURRING.minute)
+    local hour   = opts.hour   and get_stats(self, now - RECURRING.hour)
+
+    local latency
+    local runtime
+    if all or minute or hour then
+      latency = {
+        all    = all    and all.latency,
+        minute = minute and minute.latency,
+        hour   = hour   and hour.latency,
+      }
+      runtime = {
+        all    = all    and all.runtime,
+        minute = minute and minute.runtime,
+        hour   = hour   and hour.runtime,
+      }
+    end
+
+    stats = {
+      done    = self.done,
+      pending = pending,
+      running = self.running,
+      errored = self.errored,
+      refused = self.refused,
+      latency = latency,
+      runtime = runtime,
+    }
+  end
+
+  return stats
 end
 
 
