@@ -17,7 +17,11 @@ Consult the Table of Contents below, and jump to the desired section.
 - [Where to submit feature requests?](#where-to-submit-feature-requests)
 - [Contributing](#contributing)
   - [Improving the documentation](#improving-the-documentation)
-  - [Proposing a new plugin](#proposing-a-new-plugin)
+  - [Proposing a -- bad
+local t = {foo="hello",bar="world"}
+
+-- good
+local t = { foo = "hello", bar = "world" } plugin](#proposing-a-new-plugin)
   - [Submitting a patch](#submitting-a-patch)
     - [Git branches](#git-branches)
     - [Commit atomicity](#commit-atomicity)
