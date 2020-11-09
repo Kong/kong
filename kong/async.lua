@@ -175,6 +175,20 @@ local function create_job(func, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, ...)
 end
 
 
+local function queue_job(self, recurring, func, ...)
+  if get_pending(self) == QUEUE_SIZE then
+    self.refused = self.refused + 1
+    return nil, "async queue is full"
+  end
+
+  self.head = self.head == QUEUE_SIZE and 1 or self.head + 1
+  self.jobs[self.head] = recurring and func or create_job(func, ...)
+  self.work:post()
+
+  return true
+end
+
+
 local function create_recurring_job(job)
   local running = false
 
@@ -190,15 +204,7 @@ local function create_recurring_job(job)
       return nil, "recurring job is already running"
     end
 
-    if get_pending(self) == QUEUE_SIZE then
-      return nil, "async queue is full"
-    end
-
-    self.head = self.head == QUEUE_SIZE and 1 or self.head + 1
-    self.jobs[self.head] = recurring_job
-    self.work:post()
-
-    return true
+    return queue_job(self, true, recurring_job)
   end
 end
 
@@ -249,16 +255,7 @@ end
 -- @treturn true|nil   `true` on success, `nil` on error
 -- @treturn string|nil `nil` on success, error message `string` on error
 function async:run(func, ...)
-  if get_pending(self) == QUEUE_SIZE then
-    self.refused = self.refused + 1
-    return nil, "async queue is full"
-  end
-
-  self.head = self.head == QUEUE_SIZE and 1 or self.head + 1
-  self.jobs[self.head] = create_job(func, ...)
-  self.work:post()
-
-  return true
+  return queue_job(self, false, func, ...)
 end
 
 
