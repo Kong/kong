@@ -3,7 +3,6 @@ local statsd_logger = require "kong.plugins.statsd.statsd_logger"
 
 local kong     = kong
 local ngx      = ngx
-local timer_at = ngx.timer.at
 local pairs    = pairs
 local gsub     = string.gsub
 local fmt      = string.format
@@ -139,7 +138,7 @@ function StatsdHandler:log(conf)
 
   local message = kong.log.serialize()
 
-  local ok, err = timer_at(0, log, conf, message)
+  local ok, err = kong.async:run(log, conf, message)
   if not ok then
     kong.log.err("failed to create timer: ", err)
   end

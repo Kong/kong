@@ -3,7 +3,6 @@ local statsd_logger = require "kong.plugins.datadog.statsd_logger"
 
 local kong     = kong
 local ngx      = ngx
-local timer_at = ngx.timer.at
 local insert   = table.insert
 local gsub     = string.gsub
 local pairs    = pairs
@@ -105,7 +104,7 @@ function DatadogHandler:log(conf)
   end
 
   local message = kong.log.serialize()
-  local ok, err = timer_at(0, log, conf, message)
+  local ok, err = kong.async:run(log, conf, message)
   if not ok then
     kong.log.err("failed to create timer: ", err)
   end

@@ -6,7 +6,6 @@ local kong = kong
 local ngx = ngx
 local date = os.date
 local tostring = tostring
-local timer_at = ngx.timer.at
 local udp = ngx.socket.udp
 local concat = table.concat
 local insert = table.insert
@@ -139,7 +138,7 @@ function LogglyLogHandler:log(conf)
 
   local message = kong.log.serialize()
 
-  local ok, err = timer_at(0, log, conf, message)
+  local ok, err = kong.async:run(log, conf, message)
   if not ok then
     kong.log.err("failed to create timer: ", err)
   end

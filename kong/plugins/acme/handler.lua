@@ -55,7 +55,7 @@ ACMEHandler.build_domain_matcher = build_domain_matcher
 function ACMEHandler:init_worker()
   local worker_id = ngx.worker.id()
   kong.log.info("acme renew timer started on worker ", worker_id)
-  ngx.timer.every(86400, client.renew_certificate)
+  kong.async:every(86400, client.renew_certificate)
 end
 
 function ACMEHandler:certificate(conf)
@@ -112,7 +112,7 @@ function ACMEHandler:certificate(conf)
       return
     end
 
-    ngx.timer.at(0, function()
+    kong.async:run(function()
       local ok, err = client.update_certificate(conf, host, nil)
       if err then
         kong.log.err("failed to update certificate: ", err)

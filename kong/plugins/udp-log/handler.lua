@@ -4,7 +4,6 @@ local sandbox = require "kong.tools.sandbox".sandbox
 
 local kong = kong
 local ngx = ngx
-local timer_at = ngx.timer.at
 local udp = ngx.socket.udp
 
 
@@ -54,7 +53,7 @@ function UdpLogHandler:log(conf)
     end
   end
 
-  local ok, err = timer_at(0, log, conf, cjson.encode(kong.log.serialize()))
+  local ok, err = kong.async:run(log, conf, cjson.encode(kong.log.serialize()))
   if not ok then
     kong.log.err("could not create timer: ", err)
   end

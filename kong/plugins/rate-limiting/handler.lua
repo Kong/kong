@@ -11,7 +11,6 @@ local floor = math.floor
 local pairs = pairs
 local error = error
 local tostring = tostring
-local timer_at = ngx.timer.at
 
 
 local EMPTY = {}
@@ -197,7 +196,7 @@ function RateLimitingHandler:access(conf)
     end
   end
 
-  local ok, err = timer_at(0, increment, conf, limits, identifier, current_timestamp, 1)
+  local ok, err = kong.async:run(increment, conf, limits, identifier, current_timestamp, 1)
   if not ok then
     kong.log.err("failed to create timer: ", err)
   end
