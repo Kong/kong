@@ -3,13 +3,27 @@ local semaphore = require "ngx.semaphore"
 
 local ngx = ngx
 local kong = kong
+local type = type
 local pcall = pcall
 local select = select
 local unpack = unpack
+local assert = assert
 local setmetatable = setmetatable
 
 
-local QUEUE_SIZE = 100000
+local BUCKET_SIZE = 1000
+local QUEUE_SIZE  = 100000
+
+
+local RECURRING = {
+  second = 1,
+  minute = 60,
+  hour   = 3600,
+  day    = 86400,
+  week   = 604800,
+  month  = 2629743.833,
+  year   = 31556926,
+}
 
 
 local function get_pending(self)
@@ -80,6 +94,23 @@ local function job_timer(premature, self)
 end
 
 
+local function every_timer(premature, self, delay)
+  if premature then
+    return true
+  end
+
+  local bucket = self.buckets[delay]
+  for i = 1, bucket.head do
+    local ok, err = bucket.jobs[i](self)
+    if not ok then
+      kong.log.err(err)
+    end
+  end
+
+  return true
+end
+
+
 local function create_job(func, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, ...)
   local argc = select("#", ...)
   local args = argc > 0 and { ... }
@@ -105,6 +136,34 @@ local function create_job(func, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, ...)
 end
 
 
+local function create_recurring_job(job)
+  local running = false
+
+  local recurring_job = function()
+    running = true
+    local ok, err = job()
+    running = false
+    return ok, err
+  end
+
+  return function(self)
+    if running then
+      return nil, "recurring job is already running"
+    end
+
+    if get_pending(self) == QUEUE_SIZE then
+      return nil, "async queue is full"
+    end
+
+    self.head = self.head == QUEUE_SIZE and 1 or self.head + 1
+    self.jobs[self.head] = recurring_job
+    self.work:post()
+
+    return true
+  end
+end
+
+
 local async = {}
 async.__index = async
 
@@ -117,6 +176,7 @@ function async.new()
   return setmetatable({
     jobs = kong.table.new(QUEUE_SIZE, 0),
     work = semaphore.new(),
+    buckets = {},
     head = 0,
     tail = 0,
   }, async)
@@ -153,6 +213,48 @@ function async:run(func, ...)
   self.head = self.head == QUEUE_SIZE and 1 or self.head + 1
   self.jobs[self.head] = create_job(func, ...)
   self.work:post()
+
+  return true
+end
+
+
+---
+-- Run a function asynchronously and repeatedly but non-overlapping
+--
+-- @tparam  number|string function execution interval (a non-zero positive number
+--                        or `"second"`, `"minute"`, `"hour"`, `"month" or `"year"`)
+-- @tparam  function      a function to run asynchronously
+-- @tparam  ...[opt]      function arguments
+-- @treturn true|nil      `true` on success, `nil` on error
+-- @treturn string|nil    `nil` on success, error message `string` on error
+function async:every(delay, func, ...)
+  delay = RECURRING[delay] or delay
+
+  assert(type(delay) == "number" and delay > 0, "invalid delay, must be a number greater than zero or " ..
+                                                "'second', 'minute', 'hour', 'month' or 'year'")
+
+  local bucket = self.buckets[delay]
+  if bucket then
+    if bucket.head == BUCKET_SIZE then
+      return nil, "async bucket (" .. delay .. ") is full"
+    end
+
+  else
+    local ok, err = ngx.timer.every(delay, every_timer, self, delay)
+    if not ok then
+      return nil, err
+    end
+
+    bucket = {
+      jobs = kong.table.new(BUCKET_SIZE, 0),
+      head = 0,
+    }
+
+    self.buckets[delay] = bucket
+  end
+
+  bucket.head = bucket.head + 1
+  bucket.jobs[bucket.head] = create_recurring_job(create_job(func, ...))
 
   return true
 end
