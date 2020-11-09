@@ -44,7 +44,10 @@ end
 
 
 local function post_process(data)
-  ngx.timer.at(0, reports_timer, data)
+  local ok, err = kong.async:run(reports_timer, data)
+  if not ok then
+    kong.log.err("reports timer error: ", err)
+  end
   return data
 end
 
