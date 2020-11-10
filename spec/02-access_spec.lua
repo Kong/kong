@@ -8,6 +8,7 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
 local cjson   = require "cjson"
+local utils   = require "kong.tools.utils"
 
 
 local UDP_PORT = 35001
@@ -59,6 +60,8 @@ local mtls_fixtures = { http_mock = {
             proxy_ssl_certificate ../spec-ee/03-plugins/20-mtls-auth/fixtures/client_example.com.crt;
             proxy_ssl_certificate_key ../spec-ee/03-plugins/20-mtls-auth/fixtures/client_example.com.key;
             proxy_ssl_name example.com;
+            # enable send the SNI sent to server
+            proxy_ssl_server_name on;
             proxy_set_header Host example.com;
 
             proxy_pass https://127.0.0.1:9443/get;
@@ -520,6 +523,7 @@ for _, strategy in helpers.each_strategy() do
         "consumers",
         "ca_certificates",
         "mtls_auth_credentials",
+        "workspaces",
       }, { "mtls-auth", })
 
       bp.consumers:insert {
@@ -536,17 +540,17 @@ for _, strategy in helpers.each_strategy() do
         host     = "httpbin.org",
       }
 
-      bp.routes:insert {
+      assert(bp.routes:insert {
         hosts   = { "foo.com" },
         service = { id = service.id, },
         snis = { "foo.com" },
-      }
+      })
 
-      bp.routes:insert {
+      assert(bp.routes:insert {
         hosts   = { "bar.com" },
         service = { id = service.id, },
         snis = { "bar.com" },
-      }
+      })
 
       ca_cert = assert(db.ca_certificates:insert({
         cert = CA,
@@ -564,11 +568,11 @@ for _, strategy in helpers.each_strategy() do
         host     = "httpbin.org",
       }
 
-      bp.routes:insert {
+      assert(bp.routes:insert {
         hosts   = { "alice.com" },
         service = { id = service2.id, },
         snis = { "alice.com" },
-      }
+      })
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -716,6 +720,155 @@ for _, strategy in helpers.each_strategy() do
         --  end
         --end, 10)
 
+      end)
+    end)
+  end)
+  describe("Plugin: mtls-auth (access) with filter [#" .. strategy .. "] non default workspace", function()
+    local proxy_client, admin_client, mtls_client
+    local proxy_ssl_client_foo, proxy_ssl_client_example
+    local bp, db
+    local service, workspace, consumer
+    local ca_cert
+
+    lazy_setup(function()
+      bp, db = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "ca_certificates",
+        "mtls_auth_credentials",
+        "workspaces",
+      }, { "mtls-auth", })
+
+      workspace = assert(db.workspaces:insert({ name = "test_ws_" .. utils.uuid()}))
+
+      consumer = bp.consumers:insert({
+        username = "foo@example.com"
+      },  { workspace = workspace.id })
+
+      service = bp.services:insert({
+        protocol = "https",
+        port     = 443,
+        host     = "httpbin.org",
+      }, { workspace = workspace.id })
+
+      assert(bp.routes:insert({
+        snis   = { "example.com" },
+        service = { id = service.id, },
+        paths = { "/get" },
+        strip_path = false,
+      }, { workspace = workspace.id }))
+
+      assert(bp.routes:insert({
+        service = { id = service.id, },
+        paths = { "/anotherroute" },
+      }, { workspace = workspace.id }))
+
+      ca_cert = assert(db.ca_certificates:insert({
+        cert = CA,
+      }, { workspace = workspace.id }))
+
+      assert(bp.plugins:insert({
+        name = "mtls-auth",
+        config = { ca_certificates = { ca_cert.id, }, },
+        service = { id = service.id, },
+      }, { workspace = workspace.id }))
+
+      -- in default workspace:
+      local service2 = bp.services:insert({
+        protocol = "https",
+        port     = 443,
+        host     = "httpbin.org",
+      })
+
+      assert(bp.routes:insert({
+        service = { id = service2.id, },
+        paths = { "/default" },
+      }))
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        plugins = "bundled,mtls-auth",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, mtls_fixtures))
+
+      proxy_client = helpers.proxy_client()
+      proxy_ssl_client_foo = helpers.proxy_ssl_client(nil, "foo.com")
+      proxy_ssl_client_example = helpers.proxy_ssl_client(nil, "example.com")
+      mtls_client = helpers.http_client("127.0.0.1", 10121)
+      admin_client = helpers.admin_client()
+    end)
+
+    lazy_teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+
+      if proxy_ssl_client_foo then
+        proxy_ssl_client_foo:close()
+      end
+
+      if mtls_client then
+        mtls_client:close()
+      end
+
+      if admin_client then
+        admin_client:close()
+      end
+
+      helpers.stop_kong(nil, true)
+    end)
+
+    describe("filter cache is isolated per workspace", function()
+      it("doesn't request cert for route that's in a different workspace", function()
+        -- this maps to the default workspace
+        local res = assert(proxy_ssl_client_foo:send {
+          method  = "GET",
+          path    = "/default",
+          headers = {
+            ["Host"] = "foo.com"
+          }
+        })
+        local body = assert.res_status(200, res)
+      end)
+
+      it("request cert for route applied the plugin", function()
+        local res = assert(proxy_ssl_client_foo:send {
+          method  = "GET",
+          path    = "/anotherroute",
+          headers = {
+            ["Host"] = "foo.com"
+          }
+        })
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "No required TLS certificate was sent" }, json)
+      end)
+
+      it("still request cert for route applied the plugin", function()
+        local res = assert(proxy_ssl_client_example:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"] = "example.com"
+          }
+        })
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "No required TLS certificate was sent" }, json)
+      end)
+
+      it("returns HTTP 200 on https request if certificate validation passed", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/example_client",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("foo@example.com", json.headers["X-Consumer-Username"])
+        assert.equal(consumer.id, json.headers["X-Consumer-Id"])
+        assert.equal("consumer-id-1", json.headers["X-Consumer-Custom-Id"])
       end)
     end)
   end)

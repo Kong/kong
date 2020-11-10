@@ -11,8 +11,8 @@ local ngx_ssl = require "ngx.ssl"
 local server_name = ngx_ssl.server_name
 
 
-local SNI_CACHE_KEY = "mtls-auth:cert_enabled_snis"
 local TTL_FOREVER = { ttl = 0 }
+local SNI_CACHE_KEY = require("kong.plugins.mtls-auth.cache").SNI_CACHE_KEY
 
 
 local _M = {}

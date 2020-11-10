@@ -73,7 +73,7 @@ return {
     schema = consumers_schema,
     methods = {
       GET = endpoints.get_entity_endpoint(
-              credentials_schema, consumers_schema, "consumer"),
+              credentials_schema, consumers_schema, "consumer", nil, true),
     }
   },
 }

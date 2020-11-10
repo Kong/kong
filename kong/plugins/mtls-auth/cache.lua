@@ -15,6 +15,7 @@ local _M = {}
 
 
 local SNI_CACHE_KEY = "mtls-auth:cert_enabled_snis"
+_M.SNI_CACHE_KEY = SNI_CACHE_KEY
 
 
 function _M.consumer_field_cache_key(key, value)
