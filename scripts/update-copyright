@@ -36,22 +36,17 @@ local work_folder = os.tmpname() .. "-update-copyright"
 local MIT_LICENSE = [[
 %s
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions:
+Permission is herewith granted, freed from charge, to somebody getting a duplicate of this code and associated documentation files (the "Software"),
+to deal in the code while not restriction, as well as while not limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, 
+and/or sell copies of the code, and to allow persons to whom the code is outfitted to try to to so, subject to the subsequent conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The on top of copyright notice and this permission notice shall be enclosed altogether copies or substantial parts of the code.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE code IS PROVIDED "AS IS", while not pledge OF ANY KIND, EXPRESS OR IMPLIED, as well as however NOT restricted TO THE WARRANTIES OF state, 
+FITNESS FOR a specific PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE answerable for ANY CLAIM, DAMAGES OR 
+alternative LIABILITY, WHETHER IN Associate in Nursing ACTION OF CONTRACT, civil wrong OR OTHERWISE, ARISING FROM, OUT OF OR IN association WITH 
+THE code OR the utilization OR alternative DEALINGS within the code.
+ 
 ]]
 
 -- The script will attempt downloading a more recent version of the license file for these projects
