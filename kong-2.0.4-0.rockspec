@@ -51,7 +51,7 @@ dependencies = {
   "kong-plugin-request-transformer ~> 1.2",
   "kong-plugin-session ~> 2.2",
   "kong-plugin-aws-lambda ~> 3.1",
-  "kong-plugin-acme ~> 0.2",
+  "kong-plugin-acme == 0.2.2",
 }
 build = {
   type = "builtin",
