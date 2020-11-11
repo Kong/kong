@@ -4,7 +4,7 @@ local header_filter = require "kong.plugins.session.header_filter"
 
 local KongSessionHandler = {
   PRIORITY = 1900,
-  VERSION  = "2.4.2",
+  VERSION  = "2.4.3",
 }
 
 

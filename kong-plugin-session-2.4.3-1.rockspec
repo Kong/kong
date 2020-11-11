@@ -1,12 +1,12 @@
 package = "kong-plugin-session"
 
-version = "2.4.2-1"
+version = "2.4.3-1"
 
 supported_platforms = {"linux", "macosx"}
 
 source = {
   url = "git://github.com/Kong/kong-plugin-session",
-  tag = "2.4.2"
+  tag = "2.4.3"
 }
 
 description = {
@@ -32,6 +32,7 @@ build = {
     ["kong.plugins.session.daos"] = "kong/plugins/session/daos.lua",
     ["kong.plugins.session.storage.kong"] = "kong/plugins/session/storage/kong.lua",
     ["kong.plugins.session.migrations.000_base_session"] = "kong/plugins/session/migrations/000_base_session.lua",
+    ["kong.plugins.session.migrations.001_add_ttl_index"] = "kong/plugins/session/migrations/001_add_ttl_index.lua",
     ["kong.plugins.session.migrations.init"] = "kong/plugins/session/migrations/init.lua",
   }
 }
