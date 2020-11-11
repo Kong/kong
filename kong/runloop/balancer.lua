@@ -989,11 +989,21 @@ local function do_upstream_event(operation, upstream_id, upstream_name)
     if singletons.db.strategy ~= "off" then
       if kong.configuration.worker_consistency == "eventual" then
         set_worker_state_stale()
+		upstream_db, err = load_upstream_into_memory(upstream_id)
+		if err then 
+		  log(ERR, "failed to query db by load_upstream_into_memory!", err)
+		  return
+		end
+		local res, err = singletons.core_cache:set(upstream_cache_key, nil, upstream_db)
+		if err then 
+		  log(ERR, "failed to set core cache!", err)
+		  return 
+		end
       else
-        singletons.core_cache:invalidate_local("balancer:upstreams")
+      	singletons.core_cache:invalidate_local("balancer:upstreams")
+      	singletons.core_cache:invalidate_local(upstream_cache_key)
       end
 
-      singletons.core_cache:invalidate_local(upstream_cache_key)
       singletons.core_cache:invalidate_local(target_cache_key)
     end
 
