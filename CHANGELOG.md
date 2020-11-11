@@ -1,6 +1,6 @@
 ## 0.2.3
 
-- iterrate over plugin instances in all workspaces
+- iterate over plugin instances in all workspaces
 
 ## 0.2.2
 
