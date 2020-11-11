@@ -882,7 +882,8 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
-        local entity, err, err_t = self["select_by_" .. name](self, unique_value)
+        local show_ws_id = { show_ws_id = true }
+        local entity, err, err_t = self["select_by_" .. name](self, unique_value, show_ws_id)
         if err then
           return nil, err, err_t
         end
@@ -910,8 +911,9 @@ local function generate_foreign_key_methods(schema)
 
         entity, err_t = run_hook("dao:delete_by:post",
                                  entity,
-                                 "routes",
-                                 options)
+                                 self.schema.name,
+                                 options,
+                                 entity.ws_id)
         if not entity then
           return nil, tostring(err_t), err_t
         end
