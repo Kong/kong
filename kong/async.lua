@@ -227,16 +227,16 @@ end
 
 local function create_job(func, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, ...)
   local argc = select("#", ...)
-  local args = argc > 0 and { ... }
-
-  if not args then
+  if argc == 0 then
     return function()
       return pcall(func, ngx.worker.exiting(), a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
     end
   end
 
+  local args = { ... }
   return function()
-    local pok, res, err = pcall(func, ngx.worker.exiting(), a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, unpack(args, 1, argc))
+    local pok, res, err = pcall(func, ngx.worker.exiting(), a1, a2, a3, a4, a5, a6, a7, a8, a9, a10,
+                                unpack(args, 1, argc))
     if not pok then
       return nil, res
     end
