@@ -17,6 +17,7 @@ local setmetatable = setmetatable
 local TIMER_INTERVAL = 0.1
 local WAIT_INTERVAL  = 0.5
 local LOG_INTERVAL   = 60
+local THREADS        = 100
 local BUCKET_SIZE    = 1000
 local LAWN_SIZE      = 10000
 local QUEUE_SIZE     = 100000
@@ -88,8 +89,8 @@ local function log_timer(premature, self)
 
   local pending = get_pending(self, QUEUE_SIZE)
 
-  local msg = string.format("async jobs: %u running, %u pending, %u errored, %u refused, %u done",
-                            self.running, pending, self.errored, self.refused, self.done)
+  local msg = string.format("async jobs: %u running, %u pending, %u errored, %u refused, %u aborted, %u done",
+                            self.running, pending, self.errored, self.refused, self.aborted, self.done)
   if pending <= debug then
     kong.log.debug(msg)
   elseif pending <= info then
@@ -113,32 +114,34 @@ local function job_timer(premature, self)
     return true
   end
 
-  local t = kong.table.new(100, 0)
+  local t = self.threads
 
-  for i = 1, 100 do
+  for i = 1, THREADS do
     t[i] = ngx.thread.spawn(job_thread, self, i)
   end
 
-  local ok, err = ngx.thread.wait(t[1],  t[2],  t[3],  t[4],  t[5],  t[6],  t[7],  t[8],  t[9],  t[10],
-                                  t[11], t[12], t[13], t[14], t[15], t[16], t[17], t[18], t[19], t[20],
-                                  t[21], t[22], t[23], t[24], t[25], t[26], t[27], t[28], t[29], t[30],
-                                  t[31], t[32], t[33], t[34], t[35], t[36], t[37], t[38], t[39], t[40],
-                                  t[41], t[42], t[43], t[44], t[45], t[46], t[47], t[48], t[49], t[50],
-                                  t[51], t[52], t[53], t[54], t[55], t[56], t[57], t[58], t[59], t[60],
-                                  t[61], t[62], t[63], t[64], t[65], t[66], t[67], t[68], t[69], t[70],
-                                  t[71], t[72], t[73], t[74], t[75], t[76], t[77], t[78], t[79], t[80],
-                                  t[81], t[82], t[83], t[84], t[85], t[86], t[87], t[88], t[89], t[90],
-                                  t[91], t[92], t[93], t[94], t[95], t[96], t[97], t[98], t[99], t[100])
+  for i = 1, THREADS do
+    local ok, err = ngx.thread.wait(t[i])
+    if not ok then
+      kong.log.err("async thread error: ", err)
+    end
 
-  if not ok then
-    kong.log.err("async thread error: ", err)
-  end
+    if not ngx.worker.exiting() then
+      kong.log.crit("async thread #", i, " aborted")
+    end
 
-  for i = 100, 1, -1 do
     ngx.thread.kill(t[i])
+    t[i] = nil
+
+    self.aborted = self.aborted + 1
   end
 
-  return job_timer(ngx.worker.exiting(), self)
+  if not ngx.worker.exiting() then
+    kong.log.crit("async threads aborted")
+    return
+  end
+
+  return true
 end
 
 
@@ -376,11 +379,13 @@ function async.new()
       ttls    = kong.table.new(LAWN_SIZE, 0),
       buckets = {},
     },
+    threads = kong.table.new(THREADS, 0),
     buckets = {},
     closest = 0,
     running = 0,
     errored = 0,
     refused = 0,
+    aborted = 0,
     done = 0,
     head = 0,
     tail = 0,
@@ -588,6 +593,7 @@ function async:stats(opts)
     stats.running = self.running
     stats.errored = self.errored
     stats.refused = self.refused
+    stats.aborted = self.aborted
 
   else
     local now = ngx.now()
@@ -617,6 +623,7 @@ function async:stats(opts)
       running = self.running,
       errored = self.errored,
       refused = self.refused,
+      aborted = self.aborted,
       latency = latency,
       runtime = runtime,
     }
