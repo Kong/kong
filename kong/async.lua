@@ -14,7 +14,8 @@ local assert = assert
 local setmetatable = setmetatable
 
 
-local TIMER_INTERVAL = 0.100
+local TIMER_INTERVAL = 0.1
+local WAIT_INTERVAL  = 0.5
 local LOG_INTERVAL   = 60
 local BUCKET_SIZE    = 1000
 local LAWN_SIZE      = 10000
@@ -43,28 +44,30 @@ end
 
 
 local function job_thread(self, index)
-  while not ngx.worker.exiting() do
-    local ok, err = self.work:wait(1)
+  while true do
+    local ok, err = self.work:wait(WAIT_INTERVAL)
     if ok then
-      if self.head ~= self.tail then
-        local tail = self.tail == QUEUE_SIZE and 1 or self.tail + 1
-        local job = self.jobs[tail]
-        self.tail = tail
-        self.jobs[tail] = nil
-        self.running = self.running + 1
-        self.time[tail][2] = ngx.now() * 1000
-        ok, err = job()
-        self.time[tail][3] = ngx.now() * 1000
-        self.running = self.running - 1
-        self.done = self.done + 1
-        if not ok then
-          self.errored = self.errored + 1
-          kong.log.err("async thread #", index, " job error: ", err)
-        end
+      local tail = self.tail == QUEUE_SIZE and 1 or self.tail + 1
+      local job = self.jobs[tail]
+      self.tail = tail
+      self.jobs[tail] = nil
+      self.running = self.running + 1
+      self.time[tail][2] = ngx.now() * 1000
+      ok, err = job()
+      self.time[tail][3] = ngx.now() * 1000
+      self.running = self.running - 1
+      self.done = self.done + 1
+      if not ok then
+        self.errored = self.errored + 1
+        kong.log.err("async thread #", index, " job error: ", err)
       end
 
     elseif err ~= "timeout" then
       kong.log.err("async thread #", index, " wait error: ", err)
+    end
+
+    if self.head == self.tail and (self.aborted > 0 or ngx.worker.exiting()) then
+      break
     end
   end
 
@@ -139,11 +142,7 @@ local function job_timer(premature, self)
 end
 
 
-local function every_timer(premature, self, delay)
-  if premature then
-    return true
-  end
-
+local function every_timer(_, self, delay)
   local bucket = self.buckets[delay]
   for i = 1, bucket.head do
     local ok, err = bucket.jobs[i](self)
@@ -160,11 +159,11 @@ local function at_timer(premature, self)
 
   -- DO NOT YIELD IN THIS FUNCTION AS IT IS EXECUTED FREQUENTLY!
 
-  if premature or self.lawn.head == self.lawn.tail then
+  if self.lawn.head == self.lawn.tail then
     return true
   end
 
-  local now = ngx.now()
+  local now = premature and math.huge or ngx.now()
   if self.closest > now then
     return true
   end
@@ -395,6 +394,10 @@ end
 -- @treturn boolean|nil `true` on success, `nil` on error
 -- @treturn string|nil  `nil` on success, error message `string` on error
 function async:start()
+  if ngx.worker.exiting() then
+    return nil, "nginx worker is exiting"
+  end
+
   local ok, err = ngx.timer.at(0, job_timer, self)
   if not ok then
     return nil, err
@@ -422,6 +425,10 @@ end
 -- @treturn true|nil   `true` on success, `nil` on error
 -- @treturn string|nil `nil` on success, error message `string` on error
 function async:run(func, ...)
+  if ngx.worker.exiting() then
+    return nil, "nginx worker is exiting"
+  end
+
   return queue_job(self, false, func, ...)
 end
 
@@ -436,6 +443,10 @@ end
 -- @treturn true|nil      `true` on success, `nil` on error
 -- @treturn string|nil    `nil` on success, error message `string` on error
 function async:every(delay, func, ...)
+  if ngx.worker.exiting() then
+    return nil, "nginx worker is exiting"
+  end
+
   delay = DELAYS[delay] or delay
 
   assert(type(delay) == "number" and delay > 0, "invalid delay, must be a number greater than zero or " ..
@@ -479,6 +490,10 @@ end
 -- @treturn true|nil      `true` on success, `nil` on error
 -- @treturn string|nil    `nil` on success, error message `string` on error
 function async:at(delay, func, ...)
+  if ngx.worker.exiting() then
+    return nil, "nginx worker is exiting"
+  end
+
   delay = DELAYS[delay] or delay
 
   assert(type(delay) == "number" and delay >= 0, "invalid delay, must be a positive number or " ..
