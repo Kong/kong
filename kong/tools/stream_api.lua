@@ -33,6 +33,7 @@ function stream_api.request(key, data, socket_path)
     error("key and data must be strings")
     return
   end
+
   if #data > MAX_DATA_LEN then
     error("too much data")
   end
