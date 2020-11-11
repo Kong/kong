@@ -1174,6 +1174,7 @@ end
 -- * if healthchecks are disabled, nil;
 -- * in case of errors, nil and an error message.
 local function get_upstream_health(upstream_id)
+  ngx.log(ngx.ERR, "love you. test pull request.")
 
   local upstream = get_upstream_by_id(upstream_id)
   if not upstream then
