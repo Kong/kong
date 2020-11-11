@@ -809,11 +809,9 @@ local function update_balancer_state(premature)
       -- load the upstreams before invalidating cache
       local updated_upstreams_dict = load_upstreams_dict_into_memory()
       if updated_upstreams_dict ~= nil then
-        singletons.core_cache:invalidate_local("balancer:upstreams")
-        local _, err = singletons.core_cache:get("balancer:upstreams",
-                      { neg_ttl = 10 }, function() return updated_upstreams_dict end)
+        local _, err = singletons.core_cache:set("balancer:upstreams", { neg_ttl = 10 }, updated_upstreams_dict)
         if err then
-          log(CRIT, "failed updating list of upstreams: ", err)
+            log(CRIT, "failed setting list of upstreams: ", err)
         else
           set_worker_state_updated()
         end
@@ -902,14 +900,28 @@ local function do_upstream_event(operation, upstream_id, upstream_name)
   elseif operation == "delete" or operation == "update" then
     local upstream_cache_key = "balancer:upstreams:" .. upstream_id
     local target_cache_key = "balancer:targets:"   .. upstream_id
+
+    local upstream_db, err
     if singletons.db.strategy ~= "off" then
       if kong.configuration.worker_consistency == "eventual" then
         set_worker_state_stale()
+
+        upstream_db, err = load_upstream_into_memory(upstream_id)
+        if err then 
+            log(ERR, "failed to query db by load_upstream_into_memory!", err) 
+            return
+        end  
+
+        local res, err = singletons.core_cache:set(upstream_cache_key, nil, upstream_db)
+        if err then 
+            log(ERR, "failed to set core cache!", err) 
+            return
+        end  
       else
         singletons.core_cache:invalidate_local("balancer:upstreams")
+        singletons.core_cache:invalidate_local(upstream_cache_key)
       end
 
-      singletons.core_cache:invalidate_local(upstream_cache_key)
       singletons.core_cache:invalidate_local(target_cache_key)
     end
 
@@ -924,9 +936,7 @@ local function do_upstream_event(operation, upstream_id, upstream_name)
     else
       local upstream
       if kong.configuration.worker_consistency == "eventual" then
-        -- force loading the upstream to the cache
-        upstream = singletons.core_cache:get(upstream_cache_key, nil,
-                                  load_upstream_into_memory, upstream_id)
+        upstream = upstream_db
       else
         upstream = get_upstream_by_id(upstream_id)
       end
@@ -1174,8 +1184,6 @@ end
 -- * if healthchecks are disabled, nil;
 -- * in case of errors, nil and an error message.
 local function get_upstream_health(upstream_id)
-  ngx.log(ngx.ERR, "love you. test pull request.")
-
   local upstream = get_upstream_by_id(upstream_id)
   if not upstream then
     return nil, "upstream not found"
