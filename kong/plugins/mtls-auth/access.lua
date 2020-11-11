@@ -5,10 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
---- Copyright 2019 Kong Inc.
-local utils = require "kong.tools.utils"
-local split = utils.split
-
+--- Copyright 2019-2020 Kong Inc.
 local _M = {}
 
 
@@ -20,7 +17,6 @@ local mtls_cache = require("kong.plugins.mtls-auth.cache")
 local ocsp_client = require("kong.plugins.mtls-auth.ocsp_client")
 local crl_client = require("kong.plugins.mtls-auth.crl_client")
 local constants = require("kong.constants")
-local x509_r = require("resty.openssl.x509")
 
 
 local kong = kong
@@ -48,12 +44,15 @@ local cache_opts = {
       if err then
         return nil, err
       end
-      local _, err = trust_store:add(x509)
+
+      local _
+      _, err = trust_store:add(x509)
       if err then
         return nil, err
       end
 
-      local digest, err = x509:digest()
+      local digest
+      digest, err = x509:digest()
       if err then
         return nil, err
       end
@@ -251,7 +250,7 @@ local function get_subject_names_from_cert(x509)
   local names_n = 0
   local cn
 
-  local subj_alt, err = x509:get_subject_alt_name()
+  local subj_alt, _ = x509:get_subject_alt_name()
 
   if subj_alt then
     for _, val in pairs(subj_alt) do
@@ -266,7 +265,8 @@ local function get_subject_names_from_cert(x509)
   end
 
   if subj then
-    local entry, _, err = subj:find("CN")
+    local entry, _
+    entry, _, err = subj:find("CN")
     if err then
       return nil, nil, err
     end
@@ -325,7 +325,8 @@ local function is_cert_revoked(conf, client_cert_chain, cert, intermidiate, stor
   end
 
   -- no OCSP URI set, check for CRL
-  local crl_status, err = crl_client.validate_cert(conf, cert, intermidiate, store)
+  local crl_status
+  crl_status, err = crl_client.validate_cert(conf, cert, intermidiate, store)
   if err then
     kong.log.warn("CRL verify: ", err)
   end
@@ -389,14 +390,18 @@ local function do_authentication(conf)
     chain[chain_n] = m[0]
   end
 
-  local intermidiate, err = #chain > 1 and openssl_x509_chain.new() or nil
-  if err then
-    kong.log.err(err)
-    return kong.response.exit(500, "An unexpected error occurred")
+  local intermidiate
+  if #chain > 1 then
+    intermidiate, err = openssl_x509_chain.new()
+    if err then
+      kong.log.err(err)
+      return kong.response.exit(500, "An unexpected error occurred")
+    end
   end
 
   for i, c in ipairs(chain) do
-    local x509, err = openssl_x509.new(c, "PEM")
+    local x509
+    x509, err = openssl_x509.new(c, "PEM")
     if err then
       kong.log.err(err)
       return kong.response.exit(500, "An unexpected error occurred")
@@ -404,7 +409,8 @@ local function do_authentication(conf)
     chain[i] = x509
 
     if i > 1 then
-      local _, err = intermidiate:add(x509)
+      local _
+      _, err = intermidiate:add(x509)
       if err then
         kong.log.err(err)
         return kong.response.exit(500, "An unexpected error occurred")
@@ -414,26 +420,30 @@ local function do_authentication(conf)
 
   local ca_ids = conf.ca_certificates
 
-  local trust_table, err = kong.cache:get(ca_ids_cache_key(ca_ids), cache_opts,
+  local trust_table
+  trust_table, err = kong.cache:get(ca_ids_cache_key(ca_ids), cache_opts,
                                           load_cas, ca_ids)
   if not trust_table then
     kong.log.err(err)
     return kong.response.exit(500, "An unexpected error occurred")
   end
 
-  local proof_chain, err = trust_table.store:verify(chain[1], intermidiate, true)
+  local proof_chain
+  proof_chain, err = trust_table.store:verify(chain[1], intermidiate, true)
   if proof_chain then
     -- get the matching CA id
     local ca = proof_chain[1]
 
-    local digest, err = ca:digest()
+    local digest
+    digest, err = ca:digest()
     if err then
       return nil, err
     end
 
     local ca_id = trust_table.reverse_lookup[digest]
 
-    local names, cn, err = get_subject_names_from_cert(chain[1])
+    local names, cn
+    names, cn, err = get_subject_names_from_cert(chain[1])
     if err then
       return nil, err
     end
@@ -441,7 +451,8 @@ local function do_authentication(conf)
 
     -- revocation check
     if conf.revocation_check_mode ~= "SKIP" then
-      local revoked, err = kong.cache:get(ngx_var.ssl_client_s_dn,
+      local revoked
+      revoked, err = kong.cache:get(ngx_var.ssl_client_s_dn,
         { ttl = conf.cert_cache_ttl }, is_cert_revoked,
         conf, pem, chain[1], intermidiate, trust_table.store)
       if err then
@@ -456,7 +467,8 @@ local function do_authentication(conf)
 
     if conf.skip_consumer_lookup then
       if conf.consumer_by then
-        local group, err = authenticate_group_by[conf.authenticated_group_by](cn)
+        local group
+        group, err = authenticate_group_by[conf.authenticated_group_by](cn)
         if not group then
           return nil, err
         end

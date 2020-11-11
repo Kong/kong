@@ -5,16 +5,11 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local workspaces, workspaces_iter
+local workspaces_iter
 do
-  local pok
-  pok, workspaces = pcall(require, "kong.workspaces")
+  local pok = pcall(require, "kong.workspaces")
   if not pok then
     -- no workspace support, that's fine
-    workspaces = {
-      set_workspace = function() end,
-      get_workspace = function() end,
-    }
     workspaces_iter = function(_) return next, { default = {} }, nil end
 
   else
@@ -101,7 +96,6 @@ function _M.build_ssl_route_filter_set()
   local db = kong.db
   local snis = {}
 
-  local orig_ws = workspaces.get_workspace()
   local options = {}
   for workspace, err in workspaces_iter(db) do
     kong.log.debug("build filter for workspace ", workspace.name, " ", workspace.id)

@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local http = require "resty.http"
-local kong = kong
 local socket_url = require "socket.url"
 
 local _M = {}

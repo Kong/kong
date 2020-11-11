@@ -57,8 +57,8 @@ local mtls_fixtures = { http_mock = {
         listen 10121;
 
         location = /example_client {
-            proxy_ssl_certificate ../spec-ee/03-plugins/20-mtls-auth/fixtures/client_example.com.crt;
-            proxy_ssl_certificate_key ../spec-ee/03-plugins/20-mtls-auth/fixtures/client_example.com.key;
+            proxy_ssl_certificate ../spec/fixtures/client_example.com.crt;
+            proxy_ssl_certificate_key ../spec/fixtures/client_example.com.key;
             proxy_ssl_name example.com;
             # enable send the SNI sent to server
             proxy_ssl_server_name on;
@@ -68,8 +68,8 @@ local mtls_fixtures = { http_mock = {
         }
 
         location = /bad_client {
-            proxy_ssl_certificate ../spec-ee/03-plugins/20-mtls-auth/fixtures/bad_client.crt;
-            proxy_ssl_certificate_key ../spec-ee/03-plugins/20-mtls-auth/fixtures/bad_client.key;
+            proxy_ssl_certificate ../spec/fixtures/bad_client.crt;
+            proxy_ssl_certificate_key ../spec/fixtures/bad_client.key;
             proxy_ssl_name example.com;
             proxy_set_header Host example.com;
 
@@ -77,8 +77,8 @@ local mtls_fixtures = { http_mock = {
         }
 
         location = /no_san_client {
-            proxy_ssl_certificate ../spec-ee/03-plugins/20-mtls-auth/fixtures/no_san.crt;
-            proxy_ssl_certificate_key ../spec-ee/03-plugins/20-mtls-auth/fixtures/no_san.key;
+            proxy_ssl_certificate ../spec/fixtures/no_san.crt;
+            proxy_ssl_certificate_key ../spec/fixtures/no_san.key;
             proxy_ssl_name example.com;
             proxy_set_header Host example.com;
 
@@ -92,7 +92,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: mtls-auth (access) [#" .. strategy .. "]", function()
     local proxy_client, admin_client, proxy_ssl_client, mtls_client
     local bp, db
-    local anonymous_user, consumer, customized_consumer, service, route, route_log
+    local anonymous_user, consumer, customized_consumer, service, route
     local plugin
     local ca_cert
 
@@ -247,7 +247,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/example_client",
         })
-        local body = assert.res_status(200, res)
+        assert.res_status(200, res)
 
         -- Getting back the UDP server input
         local ok, res = udp_thread:join()
@@ -386,8 +386,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/bad_client",
         })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        assert.res_status(200, res)
 
         -- Getting back the UDP server input
         local ok, res = udp_thread:join()
@@ -425,14 +424,13 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "example.com"
           }
         })
-        local body = assert.res_status(200, res)
+        assert.res_status(200, res)
 
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/bad_client",
         })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        assert.res_status(200, res)
 
         -- Getting back the UDP server input
         local ok, res = udp_thread:join()
@@ -830,7 +828,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "foo.com"
           }
         })
-        local body = assert.res_status(200, res)
+        assert.res_status(200, res)
       end)
 
       it("request cert for route applied the plugin", function()

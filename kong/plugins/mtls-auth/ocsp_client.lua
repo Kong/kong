@@ -8,7 +8,6 @@
 local ssl = require "ngx.ssl"
 local ocsp = require "ngx.ocsp"
 local http = require "resty.http"
-local kong = kong
 
 local _M = {}
 
