@@ -1,3 +1,14 @@
+1.2.0 - 2020-11-11
+
+New features:
+  - Static tags can now be added to the config. They will be added to the
+    request span (#84)
+  - New `default_header_type` config option (#93)
+
+Non-breaking Changes:
+  - `http_endpoint` is now optional, making it possible to use the plugin
+    to exclusively adding/passing around tracing headers (#94)
+
 1.1.0 - 2020-04-30
 
 New features:
