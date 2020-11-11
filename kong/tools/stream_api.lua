@@ -6,6 +6,7 @@ local kong       = kong
 local st_pack    = string.pack      -- luacheck: ignore string
 local st_unpack  = string.unpack    -- luacheck: ignore string
 local st_format  = string.format
+local assert     = assert
 
 local MAX_DATA_LEN = 8000
 local PREFIX = ngx.config.prefix()
@@ -76,7 +77,7 @@ function stream_api.handle()
 
   local f = _handlers[key]
   if not f then
-    socket:send(st_pack("=SP", 1, "no handler"))
+    assert(socket:send(st_pack("=SP", 1, "no handler")))
     return
   end
 
@@ -84,7 +85,7 @@ function stream_api.handle()
   res, err = f(payload)
   if not res then
     kong.log.error(st_format("stream_api handler %q returned error: %q", key, err))
-    socket:send(st_pack("=SP", 2, tostring(err)))
+    assert(socket:send(st_pack("=SP", 2, tostring(err))))
     return
   end
 
@@ -98,7 +99,7 @@ function stream_api.handle()
       key, #res, MAX_DATA_LEN))
   end
 
-  socket:send(st_pack("=SP", 0, res))
+  assert(socket:send(st_pack("=SP", 0, res)))
 end
 
 
