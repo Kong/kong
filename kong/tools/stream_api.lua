@@ -1,3 +1,6 @@
+--- this module implements a rudimentary RPC interface between the `http` and `stream`
+-- subsystem plugins. It is intended for internal use only by Kong, and this interface
+-- may changed or be removed in the future.
 
 require "lua_pack"
 
