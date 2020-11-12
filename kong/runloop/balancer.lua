@@ -912,7 +912,7 @@ local function do_upstream_event(operation, upstream_id, upstream_name)
             return
         end  
 
-        local res, err = singletons.core_cache:set(upstream_cache_key, nil, upstream_db)
+        local _, err = singletons.core_cache:set(upstream_cache_key, nil, upstream_db)
         if err then 
             log(ERR, "failed to set core cache!", err) 
             return
