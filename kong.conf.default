@@ -2071,6 +2071,8 @@
 #audit_log_record_ttl = 2592000  # Length, in seconds, of the TTL for audit log
                                  # records. Records in the database older than
                                  # their TTL are automatically purged.
+                                 #
+                                 # Example, 30 days: `30 * 24 * 60 * 60 = 2592000`
 
 #audit_log_signing_key =         # Defines the path to a private RSA signing key
                                  # that can be used to insert a signature of
