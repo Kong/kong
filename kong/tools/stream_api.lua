@@ -1,6 +1,7 @@
---- this module implements a rudimentary RPC interface between the `http` and `stream`
+--- NOTE: this module implements a experimental RPC interface between the `http` and `stream`
 -- subsystem plugins. It is intended for internal use only by Kong, and this interface
--- may changed or be removed in the future.
+-- may changed or be removed in the future Kong releases once a better mechanism
+-- for intra subsystem communication in OpenResty became available.
 
 require "lua_pack"
 
