@@ -27,7 +27,7 @@ end
 
 
 local function postgres_run_query_in_transaction(connector, query)
-  connector:query(concat({ "BEGIN", query, "COMMIT"}, ";"))
+  assert(connector:query(concat({ "BEGIN", query, "COMMIT"}, ";")))
 end
 
 
