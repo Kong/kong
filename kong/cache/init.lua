@@ -173,6 +173,19 @@ function _M:get(key, opts, cb, ...)
   return v
 end
 
+function _M:set(key, opts, value)
+  if type(key) ~= "string" then
+    error("key must be a string", 2)
+  end
+
+  local page = self:get_page((opts or {}).shadow)
+  local res, err = self.mlcaches[page]:set(key, opts, value)
+  if err then
+    return nil, "failed to set from node cache: " .. err
+  end
+
+  return res
+end
 
 function _M:get_bulk(bulk, opts)
   if type(bulk) ~= "table" then
