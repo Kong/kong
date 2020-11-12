@@ -70,6 +70,7 @@ local dns = require "kong.tools.dns"
 local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
+local stream_api = require "kong.tools.stream_api"
 local clustering = require "kong.clustering"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
@@ -465,6 +466,10 @@ function Kong.init()
 
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
+
+  if subsystem == "stream" then
+    stream_api.load_handlers()
+  end
 
   if kong.configuration.database == "off" then
 
@@ -1372,6 +1377,11 @@ function Kong.serve_cluster_listener(options)
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
   return clustering.handle_cp_websocket()
+end
+
+
+function Kong.stream_api()
+  stream_api.handle()
 end
 
 
