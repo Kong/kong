@@ -5,8 +5,9 @@ local ngx = ngx
 local kong = kong
 local math = math
 local type = type
-local pcall = pcall
 local table = table
+local debug = debug
+local xpcall = xpcall
 local string = string
 local select = select
 local unpack = unpack
@@ -81,23 +82,23 @@ local function log_timer(premature, self)
     return true
   end
 
-  local debug  = QUEUE_SIZE / 10000
-  local info   = QUEUE_SIZE / 1000
-  local notice = QUEUE_SIZE / 100
-  local warn   = QUEUE_SIZE / 10
-  local err    = QUEUE_SIZE
+  local dbg = QUEUE_SIZE / 10000
+  local nfo = QUEUE_SIZE / 1000
+  local ntc = QUEUE_SIZE / 100
+  local wrn = QUEUE_SIZE / 10
+  local err = QUEUE_SIZE
 
   local pending = get_pending(self, QUEUE_SIZE)
 
   local msg = string.format("async jobs: %u running, %u pending, %u errored, %u refused, %u aborted, %u done",
                             self.running, pending, self.errored, self.refused, self.aborted, self.done)
-  if pending <= debug then
+  if pending <= dbg then
     kong.log.debug(msg)
-  elseif pending <= info then
+  elseif pending <= nfo then
     kong.log.info(msg)
-  elseif pending <= notice then
+  elseif pending <= ntc then
     kong.log.notice(msg)
-  elseif pending < warn then
+  elseif pending < wrn then
     kong.log.warn(msg)
   elseif pending < err then
     kong.log.err(msg)
@@ -229,14 +230,16 @@ local function create_job(func, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, ...)
   local argc = select("#", ...)
   if argc == 0 then
     return function()
-      return pcall(func, ngx.worker.exiting(), a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+      return xpcall(func, debug.traceback, ngx.worker.exiting(),
+                    a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
     end
   end
 
   local args = { ... }
   return function()
-    local pok, res, err = pcall(func, ngx.worker.exiting(), a1, a2, a3, a4, a5, a6, a7, a8, a9, a10,
-                                unpack(args, 1, argc))
+    local pok, res, err = xpcall(func, debug.traceback, ngx.worker.exiting(),
+                                 a1, a2, a3, a4, a5, a6, a7, a8, a9, a10,
+                                 unpack(args, 1, argc))
     if not pok then
       return nil, res
     end
