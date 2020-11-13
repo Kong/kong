@@ -131,7 +131,7 @@ You can find every supported distribution at the [official installation page](ht
 
 ## Development
 
-If you are planning on developing on Kong, you'll need a development
+If you are planning to develop on Kong, you'll need a development
 installation. The `next` branch holds the latest unreleased source code.
 
 You can read more about writing your own plugins in the [Plugin Development
