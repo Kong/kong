@@ -174,6 +174,13 @@ local conf = assert(conf_loader(TEST_CONF_PATH))
 _G.kong = kong_global.new()
 kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
 kong_global.set_phase(kong, kong_global.phases.access)
+_G.kong.core_cache = {
+  get = function(self, key)
+    if key == constants.CLUSTER_ID_PARAM_KEY then
+      return "123e4567-e89b-12d3-a456-426655440000"
+    end
+  end
+}
 
 local db = assert(DB.new(conf))
 assert(db:init_connector())

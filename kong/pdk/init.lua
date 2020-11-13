@@ -226,6 +226,7 @@ local MAJOR_VERSIONS = {
       "response",
       "router",
       "nginx",
+      "cluster",
     },
   },
 
