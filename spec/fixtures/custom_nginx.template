@@ -463,6 +463,7 @@ http {
     }
 > end -- role == "control_plane"
 
+> if role ~= "data_plane" then
     server {
         server_name mock_upstream;
 
@@ -699,6 +700,7 @@ http {
             return 200 'SNI=$ssl_server_name\n';
         }
     }
+> end -- role ~= "data_plane"
 
     include '*.http_mock';
 }

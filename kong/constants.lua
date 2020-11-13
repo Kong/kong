@@ -110,6 +110,7 @@ local constants = {
     "tags",
     "ca_certificates",
     "clustering_data_planes",
+    "parameters",
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
@@ -166,7 +167,9 @@ local constants = {
   DECLARATIVE_FLIPS = {
     name = "declarative:flips",
     ttl = 60,
-  }
+  },
+
+  CLUSTER_ID_PARAM_KEY = "cluster_id",
 }
 
 
