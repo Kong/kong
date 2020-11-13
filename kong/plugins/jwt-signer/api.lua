@@ -165,7 +165,7 @@ return {
 
         local ok
 
-        ok, err = cache.rotate_keys(row.name, row, true, true)
+        ok, err = cache.rotate_keys(row.name, row, true, true, true)
         if not ok then return endpoints.handle_error(err) end
 
         row, _, err = endpoints.select_entity(self, db, jwks_schema)

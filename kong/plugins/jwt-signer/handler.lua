@@ -7,7 +7,7 @@
 
 local JwtSignerHandler = {
   PRIORITY = 999,
-  VERSION  = "1.7.0",
+  VERSION  = "1.8.0",
 }
 
 
@@ -112,7 +112,7 @@ do
       introspection_success          = "%s introspected",
       introspection_jwt_claim        = "%s could not be found in introspection jwt claim",
       introspection_jwt_claim_decode = "%s found in introspection jwt claim could not be decoded",
-      introspection_endpoint         = "%s could not be instrospected because introspection endpoint was not specified",
+      introspection_endpoint         = "%s could not be introspected because introspection endpoint was not specified",
       inactive                       = "%s inactive",
       format                         = "%s format not supported",
       payload                        = "%s payload is invalid",
