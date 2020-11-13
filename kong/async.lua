@@ -434,6 +434,12 @@ function async:start()
     return nil, "nginx worker is exiting"
   end
 
+  if self.started then
+    return nil, "already started"
+  end
+
+  self.started = ngx.now()
+
   local ok, err = ngx.timer.at(0, job_timer, self)
   if not ok then
     return nil, err
