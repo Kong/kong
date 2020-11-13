@@ -39,7 +39,7 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 0.4",
-  "kong-plugin-zipkin ~> 1.1",
+  "kong-plugin-zipkin ~> 1.2",
   "kong-plugin-serverless-functions ~> 1.0",
   "kong-prometheus-plugin ~> 1.0",
   "kong-proxy-cache-plugin ~> 1.3",
