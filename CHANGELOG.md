@@ -1,4 +1,19 @@
+## v1.7.0 (Upcoming)
+
+### Important
+
+- fix a security vulnerability that allowed verification of HS-family signatures
+  with an empty/null/nil secret allowing anyone to craft valid tokens to pass signature
+  verification
+
+### Added
+
+- Add `config.enable_hs_signatures`
+
+
 ## v1.6.0
+
+### Changed
 
 - Change Postgres column type for `keys` in `jwt_signer_jwks` table from `JSONB` to `JSONB[]`
   for a better hybrid compatibility

@@ -351,7 +351,11 @@ function JwtSignerHandler.access(_, conf)
                 return unexpected(realm, "unexpected", errs.verification, err)
               end
 
-              token_decoded, err = jws.decode(request_token, { verify_signature = true, keys = public_keys })
+              token_decoded, err = jws.decode(request_token, {
+                verify_signature = true,
+                enable_hs_signatures = args.get_conf_arg(config.enable_hs_signatures),
+                keys = public_keys
+              })
             else
               log(logs.jwks_signature)
               ins(logs.jwks_signature)

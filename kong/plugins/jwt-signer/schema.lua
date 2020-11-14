@@ -83,6 +83,13 @@ local config = {
             },
           },
           {
+            enable_hs_signatures = {
+              type     = "boolean",
+              required = false,
+              default  = false,
+            },
+          },
+          {
             enable_instrumentation = {
               type = "boolean",
               default = false,
