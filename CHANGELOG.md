@@ -1,4 +1,4 @@
-## v1.8.0 (Upcoming)
+## v1.8.0
 
 - IMPORTANT! fix a security vulnerability that allowed verification of HS-family signatures with
   an empty/null/nil secret allowing anyone to craft valid tokens to pass signature verification
