@@ -1465,6 +1465,13 @@ local config = {
             },
           },
           {
+            enable_hs_signatures = {
+              required = false,
+              type     = "boolean",
+              default  = false,
+            },
+          },
+          {
             cache_ttl = {
               required = false,
               type     = "number",

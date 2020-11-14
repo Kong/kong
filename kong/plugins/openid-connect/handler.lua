@@ -132,6 +132,7 @@ function OICHandler.access(_, conf)
       verify_nonce           = args.get_conf_arg("verify_nonce"),
       verify_signature       = args.get_conf_arg("verify_signature"),
       verify_claims          = args.get_conf_arg("verify_claims"),
+      enable_hs_signatures   = args.get_conf_arg("enable_hs_signatures"),
       rediscover_keys        = rediscover_keys(issuer_uri, discovery_options),
     })
 

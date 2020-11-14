@@ -1,3 +1,12 @@
+## v1.8.0 (Upcoming)
+
+- IMPORTANT! fix a security vulnerability that allowed verification of HS-family signatures with
+  an empty/null/nil secret allowing anyone to craft valid tokens to pass signature verification
+  when `config.client_secret` was undefined and `config.auth_methods=bearer` was enabled.
+- Change the HS* signature verification is now disabled by default
+- Add `config.enable_hs_signatures` (`false` is the default)
+
+
 ## v1.7.0
 
 - Fix a bug in issuer normalization
