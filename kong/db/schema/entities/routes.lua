@@ -12,7 +12,7 @@ return {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
-    { name           = typedefs.name },
+    { name           = typedefs.utf8_name },
     { protocols      = { type     = "set",
                          len_min  = 1,
                          required = true,
