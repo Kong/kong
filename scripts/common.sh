@@ -22,6 +22,12 @@ function clear_exit {
   trap - EXIT SIGINT
 }
 
+red="\033[0;31m"
+green="\033[0;32m"
+cyan="\033[0;36m"
+bold="\033[1m"
+nocolor="\033[0m"
+
 function browser() {
    if which open &> /dev/null
    then
