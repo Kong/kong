@@ -1320,33 +1320,22 @@ return {
 
       var.upstream_scheme = balancer_data.scheme
 
-      do
-        -- set the upstream host header if not `preserve_host`
-        local upstream_host = var.upstream_host
-        local upstream_scheme = var.upstream_scheme
+      local ok, err = balancer.set_host_header(balancer_data)
+      if not ok then
+        ngx.log(ngx.ERR, "failed to set balancer Host header: ", err)
 
-        if not upstream_host or upstream_host == "" then
-          upstream_host = balancer_data.hostname
+        return ngx.exit(500)
+      end
 
-          if upstream_scheme == "http"  and balancer_data.port ~= 80 or
-             upstream_scheme == "https" and balancer_data.port ~= 443 or
-             upstream_scheme == "grpc"  and balancer_data.port ~= 80 or
-             upstream_scheme == "grpcs" and balancer_data.port ~= 443
-          then
-            upstream_host = upstream_host .. ":" .. balancer_data.port
-          end
+      -- the nginx grpc module does not offer a way to overrride the
+      -- :authority pseudo-header; use our internal API to do so
+      local upstream_host = var.upstream_host
+      local upstream_scheme = var.upstream_scheme
 
-          var.upstream_host = upstream_host
-        end
-
-        -- the nginx grpc module does not offer a way to overrride
-        -- the :authority pseudo-header; use our internal API to
-        -- do so
-        if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
-          ok, err = kong.service.request.set_header(":authority", upstream_host)
-          if not ok then
-            log(ERR, "failed to set :authority header: ", err)
-          end
+      if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
+        ok, err = kong.service.request.set_header(":authority", upstream_host)
+        if not ok then
+          log(ERR, "failed to set :authority header: ", err)
         end
       end
 
