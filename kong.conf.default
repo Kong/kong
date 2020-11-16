@@ -463,7 +463,7 @@
                          #
                          # Example: `admin_listen = 127.0.0.1:8444 http2 ssl`
 
- #status_listen = off    # Comma-separated list of addresses and ports on
+#status_listen = off     # Comma-separated list of addresses and ports on
                          # which the Status API should listen.
                          # The Status API is a read-only endpoint
                          # allowing monitoring tools to retrieve metrics,
@@ -2073,6 +2073,8 @@
 #audit_log_record_ttl = 2592000  # Length, in seconds, of the TTL for audit log
                                  # records. Records in the database older than
                                  # their TTL are automatically purged.
+                                 #
+                                 # Example, 30 days: `30 * 24 * 60 * 60 = 2592000`
 
 #audit_log_signing_key =         # Defines the path to a private RSA signing key
                                  # that can be used to insert a signature of

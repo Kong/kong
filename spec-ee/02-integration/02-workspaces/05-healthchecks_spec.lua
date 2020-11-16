@@ -732,7 +732,7 @@ for _, strategy in helpers.each_strategy() do
               -- for a PATCH operation.
               -- TODO produce an equivalent test when upstreams are preserved
               -- (not rebuilt) across declarative config updates.
-              it("#db do not leave a stale healthchecker when renamed", function()
+              it("#flaky #db do not leave a stale healthchecker when renamed", function()
 
                 bu.begin_testcase_setup(strategy, bp)
 

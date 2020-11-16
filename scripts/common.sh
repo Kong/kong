@@ -211,6 +211,8 @@ parse_integer() {
 
 
 check_requirements() {
+  set +u
+
   local verbose=0
   if [ ! -z $1 ] && [ $1 -eq 1 ]; then
     verbose=1
@@ -243,6 +245,8 @@ check_requirements() {
       fi
     fi
   done
+
+  set -u
 
   if [ $missing_requirement -eq 1 ] && [ $short_circuit -eq 1 ]; then
     exit 1
