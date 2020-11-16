@@ -19,7 +19,7 @@ local go = {}
 local reset_instances   -- forward declaration
 local reset_instance
 local reset_and_get_instance
-local preloaded_stuff = {}
+local save_for_later = {}
 
 
 -- add MessagePack empty array/map
@@ -248,7 +248,8 @@ do
   local exposed_api = {
     kong = kong,
     ["kong.log.serialize"] = function()
-      return cjson_encode(preloaded_stuff[coroutine.running()] or kong.log.serialize())
+      local saved = save_for_later[coroutine.running()]
+      return cjson_encode(saved and saved.serialize_data or kong.log.serialize())
     end,
 
     ["kong.nginx.get_var"] = function(v)
@@ -258,19 +259,27 @@ do
     ["kong.nginx.get_tls1_version_str"] = ngx_ssl.get_tls1_version_str,
 
     ["kong.nginx.get_ctx"] = function(k)
-      return ngx.ctx[k]
+      local saved = save_for_later[coroutine.running()]
+      local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
+      return ngx_ctx[k]
     end,
 
     ["kong.nginx.set_ctx"] = function(k, v)
-      ngx.ctx[k] = v
+      local saved = save_for_later[coroutine.running()]
+      local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
+      ngx_ctx[k] = v
     end,
 
     ["kong.ctx.shared.get"] = function(k)
-      return kong.ctx.shared[k]
+      local saved = save_for_later[coroutine.running()]
+      local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
+      return ctx_shared[k]
     end,
 
     ["kong.ctx.shared.set"] = function(k, v)
-      kong.ctx.shared[k] = v
+      local saved = save_for_later[coroutine.running()]
+      local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
+      ctx_shared[k] = v
     end,
 
     ["kong.nginx.req_start_time"] = ngx.req.start_time,
@@ -496,11 +505,15 @@ local get_plugin do
     for _, phase in ipairs(plugin_info.Phases) do
       if phase == "log" then
         plugin[phase] = function(self, conf)
-          local serialize_data = kong.log.serialize()
+          local saved = {
+            serialize_data = kong.log.serialize(),
+            ngx_ctx = ngx.ctx,
+            ctx_shared = kong.ctx.shared,
+          }
 
           ngx_timer_at(0, function()
             local co = coroutine.running()
-            preloaded_stuff[co] = serialize_data
+            save_for_later[co] = saved
 
             local instance_id = get_instance(plugin_name, conf)
             local _, err = bridge_loop(instance_id, phase)
@@ -509,7 +522,7 @@ local get_plugin do
               bridge_loop(instance_id, phase)
             end
 
-            preloaded_stuff[co] = nil
+            save_for_later[co] = nil
           end)
         end
 

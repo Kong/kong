@@ -45,6 +45,13 @@ for _, strategy in helpers.each_strategy() do
         service   = service2,
       }
 
+      bp.routes:insert {
+        protocols = { "https" },
+        hosts     = { "sni.example.com" },
+        snis      = { "sni.example.com" },
+        service   = service2,
+      }
+
       local service4 = bp.services:insert {
         name     = "api-3",
         protocol = helpers.mock_upstream_ssl_protocol,
@@ -335,6 +342,21 @@ for _, strategy in helpers.each_strategy() do
 
         local body = assert.res_status(426, res)
         local json = cjson.decode(body)
+        assert.same({ message = "Please use HTTPS protocol" }, json)
+        assert.contains("Upgrade", res.headers.connection)
+        assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
+
+        -- SNI case, see #6425
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            ["Host"] = "sni.example.com",
+          }
+        })
+
+        body = assert.res_status(426, res)
+        json = cjson.decode(body)
         assert.same({ message = "Please use HTTPS protocol" }, json)
         assert.contains("Upgrade", res.headers.connection)
         assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)

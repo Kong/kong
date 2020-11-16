@@ -419,7 +419,7 @@
                          #
                          # Example: `admin_listen = 127.0.0.1:8444 http2 ssl`
 
- #status_listen = off    # Comma-separated list of addresses and ports on
+#status_listen = off     # Comma-separated list of addresses and ports on
                          # which the Status API should listen.
                          # The Status API is a read-only endpoint
                          # allowing monitoring tools to retrieve metrics,
@@ -1282,6 +1282,10 @@
                                  # set by `lua_ssl_trusted_certificate`.
                                  # This includes the certificates configured
                                  # for Kong's database connections.
+                                 # If the maximum depth is reached before
+                                 # reaching the end of the chain, verification
+                                 # will fail. This helps mitigate certificate
+                                 # based DoS attacks.
                                  #
                                  # See https://github.com/openresty/lua-nginx-module#lua_ssl_verify_depth
 

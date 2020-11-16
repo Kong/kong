@@ -10,9 +10,9 @@ jobs:
     steps:
     - name: Set env
       run: |
-          echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
-          echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-        
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
     - uses: azure/docker-login@v1
       continue-on-error: true
       with:
@@ -39,9 +39,9 @@ jobs:
     steps:
     - name: Set env
       run: |
-          echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
-          echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-        
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
     - uses: azure/docker-login@v1
       continue-on-error: true
       with:
@@ -69,9 +69,9 @@ jobs:
     steps:
     - name: Set env
       run: |
-          echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
-          echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-        
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
     - uses: azure/docker-login@v1
       continue-on-error: true
       with:
@@ -95,9 +95,9 @@ jobs:
     steps:
     - name: Set env
       run: |
-          echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
-          echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-          
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
     - uses: azure/docker-login@v1
       continue-on-error: true
       with:
@@ -109,10 +109,10 @@ jobs:
 
     - name: Setup Kong Build Tools
       run: make setup-kong-build-tools
-    
+
     - name: Package Kong
       run: pushd $HOME/kong-build-tools && make package-kong
-      
+
     - name: Smoke Test Kong
       run: pushd $HOME/kong-build-tools && make test
 
@@ -124,13 +124,13 @@ jobs:
     env:
       TEST_DATABASE: 'off'
       TEST_SUITE: dbless
-      
+
     steps:
     - name: Set env
       run: |
-          echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
-          echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-        
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
     - uses: azure/docker-login@v1
       continue-on-error: true
       with:
@@ -172,9 +172,9 @@ jobs:
     steps:
     - name: Set env
       run: |
-          echo "::set-env name=KONG_SOURCE_LOCATION::$GITHUB_WORKSPACE"
-          echo "::set-env name=KONG_BUILD_TOOLS_LOCATION::$HOME/kong-build-tools"
-        
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
     - uses: azure/docker-login@v1
       continue-on-error: true
       with:

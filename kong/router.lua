@@ -547,7 +547,6 @@ local function marshall_route(r)
 
   -- snis
 
-
   if snis then
     if type(snis) ~= "table" then
       return nil, "snis field must be a table"
@@ -976,7 +975,7 @@ do
 
     [MATCH_RULES.SNI] = function(route_t, ctx)
       local sni = route_t.snis[ctx.sni]
-      if sni then
+      if sni or ctx.req_scheme == "http" then
         ctx.matches.sni = ctx.sni
         return true
       end
@@ -1238,6 +1237,10 @@ function _M.new(routes)
         return r1.max_uri_length > r2.max_uri_length
       end
 
+      --if #r1.route.protocols ~= #r2.route.protocols then
+      --  return #r1.route.protocols < #r2.route.protocols
+      --end
+
       if r1.route.created_at ~= nil and r2.route.created_at ~= nil then
         return r1.route.created_at < r2.route.created_at
       end
@@ -1356,6 +1359,7 @@ function _M.new(routes)
     ctx.req_method     = req_method
     ctx.req_uri        = req_uri
     ctx.req_host       = req_host
+    ctx.req_scheme     = req_scheme
     ctx.req_headers    = req_headers
     ctx.src_ip         = src_ip or ""
     ctx.src_port       = src_port or ""
