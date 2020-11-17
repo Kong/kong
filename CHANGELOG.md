@@ -1,6 +1,8 @@
 ## 1.1.2
 
 - chore(*) add copyright
+- Bump openapi3-deserializer to 1.0.1
+  - This version of the dependency added copyright headers
 
 ## 1.1.1
 
