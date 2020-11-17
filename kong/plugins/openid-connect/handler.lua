@@ -7,7 +7,7 @@
 
 local OICHandler = {
   PRIORITY = 1000,
-  VERSION  = "1.8.0",
+  VERSION  = "1.8.1",
 }
 
 
