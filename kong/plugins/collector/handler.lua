@@ -99,7 +99,7 @@ end
 local CollectorHandler = BasePlugin:extend()
 
 CollectorHandler.PRIORITY = 903
-CollectorHandler.VERSION = "2.0.0"
+CollectorHandler.VERSION = "2.0.1"
 
 
 local function remove_sensible_data_from_table(a_table, depth)
