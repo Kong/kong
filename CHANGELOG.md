@@ -1,3 +1,7 @@
+## 0.5.2
+
+- chore(*) add copyright
+
 ## 0.5.1
 
 - fix(handler) invalidate cache for unregistered consumers (FTI-1472)
