@@ -2372,7 +2372,8 @@ local function render_fixtures(conf, env, prefix, fixtures)
     -- prepare the prefix so we get the full config in the
     -- hidden `.kong_env` file, including test specified env vars etc
     assert(kong_exec("prepare --conf " .. conf, env))
-    local render_config = assert(conf_loader(prefix .. "/.kong_env"))
+    local render_config = assert(conf_loader(prefix .. "/.kong_env", nil,
+                                             { from_kong_env = true }))
 
     for _, mocktype in ipairs { "http_mock", "stream_mock" } do
 
