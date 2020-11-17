@@ -2,17 +2,36 @@ local semaphore = require "ngx.semaphore"
 
 
 local ngx = ngx
-local kong = kong
+local log = ngx.log
+local now = ngx.now
+local wait = ngx.thread.wait
+local kill = ngx.thread.kill
+local spawn = ngx.thread.spawn
+local exiting = ngx.worker.exiting
+local timer_at = ngx.timer.at
+local timer_every = ngx.timer.every
+local fmt = string.format
+local sort = table.sort
 local math = math
+local min = math.min
+local max = math.max
+local huge = math.huge
+local floor = math.floor
 local type = type
-local table = table
-local debug = debug
+local traceback = debug.traceback
 local xpcall = xpcall
-local string = string
 local select = select
 local unpack = unpack
 local assert = assert
 local setmetatable = setmetatable
+
+
+local DEBUG  = ngx.DEBUG
+local INFO   = ngx.INFO
+local NOTICE = ngx.NOTICE
+local ERR    = ngx.ERR
+local WARN   = ngx.WARN
+local CRIT   = ngx.CRIT
 
 
 local TIMER_INTERVAL = 0.1
@@ -45,6 +64,18 @@ local function get_pending(queue, size)
 end
 
 
+local new_tab
+do
+  local ok
+  ok, new_tab = pcall(require, "table.new")
+  if not ok then
+    new_tab = function ()
+      return {}
+    end
+  end
+end
+
+
 local function job_thread(self, index)
   local wait_interval = self.opts.wait_interval
   local queue_size = self.opts.queue_size
@@ -56,21 +87,21 @@ local function job_thread(self, index)
       self.tail = tail
       self.jobs[tail] = nil
       self.running = self.running + 1
-      self.time[tail][2] = ngx.now() * 1000
+      self.time[tail][2] = now() * 1000
       ok, err = job()
-      self.time[tail][3] = ngx.now() * 1000
+      self.time[tail][3] = now() * 1000
       self.running = self.running - 1
       self.done = self.done + 1
       if not ok then
         self.errored = self.errored + 1
-        kong.log.err("async thread #", index, " job error: ", err)
+        log(ERR, "async thread #", index, " job error: ", err)
       end
 
     elseif err ~= "timeout" then
-      kong.log.err("async thread #", index, " wait error: ", err)
+      log(ERR, "async thread #", index, " wait error: ", err)
     end
 
-    if self.head == self.tail and (self.aborted > 0 or ngx.worker.exiting()) then
+    if self.head == self.tail and (self.aborted > 0 or exiting()) then
       break
     end
   end
@@ -94,20 +125,20 @@ local function log_timer(premature, self)
 
   local pending = get_pending(self, queue_size)
 
-  local msg = string.format("async jobs: %u running, %u pending, %u errored, %u refused, %u aborted, %u done",
-                            self.running, pending, self.errored, self.refused, self.aborted, self.done)
+  local msg = fmt("async jobs: %u running, %u pending, %u errored, %u refused, %u aborted, %u done",
+                  self.running, pending, self.errored, self.refused, self.aborted, self.done)
   if pending <= dbg then
-    kong.log.debug(msg)
+    log(DEBUG, msg)
   elseif pending <= nfo then
-    kong.log.info(msg)
+    log(INFO, msg)
   elseif pending <= ntc then
-    kong.log.notice(msg)
+    log(NOTICE, msg)
   elseif pending < wrn then
-    kong.log.warn(msg)
+    log(WARN, msg)
   elseif pending < err then
-    kong.log.err(msg)
+    log(ERR, msg)
   else
-    kong.log.crit(msg)
+    log(CRIT, msg)
   end
 
   return true
@@ -122,27 +153,27 @@ local function job_timer(premature, self)
   local t = self.threads
 
   for i = 1, self.opts.threads do
-    t[i] = ngx.thread.spawn(job_thread, self, i)
+    t[i] = spawn(job_thread, self, i)
   end
 
   for i = 1, self.opts.threads do
-    local ok, err = ngx.thread.wait(t[i])
+    local ok, err = wait(t[i])
     if not ok then
-      kong.log.err("async thread error: ", err)
+      log(ERR, "async thread error: ", err)
     end
 
-    if not ngx.worker.exiting() then
-      kong.log.crit("async thread #", i, " aborted")
+    if not exiting() then
+      log(CRIT, "async thread #", i, " aborted")
     end
 
-    ngx.thread.kill(t[i])
+    kill(t[i])
     t[i] = nil
 
     self.aborted = self.aborted + 1
   end
 
-  if not ngx.worker.exiting() then
-    kong.log.crit("async threads aborted")
+  if not exiting() then
+    log(CRIT, "async threads aborted")
     return
   end
 
@@ -155,7 +186,7 @@ local function every_timer(_, self, delay)
   for i = 1, bucket.head do
     local ok, err = bucket.jobs[i](self)
     if not ok then
-      kong.log.err(err)
+      log(ERR, err)
     end
   end
 
@@ -171,8 +202,8 @@ local function at_timer(premature, self)
     return true
   end
 
-  local now = premature and math.huge or ngx.now()
-  if self.closest > now then
+  local current_time = premature and huge or now()
+  if self.closest > current_time then
     return true
   end
 
@@ -199,7 +230,7 @@ local function at_timer(premature, self)
       while bucket.head ~= bucket.tail do
         local bucket_tail = bucket.tail == bucket_size and 1 or bucket.tail + 1
         local expiry = bucket.jobs[bucket_tail][1]
-        if expiry >= now then
+        if expiry >= current_time then
           break
         end
 
@@ -222,7 +253,7 @@ local function at_timer(premature, self)
       ttls[tail] = nil
 
       if not ok then
-        kong.log:err(err)
+        log(ERR, err)
         return
       end
     end
@@ -236,14 +267,14 @@ local function create_job(func, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, ...)
   local argc = select("#", ...)
   if argc == 0 then
     return function()
-      return xpcall(func, debug.traceback, ngx.worker.exiting(),
+      return xpcall(func, traceback, exiting(),
                     a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
     end
   end
 
   local args = { ... }
   return function()
-    local pok, res, err = xpcall(func, debug.traceback, ngx.worker.exiting(),
+    local pok, res, err = xpcall(func, traceback, exiting(),
                                  a1, a2, a3, a4, a5, a6, a7, a8, a9, a10,
                                  unpack(args, 1, argc))
     if not pok then
@@ -268,7 +299,7 @@ local function queue_job(self, is_job, func, ...)
 
   self.head = self.head == queue_size and 1 or self.head + 1
   self.jobs[self.head] = is_job and func or create_job(func, ...)
-  self.time[self.head][1] = ngx.now() * 1000
+  self.time[self.head][1] = now() * 1000
   self.work:post()
 
   return true
@@ -305,10 +336,10 @@ end
 local function get_stats(self, from, to)
   local data, size = self:data(from, to)
   local names = { "max", "min", "mean", "median", "p95", "p99", "p999" }
-  local stats = kong.table.new(2, 0)
+  local stats = new_tab(2, 0)
 
   for i = 1, 2 do
-    stats[i] = kong.table.new(0, #names + 1)
+    stats[i] = new_tab(0, #names + 1)
     stats[i].size = size
     if size == 0 then
       for j = 1, #names do
@@ -325,34 +356,34 @@ local function get_stats(self, from, to)
 
     elseif size > 1 then
       local tot = 0
-      local raw = kong.table.new(size, 0)
-      local max
-      local min
+      local raw = new_tab(size, 0)
+      local max_value
+      local min_value
 
       for j = 1, size do
         local time = i == 1 and data[j][2] - data[j][1]
                              or data[j][3] - data[j][2]
         raw[j] = time
         tot = tot + time
-        max = math.max(time, max or time)
-        min = math.min(time, min or time)
+        max_value = max(time, max_value or time)
+        min_value = min(time, min_value or time)
       end
 
-      stats[i].max = max
-      stats[i].min = min
-      stats[i].mean = math.floor(tot / size + 0.5)
+      stats[i].max = max_value
+      stats[i].min = min_value
+      stats[i].mean = floor(tot / size + 0.5)
 
-      table.sort(raw)
+      sort(raw)
 
       local n = { "median", "p95", "p99", "p999" }
       local m = { 0.5, 0.95, 0.99, 0.999 }
 
       for j = 1, #n do
         local idx = size * m[j]
-        if idx == math.floor(idx) then
-          stats[i][n[j]] = math.floor((raw[idx] + raw[idx + 1]) / 2 + 0.5)
+        if idx == floor(idx) then
+          stats[i][n[j]] = floor((raw[idx] + raw[idx + 1]) / 2 + 0.5)
         else
-          stats[i][n[j]] = raw[math.floor(idx + 0.5)]
+          stats[i][n[j]] = raw[floor(idx + 0.5)]
         end
       end
     end
@@ -370,7 +401,7 @@ async.__index = async
 
 
 ---
--- Creates a new instance of `kong.async`
+-- Creates a new instance of `resty.async`
 --
 -- @tparam  options[opt] a table containing options, the following options can be used:
 --                       - `timer_interval` (the default is `0.1`)
@@ -380,7 +411,7 @@ async.__index = async
 --                       - `bucket_size`    (the default is `1000`)
 --                       - `lawn_size`      (the default is `10000`)
 --                       - `queue_size`     (the default is `100000`)
--- @treturn table        an instance of `kong.async`
+-- @treturn table        an instance of `resty.async`
 function async.new(options)
   assert(options == nil or type(options) == "table", "invalid options")
 
@@ -394,23 +425,23 @@ function async.new(options)
     queue_size     = options and options.query_size     or QUEUE_SIZE,
   }
 
-  local time = kong.table.new(opts.queue_size, 0)
+  local time = new_tab(opts.queue_size, 0)
   for i = 1, opts.queue_size do
-    time[i] = kong.table.new(3, 0)
+    time[i] = new_tab(3, 0)
   end
 
   return setmetatable({
     opts = opts,
-    jobs = kong.table.new(opts.queue_size, 0),
+    jobs = new_tab(opts.queue_size, 0),
     time = time,
     work = semaphore.new(),
     lawn = {
       head    = 0,
       tail    = 0,
-      ttls    = kong.table.new(opts.lawn_size, 0),
+      ttls    = new_tab(opts.lawn_size, 0),
       buckets = {},
     },
-    threads = kong.table.new(opts.threads, 0),
+    threads = new_tab(opts.threads, 0),
     buckets = {},
     closest = 0,
     running = 0,
@@ -425,12 +456,12 @@ end
 
 
 ---
--- Start `kong.async` timers
+-- Start `resty.async` timers
 --
 -- @treturn boolean|nil `true` on success, `nil` on error
 -- @treturn string|nil  `nil` on success, error message `string` on error
 function async:start()
-  if ngx.worker.exiting() then
+  if exiting() then
     return nil, "nginx worker is exiting"
   end
 
@@ -438,19 +469,19 @@ function async:start()
     return nil, "already started"
   end
 
-  self.started = ngx.now()
+  self.started = now()
 
-  local ok, err = ngx.timer.at(0, job_timer, self)
+  local ok, err = timer_at(0, job_timer, self)
   if not ok then
     return nil, err
   end
 
-  ok, err = ngx.timer.every(self.opts.timer_interval, at_timer, self)
+  ok, err = timer_every(self.opts.timer_interval, at_timer, self)
   if not ok then
     return nil, err
   end
 
-  ok, err = ngx.timer.every(self.opts.log_interval, log_timer, self)
+  ok, err = timer_every(self.opts.log_interval, log_timer, self)
   if not ok then
     return nil, err
   end
@@ -467,7 +498,7 @@ end
 -- @treturn true|nil   `true` on success, `nil` on error
 -- @treturn string|nil `nil` on success, error message `string` on error
 function async:run(func, ...)
-  if ngx.worker.exiting() then
+  if exiting() then
     return nil, "nginx worker is exiting"
   end
 
@@ -485,7 +516,7 @@ end
 -- @treturn true|nil      `true` on success, `nil` on error
 -- @treturn string|nil    `nil` on success, error message `string` on error
 function async:every(delay, func, ...)
-  if ngx.worker.exiting() then
+  if exiting() then
     return nil, "nginx worker is exiting"
   end
 
@@ -503,13 +534,13 @@ function async:every(delay, func, ...)
     end
 
   else
-    local ok, err = ngx.timer.every(delay, every_timer, self, delay)
+    local ok, err = timer_every(delay, every_timer, self, delay)
     if not ok then
       return nil, err
     end
 
     bucket = {
-      jobs = kong.table.new(bucket_size, 0),
+      jobs = new_tab(bucket_size, 0),
       head = 0,
     }
 
@@ -533,7 +564,7 @@ end
 -- @treturn true|nil      `true` on success, `nil` on error
 -- @treturn string|nil    `nil` on success, error message `string` on error
 function async:at(delay, func, ...)
-  if ngx.worker.exiting() then
+  if exiting() then
     return nil, "nginx worker is exiting"
   end
 
@@ -566,7 +597,7 @@ function async:at(delay, func, ...)
     lawn.ttls[lawn.head] = delay
 
     bucket = {
-      jobs = kong.table.new(bucket_size, 0),
+      jobs = new_tab(bucket_size, 0),
       head = 0,
       tail = 0,
     }
@@ -574,7 +605,7 @@ function async:at(delay, func, ...)
     lawn.buckets[delay] = bucket
   end
 
-  local expiry = ngx.now() + delay
+  local expiry = now() + delay
 
   bucket.head = bucket.head == bucket_size and 1 or bucket.head + 1
   bucket.jobs[bucket.head] = {
@@ -582,7 +613,7 @@ function async:at(delay, func, ...)
     create_at_job(create_job(func, ...)),
   }
 
-  self.closest = math.min(self.closest, expiry)
+  self.closest = min(self.closest, expiry)
 
   return true
 end
@@ -597,15 +628,15 @@ end
 -- @treturn number     number of metrics returned
 function async:data(from, to)
   local time = self.time
-  local done = math.min(self.done, self.opts.queue_size)
+  local done = min(self.done, self.opts.queue_size)
   if not from and not to then
     return time, done
   end
 
   from = from and from * 1000 or 0
-  to   = to   and to   * 1000 or math.huge
+  to   = to   and to   * 1000 or huge
 
-  local data = kong.table.new(done, 0)
+  local data = new_tab(done, 0)
   local size = 0
   for i = 1, done do
     if time[i][1] >= from and time[i][3] <= to then
@@ -636,11 +667,11 @@ function async:stats(opts)
     stats.aborted = self.aborted
 
   else
-    local now = ngx.now()
+    local current_time = now()
 
     local all    = opts.all    and get_stats(self)
-    local minute = opts.minute and get_stats(self, now - DELAYS.minute)
-    local hour   = opts.hour   and get_stats(self, now - DELAYS.hour)
+    local minute = opts.minute and get_stats(self, current_time - DELAYS.minute)
+    local hour   = opts.hour   and get_stats(self, current_time - DELAYS.hour)
 
     local latency
     local runtime
