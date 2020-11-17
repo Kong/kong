@@ -1,3 +1,7 @@
+## 0.4.3
+
+- Add copyright headers
+
 ## 0.4.2
 
 ### Fixed
