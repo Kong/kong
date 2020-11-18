@@ -1312,6 +1312,10 @@ return {
       local balancer_data = ctx.balancer_data
       balancer_data.scheme = var.upstream_scheme -- COMPAT: pdk
 
+      if var.upstream_host ~= nil and var.upstream_host ~= "" then
+        balancer_data.preserve_host = true
+      end
+
       local ok, err, errcode = balancer_execute(ctx)
       if not ok then
         local body = utils.get_default_exit_body(errcode, err)

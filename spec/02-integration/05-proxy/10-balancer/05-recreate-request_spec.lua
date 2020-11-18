@@ -98,6 +98,35 @@ for _, strategy in helpers.each_strategy() do
       local body = assert.response(res).has_status(200)
       assert.equal("host is: upstream.example.com:10002", body)
     end)
+
+    it("balancer retry doesn't update Host if preserve_host is true", function()
+      bu.begin_testcase_setup(strategy, bp)
+      local upstream_name, upstream_id = bu.add_upstream(bp)
+      bu.add_target(bp, upstream_id, "upstream.example.com", 10001) -- this will timeout
+      bu.add_target(bp, upstream_id, "upstream.example.com", 10002)
+
+      local service = assert(bp.services:insert({
+        url = "http://" .. upstream_name,
+        read_timeout = 500,
+      }))
+
+      bp.routes:insert({
+        service = { id = service.id },
+        preserve_host = true,
+        paths = { "/", },
+        hosts = { "test.com" }
+      })
+      bu.end_testcase_setup(strategy, bp, "strict")
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path = "/recreate_test",
+        headers = { ["Host"] = "test.com" },
+      })
+
+      local body = assert.response(res).has_status(200)
+      assert.equal("host is: test.com", body)
+    end)
   end)
 end
 
