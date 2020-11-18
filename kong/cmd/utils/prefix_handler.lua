@@ -1,6 +1,7 @@
 local default_nginx_template = require "kong.templates.nginx"
 local kong_nginx_template = require "kong.templates.nginx_kong"
 local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
+local system_constants = require "lua_system_constants"
 local openssl_bignum = require "resty.openssl.bn"
 local openssl_rand = require "resty.openssl.rand"
 local openssl_pkey = require "resty.openssl.pkey"
@@ -31,6 +32,21 @@ local type = type
 local math = math
 local io = io
 local os = os
+
+
+local function pre_create_private_file(file)
+  local fd = ffi.C.open(file, bit.bor(system_constants.O_RDONLY(),
+                                      system_constants.O_CREAT()),
+                              bit.bor(system_constants.S_IRUSR(),
+                                      system_constants.S_IWUSR()))
+  if fd == -1 then
+    log.warn("unable to pre-create '", file ,"' file: ",
+             ffi.string(ffi.C.strerror(ffi.errno())))
+
+  else
+    ffi.C.close(fd)
+  end
+end
 
 
 local function gen_default_dhparams(kong_config)
@@ -136,6 +152,7 @@ local function gen_default_ssl_cert(kong_config, target)
       assert(crt:sign(key))
 
       do -- write key out
+        pre_create_private_file(ssl_cert_key)
         local fd = assert(io.open(ssl_cert_key, "w+b"))
         local pem = assert(key:to_PEM("private"))
         assert(fd:write(pem))
@@ -144,7 +161,7 @@ local function gen_default_ssl_cert(kong_config, target)
 
       do -- write cert out
         local fd = assert(io.open(ssl_cert, "w+b"))
-        local pem = assert(crt:to_PEM("private"))
+        local pem = assert(crt:to_PEM())
         assert(fd:write(pem))
         fd:close()
       end
