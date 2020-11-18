@@ -3,12 +3,20 @@
 -- may changed or be removed in the future Kong releases once a better mechanism
 -- for inter subsystem communication in OpenResty became available.
 
-require "lua_pack"
+local bpack, bunpack
+do
+  local string_pack = string.pack     -- luacheck: ignore
+  local string_unpack = string.unpack -- luacheck: ignore
+  package.loaded.lua_pack = nil
+  require "lua_pack"
+  bpack = string.pack                 -- luacheck: ignore
+  bunpack = string.unpack             -- luacheck: ignore
+  string.unpack = string_unpack       -- luacheck: ignore
+  string.pack = string_pack           -- luacheck: ignore
+end
 
 
 local kong       = kong
-local st_pack    = string.pack      -- luacheck: ignore string
-local st_unpack  = string.unpack    -- luacheck: ignore string
 local st_format  = string.format
 local assert     = assert
 
@@ -46,7 +54,7 @@ function stream_api.request(key, data, socket_path)
   local socket = assert(ngx.socket.udp())
   assert(socket:setpeername(socket_path or "unix:" .. PREFIX .. "/stream_rpc.sock"))
 
-  local ok, err = socket:send(st_pack("=PP", key, data))
+  local ok, err = socket:send(bpack("=PP", key, data))
   if not ok then
     socket:close()
     return ok, err
@@ -58,7 +66,7 @@ function stream_api.request(key, data, socket_path)
     return data, err
   end
 
-  local _, status, payload = st_unpack(data, "=SP")
+  local _, status, payload = bunpack(data, "=SP")
   if status ~= 0 then
     socket:close()
     return nil, payload
@@ -77,11 +85,11 @@ function stream_api.handle()
     return
   end
 
-  local _, key, payload = st_unpack(data, "=PP")
+  local _, key, payload = bunpack(data, "=PP")
 
   local f = _handlers[key]
   if not f then
-    assert(socket:send(st_pack("=SP", 1, "no handler")))
+    assert(socket:send(bpack("=SP", 1, "no handler")))
     return
   end
 
@@ -89,7 +97,7 @@ function stream_api.handle()
   res, err = f(payload)
   if not res then
     kong.log.error(st_format("stream_api handler %q returned error: %q", key, err))
-    assert(socket:send(st_pack("=SP", 2, tostring(err))))
+    assert(socket:send(bpack("=SP", 2, tostring(err))))
     return
   end
 
@@ -103,7 +111,7 @@ function stream_api.handle()
       key, #res, MAX_DATA_LEN))
   end
 
-  assert(socket:send(st_pack("=SP", 0, res)))
+  assert(socket:send(bpack("=SP", 0, res)))
 end
 
 
