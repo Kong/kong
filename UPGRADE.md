@@ -10,7 +10,8 @@ Unless indicated otherwise in one of the upgrade paths of this document, it is
 possible to upgrade Kong **without downtime**:
 
 Assuming that Kong is already running on your system, acquire the latest
-version from any of the available [installation methods](https://konghq.com/get-started/#install) and proceed to install it, overriding
+version from any of the available [installation
+methods](https://konghq.com/get-started/#install) and proceed to install it, overriding
 your previous installation.
 
 If you are planning to make modifications to your configuration, this is a
