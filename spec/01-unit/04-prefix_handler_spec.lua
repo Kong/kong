@@ -806,6 +806,29 @@ describe("NGINX conf compiler", function()
           assert.truthy(exists(conf["status_ssl_cert_key_default" .. suffix]))
         end
       end)
+      it("generates default SSL certs with correct permissions", function()
+        local conf = conf_loader(nil, {
+          prefix = tmp_config.prefix,
+          proxy_listen  = "127.0.0.1:8000 ssl",
+          admin_listen  = "127.0.0.1:8001 ssl",
+          status_listen = "127.0.0.1:8002 ssl",
+        })
+
+        assert(prefix_handler.prepare_prefix(conf))
+        for _, prefix in ipairs({ "", "status_", "admin_" }) do
+          for _, suffix in ipairs({ "", "_ecdsa" }) do
+            local handle = io.popen("ls -l " .. conf[prefix .. "ssl_cert_default" .. suffix])
+            local result = handle:read("*a")
+            handle:close()
+            assert.matches("-rw-r--r--", result, nil, true)
+
+            handle = io.popen("ls -l " .. conf[prefix .. "ssl_cert_key_default" .. suffix])
+            result = handle:read("*a")
+            handle:close()
+            assert.matches("-rw-------", result, nil, true)
+          end
+        end
+      end)
       it("generates default SSL DH params", function()
         local conf = conf_loader(nil, {
           prefix = tmp_config.prefix,
