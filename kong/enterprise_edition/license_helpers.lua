@@ -236,8 +236,8 @@ function _M.license_can_proceed(self)
   local allow = _M.ability("allow_admin_api") or {}
   local deny = _M.ability("deny_admin_api") or {}
 
-  if (allow[route] and not allow[route][method])
-    or (deny[route] and deny[route][method])
+  if (deny[route] and (deny[route][method] or deny[route]["*"]))
+    and not (allow[route] and (allow[route][method] or allow[route]["*"]))
   then
     return kong.response.exit(403, { message = "Forbidden" })
   end
@@ -248,7 +248,7 @@ function _M.license_can_proceed(self)
          method == "PATCH" or
          method == "DELETE")
     -- Maybe this operation is allowed even with write_admin_api off
-    and not (allow[route] and allow[route][method])
+    and not (allow[route] and (allow[route][method] or allow[route]["*"]))
   then
     return kong.response.exit(403, { message = "Forbidden" })
   end

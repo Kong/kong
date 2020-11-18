@@ -29,19 +29,21 @@ local constants = {
         -- anonymous_reports = "on",
       },
       abilities = {
-        -- -- Granular allow. Will deny anything not on a sublevel
-        -- allow_admin_api = {
-        --   -- ie: this only allows GET /workspaces
-        --   ["/workspaces"] = { GET = true },
-        --   -- and GET /workspaces/:workspaces
-        --   ["/workspaces/:workspaces"] = { GET = true },
-        --   -- A route not specified here is left untouched
-        -- },
-        -- deny_admin_api = {
-        --   -- Here we could deny a particular route, like
-        --   -- [ "/workspaces/:workspaces/meta" ] = { GET = true }
-        -- },
-        -- ee_plugins = false
+        -- Granular allow.
+        allow_admin_api = {
+          -- -- ie: this only allows GET /workspaces
+          -- ["/workspaces"] = { GET = true },
+          -- -- and GET /workspaces/:workspaces
+          -- ["/workspaces/:workspaces"] = { GET = true },
+          -- -- A route not specified here is left untouched
+        },
+        deny_admin_api = {
+          -- -- deny any method. We could just deny here any "write" method
+          -- -- instead, but using allow + deny seems more explicit
+          -- ["/workspaces"] = { ["*"] = true },
+          -- ["/workspaces/:workspaces"] = { ["*"] = true },
+        },
+        ee_plugins = false
       }
     },
   }

@@ -64,48 +64,13 @@ describe("licensing", function()
       assert(kong.response.exit:revert())
     end)
 
-    describe("allow_admin_api", function()
-      setup(function()
-        featureset = {
-          abilities = {
-            allow_admin_api = {
-              ["/workspaces"] = { GET = true, OPTION = true}
-            },
-            deny_admin_api = {},
-          }
-        }
-      end)
-
-      it("only allows defined methods", function()
-        for _, method in ipairs({ "GET", "OPTION" }) do
-          assert(stub(ngx.req, "get_method").returns(method))
-          assert.is_nil(lic_helper.license_can_proceed({route_name = "/workspaces"}))
-        end
-        assert.stub(kong.response.exit).was_called(0)
-      end)
-
-      it("denies any other method", function()
-        for _, method in ipairs({ "POST", "PUT", "PATCH" }) do
-          -- clean up calls
-          assert(stub(kong.response, "exit"))
-          assert(stub(ngx.req, "get_method").returns(method))
-          assert.is_nil(lic_helper.license_can_proceed({route_name = "/workspaces"}))
-          assert.stub(kong.response.exit).was.called_with(403,  { message = "Forbidden" })
-        end
-      end)
-
-      it("does not affect other routes", function()
-        assert(stub(ngx.req, "get_method").returns("GET"))
-        assert.is_nil(lic_helper.license_can_proceed({route_name = "/amazeballs"}))
-      end)
-    end)
-
     describe("deny_admin_api", function()
       setup(function()
         featureset = {
           abilities = {
             deny_admin_api = {
-              ["/workspaces"] = { GET = true, OPTION = true }
+              ["/workspaces"] = { GET = true, OPTION = true },
+              ["/workspaces/:workspaces"] = { ["*"] = true },
             },
             allow_admin_api = {},
           }
@@ -129,6 +94,64 @@ describe("licensing", function()
         end
         assert.stub(kong.response.exit).was_called(0)
       end)
+
+      it("can deny any method by *", function()
+        for _, method in ipairs({"GET", "OPTION", "POST", "PUT", "PATCH", "DELETE"}) do
+          -- clean up calls
+          assert(stub(kong.response, "exit"))
+          assert(stub(ngx.req, "get_method").returns(method))
+          assert.is_nil(lic_helper.license_can_proceed({route_name = "/workspaces/:workspaces"}))
+          assert.stub(kong.response.exit).was.called_with(403,  { message = "Forbidden" })
+        end
+      end)
+    end)
+
+    describe("allow_admin_api + deny_admin_api", function()
+      setup(function()
+        featureset = {
+          abilities = {
+            allow_admin_api = {
+              ["/workspaces"] = { GET = true, OPTION = true},
+              ["/identity"] = { ["*"] = true },
+            },
+            deny_admin_api = {
+              ["/workspaces"] = { ["*"] = true },
+              ["/identity"] = { ["*"] = true },
+            },
+          }
+        }
+      end)
+
+      it("granular allows defined methods", function()
+        for _, method in ipairs({ "GET", "OPTION" }) do
+          assert(stub(ngx.req, "get_method").returns(method))
+          assert.is_nil(lic_helper.license_can_proceed({route_name = "/workspaces"}))
+        end
+        assert.stub(kong.response.exit).was_called(0)
+      end)
+
+      it("deny_admin_api still denies any other method", function()
+        for _, method in ipairs({ "POST", "PUT", "PATCH", "DELETE"}) do
+          -- clean up calls
+          assert(stub(kong.response, "exit"))
+          assert(stub(ngx.req, "get_method").returns(method))
+          assert.is_nil(lic_helper.license_can_proceed({route_name = "/workspaces"}))
+          assert.stub(kong.response.exit).was.called_with(403,  { message = "Forbidden" })
+        end
+      end)
+
+      it("does not affect other routes", function()
+        assert(stub(ngx.req, "get_method").returns("GET"))
+        assert.is_nil(lic_helper.license_can_proceed({route_name = "/amazeballs"}))
+      end)
+
+      it("identity", function()
+        for _, method in ipairs({ "GET", "OPTION", "POST", "PUT", "PATCH", "DELETE" }) do
+          assert(stub(ngx.req, "get_method").returns(method))
+          assert.is_nil(lic_helper.license_can_proceed({route_name = "/identity"}))
+        end
+        assert.stub(kong.response.exit).was_called(0)
+      end)
     end)
 
     describe("write_admin_api", function()
@@ -138,7 +161,7 @@ describe("licensing", function()
             abilities = {
               deny_admin_api = {},
               allow_admin_api = {
-                ["/workspaces"] = { POST = true, PUT = true, PATCH = true, DELETE = true },
+                ["/workspaces"] = { ["*"] = true },
               },
               write_admin_api = false,
             }
