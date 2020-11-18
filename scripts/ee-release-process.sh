@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 #
+# example run:
+# ee-release-process.sh 2.2.0.1
 
 set -eEuo pipefail
 shopt -s inherit_errexit
@@ -70,11 +72,12 @@ update_meta() {
 
 
 update_jenkinsfile() {
-  sed -i "s/^ *KONG_VERSION = .*/    KONG_VERSION = \"${1}\"/" Jenkinsfile
+  sed -i "s/^\\s*KONG_VERSION\\s*=.*/    KONG_VERSION = \"${1}\"/" Jenkinsfile
 }
 
 
 parse_args() {
+  [[ $# -eq 0 ]] && die "Usage: $0 <version>"
   version="$1"
   local version_split=$(echo $version | tr '.' '\n')
   IFS='.' readarray -t version_array <<< "$version_split"
@@ -90,7 +93,7 @@ next_branch_for_version() {
 
 
 update_kd_in_requirements() {
-  sed -i "s@KONG_DISTRIBUTIONS_VERSION=.*@KONG_DISTRIBUTIONS_VERSION=${1}@"
+  sed -i "s@KONG_DISTRIBUTIONS_VERSION=.*@KONG_DISTRIBUTIONS_VERSION=${1}@" .requirements
 }
 
 main() {
@@ -108,7 +111,7 @@ main() {
 
   $LOCAL_PATH/copyright-checker
 
-  if running_in_def_branch; then
+  if runs_in_def_branch; then
     echo "run version checker and bump-plugin"
     # $LOCAL_PATH/version-checker
     # $LOCAL_PATH/bump-plugin
@@ -118,5 +121,6 @@ main() {
   # do_things
   # cleanup
 }
+
 
 main "$@"

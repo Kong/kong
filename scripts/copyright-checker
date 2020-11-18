@@ -5,12 +5,19 @@
 # from it it will download all plugins from its build.yml.
 #
 # For each of the kong-ee and plugins, it will check that all lua
-# files have the word COPYRIGHT in the first line. If not, it will add
-# the copyright line, and mark that repo as dirty by printing the
+# files have the COPYRIGHT's sha in the file.  If not, it will add the
+# copyright, and mark that repo as dirty by printing the
 # directory path (It's a temporary one)
+#
+# A clean run returns 0
 
 LOCAL_PATH=$(dirname $(realpath $0))
 source $LOCAL_PATH/common.sh
+TMP_PATH=/tmp/kong-tmp
+
+# Global var that plugin_tmp_clone sets to know where it downloaded
+# the plugin
+CURR_PATH=
 
 function get_distributions {
   DISTRIBUTIONS_PATH=$($LOCAL_PATH/../dist/dist.sh get)
@@ -23,7 +30,7 @@ function add_copyright {
   local entry=$2
   local name=$(echo $entry | jq -r '.name')
 
-  ls ./*.rockspec || return 0
+  ls ./*.rockspec >/dev/null || return 0
 
   local ret=0
   local header="$LOCAL_PATH/COPYRIGHT-HEADER"
@@ -42,10 +49,9 @@ function add_copyright {
     echo "$PWD plugin $name has pending modifications."
 }
 
-CURR_PATH=
 function plugin_tmp_clone {
-  mkdir -p  /tmp/kong-tmp
   local entry=$1
+  mkdir -p $TMP_PATH
   local tmpath=$(mktemp -d "/tmp/kong-tmp/kong-$repo-XXXXX")
   CURR_PATH=$tmpath
 
@@ -54,21 +60,25 @@ function plugin_tmp_clone {
   local version=$(echo $entry | jq -r '.version')
   local repo=$(basename $url)
 
+  echo "cloning $repo into $tmpath"
   if [[ $DO_HTTP -eq 1 ]]; then
-    git clone -b "${version}" https://"$GITHUB_TOKEN"@github.com/Kong/${repo} "$tmpath" 2> /dev/null
+    git clone -b "${version}" https://"$GITHUB_TOKEN"@github.com/Kong/${repo} "$tmpath" 2>/dev/null
   else
-    git clone -b "${version}" git@github.com:Kong/${repo} $tmpath 2> /dev/null
+    git clone -b "${version}" git@github.com:Kong/${repo} "$tmpath" 2>/dev/null
   fi
 }
 
-# gets a callback ()
+# Gets a callback (counter entry_json) as parameter.
+# - foreach plugin in build.yml (and kong-ee itself)
+# - Clone plugin in tmpdir
+# - cd to it
+# - call callback functiono with incremented counter and the data from each plugin.
 function foreach_plugin_with_index {
   local counter=0
   local build_json=$(yq r kong-images/build.yml -j)
   for entry in $(echo $build_json| jq -c '.kong'; echo $build_json | jq -c '.enterprise[]'); do
     (plugin_tmp_clone $entry
-     cd $CURR_PATH
-     $1 $counter $entry
+     cd $CURR_PATH && $1 $counter $entry
     )
     ((counter=counter+1))
   done
@@ -81,6 +91,23 @@ main() {
   pushd $DISTRIBUTIONS_PATH
     foreach_plugin_with_index add_copyright
   popd
+
+  if [[ $ret -ne 0 ]]; then
+    local r=$RANDOM
+    echo <<-EOS
+    TIP: try something like:
+    for i in "$TMP_PATH/*"; do (cd $i; git diff ); done
+    for i in "$TMP_PATH/*"; do
+      (cd $i;
+       git checkout -b add_copyrights-${r} &&
+       git add . &&
+       git commit -am 'chore(*) add copyrights'
+       hub pull-request --push
+      )
+    done
+EOS
+  fi
+
   return $RET
 }
 
