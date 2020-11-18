@@ -19,39 +19,48 @@ describe("migrations schema", function()
 
   for _, strategy in helpers.each_strategy({"postgres", "cassandra"}) do
 
-    it("requires all strategies to be specified", function()
-      local t = {
-        postgres = { up = "" },
-        cassandra = { up = "" },
-      }
-
-      t[strategy] = nil
+    it("requires at least one field of pg.up, pg.teardown, c.up, c.up_f, c.teardown", function()
+      local t = {}
 
       local ok, errs = MigrationsSchema:validate(t)
       assert.is_nil(ok)
-      assert.equal("required field missing", errs[strategy])
+      assert.same({"at least one of these fields must be non-empty: " ..
+        "'postgres.up', 'postgres.teardown', 'cassandra.up', 'cassandra.up_f', " ..
+        "'cassandra.teardown'" },
+        errs["@entity"])
     end)
 
     it("validates '<strategy>.up' property", function()
+      local not_a_string = 1
       local t = {
-        postgres = { up = "" },
-        cassandra = { up = "" },
+        [strategy] = {
+          up = not_a_string
+        }
       }
-
-      t[strategy].up = nil
 
       local ok, errs = MigrationsSchema:validate(t)
       assert.is_nil(ok)
-      assert.equal("required field missing", errs[strategy]["up"])
+      assert.equal("expected a string", errs[strategy]["up"])
     end)
+
+    if strategy == "cassandra" then
+      it("validates '<strategy>.up_f' property in cassandra", function()
+        local t = {
+          cassandra = { up_f = "this is not a function" },
+        }
+
+        local ok, errs = MigrationsSchema:validate(t)
+        assert.is_nil(ok)
+        assert.equal("expected a function", errs[strategy]["up_f"])
+      end)
+    end
 
     it("validates '<strategy>.teardown' property", function()
       local t = {
-        postgres = { up = "" },
-        cassandra = { up = "" },
+        [strategy] = {
+          teardown = "not a function"
+        }
       }
-
-      t[strategy].teardown = ""
 
       local ok, errs = MigrationsSchema:validate(t)
       assert.is_nil(ok)
