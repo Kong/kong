@@ -6,4 +6,6 @@ return {
       prometheus.collect()
     end,
   },
+
+  _stream = ngx.config.subsystem == "stream" and prometheus.metric_data or nil,
 }
