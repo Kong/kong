@@ -153,11 +153,15 @@ function CollectorHandler:access(conf)
       elseif content_type:find("multipart/form-data", nil, true) then
         ngx.req.read_body()
         local body = ngx.req.get_body_data()
-        params, err = parse_multipart_form_params(body, content_type)
+        if body ~= nil
+          params, err = parse_multipart_form_params(body, content_type)
+        end
       elseif content_type:find("application/json", nil, true) then
         ngx.req.read_body()
         local body = ngx.req.get_body_data()
-        params, err = cjson_safe.decode(body)
+        if body ~= nil
+          params, err = cjson_safe.decode(body)
+        end
       end
 
       if err then
