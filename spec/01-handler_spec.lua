@@ -204,5 +204,21 @@ for _, strategy in helpers.each_strategy() do
         end
       end, 5)
     end)
+
+    it("logs to collector empty body requests", function()
+      local res = proxy_client:send({
+        method = "POST",
+        path = "/post_log/collector",
+        headers = { ["Host"] = workspace1.name, ["Content-Type"] = "application/json" },
+      })
+
+      helpers.wait_until(function()
+        local mock_queue = sent_requests()
+        if #mock_queue == 1 then
+          return true
+        end
+      end, 10)
+    end)
+
   end)
 end
