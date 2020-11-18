@@ -84,10 +84,6 @@ pipeline {
             sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 --ee --custom ${env.RELEASE_SCOPE} -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 -e -R ${env.RELEASE_SCOPE}"
           },
-          ubuntu1704: {
-            sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 --ee --custom ${env.RELEASE_SCOPE} -V"
-            sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:17.04 -e -R ${env.RELEASE_SCOPE}"
-          },
           ubuntu1804: {
             sh "./package.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 --ee --custom ${env.RELEASE_SCOPE} -V"
             sh "./release.sh -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 -e -R ${env.RELEASE_SCOPE}"
