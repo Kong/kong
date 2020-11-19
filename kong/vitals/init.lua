@@ -285,6 +285,7 @@ function _M.new(opts)
     list_cache     = ngx.shared.kong_vitals_lists,
     counter_cache  = ngx.shared.kong_vitals_counters,
     strategy       = strategy,
+    db_strategy    = opts.db.strategy,
     counters       = {},
     flush_interval = opts.flush_interval or 90000,
     ttl_seconds    = opts.ttl_seconds or 3600,
@@ -1534,7 +1535,7 @@ function _M:log_phase_after_plugins(ctx, status)
     minutes .. "|60|"
   }
 
-  if self.ttl_days > 0 then
+  if not self.tsdb_storage and self.db_strategy == "postgres" and self.ttl_days > 0 then
     table.insert(key_prefixes, days .. "|86400|")
   end
 
