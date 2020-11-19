@@ -17,6 +17,8 @@ return {
           }, },
           { hide_credentials = { type = "boolean", default = false }, },
           { anonymous = { type = "string" }, },
+          { key_in_header = { type = "boolean", default = true }, },
+          { key_in_query = { type = "boolean", default = true }, },
           { key_in_body = { type = "boolean", default = false }, },
           { run_on_preflight = { type = "boolean", default = true }, },
         },

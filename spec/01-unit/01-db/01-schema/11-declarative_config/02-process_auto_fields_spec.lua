@@ -149,6 +149,8 @@ describe("declarative config: process_auto_fields", function()
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 hide_credentials = false,
+                key_in_header = true,
+                key_in_query = true,
                 key_in_body = false,
                 key_names = { "apikey" },
                 run_on_preflight = true,
@@ -199,6 +201,8 @@ describe("declarative config: process_auto_fields", function()
               protocols = { "grpc", "grpcs", "http", "https" },
               config = {
                 hide_credentials = false,
+                key_in_header = true,
+                key_in_query = true,
                 key_in_body = false,
                 key_names = { "apikey" },
                 run_on_preflight = true,
@@ -309,6 +313,8 @@ describe("declarative config: process_auto_fields", function()
                     protocols = { "grpc", "grpcs", "http", "https" },
                     config = {
                       hide_credentials = false,
+                      key_in_header = true,
+                      key_in_query = true,
                       key_in_body = false,
                       key_names = { "apikey" },
                       run_on_preflight = true,
@@ -616,6 +622,8 @@ describe("declarative config: process_auto_fields", function()
                         protocols = { "grpc", "grpcs", "http", "https" },
                         config = {
                           hide_credentials = false,
+                          key_in_header = true,
+                          key_in_query = true,
                           key_in_body = false,
                           key_names = { "apikey" },
                           run_on_preflight = true,
