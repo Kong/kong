@@ -8,15 +8,31 @@ This plugin invokes
 It can be used in combination with other request plugins to secure, manage
 or extend the function.
 
-Please see the [plugin documentation](https://getkong.org/plugins/azure-functions/)
+Please see the [plugin documentation](https://docs.konghq.com/hub/kong-inc/azure-functions/)
 for details on installation and usage.
 
 # History
 
-### unreleased
-- Fix: pass incoming headers
+Version is strictly based on [SemVer](https://semver.org/)
 
-### 0.4.1
+### Releasing new versions
+
+- update changelog below
+- update rockspec version
+- update version in `handler.lua`
+- commit as `release x.y.z`
+- tag commit as `x.y.z`
+- push commit and tags
+- upload to luarocks; `luarocks upload kong-plugin-azure-functions-x.y.z-1.rockspec --api-key=abc...`
+- test rockspec; `luarocks install kong-plugin-azure-functions`
+
+### 1.0.0 19-Nov-2020
+- Fix: pass incoming headers, issue [#15](https://github.com/Kong/kong-plugin-azure-functions/issues/15)
+
+### 0.4.2 06-Dec-2019
+- Updated tests
+
+### 0.4.1 13-Nov-2019
 - Remove the no-longer supported `run_on` field from plugin config schema
 
 ### 0.4.0
