@@ -38,7 +38,7 @@ configuration, without dropping existing in-flight connections.
 
 ## Upgrade to `2.2.0`
 
-Kong adheres to [semantic versioning](https://semver/), which makes a
+Kong adheres to [semantic versioning](https://semver.org/), which makes a
 distinction between "major", "minor", and "patch" versions. The upgrade path
 will be different depending on which previous version from which you are migrating.
 
