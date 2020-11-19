@@ -233,10 +233,6 @@ function _M.new(opts)
   local strategy
   local tsdb_storage = false
   local hybrid_cp = false
-  local ttl_days = opts.ttl_days
-  if type(ttl_days) == "string" then
-    ttl_days = tonumber(ttl_days)
-  end
 
   do
     local db = opts.db
@@ -244,7 +240,7 @@ function _M.new(opts)
     local strategy_opts = {
       ttl_seconds = opts.ttl_seconds or 3600,
       ttl_minutes = opts.ttl_minutes or 90000,
-      ttl_days = ttl_days or 0,
+      ttl_days = opts.ttl_days or 0,
     }
 
     local db_strategy
