@@ -286,7 +286,7 @@ function _M.new(opts)
     flush_interval = opts.flush_interval or 90000,
     ttl_seconds    = opts.ttl_seconds or 3600,
     ttl_minutes    = opts.ttl_minutes or 90000,
-    ttl_days       = ttl_days or 0,
+    ttl_days       = opts.ttl_days or 0,
     initialized    = false,
     tsdb_storage   = tsdb_storage,
     hybrid_cp      = hybrid_cp,
