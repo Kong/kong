@@ -99,7 +99,7 @@ end
 local CollectorHandler = BasePlugin:extend()
 
 CollectorHandler.PRIORITY = 903
-CollectorHandler.VERSION = "2.0.1"
+CollectorHandler.VERSION = "2.0.2"
 
 
 local function remove_sensible_data_from_table(a_table, depth)
@@ -143,28 +143,10 @@ end
 function CollectorHandler:access(conf)
   if allowed_to_run and conf.log_bodies then
     kong.ctx.plugin.request_body = {}
-    local content_type = ngx.req.get_headers(0)["Content-Type"]
-    local params = {}
-    local err
-    if type(content_type) == "string" then
-      if content_type:find("application/x-www-form-urlencoded", nil, true) then
-        ngx.req.read_body()
-        params, err = ngx.req.get_post_args()
-      elseif content_type:find("multipart/form-data", nil, true) then
-        ngx.req.read_body()
-        local body = ngx.req.get_body_data()
-        params, err = parse_multipart_form_params(body, content_type)
-      elseif content_type:find("application/json", nil, true) then
-        ngx.req.read_body()
-        local body = ngx.req.get_body_data()
-        params, err = cjson_safe.decode(body)
-      end
+    local params = kong.request.get_body()
 
-      if err then
-        kong.log.err("Could not parse body data: ", err)
-      else
-        kong.ctx.plugin.request_body = remove_sensible_data_from_table(params)
-      end
+    if params ~= nil then
+      kong.ctx.plugin.request_body = remove_sensible_data_from_table(params)
     end
   end
 end
