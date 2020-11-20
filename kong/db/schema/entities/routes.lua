@@ -27,7 +27,16 @@ return {
     { methods        = typedefs.methods },
     { hosts          = typedefs.hosts },
     { paths          = typedefs.paths },
-    { headers        = typedefs.headers },
+    { headers = typedefs.headers {
+      keys = typedefs.header_name {
+        match_none = {
+          {
+            pattern = "^[Hh][Oo][Ss][Tt]$",
+            err = "cannot contain 'host' header, which must be specified in the 'hosts' attribute",
+          },
+        },
+      },
+    } },
     { https_redirect_status_code = { type = "integer",
                                      one_of = { 426, 301, 302, 307, 308 },
                                      default = 426, required = true,
