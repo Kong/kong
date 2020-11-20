@@ -38,6 +38,7 @@ end
 
 --- is_on(): returns true if Go plugins is enabled
 function go.is_on()
+  kong = kong or _G.kong    -- some CLI cmds set the global after loading the module.
   return kong.configuration.go_plugins_dir ~= "off"
 end
 
