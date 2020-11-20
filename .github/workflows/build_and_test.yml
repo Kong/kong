@@ -1,6 +1,6 @@
 name: Build & Test
 
-on: [push, pull_request]
+on: []
 
 jobs:
   build:
