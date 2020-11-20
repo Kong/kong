@@ -50,11 +50,11 @@ transformations, and more through plugins.
 
 Kong has been built with the following leading principles:
 
-* **High Performance**: Sub-millisecond processing latency to support mission 
+* **High Performance**: Sub-millisecond processing latency to support mission
   critical use cases and high throughput.
-* **Extensibility**: With a pluggable architecture to extend Kong in Lua or GoLang 
+* **Extensibility**: With a pluggable architecture to extend Kong in Lua or GoLang
   with Kong's Plugin SDK.
-* **Portability**: To run on every platform, every cloud and to natively support 
+* **Portability**: To run on every platform, every cloud and to natively support
   Kubernetes via our modern Ingress Controller.
 
 ## Features
@@ -62,7 +62,7 @@ Kong has been built with the following leading principles:
 - **Cloud-Native**: Platform agnostic, Kong can run on any platform - from bare
   metal to containers - and it can run on every cloud natively.
 - **Kubernetes-Native**: Declaratively configure Kong with native Kubernetes CRDs
-  using the official Ingress Controller to route and connect all L4 + L7 traffic. 
+  using the official Ingress Controller to route and connect all L4 + L7 traffic.
 - **Dynamic Load Balancing**: Load balance traffic across multiple upstream
   services.
 - **Hash-based Load Balancing**: Load balance with consistent hashing/sticky
@@ -140,6 +140,12 @@ code, other repos are also under active development:
 You can find every supported distribution at the [official installation page](https://konghq.com/install/).
 
 ## Development
+
+We encourage community contributions to Kong. To make sure it is a smooth
+experience (both for you and for the Kong team), please read
+[CONTRIBUTING.md](#CONTRIBUTING.md) , [DEVELOPER.md](#DEVELOPER.md),
+[CODE_OF_CONDUCT.md](#CODE_OF_CONDUCT.md) and [COPYRIGHT](#COPYRIGHT) before
+you start.
 
 If you are planning on developing on Kong, you'll need a development
 installation. The `next` branch holds the latest unreleased source code.
