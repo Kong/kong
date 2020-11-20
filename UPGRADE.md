@@ -11,7 +11,7 @@ possible to upgrade Kong **without downtime**:
 
 Assuming that Kong is already running on your system, acquire the latest
 version from any of the available [installation
-methods](https://getkong.org/install/) and proceed to install it, overriding
+methods](https://konghq.com/get-started/#install) and proceed to install it, overriding
 your previous installation.
 
 If you are planning to make modifications to your configuration, this is a
@@ -2177,7 +2177,7 @@ with your 0.13 nodes anymore. This is why we suggest either performing this
 upgrade when your 0.13 cluster is warm and most entities are cached, or against
 a new database, if you can migrate your data. If you wish to temporarily make
 your APIs unavailable, you can leverage the
-[request-termination](https://getkong.org/plugins/request-termination/) plugin.
+[request-termination](https://docs.konghq.com/hub/kong-inc/request-termination/) plugin.
 
 The path to upgrade a 0.13 datastore is identical to the one of previous major
 releases:
@@ -2238,7 +2238,7 @@ to **run migrations** and upgrade from a previous version of Kong.
 
 - The `proxy_listen` and `admin_listen` configuration values have a new syntax.
   See the configuration file or the [0.13.x
-  documentation](https://getkong.org/docs/0.13.x/configuration/) for insights
+  documentation](https://docs.konghq.com/0.13.x/configuration/) for insights
   on the new syntax.
 - The nginx configuration file has changed, which means that you need to update
   it if you are using a custom template. The changes are detailed in a diff
@@ -2338,8 +2338,8 @@ from the Admin API. Services and Routes are the new first-class citizen
 entities that new users (or users upgrading their clusters) should configure.
 
 You can read more about Services and Routes in the [Proxy
-Guide](https://getkong.org/docs/0.13.x/proxy/) and the [Admin API
-Reference](https://getkong.org/docs/0.13.x/admin-api/).
+Guide](https://docs.konghq.com/0.13.x/proxy/) and the [Admin API
+Reference](https://docs.konghq.com/0.13.x/admin-api/).
 
 #### 3. Suggested Upgrade Path
 
@@ -2350,7 +2350,7 @@ with your 0.12 nodes anymore. This is why we suggest either performing this
 upgrade when your 0.12 cluster is warm and most entities are cached, or against
 a new database if you can migrate your data. If you wish to temporarily make
 your APIs unavailable, you can leverage the
-[request-termination](https://getkong.org/plugins/request-termination/) plugin.
+[request-termination](https://docs.konghq.com/plugins/request-termination/) plugin.
 
 The path to upgrade a 0.12 datastore is identical to the one of previous major
 releases:
@@ -2489,7 +2489,7 @@ with your 0.11 nodes anymore. This is why we suggest either performing this
 upgrade when your 0.11 cluster is warm and most entities are cached, or against
 a new database, if you can migrate your data. If you wish to temporarily make
 your APIs unavailable, you can leverage the
-[request-termination](https://getkong.org/plugins/request-termination/) plugin.
+[request-termination](https://docs.konghq.com/plugins/request-termination/) plugin.
 
 The path to upgrade a 0.11 datastore is identical to the one of previous major
 releases:
@@ -2562,7 +2562,7 @@ complete list of changes and new features.
 **Note for Docker users:** Because of the aforementioned breaking change, if
 you are running Kong with Docker, you will now need to run the migrations from
 a single, ephemeral container. You can follow the [Docker installation
-instructions](https://getkong.org/install/docker/) (see "2. Prepare your
+instructions](https://docs.konghq.com/install/docker/) (see "2. Prepare your
 database") for more details about this process.
 
 ##### Core
@@ -2615,7 +2615,7 @@ database") for more details about this process.
   `database_cache.lua` module. Database entities caching and eviction has been
   greatly improved to simplify and automate most caching use-cases. See the
   [plugins development
-  guide](https://getkong.org/docs/0.11.x/plugin-development/entities-cache/)
+  guide](https://docs.konghq.com/0.11.x/plugin-development/entities-cache/)
   for more details about the new underlying mechanism, or see the below
   section of this document on how to update your plugin's cache invalidation
   mechanism for 0.11.0.
@@ -2625,7 +2625,7 @@ database") for more details about this process.
   specific bundled plugin, you might have to update your plugin's `PRIORITY`
   field as well. The complete list of plugins and their priorities is available
   on the [plugins development
-  guide](https://getkong.org/docs/0.11.x/plugin-development/custom-logic/).
+  guide](https://docs.konghq.com/0.11.x/plugin-development/custom-logic/).
 
 #### Deprecations
 
@@ -2976,7 +2976,7 @@ with your 0.10 nodes anymore. This is why we suggest either performing this
 upgrade when your 0.10 cluster is warm and most entities are cached, or against
 a new database, if you can migrate your data. If you wish to temporarily make
 your APIs unavailable, you can leverage the new
-[request-termination](https://getkong.org/plugins/request-termination/) plugin.
+[request-termination](https://docs.konghq.com/hub/kong-inc/request-termination/) plugin.
 
 The path to upgrade a 0.10 datastore is identical to the one of previous major
 releases:
@@ -3019,7 +3019,7 @@ Kong 0.10 introduced the following breaking changes:
 - API Objects (as configured via the Admin API) do **not** support the
   `request_host` and `request_uri` fields anymore. The 0.10 migrations should
   upgrade your current API Objects, but make sure to read the new [0.10 Proxy
-  Guide](https://getkong.org/docs/0.10.x/proxy) to learn the new routing
+  Guide](https://docs.konghq.com/0.10.x/proxy/) to learn the new routing
   capabilities of Kong. This means that Kong can now route incoming requests
   according to a combination of Host headers, URIs, and HTTP
   methods.
@@ -3027,7 +3027,7 @@ Kong 0.10 introduced the following breaking changes:
 - Dynamic SSL certificates serving is now handled by the core and **not**
   through the `ssl` plugin anymore. This version introduced the `/certificates`
   and `/snis` endpoints. See the new [0.10 Proxy
-  Guide](https://getkong.org/docs/0.10.x/proxy) to learn more about how to
+  Guide](https://docs.konghq.com/0.10.x/proxy/) to learn more about how to
   configure your SSL certificates on your APIs. The `ssl` plugin has been
   removed.
 - The preferred version of OpenResty is now `1.11.2.2`. However, this version
@@ -3035,7 +3035,7 @@ Kong 0.10 introduced the following breaking changes:
   Make sure to do so if you install OpenResty and Kong from source.
 - Dnsmasq is not a dependency anymore (However, be careful before removing it
   if you configured it to be your DNS name server via Kong's [`resolver`
-  property](https://getkong.org/docs/0.9.x/configuration/#dns-resolver-section))
+  property](https://docs.konghq.com/0.9.x/configuration/#dns-resolver-section))
 - The `cassandra_contact_points` property does not allow specifying a port
   anymore. All Cassandra nodes must listen on the same port, which can be
   tweaked via the `cassandra_port` property.
@@ -3222,7 +3222,7 @@ Secondly, if you installed Kong from source or maintain a development
 installation, you will need to have [Serf](https://www.serfdom.io) installed on
 your system and available in your `$PATH`. Serf is included with all the
 distribution packages and images available at
-[getkong.org/install](https://getkong.org/install/).
+[getkong.org/install](https://konghq.com/get-started/#install).
 
 The same way, this should already be the case but make sure that LuaJIT is in
 your `$PATH` too as the CLI interpreter switched from Lua 5.1 to LuaJIT.
@@ -3237,7 +3237,7 @@ $ kong restart [-c configuration_file]
 
 Read more about the new clustering capabilities of Kong 0.6.0 and its
 configurations in the [Clustering
-documentation](https://getkong.org/docs/0.6.x/clustering/).
+documentation](https://docs.konghq.com/0.6.x/clustering/).
 
 ## Upgrade to `0.5.x`
 
