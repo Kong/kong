@@ -41,8 +41,7 @@ get_default_branch() {
 
 runs_in_def_branch() {
   local def_br=$(get_default_branch kong kong-ee)
-  [[ "$(git branch --show-current)" == "$def_br" ]] ||
-    die "Not in the kong-ee default branch: ${def_br}."
+  [[ "$(git branch --show-current)" == "$def_br" ]]
 }
 
 
@@ -96,31 +95,62 @@ update_kd_in_requirements() {
   sed -i "s@KONG_DISTRIBUTIONS_VERSION=.*@KONG_DISTRIBUTIONS_VERSION=${1}@" .requirements
 }
 
+# magic fero!
+function download_github_repo_file() {
+  local org=$1
+  local repo=$2
+  local branch=$3
+  local file=$4
+  local downloaded_filename=$(mktemp /tmp/githubapi_downloaded_file.XXXXXXXXX)
+
+  # Make sure the GitHub username and token are available
+  [[ -z $GITHUB_USERNAME ]] && ( >&2 echo "GITHUB_USERNAME is not set" ; return 1 )
+  [[ -z $GITHUB_TOKEN ]] && ( >&2 echo "GITHUB_TOKEN is not set" ; return 1 )
+
+  # Get the file using the GitHub API
+  http -a $GITHUB_USERNAME:$GITHUB_TOKEN \
+       https://api.github.com/repos/$org/$repo/contents/$file \
+       ref=="$branch" \
+       | jq -r ".content" | base64 --decode > $downloaded_filename
+
+  echo $downloaded_filename
+}
+
+
+# check from pongo master, that all 4-number tags in kong-ee have a
+# corresponding line in pongo:/assets/kong_EE_versions.ver
+ensure_pongo_versions() {
+  echo "- checking pongo: "
+  local f=$(download_github_repo_file kong kong-pongo master "assets/kong_EE_versions.ver")
+  ! grep -Fvf <(grep -P "^\d\.\d\.\d\.\d$" "$f") <(git tag | grep -P "^\d\.\d\.\d\.\d$")
+}
+
 main() {
   parse_args "$@"
 
   # validate_args
 
-  # runs_in_def_branch
-  # is_linked_to_kong_distributions_def_branch
+  ensure_pongo_versions
 
   update_meta "${version_array[@]}"
   update_jenkinsfile "$version"
 
   update_kd_in_requirements "$(next_branch_for_version)"
 
+
   $LOCAL_PATH/copyright-checker
 
   if runs_in_def_branch; then
     echo "run version checker and bump-plugin"
+    # is_linked_to_kong_distributions_def_branch
     # $LOCAL_PATH/version-checker
     # $LOCAL_PATH/bump-plugin
   fi
 
 
+
   # do_things
   # cleanup
 }
-
 
 main "$@"
