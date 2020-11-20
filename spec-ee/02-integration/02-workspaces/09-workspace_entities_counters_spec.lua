@@ -115,6 +115,13 @@ for _, strategy in helpers.each_strategy() do
       assert.equals(0, res.counts.services)
     end)
 
+    it("decrements with DELETE by name", function()
+      local s = post("/services", { name = "s1", host="s1.com"})
+      delete("/services/" .. s.name)
+      local res = get("/default/workspaces/default/meta")
+      assert.equals(0, res.counts.services)
+    end)
+
     it("obeys PUT upsert", function()
       put("/services/57ec3997-f184-4ac5-b985-56ad88923760", {host="s1.com"})
       local res = get("/default/workspaces/default/meta")

@@ -61,7 +61,7 @@ parse_args() {
         fi
         shift
         shift
-        create_pr $title $t_branch 1
+        create_pr "$title" "$t_branch" 1
         exit 0
         ;;
       --check-requirements)
@@ -107,7 +107,7 @@ to_branch_name() {
 
 create_pr() {
   local title="$1"
-  local t_branch=$2
+  local t_branch="$2"
   set +u
   local open_browser=""
   if [ ! -z $3 ] && [ $3 -eq 1 ]; then
@@ -120,8 +120,8 @@ $(curl https://quotebot.raimonster.workers.dev/ | jq -r .message)"
 
   hub pull-request --message "$title" \
                    --message "$body" \
-                   --base $t_branch \
-                   --reviewer "Kong/team-fast-track"
+                   --base "$t_branch" \
+                   --reviewer "Kong/team-fast-track" \
                    $open_browser
 }
 
@@ -151,8 +151,10 @@ main() {
 
   # Determine if we should merge or show a diff
   if [[ "$ACTION" == "merge" ]]; then
+    set +eo pipefail
     merge_output=$(git merge "$f_repo/$f_branch")
     merge_exit_status=$?
+    set -eo pipefail
 
     if [[ "$merge_exit_status" -ne 0 ]] ; then
       # conflicts? bail out and you're on your own
@@ -160,9 +162,16 @@ main() {
 
   git add .
   git commit
-  git push $t_repo $new_branch_name
+  git push origin $new_branch_name
   $0 -pr \"$title\" \"$t_branch\"
 
+  OR (if -pr|--pull-request are not available)
+
+  hub pull-request --message \"$title\" \\
+                   --message \"Manually addressed merge conflicts\" \\
+                   --base $t_branch \\
+                   --reviewer \"Kong/team-fast-track\" \\
+                   --browse
 "
     elif echo "$merge_output" | grep "Already up to date."; then
       # nothing to merge
@@ -175,7 +184,7 @@ main() {
 
     # we leave the merge to github to not have a doublemerge
     git push $t_repo $new_branch_name
-    create_pr $title $t_branch
+    create_pr "$title" "$t_branch"
   else
     set +eo pipefail
     {

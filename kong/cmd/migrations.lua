@@ -352,6 +352,12 @@ local function execute(args)
       error("upgrade-workspace-table needs an existing non-migrated table name")
     end
 
+  elseif args.command == "reinitialize-workspace-entity-counters" then
+    local counters = require "kong.workspaces.counters"
+    db.plugins:load_plugin_schemas(conf.loaded_plugins)
+    kong.db=db
+    counters.initialize_counters(db)
+
   else
     error("unreachable")
   end
