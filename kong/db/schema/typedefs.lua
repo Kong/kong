@@ -508,15 +508,7 @@ typedefs.no_paths = Schema.define(typedefs.paths { eq = null })
 
 typedefs.headers = Schema.define {
   type = "map",
-  keys = {
-    type = "string",
-    match_none = {
-      {
-        pattern = "^[Hh][Oo][Ss][Tt]$",
-        err = "cannot contain 'host' header, which must be specified in the 'hosts' attribute",
-      },
-    },
-  },
+  keys = typedefs.header_name,
   values = {
     type = "array",
     elements = {
