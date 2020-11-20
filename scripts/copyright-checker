@@ -19,6 +19,12 @@ function get_distributions {
 }
 
 function add_copyright {
+  local c=$1
+  local entry=$2
+  local name=$(echo $entry | jq -r '.name')
+
+  ls ./*.rockspec || return 0
+
   local ret=0
   local header="$LOCAL_PATH/COPYRIGHT-HEADER"
   local sha=$(shasum $header | cut -f1 -d' ')
@@ -33,12 +39,13 @@ function add_copyright {
   done
 
   [[ $ret -ne 0 ]] &&
-    echo "$PWD plugin $(echo $2 | jq -r '.name') has pending modifications."
+    echo "$PWD plugin $name has pending modifications."
 }
 
 CURR_PATH=
 function plugin_tmp_clone {
   mkdir -p  /tmp/kong-tmp
+  local entry=$1
   local tmpath=$(mktemp -d "/tmp/kong-tmp/kong-$repo-XXXXX")
   CURR_PATH=$tmpath
 
@@ -74,7 +81,7 @@ main() {
   pushd $DISTRIBUTIONS_PATH
     foreach_plugin_with_index add_copyright
   popd
-  return $ret
+  return $RET
 }
 
 main "$@"

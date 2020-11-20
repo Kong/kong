@@ -137,5 +137,87 @@ function _M.register_dao_hooks()
   hooks.register_hook("dao:upsert_by:post", upsert_hook)
 end
 
+-- reset counters
+local function render(template, keys)
+  return (template:gsub("$%(([A-Z_]+)%)", keys))
+end
+
+
+local function postgres_run_query_in_transaction(connector, query)
+  assert(connector:query(table.concat({ "BEGIN", query, "COMMIT"}, ";")))
+end
+
+
+local function pg_build_queries()
+  local truncate_query = [[ TRUNCATE workspace_entity_counters; ]]
+  local insert_query = [[
+   INSERT INTO workspace_entity_counters
+      SELECT ws_id, '$(TABLE)', count(*)
+        FROM $(TABLE)
+        GROUP BY ws_id;]]
+
+  local code = {}
+  table.insert(code, truncate_query)
+  for k, v in pairs(kong.db.daos) do
+    local name = v.schema.name
+
+    if v.schema.workspaceable then
+      local insert = render(insert_query, {TABLE = name})
+      table.insert(code, insert)
+    end
+
+  end
+  return code
+end
+
+local function pg_initialize_counters_migration(connector)
+  postgres_run_query_in_transaction(connector, table.concat(pg_build_queries(), ";"))
+end
+
+local function c_initialize_counters_migration(connector)
+  local coordinator = connector:connect_migrations()
+  local truncate_query = [[ TRUNCATE workspace_entity_counters; ]]
+
+  local function cassandra_foreach_row(table_name, f)
+
+    for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
+      if err then
+        return nil, err
+      end
+
+      for _, row in ipairs(rows) do
+        f(row)
+      end
+    end
+  end
+
+  connector:query(truncate_query)
+  for k, v in pairs(kong.db.daos) do
+    local name = v.schema.name
+    if v.schema.workspaceable then
+      local hash = {}
+
+      cassandra_foreach_row(name,
+        function(e)
+          hash[e.ws_id] = hash[e.ws_id] or 0
+          hash[e.ws_id] = hash[e.ws_id] + 1
+      end)
+
+      for k, v in pairs(hash) do
+        _M.inc_counter(k, name, { type= enums.CONSUMERS.TYPE.PROXY }, v)
+      end
+    end
+  end
+end
+
+
+function _M.initialize_counters(db)
+  local connector = db.connector
+  if db.strategy == "postgres" then
+    pg_initialize_counters_migration(connector)
+  elseif db.strategy == "cassandra" then
+    c_initialize_counters_migration(connector)
+  end
+end
 
 return _M
