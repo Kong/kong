@@ -1,0 +1,191 @@
+name: Build & Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-18.04
+
+    steps:
+    - name: Set env
+      run: |
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
+    - uses: azure/docker-login@v1
+      continue-on-error: true
+      with:
+        username: ${{ secrets.KONG_USERNAME }}
+        password: ${{ secrets.KONG_PASSWORD }}
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Setup Kong Build Tools
+      run: make setup-kong-build-tools
+
+    - name: Build Test Image
+      run: pushd $KONG_BUILD_TOOLS_LOCATION && make kong-test-container && popd
+
+  lint-unit-tests:
+    name: Lint & Unit
+    runs-on: ubuntu-18.04
+    needs: build
+
+    env:
+      TEST_SUITE: unit
+
+    steps:
+    - name: Set env
+      run: |
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
+    - uses: azure/docker-login@v1
+      continue-on-error: true
+      with:
+        username: ${{ secrets.KONG_USERNAME }}
+        password: ${{ secrets.KONG_PASSWORD }}
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Setup Kong Build Tools
+      run: make setup-kong-build-tools
+
+    - name: Run Tests
+      run: pushd $KONG_BUILD_TOOLS_LOCATION && make test-kong && popd
+
+  pdk:
+    name: PDK
+    runs-on: ubuntu-18.04
+    needs: build
+
+    env:
+      TEST_SUITE: pdk
+      DEBUG: 1
+
+    steps:
+    - name: Set env
+      run: |
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
+    - uses: azure/docker-login@v1
+      continue-on-error: true
+      with:
+        username: ${{ secrets.KONG_USERNAME }}
+        password: ${{ secrets.KONG_PASSWORD }}
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Setup Kong Build Tools
+      run: make setup-kong-build-tools
+
+    - name: Run Tests
+      run: pushd $KONG_BUILD_TOOLS_LOCATION && make test-kong && popd
+
+  package-and-smoke-test:
+    name: Package and smoke test Kong
+    runs-on: ubuntu-18.04
+    needs: build
+
+    steps:
+    - name: Set env
+      run: |
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
+    - uses: azure/docker-login@v1
+      continue-on-error: true
+      with:
+        username: ${{ secrets.KONG_USERNAME }}
+        password: ${{ secrets.KONG_PASSWORD }}
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Setup Kong Build Tools
+      run: make setup-kong-build-tools
+
+    - name: Package Kong
+      run: pushd $HOME/kong-build-tools && make package-kong
+
+    - name: Smoke Test Kong
+      run: pushd $HOME/kong-build-tools && make test
+
+  integration-tests-dbless:
+    name: DB-less integration tests
+    runs-on: ubuntu-18.04
+    needs: build
+
+    env:
+      TEST_DATABASE: 'off'
+      TEST_SUITE: dbless
+
+    steps:
+    - name: Set env
+      run: |
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
+    - uses: azure/docker-login@v1
+      continue-on-error: true
+      with:
+        username: ${{ secrets.KONG_USERNAME }}
+        password: ${{ secrets.KONG_PASSWORD }}
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Setup Kong Build Tools
+      run: make setup-kong-build-tools
+
+    - name: Run Tests
+      run: pushd $KONG_BUILD_TOOLS_LOCATION && make test-kong && popd
+
+  integration-tests-with-databases:
+    name: ${{matrix.database}} (${{ matrix.suite }}) ${{ matrix.split }} integration tests
+    runs-on: ubuntu-18.04
+    needs: build
+
+    strategy:
+      matrix:
+        split: [first, second, all]
+        suite: [integration, plugins]
+        database: [cassandra, postgres]
+        exclude:
+          - suite: plugins
+            split: first
+          - suite: plugins
+            split: second
+          - suite: integration
+            split: all
+
+    env:
+      TEST_DATABASE: ${{ matrix.database }}
+      TEST_SUITE: ${{ matrix.suite }}
+      TEST_SPLIT: ${{ matrix.split }}
+
+    steps:
+    - name: Set env
+      run: |
+          echo "KONG_SOURCE_LOCATION=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          echo "KONG_BUILD_TOOLS_LOCATION=$HOME/kong-build-tools" >> $GITHUB_ENV
+
+    - uses: azure/docker-login@v1
+      continue-on-error: true
+      with:
+        username: ${{ secrets.KONG_USERNAME }}
+        password: ${{ secrets.KONG_PASSWORD }}
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Setup Kong Build Tools
+      run: make setup-kong-build-tools
+
+    - name: Run Tests
+      run: pushd $KONG_BUILD_TOOLS_LOCATION && make test-kong && popd
