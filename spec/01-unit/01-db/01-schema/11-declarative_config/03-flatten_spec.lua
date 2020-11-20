@@ -299,6 +299,8 @@ describe("declarative config: flatten", function()
               config = {
                 anonymous = null,
                 hide_credentials = false,
+                key_in_header = true,
+                key_in_query = true,
                 key_in_body = false,
                 key_names = { "apikey" },
                 run_on_preflight = true,
@@ -393,6 +395,8 @@ describe("declarative config: flatten", function()
               config = {
                 anonymous = null,
                 hide_credentials = false,
+                key_in_header = true,
+                key_in_query = true,
                 key_in_body = false,
                 key_names = { "apikey" },
                 run_on_preflight = true
@@ -569,6 +573,8 @@ describe("declarative config: flatten", function()
                 config = {
                   anonymous = null,
                   hide_credentials = false,
+                  key_in_header = true,
+                  key_in_query = true,
                   key_in_body = false,
                   key_names = { "apikey" },
                   run_on_preflight = true
@@ -1055,6 +1061,8 @@ describe("declarative config: flatten", function()
                 config = {
                   anonymous = null,
                   hide_credentials = false,
+                  key_in_header = true,
+                  key_in_query = true,
                   key_in_body = false,
                   key_names = { "apikey" },
                   run_on_preflight = true

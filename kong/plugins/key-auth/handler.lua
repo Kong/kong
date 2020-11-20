@@ -8,7 +8,7 @@ local error = error
 
 local KeyAuthHandler = {
   PRIORITY = 1003,
-  VERSION = "2.3.0",
+  VERSION = "2.4.0",
 }
 
 
@@ -93,8 +93,13 @@ local function do_authentication(conf)
   -- search in headers & querystring
   for i = 1, #conf.key_names do
     local name = conf.key_names[i]
-    local v = headers[name]
-    if not v then
+    local v
+
+    if conf.key_in_header then
+      v = headers[name]
+    end
+
+    if not v and conf.key_in_query then
       -- search in querystring
       v = query[name]
     end

@@ -120,6 +120,8 @@ describe("plugins", function()
       key_names = { "apikey" },
       hide_credentials = false,
       anonymous = ngx.null,
+      key_in_header = true,
+      key_in_query = true,
       key_in_body = false,
       run_on_preflight = true,
     }, plugin.config)
