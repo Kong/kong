@@ -341,9 +341,6 @@ server {
     access_log ${{ADMIN_ACCESS_LOG}};
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
-    client_max_body_size    10m;
-    client_body_buffer_size 10m;
-
 > if admin_ssl_enabled then
 > for i = 1, #admin_ssl_cert do
     ssl_certificate     $(admin_ssl_cert[i]);
