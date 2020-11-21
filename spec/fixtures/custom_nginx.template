@@ -448,7 +448,7 @@ http {
         listen $(entry.listener) ssl;
 > end
 
-        access_log off;
+        access_log ${{ADMIN_ACCESS_LOG}};
 
         ssl_verify_client   optional_no_ca;
         ssl_certificate     ${{CLUSTER_CERT}};
