@@ -428,7 +428,7 @@ server {
     listen $(entry.listener) ssl;
 > end
 
-    access_log off;
+    access_log ${{ADMIN_ACCESS_LOG}};
 
 > if cluster_mtls == "shared" then
     ssl_verify_client   optional_no_ca;
