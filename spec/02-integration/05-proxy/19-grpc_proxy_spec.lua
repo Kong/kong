@@ -28,6 +28,11 @@ for _, strategy in helpers.each_strategy() do
         url = "grpcs://localhost:15003",
       })
 
+      local mock_grpc_service = assert(bp.services:insert {
+        name = "mock_grpc_service",
+        url = "grpc://localhost:8765",
+      })
+
       assert(bp.routes:insert {
         protocols = { "grpc" },
         hosts = { "grpc" },
@@ -40,9 +45,42 @@ for _, strategy in helpers.each_strategy() do
         service = service2,
       })
 
-      assert(helpers.start_kong {
-        database = strategy,
+      assert(bp.routes:insert {
+        protocols = { "grpc" },
+        hosts = { "grpc_authority_1.example" },
+        service = mock_grpc_service,
+        preserve_host = true,
       })
+
+      assert(bp.routes:insert {
+        protocols = { "grpc" },
+        hosts = { "grpc_authority_2.example" },
+        service = mock_grpc_service,
+        preserve_host = false,
+      })
+
+      local fixtures = {
+        http_mock = {}
+      }
+
+      fixtures.http_mock.my_server_block = [[
+        server {
+          server_name myserver;
+          listen 8765 http2;
+
+          location ~ / {
+            content_by_lua_block {
+              ngx.header.content_type = "application/grpc"
+              ngx.header.received_host = ngx.req.get_headers()["Host"]
+            }
+          }
+        }
+      ]]
+
+      assert(helpers.start_kong({
+        database = strategy,
+        nginx_conf       = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, fixtures))
 
       proxy_client_grpc = helpers.proxy_client_grpc()
       proxy_client_grpcs = helpers.proxy_client_grpcs()
@@ -128,6 +166,36 @@ for _, strategy in helpers.each_strategy() do
       }))
       assert.truthy(ok)
       assert.truthy(resp)
+    end)
+
+    it("proxies :authority header if `preserve_host` is set", function()
+      local _, resp = proxy_client_grpc({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-authority"] = "grpc_authority_1.example",
+          ["-v"] = true,
+        }
+      })
+
+      assert.matches("received%-host: grpc_authority_1.example", resp)
+    end)
+
+    it("sets default :authority header if `preserve_host` isn't set", function()
+      local _, resp = proxy_client_grpc({
+        service = "hello.HelloService.SayHello",
+        body = {
+          greeting = "world!"
+        },
+        opts = {
+          ["-authority"] = "grpc_authority_2.example",
+          ["-v"] = true,
+        }
+      })
+
+      assert.matches("received%-host: localhost:8765", resp)
     end)
 
     describe("errors with", function()
