@@ -1312,7 +1312,7 @@ function _M:get_consumer_stats(opts)
     end
   else
     if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
-      return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+      return nil, "Invalid query params: interval must be 'days', 'minutes' or 'seconds'"
     end
   end
 
