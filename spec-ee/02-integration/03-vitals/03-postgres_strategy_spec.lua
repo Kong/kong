@@ -23,6 +23,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       local opts = {
         ttl_seconds = 3600,
         ttl_minutes = 90000,
+        ttl_days = 1000000,
         delete_interval = 90000,
       }
 

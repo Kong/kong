@@ -1186,8 +1186,8 @@ function _M:get_stats(query_type, level, node_id, start_ts)
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
   else
-    if query_type ~= "minutes" and query_type ~= "seconds" and query_type ~= "days" then
-      return nil, "Invalid query params: interval must be 'minutes', 'seconds' or 'days'"
+    if query_type ~= "days" and query_type ~= "minutes" and query_type ~= "seconds" then
+      return nil, "Invalid query params: interval must be 'days', 'minutes' or 'seconds'"
     end
   end
 
@@ -1232,8 +1232,8 @@ function _M:get_status_codes(opts, key_by)
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
   else
-    if opts.duration ~= "minutes" and opts.duration ~= "seconds" and opts.duration ~= "days" then
-      return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+    if opts.duration ~= "days" and opts.duration ~= "minutes" and opts.duration ~= "seconds" then
+      return nil, "Invalid query params: interval must be 'days', 'minutes' or 'seconds'"
     end
   end
 

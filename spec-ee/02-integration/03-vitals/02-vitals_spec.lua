@@ -999,7 +999,7 @@ for _, strategy in helpers.each_strategy() do
       it("rejects invalid query_type", function()
         local res, err = vitals:get_stats("foo")
 
-        local expected = "Invalid query params: interval must be 'minutes' or 'seconds'"
+        local expected = "Invalid query params: interval must be 'days', 'minutes' or 'seconds'"
 
         assert.is_nil(res)
         assert.same(expected, err)
@@ -1086,7 +1086,7 @@ for _, strategy in helpers.each_strategy() do
           service_id  = utils.uuid(),
         })
 
-        local expected = "Invalid query params: interval must be 'minutes' or 'seconds'"
+        local expected = "Invalid query params: interval must be 'days', 'minutes' or 'seconds'"
 
         assert.is_nil(res)
         assert.same(expected, err)
@@ -1154,7 +1154,7 @@ for _, strategy in helpers.each_strategy() do
           entity_type = "cluster",
         })
 
-        local expected = "Invalid query params: interval must be 'minutes' or 'seconds'"
+        local expected = "Invalid query params: interval must be 'days', 'minutes' or 'seconds'"
 
         assert.is_nil(res)
         assert.same(expected, err)
