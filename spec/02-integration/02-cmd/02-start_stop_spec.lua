@@ -494,6 +494,7 @@ describe("kong start/stop #" .. strategy, function()
           in 'services':
             - in entry 1 of 'services':
               in 'protocol': expected one of: grpc, grpcs, http, https, tcp, tls, udp
+              in 'name': invalid value '@gobo': the only accepted ascii characters are alphanumerics or ., -, _, and ~
             - in entry 2 of 'services':
               in 'routes':
                 - in entry 1 of 'routes':

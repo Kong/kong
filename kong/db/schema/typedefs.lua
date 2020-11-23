@@ -106,6 +106,12 @@ local function validate_utf8_name(name)
     return nil, "invalid utf-8 character sequence detected at position " .. tostring(index)
   end
 
+  if not match(name, "^[%w%.%-%_~\128-\244]+$") then
+    return nil,
+    "invalid value '" .. name ..
+      "': the only accepted ascii characters are alphanumerics or ., -, _, and ~"
+  end
+
   return true
 end
 
