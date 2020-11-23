@@ -322,6 +322,20 @@ describe("Admin API (#" .. strategy .. "): ", function()
           local json = cjson.decode(body)
           assert.same(consumer, json)
         end)
+        it("retrieves by utf-8 name and encoded utf-8 name", function()
+          local consumer = bp.consumers:insert({ username = "円" }, { nulls = true })
+          local res  = client:get("/consumers/" .. consumer.username)
+          local body = assert.res_status(200, res)
+
+          local json = cjson.decode(body)
+          assert.same(consumer, json)
+
+          res  = client:get("/consumers/" .. escape(consumer.username))
+          body = assert.res_status(200, res)
+
+          json = cjson.decode(body)
+          assert.same(consumer, json)
+        end)
         it("returns 404 if not found", function()
           local res = assert(client:send {
             method = "GET",
