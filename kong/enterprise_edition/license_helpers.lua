@@ -113,7 +113,8 @@ end
 
 function _M.read_license_info()
   local license_data = get_license_string()
-  if not license_data then
+  if not license_data or (license_data == "") then
+    ngx.log(ngx.NOTICE, "could not decode license JSON: No license found")
     return nil
   end
 
