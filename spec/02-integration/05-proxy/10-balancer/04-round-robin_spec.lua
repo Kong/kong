@@ -1,5 +1,6 @@
 local bu = require "spec.fixtures.balancer_utils"
 local helpers = require "spec.helpers"
+local https_server = require "spec.fixtures.https_server"
 
 for _, consistency in ipairs(bu.consistencies) do
   for _, strategy in helpers.each_strategy() do
@@ -84,20 +85,22 @@ for _, consistency in ipairs(bu.consistencies) do
         local requests = bu.SLOTS * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = bu.http_server("127.0.0.1", port1, { requests / 2 })
-        local server2 = bu.http_server("127.0.0.1", port2, { requests / 2 })
+        local server1 = https_server.new(port1, "127.0.0.1")
+        local server2 = https_server.new(port2, "127.0.0.1")
+        server1:start()
+        server2:start()
 
         -- Go hit them with our test requests
         local oks = bu.client_requests(requests, api_host)
         assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
-        local _, count1 = server1:done()
-        local _, count2 = server2:done()
+        local count1 = server1:shutdown()
+        local count2 = server2:shutdown()
 
         -- verify
-        assert.are.equal(requests / 2, count1)
-        assert.are.equal(requests / 2, count2)
+        assert.are.equal(requests / 2, count1.ok)
+        assert.are.equal(requests / 2, count2.ok)
       end)
 
       it("adding a target", function()
@@ -112,20 +115,24 @@ for _, consistency in ipairs(bu.consistencies) do
         local requests = bu.SLOTS * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = bu.http_server("127.0.0.1", port1, { requests / 2 })
-        local server2 = bu.http_server("127.0.0.1", port2, { requests / 2 })
+        local server1 = https_server.new(port1, "127.0.0.1")
+        local server2 = https_server.new(port2, "127.0.0.1")
+        server1:start()
+        server2:start()
 
         -- Go hit them with our test requests
         local oks = bu.client_requests(requests, api_host)
-        assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
-        local _, count1 = server1:done()
-        local _, count2 = server2:done()
+        local count1 = server1:shutdown()
+        local count2 = server2:shutdown()
+
+        assert.are.equal(requests, oks)
+
 
         -- verify
-        assert.are.equal(requests / 2, count1)
-        assert.are.equal(requests / 2, count2)
+        assert.are.equal(requests / 2, count1.total)
+        assert.are.equal(requests / 2, count2.total)
 
         -- add a new target 3
         -- shift proportions from 50/50 to 40/40/20
@@ -138,23 +145,26 @@ for _, consistency in ipairs(bu.consistencies) do
 
         -- setup target servers
         local server3
-        server1 = bu.http_server("127.0.0.1", port1, { requests * 0.4 })
-        server2 = bu.http_server("127.0.0.1", port2, { requests * 0.4 })
-        server3 = bu.http_server("127.0.0.1", port3, { requests * 0.2 })
+        server1 = https_server.new(port1, "127.0.0.1")
+        server2 = https_server.new(port2, "127.0.0.1")
+        server3 = https_server.new(port3, "127.0.0.1")
+        server1:start()
+        server2:start()
+        server3:start()
 
         -- Go hit them with our test requests
         oks = bu.client_requests(requests, api_host)
         assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
-        _, count1 = server1:done()
-        _, count2 = server2:done()
-        local _, count3 = server3:done()
+        count1 = server1:shutdown()
+        count2 = server2:shutdown()
+        local count3 = server3:shutdown()
 
         -- verify
-        assert.are.equal(requests * 0.4, count1)
-        assert.are.equal(requests * 0.4, count2)
-        assert.are.equal(requests * 0.2, count3)
+        assert.are.equal(requests * 0.4, count1.total)
+        assert.are.equal(requests * 0.4, count2.total)
+        assert.are.equal(requests * 0.2, count3.total)
       end)
 
       it("removing a target #db", function()
@@ -168,20 +178,22 @@ for _, consistency in ipairs(bu.consistencies) do
         bu.end_testcase_setup(strategy, bp, consistency)
 
         -- setup target servers
-        local server1 = bu.http_server("127.0.0.1", port1, { requests / 2 })
-        local server2 = bu.http_server("127.0.0.1", port2, { requests / 2 })
+        local server1 = https_server.new(port1, "127.0.0.1")
+        local server2 = https_server.new(port2, "127.0.0.1")
+        server1:start()
+        server2:start()
 
         -- Go hit them with our test requests
         local oks = bu.client_requests(requests, api_host)
         assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
-        local _, count1 = server1:done()
-        local _, count2 = server2:done()
+        local count1 = server1:shutdown()
+        local count2 = server2:shutdown()
 
         -- verify
-        assert.are.equal(requests / 2, count1)
-        assert.are.equal(requests / 2, count2)
+        assert.are.equal(requests / 2, count1.ok)
+        assert.are.equal(requests / 2, count2.ok)
 
         -- modify weight for target 2, set to 0
         bu.begin_testcase_setup_update(strategy, bp)
@@ -195,17 +207,21 @@ for _, consistency in ipairs(bu.consistencies) do
         -----------------------------------------
 
         -- setup target servers
-        server1 = bu.http_server("127.0.0.1", port1, { requests })
+        server1 = https_server.new(port1, "127.0.0.1")
+        server1:start()
 
         -- Go hit them with our test requests
         oks = bu.client_requests(requests, api_host)
         assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
-        _, count1 = server1:done()
+        local count1, err = server1:shutdown()
+        if err then
+          error(err)
+        end
 
         -- verify all requests hit server 1
-        assert.are.equal(requests, count1)
+        assert.are.equal(requests, count1.total)
       end)
       it("modifying target weight #db", function()
         local requests = bu.SLOTS * 2 -- go round the balancer twice
@@ -218,20 +234,22 @@ for _, consistency in ipairs(bu.consistencies) do
         bu.end_testcase_setup(strategy, bp, consistency)
 
         -- setup target servers
-        local server1 = bu.http_server("127.0.0.1", port1, { requests / 2 })
-        local server2 = bu.http_server("127.0.0.1", port2, { requests / 2 })
+        local server1 = https_server.new(port1, "127.0.0.1")
+        local server2 = https_server.new(port2, "127.0.0.1")
+        server1:start()
+        server2:start()
 
         -- Go hit them with our test requests
         local oks = bu.client_requests(requests, api_host)
         assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
-        local _, count1 = server1:done()
-        local _, count2 = server2:done()
+        local count1 = server1:shutdown()
+        local count2 = server2:shutdown()
 
         -- verify
-        assert.are.equal(requests / 2, count1)
-        assert.are.equal(requests / 2, count2)
+        assert.are.equal(requests / 2, count1.total)
+        assert.are.equal(requests / 2, count2.total)
 
         -- modify weight for target 2
         bu.begin_testcase_setup_update(strategy, bp)
@@ -244,20 +262,22 @@ for _, consistency in ipairs(bu.consistencies) do
         -----------------------------------------
 
         -- setup target servers
-        server1 = bu.http_server("127.0.0.1", port1, { requests * 0.4 })
-        server2 = bu.http_server("127.0.0.1", port2, { requests * 0.6 })
+        server1 = https_server.new(port1, "127.0.0.1")
+        server2 = https_server.new(port2, "127.0.0.1")
+        server1:start()
+        server2:start()
 
         -- Go hit them with our test requests
         oks = bu.client_requests(requests, api_host)
         assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
-        _, count1 = server1:done()
-        _, count2 = server2:done()
+        count1 = server1:shutdown()
+        count2 = server2:shutdown()
 
         -- verify
-        assert.are.equal(requests * 0.4, count1)
-        assert.are.equal(requests * 0.6, count2)
+        assert.are.equal(requests * 0.4, count1.total)
+        assert.are.equal(requests * 0.6, count2.total)
       end)
 
       it("failure due to targets all 0 weight #db", function()
@@ -271,20 +291,22 @@ for _, consistency in ipairs(bu.consistencies) do
         bu.end_testcase_setup(strategy, bp, consistency)
 
         -- setup target servers
-        local server1 = bu.http_server("127.0.0.1", port1, { requests / 2 })
-        local server2 = bu.http_server("127.0.0.1", port2, { requests / 2 })
+        local server1 = https_server.new(port1)
+        local server2 = https_server.new(port2)
+        server1:start()
+        server2:start()
 
         -- Go hit them with our test requests
         local oks = bu.client_requests(requests, api_host)
         assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
-        local _, count1 = server1:done()
-        local _, count2 = server2:done()
+        local count1 = server1:shutdown()
+        local count2 = server2:shutdown()
 
         -- verify
-        assert.are.equal(requests / 2, count1)
-        assert.are.equal(requests / 2, count2)
+        assert.are.equal(requests / 2, count1.total)
+        assert.are.equal(requests / 2, count2.total)
 
         -- modify weight for both targets, set to 0
         bu.begin_testcase_setup_update(strategy, bp)
@@ -308,10 +330,14 @@ for _, consistency in ipairs(bu.consistencies) do
         bu.end_testcase_setup(strategy, bp, consistency)
 
         -- setup target servers
-        bu.http_server("127.0.0.1", port1, 1)
-        bu.http_server("127.0.0.1", port2, 1)
+        local server1 = https_server.new(port1)
+        local server2 = https_server.new(port2)
+        server1:start()
+        server2:start()
 
         local _, _, status = bu.client_requests(1, api_host)
+        server1:shutdown()
+        server2:shutdown()
         assert.same(503, status)
       end)
     end)
@@ -363,11 +389,12 @@ for _, consistency in ipairs(bu.consistencies) do
 
           local requests = 20
 
-          local server = bu.http_server(localhost, port, { requests })
+          local server = https_server.new(port, localhost)
+          server:start()
           local oks = bu.client_requests(requests, api_host)
-          local _, count = server:done()
+          local count = server:shutdown()
           assert.equal(requests, oks)
-          assert.equal(requests, count)
+          assert.equal(requests, count.total)
 
           -- remove target
           bu.begin_testcase_setup_update(strategy, bp)
@@ -376,11 +403,12 @@ for _, consistency in ipairs(bu.consistencies) do
           })
           bu.end_testcase_setup(strategy, bp, consistency)
 
-          server = bu.http_server(localhost, port, { requests })
+          server = https_server.new(port, localhost)
+          server:start()
           oks = bu.client_requests(requests, api_host)
-          _, count = server:done()
+          count = server:shutdown()
           assert.equal(0, oks)
-          assert.equal(0, count)
+          assert.equal(0, count.total)
 
           -- add the target back with same weight as initial weight
           bu.begin_testcase_setup_update(strategy, bp)
@@ -389,11 +417,12 @@ for _, consistency in ipairs(bu.consistencies) do
           })
           bu.end_testcase_setup(strategy, bp, consistency)
 
-          server = bu.http_server(localhost, port, { requests })
+          server = https_server.new(port, localhost)
+          server:start()
           oks = bu.client_requests(requests, api_host)
-          _, count = server:done()
+          count = server:shutdown()
           assert.equal(requests, oks)
-          assert.equal(requests, count)
+          assert.equal(requests, count.total)
         end)
       end
     end)
