@@ -18,6 +18,7 @@ local cjson = require "cjson.safe"
 
 
 local re_match = ngx.re.match
+local concat = table.concat
 
 
 local EE_PREFIX_PATHS = {
@@ -29,12 +30,18 @@ local EE_PREFIX_PATHS = {
 
   admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
   admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"},
+  admin_gui_ssl_cert_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.crt"},
+  admin_gui_ssl_cert_key_default_ecdsa = {"ssl", "admin-gui-kong-default-ecdsa.key"},
 
   portal_api_ssl_cert_default = {"ssl", "portal-api-kong-default.crt"},
   portal_api_ssl_cert_key_default = {"ssl", "portal-api-kong-default.key"},
+  portal_gui_ssl_cert_default_ecdsa = {"ssl", "portal-gui-kong-default-ecdsa.crt"},
+  portal_gui_ssl_cert_key_default_ecdsa = {"ssl", "portal-gui-kong-default-ecdsa.key"},
 
   portal_gui_ssl_cert_default = {"ssl", "portal-gui-kong-default.crt"},
   portal_gui_ssl_cert_key_default = {"ssl", "portal-gui-kong-default.key"},
+  portal_api_ssl_cert_default_ecdsa = {"ssl", "portal-api-kong-default-ecdsa.crt"},
+  portal_api_ssl_cert_key_default_ecdsa = {"ssl", "portal-api-kong-default-ecdsa.key"},
 }
 
 
@@ -79,6 +86,8 @@ local EE_CONF_INFERENCES = {
   admin_emails_from = {typ = "string"},
   admin_emails_reply_to = {typ = "string"},
   admin_invitation_expiry = {typ = "number"},
+  admin_gui_ssl_cert = { typ = "array" },
+  admin_gui_ssl_cert_key = { typ = "array" },
 
   portal = {typ = "boolean"},
   portal_is_legacy = {typ = "boolean"},
@@ -88,12 +97,16 @@ local EE_CONF_INFERENCES = {
   portal_cors_origins = {typ = "array"},
   portal_gui_use_subdomains = {typ = "boolean"},
   portal_session_conf = {typ = "string"},
+  portal_gui_ssl_cert = { typ = "array" },
+  portal_gui_ssl_cert_key = { typ = "array" },
 
   portal_api_access_log = {typ = "string"},
   portal_api_error_log = {typ = "string"},
   portal_api_listen = {typ = "array"},
   portal_api_url = {typ = "string"},
   portal_app_auth = {typ = "string"},
+  portal_api_ssl_cert = { typ = "array" },
+  portal_api_ssl_cert_key = { typ = "array" },
 
   proxy_uri = {typ = "string"},
   portal_auth = {typ = "string"},
@@ -364,21 +377,51 @@ local function validate_portal_app_auth(conf, errors)
   end
 end
 
-local function validate_admin_gui_ssl(conf, errors)
-  if (table.concat(conf.admin_gui_listen, ",") .. " "):find("%sssl[%s,]") then
-    if conf.admin_gui_ssl_cert and not conf.admin_gui_ssl_cert_key then
-      errors[#errors+1] = "admin_gui_ssl_cert_key must be specified"
-    elseif conf.admin_gui_ssl_cert_key and not conf.admin_gui_ssl_cert then
-      errors[#errors+1] = "admin_gui_ssl_cert must be specified"
+local function validate_ssl(prefix, conf, errors)
+  local listen = conf[prefix .. "listen"]
+
+  local ssl_enabled = (concat(listen, ",") .. " "):find("%sssl[%s,]") ~= nil
+  if not ssl_enabled and prefix == "proxy_" then
+    ssl_enabled = (concat(conf.stream_listen, ",") .. " "):find("%sssl[%s,]") ~= nil
+  end
+
+  if ssl_enabled then
+    conf.ssl_enabled = true
+
+    local ssl_cert = conf[prefix .. "ssl_cert"]
+    local ssl_cert_key = conf[prefix .. "ssl_cert_key"]
+
+    if #ssl_cert > 0 and #ssl_cert_key == 0 then
+      errors[#errors + 1] = prefix .. "ssl_cert_key must be specified"
+
+    elseif #ssl_cert_key > 0 and #ssl_cert == 0 then
+      errors[#errors + 1] = prefix .. "ssl_cert must be specified"
+
+    elseif #ssl_cert ~= #ssl_cert_key then
+      errors[#errors + 1] = prefix .. "ssl_cert was specified " .. #ssl_cert .. " times while " ..
+        prefix .. "ssl_cert_key was specified " .. #ssl_cert_key .. " times"
     end
 
-    if conf.admin_gui_ssl_cert and not pl_path.exists(conf.admin_gui_ssl_cert) then
-      errors[#errors+1] = "admin_gui_ssl_cert: no such file at " .. conf.admin_gui_ssl_cert
+    if ssl_cert then
+      for _, cert in ipairs(ssl_cert) do
+        if not pl_path.exists(cert) then
+          errors[#errors + 1] = prefix .. "ssl_cert: no such file at " .. cert
+        end
+      end
     end
-    if conf.admin_gui_ssl_cert_key and not pl_path.exists(conf.admin_gui_ssl_cert_key) then
-      errors[#errors+1] = "admin_gui_ssl_cert_key: no such file at " .. conf.admin_gui_ssl_cert_key
+
+    if ssl_cert_key then
+      for _, cert_key in ipairs(ssl_cert_key) do
+        if not pl_path.exists(cert_key) then
+          errors[#errors + 1] = prefix .. "ssl_cert_key: no such file at " .. cert_key
+        end
+      end
     end
   end
+end
+
+local function validate_admin_gui_ssl(conf, errors)
+  validate_ssl("admin_gui_", conf, errors)
 end
 
 
@@ -607,35 +650,8 @@ local function validate(conf, errors)
   validate_route_path_pattern(conf, errors)
 
   if conf.portal then
-    if (table.concat(conf.portal_api_listen, ",") .. " "):find("%sssl[%s,]") then
-      if conf.portal_api_ssl_cert and not conf.portal_api_ssl_cert_key then
-        errors[#errors+1] = "portal_api_ssl_cert_key must be specified"
-      elseif conf.portal_api_ssl_cert_key and not conf.portal_api_ssl_cert then
-        errors[#errors+1] = "portal_api_ssl_cert must be specified"
-      end
-
-      if conf.portal_api_ssl_cert and not pl_path.exists(conf.portal_api_ssl_cert) then
-        errors[#errors+1] = "portal_api_ssl_cert: no such file at " .. conf.portal_api_ssl_cert
-      end
-      if conf.portal_api_ssl_cert_key and not pl_path.exists(conf.portal_api_ssl_cert_key) then
-        errors[#errors+1] = "portal_api_ssl_cert_key: no such file at " .. conf.portal_api_ssl_cert_key
-      end
-    end
-
-    if (table.concat(conf.portal_gui_listen, ",") .. " "):find("%sssl[%s,]") then
-      if conf.portal_gui_ssl_cert and not conf.portal_gui_ssl_cert_key then
-        errors[#errors+1] = "portal_gui_ssl_cert_key must be specified"
-      elseif conf.portal_gui_ssl_cert_key and not conf.portal_gui_ssl_cert then
-        errors[#errors+1] = "portal_gui_ssl_cert must be specified"
-      end
-
-      if conf.portal_gui_ssl_cert and not pl_path.exists(conf.portal_gui_ssl_cert) then
-        errors[#errors+1] = "portal_gui_ssl_cert: no such file at " .. conf.portal_gui_ssl_cert
-      end
-      if conf.portal_gui_ssl_cert_key and not pl_path.exists(conf.portal_gui_ssl_cert_key) then
-        errors[#errors+1] = "portal_gui_ssl_cert_key: no such file at " .. conf.portal_gui_ssl_cert_key
-      end
-    end
+    validate_ssl("portal_api_", conf, errors)
+    validate_ssl("portal_gui_", conf, errors)
   end
 
   -- portal auth conf json conversion
@@ -702,6 +718,30 @@ local function validate(conf, errors)
 
 end
 
+local function load_ssl_cert_abs_paths(prefix, conf)
+  local ssl_cert = conf[prefix .. "_cert"]
+  local ssl_cert_key = conf[prefix .. "_cert_key"]
+
+  if ssl_cert and ssl_cert_key then
+    if type(ssl_cert) == "table" then
+      for i, cert in ipairs(ssl_cert) do
+        ssl_cert[i] = pl_path.abspath(cert)
+      end
+
+    else
+      conf[prefix .. "_cert"] = pl_path.abspath(ssl_cert)
+    end
+
+    if type(ssl_cert) == "table" then
+      for i, key in ipairs(ssl_cert_key) do
+        ssl_cert_key[i] = pl_path.abspath(key)
+      end
+
+    else
+      conf[prefix .. "_cert_key"] = pl_path.abspath(ssl_cert_key)
+    end
+  end
+end
 
 local function load(conf)
   local ok, err = listeners.parse(conf, {
@@ -712,6 +752,8 @@ local function load(conf)
     return nil, err
   end
 
+  load_ssl_cert_abs_paths("admin_gui_ssl", conf)
+
   if conf.portal then
     ok, err = listeners.parse(conf, {
       { name = "portal_gui_listen", subsystem = "http", ssl_flag = "portal_gui_ssl_enabled" },
@@ -720,23 +762,9 @@ local function load(conf)
     if not ok then
       return nil, err
     end
-  end
 
-  if conf.admin_gui_ssl_cert and conf.admin_gui_ssl_cert_key then
-    conf.admin_gui_ssl_cert = pl_path.abspath(conf.admin_gui_ssl_cert)
-    conf.admin_gui_ssl_cert_key = pl_path.abspath(conf.admin_gui_ssl_cert_key)
-  end
-
-  if conf.portal then
-    if conf.portal_api_ssl_cert and conf.portal_api_ssl_cert_key then
-      conf.portal_api_ssl_cert = pl_path.abspath(conf.portal_api_ssl_cert)
-      conf.portal_api_ssl_cert_key = pl_path.abspath(conf.portal_api_ssl_cert_key)
-    end
-
-    if conf.portal_gui_ssl_cert and conf.portal_gui_ssl_cert_key then
-      conf.portal_gui_ssl_cert = pl_path.abspath(conf.portal_gui_ssl_cert)
-      conf.portal_gui_ssl_cert_key = pl_path.abspath(conf.portal_gui_ssl_cert_key)
-    end
+    load_ssl_cert_abs_paths("portal_api_ssl", conf)
+    load_ssl_cert_abs_paths("portal_gui_ssl", conf)
   end
 
   -- preserve user-facing name `enforce_rbac` but use

@@ -446,24 +446,14 @@ describe("services", function()
     end)
 
     it("rejects invalid names", function()
-      local invalid_names = {
-        "examp:le",
-        "examp;le",
-        "examp/le",
-        "examp le",
+      -- see tests for utils.validate_utf8 for more invalid values
+      local service = {
+        name = string.char(105, 213, 205, 149),
       }
 
-      for i = 1, #invalid_names do
-        local service = {
-          name = invalid_names[i],
-        }
-
-        local ok, err = Services:validate(service)
-        assert.falsy(ok)
-        assert.equal(
-          "invalid value '" .. invalid_names[i] .. "': it must only contain alphanumeric and '., -, _, ~' characters",
-          err.name)
-      end
+      local ok, err = Services:validate(service)
+      assert.falsy(ok)
+      assert.matches("invalid utf%-8 character sequence detected", err.name)
     end)
 
     -- acceptance
@@ -477,6 +467,9 @@ describe("services", function()
         "3x4_mp_13",
         "~3x4~mp~13",
         "~3..x4~.M-p~1__3_",
+        "孔",
+        "Конг",
+        "🦍",
       }
 
       for i = 1, #valid_names do

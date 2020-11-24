@@ -63,6 +63,8 @@ for _, strategy in helpers.each_strategy() do
             config = {
               hide_credentials = false,
               run_on_preflight = true,
+              key_in_header = true,
+              key_in_query = true,
               key_in_body = false,
               key_names = { "apikey" },
             },
@@ -135,6 +137,8 @@ for _, strategy in helpers.each_strategy() do
             config = {
               hide_credentials = false,
               run_on_preflight = true,
+              key_in_header = true,
+              key_in_query = true,
               key_in_body = false,
               key_names = { "apikey" },
             },

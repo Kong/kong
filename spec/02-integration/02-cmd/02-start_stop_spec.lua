@@ -506,7 +506,8 @@ end)
           _format_version: "1.1"
           services:
           - name: "@gobo"
-            url: http://mockbin.org
+            protocol: foo
+            host: mockbin.org
           - name: my-service
             url: http://mockbin.org
             routes:
@@ -529,7 +530,7 @@ end)
         assert.matches(helpers.unindent[[
           in 'services':
             - in entry 1 of 'services':
-              in 'name': invalid value '@gobo': it must only contain alphanumeric and '., -, _, ~' characters
+              in 'protocol': expected one of: grpc, grpcs, http, https, tcp, tls, udp
             - in entry 2 of 'services':
               in 'routes':
                 - in entry 1 of 'routes':
