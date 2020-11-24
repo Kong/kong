@@ -218,17 +218,26 @@ local function transform_headers(conf)
 
   -- Add header(s)
   for _, name, value in iter(conf.add.headers) do
-    name = name:lower()
-    if not headers[name] and name ~= HOST then
+    if not headers[name] and name:lower() ~= HOST then
       headers[name] = value
     end
   end
 
   -- Append header(s)
   for _, name, value in iter(conf.append.headers) do
-    if name:lower() ~= HOST then
-      headers[name] = append_value(headers[name], value)
+    local name_lc = name:lower()
+
+    if name_lc ~= HOST and name ~= name_lc and headers[name] ~= nil then
+      -- keep original content, use configd case
+      -- note: the __index method of table returned by ngx.req.get_header
+      -- is overwritten to check for lower case as well, see documentation
+      -- for ngx.req.get_header to get more information
+      -- effectively, it does this: headers[name] = headers[name] or headers[name_lc]
+      headers[name] = headers[name]
+      headers[name_lc] = nil
     end
+
+    headers[name] = append_value(headers[name], value)
   end
 
   for name, _ in pairs(headers_to_remove) do
