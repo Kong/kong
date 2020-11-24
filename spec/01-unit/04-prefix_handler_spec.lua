@@ -947,7 +947,7 @@ describe("NGINX conf compiler", function()
           -- ]]
         end
       end)
-      it("generates default SSL certs with correct permissions", function()
+      it("generates default SSL certs with correct permissions #flaky on Travis due to umask", function()
         local conf = conf_loader(nil, {
           prefix = tmp_config.prefix,
           proxy_listen  = "127.0.0.1:8000 ssl",
