@@ -215,10 +215,7 @@ for _, consistency in ipairs(bu.consistencies) do
         assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
-        local count1, err = server1:shutdown()
-        if err then
-          error(err)
-        end
+        local count1 = server1:shutdown()
 
         -- verify all requests hit server 1
         assert.are.equal(requests, count1.total)

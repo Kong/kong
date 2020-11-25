@@ -103,13 +103,13 @@ end
 
 function https_server.start(self)
   if not pl_path.exists(tmp_root) or not pl_path.isdir(tmp_root) then
-    return nil, "could not get a temporary path"
+    error("could not get a temporary path", 2)
   end
 
   local err
   self.base_path, err = create_temp_dir(self.protocol == "https")
   if err then
-    return nil, err
+    error(fmt("could not create temp dir: %s", err), 2)
   end
 
   local conf_params = {
@@ -125,12 +125,12 @@ function https_server.start(self)
 
   local file, err = create_conf(conf_params)
   if err then
-    return nil, err
+    error(fmt("could not create conf: %s", err), 2)
   end
 
   local status = os.execute("nginx -c " .. file .. " -p " .. self.base_path)
   if not status then
-    return nil, "failed starting nginx"
+    error("failed starting nginx")
   end
 end
 
@@ -139,28 +139,29 @@ function https_server.shutdown(self)
   local pid_filename = self.base_path .. "/logs/nginx.pid"
   local pid_file, err = io.open (pid_filename, "r")
   if err then
-    return nil, fmt("could not open pid file: %s", tostring(err))
+    error(fmt("could not open pid file: %s", tostring(err)), 2)
   end
 
   local pid, err = pid_file:read()
   if err then
-    return nil, fmt("could not read pid file: %s", tostring(err))
+    error(fmt("could not read pid file: %s", tostring(err)), 2)
   end
 
   local kill_nginx_cmd = fmt("kill -s TERM %s", tostring(pid))
   local status = os.execute(kill_nginx_cmd)
   if not status then
-    return nil, fmt("could not kill nginx test server. %s was not removed", self.base_path)
+    error(fmt("could not kill nginx test server. %s was not removed", self.base_path), 2)
   end
 
   local count, err = count_results(self.base_path .. "/" .. self.logs_dir)
   if err then
-    return nil, fmt("could not remove %s: %s", self.base_path, tostring(err))
+    -- not a fatal error (I wish)
+    print(fmt("could not count results: %s", tostring(err)))
   end
 
   local _, err = pl_dir.rmtree(self.base_path)
   if err then
-    return nil, fmt("could not remove %s: %s", self.base_path, tostring(err))
+    error(fmt("could not remove %s: %s", self.base_path, tostring(err)), 2)
   end
 
   return count
