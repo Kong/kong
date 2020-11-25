@@ -33,12 +33,12 @@ local function create_temp_dir(copy_cert_and_key)
   end
 
   if copy_cert_and_key then
-    local status = pl_dir.copyfile('./fixtures/kong_spec.crt', tmp_path)
+    local status = pl_dir.copyfile('./spec/fixtures/kong_spec.crt', tmp_path)
     if not status then
       return nil, "could not copy cert"
     end
 
-    status = pl_dir.copyfile('./fixtures/kong_spec.key', tmp_path)
+    status = pl_dir.copyfile('./spec/fixtures/kong_spec.key', tmp_path)
     if not status then
       return nil, "could not copy private key"
     end
