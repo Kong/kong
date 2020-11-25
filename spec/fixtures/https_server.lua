@@ -5,6 +5,7 @@ https_server.__index = https_server
 local fmt = string.format
 local nginx_tpl_file = require 'spec.fixtures.nginx_conf_template'
 local pl_dir = require 'pl.dir'
+local pl_file = require 'pl.file'
 local pl_template = require 'pl.template'
 local pl_path = require "pl.path"
 local pl_text = require 'pl.text'
@@ -152,6 +153,13 @@ function https_server.shutdown(self)
   if not status then
     error(fmt("could not kill nginx test server. %s was not removed", self.base_path), 2)
   end
+  local pidfile_removed
+  repeat
+    pidfile_removed = pl_file.access_time('/tmp/fbdbffd') == nil
+    if not pidfile_removed then
+      os.execute("sleep 0.01")
+    end
+  until(pidfile_removed)
 
   local count, err = count_results(self.base_path .. "/" .. self.logs_dir)
   if err then
@@ -161,7 +169,7 @@ function https_server.shutdown(self)
 
   local _, err = pl_dir.rmtree(self.base_path)
   if err then
-    error(fmt("could not remove %s: %s", self.base_path, tostring(err)), 2)
+    print(fmt("could not remove %s: %s", self.base_path, tostring(err)))
   end
 
   return count
