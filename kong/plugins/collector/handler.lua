@@ -7,74 +7,21 @@
 
 local BasePlugin = require "kong.plugins.base_plugin"
 local BatchQueue = require "kong.tools.batch_queue"
-local utils = require "kong.tools.utils"
-local cjson = require "cjson"
 local cjson_safe = require "cjson.safe"
 local http = require "resty.http"
-local pl_stringx = require "pl.stringx"
 
 local allowed_to_run = true
-local queues = {}
+local queue
 
-local function json_array_concat(entries)
-  return "[" .. table.concat(entries, ",") .. "]"
-end
+local CollectorHandler = BasePlugin:extend()
 
-local function get_buffer_id(conf)
-  return string.format("%s-%s-%s", conf.http_endpoint, conf.service_id, conf.route_id)
-end
-
-local function parse_multipart_form_params(body, content_type)
-  if not content_type then
-    return nil, 'missing content-type'
-  end
-
-  local m, err = ngx.re.match(content_type, "boundary=(.+)", "oj")
-  if not m or not m[1] or err then
-    return nil, "could not find boundary in content type " .. content_type ..
-                "error: " .. tostring(err)
-  end
-
-  local boundary    = m[1]
-  local parts_split = utils.split(body, '--' .. boundary)
-  local params      = {}
-  local part, from, to, part_value, part_name, part_headers, first_header
-  for i = 1, #parts_split do
-    part = pl_stringx.strip(parts_split[i])
-
-    if part ~= '' and part ~= '--' then
-      from, to, err = ngx.re.find(part, '^\\r$', 'ojm')
-      if err or (not from and not to) then
-        return nil, nil, "could not find part body. Error: " .. tostring(err)
-      end
-
-      part_value   = part:sub(to + 2, #part) -- +2: trim leading line jump
-      part_headers = part:sub(1, from - 1)
-      first_header = utils.split(part_headers, '\\n')[1]
-      if pl_stringx.startswith(first_header:lower(), "content-disposition") then
-        local m, err = ngx.re.match(first_header, 'name="(.*?)"', "oj")
-
-        if err or not m or not m[1] then
-          return nil, "could not parse part name. Error: " .. tostring(err)
-        end
-
-        part_name = m[1]
-      else
-        return nil, "could not find part name in: " .. part_headers
-      end
-
-      params[part_name] = part_value
-    end
-  end
-
-  return params
-end
-
+CollectorHandler.PRIORITY = 903
+CollectorHandler.VERSION = "2.0.2"
 
 -- Sends the provided payload (a string) to the configured plugin host
 -- @return true if everything was sent correctly, falsy if error
 -- @return error message if there was an error
-local function send_payload(self, conf, payload)
+local function send_payload(conf, payload)
   local client = http.new()
   local headers = { ["Content-Type"] = "application/json", ["Content-Length"] = #payload }
   local params = { method = "POST", body = payload, headers = headers }
@@ -95,31 +42,53 @@ local function send_payload(self, conf, payload)
   return success, err_msg
 end
 
+local function json_array_concat(entries)
+  return "[" .. table.concat(entries, ",") .. "]"
+end
 
-local CollectorHandler = BasePlugin:extend()
-
-CollectorHandler.PRIORITY = 903
-CollectorHandler.VERSION = "2.0.2"
-
-
-local function remove_sensible_data_from_table(a_table, depth)
-  local clean = {}
-  depth = depth or 1
-  local max_depth = 500
-
-  if depth == max_depth then
-    -- if we can't remove PII from the whole body we won't send it
-    return {}
+local function create_queue(conf)
+  -- batch_max_size <==> conf.queue_size
+  local batch_max_size = conf.queue_size or 1
+  local process = function(entries)
+    local payload
+    if #entries == 1 or batch_max_size == 1 then
+      payload = entries[1]
+    else
+      payload = json_array_concat(entries)
+    end
+    return send_payload(conf, payload)
   end
 
-  if type(a_table) == "string" then
-    return {}
+  local opts = {
+    retry_count = conf.retry_count,
+    flush_timeout = 1,
+    batch_max_size = batch_max_size,
+    process_delay = 0,
+  }
+
+  local q, err = BatchQueue.new(process, opts)
+  if not q then
+    kong.log.err("could not create queue: ", err)
+    return
+  end
+  queue = q
+end
+
+local function remove_sensible_data_from_table(conf, a_table, depth)
+  local clean = {}
+  depth = depth or 1
+  local max_depth = conf.body_parsing_max_depth or 1
+
+  if depth == max_depth then
+    return { field_type = "dict" }
   end
 
   if a_table then
     for key, value in pairs(a_table) do
-      if type(value) == "table" then
-        clean[key] = remove_sensible_data_from_table(value, depth + 1)
+      if type(value) == "table" and #value > 0 then
+        clean[key] = { field_type = "array", field_length = #value }
+      elseif type(value) == "table" then
+        clean[key] = remove_sensible_data_from_table(conf, value, depth + 1)
       elseif type(value) == "string" then
         clean[key] = { field_type = "string", field_length = #value }
       elseif type(value) == "number" then
@@ -146,7 +115,7 @@ function CollectorHandler:access(conf)
     local params = kong.request.get_body()
 
     if params ~= nil then
-      kong.ctx.plugin.request_body = remove_sensible_data_from_table(params)
+      kong.ctx.plugin.request_body = remove_sensible_data_from_table(conf, params)
     end
   end
 end
@@ -157,40 +126,15 @@ end
 function CollectorHandler:log(conf)
   local entry = kong.log.serialize()
   entry["request"]["post_data"] = kong.ctx.plugin.request_body
-  entry = cjson.encode(entry)
+  entry = cjson_safe.encode(entry)
 
-  local queue_id = get_buffer_id(conf)
-  local q = queues[queue_id]
-  if not q then
-    -- batch_max_size <==> conf.queue_size
-    local batch_max_size = conf.queue_size or 1
-    local process = function(entries)
-      local payload
-      if #entries == 1 or batch_max_size == 1 then
-        payload = entries[1]
-      else
-        payload = json_array_concat(entries)
-      end
-      return send_payload(self, conf, payload)
-    end
-
-    local opts = {
-      retry_count = conf.retry_count,
-      flush_timeout = 1,
-      batch_max_size = batch_max_size,
-      process_delay = 0,
-    }
-
-    local err
-    q, err = BatchQueue.new(process, opts)
-    if not q then
-      kong.log.err("could not create queue: ", err)
-      return
-    end
-    queues[queue_id] = q
+  if not queue then
+    create_queue(conf)
   end
 
-  q:add(entry)
+  if entry then
+    queue:add(entry)
+  end
 end
 
 return CollectorHandler
