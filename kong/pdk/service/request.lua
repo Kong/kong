@@ -262,7 +262,10 @@ local function new(self)
   end
 
 
-  local set_authority = require("resty.kong.grpc").set_authority
+  local set_authority
+  if ngx.config.subsystem ~= "stream" then
+    set_authority = require("resty.kong.grpc").set_authority
+  end
 
   ---
   -- Sets a header in the request to the Service with the given value. Any existing header
