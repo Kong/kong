@@ -158,8 +158,9 @@ end
 
 
 function _M.transform_json_body(conf, buffered_data, resp_code)
-  local json_body = read_json_body(buffered_data)
-  if json_body == nil then
+  local json_body, err = read_json_body(buffered_data)
+  if not json_body then
+    kong.log.debug("failed to decode the json body: ", err)
     return
   end
 

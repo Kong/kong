@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local utils = require "kong.tools.utils"
 local body_transformer = require "kong.plugins.response-transformer-advanced.body_transformer"
 local header_transformer = require "kong.plugins.response-transformer-advanced.header_transformer"
 local feature_flag_limit_body = require "kong.plugins.response-transformer-advanced.feature_flags.limit_body"
@@ -68,31 +69,38 @@ function ResponseTransformerHandler:body_filter(conf)
     -- transform json
     if is_json_body(kong.response.get_header("Content-Type")) then
       local body, err
-      body, err = body_transformer.transform_json_body(conf, resp_body, ngx.status)
-      ngx.arg[1] = body
-      if err then
-        kong.log.err(err)
+      local is_gzip = kong.response.get_header("Content-Encoding") == "gzip"
+      if is_gzip then
+        resp_body, err = utils.inflate_gzip(resp_body)
+        if err then
+          kong.log.err("failed to inflate gzipped body: ", err)
+
+          -- Empty body to prevent non-transformed (potentially sensitive)
+          -- data from being passed through.
+          ngx.arg[1] = nil
+          ngx.status = 500
+          return
+        end
       end
 
-      -- we couldn't transform the JSON but we had a replaced body ready so we
-      -- must pass that replaced body to the client
-      --
-      -- this happens when, for example:
-      --
-      -- 1) we had plain text ready in the replaced body and a header
-      -- `Content-Type = application/json` so we couldn't transform the plain
-      -- text into JSON
-      --
-      -- 2) we had non-ASCII characters ready in the replaced body and a header
-      -- `Content-Type = application/json` so we couldn't transform the
-      -- non-ASCII chracters into JSON
-      --
-      -- Note: the plugin doesn’t validate the value in config.replace.body
-      -- against the content type as defined in the Content-Type response header
-      --
-      -- see FTI-1608 for details
-      if body == nil and replaced_body ~= nil then
-        ngx.arg[1] = replaced_body
+      body, err = body_transformer.transform_json_body(conf, resp_body, ngx.status)
+      if err then
+        kong.log.err(err)
+        return
+      end
+
+      if body then
+        if is_gzip then
+          body, err = utils.deflate_gzip(body)
+          if err then
+            kong.log.err("failed to deflate gzipped body: ", err)
+            return
+          end
+        end
+
+        -- Only replace with JSON body if transformation was successful.
+        -- Otherwise, leave original or replaced_body (above) in place.
+        ngx.arg[1] = body
       end
     end
   end

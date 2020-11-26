@@ -8,6 +8,8 @@
 local body_transformer = require "kong.plugins.response-transformer-advanced.body_transformer"
 local cjson = require("cjson.safe").new()
 cjson.decode_array_with_array_mt(true)
+local decode_base64 = ngx.decode_base64
+local encode_base64 = ngx.encode_base64
 
 describe("Plugin: response-transformer-advanced", function()
   describe("transform_json_body()", function()
@@ -646,6 +648,127 @@ describe("Plugin: response-transformer-advanced", function()
       local original_body = [[{"p1" : "v1", "p2" : "v1"}]]
       local body = body_transformer.transform_json_body(conf, original_body, 200)
       assert.same([[{"p1":"v1"}]], body)
+    end)
+  end)
+
+  describe("gzip", function()
+    local old_ngx, handler
+    local headers = {}
+
+    setup(function()
+      old_ngx  = ngx
+      _G.ngx = {
+        ctx = {}
+      }
+      _G.kong = {
+        log = {
+          debug = function() end,
+          err = spy.new(function() end)
+        },
+        response = {
+          get_header = function (header)
+            return headers[header]
+          end
+        }
+      }
+      handler = require("kong.plugins.response-transformer-advanced.handler")
+    end)
+
+    teardown(function()
+      -- luacheck: globals ngx
+      ngx = old_ngx
+    end)
+
+    before_each(function()
+      _G.ngx.ctx = {}
+    end)
+
+    it("valid gzip", function()
+      local conf  = {
+        remove    = {
+          headers = {},
+          json    = {}
+        },
+        add       = {
+          headers = {},
+          json    = { "p2:v2" },
+        },
+        append    = {
+          headers = {},
+          json    = {},
+        },
+        replace   = {
+          headers = {},
+          json    = {},
+        },
+        allow  = {
+          json = {}
+        },
+        transform = {
+          functions = {}
+        },
+      }
+
+      -- Gzip of {"p1":"v1"}
+      local body = "H4sIAHWXmV8AA6tWKjBUslIqM1Sq5QIAAElSvQwAAAA="
+
+      headers["Content-Type"] = "application/json"
+      headers["Content-Encoding"] = "gzip"
+
+      _G.ngx.arg = { decode_base64(body), false }
+      handler:body_filter(conf)
+      _G.ngx.arg = { "", true }
+      handler:body_filter(conf)
+
+      local result = ngx.arg[1]
+
+      -- Gzip of {"p2":"v2","p1":"v1"}
+      local resp_body = "H4sIAAAAAAAAA6tWKjBSslIqM1LSUSowBLEMlWoBWx7ObRUAAAA="
+      assert.same(resp_body, encode_base64(result))
+    end)
+
+    it("invalid gzip", function()
+      local conf  = {
+        remove    = {
+          headers = {},
+          json    = {}
+        },
+        add       = {
+          headers = {},
+          json    = { "p2:v2" },
+        },
+        append    = {
+          headers = {},
+          json    = {},
+        },
+        replace   = {
+          headers = {},
+          json    = {},
+        },
+        allow  = {
+          json = {}
+        },
+        transform = {
+          functions = {}
+        },
+      }
+
+      -- Invalid gzip
+      local body = "aaaabbbbcccc"
+
+      headers["Content-Type"] = "application/json"
+      headers["Content-Encoding"] = "gzip"
+
+      _G.ngx.arg = { body, false }
+      handler:body_filter(conf)
+      _G.ngx.arg = { "", true }
+      handler:body_filter(conf)
+
+      local result = ngx.arg[1]
+
+      assert.is_nil(result)
+      assert.are.equal(500, ngx.status)
+      assert.spy(kong.log.err).was.called()
     end)
   end)
 end)

@@ -1,3 +1,7 @@
+## Unreleased
+
+- Support for gzipped content
+
 ## 0.4.3
 
 - Add copyright headers
