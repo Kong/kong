@@ -4630,7 +4630,7 @@ for _, strategy in helpers.each_strategy() do
               local json = cjson.decode(body)
 
               assert.same({
-                message = "Invalid query params: interval must be 'minutes' or 'seconds'",
+                message = "Invalid query params: interval must be 'days', 'minutes' or 'seconds'",
               }, json)
             end)
 
@@ -4717,7 +4717,7 @@ for _, strategy in helpers.each_strategy() do
               local json = cjson.decode(body)
 
               assert.same({
-                message = "Invalid query params: interval must be 'minutes' or 'seconds'",
+                message = "Invalid query params: interval must be 'days', 'minutes' or 'seconds'",
               }, json)
             end)
 
@@ -4804,7 +4804,7 @@ for _, strategy in helpers.each_strategy() do
               local json = cjson.decode(body)
 
               assert.same({
-                message = "Invalid query params: interval must be 'minutes' or 'seconds'",
+                message = "Invalid query params: interval must be 'days', 'minutes' or 'seconds'",
               }, json)
             end)
 

@@ -163,6 +163,7 @@ local DELETE_CODES = [[
   DELETE FROM %s
    WHERE (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
       OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
+      OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
 ]]
 
 local STATUS_CODE_QUERIES = {
@@ -229,6 +230,7 @@ function _M.new(db, opts)
     table_rotater = table_rotater,
     ttl_seconds = opts.ttl_seconds or 3600,
     ttl_minutes = opts.ttl_minutes or 90000,
+    ttl_days = opts.ttl_days or 0,
     node_id = nil,
     hostname = nil,
   }
@@ -297,6 +299,7 @@ delete_handler = function(premature, self)
         entity_type = entity_type,
         seconds = now - self.ttl_seconds,
         minutes = now - self.ttl_minutes,
+        days = now - self.ttl_days,
       })
 
       if err then
@@ -414,9 +417,11 @@ function _M:select_stats(query_type, level, node_id, start_ts)
     if table_names[2] then
       from_t2 = " FROM " .. table_names[2]
     end
-  else
-    -- must be minutes
+  elseif query_type == "minutes" then
     from_t1 = " FROM vitals_stats_minutes "
+  else
+    -- must be days
+    from_t1 = " FROM vitals_stats_days "
   end
 
   -- construct the WHERE clause
@@ -487,6 +492,96 @@ function _M:select_phone_home()
 end
 
 
+function _M:insert_rolled_stats(data, node_id, period)
+  local at, hit, miss, plat_min, plat_max, query, res, err, ulat_min, ulat_max,
+        requests, plat_count, plat_total, ulat_count, ulat_total
+
+  -- node_id is an optional argument for testing and clustering strategy
+  node_id = node_id or self.node_id
+
+  -- as we loop over our seconds, we'll calculate the minutes and daily data to insert
+  local aggregated_at
+  local mdata = {} -- array of data to insert
+  local midx  = {} -- table of timestamp to array index
+  local mnext = 1  -- next index in mdata
+  local aggregate_at = { minutes = self.get_minute, days = self.get_day}
+  local table_names = { minutes = "vitals_stats_minutes", days = "vitals_stats_days"}
+
+  for _, row in ipairs(data) do
+    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests,
+      plat_count, plat_total, ulat_count, ulat_total = unpack(row)
+    aggregated_at = aggregate_at[period](self, at)
+
+    local i = midx[aggregated_at]
+    if i then
+      mdata[i][2] = mdata[i][2] + hit
+      mdata[i][3] = mdata[i][3] + miss
+      mdata[i][4] = math_min(mdata[i][4], plat_min or 0xFFFFFFFF)
+      mdata[i][5] = math_max(mdata[i][5], plat_max or -1)
+      mdata[i][6] = math_min(mdata[i][6], ulat_min or 0xFFFFFFFF)
+      mdata[i][7] = math_max(mdata[i][7], ulat_max or -1)
+      mdata[i][8] = mdata[i][8] + requests
+      mdata[i][9] = mdata[i][9] + plat_count
+      mdata[i][10] = mdata[i][10] + plat_total
+      mdata[i][11] = mdata[i][11] + ulat_count
+      mdata[i][12] = mdata[i][12] + ulat_total
+    else
+      mdata[mnext] = {
+        aggregated_at,
+        hit,
+        miss,
+        plat_min or 0xFFFFFFFF,
+        plat_max or -1,
+        ulat_min or 0xFFFFFFFF,
+        ulat_max or -1,
+        requests,
+        plat_count,
+        plat_total,
+        ulat_count,
+        ulat_total
+      }
+      midx[aggregated_at] = mnext
+      mnext  = mnext + 1
+    end
+  end
+
+  local tname = table_names[period]
+  for _, row in ipairs(mdata) do
+    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests,
+    plat_count, plat_total, ulat_count, ulat_total = unpack(row)
+
+    -- replace sentinels
+    if plat_min == 0xFFFFFFFF then
+      plat_min = "null"
+      plat_max = "null"
+    end
+    if ulat_min == 0xFFFFFFFF then
+      ulat_min = "null"
+      ulat_max = "null"
+    end
+
+    query = fmt(INSERT_STATS, tname, at, node_id, hit, miss, plat_min,
+      plat_max, ulat_min, ulat_max, requests, plat_count, plat_total,
+      ulat_count, ulat_total, tname, tname, tname, tname, tname, tname,
+      tname, tname, tname, tname, tname)
+
+    res, err = self.connector:query(query)
+
+    if not res then
+      log(WARN, _log_prefix, "failed to insert rolled stats: ", err)
+      log(DEBUG, _log_prefix, "failed query: ", query)
+    end
+  end
+
+  local ok, err = self:update_node_meta(node_id)
+  if not ok then
+    return nil, "could not update metadata. error: " .. err
+  end
+
+  return true
+end
+
+
 --[[
   constructs an insert statement for each row in data. If there's already a row
   with this timestamp, aggregates appropriately per stat type
@@ -507,47 +602,9 @@ function _M:insert_stats(data, node_id)
   -- node_id is an optional argument for testing and clustering strategy
   node_id = node_id or self.node_id
 
-  -- as we loop over our seconds, we'll calculate the minutes data to insert
-  local mdata = {} -- array of data to insert
-  local midx  = {} -- table of timestamp to array index
-  local mnext = 1  -- next index in mdata
-
   for _, row in ipairs(data) do
     at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests,
       plat_count, plat_total, ulat_count, ulat_total = unpack(row)
-
-    local mat = self:get_minute(at)
-    local i   = midx[mat]
-    if i then
-      mdata[i][2] = mdata[i][2] + hit
-      mdata[i][3] = mdata[i][3] + miss
-      mdata[i][4] = math_min(mdata[i][4], plat_min or 0xFFFFFFFF)
-      mdata[i][5] = math_max(mdata[i][5], plat_max or -1)
-      mdata[i][6] = math_min(mdata[i][6], ulat_min or 0xFFFFFFFF)
-      mdata[i][7] = math_max(mdata[i][7], ulat_max or -1)
-      mdata[i][8] = mdata[i][8] + requests
-      mdata[i][9] = mdata[i][9] + plat_count
-      mdata[i][10] = mdata[i][10] + plat_total
-      mdata[i][11] = mdata[i][11] + ulat_count
-      mdata[i][12] = mdata[i][12] + ulat_total
-    else
-      mdata[mnext] = {
-        mat,
-        hit,
-        miss,
-        plat_min or 0xFFFFFFFF,
-        plat_max or -1,
-        ulat_min or 0xFFFFFFFF,
-        ulat_max or -1,
-        requests,
-        plat_count,
-        plat_total,
-        ulat_count,
-        ulat_total
-      }
-      midx[mat] = mnext
-      mnext  = mnext + 1
-    end
 
     plat_min = plat_min or "null"
     plat_max = plat_max or "null"
@@ -581,35 +638,11 @@ function _M:insert_stats(data, node_id)
       end
     end
   end
-
-  -- insert minutes data
-  local tname = "vitals_stats_minutes"
-  for _, row in ipairs(mdata) do
-    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests,
-    plat_count, plat_total, ulat_count, ulat_total = unpack(row)
-
-    -- replace sentinels
-    if plat_min == 0xFFFFFFFF then
-      plat_min = "null"
-      plat_max = "null"
-    end
-    if ulat_min == 0xFFFFFFFF then
-      ulat_min = "null"
-      ulat_max = "null"
-    end
-
-    query = fmt(INSERT_STATS, tname, at, node_id, hit, miss, plat_min,
-      plat_max, ulat_min, ulat_max, requests, plat_count, plat_total,
-      ulat_count, ulat_total, tname, tname, tname, tname, tname, tname,
-      tname, tname, tname, tname, tname)
-
-    res, err = self.connector:query(query)
-
-    if not res then
-      log(WARN, _log_prefix, "failed to insert minutes: ", err)
-      log(DEBUG, _log_prefix, "failed query: ", query)
-    end
+  self:insert_rolled_stats(data, node_id, "minutes")
+  if self.ttl_days > 0 then
+    self:insert_rolled_stats(data, node_id, "days")
   end
+
 
   local ok, err = self:update_node_meta(node_id)
   if not ok then
@@ -625,22 +658,31 @@ function _M:delete_stats(expiries)
     return nil, "cutoff_times is required"
   end
 
-  -- eventually will also support 'hours' and larger
   if type(expiries.minutes) ~= "number" then
     return nil, "cutoff_times.minutes must be a number"
   end
 
-  -- for now, only aggregation supported is minutes
-  local cutoff_time = time() - expiries.minutes
-  local q = fmt(DELETE_STATS, "vitals_stats_minutes", cutoff_time)
+  if type(expiries.days) ~= "number" then
+    return nil, "cutoff_times.days must be a number"
+  end
 
+  local affected
+  local q = fmt(DELETE_STATS, "vitals_stats_minutes", time() - expiries.minutes)
   local res, err = self.connector:query(q)
+  if err then
+    return nil, err
+  end
+
+  affected = res.affected_rows
+
+  q = fmt(DELETE_STATS, "vitals_stats_days", time() - expiries.days)
+  res, err = self.connector:query(q)
 
   if err then
     return nil, err
   end
 
-  return res.affected_rows
+  return affected + res.affected_rows
 end
 
 
@@ -766,8 +808,8 @@ function _M:select_status_codes(opts)
   local duration = opts.duration
   local entity_type = opts.entity_type
 
-  if duration ~= 1 and duration ~= 60 then
-    return nil, "duration must be 1 or 60"
+  if duration ~= 1 and duration ~= 60 and duration ~= 86400 then
+    return nil, "duration must be 1, 60 or 86400"
   end
 
   local query = STATUS_CODE_QUERIES.SELECT[entity_type]
@@ -780,14 +822,16 @@ function _M:select_status_codes(opts)
 
   if duration == 1 then
     cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_seconds)
-  else
+  elseif duration == 60 then
     cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_minutes)
+  else
+    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_days)
   end
 
   if entity_type == "cluster" then
-    query = fmt(query, opts.duration, cutoff_time)
+    query = fmt(query, duration, cutoff_time)
   else
-    query = fmt(query, opts.entity_id, opts.duration, cutoff_time)
+    query = fmt(query, opts.entity_id, duration, cutoff_time)
   end
 
   local res, err = self.connector:query(query)
@@ -910,6 +954,10 @@ function _M:delete_status_codes(opts)
     opts.minutes = time() - self.ttl_minutes
   end
 
+  if not opts.days then
+    opts.days = time() - self.ttl_days
+  end
+
   if type(opts.seconds) ~= "number" then
     return nil, "opts.seconds must be a number"
   end
@@ -918,12 +966,16 @@ function _M:delete_status_codes(opts)
     return nil, "opts.minutes must be a number"
   end
 
+  if type(opts.days) ~= "number" then
+    return nil, "opts.days must be a number"
+  end
+
   local table_name = STATUS_CODE_QUERIES.DELETE[opts.entity_type]
   if not table_name then
     return nil, "unknown entity_type: " .. tostring(opts.entity_type)
   end
 
-  local query = fmt(DELETE_CODES, table_name, 1, opts.seconds, 60, opts.minutes)
+  local query = fmt(DELETE_CODES, table_name, 1, opts.seconds, 60, opts.minutes, 86400, opts.days)
 
   local res, err = self.connector:query(query)
 
@@ -944,6 +996,11 @@ end
 
 function _M:get_minute(second)
   return second - (second % 60)
+end
+
+
+function _M:get_day(second)
+  return second - (second % (60 * 60 * 24))
 end
 
 
