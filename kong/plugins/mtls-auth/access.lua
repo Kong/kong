@@ -516,8 +516,8 @@ local function do_authentication(conf)
     ngx.ctx.CLIENT_VERIFY_OVERRIDE = "FAILED:consumer not found"
   end
 
-  kong.log.err("client certificate verify failed: ", err)
-  ngx.ctx.CLIENT_VERIFY_OVERRIDE = "FAILED:" .. err
+  kong.log.err("client certificate verify failed: ", (err and err or "UNKNOWN"))
+  ngx.ctx.CLIENT_VERIFY_OVERRIDE = "FAILED:" .. (err and err or "UNKNOWN")
 
   return nil, "TLS certificate failed verification"
 end
