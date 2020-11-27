@@ -37,24 +37,43 @@ local function make_records_required(field)
 end
 
 
-function Entity.new_subschema(schema, key, definition)
-  make_records_required(definition)
-  definition.required = nil
-  return Schema.new_subschema(schema, key, definition)
+-- EE [[
+local find = string.find
+local sub  = string.sub
+
+--
+-- Set a field from a possibly-nested table using a string key
+-- such as "x.y.z", such that `set_field(t, "x.y.z", v)` is the
+-- same as `t.x.y.z = v`.
+local function set_field(tbl, name, value)
+  local dot = find(name, ".", 1, true)
+  if not dot then
+    tbl[name] = value
+    return
+  end
+  local hd, tl = sub(name, 1, dot - 1), sub(name, dot + 1)
+  local subtbl = tbl[hd]
+  if subtbl == nil then
+    subtbl = {}
+    tbl[hd] = subtbl
+  end
+  set_field(subtbl, tl, value)
 end
 
-
--- EE [[
 local function add_encryption_transformations(self, name, field)
   self.transformations = self.transformations or {}
   if field.type == "string" then
     table.insert(self.transformations, {
       input = { name },
       on_write = function(value)
-        return { [name] = keyring.encrypt(value) }
+        local tbl = {}
+        set_field(tbl, name, keyring.encrypt(value))
+        return tbl
       end,
       on_read = function(value)
-        return { [name] = keyring.decrypt(value) }
+        local tbl = {}
+        set_field(tbl, name, keyring.decrypt(value))
+        return tbl
       end,
     })
   elseif field.type == "array" then
@@ -65,19 +84,48 @@ local function add_encryption_transformations(self, name, field)
         for i, x in ipairs(value) do
           xs[i] = keyring.encrypt(x)
         end
-        return { [name] = xs }
+        local tbl = {}
+        set_field(tbl, name, xs)
+        return tbl
       end,
       on_read = function(value)
         local xs = {}
         for i, x in ipairs(value) do
           xs[i] = keyring.decrypt(x)
         end
-        return { [name] = xs }
+        local tbl = {}
+        set_field(tbl, name, xs)
+        return tbl
       end,
     })
   end
 end
 -- EE ]]
+
+
+local function find_encrypted_fields(schema, definition, prefix)
+  for name, field in Schema.each_field(definition) do
+    if field.encrypted then
+      add_encryption_transformations(schema, prefix .. name, field)
+    else
+      if field.type == "record" then
+        find_encrypted_fields(schema, field, prefix .. name .. ".")
+      end
+    end
+  end
+end
+
+
+function Entity.new_subschema(schema, key, definition)
+  make_records_required(definition)
+
+  -- EE [[
+  find_encrypted_fields(schema, definition, "")
+  -- EE [[
+
+  definition.required = nil
+  return Schema.new_subschema(schema, key, definition)
+end
 
 
 function Entity.new(definition)
