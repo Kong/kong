@@ -4,6 +4,7 @@ https_server.__index = https_server
 
 local fmt = string.format
 local nginx_tpl_file = require 'spec.fixtures.nginx_conf_template'
+local ngx = require 'ngx'
 local pl_dir = require 'pl.dir'
 local pl_file = require 'pl.file'
 local pl_template = require 'pl.template'
@@ -54,7 +55,7 @@ local function create_conf(params)
     return nil, err
   end
 
-  local compiled_tpl = pl_text.Template(tpl:render(params))
+  local compiled_tpl = pl_text.Template(tpl:render(params, { ipairs = ipairs }))
   local conf_filename = params.base_path .. "/nginx.conf"
   local conf, err = io.open (conf_filename, "w")
   if err then
@@ -80,21 +81,44 @@ local function count_results(logs_dir)
   local error_log_filename = logs_dir .. "/error.log"
 
   for line in io.lines(error_log_filename) do
-    local _, _, location, status = string.find(line, '%[COUNT%] (%a+) (%d%d%d)%s*')
-    if location == 'slash' then
-      if status == '200' then
-        results.ok = results.ok + 1
+    local m = ngx.re.match(line, [[^.*\[COUNT\] (.+) (\d\d\d)\,.*\, host: \"(.+)\"$]])
+    if m then
+      local location = m[1]
+      local status = m[2]
+      local host = m[3]
+      if host then
+        host = string.match(m[3], "[^:]+")
       else
-        results.fail = results.fail + 1
+        host = 'nonamehost'
       end
-      results.total = results.ok + results.fail
-    elseif location == 'status' then
-      if status == '200' then
-        results.status_ok = results.status_ok + 1
-      else
-        results.status_fail = results.status_fail + 1
+      if results[host] == nil then
+        results[host] = {
+          ['ok'] = 0,
+          ['fail'] = 0,
+          ['status_ok'] = 0,
+          ['status_fail'] = 0,
+        }
       end
-      results.status_total = results.status_ok + results.status_fail
+
+      if location == 'slash' then
+        if status == '200' then
+          results.ok = results.ok + 1
+          results[host].ok = results[host].ok + 1
+        else
+          results.fail = results.fail + 1
+          results[host].fail = results[host].fail + 1
+        end
+        results.total = results.ok + results.fail
+      elseif location == 'status' then
+        if status == '200' then
+          results.status_ok = results.status_ok + 1
+          results[host].status_ok = results[host].status_ok + 1
+        else
+          results.status_fail = results.status_fail + 1
+          results[host].status_fail = results[host].status_fail + 1
+        end
+        results.status_total = results.status_ok + results.status_fail
+      end
     end
   end
 
@@ -119,6 +143,7 @@ function https_server.start(self)
     check_hostname = self.check_hostname,
     logs_dir = self.logs_dir,
     host = self.host,
+    hosts = self.hosts,
     http_port = self.http_port,
     protocol = self.protocol,
     worker_num = self.worker_num,
@@ -139,31 +164,35 @@ end
 function https_server.shutdown(self)
   local pid_filename = self.base_path .. "/logs/nginx.pid"
   local pid_file, err = io.open (pid_filename, "r")
-  if err then
-    error(fmt("could not open pid file: %s", tostring(err)), 2)
-  end
-
-  local pid, err = pid_file:read()
-  if err then
-    error(fmt("could not read pid file: %s", tostring(err)), 2)
-  end
-
-  local kill_nginx_cmd = fmt("kill -s TERM %s", tostring(pid))
-  local status = os.execute(kill_nginx_cmd)
-  if not status then
-    error(fmt("could not kill nginx test server. %s was not removed", self.base_path), 2)
-  end
-  local pidfile_removed
-  repeat
-    pidfile_removed = pl_file.access_time('/tmp/fbdbffd') == nil
-    if not pidfile_removed then
-      os.execute("sleep 0.01")
+  if pid_file then
+    local pid, err = pid_file:read()
+    if err then
+      error(fmt("could not read pid file: %s", tostring(err)), 2)
     end
-  until(pidfile_removed)
+
+    local kill_nginx_cmd = fmt("kill -s TERM %s", tostring(pid))
+    local status = os.execute(kill_nginx_cmd)
+    if not status then
+      error(fmt("could not kill nginx test server. %s was not removed", self.base_path), 2)
+    end
+
+    local pidfile_removed
+    local watchdog = 0
+    repeat
+      pidfile_removed = pl_file.access_time(pid_filename) == nil
+      if not pidfile_removed then
+        ngx.sleep(0.01)
+        watchdog = watchdog + 1
+        if(watchdog > 100) then
+          error("could not stop nginx", 2)
+        end
+      end
+    until(pidfile_removed)
+  end
 
   local count, err = count_results(self.base_path .. "/" .. self.logs_dir)
   if err then
-    -- not a fatal error (I wish)
+    -- not a fatal error
     print(fmt("could not count results: %s", tostring(err)))
   end
 
@@ -178,9 +207,23 @@ end
 
 function https_server.new(port, hostname, protocol, check_hostname, workers)
   local self = setmetatable({}, https_server)
+  local host
+  local hosts
+
+  if type(hostname) == 'table' then
+    hosts = hostname
+    host = ""
+    for _, h in ipairs(hostname) do
+      host = fmt("%s %s", host, h)
+    end
+  else
+    hosts = {hostname}
+    host = hostname
+  end
 
   self.check_hostname = check_hostname or false
-  self.host = hostname or 'localhost'
+  self.host = host or 'localhost'
+  self.hosts = hosts
   self.http_port = port
   self.logs_dir = 'logs'
   self.protocol = protocol or 'http'

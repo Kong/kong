@@ -13,8 +13,11 @@ http {
 
   init_worker_by_lua_block {
     local server_values = ngx.shared.server_values
-    server_values:set("healthy", true)
-    server_values:set("timeout", false)
+# for _, prefix in ipairs(hosts) do
+    server_values:set("$(prefix)_healthy", true)
+    server_values:set("$(prefix)_timeout", false)
+    ngx.log(ngx.INFO, "Creating entries for $(prefix) in shm")
+# end
   }
 
   default_type application/json;
@@ -39,8 +42,11 @@ http {
 
     location = /healthy {
       access_by_lua_block {
-        ngx.shared.server_values:set("healthy", true)
-        ngx.shared.server_values:set("timeout", false)
+        local host = ngx.req.get_headers()["host"] or "localhost"
+        host = string.match(host, "[^:]+")
+        ngx.shared.server_values:set(host .. "_healthy", true)
+        ngx.shared.server_values:set(host .. "_timeout", false)
+        ngx.log(ngx.INFO, "Host ", host, " is now healthy")
       }
 
       content_by_lua_block {
@@ -51,7 +57,10 @@ http {
 
     location = /unhealthy {
       access_by_lua_block {
-        ngx.shared.server_values:set("healthy", false)
+        local host = ngx.req.get_headers()["host"] or "localhost"
+        host = string.match(host, "[^:]+")
+        ngx.shared.server_values:set(host .. "_healthy", false)
+        ngx.log(ngx.INFO, "Host ", host, " is now unhealthy")
       }
 
       content_by_lua_block {
@@ -62,7 +71,10 @@ http {
 
     location = /timeout {
       access_by_lua_block {
-        ngx.shared.server_values:set("timeout", true)
+        local host = ngx.req.get_headers()["host"] or "localhost"
+        host = string.match(host, "[^:]+")
+        ngx.shared.server_values:set(host .. "_timeout", true)
+        ngx.log(ngx.INFO, "Host ", host, " is timeouting now")
       }
 
       content_by_lua_block {
@@ -73,14 +85,21 @@ http {
 
     location = /status {
       access_by_lua_block {
+        local host = ngx.req.get_headers()["host"] or "localhost"
+        host = string.match(host, "[^:]+")
         local server_values = ngx.shared.server_values
-        if server_values:get("timeout") == true then
-          ngx.sleep(2)
-        end
-        local status = server_values:get("healthy") and
+
+        local status = server_values:get(host .. "_healthy") and
                         ngx.HTTP_OK or ngx.HTTP_INTERNAL_SERVER_ERROR
 
-        ngx.log(ngx.INFO, "[COUNT] status ", status)
+        if server_values:get(host .. "_timeout") == true then
+          ngx.log(ngx.INFO, "Host ", host, " timeouting...")
+          ngx.log(ngx.INFO, "[COUNT] status 599")
+          ngx.sleep(0.5)
+        else
+          ngx.log(ngx.INFO, "[COUNT] status ", status)
+        end
+
         ngx.exit(status)
       }
     }
@@ -89,19 +108,20 @@ http {
       access_by_lua_block {
           local cjson = require("cjson")
           local server_values = ngx.shared.server_values
+          local host = ngx.req.get_headers()["host"] or "localhost"
+          host = string.match(host, "[^:]+")
           local status
 
-          if server_values:get("healthy") == true then
-            status = ngx.HTTP_OK
+          local status = server_values:get(host .. "_healthy") and
+                        ngx.HTTP_OK or ngx.HTTP_INTERNAL_SERVER_ERROR
+
+          if server_values:get(host .. "_timeout") == true then
+            -- not this status actually, but it is used to count failures
+            ngx.log(ngx.INFO, "[COUNT] slash 599")
+            ngx.sleep(0.5)
           else
-            status = ngx.HTTP_INTERNAL_SERVER_ERROR
+            ngx.log(ngx.INFO, "[COUNT] slash ", status)
           end
-
-          if server_values:get("timeout") == true then
-            ngx.sleep(2)
-          end
-
-          ngx.log(ngx.INFO, "[COUNT] slash ", status)
 
           ngx.exit(status)
       }
