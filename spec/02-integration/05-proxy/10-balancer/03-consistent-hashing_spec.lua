@@ -1,5 +1,6 @@
 local bu = require "spec.fixtures.balancer_utils"
 local helpers = require "spec.helpers"
+local https_server = require "spec.fixtures.https_server"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -43,8 +44,10 @@ for _, strategy in helpers.each_strategy() do
           bu.end_testcase_setup(strategy, bp)
 
           -- setup target servers
-          local server1 = bu.http_server(localhost, port1, { requests })
-          local server2 = bu.http_server(localhost, port2, { requests })
+          local server1 = https_server.new(port1, localhost)
+          local server2 = https_server.new(port2, localhost)
+          server1:start()
+          server2:start()
 
           -- Go hit them with our test requests
           local oks = bu.client_requests(requests, {
@@ -55,13 +58,13 @@ for _, strategy in helpers.each_strategy() do
 
           -- collect server results; hitcount
           -- one should get all the hits, the other 0
-          local _, count1 = server1:done()
-          local _, count2 = server2:done()
+          local count1 = server1:shutdown()
+          local count2 = server2:shutdown()
 
           -- verify
-          assert(count1 == 0 or count1 == requests, "counts should either get 0 or ALL hits")
-          assert(count2 == 0 or count2 == requests, "counts should either get 0 or ALL hits")
-          assert(count1 + count2 == requests)
+          assert(count1.total == 0 or count1.total == requests, "counts should either get 0 or ALL hits")
+          assert(count2.total == 0 or count2.total == requests, "counts should either get 0 or ALL hits")
+          assert(count1.total + count2.total == requests)
         end)
 
         describe("hashing on cookie", function()
@@ -76,7 +79,8 @@ for _, strategy in helpers.each_strategy() do
             bu.end_testcase_setup(strategy, bp)
 
             -- setup target server
-            local server = bu.http_server(localhost, port, { 1 })
+            local server = https_server.new(port, localhost)
+            server:start()
 
             -- send request
             local client = helpers.proxy_client()
@@ -91,7 +95,7 @@ for _, strategy in helpers.each_strategy() do
             local set_cookie = res.headers["Set-Cookie"]
 
             client:close()
-            server:done()
+            server:shutdown()
 
             -- verify
             assert.is_nil(set_cookie)
@@ -111,8 +115,10 @@ for _, strategy in helpers.each_strategy() do
             bu.end_testcase_setup(strategy, bp)
 
             -- setup target servers
-            local server1 = bu.http_server(localhost, port1, { requests })
-            local server2 = bu.http_server(localhost, port2, { requests })
+            local server1 = https_server.new(port1, localhost)
+            local server2 = https_server.new(port2, localhost)
+            server1:start()
+            server2:start()
 
             -- initial request without the `hash_on` cookie
             local client = helpers.proxy_client()
@@ -137,15 +143,15 @@ for _, strategy in helpers.each_strategy() do
 
             -- collect server results; hitcount
             -- one should get all the hits, the other 0
-            local _, count1 = server1:done()
-            local _, count2 = server2:done()
+            local count1 = server1:shutdown()
+            local count2 = server2:shutdown()
 
             -- verify
-            assert(count1 == 0 or count1 == requests,
-                   "counts should either get 0 or ALL hits, but got " .. count1 .. " of " .. requests)
-            assert(count2 == 0 or count2 == requests,
-                   "counts should either get 0 or ALL hits, but got " .. count2 .. " of " .. requests)
-            assert(count1 + count2 == requests)
+            assert(count1.total == 0 or count1.total == requests,
+                   "counts should either get 0 or ALL hits, but got " .. count1.total .. " of " .. requests)
+            assert(count2.total == 0 or count2.total == requests,
+                   "counts should either get 0 or ALL hits, but got " .. count2.total .. " of " .. requests)
+            assert(count1.total + count2.total == requests)
           end)
 
         end)
