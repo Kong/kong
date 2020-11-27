@@ -78,7 +78,7 @@ local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
 local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
-local cache_warmup = require "kong.cache_warmup"
+local cache_warmup = require "kong.cache.warmup"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
@@ -445,7 +445,6 @@ function Kong.init()
   end
 
   assert(db:connect())
-  assert(db.plugins:check_db_against_config(config.loaded_plugins))
 
   -- LEGACY
   singletons.dns = dns(config)
@@ -472,7 +471,6 @@ function Kong.init()
   end
 
   if kong.configuration.database == "off" then
-
     local err
     declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
     if not declarative_entities then

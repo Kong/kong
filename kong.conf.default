@@ -1127,7 +1127,7 @@
                                  # expires, a new attempt to refresh the stale
                                  # entities will be made.
 
-#db_cache_warmup_entities = services, plugins
+#db_cache_warmup_entities = services
                                  # Entities to be pre-loaded from the datastore
                                  # into the in-memory cache at Kong start-up.
                                  # This speeds up the first access of endpoints

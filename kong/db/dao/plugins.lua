@@ -116,30 +116,6 @@ function Plugins:upsert(primary_key, entity, options)
   return self.super.upsert(self, primary_key, entity, options)
 end
 
---- Given a set of plugin names, check if all plugins stored
--- in the database fall into this set.
--- @param plugin_set a set of plugin names.
--- @return true or nil and an error message.
-function Plugins:check_db_against_config(plugin_set)
-  local in_db_plugins = {}
-  ngx_log(ngx_DEBUG, "Discovering used plugins")
-
-  for row, err in self:each() do
-    if err then
-      return nil, tostring(err)
-    end
-    in_db_plugins[row.name] = true
-  end
-
-  -- check all plugins in DB are enabled/installed
-  for plugin in pairs(in_db_plugins) do
-    if not plugin_set[plugin] then
-      return nil, plugin .. " plugin is in use but not enabled"
-    end
-  end
-
-  return true
-end
 
 local function implements(plugin, method)
   if type(plugin) ~= "table" then
@@ -149,6 +125,7 @@ local function implements(plugin, method)
   local m = plugin[method]
   return type(m) == "function" and m ~= BasePlugin[method]
 end
+
 
 local function load_plugin_handler(plugin)
   -- NOTE: no version _G.kong (nor PDK) in plugins main chunk
