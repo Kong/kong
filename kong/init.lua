@@ -78,6 +78,7 @@ local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
 local tracing = require "kong.tracing"
 local keyring = require "kong.keyring.startup"
+local stream_api = require "kong.tools.stream_api"
 local clustering = require "kong.clustering"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
@@ -522,7 +523,7 @@ function Kong.init()
   -- ]]
 
 
-  if subsystem == "stream" or config.proxy_ssl_enabled then
+  if config.proxy_ssl_enabled or config.stream_ssl_enabled then
     certificate.init()
   end
 
@@ -542,6 +543,10 @@ function Kong.init()
     loaded_plugins = db.plugins:get_handlers(),
     kong_global = kong_global,
   }
+
+  if subsystem == "stream" then
+    stream_api.load_handlers()
+  end
 
   if kong.configuration.database == "off" then
 
@@ -1525,6 +1530,10 @@ function Kong.serve_cluster_telemetry_listener(options)
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
   return clustering.handle_cp_telemetry_websocket()
+end
+
+function Kong.stream_api()
+  stream_api.handle()
 end
 
 

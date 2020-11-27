@@ -21,12 +21,12 @@ describe("Configuration loader - enterprise", function()
     assert.equal("logs/portal_gui_error.log", conf.portal_gui_error_log)
     assert.equal("logs/portal_api_access.log", conf.portal_api_access_log)
     assert.equal("logs/portal_api_error.log", conf.portal_api_error_log)
-    assert.is_nil(conf.admin_gui_ssl_cert)
-    assert.is_nil(conf.admin_gui_ssl_cert_key)
-    assert.is_nil(conf.portal_gui_ssl_cert)
-    assert.is_nil(conf.portal_gui_ssl_cert_key)
-    assert.is_nil(conf.portal_api_ssl_cert)
-    assert.is_nil(conf.portal_api_ssl_cert_key)
+    assert.equal(0, #conf.admin_gui_ssl_cert)
+    assert.equal(0, #conf.admin_gui_ssl_cert_key)
+    assert.equal(0, #conf.portal_gui_ssl_cert)
+    assert.equal(0, #conf.portal_gui_ssl_cert_key)
+    assert.equal(0, #conf.portal_api_ssl_cert)
+    assert.equal(0, #conf.portal_api_ssl_cert_key)
     assert.is_nil(getmetatable(conf))
   end)
 
@@ -486,7 +486,8 @@ describe("ee conf loader", function()
     it("returns errors if ssl_cert is set and doesn't exist", function()
       local conf = {
         admin_gui_listen = { "0.0.0.0:8002", "0.0.0.0:8445 ssl" },
-        admin_gui_ssl_cert = "/path/to/cert",
+        admin_gui_ssl_cert = { "/path/to/cert" },
+        admin_gui_ssl_cert_key = { },
       }
 
       ee_conf_loader.validate_admin_gui_ssl(conf, msgs)
@@ -501,7 +502,8 @@ describe("ee conf loader", function()
     it("returns errors if ssl_cert_key is set and file not found", function()
       local conf = {
         admin_gui_listen = { "0.0.0.0:8002", "0.0.0.0:8445 ssl" },
-        admin_gui_ssl_cert_key = "/path/to/cert",
+        admin_gui_ssl_cert_key = { "/path/to/cert" },
+        admin_gui_ssl_cert = { },
       }
 
       ee_conf_loader.validate_admin_gui_ssl(conf, msgs)

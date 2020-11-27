@@ -97,8 +97,10 @@ server {
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if proxy_ssl_enabled then
-    ssl_certificate     ${{SSL_CERT}};
-    ssl_certificate_key ${{SSL_CERT_KEY}};
+> for i = 1, #ssl_cert do
+    ssl_certificate     $(ssl_cert[i]);
+    ssl_certificate_key $(ssl_cert_key[i]);
+> end
     ssl_session_cache   shared:SSL:10m;
     ssl_certificate_by_lua_block {
         Kong.ssl_certificate()
@@ -353,8 +355,10 @@ server {
 > end
 
 > if admin_gui_ssl_enabled then
-    ssl_certificate ${{ADMIN_GUI_SSL_CERT}};
-    ssl_certificate_key ${{ADMIN_GUI_SSL_CERT_KEY}};
+> for i = 1, #admin_gui_ssl_cert do
+    ssl_certificate     $(admin_gui_ssl_cert[i]);
+    ssl_certificate_key $(admin_gui_ssl_cert_key[i]);
+> end
     ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
 > end
 
@@ -432,8 +436,10 @@ server {
     error_log ${{PORTAL_GUI_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if portal_gui_ssl_enabled then
-    ssl_certificate ${{PORTAL_GUI_SSL_CERT}};
-    ssl_certificate_key ${{PORTAL_GUI_SSL_CERT_KEY}};
+> for i = 1, #portal_gui_ssl_cert do
+    ssl_certificate     $(portal_gui_ssl_cert[i]);
+    ssl_certificate_key $(portal_gui_ssl_cert_key[i]);
+> end
     ssl_protocols TLSv1.1 TLSv1.2;
 > end
 
@@ -542,8 +548,10 @@ server {
     client_body_buffer_size 10m;
 
 > if portal_api_ssl_enabled then
-    ssl_certificate ${{PORTAL_API_SSL_CERT}};
-    ssl_certificate_key ${{PORTAL_API_SSL_CERT_KEY}};
+> for i = 1, #portal_api_ssl_cert do
+    ssl_certificate     $(portal_api_ssl_cert[i]);
+    ssl_certificate_key $(portal_api_ssl_cert_key[i]);
+> end
     ssl_protocols TLSv1.1 TLSv1.2;
 
     ssl_session_cache shared:SSL:10m;
@@ -578,9 +586,6 @@ server {
     access_log ${{ADMIN_ACCESS_LOG}};
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
-    client_max_body_size    10m;
-    client_body_buffer_size 10m;
-
     real_ip_header     ${{REAL_IP_HEADER}};
     real_ip_recursive  ${{REAL_IP_RECURSIVE}};
 > for i = 1, #trusted_ips do
@@ -588,8 +593,10 @@ server {
 > end
 
 > if admin_ssl_enabled then
-    ssl_certificate     ${{ADMIN_SSL_CERT}};
-    ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
+> for i = 1, #admin_ssl_cert do
+    ssl_certificate     $(admin_ssl_cert[i]);
+    ssl_certificate_key $(admin_ssl_cert_key[i]);
+> end
     ssl_session_cache   shared:AdminSSL:10m;
 > end
 
@@ -639,8 +646,10 @@ server {
     error_log  ${{STATUS_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if status_ssl_enabled then
-    ssl_certificate     ${{STATUS_SSL_CERT}};
-    ssl_certificate_key ${{STATUS_SSL_CERT_KEY}};
+> for i = 1, #status_ssl_cert do
+    ssl_certificate     $(status_ssl_cert[i]);
+    ssl_certificate_key $(status_ssl_cert_key[i]);
+> end
     ssl_session_cache   shared:StatusSSL:1m;
 > end
 

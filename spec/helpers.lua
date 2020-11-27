@@ -66,6 +66,10 @@ ffi.cdef [[
   int unsetenv(const char *name);
 ]]
 
+
+local kong_exec   -- forward declaration
+
+
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
 -- Add to package path so dao helpers can insert custom plugins
@@ -155,19 +159,20 @@ end
 
 --- Write a yaml file.
 -- @function make_yaml_file
--- @param content (string) the yaml string to write to the file
+-- @param content (string) the yaml string to write to the file, if omitted the
+-- current database contents will be written using `kong config db_export`.
 -- @param filename (optional) if not provided, a temp name will be created
 -- @return filename of the file written
 local function make_yaml_file(content, filename)
-  if not filename then
-    filename = os.tmpname()
-    os.rename(filename, filename .. ".yml")
-    filename = filename .. ".yml"
+  local filename = filename or pl_path.tmpname() .. ".yml"
+  if content then
+    local fd = assert(io.open(filename, "w"))
+    assert(fd:write(unindent(content)))
+    assert(fd:write("\n")) -- ensure last line ends in newline
+    assert(fd:close())
+  else
+    assert(kong_exec("config db_export "..filename))
   end
-  local fd = assert(io.open(filename, "w"))
-  assert(fd:write(unindent(content)))
-  assert(fd:write("\n")) -- ensure last line ends in newline
-  assert(fd:close())
   return filename
 end
 
@@ -216,7 +221,7 @@ end
 -- @param strategies (optional string array) explicit list of strategies to use,
 -- defaults to `{ "postgres", "cassandra", "off" }`.
 -- @see each_strategy
--- @see write_declarative_config
+-- @see make_yaml_file
 -- @usage
 -- -- example of using DB-less testing
 --
@@ -245,10 +250,10 @@ end
 --         nginx_conf = "spec/fixtures/custom_nginx.template",
 --         plugins = "bundled," .. PLUGIN_NAME,
 --
---         -- The call to "write_declarative_config" will write the contents of
+--         -- The call to "make_yaml_file" will write the contents of
 --         -- the database to a temporary file, which filename is returned.
 --         -- But only when "strategy=off".
---         declarative_config = strategy == "off" and helpers.write_declarative_config() or nil,
+--         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
 --
 --         -- the below lines can be omitted, but are just to prove that the test
 --         -- really runs DB-less despite that Postgres was used as intermediary
@@ -2238,7 +2243,7 @@ end
 -- @return if `pl_returns` is true, returns four return values
 -- (ok, code, stdout, stderr); if `pl_returns` is false,
 -- returns either (false, stderr) or (true, stderr, stdout).
-local function kong_exec(cmd, env, pl_returns, env_vars)
+function kong_exec(cmd, env, pl_returns, env_vars)
   cmd = cmd or ""
   env = env or {}
 
@@ -2606,20 +2611,6 @@ local function restart_kong(env, tables, fixtures)
 end
 
 
---- Creates a temporary declarative config file from the current db contents.
--- This can be used in combo with the `all_strategies` iterator to ensure the
--- test config is automatically generated from the DB using the regular helpers.
--- @function write_declarative_file
--- @return filename of the written config file (format will be yaml)
--- @see all_strategies
-local function write_declarative_config()
-  local filename = pl_path.tmpname() .. ".yml"
-  os.remove(filename)
-  assert(kong_exec("config db_export "..filename))
-  return filename
-end
-
-
 
 ----------------
 -- Variables/constants
@@ -2724,7 +2715,6 @@ end
   each_strategy = each_strategy,
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
-  write_declarative_config = write_declarative_config,
 
   -- miscellaneous
   intercept = intercept,
