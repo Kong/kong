@@ -1,3 +1,4 @@
+local enums = require "kong.enterprise_edition.dao.enums"
 local consumers = require "kong.db.schema.entities.consumers"
 local Entity       = require "kong.db.schema.entity"
 
@@ -24,6 +25,7 @@ describe("consumers schema", function()
       for i = 1, #valid_names do
         local ok, err = Consumers:validate({
           username = valid_names[i],
+          type = enums.CONSUMERS.TYPE.PROXY,
         })
         assert.is_nil(err)
         assert.is_true(ok)
