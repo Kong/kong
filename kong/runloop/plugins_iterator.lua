@@ -1,6 +1,7 @@
 local BasePlugin   = require "kong.plugins.base_plugin"
 local workspaces   = require "kong.workspaces"
 local constants    = require "kong.constants"
+local warmup       = require "kong.cache.warmup"
 local utils        = require "kong.tools.utils"
 
 
@@ -41,6 +42,7 @@ local MUST_LOAD_CONFIGURATION_IN_PHASES = {
 local subsystem = ngx.config.subsystem
 
 
+local enabled_plugins
 local loaded_plugins
 
 
@@ -376,18 +378,26 @@ function PluginsIterator.new(version)
   if not version then
     error("version must be given", 2)
   end
+
   loaded_plugins = loaded_plugins or get_loaded_plugins()
+  enabled_plugins = enabled_plugins or kong.configuration.loaded_plugins
 
   local ws_id = workspaces.get_workspace_id() or kong.default_workspace
   local ws = {
     [ws_id] = new_ws_data()
   }
 
+  local cache_full
   local counter = 0
   local page_size = kong.db.plugins.pagination.page_size
   for plugin, err in kong.db.plugins:each(nil, GLOBAL_QUERY_OPTS) do
     if err then
       return nil, err
+    end
+
+    local name = plugin.name
+    if not enabled_plugins[name] then
+      return nil, name .. " plugin is in use but not enabled"
     end
 
     local data = ws[plugin.ws_id]
@@ -410,15 +420,11 @@ function PluginsIterator.new(version)
     end
 
     if should_process_plugin(plugin) then
-      local name = plugin.name
-
       map[name] = true
 
       local combo_key = (plugin.route    and 1 or 0)
                       + (plugin.service  and 2 or 0)
                       + (plugin.consumer and 4 or 0)
-
-
 
       if kong.db.strategy == "off" then
         if plugin.enabled then
@@ -486,6 +492,22 @@ function PluginsIterator.new(version)
         end
 
       else
+        if version == "init" and not cache_full then
+          local ok, err = warmup.single_entity(kong.db.plugins, plugin)
+          if not ok then
+            if err ~= "no memory" then
+              return nil, err
+            end
+
+            kong.log.warn("cache warmup of plugins has been stopped because ",
+                          "cache memory is exhausted, please consider increasing ",
+                          "the value of 'mem_cache_size' (currently at ",
+                           kong.configuration.mem_cache_size, ")")
+
+            cache_full = true
+          end
+        end
+
         combos[name]          = combos[name]          or {}
         combos[name].both     = combos[name].both     or {}
         combos[name].routes   = combos[name].routes   or {}
