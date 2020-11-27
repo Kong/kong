@@ -189,13 +189,6 @@ function https_server.shutdown(self)
       end
     until(pidfile_removed)
   end
-  local pidfile_removed
-  repeat
-    pidfile_removed = pl_file.access_time('/tmp/fbdbffd') == nil
-    if not pidfile_removed then
-      os.execute("sleep 0.01")
-    end
-  until(pidfile_removed)
 
   local count, err = count_results(self.base_path .. "/" .. self.logs_dir)
   if err then
