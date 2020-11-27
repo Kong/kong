@@ -13,6 +13,7 @@ RESTY_OPENSSL_VERSION=1.1.1h
 RESTY_PCRE_VERSION=8.44
 LIBYAML_VERSION=0.2.5
 KONG_GO_PLUGINSERVER_VERSION=v0.5.1
+KONG_BUILD_TOOLS_VERSION=4.11.2
 
 # here go enterprise build specific ones which might or might not have the
 # same names as core for building the final package.

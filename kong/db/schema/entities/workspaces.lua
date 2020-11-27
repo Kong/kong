@@ -99,7 +99,7 @@ return {
 
   fields = {
     { id          = typedefs.uuid },
-    { name        = typedefs.name { required = true } },
+    { name        = typedefs.utf8_name { required = true } },
     { comment     = { type = "string" } },
     { created_at  = typedefs.auto_timestamp_s },
     { meta        = config_meta },

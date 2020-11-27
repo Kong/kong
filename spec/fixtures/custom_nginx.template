@@ -465,7 +465,7 @@ http {
         listen $(entry.listener) ssl;
 > end
 
-        access_log off;
+        access_log ${{ADMIN_ACCESS_LOG}};
 
         ssl_verify_client   optional_no_ca;
         ssl_certificate     ${{CLUSTER_CERT}};
@@ -502,6 +502,7 @@ http {
     }
 > end -- role == "control_plane"
 
+> if role ~= "data_plane" then
     server {
         server_name mock_upstream;
 
@@ -738,6 +739,7 @@ http {
             return 200 'SNI=$ssl_server_name\n';
         }
     }
+> end -- role ~= "data_plane"
 
     include '*.http_mock';
 }

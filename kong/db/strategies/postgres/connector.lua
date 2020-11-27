@@ -48,6 +48,7 @@ local PROTECTED_TABLES = {
   schema_migrations = true,
   schema_meta       = true,
   locks             = true,
+  parameters        = true,
 }
 local OPERATIONS = {
   read  = true,

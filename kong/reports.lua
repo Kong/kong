@@ -126,7 +126,9 @@ local function send_report(signal_type, t, host, port)
   local mutable_idx = _buffer_immutable_idx
 
   for k, v in pairs(t) do
-    if k == "unique_id" or (k ~= "created_at" and sub(k, -2) ~= "id") then
+    if k == "unique_id" or k == "cluster_id" or
+       (k ~= "created_at" and sub(k, -2) ~= "id")
+    then
       v = serialize_report_value(v)
       if v ~= nil then
         mutable_idx = mutable_idx + 1
@@ -274,6 +276,10 @@ end
 
 local function send_ping(host, port)
   _ping_infos.unique_id = _unique_str
+
+  if not _ping_infos.cluster_id then
+    _ping_infos.cluster_id = kong.cluster.get_id()
+  end
 
   if subsystem == "stream" then
     _ping_infos.streams     = get_counter(STREAM_COUNT_KEY)

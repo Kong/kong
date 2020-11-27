@@ -718,7 +718,9 @@ function CassandraConnector:truncate()
 
     if table_name ~= "schema_migrations" and
        table_name ~= "schema_meta" and
-       table_name ~= "locks" then
+       table_name ~= "parameters" and
+       table_name ~= "locks"
+    then
       local cql = string.format("TRUNCATE TABLE %s.%s",
                                 self.keyspace, table_name)
 
