@@ -1315,8 +1315,6 @@ for _, strategy in helpers.each_strategy() do
                   -- setup target servers:
                   -- server2 will only respond for part of the test,
                   -- then server1 will take over.
-                  local server1_oks = bu.SLOTS * 2
-                  local server2_oks = bu.SLOTS
                   local server1 = https_server.new(port1, localhost, protocol, false)
                   local server2 = https_server.new(port2, localhost, protocol, false)
                   server1:start()
@@ -1443,8 +1441,6 @@ for _, strategy in helpers.each_strategy() do
                   -- setup target servers:
                   -- server2 will only respond for part of the test,
                   -- then server1 will take over.
-                  local server1_oks = bu.SLOTS * 2
-                  local server2_oks = bu.SLOTS
                   local server1 = https_server.new(port1, localhost, protocol)
                   local server2 = https_server.new(port2, localhost, protocol)
                   server1:start()
@@ -1545,17 +1541,10 @@ for _, strategy in helpers.each_strategy() do
                 for _, nchecks in ipairs({1,3}) do
 
                   local port1 = bu.gen_port()
-                  local hostname = localhost
 
                   -- setup target servers:
                   -- server2 will only respond for part of the test,
                   -- then server1 will take over.
-                  local target1_oks = bu.SLOTS * 2
-                  local target2_oks = bu.SLOTS
-                  local counts = {
-                    ["target1.test"] = { target1_oks },
-                    ["target2.test"] = { target2_oks },
-                  }
                   local server1 = https_server.new(port1, {"target1.test", "target2.test"}, protocol)
                   server1:start()
 
@@ -1885,8 +1874,6 @@ for _, strategy in helpers.each_strategy() do
               -- setup target servers:
               -- server2 will only respond for part of the test,
               -- then server1 will take over.
-              local server1_oks = bu.SLOTS * 2
-              local server2_oks = bu.SLOTS
               local server1 = https_server.new(port1, localhost)
               local server2 = https_server.new(port2, localhost)
               server1:start()

@@ -163,7 +163,7 @@ end
 
 function https_server.shutdown(self)
   local pid_filename = self.base_path .. "/logs/nginx.pid"
-  local pid_file, err = io.open (pid_filename, "r")
+  local pid_file = io.open (pid_filename, "r")
   if pid_file then
     local pid, err = pid_file:read()
     if err then
