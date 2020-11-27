@@ -467,7 +467,7 @@ function _M.before_filter(self)
     local workspace, err = kong.db.workspaces:select_by_name(ws_name)
     if err then
       ngx.log(ngx.ERR, err)
-      return kong.response.exit(500, { message = "And unexpected error occurred" })
+      return kong.response.exit(500, { message = "An unexpected error occurred" })
     end
     if not workspace then
       kong.response.exit(404, {message = fmt("Workspace '%s' not found", ws_name)})
