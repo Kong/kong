@@ -74,7 +74,7 @@ local function get_snis_for_plugin(db, plugin, snis, options)
     local cache_key = db.routes:cache_key(routes_pk.id)
     local route, err = kong.cache:get(cache_key, TTL_FOREVER,
                                       load_routes_from_db, db,
-                                      routes_pk)
+                                      routes_pk, options)
 
     if err then
       return err
