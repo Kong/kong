@@ -16,7 +16,7 @@ local queue
 local CollectorHandler = BasePlugin:extend()
 
 CollectorHandler.PRIORITY = 903
-CollectorHandler.VERSION = "2.0.2"
+CollectorHandler.VERSION = "2.0.3"
 
 -- Sends the provided payload (a string) to the configured plugin host
 -- @return true if everything was sent correctly, falsy if error
