@@ -31,6 +31,14 @@ return {
         -- Do nothing, accept existing state
       END;
       $$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "clustering_data_planes" ADD "version" TEXT;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
     ]], CLUSTER_ID),
   },
   cassandra = {
@@ -47,6 +55,7 @@ return {
 
       ALTER TABLE certificates ADD cert_alt TEXT;
       ALTER TABLE certificates ADD key_alt TEXT;
+      ALTER TABLE clustering_data_planes ADD version text;
     ]], CLUSTER_ID),
   }
 }

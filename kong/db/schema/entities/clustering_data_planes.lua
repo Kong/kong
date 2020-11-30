@@ -14,5 +14,6 @@ return {
     { ip = typedefs.ip { required = true, } },
     { config_hash = { type = "string", len_eq = 32, } },
     { hostname = typedefs.host { required = true, } },
+    { version = typedefs.semantic_version },
   },
 }

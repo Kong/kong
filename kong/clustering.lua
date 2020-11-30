@@ -11,6 +11,7 @@ local utils = require("kong.tools.utils")
 local openssl_x509 = require("resty.openssl.x509")
 local system_constants = require("lua_system_constants")
 local ffi = require("ffi")
+local pl_tablex = require("pl.tablex")
 local string = string
 local assert = assert
 local setmetatable = setmetatable
@@ -33,8 +34,10 @@ local table_insert = table.insert
 local table_remove = table.remove
 local inflate_gzip = utils.inflate_gzip
 local deflate_gzip = utils.deflate_gzip
+local pl_tablex_compare = pl_tablex.compare
 
 
+local KONG_VERSION = kong.version
 local MAX_PAYLOAD = 4 * 1024 * 1024 -- 4MB
 local PING_INTERVAL = 30 -- 30 seconds
 local PING_WAIT = PING_INTERVAL * 1.5
@@ -51,6 +54,7 @@ local ngx_NOTICE = ngx.NOTICE
 local WEAK_KEY_MT = { __mode = "k", }
 local CERT_DIGEST
 local CERT, CERT_KEY
+local PLUGINS_LIST
 local clients = setmetatable({}, WEAK_KEY_MT)
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json.gz"
@@ -137,7 +141,9 @@ local function communicate(premature, conf)
 
   local c = assert(ws_client:new(WS_OPTS))
   local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
-              kong.node.get_id() .. "&node_hostname=" .. kong.node.get_hostname()
+              kong.node.get_id() ..
+              "&node_hostname=" .. kong.node.get_hostname() ..
+              "&node_version=" .. KONG_VERSION
 
   local opts = {
     ssl_verify = true,
@@ -164,6 +170,20 @@ local function communicate(premature, conf)
   end
 
   -- connection established
+  -- first, send out the plugin list to CP so it can make decision on whether
+  -- sync will be allowed later
+  local _
+  _, err = c:send_binary(cjson_encode({ type = "basic_info",
+                                        plugins = PLUGINS_LIST, }))
+  if err then
+    ngx_log(ngx_ERR, "unable to send basic information to control plane: ", uri,
+                     " err: ", err,
+                     " (retrying after ", reconnection_delay, " seconds)")
+
+    c:close()
+    assert(ngx.timer.at(reconnection_delay, communicate, conf))
+    return
+  end
 
   local config_semaphore = semaphore.new(0)
 
@@ -312,6 +332,39 @@ local function validate_shared_cert()
 end
 
 
+local function plugin_entry_comparator(a, b)
+  return a.name == b.name and a.version == b.version
+end
+
+
+local MAJOR_MINOR_PATTERN = "^(%d+%.%d+)%.%d+"
+local function should_send_config_update(node_version, node_plugins)
+  if not node_version or not node_plugins then
+    return false, "your DP did not provide version information to the CP, " ..
+                  "Kong CP after 2.3 requires such information in order to " ..
+                  "ensure generated config is compatible with DPs. " ..
+                  "Sync is suspended for this DP and will resume " ..
+                  "automatically once this DP also upgrades to 2.3 or later"
+  end
+
+  local minor_cp = KONG_VERSION:match(MAJOR_MINOR_PATTERN)
+  local minor_node = node_version:match(MAJOR_MINOR_PATTERN)
+  if minor_cp ~= minor_node then
+    return false, "version mismatches, CP version: " .. minor_cp ..
+                  " DP version: " .. minor_node
+  end
+
+  if not pl_tablex_compare(PLUGINS_LIST, node_plugins,
+                           plugin_entry_comparator)
+  then
+    return false, "CP and DP does not have same set of plugins installed" ..
+                  " or their versions might differ"
+  end
+
+  return true
+end
+
+
 function _M.handle_cp_websocket()
   -- use mutual TLS authentication
   if kong.configuration.cluster_mtls == "shared" then
@@ -325,6 +378,8 @@ function _M.handle_cp_websocket()
 
   local node_hostname = ngx_var.arg_node_hostname
   local node_ip = ngx_var.remote_addr
+  local node_version = ngx_var.arg_node_version
+  local node_plugins
 
   local wb, err = ws_server:new(WS_OPTS)
   if not wb then
@@ -333,6 +388,19 @@ function _M.handle_cp_websocket()
   end
 
   -- connection established
+  -- receive basic_info
+  local data, typ
+  data, typ, err = wb:recv_frame()
+  if err then
+    ngx_log(ngx_ERR, "failed to receive WebSocket basic_info frame: ", err)
+    wb:close()
+    return ngx_exit(444)
+
+  elseif typ == "binary" then
+    data = cjson_decode(data)
+    assert(data.type =="basic_info")
+    node_plugins = assert(data.plugins)
+  end
 
   local queue
   do
@@ -349,7 +417,9 @@ function _M.handle_cp_websocket()
 
   clients[wb] = queue
 
-  do
+  local res
+  res, err = should_send_config_update(node_version, node_plugins)
+  if res then
     local config_table
     -- unconditionally send config update to new clients to
     -- ensure they have latest version running
@@ -365,8 +435,13 @@ function _M.handle_cp_websocket()
     else
       ngx_log(ngx_ERR, "unable to export config from database: ".. err)
     end
-  end
 
+  else
+    ngx_log(ngx_WARN, "unable to send updated configuration to " ..
+                      "DP node with hostname: " .. node_hostname ..
+                      " ip: " .. node_ip ..
+                      " reason: " .. err)
+  end
   -- how CP connection management works:
   -- two threads are spawned, when any of these threads exits,
   -- it means a fatal error has occurred on the connection,
@@ -397,7 +472,8 @@ function _M.handle_cp_websocket()
 
         local waited = ngx_time() - last_seen
         if waited > PING_WAIT then
-          return nil, "did not receive ping frame from data plane within " .. PING_WAIT .. " seconds"
+          return nil, "did not receive ping frame from data plane within " ..
+                      PING_WAIT .. " seconds"
         end
 
       else
@@ -426,6 +502,7 @@ function _M.handle_cp_websocket()
           config_hash = data ~= "" and data or nil,
           hostname = node_hostname,
           ip = node_ip,
+          version = node_version,
         }, { ttl = kong.configuration.cluster_data_plane_purge_delay, })
         if not ok then
           ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
@@ -459,17 +536,27 @@ function _M.handle_cp_websocket()
             ngx_log(ngx_DEBUG, "sent PONG packet to data plane")
           end
 
-        else -- config update
-          local _, err = wb:send_binary(payload)
-          if err then
-            if not is_timeout(err) then
-              return nil, "unable to send updated configuration to node: " .. err
+        else
+          ok, err = should_send_config_update(node_version, node_plugins)
+          if ok then
+            -- config update
+            local _, err = wb:send_binary(payload)
+            if err then
+              if not is_timeout(err) then
+                return nil, "unable to send updated configuration to node: " .. err
+              end
+
+              ngx_log(ngx_NOTICE, "unable to send updated configuration to node: ", err)
+
+            else
+              ngx_log(ngx_DEBUG, "sent config update to node")
             end
 
-            ngx_log(ngx_NOTICE, "unable to send updated configuration to node: ", err)
-
           else
-            ngx_log(ngx_DEBUG, "sent config update to node")
+            ngx_log(ngx_WARN, "unable to send updated configuration to " ..
+                              "DP node with hostname: " .. node_hostname ..
+                              " ip: " .. node_ip ..
+                              " reason: " .. err)
           end
         end
 
@@ -626,6 +713,15 @@ end
 
 function _M.init_worker(conf)
   assert(conf, "conf can not be nil", 2)
+
+  PLUGINS_LIST = assert(kong.db.plugins:get_handlers())
+  table.sort(PLUGINS_LIST, function(a, b)
+    return a.name:lower() < b.name:lower()
+  end)
+
+  PLUGINS_LIST = pl_tablex.map(function(p)
+    return { name = p.name, version = p.handler.VERSION, }
+  end, PLUGINS_LIST)
 
   if conf.role == "data_plane" then
     -- ROLE = "data_plane"
