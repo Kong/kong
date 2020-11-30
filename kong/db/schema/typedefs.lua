@@ -525,6 +525,20 @@ typedefs.headers = Schema.define {
 
 typedefs.no_headers = Schema.define(typedefs.headers { eq = null } )
 
+typedefs.semantic_version = Schema.define {
+  type = "string",
+  match_any = {
+    patterns = { "^%d+[%.%d]*$", "^%d+[%.%d]*%-?.*$", },
+    err = "invalid version number: must be in format of X.Y.Z",
+  },
+  match_none = {
+    {
+      pattern = "%.%.",
+      err = "must not have empty version segments"
+    },
+  },
+}
+
 setmetatable(typedefs, {
   __index = function(_, k)
     error("schema typedef error: definition " .. k .. " does not exist", 2)

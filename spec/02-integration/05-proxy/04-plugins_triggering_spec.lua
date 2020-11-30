@@ -179,6 +179,7 @@ for _, strategy in helpers.each_strategy() do
       bp.plugins:insert {
         name     = "error-handler-log",
         service  = { id = service_error.id },
+        config   = {},
       }
 
       assert(helpers.start_kong({

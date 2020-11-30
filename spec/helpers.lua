@@ -20,6 +20,8 @@ local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
 local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
 local BLACKHOLE_HOST = "10.255.255.255"
+local KONG_VERSION = require("kong.meta")._VERSION
+local PLUGINS_LIST
 
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
@@ -48,6 +50,9 @@ local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 local ffi = require "ffi"
+local ssl = require "ngx.ssl"
+local ws_client = require "resty.websocket.client"
+local table_clone = require "table.clone"
 
 
 ffi.cdef [[
@@ -427,6 +432,17 @@ local function get_db_utils(strategy, tables, plugins)
     local workspaces = require "kong.workspaces"
     workspaces.upsert_default(db)
   end
+
+  -- calculation can only happen here because this function
+  -- initializes the kong.db instance
+  PLUGINS_LIST = assert(kong.db.plugins:get_handlers())
+  table.sort(PLUGINS_LIST, function(a, b)
+    return a.name:lower() < b.name:lower()
+  end)
+
+  PLUGINS_LIST = pl_tablex.map(function(p)
+    return { name = p.name, version = p.handler.VERSION, }
+  end, PLUGINS_LIST)
 
   return bp, db
 end
@@ -2592,6 +2608,62 @@ local function restart_kong(env, tables, fixtures)
 end
 
 
+--- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
+-- @function clustering_client
+-- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
+-- are required.
+-- Other fields that can be overwritten are:
+-- `node_hostname`, `node_id`, `node_version`. If absent,
+-- they are automatically filled.
+-- @return msg if handshake succeeded and initial message received from CP or nil, err
+local function clustering_client(opts)
+  assert(opts.host)
+  assert(opts.port)
+  assert(opts.cert)
+  assert(opts.cert_key)
+
+  local c = assert(ws_client:new())
+  local uri = "wss://" .. opts.host .. ":" .. opts.port ..
+              "/v1/outlet?node_id=" .. (opts.node_id or utils.uuid()) ..
+              "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
+              "&node_version=" .. (opts.node_version or KONG_VERSION)
+
+  local opts = {
+    ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
+    client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
+    client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
+    server_name = "kong_clustering",
+  }
+
+  local res, err = c:connect(uri, opts)
+  if not res then
+    return nil, err
+  end
+  local payload = assert(cjson.encode({ type = "basic_info",
+                                        plugins = opts.node_plugins_list or
+                                                  PLUGINS_LIST,
+                                      }))
+
+  assert(c:send_binary(payload))
+
+  assert(c:send_ping(string.rep("0", 32)))
+
+  local data, typ
+  data, typ = c:recv_frame()
+  c:close()
+
+  if typ == "binary" then
+    local odata = assert(utils.inflate_gzip(data))
+    local msg = assert(cjson.decode(odata))
+    return msg
+
+  elseif typ == "pong" then
+    return "PONG"
+  end
+
+  return nil, "unknown frame from CP: " .. typ
+end
+
 
 ----------------
 -- Variables/constants
@@ -2696,6 +2768,7 @@ end
   each_strategy = each_strategy,
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
+  clustering_client = clustering_client,
 
   -- miscellaneous
   intercept = intercept,
@@ -2768,5 +2841,12 @@ end
     end
 
     return code
+  end,
+
+  -- returns the plugins and version list that is used by Hybrid mode tests
+  get_plugins_list = function()
+    assert(PLUGINS_LIST, "plugin list has not been initialized yet, " ..
+                         "you must call get_db_utils first")
+    return table_clone(PLUGINS_LIST)
   end,
 }
