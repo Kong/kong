@@ -227,6 +227,17 @@ local function new(self)
   end
 
 
+  ---
+  -- Returns the name used by the local machine
+  --
+  -- @function kong.node.get_hostname
+  -- @treturn string The local machine hostname
+  -- @usage
+  -- local hostname = kong.node.get_hostname()
+  function _NODE.get_hostname()
+    return utils.get_hostname()
+  end
+
   return _NODE
 end
 
