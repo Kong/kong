@@ -1,4 +1,3 @@
-local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
@@ -76,7 +75,7 @@ return {
       return kong.response.exit(200, {
         tagline = tagline,
         version = version,
-        hostname = utils.get_hostname(),
+        hostname = knode.get_hostname(),
         node_id = node_id,
         timers = {
           running = ngx.timer.running_count(),
