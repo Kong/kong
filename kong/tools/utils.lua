@@ -91,23 +91,20 @@ _M.unpack = function(t, i, j) return unpack(t, i or 1, j or t.n or #t) end
 --- Retrieves the hostname of the local machine
 -- @return string  The hostname
 function _M.get_hostname()
-  local result
-  local SIZE = 128
+  local SIZE = 253 -- max number of chars for a hostname
 
   local buf = ffi_new("unsigned char[?]", SIZE)
   local res = C.gethostname(buf, SIZE)
 
   if res == 0 then
     local hostname = ffi_str(buf, SIZE)
-    result = gsub(hostname, "%z+$", "")
-  else
-    local f = io.popen("/bin/hostname")
-    local hostname = f:read("*a") or ""
-    f:close()
-    result = gsub(hostname, "\n$", "")
+    return gsub(hostname, "%z+$", "")
   end
 
-  return result
+  local f = io.popen("/bin/hostname")
+  local hostname = f:read("*a") or ""
+  f:close()
+  return gsub(hostname, "\n$", "")
 end
 
 do
