@@ -88,25 +88,6 @@ _M.pack = function(...) return {n = select("#", ...), ...} end
 -- Explicitly honors the `n` field if given in the table, so it is `nil` safe
 _M.unpack = function(t, i, j) return unpack(t, i or 1, j or t.n or #t) end
 
---- Retrieves the hostname of the local machine
--- @return string  The hostname
-function _M.get_hostname()
-  local SIZE = 253 -- max number of chars for a hostname
-
-  local buf = ffi_new("unsigned char[?]", SIZE)
-  local res = C.gethostname(buf, SIZE)
-
-  if res == 0 then
-    local hostname = ffi_str(buf, SIZE)
-    return gsub(hostname, "%z+$", "")
-  end
-
-  local f = io.popen("/bin/hostname")
-  local hostname = f:read("*a") or ""
-  f:close()
-  return gsub(hostname, "\n$", "")
-end
-
 do
   local _system_infos
 
@@ -115,9 +96,7 @@ do
       return _system_infos
     end
 
-    _system_infos = {
-      hostname = _M.get_hostname()
-    }
+    _system_infos = {}
 
     local ok, _, stdout = pl_utils.executeex("getconf _NPROCESSORS_ONLN")
     if ok then
