@@ -389,8 +389,8 @@ function PluginsIterator.new(version)
 
   local cache_full
   local counter = 0
-  local page_size = kong.db.plugins.pagination.page_size
-  for plugin, err in kong.db.plugins:each(nil, GLOBAL_QUERY_OPTS) do
+  local page_size = kong.db.plugins.pagination.max_page_size
+  for plugin, err in kong.db.plugins:each(page_size, GLOBAL_QUERY_OPTS) do
     if err then
       return nil, err
     end
