@@ -668,8 +668,8 @@ do
     end
 
     local counter = 0
-    local page_size = db.routes.pagination.page_size
-    for route, err in db.routes:each(nil, GLOBAL_QUERY_OPTS) do
+    local page_size = db.routes.pagination.max_page_size
+    for route, err in db.routes:each(page_size, GLOBAL_QUERY_OPTS) do
       if err then
         return nil, "could not load routes: " .. err
       end
