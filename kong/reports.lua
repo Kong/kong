@@ -2,6 +2,8 @@ local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local counter = require "resty.counter"
+local knode = (kong and kong.node) and kong.node or
+              require "kong.pdk.node".new()
 
 
 local kong_dict = ngx.shared.kong
@@ -60,6 +62,8 @@ do
   local meta = require "kong.meta"
 
   local system_infos = utils.get_system_infos()
+
+  system_infos.hostname = system_infos.hostname or knode.get_hostname()
 
   -- <14>: syslog facility code 'log alert'
   _buffer[#_buffer + 1] = "<14>version=" .. meta._VERSION

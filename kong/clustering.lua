@@ -137,7 +137,7 @@ local function communicate(premature, conf)
 
   local c = assert(ws_client:new(WS_OPTS))
   local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
-              kong.node.get_id() .. "&node_hostname=" .. utils.get_hostname()
+              kong.node.get_id() .. "&node_hostname=" .. kong.node.get_hostname()
 
   local opts = {
     ssl_verify = true,
