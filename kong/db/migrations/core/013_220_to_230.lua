@@ -15,6 +15,22 @@ return {
 
       INSERT INTO parameters (key, value) VALUES('cluster_id', '%s')
       ON CONFLICT DO NOTHING;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "certificates" ADD "cert_alt" TEXT;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE IF EXISTS ONLY "certificates" ADD "key_alt" TEXT;
+      EXCEPTION WHEN DUPLICATE_COLUMN THEN
+        -- Do nothing, accept existing state
+      END;
+      $$;
     ]], CLUSTER_ID),
   },
   cassandra = {
@@ -28,6 +44,9 @@ return {
 
       INSERT INTO parameters (key, value) VALUES('cluster_id', '%s')
       IF NOT EXISTS;
+
+      ALTER TABLE certificates ADD cert_alt TEXT;
+      ALTER TABLE certificates ADD key_alt TEXT;
     ]], CLUSTER_ID),
   }
 }

@@ -50,6 +50,27 @@ describe("Admin API: #" .. strategy, function()
     return certificate, names
   end
 
+  local function add_certificate_with_alt_cert()
+    local n1 = get_name()
+    local n2 = get_name()
+    local names = { n1, n2 }
+
+    local res    = client:post("/certificates", {
+      body       = {
+        cert     = ssl_fixtures.cert,
+        key      = ssl_fixtures.key,
+        cert_alt = ssl_fixtures.cert_ecdsa,
+        key_alt  = ssl_fixtures.key_ecdsa,
+        snis     = names,
+      },
+      headers = { ["Content-Type"] = "application/json" },
+    })
+
+    local body = assert.res_status(201, res)
+    local certificate = cjson.decode(body)
+    return certificate, names
+  end
+
   local function get_certificates()
     local res  = client:get("/certificates")
     local body = assert.res_status(200, res)
@@ -108,6 +129,8 @@ describe("Admin API: #" .. strategy, function()
         assert.equal(1, #json.data)
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
+        assert.equal(cjson.null, json.data[1].cert_alt)
+        assert.equal(cjson.null, json.data[1].key_alt)
         assert.same(my_snis, json.data[1].snis)
       end)
     end)
@@ -209,6 +232,8 @@ describe("Admin API: #" .. strategy, function()
           local json = cjson.decode(body)
           assert.is_string(json.cert)
           assert.is_string(json.key)
+          assert.equal(cjson.null, json.cert_alt)
+          assert.equal(cjson.null, json.key_alt)
           assert.same({ n1, n2 }, json.snis)
         end
       end)
@@ -237,6 +262,8 @@ describe("Admin API: #" .. strategy, function()
           local json = cjson.decode(body)
           assert.is_string(json.cert)
           assert.is_string(json.key)
+          assert.equal(cjson.null, json.cert_alt)
+          assert.equal(cjson.null, json.key_alt)
           assert.matches('"snis":[]', body, nil, true)
         end
       end)
@@ -254,6 +281,21 @@ describe("Admin API: #" .. strategy, function()
 
         assert.is_string(json1.cert)
         assert.is_string(json1.key)
+        assert.equal(cjson.null, json1.cert_alt)
+        assert.equal(cjson.null, json1.key_alt)
+        assert.same(names, json1.snis)
+      end)
+
+      it("retrieves a certificate by id with alternate certificate", function()
+        local certificate, names = add_certificate_with_alt_cert()
+        local res1  = client:get("/certificates/" .. certificate.id)
+        local body1 = assert.res_status(200, res1)
+        local json1 = cjson.decode(body1)
+
+        assert.is_string(json1.cert)
+        assert.is_string(json1.key)
+        assert.is_string(json1.cert_alt)
+        assert.is_string(json1.key_alt)
         assert.same(names, json1.snis)
       end)
 
@@ -269,6 +311,26 @@ describe("Admin API: #" .. strategy, function()
 
         assert.is_string(json1.cert)
         assert.is_string(json1.key)
+        assert.equal(cjson.null, json1.cert_alt)
+        assert.equal(cjson.null, json1.key_alt)
+        assert.same(names, json1.snis)
+        assert.same(json1, json2)
+      end)
+
+      it("retrieves a certificate by sni with alternate certificate", function()
+        local _, names = add_certificate_with_alt_cert()
+        local res1  = client:get("/certificates/" .. names[1])
+        local body1 = assert.res_status(200, res1)
+        local json1 = cjson.decode(body1)
+
+        local res2  = client:get("/certificates/" .. names[2])
+        local body2 = assert.res_status(200, res2)
+        local json2 = cjson.decode(body2)
+
+        assert.is_string(json1.cert)
+        assert.is_string(json1.key)
+        assert.is_string(json1.cert_alt)
+        assert.is_string(json1.key_alt)
         assert.same(names, json1.snis)
         assert.same(json1, json2)
       end)
@@ -299,6 +361,8 @@ describe("Admin API: #" .. strategy, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.same(ssl_fixtures.cert, json.cert)
+        assert.equal(cjson.null, json.cert_alt)
+        assert.equal(cjson.null, json.key_alt)
 
         assert.same({ n1 }, json.snis)
         json.snis = nil
@@ -322,6 +386,8 @@ describe("Admin API: #" .. strategy, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.same(ssl_fixtures.cert, json.cert)
+        assert.equal(cjson.null, json.cert_alt)
+        assert.equal(cjson.null, json.key_alt)
 
         assert.same({ n1, n2 }, json.snis)
         json.snis = nil
@@ -345,6 +411,8 @@ describe("Admin API: #" .. strategy, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.same(ssl_fixtures.cert, json.cert)
+        assert.equal(cjson.null, json.cert_alt)
+        assert.equal(cjson.null, json.key_alt)
 
         assert.same({ n1, n2 }, json.snis)
         json.snis = nil
@@ -365,6 +433,8 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.same(ssl_fixtures.cert_alt, json.cert)
         assert.same(ssl_fixtures.key_alt, json.key)
+        assert.equal(cjson.null, json.cert_alt)
+        assert.equal(cjson.null, json.key_alt)
         assert.same({}, json.snis)
 
         json.snis = nil
@@ -373,11 +443,37 @@ describe("Admin API: #" .. strategy, function()
         assert.same(json, in_db)
       end)
 
-      it("handles invalid input", function(content_type)
+      it("upserts if found with alternate certificate", function()
+        local certificate = add_certificate_with_alt_cert()
+        local res = client:put("/certificates/" .. certificate.id, {
+          body = {
+            cert = ssl_fixtures.cert_alt,
+            key = ssl_fixtures.key_alt,
+            cert_alt = ssl_fixtures.cert_alt_ecdsa,
+            key_alt = ssl_fixtures.key_alt_ecdsa,
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(ssl_fixtures.cert_alt, json.cert)
+        assert.same(ssl_fixtures.key_alt, json.key)
+        assert.same(ssl_fixtures.cert_alt_ecdsa, json.cert_alt)
+        assert.same(ssl_fixtures.key_alt_ecdsa, json.key_alt)
+        assert.same({}, json.snis)
+
+        json.snis = nil
+
+        local in_db = assert(db.certificates:select({ id = certificate.id }, { nulls = true }))
+        assert.same(json, in_db)
+      end)
+
+      it("handles invalid input", function()
         -- Missing params
         local res = client:put("/certificates/" .. utils.uuid(), {
           body = {},
-          headers = { ["Content-Type"] = content_type }
+          headers = { ["Content-Type"] = "application/json" }
         })
         local body = assert.res_status(400, res)
         assert.same({
@@ -387,6 +483,28 @@ describe("Admin API: #" .. strategy, function()
           fields  = {
             cert = "required field missing",
             key = "required field missing",
+          }
+        }, cjson.decode(body))
+      end)
+
+      it("handles invalid input with alternate certificate", function()
+        -- Missing params
+        local res = client:put("/certificates/" .. utils.uuid(), {
+          body = {
+            cert = ssl_fixtures.cert,
+            key = ssl_fixtures.key,
+            cert_alt = ssl_fixtures.cert_ecdsa,
+
+          },
+          headers = { ["Content-Type"] = "application/json" }
+        })
+        local body = assert.res_status(400, res)
+        assert.same({
+          code     = Errors.codes.SCHEMA_VIOLATION,
+          name     = "schema violation",
+          message  = "schema violation (all or none of these fields must be set: 'cert_alt', 'key_alt')",
+          fields  = {
+            ["@entity"] = { "all or none of these fields must be set: 'cert_alt', 'key_alt'" },
           }
         }, cjson.decode(body))
       end)
@@ -406,6 +524,52 @@ describe("Admin API: #" .. strategy, function()
           message  = "schema violation (certificate does not match key)",
           fields  = {
             ["@entity"] = { "certificate does not match key" },
+          }
+        }, cjson.decode(body))
+      end)
+
+      it("handles mismatched keys/certificates with alternate certificate", function()
+        local res = client:post("/certificates", {
+          body = {
+            cert = ssl_fixtures.cert,
+            key = ssl_fixtures.key,
+            cert_alt = ssl_fixtures.cert_ecdsa,
+            key_alt = ssl_fixtures.key_alt_ecdsa,
+          },
+          headers = { ["Content-Type"] = "application/json" }
+        })
+        local body = assert.res_status(400, res)
+        assert.same({
+          code     = Errors.codes.SCHEMA_VIOLATION,
+          name     = "schema violation",
+          message  = "schema violation (alternative certificate does not match key)",
+          fields  = {
+            ["@entity"] = { "alternative certificate does not match key" },
+          }
+        }, cjson.decode(body))
+      end)
+
+      it("errors on non-distinct certs", function()
+        local res = client:post("/certificates", {
+          body = {
+            cert = ssl_fixtures.cert,
+            key = ssl_fixtures.key,
+            cert_alt = ssl_fixtures.cert,
+            key_alt = ssl_fixtures.key,
+          },
+          headers = { ["Content-Type"] = "application/json" }
+        })
+        local body = assert.res_status(400, res)
+        assert.same({
+          code     = Errors.codes.SCHEMA_VIOLATION,
+          name     = "schema violation",
+          message  = "schema violation (certificate and alternative certificate need to have different type (e.g. RSA and ECDSA), the provided certificates were both of the same type)",
+          fields  = {
+            ["@entity"] = {
+              "certificate and alternative certificate need to have " ..
+              "different type (e.g. RSA and ECDSA), the provided " ..
+              "certificates were both of the same type"
+            },
           }
         }, cjson.decode(body))
       end)
@@ -439,12 +603,64 @@ describe("Admin API: #" .. strategy, function()
           local json = cjson.decode(body)
 
           assert.equal(ssl_fixtures.cert_alt, json.cert)
+          assert.equal(cjson.null, json.cert_alt)
+          assert.equal(cjson.null, json.key_alt)
+        end
+      end)
+
+      it_content_types("updates a certificate by cert id with alternate certificate", function(content_type)
+        return function()
+          local certificate = add_certificate_with_alt_cert()
+
+          local body
+          if content_type == "application/x-www-form-urlencoded" then
+            body = {
+              cert     = require "socket.url".escape(ssl_fixtures.cert_alt),
+              key      = require "socket.url".escape(ssl_fixtures.key_alt),
+              cert_alt = require "socket.url".escape(ssl_fixtures.cert_alt_ecdsa),
+              key_alt  = require "socket.url".escape(ssl_fixtures.key_alt_ecdsa),
+            }
+          else
+            body = {
+              cert     = ssl_fixtures.cert_alt,
+              key      = ssl_fixtures.key_alt,
+              cert_alt = ssl_fixtures.cert_alt_ecdsa,
+              key_alt  = ssl_fixtures.key_alt_ecdsa,
+            }
+          end
+
+          local res = client:patch("/certificates/" .. certificate.id, {
+            body = body,
+            headers = { ["Content-Type"] = content_type }
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.equal(ssl_fixtures.cert_alt, json.cert)
+          assert.equal(ssl_fixtures.cert_alt_ecdsa, json.cert_alt)
         end
       end)
 
       it_content_types("update by id returns full certificate", function(content_type)
         return function()
           local certificate = add_certificate()
+
+          local res = client:patch("/certificates/" .. certificate.id, {
+            body = {},
+            headers = { ["Content-Type"] = content_type }
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same(certificate, json)
+        end
+      end)
+
+      it_content_types("update by id returns full certificate with alternative certificate", function(content_type)
+        return function()
+          local certificate = add_certificate_with_alt_cert()
 
           local res = client:patch("/certificates/" .. certificate.id, {
             body = {},
@@ -484,12 +700,66 @@ describe("Admin API: #" .. strategy, function()
           local json = cjson.decode(body)
 
           assert.equal(ssl_fixtures.cert_alt, json.cert)
+          assert.equal(cjson.null, json.cert_alt)
+          assert.equal(cjson.null, json.key_alt)
+        end
+      end)
+
+      it_content_types("updates a certificate by sni with alternate certificate", function(content_type)
+        return function()
+          local _, names = add_certificate_with_alt_cert()
+
+          local body
+          if content_type == "application/x-www-form-urlencoded" then
+            body = {
+              cert     = require "socket.url".escape(ssl_fixtures.cert_alt),
+              key      = require "socket.url".escape(ssl_fixtures.key_alt),
+              cert_alt = require "socket.url".escape(ssl_fixtures.cert_alt_ecdsa),
+              key_alt  = require "socket.url".escape(ssl_fixtures.key_alt_ecdsa),
+            }
+          else
+            body = {
+              cert     = ssl_fixtures.cert_alt,
+              key      = ssl_fixtures.key_alt,
+              cert_alt = ssl_fixtures.cert_alt_ecdsa,
+              key_alt  = ssl_fixtures.key_alt_ecdsa,
+            }
+          end
+
+          local res = client:patch("/certificates/" .. names[1], {
+            body = body,
+            headers = { ["Content-Type"] = content_type }
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.equal(ssl_fixtures.cert_alt, json.cert)
+          assert.equal(ssl_fixtures.key_alt, json.key)
+          assert.equal(ssl_fixtures.cert_alt_ecdsa, json.cert_alt)
+          assert.equal(ssl_fixtures.key_alt_ecdsa, json.key_alt)
         end
       end)
 
       it_content_types("update by sni returns full certificate", function(content_type)
         return function()
           local certificate, names = add_certificate()
+
+          local res = client:patch("/certificates/" .. names[1], {
+            body = {},
+            headers = { ["Content-Type"] = content_type }
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same(certificate, json)
+        end
+      end)
+
+      it_content_types("update by sni returns full certificate with alternate certificate", function(content_type)
+        return function()
+          local certificate, names = add_certificate_with_alt_cert()
 
           local res = client:patch("/certificates/" .. names[1], {
             body = {},
@@ -553,6 +823,34 @@ describe("Admin API: #" .. strategy, function()
         end
       end)
 
+      it("updates snis associated with a certificate with alternate certificate", function()
+        local certificate = add_certificate_with_alt_cert()
+        local n1 = get_name()
+
+        local json_before = get_certificates()
+
+        local res = client:patch("/certificates/" .. certificate.id, {
+          body    = { snis = { n1 }, },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same({ n1 }, json.snis)
+
+        -- make sure we did not add any certificate, and that the snis
+        -- are correct
+        local json = get_certificates()
+        assert.equal(#json_before.data, #json.data)
+        for i, data in ipairs(json.data) do
+          if data.id == certificate.id then
+            assert.same({ n1 }, data.snis)
+          else
+            assert.same(json_before.data[i].snis, data.snis)
+          end
+        end
+      end)
+
       it("updates only the certificate if no snis are specified", function()
         local certificate, names = add_certificate()
 
@@ -572,6 +870,8 @@ describe("Admin API: #" .. strategy, function()
         assert.same(names, json.snis)
         assert.same(ssl_fixtures.cert, json.cert)
         assert.same(ssl_fixtures.key, json.key)
+        assert.equal(cjson.null, json.cert_alt)
+        assert.equal(cjson.null, json.key_alt)
 
         -- make sure the certificate got updated in DB
         res  = client:get("/certificates/" .. certificate.id)
@@ -579,11 +879,15 @@ describe("Admin API: #" .. strategy, function()
         json = cjson.decode(body)
         assert.equal(ssl_fixtures.cert, json.cert)
         assert.equal(ssl_fixtures.key, json.key)
+        assert.equal(cjson.null, json.cert_alt)
+        assert.equal(cjson.null, json.key_alt)
+
 
         -- make sure we did not add any certificate or sni
         local json = get_certificates()
         assert.same(json_before, json)
       end)
+
 
       it("returns a conflict when duplicated snis are present in the request", function()
         local certificate = add_certificate()
@@ -952,6 +1256,38 @@ describe("Admin API: #" .. strategy, function()
         local certificate_2 = bp.certificates:insert {
           cert = ssl_fixtures.cert_alt,
           key = ssl_fixtures.key_alt,
+        }
+
+        local res = client:patch("/snis/" .. names[1], {
+          body = {
+            certificate = { id = certificate_2.id },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(certificate_2.id, json.certificate.id)
+
+        local res = client:get("/certificates/" .. certificate.id)
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same({ names[2] }, json.snis)
+
+        local res = client:get("/certificates/" .. certificate_2.id)
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same({ names[1] }, json.snis)
+      end)
+
+      it("updates a sni with alternate certificate", function()
+        local certificate, names = add_certificate()
+
+        local certificate_2 = bp.certificates:insert {
+          cert = ssl_fixtures.cert_alt,
+          key = ssl_fixtures.key_alt,
+          cert_alt = ssl_fixtures.cert_alt_ecdsa,
+          key_alt = ssl_fixtures.key_alt_ecdsa,
         }
 
         local res = client:patch("/snis/" .. names[1], {
