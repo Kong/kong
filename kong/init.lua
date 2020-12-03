@@ -1464,6 +1464,7 @@ end
 
 
 function Kong.status_content()
+  kong.worker_events.poll()
   return serve_content("kong.status")
 end
 
