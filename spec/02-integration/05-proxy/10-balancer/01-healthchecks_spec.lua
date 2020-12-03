@@ -801,7 +801,7 @@ for _, strategy in helpers.each_strategy() do
               -- (not rebuilt) across declarative config updates.
               -- FIXME when using eventual consistency sometimes it takes a long
               -- time to stop the original health checker, it may be a bug or not.
-              it("#db do not leave a stale healthchecker when renamed", function()
+              it("#flaky #db do not leave a stale healthchecker when renamed", function()
                 if consistency ~= "eventual" then
                   bu.begin_testcase_setup(strategy, bp)
 
