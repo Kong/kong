@@ -41,10 +41,12 @@ return {
   ["/vitals/cluster"] = {
     GET = function(self, dao, helpers)
       local cluster_stats, err = kong.vitals:get_stats(
-          self.params.interval,
-          "cluster",
-          nil,
-          self.params.start_ts)
+        self.params.interval,
+        "cluster",
+        nil,
+        self.params.start_ts,
+        self.params.end_ts
+      )
 
       if err then
         if err:find("Invalid query params", nil, true) then
@@ -63,6 +65,7 @@ return {
       local opts = {
         duration = self.params.interval,
         start_ts = self.params.start_ts,
+        end_ts = self.params.end_ts,
         level = "cluster",
         entity_type = "cluster",
       }
@@ -87,7 +90,8 @@ return {
           self.params.interval,
           "node",
           nil,
-          self.params.start_ts
+          self.params.start_ts,
+          self.params.end_ts
       )
 
       if err then
@@ -108,7 +112,8 @@ return {
           self.params.interval,
           "node",
           self.params.node_id,
-          self.params.start_ts
+          self.params.start_ts,
+          self.params.end_ts
       )
 
       if err then
@@ -134,6 +139,7 @@ return {
         consumer_id = self.consumer.id,
         duration    = self.params.interval,
         start_ts    = self.params.start_ts,
+        end_ts      = self.params.end_ts,
         level       = "cluster",
       }
 
@@ -168,6 +174,7 @@ return {
         entity_type = "service",
         duration    = self.params.interval,
         start_ts    = self.params.start_ts,
+        end_ts      = self.params.end_ts,
         entity_id   = self.params.service_id,
         level       = "cluster",
         workspace_id = ngx.ctx.workspace,
@@ -202,6 +209,7 @@ return {
         entity_type = "route",
         duration    = self.params.interval,
         start_ts    = self.params.start_ts,
+        end_ts      = self.params.end_ts,
         entity_id   = self.params.route_id,
         level       = "cluster",
         workspace_id = ngx.ctx.workspace,
@@ -230,6 +238,7 @@ return {
         entity_type = "consumer",
         duration    = self.params.interval,
         start_ts    = self.params.start_ts,
+        end_ts      = self.params.end_ts,
         entity_id   = self.consumer.id,
         level       = "cluster",
       }
@@ -256,6 +265,7 @@ return {
         entity_type = "consumer_route",
         duration    = self.params.interval,
         start_ts    = self.params.start_ts,
+        end_ts      = self.params.end_ts,
         entity_id   = self.consumer.id,
         level       = "cluster",
         workspace_id = ngx.ctx.workspace,
@@ -292,6 +302,7 @@ return {
         entity_id   = entity_id,
         duration    = self.params.interval,
         start_ts    = self.params.start_ts,
+        end_ts      = self.params.end_ts,
         level       = "cluster",
       }
 

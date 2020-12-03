@@ -94,7 +94,7 @@ local INSERT_CODE_CLASSES_CLUSTER = [[
 local SELECT_CODE_CLASSES_CLUSTER = [[
   SELECT 'cluster' as node_id, code_class, extract('epoch' from at) as at, count
     FROM vitals_code_classes_by_cluster
-   WHERE duration = %d AND at >= to_timestamp(%d)
+   WHERE duration = %d AND at >= to_timestamp(%d) AND at <= to_timestamp(%d)
 ]]
 
 local INSERT_CODE_CLASSES_WORKSPACE = [[
@@ -108,7 +108,7 @@ local SELECT_CODE_CLASSES_WORKSPACE = [[
   SELECT 'cluster' as node_id, code_class, extract('epoch' from at) as at, count
     FROM vitals_code_classes_by_workspace
    WHERE workspace_id = '%s'
-     AND duration = %d AND at >= to_timestamp(%d)
+     AND duration = %d AND at >= to_timestamp(%d) AND at <= to_timestamp(%d)
 ]]
 
 local INSERT_CODES_BY_ROUTE = [[
@@ -128,34 +128,34 @@ local INSERT_CODES_BY_CONSUMER_AND_ROUTE = [[
 local SELECT_CODES_SERVICE = [[
 SELECT service_id, code, extract('epoch' from at) as at, sum(count) as count
   FROM vitals_codes_by_route
- WHERE service_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+ WHERE service_id = '%s' AND duration = %d AND at >= to_timestamp(%d) AND at <= to_timestamp(%d)
  GROUP BY service_id, code, at
 ]]
 
 local SELECT_CODES_ROUTE = [[
   SELECT route_id, code, extract('epoch' from at) as at, count
     FROM vitals_codes_by_route
-   WHERE route_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+   WHERE route_id = '%s' AND duration = %d AND at >= to_timestamp(%d) AND at <= to_timestamp(%d)
 ]]
 
 local SELECT_CODES_CONSUMER = [[
   SELECT consumer_id, code, extract('epoch' from at) as at, sum(count) as count
     FROM vitals_codes_by_consumer_route
-   WHERE consumer_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+   WHERE consumer_id = '%s' AND duration = %d AND at >= to_timestamp(%d) AND at <= to_timestamp(%d)
    GROUP BY consumer_id, code, at
 ]]
 
 local SELECT_CODES_CONSUMER_ROUTE = [[
   SELECT consumer_id, route_id, code, extract('epoch' from at) as at, sum(count) as count
     FROM vitals_codes_by_consumer_route
-   WHERE consumer_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+   WHERE consumer_id = '%s' AND duration = %d AND at >= to_timestamp(%d) AND at <= to_timestamp(%d)
    GROUP BY consumer_id, route_id, code, at
 ]]
 
 local SELECT_REQUESTS_CONSUMER = [[
   SELECT 'cluster' as node_id, extract('epoch' from at) as at, sum(count) as count
     FROM vitals_codes_by_consumer_route
-   WHERE consumer_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+   WHERE consumer_id = '%s' AND duration = %d AND at >= to_timestamp(%d) AND at <= to_timestamp(%d)
    GROUP BY at
 ]]
 
@@ -369,7 +369,7 @@ end
   node_id: if given, selects stats just for that node
   start_at: first timestamp, inclusive
  ]]
-function _M:select_stats(query_type, level, node_id, start_ts)
+function _M:select_stats(query_type, level, node_id, start_ts, end_ts)
   local query, res, err
 
   -- for constructing dynamic SQL
@@ -434,6 +434,10 @@ function _M:select_stats(query_type, level, node_id, start_ts)
 
   if start_ts then
     where = where .. " AND at >= " .. start_ts
+  end
+
+  if end_ts then
+    where = where .. " AND at <= " .. end_ts
   end
 
   -- put it all together
@@ -765,15 +769,16 @@ function _M:select_consumer_stats(opts)
 
   local query = SELECT_REQUESTS_CONSUMER
 
-  local cutoff_time
+  local start_ts
+  local end_ts = tonumber(opts.ent_ts) or time()
 
   if duration == 1 then
-    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_seconds)
+    start_ts = tonumber(opts.start_ts) or (time() - self.ttl_seconds)
   else
-    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_minutes)
+    start_ts = tonumber(opts.start_ts) or (time() - self.ttl_minutes)
   end
 
-  query = fmt(query, cons_id, duration, cutoff_time)
+  query = fmt(query, cons_id, duration, start_ts, end_ts)
 
   local res, err = self.connector:query(query)
 
@@ -818,20 +823,21 @@ function _M:select_status_codes(opts)
     return nil, "unknown entity_type: " .. tostring(entity_type)
   end
 
-  local cutoff_time
+  local start_ts
+  local end_ts = tonumber(opts.end_ts) or time()
 
   if duration == 1 then
-    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_seconds)
+    start_ts = tonumber(opts.start_ts) or (time() - self.ttl_seconds)
   elseif duration == 60 then
-    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_minutes)
+    start_ts = tonumber(opts.start_ts) or (time() - self.ttl_minutes)
   else
-    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_days)
+    start_ts = tonumber(opts.start_ts) or (time() - self.ttl_days)
   end
 
   if entity_type == "cluster" then
-    query = fmt(query, duration, cutoff_time)
+    query = fmt(query, duration, start_ts, end_ts)
   else
-    query = fmt(query, opts.entity_id, duration, cutoff_time)
+    query = fmt(query, opts.entity_id, duration, start_ts, end_ts)
   end
 
   local res, err = self.connector:query(query)

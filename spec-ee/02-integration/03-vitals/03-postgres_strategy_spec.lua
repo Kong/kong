@@ -763,6 +763,49 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         assert.same(expected, res)
       end)
+
+      it("takes an optional end_ts", function()
+        stub(strategy, "table_names_for_select").returns({ "vitals_stats_seconds", "vitals_stats_seconds_2"})
+
+        local res, err = strategy:select_stats("seconds", "cluster", nil, nil, 1509667485)
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at = 1509667424,
+            l2_hit = 5,
+            l2_miss = 9,
+            node_id = 'cluster',
+            plat_count = 23,
+            plat_max = 9,
+            plat_min = 6,
+            plat_total = 173,
+            requests = 23,
+            ulat_count = 23,
+            ulat_max = 16,
+            ulat_min = 4,
+            ulat_total = 333
+          },
+          {
+            at = 1509667485,
+            l2_hit = 10,
+            l2_miss = 3,
+            node_id = 'cluster',
+            plat_count = 6,
+            plat_max = 10,
+            plat_min = 1,
+            plat_total = 43,
+            requests = 6,
+            ulat_count = 6,
+            ulat_max = 7,
+            ulat_min = 3,
+            ulat_total = 25,
+          }
+        }
+
+        assert.same(expected, res)
+      end)
     end)
 
     describe(":select_stats() when no current table names", function()
@@ -1469,6 +1512,39 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
 
         assert.same(expected, results)
       end)
+
+
+      it("takes an optional end_ts", function()
+        local opts = {
+          duration    = 60,
+          level       = "cluster",
+          entity_type = "cluster",
+          end_ts    = start_minute + 10,
+        }
+
+        local results, _ = strategy:select_status_codes(opts)
+
+        local expected = {
+          {
+            at = start_minute,
+            code_class = 5,
+            count = 2,
+            node_id = 'cluster'
+          },
+          {
+            at = start_minute,
+            code_class = 4,
+            count = 4,
+            node_id = 'cluster',
+          }
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
     end)
 
 
@@ -1641,6 +1717,40 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
             code_class  = 5,
             at          = start_minute + 60,
             count       = 19,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+
+      it("takes an optional end_ts", function()
+        local opts = {
+          duration    = 60,
+          level       = "cluster",
+          entity_type = "workspace",
+          entity_id   = workspace_id,
+          end_ts    = start_minute + 10,
+        }
+
+        local results, _ = strategy:select_status_codes(opts)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_minute,
+            count       = 2,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_minute,
+            count       = 4,
           },
         }
 

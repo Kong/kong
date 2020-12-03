@@ -478,7 +478,7 @@ function _M:select_status_codes(opts)
   }
 end
 
-function _M:select_stats(query_type, level, node_id, start_ts)
+function _M:select_stats(query_type, level, node_id, start_ts, end_ts)
   -- group by time($int)
   local int = vitals_utils.interval_to_duration[query_type]
 
