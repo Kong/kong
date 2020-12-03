@@ -92,13 +92,13 @@ for _, consistency in ipairs(bu.consistencies) do
 
         -- Go hit them with our test requests
         local oks = bu.client_requests(requests, api_host)
-        assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
         local count1 = server1:shutdown()
         local count2 = server2:shutdown()
 
         -- verify
+        assert.are.equal(requests, oks)
         assert.are.equal(requests / 2, count1.ok)
         assert.are.equal(requests / 2, count2.ok)
       end)
@@ -288,20 +288,20 @@ for _, consistency in ipairs(bu.consistencies) do
         bu.end_testcase_setup(strategy, bp, consistency)
 
         -- setup target servers
-        local server1 = https_server.new(port1)
-        local server2 = https_server.new(port2)
+        local server1 = https_server.new(port1, "127.0.0.1")
+        local server2 = https_server.new(port2, "127.0.0.1")
         server1:start()
         server2:start()
 
         -- Go hit them with our test requests
         local oks = bu.client_requests(requests, api_host)
-        assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
         local count1 = server1:shutdown()
         local count2 = server2:shutdown()
 
         -- verify
+        assert.are.equal(requests, oks)
         assert.are.equal(requests / 2, count1.total)
         assert.are.equal(requests / 2, count2.total)
 

@@ -2064,9 +2064,9 @@ for _, strategy in helpers.each_strategy() do
               bu.direct_request(localhost, port1, "/timeout")
 
               local _, _, last_status = bu.client_requests(1, api_host)
-              assert.same(504, last_status)
 
               local results1 = server1:shutdown()
+              assert.same(504, last_status)
               assert.same(0, results1.ok)
               assert.same(1, results1.fail)
 
