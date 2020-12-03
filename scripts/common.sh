@@ -123,7 +123,7 @@ function confirm {
 parse_version() {
   [[ -z $1 ]] || [[ -z $2 ]] && >&2 echo "parse_version() requires two arguments" && exit 1
 
-  local ver
+  local ver=""
   local subj=$1
 
   if [[ $subj =~ ^[^0-9]*(.*) ]]; then
