@@ -2067,8 +2067,8 @@ for _, strategy in helpers.each_strategy() do
               assert.same(504, last_status)
 
               local results1 = server1:shutdown()
-              assert.same(1, results1.ok) -- TODO why?
-              assert.same(0, results1.fail)
+              assert.same(0, results1.ok)
+              assert.same(1, results1.fail)
 
               bu.begin_testcase_setup_update(strategy, bp)
               bu.patch_api(bp, service_id, nil, 60000)
@@ -2076,6 +2076,7 @@ for _, strategy in helpers.each_strategy() do
               bu.end_testcase_setup(strategy, bp)
 
               local server2 = https_server.new(port2, localhost)
+              server2:start()
 
               _, _, last_status = bu.client_requests(bu.SLOTS, api_host)
               assert.same(200, last_status)
