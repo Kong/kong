@@ -1,3 +1,8 @@
+## 0.2.4
+
+- fix(log) updating auth errors to handle fallthrough scenarios
+- fix(route,ws) ensuring workspace options are used for cache lookups
+
 ## 0.2.3
 
 - iterate over plugin instances in all workspaces
