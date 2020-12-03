@@ -25,7 +25,7 @@ end
 
 local function execute(args)
   _G.kong = kong_global.new()
-  local config = assert(conf_loader(args.config, ee.license_conf(), {from_kong_env = true}))
+  local config = assert(conf_loader(args.config, ee.license_conf()))
 
   kong_global.init_pdk(_G.kong, config, nil) -- nil: latest PDK
   local db = assert(DB.new(config))
