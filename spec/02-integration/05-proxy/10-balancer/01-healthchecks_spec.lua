@@ -1441,8 +1441,8 @@ for _, strategy in helpers.each_strategy() do
                   -- setup target servers:
                   -- server2 will only respond for part of the test,
                   -- then server1 will take over.
-                  local server1 = https_server.new(port1, localhost, protocol)
-                  local server2 = https_server.new(port2, localhost, protocol)
+                  local server1 = https_server.new(port1, hostname, protocol)
+                  local server2 = https_server.new(port2, hostname, protocol)
                   server1:start()
                   server2:start()
 
