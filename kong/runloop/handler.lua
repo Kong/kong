@@ -1217,6 +1217,7 @@ return {
         forwarded_proto ~= "https")
       then
         return kong.response.exit(200, nil, {
+          ["content-type"] = "application/grpc",
           ["grpc-status"] = 1,
           ["grpc-message"] = "gRPC request matched gRPCs route",
         })
