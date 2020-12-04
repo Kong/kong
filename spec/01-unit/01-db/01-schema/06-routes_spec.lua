@@ -698,14 +698,24 @@ describe("routes schema", function()
     end)
 
     it("rejects invalid names", function()
-      -- see tests for utils.validate_utf8 for more invalid values
-      local route = {
-        name = string.char(105, 213, 205, 149),
-        protocols = {"http"}
+      local invalid_names = {
+        "examp:le",
+        "examp;le",
+        "examp/le",
+        "examp le",
+        -- see tests for utils.validate_utf8 for more invalid values
+        string.char(105, 213, 205, 149),
       }
-      local ok, err = Routes:validate(route)
-      assert.falsy(ok)
-      assert.matches("invalid utf%-8 character sequence detected", err.name)
+
+      for i = 1, #invalid_names do
+        local route = {
+          name = invalid_names[i],
+          protocols = {"http"}
+        }
+        local ok, err = Routes:validate(route)
+        assert.falsy(ok)
+        assert.matches("invalid", err.name)
+      end
     end)
 
     -- acceptance

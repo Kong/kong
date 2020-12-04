@@ -113,6 +113,12 @@ local function validate_utf8_name(name)
     return nil, "invalid utf-8 character sequence detected at position " .. tostring(index)
   end
 
+  if not match(name, "^[%w%.%-%_~\128-\244]+$") then
+    return nil,
+    "invalid value '" .. name ..
+      "': the only accepted ascii characters are alphanumerics or ., -, _, and ~"
+  end
+
   return true
 end
 
@@ -529,15 +535,7 @@ typedefs.no_paths = Schema.define(typedefs.paths { eq = null })
 
 typedefs.headers = Schema.define {
   type = "map",
-  keys = {
-    type = "string",
-    match_none = {
-      {
-        pattern = "^[Hh][Oo][Ss][Tt]$",
-        err = "cannot contain 'host' header, which must be specified in the 'hosts' attribute",
-      },
-    },
-  },
+  keys = typedefs.header_name,
   values = {
     type = "array",
     elements = {

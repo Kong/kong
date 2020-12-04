@@ -1110,21 +1110,23 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
     return value, k
   end
 
-  -- environment variables have higher priority
+  if not opts.from_kong_env then
+    -- environment variables have higher priority
 
-  local env_name = "KONG_" .. string.upper(k)
-  local env = os.getenv(env_name)
-  if env ~= nil then
-    local to_print = env
+    local env_name = "KONG_" .. string.upper(k)
+    local env = os.getenv(env_name)
+    if env ~= nil then
+      local to_print = env
 
-    if CONF_SENSITIVE[k] then
-      to_print = CONF_SENSITIVE_PLACEHOLDER
+      if CONF_SENSITIVE[k] then
+        to_print = CONF_SENSITIVE_PLACEHOLDER
+      end
+
+      log.debug('%s ENV found with "%s"', env_name, to_print)
+
+      value = env
+      escape = true
     end
-
-    log.debug('%s ENV found with "%s"', env_name, to_print)
-
-    value = env
-    escape = true
   end
 
   -- arg_conf have highest priority
@@ -1401,7 +1403,7 @@ local function load(path, custom_conf, opts)
 
   -- merge file conf, ENV variables, and arg conf (with precedence)
   local user_conf = tablex.pairmap(overrides, defaults,
-                                   { no_defaults = true },
+                                   tablex.union(opts, { no_defaults = true, }),
                                    from_file_conf, custom_conf)
 
   if not opts.starting then
@@ -1414,7 +1416,7 @@ local function load(path, custom_conf, opts)
 
   -- merge user_conf with defaults
   local conf = tablex.pairmap(overrides, defaults,
-                              { defaults_only = true },
+                              tablex.union(opts, { defaults_only = true, }),
                               user_conf)
 
   -- validation

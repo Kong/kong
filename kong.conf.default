@@ -48,7 +48,14 @@
                                           # property.
 
 #admin_access_log = logs/admin_access.log # Path for Admin API request access
-                                          # logs. Set this value to `off` to
+                                          # logs. If Hybrid Mode is enabled
+                                          # and the current node is set to be
+                                          # the Control Plane, then the
+                                          # connection requests from Data Planes
+                                          # are also written to this file with
+                                          # server name "kong_cluster_listener".
+                                          #
+                                          # Set this value to `off` to
                                           # disable logging Admin API requests.
                                           # If this value is a relative path,
                                           # it will be placed under the
@@ -254,6 +261,11 @@
                          #
                          # This setting has no effect if `role` is not set to
                          # `control_plane`.
+                         #
+                         # Connection made to this endpoint are logged
+                         # to the same location as Admin API access logs.
+                         # See `admin_access_log` config description for more
+                         # information.
 
 #cluster_telemetry_listen = 0.0.0.0:8006
                          # Comma-separated list of addresses and ports on
