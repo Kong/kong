@@ -108,6 +108,8 @@ local function new(conf)
     api_uri = url,
     storage_adapter = storage_full_path,
     storage_config = conf.storage_config[conf.storage],
+    eab_kid = conf.eab_kid,
+    eab_hmac_key = conf.eab_hmac_key,
   })
 end
 

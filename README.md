@@ -99,6 +99,8 @@ config.fail_backoff_minutes|     |  `5`       | Minutes to wait for each domain 
 config.storage      |            |  `"shm"`   | The backend storage type to use. The possible values are `"kong"`, `"shm"`, `"redis"`, `"consul"`, or `"vault"`. In DB-less mode, `"kong"` storage is unavailable. Note that `"shm"` storage does not persist during Kong restarts and does not work for Kong running on different machines, so consider using one of `"kong"`, `"redis"`, `"consul"`, or `"vault"` in production.
 config.storage_config|           | (See below)| Storage configs for each backend storage.
 config.tos_accepted |            | `false`    | If you are using Let's Encrypt, you must set this to true to agree the [Terms of Service](https://letsencrypt.org/repository/).
+config.eab_kid      |            |            | External account binding (EAB) key id. You usually don't need to set this unless it is explicitly required by the CA.
+config.eab_hmac_key |            |            | External account binding (EAB) base64-encoded URL string of the HMAC key. You usually don't need to set this unless it is explicitly required by the CA.
 
 `config.storage_config` is a table for all posisble storage types, by default it is:
 ```json
@@ -167,6 +169,13 @@ plugins:
           host: redis.service
           port: 6379
 ```
+
+Externel account binding (EAB) is supported as long as `eab_kid` and `eab_hmac_key` are provided.
+
+The following CA provider's external account can be registered automatically, without specifying
+the `eab_kid` or `eab_hmac_key`:
+
+- [ZeroSSL](https://zerossl.com/)
 
 ### Local testing and development
 

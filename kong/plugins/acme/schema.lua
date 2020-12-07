@@ -66,6 +66,12 @@ local schema = {
           type = "boolean",
           default = false,
         }, },
+        { eab_kid = {
+          type = "string",
+        }, },
+        { eab_hmac_key = {
+          type = "string",
+        }, },
         -- Kong doesn't support multiple certificate chains yet
         { cert_type = {
           type = "string",
