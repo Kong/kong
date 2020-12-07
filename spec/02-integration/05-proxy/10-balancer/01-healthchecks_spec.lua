@@ -2037,7 +2037,8 @@ for _, strategy in helpers.each_strategy() do
             -- are currently reset when a new configuration is loaded
             -- TODO enable this test when upstreams are preserved (not rebuild)
             -- across a declarative config updates.
-            it("#db perform passive health checks -- send #timeouts", function()
+            -- TODO marked as flaky as it fails only in CI
+            it("#flaky #db perform passive health checks -- send #timeouts", function()
 
               -- configure healthchecks
               bu.begin_testcase_setup(strategy, bp)
