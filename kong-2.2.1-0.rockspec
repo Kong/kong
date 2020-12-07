@@ -32,7 +32,7 @@ dependencies = {
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-healthcheck == 1.3.0",
   "lua-resty-cookie == 0.1.0",
-  "lua-resty-mlcache == 2.4.1",
+  "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.6.9",
   "lua-resty-counter == 0.2.1",
