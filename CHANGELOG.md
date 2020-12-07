@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.3.0-alpha.1](#230-alpha1)
 - [2.2.1](#221)
 - [2.2.0](#220)
 - [2.1.4](#214)
@@ -51,6 +52,99 @@
 - [0.9.9 and prior](#099---20170202)
 
 
+## [2.3.0-alpha.1]
+
+> Released 2020/12/08
+
+This is an *alpha* pre-release of the upcoming Kong 2.3 series.
+Since 2.3 is a minor release there are no breaking changes with
+respect to the 2.x series, but being an alpha pre-release, development
+is not feature-frozen at this time: and any new features introduced here
+may change between this release and 2.3.0, and new features may be
+added.
+
+### Dependencies
+
+- Bump `kong-plugin-zipkin` from 1.1 to 1.2.
+  [#6576](https://github.com/Kong/kong/pull/6576)
+- Bump `kong-plugin-request-transformer` from 1.2 to 1.3
+  [#6542](https://github.com/Kong/kong/pull/6542)
+
+### Additions
+
+##### Core
+
+- Introduce version checks between Control Plane and Data Plane nodes
+  in Hybrid Mode. Sync will be stopped if the major/minor version differ
+  or if installed plugin versions differ between Control Plane and Data
+  Plane nodes.
+  [#6612](https://github.com/Kong/kong/pull/6612)
+- Kong entities with a `name` field now support utf-8 characters.
+  [#6557](https://github.com/Kong/kong/pull/6557)
+- The certificates entity now has `cert_alt` and `key_alt` fields, used
+  to specify an alternative certificate and key pair.
+  [#6536](https://github.com/Kong/kong/pull/6536)
+- The go-pluginserver `stderr` and `stdout` are now written into Kong's
+  logs.
+  [#6503](https://github.com/Kong/kong/pull/6503)
+
+##### PDK
+
+- Introduce a `kong.node.get_hostname` method that returns current's
+  node host name.
+  [#6613](https://github.com/Kong/kong/pull/6613)
+- Introduce a `kong.cluster.get_id` method that returns a unique ID
+  for the current Kong cluster. If Kong is running in DB-less mode
+  without a cluster ID explicitly defined, then this method returns nil.
+  For Hybrid mode, all Control Planes and Data Planes belonging to the
+  same cluster returns the same cluster ID. For traditional database
+  based deployments, all Kong nodes pointing to the same database will
+  also return the same cluster ID.
+  [#6576](https://github.com/Kong/kong/pull/6576)
+
+##### Plugins
+
+- `http-log`: the plugin now has a `headers` configuration, so that
+  custom headers can be specified for the log request.
+  [#6449](https://github.com/Kong/kong/pull/6449)
+- `key-auth`: the plugin now has two additional boolean configurations:
+  * `key_in_header`: if `false`, the plugin will ignore keys passed as
+    headers.
+  * `key_in_query`: if `false`, the plugin will ignore keys passed as
+    query arguments.
+  Both default to `true`.
+  [#6590](https://github.com/Kong/kong/pull/6590)
+
+##### Configuration
+
+- `client_max_body_size` and `client_body_buffer_size`, that previously
+  hardcoded to 10m, are now configurable through `nginx_admin_client_max_body_size` and `nginx_admin_client_body_buffer_size`.
+  [#6597](https://github.com/Kong/kong/pull/6597)
+- Kong-generated SSL privates keys now have `600` file system permission.
+  [#6509](https://github.com/Kong/kong/pull/6509)
+- Properties `ssl_cert`, `ssl_cert_key`, `admin_ssl_cert`,
+  `admin_ssl_cert_key`, `status_ssl_cert`, and `status_ssl_cert_key`
+  is now an array: previously, only an RSA certificate was generated
+  by default; with this change, an ECDSA is also generated. On
+  intermediate and modern cipher suites, the ECDSA certificate is set
+  as the default fallback certificate; on old cipher suite, the RSA
+  certificate remains as the default. On custom certificates, the first
+  certificate specified in the array is used.
+  [#6509](https://github.com/Kong/kong/pull/6509)
+
+##### Core
+
+- Fix issue where a Go plugin would fail to read kong.ctx.shared values set by Lua plugins.
+  [#6490](https://github.com/Kong/kong/pull/6490)
+- Properly trigger `dao:delete_by:post` hook.
+  [#6567](https://github.com/Kong/kong/pull/6567)
+- Fix issue where a route that supports both http and https (and has a hosts and snis match criteria) would fail to proxy http requests, as it does not contain an SNI.
+  [#6517](https://github.com/Kong/kong/pull/6517)
+- Fix issue where a `nil` request context would lead to errors `attempt to index local 'ctx'` being shown in the logs
+
+
+[Back to TOC](#table-of-contents)
+
 ## [2.2.1]
 
 > Released 2020/12/01
@@ -86,6 +180,7 @@ strictly contains bugfixes. The are no new features or breaking changes.
   Thanks [daniel-shuy](https://github.com/daniel-shuy) for the patch!
 
 [Back to TOC](#table-of-contents)
+
 
 ## [2.2.0]
 
@@ -5570,6 +5665,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.3.0-alpha.1]: https://github.com/Kong/kong/compare/2.2.0...2.3.0-alpha.1
 [2.2.1]: https://github.com/Kong/kong/compare/2.2.0...2.2.1
 [2.2.0]: https://github.com/Kong/kong/compare/2.1.3...2.2.0
 [2.1.4]: https://github.com/Kong/kong/compare/2.1.3...2.1.4
