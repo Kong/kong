@@ -18,6 +18,7 @@ local type         = type
 local ipairs       = ipairs
 local tostring     = tostring
 local tonumber     = tonumber
+local setmetatable = setmetatable
 local sub          = string.sub
 local byte         = string.byte
 local gsub         = string.gsub
@@ -46,6 +47,7 @@ local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
 local COMMA = byte(",")
 local SPACE = byte(" ")
+local ARRAY_MT = require("cjson.safe").array_mt
 
 
 local HOST_PORTS = {}
@@ -802,7 +804,9 @@ do
       host           = host,      -- target host per `service` entity
       port           = port,      -- final target port
       try_count      = 0,         -- retry counter
-      tries          = {},        -- stores info per try
+      -- stores info per try, metatable is needed for basic log serializer
+      -- see #6390
+      tries          = setmetatable({}, ARRAY_MT),
       -- ip          = nil,       -- final target IP address
       -- balancer    = nil,       -- the balancer object, if any
       -- hostname    = nil,       -- hostname of the final target IP
