@@ -79,13 +79,13 @@ local function execute(args)
 
   package.path = conf.lua_package_path .. ";" .. package.path
 
+  _G.kong = kong_global.new()
+  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+
   local dc, err = declarative.new_config(conf, true)
   if not dc then
     error(err)
   end
-
-  _G.kong = kong_global.new()
-  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
 
   local db = assert(DB.new(conf))
   assert(db:init_connector())

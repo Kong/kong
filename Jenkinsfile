@@ -433,6 +433,7 @@ pipeline {
                         }
                     }
                     environment {
+                        GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         SLACK_WEBHOOK = credentials('core_team_slack_webhook')
                         GITHUB_USER = "mashapedeployment"

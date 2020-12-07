@@ -28,6 +28,32 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "bot3.com" },
       }
 
+      local grpc_service = bp.services:insert {
+          name = "grpc1",
+          url = "grpc://localhost:15002",
+      }
+
+      local route_grpc1 = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        hosts = { "bot-grpc1.com" },
+        service = grpc_service,
+      })
+
+      local route_grpc2 = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        hosts = { "bot-grpc2.com" },
+        service = grpc_service,
+      })
+
+      local route_grpc3 = assert(bp.routes:insert {
+        protocols = { "grpc" },
+        paths = { "/hello.HelloService/" },
+        hosts = { "bot-grpc3.com" },
+        service = grpc_service,
+      })
+
       bp.plugins:insert {
         route = { id = route1.id },
         name     = "bot-detection",
@@ -44,6 +70,28 @@ for _, strategy in helpers.each_strategy() do
 
       bp.plugins:insert {
         route = { id = route3.id },
+        name     = "bot-detection",
+        config   = {
+          allow = { FACEBOOK },
+        },
+      }
+
+      bp.plugins:insert {
+        route = { id = route_grpc1.id },
+        name     = "bot-detection",
+        config   = {},
+      }
+
+      bp.plugins:insert {
+        route = { id = route_grpc2.id },
+        name     = "bot-detection",
+        config   = {
+          deny = { HELLOWORLD },
+        },
+      }
+
+      bp.plugins:insert {
+        route = { id = route_grpc3.id },
         name     = "bot-detection",
         config   = {
           allow = { FACEBOOK },
@@ -109,6 +157,47 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(200)
     end)
 
+    it("allows regular requests #grpc", function()
+      local ok = helpers.proxy_client_grpc(){
+        service = "hello.HelloService.SayHello",
+        opts = {
+          ["-authority"] = "bot-grpc1.com",
+          ["-v"] = true,
+        },
+      }
+      assert.truthy(ok)
+
+      local ok = helpers.proxy_client_grpc(){
+        service = "hello.HelloService.SayHello",
+        opts = {
+          ["-authority"] = "bot-grpc1.com",
+          ["-user-agent"] = "'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'",
+          ["-v"] = true,
+        },
+      }
+      assert.truthy(ok)
+
+      local ok = helpers.proxy_client_grpc(){
+        service = "hello.HelloService.SayHello",
+        opts = {
+          ["-authority"] = "bot-grpc1.com",
+          ["-user-agent"] = HELLOWORLD,
+          ["-v"] = true,
+        },
+      }
+      assert.truthy(ok)
+
+      local ok = helpers.proxy_client_grpc(){
+        service = "hello.HelloService.SayHello",
+        opts = {
+          ["-authority"] = "bot-grpc1.com",
+          ["-user-agent"] = "curl/7.43.0",
+          ["-v"] = true,
+        },
+      }
+      assert.truthy(ok)
+    end)
+
     it("blocks bots", function()
       local res = assert( proxy_client:send {
         method  = "GET",
@@ -131,6 +220,30 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(403)
     end)
 
+    it("blocks bots #grpc", function()
+      local ok, err = helpers.proxy_client_grpc(){
+        service = "hello.HelloService.SayHello",
+        opts = {
+          ["-authority"] = "bot-grpc1.com",
+          ["-user-agent"] = "'Googlebot/2.1 (+http://www.google.com/bot.html)'",
+          ["-v"] = true,
+        },
+      }
+      assert.falsy(ok)
+      assert.matches("Code: PermissionDenied", err)
+
+      local ok, err = helpers.proxy_client_grpc(){
+        service = "hello.HelloService.SayHello",
+        opts = {
+          ["-authority"] = "bot-grpc1.com",
+          ["-user-agent"] = FACEBOOK,
+          ["-v"] = true,
+        },
+      }
+      assert.falsy(ok)
+      assert.matches("Code: PermissionDenied", err)
+    end)
+
     it("blocks denied user-agents", function()
       local res = assert( proxy_client:send {
         method  = "GET",
@@ -141,6 +254,19 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.response(res).has.status(403)
+    end)
+
+    it("blocks denied user-agents #grpc", function()
+      local ok, err = helpers.proxy_client_grpc(){
+        service = "hello.HelloService.SayHello",
+        opts = {
+          ["-authority"] = "bot-grpc2.com",
+          ["-user-agent"] = HELLOWORLD,
+          ["-v"] = true,
+        },
+      }
+      assert.falsy(ok)
+      assert.matches("Code: PermissionDenied", err)
     end)
 
     it("allows allowed user-agents", function()
@@ -155,6 +281,17 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(200)
     end)
 
+    it("allows allowed user-agents #grpc", function()
+      local ok = helpers.proxy_client_grpc(){
+        service = "hello.HelloService.SayHello",
+        opts = {
+          ["-authority"] = "bot-grpc3.com",
+          ["-user-agent"] = FACEBOOK,
+          ["-v"] = true,
+        },
+      }
+      assert.truthy(ok)
+    end)
   end)
 
   describe("Plugin: bot-detection configured global (access) [#" .. strategy .. "]", function()
