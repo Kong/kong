@@ -1,9 +1,9 @@
 package = "kong"
-version = "2.2.0-0"
+version = "2.2.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.2.0"
+  tag = "2.2.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -38,7 +38,7 @@ dependencies = {
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
-  "kong-plugin-azure-functions ~> 0.4",
+  "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.2",
   "kong-plugin-serverless-functions ~> 1.0",
   "kong-prometheus-plugin ~> 1.0",

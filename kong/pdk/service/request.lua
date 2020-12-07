@@ -8,6 +8,7 @@ local phase_checker = require "kong.pdk.private.phases"
 
 
 local ngx = ngx
+local ngx_var = ngx.var
 local table_insert = table.insert
 local table_sort = table.sort
 local table_concat = table.concat
@@ -112,7 +113,7 @@ local function new(self)
       error("invalid scheme: " .. scheme, 2)
     end
 
-    ngx.var.upstream_scheme = scheme
+    ngx_var.upstream_scheme = scheme
   end
 
 
@@ -138,7 +139,7 @@ local function new(self)
 
     -- TODO: is this necessary in specific phases?
     -- ngx.req.set_uri(path)
-    ngx.var.upstream_uri = path
+    ngx_var.upstream_uri = path
   end
 
 
@@ -261,6 +262,11 @@ local function new(self)
   end
 
 
+  local set_authority
+  if ngx.config.subsystem ~= "stream" then
+    set_authority = require("resty.kong.grpc").set_authority
+  end
+
   ---
   -- Sets a header in the request to the Service with the given value. Any existing header
   -- with the same name will be overridden.
@@ -281,7 +287,18 @@ local function new(self)
     validate_header(header, value)
 
     if string_lower(header) == "host" then
-      ngx.var.upstream_host = value
+      ngx_var.upstream_host = value
+    end
+
+    if string_lower(header) == ":authority" then
+      if ngx_var.upstream_scheme == "grpc" or
+         ngx_var.upstream_scheme == "grpcs"
+      then
+        return set_authority(value)
+
+      else
+        return nil, "cannot set :authority pseudo-header on non-grpc requests"
+      end
     end
 
     ngx.req.set_header(header, normalize_header(value))
@@ -307,7 +324,7 @@ local function new(self)
     validate_header(header, value)
 
     if string_lower(header) == "host" then
-      ngx.var.upstream_host = value
+      ngx_var.upstream_host = value
     end
 
     local headers = ngx.req.get_headers()[header]
@@ -394,7 +411,7 @@ local function new(self)
 
     for k, v in pairs(headers) do
       if string_lower(k) == "host" then
-        ngx.var.upstream_host = v
+        ngx_var.upstream_host = v
       end
 
       ngx.req.set_header(k, normalize_multi_header(v))
