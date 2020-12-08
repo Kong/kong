@@ -13,6 +13,7 @@ local CERTKEY_KEY_PREFIX = "kong_acme:cert_key:"
 
 local LOCK_TIMEOUT = 30 -- in seconds
 local CACHE_TTL = 3600 -- in seconds
+local CACHE_NEG_TTL = 5
 
 local function account_name(conf)
   return "kong_acme:account:" .. conf.api_uri .. ":" ..
@@ -55,7 +56,7 @@ local function cached_get(storage, key, deserializer, ttl, neg_ttl)
     -- we override the default setting here so that cert can be invalidated
     -- with renewal.
     ttl = math.max(ttl or CACHE_TTL, 0),
-    neg_ttl = neg_ttl,
+    neg_ttl = math.max(neg_ttl or CACHE_NEG_TTL, 0),
   }, storage.get, storage, key)
 end
 
