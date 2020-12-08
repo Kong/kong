@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.2.13](#0213---20201208)
 - [0.2.12](#0212---20201013)
 - [0.2.11](#0211---20200916)
 - [0.2.10](#0210---20200812)
@@ -16,6 +17,11 @@
 - [0.1.2](#012---20191216)
 - [0.1.1](#011---20191212)
 - [0.1.0](#010---20191212)
+
+##  [0.2.12] - 2020/12/8
+
+- Support CA that requires External Account Binding (EAB).
+- Set neg_ttl to non-zero in dbless mode as well.
 
 ##  [0.2.12] - 2020/10/13
 
@@ -96,6 +102,7 @@ causing validation failures.
 - Initial release of ACME plugin for Kong.
 
 
+[0.2.13]: https://github.com/Kong/kong-plugin-acme/compare/0.2.12...0.2.13
 [0.2.12]: https://github.com/Kong/kong-plugin-acme/compare/0.2.11...0.2.12
 [0.2.11]: https://github.com/Kong/kong-plugin-acme/compare/0.2.10...0.2.11
 [0.2.10]: https://github.com/Kong/kong-plugin-acme/compare/0.2.9...0.2.10
