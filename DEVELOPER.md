@@ -1,6 +1,9 @@
+## Being familiar with basic concepts like environment variables
+Environment variables are dynamic values that affect the programs or processes running on a server. They exist on every operating system, and their type may vary. Environment variables can be created, edited, saved and deleted.
+
+Linux environment variables are placeholders for information stored within the system that passes data to programs launched in shells or sub-shells.
 
 These are the steps we follow at Kong to set up a development environment.
-
 
 ## Virtual Machine
 
@@ -46,12 +49,6 @@ Just keep hitting Enter until the key is generated. You do not need a password f
 Now try `ssh dev` on your host, you should be able to get into the guest directly
 
 ## Linux Environment
-
-Environment variables are dynamic values that affect the programs or processes running on a server. They exist on every operating system, and their type may vary. Environment variables can be created, edited, saved and deleted.
-
-Linux environment variables are placeholders for information stored within the system that passes data to programs launched in shells or sub-shells.
-
-### Procedure
 Once you have a Linux development environment (either virtual or bare metal), the build is done in four separate steps:
 
 1. Prerequisite packages.  Mostly compilers, tools and libraries needed to compile everything else.
