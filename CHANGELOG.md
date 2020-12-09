@@ -63,11 +63,19 @@ is not feature-frozen at this time: and any new features introduced here
 may change between this release and 2.3.0, and new features may be
 added.
 
+### Distributions
+
+- :warning: Support for Centos 6 has been removed, as said distro entered
+  EOL on Nov 30.
+  [#6641](https://github.com/Kong/kong/pull/6641)
+
 ### Dependencies
 
+- Bump OpenSSL from 1.1.1h to 1.1.1i.
+  [#6639](https://github.com/Kong/kong/pull/6639)
 - Bump `kong-plugin-zipkin` from 1.1 to 1.2.
   [#6576](https://github.com/Kong/kong/pull/6576)
-- Bump `kong-plugin-request-transformer` from 1.2 to 1.3
+- Bump `kong-plugin-request-transformer` from 1.2 to 1.3.
   [#6542](https://github.com/Kong/kong/pull/6542)
 
 ### Additions
@@ -142,6 +150,14 @@ added.
   [#6517](https://github.com/Kong/kong/pull/6517)
 - Fix issue where a `nil` request context would lead to errors `attempt to index local 'ctx'` being shown in the logs
 
+
+### Fixes
+
+##### PDK
+
+- Ensure the log serializer encodes the `tries` field as an array when
+  empty, rather than an object.
+  [#6632](https://github.com/Kong/kong/pull/6632)
 
 [Back to TOC](#table-of-contents)
 
