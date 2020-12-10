@@ -9,6 +9,7 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson.safe"
 local _VERSION_TABLE = require "kong.meta" ._VERSION_TABLE
+local _VERSION = require "kong.meta" ._VERSION
 local MAJOR = _VERSION_TABLE.major
 local MINOR = _VERSION_TABLE.minor
 local PATCH = _VERSION_TABLE.patch
@@ -274,7 +275,7 @@ for _, strategy in helpers.each_strategy() do
 
           for _, v in pairs(json.data) do
             if v.id == uuid then
-              assert.equal(tostring(_VERSION_TABLE), v.version)
+              assert.equal(tostring(_VERSION), v.version)
               return true
             end
           end
@@ -318,7 +319,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("CP and DP suffix mismatches, sync is still allowed", function()
         local uuid = utils.uuid()
-        local version = tostring(_VERSION_TABLE) .. "-enterprise-version"
+        local version = tostring(_VERSION) .. "-enterprise-version"
 
         local res = assert(helpers.clustering_client({
           host = "127.0.0.1",
@@ -413,7 +414,7 @@ for _, strategy in helpers.each_strategy() do
 
           for _, v in pairs(json.data) do
             if v.id == uuid then
-              assert.equal(tostring(_VERSION_TABLE), v.version)
+              assert.equal(tostring(_VERSION), v.version)
               return true
             end
           end
@@ -468,7 +469,7 @@ for _, strategy in helpers.each_strategy() do
           for _, v in pairs(json.data) do
             if v.ip == "127.0.0.1" then
               assert.near(14 * 86400, v.ttl, 10)
-              assert.equals(tostring(_VERSION_TABLE), v.version)
+              assert.equals(tostring(_VERSION), v.version)
 
               res = proxy_client:send({
                 method  = "GET",
