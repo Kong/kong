@@ -3,13 +3,13 @@ https_server.__index = https_server
 
 
 local fmt = string.format
-local nginx_tpl_file = require 'spec.fixtures.nginx_conf_template'
-local ngx = require 'ngx'
-local pl_dir = require 'pl.dir'
-local pl_file = require 'pl.file'
-local pl_template = require 'pl.template'
+local mock_srv_tpl_file = require "spec.fixtures.mock_webserver_tpl"
+local ngx = require "ngx"
+local pl_dir = require "pl.dir"
+local pl_file = require "pl.file"
+local pl_template = require "pl.template"
 local pl_path = require "pl.path"
-local pl_text = require 'pl.text'
+local pl_text = require "pl.text"
 local uuid = require "resty.jit-uuid"
 
 
@@ -34,12 +34,12 @@ local function create_temp_dir(copy_cert_and_key)
   end
 
   if copy_cert_and_key then
-    local status = pl_dir.copyfile('./spec/fixtures/kong_spec.crt', tmp_path)
+    local status = pl_dir.copyfile("./spec/fixtures/kong_spec.crt", tmp_path)
     if not status then
       return nil, "could not copy cert"
     end
 
-    status = pl_dir.copyfile('./spec/fixtures/kong_spec.key', tmp_path)
+    status = pl_dir.copyfile("./spec/fixtures/kong_spec.key", tmp_path)
     if not status then
       return nil, "could not copy private key"
     end
@@ -50,7 +50,7 @@ end
 
 
 local function create_conf(params)
-  local tpl, err = pl_template.compile(nginx_tpl_file)
+  local tpl, err = pl_template.compile(mock_srv_tpl_file)
   if err then
     return nil, err
   end
@@ -71,12 +71,12 @@ end
 
 local function count_results(logs_dir)
   local results = {
-    ['ok'] = 0,
-    ['fail'] = 0,
-    ['total'] = 0,
-    ['status_ok'] = 0,
-    ['status_fail'] = 0,
-    ['status_total'] = 0
+    ["ok"] = 0,
+    ["fail"] = 0,
+    ["total"] = 0,
+    ["status_ok"] = 0,
+    ["status_fail"] = 0,
+    ["status_total"] = 0
   }
   local error_log_filename = logs_dir .. "/error.log"
 
@@ -89,19 +89,19 @@ local function count_results(logs_dir)
       if host then
         host = string.match(m[3], "[^:]+")
       else
-        host = 'nonamehost'
+        host = "nonamehost"
       end
       if results[host] == nil then
         results[host] = {
-          ['ok'] = 0,
-          ['fail'] = 0,
-          ['status_ok'] = 0,
-          ['status_fail'] = 0,
+          ["ok"] = 0,
+          ["fail"] = 0,
+          ["status_ok"] = 0,
+          ["status_fail"] = 0,
         }
       end
 
-      if location == 'slash' then
-        if status == '200' then
+      if location == "slash" then
+        if status == "200" then
           results.ok = results.ok + 1
           results[host].ok = results[host].ok + 1
         else
@@ -109,8 +109,8 @@ local function count_results(logs_dir)
           results[host].fail = results[host].fail + 1
         end
         results.total = results.ok + results.fail
-      elseif location == 'status' then
-        if status == '200' then
+      elseif location == "status" then
+        if status == "200" then
           results.status_ok = results.status_ok + 1
           results[host].status_ok = results[host].status_ok + 1
         else
@@ -210,7 +210,7 @@ function https_server.new(port, hostname, protocol, check_hostname, workers)
   local host
   local hosts
 
-  if type(hostname) == 'table' then
+  if type(hostname) == "table" then
     hosts = hostname
     host = ""
     for _, h in ipairs(hostname) do
@@ -222,11 +222,11 @@ function https_server.new(port, hostname, protocol, check_hostname, workers)
   end
 
   self.check_hostname = check_hostname or false
-  self.host = host or 'localhost'
+  self.host = host or "localhost"
   self.hosts = hosts
   self.http_port = port
-  self.logs_dir = 'logs'
-  self.protocol = protocol or 'http'
+  self.logs_dir = "logs"
+  self.protocol = protocol or "http"
   self.worker_num = workers or 2
 
   return self
