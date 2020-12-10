@@ -316,7 +316,7 @@ describe("NGINX conf compiler", function()
         local nginx_conf = prefix_handler.compile_nginx_conf(conf)
         assert.not_matches("user%s+[^;]*;", nginx_conf)
       end)
-      it("is included when otherwise #b", function()
+      it("is included when otherwise", function()
         local conf = assert(conf_loader(helpers.test_conf_path, {
           nginx_main_user = "www_data www_data"
         }))
@@ -1028,4 +1028,3 @@ describe("NGINX conf compiler", function()
     end)
   end)
 end)
-
