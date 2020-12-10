@@ -1362,6 +1362,7 @@ local function load(path, custom_conf, opts)
     local user = utils.strip(conf.nginx_user):gsub("%s+", " ")
     if user == "nobody" or user == "nobody nobody" then
       conf.nginx_user = nil
+
     elseif user == "kong" or user == "kong kong" then
       default_nginx_user = true
     end
