@@ -209,7 +209,7 @@ function _M:init()
   end
 
   -- init strategy, recording node id and hostname in db
-  local ok, err = self.strategy:init(node_id, utils.get_hostname())
+  local ok, err = self.strategy:init(node_id, knode.get_hostname())
   if not ok then
     log(ERR, _log_prefix, "failed to initialize strategy ", err)
     return

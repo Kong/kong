@@ -315,7 +315,7 @@ function _M:init()
   self.node_id = node_id
 
   -- init strategy, recording node id and hostname in db
-  local ok, err = self.strategy:init(node_id, utils.get_hostname())
+  local ok, err = self.strategy:init(node_id, knode.get_hostname())
   if not ok then
     return self:init_failed(nil, "failed to init vitals strategy " .. err)
   end
