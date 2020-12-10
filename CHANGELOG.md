@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.2.1](#221)
 - [2.2.0](#220)
 - [2.1.4](#214)
 - [2.1.3](#213)
@@ -49,6 +50,42 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+
+## [2.2.1]
+
+> Released 2020/12/01
+
+This is a patch release in the 2.2 series. Being a patch release, it
+strictly contains bugfixes. The are no new features or breaking changes.
+
+### Fixes
+
+##### Distribution
+
+##### Core
+
+- Fix issue where Kong would fail to start a Go plugin instance with a
+  `starting instance: nil` error.
+  [#6507](https://github.com/Kong/kong/pull/6507)
+- Fix issue where a route that supports both `http` and `https` (and has
+  a `hosts` and `snis` match criteria) would fail to proxy `http`
+  requests, as it does not contain an SNI.
+  [#6517](https://github.com/Kong/kong/pull/6517)
+- Fix issue where a Go plugin would fail to read `kong.ctx.shared` values
+  set by Lua plugins.
+  [#6426](https://github.com/Kong/kong/issues/6426)
+- Fix issue where gRPC requests would fail to set the `:authority`
+  pseudo-header in upstream requests.
+  [#6603](https://github.com/Kong/kong/pull/6603)
+
+##### CLI
+
+- Fix issue where `kong config db_import` and `kong config db_export`
+  commands would fail if Go plugins were enabled.
+  [#6596](https://github.com/Kong/kong/pull/6596)
+  Thanks [daniel-shuy](https://github.com/daniel-shuy) for the patch!
+
+[Back to TOC](#table-of-contents)
 
 ## [2.2.0]
 
@@ -5532,6 +5569,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.2.1]: https://github.com/Kong/kong/compare/2.2.0...2.2.1
 [2.2.0]: https://github.com/Kong/kong/compare/2.1.3...2.2.0
 [2.1.4]: https://github.com/Kong/kong/compare/2.1.3...2.1.4
 [2.1.3]: https://github.com/Kong/kong/compare/2.1.2...2.1.3

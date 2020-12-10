@@ -63,9 +63,25 @@ local function parse_key_and_cert(row)
     return nil, "could not parse PEM private key: " .. err
   end
 
+  local cert_alt
+  local key_alt
+  if row.cert_alt and row.key_alt then
+    cert_alt, err = parse_pem_cert(row.cert_alt)
+    if not cert_alt then
+      return nil, "could not parse alternate PEM certificate: " .. err
+    end
+
+    key_alt, err = parse_pem_priv_key(row.key_alt)
+    if not key_alt then
+      return nil, "could not parse alternate PEM private key: " .. err
+    end
+  end
+
   return {
     cert = cert,
     key = key,
+    cert_alt = cert_alt,
+    key_alt = key_alt,
   }
 end
 
@@ -283,6 +299,20 @@ local function execute()
   if not ok then
     log(ERR, "could not set configured private key: ", err)
     return ngx.exit(ngx.ERROR)
+  end
+
+  if cert_and_key.cert_alt and cert_and_key.key_alt then
+    ok, err = set_cert(cert_and_key.cert_alt)
+    if not ok then
+      log(ERR, "could not set alternate configured certificate: ", err)
+      return ngx.exit(ngx.ERROR)
+    end
+
+    ok, err = set_priv_key(cert_and_key.key_alt)
+    if not ok then
+      log(ERR, "could not set alternate configured private key: ", err)
+      return ngx.exit(ngx.ERROR)
+    end
   end
 end
 

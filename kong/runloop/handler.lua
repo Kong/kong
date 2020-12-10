@@ -26,6 +26,7 @@ local type         = type
 local ipairs       = ipairs
 local tostring     = tostring
 local tonumber     = tonumber
+local setmetatable = setmetatable
 local sub          = string.sub
 local byte         = string.byte
 local gsub         = string.gsub
@@ -54,6 +55,7 @@ local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
 local COMMA = byte(",")
 local SPACE = byte(" ")
+local ARRAY_MT = require("cjson.safe").array_mt
 
 
 local HOST_PORTS = {}
@@ -817,7 +819,9 @@ do
       host           = host,      -- target host per `service` entity
       port           = port,      -- final target port
       try_count      = 0,         -- retry counter
-      tries          = {},        -- stores info per try
+      -- stores info per try, metatable is needed for basic log serializer
+      -- see #6390
+      tries          = setmetatable({}, ARRAY_MT),
       -- ip          = nil,       -- final target IP address
       -- balancer    = nil,       -- the balancer object, if any
       -- hostname    = nil,       -- hostname of the final target IP
@@ -1217,6 +1221,7 @@ return {
         forwarded_proto ~= "https")
       then
         return kong.response.exit(200, nil, {
+          ["content-type"] = "application/grpc",
           ["grpc-status"] = 1,
           ["grpc-message"] = "gRPC request matched gRPCs route",
         })
@@ -1314,18 +1319,30 @@ return {
       do
         -- set the upstream host header if not `preserve_host`
         local upstream_host = var.upstream_host
+        local upstream_scheme = var.upstream_scheme
 
         if not upstream_host or upstream_host == "" then
           upstream_host = balancer_data.hostname
 
-          local upstream_scheme = var.upstream_scheme
           if upstream_scheme == "http"  and balancer_data.port ~= 80 or
-             upstream_scheme == "https" and balancer_data.port ~= 443
+             upstream_scheme == "https" and balancer_data.port ~= 443 or
+             upstream_scheme == "grpc"  and balancer_data.port ~= 80 or
+             upstream_scheme == "grpcs" and balancer_data.port ~= 443
           then
             upstream_host = upstream_host .. ":" .. balancer_data.port
           end
 
           var.upstream_host = upstream_host
+        end
+
+        -- the nginx grpc module does not offer a way to overrride
+        -- the :authority pseudo-header; use our internal API to
+        -- do so
+        if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
+          ok, err = kong.service.request.set_header(":authority", upstream_host)
+          if not ok then
+            log(ERR, "failed to set :authority header: ", err)
+          end
         end
       end
 

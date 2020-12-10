@@ -1191,6 +1191,23 @@ return {
           description = [[PEM-encoded private key of the SSL key pair.]],
           example = "-----BEGIN RSA PRIVATE KEY-----..."
         },
+        cert_alt = {
+          description = [[
+            PEM-encoded public certificate chain of the alternate SSL key pair.
+            This should only be set if you have both RSA and ECDSA types of
+            certificate available and would like Kong to prefer serving using
+            ECDSA certs when client advertises support for it.
+          ]],
+          example = "-----BEGIN CERTIFICATE-----...",
+        },
+        key_alt = {
+          description = [[PEM-encoded private key of the alternate SSL key pair.
+            This should only be set if you have both RSA and ECDSA types of
+            certificate available and would like Kong to prefer serving using
+            ECDSA certs when client advertises support for it.
+          ]],
+          example = "-----BEGIN EC PRIVATE KEY-----..."
+        },
         tags = {
           description = [[
             An optional set of strings associated with the Certificate for grouping and filtering.
