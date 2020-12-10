@@ -1180,7 +1180,7 @@ function _M:get_index()
 end
 
 
-function _M:get_stats(query_type, level, node_id, start_ts)
+function _M:get_stats(query_type, level, node_id, start_ts, end_ts)
   if self.tsdb_storage then
     if query_type ~= "days" and query_type ~= "hours" and query_type ~= "minutes" and query_type ~= "seconds" then
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
@@ -1203,7 +1203,11 @@ function _M:get_stats(query_type, level, node_id, start_ts)
     return nil, "Invalid query params: start_ts must be a number"
   end
 
-  local res, err = self.strategy:select_stats(query_type, level, node_id, start_ts)
+  if end_ts and not tonumber(end_ts) then
+    return nil, "Invalid query params: start_ts must be a number"
+  end
+
+  local res, err = self.strategy:select_stats(query_type, level, node_id, start_ts, end_ts)
 
   if res and not res[1] then
     local node_exists, node_err = self.strategy:node_exists(node_id)
@@ -1246,12 +1250,17 @@ function _M:get_status_codes(opts, key_by)
     return nil, "Invalid query params: start_ts must be a number"
   end
 
+  if opts.end_ts and not tonumber(opts.end_ts) then
+    return nil, "Invalid query params: end_ts must be a number"
+  end
+
   -- TODO ensure the requested entity is in the requested workspace (if any)
   -- currently depending on the API (api/init.lua) to do that check
 
   local query_opts = {
     duration = vitals_utils.interval_to_duration[opts.duration],
     start_ts = opts.start_ts,
+    end_ts = opts.end_ts,
     entity_type = opts.entity_type,
     entity_id = opts.entity_id,
     key_by = key_by,
@@ -1328,12 +1337,17 @@ function _M:get_consumer_stats(opts)
     return nil, "Invalid query params: start_ts must be a number"
   end
 
+  if opts.end_ts and not tonumber(opts.end_ts) then
+    return nil, "Invalid query params: end_ts must be a number"
+  end
+
   local query_opts = {
     consumer_id = opts.consumer_id,
     duration    = vitals_utils.interval_to_duration[opts.duration],
     level       = opts.level,
     node_id     = opts.node_id,
     start_ts    = opts.start_ts,
+    end_ts      = opts.end_ts,
   }
 
   local res, _ = self.strategy:select_consumer_stats(query_opts)
