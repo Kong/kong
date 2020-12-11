@@ -43,6 +43,7 @@ local NOOP = function() end
 
 local ERR   = ngx.ERR
 local CRIT  = ngx.CRIT
+local NOTICE = ngx.NOTICE
 local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
 local COMMA = byte(",")
@@ -434,6 +435,11 @@ local function register_events()
 
   if db.strategy == "off" then
     worker_events.register(function(default_ws)
+      if ngx.worker.exiting() then
+        log(NOTICE, "declarative flip config canceled: process exiting")
+        return true
+      end
+
       local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
         balancer.stop_healthcheckers()
 
