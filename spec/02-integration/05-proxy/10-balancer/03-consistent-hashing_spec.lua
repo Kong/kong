@@ -1,6 +1,8 @@
 local bu = require "spec.fixtures.balancer_utils"
 local helpers = require "spec.helpers"
-local https_server = require "spec.fixtures.https_server"
+
+
+local https_server = helpers.https_server
 
 
 local https_server = helpers.https_server
