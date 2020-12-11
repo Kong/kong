@@ -810,6 +810,7 @@ do
     if ok then
       ok, err = kong.worker_events.post("declarative", "flip_config", default_ws)
       if ok ~= "done" then
+        ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
         return nil, "failed to flip declarative config cache pages: " .. (err or ok)
       end
 
@@ -820,7 +821,8 @@ do
 
     ok, err = kong.core_cache:save_curr_page()
     if not ok then
-      return nil, "failed to persist cache page number inside shdict: " .. err
+      ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
+      return nil, "failed to persist core cache page number inside shdict: " .. err
     end
 
     local sleep_left = DECLARATIVE_FLIPS_TTL
