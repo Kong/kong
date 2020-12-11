@@ -834,6 +834,12 @@ do
       return nil, "failed to persist core cache page number inside shdict: " .. err
     end
 
+    ok, err = kong.cache:save_curr_page()
+    if not ok then
+      ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
+      return nil, "failed to persist kong cache page number inside shdict: " .. err
+    end
+
     if ngx.worker.exiting() then
       ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
       return nil, "exiting"
