@@ -240,6 +240,7 @@ function _M.new(opts)
     local strategy_opts = {
       ttl_seconds = opts.ttl_seconds or 3600,
       ttl_minutes = opts.ttl_minutes or 90000,
+      ttl_days = opts.ttl_days or 0,
     }
 
     local db_strategy
@@ -280,10 +281,12 @@ function _M.new(opts)
     list_cache     = ngx.shared.kong_vitals_lists,
     counter_cache  = ngx.shared.kong_vitals_counters,
     strategy       = strategy,
+    db_strategy    = opts.db.strategy,
     counters       = {},
     flush_interval = opts.flush_interval or 90000,
     ttl_seconds    = opts.ttl_seconds or 3600,
     ttl_minutes    = opts.ttl_minutes or 90000,
+    ttl_days       = opts.ttl_days or 0,
     initialized    = false,
     tsdb_storage   = tsdb_storage,
     hybrid_cp      = hybrid_cp,
@@ -984,6 +987,7 @@ function _M:flush_counters()
     log(DEBUG, _log_prefix, "delete expired stats")
     local expiries = {
       minutes = self.ttl_minutes,
+      days = self.ttl_days,
     }
     local ok, err = self.strategy:delete_stats(expiries)
     if not ok then
@@ -1176,14 +1180,14 @@ function _M:get_index()
 end
 
 
-function _M:get_stats(query_type, level, node_id, start_ts)
+function _M:get_stats(query_type, level, node_id, start_ts, end_ts)
   if self.tsdb_storage then
     if query_type ~= "days" and query_type ~= "hours" and query_type ~= "minutes" and query_type ~= "seconds" then
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
   else
-    if query_type ~= "minutes" and query_type ~= "seconds" then
-      return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+    if query_type ~= "days" and query_type ~= "minutes" and query_type ~= "seconds" then
+      return nil, "Invalid query params: interval must be 'days', 'minutes' or 'seconds'"
     end
   end
 
@@ -1198,8 +1202,12 @@ function _M:get_stats(query_type, level, node_id, start_ts)
   if start_ts and not tonumber(start_ts) then
     return nil, "Invalid query params: start_ts must be a number"
   end
-  
-  local res, err = self.strategy:select_stats(query_type, level, node_id, start_ts)
+
+  if end_ts and not tonumber(end_ts) then
+    return nil, "Invalid query params: start_ts must be a number"
+  end
+
+  local res, err = self.strategy:select_stats(query_type, level, node_id, start_ts, end_ts)
 
   if res and not res[1] then
     local node_exists, node_err = self.strategy:node_exists(node_id)
@@ -1228,8 +1236,8 @@ function _M:get_status_codes(opts, key_by)
       return nil, "Invalid query params: interval must be 'days', 'hours', 'minutes' or 'seconds'"
     end
   else
-    if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
-      return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+    if opts.duration ~= "days" and opts.duration ~= "minutes" and opts.duration ~= "seconds" then
+      return nil, "Invalid query params: interval must be 'days', 'minutes' or 'seconds'"
     end
   end
 
@@ -1242,12 +1250,17 @@ function _M:get_status_codes(opts, key_by)
     return nil, "Invalid query params: start_ts must be a number"
   end
 
+  if opts.end_ts and not tonumber(opts.end_ts) then
+    return nil, "Invalid query params: end_ts must be a number"
+  end
+
   -- TODO ensure the requested entity is in the requested workspace (if any)
   -- currently depending on the API (api/init.lua) to do that check
 
   local query_opts = {
     duration = vitals_utils.interval_to_duration[opts.duration],
     start_ts = opts.start_ts,
+    end_ts = opts.end_ts,
     entity_type = opts.entity_type,
     entity_id = opts.entity_id,
     key_by = key_by,
@@ -1308,7 +1321,7 @@ function _M:get_consumer_stats(opts)
     end
   else
     if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
-      return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+      return nil, "Invalid query params: interval must be 'days', 'minutes' or 'seconds'"
     end
   end
 
@@ -1324,12 +1337,17 @@ function _M:get_consumer_stats(opts)
     return nil, "Invalid query params: start_ts must be a number"
   end
 
+  if opts.end_ts and not tonumber(opts.end_ts) then
+    return nil, "Invalid query params: end_ts must be a number"
+  end
+
   local query_opts = {
     consumer_id = opts.consumer_id,
     duration    = vitals_utils.interval_to_duration[opts.duration],
     level       = opts.level,
     node_id     = opts.node_id,
     start_ts    = opts.start_ts,
+    end_ts      = opts.end_ts,
   }
 
   local res, _ = self.strategy:select_consumer_stats(query_opts)
@@ -1512,6 +1530,7 @@ function _M:log_phase_after_plugins(ctx, status)
 
   local seconds = time()
   local minutes = seconds - (seconds % 60)
+  local days = seconds - (seconds % (60 * 60 * 24))
 
   local workspace = ctx.workspace or ""
 
@@ -1523,8 +1542,12 @@ function _M:log_phase_after_plugins(ctx, status)
 
   local key_prefixes = {
     seconds .. "|1|",
-    minutes .. "|60|",
+    minutes .. "|60|"
   }
+
+  if not self.tsdb_storage and self.db_strategy == "postgres" and self.ttl_days > 0 then
+    table.insert(key_prefixes, days .. "|86400|")
+  end
 
   for _, kp in ipairs(key_prefixes) do
     local _, err, forced = self.counter_cache:incr(kp .. key, 1, 0)
