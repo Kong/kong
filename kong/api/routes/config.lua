@@ -107,6 +107,12 @@ return {
           })
         end
 
+        if err == "exiting" then
+          return kong.response.exit(503, {
+            message = "Kong currently exiting"
+          })
+        end
+
         if err == "no memory" then
           kong.log.err("not enough cache space for declarative config")
           return kong.response.exit(413, {
