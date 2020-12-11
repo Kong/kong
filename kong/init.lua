@@ -188,6 +188,14 @@ do
   }
 
   reset_kong_shm = function()
+    local old_page = ngx.shared.kong:get("kong:cache:kong_db_cache:curr_mlcache")
+    if old_page == nil then
+      -- fresh node, just storing the initial page
+      ngx.shared.kong:set("kong:cache:kong_db_cache:curr_mlcache", 1)
+      ngx.shared.kong:set("kong:cache:kong_core_db_cache:curr_mlcache", 1)
+      return
+    end
+
     local preserved = {}
 
     for _, key in ipairs(preserve_keys) do
