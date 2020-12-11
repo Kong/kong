@@ -43,10 +43,12 @@ return {
             return kong.response.exit(500, { message = "An unexpected error happened" })
           end
 
-          local id = row.id
-          row.id = nil
-
-          data[id] = row
+          data[row.id] = {
+            config_hash = row.config_hash,
+            hostname    = row.hostname,
+            ip          = row.ip,
+            last_seen   = row.last_seen,
+          }
         end
 
         return kong.response.exit(200, data, {
