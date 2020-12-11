@@ -759,6 +759,7 @@ end
 do
   local DECLARATIVE_FLIPS_NAME = constants.DECLARATIVE_FLIPS.name
   local DECLARATIVE_FLIPS_TTL = constants.DECLARATIVE_FLIPS.ttl
+  local DECLARATIVE_PAGE_KEY = constants.DECLARATIVE_PAGE_KEY
 
   function declarative.load_into_cache_with_events(entities, meta, hash)
     if ngx.worker.exiting() then
@@ -828,16 +829,10 @@ do
       return nil, err
     end
 
-    ok, err = kong.core_cache:save_curr_page()
+    ok, err = ngx.shared.kong:set(DECLARATIVE_PAGE_KEY, kong.cache:get_page())
     if not ok then
       ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
-      return nil, "failed to persist core cache page number inside shdict: " .. err
-    end
-
-    ok, err = kong.cache:save_curr_page()
-    if not ok then
-      ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
-      return nil, "failed to persist kong cache page number inside shdict: " .. err
+      return nil, "failed to persist cache page number: " .. err
     end
 
     if ngx.worker.exiting() then

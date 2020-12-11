@@ -79,9 +79,9 @@ function _M.new(opts)
   local shm_names = {}
 
   for i = 1, opts.cache_pages or 1 do
-    local channel_name  = (i == 1) and "mlcache"                 or "mlcache_2"
-    local shm_name      = (i == 1) and opts.shm_name             or opts.shm_name .. "_2"
-    local shm_miss_name = (i == 1) and opts.shm_name .. "_miss"  or opts.shm_name .. "_miss_2"
+    local channel_name  = i == 1 and "mlcache"                 or "mlcache_2"
+    local shm_name      = i == 1 and opts.shm_name             or opts.shm_name .. "_2"
+    local shm_miss_name = i == 1 and opts.shm_name .. "_miss"  or opts.shm_name .. "_miss_2"
 
     if not ngx.shared[shm_name] then
       log(ERR, "shared dictionary ", shm_name, " not found")
@@ -126,18 +126,13 @@ function _M.new(opts)
     end
   end
 
-  local curr_mlcache = 1
-
-  if opts.cache_pages == 2 then
-    curr_mlcache = ngx.shared.kong:get("kong:cache:" .. opts.shm_name .. ":curr_mlcache") or 1
-  end
-
-  local self          = {
-    cluster_events    = opts.cluster_events,
-    mlcache           = mlcaches[curr_mlcache],
-    mlcaches          = mlcaches,
-    shm_names         = shm_names,
-    curr_mlcache      = curr_mlcache,
+  local page = opts.cache_pages == 2 and opts.page or 1
+  local self       = {
+    cluster_events = opts.cluster_events,
+    mlcache        = mlcaches[page],
+    mlcaches       = mlcaches,
+    shm_names      = shm_names,
+    page           = page,
   }
 
   local ok, err = self.cluster_events:subscribe("invalidations", function(key)
@@ -155,9 +150,12 @@ function _M.new(opts)
 end
 
 
-function _M:save_curr_page()
-  return ngx.shared.kong:set(
-    "kong:cache:" .. self.shm_names[1] .. ":curr_mlcache", self.curr_mlcache)
+function _M:get_page(shadow)
+  if #self.mlcaches == 2 and shadow then
+    return self.page == 2 and 1 or 2
+  end
+
+  return self.page or 1
 end
 
 
@@ -166,17 +164,8 @@ function _M:get(key, opts, cb, ...)
     error("key must be a string", 2)
   end
 
-  local shadow = (opts or {}).shadow
-
-  local current_page = self.curr_mlcache or 1
-  local get_page
-  if shadow and #self.mlcaches == 2 then
-    get_page = current_page == 1 and 2 or 1
-  else
-    get_page = current_page
-  end
-
-  local v, err = self.mlcaches[get_page]:get(key, opts, cb, ...)
+  local page = self:get_page((opts or {}).shadow)
+  local v, err = self.mlcaches[page]:get(key, opts, cb, ...)
   if err then
     return nil, "failed to get from node cache: " .. err
   end
@@ -194,17 +183,8 @@ function _M:get_bulk(bulk, opts)
     error("opts must be a table", 2)
   end
 
-  local shadow = (opts or {}).shadow
-
-  local current_page = self.curr_mlcache or 1
-  local get_bulk_page
-  if shadow and #self.mlcaches == 2 then
-    get_bulk_page = current_page == 1 and 2 or 1
-  else
-    get_bulk_page = current_page
-  end
-
-  local res, err = self.mlcaches[get_bulk_page]:get_bulk(bulk, opts)
+  local page = self:get_page((opts or {}).shadow)
+  local res, err = self.mlcaches[page]:get_bulk(bulk, opts)
   if err then
     return nil, "failed to get_bulk from node cache: " .. err
   end
@@ -220,16 +200,8 @@ function _M:safe_set(key, value, shadow)
     return nil, err
   end
 
-  local current_page = self.curr_mlcache or 1
-
-  local set_page
-  if shadow and #self.mlcaches == 2 then
-    set_page = current_page == 1 and 2 or 1
-  else
-    set_page = current_page
-  end
-
-  local shm_name = self.shm_names[set_page]
+  local page = self:get_page(shadow)
+  local shm_name = self.shm_names[page]
   return ngx.shared[shm_name]:safe_set(shm_name .. key, str_marshalled)
 end
 
@@ -239,15 +211,8 @@ function _M:probe(key, shadow)
     error("key must be a string", 2)
   end
 
-  local current_page = self.curr_mlcache or 1
-  local probe_page
-  if shadow and #self.mlcaches == 2 then
-    probe_page = current_page == 1 and 2 or 1
-  else
-    probe_page = current_page
-  end
-
-  local ttl, err, v = self.mlcaches[probe_page]:peek(key)
+  local page = self:get_page(shadow)
+  local ttl, err, v = self.mlcaches[page]:peek(key)
   if err then
     return nil, "failed to probe from node cache: " .. err
   end
@@ -263,15 +228,8 @@ function _M:invalidate_local(key, shadow)
 
   log(DEBUG, "invalidating (local): '", key, "'")
 
-  local current_page = self.curr_mlcache or 1
-  local delete_page
-  if shadow and #self.mlcaches == 2 then
-    delete_page = current_page == 1 and 2 or 1
-  else
-    delete_page = current_page
-  end
-
-  local ok, err = self.mlcaches[delete_page]:delete(key)
+  local page = self:get_page(shadow)
+  local ok, err = self.mlcaches[page]:delete(key)
   if not ok then
     log(ERR, "failed to delete entity from node cache: ", err)
   end
@@ -301,15 +259,8 @@ end
 function _M:purge(shadow)
   log(NOTICE, "purging (local) cache")
 
-  local current_page = self.curr_mlcache or 1
-  local purge_page
-  if shadow and #self.mlcaches == 2 then
-    purge_page = current_page == 1 and 2 or 1
-  else
-    purge_page = current_page
-  end
-
-  local ok, err = self.mlcaches[purge_page]:purge(true)
+  local page = self:get_page(shadow)
+  local ok, err = self.mlcaches[page]:purge(true)
   if not ok then
     log(ERR, "failed to purge cache: ", err)
   end
@@ -322,12 +273,8 @@ function _M:flip()
   end
 
   log(DEBUG, "flipping current cache")
-
-  local current_page = self.curr_mlcache or 1
-  local next_page = current_page == 1 and 2 or 1
-
-  self.curr_mlcache = next_page
-  self.mlcache = self.mlcaches[next_page]
+  self.page = self:get_page() == 2 and 1 or 2
+  self.mlcache = self.mlcaches[self.page]
 end
 
 

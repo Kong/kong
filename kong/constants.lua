@@ -169,6 +169,8 @@ local constants = {
     ttl = 60,
   },
 
+  DECLARATIVE_PAGE_KEY = "declarative:page",
+
   CLUSTER_ID_PARAM_KEY = "cluster_id",
 
   CLUSTERING_SYNC_STATUS = {
