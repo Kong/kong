@@ -53,6 +53,7 @@ local ffi = require "ffi"
 local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
 local table_clone = require "table.clone"
+local https_server = require "spec.fixtures.https_server"
 
 
 ffi.cdef [[
@@ -2769,6 +2770,7 @@ end
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
   clustering_client = clustering_client,
+  https_server = https_server,
 
   -- miscellaneous
   intercept = intercept,
