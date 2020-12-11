@@ -10,7 +10,7 @@ local ee_meta = require "kong.enterprise_edition.meta"
 local version = setmetatable({
   major = 2,
   minor = 2,
-  patch = 0,
+  patch = 1,
   -- suffix = ""
 }, {
   -- our Makefile during certain releases adjusts this line. Any changes to
@@ -24,7 +24,7 @@ local version = setmetatable({
 return {
   _NAME = "kong",
   _VERSION = tostring(ee_meta.versions.package) .. "-enterprise-edition",
-  _VERSION_TABLE = version,
+  _VERSION_TABLE = ee_meta.versions.package,
   _SERVER_TOKENS = "kong/" .. tostring(ee_meta.versions.package) .. "-enterprise-edition",
 
   _CORE_VERSION = tostring(version),

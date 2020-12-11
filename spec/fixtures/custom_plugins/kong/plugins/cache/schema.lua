@@ -6,5 +6,12 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 return {
-  fields = {}
+  name = "cache",
+  fields = {
+    { config = {
+        type = "record",
+        fields = { },
+      }
+    }
+  }
 }

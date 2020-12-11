@@ -143,6 +143,25 @@ describe("typedefs", function()
     assert.falsy(Test:validate({ f = 123 }))
   end)
 
+  it("features semantic_version typedef", function()
+    local Test = Schema.new({
+      fields = {
+        { f = typedefs.semantic_version }
+      }
+    })
+    assert.truthy(Test:validate({ f = "1" }))
+    assert.truthy(Test:validate({ f = "1.2" }))
+    assert.truthy(Test:validate({ f = "1.2.3" }))
+    assert.truthy(Test:validate({ f = "100.200.300" }))
+    assert.truthy(Test:validate({ f = "1.2.3-rc.1" }))
+    assert.truthy(Test:validate({ f = "1.2.3-alpha.1" }))
+    assert.truthy(Test:validate({ f = "1.2.3-beta.1" }))
+    assert.truthy(Test:validate({ f = "1.2.3.4-enterprise-edition" }))
+    assert.falsy(Test:validate({ f = "hello" }))
+    assert.falsy(Test:validate({ f = ".1" }))
+    assert.falsy(Test:validate({ f = "1..1" }))
+  end)
+
   it("features http_method typedef", function()
     local Test = Schema.new({
       fields = {

@@ -153,8 +153,11 @@ for _, strategy in helpers.each_strategy() do
       })
 
       local cert = bp.certificates:insert {
-          cert  = ssl_fixtures.cert,
-          key   = ssl_fixtures.key,
+        cert     = ssl_fixtures.cert,
+        key      = ssl_fixtures.key,
+        cert_alt = ssl_fixtures.cert_ecdsa,
+        key_alt  = ssl_fixtures.key_ecdsa,
+
       }
 
       bp.snis:insert {
@@ -177,6 +180,8 @@ for _, strategy in helpers.each_strategy() do
       local certificate_alt_alt = bp.certificates:insert {
         cert = ssl_fixtures.cert_alt_alt,
         key = ssl_fixtures.key_alt_alt,
+        cert_alt = ssl_fixtures.cert_alt_alt_ecdsa,
+        key_alt = ssl_fixtures.key_alt_alt_ecdsa,
       }
 
       bp.snis:insert {
@@ -569,8 +574,10 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local cert = bp.certificates:insert {
-        cert  = ssl_fixtures.cert,
-        key   = ssl_fixtures.key,
+        cert     = ssl_fixtures.cert,
+        key      = ssl_fixtures.key,
+        cert_alt = ssl_fixtures.cert_ecdsa,
+        key_alt  = ssl_fixtures.key_ecdsa,
       }
 
       bp.snis:insert {
@@ -629,8 +636,10 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local cert = bp.certificates:insert {
-        cert  = ssl_fixtures.cert,
-        key   = ssl_fixtures.key,
+        cert     = ssl_fixtures.cert,
+        key      = ssl_fixtures.key,
+        cert_alt = ssl_fixtures.cert_ecdsa,
+        key_alt  = ssl_fixtures.key_ecdsa,
       }
 
       bp.snis:insert {

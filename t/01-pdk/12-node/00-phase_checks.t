@@ -55,6 +55,18 @@ qq{
                 log           = true,
                 admin_api     = true,
             },
+            {
+                method        = "get_hostname",
+                args          = {},
+                init_worker   = true,
+                certificate   = "pending",
+                rewrite       = true,
+                access        = true,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+                admin_api     = true,
+            },
         }
 
         phase_check_functions(phases.init_worker)

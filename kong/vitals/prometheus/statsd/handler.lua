@@ -7,7 +7,6 @@
 
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local statsd_logger    = require "kong.vitals.prometheus.statsd.logger"
-local utils            = require "kong.tools.utils"
 local vitals           = require "kong.vitals"
 
 
@@ -19,12 +18,14 @@ local pairs         = pairs
 local string_format = string.format
 local NGX_ERR       = ngx.ERR
 local ee_metrics    = vitals.logging_metrics or {}
+local knode  = (kong and kong.node) and kong.node or
+               require "kong.pdk.node".new()
 
 
 local _M = {}
 
 local worker_id
-local hostname = re_gsub(utils.get_hostname(), [[\.]], "_", "oj")
+local hostname = re_gsub(knode.get_hostname(), [[\.]], "_", "oj")
 
 -- downsample timestamp
 local shdict_metrics_last_sent = 0
