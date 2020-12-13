@@ -5,14 +5,25 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local pl_file = require "pl.file"
 local helpers = require "spec.helpers"
 
-local PLUGIN_NAME    = require("kong.plugins.exit-transformer").PLUGIN_NAME
+local sandbox = require "kong.tools.sandbox"
 
+local PLUGIN_NAME    = require("kong.plugins.exit-transformer").PLUGIN_NAME
 
 for _, strategy in helpers.each_strategy() do
   describe(PLUGIN_NAME .. ": (handler) [#" .. strategy .. "]", function()
     local client
+
+    local conf = {
+      -- set the strategy
+      database   = strategy,
+      -- use the custom test template to create a local mock server
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      -- set the config item to make sure our plugin gets loaded
+      plugins = "bundled," .. PLUGIN_NAME,  -- since Kong CE 0.14
+    }
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, nil, { PLUGIN_NAME })
@@ -132,16 +143,8 @@ for _, strategy in helpers.each_strategy() do
         name = "key-auth",
         route = { id = route6.id },
       }
-
       -- start kong
-      assert(helpers.start_kong({
-        -- set the strategy
-        database   = strategy,
-        -- use the custom test template to create a local mock server
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-        -- set the config item to make sure our plugin gets loaded
-        plugins = "bundled," .. PLUGIN_NAME,  -- since Kong CE 0.14
-      }))
+      assert(helpers.start_kong(conf))
     end)
 
     lazy_teardown(function()
@@ -156,7 +159,46 @@ for _, strategy in helpers.each_strategy() do
       if client then client:close() end
     end)
 
-    describe("exit", function()
+    describe("untrusted_lua = 'off'", function()
+      lazy_setup(function()
+        conf.untrusted_lua = 'off'
+        assert(helpers.restart_kong(conf))
+      end)
+
+      lazy_teardown(function()
+        conf.untrusted_lua = nil
+      end)
+
+      it("does gracefully do nothing and log error", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/request",  -- makes mockbin return the entire request
+          headers = {
+            host = "test1.com"
+          }
+        })
+        assert.response(res).has.status(401)
+
+        helpers.wait_until(function()
+          local TEST_CONF = helpers.test_conf
+          local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
+
+          local _, count = logs:gsub(sandbox.configuration.err_msg, "")
+          return count >= 1
+        end, 3, 1)
+      end)
+    end)
+
+    describe("exit", function() for _, untrusted in ipairs({'on', 'sandbox'}) do describe(("untrusted_lua = '%s'"):format(untrusted), function()
+      lazy_setup(function()
+        conf.untrusted_lua = untrusted
+        assert(helpers.restart_kong(conf))
+      end)
+
+      lazy_teardown(function()
+        conf.untrusted_lua = nil
+      end)
+
       it("gets a custom exit instead of normal kong error", function()
         local res = assert(client:send {
           method = "GET",
@@ -206,7 +248,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("some value", header)
       end)
 
-      it("has access to kong #pdk", function()
+      it("has access to kong.request #pdk", function()
         local res = assert(client:send {
           method = "GET",
           path = "/request",  -- makes mockbin return the entire request
@@ -218,7 +260,6 @@ for _, strategy in helpers.each_strategy() do
         local body = res:read_body()
         assert.equal("hello world", body)
       end)
-
-    end)
+    end) end end)
   end)
 end

@@ -5,12 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local inspect = require "inspect"
 local cjson = require "cjson.safe"
 
-
 local runloop_handler = require "kong.runloop.handler"
-local workspaces = require "kong.workspaces"
+local sandbox = require "kong.tools.sandbox"
 
 local BasePlugin = require "kong.plugins.base_plugin"
 
@@ -62,41 +60,6 @@ local function get_conf()
   return nil
 end
 
-
-local transform_function_cache = setmetatable({}, { __mode = "k" })
-local function get_transform_functions(config)
-  local functions = transform_function_cache[config]
-  -- transform functions have the following available to them
-  local helper_ctx = {
-    type = type,
-    print = print,
-    pairs = pairs,
-    ipairs = ipairs,
-    require = require,
-    inspect = inspect,
-    kong = kong,
-    -- ...
-  }
-
-  if not functions then
-    -- first call, go compile the functions
-    functions = {}
-    for _, fn_str in ipairs(config.functions) do
-      local fn = loadstring(fn_str)     -- load
-      -- Set function context
-      local fn_ctx = {}
-      setmetatable(fn_ctx, { __index = helper_ctx })
-      setfenv(fn, fn_ctx)
-      local _, actual_fn = pcall(fn)
-      table.insert(functions, actual_fn)
-    end
-
-    transform_function_cache[config] = functions
-  end
-
-  return ipairs(functions)
-end
-
 local _M = BasePlugin:extend()
 
 _M.PRIORITY = 9999
@@ -115,6 +78,39 @@ function _M:access(conf)
   _M.super.access(self)
 end
 
+
+local function_cache = setmetatable({}, { __mode = "k" })
+
+local function no_op(err)
+  return function(status, body, headers)
+    kong.log.err(err)
+    return status, body, headers
+  end
+end
+
+local function get_functions(conf)
+  if function_cache[conf] then return function_cache[conf] end
+
+  local functions = {}
+
+  for _, fn_str in ipairs(conf.functions) do
+    -- XXX kong request always available
+    local env = {
+      kong = {
+        request = setmetatable({}, { __index = kong.request })
+      }
+    }
+
+    local f, err = sandbox.validate_function(fn_str, { env = env })
+    if err then f = no_op(err) end
+
+    table.insert(functions, f)
+  end
+
+  function_cache[conf] = functions
+
+  return functions
+end
 
 function _M:exit(status, body, headers)
   -- Do not transform admin requests
@@ -136,9 +132,10 @@ function _M:exit(status, body, headers)
     body = data
   end
 
+  local functions = get_functions(conf)
 
   -- Reduce on status, body, headers through transform functions
-  for _, fn in get_transform_functions(conf) do
+  for _, fn in ipairs(functions) do
     status, body, headers = fn(status, body, headers)
   end
 
