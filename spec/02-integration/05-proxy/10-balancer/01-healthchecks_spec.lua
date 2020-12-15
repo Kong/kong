@@ -7,9 +7,6 @@ local utils = require "kong.tools.utils"
 local https_server = helpers.https_server
 
 
-local https_server = helpers.https_server
-
-
 for _, strategy in helpers.each_strategy() do
   local bp
 
