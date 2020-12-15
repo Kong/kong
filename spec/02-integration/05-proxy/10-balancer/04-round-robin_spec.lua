@@ -5,9 +5,6 @@ local helpers = require "spec.helpers"
 local https_server = helpers.https_server
 
 
-local https_server = helpers.https_server
-
-
 for _, consistency in ipairs(bu.consistencies) do
   for _, strategy in helpers.each_strategy() do
     describe("Balancing with round-robin #" .. consistency, function()

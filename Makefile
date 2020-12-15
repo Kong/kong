@@ -99,7 +99,7 @@ setup-kong-build-tools:
 	-rm -rf $(KONG_BUILD_TOOLS_LOCATION)
 	-git clone https://github.com/Kong/kong-build-tools.git $(KONG_BUILD_TOOLS_LOCATION)
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
-	git reset --hard $(KONG_BUILD_TOOLS); \
+	git reset --hard && git checkout $(KONG_BUILD_TOOLS); \
 
 functional-tests: setup-kong-build-tools
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
