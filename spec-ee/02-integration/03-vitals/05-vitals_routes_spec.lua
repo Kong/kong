@@ -427,7 +427,7 @@ for _, db_strategy in helpers.each_strategy() do
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+            assert.same("Invalid query params: interval must be 'days', 'minutes' or 'seconds'", json.message)
           end)
 
           it("returns a 400 if called with invalid start_ts", function()
@@ -551,7 +551,7 @@ for _, db_strategy in helpers.each_strategy() do
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+            assert.same("Invalid query params: interval must be 'days', 'minutes' or 'seconds'", json.message)
           end)
 
           it("returns a 400 if called with invalid start_ts", function()
@@ -676,7 +676,7 @@ for _, db_strategy in helpers.each_strategy() do
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+            assert.same("Invalid query params: interval must be 'days', 'minutes' or 'seconds'", json.message)
           end)
 
           it("returns a 400 if called with invalid start_ts", function()
@@ -952,7 +952,7 @@ for _, db_strategy in helpers.each_strategy() do
           res = assert.res_status(400, res)
           local json = cjson.decode(res)
 
-          assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          assert.same("Invalid query params: interval must be 'days', 'minutes' or 'seconds'", json.message)
         end)
 
         it("returns a 400 if called with invalid start_ts", function()
@@ -1110,7 +1110,7 @@ for _, db_strategy in helpers.each_strategy() do
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+            assert.same("Invalid query params: interval must be 'days', 'minutes' or 'seconds'", json.message)
           end)
 
           it("returns a 400 if called with invalid service_id", function()
@@ -1326,7 +1326,7 @@ for _, db_strategy in helpers.each_strategy() do
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+            assert.same("Invalid query params: interval must be 'days', 'minutes' or 'seconds'", json.message)
           end)
 
           it("returns a 400 if called with invalid route_id", function()

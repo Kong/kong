@@ -95,7 +95,7 @@ function main {
   get_version
   >&2 echo "Found version: $VERSION"
   OLD_VERSION=$VERSION
-  VERSION=$(bump_version $VERSION)
+  VERSION=$(bump_version $VERSION $BUMP_COMPONENT)
   >&2 echo "Bumping to version: $VERSION"
 
   if ! confirm "is $VERSION the right version"; then
@@ -143,7 +143,7 @@ eof
       if ! hash hub >/dev/null 2>&1; then
         >&2 echo "hub is required to create a PR, leaving as it is"
       elif confirm "Do you want to issue a PR"; then
-        hub pull-request -m "Bump to $VERSION"
+        hub pull-request -m "Bump to $VERSION" --reviewer "Kong/team-fast-track"
       fi
     fi
   fi

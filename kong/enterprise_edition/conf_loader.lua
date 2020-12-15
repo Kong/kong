@@ -54,6 +54,7 @@ local EE_CONF_INFERENCES = {
   vitals_delete_interval_pg = {typ = "number"},
   vitals_ttl_seconds = {typ = "number"},
   vitals_ttl_minutes = {typ = "number"},
+  vitals_ttl_days = {typ = "number"},
 
   vitals_strategy = {typ = "string"},
   vitals_statsd_address = {typ = "string"},

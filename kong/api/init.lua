@@ -11,7 +11,6 @@ local singletons  = require "kong.singletons"
 local api_helpers = require "kong.api.api_helpers"
 local Endpoints   = require "kong.api.endpoints"
 local hooks       = require "kong.hooks"
-local ee = require "kong.enterprise_edition"
 
 
 local ngx      = ngx
@@ -23,23 +22,10 @@ local ipairs   = ipairs
 local app = lapis.Application()
 
 
-local function license_can_proceed(self)
-  local method = ngx.req.get_method()
-  if not ee.license_can("write_admin_api")
-    and (method == "POST" or
-         method == "PUT" or
-         method == "PATCH" or
-         method == "DELETE") then
-      kong.response.exit(403, {message = "Forbidden"})
-  end
-end
-
 app.default_route = api_helpers.default_route
 app.handle_404 = api_helpers.handle_404
 app.handle_error = api_helpers.handle_error
 app:before_filter(api_helpers.before_filter)
-
-app:before_filter(license_can_proceed)
 
 
 assert(hooks.run_hook("api:init:pre", app))
@@ -108,10 +94,7 @@ do
 
   -- DAO Routes
   for _, dao in pairs(singletons.db.daos) do
-    if dao.schema.generate_admin_api ~= false and
-      not dao.schema.legacy
-      and ee.license_can("mount_admin_api_for_" .. dao.schema.name)
-    then
+    if dao.schema.generate_admin_api ~= false and not dao.schema.legacy then
       routes = Endpoints.new(dao.schema, routes)
     end
   end
@@ -120,9 +103,7 @@ do
   for _, dao in pairs(singletons.db.daos) do
     local schema = dao.schema
     local ok, custom_endpoints = utils.load_module_if_exists("kong.api.routes." .. schema.name)
-    if ok
-      and ee.license_can("mount_admin_api_for_" .. schema.name)
-    then
+    if ok then
       customize_routes(routes, custom_endpoints, schema)
     end
   end

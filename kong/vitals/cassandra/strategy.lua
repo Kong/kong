@@ -385,7 +385,7 @@ function _M:init(node_id, hostname)
 end
 
 
-function _M:select_stats(query_type, level, node_id, start_ts)
+function _M:select_stats(query_type, level, node_id, start_ts, end_ts)
   local tname, not_before_ts
   local now = time()
   local node_ids = {}

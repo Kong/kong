@@ -606,7 +606,7 @@ local function get_interval_and_start_ts(level, start_ts, scrape_interval)
 end
 
 
-function _M:select_stats(query_type, level, node_id, start_ts)
+function _M:select_stats(query_type, level, node_id, start_ts, end_ts)
   local interval, start_ts = get_interval_and_start_ts(query_type, start_ts, self.scrape_interval)
 
   local metrics = self.common_stats_metrics
