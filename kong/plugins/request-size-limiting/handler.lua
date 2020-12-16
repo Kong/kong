@@ -45,7 +45,7 @@ function RequestSizeLimitingHandler:access(conf)
     check_size(tonumber(cl), conf.allowed_payload_size, headers, conf.size_unit)
   else
     if conf.require_content_length then
-      return kong.response.error(413, "A valid Content-Length header is required")
+      return kong.response.error(411, "A valid Content-Length header is required")
     end
     -- If the request body is too big, this could consume too much memory (to check)
     local data = kong.request.get_raw_body()

@@ -180,7 +180,8 @@ for _, strategy in helpers.each_strategy() do
       it("works if size is lower than limit", function()
         local body = string.rep("a", (TEST_SIZE * MB))
         local res = assert(proxy_client:request {
-          method  = "POST",
+          dont_add_content_length = true,
+          method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
           path    = "/request",
           body    = body,
           headers = {
@@ -193,7 +194,8 @@ for _, strategy in helpers.each_strategy() do
       it("works if size is lower than limit and Expect header", function()
         local body = string.rep("a", (TEST_SIZE * MB))
         local res = assert(proxy_client:request {
-          method  = "POST",
+          dont_add_content_length = true,
+          method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
           path    = "/request",
           body    = body,
           headers = {
@@ -207,7 +209,8 @@ for _, strategy in helpers.each_strategy() do
       it("blocks if size is greater than limit", function()
         local body = string.rep("a", (TEST_SIZE * MB) + 1)
         local res = assert(proxy_client:request {
-          method  = "POST",
+          dont_add_content_length = true,
+          method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
           path    = "/request",
           body    = body,
           headers = {
@@ -222,7 +225,8 @@ for _, strategy in helpers.each_strategy() do
       it("blocks if size is greater than limit and Expect header", function()
         local body = string.rep("a", (TEST_SIZE * MB) + 1)
         local res = assert(proxy_client:request {
-          method  = "POST",
+          dont_add_content_length = true,
+          method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
           path    = "/request",
           body    = body,
           headers = {
@@ -239,7 +243,8 @@ for _, strategy in helpers.each_strategy() do
         it("blocks if size is greater than limit when unit in " .. unit, function()
           local body = string.rep("a", (TEST_SIZE * unit_multiplication_factor[unit]) + 1)
           local res = assert(proxy_client:request {
-            method  = "POST",
+            dont_add_content_length = true,
+            method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
             path    = "/request",
             body    = body,
             headers = {
@@ -256,7 +261,8 @@ for _, strategy in helpers.each_strategy() do
         it("works if size is less than limit when unit in " .. unit, function()
           local body = string.rep("a", (TEST_SIZE * unit_multiplication_factor[unit]))
           local res = assert(proxy_client:request {
-            method  = "POST",
+            dont_add_content_length = true,
+            method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
             path    = "/request",
             body    = body,
             headers = {
@@ -271,10 +277,11 @@ for _, strategy in helpers.each_strategy() do
     describe("Content-Length header required", function()
       it("blocks if header is not provided", function()
         local res = assert(proxy_client:request {
-          method  = "POST",
+          dont_add_content_length = true,
+          method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
           path    = "/request",
           headers = {
-            ["Host"] = "required.com"
+            ["Host"] = "required.com",
           }
         })
         assert.response(res).has.status(411)
