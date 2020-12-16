@@ -18,7 +18,7 @@ local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
 local PREFIX = ngx.config.prefix()
 local SUBSYS = ngx.config.subsystem
 local WORKER_COUNT = ngx.worker.count()
-
+local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 
 local declarative = {}
 
@@ -480,7 +480,7 @@ end
 
 
 function declarative.get_current_hash()
-  return ngx.shared.kong:get("declarative_config:hash")
+  return ngx.shared.kong:get(DECLARATIVE_HASH_KEY)
 end
 
 
@@ -745,9 +745,9 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
     return nil, err
   end
 
-  local ok, err = ngx.shared.kong:safe_set("declarative_config:hash", hash or true)
+  local ok, err = ngx.shared.kong:safe_set(DECLARATIVE_HASH_KEY, hash or true)
   if not ok then
-    return nil, "failed to set declarative_config:hash in shm: " .. err
+    return nil, "failed to set " .. DECLARATIVE_HASH_KEY .. " in shm: " .. err
   end
 
 
