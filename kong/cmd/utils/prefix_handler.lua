@@ -204,6 +204,8 @@ local function compile_conf(kong_config, conf_template)
 end
 
 local function write_env_file(path, data)
+  os.remove(path)
+
   local c = require "lua_system_constants"
 
   local flags = bit.bor(c.O_CREAT(), c.O_WRONLY())
@@ -216,18 +218,24 @@ local function write_env_file(path, data)
                 ffi.string(ffi.C.strerror(errno)) .. ")"
   end
 
-  local n  = #data
-  local sz = ffi.C.write(fd, data, n)
-  if sz ~= n then
-    ffi.C.close(fd)
-    return nil, "wrote " .. sz .. " bytes, expected to write " .. n
-  end
-
   local ok = ffi.C.close(fd)
   if ok ~= 0 then
     local errno = ffi.errno()
     return nil, "failed to close fd (" ..
                 ffi.string(ffi.C.strerror(errno)) .. ")"
+  end
+
+  local file, err = io.open(path, "w+")
+  if not file then
+    return nil, "unable to open env path " .. path .. " (" .. err .. ")"
+  end
+
+  local ok, err = file:write(data)
+
+  file:close()
+
+  if not ok then
+    return nil, "unable to write env path " .. path .. " (" .. err .. ")"
   end
 
   return true
