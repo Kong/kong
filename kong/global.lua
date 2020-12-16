@@ -17,6 +17,12 @@ local KONG_VERSION_NUM = tonumber(string.format("%d%.2d%.2d",
                                   meta._VERSION_TABLE.patch))
 
 
+local LOCK_OPTS = {
+  exptime = 10,
+  timeout = 5,
+}
+
+
 -- Runloop interface
 
 
@@ -215,10 +221,7 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
     resurrect_ttl   = kong_config.resurrect_ttl,
     page            = page,
     cache_pages     = cache_pages,
-    resty_lock_opts = {
-      exptime = 10,
-      timeout = 5,
-    },
+    resty_lock_opts = LOCK_OPTS,
   }
 end
 
@@ -244,10 +247,7 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
     resurrect_ttl   = kong_config.resurrect_ttl,
     page            = page,
     cache_pages     = cache_pages,
-    resty_lock_opts = {
-      exptime = 10,
-      timeout = 5,
-    },
+    resty_lock_opts = LOCK_OPTS,
   }
 end
 
