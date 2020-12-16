@@ -119,6 +119,9 @@ if not enable_keepalive then
 end
 
 
+local DECLARATIVE_LOAD_KEY = constants.DECLARATIVE_LOAD_KEY
+
+
 local declarative_entities
 local declarative_meta
 local schema_state
@@ -348,7 +351,7 @@ local function load_declarative_config(kong_config, entities, meta)
   }
 
   local ok, err = concurrency.with_worker_mutex(opts, function()
-    local value = ngx.shared.kong:get("declarative_config:loaded")
+    local value = ngx.shared.kong:get(DECLARATIVE_LOAD_KEY)
     if value then
       return true
     end
@@ -363,7 +366,7 @@ local function load_declarative_config(kong_config, entities, meta)
                       kong_config.declarative_config)
     end
 
-    ok, err = ngx.shared.kong:safe_set("declarative_config:loaded", true)
+    ok, err = ngx.shared.kong:safe_set(DECLARATIVE_LOAD_KEY, true)
     if not ok then
       kong.log.warn("failed marking declarative_config as loaded: ", err)
     end
