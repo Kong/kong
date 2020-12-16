@@ -1,4 +1,6 @@
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
+
 
 describe("worker respawn", function()
   local admin_client, proxy_client
@@ -26,6 +28,112 @@ describe("worker respawn", function()
     if proxy_client then
       proxy_client:close()
     end
+  end)
+
+  it("rotates prng seeds and deletes the old ones", function()
+    local res = admin_client:get("/")
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    local seeds = json.prng_seeds
+
+    helpers.signal_workers(nil, "-TERM")
+
+    helpers.wait_until(function()
+      local pok, admin_client2 = pcall(helpers.admin_client)
+      if not pok then
+        return false
+      end
+
+      local res2 = admin_client2:get("/")
+      local body2 = assert.res_status(200, res2)
+      local json2 = cjson.decode(body2)
+      local seeds2 = json2.prng_seeds
+
+      admin_client2:close()
+
+      local matching = 0
+      local nonmatching = 0
+      for key, value in pairs(seeds) do
+        assert.not_nil(value)
+        if seeds2[key] == value then
+          matching = matching + 1 -- worker process seeds should be rotated
+        else
+          nonmatching = nonmatching + 1 -- master process seeds should not be rotated
+        end
+      end
+
+      assert.equal(1, matching)
+      assert.equal(1, nonmatching)
+
+      matching = 0
+      nonmatching = 0
+      for key, value in pairs(seeds2) do
+        if seeds[key] == value then
+          matching = matching + 1 -- worker process seeds should be rotated
+        else
+          nonmatching = nonmatching + 1 -- master process seeds should not be rotated
+        end
+      end
+
+      assert.equal(1, matching)
+      assert.equal(1, nonmatching)
+
+      return true
+    end)
+  end)
+
+  it("rotates kong:mem stats and deletes the old ones", function()
+    local proxy_res = proxy_client:get("/")
+    assert.res_status(404, proxy_res)
+
+    local res = admin_client:get("/status")
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    local mem = json.memory.workers_lua_vms
+
+    helpers.signal_workers(nil, "-TERM")
+
+    helpers.wait_until(function()
+      local pok, proxy_client2 = pcall(helpers.proxy_client)
+      if not pok then
+        return false
+      end
+
+      local proxy_res2 = proxy_client2:get("/")
+      assert.res_status(404, proxy_res2)
+      proxy_client2:close()
+
+      local admin_client2
+      pok, admin_client2 = pcall(helpers.admin_client)
+      if not pok then
+        return false
+      end
+
+      local res2 = admin_client2:get("/status")
+      local body2 = assert.res_status(200, res2)
+      local json2 = cjson.decode(body2)
+      local mem2 = json2.memory.workers_lua_vms
+
+      admin_client2:close()
+
+      assert.equal(#mem, #mem2)
+
+      local matching = 0
+      for _, value in ipairs(mem) do
+        for _, value2 in ipairs(mem2) do
+          assert.not_nil(value.pid)
+          assert.not_nil(value2.pid)
+
+          if value.pid == value2.pid then
+            matching = matching + 1
+          end
+        end
+      end
+
+      assert.equal(0, matching)
+
+      return true
+    end)
   end)
 
   it("lands on the correct cache page #5799", function()
