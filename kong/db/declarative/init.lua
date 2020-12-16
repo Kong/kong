@@ -845,7 +845,7 @@ do
 
     while sleep_left > 0 do
       local flips = ngx.shared.kong:get(DECLARATIVE_FLIPS_NAME)
-      if  flips == nil or flips == WORKER_COUNT then
+      if flips == nil or flips >= WORKER_COUNT then
         break
       end
 
