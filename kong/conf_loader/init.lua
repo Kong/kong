@@ -19,12 +19,19 @@ local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
+local ffi = require "ffi"
 local ip = require "resty.mediador.ip"
 local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
 
 local fmt = string.format
 local concat = table.concat
+local C = ffi.C
+
+ffi.cdef([[
+  struct group *getgrnam(const char *name);
+  struct passwd *getpwnam(const char *name);
+]])
 
 
 -- Version 5: https://wiki.mozilla.org/Security/Server_Side_TLS
@@ -1393,16 +1400,32 @@ local function load(path, custom_conf, opts)
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 
+  local default_nginx_main_user = false
+  local default_nginx_user = false
+
   do
     -- nginx 'user' directive
     local user = utils.strip(conf.nginx_main_user):gsub("%s+", " ")
     if user == "nobody" or user == "nobody nobody" then
       conf.nginx_main_user = nil
+
+    elseif user == "kong" or user == "kong kong" then
+      default_nginx_main_user = true
     end
 
     local user = utils.strip(conf.nginx_user):gsub("%s+", " ")
     if user == "nobody" or user == "nobody nobody" then
       conf.nginx_user = nil
+
+    elseif user == "kong" or user == "kong kong" then
+      default_nginx_user = true
+    end
+  end
+
+  if C.getpwnam("kong") == nil or C.getgrnam("kong") == nil then
+    if default_nginx_main_user == true and default_nginx_user == true then
+      conf.nginx_user = nil
+      conf.nginx_main_user = nil
     end
   end
 

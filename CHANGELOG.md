@@ -95,6 +95,11 @@ This is a new major release of Kong, including new features such as **UDP suppor
 **Configurable Request and Response Buffering**, **Dynamically Loading of OS
 Certificates**, and much more.
 
+### Distributions
+
+- Added support for running Kong as the non-root user kong on distributed systems.
+
+
 ### Dependencies
 
 - :warning: For Kong 2.2, the required OpenResty version has been bumped to
