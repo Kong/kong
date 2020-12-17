@@ -41,6 +41,13 @@ describe("plugins", function()
     assert.equal("length must be 32", err.config_hash)
   end)
 
+  it("rejects incorrect sync status", function()
+    local ok, err = validate({ sync_status = "aaa", })
+    assert.is_nil(ok)
+
+    assert.equal("expected one of: unknown, normal, kong_version_incompatible, plugin_set_incompatible, plugin_version_incompatible", err.sync_status)
+  end)
+
   it("accepts correct value", function()
     local ok, err = validate({ ip = "127.0.0.1", hostname = "dp.example.com", })
     assert.is_true(ok)
