@@ -116,8 +116,8 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       hosts = { "test25.test" }
     })
 
-    local route25 = bp.routes:insert({
-      hosts = { "test25.test" }
+    local route26 = bp.routes:insert({
+      hosts = { "test26.test" }
     })
 
     bp.plugins:insert {
@@ -421,7 +421,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
 
     bp.plugins:insert {
       route = { id = route25.id },
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         add = {
           headers = { "x-user-agent:$(foo(headers[\"User-Agent\"]) == \"table\" and headers[\"User-Agent\"][1] or headers[\"User-Agent\"])", },
@@ -430,8 +430,8 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
     }
 
     bp.plugins:insert {
-      route = { id = route25.id },
-      name = "request-transformer",
+      route = { id = route26.id },
+      name = "request-transformer-advanced",
       config = {
         add = {
           headers = { "X-Foo-Transformed:$(type(headers[\"X-Foo\"]) == \"table\" and headers[\"X-Foo\"][1] .. \"-first\" or headers[\"X-Foo\"])", },
@@ -1906,7 +1906,6 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         }
       })
       assert.response(r).has.status(500)
-
       helpers.wait_until(function()
         local pl_file = require "pl.file"
 
@@ -1922,7 +1921,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test25.test",
+          host = "test26.test",
           ["X-Foo"] = { "1", "2", },
         }
       })
