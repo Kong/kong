@@ -64,6 +64,7 @@ for _, strategy in helpers.each_strategy() do
             if v.ip == "127.0.0.1" then
               assert.near(14 * 86400, v.ttl, 3)
               assert.matches("^(%d+%.%d+)%.%d+", v.version)
+              assert.equal("normal", v.sync_status)
 
               return true
             end
@@ -268,6 +269,7 @@ for _, strategy in helpers.each_strategy() do
           for _, v in pairs(json.data) do
             if v.id == uuid then
               assert.equal(tostring(_VERSION_TABLE), v.version)
+              assert.equal("normal", v.sync_status)
               return true
             end
           end
@@ -303,6 +305,7 @@ for _, strategy in helpers.each_strategy() do
           for _, v in pairs(json.data) do
             if v.id == uuid then
               assert.equal(version, v.version)
+              assert.equal("normal", v.sync_status)
               return true
             end
           end
@@ -338,6 +341,7 @@ for _, strategy in helpers.each_strategy() do
           for _, v in pairs(json.data) do
             if v.id == uuid then
               assert.equal(version, v.version)
+              assert.equal("normal", v.sync_status)
               return true
             end
           end
@@ -371,6 +375,7 @@ for _, strategy in helpers.each_strategy() do
           for _, v in pairs(json.data) do
             if v.id == uuid then
               assert.equal("1.0.0", v.version)
+              assert.equal("kong_version_incompatible", v.sync_status)
               return true
             end
           end
@@ -407,6 +412,7 @@ for _, strategy in helpers.each_strategy() do
           for _, v in pairs(json.data) do
             if v.id == uuid then
               assert.equal(tostring(_VERSION_TABLE), v.version)
+              assert.equal("plugin_version_incompatible", v.sync_status)
               return true
             end
           end
@@ -462,6 +468,7 @@ for _, strategy in helpers.each_strategy() do
             if v.ip == "127.0.0.1" then
               assert.near(14 * 86400, v.ttl, 10)
               assert.equals(tostring(_VERSION_TABLE), v.version)
+              assert.equal("plugin_set_incompatible", v.sync_status)
 
               res = proxy_client:send({
                 method  = "GET",
