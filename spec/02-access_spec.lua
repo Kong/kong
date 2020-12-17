@@ -1889,7 +1889,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/",
         headers = {
-          host = "test24.test",
+          host = "test25.test",
         }
       })
       assert.response(r).has.status(500)
