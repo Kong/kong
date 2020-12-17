@@ -29,6 +29,10 @@ local function execute(args)
     prefix = args.prefix
   }))
 
+  if not new_config.declarative_config then
+    conf.declarative_config = nil
+  end
+
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
   assert(nginx_signals.reload(conf))
 
