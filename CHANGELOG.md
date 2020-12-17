@@ -1,3 +1,7 @@
+## 0.38.0
+
+- feat(*) pull in changes from OSS request-transformer
+
 ## 0.37.4
 
 - chore(*) add copyright
