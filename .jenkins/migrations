@@ -34,11 +34,10 @@ pipeline {
     // Speed up build
     ENABLE_OPENTRACING = 0
     DOCKER_IMAGE_NAME="migration-tests"
-    // Set license path to explicity get the license into on prepare
     BINTRAY_LICENSE = credentials('BINTRAY_LICENSE')
-    KONG_LICENSE_PATH = "${env.WORKSPACE}/license.json"
-    // Or just use this one, pick your horse
-    // KONG_LICENSE_DATA = sh(script: "curl --fail -s -L -u \"${env.BINTRAY_LICENSE_USR}:${env.BINTRAY_LICENSE_PSW}\" \"https://kong.bintray.com/kong/license.json\"", returnStdout: true)
+    KONG_LICENSE_DATA = sh(script: """
+        curl --fail -s -L -u "${env.BINTRAY_LICENSE_USR}:${env.BINTRAY_LICENSE_PSW}" https://kong.bintray.com/kong/license.json
+    """, returnStdout: true)
   }
 
   stages {
@@ -53,9 +52,6 @@ pipeline {
 
         sh "git clone https://$GITHUB_TOKEN:@github.com/Kong/sealy.git /tmp/sealy"
         sh 'ln -s $(realpath /tmp/sealy/sealy.sh) $(realpath ~/.local/bin/sealy)'
-
-        // get license data
-        sh 'curl --fail -s -L -u "$BINTRAY_LICENSE_USR:$BINTRAY_LICENSE_PSW" "https://kong.bintray.com/kong/license.json" > $WORKSPACE/license.json'
       }
     }
 
