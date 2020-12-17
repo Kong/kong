@@ -450,12 +450,17 @@
                          # Example: `status_listen = 0.0.0.0:8100`
 
 
-#nginx_user = nobody nobody      # Defines user and group credentials used by
+#nginx_user = kong kong          # Defines user and group credentials used by
                                  # worker processes. If group is omitted, a
                                  # group whose name equals that of user is
                                  # used.
                                  #
                                  # Example: `nginx_user = nginx www`
+                                 #
+                                 # **Note**: If the `kong` user and the `kong`
+                                 # group are not available, the default user
+                                 # and group credentials will be
+                                 # `nobody nobody`.
 
 #nginx_worker_processes = auto   # Determines the number of worker processes
                                  # spawned by Nginx.

@@ -2,25 +2,36 @@ local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local conf_loader = require "kong.conf_loader"
 local pl_path = require "pl.path"
+local pl_file = require "pl.file"
 local log = require "kong.cmd.utils.log"
 
 local function execute(args)
   log.disable()
   -- retrieve prefix or use given one
-  local default_conf = assert(conf_loader(args.conf, {
+  local new_config = assert(conf_loader(args.conf, {
     prefix = args.prefix
   }))
   log.enable()
-  assert(pl_path.exists(default_conf.prefix),
-         "no such prefix: " .. default_conf.prefix)
+  assert(pl_path.exists(new_config.prefix),
+         "no such prefix: " .. new_config.prefix)
 
-  -- load <PREFIX>/kong.conf containing running node's config
-  local conf = assert(conf_loader(default_conf.kong_env, {
+  -- write a combined config file
+  if args.conf and pl_path.exists(args.conf) then
+    local kong_env = assert(pl_file.read(args.conf))
+    if pl_path.exists(new_config.kong_env) then
+      kong_env = assert(pl_file.read(new_config.kong_env)) .. "\n" .. kong_env
+    end
+
+    assert(prefix_handler.write_env_file(new_config.kong_env, kong_env))
+  end
+
+  local conf = assert(conf_loader(new_config.kong_env, {
     prefix = args.prefix
   }))
-  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
   assert(nginx_signals.reload(conf))
+
   log("Kong reloaded")
 end
 
