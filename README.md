@@ -133,8 +133,8 @@ You can find every supported distribution at the [official installation page](ht
 
 We encourage community contributions to Kong. To make sure it is a smooth
 experience (both for you and for the Kong team), please read
-[CONTRIBUTING.md](#CONTRIBUTING.md) , [DEVELOPER.md](#DEVELOPER.md),
-[CODE_OF_CONDUCT.md](#CODE_OF_CONDUCT.md) and [COPYRIGHT](#COPYRIGHT) before
+[CONTRIBUTING.md](CONTRIBUTING.md), [DEVELOPER.md](DEVELOPER.md),
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [COPYRIGHT](COPYRIGHT) before
 you start.
 
 If you are planning on developing on Kong, you'll need a development

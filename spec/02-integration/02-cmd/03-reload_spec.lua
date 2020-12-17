@@ -120,6 +120,32 @@ describe("kong reload #" .. strategy, function()
     local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid),
                              "no nginx master PID")
 
+    assert(helpers.kong_exec("reload --conf spec/fixtures/reload.conf"))
+
+    wait_until_no_common_workers(workers, 2)
+
+    -- same master PID
+    assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
+
+    -- new proxy port
+    client = helpers.http_client("0.0.0.0", 9000, 5000)
+    client:close()
+  end)
+
+  it("reloads from environment variables", function()
+    assert(helpers.start_kong({
+      proxy_listen = "0.0.0.0:9002"
+    }, nil, true))
+
+    -- http_client errors out if cannot connect
+    local client = helpers.http_client("0.0.0.0", 9002, 5000)
+    client:close()
+
+    local workers = get_kong_workers()
+
+    local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid),
+                             "no nginx master PID")
+
     assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path, {
       proxy_listen = "0.0.0.0:9000"
     }))

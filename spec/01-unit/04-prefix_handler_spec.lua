@@ -1,9 +1,28 @@
 local helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
+local ffi = require "ffi"
 
 local exists = helpers.path.exists
 local join = helpers.path.join
+
+local C = ffi.C
+
+
+ffi.cdef([[
+  struct group *getgrnam(const char *name);
+  struct passwd *getpwnam(const char *name);
+]])
+
+
+local function kong_user_group_exists()
+  if C.getpwnam("kong") == nil or C.getgrnam("kong") == nil then
+    return false
+  else
+    return true
+  end
+end
+
 
 describe("NGINX conf compiler", function()
   describe("gen_default_ssl_cert()", function()
@@ -305,10 +324,14 @@ describe("NGINX conf compiler", function()
     end)
 
     describe("user directive", function()
-      it("is not included by default", function()
+      it("is included by default if the kong user/group exist", function()
         local conf = assert(conf_loader(helpers.test_conf_path))
         local nginx_conf = prefix_handler.compile_nginx_conf(conf)
-        assert.not_matches("user%s+[^;]*;", nginx_conf)
+        if kong_user_group_exists() == true then
+          assert.matches("user kong kong;", nginx_conf)
+        else
+          assert.not_matches("user%s+[^;]*;", nginx_conf)
+        end
       end)
       it("is not included when 'nobody'", function()
         local conf = assert(conf_loader(helpers.test_conf_path, {
@@ -1083,4 +1106,3 @@ describe("NGINX conf compiler", function()
     end)
   end)
 end)
-

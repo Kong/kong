@@ -3,6 +3,25 @@ local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local tablex = require "pl.tablex"
 local pl_path = require "pl.path"
+local ffi = require "ffi"
+
+
+local C = ffi.C
+
+
+ffi.cdef([[
+  struct group *getgrnam(const char *name);
+  struct passwd *getpwnam(const char *name);
+]])
+
+
+local function kong_user_group_exists()
+  if C.getpwnam("kong") == nil or C.getgrnam("kong") == nil then
+    return false
+  else
+    return true
+  end
+end
 
 
 local function search_directive(tbl, directive_name, directive_value)
@@ -21,7 +40,11 @@ describe("Configuration loader", function()
   it("loads the defaults", function()
     local conf = assert(conf_loader())
     assert.is_string(conf.lua_package_path)
-    assert.is_nil(conf.nginx_main_user)
+    if kong_user_group_exists() == true then
+      assert.equal("kong kong", conf.nginx_main_user)
+    else
+      assert.is_nil(conf.nginx_main_user)
+    end
     assert.equal("auto", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 http2 ssl reuseport backlog=16384"}, conf.admin_listen)
     assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 http2 ssl reuseport backlog=16384"}, conf.proxy_listen)
@@ -38,7 +61,11 @@ describe("Configuration loader", function()
     -- defaults
     assert.equal("on", conf.nginx_main_daemon)
     -- overrides
-    assert.is_nil(conf.nginx_main_user)
+    if kong_user_group_exists() == true then
+      assert.equal("kong kong", conf.nginx_main_user)
+    else
+      assert.is_nil(conf.nginx_main_user)
+    end
     assert.equal("1", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
@@ -57,7 +84,11 @@ describe("Configuration loader", function()
     -- defaults
     assert.equal("on", conf.nginx_main_daemon)
     -- overrides
-    assert.is_nil(conf.nginx_main_user)
+    if kong_user_group_exists() == true then
+      assert.equal("kong kong", conf.nginx_main_user)
+    else
+      assert.is_nil(conf.nginx_main_user)
+    end
     assert.equal("auto", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 http2 ssl",
@@ -404,9 +435,13 @@ describe("Configuration loader", function()
   end)
 
   describe("nginx_main_user", function()
-    it("is nil by default", function()
+    it("is 'kong kong' by default if the kong user/group exist", function()
       local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.is_nil(conf.nginx_main_user)
+      if kong_user_group_exists() == true then
+        assert.equal("kong kong", conf.nginx_main_user)
+      else
+        assert.is_nil(conf.nginx_main_user)
+      end
     end)
     it("is nil when 'nobody'", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
@@ -429,6 +464,15 @@ describe("Configuration loader", function()
   end)
 
   describe("nginx_user", function()
+    it("is 'kong kong' by default if the kong user/group exist", function()
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      if kong_user_group_exists() == true then
+        assert.equal("kong kong", conf.nginx_user)
+      else
+        assert.is_nil(conf.nginx_user)
+      end
+    end)
+
     it("is nil when 'nobody'", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         nginx_user = "nobody"
