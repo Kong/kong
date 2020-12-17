@@ -40,6 +40,7 @@ local table_insert = table.insert
 local table_remove = table.remove
 local inflate_gzip = utils.inflate_gzip
 local deflate_gzip = utils.deflate_gzip
+local get_cn_parent_domain = utils.get_cn_parent_domain
 
 
 local MAX_PAYLOAD = 4 * 1024 * 1024 -- 4MB
@@ -56,7 +57,7 @@ local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local WEAK_KEY_MT = { __mode = "k", }
-local CERT_DIGEST
+local CERT_DIGEST, CERT_CN_PARENT
 local CERT, CERT_KEY
 local clients = setmetatable({}, WEAK_KEY_MT)
 local prefix = ngx.config.prefix()
@@ -301,25 +302,43 @@ end
 
 _M.communicate = communicate
 
-local function validate_shared_cert()
-  local cert = ngx_var.ssl_client_raw_cert
 
+local function validate_client_cert(cert)
   if not cert then
-    ngx_log(ngx_ERR, "Data Plane failed to present client certificate " ..
-                     "during handshake")
-    return ngx_exit(444)
+    return false, "Data Plane failed to present client certificate " ..
+                  "during handshake"
   end
 
   cert = assert(openssl_x509.new(cert, "PEM"))
-  local digest = assert(cert:digest("sha256"))
+  if kong.configuration.cluster_mtls == "shared" then
+    local digest = assert(cert:digest("sha256"))
 
-  if digest ~= CERT_DIGEST then
-    ngx_log(ngx_ERR, "Data Plane presented incorrect client certificate " ..
+    if digest ~= CERT_DIGEST then
+      return false, "Data Plane presented incorrect client certificate " ..
                      "during handshake, expected digest: " .. CERT_DIGEST ..
-                     " got: " .. digest)
-    return ngx_exit(444)
+                     " got: " .. digest
+    end
+
+  elseif kong.configuration.cluster_mtls == "pki_check_cn" then
+    local cn, cn_parent = get_cn_parent_domain(cert)
+    if not cn then
+      return false, "Data Plane presented incorrect client certificate " ..
+                    "during handshake, unable to extract CN: " .. cn_parent
+
+    elseif cn_parent ~= CERT_CN_PARENT then
+      return false, "Data Plane presented incorrect client certificate " ..
+                    "during handshake, expected CN as subdomain of: " ..
+                    CERT_CN_PARENT .. " got: " .. cn
+    end
   end
+  -- with cluster_mtls == "pki", always return true as in this mode we only check
+  -- if client cert matches CA and it's already done by Nginx
+
+  return true
 end
+
+-- For test only
+_M._validate_client_cert = validate_client_cert
 
 
 -- XXX EE only used for telemetry, remove cruft
@@ -483,12 +502,12 @@ end
 _M.telemetry_communicate = telemetry_communicate
 
 
-
-
 function _M.handle_cp_telemetry_websocket()
   -- use mutual TLS authentication
-  if kong.configuration.cluster_mtls == "shared" then
-    validate_shared_cert()
+  local ok, err = validate_client_cert(ngx_var.ssl_client_raw_cert)
+  if not ok then
+    ngx_log(ngx_ERR, err)
+    return ngx_exit(444)
   end
 
   local node_id = ngx_var.arg_node_id
@@ -520,8 +539,10 @@ end
 
 function _M.handle_cp_websocket()
   -- use mutual TLS authentication
-  if kong.configuration.cluster_mtls == "shared" then
-    validate_shared_cert()
+  local ok, err = validate_client_cert(ngx_var.ssl_client_raw_cert)
+  if not ok then
+    ngx_log(ngx_ERR, err)
+    return ngx_exit(444)
   end
 
   local node_id = ngx_var.arg_node_id
@@ -797,6 +818,8 @@ local function init_mtls(conf)
   cert = openssl_x509.new(cert, "PEM")
 
   CERT_DIGEST = cert:digest("sha256")
+  local _
+  _, CERT_CN_PARENT = get_cn_parent_domain(cert)
 
   f, err = io_open(conf.cluster_cert_key, "r")
   if not f then

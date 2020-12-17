@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local kong_default_conf = require "kong.templates.kong_defaults"
+local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
@@ -592,7 +593,7 @@ local CONF_INFERENCES = {
   cluster_cert = { typ = "string" },
   cluster_cert_key = { typ = "string" },
 
-  cluster_mtls = { enum = { "shared", "pki" } },
+  cluster_mtls = { enum = { "shared", "pki", "pki_check_cn" } },
   cluster_ca_cert = { typ = "string" },
   cluster_server_name = { typ = "string" },
   cluster_data_plane_purge_delay = { typ = "number" },
@@ -975,6 +976,33 @@ local function check_and_infer(conf, opts)
 
     if conf.database == "off" then
       errors[#errors + 1] = "in-memory storage can not be used when role = \"control_plane\""
+    end
+
+    if conf.cluster_mtls == "pki_check_cn" then
+      if not conf.cluster_ca_cert then
+        errors[#errors + 1] = "cluster_ca_cert must be specified when cluster_mtls = \"pki_check_cn\""
+      end
+
+      local cluster_cert, err = pl_file.read(conf.cluster_cert)
+      if not cluster_cert then
+        errors[#errors + 1] = "unable to open cluster_cert file \"" .. conf.cluster_cert .. "\": "..err
+
+      else
+        cluster_cert, err = openssl_x509.new(cluster_cert, "PEM")
+        if err then
+          errors[#errors + 1] = "cluster_cert file is not a valid PEM certificate: "..err
+
+        else
+          local cn, cn_parent = utils.get_cn_parent_domain(cluster_cert)
+          if not cn then
+            errors[#errors + 1] = "unable to get CommonName of cluster_cert: " .. cn
+          elseif not cn_parent then
+            errors[#errors + 1] = "cluster_cert is a certificate with " ..
+                            "top level domain: \"" .. cn .. "\", this is insufficient " ..
+                            "to verify Data Plane identity when cluster_mtls = \"pki_check_cn\""
+          end
+        end
+      end
     end
 
   elseif conf.role == "data_plane" then
