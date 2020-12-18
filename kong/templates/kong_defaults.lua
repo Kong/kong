@@ -11,6 +11,8 @@ plugins = bundled
 port_maps = NONE
 host_ports = NONE
 anonymous_reports = on
+go_pluginserver_exe = /usr/local/bin/go-pluginserver
+go_plugins_dir = off
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
