@@ -1000,7 +1000,19 @@ for _, strategy in helpers.each_strategy() do
             body = {},
             headers = {["Content-Type"] = "application/json"}
           }))
-          assert.res_status(201, res)
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          local key_auth_cred_created = false
+
+          for row, err in db.daos["keyauth_credentials"]:each_for_consumer({ id = app_one.consumer.id }) do
+            if row.key == json.client_id then
+              key_auth_cred_created = true
+            end
+          end
+
+          assert.is_true(key_auth_cred_created)
         end)
 
         it("cannot create a new credential set for wrong app", function()
@@ -1180,13 +1192,6 @@ for _, strategy in helpers.each_strategy() do
             name = "bonesRcool2",
             redirect_uri = "http://doghouse.com",
           }))
-
-          creds = {}
-          for row, err in db.daos["oauth2_credentials"]:each_for_consumer({ id = application.consumer.id }) do
-            if row then
-              table.insert(creds, row)
-            end
-          end
         end)
 
         after_each(function()
@@ -1206,6 +1211,16 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(204, res)
 
           assert.is_nil(db.daos["oauth2_credentials"]:select({ id = cred.id }))
+
+          local key_auth_cred_deleted = true
+
+          for row, err in db.daos["keyauth_credentials"]:each_for_consumer({ id = application.consumer.id }) do
+            if row.key == cred.client_id then
+              key_auth_cred_deleted = false
+            end
+          end
+
+          assert.is_true(key_auth_cred_deleted)
         end)
 
         it("cannot delete credential when wrong developer is set", function()

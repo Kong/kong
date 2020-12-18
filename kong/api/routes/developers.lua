@@ -536,12 +536,7 @@ return {
     end,
 
     POST = function(self, db, helpers)
-      self.credential_collection = db.daos[self.plugin.dao]
-      self.params.name = self.application.name
-      self.params.consumer = self.application.consumer
-      self.params.redirect_uris = { self.application.redirect_uri }
-
-      return crud_helpers.create_credential(self, db, helpers, {})
+      return crud_helpers.create_app_reg_credentials(self, db, helpers)
     end,
   },
 
@@ -596,7 +591,7 @@ return {
     end,
 
     DELETE = function(self, db, helpers)
-      return crud_helpers.delete_credential(self, db, helpers)
+      return crud_helpers.delete_app_reg_credentials(self, db, helpers)
     end,
   },
 
