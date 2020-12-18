@@ -302,4 +302,4 @@ limitations under the License.
 
 ## Contributing
 
-Information about filing bug reports and contributing to Contributing to Kong can be found in the [CONTRIBUTING.md](https://github.com/Kong/kong/blob/master/CONTRIBUTING.md)files. Its intent is to be both an entry point for newcomers to the community (with various technical backgrounds), and a guide/reference for contributors and maintainers. For slightly more information, see Contributing.
+Information about filing bug reports and contributing to Contributing to Kong can be found in the [CONTRIBUTING.md](https://github.com/Kong/kong/blob/master/CONTRIBUTING.md) files. Its intent is to be both an entry point for newcomers to the community (with various technical backgrounds), and a guide/reference for contributors and maintainers. For slightly more information, see Contributing.
