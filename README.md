@@ -27,6 +27,7 @@ IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 - [**Development**](#development)
 - [**Enterprise Support & Demo**](#enterprise-support--demo)
 - [**License**](#license)
+- [**Contributing**](#Contributing)
 
 ## Why Kong?
 
@@ -297,3 +298,8 @@ limitations under the License.
 
 [busted]: https://github.com/Olivine-Labs/busted
 [luacheck]: https://github.com/mpeterv/luacheck
+
+
+## Contributing
+
+Information about filing bug reports and contributing to Contributing to Kong can be found in the [CONTRIBUTING.md](https://github.com/Kong/kong/blob/master/CONTRIBUTING.md)files. Its intent is to be both an entry point for newcomers to the community (with various technical backgrounds), and a guide/reference for contributors and maintainers. For slightly more information, see Contributing.
