@@ -20,97 +20,103 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
     }, { "request-transformer-advanced" })
 
     local route1 = bp.routes:insert({
-      hosts = { "test1.com" }
+      hosts = { "test1.test" }
     })
     local route2 = bp.routes:insert({
-      hosts = { "test2.com" },
+      hosts = { "test2.test" },
       preserve_host = true,
     })
     local route3 = bp.routes:insert({
-      hosts = { "test3.com" }
+      hosts = { "test3.test" }
     })
     local route4 = bp.routes:insert({
-      hosts = { "test4.com" }
+      hosts = { "test4.test" }
     })
     local route5 = bp.routes:insert({
-      hosts = { "test5.com" }
+      hosts = { "test5.test" }
     })
     local route6 = bp.routes:insert({
-      hosts = { "test6.com" }
+      hosts = { "test6.test" }
     })
     local route7 = bp.routes:insert({
-      hosts = { "test7.com" }
+      hosts = { "test7.test" }
     })
     local route8 = bp.routes:insert({
-      hosts = { "test8.com" }
+      hosts = { "test8.test" }
     })
     local route9 = bp.routes:insert({
-      hosts = { "test9.com" }
+      hosts = { "test9.test" }
     })
     local route10 = bp.routes:insert({
-      hosts = { "test10.com" },
+      hosts = { "test10.test" },
       paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" },
       strip_path = false
     })
     local route11 = bp.routes:insert({
-      hosts = { "test11.com" },
+      hosts = { "test11.test" },
       paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route12 = bp.routes:insert({
-      hosts = { "test12.com" },
+      hosts = { "test12.test" },
       paths = { "/requests/" },
       strip_path = false
     })
     local route13 = bp.routes:insert({
-      hosts = { "test13.com" },
+      hosts = { "test13.test" },
       paths = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route14 = bp.routes:insert({
-      hosts = { "test14.com" },
+      hosts = { "test14.test" },
       paths = { "/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }
     })
     local route15 = bp.routes:insert({
-      hosts = { "test15.com" },
+      hosts = { "test15.test" },
       paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route16 = bp.routes:insert({
-      hosts = { "test16.com" },
+      hosts = { "test16.test" },
       paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route17 = bp.routes:insert({
-      hosts = { "test17.com" },
+      hosts = { "test17.test" },
       paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route18 = bp.routes:insert({
-      hosts = { "test18.com" },
+      hosts = { "test18.test" },
       paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route19 = bp.routes:insert({
-      hosts = { "test19.com" },
+      hosts = { "test19.test" },
       paths = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" },
       strip_path = false
     })
     local route20 = bp.routes:insert({
-      hosts = { "test20.com" },
+      hosts = { "test20.test" }
     })
     local route21 = bp.routes:insert({
-      hosts = { "test21.com" }
+      hosts = { "test21.test" }
     })
-
     local route22 = bp.routes:insert({
-      hosts = { "test22.com" }
+      hosts = { "test22.test" }
     })
-
     local route23 = bp.routes:insert({
-      hosts = { "test23.com" }
+      hosts = { "test23.test" }
     })
-
     local route24 = bp.routes:insert({
       hosts = { "test24.test" }
+    })
+    local route25 = bp.routes:insert({
+      hosts = { "test25.test" }
+    })
+    local route26 = bp.routes:insert({
+      hosts = { "test26.test" }
+    })
+    local route27 = bp.routes:insert({
+      hosts = { "test27.test" }
     })
 
     bp.plugins:insert {
@@ -412,6 +418,45 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       },
     }
 
+    bp.plugins:insert {
+      route = { id = route25.id },
+      name = "request-transformer-advanced",
+      config = {
+        add = {
+          headers = { "x-user-agent:$(foo(headers[\"User-Agent\"]) == \"table\" and headers[\"User-Agent\"][1] or headers[\"User-Agent\"])", },
+        },
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route26.id },
+      name = "request-transformer-advanced",
+      config = {
+        add = {
+          headers = { "X-Foo-Transformed:$(type(headers[\"X-Foo\"]) == \"table\" and headers[\"X-Foo\"][1] .. \"-first\" or headers[\"X-Foo\"])", },
+        },
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route27.id },
+      name = "request-transformer-advanced",
+      config = {
+        add = {
+          headers = {"X-aDDed:a1", "x-aDDed2:b1", "x-Added3:c2"},
+        },
+        remove = {
+          headers = {"X-To-Remove"},
+        },
+        append = {
+          headers = {"X-aDDed:a2", "X-aDDed:a3"},
+        },
+        replace = {
+          headers = {"x-to-Replace:false"},
+        }
+      }
+    }
+
     assert(helpers.start_kong({
       database = strategy,
       plugins = "bundled, request-transformer-advanced",
@@ -437,7 +482,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request?hello=world&name=marco",
         headers = {
-          host = "test7.com"
+          host = "test7.test"
         }
       })
       assert.response(r).has.status(200)
@@ -455,7 +500,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test8.com"
+          host = "test8.test"
         }
       })
       assert.response(r).has.status(200)
@@ -464,6 +509,22 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       assert.equal("world", json.uri_args.hello)
       assert.equal("marco", json.uri_args.name)
     end)
+    it("changes the HTTP method from GET to POST and adds JSON body", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test20.test",
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.request(r).has.jsonbody()
+      assert.equal("POST", json.vars.request_method)
+      assert.is_nil(json.post_data.error)
+      local header_content_type = assert.request(r).has.header("Content-Type")
+      assert.equals("application/json", header_content_type)
+    end)
   end)
   describe("remove", function()
     it("specified header", function()
@@ -471,7 +532,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test4.com",
+          host = "test4.test",
           ["x-to-remove"] = "true",
           ["x-another-header"] = "true"
         }
@@ -491,7 +552,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test4.com"
+          host = "test4.test"
         }
       })
       assert.response(r).has.status(200)
@@ -509,7 +570,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           ["nottoremove"] = "yes"
         },
         headers = {
-          host = "test4.com",
+          host = "test4.test",
           ["content-type"] = "application/json"
         }
       })
@@ -525,7 +586,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = "malformed json body",
         headers = {
-          host = "test4.com",
+          host = "test4.test",
           ["content-type"] = "application/json"
         }
       })
@@ -540,7 +601,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = {},
         headers = {
-          host = "test4.com",
+          host = "test4.test",
           ["content-type"] = "application/json"
         }
       })
@@ -555,7 +616,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = "",
         headers = {
-          host = "test4.com"
+          host = "test4.test"
         }
       })
       assert.response(r).has.status(200)
@@ -575,7 +636,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "multipart/form-data",
-          host = "test4.com"
+          host = "test4.test"
         }
       })
       assert.response(r).has.status(200)
@@ -597,7 +658,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test4.com"
+          host = "test4.test"
         }
       })
       assert.response(r).has.status(200)
@@ -614,7 +675,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test9.com",
+          host = "test9.test",
           ["x-to-rename"] = "true",
           ["x-another-header"] = "true"
         }
@@ -631,7 +692,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = {},
         headers = {
-          host = "test9.com",
+          host = "test9.test",
           ["x-a-header"] = "true",
         }
       })
@@ -650,7 +711,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test9.com"
+          host = "test9.test"
         }
       })
       assert.response(r).has.status(200)
@@ -668,7 +729,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test9.com"
+          host = "test9.test"
         }
       })
       assert.response(r).has.status(200)
@@ -685,7 +746,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           ["nottorename"] = "yes"
         },
         headers = {
-          host = "test9.com",
+          host = "test9.test",
           ["content-type"] = "application/json"
         }
       })
@@ -703,7 +764,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = "malformed json body",
         headers = {
-          host = "test9.com",
+          host = "test9.test",
           ["content-type"] = "application/json"
         }
       })
@@ -722,7 +783,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "multipart/form-data",
-          host = "test9.com"
+          host = "test9.test"
         }
       })
       assert.response(r).has.status(200)
@@ -743,7 +804,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test9.com"
+          host = "test9.test"
         }
       })
       assert.response(r).has.status(200)
@@ -762,7 +823,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test9.com",
+          host = "test9.test",
           ["x-to-rename"] = "true",
           ["x-another-header"] = "true"
         }
@@ -779,7 +840,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = {},
         headers = {
-          host = "test9.com",
+          host = "test9.test",
           ["x-a-header"] = "true",
         }
       })
@@ -798,7 +859,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test9.com"
+          host = "test9.test"
         }
       })
       assert.response(r).has.status(200)
@@ -816,7 +877,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test9.com"
+          host = "test9.test"
         }
       })
       assert.response(r).has.status(200)
@@ -833,7 +894,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           ["nottorename"] = "yes"
         },
         headers = {
-          host = "test9.com",
+          host = "test9.test",
           ["content-type"] = "application/json"
         }
       })
@@ -851,7 +912,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = "malformed json body",
         headers = {
-          host = "test9.com",
+          host = "test9.test",
           ["content-type"] = "application/json"
         }
       })
@@ -870,7 +931,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "multipart/form-data",
-          host = "test9.com"
+          host = "test9.test"
         }
       })
       assert.response(r).has.status(200)
@@ -891,7 +952,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test9.com"
+          host = "test9.test"
         }
       })
       assert.response(r).has.status(200)
@@ -911,7 +972,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = {},
         headers = {
-          host = "test5.com",
+          host = "test5.test",
           h1 = "V",
           h2 = "v2",
         }
@@ -929,7 +990,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = {},
         headers = {
-          host = "test5.com",
+          host = "test5.test",
           h2 = "v2",
         }
       })
@@ -949,7 +1010,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test5.com"
+          host = "test5.test"
         }
       })
       assert.response(r).has.status(200)
@@ -967,7 +1028,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test5.com"
+          host = "test5.test"
         }
       })
       assert.response(r).has.status(200)
@@ -984,7 +1045,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           p2 = "v1"
         },
         headers = {
-          host = "test5.com",
+          host = "test5.test",
           ["content-type"] = "application/json"
         }
       })
@@ -999,7 +1060,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = "malformed json body",
         headers = {
-          host = "test5.com",
+          host = "test5.test",
           ["content-type"] = "application/json"
         }
       })
@@ -1016,7 +1077,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           p2 = "v1",
         },
         headers = {
-          host = "test5.com",
+          host = "test5.test",
           ["content-type"] = "application/json"
         }
       })
@@ -1035,7 +1096,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "multipart/form-data",
-          host = "test5.com"
+          host = "test5.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1054,7 +1115,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "multipart/form-data",
-          host = "test5.com"
+          host = "test5.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1078,7 +1139,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test5.com"
+          host = "test5.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1099,7 +1160,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test5.com"
+          host = "test5.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1115,7 +1176,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test1.com"
+          host = "test1.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1131,7 +1192,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         headers = {
           h1 = "v3",
-          host = "test1.com",
+          host = "test1.test",
         }
       })
       assert.response(r).has.status(200)
@@ -1150,7 +1211,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test1.com"
+          host = "test1.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1169,7 +1230,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test1.com"
+          host = "test1.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1187,7 +1248,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/json",
-          host = "test1.com"
+          host = "test1.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1205,7 +1266,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/json",
-          host = "test1.com"
+          host = "test1.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1219,7 +1280,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = "malformed json body",
         headers = {
-          host = "test1.com",
+          host = "test1.test",
           ["content-type"] = "application/json"
         }
       })
@@ -1234,7 +1295,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = "",
         headers = {
-          host = "test1.com",
+          host = "test1.test",
           ["content-type"] = "application/json"
         }
       })
@@ -1248,7 +1309,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         body = {},
         headers = {
           ["Content-Type"] = "multipart/form-data",
-          host = "test1.com"
+          host = "test1.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1266,7 +1327,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "multipart/form-data",
-          host = "test1.com"
+          host = "test1.test"
         },
       })
       assert.response(r).has.status(200)
@@ -1286,7 +1347,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test1.com"
+          host = "test1.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1304,7 +1365,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test1.com"
+          host = "test1.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1317,13 +1378,13 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/get",
         headers = {
           ["Content-Type"] = "application/json",
-          host = "test2.com"
+          host = "test2.test"
         }
       })
       assert.response(r).has.status(200)
       local json = assert.response(r).has.jsonbody()
       local value = assert.has.header("host", json)
-      assert.equals("test2.com", value)
+      assert.equals("test2.test", value)
     end)
   end)
 
@@ -1333,7 +1394,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test6.com"
+          host = "test6.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1346,7 +1407,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test6.com"
+          host = "test6.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1363,7 +1424,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test6.com"
+          host = "test6.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1376,7 +1437,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test6.com"
+          host = "test6.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1389,7 +1450,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test6.com"
+          host = "test6.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1409,7 +1470,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test6.com"
+          host = "test6.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1426,7 +1487,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = "malformed json body",
         headers = {
-          host = "test6.com",
+          host = "test6.test",
           ["content-type"] = "application/json"
         }
       })
@@ -1441,7 +1502,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         path = "/request",
         body = "",
         headers = {
-          host = "test6.com",
+          host = "test6.test",
           ["content-type"] = "application/json"
         }
       })
@@ -1459,7 +1520,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         },
         headers = {
           ["Content-Type"] = "multipart/form-data",
-          host = "test6.com"
+          host = "test6.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1475,7 +1536,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test3.com",
+          host = "test3.test",
           ["x-to-remove"] = "true",
         }
       })
@@ -1488,7 +1549,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test3.com",
+          host = "test3.test",
           ["x-to-replace"] = "true",
         }
       })
@@ -1502,7 +1563,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test3.com",
+          host = "test3.test",
         }
       })
       assert.response(r).has.status(200)
@@ -1514,7 +1575,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test3.com",
+          host = "test3.test",
         }
       })
       assert.response(r).has.status(200)
@@ -1527,7 +1588,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test3.com",
+          host = "test3.test",
           ["x-added3"] = "c1",
         }
       })
@@ -1541,7 +1602,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test3.com",
+          host = "test3.test",
         }
       })
       assert.response(r).has.status(200)
@@ -1557,7 +1618,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           hello = "world",
         },
         headers = {
-          host = "test3.com",
+          host = "test3.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
@@ -1577,7 +1638,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           hello = "world",
         },
         headers = {
-          host = "test3.com",
+          host = "test3.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
@@ -1598,7 +1659,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           hello = "world",
         },
         headers = {
-          host = "test3.com",
+          host = "test3.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
@@ -1611,7 +1672,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test3.com",
+          host = "test3.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
@@ -1623,7 +1684,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/request",
         headers = {
-          host = "test3.com",
+          host = "test3.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
@@ -1639,7 +1700,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           ["query-added"] = "oldvalue",
         },
         headers = {
-          host = "test3.com",
+          host = "test3.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
@@ -1658,7 +1719,211 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           hello = "world",
         },
         headers = {
-          host = "test3.com",
+          host = "test3.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.queryparam("p1")
+      assert.equals("anything:1", value[1])
+      assert.equals("a2", value[2])
+      local value = assert.request(r).has.queryparam("q1")
+      assert.equals("20", value)
+    end)
+
+    it("removes a header -- ignore case", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test27.test",
+          ["x-to-remove"] = "true",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("X-To-Remove")
+    end)
+    it("replaces value of header, if header exist -- don't change header case", function()
+      local r = assert( client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test27.test",
+          ["x-to-replace"] = "true",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local hval = assert.request(r).has.header("x-to-Replace")
+      assert.equals("false", hval)
+    end)
+    it("add new header if missing -- keep configured case", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test27.test",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local hval = assert.request(r).has.header("x-aDDed2")
+      assert.equals("b1", hval)
+    end)
+    it("does not add new header if it already exist -- keep request case", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test27.test",
+          ["x-added3"] = "c1",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local hval = assert.request(r).has.header("x-added3")
+      assert.equals("c1", hval)
+    end)
+    it("appends values to existing headers -- keep config case", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test27.test",
+          ["X-addeD"] = "a0",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local hval = assert.request(r).has.header("X-aDDed")
+      assert.same({"a0", "a2", "a3"}, hval)
+    end)
+    it("appends values to added headers -- keep 'add' config case", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test27.test",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      print(require'inspect'(r))
+      print(require'inspect'(assert.request(r)))
+      local hval = assert.request(r).has.header("X-Added")
+      assert.same({"a1", "a2", "a3"}, hval)
+    end)
+    it("adds new parameters on POST when query string key missing", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          hello = "world",
+        },
+        headers = {
+          host = "test3.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.queryparam("p2")
+      assert.equals("b1", value)
+    end)
+    it("removes parameters on GET", function()
+      local r = assert( client:send {
+        method = "GET",
+        path = "/request",
+        query = {
+          toremovequery = "yes",
+          nottoremove = "yes",
+        },
+        body = {
+          hello = "world",
+        },
+        headers = {
+          host = "test3.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.queryparam("toremovequery")
+      local value = assert.request(r).has.queryparam("nottoremove")
+      assert.equals("yes", value)
+    end)
+    it("replaces parameters on GET", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        query = {
+          toreplacequery = "yes",
+        },
+        body = {
+          hello = "world",
+        },
+        headers = {
+          host = "test3.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.queryparam("toreplacequery")
+      assert.equals("no", value)
+    end)
+    it("does not add new parameter if to be replaced parameters does not exist on GET", function()
+      local r = assert( client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test3.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.request(r).has.no.formparam("toreplacequery")
+    end)
+    it("adds parameters on GET if it does not exist", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test3.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.queryparam("query-added")
+      assert.equals("newvalue", value)
+    end)
+    it("does not add new parameter if to be added parameters already exist on GET", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        query = {
+          ["query-added"] = "oldvalue",
+        },
+        headers = {
+          host = "test3.test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.queryparam("query-added")
+      assert.equals("oldvalue", value)
+    end)
+    it("appends parameters on GET", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        query = {
+          q1 = "20",
+        },
+        body = {
+          hello = "world",
+        },
+        headers = {
+          host = "test3.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
@@ -1677,7 +1942,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           name = "q1"
         },
         headers = {
-          host = "test20.com"
+          host = "test20.test"
         }
       })
       assert.response(r).has.status(200)
@@ -1700,7 +1965,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           hello = "world",
         },
         headers = {
-          host = "test10.com",
+          host = "test10.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
@@ -1716,7 +1981,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/requests/user1/foo/user2/bar",
         headers = {
-          host = "test11.com",
+          host = "test11.test",
         }
       })
       assert.response(r).has.status(200)
@@ -1732,7 +1997,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           q1 = "20",
         },
         headers = {
-          host = "test12.com",
+          host = "test12.test",
         }
       })
       assert.response(r).has.status(200)
@@ -1747,7 +2012,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/requests/user1/foo/user2/bar",
         headers = {
-          host = "test13.com",
+          host = "test13.test",
         }
       })
       assert.response(r).has.status(500)
@@ -1757,7 +2022,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         method = "GET",
         path = "/user1/foo/user2/bar",
         headers = {
-          host = "test14.com",
+          host = "test14.test",
         }
       })
       assert.response(r).has.status(200)
@@ -1774,7 +2039,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
             q1 = "20",
           },
           headers = {
-            host = "test15.com",
+            host = "test15.test",
             ["Content-Type"] = "application/x-www-form-urlencoded",
           }
         })
@@ -1783,7 +2048,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         local value = assert.request(r).has.queryparam("uri_param1")
         assert.equals("foo", value)
         value = assert.request(r).has.queryparam("uri_param2")
-        assert.equals("test15.com", value)
+        assert.equals("test15.test", value)
         value = assert.request(r).has.header("x-test-header")
         assert.equals("20", value)
       end)
@@ -1795,7 +2060,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           q2 = "20",
         },
         headers = {
-          host = "test16.com",
+          host = "test16.test",
           ["x-remove-header"] = "its a test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
@@ -1818,7 +2083,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
             q2 = "20",
           },
           headers = {
-            host = "test17.com",
+            host = "test17.test",
             ["x-replace-header"] = "the old value",
             ["Content-Type"] = "application/x-www-form-urlencoded",
           }
@@ -1842,7 +2107,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
             q2 = "20",
           },
           headers = {
-            host = "test18.com",
+            host = "test18.test",
             ["x-replace-header"] = "the old value",
             ["Content-Type"] = "application/x-www-form-urlencoded",
           }
@@ -1853,9 +2118,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
         value = assert.request(r).has.queryparam("q2")
         assert.equals("20", value)
       end)
-    it("should fail when rendering errors out", function()
-      -- FIXME: the engine is unsafe at render time until
-      -- https://github.com/stevedonovan/Penlight/pull/256 is merged and released
+    it("rendering error (query) should fail when rendering errors out", function()
       local r = assert(client:send {
         method = "GET",
         path = "/requests/user1/foo/user2/bar",
@@ -1863,12 +2126,45 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           q2 = "20",
         },
         headers = {
-          host = "test19.com",
+          host = "test19.test",
           ["x-replace-header"] = "the old value",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
       assert.response(r).has.status(500)
+    end)
+    it("rendering error (header) is correctly propagated in error.log, issue #25", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "test25.test",
+        }
+      })
+      assert.response(r).has.status(500)
+      helpers.wait_until(function()
+        local pl_file = require "pl.file"
+
+        local cfg = helpers.test_conf
+        local logs = pl_file.read(cfg.prefix .. "/" .. cfg.proxy_error_log)
+        local _, count = logs:gsub([[error:%[string "TMP"%]:4: attempt to call global 'foo' %(a nil value%)]], "")
+
+        return count == 1 or count == 2 -- Kong 2.2+ == 1, Pre 2.2 == 2
+      end, 5)
+    end)
+    it("type function is available in template environment", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test26.test",
+          ["X-Foo"] = { "1", "2", },
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local h_h1 = assert.request(r).has.header("X-Foo-Transformed")
+      assert.equals("1-first", h_h1)
     end)
     it("can inject a value from 'kong.ctx.shared'", function()
       local r = assert(client:send {
@@ -1878,7 +2174,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           q2 = "20",
         },
         headers = {
-          host = "test21.com",
+          host = "test21.test",
         }
       })
       assert.response(r).has.status(200)
@@ -1899,7 +2195,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           k4 = "v4",
         },
         headers = {
-          host = "test22.com",
+          host = "test22.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
@@ -1921,7 +2217,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
           k4 = "v4",
         },
         headers = {
-          host = "test23.com",
+          host = "test23.test",
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
