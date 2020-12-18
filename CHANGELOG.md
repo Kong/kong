@@ -1,6 +1,12 @@
-## 0.38.0
+## Unreleased
 
-- feat(*) pull in changes from OSS request-transformer
+- Keep the configured name case on append/add headers.
+  Fixes [#28](https://github.com/Kong/kong-plugin-request-transformer/issues/28)
+- Include the `type` function in template environment.
+  Because headers may contain array elements such as duplicated headers,
+  `type` is a useful function in these cases.
+- Fix the construction of the error message when a template throws a Lua error.
+  [#25](https://github.com/Kong/kong-plugin-request-transformer/issues/25)
 
 ## 0.37.4
 
