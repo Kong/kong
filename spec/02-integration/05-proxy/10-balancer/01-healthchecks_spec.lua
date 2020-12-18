@@ -1713,7 +1713,7 @@ for _, strategy in helpers.each_strategy() do
             -- FIXME This is marked as #flaky because of Travis CI instability.
             -- This runs fine on other environments. This should be re-checked
             -- at a later time.
-            it("perform active health checks -- can detect before any proxy traffic", function()
+            it("#flaky perform active health checks -- can detect before any proxy traffic", function()
 
               local nfails = 2
               local requests = bu.SLOTS * 2 -- go round the balancer twice
@@ -2097,4 +2097,242 @@ for _, strategy in helpers.each_strategy() do
     end)
 
   end)
+
+  describe("Consistent-hashing #" .. strategy, function()
+    local a_dns_entry_name = "consistent.hashing.test"
+
+    lazy_setup(function()
+      bp = bu.get_db_utils_for_dc_and_admin_api(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "upstreams",
+        "targets",
+      })
+
+      local fixtures = {
+        dns_mock = helpers.dns_mock.new()
+      }
+
+      fixtures.dns_mock:A {
+        name = a_dns_entry_name,
+        address = "127.0.0.1",
+      }
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        dns_resolver = "127.0.0.1",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        db_update_frequency = DB_UPDATE_FREQUENCY,
+        db_update_propagation = DB_UPDATE_PROPAGATION,
+      }, nil, nil, fixtures))
+
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("passive healthcheck", function()
+      local total_requests = 9
+
+      bu.begin_testcase_setup(strategy, bp)
+      local upstream_name, upstream_id = bu.add_upstream(bp, {
+        hash_on = "header",
+        hash_on_header = "hashme",
+        healthchecks = bu.healthchecks_config {
+          passive = {
+            type = "http",
+            healthy = {
+              successes = 1,
+            },
+            unhealthy = {
+              http_failures = 1,
+            },
+          }
+        }
+      })
+      local port1 = bu.add_target(bp, upstream_id, a_dns_entry_name)
+      local port2 = bu.add_target(bp, upstream_id, a_dns_entry_name)
+      local port3 = bu.add_target(bp, upstream_id, a_dns_entry_name)
+      local api_host = bu.add_api(bp, upstream_name)
+      bu.end_testcase_setup(strategy, bp)
+
+      local server1 = https_server.new(port1, a_dns_entry_name)
+      local server2 = https_server.new(port2, a_dns_entry_name)
+      local server3 = https_server.new(port3, a_dns_entry_name)
+      server1:start()
+      server2:start()
+      server3:start()
+
+      bu.client_requests(total_requests, {
+        ["Host"] = api_host,
+        ["hashme"] = "just a value",
+      })
+
+      local count1 = server1:shutdown()
+      local count2 = server2:shutdown()
+      local count3 = server3:shutdown()
+
+      assert(count1.total == 0 or count1.total == total_requests, "counts should either get 0 or all hits")
+      assert(count2.total == 0 or count2.total == total_requests, "counts should either get 0 or all hits")
+      assert(count3.total == 0 or count3.total == total_requests, "counts should either get 0 or all hits")
+      assert.False(count1.total == count2.total == count3.total)
+
+      local health = bu.get_balancer_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is_equal(health.data.health, "HEALTHY")
+
+      -- restart the servers, but not the one which received the previous requests
+      if count1.total == 0 then
+        server1 = https_server.new(port1, a_dns_entry_name)
+        server1:start()
+      else
+        server1 = nil
+      end
+
+      if count2.total == 0 then
+        server2 = https_server.new(port2, a_dns_entry_name)
+        server2:start()
+      else
+        server2 = nil
+      end
+
+      if count3.total == 0 then
+        server3 = https_server.new(port3, a_dns_entry_name)
+        server3:start()
+      else
+        server3 = nil
+      end
+
+      bu.client_requests(total_requests, {
+        ["Host"] = api_host,
+        ["hashme"] = "just a value",
+      })
+
+      if server1 ~= nil then
+        server1:shutdown()
+      end
+
+      if server2 ~= nil then
+        server2:shutdown()
+      end
+
+      if server3 ~= nil then
+        server3:shutdown()
+      end
+
+      -- get updated health details
+      health = bu.get_balancer_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+
+
+      -- the server that received the requests in the first round,
+      -- should be unhealthy now
+      for _, host in ipairs(health.data.details.hosts) do
+        if count1.total ~= 0 and host.port == port1 then
+          assert.is_false(host.addresses[1].healthy)
+          break
+        elseif count2.total ~= 0 and host.port == port2 then
+          assert.is_false(host.addresses[1].healthy)
+          break
+        elseif count3.total ~= 0 and host.port == port3 then
+          assert.is_false(host.addresses[1].healthy)
+          break
+        end
+      end
+
+      -- the upstream should be healthy anyway
+      assert.is_equal(health.data.health, "HEALTHY")
+    end)
+
+    -- FIXME this test fails on CI but should be ok
+    it("#flaky active healthcheck", function()
+      bu.begin_testcase_setup(strategy, bp)
+      local upstream_name, upstream_id = bu.add_upstream(bp, {
+        hash_on = "header",
+        hash_on_header = "hashme",
+        healthchecks = bu.healthchecks_config {
+          active = {
+            type = "http",
+            http_path = "/status",
+            healthy = {
+              interval = bu.HEALTHCHECK_INTERVAL,
+              successes = 1,
+            },
+            unhealthy = {
+              interval = bu.HEALTHCHECK_INTERVAL,
+              http_failures = 1,
+            },
+          }
+        }
+      })
+      local port1 = bu.add_target(bp, upstream_id, "localhost")
+      local port2 = bu.add_target(bp, upstream_id, "localhost")
+      local port3 = bu.add_target(bp, upstream_id, "localhost")
+      bu.add_api(bp, upstream_name)
+      bu.end_testcase_setup(strategy, bp)
+
+      local server1 = https_server.new(port1, "localhost")
+      local server2 = https_server.new(port2, "localhost")
+      local server3 = https_server.new(port3, "localhost")
+      server1:start()
+      server2:start()
+      server3:start()
+
+      ngx.sleep(bu.HEALTHCHECK_INTERVAL * 3)
+
+      -- get all healthy servers
+      local all_healthy = bu.get_balancer_health(upstream_name)
+
+      -- tell server3 to be unhappy
+      bu.direct_request("localhost", port3, "/unhealthy")
+
+      -- wait active health check to run
+      ngx.sleep(bu.HEALTHCHECK_INTERVAL * 3)
+
+      -- get updated health details
+      local not_so_healthy = bu.get_balancer_health(upstream_name)
+
+      local count1 = server1:shutdown()
+      local count2 = server2:shutdown()
+      local count3 = server3:shutdown()
+
+      assert(count1.status_ok > 0, "server1 should receive active health checks")
+      assert(count1.status_fail == 0, "server1 should not fail on active health checks")
+      assert(count2.status_ok > 0, "server2 should receive active health checks")
+      assert(count2.status_fail == 0, "server should not fail on active health checks")
+      assert(count3.status_ok > 0, "server3 should receive active health checks")
+      assert(count3.status_fail > 0, "server3 should receive active health checks")
+
+      assert.is.table(all_healthy)
+      assert.is.table(all_healthy.data)
+      assert.is.table(not_so_healthy)
+      assert.is.table(not_so_healthy.data)
+
+      -- all servers should be healthy on first run
+      for _, host in ipairs(all_healthy.data.details.hosts) do
+          assert.is_true(host.addresses[1].healthy)
+      end
+      -- tand he upstream should be healthy
+      assert.is_equal(all_healthy.data.health, "HEALTHY")
+
+      -- servers on ports 1 and 2 should be healthy, on port 3 should be unhealthy
+      for _, host in ipairs(not_so_healthy.data.details.hosts) do
+        if host.port == port1 then
+          assert.is_true(host.addresses[1].healthy)
+        elseif host.port == port2 then
+          assert.is_true(host.addresses[1].healthy)
+        elseif host.port == port3 then
+          assert.is_false(host.addresses[1].healthy)
+        end
+      end
+      -- the upstream should be healthy anyway
+      assert.is_equal(not_so_healthy.data.health, "HEALTHY")
+    end)
+
+  end)
+
 end
