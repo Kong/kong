@@ -1,7 +1,7 @@
 # Contributing to Kong :monkey_face:
 
 Hello, and welcome! Whether you are looking for help, trying to report a bug,
-thinking about getting involved in the project or about to submit a patch, this
+thinking of getting involved in the project or about to submit a patch, this
 document is for you! Its intent is to be both an entry point for newcomers to
 the community (with various technical backgrounds), and a guide/reference for
 contributors and maintainers.
@@ -51,8 +51,8 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 There are several channels where you can get answers from the community
 or the maintainers of this project:
 
-- Our public forum, [Kong Nation](https://discuss.konghq.com), is great for
-  asking questions, giving advice, and staying up-to-date with the latest
+- Our public forum, [Kong Nation](https://discuss.konghq.com), is great tool for
+  asking questions, giving advices, and staying up-to-date with the latest
   announcements. Kong Nation is frequented by Kong maintainers.
 - Two chat channels are used by the community, but are rarely visited by Kong
   maintainers:
