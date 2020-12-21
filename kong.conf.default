@@ -1294,3 +1294,59 @@
                                  # server.
                                  #
                                  # See https://github.com/openresty/lua-nginx-module#lua_socket_pool_size
+
+#untrusted_lua = sandbox
+                                 # Accepted values are:
+                                 #
+                                 # - `off`: disallow any loading of Lua functions
+                                 #          from admin supplied sources (such as via the Admin API).
+                                 #
+                                 #          Note using the `off` option will render plugins such as
+                                 #          Serverless Functions unusable.
+                                 # - `sandbox`: allow loading of Lua functions from admin
+                                 #              supplied sources, but use a sandbox when
+                                 #              executing them. The sandboxed
+                                 #              function will have restricted access
+                                 #              to the global environment and only
+                                 #              have access to standard Lua functions
+                                 #              that will generally not cause harm to
+                                 #              the Kong node.
+                                 #
+                                 #              In this mode, the `require` function inside
+                                 #              the sandbox only allows loading external Lua
+                                 #              modules that are explicitly listed in
+                                 #              `untrusted_lua_sandbox_requires` below.
+                                 #
+                                 #              LuaJIT bytecode loading is disabled.
+                                 #
+                                 #              Warning: LuaJIT is not designed as a secure
+                                 #              runtime for running malicious code, therefore,
+                                 #              you should properly protect your Admin API endpoint
+                                 #              even with sandboxing enabled. The sandbox only
+                                 #              provides protection against trivial attackers or
+                                 #              unintentional modification of the Kong global
+                                 #              environment.
+                                 # - `on`: allow loading of Lua functions from admin
+                                 #         supplied sources and do not use a sandbox when
+                                 #         executing them. Functions will have unrestricted
+                                 #         access to global environment and able to load any
+                                 #         Lua modules. This is similar to the behavior in Kong
+                                 #         prior to 2.3.0.
+                                 #
+                                 #         LuaJIT bytecode loading is disabled.
+
+#untrusted_lua_sandbox_requires =
+                                 # Comma-separated list of modules allowed to be loaded
+                                 # with `require` inside the sandboxed environment. Ignored
+                                 # if `untrusted_lua` is not `sandbox`.
+                                 #
+                                 # Note: certain modules, when allowed, may cause sandbox
+                                 # escaping trivial.
+
+#untrusted_lua_sandbox_environment =
+                                 # Comma-separated list of global Lua variables
+                                 # that should be made available inside the sandboxed
+                                 # environment. Ignored if `untrusted_lua` is not `sandbox`.
+                                 #
+                                 # Note: certain variables, when made available,
+                                 # may cause sandbox escaping trivial.

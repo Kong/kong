@@ -158,4 +158,8 @@ lua_package_cpath = NONE
 
 role = traditional
 kic = off
+
+untrusted_lua = sandbox
+untrusted_lua_sandbox_requires =
+untrusted_lua_sandbox_environment =
 ]]
