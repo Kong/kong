@@ -1,5 +1,6 @@
 package = "kong"
 version = "2.3.0beta.1-0"
+rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
@@ -27,6 +28,7 @@ dependencies = {
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
   "luasyslog == 1.0.0",
+  "kikito/sandbox == 1.0.1",
   "lua_pack == 1.0.5",
   "lua-resty-dns-client == 5.2.0",
   "lua-resty-worker-events == 1.0.0",
@@ -132,6 +134,7 @@ build = {
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
     ["kong.tools.stream_api"] = "kong/tools/stream_api.lua",
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
+    ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
