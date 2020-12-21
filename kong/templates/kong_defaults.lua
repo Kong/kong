@@ -164,4 +164,8 @@ lua_package_cpath = NONE
 role = traditional
 kic = off
 pluginserver_names = NONE
+
+untrusted_lua = sandbox
+untrusted_lua_sandbox_requires =
+untrusted_lua_sandbox_environment =
 ]]
