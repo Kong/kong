@@ -116,14 +116,17 @@ local function ws_migration_teardown(ops)
   return function(connector)
     ops:drop_run_on(connector)
     log.debug("run_on dropped")
-    ops:ws_adjust_data(connector, ce_core_entities)
-    log.debug("adjusted core data")
-    ops:ws_adjust_data(connector, ee_core_entities)
-    log.debug("adjusted EE data")
-    ops:ws_clean_kong_admin_rbac_user(connector)
-    log.debug("cleaned ADMIN RBAC data")
-    ops:ws_set_default_ws_for_admin_entities(connector)
-    log.debug("set default_ws_for_admin_entities")
+
+    if ops:has_workspace_entities(connector)[1] then
+      ops:ws_adjust_data(connector, ce_core_entities)
+      log.debug("adjusted core data")
+      ops:ws_adjust_data(connector, ee_core_entities)
+      log.debug("adjusted EE data")
+      ops:ws_clean_kong_admin_rbac_user(connector)
+      log.debug("cleaned ADMIN RBAC data")
+      ops:ws_set_default_ws_for_admin_entities(connector)
+      log.debug("set default_ws_for_admin_entities")
+    end
   end
 end
 

@@ -50,18 +50,34 @@ local function cassandra_list_tables(connector)
   local coordinator = connector:connect_migrations()
   local tables = {}
 
-  local cql = fmt([[
-    SELECT table_name
-      FROM system_schema.tables
-     WHERE keyspace_name='%s';
-  ]], connector.keyspace)
+  local cql
+  if connector.major_version >= 3 then
+    cql = fmt([[
+      SELECT table_name
+        FROM system_schema.tables
+      WHERE keyspace_name='%s';
+    ]], connector.keyspace)
+  else
+    cql = fmt([[
+      SELECT columnfamily_name 
+        FROM system.schema_columnfamilies
+      WHERE keyspace_name='%s'; 
+    ]], connector.keyspace)
+  end
+
   for rows, err in coordinator:iterate(cql) do
     if err then
       return nil, err
     end
 
     for _, row in ipairs(rows) do
-      tables[row.table_name] = true
+      local field = row['table_name']
+
+      if connector.major_version < 3 then
+        field = row['columnfamily_name']
+      end
+
+      tables[field] = true
     end
   end
 
@@ -225,7 +241,7 @@ local postgres = {
 
     ws_set_default_ws_for_admin_entities = function(_, connector)
       local code = {}
-      local entities = { "rbac_user", "consumer" }
+      local entities = { "rbac_user" }
 
       for _, e in ipairs(entities) do
         table.insert(code,
@@ -255,6 +271,12 @@ local postgres = {
           -- Do nothing, accept existing state
         END;
         $$;
+      ]])
+    end,
+
+    has_workspace_entities = function(_, connector)
+      return connector:query([[
+        SELECT * FROM pg_catalog.pg_tables WHERE tablename='workspace_entities';
       ]])
     end,
 
@@ -429,6 +451,26 @@ local cassandra = {
       ]===]
     end,
 
+    has_workspace_entities = function(_, connector)
+      if connector.major_version >= 3 then
+        return connector:query(render([[
+          SELECT table_name FROM system_schema.tables
+          WHERE keyspace_name='$(KEYSPACE)'
+            AND table_name='workspace_entities';
+        ]], {
+          KEYSPACE = connector.keyspace,
+        }))
+      else
+        return connector:query(render([[
+          SELECT * FROM system.schema_columns
+          WHERE keyspace_name='$(KEYSPACE)'
+            AND columnfamily_name='workspace_entities'; 
+        ]], {
+          KEYSPACE = connector.keyspace,
+        }))
+      end
+    end,
+
   },
 
 }
@@ -456,7 +498,9 @@ local function ws_migrate_plugin(plugin_entities)
 
   local function ws_migration_teardown(ops)
     return function(connector)
-      ops:ws_adjust_data(connector, plugin_entities)
+      if ops:has_workspace_entities(connector)[1] then
+        ops:ws_adjust_data(connector, plugin_entities)
+      end
     end
   end
 
@@ -481,6 +525,12 @@ local ee_operations = {
   postgres = postgres,
   cassandra = cassandra,
   ws_migrate_plugin = ws_migrate_plugin,
+  utils = {
+    render = render,
+    cassandra_table_is_partitioned = cassandra_table_is_partitioned,
+    postgres_has_workspace_entities = postgres.teardown.has_workspace_entities,
+    cassandra_has_workspace_entities = cassandra.teardown.has_workspace_entities,
+  },
 }
 
 
