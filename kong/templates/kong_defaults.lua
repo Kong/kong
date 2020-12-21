@@ -221,4 +221,8 @@ keyring_vault_path =
 keyring_vault_token =
 
 event_hooks_enabled = off
+
+untrusted_lua = on
+untrusted_lua_sandbox_requires =
+untrusted_lua_sandbox_environment =
 ]]

@@ -75,3 +75,23 @@ files["spec-ee/01-unit/07-keyring/01-init_spec.lua"] = {
         "table.pack",
     }
 }
+
+files["kong/tools/sandbox.lua"] = {
+    read_globals = {
+        "table.pack",
+        "table.unpack",
+        string = { fields = {rep = { read_only = false } } },
+    }
+}
+
+files["kong/tools/sandbox_helpers.lua"] = {
+    read_globals = {
+        "table.unpack",
+    }
+}
+
+files["spec/01-unit/020-sandbox/02-sandbox_helpers_spec.lua"] = {
+    read_globals = {
+        "table.unpack",
+    }
+}
