@@ -1,5 +1,7 @@
 local typedefs = require "kong.db.schema.typedefs"
 
+local sandbox_helpers = require "kong.tools.sandbox_helpers"
+
 local webhook_schema = {
   name = "webhook-custom",
   fields = {
@@ -65,20 +67,11 @@ local log_schema = {
   }
 }
 
-local function validate_function(fun)
-  local _, err = loadstring(fun)
-  if err then
-    return false, "Error parsing function: " .. err
-  end
-
-  return true
-end
-
 
 local functions_array = {
   type = "array",
   required = true,
-  elements = { type = "string", custom_validator = validate_function },
+  elements = { type = "string", custom_validator = sandbox_helpers.validate },
 }
 
 
