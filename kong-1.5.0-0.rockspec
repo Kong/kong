@@ -1,5 +1,6 @@
 package = "kong"
 version = "1.5.0-0"
+rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
@@ -30,6 +31,7 @@ dependencies = {
   "lua-resty-iputils == 0.3.0",
   "luaossl == 20190731",
   "luasyslog == 1.0.0",
+  "kikito/sandbox == 1.0.1",
   "lua_pack == 1.0.5",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.08",
@@ -189,9 +191,7 @@ build = {
     ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
-
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
-    ["kong.tools.sandbox_helpers"] = "kong/tools/sandbox_helpers.lua",
 
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
     ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",

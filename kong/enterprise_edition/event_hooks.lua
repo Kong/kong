@@ -3,7 +3,7 @@ local tx = require "pl/tablex"
 local to_hex = require "resty.string".to_hex
 
 local BatchQueue = require "kong.tools.batch_queue"
-local sandbox_helpers = require "kong.tools.sandbox_helpers"
+local sandbox = require "kong.tools.sandbox"
 local request = require "kong.enterprise_edition.utils".request
 
 local fmt = string.format
@@ -460,7 +460,7 @@ _M.handlers = {
     end
 
     for i, fn_str in ipairs(config.functions or {}) do
-      local fn, err = sandbox_helpers.validate_function(fn_str, opts)
+      local fn, err = sandbox.validate_function(fn_str, opts)
       if err then fn = err_fn(err) end
 
       table.insert(functions, fn)
