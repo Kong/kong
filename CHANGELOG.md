@@ -1,5 +1,9 @@
 # Changelog; Kong Serverless Functions Plugin
 
+## 2.0.0 2020-12-22
+
+- Change: Only allow kong PDK, nginx and plain Lua
+
 ## 1.0.0 released 7-Apr-2020
 
 - Change: adds the ability to run functions in each phase
