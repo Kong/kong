@@ -14,6 +14,7 @@ return {
         fields = {
           { allowed_payload_size = { type = "integer", default = 128 }, },
           { size_unit = { type = "string", required = true, default = size_units[1], one_of = size_units }, },
+          { require_content_length = { type = "boolean", default = false }, },
         },
       },
     },

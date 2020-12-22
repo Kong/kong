@@ -688,7 +688,7 @@ function resty_http_proxy_mt:send(opts)
     end
 
     local clength = lookup(headers, "content-length")
-    if not clength then
+    if not clength and not opts.dont_add_content_length then
       headers["content-length"] = #body
     end
 
