@@ -37,7 +37,6 @@ local mock_fn_six = [[
 ]]
 
 local mock_fn_seven = [[
-  local utils = require "pl.utils"
   ngx.req.read_body()
 
   local count = tonumber(ngx.req.get_body_data())

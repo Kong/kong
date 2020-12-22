@@ -17,7 +17,9 @@ local mock_one_fn = [[
 
 for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
 
-  describe("Plugin: " .. plugin_name, function()
+  -- This whole test is marked as pending because it relies on a side-effect (writing to a file)
+  -- which is no longer a possibility after sandboxing
+  pending("Plugin: " .. plugin_name, function()
 
     setup(function()
       local bp, db = helpers.get_db_utils()
