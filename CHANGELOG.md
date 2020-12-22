@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.3.0-alpha.1](#230-alpha1)
+- [2.3.0-beta.1](#230-beta1)
 - [2.2.1](#221)
 - [2.2.0](#220)
 - [2.1.4](#214)
@@ -52,13 +52,13 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.3.0-alpha.1]
+## [2.3.0-beta.1]
 
 > Released 2020/12/08
 
-This is an *alpha* pre-release of the upcoming Kong 2.3 series.
+This is an *beta* pre-release of the upcoming Kong 2.3 series.
 Since 2.3 is a minor release there are no breaking changes with
-respect to the 2.x series, but being an alpha pre-release, development
+respect to the 2.x series, but being an beta pre-release, development
 is not feature-frozen at this time: and any new features introduced here
 may change between this release and 2.3.0, and new features may be
 added.
@@ -95,6 +95,9 @@ added.
 - The go-pluginserver `stderr` and `stdout` are now written into Kong's
   logs.
   [#6503](https://github.com/Kong/kong/pull/6503)
+- Introduce support for multiple pluginservers. This feature is
+  backwards-compatible with the existing single Go pluginserver.
+  [#6600](https://github.com/Kong/kong/pull/6600)
 
 ##### PDK
 
@@ -109,6 +112,9 @@ added.
   based deployments, all Kong nodes pointing to the same database will
   also return the same cluster ID.
   [#6576](https://github.com/Kong/kong/pull/6576)
+- Introduce a `kong.log.set_serialize_value`, which allows for customizing
+  the output of `kong.log.serialize`.
+  [#6646](https://github.com/Kong/kong/pull/6646)
 
 ##### Plugins
 
@@ -122,6 +128,13 @@ added.
     query arguments.
   Both default to `true`.
   [#6590](https://github.com/Kong/kong/pull/6590)
+- `request-size-limiting`: add new configuration `require_content_length`,
+  which causes the plugin to ensure a valid `Content-Length` header exists
+  before reading the request body.
+  [#6660](https://github.com/Kong/kong/pull/6660)
+- `serverless-functions`: introduce a sandboxing capability, where only
+  Kong PDK, OpenResty `ngx` APIs, and Lua standard libraries are allowed.
+  [#32](https://github.com/Kong/kong-plugin-serverless-functions/pull/32/)
 
 ##### Configuration
 
@@ -139,6 +152,11 @@ added.
   certificate remains as the default. On custom certificates, the first
   certificate specified in the array is used.
   [#6509](https://github.com/Kong/kong/pull/6509)
+- Kong now runs as a `kong` user if it exists; it said user does not exist
+  in the system, the `nobody` user is used, as before.
+  [#6421](https://github.com/Kong/kong/pull/6421)
+
+### Fixes
 
 ##### Core
 
@@ -150,8 +168,12 @@ added.
   [#6517](https://github.com/Kong/kong/pull/6517)
 - Fix issue where a `nil` request context would lead to errors `attempt to index local 'ctx'` being shown in the logs
 
+##### CLI
 
-### Fixes
+- Fix issue where `kong reload -c <config>` would fail.
+  [#6664](https://github.com/Kong/kong/pull/6664)
+- Fix issue where the Kong configuration cache would get corrupted.
+  [#6664](https://github.com/Kong/kong/pull/6664)
 
 ##### PDK
 
@@ -5686,7 +5708,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.3.0-alpha.1]: https://github.com/Kong/kong/compare/2.2.0...2.3.0-alpha.1
+[2.3.0-beta.1]: https://github.com/Kong/kong/compare/2.2.0...2.3.0-beta.1
 [2.2.1]: https://github.com/Kong/kong/compare/2.2.0...2.2.1
 [2.2.0]: https://github.com/Kong/kong/compare/2.1.3...2.2.0
 [2.1.4]: https://github.com/Kong/kong/compare/2.1.3...2.1.4
