@@ -155,12 +155,12 @@ upstream_keepalive_idle_timeout = 60
 admin_gui_ssl_cert = NONE
 admin_gui_ssl_cert_key = NONE
 
-nginx_user = nobody nobody
+nginx_user = kong kong
 nginx_worker_processes = auto
 nginx_optimizations = on
 nginx_daemon = on
 nginx_main_daemon = on
-nginx_main_user = nobody nobody
+nginx_main_user = kong kong
 nginx_main_worker_processes = auto
 nginx_main_worker_rlimit_nofile = auto
 nginx_events_worker_connections = auto

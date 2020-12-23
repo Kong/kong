@@ -1066,12 +1066,7 @@ return {
     end,
 
     POST = function(self, db, helpers)
-      self.credential_collection = db.daos["oauth2_credentials"]
-      self.params.name = self.application.name
-      self.params.consumer = self.application.consumer
-      self.params.redirect_uris = { self.application.redirect_uri }
-
-      return crud_helpers.create_credential(self, db, helpers)
+      return crud_helpers.create_app_reg_credentials(self, db, helpers)
     end,
   },
 
@@ -1093,10 +1088,10 @@ return {
       end
 
       self.consumer = application.consumer
-      self.credential_collection = db.daos["oauth2_credentials"]
     end,
 
     GET = function(self, db, helpers)
+      self.credential_collection = db.daos["oauth2_credentials"]
       return crud_helpers.get_credential(self, db, helpers)
     end,
 
@@ -1106,7 +1101,7 @@ return {
     end,
 
     DELETE = function(self, db, helpers)
-      return crud_helpers.delete_credential(self, db, helpers)
+      return crud_helpers.delete_app_reg_credentials(self, db, helpers)
     end,
   },
 

@@ -20,9 +20,9 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         role = "control_plane",
-        cluster_cert = "spec/fixtures/kong_clustering.crt",
-        cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        cluster_cert = "spec/fixtures/kong_clustering_server.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering_server.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt", -- not needed though
         db_update_frequency = 0.1,
         database = strategy,
         cluster_listen = "127.0.0.1:9005",
@@ -36,14 +36,14 @@ for _, strategy in helpers.each_strategy() do
         role = "data_plane",
         database = "off",
         prefix = "servroot2",
-        cluster_cert = "spec/fixtures/kong_clustering.crt",
-        cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+        cluster_cert = "spec/fixtures/kong_clustering_client.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering_client.key",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_server.crt",
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9002",
         -- additional attributes for PKI:
         cluster_mtls = "pki",
-        cluster_server_name = "kong_clustering",
+        cluster_server_name = "server.kong_clustering_pki.domain",
       }))
     end)
 

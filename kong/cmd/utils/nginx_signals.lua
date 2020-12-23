@@ -150,7 +150,7 @@ function _M.stop(kong_conf)
   return send_signal(kong_conf, "TERM")
 end
 
-function _M.quit(kong_conf, graceful)
+function _M.quit(kong_conf)
   return send_signal(kong_conf, "QUIT")
 end
 

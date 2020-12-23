@@ -157,6 +157,7 @@ local function get_serve_ingest_func(self)
         ngx.log(ngx.DEBUG, _log_prefix, "delete expired stats")
         local expiries = {
           minutes = kong.vitals.ttl_minutes,
+          days    = kong.vitals.ttl_days,
         }
         local ok, err = real_strategy:delete_stats(expiries)
         if not ok then

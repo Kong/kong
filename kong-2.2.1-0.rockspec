@@ -441,6 +441,7 @@ build = {
     ["kong.plugins.oauth2.migrations.005_210_to_211"] = "kong/plugins/oauth2/migrations/005_210_to_211.lua",
     ["kong.plugins.oauth2.migrations.enterprise"] = "kong/plugins/oauth2/migrations/enterprise/init.lua",
     ["kong.plugins.oauth2.migrations.enterprise.001_1500_to_2100"] = "kong/plugins/oauth2/migrations/enterprise/001_1500_to_2100.lua",
+    ["kong.plugins.oauth2.migrations.enterprise.002_2200_to_2211"] = "kong/plugins/oauth2/migrations/enterprise/002_2200_to_2211.lua",
     ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",
     ["kong.plugins.oauth2.secret"] = "kong/plugins/oauth2/secret.lua",
     ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",
