@@ -143,13 +143,7 @@ local function validate_function(fun, opts)
 
   local success, func2 = pcall(func1)
 
-  if not success or func2 == nil then
-    -- the code IS the handler function
-    return func1
-  end
-
-  -- the code RETURNED the handler function
-  if type(func2) == "function" then
+  if success and type(func2) == "function" then
     return func2
   end
 
@@ -174,6 +168,18 @@ _M.validate_function = validate_function
 _M.validate = function(fn_str, opts)
   local _, err = _M.validate_function(fn_str, opts)
   if err then return false, err end
+
+  return true
+end
+
+-- meant for schema, do not execute arbitrary lua!
+-- https://github.com/Kong/kong/issues/5110
+_M.validate_safe = function(fn_str, opts)
+  local ok, func1 = pcall(sandbox, fn_str, opts)
+
+  if not ok then
+    return false, "Error parsing function: " .. func1
+  end
 
   return true
 end

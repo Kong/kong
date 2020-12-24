@@ -38,6 +38,30 @@ describe("sandbox functions wrapper", function()
     sandbox:revert()
   end)
 
+  describe("#sandbox_helpers.validate_safe", function()
+    for _, u in ipairs({'on', 'sandbox'}) do describe(("untrusted_lua = '%s'"):format(u), function()
+      lazy_setup(function()
+        _G.kong.configuration.untrusted_lua = u
+      end)
+
+      lazy_teardown(function()
+        _G.kong.configuration = deep_copy(base_conf)
+      end)
+
+      -- https://github.com/Kong/kong/issues/5110
+      it("does not execute the code itself", function()
+        local env = { do_it = spy.new(function() end) }
+        local ok = sandbox_helpers.validate_safe([[ do_it() ]], { env = env })
+        assert.is_true(ok)
+        assert.spy(env.do_it).not_called()
+
+        -- and now, of course, for the control group!
+        sandbox_helpers.sandbox([[ do_it() ]], { env = env })()
+        assert.spy(env.do_it).called()
+      end)
+    end) end
+  end)
+
   describe("#sandbox_helpers.validate", function()
     for _, u in ipairs({'on', 'sandbox'}) do describe(("untrusted_lua = '%s'"):format(u), function()
       lazy_setup(function()
@@ -335,4 +359,5 @@ describe("sandbox functions wrapper", function()
       end)
     end)
   end)
+
 end)
