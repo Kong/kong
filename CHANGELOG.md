@@ -1,3 +1,7 @@
+## 1.0.4
+
+- Simulate log phase to resolve pdk error when used with a logging plugin
+
 ## 1.0.3
 
 - add copyright
