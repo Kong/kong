@@ -1,5 +1,7 @@
 local cjson = require "cjson"
 
+local fmt = string.format
+
 -- preload utils module and patch it with a request mock
 -- XXX does this affect any other test?
 local utils = mock(require "kong.enterprise_edition.utils")
@@ -639,107 +641,101 @@ describe("event-hooks", function()
       end)
     end)
 
-    describe("[#lambda]", function()
-      local entity
-      local handler = event_hooks.handlers.lambda
+    for _, untrusted in ipairs({ 'on', 'sandbox' }) do
+      describe(fmt("[#lambda] untrusted_lua = '%s' ", untrusted), function()
+        local entity
+        local handler = event_hooks.handlers.lambda
 
-      before_each(function()
-        entity = {
-          id = "a4fbd24e-6a52-4937-bd78-2536713072d2",
-          source = "some_source",
-          event = "some_event",
-          handler = "lambda",
-          config = {},
-        }
-        -- reset mock counters
-        request:clear()
-      end)
+        local sandbox_helpers = require "kong.tools.sandbox_helpers"
 
-      -- subschema does not handle defaults and required nested fields very
-      -- well, so we have to assume an empty config might happen.
-      it("does not break on empty config", function()
-        local cb = handler(entity, entity.config).callback
-        assert(cb({ some = "data"}, "some_event", "some_source", 1234))
-      end)
+        before_each(function()
+          _G.kong.configuration.untrusted_lua = untrusted
+          sandbox_helpers.configuration:reload()
+        end)
 
-      it("reduces over a set of configured functions", function()
-        entity.config.functions = {
-          [[
-            return function(data, event, source, pid)
-              return "HELLO"
-            end
-          ]],
-          [[
-            return function(data, event, source, pid)
-              return data .. " WORLD"
-            end
-          ]],
-        }
-        local cb = handler(entity, entity.config).callback
-        local ok, res = cb({ some = "data"}, "some_event", "some_source", 1234)
-        assert.is_true(ok)
-        assert.equal("HELLO WORLD", res)
-      end)
+        lazy_teardown(function()
+          _G.kong.configuration.untrusted_lua = nil
+          sandbox_helpers.configuration:reload()
+        end)
 
-      it("returns false and error when a manual error happens", function()
-        entity.config.functions = {
-          [[
-            return function(data, event, source, pid)
-              return nil, "some bad error"
-            end
-          ]],
-          [[
-            return function(data, event, source, pid)
-              return data .. " WORLD"
-            end
-          ]],
-        }
-        local cb = handler(entity, entity.config).callback
-        local ok, _, err = cb({ some = "data"}, "some_event", "some_source", 1234)
-        assert.is_false(ok)
-        assert.equal("some bad error", err)
-      end)
+        before_each(function()
+          entity = {
+            id = "a4fbd24e-6a52-4937-bd78-2536713072d2",
+            source = "some_source",
+            event = "some_event",
+            handler = "lambda",
+            config = {},
+          }
+          -- reset mock counters
+          request:clear()
+        end)
 
-      it("syntax errors return false and an error", function()
-        entity.config.functions = {
-          [[
-            retarn finction(data, event, source, pid)
-              return true
-            end
-          ]],
-          [[
-            return function(data, event, source, pid)
-              return data .. " WORLD"
-            end
-          ]],
-        }
-        local cb = handler(entity, entity.config).callback
-        local ok, _, err = cb({ some = "data"}, "some_event", "some_source", 1234)
-        assert.is_false(ok)
-        assert.match("'=' expected near 'finction'", err)
-      end)
+        -- subschema does not handle defaults and required nested fields very
+        -- well, so we have to assume an empty config might happen.
+        it("does not break on empty config", function()
+          local cb = handler(entity, entity.config).callback
+          assert(cb({ some = "data"}, "some_event", "some_source", 1234))
+        end)
 
-      -- XXX this is by design at the moment. Code to use a sandboxed
-      -- environment is in place, if required by tech / prod.
-      it("functions have access to the global env (read only)", function()
-        _G.foobar = "hello world"
-        entity.config.functions = {
-          [[
-            return function(data, event, source, pid)
-              local bar = foobar
-              foobar = "goodbye world"
-              return bar
-            end
-          ]],
-        }
-        local cb = handler(entity, entity.config).callback
-        local ok, res, _ = cb({ some = "data"}, "some_event", "some_source", 1234)
-        assert.is_true(ok)
-        assert.equal("hello world", res)
-        assert.equal("hello world", _G.foobar)
-        _G.foobar = nil
+        it("reduces over a set of configured functions", function()
+          entity.config.functions = {
+            [[
+              return function(data, event, source, pid)
+                return "HELLO"
+              end
+            ]],
+            [[
+              return function(data, event, source, pid)
+                return data .. " WORLD"
+              end
+            ]],
+          }
+          local cb = handler(entity, entity.config).callback
+          local ok, res = cb({ some = "data"}, "some_event", "some_source", 1234)
+          assert.is_true(ok)
+          assert.equal("HELLO WORLD", res)
+        end)
+
+        it("returns false and error when a manual error happens", function()
+          entity.config.functions = {
+            [[
+              return function(data, event, source, pid)
+                return nil, "some bad error"
+              end
+            ]],
+            [[
+              return function(data, event, source, pid)
+                return data .. " WORLD"
+              end
+            ]],
+          }
+          local cb = handler(entity, entity.config).callback
+          local ok, _, err = cb({ some = "data"}, "some_event", "some_source", 1234)
+          assert.is_false(ok)
+          assert.equal("some bad error", err)
+        end)
+
+        it("syntax errors return false and an error", function()
+          entity.config.functions = {
+            [[
+              retarn finction(data, event, source, pid)
+                return true
+              end
+            ]],
+            [[
+              return function(data, event, source, pid)
+                return data .. " WORLD"
+              end
+            ]],
+          }
+          local cb = handler(entity, entity.config).callback
+          local ok, _, err = cb({ some = "data"}, "some_event", "some_source", 1234)
+          assert.is_false(ok)
+          assert.match("'=' expected near 'finction'", err)
+        end)
+
       end)
-    end)
+    end
 
     describe("[webhook]", function()
       local entity

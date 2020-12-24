@@ -588,6 +588,10 @@ local CONF_INFERENCES = {
   cluster_ca_cert = { typ = "string" },
   cluster_server_name = { typ = "string" },
   kic = { typ = "boolean" },
+
+  untrusted_lua = { enum = { "on", "off", "sandbox" } },
+  untrusted_lua_sandbox_requires = { typ = "array" },
+  untrusted_lua_sandbox_environment = { typ = "array" },
 }
 
 
