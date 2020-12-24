@@ -2272,3 +2272,19 @@
 
 #keyring_vault_token =           # Defines the token value used to communicate
                                  # with the v2 KV Vault HTTP(S) API.
+
+#untrusted_lua = on              # on | off | sandbox
+                                 # on: untrusted lua code has unrestricted
+                                 #     access to the global context
+                                 # sandbox: use a secure sandbox for running
+                                 #     untrusted lua code.
+                                 # off: untrusted lua code is never loaded
+
+#untrusted_lua_sandbox_requires =
+                                 # Comma-separated list of allowed requires
+                                 # for sandboxed untrusted lua code
+
+#untrusted_lua_sandbox_environment =
+                                 # Comma-separated list of global runtime
+                                 # variables available to sandboxed lua code
+                                 # environment
