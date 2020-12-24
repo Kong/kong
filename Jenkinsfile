@@ -45,10 +45,6 @@ pipeline {
     stage('Build & Push Packages') {
       steps {
         parallel (
-          centos6: {
-            sh "./dist/dist.sh build centos:6 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:6 -e -R ${env.RELEASE_SCOPE}"
-          },
           centos7: {
             sh "./dist/dist.sh build centos:7 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 -e -R ${env.RELEASE_SCOPE}"
@@ -84,10 +80,6 @@ pipeline {
           alpine: {
             sh "./dist/dist.sh build alpine ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine -e -R ${env.RELEASE_SCOPE}"
-          },
-          rhel6: {
-            sh "./dist/dist.sh build rhel:6 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:6 -e -R ${env.RELEASE_SCOPE}"
           },
           rhel7: {
             sh "./dist/dist.sh build rhel:7 ${env.RELEASE_SCOPE}"
