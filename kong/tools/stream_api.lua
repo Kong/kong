@@ -44,24 +44,27 @@ function stream_api.request(key, data, socket_path)
   end
 
   local socket = assert(ngx.socket.udp())
-  assert(socket:setpeername(socket_path or "unix:" .. PREFIX .. "/stream_rpc.sock"))
+  local ok, err = socket:setpeername(socket_path or "unix:" .. PREFIX .. "/stream_rpc.sock")
+  if not ok then
+    return nil, "opening internal RPC socket: " .. tostring(err)
+  end
 
-  local ok, err = socket:send(st_pack("=PP", key, data))
+  ok, err = socket:send(st_pack("=PP", key, data))
   if not ok then
     socket:close()
-    return ok, err
+    return nil, "sending stream-api request: " .. tostring(err)
   end
 
   data, err = socket:receive()
   if not data then
     socket:close()
-    return data, err
+    return nil, "retrieving stream-api response: " .. tostring(err)
   end
 
   local _, status, payload = st_unpack(data, "=SP")
   if status ~= 0 then
     socket:close()
-    return nil, payload
+    return nil, "stream-api errmsg: " .. payload
   end
 
   socket:close()
@@ -91,6 +94,10 @@ function stream_api.handle()
     kong.log.error(st_format("stream_api handler %q returned error: %q", key, err))
     assert(socket:send(st_pack("=SP", 2, tostring(err))))
     return
+  end
+
+  if type(res) == "table" then
+    res = table.concat(res)
   end
 
   if type(res) ~= "string" then
