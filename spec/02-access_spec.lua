@@ -1,6 +1,9 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
 
+local TCP_SERVICE_PORT = 8189
+local TCP_PROXY_PORT = 9007
+
 describe("Plugin: prometheus (access)", function()
   local proxy_client
   local admin_client
@@ -49,13 +52,28 @@ describe("Plugin: prometheus (access)", function()
       service = grpcs_service,
     }
 
+    local tcp_service = bp.services:insert {
+      name = "tcp-service",
+      url = "tcp://127.0.0.1:" .. TCP_SERVICE_PORT,
+    }
+
+    bp.routes:insert {
+      protocols = { "tcp" },
+      name = "tcp-route",
+      service = tcp_service,
+      destinations = { { port = TCP_PROXY_PORT } },
+    }
+
     bp.plugins:insert {
+      protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
       name = "prometheus"
     }
 
+    helpers.tcp_server(TCP_SERVICE_PORT)
     assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled, prometheus",
+        stream_listen = "127.0.0.1:" .. TCP_PROXY_PORT,
     })
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
@@ -153,6 +171,25 @@ describe("Plugin: prometheus (access)", function()
       })
       local body = assert.res_status(200, res)
       return body:find('kong_http_status{service="mock-grpcs-service",route="grpcs-route",code="200"} 1', nil, true)
+    end)
+  end)
+
+  pending("increments the count for proxied TCP streams", function()
+    local conn = assert(ngx.socket.connect("127.0.0.1", TCP_PROXY_PORT))
+
+    assert(conn:send("hi there!\n"))
+    local gotback = assert(conn:receive("*a"))
+    assert.equal("hi there!\n", gotback)
+
+    conn:close()
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      return body:find('kong_stream_status{service="tcp-service",route="tcp-route",code="200"} 1', nil, true)
     end)
   end)
 

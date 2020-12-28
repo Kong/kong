@@ -35,9 +35,15 @@ local function init()
   prometheus = require("kong.plugins.prometheus.prometheus").init(shm, "kong_")
 
   -- global metrics
-  metrics.connections = prometheus:gauge("nginx_http_current_connections",
-                                         "Number of HTTP connections",
-                                         {"state"})
+  if ngx.config.subsystem == "http" then
+    metrics.connections = prometheus:gauge("nginx_http_current_connections",
+      "Number of HTTP connections",
+      {"state"})
+  else
+    metrics.connections = prometheus:gauge("nginx_stream_current_connections",
+      "Number of Stream connections",
+      {"state"})
+  end
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
                                           "Datastore reachable from Kong, " ..
                                           "0 is unreachable")
@@ -66,9 +72,15 @@ local function init()
   metrics.memory_stats = memory_stats
 
   -- per service/route
-  metrics.status = prometheus:counter("http_status",
-                                      "HTTP status codes per service/route in Kong",
-                                      {"service", "route", "code"})
+  if ngx.config.subsystem == "http" then
+    metrics.status = prometheus:counter("http_status",
+                                        "HTTP status codes per service/route in Kong",
+                                        {"service", "route", "code"})
+  else
+    metrics.status = prometheus:counter("stream_status",
+                                        "Stream status codes per service/route in Kong",
+                                        {"service", "route", "code"})
+  end
   metrics.latency = prometheus:histogram("latency",
                                          "Latency added by Kong, total " ..
                                          "request time and upstream latency " ..
@@ -231,24 +243,26 @@ local function metric_data()
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
-  local r = ngx.location.capture "/nginx_status"
+  if ngx.location then
+    local r = ngx.location.capture "/nginx_status"
 
-  if r.status ~= 200 then
-    kong.log.warn("prometheus: failed to retrieve /nginx_status ",
-                  "while processing /metrics endpoint")
+    if r.status ~= 200 then
+      kong.log.warn("prometheus: failed to retrieve /nginx_status ",
+        "while processing /metrics endpoint")
 
-  else
-    local accepted, handled, total = select(3, find(r.body,
-                                            "accepts handled requests\n (%d*) (%d*) (%d*)"))
-    metrics.connections:set(accepted, { "accepted" })
-    metrics.connections:set(handled, { "handled" })
-    metrics.connections:set(total, { "total" })
+    else
+      local accepted, handled, total = select(3, find(r.body,
+        "accepts handled requests\n (%d*) (%d*) (%d*)"))
+      metrics.connections:set(accepted, { "accepted" })
+      metrics.connections:set(handled, { "handled" })
+      metrics.connections:set(total, { "total" })
+    end
   end
 
-  metrics.connections:set(ngx.var.connections_active, { "active" })
-  metrics.connections:set(ngx.var.connections_reading, { "reading" })
-  metrics.connections:set(ngx.var.connections_writing, { "writing" })
-  metrics.connections:set(ngx.var.connections_waiting, { "waiting" })
+  metrics.connections:set(ngx.var.connections_active or 0, { "active" })
+  metrics.connections:set(ngx.var.connections_reading or 0, { "reading" })
+  metrics.connections:set(ngx.var.connections_writing or 0, { "writing" })
+  metrics.connections:set(ngx.var.connections_waiting or 0, { "waiting" })
 
   -- db reachable?
   local ok, err = kong.db.connector:connect()
