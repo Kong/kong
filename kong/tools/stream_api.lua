@@ -10,6 +10,7 @@ local kong       = kong
 local st_pack    = string.pack      -- luacheck: ignore string
 local st_unpack  = string.unpack    -- luacheck: ignore string
 local st_format  = string.format
+local table_concat = table.concat
 local assert     = assert
 
 local MAX_DATA_LEN = 8000
@@ -97,7 +98,7 @@ function stream_api.handle()
   end
 
   if type(res) == "table" then
-    res = table.concat(res)
+    res = table_concat(res)
   end
 
   if type(res) ~= "string" then
