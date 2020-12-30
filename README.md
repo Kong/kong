@@ -183,7 +183,7 @@ $ git checkout next
 
 # install the Lua sources
 $ luarocks make
-```
+
 
 #### Running for development
 
