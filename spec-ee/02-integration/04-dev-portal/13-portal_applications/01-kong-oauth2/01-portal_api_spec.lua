@@ -1040,6 +1040,16 @@ for _, strategy in helpers.each_strategy() do
             local resp_body_json = cjson.decode(body)
 
             assert.equal(application.consumer.id, resp_body_json.consumer.id)
+
+            local key_auth_cred_created = false
+
+            for row, err in db.daos["keyauth_credentials"]:each_for_consumer({ id = application.consumer.id }) do
+              if row.key == resp_body_json.client_id then
+                key_auth_cred_created = true
+              end
+            end
+
+            assert.is_true(key_auth_cred_created)
           end)
         end)
       end)
@@ -1152,6 +1162,99 @@ for _, strategy in helpers.each_strategy() do
             local body = assert.res_status(200, res)
             local resp_body_json = cjson.decode(body)
             assert.equal(credential.id, resp_body_json.id)
+          end)
+        end)
+
+        describe("DELETE", function()
+          local application, cookie, credential
+
+          before_each(function()
+            portal_api_client = assert(ee_helpers.portal_api_client())
+
+            local res = register_developer(portal_api_client, {
+              email = "dale@konghq.com",
+              password = "kong",
+              meta = "{\"full_name\":\"1337\"}",
+            })
+
+            assert.res_status(200, res)
+
+            cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/applications",
+              body = {
+                name = "myfirstapp",
+                redirect_uri = "http://dog.com"
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            application = cjson.decode(body)
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials",
+              body = {},
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            credential = cjson.decode(body).data[1]
+          end)
+
+          after_each(function()
+            assert(db:truncate('basicauth_credentials'))
+            assert(db:truncate('applications'))
+            assert(db:truncate('consumers'))
+            assert(db:truncate('developers'))
+          end)
+
+          it("can DELETE a specific credential", function()
+            local res = assert(portal_api_client:send {
+              method = "DELETE",
+              path = "/applications/" .. application.id .. "/credentials/" .. credential.id,
+              headers = {
+                ["Cookie"] = cookie,
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            assert.res_status(204, res)
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials",
+              body = {},
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+            assert.equal(0, #resp_body_json.data)
+
+            local key_auth_cred_deleted = true
+
+            for row, err in db.daos["keyauth_credentials"]:each_for_consumer({ id = application.consumer.id }) do
+              if row.key == credential.client_id then
+                key_auth_cred_deleted = false
+              end
+            end
+
+            assert.is_true(key_auth_cred_deleted)
           end)
         end)
       end)

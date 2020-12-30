@@ -4,6 +4,7 @@
 -- subject to the terms of the Kong Master Software License Agreement found
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+local cjson = require "cjson"
 
 local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 
@@ -21,6 +22,18 @@ return {
           kong.log.err(err)
           break
         end
+
+        if plugin.name == "key-auth" then
+          if does_plugin_map_to_service(plugin, service) then
+            auth_config = {
+              key_in_body = plugin.config.key_in_body,
+              key_names = setmetatable(plugin.config.key_names, cjson.empty_array_mt),
+              run_on_preflight = plugin.config.run_on_preflight,
+            }
+            break
+          end
+        end
+
         if plugin.name == "oauth2" then
           if does_plugin_map_to_service(plugin, service) then
             auth_config = {
