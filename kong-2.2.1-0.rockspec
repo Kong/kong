@@ -53,7 +53,6 @@ dependencies = {
   "kong-plugin-zipkin ~> 1.1",
   -- XXX Bundled with KD
   -- "kong-plugin-serverless-functions ~> 1.0",
-  "kong-plugin-serverless-functions ~> 1.0",
   "kong-prometheus-plugin ~> 1.0",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.2",
