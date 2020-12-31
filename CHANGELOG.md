@@ -1,4 +1,4 @@
-## Unreleased
+## 0.38.0
 
 - Keep the configured name case on append/add headers.
   Fixes [#28](https://github.com/Kong/kong-plugin-request-transformer/issues/28)
