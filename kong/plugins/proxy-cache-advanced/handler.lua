@@ -236,7 +236,7 @@ end
 
 
 local ProxyCacheHandler = {
-  VERSION  = "0.5.5",
+  VERSION  = "0.5.6",
   PRIORITY = 100,
 }
 
