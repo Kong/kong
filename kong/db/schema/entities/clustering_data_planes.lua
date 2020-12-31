@@ -6,6 +6,15 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local typedefs      = require "kong.db.schema.typedefs"
+local CLUSTERING_SYNC_STATUS = require "kong.constants".CLUSTERING_SYNC_STATUS
+local SYNC_STATUS_CHOICES = {}
+
+
+for _, v in ipairs(CLUSTERING_SYNC_STATUS) do
+  _, v = next(v)
+  table.insert(SYNC_STATUS_CHOICES, v)
+end
+
 
 return {
   name               = "clustering_data_planes",
@@ -22,5 +31,11 @@ return {
     { config_hash = { type = "string", len_eq = 32, } },
     { hostname = typedefs.host { required = true, } },
     { version = typedefs.semantic_version },
+    { sync_status = { type = "string",
+                      required = true,
+                      one_of = SYNC_STATUS_CHOICES,
+                      default = "unknown",
+                    }
+    },
   },
 }
