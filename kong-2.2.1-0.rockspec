@@ -51,6 +51,8 @@ dependencies = {
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2.1",
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.1",
+  -- XXX Bundled with KD
+  -- "kong-plugin-serverless-functions ~> 1.0",
   "kong-plugin-serverless-functions ~> 1.0",
   "kong-prometheus-plugin ~> 1.0",
   "kong-proxy-cache-plugin ~> 1.3",
