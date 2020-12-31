@@ -52,7 +52,8 @@ describe("Plugins", function()
     -- backwards-compatibility
 
     local order = {
-      "pre-function",
+      -- XXX Bundled with KD
+      -- "pre-function",
       "correlation-id",
       "zipkin",
       "bot-detection",
@@ -88,7 +89,8 @@ describe("Plugins", function()
       "syslog",
       "grpc-web",
       "request-termination",
-      "post-function",
+      -- XXX Bundled with KD
+      -- "post-function",
     }
 
     table.sort(plugins, function(a, b)
