@@ -19,7 +19,7 @@ from startups to Global 5000 as well as government organizations.
 IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 [Nightly Builds][kong-nightly-master]
 
-## Summary
+## :notebook_with_decorative_cover: Summary
 
 - [**Why Kong?**](#why-kong)
 - [**Features**](#features)
@@ -28,7 +28,7 @@ IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 - [**Enterprise Support & Demo**](#enterprise-support--demo)
 - [**License**](#license)
 
-## Why Kong?
+## :monocle_face: Why Kong?
 
 If you are building for the web, mobile, or IoT (Internet of Things) you will
 likely end up needing common functionality to run your actual software. Kong
@@ -47,7 +47,7 @@ Kong has been built with the following leading principles:
 * **Portability**: To run on every platform, every cloud and to natively support
   Kubernetes via our modern Ingress Controller.
 
-## Features
+## :star_struck: Features
 
 - **Cloud-Native**: Platform agnostic, Kong can run on any platform - from bare
   metal to containers - and it can run on every cloud natively.
@@ -97,7 +97,7 @@ Kong has been built with the following leading principles:
 For more info about plugins and integrations, you can check out the [Kong
 Hub](https://docs.konghq.com/hub/).
 
-## Distributions
+## :wrench: Distributions
 
 Kong comes in many shapes. While this repository contains its core's source
 code, other repos are also under active development:
@@ -129,7 +129,7 @@ code, other repos are also under active development:
 
 You can find every supported distribution at the [official installation page](https://konghq.com/install/).
 
-## Development
+## :seedling: Development
 
 We encourage community contributions to Kong. To make sure it is a smooth
 experience (both for you and for the Kong team), please read
@@ -265,12 +265,12 @@ When developing, you can use the `Makefile` for doing the following operations:
 | `test-plugins`     | Run the plugins test suite                             |
 | `test-all`         | Run all unit + integration + plugins tests at once     |
 
-## Enterprise Support & Demo
+## :department_store: Enterprise Support & Demo
 
 If you are working in a large organization you should learn more about [Kong
 Enterprise](https://konghq.com/kong-enterprise-edition/).
 
-## License
+## :scroll: License
 
 ```
 Copyright 2016-2020 Kong Inc.
