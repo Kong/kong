@@ -1,3 +1,8 @@
+## v1.8.1
+
+- Bump `lua-resty-session` dependency to `3.8`
+
+
 ## v1.8.0
 
 - IMPORTANT! fix a security vulnerability that allowed verification of HS-family signatures with
