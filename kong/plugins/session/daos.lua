@@ -3,6 +3,7 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   sessions = {
     primary_key = { "id" },
+    endpoint_key = "session_id",
     name = "sessions",
     cache_key = { "session_id" },
     ttl = true,
