@@ -21,7 +21,7 @@ IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
 
 ## Summary
 
-- [**Why Kong?**](#why-kong)
+- [**Why always Kong?**](#why-kong)
 - [**Features**](#features)
 - [**Distributions**](#distributions)
 - [**Development**](#development)
@@ -99,7 +99,7 @@ Hub](https://docs.konghq.com/hub/).
 
 ## Distributions
 
-Kong comes in many shapes. While this repository contains its core's source
+Kong comes in many shapes and sizes. While this repository contains its core's source
 code, other repos are also under active development:
 
 - [Kubernetes Ingress Controller for Kong](https://github.com/Kong/kubernetes-ingress-controller):
