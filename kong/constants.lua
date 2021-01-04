@@ -39,9 +39,8 @@ local plugins = {
   -- external plugins
   "azure-functions",
   "zipkin",
-  -- XXX Bundled with kong-distributions (removed from rockspec)
-  -- "pre-function",
-  -- "post-function",
+  "pre-function",
+  "post-function",
   "prometheus",
   "proxy-cache",
   "session",
