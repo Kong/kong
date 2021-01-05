@@ -52,7 +52,7 @@ dependencies = {
   -- external Kong plugins
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2.1",
   "kong-plugin-azure-functions ~> 0.4.2",
-  "kong-plugin-serverless-functions ~> 1.0",
+  "kong-plugin-serverless-functions ~> 2.0",
   "kong-prometheus-plugin ~> 0.7.1",
   "kong-plugin-session == 2.4.3",
   "kong-proxy-cache-plugin ~> 1.3.0",
