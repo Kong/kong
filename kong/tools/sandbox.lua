@@ -119,29 +119,13 @@ local string_rep = string.rep
 function sandbox.protect(f, options)
   options = options or {}
 
-  options.env = options.env or {}
-
-  local env
-  local opts_meta = getmetatable(options.env)
-
-  if not opts_meta then
-    env = setmetatable(options.env, { __index = BASE_ENV })
-  -- check if this environment already has a BASE_ENV within
-  elseif not opts_meta.__sandbox then
-    local __index = opts_meta.__index
-    local _type = type(__index)
-    env = setmetatable(options.env, {
-      __sandbox = true,
-      __index = function(t, k)
-        local v = BASE_ENV[k]
-
-        if v ~= nil then return v
-        elseif _type == "function" then return __index(opts_meta, k)
-        elseif _type == "table" then return __index[k]
-        end
-      end,
-    })
-  end
+  local passed_env = options.env or {}
+  local env = setmetatable({}, {
+    __index = function(_, k)
+      local v = BASE_ENV[k]
+      return v ~= nil and v or passed_env[k]
+    end,
+  })
 
   env._G = env._G or env
 
