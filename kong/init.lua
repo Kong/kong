@@ -458,14 +458,14 @@ function Kong.init()
           "global named 'kong' (please use 'Kong' instead)")
   end
 
+  -- EE needs to know which kind of featureset to run ASAP
+  kong.license = ee.read_license_info()
+
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path, ee.license_conf(), { from_kong_env = true }))
 
   reset_kong_shm(config)
-
-  -- EE needs to know which kind of featureset to run ASAP
-  kong.license = ee.read_license_info()
 
   -- special math.randomseed from kong.globalpatches not taking any argument.
   -- Must only be called in the init or init_worker phases, to avoid
