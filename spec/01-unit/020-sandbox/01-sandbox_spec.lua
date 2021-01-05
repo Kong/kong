@@ -74,11 +74,6 @@ describe('sandbox.run', function()
       assert.error(function() sandbox.run("error('this should be raised')") end)
     end)
 
-    it('DOES persist modification to base functions when they are provided by the base env', function()
-      local env = {['next'] = 'hello'}
-      sandbox.run('next = "bye"', {env=env})
-      assert.equal(env['next'], 'bye')
-    end)
   end)
 
 
@@ -109,7 +104,7 @@ describe('sandbox.run', function()
     it('is available on the sandboxed env as the _G variable', function()
       local env = {foo = 1}
       assert.equal(1, sandbox.run("return foo", {env = env}))
-      assert.equal(env, sandbox.run("return _G", {env = env}))
+      assert.equal(1, sandbox.run("return _G.foo", {env = env}))
     end)
 
     it('does not hide base env', function()
@@ -118,8 +113,19 @@ describe('sandbox.run', function()
 
     it('can modify the env', function()
       local env = {foo = 1}
-      sandbox.run("foo = 2", {env = env})
-      assert.equal(env.foo, 2)
+      assert.equal(2, sandbox.run([[
+        foo = foo + 1
+        return foo
+      ]], {env = env}))
+    end)
+
+    it('env does not persist changes', function()
+      local env = {foo = 1}
+      sandbox.run([[
+        foo = foo + 1
+        return foo
+      ]], {env = env})
+      assert.equal(1, env.foo)
     end)
   end)
 
