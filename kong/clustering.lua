@@ -19,6 +19,7 @@ local openssl_x509 = require("resty.openssl.x509")
 local system_constants = require("lua_system_constants")
 local ffi = require("ffi")
 local pl_tablex = require("pl.tablex")
+local kong_constants = require("kong.constants")
 local string = string
 local assert = assert
 local setmetatable = setmetatable
@@ -41,8 +42,9 @@ local table_insert = table.insert
 local table_remove = table.remove
 local inflate_gzip = utils.inflate_gzip
 local deflate_gzip = utils.deflate_gzip
+
+-- XXX EE
 local get_cn_parent_domain = utils.get_cn_parent_domain
-local pl_tablex_compare = pl_tablex.compare
 
 
 local KONG_VERSION = kong.version
@@ -66,6 +68,7 @@ local PLUGINS_LIST
 local clients = setmetatable({}, WEAK_KEY_MT)
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json.gz"
+local CLUSTERING_SYNC_STATUS = kong_constants.CLUSTERING_SYNC_STATUS
 local declarative_config
 local next_config
 
@@ -557,11 +560,6 @@ function _M.handle_cp_telemetry_websocket()
 end
 
 
-local function plugin_entry_comparator(a, b)
-  return a.name == b.name and a.version == b.version
-end
-
-
 local MAJOR_MINOR_PATTERN = "^(%d+%.%d+)%.%d+"
 local function should_send_config_update(node_version, node_plugins)
   if not node_version or not node_plugins then
@@ -576,14 +574,23 @@ local function should_send_config_update(node_version, node_plugins)
   local minor_node = node_version:match(MAJOR_MINOR_PATTERN)
   if minor_cp ~= minor_node then
     return false, "version mismatches, CP version: " .. minor_cp ..
-                  " DP version: " .. minor_node
+                  " DP version: " .. minor_node,
+                  CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
   end
 
-  if not pl_tablex_compare(PLUGINS_LIST, node_plugins,
-                           plugin_entry_comparator)
-  then
-    return false, "CP and DP does not have same set of plugins installed" ..
-                  " or their versions might differ"
+  for i, p in ipairs(PLUGINS_LIST) do
+    local np = node_plugins[i]
+    if p.name ~= np.name then
+      return false, "CP and DP does not have same set of plugins installed",
+                    CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+    end
+
+    if p.version ~= np.version then
+      return false, "plugin \"" .. p.name .. "\" version differs between " ..
+                    "CP and DP, CP has version " .. tostring(p.version) ..
+                    " while DP has version " .. tostring(np.version),
+                    CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+    end
   end
 
   return true
@@ -644,9 +651,10 @@ function _M.handle_cp_websocket()
 
   clients[wb] = queue
 
-  local res
-  res, err = should_send_config_update(node_version, node_plugins)
+  local res, sync_status
+  res, err, sync_status = should_send_config_update(node_version, node_plugins)
   if res then
+    sync_status = CLUSTERING_SYNC_STATUS.NORMAL
     local config_table
     -- unconditionally send config update to new clients to
     -- ensure they have latest version running
@@ -730,6 +738,7 @@ function _M.handle_cp_websocket()
           hostname = node_hostname,
           ip = node_ip,
           version = node_version,
+          sync_status = sync_status,
         }, { ttl = kong.configuration.cluster_data_plane_purge_delay, })
         if not ok then
           ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)

@@ -27,7 +27,7 @@ local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
 local PREFIX = ngx.config.prefix()
 local SUBSYS = ngx.config.subsystem
 local WORKER_COUNT = ngx.worker.count()
-
+local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 
 local declarative = {}
 
@@ -501,7 +501,7 @@ end
 
 
 function declarative.get_current_hash()
-  return ngx.shared.kong:get("declarative_config:hash")
+  return ngx.shared.kong:get(DECLARATIVE_HASH_KEY)
 end
 
 
@@ -768,9 +768,9 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
     return nil, err
   end
 
-  local ok, err = ngx.shared.kong:safe_set("declarative_config:hash", hash or true)
+  local ok, err = ngx.shared.kong:safe_set(DECLARATIVE_HASH_KEY, hash or true)
   if not ok then
-    return nil, "failed to set declarative_config:hash in shm: " .. err
+    return nil, "failed to set " .. DECLARATIVE_HASH_KEY .. " in shm: " .. err
   end
 
 
@@ -782,8 +782,13 @@ end
 do
   local DECLARATIVE_FLIPS_NAME = constants.DECLARATIVE_FLIPS.name
   local DECLARATIVE_FLIPS_TTL = constants.DECLARATIVE_FLIPS.ttl
+  local DECLARATIVE_PAGE_KEY = constants.DECLARATIVE_PAGE_KEY
 
   function declarative.load_into_cache_with_events(entities, meta, hash)
+    if ngx.worker.exiting() then
+      return nil, "exiting"
+    end
+
     local ok, err = ngx.shared.kong:add(DECLARATIVE_FLIPS_NAME, 0, DECLARATIVE_FLIPS_TTL)
     if not ok then
       if err == "exists" then
@@ -828,11 +833,17 @@ do
       assert(bytes == #json, "incomplete config sent to the stream subsystem")
     end
 
+    if ngx.worker.exiting() then
+      ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
+      return nil, "exiting"
+    end
+
     local default_ws
     ok, err, default_ws = declarative.load_into_cache(entities, meta, hash, SHADOW)
     if ok then
       ok, err = kong.worker_events.post("declarative", "flip_config", default_ws)
       if ok ~= "done" then
+        ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
         return nil, "failed to flip declarative config cache pages: " .. (err or ok)
       end
 
@@ -841,9 +852,15 @@ do
       return nil, err
     end
 
-    ok, err = kong.core_cache:save_curr_page()
+    ok, err = ngx.shared.kong:set(DECLARATIVE_PAGE_KEY, kong.cache:get_page())
     if not ok then
-      return nil, "failed to persist cache page number inside shdict: " .. err
+      ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
+      return nil, "failed to persist cache page number: " .. err
+    end
+
+    if ngx.worker.exiting() then
+      ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
+      return nil, "exiting"
     end
 
     local sleep_left = DECLARATIVE_FLIPS_TTL
@@ -851,7 +868,7 @@ do
 
     while sleep_left > 0 do
       local flips = ngx.shared.kong:get(DECLARATIVE_FLIPS_NAME)
-      if  flips == nil or flips == WORKER_COUNT then
+      if flips == nil or flips >= WORKER_COUNT then
         break
       end
 
@@ -861,8 +878,13 @@ do
       end
 
       ngx.sleep(sleep_time)
-      sleep_left = sleep_left - sleep_time
 
+      if ngx.worker.exiting() then
+        ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
+        return nil, "exiting"
+      end
+
+      sleep_left = sleep_left - sleep_time
     end
 
     ngx.shared.kong:delete(DECLARATIVE_FLIPS_NAME)
