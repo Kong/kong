@@ -121,21 +121,27 @@ function sandbox.protect(f, options)
 
   options.env = options.env or {}
 
-  local env_meta
+  local env
   local opts_meta = getmetatable(options.env)
 
-  if opts_meta then
-    env_meta = {
+  if not opts_meta then
+    env = setmetatable(options.env, { __index = BASE_ENV })
+  -- check if this environment already has a BASE_ENV within
+  elseif not opts_meta.__sandbox then
+    local __index = opts_meta.__index
+    local _type = type(__index)
+    env = setmetatable(options.env, {
+      __sandbox = true,
       __index = function(t, k)
-        if BASE_ENV[k] then return BASE_ENV[k]
-        else return opts_meta.__index[k] end
-      end,
-    }
-  else
-    env_meta = { __index = BASE_ENV }
-  end
+        local v = BASE_ENV[k]
 
-  local env = setmetatable(options.env, env_meta)
+        if v ~= nil then return v
+        elseif _type == "function" then return __index(opts_meta, k)
+        elseif _type == "table" then return __index[k]
+        end
+      end,
+    })
+  end
 
   env._G = env._G or env
 
