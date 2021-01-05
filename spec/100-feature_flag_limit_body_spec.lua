@@ -9,8 +9,6 @@ local helpers = require "spec.helpers"
 local feature_flags = require "kong.enterprise_edition.feature_flags"
 local VALUES = feature_flags.VALUES
 
-local pl_file = require "pl.file"
-
 
 local function create_big_data(size)
   return {
@@ -42,6 +40,8 @@ for _, strategy in helpers.each_strategy() do
           }
         },
       }
+
+      os.remove(helpers.test_conf.nginx_err_logs)
 
       assert(helpers.start_kong({
         database          = strategy,
@@ -78,13 +78,8 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("v1", json.p1)
 
       -- make sure there's no error
-      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-      assert.not_matches(string.format(
-                         "is not valid number for \"%s\"", VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE),
-                         err_log, nil, true)
-      assert.not_matches(string.format(
-                         "is turned on but \"%s\" is not defined", VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE),
-                         err_log, nil, true)
+      assert.logfile().has.no.line('is not valid number for "' .. VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE .. '"', true)
+      assert.logfile().has.no.line('is turned on but "' .. VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE .. '" is not defined', true)
     end)
 
     it("doesn't transform body when body size exceeds limit", function()
@@ -104,13 +99,8 @@ for _, strategy in helpers.each_strategy() do
       assert.is_nil(json.p1)
 
       -- make sure there's no error
-      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-      assert.not_matches(string.format(
-                         "is not valid number for \"%s\"", VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE),
-                         err_log, nil, true)
-      assert.not_matches(string.format(
-                         "is turned on but \"%s\" is not defined", VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE),
-                          err_log, nil, true)
+      assert.logfile().has.no.line('is not valid number for "' .. VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE .. '"', true)
+      assert.logfile().has.no.line('is turned on but "' .. VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE .. '" is not defined', true)
     end)
   end)
 
@@ -134,6 +124,8 @@ for _, strategy in helpers.each_strategy() do
           }
         },
       }
+
+      os.remove(helpers.test_conf.nginx_err_logs)
 
       assert(helpers.start_kong({
         database          = strategy,
@@ -191,6 +183,8 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      os.remove(helpers.test_conf.nginx_err_logs)
+
       assert(helpers.start_kong({
         database          = strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
@@ -225,10 +219,7 @@ for _, strategy in helpers.each_strategy() do
       local json = assert.response(res).has.jsonbody()
       assert.equal("v1", json.p1)
 
-      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-      assert.matches(string.format(
-                     "is turned on but \"%s\" is not defined", VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE),
-                     err_log, nil, true)
+      assert.logfile().has.line('is turned on but "' .. VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE .. '" is not defined', true)
     end)
   end)
 
@@ -252,6 +243,8 @@ for _, strategy in helpers.each_strategy() do
           }
         },
       }
+
+      os.remove(helpers.test_conf.nginx_err_logs)
 
       assert(helpers.start_kong({
         database          = strategy,
@@ -287,10 +280,7 @@ for _, strategy in helpers.each_strategy() do
       local json = assert.response(res).has.jsonbody()
       assert.equal("v1", json.p1)
 
-      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-      assert.matches(string.format(
-                     "is not valid number for \"%s\"", VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE),
-                     err_log, nil, true)
+      assert.logfile().has.line('is not valid number for "' .. VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE .. '"', true)
     end)
   end)
 end
