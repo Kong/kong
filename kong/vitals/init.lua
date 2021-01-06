@@ -545,6 +545,7 @@ local function convert_status_codes(res, meta, key_by)
   meta.stat_labels =  STATUS_CODE_STAT_LABELS[meta.entity_type or "cluster"]
   meta.interval = meta.duration
   meta.duration = nil
+  meta.status_code_totals = { total = 0 }
 
   -- no stats to process, return minimal metadata along with empty stats
   if not res[1] then
@@ -558,6 +559,7 @@ local function convert_status_codes(res, meta, key_by)
     local key = key_by and row[key_by] or "cluster"
     local at = tostring(row.at)
     local code = row.code_class and row.code_class .. "xx" or tostring(row.code)
+    local current_total = meta.status_code_totals[code] or 0
 
     meta.earliest_ts = math_min(meta.earliest_ts, at)
     meta.latest_ts = math_max(meta.latest_ts, at)
@@ -565,6 +567,8 @@ local function convert_status_codes(res, meta, key_by)
     stats[key] = stats[key] or {}
     stats[key][at] = stats[key][at] or {}
     stats[key][at][code] = row.count
+    meta.status_code_totals[code] = current_total + row.count
+    meta.status_code_totals.total = meta.status_code_totals.total + row.count
   end
 
   return { stats = stats, meta = meta }
