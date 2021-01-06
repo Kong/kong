@@ -145,7 +145,7 @@ Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
 online version of Kong's source code documentation in the [Plugin Development
 Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
 
-For a quick start with custom plugin development check out [Pongo](https://github.com/Kong/kong-pongo)
+For a quick start with custom plugin development, check out [Pongo](https://github.com/Kong/kong-pongo)
 and the [plugin template](https://github.com/Kong/kong-plugin).
 
 #### Docker
