@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local pl_file = require "pl.file"
 local cjson = require "cjson"
 
 
@@ -270,9 +269,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       assert.res_status(404, res)
-
-      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-      assert.not_matches("attempt to index field 'api' (a nil value)", err_log, nil, true)
+      assert.logfile().has.no.line("attempt to index field 'api' (a nil value)", true)
 
       -- make a valid request to make thread end
       assert(proxy_client:send {

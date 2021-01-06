@@ -52,11 +52,8 @@ describe("Workers initialization #off", function()
     proxy_client:close()
     proxy_client = assert(helpers.proxy_client())
 
-    local conf = helpers.get_running_conf()
-    local _, code = helpers.execute("grep -F 'error building initial plugins iterator: plugins iterator was changed while rebuilding it' " ..
-                                     conf.nginx_err_logs, true)
-    local not_found = 1
-    assert.equal(not_found, code)
+    assert.logfile().has.no.line("error building initial plugins iterator: plugins " ..
+                                 "iterator was changed while rebuilding it", true)
 
     -- make a request to ensure that proxying is working
     -- (and to make some time for the worker to respawn)
