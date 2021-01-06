@@ -129,14 +129,6 @@ if [[ "$TEST_SUITE" =~ integration|dbless|plugins ]]; then
   docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 moul/grpcbin
 fi
 
-git clone --branch feat/mtls https://github.com/Kong/pgmoon/
-
-pushd pgmoon
-luarocks make
-popd
-
-rm -rf pgmoon
-
 nginx -V
 resty -V
 luarocks --version
