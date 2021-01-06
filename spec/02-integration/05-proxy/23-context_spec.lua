@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local pl_file = require "pl.file"
 local null = ngx.null
 
 
@@ -96,39 +95,34 @@ for _, strategy in helpers.each_strategy() do
         assert.truthy(res)
         assert.res_status(231, res)
 
-        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-        assert.not_matches("[ctx-tests]", err_log, nil, true)
+        assert.logfile().has.no.line("[ctx-tests]", true)
       end)
 
       it("context values are correctly calculated (buffered)", function()
         local res = assert(proxy_client:get("/buffered/status/232"))
         assert.res_status(232, res)
 
-        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-        assert.not_matches("[ctx-tests]", err_log, nil, true)
+        assert.logfile().has.no.line("[ctx-tests]", true)
       end)
 
       it("context values are correctly calculated (response)", function()
         local res = assert(proxy_client:get("/response/status/233"))
         assert.res_status(233, res)
 
-        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-        assert.not_matches("[ctx-tests]", err_log, nil, true)
+        assert.logfile().has.no.line("[ctx-tests]", true)
       end)
 
       it("can run unbuffered request after a \"response\" one", function()
         local res = assert(proxy_client:get("/response/status/234"))
         assert.res_status(234, res)
 
-        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-        assert.not_matches("[ctx-tests]", err_log, nil, true)
+        assert.logfile().has.no.line("[ctx-tests]", true)
 
         local res = proxy_client:get("/status/235")
         assert.truthy(res)
         assert.res_status(235, res)
 
-        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-        assert.not_matches("[ctx-tests]", err_log, nil, true)
+        assert.logfile().has.no.line("[ctx-tests]", true)
       end)
     end)
 
@@ -197,8 +191,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(MESSAGE, body)
           assert(tcp_client:close())
 
-          local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-          assert.not_matches("[ctx-tests]", err_log, nil, true)
+          assert.logfile().has.no.line("[ctx-tests]", true)
         end)
       end)
     end

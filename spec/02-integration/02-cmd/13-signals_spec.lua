@@ -36,23 +36,14 @@ describe("signals", function()
     helpers.signal(nil, "-USR2")
 
     -- USR2 received
-    local _, code = helpers.execute("grep -F '(SIGUSR2) received from' " ..
-                                     conf.nginx_err_logs, true)
-    assert.equal(0, code)
+    assert.logfile().has.line('(SIGUSR2) received from', true)
 
     -- USR2 succeeded
-    _, code = helpers.execute("grep -F 'execve() failed' " ..
-                               conf.nginx_err_logs, true)
-    assert.equal(1, code)
-
-    _, code = helpers.execute("grep -F 'start new binary process' " ..
-                               conf.nginx_err_logs, true)
-    assert.equal(0, code)
+    assert.logfile().has.no.line('execve() failed', true)
+    assert.logfile().has.line('start new binary process', true)
 
     -- new master started successfully
-    _, code = helpers.execute("grep -F 'exited with code 1' " ..
-                               conf.nginx_err_logs, true)
-    assert.equal(1, code)
+    assert.logfile().has.no.line('exited with code 1', true)
 
     -- 2 master processes
     assert.is_true(helpers.path.isfile(oldpid_f))
