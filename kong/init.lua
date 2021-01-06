@@ -80,6 +80,7 @@ local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
 local cache_warmup = require "kong.cache.warmup"
 local balancer_execute = require("kong.runloop.balancer").execute
+local balancer_set_host_header = require("kong.runloop.balancer").set_host_header
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
@@ -952,6 +953,13 @@ function Kong.balancer()
       ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
       return ngx.exit(errcode)
+    end
+
+    ok, err = balancer_set_host_header(balancer_data)
+    if not ok then
+      ngx_log(ngx_ERR, "failed to set balancer Host header: ", err)
+
+      return ngx.exit(500)
     end
 
   else
