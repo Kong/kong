@@ -123,7 +123,10 @@ function sandbox.protect(f, options)
   local env = setmetatable({}, {
     __index = function(_, k)
       local v = BASE_ENV[k]
-      return v ~= nil and v or passed_env[k]
+      if v == nil then
+        return passed_env[k]
+      end
+      return v
     end,
   })
 

@@ -5,7 +5,7 @@ local _sandbox = require "kong.tools.sandbox"
 local utils = require "kong.tools.utils"
 
 local fmt = string.format
-local unpack = table.unpack
+local unpack = unpack or table.unpack
 local split = utils.split
 
 
