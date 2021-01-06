@@ -1,0 +1,7 @@
+$ ls -al
+total 24
+drwxr-xr-x  5 ikedatakafumi  staff   160 Mar 21 22:33 .
+drwxr-xr-x  3 ikedatakafumi  staff    96 Mar 21 22:33 ..
+-rw-------  1 ikedatakafumi  staff  1597 Mar 21 22:33 IT.yaml
+-rw-------  1 ikedatakafumi  staff  1598 Mar 21 22:33 LOB.yaml
+-rw-------  1 ikedatakafumi  staff    43 Mar 21 22:33 default.yaml
