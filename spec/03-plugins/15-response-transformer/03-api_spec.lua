@@ -188,6 +188,68 @@ for _, strategy in helpers.each_strategy() do
           assert.same("schema violation", json.name)
           assert.same({ "invalid value: just_a_key" }, json.fields.config.append.headers)
         end)
+        it("it does not allow null value for arrays", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name   = "response-transformer",
+              config = {
+                remove    = {
+                  headers    = cjson.null,
+                  json       = cjson.null,
+                },
+                rename = {
+                  headers    = cjson.null,
+                },
+                replace = {
+                  headers    = cjson.null,
+                  json       = cjson.null,
+                  json_types = cjson.null,
+                },
+                add = {
+                  headers    = cjson.null,
+                  json       = cjson.null,
+                  json_types = cjson.null,
+                },
+                append = {
+                  headers    = cjson.null,
+                  json       = cjson.null,
+                  json_types = cjson.null,
+                },
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.same({
+            remove = {
+              headers = "required field missing",
+              json = "required field missing",
+            },
+            rename = {
+              headers = "required field missing",
+            },
+            replace = {
+              headers = "required field missing",
+              json = "required field missing",
+              json_types = "required field missing",
+            },
+            add = {
+              headers = "required field missing",
+              json = "required field missing",
+              json_types = "required field missing",
+            },
+            append = {
+              headers = "required field missing",
+              json = "required field missing",
+              json_types = "required field missing",
+            },
+          }, body.fields.config)
+        end)
       end)
     end)
   end)

@@ -9,7 +9,10 @@ local kong = kong
 local ngx = ngx
 
 
-local ResponseTransformerHandler = {}
+local ResponseTransformerHandler = {
+  PRIORITY = 800,
+  VERSION = "2.0.1",
+}
 
 
 function ResponseTransformerHandler:header_filter(conf)
@@ -37,10 +40,6 @@ function ResponseTransformerHandler:body_filter(conf)
     end
   end
 end
-
-
-ResponseTransformerHandler.PRIORITY = 800
-ResponseTransformerHandler.VERSION = "2.0.0"
 
 
 return ResponseTransformerHandler
