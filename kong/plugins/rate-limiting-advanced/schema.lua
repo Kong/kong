@@ -73,6 +73,10 @@ return {
             type = "boolean",
             default = false,
           }},
+          { retry_after_jitter_max = { -- in seconds
+            type = "number",
+            default = 0,
+          }},
           { header_name = typedefs.header_name, },
           { redis = redis.config_schema},
         },
@@ -130,6 +134,10 @@ return {
           if config.header_name == ngx.null then
             return nil, "No header name provided"
           end
+        end
+
+        if config.retry_after_jitter_max < 0 then
+          return nil, "Non-negative retry_after_jitter_max value is expected"
         end
 
         return true

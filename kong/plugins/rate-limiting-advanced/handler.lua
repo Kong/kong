@@ -17,6 +17,7 @@ local kong     = kong
 local ceil     = math.ceil
 local floor    = math.floor
 local max      = math.max
+local rand     = math.random
 local time     = ngx.time
 local tonumber = tonumber
 
@@ -366,7 +367,17 @@ function NewRLHandler:access(conf)
   ngx.header[RATELIMIT_RESET] = reset
 
   if deny then
-    ngx.header[RATELIMIT_RETRY_AFTER] = reset -- Only addded for denied request
+    local retry_after = reset
+    local jitter_max = conf.retry_after_jitter_max
+
+    -- Add a random value (a jitter) to the Retry-After value
+    -- to reduce a chance of retries spike occurrence.
+    if retry_after and jitter_max > 0 then
+      retry_after = retry_after + rand(jitter_max)
+    end
+
+    -- Only added for denied requests (if hide_client_headers == false)
+    ngx.header[RATELIMIT_RETRY_AFTER] = retry_after
     return kong.response.exit(429, { message = "API rate limit exceeded" })
   end
 end
