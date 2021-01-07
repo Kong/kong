@@ -118,6 +118,75 @@ describe("Plugin: request-transformer (API) [#" .. strategy .. "]", function()
         local expected = { config = { append = { headers = msg } } }
         assert.same(expected, json["fields"])
       end)
+        it("it does not allow null value for arrays", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name   = "request-transformer",
+              config = {
+                remove = {
+                  body        = cjson.null,
+                  headers     = cjson.null,
+                  querystring = cjson.null,
+                },
+                rename = {
+                  body        = cjson.null,
+                  headers     = cjson.null,
+                  querystring = cjson.null,
+                },
+                replace = {
+                  body        = cjson.null,
+                  headers     = cjson.null,
+                  querystring = cjson.null,
+                },
+                add = {
+                  body        = cjson.null,
+                  headers     = cjson.null,
+                  querystring = cjson.null,
+                },
+                append = {
+                  body        = cjson.null,
+                  headers     = cjson.null,
+                  querystring = cjson.null,
+                },
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.response(res).has.status(400)
+          local body = assert.response(res).has.jsonbody()
+          assert.same({
+            remove = {
+              body        = "required field missing",
+              headers     = "required field missing",
+              querystring = "required field missing",
+            },
+            rename = {
+              body        = "required field missing",
+              headers     = "required field missing",
+              querystring = "required field missing",
+            },
+            replace = {
+              body        = "required field missing",
+              headers     = "required field missing",
+              querystring = "required field missing",
+            },
+            add = {
+              body        = "required field missing",
+              headers     = "required field missing",
+              querystring = "required field missing",
+            },
+            append = {
+              body        = "required field missing",
+              headers     = "required field missing",
+              querystring = "required field missing",
+            },
+          }, body.fields.config)
+        end)
+
     end)
   end)
 end)
