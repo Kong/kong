@@ -9,6 +9,11 @@ local helpers       = require "spec.helpers"
 local vitals        = require "kong.vitals"
 local pl_file       = require "pl.file"
 
+-- kong < 2.3
+local get_hostname = require("kong.tools.utils").get_hostname or
+-- kong > 2.2
+                     require("kong.pdk.node").new().get_hostname
+
 
 local fmt = string.format
 
@@ -790,7 +795,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("hostname_in_prefix", function()
       it("prefixes metric names with the hostname", function()
-        local hostname = require("kong.tools.utils").get_hostname()
+        local hostname = get_hostname()
         hostname = string.gsub(hostname, "%.", "_")
 
         local thread = helpers.udp_server(UDP_PORT, 1, 2)
