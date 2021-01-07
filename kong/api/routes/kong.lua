@@ -181,6 +181,12 @@ return {
         ngx.log(ngx.ERR, "could not get node id: ", err)
       end
 
+      local lh = require "kong.enterprise_edition.license_helpers"
+      local conf = conf_loader.remove_sensitive(singletons.configuration)
+      for k, v in pairs(lh.license_conf()) do
+        conf[k] = v
+      end
+
       return kong.response.exit(200, {
         tagline = tagline,
         version = version,
@@ -195,7 +201,7 @@ return {
           enabled_in_cluster = distinct_plugins
         },
         lua_version = lua_version,
-        configuration = conf_loader.remove_sensitive(singletons.configuration),
+        configuration = conf,
         prng_seeds = prng_seeds,
         license = license,
       })

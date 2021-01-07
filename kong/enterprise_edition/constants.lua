@@ -36,6 +36,7 @@ return {
     "login_attempts",
     "keyring_meta",
     "event_hooks",
+    "licenses",
   },
 
   -- this list is joined into the DICTS list in kong.constants

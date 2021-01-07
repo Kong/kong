@@ -463,7 +463,7 @@ function Kong.init()
 
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
-  local config = assert(conf_loader(conf_path, ee.license_conf(), { from_kong_env = true }))
+  local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
 
   reset_kong_shm(config)
 
@@ -517,19 +517,10 @@ function Kong.init()
   singletons.portal_router = portal_router.new(db)
 
   local reports = require "kong.reports"
-  local l = kong.license and
-    kong.license.license and
-    kong.license.license.payload and
-    kong.license.license.payload.license_key or
-    nil
 
-  reports.add_immutable_value("license_key", l)
   reports.add_immutable_value("enterprise", true)
+  reports.add_entity_reports()
 
-  if config.anonymous_reports then
-    reports.add_ping_value("rbac_enforced", singletons.configuration.rbac ~= "off")
-    reports.add_entity_reports()
-  end
   kong.vitals = vitals.new {
       db             = db,
       flush_interval = config.vitals_flush_interval,

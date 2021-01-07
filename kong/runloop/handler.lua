@@ -971,12 +971,10 @@ return {
         HOST_PORTS = kong.configuration.host_ports
       end
 
-      if kong.configuration.anonymous_reports then
-        reports.configure_ping(kong.configuration)
-        reports.add_ping_value("database_version", kong.db.infos.db_ver)
-        reports.toggle(true)
-        reports.init_worker()
-      end
+      reports.configure_ping(kong.configuration)
+      reports.add_ping_value("database_version", kong.db.infos.db_ver)
+      reports.toggle(true)
+      reports.init_worker()
 
       update_lua_mem(true)
 

@@ -385,6 +385,13 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
 
 
   describe("/schemas/:db_entity_name/validate", function()
+    setup(function()
+      client = helpers.admin_client(10000)
+    end)
+    teardown(function()
+      if client then client:close() end
+    end)
+
     it("returns 200 on a valid schema", function()
       local res = assert(client:post("/schemas/services/validate", {
         body = { host = "example.com" },

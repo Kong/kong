@@ -222,6 +222,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.009_1506_to_1507"] = "kong/enterprise_edition/db/migrations/enterprise/009_1506_to_1507.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.009_2100_to_2200"] = "kong/enterprise_edition/db/migrations/enterprise/009_2100_to_2200.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2211"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2211.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
@@ -342,6 +343,9 @@ build = {
     ["kong.db.schema.entities.event_hooks"] = "kong/db/schema/entities/event_hooks.lua",
     ["kong.db.schema.entities.event_hooks_subschemas"] = "kong/db/schema/entities/event_hooks_subschemas.lua",
     ["kong.db.schema.entities.parameters"] = "kong/db/schema/entities/parameters.lua",
+    -- [[XXX EE
+    ["kong.db.schema.entities.licenses"] = "kong/db/schema/entities/licenses.lua",
+    -- EE ]]
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",

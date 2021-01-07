@@ -276,9 +276,10 @@ function _PDK.new(kong_config, major_version, self)
   self.pdk_major_version = major_version
   self.pdk_version = version_meta.version
 
+  local license_helpers = require "kong.enterprise_edition.license_helpers"
   self.configuration = setmetatable({}, {
     __index = function(_, v)
-      return kong_config[v]
+      return license_helpers.license_conf()[v] or kong_config[v]
     end,
 
     __newindex = function()

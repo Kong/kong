@@ -40,6 +40,100 @@ describe("licensing", function()
     assert.stub(ngx.log).was.called_with(ngx.CRIT, match._)
   end)
 
+  it("does validate license using ffi", function()
+    local file = assert(io.open("spec-ee/fixtures/expired_license.json"))
+    local validation_pass = file:read("*a")
+    file:close()
+    validation_pass = validation_pass
+
+    local rc = lic_helper.validate_kong_license(validation_pass)
+    assert.is_truthy(rc == "ERROR_VALIDATION_PASS")
+  end)
+
+  it("does not validate license using ffi", function()
+    local validation_fail = [[{
+      "license": {
+        "payload": {
+          "admin_seats" :"",
+          "customer": "",
+          "dataplanes": "",
+          "license_creation_date": "",
+          "license_expiration_date": "",
+          "license_key": "",
+          "product_subscription": "",
+          "support_plan": ""
+        },
+        "signature": "",
+        "version": 1
+      }
+    }]]
+
+    local rc = lic_helper.validate_kong_license(validation_fail)
+    assert.is_truthy(rc == "ERROR_VALIDATION_FAIL")
+  end)
+
+  it("does not validate license using ffi - missing signature field", function()
+    local invalid_license_format = [[{
+      "license": {
+        "payload": {
+          "admin_seats" :"",
+          "customer": "",
+          "dataplanes": "",
+          "license_creation_date": "",
+          "license_expiration_date": "",
+          "license_key": "",
+          "product_subscription": "",
+          "support_plan": ""
+        },
+        "version": 1
+      }
+    }]]
+
+    local rc = lic_helper.validate_kong_license(invalid_license_format)
+    assert.is_truthy(rc == "ERROR_INVALID_LICENSE_FORMAT")
+  end)
+
+  it("does not validate license using ffi - missing payload fields", function()
+    local invalid_license_format = [[{
+      "license": {
+        "payload": {
+          "admin_seats" :""
+        },
+        "signature": "",
+        "version": 1
+      }
+    }]]
+
+    local rc = lic_helper.validate_kong_license(invalid_license_format)
+    assert.is_truthy(rc == "ERROR_INVALID_LICENSE_FORMAT")
+  end)
+
+  it("does not validate license using ffi - missing payload subfield", function()
+    local invalid_license_format = [[{
+      "license": {
+        "signature": "",
+        "version": 1
+      }
+    }]]
+
+    local rc = lic_helper.validate_kong_license(invalid_license_format)
+    assert.is_truthy(rc == "ERROR_INVALID_LICENSE_FORMAT")
+  end)
+
+  it("does not validate license using ffi - missing license field", function()
+    local invalid_license_format = '{}'
+
+    local rc = lic_helper.validate_kong_license(invalid_license_format)
+    assert.is_truthy(rc == "ERROR_INVALID_LICENSE_FORMAT")
+  end)
+
+  it("does not validate license using ffi - invalid JSON", function()
+    local invalid_license_json = '{"": '
+
+    local rc = lic_helper.validate_kong_license(invalid_license_json)
+    assert.is_truthy(rc == "ERROR_INVALID_LICENSE_JSON")
+  end)
+
   describe("license_can_proceed", function()
     local featureset
 
