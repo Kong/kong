@@ -46,6 +46,9 @@ for _, strategy in helpers.each_strategy() do
 
       vitals = kong_vitals.new({
         db = db,
+        ttl_seconds = 3600,
+        ttl_minutes = 24 * 60,
+        ttl_days = 30,
       })
 
       vitals:init()

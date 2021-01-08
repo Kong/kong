@@ -239,8 +239,8 @@ function _M.new(opts)
 
     local strategy_opts = {
       ttl_seconds = opts.ttl_seconds or 3600,
-      ttl_minutes = opts.ttl_minutes or 90000,
-      ttl_days = opts.ttl_days or 0,
+      ttl_minutes = opts.ttl_minutes and opts.ttl_minutes * 60 or 90000,
+      ttl_days = opts.ttl_days and opts.ttl_days * 60 * 60 * 24 or 0,
     }
 
     local db_strategy
@@ -285,8 +285,8 @@ function _M.new(opts)
     counters       = {},
     flush_interval = opts.flush_interval or 90000,
     ttl_seconds    = opts.ttl_seconds or 3600,
-    ttl_minutes    = opts.ttl_minutes or 90000,
-    ttl_days       = opts.ttl_days or 0,
+    ttl_minutes    = opts.ttl_minutes and opts.ttl_minutes * 60 or 90000,
+    ttl_days       = opts.ttl_days and opts.ttl_days * 60 * 60 * 24 or 0,
     initialized    = false,
     tsdb_storage   = tsdb_storage,
     hybrid_cp      = hybrid_cp,
@@ -1142,6 +1142,9 @@ function _M:get_index()
     },
     minutes = {
       retention_period_seconds = self.ttl_minutes,
+    },
+    days = {
+      retention_period_seconds = self.ttl_days,
     },
   }
 

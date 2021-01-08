@@ -115,12 +115,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -131,12 +133,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -147,12 +151,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -163,12 +169,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -179,12 +187,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -195,12 +205,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -211,12 +223,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -227,12 +241,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -243,12 +259,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -259,12 +277,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -275,6 +295,7 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -285,6 +306,7 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -295,6 +317,7 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -305,6 +328,7 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -315,6 +339,7 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -325,13 +350,13 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
                 },
               }
             }
-
             assert.same(expected, json)
           end)
         end)

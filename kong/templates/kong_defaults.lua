@@ -27,7 +27,7 @@ vitals = on
 vitals_flush_interval = 10
 vitals_delete_interval_pg = 30
 vitals_ttl_seconds = 3600
-vitals_ttl_minutes = 90000
+vitals_ttl_minutes = 1500
 vitals_ttl_days = 0
 
 vitals_strategy = database
