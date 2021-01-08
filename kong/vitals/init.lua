@@ -1545,7 +1545,7 @@ function _M:log_phase_after_plugins(ctx, status)
     minutes .. "|60|"
   }
 
-  if not self.tsdb_storage and self.db_strategy == "postgres" and self.ttl_days > 0 then
+  if self.ttl_days > 0 then
     table.insert(key_prefixes, days .. "|86400|")
   end
 
