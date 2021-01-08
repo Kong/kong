@@ -15,7 +15,6 @@ return {
           { retry_count = { type = "number", default = 10 } },
           { queue_size = { type = "number", default = 100 } },
           { body_parsing_max_depth = { type = "number" } },
-          { log_bodies = { type = "boolean", default = false } },
           { http_endpoint = { type = "string", required = true, default = "http://collector.com" } },
           { https_verify = { type = "boolean", default = false } },
         },

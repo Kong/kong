@@ -13,6 +13,17 @@
  - [1.6.1](#161---20191021)
  - [1.5.1](#151---20190926)
  - [1.5.0](#150---20190813)
+ - [2.0.4](#204---20210113)
+ - [2.0.3](#203---20210101)
+
+## [2.0.4] - 2020/01/13
+### Added
+- Support for hybrid mode
+- remove log_bodies configuration option
+
+## [2.0.3] - 2021/01/01
+### Fixed
+- Don't use body data
 
 ## [2.0.2] - 2020/11/18
 - Use kong.request.get_body()
