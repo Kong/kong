@@ -621,11 +621,13 @@ local function flatten(self, input)
     -- the error may be due entity validation that depends on foreign entity,
     -- and that is the reason why we try to validate the input again with the
     -- filled foreign keys
+    if not self.full_schema then
+      self.full_schema = DeclarativeConfig.load(self.plugin_set, true)
+    end
+
     local input_copy = utils.deep_copy(input, false)
     populate_ids_for_validation(input_copy, self.known_entities)
-    local schema = DeclarativeConfig.load(self.plugin_set, true)
-
-    local ok2, err2 = schema:validate(input_copy)
+    local ok2, err2 = self.full_schema:validate(input_copy)
     if not ok2 then
       local err3 = utils.deep_merge(err2, extract_null_errors(err))
       return nil, err3
