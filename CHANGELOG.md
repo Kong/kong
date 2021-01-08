@@ -1,5 +1,9 @@
 # Changelog; Kong Serverless Functions Plugin
 
+## 2.1.0 2010-01-08
+
+- Use Kong sandboxing module
+
 ## 2.0.0 2020-12-22
 
 - Change: Only allow kong PDK, nginx and plain Lua
