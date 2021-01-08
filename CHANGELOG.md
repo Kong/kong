@@ -1,3 +1,11 @@
+## 1.3.2
+
+### Fixed
+
+- Marked array fields with `default` value as `required` to prevent possible
+  `nil` / `null` errors on runtime.
+- Keep configured name case on append/add headers, fixes #28
+
 ## 1.3.1
 
 ### Fixed

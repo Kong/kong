@@ -2,7 +2,7 @@ local access = require "kong.plugins.request-transformer.access"
 
 
 local RequestTransformerHandler = {
-  VERSION  = "1.3.1",
+  VERSION  = "1.3.2",
   PRIORITY = 801,
 }
 
