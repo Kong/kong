@@ -1,75 +1,13 @@
+local sandbox = require "kong.tools.sandbox"
+
 -- handler file for both the pre-function and post-function plugin
 
 
 local config_cache do
 
-  local env = {}
-
   local no_op = function() end
 
-  local function make_read_only_table(t)
-    setmetatable(t, {
-      __newindex = function()
-        error("This table is read-only.")
-      end
-    })
-  end
-
-  -- safe Lua modules and functions
-  ([[
-  _VERSION assert error    ipairs   next pairs
-  pcall    select tonumber tostring type unpack xpcall
-  coroutine.create coroutine.resume coroutine.running coroutine.status
-  coroutine.wrap   coroutine.yield
-  math.abs   math.acos math.asin  math.atan math.atan2 math.ceil
-  math.cos   math.cosh math.deg   math.exp  math.fmod  math.floor
-  math.frexp math.huge math.ldexp math.log  math.log10 math.max
-  math.min   math.modf math.pi    math.pow  math.rad   math.random
-  math.sin   math.sinh math.sqrt  math.tan  math.tanh
-  os.clock os.difftime os.time
-  string.byte string.char  string.find  string.format string.gmatch
-  string.gsub string.len   string.lower string.match  string.reverse
-  string.sub  string.upper
-  table.insert table.maxn table.remove table.sort
-  ]]):gsub('%S+', function(id)
-    local module, method = id:match('([^%.]+)%.([^%.]+)')
-    if module then
-      env[module]         = env[module] or {}
-      env[module][method] = _G[module][method]
-    else
-      env[id] = _G[id]
-    end
-  end)
-
-  make_read_only_table(env.coroutine)
-  make_read_only_table(env.math)
-  make_read_only_table(env.os)
-  make_read_only_table(env.string)
-  make_read_only_table(env.table)
-
-
-  local function make_function(func_str)
-    local f = assert(loadstring(func_str, nil, "t")) -- disallow binary code
-
-    -- make kong.* available on env
-    if not env.kong then
-      -- create a protected kong node
-      env.kong = kong
-    end
-
-    -- make ngx available on env
-    if not env.ngx then
-      env.ngx = ngx
-    end
-
-    if not getmetatable(env) then
-      make_read_only_table(env)
-    end
-
-    setfenv(f, env)
-    return f
-  end
-
+  local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 
   -- compiles the array for a phase into a single function
   local function compile_phase_array(phase_funcs)
@@ -80,7 +18,7 @@ local config_cache do
       -- compile the functions we got
       local compiled = {}
       for i, func_string in ipairs(phase_funcs) do
-        local func = make_function(func_string)
+        local func = assert(sandbox.sandbox(func_string, sandbox_opts))
 
         local first_run_complete = false
         compiled[i] = function()
