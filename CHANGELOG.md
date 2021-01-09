@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.3.0-beta.1](#230-beta1)
+- [2.3.0-rc.1](#230-rc1)
 - [2.2.1](#221)
 - [2.2.0](#220)
 - [2.1.4](#214)
@@ -52,16 +52,17 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.3.0-beta.1]
+## [2.3.0-rc.1]
 
-> Released 2020/12/08
+> Released 2021/01/08
 
-This is an *beta* pre-release of the upcoming Kong 2.3 series.
-Since 2.3 is a minor release there are no breaking changes with
-respect to the 2.x series, but being an beta pre-release, development
-is not feature-frozen at this time: and any new features introduced here
-may change between this release and 2.3.0, and new features may be
-added.
+This is a release candidate for the upcoming Kong 2.3 series. There are no
+breaking changes with respect to the 2.x series. If no serious issues are
+reported, this release will effectively be promoted to the stable 2.3.0 release.
+This is now the time to test the new features and report any issues!
+
+This changelog entry all new features and fixes for the 2.3.0 series, including
+changes previously added in the 2.3.0-alpha.1 and 2.3.0-beta.1 releases.
 
 ### Distributions
 
@@ -71,6 +72,12 @@ added.
 
 ### Dependencies
 
+- Bump kong-plugin-serverless-functions from 1.0 to 2.1.
+  [#6715](https://github.com/Kong/kong/pull/6715)
+- Bump lua-resty-dns-client from 5.1.0 to 5.2.0.
+  [#6711](https://github.com/Kong/kong/pull/6711)
+- Bump lua-resty-healthcheck from 1.3.0 to 1.4.0.
+  [#6711](https://github.com/Kong/kong/pull/6711)
 - Bump OpenSSL from 1.1.1h to 1.1.1i.
   [#6639](https://github.com/Kong/kong/pull/6639)
 - Bump `kong-plugin-zipkin` from 1.1 to 1.2.
@@ -167,6 +174,15 @@ added.
 - Fix issue where a route that supports both http and https (and has a hosts and snis match criteria) would fail to proxy http requests, as it does not contain an SNI.
   [#6517](https://github.com/Kong/kong/pull/6517)
 - Fix issue where a `nil` request context would lead to errors `attempt to index local 'ctx'` being shown in the logs
+- Reduced the number of needed timers to active health check upstreams and to resolve hosts.
+- Schemas for full-schema validations are correctly cached now, avoiding memory
+  leaks when reloading declarative configurations. [#6713](https://github.com/Kong/kong/pull/6713)
+- The schema for the upstream entities now limits the highest configurable
+  number of successes and failures to 255, respecting the limits imposed by
+  lua-resty-healthcheck. [#6705](https://github.com/Kong/kong/pull/6705)
+- Certificates for database connections now are loaded in the right order
+  avoiding failures to connect to Postgres databases.
+  [#6650](https://github.com/Kong/kong/pull/6650)
 
 ##### CLI
 
@@ -180,6 +196,11 @@ added.
 - Ensure the log serializer encodes the `tries` field as an array when
   empty, rather than an object.
   [#6632](https://github.com/Kong/kong/pull/6632)
+
+##### Plugins
+
+- request-transformer plugin does not allow `null` in config anymore as they can
+  lead to runtime errors. [#6710](https://github.com/Kong/kong/pull/6710)
 
 [Back to TOC](#table-of-contents)
 
