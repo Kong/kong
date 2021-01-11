@@ -14,8 +14,8 @@ version from any of the available [installation
 methods](https://konghq.com/get-started/#install) and proceed to install it, overriding
 your previous installation.
 
-If you are planning to make modifications to your configuration, this is a
-good time to do so.
+If you are planning to make modifications to your configuration, just go for it, this is
+the best time to make it.
 
 Then, run migration to upgrade your database schema:
 
