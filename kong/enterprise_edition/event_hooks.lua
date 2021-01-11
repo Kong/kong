@@ -10,6 +10,7 @@ local tx = require "pl/tablex"
 local to_hex = require "resty.string".to_hex
 
 local BatchQueue = require "kong.tools.batch_queue"
+local sandbox_helpers = require "kong.tools.sandbox_helpers"
 local request = require "kong.enterprise_edition.utils".request
 
 local fmt = string.format
@@ -457,22 +458,7 @@ _M.handlers = {
   lambda = function(entity, config)
     local functions = {}
 
-    -- limit execution context
-    --local helper_ctx = {
-    --  require = require,
-    --  type = type,
-    --  print = print,
-    --  pairs = pairs,
-    --  ipairs = ipairs,
-    --  request = request,
-    --  kong = kong,
-    --  ngx = ngx,
-    --  -- ... anything else useful ?
-    --}
-    -- or allow _anything_
-    local helper_ctx = _G
-
-    local chunk_name = "event_hooks:" .. entity.id
+    local opts = { chunk_name = "event_hooks:" .. entity.id }
 
     local function err_fn(err)
       return function()
@@ -481,24 +467,10 @@ _M.handlers = {
     end
 
     for i, fn_str in ipairs(config.functions or {}) do
-      -- each function has its own context. We could let them share context
-      -- by not defining fn_ctx and just passing helper_ctx
-      local fn_ctx = {}
-      setmetatable(fn_ctx, { __index = helper_ctx })
-      -- t -> only text chunks
-      local fn, err = load(fn_str, chunk_name .. ":" .. i, "t", fn_ctx)
-      if fn then
-        local ok, actual_fn_or_err = pcall(fn)
-        if ok then
-          table.insert(functions, actual_fn_or_err)
-        else
-          err = actual_fn_or_err
-        end
-      end
+      local fn, err = sandbox_helpers.validate_function(fn_str, opts)
+      if err then fn = err_fn(err) end
 
-      if err then
-        table.insert(functions, err_fn(err))
-      end
+      table.insert(functions, fn)
     end
 
     return {
