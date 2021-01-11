@@ -2749,9 +2749,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         -- once in the first place.
 
         -- setup: cleanup logs
-
-        local test_error_log_path = helpers.test_conf.nginx_err_logs
-        os.execute(":> " .. test_error_log_path)
+        os.execute(":> " .. helpers.test_conf.nginx_err_logs)
 
         -- TEST: access with a GET request
 
@@ -2769,13 +2767,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         -- Assertion: there should be no [error], including no error
         -- resulting from an invalid request body parsing that were
         -- previously thrown.
-
-        local pl_file = require "pl.file"
-        local logs = pl_file.read(test_error_log_path)
-
-        for line in logs:gmatch("[^\r\n]+") do
-          assert.not_match("[error]", line, nil, true)
-        end
+        assert.logfile().has.no.line("[error]", true)
       end)
       it("works when a correct access_token is being sent in an authorization header (bearer)", function()
         local token = provision_token()

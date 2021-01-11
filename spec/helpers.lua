@@ -64,6 +64,7 @@ local rbac = require "kong.rbac"
 local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
 local table_clone = require "table.clone"
+local https_server = require "spec.fixtures.https_server"
 
 
 ffi.cdef [[
@@ -714,7 +715,7 @@ function resty_http_proxy_mt:send(opts)
     end
 
     local clength = lookup(headers, "content-length")
-    if not clength then
+    if not clength and not opts.dont_add_content_length then
       headers["content-length"] = #body
     end
 
@@ -2534,17 +2535,11 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   local prefix = env.prefix or conf.prefix
 
   -- go plugins are enabled
-  --  set pluginserver dir (making sure it's in the PATH)
-  --  compile fixture go plugins
-  if env.go_plugins_dir then
-    if env.go_plugins_dir == GO_PLUGIN_PATH then
+  --  compile fixture go plugins if any setting mentions it
+  for _,v in pairs(env) do
+    if type(v) == "string" and v:find(GO_PLUGIN_PATH) then
       build_go_plugins(GO_PLUGIN_PATH)
-    end
-
-    if not env.go_pluginserver_exe and not os.getenv("KONG_GO_PLUGINSERVER_EXE") then
-      local ok, _, pluginserver_path, _ = pl_utils.executeex(string.format("which go-pluginserver"))
-      assert(ok, "did not find go-pluginserver in PATH")
-      env.go_pluginserver_exe = pluginserver_path
+      break
     end
   end
 
@@ -2796,6 +2791,7 @@ end
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
   clustering_client = clustering_client,
+  https_server = https_server,
 
   -- miscellaneous
   intercept = intercept,

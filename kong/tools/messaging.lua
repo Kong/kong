@@ -7,6 +7,8 @@
 
 local clustering = require "kong.clustering"
 
+local subsystem = ngx.config.subsystem
+
 local msgpack = require "MessagePack"
 local mp_pack = msgpack.pack
 local mp_unpack = msgpack.unpack
@@ -211,7 +213,7 @@ function _M:register_for_messages()
 end
 
 function _M:start_client(server_name)
-  if ngx.worker.id() == 0 then
+  if ngx.worker.id() == 0 and subsystem == "http" then
     start_ws_client(self, server_name)
 
     assert(ngx.timer.at(self.buffer_ttl, flush_cp, self))

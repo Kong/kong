@@ -306,6 +306,65 @@ function _M.delete_credential(self, db, helpers, opts)
 end
 
 
+function _M.create_app_reg_credentials(self, db, helpers, opts)
+  self.params.name = self.application.name
+  self.params.consumer = self.application.consumer
+  self.params.redirect_uris = { self.application.redirect_uri }
+  self.params.plugin = nil
+
+  local oauth2_credential, _, err_t = db.daos["oauth2_credentials"]:insert(self.params, opts)
+  if not oauth2_credential then
+    return endpoints.handle_error(err_t)
+  end
+
+  local keyauth_credential, _, err_t = db.daos["keyauth_credentials"]:insert({
+    consumer = self.params.consumer,
+    key = oauth2_credential.client_id
+  }, opts)
+
+  if not keyauth_credential then
+    return endpoints.handle_error(err_t)
+  end
+
+  return kong.response.exit(201, oauth2_credential)
+end
+
+
+function _M.delete_app_reg_credentials(self, db, helpers, opts)
+  local cred_id = self.params.credential_id
+
+  local credential, _, err_t = db.daos["oauth2_credentials"]:select({ id = cred_id })
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+
+  if not credential then
+    return kong.response.exit(204)
+  end
+
+  if self.consumer.id ~= credential.consumer.id then
+    return kong.response.exit(404, { message = "Not found" })
+  end
+
+  local _, _, err_t = db.daos["oauth2_credentials"]:delete({ id = cred_id })
+  if err_t then
+    return endpoints.handle_error(err_t)
+  end
+
+  for row, err in db.daos["keyauth_credentials"]:each_for_consumer({ id = self.consumer.id }, opts) do
+    if err then
+      return endpoints.handle_error(err)
+    end
+
+    if row.key == credential.client_id then
+      db.daos["keyauth_credentials"]:delete({ id = row.id })
+    end
+  end
+
+  return kong.response.exit(204)
+end
+
+
 function _M.update_login_credential(collection, cred_pk, entity)
   local credential, err = collection:update(cred_pk, entity, {skip_rbac = true})
 

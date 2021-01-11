@@ -25,6 +25,7 @@ dependencies = {
   "lua-cassandra == 1.5.0",
   -- XXX EE: do not use pgmoon here
   -- XXX EE: we're using a special pgmoon branch in .ci/setup_env.sh and k-d
+  -- "pgmoon",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
@@ -50,7 +51,7 @@ dependencies = {
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.2",
-  "kong-plugin-serverless-functions ~> 1.0",
+  "kong-plugin-serverless-functions ~> 2.0",
   "kong-prometheus-plugin ~> 1.0",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.3",
@@ -65,14 +66,15 @@ build = {
   modules = {
     ["kong"] = "kong/init.lua",
     ["kong.meta"] = "kong/meta.lua",
-    ["kong.cache"] = "kong/cache.lua",
+    ["kong.cache"] = "kong/cache/init.lua",
+    ["kong.cache.warmup"] = "kong/cache/warmup.lua",
+    ["kong.cache.marshall"] = "kong/cache/marshall.lua",
     ["kong.global"] = "kong/global.lua",
     ["kong.router"] = "kong/router.lua",
     ["kong.reports"] = "kong/reports.lua",
     ["kong.constants"] = "kong/constants.lua",
     ["kong.singletons"] = "kong/singletons.lua",
     ["kong.concurrency"] = "kong/concurrency.lua",
-    ["kong.cache_warmup"] = "kong/cache_warmup.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
     ["kong.clustering"] = "kong/clustering.lua",
@@ -222,11 +224,15 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.009_1506_to_1507"] = "kong/enterprise_edition/db/migrations/enterprise/009_1506_to_1507.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.009_2100_to_2200"] = "kong/enterprise_edition/db/migrations/enterprise/009_2100_to_2200.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2211"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2211.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
     ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",
+    ["kong.runloop.plugin_servers"] = "kong/runloop/plugin_servers/init.lua",
+    ["kong.runloop.plugin_servers.process"] = "kong/runloop/plugin_servers/process.lua",
+    ["kong.runloop.plugin_servers.mp_rpc"] = "kong/runloop/plugin_servers/mp_rpc.lua",
 
     ["kong.db.schema.entities.credentials"] = "kong/db/schema/entities/credentials.lua",
     ["kong.db.schema.entities.files"] = "kong/db/schema/entities/files.lua",
@@ -339,6 +345,9 @@ build = {
     ["kong.db.schema.entities.event_hooks"] = "kong/db/schema/entities/event_hooks.lua",
     ["kong.db.schema.entities.event_hooks_subschemas"] = "kong/db/schema/entities/event_hooks_subschemas.lua",
     ["kong.db.schema.entities.parameters"] = "kong/db/schema/entities/parameters.lua",
+    -- [[XXX EE
+    ["kong.db.schema.entities.licenses"] = "kong/db/schema/entities/licenses.lua",
+    -- EE ]]
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",
@@ -441,6 +450,7 @@ build = {
     ["kong.plugins.oauth2.migrations.005_210_to_211"] = "kong/plugins/oauth2/migrations/005_210_to_211.lua",
     ["kong.plugins.oauth2.migrations.enterprise"] = "kong/plugins/oauth2/migrations/enterprise/init.lua",
     ["kong.plugins.oauth2.migrations.enterprise.001_1500_to_2100"] = "kong/plugins/oauth2/migrations/enterprise/001_1500_to_2100.lua",
+    ["kong.plugins.oauth2.migrations.enterprise.002_2200_to_2211"] = "kong/plugins/oauth2/migrations/enterprise/002_2200_to_2211.lua",
     ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",
     ["kong.plugins.oauth2.secret"] = "kong/plugins/oauth2/secret.lua",
     ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",

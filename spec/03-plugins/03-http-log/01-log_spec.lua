@@ -352,8 +352,7 @@ for _, strategy in helpers.each_strategy() do
 
     it("gracefully handles layer 4 failures", function()
       -- setup: cleanup logs
-      local test_error_log_path = helpers.test_conf.nginx_err_logs
-      os.execute(":> " .. test_error_log_path)
+      os.execute(":> " .. helpers.test_conf.nginx_err_logs)
 
       local res = assert(proxy_client:send({
         method  = "GET",
@@ -363,32 +362,9 @@ for _, strategy in helpers.each_strategy() do
         }
       }))
       assert.res_status(200, res)
-
-      local pl_file = require "pl.file"
-
-      helpers.wait_until(function()
-        -- Assertion: there should be no [error] resulting from attempting
-        -- to reference a nil res on res:body() calls within the http-log plugin
-
-        local logs = pl_file.read(test_error_log_path)
-        local found = false
-
-        for line in logs:gmatch("[^\r\n]+") do
-          if line:find("failed to process entries: .* " ..
+      assert.logfile().has.line("failed to process entries: .* " ..
                        helpers.mock_upstream_ssl_host .. ":" ..
-                       helpers.mock_upstream_ssl_port .. ": timeout")
-          then
-            found = true
-
-          else
-            assert.not_match("[error]", line, nil, true)
-          end
-        end
-
-        if found then
-            return true
-        end
-      end, 2)
+                       helpers.mock_upstream_ssl_port .. ": timeout", false, 2)
     end)
 
     it("adds authorization if userinfo and/or header is present", function()
@@ -747,12 +723,7 @@ for _, strategy in helpers.each_strategy() do
       -- Assertion: there should be no [error], including no error
       -- resulting from attempting to reference the id on
       -- a route when no such value exists after http-log execution
-
-      local logs = pl_file.read(helpers.test_conf.nginx_err_logs)
-
-      for line in logs:gmatch("[^\r\n]+") do
-        assert.not_match("[error]", line, nil, true)
-      end
+      assert.logfile().has.no.line("[error]", true)
     end)
   end)
 end

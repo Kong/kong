@@ -8,7 +8,6 @@
 local kong_global = require "kong.global"
 local conf_loader = require "kong.conf_loader"
 local DB = require "kong.db"
-local ee = require "kong.enterprise_edition"
 
 
 local function run_file(f, args)
@@ -25,7 +24,7 @@ end
 
 local function execute(args)
   _G.kong = kong_global.new()
-  local config = assert(conf_loader(args.config, ee.license_conf()))
+  local config = assert(conf_loader(args.config))
 
   kong_global.init_pdk(_G.kong, config, nil) -- nil: latest PDK
   local db = assert(DB.new(config))
@@ -44,7 +43,7 @@ Usage: kong runner file.lua [args]
 
 Execute a lua file in a kong node. The `kong` variable is available to
 reach the DAO, PDK, etc. The variable `args` can be used to access all
-arguments (args[1] being the lua filename bein run).
+arguments (args[1] being the lua filename being run).
 
 Options:
 ]],

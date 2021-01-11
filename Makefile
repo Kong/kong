@@ -33,6 +33,8 @@ KONG_BUILD_TOOLS ?= `grep KONG_BUILD_TOOLS_VERSION $(KONG_SOURCE_LOCATION)/.requ
 GRPCURL_VERSION ?= '9846afccbc2f34255dfb459dc6f0196a2b6dbe05'
 OPENRESTY_PATCHES_BRANCH ?= master
 KONG_NGINX_MODULE_BRANCH ?= master
+KONG_PGMOON_VERSION ?= `grep KONG_PGMOON_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
+KONG_PGMOON_LOCATION ?= $(KONG_SOURCE_LOCATION)/../kong-pgmoon
 
 PACKAGE_TYPE ?= deb
 REPOSITORY_NAME ?= kong-${PACKAGE_TYPE}
@@ -108,8 +110,18 @@ functional-tests: setup-kong-build-tools
 	$(MAKE) build-kong && \
 	$(MAKE) test
 
-install:
+install-pgmoon:
+	-luarocks remove pgmoon --force
+	-rm -rf $(KONG_PGMOON_LOCATION)
+	-git clone https://github.com/Kong/pgmoon.git $(KONG_PGMOON_LOCATION)
+	cd $(KONG_PGMOON_LOCATION); \
+	git reset --hard $(KONG_PGMOON_VERSION); \
+	luarocks make --force
+
+install-kong:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
+
+install: install-kong install-pgmoon
 
 remove:
 	-@luarocks remove kong

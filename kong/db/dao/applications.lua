@@ -45,11 +45,26 @@ local app_strategies = {
     required_params = { "redirect_uri" },
 
     post_insert = function(application)
-      return kong.db.daos["oauth2_credentials"]:insert({
+      local oauth2_credential, err, err_t = kong.db.daos["oauth2_credentials"]:insert({
         name = application.name,
         redirect_uris = { application.redirect_uri },
         consumer = application.consumer,
       })
+
+      if not oauth2_credential then
+        return nil, err, err_t
+      end
+
+      local keyauth_credential, err, err_t = kong.db.daos["keyauth_credentials"]:insert({
+        consumer = application.consumer,
+        key = oauth2_credential.client_id
+      })
+
+      if not keyauth_credential then
+        return nil, err, err_t
+      end
+
+      return true
     end,
 
     post_update = function(application)
