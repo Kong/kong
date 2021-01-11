@@ -139,8 +139,8 @@ changes previously added in the 2.3.0-alpha.1 and 2.3.0-beta.1 releases.
   which causes the plugin to ensure a valid `Content-Length` header exists
   before reading the request body.
   [#6660](https://github.com/Kong/kong/pull/6660)
-- `serverless-functions`: introduce a sandboxing capability, where only
-  Kong PDK, OpenResty `ngx` APIs, and Lua standard libraries are allowed.
+- `serverless-functions`: introduce a sandboxing capability, and it has been
+  *enabled* by default, where only Kong PDK, OpenResty `ngx` APIs, and Lua standard libraries are allowed.
   [#32](https://github.com/Kong/kong-plugin-serverless-functions/pull/32/)
 
 ##### Configuration
