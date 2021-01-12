@@ -16,9 +16,10 @@
 -- tampered LICENSE FILE (in case the user modified after kong
 -- started).
 --
--- featureset is a table with 2 keys
+-- featureset is a lazy table with 2 keys
 -- - conf: overrides from kong.conf
 -- - abilities: custom abilities
+-- - reload it with featureset:reload()
 --
 -- Access to the features is done via `license_can` and
 -- `license_conf` public methods.
@@ -129,7 +130,7 @@ function _M.read_license_info()
 end
 
 
-function _M.featureset()
+_M.get_featureset = function()
   local l_type
   local lic
   -- HACK: when called from runner, the license is not read yet, and
@@ -154,19 +155,60 @@ function _M.featureset()
   return dist_constants.featureset[l_type]
 end
 
-function _M.license_can(ability)
-  return not (_M.featureset().abilities[ability] == false)
+
+local _featureset
+
+
+local methods = {
+  clear = table.clear,
+  ["load"] = function(self)
+    _featureset = _M.get_featureset()
+  end,
+  reload = function(self)
+    self:clear()
+    self:load()
+  end,
+}
+
+
+_M.featureset = setmetatable({}, {
+  __index = function(self, key)
+
+    if not _featureset then
+      methods:load()
+    end
+
+    local value = _featureset[key]
+
+    if value == nil then
+      return methods[key]
+    end
+
+    rawset(self, key, value)
+
+    return value
+  end,
+})
+
+
+function _M.reload()
+  _M.featureset:reload()
 end
+
+
+function _M.license_can(ability)
+  return not (_M.featureset.abilities[ability] == false)
+end
+
 
 function _M.ability(ability)
-  local featureset = _M.featureset()
-  return featureset.abilities and featureset.abilities[ability]
+  return _M.featureset.abilities and _M.featureset.abilities[ability]
 end
+
 
 function _M.license_conf()
-  return _M.featureset().conf
+  return _M.featureset.conf
 end
-
 
 
 -- Hold a lock for the whole interval (exptime) to prevent multiple
