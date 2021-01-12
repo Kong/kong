@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.3.0-rc.1](#230-rc1)
+- [2.3.0](#230)
 - [2.2.1](#221)
 - [2.2.0](#220)
 - [2.1.4](#214)
@@ -52,17 +52,14 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.3.0-rc.1]
+## [2.3.0]
 
 > Released 2021/01/08
 
-This is a release candidate for the upcoming Kong 2.3 series. There are no
-breaking changes with respect to the 2.x series. If no serious issues are
-reported, this release will effectively be promoted to the stable 2.3.0 release.
-This is now the time to test the new features and report any issues!
+This is a new release of Kong, with no breaking changes with respect to the 2.x series,
+with **Control Plane/Data Plane version checks**, **UTF-8 names for Routes and Services**,
+and **a Plugin Servers**.
 
-This changelog entry all new features and fixes for the 2.3.0 series, including
-changes previously added in the 2.3.0-alpha.1 and 2.3.0-beta.1 releases.
 
 ### Distributions
 
@@ -5729,7 +5726,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.3.0-beta.1]: https://github.com/Kong/kong/compare/2.2.0...2.3.0-beta.1
+[2.3.0]: https://github.com/Kong/kong/compare/2.2.0...2.3.0
 [2.2.1]: https://github.com/Kong/kong/compare/2.2.0...2.2.1
 [2.2.0]: https://github.com/Kong/kong/compare/2.1.3...2.2.0
 [2.1.4]: https://github.com/Kong/kong/compare/2.1.3...2.1.4
