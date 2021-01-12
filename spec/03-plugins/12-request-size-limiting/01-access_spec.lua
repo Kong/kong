@@ -34,6 +34,19 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route2 = bp.routes:insert {
+        hosts = { "required.com" },
+      }
+
+      bp.plugins:insert {
+        name     = "request-size-limiting",
+        route = { id = route2.id },
+        config   = {
+          allowed_payload_size = TEST_SIZE,
+          require_content_length = true,
+        }
+      }
+
       for _, unit in ipairs(size_units) do
         local route = bp.routes:insert {
           hosts = { string.format("limit_%s.com", unit) },
@@ -167,7 +180,8 @@ for _, strategy in helpers.each_strategy() do
       it("works if size is lower than limit", function()
         local body = string.rep("a", (TEST_SIZE * MB))
         local res = assert(proxy_client:request {
-          method  = "POST",
+          dont_add_content_length = true,
+          method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
           path    = "/request",
           body    = body,
           headers = {
@@ -180,7 +194,8 @@ for _, strategy in helpers.each_strategy() do
       it("works if size is lower than limit and Expect header", function()
         local body = string.rep("a", (TEST_SIZE * MB))
         local res = assert(proxy_client:request {
-          method  = "POST",
+          dont_add_content_length = true,
+          method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
           path    = "/request",
           body    = body,
           headers = {
@@ -194,7 +209,8 @@ for _, strategy in helpers.each_strategy() do
       it("blocks if size is greater than limit", function()
         local body = string.rep("a", (TEST_SIZE * MB) + 1)
         local res = assert(proxy_client:request {
-          method  = "POST",
+          dont_add_content_length = true,
+          method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
           path    = "/request",
           body    = body,
           headers = {
@@ -209,7 +225,8 @@ for _, strategy in helpers.each_strategy() do
       it("blocks if size is greater than limit and Expect header", function()
         local body = string.rep("a", (TEST_SIZE * MB) + 1)
         local res = assert(proxy_client:request {
-          method  = "POST",
+          dont_add_content_length = true,
+          method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
           path    = "/request",
           body    = body,
           headers = {
@@ -226,7 +243,8 @@ for _, strategy in helpers.each_strategy() do
         it("blocks if size is greater than limit when unit in " .. unit, function()
           local body = string.rep("a", (TEST_SIZE * unit_multiplication_factor[unit]) + 1)
           local res = assert(proxy_client:request {
-            method  = "POST",
+            dont_add_content_length = true,
+            method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
             path    = "/request",
             body    = body,
             headers = {
@@ -243,7 +261,8 @@ for _, strategy in helpers.each_strategy() do
         it("works if size is less than limit when unit in " .. unit, function()
           local body = string.rep("a", (TEST_SIZE * unit_multiplication_factor[unit]))
           local res = assert(proxy_client:request {
-            method  = "POST",
+            dont_add_content_length = true,
+            method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
             path    = "/request",
             body    = body,
             headers = {
@@ -253,6 +272,20 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(200, res)
         end)
       end
+    end)
+
+    describe("Content-Length header required", function()
+      it("blocks if header is not provided", function()
+        local res = assert(proxy_client:request {
+          dont_add_content_length = true,
+          method  = "GET", -- if POST, then lua-rsty-http adds content-length anyway
+          path    = "/request",
+          headers = {
+            ["Host"] = "required.com",
+          }
+        })
+        assert.response(res).has.status(411)
+      end)
     end)
   end)
 end

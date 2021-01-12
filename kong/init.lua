@@ -70,6 +70,7 @@ local dns = require "kong.tools.dns"
 local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
+local stream_api = require "kong.tools.stream_api"
 local clustering = require "kong.clustering"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
@@ -77,12 +78,11 @@ local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
 local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
-local cache_warmup = require "kong.cache_warmup"
+local cache_warmup = require "kong.cache.warmup"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
-local go = require "kong.db.dao.plugins.go"
-
+local plugin_servers = require "kong.runloop.plugin_servers"
 
 local kong             = kong
 local ngx              = ngx
@@ -116,6 +116,13 @@ if not enable_keepalive then
                     "set the 'nginx_upstream_keepalive' configuration ",
                     "property instead of 'upstream_keepalive_pool_size'")
 end
+
+
+local WORKER_COUNT = ngx.worker.count()
+local DECLARATIVE_LOAD_KEY = constants.DECLARATIVE_LOAD_KEY
+local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
+local DECLARATIVE_FLIPS_KEY = constants.DECLARATIVE_FLIPS.name
+local DECLARATIVE_FLIPS_TTL = constants.DECLARATIVE_FLIPS.ttl
 
 
 local declarative_entities
@@ -166,11 +173,9 @@ end
 
 local reset_kong_shm
 do
+  local DECLARATIVE_PAGE_KEY = constants.DECLARATIVE_PAGE_KEY
   local preserve_keys = {
     "kong:node_id",
-    "kong:cache:kong_db_cache:curr_mlcache",
-    "kong:cache:kong_core_db_cache:curr_mlcache",
-    "cluster_events:at",
     "events:requests",
     "events:requests:http",
     "events:requests:https",
@@ -180,46 +185,56 @@ do
     "events:requests:grpcs",
     "events:requests:ws",
     "events:requests:wss",
+    "events:requests:go_plugins",
     "events:streams",
     "events:streams:tcp",
     "events:streams:tls",
-    "events:requests:go_plugins",
   }
 
-  reset_kong_shm = function()
-    local preserved = {}
+  reset_kong_shm = function(config)
+    local kong_shm = ngx.shared.kong
+    local dbless = config.database == "off"
+    local declarative_config = dbless and config.declarative_config
 
-    for _, key in ipairs(preserve_keys) do
-      preserved[key] = ngx.shared.kong:get(key) -- ignore errors
+    if dbless then -- prevent POST /config from happening while initializing
+      kong_shm:add(DECLARATIVE_FLIPS_KEY, 0, DECLARATIVE_FLIPS_TTL)
     end
 
-    local current_page = preserved["kong:cache:kong_db_cache:curr_mlcache"] or 1
-    local suffix = current_page == 1 and "" or "_2"
+    local old_page = kong_shm:get(DECLARATIVE_PAGE_KEY)
+    if old_page == nil then -- fresh node, just storing the initial page
+      kong_shm:set(DECLARATIVE_PAGE_KEY, 1)
+      return
+    end
 
-    local shms = {
-      "kong",
-      "kong_locks",
-      "kong_healthchecks",
-      "kong_cluster_events",
-      "kong_rate_limiting_counters",
-      "kong_core_db_cache" .. suffix,
-      "kong_core_db_cache_miss" .. suffix,
-      "kong_db_cache" .. suffix,
-      "kong_db_cache_miss" .. suffix,
-      "kong_clustering",
-    }
+    local preserved = {}
 
-    for _, shm in ipairs(shms) do
-      local dict = ngx.shared[shm]
-      if dict then
-        dict:flush_all()
-        dict:flush_expired(0)
+    local new_page
+    if declarative_config then
+      new_page = old_page == 1 and 2 or 1
+
+    else
+      new_page = old_page
+
+      if dbless then
+        preserved[DECLARATIVE_LOAD_KEY] = kong_shm:get(DECLARATIVE_LOAD_KEY)
+        preserved[DECLARATIVE_HASH_KEY] = kong_shm:get(DECLARATIVE_HASH_KEY)
       end
     end
 
+    preserved[DECLARATIVE_PAGE_KEY] = new_page
+
     for _, key in ipairs(preserve_keys) do
-      ngx.shared.kong:set(key, preserved[key])
+      preserved[key] = kong_shm:get(key) -- ignore errors
     end
+
+    kong_shm:flush_all()
+    if dbless then
+      kong_shm:add(DECLARATIVE_FLIPS_KEY, 0, DECLARATIVE_FLIPS_TTL)
+    end
+    for key, value in pairs(preserved) do
+      kong_shm:set(key, value)
+    end
+    kong_shm:flush_expired(0)
   end
 end
 
@@ -339,8 +354,9 @@ local function load_declarative_config(kong_config, entities, meta)
     name = "declarative_config",
   }
 
+  local kong_shm = ngx.shared.kong
   local ok, err = concurrency.with_worker_mutex(opts, function()
-    local value = ngx.shared.kong:get("declarative_config:loaded")
+    local value = kong_shm:get(DECLARATIVE_LOAD_KEY)
     if value then
       return true
     end
@@ -355,7 +371,7 @@ local function load_declarative_config(kong_config, entities, meta)
                       kong_config.declarative_config)
     end
 
-    ok, err = ngx.shared.kong:safe_set("declarative_config:loaded", true)
+    ok, err = kong_shm:safe_set(DECLARATIVE_LOAD_KEY, true)
     if not ok then
       kong.log.warn("failed marking declarative_config as loaded: ", err)
     end
@@ -364,6 +380,13 @@ local function load_declarative_config(kong_config, entities, meta)
   end)
 
   if ok then
+    if kong_shm:get(DECLARATIVE_FLIPS_KEY) then
+      local flips = kong_shm:incr(DECLARATIVE_FLIPS_KEY, 1)
+      if flips and flips >= WORKER_COUNT then
+        kong_shm:delete(DECLARATIVE_FLIPS_KEY)
+      end
+    end
+
     local default_ws = kong.db.workspaces:select_by_name("default")
     kong.default_workspace = default_ws and default_ws.id or kong.default_workspace
 
@@ -403,13 +426,6 @@ local Kong = {}
 
 
 function Kong.init()
-  reset_kong_shm()
-
-  -- special math.randomseed from kong.globalpatches not taking any argument.
-  -- Must only be called in the init or init_worker phases, to avoid
-  -- duplicated seeds.
-  math.randomseed()
-
   local pl_path = require "pl.path"
   local conf_loader = require "kong.conf_loader"
 
@@ -422,6 +438,13 @@ function Kong.init()
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
+
+  reset_kong_shm(config)
+
+  -- special math.randomseed from kong.globalpatches not taking any argument.
+  -- Must only be called in the init or init_worker phases, to avoid
+  -- duplicated seeds.
+  math.randomseed()
 
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
 
@@ -444,7 +467,6 @@ function Kong.init()
   end
 
   assert(db:connect())
-  assert(db.plugins:check_db_against_config(config.loaded_plugins))
 
   -- LEGACY
   singletons.dns = dns(config)
@@ -455,7 +477,7 @@ function Kong.init()
   kong.db = db
   kong.dns = singletons.dns
 
-  if subsystem == "stream" or config.proxy_ssl_enabled then
+  if config.proxy_ssl_enabled or config.stream_ssl_enabled then
     certificate.init()
   end
 
@@ -466,8 +488,11 @@ function Kong.init()
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
-  if kong.configuration.database == "off" then
+  if subsystem == "stream" then
+    stream_api.load_handlers()
+  end
 
+  if kong.configuration.database == "off" then
     local err
     declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
     if not declarative_entities then
@@ -594,9 +619,7 @@ function Kong.init_worker()
 
   runloop.init_worker.after()
 
-  if go.is_on() then
-    go.manage_pluginserver()
-  end
+  plugin_servers.start()
 
   if subsystem == "http" then
     clustering.init_worker(kong.configuration)
@@ -1372,6 +1395,11 @@ function Kong.serve_cluster_listener(options)
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
   return clustering.handle_cp_websocket()
+end
+
+
+function Kong.stream_api()
+  stream_api.handle()
 end
 
 

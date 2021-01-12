@@ -443,6 +443,7 @@ describe("kong config", function()
       "acls",
       "consumers",
       "keyauth_credentials",
+      "parameters",
       "plugins",
       "routes",
       "services",

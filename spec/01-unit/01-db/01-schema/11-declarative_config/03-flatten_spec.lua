@@ -284,6 +284,7 @@ describe("declarative config: flatten", function()
                 queue_size = 1,
                 retry_count = 10,
                 timeout = 10000,
+                headers = null,
               }
             },
             {
@@ -299,6 +300,8 @@ describe("declarative config: flatten", function()
               config = {
                 anonymous = null,
                 hide_credentials = false,
+                key_in_header = true,
+                key_in_query = true,
                 key_in_body = false,
                 key_names = { "apikey" },
                 run_on_preflight = true,
@@ -373,7 +376,8 @@ describe("declarative config: flatten", function()
                 method = "POST",
                 queue_size = 1,
                 retry_count = 10,
-                timeout = 10000
+                timeout = 10000,
+                headers = null,
               },
               consumer = {
                 id = "UUID"
@@ -393,6 +397,8 @@ describe("declarative config: flatten", function()
               config = {
                 anonymous = null,
                 hide_credentials = false,
+                key_in_header = true,
+                key_in_query = true,
                 key_in_body = false,
                 key_names = { "apikey" },
                 run_on_preflight = true
@@ -552,7 +558,8 @@ describe("declarative config: flatten", function()
                   method = "POST",
                   queue_size = 1,
                   retry_count = 10,
-                  timeout = 10000
+                  timeout = 10000,
+                  headers = null,
                 },
                 consumer = null,
                 created_at = 1234567890,
@@ -569,6 +576,8 @@ describe("declarative config: flatten", function()
                 config = {
                   anonymous = null,
                   hide_credentials = false,
+                  key_in_header = true,
+                  key_in_query = true,
                   key_in_body = false,
                   key_names = { "apikey" },
                   run_on_preflight = true
@@ -1038,7 +1047,8 @@ describe("declarative config: flatten", function()
                   method = "POST",
                   queue_size = 1,
                   retry_count = 10,
-                  timeout = 10000
+                  timeout = 10000,
+                  headers = null,
                 },
                 consumer = null,
                 created_at = 1234567890,
@@ -1055,6 +1065,8 @@ describe("declarative config: flatten", function()
                 config = {
                   anonymous = null,
                   hide_credentials = false,
+                  key_in_header = true,
+                  key_in_query = true,
                   key_in_body = false,
                   key_names = { "apikey" },
                   run_on_preflight = true

@@ -242,6 +242,7 @@ for _, strategy in helpers.each_strategy() do
           "basicauth_credentials",
           "certificates",
           "consumers",
+          "parameters",
           "plugins",
           "routes",
           "services",

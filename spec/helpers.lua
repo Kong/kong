@@ -20,6 +20,8 @@ local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
 local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
 local BLACKHOLE_HOST = "10.255.255.255"
+local KONG_VERSION = require("kong.meta")._VERSION
+local PLUGINS_LIST
 
 local consumers_schema_def = require "kong.db.schema.entities.consumers"
 local services_schema_def = require "kong.db.schema.entities.services"
@@ -48,12 +50,19 @@ local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 local ffi = require "ffi"
+local ssl = require "ngx.ssl"
+local ws_client = require "resty.websocket.client"
+local table_clone = require "table.clone"
+local https_server = require "spec.fixtures.https_server"
 
 
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
   int unsetenv(const char *name);
 ]]
+
+
+local kong_exec   -- forward declaration
 
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
@@ -145,19 +154,20 @@ end
 
 --- Write a yaml file.
 -- @function make_yaml_file
--- @param content (string) the yaml string to write to the file
+-- @param content (string) the yaml string to write to the file, if omitted the
+-- current database contents will be written using `kong config db_export`.
 -- @param filename (optional) if not provided, a temp name will be created
 -- @return filename of the file written
 local function make_yaml_file(content, filename)
-  if not filename then
-    filename = os.tmpname()
-    os.rename(filename, filename .. ".yml")
-    filename = filename .. ".yml"
+  local filename = filename or pl_path.tmpname() .. ".yml"
+  if content then
+    local fd = assert(io.open(filename, "w"))
+    assert(fd:write(unindent(content)))
+    assert(fd:write("\n")) -- ensure last line ends in newline
+    assert(fd:close())
+  else
+    assert(kong_exec("config db_export "..filename))
   end
-  local fd = assert(io.open(filename, "w"))
-  assert(fd:write(unindent(content)))
-  assert(fd:write("\n")) -- ensure last line ends in newline
-  assert(fd:close())
   return filename
 end
 
@@ -170,6 +180,13 @@ local conf = assert(conf_loader(TEST_CONF_PATH))
 _G.kong = kong_global.new()
 kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
 kong_global.set_phase(kong, kong_global.phases.access)
+_G.kong.core_cache = {
+  get = function(self, key)
+    if key == constants.CLUSTER_ID_PARAM_KEY then
+      return "123e4567-e89b-12d3-a456-426655440000"
+    end
+  end
+}
 
 local db = assert(DB.new(conf))
 assert(db:init_connector())
@@ -201,7 +218,7 @@ end
 -- @param strategies (optional string array) explicit list of strategies to use,
 -- defaults to `{ "postgres", "cassandra", "off" }`.
 -- @see each_strategy
--- @see write_declarative_config
+-- @see make_yaml_file
 -- @usage
 -- -- example of using DB-less testing
 --
@@ -230,10 +247,10 @@ end
 --         nginx_conf = "spec/fixtures/custom_nginx.template",
 --         plugins = "bundled," .. PLUGIN_NAME,
 --
---         -- The call to "write_declarative_config" will write the contents of
+--         -- The call to "make_yaml_file" will write the contents of
 --         -- the database to a temporary file, which filename is returned.
 --         -- But only when "strategy=off".
---         declarative_config = strategy == "off" and helpers.write_declarative_config() or nil,
+--         declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
 --
 --         -- the below lines can be omitted, but are just to prove that the test
 --         -- really runs DB-less despite that Postgres was used as intermediary
@@ -416,6 +433,17 @@ local function get_db_utils(strategy, tables, plugins)
     local workspaces = require "kong.workspaces"
     workspaces.upsert_default(db)
   end
+
+  -- calculation can only happen here because this function
+  -- initializes the kong.db instance
+  PLUGINS_LIST = assert(kong.db.plugins:get_handlers())
+  table.sort(PLUGINS_LIST, function(a, b)
+    return a.name:lower() < b.name:lower()
+  end)
+
+  PLUGINS_LIST = pl_tablex.map(function(p)
+    return { name = p.name, version = p.handler.VERSION, }
+  end, PLUGINS_LIST)
 
   return bp, db
 end
@@ -660,7 +688,7 @@ function resty_http_proxy_mt:send(opts)
     end
 
     local clength = lookup(headers, "content-length")
-    if not clength then
+    if not clength and not opts.dont_add_content_length then
       headers["content-length"] = #body
     end
 
@@ -2212,7 +2240,7 @@ end
 -- @return if `pl_returns` is true, returns four return values
 -- (ok, code, stdout, stderr); if `pl_returns` is false,
 -- returns either (false, stderr) or (true, stderr, stdout).
-local function kong_exec(cmd, env, pl_returns, env_vars)
+function kong_exec(cmd, env, pl_returns, env_vars)
   cmd = cmd or ""
   env = env or {}
 
@@ -2361,7 +2389,8 @@ local function render_fixtures(conf, env, prefix, fixtures)
     -- prepare the prefix so we get the full config in the
     -- hidden `.kong_env` file, including test specified env vars etc
     assert(kong_exec("prepare --conf " .. conf, env))
-    local render_config = assert(conf_loader(prefix .. "/.kong_env"))
+    local render_config = assert(conf_loader(prefix .. "/.kong_env", nil,
+                                             { from_kong_env = true }))
 
     for _, mocktype in ipairs { "http_mock", "stream_mock" } do
 
@@ -2479,17 +2508,11 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
   local prefix = env.prefix or conf.prefix
 
   -- go plugins are enabled
-  --  set pluginserver dir (making sure it's in the PATH)
-  --  compile fixture go plugins
-  if env.go_plugins_dir then
-    if env.go_plugins_dir == GO_PLUGIN_PATH then
+  --  compile fixture go plugins if any setting mentions it
+  for _,v in pairs(env) do
+    if type(v) == "string" and v:find(GO_PLUGIN_PATH) then
       build_go_plugins(GO_PLUGIN_PATH)
-    end
-
-    if not env.go_pluginserver_exe and not os.getenv("KONG_GO_PLUGINSERVER_EXE") then
-      local ok, _, pluginserver_path, _ = pl_utils.executeex(string.format("which go-pluginserver"))
-      assert(ok, "did not find go-pluginserver in PATH")
-      env.go_pluginserver_exe = pluginserver_path
+      break
     end
   end
 
@@ -2580,19 +2603,61 @@ local function restart_kong(env, tables, fixtures)
 end
 
 
---- Creates a temporary declarative config file from the current db contents.
--- This can be used in combo with the `all_strategies` iterator to ensure the
--- test config is automatically generated from the DB using the regular helpers.
--- @function write_declarative_file
--- @return filename of the written config file (format will be yaml)
--- @see all_strategies
-local function write_declarative_config()
-  local filename = pl_path.tmpname() .. ".yml"
-  os.remove(filename)
-  assert(kong_exec("config db_export "..filename))
-  return filename
-end
+--- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
+-- @function clustering_client
+-- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
+-- are required.
+-- Other fields that can be overwritten are:
+-- `node_hostname`, `node_id`, `node_version`. If absent,
+-- they are automatically filled.
+-- @return msg if handshake succeeded and initial message received from CP or nil, err
+local function clustering_client(opts)
+  assert(opts.host)
+  assert(opts.port)
+  assert(opts.cert)
+  assert(opts.cert_key)
 
+  local c = assert(ws_client:new())
+  local uri = "wss://" .. opts.host .. ":" .. opts.port ..
+              "/v1/outlet?node_id=" .. (opts.node_id or utils.uuid()) ..
+              "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
+              "&node_version=" .. (opts.node_version or KONG_VERSION)
+
+  local opts = {
+    ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
+    client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
+    client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
+    server_name = "kong_clustering",
+  }
+
+  local res, err = c:connect(uri, opts)
+  if not res then
+    return nil, err
+  end
+  local payload = assert(cjson.encode({ type = "basic_info",
+                                        plugins = opts.node_plugins_list or
+                                                  PLUGINS_LIST,
+                                      }))
+
+  assert(c:send_binary(payload))
+
+  assert(c:send_ping(string.rep("0", 32)))
+
+  local data, typ
+  data, typ = c:recv_frame()
+  c:close()
+
+  if typ == "binary" then
+    local odata = assert(utils.inflate_gzip(data))
+    local msg = assert(cjson.decode(odata))
+    return msg
+
+  elseif typ == "pong" then
+    return "PONG"
+  end
+
+  return nil, "unknown frame from CP: " .. typ
+end
 
 
 ----------------
@@ -2698,7 +2763,8 @@ end
   each_strategy = each_strategy,
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
-  write_declarative_config = write_declarative_config,
+  clustering_client = clustering_client,
+  https_server = https_server,
 
   -- miscellaneous
   intercept = intercept,
@@ -2771,5 +2837,12 @@ end
     end
 
     return code
+  end,
+
+  -- returns the plugins and version list that is used by Hybrid mode tests
+  get_plugins_list = function()
+    assert(PLUGINS_LIST, "plugin list has not been initialized yet, " ..
+                         "you must call get_db_utils first")
+    return table_clone(PLUGINS_LIST)
   end,
 }

@@ -547,12 +547,25 @@ do
         if run_up then
           -- kong migrations bootstrap
           -- kong migrations up
-          ok, err = self.connector:run_up_migration(mig.name,
-                                                    strategy_migration.up)
-          if not ok then
-            self.connector:close()
-            return nil, fmt_err(self, "failed to run migration '%s' up: %s",
-                                mig.name, err)
+          if strategy_migration.up and strategy_migration.up ~= "" then
+            ok, err = self.connector:run_up_migration(mig.name,
+                                                      strategy_migration.up)
+            if not ok then
+              self.connector:close()
+              return nil, fmt_err(self, "failed to run migration '%s' up: %s",
+                                  mig.name, err)
+            end
+          end
+
+          if strategy_migration.up_f then
+            local pok, perr, err = xpcall(strategy_migration.up_f,
+                                          debug.traceback, self.connector,
+                                          mig_helpers)
+            if not pok or err then
+              self.connector:close()
+              return nil, fmt_err(self, "failed to run migration '%s' up_f: %s",
+                                         mig.name, perr or err)
+            end
           end
 
           local state = "executed"

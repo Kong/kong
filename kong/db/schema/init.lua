@@ -1783,9 +1783,9 @@ function Schema:validate(input, full_check, original_input, rbw_entity)
 end
 
 
--- Iterate through input fields on update and check agianst schema for
+-- Iterate through input fields on update and check against schema for
 -- immutable attribute. If immutable attribute is set, compare input values
--- against entity values to detirmine whether input is valid.
+-- against entity values to determine whether input is valid.
 -- @param input The input table.
 -- @param entity The entity update will be performed on.
 -- @return True on success.

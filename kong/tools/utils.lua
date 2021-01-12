@@ -88,28 +88,6 @@ _M.pack = function(...) return {n = select("#", ...), ...} end
 -- Explicitly honors the `n` field if given in the table, so it is `nil` safe
 _M.unpack = function(t, i, j) return unpack(t, i or 1, j or t.n or #t) end
 
---- Retrieves the hostname of the local machine
--- @return string  The hostname
-function _M.get_hostname()
-  local result
-  local SIZE = 128
-
-  local buf = ffi_new("unsigned char[?]", SIZE)
-  local res = C.gethostname(buf, SIZE)
-
-  if res == 0 then
-    local hostname = ffi_str(buf, SIZE)
-    result = gsub(hostname, "%z+$", "")
-  else
-    local f = io.popen("/bin/hostname")
-    local hostname = f:read("*a") or ""
-    f:close()
-    result = gsub(hostname, "\n$", "")
-  end
-
-  return result
-end
-
 do
   local _system_infos
 
@@ -118,9 +96,7 @@ do
       return _system_infos
     end
 
-    _system_infos = {
-      hostname = _M.get_hostname()
-    }
+    _system_infos = {}
 
     local ok, _, stdout = pl_utils.executeex("getconf _NPROCESSORS_ONLN")
     if ok then
@@ -514,11 +490,78 @@ function _M.table_contains(arr, val)
   return false
 end
 
+
+do
+  local floor = math.floor
+  local max = math.max
+
+  local ok, is_array_fast = pcall(require, "table.isarray")
+  if not ok then
+    is_array_fast = function(t)
+      for k in pairs(t) do
+          if type(k) ~= "number" or floor(k) ~= k then
+            return false
+          end
+      end
+      return true
+    end
+  end
+
+  local is_array_strict = function(t)
+    local m, c = 0, 0
+    for k in pairs(t) do
+        if type(k) ~= "number" or k < 1 or floor(k) ~= k then
+          return false
+        end
+        m = max(m, k)
+        c = c + 1
+    end
+    return c == m
+  end
+
+  local is_array_lapis = function(t)
+    if type(t) ~= "table" then
+      return false
+    end
+    local i = 0
+    for _ in pairs(t) do
+      i = i + 1
+      if t[i] == nil and t[tostring(i)] == nil then
+        return false
+      end
+    end
+    return true
+  end
+
+  --- Checks if a table is an array and not an associative array.
+  -- @param t The table to check
+  -- @param mode: `"strict"`: only sequential indices starting from 1 are allowed (no holes)
+  --                `"fast"`: OpenResty optimized version (holes and negative indices are ok)
+  --               `"lapis"`: Allows numeric indices as strings (no holes)
+  -- @return Returns `true` if the table is an array, `false` otherwise
+  function _M.is_array(t, mode)
+    if type(t) ~= "table" then
+      return false
+    end
+
+    if mode == "lapis" then
+      return is_array_lapis(t)
+    end
+
+    if mode == "fast" then
+      return is_array_fast(t)
+    end
+
+    return is_array_strict(t)
+  end
+end
+
+
 --- Checks if a table is an array and not an associative array.
 -- *** NOTE *** string-keys containing integers are considered valid array entries!
 -- @param t The table to check
 -- @return Returns `true` if the table is an array, `false` otherwise
-function _M.is_array(t)
+function _M.is_lapis_array(t)
   if type(t) ~= "table" then
     return false
   end
@@ -531,6 +574,7 @@ function _M.is_array(t)
   end
   return true
 end
+
 
 --- Deep copies a table into a new table.
 -- Tables used as keys are also deep copied, as are metatables
@@ -556,21 +600,32 @@ function _M.deep_copy(orig, copy_mt)
   return copy
 end
 
---- Copies a table into a new table.
--- neither sub tables nor metatables will be copied.
--- @param orig The table to copy
--- @return Returns a copy of the input table
-function _M.shallow_copy(orig)
-  local copy
-  if type(orig) == "table" then
-    copy = {}
-    for orig_key, orig_value in pairs(orig) do
-      copy[orig_key] = orig_value
+
+do
+  local ok, clone = pcall(require, "table.clone")
+  if not ok then
+    clone = function(t)
+      local copy = {}
+      for key, value in pairs(t) do
+        copy[key] = value
+      end
+      return copy
     end
-  else -- number, string, boolean, etc
-    copy = orig
   end
-  return copy
+
+  --- Copies a table into a new table.
+  -- neither sub tables nor metatables will be copied.
+  -- @param orig The table to copy
+  -- @return Returns a copy of the input table
+  function _M.shallow_copy(orig)
+    local copy
+    if type(orig) == "table" then
+      copy = clone(orig)
+    else -- number, string, boolean, etc
+      copy = orig
+    end
+    return copy
+  end
 end
 
 --- Merges two tables recursively
@@ -675,6 +730,93 @@ function _M.validate_utf8(val)
 
   return true
 end
+
+
+do
+  local ipmatcher =  require "resty.ipmatcher"
+  local sub = string.sub
+
+  local ipv4_prefixes = {}
+  for i = 0, 32 do
+    ipv4_prefixes[tostring(i)] = i
+  end
+
+  local ipv6_prefixes = {}
+  for i = 0, 128 do
+    ipv6_prefixes[tostring(i)] = i
+  end
+
+  local function split_cidr(cidr, prefixes)
+    local p = find(cidr, "/", 3, true)
+    if not p then
+      return
+    end
+
+    return sub(cidr, 1, p - 1), prefixes[sub(cidr, p + 1)]
+  end
+
+  local validate = function(input, f1, f2, prefixes)
+    if type(input) ~= "string" then
+      return false
+    end
+
+    if prefixes then
+      local ip, prefix = split_cidr(input, prefixes)
+      if not ip or not prefix then
+        return false
+      end
+
+      input = ip
+    end
+
+    if f1(input) then
+      return true
+    end
+
+    if f2 and f2(input) then
+      return true
+    end
+
+    return false
+  end
+
+  _M.is_valid_ipv4 = function(ipv4)
+    return validate(ipv4, ipmatcher.parse_ipv4)
+  end
+
+  _M.is_valid_ipv6 = function(ipv6)
+    return validate(ipv6, ipmatcher.parse_ipv6)
+  end
+
+  _M.is_valid_ip = function(ip)
+    return validate(ip, ipmatcher.parse_ipv4, ipmatcher.parse_ipv6)
+  end
+
+  _M.is_valid_cidr_v4 = function(cidr_v4)
+    return validate(cidr_v4, ipmatcher.parse_ipv4, nil, ipv4_prefixes)
+  end
+
+  _M.is_valid_cidr_v6 = function(cidr_v6)
+    return validate(cidr_v6, ipmatcher.parse_ipv6, nil, ipv6_prefixes)
+  end
+
+  _M.is_valid_cidr = function(cidr)
+    return validate(cidr, _M.is_valid_cidr_v4, _M.is_valid_cidr_v6)
+  end
+
+  _M.is_valid_ip_or_cidr_v4 = function(ip_or_cidr_v4)
+    return validate(ip_or_cidr_v4, ipmatcher.parse_ipv4, _M.is_valid_cidr_v4)
+  end
+
+  _M.is_valid_ip_or_cidr_v6 = function(ip_or_cidr_v6)
+    return validate(ip_or_cidr_v6, ipmatcher.parse_ipv6, _M.is_valid_cidr_v6)
+  end
+
+  _M.is_valid_ip_or_cidr = function(ip_or_cidr)
+    return validate(ip_or_cidr, _M.is_valid_ip,  _M.is_valid_cidr)
+  end
+end
+
 
 --- checks the hostname type; ipv4, ipv6, or name.
 -- Type is determined by exclusion, not by validation. So if it returns 'ipv6' then

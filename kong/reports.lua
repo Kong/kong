@@ -2,6 +2,8 @@ local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local counter = require "resty.counter"
+local knode = (kong and kong.node) and kong.node or
+              require "kong.pdk.node".new()
 
 
 local kong_dict = ngx.shared.kong
@@ -61,6 +63,8 @@ do
 
   local system_infos = utils.get_system_infos()
 
+  system_infos.hostname = system_infos.hostname or knode.get_hostname()
+
   -- <14>: syslog facility code 'log alert'
   _buffer[#_buffer + 1] = "<14>version=" .. meta._VERSION
 
@@ -118,7 +122,9 @@ local function send_report(signal_type, t, host, port)
   local mutable_idx = _buffer_immutable_idx
 
   for k, v in pairs(t) do
-    if k == "unique_id" or (k ~= "created_at" and sub(k, -2) ~= "id") then
+    if k == "unique_id" or k == "cluster_id" or
+       (k ~= "created_at" and sub(k, -2) ~= "id")
+    then
       v = serialize_report_value(v)
       if v ~= nil then
         mutable_idx = mutable_idx + 1
@@ -266,6 +272,10 @@ end
 
 local function send_ping(host, port)
   _ping_infos.unique_id = _unique_str
+
+  if not _ping_infos.cluster_id then
+    _ping_infos.cluster_id = kong.cluster.get_id()
+  end
 
   if subsystem == "stream" then
     _ping_infos.streams     = get_counter(STREAM_COUNT_KEY)

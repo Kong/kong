@@ -2,6 +2,7 @@ local cjson = require("cjson.safe")
 local ngx_ssl = require("ngx.ssl")
 local msgpack = require "MessagePack"
 local reports = require "kong.reports"
+local raw_log = require "ngx.errlog".raw_log
 
 
 local kong = kong
@@ -10,7 +11,7 @@ local ngx_timer_at = ngx.timer.at
 local cjson_encode = cjson.encode
 local mp_pack = msgpack.pack
 local mp_unpacker = msgpack.unpacker
-
+local ngx_INFO = ngx.INFO
 
 local go = {}
 
@@ -62,6 +63,20 @@ do
     return out:match("Runtime Version: go(.+)\n$")
   end
 
+  local function grab_logs(proc)
+    while true do
+      local data, err, partial = proc:stdout_read_line()
+      local line = data or partial
+      if line and line ~= "" then
+        raw_log(ngx_INFO, "[go-pluginserver] " .. line)
+      end
+
+      if not data and err == "closed" then
+        return
+      end
+    end
+  end
+
   local pluginserver_proc
 
   function go.manage_pluginserver()
@@ -88,10 +103,13 @@ do
           kong.configuration.go_pluginserver_exe,
           "-kong-prefix", kong.configuration.prefix,
           "-plugins-directory", kong.configuration.go_plugins_dir,
+        }, {
+          merge_stderr = true,
         }))
         pluginserver_proc:set_timeouts(nil, nil, nil, 0)     -- block until something actually happens
 
         while true do
+          grab_logs(pluginserver_proc)
           local ok, reason, status = pluginserver_proc:wait()
           if ok ~= nil or reason == "exited" then
             kong.log.notice("go-pluginserver terminated: ", tostring(reason), " ", tostring(status))

@@ -81,8 +81,10 @@ server {
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if proxy_ssl_enabled then
-    ssl_certificate     ${{SSL_CERT}};
-    ssl_certificate_key ${{SSL_CERT_KEY}};
+> for i = 1, #ssl_cert do
+    ssl_certificate     $(ssl_cert[i]);
+    ssl_certificate_key $(ssl_cert_key[i]);
+> end
     ssl_session_cache   shared:SSL:10m;
     ssl_certificate_by_lua_block {
         Kong.ssl_certificate()
@@ -269,31 +271,13 @@ server {
         grpc_set_header      X-Real-IP          $remote_addr;
         grpc_pass_header     Server;
         grpc_pass_header     Date;
-        grpc_pass            grpc://kong_upstream;
-    }
-
-    location @grpcs {
-        internal;
-        default_type         '';
-        set $kong_proxy_mode 'grpc';
-
-        grpc_set_header      TE                 $upstream_te;
-        grpc_set_header      X-Forwarded-For    $upstream_x_forwarded_for;
-        grpc_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
-        grpc_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
-        grpc_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
-        grpc_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
-        grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
-        grpc_set_header      X-Real-IP          $remote_addr;
-        grpc_pass_header     Server;
-        grpc_pass_header     Date;
         grpc_ssl_name        $upstream_host;
         grpc_ssl_server_name on;
 > if client_ssl then
         grpc_ssl_certificate ${{CLIENT_SSL_CERT}};
         grpc_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
 > end
-        grpc_pass            grpcs://kong_upstream;
+        grpc_pass            $upstream_scheme://kong_upstream;
     }
 
     location = /kong_buffered_http {
@@ -356,12 +340,11 @@ server {
     access_log ${{ADMIN_ACCESS_LOG}};
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
-    client_max_body_size    10m;
-    client_body_buffer_size 10m;
-
 > if admin_ssl_enabled then
-    ssl_certificate     ${{ADMIN_SSL_CERT}};
-    ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
+> for i = 1, #admin_ssl_cert do
+    ssl_certificate     $(admin_ssl_cert[i]);
+    ssl_certificate_key $(admin_ssl_cert_key[i]);
+> end
     ssl_session_cache   shared:AdminSSL:10m;
 > end
 
@@ -403,8 +386,10 @@ server {
     error_log  ${{STATUS_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if status_ssl_enabled then
-    ssl_certificate     ${{STATUS_SSL_CERT}};
-    ssl_certificate_key ${{STATUS_SSL_CERT_KEY}};
+> for i = 1, #status_ssl_cert do
+    ssl_certificate     $(status_ssl_cert[i]);
+    ssl_certificate_key $(status_ssl_cert_key[i]);
+> end
     ssl_session_cache   shared:StatusSSL:1m;
 > end
 
@@ -442,7 +427,7 @@ server {
     listen $(entry.listener) ssl;
 > end
 
-    access_log off;
+    access_log ${{ADMIN_ACCESS_LOG}};
 
 > if cluster_mtls == "shared" then
     ssl_verify_client   optional_no_ca;

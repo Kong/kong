@@ -3,8 +3,8 @@ local utils = require "kong.tools.utils"
 local DAO = require "kong.db.dao"
 local plugin_loader = require "kong.db.schema.plugin_loader"
 local BasePlugin = require "kong.plugins.base_plugin"
-local go = require "kong.db.dao.plugins.go"
 local reports = require "kong.reports"
+local plugin_servers = require "kong.runloop.plugin_servers"
 
 
 local Plugins = {}
@@ -116,30 +116,6 @@ function Plugins:upsert(primary_key, entity, options)
   return self.super.upsert(self, primary_key, entity, options)
 end
 
---- Given a set of plugin names, check if all plugins stored
--- in the database fall into this set.
--- @param plugin_set a set of plugin names.
--- @return true or nil and an error message.
-function Plugins:check_db_against_config(plugin_set)
-  local in_db_plugins = {}
-  ngx_log(ngx_DEBUG, "Discovering used plugins")
-
-  for row, err in self:each() do
-    if err then
-      return nil, tostring(err)
-    end
-    in_db_plugins[row.name] = true
-  end
-
-  -- check all plugins in DB are enabled/installed
-  for plugin in pairs(in_db_plugins) do
-    if not plugin_set[plugin] then
-      return nil, plugin .. " plugin is in use but not enabled"
-    end
-  end
-
-  return true
-end
 
 local function implements(plugin, method)
   if type(plugin) ~= "table" then
@@ -150,17 +126,19 @@ local function implements(plugin, method)
   return type(m) == "function" and m ~= BasePlugin[method]
 end
 
+
 local function load_plugin_handler(plugin)
   -- NOTE: no version _G.kong (nor PDK) in plugins main chunk
 
   local plugin_handler = "kong.plugins." .. plugin .. ".handler"
   local ok, handler = utils.load_module_if_exists(plugin_handler)
-  if not ok and go.is_on() then
-      ok, handler = go.load_plugin(plugin)
-      if type(handler) == "table" then
-        handler._go = true
-      end
+  if not ok then
+    ok, handler = plugin_servers.load_plugin(plugin)
+    if type(handler) == "table" then
+      handler._go = true
+    end
   end
+
   if not ok then
     return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
   end

@@ -3,15 +3,19 @@
 -- @module kong.node
 
 local utils = require "kong.tools.utils"
+local ffi = require "ffi"
 
 
 local floor = math.floor
 local lower = string.lower
 local match = string.match
+local gsub = string.gsub
 local sort = table.sort
 local insert = table.insert
 local shared = ngx.shared
-
+local C             = ffi.C
+local ffi_new       = ffi.new
+local ffi_str       = ffi.string
 
 local NODE_ID_KEY = "kong:node_id"
 
@@ -226,6 +230,30 @@ local function new(self)
     return res
   end
 
+
+  ---
+  -- Returns the name used by the local machine
+  --
+  -- @function kong.node.get_hostname
+  -- @treturn string The local machine hostname
+  -- @usage
+  -- local hostname = kong.node.get_hostname()
+  function _NODE.get_hostname()
+    local SIZE = 253 -- max number of chars for a hostname
+
+    local buf = ffi_new("unsigned char[?]", SIZE)
+    local res = C.gethostname(buf, SIZE)
+
+    if res == 0 then
+      local hostname = ffi_str(buf, SIZE)
+      return gsub(hostname, "%z+$", "")
+    end
+
+    local f = io.popen("/bin/hostname")
+    local hostname = f:read("*a") or ""
+    f:close()
+    return gsub(hostname, "\n$", "")
+  end
 
   return _NODE
 end

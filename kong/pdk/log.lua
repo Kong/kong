@@ -15,6 +15,7 @@ local ngx_re = require "ngx.re"
 local inspect = require "inspect"
 local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
+local utils = require "kong.tools.utils"
 
 
 local sub = string.sub
@@ -30,14 +31,21 @@ local setmetatable = setmetatable
 local ngx = ngx
 local kong = kong
 local check_phase = phase_checker.check
+local split = utils.split
 
 
 local _PREFIX = "[kong] "
 local _DEFAULT_FORMAT = "%file_src:%line_src %message"
 local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
-local PHASES_LOG = phase_checker.phases.log
+local PHASES = phase_checker.phases
+local PHASES_LOG = PHASES.log
 
-
+local phases_with_ctx =
+    phase_checker.new(PHASES.rewrite,
+                      PHASES.access,
+                      PHASES.header_filter,
+                      PHASES.body_filter,
+                      PHASES_LOG)
 local _LEVELS = {
   debug = ngx.DEBUG,
   info = ngx.INFO,
@@ -465,11 +473,158 @@ local _log_mt = {
 }
 
 
-local serialize
+local function get_default_serialize_values()
+  if ngx.config.subsystem == "http" then
+    return {
+      { key = "request.headers.authorization", value = "REDACTED", mode = "replace" },
+      { key = "request.headers.proxy-authorization", value = "REDACTED", mode = "replace" },
+    }
+  end
 
+  return {}
+end
+
+---
+-- Sets a value to be used on the `serialize` custom table
+--
+-- Logging plugins use the output of `kong.log.serialize()` as a base for their logs.
+--
+-- This function allows customizing such output.
+--
+-- It can be used to replace existing values on the output.
+-- It can be used to delete existing values by passing `nil`.
+--
+-- Note: the type checking of the `value` parameter can take some time so
+-- it is deferred to the `serialize()` call, which happens in the log
+-- phase in most real-usage cases.
+--
+-- @function kong.log.set_serialize_value
+-- @phases certificate, rewrite, access, header_filter, body_filter, log
+-- @tparam string key the name of the field.
+-- @tparam number|string|boolean|table value value to be set. When a table is used, its keys must be numbers, strings, booleans, and its values can be numbers, strings or other tables like itself, recursively.
+-- @tparam table options can contain two entries: options.mode can be `set` (the default, always sets), `add` (only add if entry does not already exist) and `replace` (only change value if it already exists).
+-- @treturn table the request information table
+-- @usage
+-- -- Adds a new value to the serialized table
+-- kong.log.set_serialize_value("my_new_value", 1)
+-- assert(kong.log.serialize().my_new_value == 1)
+--
+-- -- Value can be a table
+-- kong.log.set_serialize_value("my", { new = { value = 2 } })
+-- assert(kong.log.serialize().my.new.value == 2)
+--
+-- -- It is possible to change an existing serialized value
+-- kong.log.set_serialize_value("my_new_value", 3)
+-- assert(kong.log.serialize().my_new_value == 3)
+--
+-- -- Unset an existing value by setting it to nil
+-- kong.log.set_serialize_value("my_new_value", nil)
+-- assert(kong.log.serialize().my_new_value == nil)
+--
+-- -- Dots in the key are interpreted as table accesses
+-- kong.log.set_serialize_value("my.new.value", 4)
+-- assert(kong.log.serialize().my.new_value == 4)
+--
+local function set_serialize_value(key, value, options)
+  check_phase(phases_with_ctx)
+
+  options = options or {}
+  local mode = options.mode or "set"
+
+  if type(key) ~= "string" then
+    error("key must be a string", 2)
+  end
+
+  if mode ~= "set" and mode ~= "add" and mode ~= "replace" then
+    error("mode must be 'set', 'add' or 'replace'", 2)
+  end
+
+  local ongx = (options or {}).ngx or ngx
+  local ctx = ongx.ctx
+  ctx.serialize_values = ctx.serialize_values or get_default_serialize_values()
+  ctx.serialize_values[#ctx.serialize_values + 1] =
+    { key = key, value = value, mode = mode }
+end
+
+
+local serialize
 do
-  local REDACTED_REQUEST_HEADERS = { "authorization", "proxy-authorization" }
-  local REDACTED_RESPONSE_HEADERS = {}
+  local function is_valid_value(v, visited)
+    local t = type(v)
+    if v == nil or t == "number" or t == "string" or t == "boolean" then
+      return true
+    end
+
+    if t ~= "table" then
+      return false
+    end
+
+    if visited[v] then
+      return false
+    end
+    visited[v] = true
+
+    for k, val in pairs(v) do
+      t = type(k)
+      if (t ~= "string"
+          and t ~= "number"
+          and t ~= "boolean")
+        or not is_valid_value(val, visited)
+      then
+        return false
+      end
+    end
+
+    return true
+  end
+
+  -- Modify returned table with values set with kong.log.set_serialize_values
+  local function edit_result(ctx, root)
+    local serialize_values = ctx.serialize_values or get_default_serialize_values()
+    local key, mode, new_value, subkeys, node, subkey, last_subkey, existing_value
+    for _, item in ipairs(serialize_values) do
+      key, mode, new_value = item.key, item.mode, item.value
+
+      if not is_valid_value(new_value, {}) then
+        error("value must be nil, a number, string, boolean or a non-self-referencial table containing numbers, string and booleans", 2)
+      end
+
+      -- Split key by ., creating subtables when needed
+      subkeys = setmetatable(split(key, "."), nil)
+      node = root -- start in root, iterate with each subkey
+      for i = 1, #subkeys - 1 do -- note that last subkey is treated differently, below
+        subkey = subkeys[i]
+        if node[subkey] == nil then
+          if mode == "set" or mode == "add" then
+            node[subkey] = {} -- add subtables as needed
+          else
+            node = nil
+            break -- mode == replace; and we have a missing link on the "chain"
+          end
+        end
+
+        if type(node[subkey]) ~= "table" then
+          error("The key '" .. key .. "' could not be used as a serialize value. " ..
+                "Subkey '" .. subkey .. "' is not a table. It's " .. tostring(node[subkey]))
+        end
+
+        node = node[subkey]
+      end
+      if type(node) == "table" then
+        last_subkey = subkeys[#subkeys]
+        existing_value = node[last_subkey]
+        if (mode == "set")
+        or (mode == "add" and existing_value == nil)
+        or (mode == "replace" and existing_value ~= nil)
+        then
+          node[last_subkey] = new_value
+        end
+      end
+    end
+
+    return root
+  end
+
 
   ---
   -- Generates a table that contains information that are helpful for logging.
@@ -505,6 +660,12 @@ do
   --
   -- **Warning:** This function may return sensitive data (e.g., API keys).
   -- Consider filtering before writing it to unsecured locations.
+  --
+  -- All fields in the returned table may be altered via kong.log.set_serialize_value
+  --
+  -- The following http authentication headers are redacted by default, if they appear in the request:
+  -- * `request.headers.authorization`
+  -- * `request.headers.proxy-authorization`
   --
   -- To see what content is present in your setup, enable any of the logging
   -- plugins (e.g., `file-log`) and the output written to the log file is the table
@@ -546,20 +707,6 @@ do
 
       local request_uri = var.request_uri or ""
 
-      local req_headers = okong.request.get_headers()
-      for _, header in ipairs(REDACTED_REQUEST_HEADERS) do
-        if req_headers[header] then
-          req_headers[header] = "REDACTED"
-        end
-      end
-
-      local resp_headers = ongx.resp.get_headers()
-      for _, header in ipairs(REDACTED_RESPONSE_HEADERS) do
-        if resp_headers[header] then
-          resp_headers[header] = "REDACTED"
-        end
-      end
-
       local host_port = ctx.host_port or var.server_port
 
       local request_size = var.request_length
@@ -572,20 +719,20 @@ do
         response_size = tonumber(response_size, 10)
       end
 
-      return {
+      return edit_result(ctx, {
         request = {
           uri = request_uri,
           url = var.scheme .. "://" .. var.host .. ":" .. host_port .. request_uri,
           querystring = okong.request.get_query(), -- parameters, as a table
           method = okong.request.get_method(), -- http method
-          headers = req_headers,
+          headers = okong.request.get_headers(),
           size = request_size,
           tls = request_tls
         },
         upstream_uri = var.upstream_uri,
         response = {
           status = ongx.status,
-          headers = resp_headers,
+          headers = ongx.resp.get_headers(),
           size = response_size,
         },
         tries = (ctx.balancer_data or {}).tries,
@@ -603,7 +750,7 @@ do
         consumer = ctx.authenticated_consumer,
         client_ip = var.remote_addr,
         started_at = req.start_time() * 1000
-      }
+      })
     end
 
   else
@@ -636,7 +783,7 @@ do
 
       local host_port = ctx.host_port or var.server_port
 
-      return {
+      return edit_result(ctx, {
         session = {
           tls = session_tls,
           received = tonumber(var.bytes_received, 10),
@@ -660,7 +807,7 @@ do
         consumer = ctx.authenticated_consumer,
         client_ip = var.remote_addr,
         started_at = req.start_time() * 1000
-      }
+      })
     end
   end
 end
@@ -714,6 +861,7 @@ local function new_log(namespace, format)
 
   self.inspect = new_inspect(format)
 
+  self.set_serialize_value = set_serialize_value
   self.serialize = serialize
 
   return setmetatable(self, _log_mt)

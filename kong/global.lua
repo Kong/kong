@@ -4,7 +4,7 @@ local PDK = require "kong.pdk"
 local phase_checker = require "kong.pdk.private.phases"
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
-
+local kong_constants = require "kong.constants"
 
 local type = type
 local setmetatable = setmetatable
@@ -15,6 +15,12 @@ local KONG_VERSION_NUM = tonumber(string.format("%d%.2d%.2d",
                                   meta._VERSION_TABLE.major * 100,
                                   meta._VERSION_TABLE.minor * 10,
                                   meta._VERSION_TABLE.patch))
+
+
+local LOCK_OPTS = {
+  exptime = 10,
+  timeout = 5,
+}
 
 
 -- Runloop interface
@@ -196,25 +202,26 @@ end
 function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
   local db_cache_ttl = kong_config.db_cache_ttl
   local db_cache_neg_ttl = kong_config.db_cache_neg_ttl
+  local page = 1
   local cache_pages = 1
+
   if kong_config.database == "off" then
     db_cache_ttl = 0
     db_cache_neg_ttl = 0
     cache_pages = 2
+    page = ngx.shared.kong:get(kong_constants.DECLARATIVE_PAGE_KEY) or page
   end
 
   return kong_cache.new {
-    shm_name          = "kong_db_cache",
-    cluster_events    = cluster_events,
-    worker_events     = worker_events,
-    ttl               = db_cache_ttl,
-    neg_ttl           = db_cache_neg_ttl or db_cache_ttl,
-    resurrect_ttl     = kong_config.resurrect_ttl,
-    cache_pages       = cache_pages,
-    resty_lock_opts   = {
-      exptime = 10,
-      timeout = 5,
-    },
+    shm_name        = "kong_db_cache",
+    cluster_events  = cluster_events,
+    worker_events   = worker_events,
+    ttl             = db_cache_ttl,
+    neg_ttl         = db_cache_neg_ttl or db_cache_ttl,
+    resurrect_ttl   = kong_config.resurrect_ttl,
+    page            = page,
+    cache_pages     = cache_pages,
+    resty_lock_opts = LOCK_OPTS,
   }
 end
 
@@ -222,25 +229,25 @@ end
 function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
   local db_cache_ttl = kong_config.db_cache_ttl
   local db_cache_neg_ttl = kong_config.db_cache_neg_ttl
+  local page = 1
   local cache_pages = 1
   if kong_config.database == "off" then
     db_cache_ttl = 0
     db_cache_neg_ttl = 0
     cache_pages = 2
+    page = ngx.shared.kong:get(kong_constants.DECLARATIVE_PAGE_KEY) or page
   end
 
   return kong_cache.new {
-    shm_name          = "kong_core_db_cache",
-    cluster_events    = cluster_events,
-    worker_events     = worker_events,
-    ttl               = db_cache_ttl,
-    neg_ttl           = db_cache_neg_ttl or db_cache_ttl,
-    resurrect_ttl     = kong_config.resurrect_ttl,
-    cache_pages       = cache_pages,
-    resty_lock_opts   = {
-      exptime = 10,
-      timeout = 5,
-    },
+    shm_name        = "kong_core_db_cache",
+    cluster_events  = cluster_events,
+    worker_events   = worker_events,
+    ttl             = db_cache_ttl,
+    neg_ttl         = db_cache_neg_ttl or db_cache_ttl,
+    resurrect_ttl   = kong_config.resurrect_ttl,
+    page            = page,
+    cache_pages     = cache_pages,
+    resty_lock_opts = LOCK_OPTS,
   }
 end
 

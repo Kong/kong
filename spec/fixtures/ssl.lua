@@ -1,16 +1,16 @@
 return {
-  -- Version: 1 (0x0)
-  -- ...
-  -- Issuer: C = US, ST = California, L = San Francisco, O = Kong, OU = Core, CN = ssl-example.com
-  -- Validity
-  --    Not Before: Apr 24 14:36:29 2020 GMT
-  --    Not After : Feb  7 14:36:29 2294 GMT
-  -- ...
-  --
-  -- Note: Version 1 was accomplished by using a openssl.cnf file
-  -- with the x509_extensions line commented out.
-  -- See https://stackoverflow.com/questions/26788244/how-to-create-a-legacy-v1-or-v2-x-509-cert-for-testing
-  -- and this line's commit message for more info
+  --[[
+  Version: 1 (0x0)
+  Issuer: C = US, ST = California, L = San Francisco, O = Kong, OU = Core, CN = ssl-example.com
+  Validity
+      Not Before: Apr 24 14:36:29 2020 GMT
+      Not After : Feb  7 14:36:29 2294 GMT
+
+  Note: Version 1 was accomplished by using a openssl.cnf file
+  with the x509_extensions line commented out.
+  See https://stackoverflow.com/questions/26788244/how-to-create-a-legacy-v1-or-v2-x-509-cert-for-testing
+  and this line's commit message for more info
+  --]]
   cert = [[-----BEGIN CERTIFICATE-----
 MIIFbTCCA1UCFGjFyapVZYpvpKuYDJbLA1YJip++MA0GCSqGSIb3DQEBCwUAMHIx
 CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4g
@@ -95,17 +95,46 @@ N7D4w5wpK/SHbjZBvSNp5kNlnqfDPjmfAwlGW1J6CBDcWWaEHWIcc4n3l2bCg3At
 LTLKB76sourXcEDVvZA6xrYv9GJukUqmc5SlHhJZQOhu48ITKXH18U7iuy8=
 -----END RSA PRIVATE KEY-----]],
 
-  -- Issuer: C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermidiate CA
-  --     Validity
-  --         Not Before: May  2 20:03:11 2019 GMT
-  --         Not After : Apr 28 20:03:11 2029 GMT
-  --     Subject: C = US, ST = California, O = Kong Testing, CN = foo@example.com
-  -- X509v3 Key Usage: critical
-  --     Digital Signature, Non Repudiation, Key Encipherment
-  -- X509v3 Extended Key Usage:
-  --     TLS Web Client Authentication, E-mail Protection
-  -- X509v3 Subject Alternative Name:
-  --     email:foo@example.com, email:bar@example.com
+  --[[
+  Signature Algorithm: ecdsa-with-SHA256
+  Issuer: C = US, ST = California, L = San Francisco, O = Kong, OU = Core, CN = ssl-example.com
+  Validity
+       Not Before: Nov 18 16:17:30 2020 GMT
+       Not After : Sep  3 16:17:30 2294 GMT
+  --]]
+  cert_ecdsa = [[-----BEGIN CERTIFICATE-----
+MIICPDCCAeGgAwIBAgIUOIK1sCtPyUL5h7vHdxpN5PhpukMwCgYIKoZIzj0EAwIw
+cjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcMDVNh
+biBGcmFuY2lzY28xDTALBgNVBAoMBEtvbmcxDTALBgNVBAsMBENvcmUxGDAWBgNV
+BAMMD3NzbC1leGFtcGxlLmNvbTAgFw0yMDExMTgxNjE3MzBaGA8yMjk0MDkwMzE2
+MTczMFowcjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNV
+BAcMDVNhbiBGcmFuY2lzY28xDTALBgNVBAoMBEtvbmcxDTALBgNVBAsMBENvcmUx
+GDAWBgNVBAMMD3NzbC1leGFtcGxlLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEH
+A0IABDFm7D+CfVzbkRyRTR/2DI4o1sOxDCdc1UEdbQkA5e6j5b4smyuW4xlZjVwV
+CXeADYvtpBaykzZ+NC5Zlf3EAkWjUzBRMB0GA1UdDgQWBBQcXSBVifOMnYaC632X
+NzdazHkuEjAfBgNVHSMEGDAWgBQcXSBVifOMnYaC632XNzdazHkuEjAPBgNVHRMB
+Af8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQDbSwXZ15UJ0hX/7KTKxd/mER7b
+s5oBurNijw1iPMyi+wIhALixa/LN3i+AykB4Jxj89scpXilIH+6q5fJI9exuaLtv
+-----END CERTIFICATE-----]],
+  key_ecdsa = [[-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIDCpckzH9Z6YpE48cmSIqcNXDZ29peoeMkFP2NqZb/MUoAoGCCqGSM49
+AwEHoUQDQgAEMWbsP4J9XNuRHJFNH/YMjijWw7EMJ1zVQR1tCQDl7qPlviybK5bj
+GVmNXBUJd4ANi+2kFrKTNn40LlmV/cQCRQ==
+-----END EC PRIVATE KEY-----]],
+
+  --[[
+  Issuer: C = US, ST = California, O = Kong Testing, CN = Kong Testing Intermidiate CA
+      Validity
+          Not Before: May  2 20:03:11 2019 GMT
+          Not After : Apr 28 20:03:11 2029 GMT
+      Subject: C = US, ST = California, O = Kong Testing, CN = foo@example.com
+  X509v3 Key Usage: critical
+      Digital Signature, Non Repudiation, Key Encipherment
+  X509v3 Extended Key Usage:
+      TLS Web Client Authentication, E-mail Protection
+  X509v3 Subject Alternative Name:
+      email:foo@example.com, email:bar@example.com
+  --]]
   cert_client = [[-----BEGIN CERTIFICATE-----
 MIIFIjCCAwqgAwIBAgICIAEwDQYJKoZIhvcNAQELBQAwYDELMAkGA1UEBhMCVVMx
 EzARBgNVBAgMCkNhbGlmb3JuaWExFTATBgNVBAoMDEtvbmcgVGVzdGluZzElMCMG
@@ -197,11 +226,11 @@ utJFRkc3FvrrkkeWHnyDQrPmAHjar94/xq1k1Vo+KQHQVQOrvtQt6KXK
 -----END RSA PRIVATE KEY-----]],
 
   --[[
-    Issuer: C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA
-    Validity
-        Not Before: Apr 13 23:48:41 2020 GMT
-        Not After : Apr 11 23:48:41 2030 GMT
-    Subject: C = US, ST = CA, O = Kong Testing, CN = example2.com
+  Issuer: C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA
+  Validity
+      Not Before: Apr 13 23:48:41 2020 GMT
+      Not After : Apr 11 23:48:41 2030 GMT
+  Subject: C = US, ST = CA, O = Kong Testing, CN = example2.com
   --]]
   cert_client2 = [[-----BEGIN CERTIFICATE-----
 MIIEJzCCAg8CFAQ6oTnLBUHbumx1bxyY9kV0W21BMA0GCSqGSIb3DQEBCwUAMFgx
@@ -258,13 +287,13 @@ LTsbLleJTc8CX0bI4SukQ7MVQsiHimzyEzx3eyLt1S8aBdJuRFZ2mg==
 
   --[[
   Issuer: C=US, ST=California, L=San Francisco, O=Mashape, OU=Kong, CN=ssl-alt.com
-        Validity
-            Not Before: May 24 23:46:58 2017 GMT
-            Not After : Jun 23 23:46:58 2017 GMT
-        Subject: C=US, ST=California, L=San Francisco, O=Mashape, OU=Kong, CN=ssl-alt.com
-        Subject Public Key Info:
-            Public Key Algorithm: rsaEncryption
-                Public-Key: (4096 bit)
+  Validity
+      Not Before: May 24 23:46:58 2017 GMT
+      Not After : Jun 23 23:46:58 2017 GMT
+  Subject: C=US, ST=California, L=San Francisco, O=Mashape, OU=Kong, CN=ssl-alt.com
+  Subject Public Key Info:
+      Public Key Algorithm: rsaEncryption
+          Public-Key: (4096 bit)
   --]]
   cert_alt = [[-----BEGIN CERTIFICATE-----
 MIIFXjCCA0YCCQCsb6B5OWdHXDANBgkqhkiG9w0BAQsFADBxMQswCQYDVQQGEwJV
@@ -351,14 +380,41 @@ MRz5bk6HBaxa2Twpa6yra+pobyWhRyU/X40wV7nUs3wd1vZNMjn0i8vXwnT6zdNv
 -----END RSA PRIVATE KEY-----]],
 
   --[[
+  Signature Algorithm: ecdsa-with-SHA256
+  Issuer: C = US, ST = California, L = San Francisco, O = Kong, OU = Core, CN = ssl-example.com
+  Validity
+      Not Before: Nov 18 16:49:53 2020 GMT
+      Not After : Sep  3 16:49:53 2294 GMT
+  --]]
+  cert_alt_ecdsa =  [[-----BEGIN CERTIFICATE-----
+MIICOjCCAeGgAwIBAgIUbsAIMsTeD3F1oNLKOyRabSN6O9EwCgYIKoZIzj0EAwIw
+cjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcMDVNh
+biBGcmFuY2lzY28xDTALBgNVBAoMBEtvbmcxDTALBgNVBAsMBENvcmUxGDAWBgNV
+BAMMD3NzbC1leGFtcGxlLmNvbTAgFw0yMDExMTgxNjQ5NTNaGA8yMjk0MDkwMzE2
+NDk1M1owcjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNV
+BAcMDVNhbiBGcmFuY2lzY28xDTALBgNVBAoMBEtvbmcxDTALBgNVBAsMBENvcmUx
+GDAWBgNVBAMMD3NzbC1leGFtcGxlLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEH
+A0IABCwjAZ7WZIwBJQOER5LB6g554ecpBVUnHKjYq8xiWU2+giX5pg4ros6rf3tv
+MMkc3aPYz87B7bwQlZ0Z2NC7iUujUzBRMB0GA1UdDgQWBBQzR6or+QaEVZxXrX5/
+BhgA7y5mjTAfBgNVHSMEGDAWgBQzR6or+QaEVZxXrX5/BhgA7y5mjTAPBgNVHRMB
+Af8EBTADAQH/MAoGCCqGSM49BAMCA0cAMEQCIEDzO105JmNu3RLib3DyIZ4TqDTF
+/iEr+t+W6+rZqiHuAiBvhIxGlLfkypQa9p4iNKRLmFcEk/S/shQ4d0hzd9SDbg==
+-----END CERTIFICATE-----]],
+  key_alt_ecdsa = [[-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIECo5oNJH83ZUFUm3SfjRHyPyRU5pJ5D1V0zk4KtrlNZoAoGCCqGSM49
+AwEHoUQDQgAELCMBntZkjAElA4RHksHqDnnh5ykFVSccqNirzGJZTb6CJfmmDiui
+zqt/e28wyRzdo9jPzsHtvBCVnRnY0LuJSw==
+-----END EC PRIVATE KEY-----]],
+
+  --[[
   Issuer: C = US, ST = California, L = San Francico, O = Kong Inc., CN = ssl-alt-alt.com
-        Validity
-            Not Before: Nov 18 07:28:56 2018 GMT
-            Not After : Dec 18 07:28:56 2018 GMT
-        Subject: C = US, ST = California, L = San Francico, O = Kong Inc., CN = ssl-alt-alt.com
-        Subject Public Key Info:
-            Public Key Algorithm: rsaEncryption
-                Public-Key: (2048 bit)
+  Validity
+      Not Before: Nov 18 07:28:56 2018 GMT
+      Not After : Dec 18 07:28:56 2018 GMT
+  Subject: C = US, ST = California, L = San Francico, O = Kong Inc., CN = ssl-alt-alt.com
+  Subject Public Key Info:
+      Public Key Algorithm: rsaEncryption
+          Public-Key: (2048 bit)
   --]]
   cert_alt_alt = [[-----BEGIN CERTIFICATE-----
 MIIDpDCCAoygAwIBAgIJAIAQMZH+2V26MA0GCSqGSIb3DQEBCwUAMGcxCzAJBgNV
@@ -412,15 +468,46 @@ IqGzqSWne1tW86drBcfSip714wsZOoF8PT6iUCa0LC1sum1P4vS2cnRw8jXwIL6g
 gEuhDrQHJ5V1U/Qc1HrqWYH4cA==
 -----END PRIVATE KEY-----]],
 
-  -- Issuer: C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA
-  -- Validity
-  --     Not Before: May  2 19:34:42 2019 GMT
-  --     Not After : Apr 27 19:34:42 2039 GMT
-  -- Subject: C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA
-  -- X509v3 Basic Constraints: critical
-  --     CA:TRUE
-  -- X509v3 Key Usage: critical
-  --     Digital Signature, Certificate Sign, CRL Sign
+  --[[
+  Signature Algorithm: ecdsa-with-SHA256
+  Issuer: C = US, ST = California, L = San Francisco, O = Kong, OU = Core, CN = ssl-alt-alt.com
+  Validity
+      Not Before: Nov 25 14:47:53 2020 GMT
+      Not After : Sep 10 14:47:53 2294 GMT
+  Subject: C = US, ST = California, L = San Francisco, O = Kong, OU = Core, CN = ssl-alt-alt.com
+  --]]
+  cert_alt_alt_ecdsa = [[-----BEGIN CERTIFICATE-----
+MIICPDCCAeGgAwIBAgIUUN+dYLgQkk8az6KLufNic5LFKrYwCgYIKoZIzj0EAwIw
+cjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcMDVNh
+biBGcmFuY2lzY28xDTALBgNVBAoMBEtvbmcxDTALBgNVBAsMBENvcmUxGDAWBgNV
+BAMMD3NzbC1hbHQtYWx0LmNvbTAgFw0yMDExMjUxNDQ3NTNaGA8yMjk0MDkxMDE0
+NDc1M1owcjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNV
+BAcMDVNhbiBGcmFuY2lzY28xDTALBgNVBAoMBEtvbmcxDTALBgNVBAsMBENvcmUx
+GDAWBgNVBAMMD3NzbC1hbHQtYWx0LmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEH
+A0IABKnmBOy/odm9rUNVTz2vMzGtXVnodngWFY7wf2W99aLcDLz32WNg10oYdGKW
+MuPCtO6vwWGgOi+/mYSToEU7U0qjUzBRMB0GA1UdDgQWBBQtbY0EZpt9Nlf2spRC
+IfphGjYmijAfBgNVHSMEGDAWgBQtbY0EZpt9Nlf2spRCIfphGjYmijAPBgNVHRMB
+Af8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQC7MFmBMdan3DIsgzLDDwTOLkOI
++Vj2qMdBL4XRWt9c6gIhAMAbZ8M3kMTxPuI+bjZ31Zuu+bGg0Quo4EgU8yMmhJLt
+-----END CERTIFICATE-----]],
+
+  key_alt_alt_ecdsa = [[-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEILefTUI90Vsu3JV1WZVrYgl82HbAICC/9/sMIL6j1RThoAoGCCqGSM49
+AwEHoUQDQgAEqeYE7L+h2b2tQ1VPPa8zMa1dWeh2eBYVjvB/Zb31otwMvPfZY2DX
+Shh0YpYy48K07q/BYaA6L7+ZhJOgRTtTSg==
+-----END EC PRIVATE KEY-----]],
+
+  --[[
+  Issuer: C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA
+  Validity
+      Not Before: May  2 19:34:42 2019 GMT
+      Not After : Apr 27 19:34:42 2039 GMT
+  Subject: C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA
+  X509v3 Basic Constraints: critical
+      CA:TRUE
+  X509v3 Key Usage: critical
+      Digital Signature, Certificate Sign, CRL Sign
+  --]]
   cert_ca = [[-----BEGIN CERTIFICATE-----
 MIIFoTCCA4mgAwIBAgIUQDBLwIychoRbVRO44IzBBk9R4oYwDQYJKoZIhvcNAQEL
 BQAwWDELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFTATBgNVBAoM

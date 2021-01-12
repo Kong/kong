@@ -1,4 +1,4 @@
-local cache_warmup = require("kong.cache_warmup")
+local cache_warmup = require("kong.cache.warmup")
 
 
 local function mock_entity(db_data, entity_name, cache_key)
@@ -134,13 +134,51 @@ describe("cache_warmup", function()
 
     assert.truthy(cache_warmup.execute({"my_entity", "routes"}))
 
-    assert.match("the 'routes' entry is ignored", logged_notices[1], 1, true)
+    assert.match("the 'routes' entity is ignored", logged_notices[1], 1, true)
 
     assert.same(kong.cache:get("111").bbb, 222)
     assert.same(kong.cache:get("333").bbb, 444)
     assert.same(kong.cache:get("555", nil, function() return "nope" end), "nope")
     assert.same(kong.cache:get("777", nil, function() return "nope" end), "nope")
   end)
+
+
+  it("does not cache plugins", function()
+    local cache_table = {}
+    local logged_notices = {}
+    local db_data = {
+      ["my_entity"] = {
+        { aaa = 111, bbb = 222 },
+        { aaa = 333, bbb = 444 },
+      },
+      ["plugins"] = {
+        { xxx = 555, yyy = 666 },
+        { xxx = 777, yyy = 888 },
+      }
+    }
+
+    local kong = {
+      db = {
+        my_entity = mock_entity(db_data, "my_entity", "aaa"),
+        plugins = mock_entity(db_data, "plugins", "xxx"),
+      },
+      core_cache = mock_cache(cache_table),
+      cache = mock_cache({}),
+      log = mock_log(nil, logged_notices),
+    }
+
+    cache_warmup._mock_kong(kong)
+
+    assert.truthy(cache_warmup.execute({"my_entity", "plugins"}))
+
+    assert.match("the 'plugins' entity is ignored", logged_notices[1], 1, true)
+
+    assert.same(kong.cache:get("111").bbb, 222)
+    assert.same(kong.cache:get("333").bbb, 444)
+    assert.same(kong.cache:get("555", nil, function() return "nope" end), "nope")
+    assert.same(kong.cache:get("777", nil, function() return "nope" end), "nope")
+  end)
+
 
   it("warms up DNS when caching services", function()
     local cache_table = {}

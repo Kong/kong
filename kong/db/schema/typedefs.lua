@@ -6,19 +6,13 @@ local openssl_x509 = require "resty.openssl.x509"
 local Schema = require "kong.db.schema"
 local socket_url = require "socket.url"
 local constants = require "kong.constants"
-local px = require "resty.mediador.proxy"
-local ipmatcher = require "resty.ipmatcher"
 
 
-local tostring = tostring
 local pairs = pairs
-local pcall = pcall
 local match = string.match
 local gsub = string.gsub
-local find = string.find
 local null = ngx.null
 local type = type
-local sub = string.sub
 
 
 local function validate_host(host)
@@ -42,56 +36,29 @@ end
 
 
 local function validate_ip(ip)
-  local res, err = utils.normalize_ip(ip)
-  if not res then
-    return nil, err
-  end
-
-  if res.type == "name" then
-    return nil, "not an ip address: " .. ip
-  end
-
-  return true
-end
-
-
-local function validate_ip_or_cidr(ip)
-  local pok, perr = pcall(px.compile, ip)
-
-  if pok and type(perr) == "function" then
+  if utils.is_valid_ip(ip) then
     return true
   end
 
-  return nil, "invalid ip or cidr range: '" .. ip .. "'"
+  return nil, "not an ip address: " .. ip
 end
 
 
-local validate_cidr_v4
-do
-  local ip4_cidrs = {}
-  for i = 0, 32 do
-    ip4_cidrs[tostring(i)] = true
+local function validate_ip_or_cidr(ip_or_cidr)
+  if utils.is_valid_ip_or_cidr(ip_or_cidr) then
+    return true
   end
 
-  validate_cidr_v4 = function(ip_or_cidr)
-    local is_ipv4 = ipmatcher.parse_ipv4(ip_or_cidr)
-    if is_ipv4 then
-      return true
-    end
+  return nil, "invalid ip or cidr range: '" .. ip_or_cidr .. "'"
+end
 
-    local p = find(ip_or_cidr, "/", 1, true)
-    if not p then
-      return nil, "invalid ipv4 cidr range: '" .. ip_or_cidr .. "'"
-    end
 
-    local ip = sub(ip_or_cidr, 1, p - 1)
-    local block = sub(ip_or_cidr, p + 1)
-    if ipmatcher.parse_ipv4(ip) and ip4_cidrs[block] then
-      return true
-    end
-
-    return nil, "invalid ipv4 cidr range: '" .. ip_or_cidr .. "'"
+local function validate_ip_or_cidr_v4(ip_or_cidr_v4)
+  if utils.is_valid_ip_or_cidr_v4(ip_or_cidr_v4) then
+    return true
   end
+
+  return nil, "invalid ipv4 cidr range: '" .. ip_or_cidr_v4 .. "'"
 end
 
 
@@ -125,6 +92,24 @@ local function validate_name(name)
     return nil,
     "invalid value '" .. name ..
       "': it must only contain alphanumeric and '., -, _, ~' characters"
+  end
+
+  return true
+end
+
+
+local function validate_utf8_name(name)
+
+  local ok, index = utils.validate_utf8(name)
+
+  if not ok then
+    return nil, "invalid utf-8 character sequence detected at position " .. tostring(index)
+  end
+
+  if not match(name, "^[%w%.%-%_~\128-\244]+$") then
+    return nil,
+    "invalid value '" .. name ..
+      "': the only accepted ascii characters are alphanumerics or ., -, _, and ~"
   end
 
   return true
@@ -264,9 +249,10 @@ typedefs.ip_or_cidr = Schema.define {
   custom_validator = validate_ip_or_cidr,
 }
 
+-- TODO: this seems to allow ipv4s too, should it?
 typedefs.cidr_v4 = Schema.define {
   type = "string",
-  custom_validator = validate_cidr_v4,
+  custom_validator = validate_ip_or_cidr_v4,
 }
 
 -- deprecated alias
@@ -352,6 +338,13 @@ typedefs.name = Schema.define {
   type = "string",
   unique = true,
   custom_validator = validate_name
+}
+
+
+typedefs.utf8_name = Schema.define {
+  type = "string",
+  unique = true,
+  custom_validator = validate_utf8_name
 }
 
 
@@ -521,15 +514,7 @@ typedefs.no_paths = Schema.define(typedefs.paths { eq = null })
 
 typedefs.headers = Schema.define {
   type = "map",
-  keys = {
-    type = "string",
-    match_none = {
-      {
-        pattern = "^[Hh][Oo][Ss][Tt]$",
-        err = "cannot contain 'host' header, which must be specified in the 'hosts' attribute",
-      },
-    },
-  },
+  keys = typedefs.header_name,
   values = {
     type = "array",
     elements = {
@@ -539,6 +524,20 @@ typedefs.headers = Schema.define {
 }
 
 typedefs.no_headers = Schema.define(typedefs.headers { eq = null } )
+
+typedefs.semantic_version = Schema.define {
+  type = "string",
+  match_any = {
+    patterns = { "^%d+[%.%d]*$", "^%d+[%.%d]*%-?.*$", },
+    err = "invalid version number: must be in format of X.Y.Z",
+  },
+  match_none = {
+    {
+      pattern = "%.%.",
+      err = "must not have empty version segments"
+    },
+  },
+}
 
 setmetatable(typedefs, {
   __index = function(_, k)

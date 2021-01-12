@@ -1,6 +1,7 @@
 local default_nginx_template = require "kong.templates.nginx"
 local kong_nginx_template = require "kong.templates.nginx_kong"
 local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
+local system_constants = require "lua_system_constants"
 local openssl_bignum = require "resty.openssl.bn"
 local openssl_rand = require "resty.openssl.rand"
 local openssl_pkey = require "resty.openssl.pkey"
@@ -19,6 +20,68 @@ local ffi = require "ffi"
 local bit = require "bit"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
+
+local tonumber = tonumber
+local tostring = tostring
+local assert = assert
+local string = string
+local ipairs = ipairs
+local pairs = pairs
+local table = table
+local type = type
+local math = math
+local io = io
+local os = os
+
+
+local function pre_create_private_file(file)
+  local fd = ffi.C.open(file, bit.bor(system_constants.O_RDONLY(),
+                                      system_constants.O_CREAT()),
+                              bit.bor(system_constants.S_IRUSR(),
+                                      system_constants.S_IWUSR()))
+  if fd == -1 then
+    log.warn("unable to pre-create '", file ,"' file: ",
+             ffi.string(ffi.C.strerror(ffi.errno())))
+
+  else
+    ffi.C.close(fd)
+  end
+end
+
+
+local function gen_default_dhparams(kong_config)
+  for _, name in ipairs({ kong_config.nginx_http_ssl_dhparam, kong_config.nginx_stream_ssl_dhparam }) do
+    local pem
+    if name then
+      pem = openssl_pkey.paramgen({
+        type = "DH",
+        group = name,
+      })
+    end
+
+    if pem then
+      local ssl_path = pl_path.join(kong_config.prefix, "ssl")
+      if not pl_path.exists(ssl_path) then
+        local ok, err = pl_dir.makepath(ssl_path)
+        if not ok then
+          return nil, err
+        end
+      end
+
+      local param_file = pl_path.join(ssl_path, name .. ".pem")
+      if not pl_path.exists(param_file) then
+        log.verbose("generating %s DH parameters", name)
+        local fd = assert(io.open(param_file, "w+b"))
+        assert(fd:write(pem))
+        fd:close()
+      end
+    end
+  end
+
+  return true
+end
+
+
 local function gen_default_ssl_cert(kong_config, target)
   -- create SSL folder
   local ok, err = pl_dir.makepath(pl_path.join(kong_config.prefix, "ssl"))
@@ -26,78 +89,86 @@ local function gen_default_ssl_cert(kong_config, target)
     return nil, err
   end
 
-  local ssl_cert, ssl_cert_key
-  if target == "admin" then
-    ssl_cert = kong_config.admin_ssl_cert_default
-    ssl_cert_key = kong_config.admin_ssl_cert_key_default
+  for _, suffix in ipairs({ "", "_ecdsa" }) do
+    local ssl_cert, ssl_cert_key
+    if target == "admin" then
+      ssl_cert = kong_config["admin_ssl_cert_default" .. suffix]
+      ssl_cert_key = kong_config["admin_ssl_cert_key_default" .. suffix]
 
-  elseif target == "status" then
-    ssl_cert = kong_config.status_ssl_cert_default
-    ssl_cert_key = kong_config.status_ssl_cert_key_default
+    elseif target == "status" then
+      ssl_cert = kong_config["status_ssl_cert_default" .. suffix]
+      ssl_cert_key = kong_config["status_ssl_cert_key_default" .. suffix]
 
-  else
-    ssl_cert = kong_config.ssl_cert_default
-    ssl_cert_key = kong_config.ssl_cert_key_default
-  end
-
-  if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
-    log.verbose("generating %s SSL certificate and key", target or "default")
-
-    local key = openssl_pkey.new { bits = 2048 }
-
-    local crt = x509.new()
-    assert(crt:set_pubkey(key))
-    assert(crt:set_version(3))
-    assert(crt:set_serial_number(openssl_bignum.from_binary(openssl_rand.bytes(16))))
-
-    -- last for 20 years
-    local now = os.time()
-    assert(crt:set_not_before(now))
-    assert(crt:set_not_after(now + 86400 * 20 * 365))
-
-    local name = assert(x509_name.new()
-      :add("C", "US")
-      :add("ST", "California")
-      :add("L", "San Francisco")
-      :add("O", "Kong")
-      :add("OU", "IT Department")
-      :add("CN", "localhost"))
-
-    assert(crt:set_subject_name(name))
-    assert(crt:set_issuer_name(name))
-
-    -- Not a CA
-    assert(crt:set_basic_constraints { CA = false })
-    assert(crt:set_basic_constraints_critical(true))
-
-    -- Only allowed to be used for TLS connections (client or server)
-    assert(crt:add_extension(x509_extension.new("extendedKeyUsage",
-                                                "serverAuth,clientAuth")))
-
-    -- RFC-3280 4.2.1.2
-    assert(crt:add_extension(x509_extension.new("subjectKeyIdentifier", "hash", {
-      subject = crt
-    })))
-
-    -- All done; sign
-    assert(crt:sign(key))
-
-    do -- write key out
-      local fd = assert(io.open(ssl_cert_key, "w+b"))
-      local pem = assert(key:to_PEM("private"))
-      assert(fd:write(pem))
-      fd:close()
+    else
+      ssl_cert = kong_config["ssl_cert_default" .. suffix]
+      ssl_cert_key = kong_config["ssl_cert_key_default" .. suffix]
     end
 
-    do -- write cert out
-      local fd = assert(io.open(ssl_cert, "w+b"))
-      local pem = assert(crt:to_PEM("private"))
-      assert(fd:write(pem))
-      fd:close()
-    end
+    if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
+      log.verbose("generating %s SSL certificate (", ssl_cert, ") and key (", ssl_cert_key, ") for ", target or "proxy", " listener")
 
-  else
-    log.verbose("%s SSL certificate found at %s", target or "default", ssl_cert)
+      local key
+      if suffix == "_ecdsa" then
+        key = openssl_pkey.new { type = "EC", curve = "prime256v1" }
+      else
+        key = openssl_pkey.new { bits = 2048 }
+      end
+
+      local crt = x509.new()
+      assert(crt:set_pubkey(key))
+      assert(crt:set_version(3))
+      assert(crt:set_serial_number(openssl_bignum.from_binary(openssl_rand.bytes(16))))
+
+      -- last for 20 years
+      local now = os.time()
+      assert(crt:set_not_before(now))
+      assert(crt:set_not_after(now + 86400 * 20 * 365))
+
+      local name = assert(x509_name.new()
+        :add("C", "US")
+        :add("ST", "California")
+        :add("L", "San Francisco")
+        :add("O", "Kong")
+        :add("OU", "IT Department")
+        :add("CN", "localhost"))
+
+      assert(crt:set_subject_name(name))
+      assert(crt:set_issuer_name(name))
+
+      -- Not a CA
+      assert(crt:set_basic_constraints { CA = false })
+      assert(crt:set_basic_constraints_critical(true))
+
+      -- Only allowed to be used for TLS connections (client or server)
+      assert(crt:add_extension(x509_extension.new("extendedKeyUsage",
+                                                  "serverAuth,clientAuth")))
+
+      -- RFC-3280 4.2.1.2
+      assert(crt:add_extension(x509_extension.new("subjectKeyIdentifier", "hash", {
+        subject = crt
+      })))
+
+      -- All done; sign
+      assert(crt:sign(key))
+
+      do -- write key out
+        pre_create_private_file(ssl_cert_key)
+        local fd = assert(io.open(ssl_cert_key, "w+b"))
+        local pem = assert(key:to_PEM("private"))
+        assert(fd:write(pem))
+        fd:close()
+      end
+
+      do -- write cert out
+        local fd = assert(io.open(ssl_cert, "w+b"))
+        local pem = assert(crt:to_PEM())
+        assert(fd:write(pem))
+        fd:close()
+      end
+
+    else
+      log.verbose("%s SSL certificate found at %s", target or "default", ssl_cert)
+    end
   end
 
   return true
@@ -145,7 +216,7 @@ local function compile_conf(kong_config, conf_template)
   do
     local worker_rlimit_nofile_auto
     if kong_config.nginx_main_directives then
-      for _, directive in pairs(kong_config.nginx_main_directives) do
+      for _, directive in ipairs(kong_config.nginx_main_directives) do
         if directive.name == "worker_rlimit_nofile" then
           if directive.value == "auto" then
             worker_rlimit_nofile_auto = directive
@@ -157,7 +228,7 @@ local function compile_conf(kong_config, conf_template)
 
     local worker_connections_auto
     if kong_config.nginx_events_directives then
-      for _, directive in pairs(kong_config.nginx_events_directives) do
+      for _, directive in ipairs(kong_config.nginx_events_directives) do
         if directive.name == "worker_connections" then
           if directive.value == "auto" then
             worker_connections_auto = directive
@@ -296,37 +367,36 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   end
 
   -- generate default SSL certs if needed
-  if not kong_config.ssl_cert and not kong_config.ssl_cert_key and
-    (kong_config.proxy_ssl_enabled or kong_config.stream_listeners[1] ~= nil) then
-    log.verbose("SSL enabled, no custom certificate set: using default certificate")
-    local ok, err = gen_default_ssl_cert(kong_config)
-    if not ok then
-      return nil, err
-    end
-    kong_config.ssl_cert = kong_config.ssl_cert_default
-    kong_config.ssl_cert_key = kong_config.ssl_cert_key_default
-  end
+  do
+    for _, target in ipairs({ "proxy", "admin", "status" }) do
+      local ssl_enabled = kong_config[target .. "_ssl_enabled"]
+      if not ssl_enabled and target == "proxy" then
+        ssl_enabled = kong_config.stream_proxy_ssl_enabled
+      end
 
-  if kong_config.admin_ssl_enabled and not kong_config.admin_ssl_cert and
-     not kong_config.admin_ssl_cert_key then
-    log.verbose("Admin SSL enabled, no custom certificate set: using default certificate")
-    local ok, err = gen_default_ssl_cert(kong_config, "admin")
-    if not ok then
-      return nil, err
-    end
-    kong_config.admin_ssl_cert = kong_config.admin_ssl_cert_default
-    kong_config.admin_ssl_cert_key = kong_config.admin_ssl_cert_key_default
-  end
+      local prefix
+      if target == "proxy" then
+        prefix = ""
+      else
+        prefix = target .. "_"
+      end
 
-  if kong_config.status_ssl_enabled and not kong_config.status_ssl_cert and
-     not kong_config.status_ssl_cert_key then
-    log.verbose("Status SSL enabled, no custom certificate set: using default certificate")
-    local ok, err = gen_default_ssl_cert(kong_config, "status")
-    if not ok then
-      return nil, err
+      local ssl_cert = kong_config[prefix .. "ssl_cert"]
+      local ssl_cert_key = kong_config[prefix .. "ssl_cert_key"]
+
+      if ssl_enabled and #ssl_cert == 0 and #ssl_cert_key == 0 then
+        log.verbose("SSL enabled on ", target, ", no custom certificate set: using default certificates")
+        local ok, err = gen_default_ssl_cert(kong_config, target)
+        if not ok then
+          return nil, err
+        end
+
+        ssl_cert[1]     = kong_config[prefix .. "ssl_cert_default"]
+        ssl_cert_key[1] = kong_config[prefix .. "ssl_cert_key_default"]
+        ssl_cert[2]     = kong_config[prefix .. "ssl_cert_default_ecdsa"]
+        ssl_cert_key[2] = kong_config[prefix .. "ssl_cert_key_default_ecdsa"]
+      end
     end
-    kong_config.status_ssl_cert = kong_config.status_ssl_cert_default
-    kong_config.status_ssl_cert_key = kong_config.status_ssl_cert_key_default
   end
 
   if kong_config.lua_ssl_trusted_certificate_combined then
@@ -351,6 +421,14 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
       return nil, "no such file: " .. nginx_custom_template_path
     end
     nginx_template = pl_file.read(nginx_custom_template_path)
+  end
+
+  if kong_config.proxy_ssl_enabled or
+     kong_config.stream_proxy_ssl_enabled or
+     kong_config.admin_ssl_enabled or
+     kong_config.status_ssl_enabled
+  then
+    gen_default_dhparams(kong_config)
   end
 
   -- write NGINX conf

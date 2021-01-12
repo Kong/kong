@@ -48,10 +48,12 @@ describe("Configuration loader", function()
     assert.equal("auto", conf.nginx_main_worker_processes)
     assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 http2 ssl reuseport backlog=16384"}, conf.admin_listen)
     assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 http2 ssl reuseport backlog=16384"}, conf.proxy_listen)
-    assert.is_nil(conf.ssl_cert) -- check placeholder value
-    assert.is_nil(conf.ssl_cert_key)
-    assert.is_nil(conf.admin_ssl_cert)
-    assert.is_nil(conf.admin_ssl_cert_key)
+    assert.same({}, conf.ssl_cert) -- check placeholder value
+    assert.same({}, conf.ssl_cert_key)
+    assert.same({}, conf.admin_ssl_cert)
+    assert.same({}, conf.admin_ssl_cert_key)
+    assert.same({}, conf.status_ssl_cert)
+    assert.same({}, conf.status_ssl_cert_key)
     assert.is_nil(getmetatable(conf))
   end)
   it("loads a given file, with higher precedence", function()
@@ -779,6 +781,25 @@ describe("Configuration loader", function()
           assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
           assert.is_nil(conf)
         end)
+        it("requires SSL DH param file to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            ssl_cipher_suite = "custom",
+            ssl_dhparam = "/path/dhparam.pem"
+          })
+          assert.equal(1, #errors)
+          assert.contains("ssl_dhparam: no such file at /path/dhparam.pem", errors)
+          assert.is_nil(conf)
+
+          conf, _, errors = conf_loader(nil, {
+            ssl_cipher_suite = "custom",
+            nginx_http_ssl_dhparam = "/path/dhparam-http.pem",
+            nginx_stream_ssl_dhparam = "/path/dhparam-stream.pem",
+          })
+          assert.equal(2, #errors)
+          assert.contains("nginx_http_ssl_dhparam: no such file at /path/dhparam-http.pem", errors)
+          assert.contains("nginx_stream_ssl_dhparam: no such file at /path/dhparam-stream.pem", errors)
+          assert.is_nil(conf)
+        end)
         it("requires trusted CA cert file to exist", function()
           local conf, _, errors = conf_loader(nil, {
             lua_ssl_trusted_certificate = "/path/cert.pem",
@@ -829,8 +850,10 @@ describe("Configuration loader", function()
           })
           assert.is_nil(err)
           assert.is_table(conf)
-          assert.True(helpers.path.isabs(conf.ssl_cert))
-          assert.True(helpers.path.isabs(conf.ssl_cert_key))
+          for i = 1, #conf.ssl_cert do
+            assert.True(helpers.path.isabs(conf.ssl_cert[i]))
+            assert.True(helpers.path.isabs(conf.ssl_cert_key[i]))
+          end
         end)
         it("defines ssl_ciphers by default", function()
           local conf, err = conf_loader(nil, {})
@@ -867,6 +890,36 @@ describe("Configuration loader", function()
           })
           assert.is_nil(err)
           assert.same(nil, conf.ssl_ciphers)
+        end)
+        it("defines ssl_dhparam with default cipher suite", function()
+          local conf, err = conf_loader()
+          assert.is_nil(err)
+          assert.equal("ffdhe2048", conf.nginx_http_ssl_dhparam)
+          assert.equal("ffdhe2048", conf.nginx_stream_ssl_dhparam)
+        end)
+        it("defines ssl_dhparam with intermediate cipher suite", function()
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "intermediate",
+          })
+          assert.is_nil(err)
+          assert.equal("ffdhe2048", conf.nginx_http_ssl_dhparam)
+          assert.equal("ffdhe2048", conf.nginx_stream_ssl_dhparam)
+        end)
+        it("doesn't define ssl_dhparam with modern cipher suite", function()
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "modern",
+          })
+          assert.is_nil(err)
+          assert.equal(nil, conf.nginx_http_ssl_dhparam)
+          assert.equal(nil, conf.nginx_stream_ssl_dhparam)
+        end)
+        it("doesn't define ssl_dhparam with old cipher suite (#todo)", function()
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "old",
+          })
+          assert.is_nil(err)
+          assert.equal(nil, conf.nginx_http_ssl_dhparam)
+          assert.equal(nil, conf.nginx_stream_ssl_dhparam)
         end)
       end)
       describe("client", function()
@@ -986,8 +1039,83 @@ describe("Configuration loader", function()
           })
           assert.is_nil(err)
           assert.is_table(conf)
-          assert.True(helpers.path.isabs(conf.admin_ssl_cert))
-          assert.True(helpers.path.isabs(conf.admin_ssl_cert_key))
+          for i = 1, #conf.admin_ssl_cert do
+            assert.True(helpers.path.isabs(conf.admin_ssl_cert[i]))
+            assert.True(helpers.path.isabs(conf.admin_ssl_cert_key[i]))
+          end
+        end)
+      end)
+      describe("status", function()
+        it("does not check SSL cert and key if SSL is off", function()
+          local conf, err = conf_loader(nil, {
+            status_listen = "127.0.0.1:123",
+            status_ssl_cert = "/path/cert.pem"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+          -- specific case with 'ssl' in the name
+          local conf, err = conf_loader(nil, {
+            status_listen = "ssl:23",
+            status_ssl_cert = "/path/cert.pem"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+        end)
+        it("requires both status SSL cert and key", function()
+          local conf, err = conf_loader(nil, {
+            status_listen = "127.0.0.1:123 ssl",
+            status_ssl_cert = "/path/cert.pem"
+          })
+          assert.equal("status_ssl_cert_key must be specified", err)
+          assert.is_nil(conf)
+
+          conf, err = conf_loader(nil, {
+            status_listen = "127.0.0.1:123 ssl",
+            status_ssl_cert_key = "/path/key.pem"
+          })
+          assert.equal("status_ssl_cert must be specified", err)
+          assert.is_nil(conf)
+
+          conf, err = conf_loader(nil, {
+            status_listen = "127.0.0.1:123 ssl",
+            status_ssl_cert = "spec/fixtures/kong_spec.crt",
+            status_ssl_cert_key = "spec/fixtures/kong_spec.key"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+        end)
+        it("requires SSL cert and key to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            status_listen = "127.0.0.1:123 ssl",
+            status_ssl_cert = "/path/cert.pem",
+            status_ssl_cert_key = "/path/cert_key.pem"
+          })
+          assert.equal(2, #errors)
+          assert.contains("status_ssl_cert: no such file at /path/cert.pem", errors)
+          assert.contains("status_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.is_nil(conf)
+
+          conf, _, errors = conf_loader(nil, {
+            status_listen = "127.0.0.1:123 ssl",
+            status_ssl_cert = "spec/fixtures/kong_spec.crt",
+            status_ssl_cert_key = "/path/cert_key.pem"
+          })
+          assert.equal(1, #errors)
+          assert.contains("status_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.is_nil(conf)
+        end)
+        it("resolves SSL cert/key to absolute path", function()
+          local conf, err = conf_loader(nil, {
+            status_listen = "127.0.0.1:123 ssl",
+            status_ssl_cert = "spec/fixtures/kong_spec.crt",
+            status_ssl_cert_key = "spec/fixtures/kong_spec.key"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+          for i = 1, #conf.status_ssl_cert do
+            assert.True(helpers.path.isabs(conf.status_ssl_cert[i]))
+            assert.True(helpers.path.isabs(conf.status_ssl_cert_key[i]))
+          end
         end)
       end)
     end)

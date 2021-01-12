@@ -443,7 +443,8 @@ describe("Admin API #" .. strategy, function()
 
         end)
 
-        it("returns UNHEALTHY if failure detected", function()
+        -- FIXME this test is flaky in CI only
+        it("#flaky returns UNHEALTHY if failure detected", function()
 
           local targets = add_targets("custom_localhost:222%d")
 

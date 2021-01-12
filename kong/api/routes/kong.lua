@@ -1,4 +1,3 @@
-local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
@@ -6,7 +5,6 @@ local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
 
-local sub = string.sub
 local kong = kong
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
@@ -52,17 +50,38 @@ return {
 
       do
         local kong_shm = ngx.shared.kong
-        local shm_prefix = "pid: "
-        local keys, err = kong_shm:get_keys()
-        if not keys then
-          ngx.log(ngx.ERR, "could not get kong shm keys: ", err)
+
+        local master_pid, err = kong_shm:get("pids:master")
+        if not master_pid then
+          err = err or "not found"
+          ngx.log(ngx.ERR, "could not get master process id: ", err)
+
         else
-          for i = 1, #keys do
-            if sub(keys[i], 1, #shm_prefix) == shm_prefix then
-              prng_seeds[keys[i]], err = kong_shm:get(keys[i])
-              if err then
-                ngx.log(ngx.ERR, "could not get PRNG seed from kong shm")
-              end
+          local master_seed, err = kong_shm:get("seeds:" .. master_pid)
+          if not master_seed then
+            err = err or "not found"
+            ngx.log(ngx.ERR, "could not get process id for master process: ", err)
+
+          else
+            prng_seeds["pid: " .. master_pid] = master_seed
+          end
+        end
+
+        local worker_count = ngx.worker.count() - 1
+        for i = 0, worker_count do
+          local worker_pid, err = kong_shm:get("pids:" .. i)
+          if not worker_pid then
+            err = err or "not found"
+            ngx.log(ngx.ERR, "could not get worker process id for worker #", i , ": ", err)
+
+          else
+            local worker_seed, err = kong_shm:get("seeds:" .. worker_pid)
+            if not worker_seed then
+              err = err or "not found"
+              ngx.log(ngx.ERR, "could not get PRNG seed for worker #", i, ":", err)
+
+            else
+              prng_seeds["pid: " .. worker_pid] = worker_seed
             end
           end
         end
@@ -76,7 +95,7 @@ return {
       return kong.response.exit(200, {
         tagline = tagline,
         version = version,
-        hostname = utils.get_hostname(),
+        hostname = knode.get_hostname(),
         node_id = node_id,
         timers = {
           running = ngx.timer.running_count(),

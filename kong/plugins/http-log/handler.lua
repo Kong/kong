@@ -2,6 +2,7 @@ local BatchQueue = require "kong.tools.batch_queue"
 local cjson = require "cjson"
 local url = require "socket.url"
 local http = require "resty.http"
+local table_clear = require "table.clear"
 
 
 local kong = kong
@@ -11,10 +12,15 @@ local tostring = tostring
 local tonumber = tonumber
 local concat = table.concat
 local fmt = string.format
+local pairs = pairs
 
 
 local queues = {} -- one queue per unique plugin config
 local parsed_urls_cache = {}
+local headers_cache = {}
+local params_cache = {
+  headers = headers_cache,
+}
 
 
 -- Parse host url.
@@ -76,20 +82,28 @@ local function send_payload(self, conf, payload)
     end
   end
 
-  local res, err = httpc:request({
-    method = method,
-    path = parsed_url.path,
-    query = parsed_url.query,
-    headers = {
-      ["Host"] = parsed_url.host,
-      ["Content-Type"] = content_type,
-      ["Content-Length"] = #payload,
-      ["Authorization"] = parsed_url.userinfo and (
-        "Basic " .. encode_base64(parsed_url.userinfo)
-      ),
-    },
-    body = payload,
-  })
+  table_clear(headers_cache)
+  if conf.headers then
+    for h, v in pairs(conf.headers) do
+      headers_cache[h] = v
+    end
+  end
+
+  headers_cache["Host"] = parsed_url.host
+  headers_cache["Content-Type"] = content_type
+  headers_cache["Content-Length"] = #payload
+  if parsed_url.userinfo then
+    headers_cache["Authorization"] = "Basic " .. encode_base64(parsed_url.userinfo)
+  end
+
+  params_cache.method = method
+  params_cache.path = parsed_url.path
+  params_cache.query = parsed_url.query
+  params_cache.body = payload
+
+  -- note: `httpc:request` makes a deep copy of `params_cache`, so it will be
+  -- fine to reuse the table here
+  local res, err = httpc:request(params_cache)
   if not res then
     return nil, "failed request to " .. host .. ":" .. tostring(port) .. ": " .. err
   end

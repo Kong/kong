@@ -3,19 +3,11 @@ local pl_path = require "pl.path"
 
 describe("Utils", function()
 
-  describe("get_hostname()", function()
-    it("should retrieve the hostname", function()
-      assert.is_string(utils.get_hostname())
-    end)
-  end)
-
   describe("get_system_infos()", function()
     it("retrieves various host infos", function()
       local infos = utils.get_system_infos()
       assert.is_number(infos.cores)
-      assert.is_string(infos.hostname)
       assert.is_string(infos.uname)
-      assert.not_matches("\n$", infos.hostname)
       assert.not_matches("\n$", infos.uname)
     end)
     it("caches the result", function()
@@ -194,6 +186,12 @@ describe("Utils", function()
       assert.True(utils.validate_utf8(123))
       assert.True(utils.validate_utf8(true))
       assert.False(utils.validate_utf8(string.char(105, 213, 205, 149)))
+      assert.False(utils.validate_utf8(string.char(128))) -- unexpected continuation byte
+      assert.False(utils.validate_utf8(string.char(192, 32))) -- 2-byte sequence 0xc0 followed by space
+      assert.False(utils.validate_utf8(string.char(192))) -- 2-byte sequence with last byte missing
+      assert.False(utils.validate_utf8(string.char(254))) -- impossible byte
+      assert.False(utils.validate_utf8(string.char(255))) -- impossible byte
+      assert.False(utils.validate_utf8(string.char(237, 160, 128))) -- Single UTF-16 surrogate
     end)
     describe("random_string()", function()
       it("should return a random string", function()
@@ -389,14 +387,57 @@ describe("Utils", function()
     end)
 
     describe("is_array()", function()
-      it("should know when an array ", function()
+      it("should know when an array (strict)", function()
         assert.True(utils.is_array({ "a", "b", "c", "d" }))
-        assert.True(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }))
+        assert.False(utils.is_array({ "a", "b", nil, "c", "d" }))
+        assert.False(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }))
+        assert.False(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }))
+        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }))
+        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }))
+        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" })) --luacheck: ignore
+        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" })) --luacheck: ignore
+        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }))
+        assert.False(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }))
         assert.False(utils.is_array({ "a", "b", "c", foo = "d" }))
         assert.False(utils.is_array())
         assert.False(utils.is_array(false))
         assert.False(utils.is_array(true))
       end)
+
+      it("should know when an array (fast)", function()
+        assert.True(utils.is_array({ "a", "b", "c", "d" }, "fast"))
+        assert.True(utils.is_array({ "a", "b", nil, "c", "d" }, "fast"))
+        assert.True(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "fast"))
+        assert.True(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "fast"))
+        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "fast"))
+        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "fast"))
+        assert.True(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "fast")) --luacheck: ignore
+        assert.True(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "fast")) --luacheck: ignore
+        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "fast"))
+        assert.False(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "fast"))
+        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }, "fast"))
+        assert.False(utils.is_array(nil, "fast"))
+        assert.False(utils.is_array(false, "fast"))
+        assert.False(utils.is_array(true, "fast"))
+      end)
+
+      it("should know when an array (lapis)", function()
+        assert.True(utils.is_array({ "a", "b", "c", "d" }, "lapis"))
+        assert.False(utils.is_array({ "a", "b", nil, "c", "d" }, "lapis"))
+        assert.False(utils.is_array({ [-1] = "a", [0] = "b", [1] = "c", [2] = "d" }, "lapis"))
+        assert.False(utils.is_array({ [0] = "a", [1] = "b", [2] = "c", [3] = "d" }, "lapis"))
+        assert.True(utils.is_array({ [1] = "a", [2] = "b", [3] = "c", [4] = "d" }, "lapis"))
+        assert.True(utils.is_array({ [1.0] = "a", [2.0] = "b", [3.0] = "c", [4.0] = "d" }, "lapis"))
+        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [3] = "c", [4] = "d" }, "lapis")) --luacheck: ignore
+        assert.False(utils.is_array({ [1] = "a", [2] = "b", nil, [4] = "c", [5] = "d" }, "lapis")) --luacheck: ignore
+        assert.False(utils.is_array({ [1.1] = "a", [2.1] = "b", [3.1] = "c", [4.1] = "d" }, "lapis"))
+        assert.True(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }, "lapis"))
+        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }, "lapis"))
+        assert.False(utils.is_array(nil, "lapis"))
+        assert.False(utils.is_array(false, "lapis"))
+        assert.False(utils.is_array(true, "lapis"))
+      end)
+
     end)
 
     describe("add_error()", function()

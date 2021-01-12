@@ -220,11 +220,7 @@ end
 
 local create_balancer
 do
-  local balancer_types = {
-    ["consistent-hashing"] = require("resty.dns.balancer.consistent_hashing"),
-    ["least-connections"] = require("resty.dns.balancer.least_connections"),
-    ["round-robin"] = require("resty.dns.balancer.ring"),
-  }
+  local balancer_types
 
   local create_healthchecker
   do
@@ -451,6 +447,13 @@ do
     local health_threshold = upstream.healthchecks and
                               upstream.healthchecks.threshold or nil
 
+    if balancer_types == nil then
+      balancer_types = {
+        ["consistent-hashing"] = require("resty.dns.balancer.consistent_hashing"),
+        ["least-connections"] = require("resty.dns.balancer.least_connections"),
+        ["round-robin"] = require("resty.dns.balancer.ring"),
+      }
+    end
     local balancer, err = balancer_types[upstream.algorithm].new({
       log_prefix = "upstream:" .. upstream.name,
       wheelSize = upstream.slots,  -- will be ignored by least-connections
@@ -1010,7 +1013,7 @@ local function execute(target, ctx)
         target.hash_value = hash_value
       end
 
-      if not ctx.service.client_certificate then
+      if ctx and ctx.service and not ctx.service.client_certificate then
         -- service level client_certificate is not set
         local cert, res, err
         local client_certificate = upstream.client_certificate

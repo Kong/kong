@@ -8,11 +8,11 @@ admin_error_log = logs/error.log
 status_access_log = off
 status_error_log = logs/status_error.log
 plugins = bundled
-go_pluginserver_exe = /usr/local/bin/go-pluginserver
-go_plugins_dir = off
 port_maps = NONE
 host_ports = NONE
 anonymous_reports = on
+go_pluginserver_exe = /usr/local/bin/go-pluginserver
+go_plugins_dir = off
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
@@ -36,6 +36,7 @@ ssl_cipher_suite = intermediate
 ssl_ciphers = NONE
 ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 ssl_prefer_server_ciphers = on
+ssl_dhparam = NONE
 ssl_session_tickets = on
 ssl_session_timeout = 1d
 admin_ssl_cert = NONE
@@ -64,14 +65,18 @@ nginx_http_client_max_body_size = 0
 nginx_http_client_body_buffer_size = 8k
 nginx_http_ssl_protocols = NONE
 nginx_http_ssl_prefer_server_ciphers = NONE
+nginx_http_ssl_dhparam = NONE
 nginx_http_ssl_session_tickets = NONE
 nginx_http_ssl_session_timeout = NONE
 nginx_stream_ssl_protocols = NONE
 nginx_stream_ssl_prefer_server_ciphers = NONE
+nginx_stream_ssl_dhparam = NONE
 nginx_stream_ssl_session_tickets = NONE
 nginx_stream_ssl_session_timeout = NONE
 nginx_proxy_real_ip_header = X-Real-IP
 nginx_proxy_real_ip_recursive = off
+nginx_admin_client_max_body_size = 10m
+nginx_admin_client_body_buffer_size = 10m
 nginx_upstream_keepalive = NONE
 nginx_upstream_keepalive_requests = NONE
 nginx_upstream_keepalive_timeout = NONE
@@ -136,7 +141,7 @@ db_update_propagation = 0
 db_cache_ttl = 0
 db_cache_neg_ttl = NONE
 db_resurrect_ttl = 30
-db_cache_warmup_entities = services, plugins
+db_cache_warmup_entities = services
 
 dns_resolver = NONE
 dns_hostsfile = /etc/hosts
@@ -158,4 +163,9 @@ lua_package_cpath = NONE
 
 role = traditional
 kic = off
+pluginserver_names = NONE
+
+untrusted_lua = sandbox
+untrusted_lua_sandbox_requires =
+untrusted_lua_sandbox_environment =
 ]]

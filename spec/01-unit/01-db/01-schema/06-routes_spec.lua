@@ -696,6 +696,8 @@ describe("routes schema", function()
         "examp;le",
         "examp/le",
         "examp le",
+        -- see tests for utils.validate_utf8 for more invalid values
+        string.char(105, 213, 205, 149),
       }
 
       for i = 1, #invalid_names do
@@ -703,12 +705,9 @@ describe("routes schema", function()
           name = invalid_names[i],
           protocols = {"http"}
         }
-
         local ok, err = Routes:validate(route)
         assert.falsy(ok)
-        assert.equal(
-          "invalid value '" .. invalid_names[i] .. "': it must only contain alphanumeric and '., -, _, ~' characters",
-          err.name)
+        assert.matches("invalid", err.name)
       end
     end)
 
@@ -723,6 +722,9 @@ describe("routes schema", function()
         "3x4_mp_13",
         "~3x4~mp~13",
         "~3..x4~.M-p~1__3_",
+        "孔",
+        "Конг",
+        "🦍",
       }
 
       for i = 1, #valid_names do
@@ -930,8 +932,7 @@ describe("routes schema", function()
 
         it("'" .. v .. "' accepts valid 'ip cidr' values", function()
           -- valid CIDRs
-          for _, ip_val in ipairs({ "1/0", "2130706433/2", "4294967295/3",
-                                    "0.0.0.0/0", "::/0", "0.0.0.0/1", "::/1",
+          for _, ip_val in ipairs({ "0.0.0.0/0", "::/0", "0.0.0.0/1", "::/1",
                                     "0.0.0.0/32", "::/128" }) do
             for _, protocol in ipairs({ "tcp", "tls", "udp" }) do
               local route = Routes:process_auto_fields({
@@ -951,7 +952,8 @@ describe("routes schema", function()
 
         it("'" .. v .. "' rejects invalid 'ip cidr' values", function()
           -- invalid CIDRs
-          for _, ip_val in ipairs({ "-1/0", "4294967296/2", "0.0.0.0/a",
+          for _, ip_val in ipairs({ "1/0", "2130706433/2", "4294967295/3",
+                                    "-1/0", "4294967296/2", "0.0.0.0/a",
                                     "::/a", "0.0.0.0/-1", "::/-1",
                                     "0.0.0.0/33", "::/129" }) do
             for _, protocol in ipairs({ "tcp", "tls", "udp" }) do

@@ -1167,6 +1167,23 @@ return {
           description = [[PEM-encoded private key of the SSL key pair.]],
           example = "-----BEGIN RSA PRIVATE KEY-----..."
         },
+        cert_alt = {
+          description = [[
+            PEM-encoded public certificate chain of the alternate SSL key pair.
+            This should only be set if you have both RSA and ECDSA types of
+            certificate available and would like Kong to prefer serving using
+            ECDSA certs when client advertises support for it.
+          ]],
+          example = "-----BEGIN CERTIFICATE-----...",
+        },
+        key_alt = {
+          description = [[PEM-encoded private key of the alternate SSL key pair.
+            This should only be set if you have both RSA and ECDSA types of
+            certificate available and would like Kong to prefer serving using
+            ECDSA certs when client advertises support for it.
+          ]],
+          example = "-----BEGIN EC PRIVATE KEY-----..."
+        },
         tags = {
           description = [[
             An optional set of strings associated with the Certificate for grouping and filtering.
@@ -1420,7 +1437,7 @@ return {
       description = [[
         A target is an ip address/hostname with a port that identifies an instance of a backend
         service. Every upstream can have many targets, and the targets can be
-        dynamically added. Changes are effectuated on the fly.
+        dynamically added, modified, or deleted. Changes take effect on the fly.
 
         Because the upstream maintains a history of target changes, the targets cannot
         be deleted or modified. To disable a target, post a new one with `weight=0`;
@@ -1447,8 +1464,7 @@ return {
         DELETE = {
           title = [[Delete Target]],
           description = [[
-            Disable a target in the load balancer. Under the hood, this method creates
-            a new entry for the given target definition with a `weight` of 0.
+            Remove a target from the load balancer.
           ]],
           endpoint = [[
             <div class="endpoint delete indent">/upstreams/{upstream name or id}/targets/{host:port or id}</div>
@@ -1462,6 +1478,26 @@ return {
           response = [[
             ```
             HTTP 204 No Content
+            ```
+          ]]
+        },
+        PATCH = {
+          title = [[Update Target]],
+          description = [[
+            Update a target.
+          ]],
+          endpoint = [[
+            <div class="endpoint patch indent">/upstreams/{upstream name or id}/targets/{host:port or id}</div>
+
+            {:.indent}
+            Attributes | Description
+            ---:| ---
+            `upstream name or id`<br>**required** | The unique identifier **or** the name of the upstream for which to update the target.
+            `host:port or id`<br>**required** | The host:port combination element of the target to update, or the `id` of an existing target entry.
+          ]],
+          response = [[
+            ```
+            HTTP 201 Created
             ```
           ]]
         }

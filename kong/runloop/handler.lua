@@ -43,6 +43,7 @@ local NOOP = function() end
 
 local ERR   = ngx.ERR
 local CRIT  = ngx.CRIT
+local NOTICE = ngx.NOTICE
 local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
 local COMMA = byte(",")
@@ -434,6 +435,11 @@ local function register_events()
 
   if db.strategy == "off" then
     worker_events.register(function(default_ws)
+      if ngx.worker.exiting() then
+        log(NOTICE, "declarative flip config canceled: process exiting")
+        return true
+      end
+
       local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
         balancer.stop_healthcheckers()
 
@@ -668,8 +674,8 @@ do
     end
 
     local counter = 0
-    local page_size = db.routes.pagination.page_size
-    for route, err in db.routes:each(nil, GLOBAL_QUERY_OPTS) do
+    local page_size = db.routes.pagination.max_page_size
+    for route, err in db.routes:each(page_size, GLOBAL_QUERY_OPTS) do
       if err then
         return nil, "could not load routes: " .. err
       end
@@ -1256,12 +1262,8 @@ return {
       -- executed; detect requests that need to be redirected from `proxy_pass`
       -- to `grpc_pass`. After redirection, this function will return early
       if service and var.kong_proxy_mode == "http" then
-        if service.protocol == "grpc" then
+        if service.protocol == "grpc" or service.protocol == "grpcs" then
           return ngx.exec("@grpc")
-        end
-
-        if service.protocol == "grpcs" then
-          return ngx.exec("@grpcs")
         end
 
         if http_version == 1.1 then
