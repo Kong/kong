@@ -18,6 +18,7 @@ local ee_api             = require "kong.enterprise_edition.api_helpers"
 local auth_helpers       = require "kong.enterprise_edition.auth_helpers"
 local secrets            = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local dao_helpers        = require "kong.portal.dao_helpers"
+local permissions        = require "kong.portal.permissions"
 local file_helpers = require "kong.portal.file_helpers"
 local workspace_config = require "kong.portal.workspace_config"
 local kong = kong
@@ -839,23 +840,35 @@ return {
         end
 
         local route
+
         if document_object then
           local file = db.files:select_by_path(document_object.path)
           if file then
             local file_meta = file_helpers.parse_content(file)
-            if file_meta and file_meta.route then
+            if file_meta then
+              local headmatter = file_meta.headmatter or {}
+              local readable_by = headmatter.readable_by
+              if type(readable_by) == "table" and #readable_by > 0 then
+                local ws = get_workspace()
+                if not permissions.can_read(self.developer, ws.name, document_object.path) then
+                  goto continue
+                end
+              end
+
               route = file_meta.route
             end
           end
         end
 
-        application_services[i] = {
+        table.insert(application_services, {
           id = service.id,
           name = v.config.display_name,
           document_route = route,
           app_registration_config = v.config,
           auth_plugin_config = auth_config,
-        }
+        })
+
+        ::continue::
       end
 
       local res, _, err_t = crud_helpers.paginate(self, application_services)
