@@ -112,6 +112,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
 
       local passive_hc = utils.deep_copy(hc_defaults)
       passive_hc.passive.healthy.successes = 1
+      passive_hc.passive.unhealthy.tcp_failures = 1 -- 1 = required because http failures is 1 as well
       passive_hc.passive.unhealthy.http_failures = 1
 
       UPSTREAMS_FIXTURES = {
