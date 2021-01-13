@@ -686,6 +686,49 @@ describe("Plugin: response-transformer-advanced", function()
         assert.same(expected, body_json)
         assert.is_nil(err)
       end)
+
+      it("does run README's example", function()
+        local universe = [[
+          -- universe.lua
+          -- answers a question only when its known
+          return function (data, key, value)
+            if data[key] == value then
+              data["a"] = 42
+            end
+          end
+        ]]
+
+        local json = [[
+          {
+            "questions": [
+              { "q": "knock, knock" },
+              { "q": "meaning of the universe" },
+              { "q": "meaning of everything" }
+            ]
+          }
+        ]]
+
+        local expected = {
+          questions = {
+            { q = "knock, knock" },
+            { q = "meaning of the universe", a = 42 },
+            { q = "meaning of everything", a = 42 },
+          }
+        }
+
+        conf.transform.json = {
+          "questions[*].q:meaning of the universe",
+          "questions[*].q:meaning of everything"
+        }
+
+        conf.transform.functions = { universe }
+
+        local body, err = body_transformer.transform_json_body(conf, json, 200)
+        local body_json = cjson.decode(body)
+        assert.same(expected, body_json)
+        assert.is_nil(err)
+
+      end)
     end)
 
     describe("remove, replace, add, append", function()
