@@ -144,6 +144,7 @@ return {
       { transform = { type = "record", fields = {
           { functions = functions_array },
           { if_status = status_array },
+          { json = strings_array },
       }}},
       { dots_in_keys = { type = "boolean", default = false }, },
   },

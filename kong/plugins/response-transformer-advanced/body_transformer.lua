@@ -14,12 +14,14 @@ local ngx_re = require("ngx.re")
 
 local skip_transform = transform_utils.skip_transform
 local insert = table.insert
-local pcall = pcall
 local find = string.find
 local sub = string.sub
 local gsub = string.gsub
 local match = string.match
 local lower = string.lower
+
+local next = next
+local pcall = pcall
 
 
 cjson.decode_array_with_array_mt(true)
@@ -120,16 +122,7 @@ local function get_transform_functions(config)
     transform_function_cache[config] = functions
   end
 
-  return ipairs(functions)
-end
-
-local function transform_data(data, transform_function)
-  local ok, err_or_data = pcall(transform_function, data)
-  if not ok then
-    return nil, err_or_data
-  end
-
-  return err_or_data, nil
+  return functions
 end
 
 
@@ -205,6 +198,25 @@ local function navigate_and_apply(conf, json, path, f)
     end
   end
 end
+
+
+local function arbitrary_transform(conf, data, fn)
+  if next(conf.transform.json) == nil then
+    return fn(data)
+  end
+
+  for _, path, value in iter(conf.transform.json) do
+     -- wrapper with implicit value for navigate_and_apply
+     local wrap_fn = function(data, key)
+       return fn(data, key, value)
+     end
+
+     navigate_and_apply(conf, data, path, wrap_fn)
+  end
+
+  return data
+end
+
 
 function _M.transform_json_body(conf, buffered_data, resp_code)
   local json_body, err = read_json_body(buffered_data)
@@ -297,16 +309,21 @@ function _M.transform_json_body(conf, buffered_data, resp_code)
     end
   end
 
-  local err, data
+  local err
   -- perform arbitrary transformations on a json
   if conf.transform and not skip_transform(resp_code, conf.transform.if_status) then
-    for _, fn in get_transform_functions(conf) do
-      data, err = transform_data(json_body, fn)
-      if err then
+
+    for _, fn in ipairs(get_transform_functions(conf)) do
+      local ok, err_or_data = pcall(arbitrary_transform, conf, json_body, fn)
+
+      if not ok then
+        err = err_or_data
         break
       end
-      json_body = data
+
+      json_body = err_or_data
     end
+
   end
 
   return cjson.encode(json_body), err

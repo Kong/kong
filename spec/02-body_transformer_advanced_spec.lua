@@ -33,6 +33,7 @@ describe("Plugin: response-transformer-advanced", function()
           json   = {},
         },
         transform = {
+          json = {},
           functions = {},
         },
       }
@@ -150,6 +151,7 @@ describe("Plugin: response-transformer-advanced", function()
           json   = {},
         },
         transform = {
+          json   = {},
           functions = {},
         },
       }
@@ -266,6 +268,7 @@ describe("Plugin: response-transformer-advanced", function()
           json   = {}
         },
         transform = {
+          json   = {},
           functions = {},
         },
       }
@@ -340,6 +343,7 @@ describe("Plugin: response-transformer-advanced", function()
           json   = {}
         },
         transform = {
+          json   = {},
           functions = {},
         },
       }
@@ -388,6 +392,7 @@ describe("Plugin: response-transformer-advanced", function()
           json   = {},
         },
         transform = {
+          json   = {},
           functions = {},
         },
       }
@@ -494,7 +499,8 @@ describe("Plugin: response-transformer-advanced", function()
             json   = {},
           },
           transform = {
-            functions = {}
+            json = {},
+            functions = {},
           },
         }
       end)
@@ -633,6 +639,53 @@ describe("Plugin: response-transformer-advanced", function()
         assert.same(expected, body_json)
         assert.not_nil(err)
       end)
+
+      it("can apply the function to json queries", function()
+        -- this test showcases cool usage of this feature. Using arbitrary
+        -- transforms we can apply functions that change the value without
+        -- having to mess with type transformations, and that can apply
+        -- changes cooperatively
+        local transform_function = [[
+          return function(data, key, value)
+            if not value then return end
+            data[key] = data[key] + tonumber(value)
+          end
+        ]]
+
+        local yet_another_function = [[
+          -- a function that does unexpected things
+          return function(data, key)
+            if data[key] and data[key] == 42 then
+              data[key] = "hello world"
+            end
+          end
+
+        ]]
+
+        local json = [[
+          {
+            "some": "data",
+            "foo": [{ "id": 1 }, { "id": 2 }, { "id": 3 }]
+          }
+        ]]
+
+        local expected = {
+          ["some"] = "data",
+          ["foo"] = {
+            { id = 41 },
+            { id = "hello world" },
+            { id = 43 },
+          },
+        }
+
+        conf.transform.json = { "foo[*].id:40", "foo[*].id" }
+        conf.transform.functions = { transform_function, yet_another_function }
+
+        local body, err = body_transformer.transform_json_body(conf, json, 200)
+        local body_json = cjson.decode(body)
+        assert.same(expected, body_json)
+        assert.is_nil(err)
+      end)
     end)
 
     describe("remove, replace, add, append", function()
@@ -658,6 +711,7 @@ describe("Plugin: response-transformer-advanced", function()
         },
         transform = {
           functions = {},
+          json   = {}
         },
       }
 
@@ -752,6 +806,7 @@ describe("Plugin: response-transformer-advanced", function()
           json   = {}
         },
         transform = {
+          json   = {},
           functions = {},
         },
       }
@@ -815,6 +870,7 @@ describe("Plugin: response-transformer-advanced", function()
           json = {}
         },
         transform = {
+          json = {},
           functions = {}
         },
       }
@@ -859,6 +915,7 @@ describe("Plugin: response-transformer-advanced", function()
           json = {}
         },
         transform = {
+          json = {},
           functions = {}
         },
       }

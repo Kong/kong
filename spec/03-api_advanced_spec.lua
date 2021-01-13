@@ -107,6 +107,70 @@ for _, strategy in helpers.each_strategy() do
           local expected = { config = { transform = { functions = { msg } } } }
           assert.same(expected, json["fields"])
         end)
+        it("transform accepts a json query to run the function into", function()
+          local some_function = [[
+            return function ()
+              print("hello world")
+            end
+          ]]
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name   = "response-transformer-advanced",
+              config = {
+                transform = {
+                  functions = { some_function },
+                  json = { "foo,bar" },
+                },
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.response(res).has.status(201)
+          local body = assert.response(res).has.jsonbody()
+          assert.same({ some_function }, body.config.transform.functions)
+          assert.same({ "foo,bar" }, body.config.transform.json)
+
+          admin_client:send {
+            method  = "DELETE",
+            path    = "/plugins/" .. body.id,
+          }
+        end)
+        it("transform accepts a json query:value to run the function into", function()
+          local some_function = [[
+            return function ()
+              print("hello world")
+            end
+          ]]
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/plugins",
+            body    = {
+              name   = "response-transformer-advanced",
+              config = {
+                transform = {
+                  functions = { some_function },
+                  json = { "foo:var,bar:var" },
+                },
+              },
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+          assert.response(res).has.status(201)
+          local body = assert.response(res).has.jsonbody()
+          assert.same({ some_function }, body.config.transform.functions)
+          assert.same({ "foo:var,bar:var" }, body.config.transform.json)
+
+          admin_client:send {
+            method  = "DELETE",
+            path    = "/plugins/" .. body.id,
+          }
+        end)
         it("json_types config accepts a list of JSON types #a", function()
           local json_types = {
             "string", "string", "string", "number", "boolean", "boolean",
