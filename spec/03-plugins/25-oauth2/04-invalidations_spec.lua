@@ -316,6 +316,15 @@ for _, strategy in helpers.each_strategy() do
         local token = cjson.decode(assert.res_status(200, res))
         assert.is_table(token)
 
+        -- Check that cache is not populated
+        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
+        local res = assert(admin_client:send {
+          method  = "GET",
+          path    = "/cache/" .. cache_key,
+          headers = {}
+        })
+        assert.res_status(404, res)
+
         -- The token should work
         local res = assert(proxy_ssl_client:send {
           method  = "GET",
@@ -327,7 +336,6 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -376,6 +384,15 @@ for _, strategy in helpers.each_strategy() do
         local token = cjson.decode(assert.res_status(200, res))
         assert.is_table(token)
 
+        -- Check that cache is not populated
+        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
+        local res = assert(admin_client:send {
+          method  = "GET",
+          path    = "/cache/" .. cache_key,
+          headers = {}
+        })
+        assert.res_status(404, res)
+
         -- The token should work
         local res = assert(proxy_ssl_client:send {
           method  = "GET",
@@ -387,8 +404,6 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
-
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -454,6 +469,15 @@ for _, strategy in helpers.each_strategy() do
         local token = cjson.decode(assert.res_status(200, res))
         assert.is_table(token)
 
+        -- Check that cache is not populated
+        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
+        local res = assert(admin_client:send {
+          method  = "GET",
+          path    = "/cache/" .. cache_key,
+          headers = {}
+        })
+        assert.res_status(404, res)
+
         -- The token should work
         local res = assert(proxy_ssl_client:send {
           method  = "GET",
@@ -465,8 +489,6 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = db.oauth2_tokens:cache_key(token.access_token)
-
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,

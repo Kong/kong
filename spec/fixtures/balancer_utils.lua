@@ -467,12 +467,12 @@ local function end_testcase_setup(strategy, bp, consistency)
 end
 
 
-local function get_db_utils_for_dc_and_admin_api(strategy, tables)
-  local bp = assert(helpers.get_db_utils(strategy, tables))
+local function get_db_utils_for_dc_and_admin_api(strategy, tables, plugins)
+  local bp, db = assert(helpers.get_db_utils(strategy, tables, plugins))
   if strategy ~= "off" then
     bp = require("spec.fixtures.admin_api")
   end
-  return bp
+  return bp, db
 end
 
 
