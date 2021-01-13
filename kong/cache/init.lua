@@ -114,6 +114,11 @@ function _M.new(opts)
             if not ok then
               log(ERR, "failed to post event '", channel_name, "', '",
                        channel, "': ", err)
+            else
+              ok, err = opts.worker_events.poll()
+              if not ok then
+                log(NOTICE, "polling worker events failed: ", err)
+              end
             end
           end
         }

@@ -774,7 +774,10 @@ local function new(self, major_version)
     --
     function _RESPONSE.exit(status, body, headers)
       if self.worker_events and ngx.get_phase() == "content" then
-        self.worker_events.poll()
+        local ok, err = self.worker_events.poll()
+        if not ok then
+          self.log.notice("polling worker events failed: ", err)
+        end
       end
 
       check_phase(rewrite_access_header)
@@ -960,7 +963,10 @@ local function new(self, major_version)
   -- return kong.response.error(403)
   function _RESPONSE.error(status, message, headers)
     if self.worker_events and ngx.get_phase() == "content" then
-      self.worker_events.poll()
+      local ok, err = self.worker_events.poll()
+      if not ok then
+        self.log.notice("polling worker events failed: ", err)
+      end
     end
 
     check_phase(rewrite_access_header)

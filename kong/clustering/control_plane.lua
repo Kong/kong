@@ -737,9 +737,14 @@ function _M:init_worker()
 
   -- Sends "clustering", "push_config" to all workers in the same node, including self
   local function post_push_config_event()
-    local res, err = kong.worker_events.post("clustering", "push_config")
-    if not res then
+    local ok, err = kong.worker_events.post("clustering", "push_config")
+    if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to broadcast event: ", err)
+    else
+      ok, err = kong.worker_events.poll()
+      if not ok then
+        ngx_log(ngx_NOTICE, _log_prefix, "polling worker events failed: ", err)
+      end
     end
   end
 

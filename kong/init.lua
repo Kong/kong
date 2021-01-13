@@ -1381,7 +1381,6 @@ local function serve_content(module, options)
   ctx.KONG_PROCESSING_START = start_time() * 1000
   ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or get_now_ms()
 
-
   log_init_worker_errors(ctx)
 
   options = options or {}
@@ -1408,7 +1407,10 @@ end
 
 
 function Kong.admin_content(options)
-  kong.worker_events.poll()
+  local ok, err = kong.worker_events.poll()
+  if not ok then
+    kong.log.notice("polling worker events failed: ", err)
+  end
 
   local ctx = ngx.ctx
   if not ctx.workspace then
@@ -1464,6 +1466,11 @@ end
 
 
 function Kong.status_content()
+  local ok, err = kong.worker_events.poll()
+  if not ok then
+    kong.log.notice("polling worker events failed: ", err)
+  end
+
   return serve_content("kong.status")
 end
 

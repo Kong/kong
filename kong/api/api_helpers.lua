@@ -269,7 +269,10 @@ local function parse_params(fn)
 
     local res, err = fn(self, ...)
 
-    kong.worker_events.poll()
+    local ok, err2 = kong.worker_events.poll()
+    if not ok then
+      kong.log.notice("polling worker events failed: ", err2)
+    end
 
     if err then
       kong.log.err(err)

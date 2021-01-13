@@ -186,8 +186,12 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
         entity = data.entity,
       })
     if not ok then
-      log(ERR, "failed broadcasting target ",
-        operation, " to workers: ", err)
+      log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
+    else
+      ok, err = worker_events.poll()
+      if not ok then
+        log(NOTICE, "polling worker events failed: ", err)
+      end
     end
     -- => to cluster_events handler
     local key = fmt("%s:%s", operation, target.upstream.id)
@@ -226,6 +230,11 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
       })
     if not ok then
       log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
+    else
+      ok, err = worker_events.poll()
+      if not ok then
+        log(NOTICE, "polling worker events failed: ", err)
+      end
     end
   end)
 
@@ -259,8 +268,12 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
         entity = data.entity,
       })
     if not ok then
-      log(ERR, "failed broadcasting upstream ",
-        operation, " to workers: ", err)
+      log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
+    else
+      ok, err = worker_events.poll()
+      if not ok then
+        log(NOTICE, "polling worker events failed: ", err)
+      end
     end
     -- => to cluster_events handler
     local key = fmt("%s:%s:%s", operation, upstream.id, upstream.name)
@@ -297,6 +310,11 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
       })
     if not ok then
       log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
+    else
+      ok, err = worker_events.poll()
+      if not ok then
+        log(NOTICE, "polling worker events failed: ", err)
+      end
     end
   end)
 end
