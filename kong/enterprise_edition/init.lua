@@ -114,6 +114,38 @@ _M.handlers = {
     after = function(ctx)
       license_helpers.report_expired_license()
 
+      kong.worker_events.register(function(data, event, source, pid)
+        local l = {}
+        for _, v in kong.db.licenses:each() do
+          l = v
+        end
+
+        if l then
+          kong.license = license_helpers.is_valid_license(l.payload)
+        end
+      end, "declarative", "flip_config")
+
+      kong.worker_events.register(function(data, event, source, pid)
+        if data.schema.name == "licenses" and
+        (event == "update" or event == "insert" or event == "create") then
+          kong.license = license_helpers.is_valid_license(data.entity.payload)
+        end
+      end, "dao:crud")
+
+      kong.worker_events.register(function(data, event, source, pid)
+        if data.schema.name == "licenses" and
+        (event == "delete") then
+          local l = {}
+          for _, v in kong.db.licenses:each() do
+            l = v
+          end
+
+          if l then
+            kong.license = license_helpers.is_valid_license(l.payload)
+          end
+        end
+      end, "dao:crud")
+
       -- register event_hooks hooks
       if event_hooks.enabled() then
         local dao_adapter = function(data)

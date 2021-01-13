@@ -47,6 +47,9 @@ local function setup_it_block()
       },
       db = {
         strategy = "dummy",
+        infos = {
+          db_ver = "dummy"
+        }
       },
       core_cache = {
         _cache = my_cache,

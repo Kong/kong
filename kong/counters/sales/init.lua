@@ -265,7 +265,7 @@ function _M:flush_data()
 
     local merged_data = {
       node_id = self.counters.node_id,
-      license_creation_date = license_data.license_creation_date,
+      license_creation_date = license_data and license_data.license_creation_date,
       request_count = 0
     }
 

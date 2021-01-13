@@ -19,6 +19,7 @@ local openssl_x509 = require("resty.openssl.x509")
 local system_constants = require("lua_system_constants")
 local ffi = require("ffi")
 local pl_tablex = require("pl.tablex")
+local kong_constants = require("kong.constants")
 local string = string
 local assert = assert
 local setmetatable = setmetatable
@@ -41,7 +42,9 @@ local table_insert = table.insert
 local table_remove = table.remove
 local inflate_gzip = utils.inflate_gzip
 local deflate_gzip = utils.deflate_gzip
-local pl_tablex_compare = pl_tablex.compare
+
+-- XXX EE
+local get_cn_parent_domain = utils.get_cn_parent_domain
 
 
 local KONG_VERSION = kong.version
@@ -59,12 +62,13 @@ local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local WEAK_KEY_MT = { __mode = "k", }
-local CERT_DIGEST
+local CERT_DIGEST, CERT_CN_PARENT
 local CERT, CERT_KEY
 local PLUGINS_LIST
 local clients = setmetatable({}, WEAK_KEY_MT)
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json.gz"
+local CLUSTERING_SYNC_STATUS = kong_constants.CLUSTERING_SYNC_STATUS
 local declarative_config
 local next_config
 
@@ -321,25 +325,43 @@ end
 
 _M.communicate = communicate
 
-local function validate_shared_cert()
-  local cert = ngx_var.ssl_client_raw_cert
 
+local function validate_client_cert(cert)
   if not cert then
-    ngx_log(ngx_ERR, "Data Plane failed to present client certificate " ..
-                     "during handshake")
-    return ngx_exit(444)
+    return false, "Data Plane failed to present client certificate " ..
+                  "during handshake"
   end
 
   cert = assert(openssl_x509.new(cert, "PEM"))
-  local digest = assert(cert:digest("sha256"))
+  if kong.configuration.cluster_mtls == "shared" then
+    local digest = assert(cert:digest("sha256"))
 
-  if digest ~= CERT_DIGEST then
-    ngx_log(ngx_ERR, "Data Plane presented incorrect client certificate " ..
+    if digest ~= CERT_DIGEST then
+      return false, "Data Plane presented incorrect client certificate " ..
                      "during handshake, expected digest: " .. CERT_DIGEST ..
-                     " got: " .. digest)
-    return ngx_exit(444)
+                     " got: " .. digest
+    end
+
+  elseif kong.configuration.cluster_mtls == "pki_check_cn" then
+    local cn, cn_parent = get_cn_parent_domain(cert)
+    if not cn then
+      return false, "Data Plane presented incorrect client certificate " ..
+                    "during handshake, unable to extract CN: " .. cn_parent
+
+    elseif cn_parent ~= CERT_CN_PARENT then
+      return false, "Data Plane presented incorrect client certificate " ..
+                    "during handshake, expected CN as subdomain of: " ..
+                    CERT_CN_PARENT .. " got: " .. cn
+    end
   end
+  -- with cluster_mtls == "pki", always return true as in this mode we only check
+  -- if client cert matches CA and it's already done by Nginx
+
+  return true
 end
+
+-- For test only
+_M._validate_client_cert = validate_client_cert
 
 
 -- XXX EE only used for telemetry, remove cruft
@@ -503,12 +525,12 @@ end
 _M.telemetry_communicate = telemetry_communicate
 
 
-
-
 function _M.handle_cp_telemetry_websocket()
   -- use mutual TLS authentication
-  if kong.configuration.cluster_mtls == "shared" then
-    validate_shared_cert()
+  local ok, err = validate_client_cert(ngx_var.ssl_client_raw_cert)
+  if not ok then
+    ngx_log(ngx_ERR, err)
+    return ngx_exit(444)
   end
 
   local node_id = ngx_var.arg_node_id
@@ -538,11 +560,6 @@ function _M.handle_cp_telemetry_websocket()
 end
 
 
-local function plugin_entry_comparator(a, b)
-  return a.name == b.name and a.version == b.version
-end
-
-
 local MAJOR_MINOR_PATTERN = "^(%d+%.%d+)%.%d+"
 local function should_send_config_update(node_version, node_plugins)
   if not node_version or not node_plugins then
@@ -557,14 +574,23 @@ local function should_send_config_update(node_version, node_plugins)
   local minor_node = node_version:match(MAJOR_MINOR_PATTERN)
   if minor_cp ~= minor_node then
     return false, "version mismatches, CP version: " .. minor_cp ..
-                  " DP version: " .. minor_node
+                  " DP version: " .. minor_node,
+                  CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
   end
 
-  if not pl_tablex_compare(PLUGINS_LIST, node_plugins,
-                           plugin_entry_comparator)
-  then
-    return false, "CP and DP does not have same set of plugins installed" ..
-                  " or their versions might differ"
+  for i, p in ipairs(PLUGINS_LIST) do
+    local np = node_plugins[i]
+    if p.name ~= np.name then
+      return false, "CP and DP does not have same set of plugins installed",
+                    CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+    end
+
+    if p.version ~= np.version then
+      return false, "plugin \"" .. p.name .. "\" version differs between " ..
+                    "CP and DP, CP has version " .. tostring(p.version) ..
+                    " while DP has version " .. tostring(np.version),
+                    CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+    end
   end
 
   return true
@@ -573,8 +599,10 @@ end
 
 function _M.handle_cp_websocket()
   -- use mutual TLS authentication
-  if kong.configuration.cluster_mtls == "shared" then
-    validate_shared_cert()
+  local ok, err = validate_client_cert(ngx_var.ssl_client_raw_cert)
+  if not ok then
+    ngx_log(ngx_ERR, err)
+    return ngx_exit(444)
   end
 
   local node_id = ngx_var.arg_node_id
@@ -623,9 +651,10 @@ function _M.handle_cp_websocket()
 
   clients[wb] = queue
 
-  local res
-  res, err = should_send_config_update(node_version, node_plugins)
+  local res, sync_status
+  res, err, sync_status = should_send_config_update(node_version, node_plugins)
   if res then
+    sync_status = CLUSTERING_SYNC_STATUS.NORMAL
     local config_table
     -- unconditionally send config update to new clients to
     -- ensure they have latest version running
@@ -709,6 +738,7 @@ function _M.handle_cp_websocket()
           hostname = node_hostname,
           ip = node_ip,
           version = node_version,
+          sync_status = sync_status,
         }, { ttl = kong.configuration.cluster_data_plane_purge_delay, })
         if not ok then
           ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
@@ -884,6 +914,8 @@ local function init_mtls(conf)
   cert = openssl_x509.new(cert, "PEM")
 
   CERT_DIGEST = cert:digest("sha256")
+  local _
+  _, CERT_CN_PARENT = get_cn_parent_domain(cert)
 
   f, err = io_open(conf.cluster_cert_key, "r")
   if not f then

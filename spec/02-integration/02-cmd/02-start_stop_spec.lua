@@ -77,13 +77,10 @@ describe("kong start/stop #" .. strategy, function()
         prefix = helpers.test_conf.prefix
       }))
 
-      local pl_file = require "pl.file"
-      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-
-      assert.not_matches("[emerg]", err_log, nil, true)
-      assert.not_matches("[alert]", err_log, nil, true)
-      assert.not_matches("[crit]", err_log, nil, true)
-      assert.not_matches("[error]", err_log, nil, true)
+      assert.logfile().has.no.line("[emerg]", true)
+      assert.logfile().has.no.line("[alert]", true)
+      assert.logfile().has.no.line("[crit]", true)
+      assert.logfile().has.no.line("[error]", true)
     end)
   else
     -- XXX EE license counters throw warnings and criticals when license is
@@ -98,14 +95,11 @@ describe("kong start/stop #" .. strategy, function()
         prefix = helpers.test_conf.prefix
       }))
 
-      local pl_file = require "pl.file"
-      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-
-      assert.not_matches("[emerg]", err_log, nil, true)
-      assert.not_matches("[alert]", err_log, nil, true)
-      assert.not_matches("[crit]", err_log, nil, true)
-      assert.not_matches("[error]", err_log, nil, true)
-      assert.not_matches("[warn]", err_log, nil, true)
+      assert.logfile().has.no.line("[emerg]", true)
+      assert.logfile().has.no.line("[alert]", true)
+      assert.logfile().has.no.line("[crit]", true)
+      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.no.line("[warn]", true)
     end)
   end
 

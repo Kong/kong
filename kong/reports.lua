@@ -277,6 +277,15 @@ else -- subsystem == "stream"
   end
 end
 
+local function add_ee_info(infos)
+  local l = kong.license and
+    kong.license.license and
+    kong.license.license.payload and
+    kong.license.license.payload.license_key or
+    nil
+  infos.license_key = l
+  infos.rbac_enforced = kong.configuration.rbac ~= "off"
+end
 
 local function send_ping(host, port)
   _ping_infos.unique_id = _unique_str
@@ -314,7 +323,11 @@ local function send_ping(host, port)
   _ping_infos.wss_reqs       = get_counter(WSS_REQUEST_COUNT_KEY)
   _ping_infos.go_plugin_reqs = get_counter(GO_PLUGINS_REQUEST_COUNT_KEY)
 
-  send_report("ping", _ping_infos, host, port)
+
+  add_ee_info(_ping_infos)
+  if kong.configuration.anonymous_reports then
+    send_report("ping", _ping_infos, host, port)
+  end
 
   reset_counter(REQUEST_COUNT_KEY,       _ping_infos.requests)
   reset_counter(HTTP_REQUEST_COUNT_KEY,  _ping_infos.http_reqs)
@@ -368,9 +381,9 @@ local function configure_ping(kong_conf)
   add_immutable_value("database", kong_conf.database)
   add_immutable_value("role", kong_conf.role)
   add_immutable_value("kic", kong_conf.kic)
-  add_immutable_value("_admin", #kong_conf.admin_listeners > 0 and 1 or 0)
-  add_immutable_value("_proxy", #kong_conf.proxy_listeners > 0 and 1 or 0)
-  add_immutable_value("_stream", #kong_conf.stream_listeners > 0 and 1 or 0)
+  add_immutable_value("_admin", kong_conf.admin_listeners and #kong_conf.admin_listeners > 0 and 1 or 0)
+  add_immutable_value("_proxy", kong_conf.proxy_listeners and #kong_conf.proxy_listeners > 0 and 1 or 0)
+  add_immutable_value("_stream", kong_conf.stream_listeners and #kong_conf.stream_listeners > 0 and 1 or 0)
 end
 
 

@@ -15,11 +15,12 @@ admin_error_log = logs/error.log
 status_access_log = off
 status_error_log = logs/status_error.log
 plugins = bundled
-go_pluginserver_exe = /usr/local/bin/go-pluginserver
-go_plugins_dir = off
 port_maps = NONE
 host_ports = NONE
 anonymous_reports = on
+go_pluginserver_exe = /usr/local/bin/go-pluginserver
+go_plugins_dir = off
+
 enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token
 vitals = on
@@ -155,12 +156,12 @@ upstream_keepalive_idle_timeout = 60
 admin_gui_ssl_cert = NONE
 admin_gui_ssl_cert_key = NONE
 
-nginx_user = nobody nobody
+nginx_user = kong kong
 nginx_worker_processes = auto
 nginx_optimizations = on
 nginx_daemon = on
 nginx_main_daemon = on
-nginx_main_user = nobody nobody
+nginx_main_user = kong kong
 nginx_main_worker_processes = auto
 nginx_main_worker_rlimit_nofile = auto
 nginx_events_worker_connections = auto
@@ -253,7 +254,7 @@ db_update_propagation = 0
 db_cache_ttl = 0
 db_cache_neg_ttl = NONE
 db_resurrect_ttl = 30
-db_cache_warmup_entities = services, plugins
+db_cache_warmup_entities = services
 
 dns_resolver = NONE
 dns_hostsfile = /etc/hosts
@@ -298,13 +299,15 @@ keyring_vault_mount =
 keyring_vault_path =
 keyring_vault_token =
 
-role = traditional
 
 event_hooks_enabled = off
 
+role = traditional
 kic = off
+pluginserver_names = NONE
 
 cluster_telemetry_listen = 0.0.0.0:8006
 cluster_telemetry_endpoint = 127.0.0.1:8006
 cluster_telemetry_server_name = NONE
+
 ]]

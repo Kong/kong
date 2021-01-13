@@ -49,6 +49,7 @@ describe("kong.log.serialize", function()
         resp = {
           get_headers = function() return {header1 = "respheader1", header2 = "respheader2", ["set-cookie"] = "delicious=delicacy"} end
         },
+        log = function() end,
       }
 
       package.loaded["kong.pdk.request"] = nil
@@ -234,6 +235,7 @@ describe("kong.log.serialize", function()
           start_time = function() return 3 end
         },
         status = 200,
+        log = function() end,
       }
 
       package.loaded["kong.pdk.request"] = nil

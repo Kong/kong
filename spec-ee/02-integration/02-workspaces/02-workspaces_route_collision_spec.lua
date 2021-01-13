@@ -314,6 +314,12 @@ describe("DB [#".. strategy .. "] routes are checked for colisions ", function()
     patch("/ws2/routes/" .. r.id, {['hosts[]'] = "example.org"}, nil, 409)
   end)
 
+  -- it("doesn't collide when updating itself", function()
+  --   local r = post("/ws2/services/default-service/routes",
+  --     {['hosts[]'] = "bla.org"})
+  --   patch("/ws2/routes/" .. r.id, {['hosts[]'] = "bla.org"}, nil, 200)
+  -- end)
+
   it_content_types("when PATCHing", function(content_type)
     local function array_for(s)
       if content_type == "application/json" then

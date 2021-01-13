@@ -7,6 +7,7 @@
 
 local kong_default_conf = require "kong.templates.kong_defaults"
 local openssl_pkey = require "resty.openssl.pkey"
+local openssl_x509 = require "resty.openssl.x509"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local constants = require "kong.constants"
@@ -19,11 +20,18 @@ local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local env = require "kong.cmd.utils.env"
-local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
+local ffi = require "ffi"
 
+local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
 local fmt = string.format
 local concat = table.concat
+local C = ffi.C
+
+ffi.cdef([[
+  struct group *getgrnam(const char *name);
+  struct passwd *getpwnam(const char *name);
+]])
 
 
 -- Version 5: https://wiki.mozilla.org/Security/Server_Side_TLS
@@ -156,6 +164,10 @@ local DYNAMIC_KEY_NAMESPACES = {
   {
     injected_conf_name = "nginx_sproxy_directives",
     prefix = "nginx_sproxy_",
+    ignore = EMPTY,
+  },
+  {
+    prefix = "pluginserver_",
     ignore = EMPTY,
   },
 }
@@ -627,11 +639,12 @@ local CONF_INFERENCES = {
   cluster_cert = { typ = "string" },
   cluster_cert_key = { typ = "string" },
 
-  cluster_mtls = { enum = { "shared", "pki" } },
+  cluster_mtls = { enum = { "shared", "pki", "pki_check_cn" } },
   cluster_ca_cert = { typ = "string" },
   cluster_server_name = { typ = "string" },
   cluster_data_plane_purge_delay = { typ = "number" },
   kic = { typ = "boolean" },
+  pluginserver_names = { typ = "array" },
 }
 
 
@@ -1065,6 +1078,33 @@ local function check_and_infer(conf, opts)
       errors[#errors + 1] = "in-memory storage can not be used when role = \"control_plane\""
     end
 
+    if conf.cluster_mtls == "pki_check_cn" then
+      if not conf.cluster_ca_cert then
+        errors[#errors + 1] = "cluster_ca_cert must be specified when cluster_mtls = \"pki_check_cn\""
+      end
+
+      local cluster_cert, err = pl_file.read(conf.cluster_cert)
+      if not cluster_cert then
+        errors[#errors + 1] = "unable to open cluster_cert file \"" .. conf.cluster_cert .. "\": "..err
+
+      else
+        cluster_cert, err = openssl_x509.new(cluster_cert, "PEM")
+        if err then
+          errors[#errors + 1] = "cluster_cert file is not a valid PEM certificate: "..err
+
+        else
+          local cn, cn_parent = utils.get_cn_parent_domain(cluster_cert)
+          if not cn then
+            errors[#errors + 1] = "unable to get CommonName of cluster_cert: " .. cn
+          elseif not cn_parent then
+            errors[#errors + 1] = "cluster_cert is a certificate with " ..
+                            "top level domain: \"" .. cn .. "\", this is insufficient " ..
+                            "to verify Data Plane identity when cluster_mtls = \"pki_check_cn\""
+          end
+        end
+      end
+    end
+
   elseif conf.role == "data_plane" then
     if #conf.proxy_listen < 1 or pl_stringx.strip(conf.proxy_listen[1]) == "off" then
       errors[#errors + 1] = "proxy_listen must be specified when role = \"data_plane\""
@@ -1376,7 +1416,7 @@ local function load(path, custom_conf, opts)
       t = t or {}
 
       for k, v in pairs(t) do
-        local directive = string.match(k, "(" .. dyn_prefix .. ".+)")
+        local directive = string.match(k, "^(" .. dyn_prefix .. ".+)")
         if directive then
           dynamic_keys[directive] = true
 
@@ -1455,16 +1495,32 @@ local function load(path, custom_conf, opts)
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 
+  local default_nginx_main_user = false
+  local default_nginx_user = false
+
   do
     -- nginx 'user' directive
     local user = utils.strip(conf.nginx_main_user):gsub("%s+", " ")
     if user == "nobody" or user == "nobody nobody" then
       conf.nginx_main_user = nil
+
+    elseif user == "kong" or user == "kong kong" then
+      default_nginx_main_user = true
     end
 
     local user = utils.strip(conf.nginx_user):gsub("%s+", " ")
     if user == "nobody" or user == "nobody nobody" then
       conf.nginx_user = nil
+
+    elseif user == "kong" or user == "kong kong" then
+      default_nginx_user = true
+    end
+  end
+
+  if C.getpwnam("kong") == nil or C.getgrnam("kong") == nil then
+    if default_nginx_main_user == true and default_nginx_user == true then
+      conf.nginx_user = nil
+      conf.nginx_main_user = nil
     end
   end
 
@@ -1473,12 +1529,14 @@ local function load(path, custom_conf, opts)
 
     -- nginx directives from conf
     for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
-      injected_in_namespace[dyn_namespace.injected_conf_name] = true
+      if dyn_namespace.injected_conf_name then
+        injected_in_namespace[dyn_namespace.injected_conf_name] = true
 
-      local directives = parse_nginx_directives(dyn_namespace, conf,
-                                                injected_in_namespace)
-      conf[dyn_namespace.injected_conf_name] = setmetatable(directives,
-                                                            _nop_tostring_mt)
+        local directives = parse_nginx_directives(dyn_namespace, conf,
+          injected_in_namespace)
+        conf[dyn_namespace.injected_conf_name] = setmetatable(directives,
+          _nop_tostring_mt)
+      end
     end
 
     -- TODO: Deprecated, but kept for backward compatibility.
@@ -1579,9 +1637,11 @@ local function load(path, custom_conf, opts)
   end
 
   for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
-    table.sort(conf[dyn_namespace.injected_conf_name], function(a, b)
-      return a.name < b.name
-    end)
+    if dyn_namespace.injected_conf_name then
+      table.sort(conf[dyn_namespace.injected_conf_name], function(a, b)
+        return a.name < b.name
+      end)
+    end
   end
 
   ok, err = listeners.parse(conf, {
@@ -1628,12 +1688,6 @@ local function load(path, custom_conf, opts)
 
   -- load absolute paths
   conf.prefix = pl_path.abspath(conf.prefix)
-
-  conf.go_pluginserver_exe = pl_path.abspath(conf.go_pluginserver_exe)
-
-  if conf.go_plugins_dir ~= "off" then
-    conf.go_plugins_dir = pl_path.abspath(conf.go_plugins_dir)
-  end
 
   for _, prefix in ipairs({ "ssl", "admin_ssl", "status_ssl", "client_ssl", "cluster" }) do
     local ssl_cert = conf[prefix .. "_cert"]
