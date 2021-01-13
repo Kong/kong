@@ -73,6 +73,10 @@
   plugin configurations `service_tag`, `consumer_tag`, and `status_tag`.
   [#6230](https://github.com/Kong/kong/pull/6230)
   Thanks [onematchfox](https://github.com/onematchfox) for the patch!
+- **Rate-Limiting**: add support for Redis SSL, through configuration properties
+  `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
+  [#6737](https://github.com/Kong/kong/pull/6737)
+  Thanks [gabeio](https://github.com/gabeio) for the patch!
 
 [Back to TOC](#table-of-contents)
 
