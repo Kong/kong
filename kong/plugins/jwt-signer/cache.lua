@@ -64,7 +64,8 @@ local function init_worker()
   end
 
   kong.worker_events.register(function(data)
-    log("consumer updated, invalidating cache")
+    local operation = data.operation
+    log("consumer ", operation or "update", "d, invalidating cache")
 
     local old_entity = data.old_entity
     local old_username
