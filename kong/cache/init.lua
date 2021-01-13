@@ -11,6 +11,7 @@ local ngx_log = ngx.log
 local ERR     = ngx.ERR
 local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
+local EMPTY   = require("pl.tablex").readonly({})
 
 
 --[[
@@ -49,7 +50,7 @@ function _M.new(opts)
 
   -- opts validation
 
-  opts = opts or {}
+  opts = opts or EMPTY
 
   if not opts.cluster_events then
     error("opts.cluster_events is required", 2)
@@ -164,7 +165,7 @@ function _M:get(key, opts, cb, ...)
     error("key must be a string", 2)
   end
 
-  local page = self:get_page((opts or {}).shadow)
+  local page = self:get_page((opts or EMPTY).shadow)
   local v, err = self.mlcaches[page]:get(key, opts, cb, ...)
   if err then
     return nil, "failed to get from node cache: " .. err
@@ -178,7 +179,7 @@ function _M:set(key, opts, value)
     error("key must be a string", 2)
   end
 
-  local page = self:get_page((opts or {}).shadow)
+  local page = self:get_page((opts or EMPTY).shadow)
   local res, err = self.mlcaches[page]:set(key, opts, value)
   if err then
     return nil, "failed to set from node cache: " .. err
@@ -196,7 +197,7 @@ function _M:get_bulk(bulk, opts)
     error("opts must be a table", 2)
   end
 
-  local page = self:get_page((opts or {}).shadow)
+  local page = self:get_page((opts or EMPTY).shadow)
   local res, err = self.mlcaches[page]:get_bulk(bulk, opts)
   if err then
     return nil, "failed to get_bulk from node cache: " .. err
