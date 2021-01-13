@@ -25,4 +25,4 @@ kong-build-tools
 bin/grpcurl
 
 *.so
-
+*.bak

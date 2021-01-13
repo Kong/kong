@@ -335,7 +335,7 @@ pipeline {
                 allOf {
                     buildingTag()
                     not { triggeredBy 'TimerTrigger' }
-                    not { tag pattern: 'alpha|beta', comparator: "REGEXP" }
+                    tag pattern: '^\\d+\\.\\d+\\.\\d+$', comparator: "REGEXP"
                 }
             }
             parallel {

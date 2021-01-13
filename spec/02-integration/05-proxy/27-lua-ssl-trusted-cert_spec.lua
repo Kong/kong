@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   local bp
+  local postgres_only = strategy == "postgres" and it or pending
 
   describe("lua_ssl_trusted_cert #" .. strategy, function()
     before_each(function()
@@ -38,7 +39,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     after_each(function()
-      assert(helpers.stop_kong())
+      helpers.stop_kong()
     end)
 
     it("works with single entry", function()
@@ -71,6 +72,18 @@ for _, strategy in helpers.each_strategy() do
         headers = { host = "test.dev" },
       })
       assert.res_status(200, res)
+    end)
+
+    postgres_only("works with SSL verification", function()
+      local _, err = helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering_ca.crt,spec/fixtures/kong_clustering.crt",
+        pg_ssl = "on",
+        pg_ssl_verify = "on",
+      })
+
+      assert.not_matches("error loading CA locations %(No such file or directory%)", err)
     end)
   end)
 end

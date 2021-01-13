@@ -4,6 +4,7 @@ local tty = require "kong.cmd.utils.tty"
 local meta = require "kong.meta"
 local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
+local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local migrations_utils = require "kong.cmd.utils.migrations"
 
 
@@ -87,6 +88,8 @@ local function execute(args)
 
   conf.cassandra_timeout = args.db_timeout -- connect + send + read
   conf.cassandra_schema_consensus_timeout = args.db_timeout
+
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
   _G.kong = kong_global.new()
   kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK

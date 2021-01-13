@@ -21,6 +21,8 @@ local function execute(args)
   conf.cassandra_timeout = args.db_timeout -- connect + send + read
   conf.cassandra_schema_consensus_timeout = args.db_timeout
 
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
+
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
 
@@ -34,8 +36,6 @@ local function execute(args)
   local err
 
   xpcall(function()
-    assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
-
     if not schema_state:is_up_to_date() and args.run_migrations then
       migrations_utils.up(schema_state, db, {
         ttl = args.lock_timeout,

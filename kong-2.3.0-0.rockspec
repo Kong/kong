@@ -1,10 +1,10 @@
 package = "kong"
+version = "2.3.0-0"
 rockspec_format = "3.0"
-version = "2.2.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.2.1"
+  tag = "2.3.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -30,9 +30,9 @@ dependencies = {
   "luasyslog == 1.0.0",
   "kikito/sandbox == 1.0.1",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 5.1.0",
+  "lua-resty-dns-client == 5.2.0",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.3.0",
+  "lua-resty-healthcheck == 1.4.0",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
@@ -42,7 +42,7 @@ dependencies = {
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.2",
-  "kong-plugin-serverless-functions ~> 2.0",
+  "kong-plugin-serverless-functions ~> 2.1",
   "kong-prometheus-plugin ~> 1.0",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.3",
