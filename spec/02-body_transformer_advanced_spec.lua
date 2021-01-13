@@ -474,6 +474,8 @@ describe("Plugin: response-transformer-advanced", function()
     describe("transform", function()
       local conf
 
+      _G.kong = { configuration = { untrusted_lua = 'sandbox' } }
+
       before_each(function()
         conf = {
           remove   = {

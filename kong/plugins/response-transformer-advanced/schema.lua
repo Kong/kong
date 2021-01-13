@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local constants = require "kong.plugins.response-transformer-advanced.constants"
+local validate_function = require "kong.tools.sandbox".validate
 local validate_header_name = require("kong.tools.utils").validate_header_name
 
 local match = ngx.re.match
@@ -29,26 +30,6 @@ local function validate_status(entry)
     return false, "value '" .. entry .. "' is neither status code nor status code range"
   end
   return true
-end
-
-
-local function validate_function(fun)
-  local func1, err = load(fun)
-  if err then
-    return false, "Error parsing function: " .. err
-  end
-
-  setfenv(func1, {})
-  local success, func2 = pcall(func1)
-
-  -- the code RETURNED the handler function
-  if success and type(func2) == "function" then
-    return true
-  end
-
-  -- the code returned something unknown
-  return false, "Bad return value from function, expected function type, got "
-                .. type(func2)
 end
 
 

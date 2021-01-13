@@ -7,8 +7,9 @@
 
 local transform_utils = require "kong.plugins.response-transformer-advanced.transform_utils"
 
+local sandbox = require "kong.tools.sandbox"
+
 local cjson = require("cjson.safe").new()
-local inspect = require("inspect")
 local ngx_re = require("ngx.re")
 
 local skip_transform = transform_utils.skip_transform
@@ -74,6 +75,7 @@ end
 
 
 local function iter(config_array)
+
   if type(config_array) ~= "table" then
     return noop
   end
@@ -97,33 +99,22 @@ end
 
 
 local transform_function_cache = setmetatable({}, { __mode = "k" })
+
 local function get_transform_functions(config)
   local route = kong and kong.router and kong.router.get_route() and
                 kong.router.get_route().id or ""
   local chunk_name = "route:" .. route .. ":f#"
 
+  local opts = { chunk_name = chunk_name }
+
   local functions = transform_function_cache[config]
 
-  -- transform functions have the following available to them
-  local helper_ctx = {
-    type = type,
-    print = print,
-    tostring = tostring,
-    inspect = inspect,
-    pairs = pairs,
-    ipairs = ipairs,
-  }
-
   if not functions then
-    -- first call, go compile the functions
+
     functions = {}
+
     for i, fn_str in ipairs(config.transform.functions) do
-      -- Set function context
-      local fn_ctx = {}
-      setmetatable(fn_ctx, { __index = helper_ctx })
-      local fn = load(fn_str, chunk_name .. i, "t", fn_ctx)     -- load
-      local _, actual_fn = pcall(fn)
-      insert(functions, actual_fn)
+      insert(functions, assert(sandbox.validate_function(fn_str, opts)))
     end
 
     transform_function_cache[config] = functions
