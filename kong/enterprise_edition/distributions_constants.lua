@@ -48,36 +48,7 @@ local constants = {
     },
   },
 
-  --[[
-    This is only being used for local development and uses the real FFI
-    function call when built with kong-distributions. It can be used to
-    simulate different errors during testing by naming the variable name being
-    passed in the appropriate key. If there is not match, then the returned
-    value is always ERROR_VALIDATION_PASS.
-  ]]
-  validate_kong_license = function(license)
-    local invalid_errors = {
-      ["no_error"] = "ERROR_NO_ERROR", -- 0
-      ["license_path_not_set"] = "ERROR_LICENSE_PATH_NOT_SET", -- 1
-      ["internal_error"] = "ERROR_INTERNAL_ERROR", -- 2
-      ["open_license_file"] = "ERROR_OPEN_LICENSE_FILE", -- 3
-      ["read_license_file"] = "ERROR_READ_LICENSE_FILE", -- 4
-      ["invalid_license_json"] = "ERROR_INVALID_LICENSE_JSON", -- 5
-      ["invalid_license_format"] = "ERROR_INVALID_LICENSE_FORMAT", -- 6
-      ["validation_fail"] = "ERROR_VALIDATION_FAIL", -- 8
-      ["license_expired"] = "ERROR_LICENSE_EXPIRED", -- 9
-      ["invalid_expiration_date"] = "ERROR_INVALID_EXPIRATION_DATE", -- 10
-      ["grace_period"] = "ERROR_GRACE_PERIOD", -- 11
-    }
-
-    local passed_in_variable_name = debug.getlocal(2, 1)
-    for key, value in pairs(invalid_errors) do
-      if key == passed_in_variable_name then
-        return value
-      end
-    end
-
-    return "ERROR_VALIDATION_PASS" -- 7
-  end
+  release = false,
 }
+
 return setmetatable(constants, {__index = function() return {} end })

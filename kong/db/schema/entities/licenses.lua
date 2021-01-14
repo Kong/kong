@@ -7,6 +7,8 @@
 
 local typedefs = require "kong.db.schema.typedefs"
 
+local license_helpers = require "kong.enterprise_edition.license_helpers"
+
 return {
   name = "licenses",
   -- dao = "kong.db.dao.licenses",
@@ -22,6 +24,19 @@ return {
     { updated_at     = typedefs.auto_timestamp_s },
   },
 
-  -- check = function() end
+  entity_checks = {
+    { custom_entity_check = {
+      field_sources = { "payload" },
+      fn = function(entity)
+        local ok, msg = license_helpers.is_valid_license(entity.payload)
+        if not ok then
+          ngx.log(ngx.ERR, msg)
+          kong.response.exit(400, { message = msg })
+          return false
+        end
 
+        return true
+      end,
+    }}
+  },
 }

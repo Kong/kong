@@ -30,10 +30,11 @@
 -- with lambdas in case we need it.
 --
 
-local cjson      = require "cjson.safe"
-local pl_path    = require "pl.path"
-local log        = require "kong.cmd.utils.log"
+local cjson          = require "cjson.safe"
+local pl_path        = require "pl.path"
+local log            = require "kong.cmd.utils.log"
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
+local license_utils  = require "kong.enterprise_edition.license_utils"
 
 
 local timer_at = ngx.timer.at
@@ -253,6 +254,14 @@ function _M.license_can_proceed(self)
   then
     return kong.response.exit(403, { message = "Forbidden" })
   end
+
+  if not license_utils.license_validation_can_proceed()
+    and not (method == "GET") then
+    -- Force a 400 (Bad Request) and attach the error message
+    local msg = "license library cannot be loaded"
+    ngx.log(ngx.ERR, msg)
+    return kong.response.exit(400, { message = msg })
+  end
 end
 
 local function validation_error_to_string(error)
@@ -286,13 +295,16 @@ local function validation_error_to_string(error)
 end
 
 local function validate_kong_license(license)
-  return dist_constants.validate_kong_license(license)
+  return license_utils.validate_kong_license(license)
 end
 
 local function is_valid_license(license)
-  if validate_kong_license(license) == "ERROR_VALIDATION_PASS" then
-    return cjson.decode(license)
+  local result = validate_kong_license(license)
+  if result == "ERROR_VALIDATION_PASS" then
+    return true, license
   end
+
+  return false, "Unable to validate license: " .. validation_error_to_string(result)
 end
 
 _M.validation_error_to_string = validation_error_to_string
