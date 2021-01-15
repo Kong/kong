@@ -1,163 +1,203 @@
-local sandbox = {
-  _VERSION      = "sandbox 0.5",
-  _DESCRIPTION  = "A pure-lua solution for running untrusted Lua code.",
-  _URL          = "https://github.com/kikito/sandbox.lua",
-  _LICENSE      = [[
-    MIT LICENSE
+local _sandbox = require "sandbox"
 
-    Copyright (c) 2013 Enrique García Cota
+local table = table
+local fmt = string.format
+local setmetatable = setmetatable
+local require = require
+local ipairs = ipairs
+local pcall = pcall
+local type = type
+local error = error
+local rawset = rawset
+local assert = assert
 
-    Permission is hereby granted, free of charge, to any person obtaining a
-    copy of this software and associated documentation files (the
-    "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish,
-    distribute, sublicense, and/or sell copies of the Software, and to
-    permit persons to whom the Software is furnished to do so, subject to
-    the following conditions:
+-- XXX do not index kong precisely because we want to lazy load conf
+-- local kong = kong
 
-    The above copyright notice and this permission notice shall be included
-    in all copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-  ]]
-}
+-- deep copy tables using dot notation, like
+-- one: { foo = { bar = { hello = {}, ..., baz = 42 } } }
+-- target: { hey = { "hello } }
+-- link("foo.bar.baz", one, target)
+-- target -> { hey = { "hello" }, foo = { bar = { baz = 42 } } }
+local function link(q, o, target)
+  if not q then return end
 
--- Lua 5.2, 5.3 and above
--- https://leafo.net/guides/setfenv-in-lua52-and-above.html#setfenv-implementation
-local setfenv = setfenv or function(fn, env)
-  local i = 1
-  while true do
-    local name = debug.getupvalue(fn, i)
-    if name == "_ENV" then
-      debug.upvaluejoin(fn, i, (function()
-        return env
-      end), 1)
-      break
-    elseif not name then
-      break
+  local h, r = q:match("([^%.]+)%.?(.*)")
+  local mod = o[h]
+
+  if not mod then return end
+
+  if r == "" then
+    if type(mod) == 'table' then
+      -- changes on target[h] won't affect mod
+      target[h] = setmetatable({}, { __index = mod })
+
+    else
+      target[h] = mod
     end
 
-    i = i + 1
+    return
   end
 
-  return fn
+  if not target[h] then target[h] = {} end
+
+  link(r, o[h], target[h])
 end
 
--- The base environment is merged with the given env option (or an empty table, if no env provided)
---
-local BASE_ENV = {}
 
--- List of non-safe packages/functions:
---
--- * string.rep: can be used to allocate millions of bytes in 1 operation
--- * {set|get}metatable: can be used to modify the metatable of global objects (strings, integers)
--- * collectgarbage: can affect performance of other systems
--- * dofile: can access the server filesystem
--- * _G: It has access to everything. It can be mocked to other things though.
--- * load{file|string}: All unsafe because they can grant acces to global env
--- * raw{get|set|equal}: Potentially unsafe
--- * module|require|module: Can modify the host settings
--- * string.dump: Can display confidential server info (implementation of functions)
--- * string.rep: Can allocate millions of bytes in one go
--- * math.randomseed: Can affect the host sytem
--- * io.*, os.*: Most stuff there is non-save
+local lazy_conf_methods = {
+  enabled = function(self)
+    return kong and
+           kong.configuration and
+           kong.configuration.untrusted_lua and
+           kong.configuration.untrusted_lua ~= 'off'
+  end,
+  sandbox_enabled = function(self)
+    return kong and
+           kong.configuration and
+           kong.configuration.untrusted_lua and
+           kong.configuration.untrusted_lua == 'sandbox'
+  end,
+  requires = function(self)
+    local conf_r = kong and
+                   kong.configuration and
+                   kong.configuration.untrusted_lua_sandbox_requires or {}
+    local requires = {}
+    for _, r in ipairs(conf_r) do requires[r] = true end
+    return requires
+  end,
+  env_vars = function(self)
+    return kong and
+           kong.configuration and
+           kong.configuration.untrusted_lua_sandbox_environment or {}
+  end,
+  environment = function(self)
+    local env = {
+        -- home brewed require function that only requires what we consider
+        -- safe :)
+        ["require"] = function(m)
+          if not self.requires[m] then
+            error(fmt("require '%s' not allowed within sandbox", m))
+          end
+
+          return require(m)
+        end,
+    }
+
+    for _, m in ipairs(self.env_vars) do link(m, _G, env) end
+
+    return env
+  end,
+}
 
 
--- Safe packages/functions below
-local packages = [[
+local conf_values = {
+  clear = table.clear,
+  reload = table.clear,
+  err_msg = "loading of untrusted Lua code disabled because " ..
+            "'untrusted_lua' config option is set to 'off'"
+}
 
-_VERSION assert error    ipairs   next pairs
-pcall    select tonumber tostring type unpack xpcall
 
-coroutine.create coroutine.resume coroutine.running coroutine.status
-coroutine.wrap   coroutine.yield
+local configuration = setmetatable({}, {
+  __index = function(self, key)
+    local l = lazy_conf_methods[key]
 
-math.abs   math.acos math.asin  math.atan math.atan2 math.ceil
-math.cos   math.cosh math.deg   math.exp  math.fmod  math.floor
-math.frexp math.huge math.ldexp math.log  math.log10 math.max
-math.min   math.modf math.pi    math.pow  math.rad   math.random
-math.sin   math.sinh math.sqrt  math.tan  math.tanh
+    if not l then
+      return conf_values[key]
+    end
 
-os.clock os.difftime os.time
+    local value = l(self)
+    rawset(self, key, value)
 
-string.byte string.char  string.find  string.format string.gmatch
-string.gsub string.len   string.lower string.match  string.reverse
-string.sub  string.upper
+    return value
+  end,
+})
 
-table.insert table.maxn table.remove table.sort
 
-]]
-
-local protect_modules = 'coroutine math os string table'
-
-packages:gsub('%S+', function(id)
-  local module, method = id:match('([^%.]+)%.([^%.]+)')
-  if module then
-    BASE_ENV[module]         = BASE_ENV[module] or {}
-    BASE_ENV[module][method] = _G[module][method]
-  else
-    BASE_ENV[id] = _G[id]
-  end
-end)
-
-protect_modules:gsub('%S+', function(module)
-  BASE_ENV[module] = setmetatable({}, {
-    __index = BASE_ENV[module],
-    __newindex = function() error("This table is read-only.") end
-  })
-end)
-
-local string_rep = string.rep
-
--- Public interface: sandbox.protect
-function sandbox.protect(f, options)
-  options = options or {}
-
-  local passed_env = options.env or {}
-  local env = setmetatable({}, {
-    __index = function(_, k)
-      local v = BASE_ENV[k]
-      if v == nil then
-        return passed_env[k]
-      end
-      return v
-    end,
-  })
-
-  env._G = env._G or env
-
-  if type(f) == 'string' then
-    f = assert(load(f, options.chunk_name, options.mode, env))
-  else
-    setfenv(f, env)
+local sandbox = function(fn, opts)
+  if not configuration.enabled then
+    error(configuration.err_msg)
   end
 
-  return function(...)
+  opts = opts or {}
 
-    string.rep = nil
+  local opts = {
+    -- default set load string mode to only 'text chunks'
+    mode = opts.mode or 't',
+    env = opts.env or {},
+    chunk_name = opts.chunk_name,
+  }
 
-    local t = table.pack(pcall(f, ...))
+  if not configuration.sandbox_enabled then
+    -- sandbox disabled, all arbitrary Lua code can execute unrestricted
+    setmetatable(opts.env, { __index = _G})
 
-    string.rep = string_rep
-
-    if not t[1] then error(t[2]) end
-
-    return table.unpack(t, 2, t.n)
+    return assert(load(fn, opts.chunk_name, opts.mode, opts.env))
   end
+
+  -- set (discard-able) function context
+  setmetatable(opts.env, { __index = configuration.environment })
+
+  return _sandbox(fn, opts)
 end
 
--- Public interface: sandbox.run
-function sandbox.run(f, options, ...)
-  return sandbox.protect(f, options)(...)
+
+local function validate_function(fun, opts)
+  local ok, func1 = pcall(sandbox, fun, opts)
+  if not ok then
+    return false, "Error parsing function: " .. func1
+  end
+
+  local success, func2 = pcall(func1)
+
+  if success and type(func2) == "function" then
+    return func2
+  end
+
+  -- the code returned something unknown
+  return false, "Bad return value from function, expected function type, got "
+                .. type(func2)
 end
 
--- make sandbox(f) == sandbox.protect(f)
-setmetatable(sandbox, {__call = function(_,f,o) return sandbox.protect(f,o) end})
 
-return sandbox
+local function parse(fn_str, opts)
+  return assert(validate_function(fn_str, opts))
+end
+
+
+local _M = {}
+
+
+_M.validate_function = validate_function
+
+
+_M.validate = function(fn_str, opts)
+  local _, err = validate_function(fn_str, opts)
+  if err then return false, err end
+
+  return true
+end
+
+
+-- meant for schema, do not execute arbitrary lua!
+-- https://github.com/Kong/kong/issues/5110
+_M.validate_safe = function(fn_str, opts)
+  local ok, func1 = pcall(sandbox, fn_str, opts)
+
+  if not ok then
+    return false, "Error parsing function: " .. func1
+  end
+
+  return true
+end
+
+
+_M.sandbox = sandbox
+_M.parse = parse
+-- useful for testing
+_M.configuration = configuration
+
+
+return _M

@@ -1,12 +1,12 @@
 local utils = require "kong.tools.utils"
-local deep_copy = utils.deep_copy
-local split = utils.split
 
+
+local deep_copy = utils.deep_copy
 local fmt = string.format
 
 describe("sandbox functions wrapper", function()
 
-  local sandbox, sandbox_helpers, load_s
+  local _sandbox, sandbox, load_s
 
   local base_conf = {
     untrusted_lua_sandbox_requires = {},
@@ -23,23 +23,23 @@ describe("sandbox functions wrapper", function()
     -- load and reference module we can spy on
     load_s = spy.new(load)
     _G.load = load_s
-    sandbox = spy.new(require "kong.tools.sandbox")
-    package.loaded["kong.tools.sandbox"] = sandbox
-    sandbox_helpers = require "kong.tools.sandbox_helpers"
+    _sandbox = spy.new(require "sandbox")
+    package.loaded["sandbox"] = _sandbox
+    sandbox = require "kong.tools.sandbox"
   end)
 
   before_each(function()
-    sandbox:clear()
+    _sandbox:clear()
     load_s:clear()
-    sandbox_helpers.configuration:reload()
+    sandbox.configuration:clear()
   end)
 
   lazy_teardown(function()
     load_s:revert()
-    sandbox:revert()
+    _sandbox:revert()
   end)
 
-  describe("#sandbox_helpers.validate_safe", function()
+  describe("sandbox.validate_safe", function()
     for _, u in ipairs({'on', 'sandbox'}) do describe(("untrusted_lua = '%s'"):format(u), function()
       lazy_setup(function()
         _G.kong.configuration.untrusted_lua = u
@@ -52,18 +52,18 @@ describe("sandbox functions wrapper", function()
       -- https://github.com/Kong/kong/issues/5110
       it("does not execute the code itself", function()
         local env = { do_it = spy.new(function() end) }
-        local ok = sandbox_helpers.validate_safe([[ do_it() ]], { env = env })
+        local ok = sandbox.validate_safe([[ do_it() ]], { env = env })
         assert.is_true(ok)
         assert.spy(env.do_it).not_called()
 
         -- and now, of course, for the control group!
-        sandbox_helpers.sandbox([[ do_it() ]], { env = env })()
+        sandbox.sandbox([[ do_it() ]], { env = env })()
         assert.spy(env.do_it).called()
       end)
     end) end
   end)
 
-  describe("#sandbox_helpers.validate", function()
+  describe("sandbox.validate", function()
     for _, u in ipairs({'on', 'sandbox'}) do describe(("untrusted_lua = '%s'"):format(u), function()
       lazy_setup(function()
         _G.kong.configuration.untrusted_lua = u
@@ -74,17 +74,17 @@ describe("sandbox functions wrapper", function()
       end)
 
       it("validates input is lua that returns a function", function()
-        assert.is_true(sandbox_helpers.validate("return function() end"))
+        assert.is_true(sandbox.validate("return function() end"))
       end)
 
       it("returns false and error when some string is not some code", function()
-        local ok, err = sandbox_helpers.validate("here come the warm jets")
+        local ok, err = sandbox.validate("here come the warm jets")
         assert.is_false(ok)
         assert.matches("Error parsing function", err, nil, true)
       end)
 
       it("returns false and error when input is lua that does not return a function", function()
-        local ok, err = sandbox_helpers.validate("return 42")
+        local ok, err = sandbox.validate("return 42")
         assert.is_false(ok)
         assert.matches("Bad return value from function, expected function type, got number", err)
       end)
@@ -100,14 +100,14 @@ describe("sandbox functions wrapper", function()
       end)
 
       it("errors", function()
-        local ok, err = sandbox_helpers.validate("return function() end")
+        local ok, err = sandbox.validate("return function() end")
         assert.is_false(ok)
-        assert.matches(sandbox_helpers.configuration.err_msg, err, nil, true)
+        assert.matches(sandbox.configuration.err_msg, err, nil, true)
       end)
     end)
   end)
 
-  describe("#sandbox_helpers.sandbox", function()
+  describe("sandbox.sandbox", function()
     local setting
 
     before_each(function()
@@ -122,8 +122,8 @@ describe("sandbox functions wrapper", function()
       lazy_setup(function() setting = 'off' end)
 
       it("errors", function()
-        sandbox_helpers.configuration:reload()
-        assert.error(function() sandbox_helpers.sandbox("return 42") end)
+        sandbox.configuration:clear()
+        assert.error(function() sandbox.sandbox("return 42") end)
       end)
     end)
 
@@ -131,19 +131,19 @@ describe("sandbox functions wrapper", function()
       lazy_setup(function() setting = 'on' end)
 
       it("does not use sandbox", function()
-        assert(sandbox_helpers.sandbox('return 42')())
-        assert.spy(sandbox).was_not.called()
+        assert(sandbox.sandbox('return 42')())
+        assert.spy(_sandbox).was_not.called()
       end)
 
       it("calls load with mode t (text only)", function()
-        sandbox_helpers.sandbox("return 42")
+        sandbox.sandbox("return 42")
         assert.spy(load_s).was.called()
         assert.equal("t", load_s.calls[1].vals[3])
       end)
 
       it("does not load binary strings (text only)", function()
         assert.error(function()
-          sandbox_helpers.sandbox(string.dump(function() end))
+          sandbox.sandbox(string.dump(function() end))
         end)
       end)
 
@@ -157,18 +157,18 @@ describe("sandbox functions wrapper", function()
         end)
 
         it("has _G access", function()
-          assert.same(_G.hello_world, sandbox_helpers.sandbox('return hello_world')())
+          assert.same(_G.hello_world, sandbox.sandbox('return hello_world')())
         end)
 
         it("does not write _G", function()
-          local r = sandbox_helpers.sandbox('hello_world = "foobar" return hello_world')()
+          local r = sandbox.sandbox('hello_world = "foobar" return hello_world')()
           assert.same("foobar", r)
           assert.same("Hello World", _G.hello_world)
         end)
 
         it("does use an environment too", function()
           local env = { foo = 0}
-          local fn = sandbox_helpers.parse([[
+          local fn = sandbox.parse([[
             return function(inc)
               foo = foo + inc
             end
@@ -183,19 +183,19 @@ describe("sandbox functions wrapper", function()
       lazy_setup(function() setting = 'sandbox' end)
 
       it("calls sandbox.lua behind the scenes", function()
-        sandbox_helpers.sandbox("return 42")
-        assert.spy(sandbox).was.called()
+        sandbox.sandbox("return 42")
+        assert.spy(_sandbox).was.called()
       end)
 
       it("calls load with mode t (text only)", function()
-        sandbox_helpers.sandbox("return 42")
+        sandbox.sandbox("return 42")
         assert.spy(load_s).was.called()
         assert.equal("t", load_s.calls[1].vals[3])
       end)
 
       it("does not load binary strings (text only)", function()
         assert.error(function()
-          sandbox_helpers.sandbox(string.dump(function() end))
+          sandbox.sandbox(string.dump(function() end))
         end)
       end)
 
@@ -210,8 +210,8 @@ describe("sandbox functions wrapper", function()
         }
 
         local function find(q, o)
-          if not q then return o end
-          local h, r = table.unpack(split(q, '.', 2))
+          if q == "" then return o end
+          local h, r = q:match("([^%.]+)%.?(.*)")
           return find(r, o[h])
         end
 
@@ -236,28 +236,28 @@ describe("sandbox functions wrapper", function()
 
         it("has access to config.untrusted_lua_sandbox_environment", function()
           for _, m in ipairs(modules) do
-            assert.same(find(m, _G), sandbox_helpers.sandbox(fmt("return %s", m))())
+            assert.same(find(m, _G), sandbox.sandbox(fmt("return %s", m))())
           end
         end)
 
         it("does not have access to anything else on the modules", function()
           for _, m in ipairs({ "foo.baz", "baz.foo", "baz.fuzz.question"}) do
-            assert.is_nil(sandbox_helpers.sandbox(fmt("return %s", m))())
+            assert.is_nil(sandbox.sandbox(fmt("return %s", m))())
           end
         end)
 
         it("tables are read only", function()
-          sandbox_helpers.sandbox([[ foo.bar.something = 'hello' ]])()
+          sandbox.sandbox([[ foo.bar.something = 'hello' ]])()
           assert.is_nil(_G.foo.bar.something)
         end)
 
         it("tables are unmutable on all levels", function()
-          sandbox_helpers.sandbox([[ baz.fuzz.hallo = 'hello' ]])()
+          sandbox.sandbox([[ baz.fuzz.hallo = 'hello' ]])()
           assert.is_nil(_G.baz.fuzz.hallo)
         end)
 
         it("configuration.untrusted_lua_sandbox_environment is composable", function()
-          local s_fizz = sandbox_helpers.sandbox([[ return fizz ]])()
+          local s_fizz = sandbox.sandbox([[ return fizz ]])()
           assert.same(_G.fizz, s_fizz)
         end)
 
@@ -267,7 +267,7 @@ describe("sandbox functions wrapper", function()
               something = { fun = function() end },
             }
           }
-          local s_foo = sandbox_helpers.sandbox([[
+          local s_foo = sandbox.sandbox([[
             return foo
           ]], { env = some_env })()
 
@@ -285,14 +285,14 @@ describe("sandbox functions wrapper", function()
                 package.loaded[mod] = mock
 
                 local fn = string.format("return require('%s')", mod)
-                assert.equal(mock, sandbox_helpers.sandbox(fn)())
+                assert.equal(mock, sandbox.sandbox(fn)())
 
                 finally(function() package.loaded[mod] = _o end)
             end
           end)
 
           it("cannot require anything else", function()
-            local fn = sandbox_helpers.sandbox("return require('something-else')")
+            local fn = sandbox.sandbox("return require('something-else')")
             local _, err = pcall(fn)
             assert.matches("require 'something-else' not allowed", err, nil, true)
           end)
@@ -302,7 +302,7 @@ describe("sandbox functions wrapper", function()
 
   end)
 
-  describe("#sandbox_helpers.parse", function()
+  describe("sandbox.parse", function()
     for _, u in ipairs({'on', 'sandbox'}) do describe(("untrusted_lua = '%s'"):format(u), function()
       lazy_setup(function()
         _G.kong.configuration.untrusted_lua = u
@@ -313,7 +313,7 @@ describe("sandbox functions wrapper", function()
       end)
 
       it("returns a function when it gets code returning a function", function()
-        local fn = sandbox_helpers.parse([[
+        local fn = sandbox.parse([[
           return function(something)
             return something
           end
@@ -324,11 +324,11 @@ describe("sandbox functions wrapper", function()
 
       describe("errs with invalid input:", function()
         it("bad code", function()
-          assert.error(function() sandbox_helpers.parse("foo bar baz") end)
+          assert.error(function() sandbox.parse("foo bar baz") end)
         end)
 
         it("code that does not return a function", function()
-          assert.error(function() sandbox_helpers.parse("return 42") end)
+          assert.error(function() sandbox.parse("return 42") end)
         end)
       end)
     end) end
@@ -343,7 +343,7 @@ describe("sandbox functions wrapper", function()
       end)
 
       it("errors", function()
-        assert.error(function() sandbox_helpers.parse("return 42") end)
+        assert.error(function() sandbox.parse("return 42") end)
       end)
     end)
   end)

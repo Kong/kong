@@ -1,5 +1,6 @@
 package = "kong"
 version = "2.2.1-0"
+rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
@@ -28,6 +29,7 @@ dependencies = {
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.5",
   "luasyslog == 1.0.0",
+  "kikito/sandbox == 1.0.1",
   "lua_pack == 1.0.5",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.08",
@@ -51,7 +53,7 @@ dependencies = {
   "kong-plugin-kubernetes-sidecar-injector ~> 0.2.1",
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.1",
-  "kong-plugin-serverless-functions ~> 2.0",
+  "kong-plugin-serverless-functions ~> 2.1",
   "kong-prometheus-plugin ~> 1.0",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.2",
@@ -204,9 +206,7 @@ build = {
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
     ["kong.tools.messaging"] = "kong/tools/messaging.lua",
-
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
-    ["kong.tools.sandbox_helpers"] = "kong/tools/sandbox_helpers.lua",
 
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
     ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",
