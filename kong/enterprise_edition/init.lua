@@ -25,6 +25,7 @@ local api_helpers = require "kong.api.api_helpers"
 local tracing = require "kong.tracing"
 local counters = require "kong.workspaces.counters"
 local workspace_config = require "kong.portal.workspace_config"
+local cjson = require "cjson.safe"
 
 
 local kong = kong
@@ -121,14 +122,16 @@ _M.handlers = {
         end
 
         if l then
-          kong.license = l.payload
+          kong.license = cjson.decode(l.payload)
+          license_helpers:reload()
         end
       end, "declarative", "flip_config")
 
       kong.worker_events.register(function(data, event, source, pid)
         if data.schema.name == "licenses" and
           (event == "update" or event == "insert" or event == "create") then
-          kong.license = data.entity.payload
+          kong.license = cjson.decode(data.entity.payload)
+          license_helpers:reload()
         end
       end, "dao:crud")
 
@@ -141,7 +144,8 @@ _M.handlers = {
           end
 
           if l then
-            kong.license = l.payload
+            kong.license = cjson.decode(l.payload)
+            license_helpers:reload()
           end
         end
       end, "dao:crud")

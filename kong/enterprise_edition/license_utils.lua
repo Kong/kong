@@ -47,12 +47,42 @@ local function license_validation_can_proceed()
   return true
 end
 
+local function validation_error_to_string(error)
+  if error == "ERROR_NO_ERROR" then -- 0
+    return "no error"
+  elseif error == "ERROR_LICENSE_PATH_NOT_SET" then -- 1
+    return "license path environment variable not set"
+  elseif error == "ERROR_INTERNAL_ERROR" then -- 2
+    return "internal error"
+  elseif error == "ERROR_OPEN_LICENSE_FILE" then -- 3
+    return "error opening license file"
+  elseif error == "ERROR_READ_LICENSE_FILE" then -- 4
+    return "error reading license file"
+  elseif error == "ERROR_INVALID_LICENSE_JSON" then -- 5
+    return "could not decode license json"
+  elseif error == "ERROR_INVALID_LICENSE_FORMAT" then -- 6
+    return "invalid license format"
+  elseif error == "ERROR_VALIDATION_PASS" then -- 7
+    return "validation passed"
+  elseif error == "ERROR_VALIDATION_FAIL" then -- 8
+    return "validation failed"
+  elseif error == "ERROR_LICENSE_EXPIRED" then -- 9
+    return "license expired"
+  elseif error == "ERROR_INVALID_EXPIRATION_DATE" then -- 10
+    return "invalid license expiration date"
+  elseif error == "ERROR_GRACE_PERIOD" then -- 11
+    return "license in grace period; contact support@konghq.com"
+  end
+
+  return "UNKNOWN ERROR"
+end
+
 local function validate_kong_license(license)
   -- Always favor library over the development logic
   if liblicense_utils_loaded then
     -- Handle validation using the C library
     local error = liblicense_utils.validate_kong_license_data(license)
-    ngx.log(ngx.DEBUG, "Using liblicense_utils shared library: " , error)
+    ngx.log(ngx.DEBUG, "Using liblicense_utils shared library: ", validation_error_to_string(error))
     return error
   else
     local validation_can_proceed = license_validation_can_proceed
@@ -96,6 +126,7 @@ local function validate_kong_license(license)
 end
 
 _M.license_validation_can_proceed = license_validation_can_proceed
+_M.validation_error_to_string = validation_error_to_string
 _M.validate_kong_license = validate_kong_license
 
 return _M

@@ -511,6 +511,12 @@ function Kong.init()
   kong.dns = singletons.dns
 
   -- XXX EE [[
+  -- re-read the license (iff not set) in the event the license is in the DB
+  if not kong.license then
+    kong.license = ee.read_license_info()
+  end
+
+
   kong.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
   singletons.admin_emails = admin_emails.new(config)
@@ -529,7 +535,6 @@ function Kong.init()
       ttl_minutes    = config.vitals_ttl_minutes,
       ttl_days       = config.vitals_ttl_days,
   }
-
 
   local counters_strategy = require("kong.counters.sales.strategies." .. kong.db.strategy):new(kong.db)
   kong.sales_counters = sales_counters.new({ strategy = counters_strategy })
@@ -632,6 +637,11 @@ function Kong.init_worker()
     return
   end
   kong.cluster_events = cluster_events
+
+  -- re-read the license (iff not set) in the event the license is in the DB
+  if not kong.license then
+    kong.license = ee.read_license_info()
+  end
 
   -- vitals functions require a timer, so must start in worker context
   local ok, err = kong.vitals:init()

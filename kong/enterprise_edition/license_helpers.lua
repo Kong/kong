@@ -55,17 +55,31 @@ local DEFAULT_KONG_LICENSE_PATH = "/etc/kong/license.json"
 local function get_license_string()
   local license_data_env = os.getenv("KONG_LICENSE_DATA")
   if license_data_env then
+    ngx.log(ngx.DEBUG, "Loaded license from KONG_LICENSE_DATA")
     return license_data_env
   end
 
   local license_path
   if pl_path.exists(DEFAULT_KONG_LICENSE_PATH) then
+    ngx.log(ngx.DEBUG, "Loaded license from default Kong license path")
     license_path = DEFAULT_KONG_LICENSE_PATH
-
   else
     license_path = os.getenv("KONG_LICENSE_PATH")
     if not license_path then
-      ngx.log(ngx.NOTICE, "KONG_LICENSE_PATH is not set")
+      if kong and kong.db and kong.db.licenses then
+        -- Load license from database
+        local license
+        for l in kong.db.licenses:each() do
+          license = l
+        end
+        if license then
+          ngx.log(ngx.DEBUG, "Loaded license from database")
+          return license.payload
+        end
+      end
+
+      -- License was not loaded from DB so return initial error
+      ngx.log(ngx.DEBUG, "KONG_LICENSE_PATH is not set")
       return nil
     end
   end
@@ -84,6 +98,7 @@ local function get_license_string()
 
   license_file:close()
 
+  ngx.log(ngx.DEBUG, "Loaded license from KONG_LICENSE_PATH")
   return license_data
 end
 
@@ -306,36 +321,6 @@ function _M.license_can_proceed(self)
   end
 end
 
-local function validation_error_to_string(error)
-    if error == "ERROR_NO_ERROR" then -- 0
-      return "no error"
-    elseif error == "ERROR_LICENSE_PATH_NOT_SET" then -- 1
-      return "license path environment variable not set"
-    elseif error == "ERROR_INTERNAL_ERROR" then -- 2
-      return "internal error"
-    elseif error == "ERROR_OPEN_LICENSE_FILE" then -- 3
-      return "error opening license file"
-    elseif error == "ERROR_READ_LICENSE_FILE" then -- 4
-      return "error reading license file"
-    elseif error == "ERROR_INVALID_LICENSE_JSON" then -- 5
-      return "could not decode license json"
-    elseif error == "ERROR_INVALID_LICENSE_FORMAT" then -- 6
-      return "invalid license format"
-    elseif error == "ERROR_VALIDATION_PASS" then -- 7
-      return "validation passed"
-    elseif error == "ERROR_VALIDATION_FAIL" then -- 8
-      return "validation failed"
-    elseif error == "ERROR_LICENSE_EXPIRED" then -- 9
-      return "license expired"
-    elseif error == "ERROR_INVALID_EXPIRATION_DATE" then -- 10
-      return "invalid license expiration date"
-    elseif error == "ERROR_GRACE_PERIOD" then -- 11
-      return "license in grace period; contact support@konghq.com"
-    end
-
-    return "UNKNOWN ERROR"
-end
-
 local function validate_kong_license(license)
   return license_utils.validate_kong_license(license)
 end
@@ -343,13 +328,12 @@ end
 local function is_valid_license(license)
   local result = validate_kong_license(license)
   if result == "ERROR_VALIDATION_PASS" then
-    return true, license
+    return true, cjson.decode(license)
   end
 
-  return false, "Unable to validate license: " .. validation_error_to_string(result)
+  return false, "Unable to validate license: " .. license_utils.validation_error_to_string(result)
 end
 
-_M.validation_error_to_string = validation_error_to_string
 _M.validate_kong_license = validate_kong_license
 _M.is_valid_license = is_valid_license
 
