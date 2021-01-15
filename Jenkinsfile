@@ -47,46 +47,57 @@ pipeline {
         parallel (
           centos7: {
             sh "./dist/dist.sh build centos:7 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh sign centos:7 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test centos:7 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 -e -R ${env.RELEASE_SCOPE}"
           },
           centos8: {
             sh "./dist/dist.sh build centos:8 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh sign centos:8 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test centos:8 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:8 -e -R ${env.RELEASE_SCOPE}"
           },
           debian8: {
             sh "./dist/dist.sh build debian:8 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test debian:8 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 -e -R ${env.RELEASE_SCOPE}"
           },
           debian9: {
             sh "./dist/dist.sh build debian:9 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test debian:9 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 -e -R ${env.RELEASE_SCOPE}"
           },
           ubuntu1604: {
             sh "./dist/dist.sh build ubuntu:16.04 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test ubuntu:16.04 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 -e -R ${env.RELEASE_SCOPE}"
           },
           ubuntu1804: {
             sh "./dist/dist.sh build ubuntu:18.04 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test ubuntu:18.04 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 -e -R ${env.RELEASE_SCOPE}"
-          },
-          amazonlinux1: {
-            sh "./dist/dist.sh build amazonlinux:1 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux:1 -e -R ${env.RELEASE_SCOPE}"
           },
           amazonlinux2: {
             sh "./dist/dist.sh build amazonlinux:2 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh sign amazonlinux:2 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test amazonlinux:2 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux:2 -e -R ${env.RELEASE_SCOPE}"
           },
           alpine: {
             sh "./dist/dist.sh build alpine ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test alpine ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine -e -R ${env.RELEASE_SCOPE}"
           },
           rhel7: {
             sh "./dist/dist.sh build rhel:7 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh sign rhel:7 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test rhel:7 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:7 -e -R ${env.RELEASE_SCOPE}"
           },
           rhel8: {
             sh "./dist/dist.sh build rhel:8 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh sign rhel:8 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test rhel:8 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:8 -e -R ${env.RELEASE_SCOPE}"
           },
         )
