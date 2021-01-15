@@ -90,7 +90,7 @@ local function count_results(logs_dir)
       if host then
         local host_no_port = ngx.re.match(m[3], host_regex)
         if host_no_port then
-          host = host_no_port[1]
+          host = host_no_port[2]
         end
       else
         host = "nonamehost"
