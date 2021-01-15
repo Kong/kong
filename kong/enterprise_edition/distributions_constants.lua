@@ -46,7 +46,10 @@ local constants = {
         deny_entity = {
           -- ['entity_name'] = true,
         },
-        ee_plugins = false
+        ee_plugins = function(conf)
+          -- usually false, except if role is data_plane
+          return conf.role == 'data_plane'
+        end,
       }
     },
   },

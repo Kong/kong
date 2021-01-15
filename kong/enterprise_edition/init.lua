@@ -421,7 +421,7 @@ function _M.prepare_portal(self, kong_config)
 end
 
 
-function _M.license_hooks()
+function _M.license_hooks(config)
 
   -- license API allow / deny
   hooks.register_hook("api:init:pre", function(app)

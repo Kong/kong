@@ -212,12 +212,20 @@ end
 
 
 function _M.license_can(ability)
-  return not (_M.featureset.abilities[ability] == false)
+  return not (_M.ability(ability) == false)
 end
 
 
 function _M.ability(ability)
-  return _M.featureset.abilities and _M.featureset.abilities[ability]
+  local it = _M.featureset.abilities and _M.featureset.abilities[ability]
+
+  -- lazy lazy load featureset functions
+  if it and type(it) == 'function' then
+    it = it(kong and kong.configuration)
+    rawset(_M.featureset.abilities, ability, it)
+  end
+
+  return it
 end
 
 
