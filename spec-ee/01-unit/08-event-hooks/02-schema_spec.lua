@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local Schema = require "kong.db.schema"
-local sandbox_helpers = require "kong.tools.sandbox_helpers"
+local sandbox = require "kong.tools.sandbox"
 
 local event_hooks_schema = require "kong.db.schema.entities.event_hooks"
 local event_hooks_subschemas = require "kong.db.schema.entities.event_hooks_subschemas"
@@ -51,7 +51,7 @@ describe("event_hooks (schema)", function()
       event_hooks.publish("bar", "foo")
 
       _G.kong.configuration.untrusted_lua = untrusted_lua
-      sandbox_helpers.configuration:reload()
+      sandbox.configuration:reload()
     end)
 
     for _, ul in ipairs({'on', 'sandbox'}) do
