@@ -29,10 +29,10 @@ http {
   server {
 # if protocol ~= 'https' then
     listen 127.0.0.1:${http_port};
-    listen [0000:0000:0000:0000:0000:0000:0000:0001]:${http_port};
+    listen [::1]:${http_port};
 # else
-    listen 127.0.0.1:${http_port} ssl;
-    listen [0000:0000:0000:0000:0000:0000:0000:0001]:${http_port} ssl;
+    listen 127.0.0.1:${http_port} ssl http2;
+    listen [::1]:${http_port} ssl http2;
     ssl_certificate     ${cert_path}/kong_spec.crt;
     ssl_certificate_key ${cert_path}/kong_spec.key;
     ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
@@ -158,7 +158,7 @@ http {
 # if check_hostname then
   server {
     listen 127.0.0.1:${http_port} default_server;
-    listen [0000:0000:0000:0000:0000:0000:0000:0001]:${http_port} default_server;
+    listen [::1]:${http_port} default_server;
     server_name _;
     return 400;
   }
