@@ -562,8 +562,9 @@ function _M.license_hooks()
   -- disable EE plugins entities and custom api endpoints
   -- XXX Check performance penalty on these
   for _, plugin in ipairs(constants.EE_PLUGINS) do
-    for name, _ in get_plugin_entities(plugin) do
+    for _, schema in get_plugin_entities(plugin) do
 
+      local name = schema.name
       local invalid = invalid_entity(name)
 
       hooks.register_hook("db:schema:" .. name .. ":new", function(entity)
