@@ -7,7 +7,7 @@
 
 local typedefs = require "kong.db.schema.typedefs"
 
-local sandbox_helpers = require "kong.tools.sandbox_helpers"
+local sandbox = require "kong.tools.sandbox"
 
 local webhook_schema = {
   name = "webhook-custom",
@@ -78,7 +78,7 @@ local log_schema = {
 local functions_array = {
   type = "array",
   required = true,
-  elements = { type = "string", custom_validator = sandbox_helpers.validate },
+  elements = { type = "string", custom_validator = sandbox.validate },
 }
 
 

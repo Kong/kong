@@ -653,16 +653,16 @@ describe("event-hooks", function()
         local entity
         local handler = event_hooks.handlers.lambda
 
-        local sandbox_helpers = require "kong.tools.sandbox_helpers"
+        local sandbox = require "kong.tools.sandbox"
 
         before_each(function()
           _G.kong.configuration.untrusted_lua = untrusted
-          sandbox_helpers.configuration:reload()
+          sandbox.configuration:reload()
         end)
 
         lazy_teardown(function()
           _G.kong.configuration.untrusted_lua = nil
-          sandbox_helpers.configuration:reload()
+          sandbox.configuration:reload()
         end)
 
         before_each(function()
