@@ -1,5 +1,5 @@
 return {
-  name = "grpc-gatewat",
+  name = "grpc-gateway",
   fields = {
     { config = {
       type = "record",
