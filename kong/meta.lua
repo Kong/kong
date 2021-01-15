@@ -9,9 +9,9 @@ local ee_meta = require "kong.enterprise_edition.meta"
 
 local version = setmetatable({
   major = 2,
-  minor = 2,
-  patch = 1,
-  -- suffix = ""
+  minor = 3,
+  patch = 0,
+  --suffix = "",
 }, {
   -- our Makefile during certain releases adjusts this line. Any changes to
   -- the format need to be reflected in both places
