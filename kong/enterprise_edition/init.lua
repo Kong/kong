@@ -121,7 +121,7 @@ _M.handlers = {
 
         if l then
           kong.license = cjson.decode(l.payload)
-          license_helpers:reload()
+          kong.configuration:reload()
         end
       end, "declarative", "flip_config")
 
@@ -129,7 +129,7 @@ _M.handlers = {
         if data.schema.name == "licenses" and
           (event == "update" or event == "insert" or event == "create") then
           kong.license = cjson.decode(data.entity.payload)
-          license_helpers:reload()
+          kong.configuration:reload()
         end
       end, "dao:crud")
 
@@ -143,7 +143,7 @@ _M.handlers = {
 
           if l then
             kong.license = cjson.decode(l.payload)
-            license_helpers:reload()
+            kong.configuration:reload()
           end
         end
       end, "dao:crud")

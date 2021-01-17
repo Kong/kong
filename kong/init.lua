@@ -519,6 +519,7 @@ function Kong.init()
   -- re-read the license (iff not set) in the event the license is in the DB
   if not kong.license then
     kong.license = ee.read_license_info()
+    kong.configuration:reload()
   end
 
 

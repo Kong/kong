@@ -282,6 +282,7 @@ function _PDK.new(kong_config, major_version, self)
   local conf_methods = {
     clear = table.clear,
     ["load"] = function(self)
+      license_helpers:reload()
       license_conf = license_helpers.license_conf()
     end,
     reload = function(self)
