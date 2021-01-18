@@ -60,9 +60,7 @@ local TTL_ZERO = { ttl = 0 }
 
 
 local ROUTER_SYNC_OPTS
-local ROUTER_ASYNC_OPTS
 local PLUGINS_ITERATOR_SYNC_OPTS
-local PLUGINS_ITERATOR_ASYNC_OPTS
 local FLIP_CONFIG_OPTS
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
@@ -177,6 +175,43 @@ local function register_events()
   local core_cache     = kong.core_cache
   local worker_events  = kong.worker_events
   local cluster_events = kong.cluster_events
+
+  if db.strategy == "off" then
+
+    -- declarative config updates
+
+    worker_events.register(function(default_ws)
+      if ngx.worker.exiting() then
+        log(NOTICE, "declarative flip config canceled: process exiting")
+        return true
+      end
+
+      local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
+        balancer.stop_healthcheckers()
+
+        kong.cache:flip()
+        core_cache:flip()
+
+        kong.default_workspace = default_ws
+        ngx.ctx.workspace = kong.default_workspace
+
+        rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
+        rebuild_router(ROUTER_SYNC_OPTS)
+
+        balancer.init()
+
+        ngx.shared.kong:incr(constants.DECLARATIVE_FLIPS.name, 1, 0, constants.DECLARATIVE_FLIPS.ttl)
+
+        return true
+      end)
+
+      if not ok then
+        log(ERR, "config flip failed: ", err)
+      end
+    end, "declarative", "flip_config")
+
+    return
+  end
 
 
   -- events dispatcher
@@ -428,42 +463,6 @@ local function register_events()
       log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
     end
   end)
-
-
-  -- declarative config updates
-
-
-  if db.strategy == "off" then
-    worker_events.register(function(default_ws)
-      if ngx.worker.exiting() then
-        log(NOTICE, "declarative flip config canceled: process exiting")
-        return true
-      end
-
-      local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
-        balancer.stop_healthcheckers()
-
-        kong.cache:flip()
-        core_cache:flip()
-
-        kong.default_workspace = default_ws
-        ngx.ctx.workspace = kong.default_workspace
-
-        rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
-        rebuild_router(ROUTER_SYNC_OPTS)
-
-        balancer.init()
-
-        ngx.shared.kong:incr(constants.DECLARATIVE_FLIPS.name, 1, 0, constants.DECLARATIVE_FLIPS.ttl)
-
-        return true
-      end)
-
-      if not ok then
-        log(ERR, "config flip failed: ", err)
-      end
-    end, "declarative", "flip_config")
-  end
 end
 
 
@@ -911,9 +910,11 @@ end
 
 
 local function set_init_versions_in_cache()
-  local ok, err = kong.core_cache:safe_set("router:version", "init")
-  if not ok then
-    return nil, "failed to set router version in cache: " .. tostring(err)
+  if kong.configuration.role ~= "control_pane" then
+    local ok, err = kong.core_cache:safe_set("router:version", "init")
+    if not ok then
+      return nil, "failed to set router version in cache: " .. tostring(err)
+    end
   end
 
   local ok, err = kong.core_cache:safe_set("plugins_iterator:version", "init")
@@ -963,15 +964,59 @@ return {
 
       register_events()
 
+      if kong.configuration.role == "control_plane" then
+        return
+      end
 
       -- initialize balancers for active healthchecks
       timer_at(0, function()
         balancer.init()
       end)
 
-      local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
+      local strategy = kong.db.strategy
 
-      if kong.db.strategy ~= "off" then
+      do
+        local rebuild_timeout = 60
+
+        if strategy == "cassandra" then
+          rebuild_timeout = kong.configuration.cassandra_timeout / 1000
+        end
+
+        if strategy == "postgres" then
+          rebuild_timeout = kong.configuration.pg_timeout / 1000
+        end
+
+        if strategy == "off" then
+          FLIP_CONFIG_OPTS = {
+            name = "flip-config",
+            timeout = rebuild_timeout,
+          }
+        end
+
+        if strategy == "off" or kong.configuration.worker_consistency == "strict" then
+          ROUTER_SYNC_OPTS = {
+            name = "router",
+            timeout = rebuild_timeout,
+            on_timeout = "run_unlocked",
+          }
+
+          PLUGINS_ITERATOR_SYNC_OPTS = {
+            name = "plugins_iterator",
+            timeout = rebuild_timeout,
+            on_timeout = "run_unlocked",
+          }
+        end
+      end
+
+      if strategy ~= "off" then
+        local worker_state_update_frequency = kong.configuration.worker_state_update_frequency or 1
+
+        local router_async_opts = {
+          name = "router",
+          timeout = 0,
+          on_timeout = "return_true",
+        }
+
         timer_every(worker_state_update_frequency, function(premature)
           if premature then
             return
@@ -981,64 +1026,29 @@ return {
           -- timer.
           -- If the semaphore is locked, that means that the rebuild is
           -- already ongoing.
-          local ok, err = rebuild_router(ROUTER_ASYNC_OPTS)
+          local ok, err = rebuild_router(router_async_opts)
           if not ok then
             log(ERR, "could not rebuild router via timer: ", err)
           end
         end)
+
+        local plugins_iterator_async_opts = {
+          name = "plugins_iterator",
+          timeout = 0,
+          on_timeout = "return_true",
+        }
 
         timer_every(worker_state_update_frequency, function(premature)
           if premature then
             return
           end
 
-          local ok, err = rebuild_plugins_iterator(PLUGINS_ITERATOR_ASYNC_OPTS)
+          local ok, err = rebuild_plugins_iterator(plugins_iterator_async_opts)
           if not ok then
             log(ERR, "could not rebuild plugins iterator via timer: ", err)
           end
         end)
       end
-
-      do
-        local rebuild_timeout = 60
-
-        if kong.configuration.database == "cassandra" then
-          rebuild_timeout = kong.configuration.cassandra_timeout / 1000
-        end
-
-        if kong.configuration.database == "postgres" then
-          rebuild_timeout = kong.configuration.pg_timeout / 1000
-        end
-
-        if kong.db.strategy == "off" then
-          FLIP_CONFIG_OPTS = {
-            name = "flip-config",
-            timeout = rebuild_timeout,
-          }
-        end
-
-        ROUTER_SYNC_OPTS = {
-          name = "router",
-          timeout = rebuild_timeout,
-          on_timeout = "run_unlocked",
-        }
-        ROUTER_ASYNC_OPTS = {
-          name = "router",
-          timeout = 0,
-          on_timeout = "return_true",
-        }
-        PLUGINS_ITERATOR_SYNC_OPTS = {
-          name = "plugins_iterator",
-          timeout = rebuild_timeout,
-          on_timeout = "run_unlocked",
-        }
-        PLUGINS_ITERATOR_ASYNC_OPTS = {
-          name = "plugins_iterator",
-          timeout = 0,
-          on_timeout = "return_true",
-        }
-      end
-
     end,
     after = NOOP,
   },
