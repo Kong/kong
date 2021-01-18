@@ -1,4 +1,5 @@
 local kong = kong
+local json_encode = require("cjson.safe").new().encode
 
 
 local DEFAULT_RESPONSE = {
@@ -21,6 +22,45 @@ RequestTerminationHandler.VERSION = "2.0.1"
 function RequestTerminationHandler:access(conf)
   local status  = conf.status_code
   local content = conf.body
+
+  if conf.echo then
+    local req_headers = kong.request.get_headers()
+    local req_query = kong.request.get_query()
+
+    if conf.echo_trigger and
+       not req_headers[conf.echo_trigger] and
+       not req_query[conf.echo_trigger] then
+      return -- no trigger found, nothing to do
+    end
+
+    content = {
+      message = conf.message or DEFAULT_RESPONSE[status],
+      request = {
+        scheme = kong.request.get_scheme(),
+        host = kong.request.get_host(),
+        port = kong.request.get_port(),
+        headers = req_headers,
+        query = req_query,
+        body = kong.request.get_body(),
+        raw_body = kong.request.get_raw_body(),
+        method = kong.request.get_method(),
+        path = kong.request.get_path(),
+      },
+      matched_route = kong.router.get_route(),
+      matched_service = kong.router.get_service(),
+    }
+
+    local headers = {
+      ["Content-Type"] = "application/json"
+    }
+
+    local encoded_content, err = json_encode(content)
+    if not encoded_content then
+      encoded_content = json_encode({ message = "[Request termination plugin] failed to encode content: " .. tostring(err) })
+    end
+
+    return kong.response.exit(status, encoded_content, headers)
+  end
 
   if content then
     local headers = {

@@ -21,6 +21,8 @@ return {
           { message = { type = "string" }, },
           { content_type = { type = "string" }, },
           { body = { type = "string" }, },
+          { echo = { type = "boolean", required = true, default = false }, },
+          { echo_trigger = typedefs.header_name }
         },
         custom_validator = function(config)
           if is_present(config.message)
@@ -31,6 +33,14 @@ return {
           if is_present(config.content_type)
           and not is_present(config.body) then
             return nil, "content_type requires a body"
+          end
+          if config.echo and (
+            is_present(config.content_type) or
+            is_present(config.body)) then
+            return nil, "echo cannot be used with content_type and body"
+          end
+          if config.echo_trigger ~= ngx.null and not config.echo then
+            return nil, "echo_trigger can only be used with echo"
           end
           return true
         end,
