@@ -9,6 +9,7 @@ OPENRESTY=$(dep_version RESTY_VERSION)
 LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 GO_PLUGINSERVER=$(dep_version KONG_GO_PLUGINSERVER_VERSION)
+KONG_DEP_LUA_RESTY_OPENSSL_AUX_MODULE_VERSION=$(dep_version KONG_DEP_LUA_RESTY_OPENSSL_AUX_MODULE_VERSION)
 
 DEPS_HASH=$({ cat .ci/setup_env.sh .travis.yml .requirements Makefile; cat kong-*.rockspec | awk '/dependencies/,/}/'; } | md5sum | awk '{ print $1 }')
 INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
@@ -22,6 +23,7 @@ DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 
 BUILD_TOOLS_DOWNLOAD=$INSTALL_ROOT/kong-build-tools
 GO_PLUGINSERVER_DOWNLOAD=$INSTALL_ROOT/go-pluginserver
+LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD=$INSTALL_ROOT/lua-resty-openssl-aux-module
 
 KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:=master}
 KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:=master}
@@ -58,6 +60,11 @@ export PATH=$GO_PLUGINSERVER_DOWNLOAD:$PATH
 # Install
 #--------
 
+[[ -d $LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD ]] && rm -rf $LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD
+git clone -b $KONG_DEP_LUA_RESTY_OPENSSL_AUX_MODULE_VERSION https://github.com/fffonion/lua-resty-openssl-aux-module $LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD
+
+export NGX_LUA_LOC="$DOWNLOAD_ROOT/openresty-*/build/ngx_lua-*"
+
 kong-ngx-build \
     --work $DOWNLOAD_ROOT \
     --prefix $INSTALL_ROOT \
@@ -65,8 +72,13 @@ kong-ngx-build \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
+    --add-module $LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD \
     --debug \
     -j $JOBS
+
+pushd $LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD
+  make install LUA_LIB_DIR=$INSTALL_ROOT/openresty/lualib
+popd
 
 OPENSSL_INSTALL=$INSTALL_ROOT/openssl
 OPENRESTY_INSTALL=$INSTALL_ROOT/openresty
