@@ -92,6 +92,31 @@ for _, strategy in helpers.each_strategy() do
           }
         }
 
+        local s502 = bp.services:insert {
+          name = "502",
+          host = "127.0.0.2",
+          port = 26865,
+        }
+
+        local r502 = bp.routes:insert {
+          paths     = { "/502" },
+          protocols = { "http" },
+          service   = s502,
+        }
+
+        bp.plugins:insert {
+          name = "enable-buffering-response",
+          route = r502,
+          protocols = {
+            "http",
+            "https",
+          },
+          config = {
+            phase = "header_filter",
+            mode = "md5-header",
+          }
+        }
+
         assert(helpers.start_kong({
           database      = strategy,
           plugins       = "bundled,enable-buffering,enable-buffering-response",
@@ -167,6 +192,17 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(true, json.modified)
         assert.equal("yes", res.headers["Modified"])
       end)
+
+      it("returns 502 on connectivity errors", function()
+        local res = proxy_client:get("/502")
+        assert.res_status(502, res)
+        assert.equal(nil, res.headers["MD5"])
+
+        local res = proxy_ssl_client:get("/502")
+        assert.res_status(502, res)
+        assert.equal(nil, res.headers["MD5"])
+      end)
+
     end)
   end)
 end
