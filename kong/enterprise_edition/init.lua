@@ -115,38 +115,20 @@ _M.handlers = {
       license_helpers.report_expired_license()
 
       kong.worker_events.register(function(data, event, source, pid)
-        local l
-        for _, v in kong.db.licenses:each() do l = v end
 
-        if l then
-          kong.license = cjson.decode(l.payload)
-        end
-
+        kong.license = _M.read_license_info()
         kong.licensing:reload()
 
       end, "declarative", "flip_config")
 
       kong.worker_events.register(function(data, event, source, pid)
-        if data.schema.name == "licenses" and
-          (event == "update" or event == "insert" or event == "create") then
-          kong.license = cjson.decode(data.entity.payload)
+
+        -- valid for event: update | insert | create | delete
+        if data.schema.name == "licenses" then
+          kong.license = _M.read_license_info()
           kong.licensing:reload()
         end
-      end, "dao:crud")
 
-      kong.worker_events.register(function(data, event, source, pid)
-        if data.schema.name == "licenses" and
-          (event == "delete") then
-          local l
-          for _, v in kong.db.licenses:each() do l = v end
-
-          if l then
-            kong.license = cjson.decode(l.payload)
-          end
-
-          kong.licensing:reload()
-
-        end
       end, "dao:crud")
 
       -- register event_hooks hooks
