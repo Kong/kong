@@ -1,5 +1,4 @@
 local kong = kong
-local json_encode = require("cjson.safe").new().encode
 
 
 local DEFAULT_RESPONSE = {
@@ -50,16 +49,7 @@ function RequestTerminationHandler:access(conf)
       matched_service = kong.router.get_service(),
     }
 
-    local headers = {
-      ["Content-Type"] = "application/json"
-    }
-
-    local encoded_content, err = json_encode(content)
-    if not encoded_content then
-      encoded_content = json_encode({ message = "[Request termination plugin] failed to encode content: " .. tostring(err) })
-    end
-
-    return kong.response.exit(status, encoded_content, headers)
+    return kong.response.exit(status, content)
   end
 
   if content then
