@@ -311,13 +311,7 @@ function Plugins:load_plugin_schemas(plugin_set)
 
   reports.add_immutable_value("go_plugins_cnt", go_plugins_cnt)
 
-  -- XXX EE hook plugin handlers on load
-  -- Note we could do this even more on runtime. This is when the plugin
-  -- schemas are loaded. But we could just patch it on `get_handlers` a bit
-  -- down here. That would work without having to reload the plugins. At the
-  -- same time it would run every time and maybe we do not want that?
-  -- The idea is that on license reload we are going to call this function
-  -- again. That way it only happens on every reload
+  -- XXX EE
   assert(hooks.run_hook("dao:plugins:load", handlers))
 
   self.handlers = handlers

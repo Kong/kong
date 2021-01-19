@@ -9,48 +9,44 @@
 -- process. Returning an empty 2 level dictionary to comply with the
 -- interface.
 
+-- Commented out. Check kong-distributions / dist_constants
 local constants = {
   featureset = {
     full = {
       conf = {},
-      abilities = {
-      },
     },
     full_expired = {
       conf = {},
-      abilities = {
-        -- write_admin_api = false,
-      },
+      -- write_admin_api = false,
     },
     free = {
       conf = {
-        -- enforce_rbac = false,
+        -- enforce_rbac = "off",
+        -- rbac = "off",
         -- vitals = false,
         -- anonymous_reports = true,
       },
-      abilities = {
-        -- Granular allow.
-        allow_admin_api = {
-          -- -- ie: this only allows GET /workspaces
-          -- ["/workspaces"] = { GET = true },
-          -- -- and GET /workspaces/:workspaces
-          -- ["/workspaces/:workspaces"] = { GET = true },
-          -- -- A route not specified here is left untouched
-        },
-        deny_admin_api = {
-          -- -- deny any method. We could just deny here any "write" method
-          -- -- instead, but using allow + deny seems more explicit
-          -- ["/workspaces"] = { ["*"] = true },
-          -- ["/workspaces/:workspaces"] = { ["*"] = true },
-        },
-        deny_entity = {
-          -- ['entity_name'] = true,
-        },
-        ee_plugins = function(conf)
-          -- usually false, except if role is data_plane
-          return conf.role == 'data_plane'
-        end,
-      }
+      -- -- Granular allow.
+      -- allow_admin_api = {
+      --   -- ie: this only allows GET /workspaces
+      --   ["/workspaces"] = { GET = true },
+      --   -- and GET /workspaces/:workspaces
+      --   ["/workspaces/:workspaces"] = { GET = true },
+      --   -- A route not specified here is left untouched
+      -- },
+      -- deny_admin_api = {
+      --   -- deny any method. We could just deny here any "write" method
+      --   -- instead, but using allow + deny seems more explicit
+      --   ["/workspaces"] = { ["*"] = true },
+      --   ["/workspaces/:workspaces"] = { ["*"] = true },
+      -- },
+      -- -- deny a particular entity (and related api methods)
+      -- deny_entity = { ["some_entity_name"] = true },
+      -- -- disable EE plugins, does not apply on data_plane
+      -- ee_plugins = function(conf)
+      --   -- usually false, except if role is data_plane
+      --   return conf.role == 'data_plane'
+      -- end,
     },
   },
 

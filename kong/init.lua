@@ -101,6 +101,8 @@ local portal_emails = require "kong.portal.emails"
 local admin_emails = require "kong.enterprise_edition.admin.emails"
 local portal_router = require "kong.portal.router"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
+local licensing = require "kong.enterprise_edition.licensing"
+
 
 local kong             = kong
 local ngx              = ngx
@@ -458,9 +460,6 @@ function Kong.init()
           "global named 'kong' (please use 'Kong' instead)")
   end
 
-  -- EE needs to know which kind of featureset to run ASAP
-  kong.license = ee.read_license_info()
-
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
@@ -473,17 +472,10 @@ function Kong.init()
   math.randomseed()
 
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
+
   tracing.init(config)
 
-  -- EE register license hooks as early as possible (after config, though)
-  -- Hook handlers won't run unless the hook runs (on which case, we want that
-  -- to happen). Doing it early should not be a problem.
   ee.license_hooks(config)
-
-  local err = ee.feature_flags_init(config)
-  if err then
-    error(tostring(err))
-  end
 
   local db = assert(DB.new(config))
   tracing.connector_query_wrap(db.connector)
@@ -515,13 +507,28 @@ function Kong.init()
   kong.db = db
   kong.dns = singletons.dns
 
-  -- XXX EE [[
-  -- re-read the license (iff not set) in the event the license is in the DB
+  -- EE [[
+  -- EE licensing [[
   if not kong.license then
     kong.license = ee.read_license_info()
-    kong.configuration:reload()
   end
 
+  singletons.licensing     = licensing(config)
+  config                   = singletons.licensing.configuration
+  kong.configuration       = singletons.licensing.configuration
+  -- XXX uncomment this once we remove meta magic from licensing
+  -- singletons.configuration = singletons.licensing.configurartion
+
+  kong.licensing = singletons.licensing
+
+  ee.license_hooks(config)
+  -- EE licensing ]]
+
+
+  local err = ee.feature_flags_init(config)
+  if err then
+    error(tostring(err))
+  end
 
   kong.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
@@ -643,11 +650,6 @@ function Kong.init_worker()
     return
   end
   kong.cluster_events = cluster_events
-
-  -- re-read the license (iff not set) in the event the license is in the DB
-  if not kong.license then
-    kong.license = ee.read_license_info()
-  end
 
   -- vitals functions require a timer, so must start in worker context
   local ok, err = kong.vitals:init()

@@ -26,6 +26,7 @@ local api_helpers = require "kong.api.api_helpers"
 local tracing = require "kong.tracing"
 local counters = require "kong.workspaces.counters"
 local workspace_config = require "kong.portal.workspace_config"
+
 local cjson = require "cjson.safe"
 
 local fmt = string.format
@@ -114,37 +115,37 @@ _M.handlers = {
       license_helpers.report_expired_license()
 
       kong.worker_events.register(function(data, event, source, pid)
-        local l = {}
-        for _, v in kong.db.licenses:each() do
-          l = v
-        end
+        local l
+        for _, v in kong.db.licenses:each() do l = v end
 
         if l then
           kong.license = cjson.decode(l.payload)
-          kong.configuration:reload()
         end
+
+        kong.licensing:reload()
+
       end, "declarative", "flip_config")
 
       kong.worker_events.register(function(data, event, source, pid)
         if data.schema.name == "licenses" and
           (event == "update" or event == "insert" or event == "create") then
           kong.license = cjson.decode(data.entity.payload)
-          kong.configuration:reload()
+          kong.licensing:reload()
         end
       end, "dao:crud")
 
       kong.worker_events.register(function(data, event, source, pid)
         if data.schema.name == "licenses" and
           (event == "delete") then
-          local l = {}
-          for _, v in kong.db.licenses:each() do
-            l = v
-          end
+          local l
+          for _, v in kong.db.licenses:each() do l = v end
 
           if l then
             kong.license = cjson.decode(l.payload)
-            kong.configuration:reload()
           end
+
+          kong.licensing:reload()
+
         end
       end, "dao:crud")
 
@@ -248,10 +249,8 @@ function _M.feature_flags_init(config)
   end
 end
 
+-- XXX remove these shortcuts once references gone from code
 _M.read_license_info = license_helpers.read_license_info
-_M.license_conf = license_helpers.license_conf
-_M.license_can = license_helpers.license_can
-_M.ability = license_helpers.ability
 
 local function write_kconfig(configs, filename)
   local kconfig_str = "window.K_CONFIG = {\n"
@@ -423,6 +422,8 @@ end
 
 function _M.license_hooks(config)
 
+  local nop = function() end
+
   -- license API allow / deny
   hooks.register_hook("api:init:pre", function(app)
     app:before_filter(license_helpers.license_can_proceed)
@@ -446,7 +447,7 @@ function _M.license_hooks(config)
     local enabled = info.plugins.available_on_server
     local cluster = info.plugins.enabled_in_cluster
 
-    if not _M.license_can("ee_plugins") then
+    if not kong.licensing:can("ee_plugins") then
       for i = 1, #constants.EE_PLUGINS do
         enabled[constants.EE_PLUGINS[i]] = nil
         disabled[constants.EE_PLUGINS[i]] = true
@@ -472,44 +473,76 @@ function _M.license_hooks(config)
 
   -- override settings by license
   hooks.register_hook("api:kong:info", function(info)
-    for k, v in pairs(_M.license_conf()) do
+    for k, v in pairs(kong.licensing.conf) do
       info.configuration[k] = v
     end
 
     return info
   end)
 
-  -- disable EE plugins (plugins iterator)
-  hooks.register_hook("dao:plugins:load", function(handlers)
-    if not _M.license_can("ee_plugins") then
-      for i = 1, #constants.EE_PLUGINS do
-        handlers[constants.EE_PLUGINS[i]] = nil
+
+  local function wrap_method(thing, name, method)
+    thing[name] = method(thing[name] or nop)
+  end
+
+  local phase_checker = require "kong.pdk.private.phases"
+
+  local function patch_handler(handler, name)
+    for phase, _ in pairs(phase_checker.phases) do
+
+      if handler[phase] and phase ~= 'init_worker' and type(handler[phase]) == "function" then
+        wrap_method(handler, phase, function(parent)
+          return function(...)
+            ngx.log(ngx.DEBUG, fmt("calling patched method '%s:%s'", name, phase))
+            if not kong.licensing:can("ee_plugins") then
+              ngx.log(ngx.DEBUG, fmt("nop'ing '%s:%s, ee_plugins=false", name, phase))
+              return
+            end
+
+            return parent(...)
+          end
+        end)
       end
+    end
+
+    return handler
+  end
+
+  -- XXX For now, this uses the strategy of patching all EE plugin handlers
+  -- we have arrived here fishing for a bug. Many strategies were tried, but
+  -- the bug persisted. The bug ended up being something small not really
+  -- related to the strategy, so we do not know if any of the methods we tried
+  -- were good or not. But we know this one (a bit overkill) works
+  -- XXX: come back and try the different elegant strategies
+  hooks.register_hook("dao:plugins:load", function(handlers)
+
+    for plugin, _ in pairs(constants.EE_PLUGINS_MAP) do
+      handlers[plugin] = patch_handler(handlers[plugin], plugin)
     end
 
     return true
   end)
 
+  local err = function(...)
+    return fmt("'%s' is an enterprise only %s", ...)
+  end
 
   -- disable EE plugins on the entity level
   -- XXX Check performance penalty on these
   hooks.register_hook("db:schema:plugins:new", function(entity, name)
 
-    if _M.license_can("ee_plugins") then return true end
+    wrap_method(entity, "validate", function(parent)
+      return function(self, input, ...)
 
-    local _validate = entity.validate
+        local name = input.name
 
-    entity.validate = function(self, input, ...)
-      local name = input.name
+        if not kong.licensing:can("ee_plugins") and constants.EE_PLUGINS_MAP[name] then
+          return nil, { name = err(name, "plugin") }
+        end
 
-      if constants.EE_PLUGINS_MAP[name] then
-        return nil, {
-          ["name"] = fmt("'%s' is an enterprise only plugin", name),
-        }
+        return parent(self, input, ...)
       end
-
-      return _validate(self, input, ...)
-    end
+    end)
 
     return true
   end)
@@ -518,7 +551,7 @@ function _M.license_hooks(config)
   local function get_plugin_entities(plugin)
     local has_daos, daos_schemas = utils.load_module_if_exists("kong.plugins." .. plugin .. ".daos")
     if not has_daos then
-      return function() end
+      return nop
     end
 
     local it = daos_schemas[1] and ipairs or pairs
@@ -527,90 +560,64 @@ function _M.license_hooks(config)
   end
 
 
-  local function invalid_entity(name)
-    local errors = {
-      ["licensing"] = fmt("'%s' is an enterprise only entity", name),
-    }
-
-    return function(...)
-      return nil, errors
-    end
-
-  end
-
-
   local function forbidden()
     return kong.response.exit(403, { message = "Forbidden" })
   end
 
 
-  local function patch_before(methods, before)
-    if methods.before then
-      local _before = methods.before
-
-      methods.before = function(...)
-        before(...)
-        return _before(...)
-      end
-
-    else
-      methods.before = before
-    end
-  end
-
-
   -- disable EE plugins entities and custom api endpoints
   -- XXX Check performance penalty on these
+  local enterprise_plugin_entities = {}
+
   for _, plugin in ipairs(constants.EE_PLUGINS) do
     for _, schema in get_plugin_entities(plugin) do
-
-      local name = schema.name
-      local invalid = invalid_entity(name)
-
-      hooks.register_hook("db:schema:" .. name .. ":new", function(entity)
-
-        if not _M.license_can("ee_plugins") then
-          entity.validate = invalid
-        end
-
-        return true
-      end)
-
-      hooks.register_hook("api:helpers:attach_new_db_routes:before", function(app, route_path, methods, schema)
-
-        if schema.name == name then
-          patch_before(methods, function()
-            if not _M.license_can("ee_plugins") then
-              return forbidden()
-            end
-          end)
-        end
-
-        return true
-      end)
+      enterprise_plugin_entities[schema.name] = true
     end
   end
 
-
-  -- disable "deny_entity" entries
-  -- XXX Check performance penalty on these
   hooks.register_hook("db:schema:entity:new", function(entity, name)
-    local deny_entity = _M.ability("deny_entity")
 
-    if deny_entity and deny_entity[name] then
-      entity.validate = invalid_entity(name)
-    end
+    local hit = enterprise_plugin_entities[name]
+    local err = { licensing = err(name, "entity") }
+
+    wrap_method(entity, "validate", function(parent)
+      return function(...)
+
+        if hit and not kong.licensing:can("ee_plugins") then
+          return nil, err
+        end
+
+        local deny_entity = kong.licensing.deny_entity
+
+        if deny_entity and deny_entity[name] then
+          return nil, err
+        end
+
+        return parent(...)
+      end
+    end)
 
     return true
   end)
 
-  -- disable "deny_entity" api methods
   hooks.register_hook("api:helpers:attach_new_db_routes:before", function(app, route_path, methods, schema)
-    patch_before(methods, function()
-      local deny_entity = _M.ability("deny_entity")
 
-      if deny_entity and deny_entity[schema.name] then
-        return forbidden()
+    local hit = enterprise_plugin_entities[schema.name]
+
+    wrap_method(methods, "before", function(parent)
+      return function(...)
+
+        if hit and not kong.licensing:can("ee_plugins") then
+          return forbidden()
+        end
+
+        local deny_entity = kong.licensing.deny_entity
+
+        if deny_entity and deny_entity[schema.name] then
+          return forbidden()
+        end
+
+        return parent(...)
       end
     end)
 

@@ -276,41 +276,9 @@ function _PDK.new(kong_config, major_version, self)
   self.pdk_major_version = major_version
   self.pdk_version = version_meta.version
 
-  local license_helpers = require "kong.enterprise_edition.license_helpers"
-  local license_conf
-
-  local conf_methods = {
-    clear = table.clear,
-    ["load"] = function(self)
-      license_helpers:reload()
-      license_conf = license_helpers.license_conf()
-    end,
-    reload = function(self)
-      self:clear()
-      self:load()
-    end,
-  }
-
   self.configuration = setmetatable({}, {
-    __index = function(self, key)
-
-      if not license_conf then
-        conf_methods:load()
-      end
-
-      local value = license_conf[key]
-
-      if value == nil then
-        value = kong_config[key]
-      end
-
-      if value == nil then
-        return conf_methods[key]
-      end
-
-      rawset(self, key, value)
-
-      return value
+    __index = function(_, v)
+      return kong_config[v]
     end,
 
     __newindex = function()

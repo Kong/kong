@@ -12,6 +12,8 @@ local _M = {
   dns = nil,
   worker_events = nil,
   router = nil,
+  -- XXX EE
+  licensing = nil,
 }
 
 return _M

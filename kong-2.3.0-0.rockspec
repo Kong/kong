@@ -115,6 +115,7 @@ build = {
     ["kong.enterprise_edition.db.typedefs"] = "kong/enterprise_edition/db/typedefs.lua",
     ["kong.enterprise_edition.feature_flags"] = "kong/enterprise_edition/feature_flags.lua",
     ["kong.enterprise_edition.jwt"] = "kong/enterprise_edition/jwt.lua",
+    ["kong.enterprise_edition.licensing"] = "kong/enterprise_edition/licensing.lua",
     ["kong.enterprise_edition.license_helpers"] = "kong/enterprise_edition/license_helpers.lua",
     ["kong.enterprise_edition.license_utils"] = "kong/enterprise_edition/license_utils.lua",
     ["kong.enterprise_edition.meta"] = "kong/enterprise_edition/meta.lua",

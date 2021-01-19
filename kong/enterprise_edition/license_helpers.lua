@@ -15,21 +15,7 @@
 -- be called once (or very carfully) due to it migth be fetching a
 -- tampered LICENSE FILE (in case the user modified after kong
 -- started).
---
--- featureset is a lazy table with 2 keys
--- - conf: overrides from kong.conf
--- - abilities: custom abilities
--- - reload it with featureset:reload()
---
--- Access to the features is done via `license_can` and
--- `license_conf` public methods.
---
--- `license_can` is responsible for giving a boolean answer to any
--- part of the code that asks for a particular license ability. It can
--- override values in the featureset table, or make programatic
--- decisions. Another trick is to supercharge the featureset table
--- with lambdas in case we need it.
---
+
 
 local cjson          = require "cjson.safe"
 local pl_path        = require "pl.path"
@@ -171,69 +157,6 @@ _M.get_featureset = function()
 end
 
 
-local _featureset
-
-
-local methods = {
-  clear = table.clear,
-  ["load"] = function(self)
-    _featureset = _M.get_featureset()
-  end,
-  reload = function(self)
-    self:clear()
-    self:load()
-  end,
-}
-
-
-_M.featureset = setmetatable({}, {
-  __index = function(self, key)
-
-    if not _featureset then
-      methods:load()
-    end
-
-    local value = _featureset[key]
-
-    if value == nil then
-      return methods[key]
-    end
-
-    rawset(self, key, value)
-
-    return value
-  end,
-})
-
-
-function _M.reload()
-  _M.featureset:reload()
-end
-
-
-function _M.license_can(ability)
-  return not (_M.ability(ability) == false)
-end
-
-
-function _M.ability(ability)
-  local it = _M.featureset.abilities and _M.featureset.abilities[ability]
-
-  -- lazy lazy load featureset functions
-  if it and type(it) == 'function' then
-    it = it(kong and kong.configuration)
-    rawset(_M.featureset.abilities, ability, it)
-  end
-
-  return it
-end
-
-
-function _M.license_conf()
-  return _M.featureset.conf
-end
-
-
 -- Hold a lock for the whole interval (exptime) to prevent multiple
 -- worker processes from the  simultaneously.
 -- Other workers do not need to wait until this lock is released,
@@ -300,8 +223,8 @@ function _M.license_can_proceed(self)
   local method = ngx.req.get_method()
 
   local route = self.route_name
-  local allow = _M.ability("allow_admin_api") or {}
-  local deny = _M.ability("deny_admin_api") or {}
+  local allow = kong.licensing.allow_admin_api or {}
+  local deny = kong.licensing.deny_admin_api or {}
 
   if (deny[route] and (deny[route][method] or deny[route]["*"]))
     and not (allow[route] and (allow[route][method] or allow[route]["*"]))
@@ -309,7 +232,7 @@ function _M.license_can_proceed(self)
     return kong.response.exit(403, { message = "Forbidden" })
   end
 
-  if not _M.license_can("write_admin_api")
+  if not kong.licensing:can("write_admin_api")
     and (method == "POST" or
          method == "PUT" or
          method == "PATCH" or
