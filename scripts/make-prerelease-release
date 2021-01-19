@@ -75,14 +75,9 @@ if [[ $version == *"beta"* ]]; then
   beta=true
 fi
 
-if ! [[ "$version" =~ ^[0-9]+.[0-9]+.0-(alpha|beta)\.[0-9]$ ]]
+if ! [[ "$version" =~ ^[0-9]+.[0-9]+.0-(alpha|beta|rc)\.[0-9]$ ]]
 then
-   die "first argument must be a version in x.y.z-(alpha|beta).n format"
-fi
-
-if [[ "$rc" = "1" ]]
-then
-   die "use make-rc1-release for rc1, and this script only for the following rcs"
+   die "first argument must be a version in x.y.z-(alpha|beta|rc).n format"
 fi
 
 if [ "$step" = "" ]
