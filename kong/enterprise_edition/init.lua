@@ -520,6 +520,15 @@ function _M.license_hooks(config)
     return fmt("'%s' is an enterprise only %s", ...)
   end
 
+  -- XXX return here if data_plane. Data plane needs to get a config from the
+  -- control plane, that will include a license + entities that it needs
+  -- to accept. If we restrict these, then it does not work
+  if config.role == "data_plane" then
+    return
+  end
+
+  -- API and entity restriction be here
+
   -- disable EE plugins on the entity level
   -- XXX Check performance penalty on these
   hooks.register_hook("db:schema:plugins:new", function(entity, name)
