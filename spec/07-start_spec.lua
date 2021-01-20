@@ -13,8 +13,8 @@ describe("kong starts with proxy-cache-advanced plugin", function()
     helpers.get_db_utils(nil, nil, {"proxy-cache-advanced"})
   end)
 
-  before_each(function()
-    helpers.stop_kong(nil, true)
+  after_each(function()
+    assert.True(helpers.stop_kong(nil, true))
   end)
 
   teardown(function()
