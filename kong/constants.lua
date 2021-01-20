@@ -49,6 +49,12 @@ local plugins = {
   "grpc-gateway",
 }
 
+-- XXX EE
+local ce_plugin_map = {}
+for i = 1, #plugins do
+  ce_plugin_map[plugins[i]] = true
+end
+
 for _, plugin in ipairs(dist_constants.plugins) do
   table.insert(plugins, plugin)
 end
@@ -93,6 +99,7 @@ local constants = {
   BUNDLED_PLUGINS = plugin_map,
   EE_PLUGINS = dist_constants.plugins,
   EE_PLUGINS_MAP = ee_plugin_map,
+  CE_PLUGINS_MAP = ce_plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
   -- non-standard headers, specific to Kong
   HEADERS = {

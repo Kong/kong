@@ -425,29 +425,32 @@ function _M.license_hooks(config)
 
   -- add EE disabled plugins
   hooks.register_hook("api:kong:info", function(info)
-    local disabled = info.plugins.disabled_on_server or {}
-    local enabled = info.plugins.available_on_server
-    local cluster = info.plugins.enabled_in_cluster
 
-    if not kong.licensing:can("ee_plugins") then
-      for i = 1, #constants.EE_PLUGINS do
-        enabled[constants.EE_PLUGINS[i]] = nil
-        disabled[constants.EE_PLUGINS[i]] = true
-      end
+    -- do nothing
+    if kong.licensing:can("ee_plugins") then
+      info.plugins.disabled_on_server = {}
 
-      local _cluster = setmetatable({}, cjson.array_mt)
-
-      for i = 1, #cluster do
-        if enabled[cluster[i]] then
-          _cluster[ #_cluster + 1 ] = cluster[i]
-        end
-      end
-
-      cluster = _cluster
+      return info
     end
 
-    info.plugins.available_on_server = enabled
-    info.plugins.disabled_on_server = disabled
+    -- very careful modifying `info.plugins.available_on_server` since it
+    -- will affect `kong.configuration.loaded_plugins` by reference
+
+    info.plugins.available_on_server = constants.CE_PLUGINS_MAP
+    info.plugins.disabled_on_server = constants.EE_PLUGINS_MAP
+
+    -- remove EE plugins from `info.plugins.enabled_in_cluster`, even if its
+    -- configured it won't run
+
+    local cluster = setmetatable({}, cjson.array_mt)
+    local _cluster = info.plugins.enabled_in_cluster
+
+    for i = 1, #_cluster do
+      if not constants.EE_PLUGINS_MAP[_cluster[i]] then
+        cluster[#cluster + 1] = _cluster[i]
+      end
+    end
+
     info.plugins.enabled_in_cluster = cluster
 
     return info
