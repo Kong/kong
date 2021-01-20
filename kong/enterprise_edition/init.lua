@@ -122,14 +122,22 @@ _M.handlers = {
       end, "declarative", "flip_config")
 
       kong.worker_events.register(function(data, event, source, pid)
+        -- broadcast a license refresh crud event to all workers
+        -- valid for data.operation: update | create | delete
+        -- this might be a nil after a delete operation (and that's fine)
+        local license = _M.read_license_info()
+        ngx.log(ngx.DEBUG, "[licensing] broadcasting license reload event to all workers. license: ", tostring(license ~= nil))
+        -- Note this is a `post`, not a `post_local`
+        kong.worker_events.post("license", "load", { license = license })
 
-        -- valid for event: update | insert | create | delete
-        if data.schema.name == "licenses" then
-          kong.license = _M.read_license_info()
-          kong.licensing:reload()
-        end
+      end, "crud", "licenses")
 
-      end, "dao:crud")
+      -- handle license refresh event
+      kong.worker_events.register(function(data, event, source, pid)
+        ngx.log(ngx.DEBUG, "[licensing] license:load event license: ", tostring(data.license ~= nil))
+        kong.license = data.license
+        kong.licensing:reload()
+      end, "license", "load")
 
       -- register event_hooks hooks
       if event_hooks.enabled() then
