@@ -311,8 +311,10 @@ describe("licensing", function()
     local Entity = require "kong.db.schema.entity"
 
     local featureset, SomeEntity, AnotherEntity
+    local config
 
     lazy_setup(function()
+      config = {}
       featureset = {
         deny_entity = { ["some_entity"] = true, },
       }
@@ -320,7 +322,7 @@ describe("licensing", function()
       assert(stub(lic_helper, "get_featureset").returns(featureset))
       kong.licensing:reload()
 
-      ee.license_hooks()
+      ee.license_hooks(config)
 
       SomeEntity = assert(Entity.new({
         name = "some_entity",
