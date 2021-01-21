@@ -154,10 +154,6 @@ local function init_worker()
 
   kong.worker_events.register(function(data)
     local operation = data.operation
-    if operation == "create" then
-      return
-    end
-
     log("consumer ", operation or "update", "d, invalidating cache")
 
     local old_entity = data.old_entity
@@ -191,11 +187,8 @@ local function init_worker()
 
   kong.worker_events.register(function(data)
     local operation = data.operation
-    if operation == "create" then
-      return
-    end
-
     log("issuer ", operation or "update", "d, invalidating cache")
+
     local old_issuer
     local old_entity = data.old_entity
     if old_entity then
