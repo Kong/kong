@@ -5,8 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local log       = require "kong.plugins.openid-connect.log"
-local responses = require "kong.plugins.openid-connect.responses"
+local log      = require "kong.plugins.openid-connect.log"
+local redirect = require "kong.plugins.openid-connect.redirect"
 
 
 local kong      = kong
@@ -22,7 +22,7 @@ return function(client, ...)
   end
 
   if client.unexpected_redirect_uri then
-    return responses.redirect(client.unexpected_redirect_uri)
+    return redirect(client.unexpected_redirect_uri)
   end
 
   local message = "An unexpected error occurred"
