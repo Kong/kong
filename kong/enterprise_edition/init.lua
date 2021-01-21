@@ -510,7 +510,9 @@ function _M.license_hooks(config)
   hooks.register_hook("dao:plugins:load", function(handlers)
 
     for plugin, _ in pairs(constants.EE_PLUGINS_MAP) do
-      handlers[plugin] = patch_handler(handlers[plugin], plugin)
+      if handlers[plugin] then
+        handlers[plugin] = patch_handler(handlers[plugin], plugin)
+      end
     end
 
     return true
