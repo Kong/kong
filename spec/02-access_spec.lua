@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local pl_file = require "pl.file"
 local cjson   = require "cjson"
 local utils   = require "kong.tools.utils"
 
@@ -479,7 +478,7 @@ for _, strategy in helpers.each_strategy() do
             ["Content-Type"] = "application/json"
           }
         }))
-        assert.res_status(200, res)
+        assert.res_status(400, res)
       end)
 
       it("errors when CA doesn't exist", function()
@@ -493,19 +492,18 @@ for _, strategy in helpers.each_strategy() do
             ["Content-Type"] = "application/json"
           }
         }))
-        assert.res_status(200, res)
+        assert.res_status(400, res)
 
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/example_client",
         })
-        assert.res_status(500, res)
+        assert.res_status(200, res)
 
-        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-        assert.matches("CA Certificate '00000000-0000-0000-0000-000000000000' does not exist", err_log, nil, true)
       end)
     end)
   end)
+
   describe("Plugin: mtls-auth (access) with filter [#" .. strategy .. "]", function()
     local proxy_client, admin_client, mtls_client
     local proxy_ssl_client_foo, proxy_ssl_client_bar, proxy_ssl_client_alice
