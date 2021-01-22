@@ -130,19 +130,10 @@ function _M.read_license_info()
   return license
 end
 
-
-_M.get_featureset = function()
-  local l_type
-  local lic
-  -- HACK: when called from runner, the license is not read yet, and
-  -- even when read there at the call site,
-  if not kong or not kong.license then
-    lic = _M.read_license_info()
-  else
-    lic = kong.license
-  end
-
+_M.get_type = function(lic)
   local expiration_time = license_expiration_time(lic)
+
+  local l_type
 
   if not expiration_time then
     l_type = "free"
@@ -152,6 +143,22 @@ _M.get_featureset = function()
   else
     l_type = "full"
   end
+
+  return l_type
+end
+
+
+_M.get_featureset = function(l_type)
+  local lic
+  -- HACK: when called from runner, the license is not read yet, and
+  -- even when read there at the call site,
+  if not kong or not kong.license then
+    lic = _M.read_license_info()
+  else
+    lic = kong.license
+  end
+
+  l_type = l_type or _M.get_type(lic)
 
   return dist_constants.featureset[l_type]
 end

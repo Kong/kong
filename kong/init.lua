@@ -509,10 +509,6 @@ function Kong.init()
 
   -- EE [[
   -- EE licensing [[
-  if not kong.license then
-    kong.license = ee.read_license_info()
-  end
-
   singletons.licensing     = licensing(config)
   config                   = singletons.licensing.configuration
   kong.configuration       = singletons.licensing.configuration

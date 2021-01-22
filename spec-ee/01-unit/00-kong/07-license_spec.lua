@@ -11,6 +11,15 @@ local licensing = require "kong.enterprise_edition.licensing"
 local match = require 'luassert.match'
 
 describe("licensing", function()
+
+  local kong_conf = {}
+
+  lazy_setup(function()
+    _G.kong = {}
+    _G.kong.response = mock(setmetatable({}, { __index = function() return function() end end }))
+    _G.kong.licensing = licensing(kong_conf)
+  end)
+
   before_each(function()
     stub(ngx, "log")
   end)
@@ -139,22 +148,10 @@ describe("licensing", function()
   describe("license_can_proceed", function()
     local featureset
 
-    lazy_setup(function()
-      local kong_conf = {}
-      _G.kong = {
-        response = mock(setmetatable({}, { __index = function() return function() end end })),
-        licensing = licensing(kong_conf),
-      }
-    end)
-
-    lazy_teardown(function()
-      assert(mock.revert(kong))
-    end)
-
     before_each(function()
       assert(stub(lic_helper, "get_featureset").returns(featureset))
       assert(stub(kong.response, "exit"))
-      kong.licensing:reload()
+      kong.licensing:update()
     end)
 
     after_each(function()
@@ -320,7 +317,7 @@ describe("licensing", function()
       }
 
       assert(stub(lic_helper, "get_featureset").returns(featureset))
-      kong.licensing:reload()
+      kong.licensing:update()
 
       ee.license_hooks(config)
 
@@ -386,10 +383,26 @@ describe("licensing", function()
     }
 
     local lic
+    local license = { some = "license_data" }
 
     lazy_setup(function()
       assert(stub(lic_helper, "get_featureset").returns(featureset))
+      assert(stub(lic_helper, "read_license_info").returns(license))
       lic = licensing(kong_conf)
+    end)
+
+    describe("new", function()
+      it("tries to read license", function()
+        assert.stub(lic_helper.read_license_info).was.called()
+      end)
+
+      it("sets kong.license to the read license", function()
+        assert.same(license, kong.license)
+      end)
+
+      it("sets license type on the module", function()
+        assert.same("free", lic.l_type)
+      end)
     end)
 
     describe("configuration", function()
@@ -459,13 +472,13 @@ describe("licensing", function()
         end)
 
         it("until it gets reloaded", function()
-          lic.features:reload()
+          lic:update()
           assert.same(another_set, lic.features)
         end)
 
         lazy_teardown(function()
           assert(stub(lic_helper, "get_featureset").returns(featureset))
-          lic:reload()
+          lic:update()
         end)
 
       end)

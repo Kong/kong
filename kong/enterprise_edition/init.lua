@@ -112,32 +112,8 @@ _M.handlers = {
   },
   init_worker = {
     after = function(ctx)
-      license_helpers.report_expired_license()
 
-      kong.worker_events.register(function(data, event, source, pid)
-
-        kong.license = _M.read_license_info()
-        kong.licensing:reload()
-
-      end, "declarative", "flip_config")
-
-      kong.worker_events.register(function(data, event, source, pid)
-        -- broadcast a license refresh crud event to all workers
-        -- valid for data.operation: update | create | delete
-        -- this might be a nil after a delete operation (and that's fine)
-        local license = _M.read_license_info()
-        ngx.log(ngx.DEBUG, "[licensing] broadcasting license reload event to all workers. license: ", tostring(license ~= nil))
-        -- Note this is a `post`, not a `post_local`
-        kong.worker_events.post("license", "load", { license = license })
-
-      end, "crud", "licenses")
-
-      -- handle license refresh event
-      kong.worker_events.register(function(data, event, source, pid)
-        ngx.log(ngx.DEBUG, "[licensing] license:load event license: ", tostring(data.license ~= nil))
-        kong.license = data.license
-        kong.licensing:reload()
-      end, "license", "load")
+      kong.licensing:init_worker(kong.worker_events)
 
       -- register event_hooks hooks
       if event_hooks.enabled() then
@@ -239,8 +215,6 @@ function _M.feature_flags_init(config)
   end
 end
 
--- XXX remove these shortcuts once references gone from code
-_M.read_license_info = license_helpers.read_license_info
 
 local function write_kconfig(configs, filename)
   local kconfig_str = "window.K_CONFIG = {\n"
