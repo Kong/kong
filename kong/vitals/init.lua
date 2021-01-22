@@ -288,6 +288,7 @@ function _M.new(opts)
     ttl_minutes    = opts.ttl_minutes and opts.ttl_minutes * 60 or 90000,
     ttl_days       = opts.ttl_days and opts.ttl_days * 60 * 60 * 24 or 0,
     initialized    = false,
+    shm            = ngx.shared.kong_vitals,
     tsdb_storage   = tsdb_storage,
     hybrid_cp      = hybrid_cp,
   }
@@ -297,7 +298,54 @@ end
 
 
 function _M:enabled()
-  return kong.configuration.vitals and self.initialized
+  return kong.configuration.vitals and self.initialized and self:get_running()
+end
+
+
+function _M:register_config_change(events_handler)
+  events_handler.register(function(data, event, source, pid)
+
+    log(DEBUG, _log_prefix, "config change event, incoming vitals: ", kong.configuration.vitals)
+
+    if kong.configuration.vitals then
+      if not self.initialized then
+        self:init()
+      end
+      if not self:get_running() then
+        self:start()
+      end
+    elseif self:get_running() then
+      self:stop()
+    end
+
+  end, "kong:configuration", "change")
+end
+
+
+function _M:stop()
+  log(INFO, _log_prefix, "stopping")
+
+  reports.add_ping_value("vitals", false)
+  for _, v in ipairs(PH_STATS) do
+    reports.add_ping_value(v, false)
+  end
+
+  self:set_running(false)
+  self.strategy:stop()
+end
+
+
+function _M:set_running(running)
+  local ok, err = self.shm:set("vitals-running", running)
+  if not ok then
+    log(WARN, "could not set vitals running state from 'kong_vitals' shm: ", err)
+  end
+end
+
+
+function _M:get_running()
+  local running = self.shm:get("vitals-running")
+  return running and running or false
 end
 
 
@@ -323,6 +371,12 @@ function _M:init()
     return self:init_failed(nil, "failed to init vitals strategy " .. err)
   end
 
+  self.initialized = true
+
+  return self:start()
+end
+
+function _M:start()
   local delay = self.flush_interval
   local when  = delay - (ngx.now() - (math.floor(ngx.now() / delay) * delay))
   log(INFO, _log_prefix, "starting vitals timer (1) in ", when, " seconds")
@@ -334,7 +388,6 @@ function _M:init()
     return self:init_failed(nil, "failed to start recurring vitals timer (1): " .. err)
   end
 
-  self.initialized = true
 
   -- we're configured, initialized, and ready to phone home
   reports.add_ping_value("vitals", true)
@@ -349,6 +402,9 @@ function _M:init()
       return res
     end)
   end
+
+  self:set_running(true)
+  self.strategy:start()
 
   return "ok"
 end
@@ -370,6 +426,12 @@ persistence_handler = function(premature, self)
     -- TSDB strategy is read-only, the metrics will be sent by statsd-advanced plugin.
     -- Hybrid Control Plane doesn't maintain its own counters, instead it just ingest
     -- what Data Plane sends into database.
+    return
+  end
+
+  -- do not run / re schedule timer when not running (hot reload)
+  if not self:get_running() then
+    log(INFO, _log_prefix, "stopping timer; persistence handler")
     return
   end
 

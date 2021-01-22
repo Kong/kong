@@ -197,6 +197,14 @@ function _M:init()
   return true, nil
 end
 
+-- no-op interface methods for handling runtime changes for vitals
+function _M:start()
+  return true
+end
+function _M:stop()
+  return true
+end
+
 function _M:interval_width(level)
   return vitals_utils.interval_to_duration[level]
 end
@@ -241,7 +249,7 @@ function _M:query(start_ts, metrics_query, interval)
   for i, q in ipairs(metrics_query) do
     local res, err = client:request {
         method = "GET",
-        path = "/api/v1/query_range?query=" ..  ngx_escape_uri(q[2]) .. "&start=" .. start_ts 
+        path = "/api/v1/query_range?query=" ..  ngx_escape_uri(q[2]) .. "&start=" .. start_ts
                   .. "&end=" .. end_ts .. "&step=" .. interval .. "s",
         headers = self.headers,
     }
@@ -264,7 +272,7 @@ function _M:query(start_ts, metrics_query, interval)
 
     stats[i] = stat.data.result
   end
-  
+
   client:set_keepalive()
 
   return stats, nil, end_ts - start_ts
@@ -314,7 +322,7 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
     end
 
     local is_rate = metrics_query[idx][3]
-    
+
     local series_not_empty = false
     for series_idx, series in ipairs(series_list) do
       -- if not translate results with aggregate=true, make sure every metrics is aggreated to one time series
@@ -393,7 +401,7 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
             last_value = nil
           end
           -- only it's not the first data point at beginning or missed scrape
-          if last_value ~= nil then 
+          if last_value ~= nil then
             -- add the data point
             if last_value > v then -- detect counter reset
               current_value = v
@@ -628,7 +636,7 @@ end
 
 function _M:select_status_codes(opts)
   local interval, start_ts = get_interval_and_start_ts(opts.duration, opts.start_ts, self.scrape_interval)
-  
+
   -- build the filter table
   local filters = { }
   local filters_count = 0
@@ -674,7 +682,7 @@ function _M:select_status_codes(opts)
     metric_name = "kong_status_code_per_workspace"
     filters[filters_count + 1] = "workspace=\"" .. opts.entity_id .. "\""
   end
-  
+
   filters = table_concat(filters, ",")
 
   -- we only query one metric for select_status_codes

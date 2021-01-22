@@ -58,6 +58,16 @@ function OffStrategy:init()
 end
 
 
+function OffStrategy:start()
+  return true
+end
+
+
+function OffStrategy:stop()
+  return true
+end
+
+
 function off.new(db, page_size, event_ttl)
   return setmetatable({}, OffStrategy)
 end

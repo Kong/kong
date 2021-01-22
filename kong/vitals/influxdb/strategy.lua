@@ -163,6 +163,15 @@ function _M:init(node_id, hostname)
 end
 
 
+-- no-op interface methods for handling runtime changes for vitals
+function _M:start()
+  return true
+end
+function _M:stop()
+  return true
+end
+
+
 local function round(n)
   if not tonumber(n) then return n end
 
@@ -634,7 +643,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
   local entities = vitals_utils.get_entity_metadata(entity, entity_id)
   local seconds_from_now = ngx.time() - start_ts
   local result = query(self, status_code_query(entity_id, entity, seconds_from_now, interval))
-  
+
   local stats = {}
   local is_consumer = entity == "consumer"
   local is_timeseries_report = entity_id ~= nil
@@ -660,7 +669,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
         local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
         local request_count = value[2]
         stats = vitals_utils.append_to_stats(stats, key, status_group, request_count, entity_metadata)
-      end 
+      end
     end
   end
 

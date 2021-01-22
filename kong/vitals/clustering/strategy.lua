@@ -227,6 +227,18 @@ function _M:init(...)
   return self.real_strategy:init(...)
 end
 
+function _M:start()
+  if self.real_strategy then
+    self.real_strategy:start()
+  end
+end
+
+function _M:stop()
+  if self.real_strategy then
+    self.real_strategy:stop()
+  end
+end
+
 function _M:insert_stats(flush_data)
   if self.hybrid_cp then
     error("Cannot use this function in control plane", 2)

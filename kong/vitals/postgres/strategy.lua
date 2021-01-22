@@ -233,12 +233,31 @@ function _M.new(db, opts)
     ttl_days = opts.ttl_days or 0,
     node_id = nil,
     hostname = nil,
+    shm = ngx.shared.kong_vitals,
   }
 
   return setmetatable(self, mt)
 end
 
-local delete_timer_started = false
+
+function _M:stop()
+  log(INFO, _log_prefix, "stopping")
+  self:set_running(false)
+end
+
+
+function _M:set_running(running)
+  local ok, err = self.shm:set("vitals-strategy-running", running)
+  if not ok then
+    log(WARN, "could not set vitals strategy running state from 'kong_vitals' shm: ", err)
+  end
+end
+
+
+function _M:get_running()
+  local running = self.shm:get("vitals-strategy-running")
+  return running and running or false
+end
 
 
 function _M:init(node_id, hostname)
@@ -260,10 +279,15 @@ function _M:init(node_id, hostname)
     return nil, "failed to record node info: " .. err
   end
 
+  return self:start()
+end
+
+
+function _M:start()
   -- delete timer
   -- make sure the timer is started only once, clustering strategy will call
   -- this function multiple times
-  if delete_timer_started then
+  if self:get_running() then
     return true
   end
 
@@ -275,14 +299,19 @@ function _M:init(node_id, hostname)
     return nil, "failed to start initial postgres delete timer: " .. err
   end
 
-  delete_timer_started = true
-
+  self:set_running(true)
   return true
 end
 
 
 delete_handler = function(premature, self)
   if premature then
+    return
+  end
+
+  -- do not run / re schedule timer when not running (hot reload)
+  if not self:get_running() then
+    log(INFO, _log_prefix, "stopping timer; delete handler")
     return
   end
 

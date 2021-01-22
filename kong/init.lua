@@ -647,6 +647,7 @@ function Kong.init_worker()
   end
   kong.cluster_events = cluster_events
 
+  kong.vitals:register_config_change(worker_events)
   -- vitals functions require a timer, so must start in worker context
   local ok, err = kong.vitals:init()
   if not ok then
