@@ -1,6 +1,7 @@
 ## Unreleased
 
 - fix(plugin) check the existence of all CAs when creating the plugin
+- feat(mtls-auth) add support for tags in the DAO
 
 ## 0.2.4
 

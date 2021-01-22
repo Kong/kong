@@ -83,6 +83,26 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("1234", json.subject_name)
         end)
 
+        it("creates a mtls-auth credential with subject name and tags", function()
+          local res = assert(admin_client:send({
+            method  = "POST",
+            path    = "/consumers/bob/mtls-auth",
+            body    = {
+              subject_name   = "1234",
+              tags = { 'tag1', 'tag2' }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          }))
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer.id)
+          assert.equal("1234", json.subject_name)
+          assert.equal("tag1", json.tags[1])
+          assert.equal("tag2", json.tags[2])
+        end)
+
         it("subject_name is required", function()
           local res = assert(admin_client:send({
             method  = "POST",
@@ -469,6 +489,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same({ "the CA certificate '" .. ca.id .. "' does not exist", }, json.fields.config.ca_certificates)
         end)
       end)
+
     end)
 
 
