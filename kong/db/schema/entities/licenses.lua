@@ -18,8 +18,8 @@ return {
   workspaceable = false,
   db_export = true,   -- maybe play with this if we don't want it passed along?
   fields = {
-    { id             = typedefs.uuid, },
-    { payload        =  { type = "string", required = true}},
+    { id             = typedefs.uuid },
+    { payload        = { type = "string", required = true } },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
   },
@@ -28,15 +28,23 @@ return {
     { custom_entity_check = {
       field_sources = { "payload" },
       fn = function(entity)
+        -- Ensure the license is valid
         local ok, msg = license_helpers.is_valid_license(entity.payload)
         if not ok then
           ngx.log(ngx.ERR, msg)
-          kong.response.exit(400, { message = msg })
-          return false
+          return nil, msg
+        end
+
+        -- Ensure there is only one license
+        local rows = kong.db.licenses:page()
+        if #rows > 0 then
+          local msg = "a license already exists; remove " .. rows[1].id .. " before proceeding"
+          ngx.log(ngx.ERR, msg)
+          return nil, msg
         end
 
         return true
       end,
-    }}
+    } },
   },
 }
