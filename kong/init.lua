@@ -930,9 +930,12 @@ do
 
     local res = ngx.location.capture("/kong_buffered_http", options)
     if res.truncated then
+      kong_global.set_phase(kong, PHASES.error)
       ngx.status = 502
       return kong_error_handlers(ngx)
     end
+
+    kong_global.set_phase(kong, PHASES.response)
 
     local status = res.status
     local headers = res.header
@@ -961,8 +964,6 @@ do
     if not ctx.KONG_PROXY_LATENCY then
       ctx.KONG_PROXY_LATENCY = ctx.KONG_RESPONSE_START - ctx.KONG_PROCESSING_START
     end
-
-    kong_global.set_phase(kong, PHASES.response)
 
     kong.response.set_status(status)
     kong.response.set_headers(headers)
