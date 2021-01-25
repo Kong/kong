@@ -83,6 +83,12 @@ describe("sandbox functions wrapper", function()
         assert.matches("Error parsing function", err, nil, true)
       end)
 
+      it("returns false and error when input is lua that produces an error", function()
+        local ok, err = sandbox.validate("local foo = dontexist()")
+        assert.is_false(ok)
+        assert.matches("attempt to call global 'dontexist'", err, nil, true)
+      end)
+
       it("returns false and error when input is lua that does not return a function", function()
         local ok, err = sandbox.validate("return 42")
         assert.is_false(ok)
