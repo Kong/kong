@@ -54,7 +54,13 @@ for (x in distros) {
         }
 
         stage('build-image') {
-          sh "./dist/dist.sh build-image ${args}"
+          sh """
+            tag=\$(./dist/dist.sh build-image ${args})
+            echo "FROM \$tag" | docker build \
+                --label org.opencontainers.image.source=\$(git config --get remote.origin.url) \
+                --label org.opencontainers.image.revision=\$(git rev-parse HEAD) \
+                -t \$tag -
+          """
         }
 
         stage('push internal nightly') {
