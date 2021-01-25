@@ -472,13 +472,13 @@ for _, strategy in helpers.each_strategy() do
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
           body    = {
-            config = { ca_certificates = { '00000000-0000-0000-0000-000000000000', }, },
+            config = { ca_certificates = { ca_cert.id, }, },
           },
           headers = {
             ["Content-Type"] = "application/json"
           }
         }))
-        assert.res_status(400, res)
+        assert.res_status(200, res)
       end)
 
       it("errors when CA doesn't exist", function()

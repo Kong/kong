@@ -9,17 +9,17 @@ local kong = kong
 local typedefs = require("kong.db.schema.typedefs")
 local utils = require "kong.tools.utils"
 
-local function validate_ca_id(ca_uuid)
-  if not utils.is_valid_uuid(ca_uuid) then
-    return false, "the CA certificate '" .. ca_uuid .. "' is not a valid UUID"
+local function validate_ca_id(uuid)
+  if not utils.is_valid_uuid(uuid) then
+    return false, "the CA certificate '" .. uuid .. "' is not a valid UUID"
   end
 
-  local obj, err = kong.db.ca_certificates:select({ id = ca_uuid })
+  local obj, err = kong.db.ca_certificates:select({ id = uuid })
 
-  if err then return false, "error fetching certificate" end
+  if err then return false, "error fetching certificate during validation" end
 
   if not obj then
-    return false, "the CA certificate '" .. ca_uuid .. "' does not exist"
+    return false, "the CA certificate '" .. uuid .. "' does not exist"
   end
 
   return true, nil
