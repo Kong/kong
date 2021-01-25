@@ -188,9 +188,15 @@ function RateLimitingHandler:access(conf)
 
     -- If limit is exceeded, terminate the request
     if stop then
-      return kong.response.error(429, "API rate limit exceeded", {
-        [RETRY_AFTER] = reset
-      })
+       if conf.response_body then
+          return kong.response.error(429, conf.response_body, {
+            [RETRY_AFTER] = reset
+          })
+       else
+          return kong.response.error(429, "API rate limit exceeded", {
+            [RETRY_AFTER] = reset
+          })
+       end
     end
   end
 
