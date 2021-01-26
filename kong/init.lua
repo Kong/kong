@@ -826,7 +826,7 @@ do
     if res.truncated then
       kong_global.set_phase(kong, PHASES.error)
       ngx.status = 502
-      return kong_error_handlers(ngx)
+      return kong_error_handlers(ctx)
     end
 
     kong_global.set_phase(kong, PHASES.response)
