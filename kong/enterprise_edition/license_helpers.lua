@@ -41,13 +41,13 @@ local DEFAULT_KONG_LICENSE_PATH = "/etc/kong/license.json"
 local function get_license_string()
   local license_data_env = os.getenv("KONG_LICENSE_DATA")
   if license_data_env then
-    ngx.log(ngx.DEBUG, "Loaded license from KONG_LICENSE_DATA")
+    ngx.log(ngx.DEBUG, "[license-helpers] loaded license from KONG_LICENSE_DATA")
     return license_data_env
   end
 
   local license_path
   if pl_path.exists(DEFAULT_KONG_LICENSE_PATH) then
-    ngx.log(ngx.DEBUG, "Loaded license from default Kong license path")
+    ngx.log(ngx.DEBUG, "[license-helpers] loaded license from default Kong license path")
     license_path = DEFAULT_KONG_LICENSE_PATH
   else
     license_path = os.getenv("KONG_LICENSE_PATH")
@@ -56,35 +56,38 @@ local function get_license_string()
         -- Load license from database
         local license
         for l in kong.db.licenses:each() do
-          license = l
+          -- Select the last created license
+          if not license or license.created_at < l.created_at then
+            license = l
+          end
         end
         if license then
-          ngx.log(ngx.DEBUG, "Loaded license from database")
+          ngx.log(ngx.DEBUG, "[license-helpers] loaded license from database; using license id: ", license.id)
           return license.payload
         end
       end
 
       -- License was not loaded from DB so return initial error
-      ngx.log(ngx.DEBUG, "KONG_LICENSE_PATH is not set")
+      ngx.log(ngx.DEBUG, "[license-helpers] KONG_LICENSE_PATH is not set")
       return nil
     end
   end
 
   local license_file = io.open(license_path, "r")
   if not license_file then
-    ngx.log(ngx.NOTICE, "could not open license file")
+    ngx.log(ngx.NOTICE, "[license-helpers] could not open license file")
     return nil
   end
 
   local license_data = license_file:read("*a")
   if not license_data then
-    ngx.log(ngx.NOTICE, "could not read license file contents")
+    ngx.log(ngx.NOTICE, "[license-helpers] could not read license file contents")
     return nil
   end
 
   license_file:close()
 
-  ngx.log(ngx.DEBUG, "Loaded license from KONG_LICENSE_PATH")
+  ngx.log(ngx.DEBUG, "[license-helpers] loaded license from KONG_LICENSE_PATH")
   return license_data
 end
 
@@ -117,13 +120,13 @@ end
 function _M.read_license_info()
   local license_data = get_license_string()
   if not license_data or (license_data == "") then
-    ngx.log(ngx.NOTICE, "could not decode license JSON: No license found")
+    ngx.log(ngx.NOTICE, "[license-helpers] could not decode license JSON: No license found")
     return nil
   end
 
   local license, err = cjson.decode(license_data)
   if err then
-    ngx.log(ngx.ERR, "could not decode license JSON: " .. err)
+    ngx.log(ngx.ERR, "[license-helpers] could not decode license JSON: " .. err)
     return nil
   end
 
