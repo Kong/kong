@@ -97,8 +97,10 @@ local function new()
     end
 
     ngx.var.upstream_host = host
-    ngx.ctx.balancer_data.host = host
-    ngx.ctx.balancer_data.port = port
+
+    local ctx = ngx.ctx
+    ctx.balancer_data.host = host
+    ctx.balancer_data.port = port
   end
 
 

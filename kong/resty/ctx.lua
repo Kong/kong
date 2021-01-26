@@ -27,7 +27,7 @@ local FFI_NO_REQ_CTX = base.FFI_NO_REQ_CTX
 local _M = {}
 
 
-function _M.stash_ref()
+function _M.stash_ref(ctx)
   local r = base.get_request()
   if not r then
     ngx.log(ngx.WARN, "could not stash ngx.ctx ref: no request found")
@@ -40,7 +40,9 @@ function _M.stash_ref()
       return
     end
 
-    local _ = ngx.ctx -- load context if not previously loaded
+    if not ctx then
+      local _ = ngx.ctx -- load context if not previously loaded
+    end
   end
 
   local ctx_ref = C.ngx_http_lua_ffi_get_ctx_ref(r)
