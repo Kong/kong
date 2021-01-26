@@ -35,14 +35,6 @@ return {
           return nil, msg
         end
 
-        -- Ensure there is only one license
-        local rows = kong.db.licenses:page()
-        if #rows > 0 then
-          local msg = "a license already exists; remove " .. rows[1].id .. " before proceeding"
-          ngx.log(ngx.ERR, msg)
-          return nil, msg
-        end
-
         return true
       end,
     } },
