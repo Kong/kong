@@ -335,7 +335,7 @@ pipeline {
                 allOf {
                     buildingTag()
                     not { triggeredBy 'TimerTrigger' }
-                    tag pattern: '^\\d+\\.\\d+\\.\\d+$', comparator: "REGEXP"
+                    expression { env.TAG_NAME ==~ /^\d+\.\d+\.\d+$/ }
                 }
             }
             parallel {
