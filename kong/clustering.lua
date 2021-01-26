@@ -578,11 +578,21 @@ local function should_send_config_update(node_version, node_plugins)
                   CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
   end
 
-  for i, p in ipairs(PLUGINS_LIST) do
-    local np = node_plugins[i]
+  -- XXX EE: allow DP to have a superset of CP's plugins
+  local p, np
+  local i, j = #PLUGINS_LIST, #node_plugins
+
+  if j < i then
+    return false, "CP and DP does not have same set of plugins installed",
+                  CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+  end
+
+  while i > 0 and j > 0 do
+    p = PLUGINS_LIST[i]
+    np = node_plugins[j]
+
     if p.name ~= np.name then
-      return false, "CP and DP does not have same set of plugins installed",
-                    CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+      goto continue
     end
 
     if p.version ~= np.version then
@@ -591,6 +601,15 @@ local function should_send_config_update(node_version, node_plugins)
                     " while DP has version " .. tostring(np.version),
                     CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
     end
+
+    i = i - 1
+    ::continue::
+    j = j - 1
+  end
+
+  if i > 0 then
+    return false, "CP and DP does not have same set of plugins installed",
+                    CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
   end
 
   return true
