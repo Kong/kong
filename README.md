@@ -36,6 +36,7 @@ can help by acting as a gateway (or a sidecar) for microservices requests while
 providing load balancing, logging, authentication, rate-limiting,
 transformations, and more through plugins.
 
+
 [![][kong-benefits]][kong-url]
 
 Kong has been built with the following leading principles:
@@ -147,6 +148,12 @@ Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
 
 For a quick start with custom plugin development, check out [Pongo](https://github.com/Kong/kong-pongo)
 and the [plugin template](https://github.com/Kong/kong-plugin) explained in detail below.
+
+## Service Mesh
+
+The new version comes with multi-cloud (i.e. public, private, hybrid) and multi-region (i.e. different countries) deployment options — and it has ‘native service mesh support’ via the firm’s own Kong Mesh product.
+
+A service mesh is a configurable piece of software designed to streamline IT system infrastructures that use Application Programming Interfaces (APIs) so that the infrastructure itself works on a low-latency basis. It ‘meshes’ (i.e. conjoins and connects) because containerised elements of infrastructure are essentially discrete and sometimes ephemeral. A service mesh is an infrastructure layer, but it is built right in the application itself to provide functions such as service discovery, load balancing, encryption, observability, traceability, authentication and authorization. It will also document how successfully different services have communicated with each other. So essentially, a service mesh is an in-app infrastructure layer designed to oversee and manage all service-to-service communication within a distributed software system that typically makes use of microservices and APIs. 
 
 #### Docker
 
