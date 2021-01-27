@@ -115,12 +115,14 @@ end
 
 local function fetch_sni(sni, i)
   -- XXX EE [[
-  -- SNIs need to be gathered from each workspace
+  local show_ws_id_options = { show_ws_id = true }
+  -- SNIs need to be gathered from each workspace for db strategy
   local orig_ws = workspaces.get_workspace()
   for workspace, _ in singletons.db.workspaces:each() do
     workspaces.set_workspace(workspace)
-  -- XXX EE ]]
-    local row, err = singletons.db.snis:select_by_name(sni)
+    -- set show_ws_id to true
+    local row, err = singletons.db.snis:select_by_name(sni, show_ws_id_options)
+    -- XXX EE ]]
     workspaces.set_workspace(orig_ws) -- XXX EE: Reset the workspace
     if err then
       return nil, "failed to fetch '" .. sni .. "' SNI: " .. err, i, nil
