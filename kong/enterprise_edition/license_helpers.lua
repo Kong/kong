@@ -56,8 +56,8 @@ local function get_license_string()
         -- Load license from database
         local license
         for l in kong.db.licenses:each() do
-          -- Select the last created license
-          if not license or license.created_at < l.created_at then
+          -- Select the last updated license
+          if not license or license.updated_at < l.updated_at then
             license = l
           end
         end
