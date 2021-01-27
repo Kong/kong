@@ -673,7 +673,7 @@ function Kong.ssl_certificate()
   log_init_worker_errors(ctx)
 
   -- this is the first phase to run on an HTTPS request
-  ngx.ctx.workspace = kong.default_workspace
+  ctx.workspace = kong.default_workspace
 
   runloop.certificate.before(ctx)
   local plugins_iterator = runloop.get_updated_plugins_iterator()
@@ -706,7 +706,7 @@ function Kong.rewrite()
   end
 
   kong_global.set_phase(kong, PHASES.rewrite)
-  kong_resty_ctx.stash_ref()
+  kong_resty_ctx.stash_ref(ctx)
 
   local is_https = var.https == "on"
   if not is_https then
@@ -715,18 +715,18 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
+  if not ctx.workspace then
+    ctx.workspace = kong.default_workspace
+  end
+
   -- On HTTPS requests, the plugins iterator is already updated in the ssl_certificate phase
   local plugins_iterator
   if is_https then
     plugins_iterator = runloop.get_plugins_iterator()
   else
-    -- this is the first phase to run on a plain HTTP request
-    ngx.ctx.workspace = kong.default_workspace
-
     plugins_iterator = runloop.get_updated_plugins_iterator()
   end
 
-  ctx.workspace = kong.default_workspace
   execute_plugins_iterator(plugins_iterator, "rewrite", ctx)
 
   runloop.rewrite.after(ctx)
@@ -826,7 +826,7 @@ do
     if res.truncated then
       kong_global.set_phase(kong, PHASES.error)
       ngx.status = 502
-      return kong_error_handlers(ngx)
+      return kong_error_handlers(ctx)
     end
 
     kong_global.set_phase(kong, PHASES.response)
@@ -973,7 +973,7 @@ function Kong.balancer()
 
     if balancer_data.scheme == "https" then
       -- upstream_host is SNI
-      pool = pool .. "|" .. ngx.var.upstream_host
+      pool = pool .. "|" .. var.upstream_host
 
       if ctx.service and ctx.service.client_certificate then
         pool = pool .. "|" .. ctx.service.client_certificate.id
@@ -1256,8 +1256,6 @@ function Kong.log()
   end
 
   kong_global.set_phase(kong, PHASES.log)
-
-  local ctx = ngx.ctx
 
   runloop.log.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()

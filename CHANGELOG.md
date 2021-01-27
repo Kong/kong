@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.3.1](#231)
 - [2.3.0](#230)
 - [2.2.1](#221)
 - [2.2.0](#220)
@@ -50,6 +51,27 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.3.1]
+
+> Released 2021/01/26
+
+This is a patch release in the 2.3 series. Being a patch release, it
+strictly contains bugfixes. The are no new features or breaking changes.
+
+### Fixes
+
+##### Core
+
+- lua-resty-dns-client was bumped to 5.2.1, which fixes an issue that could
+  lead to a busy loop when renewing addresses. 
+  [#6760](https://github.com/Kong/kong/pull/6760)
+- Fixed an issue that made Kong return HTTP 500 Internal Server Error instead
+  of HTTP 502 Bad Gateway on upstream connection errors when using buffered
+  proxying. [#6735](https://github.com/Kong/kong/pull/6735)
+
+[Back to TOC](#table-of-contents)
 
 
 ## [2.3.0]
@@ -5726,6 +5748,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.3.1]: https://github.com/Kong/kong/compare/2.3.0...2.3.1
 [2.3.0]: https://github.com/Kong/kong/compare/2.2.0...2.3.0
 [2.2.1]: https://github.com/Kong/kong/compare/2.2.0...2.2.1
 [2.2.0]: https://github.com/Kong/kong/compare/2.1.3...2.2.0
