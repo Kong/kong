@@ -20,6 +20,16 @@ local SUBSYS = ngx.config.subsystem
 local WORKER_COUNT = ngx.worker.count()
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 
+
+local function find_default_ws(entities)
+  for _, v in pairs(entities.workspaces or {}) do
+    if v.name == "default" then
+      return v.id
+    end
+  end
+end
+
+
 local declarative = {}
 
 
@@ -238,6 +248,11 @@ function Config:parse_table(dc_table, hash)
 
   if not self.partial then
     self.schema:insert_default_workspace_if_not_given(entities)
+  end
+
+  local ok, err_t = self.schema:check_constraints(entities)
+  if not ok then
+    return nil, pretty_print_error(err_t), err_t
   end
 
   if not hash then
@@ -484,15 +499,6 @@ function declarative.get_current_hash()
 end
 
 
-local function find_default_ws(entities)
-  for _, v in pairs(entities.workspaces or {}) do
-    if v.name == "default" then
-      return v.id
-    end
-  end
-end
-
-
 -- entities format:
 --   {
 --     services: {
@@ -571,8 +577,6 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
       -- When loading the entities, when we load the default_ws, we
       -- set it to the current. But this only works in the worker that
       -- is doing the loading (0), other ones still won't have it
-
-      assert(type(fallback_workspace) == "string")
 
       local ws_id
       if schema.workspaceable then

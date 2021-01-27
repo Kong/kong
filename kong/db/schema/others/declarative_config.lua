@@ -7,6 +7,9 @@ local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
 
 
+local DEFAULT_WORKSPACE_ID = "0dc6f45b-8f8d-40d2-a504-473544ee190b"
+
+
 local null = ngx.null
 
 
@@ -584,14 +587,14 @@ end
 
 
 local function find_default_ws(entities)
-  for k, v in pairs(entities.workspaces or {}) do
+  for _, v in pairs(entities.workspaces or {}) do
     if v.name == "default" then return v.id end
   end
 end
 
 
 local function insert_default_workspace_if_not_given(self, entities)
-  local default_workspace = find_default_ws(entities) or "0dc6f45b-8f8d-40d2-a504-473544ee190b"
+  local default_workspace = find_default_ws(entities) or DEFAULT_WORKSPACE_ID
 
   if not entities.workspaces then
     entities.workspaces = {}
@@ -676,6 +679,72 @@ local function flatten(self, input)
 end
 
 
+local function check_constraints(self, entities)
+  local default_workspace = find_default_ws(entities) or DEFAULT_WORKSPACE_ID
+  for entity_name, items in pairs(entities) do
+    local schema = all_schemas[entity_name]
+    local uniques = {}
+    for fname, fdata in schema:each_field() do
+      if fdata.unique then
+        if fdata.type == "foreign" then
+          if all_schemas[fdata.reference].primary_key == 1 then
+            table.insert(uniques, fname)
+          end
+
+        else
+          table.insert(uniques, fname)
+        end
+      end
+    end
+
+    local unique_cache_keys = {}
+    for _, item in pairs(items) do
+      for _, unique in ipairs(uniques) do
+        if item[unique] and item[unique] ~= null then
+          local ws_id
+          if schema.workspaceable then
+            if type(item.ws_id) == "string" then
+              ws_id = item.ws_id
+            else
+              ws_id = default_workspace
+            end
+
+          else
+            ws_id = ""
+          end
+
+          local unique_key = item[unique]
+          if type(unique_key) == "table" then
+            local _
+            -- this assumes that foreign keys are not composite
+            _, unique_key = next(unique_key)
+          end
+
+          local prefix
+          if schema.fields[unique].unique_across_ws then
+            prefix = ""
+          else
+            prefix = ws_id .. ":"
+          end
+
+          local unique_cache_key = prefix .. unique_key
+          if unique_cache_keys[unique_cache_key] then
+            local err_t = errors:unique_violation({
+              [unique] = unique_key,
+            })
+            return nil, err_t
+          end
+
+          unique_cache_keys[unique_cache_key] = true
+        end
+      end
+    end
+  end
+
+  return true
+end
+
+
 local function load_entity_subschemas(entity_name, entity)
   local ok, subschemas = utils.load_module_if_exists("kong.db.schema.entities." .. entity_name .. "_subschemas")
   if ok then
@@ -751,6 +820,7 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
 
   schema.known_entities = known_entities
   schema.flatten = flatten
+  schema.check_constraints = check_constraints
   schema.insert_default_workspace_if_not_given = insert_default_workspace_if_not_given
   schema.plugin_set = plugin_set
 
