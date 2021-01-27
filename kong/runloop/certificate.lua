@@ -127,7 +127,19 @@ local function fetch_sni(sni, i)
     end
 
     if row then
-      row["workspace"] = workspace -- XXX EE: add the workspace information to the table
+      -- XXX EE [[
+      -- add the workspace information to the table
+      -- Note: the behaviour of db and off strategy doesn't really agree with
+      -- each other. While db strategies always require a ws_id even if the
+      -- entity is unique_across_ws, off strategy doesn't. So in off strategy,
+      -- the loop in this function **always** iterrate only one time, no matter
+      -- what `workspace` is currently being set. So it's only safe to return the workspace
+      -- same as the ws_id field of the SNI entity instead of the iterrated workspace
+      -- variable.
+      -- Note: this fix is still a hack. Ideally we should make db strategies be able
+      -- to omit ws_id when selecting unique_across_ws entities.
+      row["workspace"] = { id = row.ws_id }
+      -- XXX EE ]]
       return row, nil, i
     end
   end
