@@ -1,7 +1,7 @@
 [![][kong-logo]][kong-url]
 
 [![Build Status][badge-action-image]][badge-action-url]
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Kong/kong/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/License-Proprietary-blue.svg)](https://konghq.com/enterprisesoftwarelicense/)
 [![Twitter](https://img.shields.io/twitter/follow/thekonginc.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=thekonginc)
 
 :monkey: [Master Preview Environment](http://master.kong-ee.previewer.konghq.com:8002/dashboard)
