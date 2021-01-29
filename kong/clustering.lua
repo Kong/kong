@@ -712,14 +712,20 @@ end
 function _M.init(conf)
   assert(conf, "conf can not be nil", 2)
 
-  if conf.role == "data_plane" or conf.role == "control_plane" then
-    assert(init_mtls(conf))
+  if conf.role ~= "data_plane" and conf.role ~= "control_plane" then
+    return
   end
+
+  assert(init_mtls(conf))
 end
 
 
 function _M.init_worker(conf)
   assert(conf, "conf can not be nil", 2)
+
+  if conf.role ~= "data_plane" and conf.role ~= "control_plane" then
+    return
+  end
 
   PLUGINS_LIST = assert(kong.db.plugins:get_handlers())
   table.sort(PLUGINS_LIST, function(a, b)
