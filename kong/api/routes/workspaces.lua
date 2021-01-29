@@ -105,9 +105,12 @@ return {
 
       local counts, err = counters.counts(self.workspace.id)
       local empty = true
+      local not_empty_message = {message = "Workspace is not empty"}
+      local not_empty_entities = {}
       for k, v in pairs(counts) do
         if v > 0 then
           empty = false
+          not_empty_entities[k] = v
         end
       end
 
@@ -116,7 +119,8 @@ return {
         return kong.response.exit(500, {err})
       end
       if not empty then
-        return kong.response.exit(400, {message = "Workspace is not empty"})
+        not_empty_message["entities"] = not_empty_entities
+        return kong.response.exit(400, {message = not_empty_message})
       end
 
       return parent()
