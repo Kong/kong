@@ -392,9 +392,9 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(rows)
         assert.match([[tags: must be a table]], err)
 
-        rows, err, _, _ = db.services:page(nil, nil, { tags = { "oops", "@_@" }, tags_cond = 'and' })
+        rows, err, _, _ = db.services:page(nil, nil, { tags = { "oops", string.char(255) }, tags_cond = 'and' })
         assert.is_nil(rows)
-        assert.match([[tags: must only contain alphanumeric and]], err)
+        assert.match([[tags: must only contain printable ascii]], err)
 
         rows, err, _, _ = db.services:page(nil, nil, { tags = { "1", "2", "3", "4", "5", "6" } })
         assert.is_nil(rows)
@@ -407,22 +407,38 @@ for _, strategy in helpers.each_strategy() do
 
     end)
 
-    describe("#db errors if tag value is invalid", function()
-      assert.has_error(function()
-        bp.services:insert({
-          host = "invalid-tag.com",
-          name = "service-invalid-tag",
-          tags = { "invalid tag" }
-        })
-      end, string.format('[%s] schema violation (tags.1: invalid value: invalid tag)', strategy))
+    it("#db errors if tag value is invalid", function()
+      local ok, err = pcall(bp.services.insert, bp.services, {
+        host = "invalid-tag.com",
+        name = "service-invalid-tag",
+        tags = { "tag with spaces" }
+      })
+      assert.is_falsy(ok)
+      assert.matches("invalid tag", err)
 
-      assert.has_error(function()
-        bp.services:insert({
-          host = "invalid-tag.com",
-          name = "service-invalid-tag",
-          tags = { "foo,bar" }
-        })
-      end, string.format('[%s] schema violation (tags.1: invalid value: foo,bar)', strategy))
+      local ok, err = pcall(bp.services.insert, bp.services, {
+        host = "invalid-tag.com",
+        name = "service-invalid-tag",
+        tags = { "tag,with,commas" }
+      })
+      assert.is_falsy(ok)
+      assert.matches("invalid tag", err)
+
+      local ok, err = pcall(bp.services.insert, bp.services, {
+        host = "invalid-tag.com",
+        name = "service-invalid-tag",
+        tags = { "tag/with/slashes" }
+      })
+      assert.is_falsy(ok)
+      assert.matches("invalid tag", err)
+
+      local ok, err = pcall(bp.services.insert, bp.services, {
+        host = "invalid-tag.com",
+        name = "service-invalid-tag",
+        tags = { "tag-with-invalid-utf8" .. string.char(255) }
+      })
+      assert.is_falsy(ok)
+      assert.matches("invalid utf%-8", err)
     end)
 
 
