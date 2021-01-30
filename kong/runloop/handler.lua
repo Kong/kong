@@ -444,6 +444,9 @@ local function register_events()
     local operation = data.operation
     local upstream = data.entity
 
+    singletons.core_cache:invalidate_local("balancer:upstreams")
+    singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
+
     -- => to balancer update
     balancer.on_upstream_event(operation, upstream)
   end, "balancer", "upstreams")

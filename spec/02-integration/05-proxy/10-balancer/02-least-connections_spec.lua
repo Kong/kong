@@ -56,7 +56,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       assert(bp.routes:insert({
-        hosts      = { "least1.com" },
+        hosts      = { "least1.test" },
         protocols  = { "http" },
         service    = bp.services:insert({
           protocol = "http",
@@ -91,6 +91,18 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
+      -- wait until helper servers are alive
+      helpers.wait_until(function()
+        local client = helpers.proxy_client()
+        local res = assert(client:send({
+          method = "GET",
+          path = "/leastconnections",
+          headers = {
+            ["Host"] = "least1.test"
+          },
+        }))
+        return res.status == 200
+      end, 10)
     end)
 
     after_each(function ()
@@ -103,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("balances by least-connections", function()
-      local thread_max = 100 -- maximum number of threads to use
+      local thread_max = 50 -- maximum number of threads to use
       local done = false
       local results = {}
       local threads = {}
@@ -115,7 +127,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/leastconnections",
             headers = {
-              ["Host"] = "least1.com"
+              ["Host"] = "least1.test"
             },
           }))
           assert(res.status == 200)
