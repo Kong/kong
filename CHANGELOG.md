@@ -1,3 +1,7 @@
+## Unreleased
+
+- fix(plugin) check the existence of all CAs when creating the plugin
+
 ## 0.2.4
 
 - fix(log) updating auth errors to handle fallthrough scenarios
