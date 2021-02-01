@@ -61,6 +61,11 @@ env:
     - TEST_SUITE=pdk
 
 install:
+  # Add an IPv6 config - see the corresponding Travis issue
+  # https://github.com/travis-ci/travis-ci/issues/8361
+  - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
+      sudo sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6';
+    fi
   - source .ci/setup_env.sh
   - make dev
 
