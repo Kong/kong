@@ -209,6 +209,7 @@ build = {
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
     ["kong.tools.messaging"] = "kong/tools/messaging.lua",
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
+    ["kong.tools.uri"] = "kong/tools/uri.lua",
 
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
     ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",
