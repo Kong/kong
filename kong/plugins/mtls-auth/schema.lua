@@ -7,7 +7,7 @@
 --- Copyright 2019 Kong Inc.
 local kong = kong
 local typedefs = require("kong.db.schema.typedefs")
-local utils = require "kong.tools.utils"
+local utils = require("kong.tools.utils")
 
 local function validate_ca_id(uuid)
   if not utils.is_valid_uuid(uuid) then
