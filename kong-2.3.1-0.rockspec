@@ -135,6 +135,7 @@ build = {
     ["kong.tools.stream_api"] = "kong/tools/stream_api.lua",
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
+    ["kong.tools.uri"] = "kong/tools/uri.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",

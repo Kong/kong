@@ -120,7 +120,7 @@ for _, strategy in helpers.each_strategy() do
       -- with `hosts` matching
       local res    = assert(proxy_client:send {
         method     = "GET",
-        path       = "/request/auth%7C123",
+        path       = "/request/auth%2F123",
         headers    = {
           ["Host"] = "mock_upstream",
         },
@@ -129,29 +129,29 @@ for _, strategy in helpers.each_strategy() do
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
 
-      assert.matches("/request/auth%7C123", json.url, nil, true)
+      assert.matches("/request/auth%2F123", json.url, nil, true)
 
       -- with `uris` matching
       local res2 = assert(proxy_client:send {
         method   = "GET",
-        path     = "/request/auth%7C123",
+        path     = "/request/auth%2F123",
       })
 
       local body2 = assert.res_status(200, res2)
       local json2 = cjson.decode(body2)
 
-      assert.matches("/request/auth%7C123", json2.url, nil, true)
+      assert.matches("/request/auth%2F123", json2.url, nil, true)
 
       -- with `uris` matching + `strip_uri`
       local res3 = assert(proxy_client:send {
         method   = "GET",
-        path     = "/stripped-path/request/auth%7C123",
+        path     = "/stripped-path/request/auth%2F123",
       })
 
       local body3 = assert.res_status(200, res3)
       local json3 = cjson.decode(body3)
 
-      assert.matches("/request/auth%7C123", json3.url, nil, true)
+      assert.matches("/request/auth%2F123", json3.url, nil, true)
     end)
   end)
 end
