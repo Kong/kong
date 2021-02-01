@@ -219,6 +219,27 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ ca.id, }, json.config.ca_certificates)
       end)
+
+      it("errors with a ca_certificate that does not exist", function()
+        local uuid = utils.uuid()
+        local res = assert(admin_client:send {
+          method  = "POST",
+          path    = "/plugins",
+          body    = {
+            route = { id = route2.id },
+            name       = "mtls-auth",
+            config     = {
+              ca_certificates = { uuid, },
+            },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ "the CA certificate '" .. uuid .. "' does not exist", }, json.fields.config.ca_certificates)
+      end)
     end)
 
     describe("/consumers/:consumer/mtls-auth/:id", function()

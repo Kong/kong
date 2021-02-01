@@ -16,13 +16,15 @@ local function validate_ca_id(uuid)
 
   local obj, err = kong.db.ca_certificates:select({ id = uuid })
 
-  if err then return false, "error fetching certificate during validation" end
+  if err then
+    return false, "error fetching certificate during validation"
+  end
 
   if not obj then
     return false, "the CA certificate '" .. uuid .. "' does not exist"
   end
 
-  return true, nil
+  return true
 end
 
 
