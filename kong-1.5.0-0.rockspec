@@ -192,6 +192,7 @@ build = {
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
+    ["kong.tools.uri"] = "kong/tools/uri.lua",
 
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
     ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",
