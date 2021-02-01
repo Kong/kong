@@ -93,7 +93,7 @@ for _, strategy in helpers.each_strategy() do
               name   = "response-transformer-advanced",
               config = {
                 transform = {
-                  functions = { [[ print("hello world") ]] }
+                  functions = { [[ foo = "bar" ]] }
                 },
               },
             },
@@ -103,15 +103,13 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.response(res).has.status(400)
           local json = cjson.decode(body)
-          local msg = "Bad return value from function, expected function type, got string"
+          local msg = "Bad return value from function, expected function type, got nil"
           local expected = { config = { transform = { functions = { msg } } } }
           assert.same(expected, json["fields"])
         end)
         it("transform accepts a json query to run the function into", function()
           local some_function = [[
-            return function ()
-              print("hello world")
-            end
+            return function () end
           ]]
           local res = assert(admin_client:send {
             method  = "POST",
@@ -141,9 +139,7 @@ for _, strategy in helpers.each_strategy() do
         end)
         it("transform accepts a json query:value to run the function into", function()
           local some_function = [[
-            return function ()
-              print("hello world")
-            end
+            return function () end
           ]]
           local res = assert(admin_client:send {
             method  = "POST",
