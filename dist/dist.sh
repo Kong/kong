@@ -27,6 +27,19 @@ git_clone_tmp() {
   git clone -b ${ref} https://"$GITHUB_TOKEN"@github.com/Kong/${repo}.git $tmpath
 }
 
+use_local() {
+  local path=${!1}
+
+  if [[ -n $path ]] &&
+     [[ -d $path ]]; then
+    # Assign local path
+    tmpath=$path
+    return 0
+  fi
+
+  return 1
+}
+
 # This is for package.sh
 export CACHE_DIR=${CACHE_DIR:-/tmp/kong-dist-cache}
 export OUTPUT_DIR=$LOCAL_PATH/output
@@ -40,7 +53,7 @@ shift
 
 case $ACTION in
   release)
-    git_clone_tmp kong-distributions $KONG_DISTRIBUTIONS_VERSION
+    use_local KONG_DISTRIBUTIONS_PATH || git_clone_tmp kong-distributions $KONG_DISTRIBUTIONS_VERSION
     # We have 0 trust that the release script works if it does not run
     # within its folder. So:
     pushd $tmpath
@@ -53,7 +66,7 @@ case $ACTION in
     echo $tmpath
     ;;
   *)
-    git_clone_tmp kong-distributions $KONG_DISTRIBUTIONS_VERSION
+    use_local KONG_DISTRIBUTIONS_PATH || git_clone_tmp kong-distributions $KONG_DISTRIBUTIONS_VERSION
     $tmpath/package.sh $ACTION "$@"
     ;;
 esac
