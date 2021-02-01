@@ -13,6 +13,7 @@ local bit           = require "bit"
 
 
 local hostname_type = utils.hostname_type
+local normalize     = require("kong.tools.uri").normalize
 local subsystem     = ngx.config.subsystem
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
@@ -1733,6 +1734,8 @@ function _M.new(routes)
         if idx then
           req_uri = sub(req_uri, 1, idx - 1)
         end
+
+        req_uri = normalize(req_uri, true)
       end
 
       local match_t = find_route(req_method, req_uri, req_host, req_scheme,
