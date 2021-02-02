@@ -4,11 +4,28 @@
 -- subject to the terms of the Kong Master Software License Agreement found
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
-
 --- Copyright 2019 Kong Inc.
-
-
+local kong = kong
 local typedefs = require("kong.db.schema.typedefs")
+local utils = require("kong.tools.utils")
+
+local function validate_ca_id(uuid)
+  if not utils.is_valid_uuid(uuid) then
+    return false, "the CA certificate '" .. uuid .. "' is not a valid UUID"
+  end
+
+  local obj, err = kong.db.ca_certificates:select({ id = uuid })
+
+  if err then
+    return false, "error fetching certificate during validation"
+  end
+
+  if not obj then
+    return false, "the CA certificate '" .. uuid .. "' does not exist"
+  end
+
+  return true
+end
 
 
 return {
@@ -29,7 +46,7 @@ return {
           { ca_certificates = {
             type = "array",
             required = true,
-            elements = { type = "string", uuid = true, },
+            elements = { type = "string", custom_validator = validate_ca_id },
           }, },
           { cache_ttl = {
             type = "number",

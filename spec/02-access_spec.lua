@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local pl_file = require "pl.file"
 local cjson   = require "cjson"
 local utils   = require "kong.tools.utils"
 
@@ -469,43 +468,46 @@ for _, strategy in helpers.each_strategy() do
 
     describe("errors", function()
       lazy_setup(function()
+        -- Here we truncate the ca_certificates table, simulating a scenario where
+        -- the ca_certificate referenced does not exist in the db
+        db:truncate("ca_certificates")
         local res = assert(admin_client:send({
-          method  = "PATCH",
-          path    = "/plugins/" .. plugin.id,
-          body    = {
-            config = { ca_certificates = { '00000000-0000-0000-0000-000000000000', }, },
-          },
+          method  = "DELETE",
+          path    = "/cache",
           headers = {
             ["Content-Type"] = "application/json"
           }
         }))
-        assert.res_status(200, res)
+        assert.res_status(204, res)
       end)
 
       it("errors when CA doesn't exist", function()
+        local uuid = utils.uuid()
         local res = assert(admin_client:send({
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
           body    = {
-            config = { ca_certificates = { '00000000-0000-0000-0000-000000000000', }, },
+            config = { ca_certificates = { uuid, }, },
           },
           headers = {
             ["Content-Type"] = "application/json"
           }
         }))
-        assert.res_status(200, res)
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ "the CA certificate '" .. uuid .. "' does not exist", }, json.fields.config.ca_certificates)
 
         local res = assert(mtls_client:send {
           method  = "GET",
           path    = "/example_client",
         })
+        -- expected worker crash
         assert.res_status(500, res)
 
-        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-        assert.matches("CA Certificate '00000000-0000-0000-0000-000000000000' does not exist", err_log, nil, true)
       end)
     end)
   end)
+
   describe("Plugin: mtls-auth (access) with filter [#" .. strategy .. "]", function()
     local proxy_client, admin_client, mtls_client
     local proxy_ssl_client_foo, proxy_ssl_client_bar, proxy_ssl_client_alice
