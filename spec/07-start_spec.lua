@@ -13,8 +13,8 @@ describe("kong starts with proxy-cache-advanced plugin", function()
     helpers.get_db_utils(nil, nil, {"proxy-cache-advanced"})
   end)
 
-  before_each(function()
-    helpers.stop_kong(nil, true)
+  after_each(function()
+    assert.True(helpers.stop_kong(nil, false))
   end)
 
   teardown(function()
@@ -28,6 +28,22 @@ describe("kong starts with proxy-cache-advanced plugin", function()
     }))
   end)
 
+end)
+
+describe("kong starts with proxy-cache-advanced plugin for stream listening", function()
+
+  setup(function()
+    helpers.get_db_utils(nil, nil, {"proxy-cache-advanced"})
+  end)
+
+  after_each(function()
+    assert.True(helpers.stop_kong(nil, false))
+  end)
+
+  teardown(function()
+    helpers.stop_kong(nil, true)
+  end)
+
   it("starts with stream listen", function()
     assert(helpers.start_kong({
       plugins = "bundled,proxy-cache-advanced",
@@ -37,4 +53,3 @@ describe("kong starts with proxy-cache-advanced plugin", function()
   end)
 
 end)
-
