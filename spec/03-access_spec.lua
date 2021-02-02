@@ -20,6 +20,46 @@ local time = ngx.time
 -- all_strategries is not available on earlier versions spec.helpers in Kong
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
+-- helper functions to build test objects
+local function build_request(host, path, method)
+  return {
+    method = method or "GET",
+    path = path,
+    headers = {
+      ["Host"] = host
+    }
+  }
+end
+
+local function build_plugin_fn(strategy)
+  return function (route_id, windows, limits, sync_rate, retry_jitter, hide_headers)
+    if type(windows) ~= "table" then
+      windows = { windows }
+    end
+    if type(limits) ~= "table" then
+      limits = { limits }
+    end
+    return {
+      name = "rate-limiting-advanced",
+      route = { id = route_id },
+      config = {
+        strategy = strategy,
+        window_size = windows,
+        limit = limits,
+        sync_rate = sync_rate or 0,
+        retry_after_jitter_max = retry_jitter,
+        hide_client_headers = hide_headers,
+        redis = {
+          host = REDIS_HOST,
+          port = REDIS_PORT,
+          database = REDIS_DATABASE,
+          password = REDIS_PASSWORD,
+        }
+      }
+    }
+  end
+end
+
 for _, strategy in strategies() do
   local policy = strategy == "off" and "redis" or "cluster"
   local MOCK_RATE = 3
@@ -29,6 +69,9 @@ for _, strategy in strategies() do
     s = "#flaky " .. s
   end
   s = s .. " using database strategy " .. strategy
+
+  -- helper function to build plugin config
+  local build_plugin = build_plugin_fn(policy)
 
   describe(s, function()
     local bp, consumer1, consumer2
@@ -344,6 +387,18 @@ for _, strategy in strategies() do
         }
       })
 
+      local route13 = assert(bp.routes:insert {
+        name = "test-13",
+        hosts = { "test13.com" },
+      })
+      assert(bp.plugins:insert(build_plugin(route13.id, MOCK_RATE, 2, 0, 5)))
+
+      local route14 = assert(bp.routes:insert {
+        name = "test-14",
+        hosts = { "test14.com" },
+      })
+      assert(bp.plugins:insert(build_plugin(route14.id, MOCK_RATE, 2, 0, 5, true)))
+
       -- Shared service with multiple routes
       local shared_service = bp.services:insert {
         name = "shared-test-service",
@@ -635,6 +690,46 @@ for _, strategy in strategies() do
         -- Ensure the Retry-After header is not available for 429 errors
         assert.res_status(429, res)
         assert.is_nil(res.headers["retry-after"])
+      end)
+
+      describe("With retry_after_jitter_max > 0", function()
+        it("on hitting a limit adds a jitter to the Retry-After header", function()
+          local request = build_request("test13.com", "/get")
+
+          -- issue 2 requests to use all the quota 2/window for test13.com
+          for _ = 1, 2 do
+            local res = assert(client:send(request))
+            assert.res_status(200, res)
+          end
+
+          -- issue 3rd request to hit the limit
+          local res = assert(client:send(request))
+          assert.res_status(429, res)
+
+          local retry_after = tonumber(res.headers["retry-after"])
+          local ratelimit_reset = tonumber(res.headers["ratelimit-reset"])
+
+          -- check that jitter was added to retry_after
+          assert.is_true(retry_after > ratelimit_reset)
+          assert.is_true(retry_after <= ratelimit_reset + 5) -- retry_after_jitter_max = 5
+        end)
+
+        it("on hitting a limit does not set Retry-After header (hide_client_headers = true)", function()
+          local request = build_request("test14.com", "/get")
+
+          -- issue 2 requests to use all the quota 2/window for test14.com
+          for _ = 1, 2 do
+            local res = assert(client:send(request))
+            assert.res_status(200, res)
+          end
+
+          -- issue 3rd request to hit the limit
+          local res = assert(client:send(request))
+          assert.res_status(429, res)
+
+          -- check that retry_after is not set
+          assert.is_nil(res.headers["retry-after"])
+        end)
       end)
     end)
     describe("With authentication", function()

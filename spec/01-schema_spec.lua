@@ -167,6 +167,42 @@ describe("rate-limiting-advanced schema", function()
     assert.is_truthy(ok)
   end)
 
+  it("accepts a retry_after_jitter_max config", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      retry_after_jitter_max = 1,
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
+  it("errors with NaN retry_after_jitter_max config", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      retry_after_jitter_max = "not a number",
+    }, rate_limiting_schema)
+
+    assert.is_falsy(ok)
+    assert.same("expected a number", err.config.retry_after_jitter_max)
+  end)
+
+  it("errors with a negative retry_after_jitter_max config", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+      retry_after_jitter_max = -1,
+    }, rate_limiting_schema)
+
+    assert.is_falsy(ok)
+    assert.same({ "Non-negative retry_after_jitter_max value is expected" }, err["@entity"])
+  end)
+
   it("transparently sorts the limit/window_size pairs", function()
     local config = {
       limit = {
