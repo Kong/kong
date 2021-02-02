@@ -1088,7 +1088,7 @@ for _, strategy in helpers.each_strategy() do
               assert(count1.status_total < 3)
             end)
 
-            it("perform active health checks -- up then down", function()
+            it("#flaky perform active health checks -- up then down", function()
 
               for nfails = 1, 3 do
 
@@ -1158,7 +1158,7 @@ for _, strategy in helpers.each_strategy() do
               end
             end)
 
-            it("perform active health checks with upstream hostname", function()
+            it("perform active health checks with upstream hostname #flaky", function()
 
               for nfails = 1, 3 do
 
@@ -1230,7 +1230,7 @@ for _, strategy in helpers.each_strategy() do
             end)
 
             for _, protocol in ipairs({"http", "https"}) do
-              it("perform active health checks -- automatic recovery #" .. protocol, function()
+              it("perform active health checks -- automatic recovery #flaky #" .. protocol, function()
                 for _, nchecks in ipairs({1,3}) do
 
                   local port1 = bu.gen_port()
@@ -1319,7 +1319,8 @@ for _, strategy in helpers.each_strategy() do
                 end
               end)
 
-              it("perform active health checks on a target that resolves to multiple addresses -- automatic recovery #" .. protocol, function()
+              -- FIXME this test is flaky in CI only
+              it("#flaky perform active health checks on a target that resolves to multiple addresses -- automatic recovery #" .. protocol, function()
                 local hosts = {}
 
                 local fixtures = {
@@ -1436,7 +1437,8 @@ for _, strategy in helpers.each_strategy() do
                 end
               end)
 
-              it("perform active health checks on targets that resolve to the same IP -- automatic recovery #" .. protocol, function()
+              -- FIXME this test is flaky in CI only
+              it("#flaky perform active health checks on targets that resolve to the same IP -- automatic recovery #" .. protocol, function()
                 local fixtures = {
                   dns_mock = helpers.dns_mock.new()
                 }
