@@ -14,7 +14,6 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: key-auth-enc (API) [#" .. strategy .. "]", function()
     local consumer
     local admin_client
-    local proxy_client
     local bp
     local db
     local route1

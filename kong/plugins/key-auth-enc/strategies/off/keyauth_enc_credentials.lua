@@ -7,9 +7,6 @@
 
 local kong = kong
 
-local fmt = string.format
-
-
 local _M = {}
 
 _M.off = true
