@@ -1,6 +1,6 @@
---- Node-level utilities
+--- Cluster-level utilities
 --
--- @module kong.node
+-- @module kong.cluster
 
 
 local kong = kong
