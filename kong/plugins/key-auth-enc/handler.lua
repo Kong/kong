@@ -46,7 +46,7 @@ local function get_keyauth_credential(key)
   --return keyauth_enc_credentials:validate_ident(credential_ids, key)
 
   for _, id in ipairs(credential_ids) do
-    c = keyauth_enc_credentials:cache_key({ id = id.id })
+    local c = keyauth_enc_credentials:cache_key({ id = id.id })
     local cred, err = cache:get(c, nil, load_credential, id.id)
     if err then
       return nil, err

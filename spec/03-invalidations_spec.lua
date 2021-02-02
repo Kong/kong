@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local cjson   = require "cjson"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -48,7 +47,6 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins    = "bundled,key-auth-enc",
-        keyring_enabled = true,
       }))
 
       proxy_client = helpers.proxy_client()
