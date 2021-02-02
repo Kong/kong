@@ -1,3 +1,7 @@
+## Unreleased
+
+- Add a jitter (random delay) to the Retry-After header of denied requests (status = 429) in order to (help) prevent all the clients to come back at the same time
+
 ## 1.3.8
 
 - add copyright
