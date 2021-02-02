@@ -48,7 +48,6 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins    = "bundled,key-auth-enc",
-        keyring_enabled = true,
       }))
 
       proxy_client = helpers.proxy_client()

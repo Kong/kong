@@ -14,6 +14,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: key-auth-enc (API) [#" .. strategy .. "]", function()
     local consumer
     local admin_client
+    local proxy_client
     local bp
     local db
     local route1
@@ -25,8 +26,8 @@ for _, strategy in helpers.each_strategy() do
         "services",
         "plugins",
         "consumers",
-        "keyauth_enc_credentials",
-      })
+        "keyauth_enc_credentials"},
+        {"key-auth-enc"})
 
       route1 = bp.routes:insert {
         hosts = { "keyauth1.test" },
@@ -41,12 +42,16 @@ for _, strategy in helpers.each_strategy() do
       }, { nulls = true })
 
       assert(helpers.start_kong({
-        database   = strategy,
+        database = strategy,
+        plugins = "key-auth-enc",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+    end)
 
+    before_each(function ()
       admin_client = helpers.admin_client()
     end)
+
     lazy_teardown(function()
       if admin_client then
         admin_client:close()
@@ -108,31 +113,6 @@ for _, strategy in helpers.each_strategy() do
 
           assert.not_equal(first_key, json.key)
         end)
-        it("creates a key-auth-enc credential with a ttl", function()
-          local res = assert(admin_client:send {
-            method  = "POST",
-            path    = "/consumers/bob/key-auth-enc",
-            body    = {
-              ttl = 1,
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = assert.res_status(201, res)
-          local json = cjson.decode(body)
-          assert.equal(consumer.id, json.consumer.id)
-          assert.is_string(json.key)
-
-          ngx.sleep(3)
-
-          local id = json.consumer.id
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/consumers/bob/key-auth-enc/" .. id,
-          })
-          assert.res_status(404, res)
-        end)
       end)
 
       describe("GET", function()
@@ -155,31 +135,6 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.is_table(json.data)
           assert.equal(3, #json.data)
-        end)
-      end)
-
-      describe("GET #ttl", function()
-        lazy_setup(function()
-          for i = 1, 3 do
-            bp.keyauth_enc_credentials:insert({
-              consumer = { id = consumer.id },
-            }, { ttl = 10 })
-          end
-        end)
-        lazy_teardown(function()
-          db:truncate("keyauth_enc_credentials")
-        end)
-        it("entries contain ttl when specified", function()
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/consumers/bob/key-auth-enc"
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.is_table(json.data)
-          for _, credential in ipairs(json.data) do
-            assert.not_nil(credential.ttl)
-          end
         end)
       end)
     end)
@@ -227,19 +182,6 @@ for _, strategy in helpers.each_strategy() do
             path   = "/consumers/alice/key-auth-enc/" .. credential.id
           })
           assert.res_status(404, res)
-        end)
-        it("key-auth-enc credential contains #ttl", function()
-          local credential = bp.keyauth_enc_credentials:insert({
-            consumer = { id = consumer.id },
-          }, { ttl = 10 })
-          local res = assert(admin_client:send {
-            method  = "GET",
-            path    = "/consumers/bob/key-auth-enc/" .. credential.id
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.equal(credential.id, json.id)
-          assert.not_nil(json.ttl)
         end)
       end)
 
@@ -390,7 +332,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(key_name, body.config.key_names[1])
       end)
     end)
-    describe("/key-auth-encs", function()
+    describe("/key-auths-enc", function()
       local consumer2
 
       describe("GET", function()
@@ -417,30 +359,30 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
-        it("retrieves all the key-auth-encs with trailing slash", function()
+        it("retrieves all the key-auths-enc with trailing slash", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auth-encs/",
+            path = "/key-auths-enc/",
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.is_table(json.data)
           assert.equal(6, #json.data)
         end)
-        it("retrieves all the key-auth-encs without trailing slash", function()
+        it("retrieves all the key-auths-enc without trailing slash", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auth-encs",
+            path = "/key-auths-enc",
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.is_table(json.data)
           assert.equal(6, #json.data)
         end)
-        it("paginates through the key-auth-encs", function()
+        it("paginates through the key-auths-enc", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auth-encs?size=3",
+            path = "/key-auths-enc?size=3",
           })
           local body = assert.res_status(200, res)
           local json_1 = cjson.decode(body)
@@ -449,7 +391,7 @@ for _, strategy in helpers.each_strategy() do
 
           res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auth-encs",
+            path = "/key-auths-enc",
             query = {
               size = 3,
               offset = json_1.offset,
@@ -476,7 +418,7 @@ for _, strategy in helpers.each_strategy() do
         it("does not create key-auth-enc credential when missing consumer", function()
           local res = assert(admin_client:send {
             method = "POST",
-            path = "/key-auth-encs",
+            path = "/key-auths-enc",
             body = {
               key = "1234",
             },
@@ -492,7 +434,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates key-auth-enc credential", function()
           local res = assert(admin_client:send {
             method = "POST",
-            path = "/key-auth-encs",
+            path = "/key-auths-enc",
             body = {
               key = "1234",
               consumer = {
@@ -510,7 +452,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/key-auth-encs/:credential_key_or_id", function()
+    describe("/key-auths-enc/:credential_key_or_id", function()
       describe("PUT", function()
         lazy_setup(function()
           db:truncate("keyauth_enc_credentials")
@@ -519,7 +461,7 @@ for _, strategy in helpers.each_strategy() do
         it("does not create key-auth-enc credential when missing consumer", function()
           local res = assert(admin_client:send {
             method = "PUT",
-            path = "/key-auth-encs/1234",
+            path = "/key-auths-enc/1234",
             body = { },
             headers = {
               ["Content-Type"] = "application/json"
@@ -533,7 +475,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates key-auth-enc credential", function()
           local res = assert(admin_client:send {
             method = "PUT",
-            path = "/key-auth-encs/1234",
+            path = "/key-auths-enc/1234",
             body = {
               consumer = {
                 id = consumer.id
@@ -550,7 +492,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/key-auth-encs/:credential_key_or_id/consumer", function()
+    describe("/key-auths-enc/:credential_key_or_id/consumer", function()
       describe("GET", function()
         local credential
 
@@ -564,7 +506,7 @@ for _, strategy in helpers.each_strategy() do
         it("retrieve Consumer from a credential's id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auth-encs/" .. credential.id .. "/consumer"
+            path = "/key-auths-enc/" .. credential.id .. "/consumer"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -573,7 +515,7 @@ for _, strategy in helpers.each_strategy() do
         it("retrieve a Consumer from a credential's key", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auth-encs/" .. credential.key .. "/consumer"
+            path = "/key-auths-enc/" .. credential.key .. "/consumer"
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -582,20 +524,18 @@ for _, strategy in helpers.each_strategy() do
         it("returns 404 for a random non-existing id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auth-encs/" .. utils.uuid()  .. "/consumer"
+            path = "/key-auths-enc/" .. utils.uuid()  .. "/consumer"
           })
           assert.res_status(404, res)
         end)
         it("returns 404 for a random non-existing key", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/key-auth-encs/" .. utils.random_string()  .. "/consumer"
+            path = "/key-auths-enc/" .. utils.random_string()  .. "/consumer"
           })
           assert.res_status(404, res)
         end)
       end)
-
-
     end)
   end)
 end
