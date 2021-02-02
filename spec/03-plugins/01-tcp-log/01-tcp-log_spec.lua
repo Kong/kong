@@ -14,7 +14,8 @@ local MESSAGE = "echo, ping, pong. echo, ping, pong. echo, ping, pong.\n"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: tcp-log (log) [#" .. strategy .. "]", function()
+  -- XXX these are always super flaky
+  describe("Plugin: tcp-log (log) [#" .. strategy .. "] #flaky", function()
     local proxy_client, proxy_ssl_client
     local proxy_client_grpc, proxy_client_grpcs
 
