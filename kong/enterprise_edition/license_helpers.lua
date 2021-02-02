@@ -268,7 +268,16 @@ end
 
 local function is_valid_license(license)
   local result = validate_kong_license(license)
-  if result == "ERROR_VALIDATION_PASS" then
+  if result == "ERROR_VALIDATION_PASS" or
+     result == "ERROR_GRACE_PERIOD" or
+     result == "ERROR_LICENSE_EXPIRED" then
+    if result ~= "ERROR_VALIDATION_PASS" then
+      local message = "The license being added is expired"
+      if result == "ERROR_LICENSE_EXPIRED" then
+        message = message .. "; some functionality may not be available"
+      end
+      ngx.log(ngx.WARN, message)
+    end
     return true, cjson.decode(license)
   end
 
