@@ -10,7 +10,7 @@ local cjson = require "cjson"
 local ldap_groups = require "kong.plugins.ldap-auth-advanced.groups"
 
 local ldap_base_config = {
-  ldap_host              = "localhost",
+  ldap_host              = "ad-server",
   ldap_password          = "passw2rd1111A$",
   attribute              = "cn",
   base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",

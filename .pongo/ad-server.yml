@@ -1,0 +1,22 @@
+version: '3.5'
+
+services:
+  ad-server:
+    image: ad-server
+    # build:
+    #   context: ../ad-server/
+    #   dockerfile: ad-server/Dockerfile
+    # needs priv due to a bug described in the Dockerfile
+    privileged: true
+    # healthcheck:
+    #   interval: 5s
+    #   retries: 10
+    #   test:
+    #   - CMD
+    #   - 'true'
+      # TODO, how to verify if samba is ready..!
+      # timeout: 10s
+    restart: 'no'
+    stop_signal: SIGKILL
+    networks:
+      - ${NETWORK_NAME}

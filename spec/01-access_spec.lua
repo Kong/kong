@@ -65,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong({
-        plugins = "ldap-auth-advanced",
+        plugins    = "ldap-auth-advanced",
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
