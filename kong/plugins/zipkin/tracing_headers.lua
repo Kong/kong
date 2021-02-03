@@ -18,6 +18,8 @@ local B3_SINGLE_PATTERN =
 
 local W3C_TRACECONTEXT_PATTERN = "^(%x+)%-(%x+)%-(%x+)%-(%x+)$"
 
+local JAEGER_TRACECONTEXT_PATTERN = "^(%x+):(%x+):(%x+):(%x+)$"
+
 local function hex_to_char(c)
   return char(tonumber(c, 16))
 end
@@ -204,6 +206,57 @@ local function parse_w3c_trace_context_headers(w3c_header)
 end
 
 
+local function parse_jaeger_trace_context_headers(jaeger_header)
+  -- allow testing to spy on this.
+  local warn = kong.log.warn
+
+  if type(jaeger_header) ~= "string" then
+    return nil, nil, nil, nil
+  end
+
+  local trace_id, span_id, parent_id, trace_flags = match(jaeger_header, JAEGER_TRACECONTEXT_PATTERN)
+
+  -- values are not parsable hexidecimal and therefore invalid.
+  if trace_id == nil or span_id == nil or parent_id == nil or trace_flags == nil then
+    warn("invalid jaeger uber-trace-id header; ignoring.")
+    return nil, nil, nil, nil
+  end
+
+  -- valid trace_id is required.
+  if (#trace_id ~= 16 and #trace_id ~= 32) or tonumber(trace_id, 16) == 0 then
+    warn("invalid jaeger trace ID; ignoring.")
+    return nil, nil, nil, nil
+  end
+
+  -- valid span_id is required.
+  if #span_id ~= 16 or tonumber(parent_id, 16) == 0 then
+    warn("invalid jaeger span ID; ignoring.")
+    return nil, nil, nil, nil
+  end
+
+  -- valid parent_id is required.
+  if #parent_id ~= 16 then
+    warn("invalid jaeger parent ID; ignoring.")
+    return nil, nil, nil, nil
+  end
+
+  -- valid flags are required
+  if #trace_flags ~= 1 and #trace_flags ~= 2 then
+    warn("invalid jaeger flags; ignoring.")
+    return nil, nil, nil, nil
+  end
+
+  -- Jaeger sampled flag: https://www.jaegertracing.io/docs/1.17/client-libraries/#tracespan-identity
+  local should_sample = tonumber(trace_flags, 16) % 2 == 1
+
+  trace_id = from_hex(trace_id)
+  span_id = from_hex(span_id)
+  parent_id = from_hex(parent_id)
+
+  return trace_id, span_id, parent_id, should_sample
+end
+
+
 -- This plugin understands several tracing header types:
 -- * Zipkin B3 headers (X-B3-TraceId, X-B3-SpanId, X-B3-ParentId, X-B3-Sampled, X-B3-Flags)
 -- * Zipkin B3 "single header" (a single header called "B3", composed of several fields)
@@ -250,6 +303,11 @@ local function find_header_type(headers)
   if w3c_header then
     return "w3c", w3c_header
   end
+
+  local jaeger_header = headers["uber-trace-id"]
+  if jaeger_header then
+    return "jaeger", jaeger_header
+  end
 end
 
 
@@ -262,6 +320,8 @@ local function parse(headers)
     trace_id, span_id, parent_id, should_sample = parse_zipkin_b3_headers(headers, composed_header)
   elseif header_type == "w3c" then
     trace_id, parent_id, should_sample = parse_w3c_trace_context_headers(composed_header)
+  elseif header_type == "jaeger" then
+    trace_id, span_id, parent_id, should_sample = parse_jaeger_trace_context_headers(composed_header)
   end
 
   if not trace_id then
@@ -314,6 +374,14 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
     set_header("traceparent", fmt("00-%s-%s-%s",
         to_hex(proxy_span.trace_id),
         to_hex(proxy_span.span_id),
+      proxy_span.should_sample and "01" or "00"))
+  end
+
+  if conf_header_type == "jaeger" or found_header_type == "jaeger" then
+    set_header("uber-trace-id", fmt("%s:%s:%s:%s",
+        to_hex(proxy_span.trace_id),
+        to_hex(proxy_span.span_id),
+        to_hex(proxy_span.parent_id),
       proxy_span.should_sample and "01" or "00"))
   end
 

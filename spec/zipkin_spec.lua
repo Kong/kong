@@ -658,7 +658,7 @@ describe("http integration tests with zipkin server [#"
       assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
 
       local balancer_span, proxy_span, request_span =
-        wait_for_spans(zipkin_client, 3, nil, trace_id)
+      wait_for_spans(zipkin_client, 3, nil, trace_id)
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(parent_id, request_span.parentId)
@@ -679,12 +679,69 @@ describe("http integration tests with zipkin server [#"
       assert.response(r).has.status(404)
 
       local proxy_span, request_span =
-        wait_for_spans(zipkin_client, 2, nil, trace_id)
+      wait_for_spans(zipkin_client, 2, nil, trace_id)
 
       assert.equals(trace_id, request_span.traceId)
       assert.equals(parent_id, request_span.parentId)
 
       assert.equals(trace_id, proxy_span.traceId)
+    end)
+  end)
+
+  describe("jaeger uber-trace-id header propagation", function()
+    it("works on regular calls", function()
+      local trace_id = gen_trace_id(traceid_byte_count)
+      local span_id = gen_span_id()
+      local parent_id = gen_span_id()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          ["uber-trace-id"] = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "1"),
+          host = "http-route"
+        },
+      })
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      assert.matches(trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
+
+      local balancer_span, proxy_span, request_span =
+      wait_for_spans(zipkin_client, 3, nil, trace_id)
+
+      assert.equals(trace_id, request_span.traceId)
+      assert.equals(span_id, request_span.id)
+      assert.equals(parent_id, request_span.parentId)
+
+      assert.equals(trace_id, proxy_span.traceId)
+      assert.not_equals(span_id, proxy_span.id)
+      assert.equals(span_id, proxy_span.parentId)
+
+      assert.equals(trace_id, balancer_span.traceId)
+      assert.not_equals(span_id, balancer_span.id)
+      assert.equals(span_id, balancer_span.parentId)
+    end)
+
+    it("works on non-matched requests", function()
+      local trace_id = gen_trace_id(traceid_byte_count)
+      local span_id = gen_span_id()
+      local parent_id = gen_span_id()
+
+      local r = proxy_client:get("/foobar", {
+        headers = {
+          ["uber-trace-id"] = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "1"),
+        },
+      })
+      assert.response(r).has.status(404)
+
+      local proxy_span, request_span =
+      wait_for_spans(zipkin_client, 2, nil, trace_id)
+
+      assert.equals(trace_id, request_span.traceId)
+      assert.equals(span_id, request_span.id)
+      assert.equals(parent_id, request_span.parentId)
+
+      assert.equals(trace_id, proxy_span.traceId)
+      assert.not_equals(span_id, proxy_span.id)
+      assert.equals(span_id, proxy_span.parentId)
     end)
   end)
 

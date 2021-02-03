@@ -303,6 +303,121 @@ describe("tracing_headers.parse", function()
       end)
     end)
   end)
+
+
+  describe("Jaeger header parsing", function()
+    local warn
+    before_each(function()
+      warn = spy.on(kong.log, "warn")
+    end)
+
+    it("valid uber-trace-id with sampling", function()
+      local ubertraceid = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "1")
+      local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+      assert.same({ "jaeger", trace_id, span_id, parent_id, true }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid uber-trace-id without sampling", function()
+      local ubertraceid = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "0")
+      local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+      assert.same({ "jaeger", trace_id, span_id, parent_id, false }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid uber-trace-id 128bit with sampling", function()
+      local ubertraceid = fmt("%s:%s:%s:%s", trace_id_32, span_id, parent_id, "1")
+      local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+      assert.same({ "jaeger", trace_id_32, span_id, parent_id, true }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid uber-trace-id 128bit without sampling", function()
+      local ubertraceid = fmt("%s:%s:%s:%s", trace_id_32, span_id, parent_id, "0")
+      local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+      assert.same({ "jaeger", trace_id_32, span_id, parent_id, false }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    describe("errors", function()
+      it("rejects invalid header", function()
+        local ubertraceid = fmt("vv:%s:%s:%s", span_id, parent_id, "0")
+        local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger uber-trace-id header; ignoring.")
+
+        ubertraceid = fmt("%s:vv:%s:%s", trace_id, parent_id, "0")
+        t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger uber-trace-id header; ignoring.")
+
+        ubertraceid = fmt("%s:%s:vv:%s", trace_id, span_id,  "0")
+        t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger uber-trace-id header; ignoring.")
+
+        ubertraceid = fmt("%s:%s:%s:vv", trace_id, span_id, parent_id)
+        t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger uber-trace-id header; ignoring.")
+      end)
+
+      it("rejects invalid trace IDs", function()
+        local ubertraceid = fmt("%s:%s:%s:%s", too_short_id, span_id, parent_id, "1")
+        local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger trace ID; ignoring.")
+
+        ubertraceid = fmt("%s:%s:%s:%s", too_long_id, span_id, parent_id, "1")
+        t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger trace ID; ignoring.")
+
+        -- cannot be all zeros
+        ubertraceid = fmt("%s:%s:%s:%s", "00000000000000000000000000000000", span_id, parent_id, "1")
+        t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger trace ID; ignoring.")
+      end)
+
+      it("rejects invalid parent IDs", function()
+        local ubertraceid = fmt("%s:%s:%s:%s", trace_id, span_id, too_short_id, "1")
+        local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger parent ID; ignoring.")
+
+        ubertraceid = fmt("%s:%s:%s:%s", trace_id, span_id, too_long_id, "1")
+        t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger parent ID; ignoring.")
+      end)
+
+      it("rejects invalid span IDs", function()
+        local ubertraceid = fmt("%s:%s:%s:%s", trace_id, too_short_id, parent_id, "1")
+        local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger span ID; ignoring.")
+
+        ubertraceid = fmt("%s:%s:%s:%s", trace_id, too_long_id, parent_id, "1")
+        t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger span ID; ignoring.")
+
+        -- cannot be all zeros
+        ubertraceid = fmt("%s:%s:%s:%s", trace_id, "00000000000000000000000000000000", parent_id, "1")
+        t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger span ID; ignoring.")
+      end)
+
+      it("rejects invalid trace flags", function()
+        local ubertraceid = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "123")
+        local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger" }, t)
+        assert.spy(warn).was_called_with("invalid jaeger flags; ignoring.")
+      end)
+    end)
+  end)
 end)
 
 describe("tracing_headers.set", function()
@@ -352,6 +467,10 @@ describe("tracing_headers.set", function()
     traceparent = fmt("00-%s-%s-01", trace_id, span_id)
   }
 
+  local jaeger_headers = {
+    ["uber-trace-id"] = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "01")
+  }
+
   before_each(function()
     headers = {}
     warnings = {}
@@ -371,6 +490,11 @@ describe("tracing_headers.set", function()
 
       set("preserve", "w3c", proxy_span)
       assert.same(w3c_headers, headers)
+
+      headers = {}
+
+      set("preserve", "jaeger", proxy_span)
+      assert.same(jaeger_headers, headers)
 
       assert.same({}, warnings)
     end)
@@ -393,6 +517,11 @@ describe("tracing_headers.set", function()
 
       set("preserve", "w3c", proxy_span, "w3c")
       assert.same(w3c_headers, headers)
+
+      headers = {}
+
+      set("preserve", nil, proxy_span, "jaeger")
+      assert.same(jaeger_headers, headers)
     end)
   end)
 
@@ -426,6 +555,15 @@ describe("tracing_headers.set", function()
       assert.equals(1, #warnings)
       assert.matches("Mismatched header types", warnings[1])
     end)
+
+    it("sets both the b3 and w3c headers when a jaeger header is encountered.", function()
+      set("b3", "jaeger", proxy_span)
+      assert.same(table_merge(b3_headers, jaeger_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
   end)
 
   describe("conf.header_type = 'b3-single'", function()
@@ -452,6 +590,15 @@ describe("tracing_headers.set", function()
       assert.equals(1, #warnings)
       assert.matches("Mismatched header types", warnings[1])
     end)
+
+    it("sets both the b3 and w3c headers when a w3c header is encountered.", function()
+      set("b3-single", "jaeger", proxy_span)
+      assert.same(table_merge(b3_single_headers, jaeger_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
   end)
 
   describe("conf.header_type = 'w3c'", function()
@@ -473,6 +620,50 @@ describe("tracing_headers.set", function()
     it("sets both the b3-single and w3c headers when a b3-single header is encountered.", function()
       set("w3c", "b3-single", proxy_span)
       assert.same(table_merge(b3_single_headers, w3c_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+
+    it("sets both the jaeger and w3c headers when a b3-single header is encountered.", function()
+      set("w3c", "jaeger", proxy_span)
+      assert.same(table_merge(jaeger_headers, w3c_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+  end)
+
+  describe("conf.header_type = 'jaeger'", function()
+    it("sets headers to jaeger when conf.header_type = jaeger", function()
+      set("jaeger", "jaeger", proxy_span)
+      assert.same(jaeger_headers, headers)
+      assert.same({}, warnings)
+    end)
+
+    it("sets both the b3 and jaeger headers when a jaeger header is encountered.", function()
+      set("jaeger", "b3", proxy_span)
+      assert.same(table_merge(b3_headers, jaeger_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+
+    it("sets both the b3-single and jaeger headers when a b3-single header is encountered.", function()
+      set("jaeger", "b3-single", proxy_span)
+      assert.same(table_merge(b3_single_headers, jaeger_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+
+    it("sets both the jaeger and w3c headers when a w3c header is encountered.", function()
+      set("jaeger", "w3c", proxy_span)
+      assert.same(table_merge(jaeger_headers, w3c_headers), headers)
 
       -- but it generates a warning
       assert.equals(1, #warnings)

@@ -128,6 +128,22 @@ describe("http integration tests with zipkin server (no http_endpoint) [#"
     local json = cjson.decode(body)
     assert.matches("00%-" .. trace_id .. "%-%x+-01", json.headers.traceparent)
   end)
+
+  it("propagates jaeger tracing headers", function()
+    local trace_id = gen_trace_id(traceid_byte_count)
+    local span_id = gen_span_id()
+    local parent_id = gen_span_id()
+
+    local r = proxy_client:get("/", {
+      headers = {
+        ["uber-trace-id"] = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "1"),
+        host = "http-route"
+      },
+    })
+    local body = assert.response(r).has.status(200)
+    local json = cjson.decode(body)
+    assert.matches(trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
+  end)
 end)
 end
 end
