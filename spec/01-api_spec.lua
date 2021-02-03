@@ -10,7 +10,9 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
 
-for _, strategy in helpers.each_strategy() do
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
   describe("Plugin: key-auth-enc (API) [#" .. strategy .. "]", function()
     local consumer
     local admin_client
@@ -20,7 +22,7 @@ for _, strategy in helpers.each_strategy() do
     local route2
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(strategy ~= "off" and strategy or nil, {
         "routes",
         "services",
         "plugins",
@@ -41,8 +43,10 @@ for _, strategy in helpers.each_strategy() do
       }, { nulls = true })
 
       assert(helpers.start_kong({
-        database = strategy,
+        database   = strategy ~= "off" and strategy or nil,
+        db_update_propagation = strategy == "cassandra" and 1 or 0,
         plugins = "key-auth-enc",
+        declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
