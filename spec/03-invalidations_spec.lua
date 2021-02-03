@@ -7,8 +7,9 @@
 
 local helpers = require "spec.helpers"
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in strategies() do
   describe("Plugin: key-auth-enc (invalidations) [#" .. strategy .. "]", function()
     local admin_client, proxy_client
     local db
@@ -17,7 +18,7 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       local bp
-      bp, db = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(strategy ~= "off" and strategy or nil, {
         "routes",
         "services",
         "plugins",
@@ -44,7 +45,9 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong({
-        database   = strategy,
+        database   = strategy ~= "off" and strategy or nil,
+        db_update_propagation = strategy == "cassandra" and 1 or 0,
+        declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins    = "bundled,key-auth-enc",
       }))

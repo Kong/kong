@@ -10,12 +10,15 @@ local cjson   = require "cjson"
 local meta    = require "kong.meta"
 local utils   = require "kong.tools.utils"
 
-for _, strategy in helpers.each_strategy() do
+-- all_strategries is not available on earlier versions spec.helpers in Kong
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
   describe("Plugin: key-auth-enc (access) [#" .. strategy .. "]", function()
     local proxy_client
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
+      local bp = helpers.get_db_utils(strategy ~= "off" and strategy or nil, {
         "routes",
         "services",
         "plugins",
@@ -127,7 +130,9 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong({
-        database   = strategy,
+        database   = strategy ~= "off" and strategy or nil,
+        db_update_propagation = strategy == "cassandra" and 1 or 0,
+        declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         plugins    = "key-auth-enc",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
@@ -551,7 +556,7 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
+      local bp = helpers.get_db_utils(strategy ~= "off" and strategy or nil, {
         "routes",
         "services",
         "plugins",
@@ -623,7 +628,9 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong({
-        database   = strategy,
+        database   = strategy ~= "off" and strategy or nil,
+        db_update_propagation = strategy == "cassandra" and 1 or 0,
+        declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         plugins    = "key-auth-enc, basic-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
