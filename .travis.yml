@@ -2,12 +2,8 @@ dist: bionic
 
 jobs:
   include:
-  - name: Kong CE 1.5.x
-    env: KONG_VERSION=1.5.x
   - name: Kong CE 2.0.x
     env: KONG_VERSION=2.0.x
-  - name: Kong Enterprise 1.5.0.x
-    env: KONG_VERSION=1.5.0.x
   - name: Kong Enterprise nightly
     env: KONG_VERSION=nightly-ee
 

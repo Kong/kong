@@ -159,38 +159,39 @@ local function parse_w3c_trace_context_headers(w3c_header)
   local should_sample = false
 
   if type(w3c_header) ~= "string" then
-    return nil, nil, nil, should_sample
+    return nil, nil, should_sample
   end
 
   local version, trace_id, parent_id, trace_flags = match(w3c_header, W3C_TRACECONTEXT_PATTERN)
 
-  -- values are not parsable hexidecimal and therefore invalid.
+  -- values are not parseable hexadecimal and therefore invalid.
   if version == nil or trace_id == nil or parent_id == nil or trace_flags == nil then
     warn("invalid W3C traceparent header; ignoring.")
+    return nil, nil, nil
   end
 
   -- Only support version 00 of the W3C Trace Context spec.
   if version ~= "00" then
     warn("invalid W3C Trace Context version; ignoring.")
-    return nil, nil, nil, should_sample
+    return nil, nil, nil
   end
 
   -- valid trace_id is required.
   if #trace_id ~= 32 or tonumber(trace_id, 16) == 0 then
     warn("invalid W3C trace context trace ID; ignoring.")
-    return nil, nil, nil, should_sample
+    return nil, nil, nil
   end
 
   -- valid parent_id is required.
   if #parent_id ~= 16 or tonumber(parent_id, 16) == 0 then
     warn("invalid W3C trace context parent ID; ignoring.")
-    return nil, nil, nil, should_sample
+    return nil, nil, nil
   end
 
   -- valid flags are required
   if #trace_flags ~= 2 then
     warn("invalid W3C trace context flags; ignoring.")
-    return nil, nil, nil, should_sample
+    return nil, nil, nil
   end
 
   -- W3C sampled flag: https://www.w3.org/TR/trace-context/#sampled-flag
