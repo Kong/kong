@@ -146,7 +146,7 @@ return {
           { if_status = status_array },
           { json = strings_array },
       }}},
-      { dots_in_keys = { type = "boolean", default = false }, },
+      { dots_in_keys = { type = "boolean", default = true }, },
   },
   shorthands = {
     -- deprecated forms, to be removed in Kong EE 3.x
