@@ -394,8 +394,16 @@ for _, strategy in helpers.each_strategy() do
       it("CP and CP plugin version mismatches, sync is blocked", function()
         local uuid = utils.uuid()
         local plugins_list = helpers.get_plugins_list()
-        -- this tampers with the bugfix version
-        plugins_list[1].version = plugins_list[1].version .. "1"
+        -- XXX EE
+        -- -- this tampers with the bugfix version
+        -- plugins_list[1].version = plugins_list[1].version .. "1"
+
+        -- this tampers with the minor version
+        plugins_list[1].version = string.format("%d.%d.%d",
+          tonumber(plugins_list[1].version:match("(%d+)")),
+          tonumber(plugins_list[1].version:match("%d+%.(%d+)")) + 1,
+          tonumber(plugins_list[1].version:match("%d+%.%d+%.(%d+)"))
+        )
 
         local res = assert(helpers.clustering_client({
           host = "127.0.0.1",

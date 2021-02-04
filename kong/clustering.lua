@@ -595,7 +595,12 @@ local function should_send_config_update(node_version, node_plugins)
       goto continue
     end
 
-    if p.version ~= np.version then
+    -- XXX EE
+    -- ignore plugins without a version (route-by-header is deprecated)
+    if p.version and np.version and
+    -- major/minor check that ignores anything after the second digit
+       p.version:match("^(%d+%.%d+)") ~= np.version:match("^(%d+%.%d+)")
+    then
       return false, "plugin \"" .. p.name .. "\" version differs between " ..
                     "CP and DP, CP has version " .. tostring(p.version) ..
                     " while DP has version " .. tostring(np.version),
