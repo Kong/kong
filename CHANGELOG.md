@@ -1,3 +1,7 @@
+## Unreleased
+
+- feat(key-auth) add config.key_in_header and config.key_in_query
+
 ## 0.2.2
 
 - chore(*) add copyright
