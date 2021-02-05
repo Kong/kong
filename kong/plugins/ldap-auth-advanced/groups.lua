@@ -11,6 +11,7 @@ local set_header = kong.service.request.set_header
 
 local split = utils.split
 local lower = string.lower
+local kong = kong
 
 local _M = {}
 
@@ -45,6 +46,8 @@ function _M.validate_groups(groups, gbase_dn, gattribute)
   end
 
   for _, groupdn in ipairs(groups) do
+    kong.log.debug("validating group: " .. groupdn)
+
     local group_match = "^" .. lower(gattribute):gsub("([^%w])", "%%%1")
                         .. "%=[%w-_+:@%s]+%,"
                         .. lower(gbase_dn):gsub("([^%w])", "%%%1") .. "$"

@@ -121,6 +121,11 @@ return {
           type = "string",
           default = "memberOf"
         }},
+        { log_search_results = {
+          type = "boolean",
+          required = false,
+          default = false,
+        }},
       }
     }}
   },

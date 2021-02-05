@@ -108,12 +108,20 @@ local function ldap_authenticate(given_username, given_password, conf)
         filter = conf.attribute .. "=" .. given_username,
       })
 
+      if conf.log_search_results then
+        kong.log.inspect("ldap search results:")
+        kong.log.inspect(search_results)
+      end
+
       if err then
         kong.log.err("failed ldap search for "..
                      conf.attribute .. "=" .. given_username .. " base_dn=" ..
                      conf.base_dn)
         return kong.response.exit(500, { message = "An unexpected error occurred" })
       end
+
+      kong.log.debug("finding groups with member attribute: " ..
+                      conf.group_member_attribute)
 
       local user_dn
       for dn, result in pairs(search_results) do
@@ -126,6 +134,8 @@ local function ldap_authenticate(given_username, given_password, conf)
 
         local raw_groups = result[conf.group_member_attribute]
         if raw_groups and #raw_groups then
+          kong.log.debug("found groups")
+
           local group_dn = conf.group_base_dn or conf.base_dn
           local group_attr = conf.group_name_attribute or conf.attribute
 
@@ -137,6 +147,7 @@ local function ldap_authenticate(given_username, given_password, conf)
                    "group must include group_base_dn with group_name_attribute")
           end
         else
+          kong.log.debug("did not find groups for ldap search result")
           clear_header(constants.HEADERS.AUTHENTICATED_GROUPS)
         end
 
