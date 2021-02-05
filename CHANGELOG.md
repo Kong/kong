@@ -1,3 +1,7 @@
+## 0.2.2
+
+- chore(spec) fix missing get_hostname
+
 ## 0.2.1
 
 - add copyright
