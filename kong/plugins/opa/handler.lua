@@ -68,8 +68,8 @@ local function opa_request(opa_input, plugin_conf)
   if plugin_conf.protocol == "https" then
     local _, err = httpc:ssl_handshake(true, plugin_conf.opa_host, true)
     if err then
-    return nil, "failed to perform SSL handshake with OPA server(" .. 
-                  plugin_conf.opa_host .. ":" .. 
+      return nil, "failed to perform SSL handshake with OPA server(" ..
+                  plugin_conf.opa_host .. ":" ..
                   plugin_conf.opa_port .. "): " .. err
     end
   end
@@ -110,7 +110,7 @@ function OpaHandler:access(plugin_conf)
   -- build input OPA
   local opa_input = build_opa_input(plugin_conf)
   if not opa_input then
-    kong.log.error("failed to build request: " .. err)
+    kong.log.error("failed to build OPA input request")
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
@@ -139,7 +139,7 @@ function OpaHandler:access(plugin_conf)
     if headers then
       kong.service.request.set_headers(headers)
     end
-    
+
   else
     -- reject request
     local status = response and response.status or 403

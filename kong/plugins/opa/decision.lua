@@ -36,7 +36,7 @@ local function process_decision(opa_decision)
     if type(result.allow) ~= "boolean" then
       return nil, nil, "invalid response from OPA server"
     end
-    
+
     if result.allow then
       debug("opa returned a positive decision")
     else

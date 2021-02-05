@@ -1,0 +1,14 @@
+version: '3.5'
+
+services:
+  opa:
+    image: openpolicyagent/opa:latest
+    command: run --server /fixture.rego
+    restart: on-failure
+    stop_signal: SIGKILL
+    networks:
+      - ${NETWORK_NAME}
+    volumes:
+    - type: bind
+      source: ${PWD}/fixture.rego
+      target: /fixture.rego

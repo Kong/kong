@@ -16,7 +16,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
 
 
   it("errors without any configuration options", function()
-    local ok, err = validate({})
+    local _, err = validate({})
     assert.is_not_nil(err)
   end)
 

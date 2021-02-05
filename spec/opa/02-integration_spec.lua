@@ -23,6 +23,7 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/allow1",
+          opa_host = "opa",
           opa_port = 8181,
         },
       }
@@ -35,6 +36,7 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/deny1",
+          opa_host = "opa",
           opa_port = 8181,
         },
       }
@@ -47,6 +49,7 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/err1",
+          opa_host = "opa",
           opa_port = 8181,
         },
       }
@@ -59,6 +62,7 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/err1",
+          opa_host = "opa",
           opa_port = 8181,
         },
       }
@@ -71,6 +75,7 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/allow2",
+          opa_host = "opa",
           opa_port = 8181,
         },
       }
@@ -83,6 +88,7 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/deny2",
+          opa_host = "opa",
           opa_port = 8181,
         },
       }
@@ -95,6 +101,7 @@ for _, strategy in helpers.each_strategy() do
         route = { id = route.id },
         config = {
           opa_path = "/v1/data/example/err2",
+          opa_host = "opa",
           opa_port = 8181,
         },
       }
