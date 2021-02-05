@@ -204,15 +204,16 @@ end
 
 
 local function validate_key(key)
-  -- requires a unencrypted PEM-encoded key
-  local ok, _, err = pcall(openssl_pkey.new, key, {
+  -- requires an unencrypted PEM-encoded key
+  local pok, perr, err = pcall(openssl_pkey.new, key, {
     format = "PEM",
     passphrase_cb = function()
-      error("shouldn't reach here", 2)
+      -- throw this error without src line number
+      error("key is encrypted", 0)
     end,
   })
-  if not ok then
-    err = "key is encrypted"
+  if not pok then
+    err = perr
   end
   if err then
     return nil, "invalid key: " .. err
