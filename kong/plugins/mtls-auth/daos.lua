@@ -22,8 +22,8 @@ return {
         type = "foreign",
         reference = "ca_certificates",
         default = ngx.null,
-        on_delete = "cascade",
-      }, },
+        on_delete = "cascade", }, },
+      { tags = typedefs.tags },
     },
   },
 }
