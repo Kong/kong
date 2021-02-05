@@ -1,3 +1,7 @@
+## 0.4.5
+
+- Enable `config.dots_in_keys` by default
+
 ## 0.4.4
 
 - Support for gzipped content
