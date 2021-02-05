@@ -38,7 +38,7 @@ local RATELIMIT_RETRY_AFTER = "Retry-After"
 
 
 NewRLHandler.PRIORITY = 902
-NewRLHandler.VERSION = "1.3.8"
+NewRLHandler.VERSION = "1.4.0"
 
 
 local human_window_size_lookup = {
