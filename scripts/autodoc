@@ -107,6 +107,7 @@ else
     exit 1
 fi
 
+
 if [ ! -d "$DOCS_REPO/autodoc-nav" ]
 then
     echoerr
@@ -116,7 +117,7 @@ then
     exit 2
 fi
 
-DOCS_APP="$DOCS_REPO/app/$DOCS_VERSION"
+DOCS_APP="$DOCS_REPO/app/gateway-oss/$DOCS_VERSION"
 
 if [ ! -d "$DOCS_APP" ]
 then
@@ -129,7 +130,7 @@ then
     exit 3
 fi
 
-DOCS_NAV="$DOCS_REPO/app/_data/docs_nav_$DOCS_VERSION.yml"
+DOCS_NAV="$DOCS_REPO/app/_data/docs_nav_ce_$DOCS_VERSION.yml"
 
 if [ ! -f "$DOCS_NAV" ]
 then
