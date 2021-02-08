@@ -13,7 +13,7 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.1",
-  "luasec == 0.9",
+  "luasec == 1.0",
   "luasocket == 3.0-rc1",
   "penlight == 1.9.2",
   "lua-resty-http == 0.15",
