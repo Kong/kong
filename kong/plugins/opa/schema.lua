@@ -3,6 +3,7 @@ local typedefs = require "kong.db.schema.typedefs"
 local schema = {
   name = "opa",
   fields = {
+    { consumer = typedefs.no_consumer },
     { protocols = typedefs.protocols_http },
     { config = {
         type = "record",

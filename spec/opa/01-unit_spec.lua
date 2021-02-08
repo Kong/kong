@@ -21,6 +21,18 @@ describe(PLUGIN_NAME .. ": (schema)", function()
   end)
 
 
+  it("errors when plugin is configured on consumer", function()
+    local plugin_schema = require("kong.plugins."..PLUGIN_NAME..".schema")
+    local Schema = require "kong.db.schema"
+    local OPASchema = assert(Schema.new(plugin_schema))
+    local ok, err= OPASchema:validate(OPASchema:process_auto_fields({
+      consumer = { id = "ebfd6f37-73d2-4703-bcd6-c579773d6204" },
+      config = { opa_path = "/foo" }, }, "insert"))
+    assert.falsy(ok)
+    assert.is_same({ consumer = "value must be null" }, err)
+  end)
+
+
   it("works when opa_path is provided", function()
     local ok, err = validate({ opa_path = "/foo" })
     assert.is_nil(err)
