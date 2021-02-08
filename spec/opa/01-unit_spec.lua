@@ -39,7 +39,7 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.same(ok.config, {
       opa_protocol = "http",
       opa_host = "localhost",
-      opa_port = 80,
+      opa_port = 8181,
       opa_path = "/foo",
       include_service_in_opa_input = false,
       include_route_in_opa_input = false,

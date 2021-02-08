@@ -15,7 +15,7 @@ local schema = {
             opa_host = typedefs.host{ required = true, default = "localhost" },
           },
           {
-            opa_port = typedefs.port{ required =true, default = 80 },
+            opa_port = typedefs.port{ required =true, default = 8181 },
           },
           {
             opa_path =  typedefs.path{ required = true },
