@@ -1,3 +1,8 @@
+## 1.1.0
+
+- added a config `log_search_results` that allows displaying all the LDAP search results received from the LDAP server
+- additional debug log statements added for authenticated groups
+
 ## 1.0.4
 
 - chore(*) add copyright
