@@ -1,14 +1,63 @@
 #!/usr/bin/env bash
+
 set -ex
 
 function cyan() {
     echo -e "\033[1;36m$*\033[0m"
 }
+
 function red() {
     echo -e "\033[1;31m$*\033[0m"
 }
 
+# Returns the fully qualified path to the top-level kong-ee directory
+__repo_root_path() {
+  local path
+  path=$(cd $(dirname ${BASH_SOURCE[0]})/../ && pwd)
+  echo "$path"
+}
+
+# Returns the KONG_DISTRIBUTION_VERSION value of the current branch
+kong_distribution_version() {
+  # Determine the version of kong-distributions required (build.yml)
+  grep "^\s*KONG_DISTRIBUTIONS_VERSION=" $(__repo_root_path)/.requirements | head -1 | sed -e 's/.*=//' | tr -d '\n'
+}
+
+# Installs a plugin into spec-ee/fixtures/custom_plugins/kong/plugins
+# Arguments:
+#   plugin repo name
+# Example Usage:
+#   install_custom_plugin kong-plugin-enterprise-proxy-cache
+install_custom_plugin() {
+  local plugin_repo_name=${1?plugin_repo_name argument required}
+  local tmpdir
+  local plugin_version
+  export plugin_repo_name
+
+  tmpdir=$(dirname $(mktemp -u))
+  git clone https://$GITHUB_TOKEN:@github.com/Kong/kong-distributions \
+    $tmpdir/kong-distributions -b $(kong_distribution_version) --depth 1
+
+  plugin_version=$(yq e '.enterprise[] | select(.repo_name==env(plugin_repo_name)) | .version' \
+    $tmpdir/kong-distributions/kong-images/build.yml)
+
+  if [[ -z "$plugin_version" ]]; then
+    echo "Unable to determine plugin version. Is $plugin_repo_name in build.yml?"
+    exit 1
+  fi
+
+  git clone https://$GITHUB_TOKEN:@github.com/Kong/$plugin_repo_name.git \
+    $tmpdir/$plugin_repo_name -b $plugin_version --depth 1
+
+  cp -r $tmpdir/$plugin_repo_name/kong/plugins/* \
+    $(__repo_root_path)/spec-ee/fixtures/custom_plugins/kong/plugins/
+
+  rm -rf ${tmpdir}/kong-distributions ${tmpdir}/$plugin_repo_name
+}
+
 export BUSTED_ARGS=${BUSTED_ARGS:-"-o htest -v --exclude-tags=flaky,ipv6,squid,ce"}
+spec_ee_lua_path="$(__repo_root_path)/spec-ee/fixtures/custom_plugins/?.lua;$(__repo_root_path)/spec-ee/fixtures/custom_plugins/?/init.lua"
+export LUA_PATH="$LUA_PATH;$spec_ee_lua_path"
 
 if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
     export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra,off"
@@ -117,6 +166,7 @@ elif [ "$TEST_SUITE" == "unit-ee" ]; then
     make test-ee
 elif [ "$TEST_SUITE" == "integration-ee" ]; then
     cd .ci/ad-server && make build-ad-server && make clone-plugin && cd ../..
+    install_custom_plugin kong-plugin-enterprise-proxy-cache
     make test-integration-ee
 elif [ "$TEST_SUITE" == "plugins-ee" ]; then
     make test-plugins-ee

@@ -789,12 +789,12 @@ local KEY_FORMATS = {
   codes_route = {
     key_format = "%s|%s|%s|%s|%s|",
     key_values = { IDX.route, IDX.service, IDX.code, IDX.at, IDX.duration },
-    required_fields = { IDX.route, IDX.service },
+    required_fields = { IDX.route, IDX.service, IDX.code },
   },
   codes_service = {
     key_format = "%s|%s|%s|%s|",
     key_values = { IDX.service, IDX.code, IDX.at, IDX.duration },
-    required_fields = { IDX.service },
+    required_fields = { IDX.service, IDX.code },
   },
   code_classes = {
     key_format = "%s|%s|%s|",
@@ -814,7 +814,7 @@ local KEY_FORMATS = {
   codes_consumer_route = {
     key_format = "%s|%s|%s|%s|%s|%s|",
     key_values = { IDX.consumer, IDX.route, IDX.service, IDX.code, IDX.at, IDX.duration },
-    required_fields = { IDX.consumer, IDX.route, IDX.service },
+    required_fields = { IDX.consumer, IDX.route, IDX.service, IDX.code },
   },
 }
 

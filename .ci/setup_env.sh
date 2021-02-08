@@ -5,6 +5,7 @@ dep_version() {
     grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
 }
 
+YQ_VERSION=v4.5.0
 OPENRESTY=$(dep_version RESTY_VERSION)
 LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
@@ -14,6 +15,17 @@ KONG_DEP_LUA_RESTY_OPENSSL_AUX_MODULE_VERSION=$(dep_version KONG_DEP_LUA_RESTY_O
 DEPS_HASH=$({ cat .ci/setup_env.sh .travis.yml .requirements Makefile; cat kong-*.rockspec | awk '/dependencies/,/}/'; } | md5sum | awk '{ print $1 }')
 INSTALL_CACHE=${INSTALL_CACHE:=/install-cache}
 INSTALL_ROOT=$INSTALL_CACHE/$DEPS_HASH
+
+#---------
+# Prerequisite utilities
+#---------
+mkdir -p "$HOME"/.local/bin
+export PATH=$PATH:$HOME/.local/bin
+
+if [[ ! -e "$HOME"/.local/bin/yq ]]; then
+  wget https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64 -O "$HOME"/.local/bin/yq && \
+    chmod +x "$HOME"/.local/bin/yq
+fi
 
 #---------
 # Download
