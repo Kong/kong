@@ -28,7 +28,7 @@ describe("Plugin: prometheus (access via status API)", function()
         concurrency = 10,
         healthy = {
           http_statuses = { 200, 302 },
-          interval = 2,
+          interval = 0.1,
           successes = 2
         },
         http_path = "/status/200",
@@ -38,7 +38,7 @@ describe("Plugin: prometheus (access via status API)", function()
         unhealthy = {
           http_failures = 1,
           http_statuses = { 429, 404, 500, 501, 502, 503, 504, 505 },
-          interval = 1,
+          interval = 0.1,
           tcp_failures = 1,
           timeouts = 1
         }
@@ -131,7 +131,7 @@ describe("Plugin: prometheus (access via status API)", function()
     proxy_client_grpc = helpers.proxy_client_grpc()
     proxy_client_grpcs = helpers.proxy_client_grpcs()
 
-    require("socket").sleep(6) -- wait 6 seconds until healthchecks run
+    require("socket").sleep(1) -- wait 1 second until healthchecks run
   end)
 
   teardown(function()
