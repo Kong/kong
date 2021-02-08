@@ -1,7 +1,7 @@
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.0.0" "busted-htest 1.0.0" "luacheck 0.24.0" "lua-llthreads2 0.1.6" "http 0.3" "ldoc 1.4.6"
+DEV_ROCKS = "busted 2.0.0" "busted-htest 1.0.0" "luacheck 0.24.0" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
 WIN_SCRIPTS = "bin/busted" "bin/kong"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
