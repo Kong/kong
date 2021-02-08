@@ -205,7 +205,7 @@ function bump {
   # yq does what it can do, but clearly this could work better either with
   # a clever sed, or some python / ruby helper to not mess up with the output
   # or get more options on how to format it
-  yq w -i -I 4 $DISTRIBUTIONS_PATH/kong-images/build.yml "enterprise[$1].version" -- "$2"
+  yq e ".enterprise.[$1].version = \"$2\"" -I 4 -i $DISTRIBUTIONS_PATH/kong-images/build.yml
 }
 
 
@@ -238,7 +238,7 @@ function main {
 
   local counter=0
   pushd $DISTRIBUTIONS_PATH
-    for entry in $(yq r kong-images/build.yml -j | jq -c '.enterprise[]'); do
+    for entry in $(yq e kong-images/build.yml -j | jq -c '.enterprise[]'); do
       check $counter $entry
       ((counter=counter+1))
     done
@@ -252,7 +252,7 @@ function main {
     fi
   popd
 
-  cat $DISTRIBUTIONS_PATH/kong-images/build.yml | yq r - -I 4
+  cat $DISTRIBUTIONS_PATH/kong-images/build.yml | yq e - -I 4
 }
 
 
