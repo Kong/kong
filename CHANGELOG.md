@@ -1,4 +1,4 @@
-## Unreleased
+## 0.3.0
 
 - feat(key-auth) add config.key_in_header and config.key_in_query
 
