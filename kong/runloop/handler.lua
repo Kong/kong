@@ -911,16 +911,12 @@ end
 
 
 local function set_init_versions_in_cache()
-  local ok, err = kong.core_cache:get("router:version", TTL_ZERO, function()
-    return "init"
-  end)
+  local ok, err = kong.core_cache:safe_set("router:version", "init")
   if not ok then
     return nil, "failed to set router version in cache: " .. tostring(err)
   end
 
-  local ok, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, function()
-    return "init"
-  end)
+  local ok, err = kong.core_cache:safe_set("plugins_iterator:version", "init")
   if not ok then
     return nil, "failed to set plugins iterator version in cache: " ..
                 tostring(err)

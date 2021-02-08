@@ -12,7 +12,7 @@ return {
                      match = [[^[^*&%%\`]+$]],
                      err = "not a valid filename",
           }, },
-          { reopen = { type = "boolean", default = false }, },
+          { reopen = { type = "boolean", required = true, default = false }, },
     }, }, },
   }
 }

@@ -17,10 +17,10 @@ return {
     { config = {
         type = "record",
         fields = {
-          { hide_credentials = { type = "boolean", default = false }, },
+          { hide_credentials = { type = "boolean", required = true, default = false }, },
           { clock_skew = { type = "number", default = 300, gt = 0 }, },
           { anonymous = { type = "string" }, },
-          { validate_request_body = { type = "boolean", default = false }, },
+          { validate_request_body = { type = "boolean", required = true, default = false }, },
           { enforce_headers = {
               type = "array",
               elements = { type = "string" },
