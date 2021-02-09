@@ -17,7 +17,7 @@ return {
         type = "record",
         fields = {
           { anonymous = { type = "string" }, },
-          { hide_credentials = { type = "boolean", default = false }, },
+          { hide_credentials = { type = "boolean", required = true, default = false }, },
     }, }, },
   },
 }

@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.3.1-0"
+version = "2.3.2-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.3.1"
+  tag = "2.3.2"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -209,6 +209,7 @@ build = {
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
     ["kong.tools.messaging"] = "kong/tools/messaging.lua",
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
+    ["kong.tools.uri"] = "kong/tools/uri.lua",
 
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
     ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",

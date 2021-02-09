@@ -67,6 +67,7 @@ local check_type = Schema.define {
 local check_verify_certificate = Schema.define {
   type = "boolean",
   default = true,
+  required = true,
 }
 
 

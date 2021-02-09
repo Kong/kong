@@ -44,6 +44,7 @@ local timer_every  = ngx.timer.every
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
 local unpack       = unpack
+local escape       = require("kong.tools.uri").escape
 
 
 local NOOP = function() end
@@ -926,16 +927,12 @@ end
 
 
 local function set_init_versions_in_cache()
-  local ok, err = kong.core_cache:get("router:version", TTL_ZERO, function()
-    return "init"
-  end)
+  local ok, err = kong.core_cache:safe_set("router:version", "init")
   if not ok then
     return nil, "failed to set router version in cache: " .. tostring(err)
   end
 
-  local ok, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, function()
-    return "init"
-  end)
+  local ok, err = kong.core_cache:safe_set("plugins_iterator:version", "init")
   if not ok then
     return nil, "failed to set plugins iterator version in cache: " ..
                 tostring(err)
@@ -1244,7 +1241,7 @@ return {
       --       router, which might have truncated it (`strip_uri`).
       -- `host` is the original header to be preserved if set.
       var.upstream_scheme = match_t.upstream_scheme -- COMPAT: pdk
-      var.upstream_uri    = match_t.upstream_uri
+      var.upstream_uri    = escape(match_t.upstream_uri)
       var.upstream_host   = match_t.upstream_host
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
