@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.3.2](#232)
 - [2.3.1](#231)
 - [2.3.0](#230)
 - [2.2.1](#221)
@@ -51,6 +52,43 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.3.2]
+
+> Released 2021/02/09
+
+This is a patch release in the 2.3 series. Being a patch release, it
+strictly contains bugfixes. The are no new features or breaking changes.
+
+### Fixes
+
+##### Core
+
+- Fix an issue where certain incoming URI may make it possible to
+  bypass security rules applied on Route objects. This fix make such
+  attacks more difficult by always normalizing the incoming request's
+  URI before matching against the Router.
+  [#6821](https://github.com/Kong/kong/pull/6821)
+- Properly validate Lua input in sandbox module.
+  [#6765](https://github.com/Kong/kong/pull/6765)
+- Mark boolean fields with default values as required.
+  [#6785](https://github.com/Kong/kong/pull/6785)
+
+##### CLI
+
+- `kong migrations` now accepts a `-p`/`--prefix` flag.
+  [#6819](https://github.com/Kong/kong/pull/6819)
+
+##### Plugins
+
+- JWT: disallow plugin on consumers.
+  [#6777](https://github.com/Kong/kong/pull/6777)
+- rate-limiting: improve counters accuracy.
+  [#6802](https://github.com/Kong/kong/pull/6802)
+
+
+[Back to TOC](#table-of-contents)
 
 
 ## [2.3.1]
@@ -5747,6 +5785,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.3.2]: https://github.com/Kong/kong/compare/2.3.1...2.3.2
 [2.3.1]: https://github.com/Kong/kong/compare/2.3.0...2.3.1
 [2.3.0]: https://github.com/Kong/kong/compare/2.2.0...2.3.0
 [2.2.1]: https://github.com/Kong/kong/compare/2.2.0...2.2.1
