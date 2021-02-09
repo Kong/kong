@@ -994,6 +994,22 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(routes[3].service.name, res.headers["kong-service-name"])
         assert.equal("/anything/world/b", body.vars.request_uri)
       end)
+
+      it("re-encode special characters in request uri when proxying to the upstream", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/anything/world/cat%20and%20dog",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        local body = assert.res_status(200, res)
+        body = cjson.decode(body)
+
+        assert.equal(routes[3].id,           res.headers["kong-route-id"])
+        assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[3].service.name, res.headers["kong-service-name"])
+        assert.equal("/anything/world/cat%20and%20dog", body.vars.request_uri)
+      end)
     end)
 
     describe("strip_path", function()

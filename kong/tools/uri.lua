@@ -6,6 +6,7 @@ local string_upper = string.upper
 local string_find = string.find
 local string_sub = string.sub
 local string_byte = string.byte
+local string_format = string.format
 local tonumber = tonumber
 local table_concat = table.concat
 local table_clear = require("table.clear")
@@ -107,6 +108,13 @@ function _M.normalize(uri, merge_slashes)
   end
 
   return table_concat(TMP_OUTPUT, "", 1, output_n)
+end
+
+
+function _M.escape(uri)
+  return ngx_re_gsub(uri, "[^!#$&'()*+,/:;=?@[\\]A-Z\\d-_.~%]", function(m)
+    return string_format("%%%02X", string_byte(m[0]))
+  end, "joi")
 end
 
 
