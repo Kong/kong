@@ -1,4 +1,4 @@
-## v1.8.2 (Upcoming)
+## v1.8.2
 
 - Fix consumer and discovery invalidation events that were returning when the operation
   was `create`. This could leave some cache entries in cache that need to be invalidated.
