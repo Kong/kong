@@ -49,26 +49,18 @@ local function load_jwks(dao)
   end
 
   local dbless = kong.configuration.database == "off"
-
-  if dbless and #JWKS.jwks.keys > 0 then
-    keys = JWKS
-    return keys
-  end
-
-  keys, err = dao.super.select(dao, pk_default)
-  if keys then
-    return keys
-  end
-
   if dbless then
+    if #JWKS.jwks.keys > 0 then
+      return JWKS
+    end
+
     ok, err = kong.worker_events.poll()
     if not ok then
       return nil, err
     end
 
     if #JWKS.jwks.keys > 0 then
-      keys = JWKS
-      return keys
+      return JWKS
     end
   end
 
@@ -83,41 +75,37 @@ local function load_jwks(dao)
       JWKS.jwks.keys[i] = key
     end
 
-    keys = JWKS
-
     ok, err = kong.worker_events.post("openid-connect", "reset-jwks", JWKS.jwks.keys)
     if not ok then
       return nil, err
     end
 
-  else
-    keys, err = dao.super.insert(dao, {
-      id   = pk_default.id,
-      jwks = generated_jwks,
-    })
-
-    if not keys then
-      local err2
-      keys, err2 = dao.super.select(dao, pk_default)
-      if not keys then
-        if err then
-          return nil, err
-        end
-
-        if err2 then
-          return nil, err2
-        end
-
-        return nil, "unable to load default jwks"
-      end
-    end
+    return JWKS
   end
 
-  if not keys and dbless then
-    return nil, "unable to load default jwks"
+  keys, err = dao.super.insert(dao, {
+    id   = pk_default.id,
+    jwks = generated_jwks,
+  })
+  if keys then
+    return keys
   end
 
-  return keys
+  local err2
+  keys, err2 = dao.super.select(dao, pk_default)
+  if keys then
+    return keys
+  end
+
+  if err then
+    return nil, err
+  end
+
+  if err2 then
+    return nil, err2
+  end
+
+  return nil, "unable to load default jwks"
 end
 
 
