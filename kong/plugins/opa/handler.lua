@@ -47,10 +47,10 @@ local function build_opa_input(plugin_conf)
     opa_input.service = nctx.service
   end
   if plugin_conf.include_route_in_opa_input then
-    opa_input.service = nctx.route
+    opa_input.route = nctx.route
   end
   if plugin_conf.include_consumer_in_opa_input then
-    opa_input.service = nctx.consumer
+    opa_input.consumer = nctx.consumer
   end
 
   return cjson.encode({ input = opa_input })
