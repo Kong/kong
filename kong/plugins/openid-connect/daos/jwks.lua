@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local concurrency = require "kong.concurrency"
+
 local jwks = require "kong.openid-connect.jwks"
 
 
@@ -40,87 +40,80 @@ local _M = {
 local function load_jwks(dao)
   local ok
   local keys, err = dao.super.select(dao, pk_default)
-  if not keys then
-    if err then
+  if keys then
+    return keys
+  end
+
+  if err then
+    return nil, err
+  end
+
+  local dbless = kong.configuration.database == "off"
+
+  if dbless and #JWKS.jwks.keys > 0 then
+    keys = JWKS
+    return keys
+  end
+
+  keys, err = dao.super.select(dao, pk_default)
+  if keys then
+    return keys
+  end
+
+  if dbless then
+    ok, err = kong.worker_events.poll()
+    if not ok then
       return nil, err
     end
 
-    if kong.configuration.database == "off" then
-      if #JWKS.jwks.keys > 0 then
-        keys = JWKS
-      end
+    if #JWKS.jwks.keys > 0 then
+      keys = JWKS
+      return keys
+    end
+  end
+
+  local generated_jwks
+  generated_jwks, err = jwks.new()
+  if not generated_jwks then
+    return nil, err
+  end
+
+  if dbless then
+    for i, key in ipairs(generated_jwks.keys) do
+      JWKS.jwks.keys[i] = key
     end
 
+    keys = JWKS
+
+    ok, err = kong.worker_events.post("openid-connect", "reset-jwks", JWKS.jwks.keys)
+    if not ok then
+      return nil, err
+    end
+
+  else
+    keys, err = dao.super.insert(dao, {
+      id   = pk_default.id,
+      jwks = generated_jwks,
+    })
+
     if not keys then
-      ok, err = concurrency.with_worker_mutex({ name = "openid-connect-jwks" }, function()
-        keys, err = dao.super.select(dao, pk_default)
-        if keys then
-          return true
-        end
-
-        if kong.configuration.database == "off" then
-          ok, err = kong.worker_events.poll()
-          if not ok then
-            return nil, err
-          end
-
-          if #JWKS.jwks.keys > 0 then
-            keys = JWKS
-            return true
-          end
-        end
-
-        local generated_jwks
-        generated_jwks, err = jwks.new()
-        if not generated_jwks then
+      local err2
+      keys, err2 = dao.super.select(dao, pk_default)
+      if not keys then
+        if err then
           return nil, err
         end
 
-        if kong.configuration.database == "off" then
-          for i, key in ipairs(generated_jwks.keys) do
-            JWKS.jwks.keys[i] = key
-          end
-
-          keys = JWKS
-
-          ok, err = kong.worker_events.post("openid-connect", "reset-jwks", JWKS.jwks.keys)
-          if not ok then
-            return nil, err
-          end
-
-        else
-          keys, err = dao.super.insert(dao, {
-            id   = pk_default.id,
-            jwks = generated_jwks,
-          })
-
-          if not keys then
-            local err2
-            keys, err2 = dao.super.select(dao, pk_default)
-            if not keys then
-              if err then
-                return nil, err
-              end
-
-              if err2 then
-                return nil, err2
-              end
-
-              return nil, "unable to load default jwks"
-            end
-          end
+        if err2 then
+          return nil, err2
         end
 
-        return true
-      end)
-
-      if not ok then
-        return nil, err
+        return nil, "unable to load default jwks"
       end
     end
   end
 
-  if not keys and kong.configuration.database ~= "off" then
+  if not keys and dbless then
     return nil, "unable to load default jwks"
   end
 

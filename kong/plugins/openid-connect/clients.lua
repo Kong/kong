@@ -10,13 +10,18 @@ local log      = require "kong.plugins.openid-connect.log"
 
 local kong     = kong
 local tonumber = tonumber
+local timer_at = ngx.timer.at
 local ipairs   = ipairs
 
 
 local PRIVATE_KEY_JWKS = {}
 
 
-local function prepare_private_key_jwks()
+local function prepare_private_key_jwks(premature)
+  if premature then
+    return
+  end
+
   local keys, err = kong.db.oic_jwks:get()
   if not keys then
     if err then
@@ -38,7 +43,10 @@ end
 
 local function init_worker()
   kong.db.oic_jwks.init_worker()
-  return prepare_private_key_jwks()
+  local ok, err = timer_at(0, prepare_private_key_jwks)
+  if not ok then
+    log.err(err)
+  end
 end
 
 
