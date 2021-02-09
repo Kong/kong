@@ -36,6 +36,7 @@ local timer_every  = ngx.timer.every
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
 local unpack       = unpack
+local escape       = require("kong.tools.uri").escape
 
 
 local NOOP = function() end
@@ -1227,7 +1228,7 @@ return {
       --       router, which might have truncated it (`strip_uri`).
       -- `host` is the original header to be preserved if set.
       var.upstream_scheme = match_t.upstream_scheme -- COMPAT: pdk
-      var.upstream_uri    = match_t.upstream_uri
+      var.upstream_uri    = escape(match_t.upstream_uri)
       var.upstream_host   = match_t.upstream_host
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
