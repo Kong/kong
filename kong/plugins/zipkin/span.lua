@@ -75,7 +75,6 @@ function span_methods:new_child(kind, name, start_timestamp_mu)
     self.trace_id,
     generate_span_id(),
     self.span_id,
-    self.sample_ratio,
     self.baggage
   )
 end
