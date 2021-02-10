@@ -456,6 +456,7 @@ local CONF_INFERENCES = {
   cassandra_password = { typ = "string" },
   cassandra_timeout = { typ = "number" },
   cassandra_ssl = { typ = "boolean" },
+  cassandra_ssl_encryption_protocol = { typ = "string" },
   cassandra_ssl_verify = { typ = "boolean" },
   cassandra_write_consistency = { enum = {
                                   "ALL",

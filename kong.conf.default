@@ -1020,6 +1020,10 @@
 #cassandra_ssl = off             # Toggles client-to-node TLS connections
                                  # between Kong and Cassandra.
 
+#cassandra_ssl_encryption_protocol = tlsv1      # When using ssl between Kong and Cassandra,
+                                                # the version of tls to use. Accepted values are
+                                                # `tlsv1` or `tlsv1_2`
+
 #cassandra_ssl_verify = off      # Toggles server certificate verification if
                                  # `cassandra_ssl` is enabled.
                                  # See the `lua_ssl_trusted_certificate`

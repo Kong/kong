@@ -120,6 +120,7 @@ cassandra_port = 9042
 cassandra_keyspace = kong
 cassandra_timeout = 5000
 cassandra_ssl = off
+cassandra_ssl_encryption_protocol = tlsv1
 cassandra_ssl_verify = off
 cassandra_username = kong
 cassandra_password = NONE
