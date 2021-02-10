@@ -550,40 +550,65 @@
                                  #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
 
-#ssl_cert =                      # The absolute path to the SSL certificate for
-                                 # `proxy_listen` values with SSL enabled.
+#ssl_cert =                      # Comma-separated list of the absolute path to the certificates for
+                                 # `proxy_listen` values with TLS enabled.
+                                 #
+                                 # If more than one certificates are specified, it can be used to provide
+                                 # alternate type of certificate (for example, ECC certificate) that will be served
+                                 # to clients that supports them. Note to properly serve using ECC certificates,
+                                 # it is recommended to also set `ssl_cipher_suite` to
+                                 # `modern` or `intermediate`.
+                                 #
+                                 # Unless this option is explicitly set, Kong will auto-generate
+                                 # a pair of default certificates (RSA + ECC) first time it starts up and use
+                                 # it for serving TLS requests.
 
-#ssl_cert_key =                  # The absolute path to the SSL key for
-                                 # `proxy_listen` values with SSL enabled.
+#ssl_cert_key =                  # Comma-separated list of the absolute path to the keys for
+                                 # `proxy_listen` values with TLS enabled.
+                                 #
+                                 # If more than one certificate was specified for `ssl_cert`, then this
+                                 # option should contain the corresponding key for all certificates
+                                 # provided in the same order.
+                                 #
+                                 # Unless this option is explicitly set, Kong will auto-generate
+                                 # a pair of default private keys (RSA + ECC) first time it starts up and use
+                                 # it for serving TLS requests.
 
-#client_ssl = off                # Determines if Nginx should send client-side
-                                 # SSL certificates when proxying requests.
+#client_ssl = off                # Determines if Nginx should attempt to send client-side
+                                 # TLS certificates and perform Mutual TLS Authentication
+                                 # with upstream service when proxying requests.
 
 #client_ssl_cert =               # If `client_ssl` is enabled, the absolute
-                                 # path to the client SSL certificate for the
-                                 # `proxy_ssl_certificate` directive. Note that
-                                 # this value is statically defined on the
-                                 # node, and currently cannot be configured on
-                                 # a per-API basis.
+                                 # path to the client certificate for the `proxy_ssl_certificate` directive.
+                                 #
+                                 # This value can be overwritten dynamically with the `client_certificate`
+                                 # attribute of the `Service` object.
 
 #client_ssl_cert_key =           # If `client_ssl` is enabled, the absolute
-                                 # path to the client SSL key for the
-                                 # `proxy_ssl_certificate_key` address. Note
-                                 # this value is statically defined on the
-                                 # node, and currently cannot be configured on
-                                 # a per-API basis.
+                                 # path to the client TLS key for the `proxy_ssl_certificate_key` directive.
+                                 #
+                                 # This value can be overwritten dynamically with the `client_certificate`
+                                 # attribute of the `Service` object.
 
-#admin_ssl_cert =                # The absolute path to the SSL certificate for
-                                 # `admin_listen` values with SSL enabled.
+#admin_ssl_cert =                # Comma-separated list of the absolute path to the certificates for
+                                 # `admin_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert` for detailed usage.
 
-#admin_ssl_cert_key =            # The absolute path to the SSL key for
-                                 # `admin_listen` values with SSL enabled.
+#admin_ssl_cert_key =            # Comma-separated list of the absolute path to the keys for
+                                 # `admin_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert_key` for detailed usage.
 
-#status_ssl_cert =               # The absolute path to the SSL certificate for
-                                 # `status_listen` values with SSL enabled.
+#status_ssl_cert =               # Comma-separated list of the absolute path to the certificates for
+                                 # `status_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert` for detailed usage.
 
-#status_ssl_cert_key =           # The absolute path to the SSL key for
-                                 # `status_listen` values with SSL enabled.
+#status_ssl_cert_key =           # Comma-separated list of the absolute path to the keys for
+                                 # `status_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert_key` for detailed usage.
 
 #headers = server_tokens, latency_tokens
                                  # Comma-separated list of headers Kong should
