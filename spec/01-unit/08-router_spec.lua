@@ -2480,22 +2480,22 @@ describe("Router", function()
       assert.equal(8443, match_t.upstream_url_t.port)
     end)
 
-    it("allows url encoded paths", function()
+    it("allows url encoded paths if they are reserved characters", function()
       local use_case_routes = {
         {
           service = service,
           route   = {
-            paths = { "/endel%C3%B8st" },
+            paths = { "/endel%2Fst" },
           },
         },
       }
 
       local router = assert(Router.new(use_case_routes))
-      local _ngx = mock_ngx("GET", "/endel%C3%B8st", { host = "domain.org" })
+      local _ngx = mock_ngx("GET", "/endel%2Fst", { host = "domain.org" })
       router._set_ngx(_ngx)
       local match_t = router.exec()
       assert.same(use_case_routes[1].route, match_t.route)
-      assert.equal("/endel%C3%B8st", match_t.upstream_uri)
+      assert.equal("/endel%2Fst", match_t.upstream_uri)
     end)
 
     describe("stripped paths #strip", function()
@@ -2545,6 +2545,16 @@ describe("Router", function()
       end)
 
       it("doesn't strip if 'strip_uri' is not enabled", function()
+        local _ngx = mock_ngx("POST", "/my-route/hello/world",
+                              { host = "domain.org" })
+        router._set_ngx(_ngx)
+        local match_t = router.exec()
+        assert.same(use_case_routes[2].route, match_t.route)
+        assert.is_nil(match_t.prefix)
+        assert.equal("/my-route/hello/world", match_t.upstream_uri)
+      end)
+
+      it("normalized client URI before matching and proxying", function()
         local _ngx = mock_ngx("POST", "/my-route/hello/world",
                               { host = "domain.org" })
         router._set_ngx(_ngx)
@@ -2627,18 +2637,18 @@ describe("Router", function()
           {
             service      = service,
             route        = {
-              paths      = { "/endel%C3%B8st" },
+              paths      = { "/endel%2Fst" },
               strip_path = true,
             },
           },
         }
 
         local router = assert(Router.new(use_case_routes))
-        local _ngx = mock_ngx("GET", "/endel%C3%B8st", { host = "domain.org" })
+        local _ngx = mock_ngx("GET", "/endel%2Fst", { host = "domain.org" })
         router._set_ngx(_ngx)
         local match_t = router.exec()
         assert.same(use_case_routes[1].route, match_t.route)
-        assert.equal("/endel%C3%B8st", match_t.prefix)
+        assert.equal("/endel%2Fst", match_t.prefix)
         assert.equal("/", match_t.upstream_uri)
       end)
 

@@ -868,18 +868,22 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("percent-encoded URIs", function()
+    describe("URI normalization", function()
       local routes
 
       lazy_setup(function()
         routes = insert_routes(bp, {
           {
             strip_path = true,
-            paths      = { "/endel%C3%B8st" },
+            paths      = { "/foo/bar" },
           },
           {
             strip_path = true,
-            paths      = { "/foo/../bar" },
+            paths      = { "/hello" },
+          },
+          {
+            strip_path = false,
+            paths      = { "/anything/world" },
           },
         })
       end)
@@ -888,32 +892,116 @@ for _, strategy in helpers.each_strategy() do
         remove_routes(strategy, routes)
       end)
 
-      it("routes when [paths] is percent-encoded", function()
+      it("matches against normalized URI with \"..\"", function()
         local res = assert(proxy_client:send {
           method  = "GET",
-          path    = "/endel%C3%B8st",
+          path    = "/foo/a/../bar",
           headers = { ["kong-debug"] = 1 },
         })
 
-        assert.res_status(200, res)
+        local body = assert.res_status(200, res)
+        body = cjson.decode(body)
 
         assert.equal(routes[1].id,           res.headers["kong-route-id"])
         assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+        assert.equal("/foo/a/../bar", body.headers["x-forwarded-path"])
       end)
 
-      it("matches against non-normalized URI", function()
+      it("matches against normalized URI with \"//\"", function()
         local res = assert(proxy_client:send {
           method  = "GET",
-          path    = "/foo/../bar",
+          path    = "/foo//bar",
           headers = { ["kong-debug"] = 1 },
         })
 
-        assert.res_status(200, res)
+        local body = assert.res_status(200, res)
+        body = cjson.decode(body)
+
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+        assert.equal("/foo//bar", body.headers["x-forwarded-path"])
+      end)
+
+      it("matches against normalized URI with \"/./\"", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/foo/./bar",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        local body = assert.res_status(200, res)
+        body = cjson.decode(body)
+
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+        assert.equal("/foo/./bar", body.headers["x-forwarded-path"])
+      end)
+
+      it("matches against normalized URI with percent-encoded characters", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/h%65llo",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        local body = assert.res_status(200, res)
+        body = cjson.decode(body)
 
         assert.equal(routes[2].id,           res.headers["kong-route-id"])
         assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+        assert.equal("/h%65llo", body.headers["x-forwarded-path"])
+      end)
+
+      it("proxies normalized URI to upstream with strip_path = true", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/h%65llo/anything/a/../b",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        local body = assert.res_status(200, res)
+        body = cjson.decode(body)
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
+        assert.equal("/anything/b", body.vars.request_uri)
+      end)
+
+      it("proxies normalized URI to upstream with strip_path = false", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/anything/./a/../wor%6cd/a/../b",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        local body = assert.res_status(200, res)
+        body = cjson.decode(body)
+
+        assert.equal(routes[3].id,           res.headers["kong-route-id"])
+        assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[3].service.name, res.headers["kong-service-name"])
+        assert.equal("/anything/world/b", body.vars.request_uri)
+      end)
+
+      it("re-encode special characters in request uri when proxying to the upstream", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/anything/world/cat%20and%20dog",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        local body = assert.res_status(200, res)
+        body = cjson.decode(body)
+
+        assert.equal(routes[3].id,           res.headers["kong-route-id"])
+        assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[3].service.name, res.headers["kong-service-name"])
+        assert.equal("/anything/world/cat%20and%20dog", body.vars.request_uri)
       end)
     end)
 
