@@ -57,6 +57,7 @@ return {
                             one_of = { "preserve", "b3", "b3-single", "w3c", "jaeger" } } },
           { default_header_type = { type = "string", required = true, default = "b3",
                                     one_of = { "b3", "b3-single", "w3c", "jaeger" } } },
+          { tags_header = { type = "string", required = true, default = "Zipkin-Tags" } },
           { static_tags = { type = "array", elements = static_tag,
                             custom_validator = validate_static_tags } },
         },

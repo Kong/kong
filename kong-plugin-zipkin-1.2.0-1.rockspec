@@ -26,5 +26,6 @@ build = {
     ["kong.plugins.zipkin.span"] = "kong/plugins/zipkin/span.lua",
     ["kong.plugins.zipkin.tracing_headers"] = "kong/plugins/zipkin/tracing_headers.lua",
     ["kong.plugins.zipkin.schema"] = "kong/plugins/zipkin/schema.lua",
+    ["kong.plugins.zipkin.request_tags"] = "kong/plugins/zipkin/request_tags.lua",
   },
 }

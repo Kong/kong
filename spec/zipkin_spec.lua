@@ -5,7 +5,7 @@ local to_hex = require "resty.string".to_hex
 
 local fmt = string.format
 
-local ZIPKIN_HOST = "zipkin"
+local ZIPKIN_HOST = os.getenv("ZIPKIN_HOST") or "zipkin"
 local ZIPKIN_PORT = 9411
 local GRPCBIN_HOST = "grpcbin"
 local GRPCBIN_PORT = 9000
@@ -226,6 +226,7 @@ describe("http integration tests with zipkin server [#"
       headers = {
         ["x-b3-sampled"] = "1",
         host  = "http-route",
+        ["zipkin-tags"] = "foo=bar; baz=qux"
       },
     })
     assert.response(r).has.status(200)
@@ -245,6 +246,8 @@ describe("http integration tests with zipkin server [#"
       ["http.status_code"] = "200", -- found (matches server status)
       lc = "kong",
       static = "ok",
+      foo = "bar",
+      baz = "qux",
     }, request_tags)
     local consumer_port = request_span.remoteEndpoint.port
     assert_is_integer(consumer_port)
@@ -475,6 +478,7 @@ describe("http integration tests with zipkin server [#"
       headers = {
         ["x-b3-traceid"] = trace_id,
         ["x-b3-sampled"] = "1",
+        ["zipkin-tags"] = "error = true"
       },
     })
     assert.response(r).has.status(404)
@@ -495,6 +499,7 @@ describe("http integration tests with zipkin server [#"
       ["http.status_code"] = "404", -- note that this was "not found"
       lc = "kong",
       static = "ok",
+      error = "true",
     }, request_tags)
     local consumer_port = request_span.remoteEndpoint.port
     assert_is_integer(consumer_port)

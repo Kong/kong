@@ -2,6 +2,8 @@ local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
 local new_span = require "kong.plugins.zipkin.span".new
 local utils = require "kong.tools.utils"
 local tracing_headers = require "kong.plugins.zipkin.tracing_headers"
+local request_tags = require "kong.plugins.zipkin.request_tags"
+
 
 local subsystem = ngx.config.subsystem
 local fmt = string.format
@@ -102,8 +104,10 @@ if subsystem == "http" then
   initialize_request = function(conf, ctx)
     local req = kong.request
 
+    local req_headers = req.get_headers()
+
     local header_type, trace_id, span_id, parent_id, should_sample, baggage =
-      tracing_headers.parse(req.get_headers())
+      tracing_headers.parse(req_headers)
     local method = req.get_method()
 
     if should_sample == nil then
@@ -136,6 +140,17 @@ if subsystem == "http" then
       for i = 1, #static_tags do
         local tag = static_tags[i]
         request_span:set_tag(tag.name, tag.value)
+      end
+    end
+
+    local req_tags, err = request_tags.parse(req_headers[conf.tags_header])
+    if err then
+      -- log a warning in case there were erroneous request tags. Don't throw the tracing away & rescue with valid tags, if any
+      kong.log.warn(err)
+    end
+    if req_tags then
+      for tag_name, tag_value in pairs(req_tags) do
+        request_span:set_tag(tag_name, tag_value)
       end
     end
 
