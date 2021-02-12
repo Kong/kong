@@ -31,6 +31,13 @@ describe("Plugin: rate-limiting (schema)", function()
     assert.is_nil(err)
   end)
 
+  it("proper config validates (limit_by_fallback)", function()
+    local config = { second = 10, limit_by = "path", path = "/request", limit_by_fallback = false }
+    local ok, _, err = v(config, schema_def)
+    assert.truthy(ok)
+    assert.is_nil(err)
+  end)
+
   describe("errors", function()
     it("limits: smaller unit is less than bigger unit", function()
       local config = { second = 20, hour = 10 }

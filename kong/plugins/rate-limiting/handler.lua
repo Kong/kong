@@ -81,7 +81,7 @@ local function get_identifier(conf)
   if conf.limit_by_fallback then
     return identifier or kong.client.get_forwarded_ip()
   else
-    return identifier
+    return identifier -- can be 'nil' if no previous match, and limit_by_fallback is false
   end
 end
 
@@ -129,6 +129,18 @@ function RateLimitingHandler:access(conf)
   -- Consumer is identified by ip address or authenticated_credential id
   local identifier = get_identifier(conf)
   local fault_tolerant = conf.fault_tolerant
+  local limit_by_fallback = conf.limit_by_fallback
+
+  -- identifier is 'nil' and opted to not fallback to client ip
+  if identifier == nil and not limit_by_fallback then
+    if fault_tolerant then -- let people through. log and return
+      kong.log.info('no identifier set, and no fallback: not rate-limiting')
+      return
+    else -- not fault-tolerant. log and return an error
+      kong.log.err("no identifier and no fallback:", "returning error")
+      return kong.response.error(500, "Nothing to rate-limit on", headers)
+    end
+  end
 
   -- Load current metric for configured period
   local limits = {
