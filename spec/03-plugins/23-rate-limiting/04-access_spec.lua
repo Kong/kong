@@ -1263,5 +1263,114 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "API rate limit exceeded" }, json)
       end)
     end)
+
+    describe(fmt("#no-fallback Plugin: rate-limiting with no fallback, with fault-tolerant (access - global) with policy: %s [#%s]", policy, strategy), function()
+      local bp
+      local db
+
+      lazy_setup(function()
+        helpers.kill_all()
+        flush_redis()
+        bp, db = helpers.get_db_utils(strategy)
+
+        -- global plugin (not attached to route, service or consumer)
+        bp.rate_limiting_plugins:insert({
+          config = {
+            policy            = policy,
+            minute            = 6,
+            fault_tolerant    = true,
+            limit_by_fallback = false,
+            redis_host        = REDIS_HOST,
+            redis_port        = REDIS_PORT,
+            redis_password    = REDIS_PASSWORD,
+            redis_database    = REDIS_DATABASE,
+          }
+        })
+
+        for i = 1, 6 do
+          bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
+        end
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.kill_all()
+        assert(db:truncate())
+      end)
+
+      it_with_retry("sets no limit", function()
+        for i = 1, 6 do
+          local res = GET("/status/200", {
+            headers = { Host = fmt("test%d.com", i) },
+          }, 200)
+
+          assert.is_nil(res.headers["x-ratelimit-limit-minute"])
+          assert.res_status(200, res)
+        end
+
+        -- Additonal request, while limit is 6/minute
+        local res, body = GET("/status/200", {
+          headers = { Host = "test1.com" },
+        }, 200)
+
+        assert.is_nil(res.headers["x-ratelimit-limit-minute"])
+        assert.res_status(200, res)
+      end)
+    end)
+
+    describe(fmt("#no-fallback Plugin: rate-limiting with no fallback, non fault-tolerant (access - global) with policy: %s [#%s]", policy, strategy), function()
+      local bp
+      local db
+
+      lazy_setup(function()
+        helpers.kill_all()
+        flush_redis()
+        bp, db = helpers.get_db_utils(strategy)
+
+        -- global plugin (not attached to route, service or consumer)
+        bp.rate_limiting_plugins:insert({
+          config = {
+            policy            = policy,
+            minute            = 6,
+            fault_tolerant    = false,
+            limit_by_fallback = false,
+            redis_host        = REDIS_HOST,
+            redis_port        = REDIS_PORT,
+            redis_password    = REDIS_PASSWORD,
+            redis_database    = REDIS_DATABASE,
+          }
+        })
+
+        for i = 1, 6 do
+          bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
+        end
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.kill_all()
+        assert(db:truncate())
+      end)
+
+      it_with_retry("sets no limit", function()
+        for i = 1, 3 do
+          local res = GET("/status/200", {
+            headers = { Host = fmt("test%d.com", i) },
+          }, 500)
+
+          assert.is_nil(res.headers["x-ratelimit-limit-minute"])
+          assert.res_status(500, res)
+        end
+      end)
+    end)
+
   end
 end
