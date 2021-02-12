@@ -1264,7 +1264,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe(fmt("#no-fallback Plugin: rate-limiting with no fallback, with fault-tolerant (access - global) with policy: %s [#%s]", policy, strategy), function()
+    describe(fmt("#fallback Plugin: rate-limiting with no fallback, with fault-tolerant (access - global) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
 
@@ -1279,6 +1279,8 @@ for _, strategy in helpers.each_strategy() do
             policy            = policy,
             minute            = 6,
             fault_tolerant    = true,
+            limit_by          = "header",
+            header_name       = "X-Forwarded-For",
             limit_by_fallback = false,
             redis_host        = REDIS_HOST,
             redis_port        = REDIS_PORT,
@@ -1302,7 +1304,7 @@ for _, strategy in helpers.each_strategy() do
         assert(db:truncate())
       end)
 
-      it_with_retry("sets no limit", function()
+      it_with_retry("sets no limit when no limit_by header is present", function()
         for i = 1, 6 do
           local res = GET("/status/200", {
             headers = { Host = fmt("test%d.com", i) },
@@ -1320,9 +1322,47 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["x-ratelimit-limit-minute"])
         assert.res_status(200, res)
       end)
+
+      it_with_retry("sets limit when limit_by header is present", function()
+        for i = 1, 6 do
+          local res = GET("/status/200", {
+            headers = {
+              Host = fmt("test%d.com", i),
+              ["X-Forwarded-For"] = "10.0.0.1",
+            },
+          }, 200)
+
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+          assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+          local reset = tonumber(res.headers["ratelimit-reset"])
+          assert.equal(true, reset <= 60 and reset > 0)
+        end
+
+        -- Additonal request, while limit is 6/minute
+        local res, body = GET("/status/200", {
+          headers = {
+            Host = "test1.com",
+            ["X-Forwarded-For"] = "10.0.0.1",
+          },
+        }, 429)
+
+        assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+        assert.are.same(0, tonumber(res.headers["ratelimit-remaining"]))
+
+        local retry = tonumber(res.headers["retry-after"])
+        assert.equal(true, retry <= 60 and retry > 0)
+
+        local reset = tonumber(res.headers["ratelimit-reset"])
+        assert.equal(true, reset <= 60 and reset > 0)
+
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+      end)
     end)
 
-    describe(fmt("#no-fallback Plugin: rate-limiting with no fallback, non fault-tolerant (access - global) with policy: %s [#%s]", policy, strategy), function()
+    describe(fmt("#fallback Plugin: rate-limiting with no fallback, non fault-tolerant (access - global) with policy: %s [#%s]", policy, strategy), function()
       local bp
       local db
 
@@ -1337,6 +1377,8 @@ for _, strategy in helpers.each_strategy() do
             policy            = policy,
             minute            = 6,
             fault_tolerant    = false,
+            limit_by          = "header",
+            header_name       = "X-Forwarded-For",
             limit_by_fallback = false,
             redis_host        = REDIS_HOST,
             redis_port        = REDIS_PORT,
@@ -1360,7 +1402,7 @@ for _, strategy in helpers.each_strategy() do
         assert(db:truncate())
       end)
 
-      it_with_retry("sets no limit", function()
+      it_with_retry("sets no limit when no limit_by header is present", function()
         for i = 1, 3 do
           local res = GET("/status/200", {
             headers = { Host = fmt("test%d.com", i) },
@@ -1370,7 +1412,45 @@ for _, strategy in helpers.each_strategy() do
           assert.res_status(500, res)
         end
       end)
-    end)
 
+      it_with_retry("sets limit when limit_by header is present", function()
+        for i = 1, 6 do
+          local res = GET("/status/200", {
+            headers = {
+              Host = fmt("test%d.com", i),
+              ["X-Forwarded-For"] = "10.0.0.1",
+            },
+          }, 200)
+
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+          assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+          local reset = tonumber(res.headers["ratelimit-reset"])
+          assert.equal(true, reset <= 60 and reset > 0)
+        end
+
+        -- Additonal request, while limit is 6/minute
+        local res, body = GET("/status/200", {
+          headers = {
+            Host = "test1.com",
+            ["X-Forwarded-For"] = "10.0.0.1",
+          },
+        }, 429)
+
+        assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+        assert.are.same(0, tonumber(res.headers["ratelimit-remaining"]))
+
+        local retry = tonumber(res.headers["retry-after"])
+        assert.equal(true, retry <= 60 and retry > 0)
+
+        local reset = tonumber(res.headers["ratelimit-reset"])
+        assert.equal(true, reset <= 60 and reset > 0)
+
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+      end)
+
+    end)
   end
 end

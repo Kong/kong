@@ -84,5 +84,9 @@ return {
       if_field = "config.policy", if_match = { eq = "redis" },
       then_field = "config.redis_timeout", then_match = { required = true },
     } },
+    { conditional = {
+      if_field = "config.limit_by_fallback", if_match = { eq = false },
+      then_field = "config.fault_tolerant", then_match = {required = true },
+    } },
   },
 }
