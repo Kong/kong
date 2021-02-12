@@ -73,9 +73,16 @@ local function get_identifier(conf)
     if req_path == conf.path then
       identifier = req_path
     end
+
+  elseif conf.limit_by == "ip" then
+    identifier = kong.client.get_forwarded_ip()
   end
 
-  return identifier or kong.client.get_forwarded_ip()
+  if conf.limit_by_fallback then
+    return identifier or kong.client.get_forwarded_ip()
+  else
+    return identifier
+  end
 end
 
 

@@ -41,6 +41,7 @@ return {
               default = "consumer",
               one_of = { "consumer", "credential", "ip", "service", "header", "path" },
           }, },
+          { limit_by_fallback = { type = "boolean", required = true, default = true }, },
           { header_name = typedefs.header_name },
           { path = typedefs.path },
           { policy = {
