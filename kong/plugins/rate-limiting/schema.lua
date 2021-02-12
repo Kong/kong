@@ -50,6 +50,7 @@ return {
               one_of = { "local", "cluster", "redis" },
           }, },
           { fault_tolerant = { type = "boolean", required = true, default = true }, },
+          { dark_mode = { type = "boolean", required = true, default = false }, },
           { redis_host = typedefs.host },
           { redis_port = typedefs.port({ default = 6379 }), },
           { redis_password = { type = "string", len_min = 0 }, },

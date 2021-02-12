@@ -122,6 +122,7 @@ function RateLimitingHandler:access(conf)
   -- Consumer is identified by ip address or authenticated_credential id
   local identifier = get_identifier(conf)
   local fault_tolerant = conf.fault_tolerant
+  local dark_mode = conf.dark_mode
 
   -- Load current metric for configured period
   local limits = {
@@ -189,7 +190,11 @@ function RateLimitingHandler:access(conf)
     if stop then
       headers = headers or {}
       headers[RETRY_AFTER] = reset
-      return kong.response.error(429, "API rate limit exceeded", headers)
+     if not dark_mode then
+        return kong.response.error(429, "API rate limit exceeded", headers)
+      else
+        kong.log.warn("Dark mode, logging only. Rate limit exceeded with identifier ", identifier)
+      end
     end
 
     if headers then
