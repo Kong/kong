@@ -81,7 +81,6 @@ local function get_identifier(conf)
   if conf.limit_by_fallback then
     return identifier or kong.client.get_forwarded_ip()
   else
-    kong.log.err("no identifier: ", identifier)
     return identifier -- can be 'nil' if no previous match, and limit_by_fallback is false
   end
 end
