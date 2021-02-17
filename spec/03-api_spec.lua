@@ -120,7 +120,6 @@ for _, strategy in helpers.each_strategy() do
     lazy_setup(function()
       local plugin_config = {
         http_endpoint = "http://127.0.0.1:5000",
-        log_bodies = true,
         queue_size = 1
       }
 

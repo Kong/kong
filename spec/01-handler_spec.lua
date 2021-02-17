@@ -8,73 +8,6 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
-describe("remove_sensible_data_from_table", function()
-  local handler = require "kong.plugins.collector.handler"
-  local conf = { body_parsing_max_depth = 10 }
-
-  describe("when invalid body", function()
-    it("handles empty", function()
-      assert.are.same({}, handler.remove_sensible_data_from_table(conf, nil))
-      assert.are.same({}, handler.remove_sensible_data_from_table(conf, {}))
-
-      local input = [[{}]]
-      assert.are.same({}, handler.remove_sensible_data_from_table(conf, cjson.decode(input)))
-    end)
-  end)
-
-  describe("filters out values and adds type and length", function()
-    it("null in array gets ignored", function()
-      local input = [[{"significant_nulls":[null,1,null]}]]
-      assert.are.same(
-        { significant_nulls = { field_type = "array", field_length = 3 } },
-        handler.remove_sensible_data_from_table(conf, cjson.decode(input)))
-    end)
-
-    it("null in object gets ignored", function()
-      local input = [[{"height":{"metres":1.82,"feet":null}}]]
-      assert.are.same({
-        height = { metres = { field_type = "number" }}
-      }, handler.remove_sensible_data_from_table(conf, cjson.decode(input)))
-    end)
-
-    it("numbers", function()
-      local input = [[{"age":33}]]
-      assert.are.same({
-        age = { field_type = "number" }
-      }, handler.remove_sensible_data_from_table(conf, cjson.decode(input)))
-    end)
-
-    it("strings", function()
-      local input = [[{"place":"Newquay"}]]
-      assert.are.same({
-        place = { field_type = "string", field_length = 7 }
-      }, handler.remove_sensible_data_from_table(conf, cjson.decode(input)))
-    end)
-
-    it("empty array", function()
-      local input = [[{"empty_array":[]}]]
-      assert.are.same({
-        empty_array = {}
-      }, handler.remove_sensible_data_from_table(conf, cjson.decode(input)))
-    end)
-    it("empty object", function()
-      local input = [[{"empty_object":{}}]]
-      assert.are.same({
-        empty_object = {}
-      }, handler.remove_sensible_data_from_table(conf, cjson.decode(input)))
-    end)
-
-    it("flat array", function()
-      local input = [[{"array1":["value1","value2"]}]]
-      assert.are.same(
-        { array1 = { field_type = "array", field_length = 2 } },
-        handler.remove_sensible_data_from_table(conf, cjson.decode(input)))
-    end)
-
-  end)
-end)
-
-
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: collector (handler) [#" .. strategy .. "]", function()
@@ -193,16 +126,7 @@ for _, strategy in helpers.each_strategy() do
         local mock_queue = sent_requests()
         if #mock_queue == 2 then
           local post = mock_queue[1].request.post_data
-          local expected_post = {
-            body = {
-              user = {
-                id = {
-                  id = { field_type = "string", field_length = 4 },
-                  pass = { field_type = "string", field_length = 6 }
-                }
-              }
-            }
-          }
+          local expected_post = {}  -- we don't send post data
           assert.are.same(post, expected_post)
           return true
         end
