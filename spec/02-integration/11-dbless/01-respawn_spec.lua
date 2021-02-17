@@ -30,11 +30,11 @@ describe("worker respawn", function()
     end
   end)
 
-  it("rotates prng seeds and deletes the old ones", function()
+  it("rotates pids and deletes the old ones", function()
     local res = admin_client:get("/")
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
-    local seeds = json.prng_seeds
+    local pids = json.pids.workers
 
     helpers.signal_workers(nil, "-TERM")
 
@@ -47,35 +47,38 @@ describe("worker respawn", function()
       local res2 = admin_client2:get("/")
       local body2 = assert.res_status(200, res2)
       local json2 = cjson.decode(body2)
-      local seeds2 = json2.prng_seeds
+      local pids2 = json2.pids.workers
 
       admin_client2:close()
 
       local matching = 0
       local nonmatching = 0
-      for key, value in pairs(seeds) do
-        assert.not_nil(value)
-        if seeds2[key] == value then
-          matching = matching + 1 -- worker process seeds should be rotated
-        else
-          nonmatching = nonmatching + 1 -- master process seeds should not be rotated
+      for _, p in ipairs(pids) do
+        for _, p2 in ipairs(pids2) do
+          if p == p2 then
+            matching = matching + 1 -- worker process seeds should be rotated
+          else
+            nonmatching = nonmatching + 1 -- master process seeds should not be rotated
+          end
         end
       end
 
-      assert.equal(1, matching)
+      assert.equal(0, matching)
       assert.equal(1, nonmatching)
 
       matching = 0
       nonmatching = 0
-      for key, value in pairs(seeds2) do
-        if seeds[key] == value then
-          matching = matching + 1 -- worker process seeds should be rotated
-        else
-          nonmatching = nonmatching + 1 -- master process seeds should not be rotated
+      for _, p2 in ipairs(pids2) do
+        for _, p in ipairs(pids) do
+          if p == p2 then
+            matching = matching + 1 -- worker process seeds should be rotated
+          else
+            nonmatching = nonmatching + 1 -- master process seeds should not be rotated
+          end
         end
       end
 
-      assert.equal(1, matching)
+      assert.equal(0, matching)
       assert.equal(1, nonmatching)
 
       return true

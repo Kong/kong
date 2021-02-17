@@ -18,8 +18,9 @@ local function get_kong_workers()
     end
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
+
     admin_client:close()
-    workers = json.prng_seeds
+    workers = json.pids.workers
     return true
   end, 10)
   return workers
@@ -54,13 +55,18 @@ local function wait_until_no_common_workers(workers, expected_total, strategy)
     local json = cjson.decode(assert.res_status(200, res))
     admin_client:close()
 
-    local new_workers = json.prng_seeds
+    local new_workers = json.pids.workers
     local total = 0
     local common = 0
-    for k, v in pairs(new_workers) do
-      total = total + 1
-      if workers[k] == v then
-        common = common + 1
+    if new_workers then
+      for _, v in ipairs(new_workers) do
+        total = total + 1
+        for _, v_old in ipairs(workers) do
+          if v == v_old then
+            common = common + 1
+            break
+          end
+        end
       end
     end
     return common == 0 and total == (expected_total or total)
@@ -72,7 +78,7 @@ local function kong_reload(strategy, ...)
   local workers = get_kong_workers()
   local ok, err = helpers.kong_exec(...)
   if ok then
-    wait_until_no_common_workers(workers, nil, strategy)
+    wait_until_no_common_workers(workers, 1, strategy)
   end
   return ok, err
 end
@@ -122,7 +128,7 @@ describe("kong reload #" .. strategy, function()
 
     assert(helpers.kong_exec("reload --conf spec/fixtures/reload.conf"))
 
-    wait_until_no_common_workers(workers, 2)
+    wait_until_no_common_workers(workers, 1)
 
     -- same master PID
     assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
@@ -150,7 +156,7 @@ describe("kong reload #" .. strategy, function()
       proxy_listen = "0.0.0.0:9000"
     }))
 
-    wait_until_no_common_workers(workers, 2)
+    wait_until_no_common_workers(workers, 1)
 
     -- same master PID
     assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
@@ -175,7 +181,7 @@ describe("kong reload #" .. strategy, function()
            .. " --nginx-conf spec/fixtures/custom_nginx.template"))
 
 
-    wait_until_no_common_workers(workers, 2)
+    wait_until_no_common_workers(workers, 1)
 
     -- new server
     client = helpers.http_client(helpers.mock_upstream_host,
@@ -204,7 +210,7 @@ describe("kong reload #" .. strategy, function()
     local res = assert(client:get("/"))
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
-    local prng_seeds_1 = json.prng_seeds
+    local pids_1 = json.pids
     client:close()
 
     assert(kong_reload(strategy, "reload --prefix " .. helpers.test_conf.prefix))
@@ -213,11 +219,15 @@ describe("kong reload #" .. strategy, function()
     local res = assert(client:get("/"))
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
-    local prng_seeds_2 = json.prng_seeds
+    local pids_2 = json.pids
     client:close()
 
-    for k in pairs(prng_seeds_1) do
-      assert.is_nil(prng_seeds_2[k])
+    assert.equal(pids_2.master, pids_1.master)
+
+    for _, v in ipairs(pids_2.workers) do
+      for _, v_old in ipairs(pids_1.workers) do
+        assert.not_equal(v, v_old)
+      end
     end
   end)
 
