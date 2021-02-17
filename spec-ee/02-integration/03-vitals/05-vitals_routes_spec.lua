@@ -115,12 +115,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -131,12 +133,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -147,12 +151,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -163,12 +169,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -179,12 +187,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -195,12 +205,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -211,12 +223,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -227,12 +241,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -243,12 +259,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -259,12 +277,14 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                     nodes = {
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -275,6 +295,7 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -285,6 +306,7 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -295,6 +317,7 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -305,6 +328,7 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -315,6 +339,7 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
@@ -325,13 +350,13 @@ for _, db_strategy in helpers.each_strategy() do
                       intervals = {
                         seconds = { retention_period_seconds = 3600 },
                         minutes = { retention_period_seconds = 90000 },
+                        days = { retention_period_seconds = 0 },
                       },
                     },
                   }
                 },
               }
             }
-
             assert.same(expected, json)
           end)
         end)
@@ -733,6 +758,11 @@ for _, db_strategy in helpers.each_strategy() do
                 stat_labels = {
                   "status_code_classes_total",
                 },
+                status_code_totals = {
+                  ["4xx"] = 25,
+                  ["5xx"] = 20,
+                  ["total"] = 45,
+                },
               },
               stats = {
                 cluster = {
@@ -780,6 +810,11 @@ for _, db_strategy in helpers.each_strategy() do
                 entity_type = "cluster",
                 stat_labels = {
                   "status_code_classes_total",
+                },
+                status_code_totals = {
+                  ["4xx"] = 35,
+                  ["5xx"] = 20,
+                  ["total"] = 55,
                 },
               },
               stats = {
@@ -844,6 +879,12 @@ for _, db_strategy in helpers.each_strategy() do
                 stat_labels = {
                   "status_code_classes_per_workspace_total",
                 },
+                status_code_totals = {
+                  ["2xx"] = 205,
+                  ["4xx"] = 101,
+                  ["5xx"] = 6,
+                  ["total"] = 312,
+                },
               },
               stats = {
                 cluster = {
@@ -891,6 +932,12 @@ for _, db_strategy in helpers.each_strategy() do
                 level       = "cluster",
                 stat_labels = {
                   "status_code_classes_per_workspace_total",
+                },
+                status_code_totals = {
+                  ["2xx"] = 205,
+                  ["4xx"] = 101,
+                  ["5xx"] = 6,
+                  ["total"] = 312,
                 },
               },
               stats = {
@@ -1024,6 +1071,12 @@ for _, db_strategy in helpers.each_strategy() do
                 stat_labels = {
                   "status_codes_per_service_total",
                 },
+                status_code_totals = {
+                  ["200"] = 205,
+                  ["404"] = 101,
+                  ["500"] = 6,
+                  ["total"] = 312,
+                },
               },
               stats = {
                 cluster = {
@@ -1080,6 +1133,12 @@ for _, db_strategy in helpers.each_strategy() do
                 level       = "cluster",
                 stat_labels = {
                   "status_codes_per_service_total",
+                },
+                status_code_totals = {
+                  ["200"] = 205,
+                  ["404"] = 101,
+                  ["500"] = 6,
+                  ["total"] = 312,
                 },
               },
               stats = {
@@ -1245,6 +1304,12 @@ for _, db_strategy in helpers.each_strategy() do
                 stat_labels = {
                   "status_codes_per_route_total",
                 },
+                status_code_totals = {
+                  ["200"] = 205,
+                  ["404"] = 101,
+                  ["500"] = 6,
+                  ["total"] = 312,
+                },
               },
               stats = {
                 cluster = {
@@ -1296,6 +1361,12 @@ for _, db_strategy in helpers.each_strategy() do
                 level       = "cluster",
                 stat_labels = {
                   "status_codes_per_route_total",
+                },
+                status_code_totals = {
+                  ["200"] = 205,
+                  ["404"] = 101,
+                  ["500"] = 6,
+                  ["total"] = 312,
                 },
               },
               stats = {
@@ -1475,6 +1546,10 @@ for _, db_strategy in helpers.each_strategy() do
                 stat_labels = {
                   "status_codes_per_consumer_total",
                 },
+                status_code_totals = {
+                  ["404"] = 6,
+                  ["total"] = 6,
+                },
               },
               stats = {
                 cluster = {
@@ -1531,6 +1606,12 @@ for _, db_strategy in helpers.each_strategy() do
                 level       = "cluster",
                 stat_labels = {
                   "status_codes_per_consumer_total",
+                },
+                status_code_totals = {
+                  ["200"] = 205,
+                  ["404"] = 101,
+                  ["500"] = 6,
+                  ["total"] = 312,
                 },
               },
               stats = {
@@ -1695,6 +1776,10 @@ for _, db_strategy in helpers.each_strategy() do
                 stat_labels = {
                   "status_codes_per_consumer_route_total",
                 },
+                status_code_totals = {
+                  ["404"] = 6,
+                  ["total"] = 6,
+                },
               },
               stats = {
                 [route_id] = {
@@ -1757,6 +1842,12 @@ for _, db_strategy in helpers.each_strategy() do
                 level       = "cluster",
                 stat_labels = {
                   "status_codes_per_consumer_route_total",
+                },
+                status_code_totals = {
+                  ["200"] = 205,
+                  ["404"] = 101,
+                  ["500"] = 6,
+                  ["total"] = 312,
                 },
               },
               stats = {

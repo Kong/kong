@@ -46,6 +46,9 @@ for _, strategy in helpers.each_strategy() do
 
       vitals = kong_vitals.new({
         db = db,
+        ttl_seconds = 3600,
+        ttl_minutes = 24 * 60,
+        ttl_days = 30,
       })
 
       vitals:init()
@@ -1184,6 +1187,11 @@ for _, strategy in helpers.each_strategy() do
             stat_labels = {
               "status_code_classes_total",
             },
+            status_code_totals = {
+              ["4xx"] = 57,
+              ["5xx"] = 12,
+              ["total"] = 69,
+            },
           },
           stats = {
             cluster = {
@@ -1236,6 +1244,13 @@ for _, strategy in helpers.each_strategy() do
             level = "cluster",
             stat_labels = {
               "status_codes_per_service_total",
+            },
+            status_code_totals = {
+              ["200"] = 539,
+              ["204"] = 17,
+              ["400"] = 5,
+              ["500"] = 1,
+              ["total"] = 562,
             },
           },
           stats = {
@@ -1294,6 +1309,12 @@ for _, strategy in helpers.each_strategy() do
             stat_labels = {
               "status_code_classes_per_workspace_total",
             },
+            status_code_totals = {
+              ["2xx"] = 556,
+              ["4xx"] = 5,
+              ["5xx"] = 1,
+              ["total"] = 562,
+            },
           },
           stats = {
             cluster = {
@@ -1350,6 +1371,13 @@ for _, strategy in helpers.each_strategy() do
             level = "cluster",
             stat_labels = {
               "status_codes_per_route_total",
+            },
+            status_code_totals = {
+              ["200"] = 539,
+              ["204"] = 17,
+              ["400"] = 5,
+              ["500"] = 1,
+              ["total"] = 562,
             },
           },
           stats = {
@@ -1410,6 +1438,13 @@ for _, strategy in helpers.each_strategy() do
             level = "cluster",
             stat_labels = {
               "status_codes_per_consumer_route_total",
+            },
+            status_code_totals = {
+              ["200"] = 16,
+              ["204"] = 3,
+              ["400"] = 10,
+              ["500"] = 1,
+              ["total"] = 30,
             },
           },
           stats = {

@@ -1551,6 +1551,9 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   local now_ms = ngx_now()
 
   local check_immutable_fields = false
+  local is_data_plane = kong and
+                        kong.configuration and
+                        kong.configuration.role == "data_plane" or false
 
   data = tablex.deepcopy(data)
 
@@ -1615,7 +1618,9 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
       elseif key == "updated_at" and (context == "insert" or
                                       context == "upsert" or
-                                      context == "update") then
+                                      context == "update") and
+                                      not is_data_plane then
+
         if field.type == "number" then
           data[key] = now_ms
         elseif field.type == "integer" then

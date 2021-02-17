@@ -101,7 +101,7 @@ local function load_configuration(ctx,
 
   local trace = tracing.trace("load_plugin_config", { plugin_name = name })
 
-  local ws_id = workspaces.get_workspace_id() or kong.default_workspace
+  local ws_id = workspaces.get_workspace_id(ctx) or kong.default_workspace
   local key = kong.db.plugins:cache_key(name,
                                         route_id,
                                         service_id,
@@ -304,8 +304,12 @@ local function get_next(self)
     local combos = self.combos[name]
     if combos then
       local cfg = load_configuration_through_combos(ctx, combos, plugin)
+      -- XXX EE In the case that we are loading the configuration from a named workspace,
+      -- we need this new config context to override any values that may already exist for
+      -- the table key that originated from the default workspace. If the context is a nil
+      -- value that means the plugin exists but is disabled in the workspace.
+      plugins[name] = cfg
       if cfg then
-        plugins[name] = cfg
         if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
           ctx.buffered_proxying = true
         end
@@ -341,7 +345,7 @@ local function iterate(self, phase, ctx)
   if ctx and not ctx.plugins then
     ctx.plugins = {}
   end
-  local ws_id = workspaces.get_workspace_id() or kong.default_workspace
+  local ws_id = workspaces.get_workspace_id(ctx) or kong.default_workspace
 
   local ws = self.ws[ws_id]
   if not ws then

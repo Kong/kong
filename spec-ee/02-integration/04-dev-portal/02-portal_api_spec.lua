@@ -4656,6 +4656,9 @@ for _, strategy in helpers.each_strategy() do
                   interval    = "seconds",
                   level       = "cluster",
                   stat_labels = { "status_codes_per_consumer_total" },
+                  status_code_totals = {
+                    ["total"] = 0
+                  },
                 },
                 stats = {},
               }, json)
@@ -4683,6 +4686,9 @@ for _, strategy in helpers.each_strategy() do
                   interval    = "minutes",
                   level       = "cluster",
                   stat_labels = { "status_codes_per_consumer_total" },
+                  status_code_totals = {
+                    ["total"] = 0
+                  },
                 },
                 stats = {},
               }, json)
@@ -4743,6 +4749,9 @@ for _, strategy in helpers.each_strategy() do
                   interval    = "seconds",
                   level       = "cluster",
                   stat_labels = { "status_codes_per_consumer_route_total" },
+                  status_code_totals = {
+                    ["total"] = 0
+                  },
                 },
                 stats = {},
               }, json)
@@ -4770,6 +4779,9 @@ for _, strategy in helpers.each_strategy() do
                   interval    = "minutes",
                   level       = "cluster",
                   stat_labels = { "status_codes_per_consumer_route_total" },
+                  status_code_totals = {
+                    ["total"] = 0
+                  },
                 },
                 stats = {},
               }, json)

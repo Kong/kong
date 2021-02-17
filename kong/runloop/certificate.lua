@@ -131,19 +131,33 @@ end
 
 local function fetch_sni(sni, i)
   -- XXX EE [[
-  -- SNIs need to be gathered from each workspace
+  local show_ws_id_options = { show_ws_id = true }
+  -- SNIs need to be gathered from each workspace for db strategy
   local orig_ws = workspaces.get_workspace()
   for workspace, _ in singletons.db.workspaces:each() do
     workspaces.set_workspace(workspace)
-  -- XXX EE ]]
-    local row, err = singletons.db.snis:select_by_name(sni)
+    -- set show_ws_id to true
+    local row, err = singletons.db.snis:select_by_name(sni, show_ws_id_options)
+    -- XXX EE ]]
     workspaces.set_workspace(orig_ws) -- XXX EE: Reset the workspace
     if err then
       return nil, "failed to fetch '" .. sni .. "' SNI: " .. err, i, nil
     end
 
     if row then
-      row["workspace"] = workspace -- XXX EE: add the workspace information to the table
+      -- XXX EE [[
+      -- add the workspace information to the table
+      -- Note: the behaviour of db and off strategy doesn't really agree with
+      -- each other. While db strategies always require a ws_id even if the
+      -- entity is unique_across_ws, off strategy doesn't. So in off strategy,
+      -- the loop in this function **always** iterrate only one time, no matter
+      -- what `workspace` is currently being set. So it's only safe to return the workspace
+      -- same as the ws_id field of the SNI entity instead of the iterrated workspace
+      -- variable.
+      -- Note: this fix is still a hack. Ideally we should make db strategies be able
+      -- to omit ws_id when selecting unique_across_ws entities.
+      row["workspace"] = { id = row.ws_id }
+      -- XXX EE ]]
       return row, nil, i
     end
   end

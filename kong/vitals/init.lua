@@ -239,8 +239,8 @@ function _M.new(opts)
 
     local strategy_opts = {
       ttl_seconds = opts.ttl_seconds or 3600,
-      ttl_minutes = opts.ttl_minutes or 90000,
-      ttl_days = opts.ttl_days or 0,
+      ttl_minutes = opts.ttl_minutes and opts.ttl_minutes * 60 or 90000,
+      ttl_days = opts.ttl_days and opts.ttl_days * 60 * 60 * 24 or 0,
     }
 
     local db_strategy
@@ -285,9 +285,10 @@ function _M.new(opts)
     counters       = {},
     flush_interval = opts.flush_interval or 90000,
     ttl_seconds    = opts.ttl_seconds or 3600,
-    ttl_minutes    = opts.ttl_minutes or 90000,
-    ttl_days       = opts.ttl_days or 0,
+    ttl_minutes    = opts.ttl_minutes and opts.ttl_minutes * 60 or 90000,
+    ttl_days       = opts.ttl_days and opts.ttl_days * 60 * 60 * 24 or 0,
     initialized    = false,
+    shm            = ngx.shared.kong_vitals,
     tsdb_storage   = tsdb_storage,
     hybrid_cp      = hybrid_cp,
   }
@@ -297,7 +298,54 @@ end
 
 
 function _M:enabled()
-  return kong.configuration.vitals and self.initialized
+  return kong.configuration.vitals and self.initialized and self:get_running()
+end
+
+
+function _M:register_config_change(events_handler)
+  events_handler.register(function(data, event, source, pid)
+
+    log(DEBUG, _log_prefix, "config change event, incoming vitals: ", kong.configuration.vitals)
+
+    if kong.configuration.vitals then
+      if not self.initialized then
+        self:init()
+      end
+      if not self:get_running() then
+        self:start()
+      end
+    elseif self:get_running() then
+      self:stop()
+    end
+
+  end, "kong:configuration", "change")
+end
+
+
+function _M:stop()
+  log(INFO, _log_prefix, "stopping")
+
+  reports.add_ping_value("vitals", false)
+  for _, v in ipairs(PH_STATS) do
+    reports.add_ping_value(v, false)
+  end
+
+  self:set_running(false)
+  self.strategy:stop()
+end
+
+
+function _M:set_running(running)
+  local ok, err = self.shm:set("vitals-running", running)
+  if not ok then
+    log(WARN, "could not set vitals running state from 'kong_vitals' shm: ", err)
+  end
+end
+
+
+function _M:get_running()
+  local running = self.shm:get("vitals-running")
+  return running and running or false
 end
 
 
@@ -323,6 +371,12 @@ function _M:init()
     return self:init_failed(nil, "failed to init vitals strategy " .. err)
   end
 
+  self.initialized = true
+
+  return self:start()
+end
+
+function _M:start()
   local delay = self.flush_interval
   local when  = delay - (ngx.now() - (math.floor(ngx.now() / delay) * delay))
   log(INFO, _log_prefix, "starting vitals timer (1) in ", when, " seconds")
@@ -334,7 +388,6 @@ function _M:init()
     return self:init_failed(nil, "failed to start recurring vitals timer (1): " .. err)
   end
 
-  self.initialized = true
 
   -- we're configured, initialized, and ready to phone home
   reports.add_ping_value("vitals", true)
@@ -349,6 +402,9 @@ function _M:init()
       return res
     end)
   end
+
+  self:set_running(true)
+  self.strategy:start()
 
   return "ok"
 end
@@ -370,6 +426,12 @@ persistence_handler = function(premature, self)
     -- TSDB strategy is read-only, the metrics will be sent by statsd-advanced plugin.
     -- Hybrid Control Plane doesn't maintain its own counters, instead it just ingest
     -- what Data Plane sends into database.
+    return
+  end
+
+  -- do not run / re schedule timer when not running (hot reload)
+  if not self:get_running() then
+    log(INFO, _log_prefix, "stopping timer; persistence handler")
     return
   end
 
@@ -483,6 +545,7 @@ local function convert_status_codes(res, meta, key_by)
   meta.stat_labels =  STATUS_CODE_STAT_LABELS[meta.entity_type or "cluster"]
   meta.interval = meta.duration
   meta.duration = nil
+  meta.status_code_totals = { total = 0 }
 
   -- no stats to process, return minimal metadata along with empty stats
   if not res[1] then
@@ -496,6 +559,7 @@ local function convert_status_codes(res, meta, key_by)
     local key = key_by and row[key_by] or "cluster"
     local at = tostring(row.at)
     local code = row.code_class and row.code_class .. "xx" or tostring(row.code)
+    local current_total = meta.status_code_totals[code] or 0
 
     meta.earliest_ts = math_min(meta.earliest_ts, at)
     meta.latest_ts = math_max(meta.latest_ts, at)
@@ -503,6 +567,8 @@ local function convert_status_codes(res, meta, key_by)
     stats[key] = stats[key] or {}
     stats[key][at] = stats[key][at] or {}
     stats[key][at][code] = row.count
+    meta.status_code_totals[code] = current_total + row.count
+    meta.status_code_totals.total = meta.status_code_totals.total + row.count
   end
 
   return { stats = stats, meta = meta }
@@ -723,12 +789,12 @@ local KEY_FORMATS = {
   codes_route = {
     key_format = "%s|%s|%s|%s|%s|",
     key_values = { IDX.route, IDX.service, IDX.code, IDX.at, IDX.duration },
-    required_fields = { IDX.route, IDX.service },
+    required_fields = { IDX.route, IDX.service, IDX.code },
   },
   codes_service = {
     key_format = "%s|%s|%s|%s|",
     key_values = { IDX.service, IDX.code, IDX.at, IDX.duration },
-    required_fields = { IDX.service },
+    required_fields = { IDX.service, IDX.code },
   },
   code_classes = {
     key_format = "%s|%s|%s|",
@@ -748,7 +814,7 @@ local KEY_FORMATS = {
   codes_consumer_route = {
     key_format = "%s|%s|%s|%s|%s|%s|",
     key_values = { IDX.consumer, IDX.route, IDX.service, IDX.code, IDX.at, IDX.duration },
-    required_fields = { IDX.consumer, IDX.route, IDX.service },
+    required_fields = { IDX.consumer, IDX.route, IDX.service, IDX.code },
   },
 }
 
@@ -1142,6 +1208,9 @@ function _M:get_index()
     },
     minutes = {
       retention_period_seconds = self.ttl_minutes,
+    },
+    days = {
+      retention_period_seconds = self.ttl_days,
     },
   }
 
@@ -1545,7 +1614,7 @@ function _M:log_phase_after_plugins(ctx, status)
     minutes .. "|60|"
   }
 
-  if not self.tsdb_storage and self.db_strategy == "postgres" and self.ttl_days > 0 then
+  if self.ttl_days > 0 then
     table.insert(key_prefixes, days .. "|86400|")
   end
 

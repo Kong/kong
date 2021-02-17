@@ -12,8 +12,8 @@ main() {
   reminder "next/1.5.0.x" "next/2.1.x.x" "Tuesday"
   reminder "next/2.1.x.x" "next/2.2.x.x" "Wednesday"
   reminder "next/2.2.x.x" "next/2.3.x.x" "Wednesday"
-  reminder "kong:master" "next/2.2.x.x" "Thursday"
-  reminder "kong:next" "kong-ee:$LATEST" "Thursday"
+  reminder "kong:master" "next/2.3.x.x" "Thursday"
+#  reminder "kong:next" "kong-ee:$LATEST" "Thursday"
   reminder "$LATEST" "master" "Friday"
 }
 

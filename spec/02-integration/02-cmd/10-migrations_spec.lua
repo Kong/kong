@@ -75,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
     describe("#db reset", function()
       it("cannot run non-interactively without --yes", function()
         local cmd = string.format(helpers.unindent [[
-          echo y | %s KONG_DATABASE=%s %s migrations reset --v
+          echo y | %s KONG_PREFIX=servroot KONG_DATABASE=%s %s migrations reset --v
         ]], lua_path, strategy, helpers.bin_path, helpers.test_conf_path)
         local ok, code, _, stderr = pl_utils.executeex(cmd)
         assert.falsy(ok)
@@ -162,6 +162,13 @@ for _, strategy in helpers.each_strategy() do
         assert.same(0, code)
         assert.same(0, #stdout)
         assert.same(0, #stderr)
+      end)
+
+      it("-p accepts a prefix override", function()
+        local code, stdout, stderr = run_kong("migrations bootstrap -p /dev/null")
+        assert.equal(1, code)
+        assert.equal(0, #stdout)
+        assert.match("/dev/null is not a directory", stderr, 1, true)
       end)
     end)
 

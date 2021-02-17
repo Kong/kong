@@ -1,9 +1,10 @@
 package = "kong"
-version = "2.2.1-0"
+version = "2.3.2-0"
+rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.2.1"
+  tag = "2.3.2"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -12,7 +13,7 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.1",
-  "luasec == 0.9",
+  "luasec == 1.0",
   "luasocket == 3.0-rc1",
   "penlight == 1.9.2",
   "lua-resty-http == 0.15",
@@ -30,6 +31,7 @@ dependencies = {
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
   "luasyslog == 1.0.0",
+  "kikito/sandbox == 1.0.1",
   "lua_pack == 1.0.5",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.08",
@@ -37,13 +39,13 @@ dependencies = {
   "bcrypt == 2.1",
   "lpeg_patterns == 0.5",
   "http == 0.3",
-  "lua-resty-dns-client == 5.1.0",
+  "lua-resty-dns-client == 5.2.1",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.3.0",
+  "lua-resty-healthcheck == 1.4.0",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.6.9",
+  "lua-resty-openssl == 0.6.11",
   "lua-resty-counter == 0.2.1",
   "lua-resty-template == 1.9-1",
   "lua-resty-passwdqc == 1.1-1",
@@ -51,7 +53,7 @@ dependencies = {
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.2",
-  "kong-plugin-serverless-functions ~> 2.0",
+  "kong-plugin-serverless-functions ~> 2.1",
   "kong-prometheus-plugin ~> 1.0",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.3",
@@ -115,7 +117,9 @@ build = {
     ["kong.enterprise_edition.db.typedefs"] = "kong/enterprise_edition/db/typedefs.lua",
     ["kong.enterprise_edition.feature_flags"] = "kong/enterprise_edition/feature_flags.lua",
     ["kong.enterprise_edition.jwt"] = "kong/enterprise_edition/jwt.lua",
+    ["kong.enterprise_edition.licensing"] = "kong/enterprise_edition/licensing.lua",
     ["kong.enterprise_edition.license_helpers"] = "kong/enterprise_edition/license_helpers.lua",
+    ["kong.enterprise_edition.license_utils"] = "kong/enterprise_edition/license_utils.lua",
     ["kong.enterprise_edition.meta"] = "kong/enterprise_edition/meta.lua",
     ["kong.enterprise_edition.oas_config"] = "kong/enterprise_edition/oas_config.lua",
     ["kong.enterprise_edition.plugin_overwrite"] = "kong/enterprise_edition/plugin_overwrite.lua",
@@ -206,6 +210,8 @@ build = {
     ["kong.tools.stream_api"] = "kong/tools/stream_api.lua",
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
     ["kong.tools.messaging"] = "kong/tools/messaging.lua",
+    ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
+    ["kong.tools.uri"] = "kong/tools/uri.lua",
 
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
     ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",
@@ -225,6 +231,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.009_2100_to_2200"] = "kong/enterprise_edition/db/migrations/enterprise/009_2100_to_2200.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2211"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2211.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300_1"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300_1.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",

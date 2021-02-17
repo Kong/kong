@@ -1987,17 +1987,53 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("GET", function()
-          local cookie, service_id
+          local cookie, service_id, developer
 
           lazy_setup(function()
             portal_api_client = assert(ee_helpers.portal_api_client())
             admin_client = assert(helpers.admin_client())
 
+            local res = assert(admin_client:send {
+              method = "POST",
+              path = "/developers/roles",
+              body = {
+                name = "role1"
+              },
+              headers = {["Content-Type"] = "application/json"},
+            })
+
+            assert.res_status(201, res)
+
+            local res = assert(admin_client:send {
+              method = "POST",
+              path = "/developers/roles",
+              body = {
+                name = "role2"
+              },
+              headers = {["Content-Type"] = "application/json"},
+            })
+
+            assert.res_status(201, res)
 
             local res = register_developer(portal_api_client, {
               email = "dale@konghq.com",
               password = "kong",
               meta = "{\"full_name\":\"1337\"}",
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+            developer = resp_body_json.developer
+
+            local res = assert(admin_client:send {
+              method = "PATCH",
+              path = "/developers/" .. developer.id,
+              body = {
+                roles = { "role1" },
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
             })
 
             assert.res_status(200, res)
@@ -2041,12 +2077,71 @@ for _, strategy in helpers.each_strategy() do
                   name = "application-registration",
                   service = { id = service_id },
                 }))
+
+                local doc_config
+
+                if i == 2 then
+                  doc_config = {
+                    contents = [[{
+                      "x-headmatter": {"readable_by": ["role1"]}
+                    }]],
+                    path = "specs/role1.json",
+                  }
+                end
+
+                if i == 4 then
+                  doc_config = {
+                    contents = [[{
+                      "x-headmatter": {"readable_by": ["role2"]}
+                    }]],
+                    path = "specs/role2.json",
+                  }
+                end
+
+                if i == 6 then
+                  doc_config = {
+                    contents = [[{
+                      "x-headmatter": {"readable_by": "*"}
+                    }]],
+                    path = "specs/star.json",
+                  }
+                end
+
+                if i == 8 then
+                  doc_config = {
+                    contents = [[{
+                      "x-headmatter": {}
+                    }]],
+                    path = "specs/noroles.json",
+                  }
+                end
+
+                if doc_config then
+                  local res = assert(admin_client:send {
+                    method = "POST",
+                    path = "/files",
+                    body = doc_config,
+                    headers = {["Content-Type"] = "application/json"}
+                  })
+
+                  assert.res_status(201, res)
+
+                  local res = assert(admin_client:send {
+                    method = "POST",
+                    path = "/services/" .. service_id .. "/document_objects",
+                    body = {
+                      path = doc_config.path
+                    },
+                    headers = {["Content-Type"] = "application/json"}
+                  })
+
+                  assert.res_status(200, res)
+                end
               end
             end
           end)
 
           lazy_teardown(function()
-            -- assert(db:truncate('basicauth_credentials'))
             assert(db:truncate('consumers'))
             assert(db:truncate('developers'))
             assert(db:truncate('services'))
@@ -2064,7 +2159,7 @@ for _, strategy in helpers.each_strategy() do
 
             local body = assert.res_status(200, res)
             local resp_body_json = cjson.decode(body)
-            assert.equal(5, resp_body_json.total)
+            assert.equal(4, resp_body_json.total)
 
             for i, v in ipairs(resp_body_json.data) do
               assert.equal(v.app_registration_config.display_name, v.name)
@@ -2093,7 +2188,7 @@ for _, strategy in helpers.each_strategy() do
 
             local body = assert.res_status(200, res)
             local resp_body_json = cjson.decode(body)
-            assert.equal(5, resp_body_json.total)
+            assert.equal(4, resp_body_json.total)
 
             for i, v in ipairs(resp_body_json.data) do
               assert.equal(v.app_registration_config.display_name, v.name)
@@ -2129,9 +2224,13 @@ for _, strategy in helpers.each_strategy() do
             local resp_body_json = cjson.decode(body)
             assert.equal(2, resp_body_json.total)
 
+            assert.equal(ngx.null, resp_body_json.next)
+          end)
+
+          it("returns a permissioned service when the developer is assigned the proper role", function()
             local res = assert(portal_api_client:send {
               method = "GET",
-              path = resp_body_json.next,
+              path = "/application_services",
               headers = {
                 ["Cookie"] = cookie,
                 ["Content-Type"] = "application/json",
@@ -2140,8 +2239,74 @@ for _, strategy in helpers.each_strategy() do
 
             local body = assert.res_status(200, res)
             local resp_body_json = cjson.decode(body)
-            assert.equal(1, resp_body_json.total)
-            assert.equal(ngx.null, resp_body_json.next)
+            assert.equal(4, resp_body_json.total)
+
+            local res = assert(admin_client:send {
+              method = "PATCH",
+              path = "/developers/" .. developer.id,
+              body = {
+                roles = { "role1", "role2" },
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+
+            assert.res_status(200, res)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services",
+              headers = {
+                ["Cookie"] = cookie,
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+            assert.equal(5, resp_body_json.total)
+          end)
+
+          it("doesn't return a permissioned service when the role is removed from the developer", function()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services",
+              headers = {
+                ["Cookie"] = cookie,
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+            assert.equal(5, resp_body_json.total)
+
+            local res = assert(admin_client:send {
+              method = "PATCH",
+              path = "/developers/" .. developer.id,
+              body = {
+                roles = { "role2" },
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+
+            assert.res_status(200, res)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services",
+              headers = {
+                ["Cookie"] = cookie,
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+            assert.equal(4, resp_body_json.total)
           end)
         end)
       end)

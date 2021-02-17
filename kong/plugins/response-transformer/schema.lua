@@ -31,6 +31,7 @@ end
 local string_array = {
   type = "array",
   default = {},
+  required = true,
   elements = { type = "string" },
 }
 
@@ -38,6 +39,7 @@ local string_array = {
 local colon_string_array = {
   type = "array",
   default = {},
+  required = true,
   elements = { type = "string", match = "^[^:]+:.*$" },
 }
 
@@ -58,6 +60,7 @@ local colon_string_record = {
     { json_types = {
       type = "array",
       default = {},
+      required = true,
       elements = {
         type = "string",
         one_of = { "boolean", "number", "string" }
@@ -70,6 +73,7 @@ local colon_string_record = {
 local colon_headers_array = {
   type = "array",
   default = {},
+  required = true,
   elements = { type = "string", match = "^[^:]+:.*$", custom_validator = validate_colon_headers },
 }
 

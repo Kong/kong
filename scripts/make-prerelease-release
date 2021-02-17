@@ -65,7 +65,7 @@ rest=${xyzversion#*.}
 minor=${rest%%.*}
 patch=${rest##*.}
 prerelease=${version##*-}
-rockspec="kong-$xyzversion-0.rockspec"
+rockspec="kong-$xyzversion$prerelease-0.rockspec"
 branch="release/$xyzversion"
 xyxversion="$major.$minor.0-(alpha|beta).n"
 prev_version="$xyzversion"
@@ -75,14 +75,9 @@ if [[ $version == *"beta"* ]]; then
   beta=true
 fi
 
-if ! [[ "$version" =~ ^[0-9]+.[0-9]+.0-(alpha|beta)\.[0-9]$ ]]
+if ! [[ "$version" =~ ^[0-9]+.[0-9]+.0-(alpha|beta|rc)\.[0-9]$ ]]
 then
-   die "first argument must be a version in x.y.z-(alpha|beta).n format"
-fi
-
-if [[ "$rc" = "1" ]]
-then
-   die "use make-rc1-release for rc1, and this script only for the following rcs"
+   die "first argument must be a version in x.y.z-(alpha|beta|rc).n format"
 fi
 
 if [ "$step" = "" ]
@@ -133,16 +128,16 @@ case "$step" in
       ;;
    #---------------------------------------------------------------------------
    version_bump)
-      sed -i 's/major = [0-9]*/major = '$major'/' kong/meta.lua
-      sed -i 's/minor = [0-9]*/minor = '$minor'/' kong/meta.lua
-      sed -i 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
-      sed -i 's/-- suffix.*/suffix = "'$prerelease'"/' kong/meta.lua
-      sed -i 's/ suffix.*/ suffix = "'$prerelease'"/' kong/meta.lua
+      sed -i.bak 's/major = [0-9]*/major = '$major'/' kong/meta.lua
+      sed -i.bak 's/minor = [0-9]*/minor = '$minor'/' kong/meta.lua
+      sed -i.bak 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
+      sed -i.bak 's/-- suffix.*/suffix = "'$prerelease'"/' kong/meta.lua
+      sed -i.bak 's/ suffix.*/ suffix = "'$prerelease'"/' kong/meta.lua
       if ! [ -f "$rockspec" ]
       then
          old_rockspec=$(ls kong-*-0.rockspec | head -n 1)
-         sed -i 's/^version = ".*"/version = "'$xyzversion''$prerelease'-0"/' "$old_rockspec"
-         sed -i 's/^  tag = ".*"/  tag = "'$version'"/' "$old_rockspec"
+         sed -i.bak 's/^version = ".*"/version = "'$xyzversion''$prerelease'-0"/' "$old_rockspec"
+         sed -i.bak 's/^  tag = ".*"/  tag = "'$version'"/' "$old_rockspec"
       fi
 
       git diff kong/meta.lua $old_rockspec

@@ -385,6 +385,15 @@ function _M:init(node_id, hostname)
 end
 
 
+-- no-op interface methods for handling runtime changes for vitals
+function _M:start()
+  return true
+end
+function _M:stop()
+  return true
+end
+
+
 function _M:select_stats(query_type, level, node_id, start_ts, end_ts)
   local tname, not_before_ts
   local now = time()

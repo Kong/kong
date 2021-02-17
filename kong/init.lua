@@ -101,6 +101,8 @@ local portal_emails = require "kong.portal.emails"
 local admin_emails = require "kong.enterprise_edition.admin.emails"
 local portal_router = require "kong.portal.router"
 local invoke_plugin = require "kong.enterprise_edition.invoke_plugin"
+local licensing = require "kong.enterprise_edition.licensing"
+
 
 local kong             = kong
 local ngx              = ngx
@@ -458,9 +460,6 @@ function Kong.init()
           "global named 'kong' (please use 'Kong' instead)")
   end
 
-  -- EE needs to know which kind of featureset to run ASAP
-  kong.license = ee.read_license_info()
-
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path, nil, { from_kong_env = true }))
@@ -473,12 +472,10 @@ function Kong.init()
   math.randomseed()
 
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
+
   tracing.init(config)
 
-  local err = ee.feature_flags_init(config)
-  if err then
-    error(tostring(err))
-  end
+  ee.license_hooks(config)
 
   local db = assert(DB.new(config))
   tracing.connector_query_wrap(db.connector)
@@ -510,7 +507,25 @@ function Kong.init()
   kong.db = db
   kong.dns = singletons.dns
 
-  -- XXX EE [[
+  -- EE [[
+  -- EE licensing [[
+  singletons.licensing     = licensing(config)
+  config                   = singletons.licensing.configuration
+  kong.configuration       = singletons.licensing.configuration
+  -- XXX uncomment this once we remove meta magic from licensing
+  -- singletons.configuration = singletons.licensing.configurartion
+
+  kong.licensing = singletons.licensing
+
+  ee.license_hooks(config)
+  -- EE licensing ]]
+
+
+  local err = ee.feature_flags_init(config)
+  if err then
+    error(tostring(err))
+  end
+
   kong.internal_proxies = internal_proxies.new()
   singletons.portal_emails = portal_emails.new(config)
   singletons.admin_emails = admin_emails.new(config)
@@ -529,7 +544,6 @@ function Kong.init()
       ttl_minutes    = config.vitals_ttl_minutes,
       ttl_days       = config.vitals_ttl_days,
   }
-
 
   local counters_strategy = require("kong.counters.sales.strategies." .. kong.db.strategy):new(kong.db)
   kong.sales_counters = sales_counters.new({ strategy = counters_strategy })
@@ -633,6 +647,7 @@ function Kong.init_worker()
   end
   kong.cluster_events = cluster_events
 
+  kong.vitals:register_config_change(worker_events)
   -- vitals functions require a timer, so must start in worker context
   local ok, err = kong.vitals:init()
   if not ok then
@@ -763,7 +778,7 @@ function Kong.ssl_certificate()
   log_init_worker_errors(ctx)
 
   -- this is the first phase to run on an HTTPS request
-  ngx.ctx.workspace = kong.default_workspace
+  ctx.workspace = kong.default_workspace
 
   runloop.certificate.before(ctx)
   local plugins_iterator = runloop.get_updated_plugins_iterator()
@@ -796,7 +811,7 @@ function Kong.rewrite()
   end
 
   kong_global.set_phase(kong, PHASES.rewrite)
-  kong_resty_ctx.stash_ref()
+  kong_resty_ctx.stash_ref(ctx)
 
   local is_https = var.https == "on"
   if not is_https then
@@ -805,18 +820,18 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
+  if not ctx.workspace then
+    ctx.workspace = kong.default_workspace
+  end
+
   -- On HTTPS requests, the plugins iterator is already updated in the ssl_certificate phase
   local plugins_iterator
   if is_https then
     plugins_iterator = runloop.get_plugins_iterator()
   else
-    -- this is the first phase to run on a plain HTTP request
-    ngx.ctx.workspace = kong.default_workspace
-
     plugins_iterator = runloop.get_updated_plugins_iterator()
   end
 
-  ctx.workspace = kong.default_workspace
   execute_plugins_iterator(plugins_iterator, "rewrite", ctx)
 
   runloop.rewrite.after(ctx)
@@ -915,9 +930,12 @@ do
 
     local res = ngx.location.capture("/kong_buffered_http", options)
     if res.truncated then
+      kong_global.set_phase(kong, PHASES.error)
       ngx.status = 502
-      return kong_error_handlers(ngx)
+      return kong_error_handlers(ctx)
     end
+
+    kong_global.set_phase(kong, PHASES.response)
 
     local status = res.status
     local headers = res.header
@@ -946,8 +964,6 @@ do
     if not ctx.KONG_PROXY_LATENCY then
       ctx.KONG_PROXY_LATENCY = ctx.KONG_RESPONSE_START - ctx.KONG_PROCESSING_START
     end
-
-    kong_global.set_phase(kong, PHASES.response)
 
     kong.response.set_status(status)
     kong.response.set_headers(headers)
@@ -1067,7 +1083,7 @@ function Kong.balancer()
 
     if balancer_data.scheme == "https" then
       -- upstream_host is SNI
-      pool = pool .. "|" .. ngx.var.upstream_host
+      pool = pool .. "|" .. var.upstream_host
 
       if ctx.service and ctx.service.client_certificate then
         pool = pool .. "|" .. ctx.service.client_certificate.id
@@ -1356,8 +1372,6 @@ function Kong.log()
   end
 
   kong_global.set_phase(kong, PHASES.log)
-
-  local ctx = ngx.ctx
 
   runloop.log.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()

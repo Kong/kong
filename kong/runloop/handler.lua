@@ -44,6 +44,7 @@ local timer_every  = ngx.timer.every
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
 local unpack       = unpack
+local escape       = require("kong.tools.uri").escape
 
 
 local NOOP = function() end
@@ -926,16 +927,12 @@ end
 
 
 local function set_init_versions_in_cache()
-  local ok, err = kong.core_cache:get("router:version", TTL_ZERO, function()
-    return "init"
-  end)
+  local ok, err = kong.core_cache:safe_set("router:version", "init")
   if not ok then
     return nil, "failed to set router version in cache: " .. tostring(err)
   end
 
-  local ok, err = kong.core_cache:get("plugins_iterator:version", TTL_ZERO, function()
-    return "init"
-  end)
+  local ok, err = kong.core_cache:safe_set("plugins_iterator:version", "init")
   if not ok then
     return nil, "failed to set plugins iterator version in cache: " ..
                 tostring(err)
@@ -1065,13 +1062,13 @@ return {
 
       local router = get_updated_router()
 
-      local match_t = router.exec()
+      local match_t = router.exec(ctx)
       if not match_t then
         log(ERR, "no Route found with those values")
         return exit(500)
       end
 
-      ngx.ctx.workspace = match_t.route and match_t.route.ws_id
+      ctx.workspace = match_t.route and match_t.route.ws_id
 
       local route = match_t.route
       local service = match_t.service
@@ -1099,7 +1096,8 @@ return {
   },
   rewrite = {
     before = function(ctx)
-      ctx.host_port = HOST_PORTS[var.server_port] or var.server_port
+      local server_port = var.server_port
+      ctx.host_port = HOST_PORTS[server_port] or server_port
 
       -- special handling for proxy-authorization and te headers in case
       -- the plugin(s) want to specify them (store the original)
@@ -1125,7 +1123,7 @@ return {
         return kong.response.exit(404, { message = "no Route matched with those values" })
       end
 
-      ngx.ctx.workspace = match_t.route and match_t.route.ws_id
+      ctx.workspace = match_t.route and match_t.route.ws_id
 
       local http_version   = ngx.req.http_version()
       local scheme         = var.scheme
@@ -1243,7 +1241,7 @@ return {
       --       router, which might have truncated it (`strip_uri`).
       -- `host` is the original header to be preserved if set.
       var.upstream_scheme = match_t.upstream_scheme -- COMPAT: pdk
-      var.upstream_uri    = match_t.upstream_uri
+      var.upstream_uri    = escape(match_t.upstream_uri)
       var.upstream_host   = match_t.upstream_host
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers

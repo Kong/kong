@@ -14,6 +14,9 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
 
+-- XXX EE
+local hooks = require "kong.hooks"
+
 
 local Plugins = {}
 
@@ -307,6 +310,9 @@ function Plugins:load_plugin_schemas(plugin_set)
   end
 
   reports.add_immutable_value("go_plugins_cnt", go_plugins_cnt)
+
+  -- XXX EE
+  assert(hooks.run_hook("dao:plugins:load", handlers))
 
   self.handlers = handlers
 

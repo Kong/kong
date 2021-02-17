@@ -578,19 +578,43 @@ local function should_send_config_update(node_version, node_plugins)
                   CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
   end
 
-  for i, p in ipairs(PLUGINS_LIST) do
-    local np = node_plugins[i]
+  -- XXX EE: allow DP to have a superset of CP's plugins
+  local p, np
+  local i, j = #PLUGINS_LIST, #node_plugins
+
+  if j < i then
+    return false, "CP and DP does not have same set of plugins installed",
+                  CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+  end
+
+  while i > 0 and j > 0 do
+    p = PLUGINS_LIST[i]
+    np = node_plugins[j]
+
     if p.name ~= np.name then
-      return false, "CP and DP does not have same set of plugins installed",
-                    CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+      goto continue
     end
 
-    if p.version ~= np.version then
+    -- XXX EE
+    -- ignore plugins without a version (route-by-header is deprecated)
+    if p.version and np.version and
+    -- major/minor check that ignores anything after the second digit
+       p.version:match("^(%d+%.%d+)") ~= np.version:match("^(%d+%.%d+)")
+    then
       return false, "plugin \"" .. p.name .. "\" version differs between " ..
                     "CP and DP, CP has version " .. tostring(p.version) ..
                     " while DP has version " .. tostring(np.version),
                     CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
     end
+
+    i = i - 1
+    ::continue::
+    j = j - 1
+  end
+
+  if i > 0 then
+    return false, "CP and DP does not have same set of plugins installed",
+                    CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
   end
 
   return true
@@ -943,14 +967,20 @@ end
 function _M.init(conf)
   assert(conf, "conf can not be nil", 2)
 
-  if conf.role == "data_plane" or conf.role == "control_plane" then
-    assert(init_mtls(conf))
+  if conf.role ~= "data_plane" and conf.role ~= "control_plane" then
+    return
   end
+
+  assert(init_mtls(conf))
 end
 
 
 function _M.init_worker(conf)
   assert(conf, "conf can not be nil", 2)
+
+  if conf.role ~= "data_plane" and conf.role ~= "control_plane" then
+    return
+  end
 
   PLUGINS_LIST = assert(kong.db.plugins:get_handlers())
   table.sort(PLUGINS_LIST, function(a, b)

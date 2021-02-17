@@ -3,6 +3,9 @@
 SCRIPT=$(basename $0)
 LOCAL_PATH=$(dirname $(realpath $0))
 KONG_PLUGIN=${KONG_PLUGIN:-$PWD}
+DO_RELEASE=${DO_RELEASE:-0}
+DO_BUMP=${DO_BUMP:-1}
+
 # XXX Maybe our default could be empty, that could mean, get LAST element
 BUMP_COMPONENT=${BUMP_COMPONENT:-2}
 
@@ -29,6 +32,8 @@ Options:
   --bump-component N    bump component N in x(0).y(1).z(2) (default: 2)
   -f, --force           do not ask for confirmation
   --check-requirements  check for required and optional commands
+  --release
+  --no-bump
   -v                    verbose
   -h, --help            show this help
 
@@ -50,6 +55,12 @@ function bump_version {
 function parse_args {
   while [[ $# -gt 0 ]]; do
     case $1 in
+      --release)
+        DO_RELEASE=1
+        ;;
+      --no-bump)
+        DO_BUMP=0
+        ;;
       --bump-component)
         BUMP_COMPONENT=$2
         parse_integer $BUMP_COMPONENT $2
@@ -79,21 +90,7 @@ function parse_args {
 }
 
 
-function main {
-  # 0) Check that current repo is clean
-  git rev-parse --git-dir &> /dev/null || err "not a git repo"
-  [[ -z $(git status --porcelain) ]] || err "repo is not clean"
-
-  # 1) Check if something changed since last tag
-  git fetch --all --tags
-  if [[ -z $(git rev-list $(git describe --tags --abbrev=0)..HEAD) ]]; then
-    >&2 echo "No new commits since last tag"
-    exit 0
-  fi
-
-  # 2)
-  get_version
-  >&2 echo "Found version: $VERSION"
+function bump {
   OLD_VERSION=$VERSION
   VERSION=$(bump_version $VERSION $BUMP_COMPONENT)
   >&2 echo "Bumping to version: $VERSION"
@@ -146,6 +143,47 @@ eof
         hub pull-request -m "Bump to $VERSION" --reviewer "Kong/team-fast-track"
       fi
     fi
+  fi
+}
+
+
+function release {
+  ! hash hub &> /dev/null && err "hub is required to make releases"
+  local tag=$VERSION
+
+  >&2 echo "Last release: $(hub release -L 1)"
+  >&2 echo "Last tag: $(git describe --tags --abbrev=0)"
+
+  if ! confirm "is $tag the right tag"; then
+    read -r -p "Then plz input a tag: " tag
+  fi
+
+  hub release create $tag -m $tag
+}
+
+
+function main {
+  # 0) Check that current repo is clean
+  git rev-parse --git-dir &> /dev/null || err "not a git repo"
+  [[ -z $(git status --porcelain) ]] || err "repo is not clean"
+
+  # 1) Check if something changed since last tag
+  git fetch --all --tags
+  if [[ -z $(git rev-list $(git describe --tags --abbrev=0)..HEAD) ]]; then
+    >&2 echo "No new commits since last tag"
+    exit 0
+  fi
+
+  # 2)
+  get_version
+  >&2 echo "Found version: $VERSION"
+
+  if [[ $DO_BUMP == 1 ]]; then
+    bump
+  fi
+
+  if [[ $DO_RELEASE == 1 ]]; then
+    release
   fi
 }
 
