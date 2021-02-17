@@ -113,7 +113,6 @@ describe("http integration tests with zipkin server (no http_endpoint) [#"
     end)
   end)
 
-
   it("propagates w3c tracing headers", function()
     local trace_id = gen_trace_id(16) -- w3c only admits 16-byte trace_ids
     local parent_id = gen_span_id()
@@ -143,6 +142,23 @@ describe("http integration tests with zipkin server (no http_endpoint) [#"
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
     assert.matches(trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
+  end)
+
+  it("propagates ot headers", function()
+    local trace_id = gen_trace_id(8)
+    local span_id = gen_span_id()
+    local r = proxy_client:get("/", {
+      headers = {
+        ["ot-tracer-traceid"] = trace_id,
+        ["ot-tracer-spanid"] = span_id,
+        ["ot-tracer-sampled"] = "1",
+        host = "http-route",
+      },
+    })
+    local body = assert.response(r).has.status(200)
+    local json = cjson.decode(body)
+
+    assert.equals(trace_id, json.headers["ot-tracer-traceid"])
   end)
 end)
 end

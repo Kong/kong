@@ -1,5 +1,5 @@
 local to_hex = require "resty.string".to_hex
-
+local table_merge = require "kong.tools.utils".table_merge
 local unescape_uri = ngx.unescape_uri
 local char = string.char
 local match = string.match
@@ -15,10 +15,10 @@ local baggage_mt = {
 
 local B3_SINGLE_PATTERN =
   "^(%x+)%-(%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x%x)%-?([01d]?)%-?(%x*)$"
-
 local W3C_TRACECONTEXT_PATTERN = "^(%x+)%-(%x+)%-(%x+)%-(%x+)$"
-
 local JAEGER_TRACECONTEXT_PATTERN = "^(%x+):(%x+):(%x+):(%x+)$"
+local JAEGER_BAGGAGE_PATTERN = "^uberctx%-(.*)$"
+local OT_BAGGAGE_PATTERN = "^ot-baggage%-(.*)$"
 
 local function hex_to_char(c)
   return char(tonumber(c, 16))
@@ -33,10 +33,11 @@ local function from_hex(str)
 end
 
 
-local function parse_jaeger_baggage_headers(headers)
+local function parse_baggage_headers(headers, header_pattern)
+  -- account for both ot and uber baggage headers
   local baggage
   for k, v in pairs(headers) do
-    local baggage_key = match(k, "^uberctx%-(.*)$")
+    local baggage_key = match(k, header_pattern)
     if baggage_key then
       if baggage then
         baggage[baggage_key] = unescape_uri(v)
@@ -205,6 +206,48 @@ local function parse_w3c_trace_context_headers(w3c_header)
   return trace_id, parent_id, should_sample
 end
 
+local function parse_ot_headers(headers)
+  local warn = kong.log.warn
+
+  local should_sample = headers["ot-tracer-sampled"]
+  if should_sample == "1" or should_sample == "true" then
+    should_sample = true
+  elseif should_sample == "0" or should_sample == "false" then
+    should_sample = false
+  elseif should_sample ~= nil then
+    warn("ot-tracer-sampled header invalid; ignoring.")
+    should_sample = nil
+  end
+
+  local trace_id, span_id
+  local had_invalid_id = false
+
+  local trace_id_header = headers["ot-tracer-traceid"]
+  if trace_id_header and ((#trace_id_header ~= 16 and #trace_id_header ~= 32) or trace_id_header:match("%X")) then
+    warn("ot-tracer-traceid header invalid; ignoring.")
+    had_invalid_id = true
+  else
+    trace_id = trace_id_header
+  end
+
+  local span_id_header = headers["ot-tracer-spanid"]
+  if span_id_header and (#span_id_header ~= 16 or span_id_header:match("%X")) then
+    warn("ot-tracer-spanid header invalid; ignoring.")
+    had_invalid_id = true
+  else
+    span_id = span_id_header
+  end
+
+  if trace_id == nil or had_invalid_id then
+    return nil, nil, should_sample
+  end
+
+  trace_id = from_hex(trace_id)
+  span_id = from_hex(span_id)
+
+  return trace_id, span_id, should_sample
+end
+
 
 local function parse_jaeger_trace_context_headers(jaeger_header)
   -- allow testing to spy on this.
@@ -263,11 +306,16 @@ end
 --   * spec: https://github.com/openzipkin/b3-propagation/blob/master/RATIONALE.md#b3-single-header-format
 -- * W3C "traceparent" header - also a composed field
 --   * spec: https://www.w3.org/TR/trace-context/
+-- * Jaeger's uber-trace-id & baggage headers
+--   * spec: https://www.jaegertracing.io/docs/1.21/client-libraries/#tracespan-identity
+-- * OpenTelemetry ot-tracer-* tracing headers.
+--   * OpenTelemetry spec: https://github.com/open-telemetry/opentelemetry-specification
+--   * Base implementation followed: https://github.com/open-telemetry/opentelemetry-java/blob/96e8523544f04c305da5382854eee06218599075/extensions/trace_propagators/src/main/java/io/opentelemetry/extensions/trace/propagation/OtTracerPropagator.java
 --
 -- The plugin expects request to be using *one* of these types. If several of them are
 -- encountered on one request, only one kind will be transmitted further. The order is
 --
---      B3-single > B3 > W3C
+--      B3-single > B3 > W3C > Jaeger > OT
 --
 -- Exceptions:
 --
@@ -308,6 +356,11 @@ local function find_header_type(headers)
   if jaeger_header then
     return "jaeger", jaeger_header
   end
+
+  local ot_header = headers["ot-tracer-traceid"]
+  if ot_header then
+    return "ot", ot_header
+  end
 end
 
 
@@ -322,13 +375,24 @@ local function parse(headers)
     trace_id, parent_id, should_sample = parse_w3c_trace_context_headers(composed_header)
   elseif header_type == "jaeger" then
     trace_id, span_id, parent_id, should_sample = parse_jaeger_trace_context_headers(composed_header)
+  elseif header_type == "ot" then
+    trace_id, parent_id, should_sample = parse_ot_headers(headers)
   end
 
   if not trace_id then
     return header_type, trace_id, span_id, parent_id, should_sample
   end
 
-  local baggage = parse_jaeger_baggage_headers(headers)
+  -- Parse baggage headers
+  local baggage
+  local ot_baggage = parse_baggage_headers(headers, OT_BAGGAGE_PATTERN)
+  local jaeger_baggage = parse_baggage_headers(headers, JAEGER_BAGGAGE_PATTERN)
+  if ot_baggage and jaeger_baggage then
+    baggage = table_merge(ot_baggage, jaeger_baggage)
+  else
+    baggage = ot_baggage or jaeger_baggage or nil
+  end
+
 
   return header_type, trace_id, span_id, parent_id, should_sample, baggage
 end
@@ -346,8 +410,7 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
 
   found_header_type = found_header_type or conf_default_header_type or "b3"
 
-  if conf_header_type == "b3"
-  or found_header_type == "b3"
+  if conf_header_type == "b3" or found_header_type == "b3"
   then
     set_header("x-b3-traceid", to_hex(proxy_span.trace_id))
     set_header("x-b3-spanid", to_hex(proxy_span.span_id))
@@ -383,6 +446,16 @@ local function set(conf_header_type, found_header_type, proxy_span, conf_default
         to_hex(proxy_span.span_id),
         to_hex(proxy_span.parent_id),
       proxy_span.should_sample and "01" or "00"))
+  end
+
+  if conf_header_type == "ot" or found_header_type == "ot" then
+    set_header("ot-tracer-traceid", to_hex(proxy_span.trace_id))
+    set_header("ot-tracer-spanid", to_hex(proxy_span.span_id))
+    set_header("ot-tracer-sampled", proxy_span.should_sample and "1" or "0")
+
+    for key, value in proxy_span:each_baggage_item() do
+      set_header("ot-baggage-"..key, ngx.escape_uri(value))
+    end
   end
 
   for key, value in proxy_span:each_baggage_item() do

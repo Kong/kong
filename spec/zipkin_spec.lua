@@ -750,6 +750,54 @@ describe("http integration tests with zipkin server [#"
     end)
   end)
 
+  describe("ot header propagation", function()
+    it("works on regular calls", function()
+      local trace_id = gen_trace_id(8)
+      local span_id = gen_span_id()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          ["ot-tracer-traceid"] = trace_id,
+          ["ot-tracer-spanid"] = span_id,
+          ["ot-tracer-sampled"] = "1",
+          host = "http-route",
+        },
+      })
+
+      local body = assert.response(r).has.status(200)
+      local json = cjson.decode(body)
+      assert.equals(trace_id, json.headers["ot-tracer-traceid"])
+
+      local balancer_span, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, nil, trace_id)
+
+      assert.equals(trace_id, request_span.traceId)
+
+      assert.equals(trace_id, proxy_span.traceId)
+      assert.equals(trace_id, balancer_span.traceId)
+    end)
+
+    it("works on non-matched requests", function()
+      local trace_id = gen_trace_id(8) 
+      local span_id = gen_span_id()
+
+      local r = proxy_client:get("/foobar", {
+        headers = {
+          ["ot-tracer-traceid"] = trace_id,
+          ["ot-tracer-spanid"] = span_id,
+          ["ot-tracer-sampled"] = "1",
+        },
+      })
+      assert.response(r).has.status(404)
+
+      local proxy_span, request_span =
+        wait_for_spans(zipkin_client, 2, nil, trace_id)
+
+      assert.equals(trace_id, request_span.traceId)
+      assert.equals(trace_id, proxy_span.traceId)
+    end)
+  end)
+
   describe("header type with 'preserve' config and no inbound headers", function()
     it("uses whatever is set in the plugin's config.default_header_type property", function()
       local r = proxy_client:get("/", {

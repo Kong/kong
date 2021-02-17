@@ -19,9 +19,12 @@ local set = tracing_headers.set
 local from_hex = tracing_headers.from_hex
 
 local trace_id = "0000000000000001"
+local big_trace_id = "fffffffffffffff1"
 local trace_id_32 = "00000000000000000000000000000001"
+local big_trace_id_32 = "fffffffffffffffffffffffffffffff1"
 local parent_id = "0000000000000002"
 local span_id = "0000000000000003"
+local big_span_id = "fffffffffffffff3"
 local non_hex_id = "vvvvvvvvvvvvvvvv"
 local too_short_id = "123"
 local too_long_id = "1234567890123456789012345678901234567890" -- 40 digits
@@ -34,8 +37,14 @@ describe("tracing_headers.parse", function()
 
   describe("b3 single header parsing", function()
     local warn
-    before_each(function()
+    setup(function()
       warn = spy.on(kong.log, "warn")
+    end)
+    before_each(function()
+      warn:clear()
+    end)
+    teardown(function()
+      warn:revert()
     end)
 
     it("1-char", function()
@@ -98,6 +107,13 @@ describe("tracing_headers.parse", function()
       local b3 = fmt("%s-%s-%s", trace_id_32, span_id, "1")
       local t = { parse({ b3 = b3 }) }
       assert.same({ "b3-single", trace_id_32, span_id, nil, true }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("big 32-digit trace_id, span_id and sample, no parent_id", function()
+      local b3 = fmt("%s-%s-%s", big_trace_id_32, span_id, "1")
+      local t = { parse({ b3 = b3 }) }
+      assert.same({ "b3-single", big_trace_id_32, span_id, nil, true }, to_hex_ids(t))
       assert.spy(warn).not_called()
     end)
 
@@ -192,8 +208,14 @@ describe("tracing_headers.parse", function()
 
   describe("W3C header parsing", function()
     local warn
-    before_each(function()
+    setup(function()
       warn = spy.on(kong.log, "warn")
+    end)
+    before_each(function()
+      warn:clear()
+    end)
+    teardown(function()
+      warn:revert()
     end)
 
     it("valid traceparent with sampling", function()
@@ -307,8 +329,14 @@ describe("tracing_headers.parse", function()
 
   describe("Jaeger header parsing", function()
     local warn
-    before_each(function()
+    setup(function()
       warn = spy.on(kong.log, "warn")
+    end)
+    before_each(function()
+      warn:clear()
+    end)
+    teardown(function()
+      warn:revert()
     end)
 
     it("valid uber-trace-id with sampling", function()
@@ -418,7 +446,89 @@ describe("tracing_headers.parse", function()
       end)
     end)
   end)
+
+
+  describe("OT header parsing", function()
+    local warn
+    setup(function()
+      warn = spy.on(kong.log, "warn")
+    end)
+    before_each(function()
+      warn:clear()
+    end)
+    teardown(function()
+      warn:revert()
+    end)
+
+    it("valid trace_id, valid span_id, sampled", function()
+      local t = { parse({
+        ["ot-tracer-traceid"] = trace_id,
+        ["ot-tracer-spanid"] = span_id,
+        ["ot-tracer-sampled"] = "1",
+      })}
+      assert.same({ "ot", trace_id, nil, span_id, true }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid big trace_id, valid big span_id, sampled", function()
+      local t = { parse({
+        ["ot-tracer-traceid"] = big_trace_id,
+        ["ot-tracer-spanid"] = big_span_id,
+        ["ot-tracer-sampled"] = "1",
+      })}
+      assert.same({ "ot", big_trace_id, nil, big_span_id, true }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid trace_id, valid span_id, not sampled", function()
+      local t = { parse({
+        ["ot-tracer-traceid"] = trace_id,
+        ["ot-tracer-spanid"] = span_id,
+        ["ot-tracer-sampled"] = "0",
+      })}
+      assert.same({ "ot", trace_id, nil, span_id, false }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid trace_id, valid span_id, sampled", function()
+      local t = { parse({
+        ["ot-tracer-traceid"] = trace_id,
+        ["ot-tracer-spanid"] = span_id,
+        ["ot-tracer-sampled"] = "1",
+      })}
+      assert.same({ "ot", trace_id, nil, span_id, true }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid trace_id, valid span_id, no sampled flag", function()
+      local t = { parse({
+        ["ot-tracer-traceid"] = trace_id,
+        ["ot-tracer-spanid"] = span_id,
+      })}
+      assert.same({ "ot", trace_id, nil, span_id }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("32 trace_id, valid span_id, no sampled flag", function()
+      local t = { parse({
+        ["ot-tracer-traceid"] = trace_id_32,
+        ["ot-tracer-spanid"] = span_id,
+      })}
+      assert.same({ "ot", trace_id_32, nil, span_id }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("big 32 trace_id, valid big_span_id, no sampled flag", function()
+      local t = { parse({
+        ["ot-tracer-traceid"] = big_trace_id_32,
+        ["ot-tracer-spanid"] = big_span_id,
+      })}
+      assert.same({ "ot", big_trace_id_32, nil, big_span_id }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+  end)
 end)
+
 
 describe("tracing_headers.set", function()
   local nop = function() end
@@ -469,6 +579,12 @@ describe("tracing_headers.set", function()
 
   local jaeger_headers = {
     ["uber-trace-id"] = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "01")
+  }
+
+  local ot_headers = {
+    ["ot-tracer-traceid"] = trace_id,
+    ["ot-tracer-spanid"] = span_id,
+    ["ot-tracer-sampled"] = "1"
   }
 
   before_each(function()
@@ -522,6 +638,11 @@ describe("tracing_headers.set", function()
 
       set("preserve", nil, proxy_span, "jaeger")
       assert.same(jaeger_headers, headers)
+
+      headers = {}
+
+      set("preserve", "ot", proxy_span, "ot")
+      assert.same(ot_headers, headers)
     end)
   end)
 
@@ -669,6 +790,59 @@ describe("tracing_headers.set", function()
       assert.equals(1, #warnings)
       assert.matches("Mismatched header types", warnings[1])
     end)
-  end)
-end)
 
+    it("sets both the jaeger and ot headers when a ot header is encountered.", function()
+      set("jaeger", "ot", proxy_span)
+      assert.same(table_merge(jaeger_headers, ot_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+  end)
+
+  describe("conf.header_type = 'ot'", function()
+    it("sets headers to ot when conf.header_type = ot", function()
+      set("ot", "ot", proxy_span)
+      assert.same(ot_headers, headers)
+      assert.same({}, warnings)
+    end)
+
+    it("sets both the b3 and ot headers when a ot header is encountered.", function()
+      set("ot", "b3", proxy_span)
+      assert.same(table_merge(b3_headers, ot_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+
+    it("sets both the b3-single and ot headers when a ot header is encountered.", function()
+      set("ot", "b3-single", proxy_span)
+      assert.same(table_merge(b3_single_headers, ot_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+
+    it("sets both the w3c and ot headers when a ot header is encountered.", function()
+      set("ot", "w3c", proxy_span)
+      assert.same(table_merge(w3c_headers, ot_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+
+    it("sets both the ot and jaeger headers when a jaeger header is encountered.", function()
+      set("ot", "jaeger", proxy_span)
+      assert.same(table_merge(ot_headers, jaeger_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+  end)
+
+end)
