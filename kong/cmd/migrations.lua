@@ -11,6 +11,7 @@ local tty = require "kong.cmd.utils.tty"
 local meta = require "kong.meta"
 local conf_loader = require "kong.conf_loader"
 local kong_global = require "kong.global"
+local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local migrations_utils = require "kong.cmd.utils.migrations"
 
 
@@ -169,6 +170,8 @@ Options:
 
  -c,--conf        (optional string) Configuration file.
 
+ -p,--prefix      (optional string)   Override prefix directory.
+
 ]]
 
 
@@ -204,7 +207,9 @@ local function execute(args)
     log.disable()
   end
 
-  local conf = assert(conf_loader(args.conf))
+  local conf = assert(conf_loader(args.conf, {
+    prefix = args.prefix
+  }))
 
   package.path = conf.lua_package_path .. ";" .. package.path
 
@@ -212,6 +217,8 @@ local function execute(args)
 
   conf.cassandra_timeout = args.db_timeout -- connect + send + read
   conf.cassandra_schema_consensus_timeout = args.db_timeout
+
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
   _G.kong = kong_global.new()
   kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK

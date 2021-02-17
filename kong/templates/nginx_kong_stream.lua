@@ -44,6 +44,7 @@ lua_shared_dict stream_kong_cassandra              5m;
 lua_shared_dict stream_kong_vitals_counters 50m;
 lua_shared_dict stream_kong_counters 50m;
 lua_shared_dict stream_kong_vitals_lists     1m;
+lua_shared_dict stream_kong_vitals 1m;
 lua_shared_dict stream_kong_keyring 5m;
 
 

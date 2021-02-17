@@ -470,7 +470,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("for an ignored path prefix", function()
-      it("does not generate an audit log entry", function()
+      -- XXX flaky: only happens on CI
+      it("does not generate an audit log entry #flaky", function()
         local res = assert(admin_client:send({
           method = "POST",
           path   = "/consumers",

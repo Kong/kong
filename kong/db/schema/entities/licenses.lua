@@ -7,21 +7,21 @@
 
 local typedefs = require "kong.db.schema.typedefs"
 
+local license_helpers = require "kong.enterprise_edition.license_helpers"
+
 return {
   name = "licenses",
-  -- dao = "kong.db.dao.licenses",
-  -- admin_api_name="licenses",
-  -- generate_admin_api = false,
   primary_key = { "id" },
   workspaceable = false,
   db_export = true,   -- maybe play with this if we don't want it passed along?
   fields = {
-    { id             = typedefs.uuid, },
-    { payload        =  { type = "string", required = true}},
+    { id             = typedefs.uuid },
+    { payload        = { type = "string",
+                         required = true,
+                         unique = true,
+                         custom_validator = license_helpers.is_valid_license }
+    },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
   },
-
-  -- check = function() end
-
 }

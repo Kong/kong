@@ -49,6 +49,12 @@ local plugins = {
   "grpc-gateway",
 }
 
+-- XXX EE
+local ce_plugin_map = {}
+for i = 1, #plugins do
+  ce_plugin_map[plugins[i]] = true
+end
+
 for _, plugin in ipairs(dist_constants.plugins) do
   table.insert(plugins, plugin)
 end
@@ -56,6 +62,11 @@ end
 local plugin_map = {}
 for i = 1, #plugins do
   plugin_map[plugins[i]] = true
+end
+
+local ee_plugin_map = {}
+for i = 1, #dist_constants.plugins do
+  ee_plugin_map[dist_constants.plugins[i]] = true
 end
 
 local deprecated_plugins = {} -- no currently deprecated plugin
@@ -87,6 +98,8 @@ table.sort(protocols)
 local constants = {
   BUNDLED_PLUGINS = plugin_map,
   EE_PLUGINS = dist_constants.plugins,
+  EE_PLUGINS_MAP = ee_plugin_map,
+  CE_PLUGINS_MAP = ce_plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
   -- non-standard headers, specific to Kong
   HEADERS = {
@@ -171,6 +184,7 @@ local constants = {
     "kong_cluster_events",
     "kong_healthchecks",
     "kong_rate_limiting_counters",
+    "kong_vitals",
   },
   DATABASE = {
     POSTGRES = {

@@ -18,6 +18,7 @@ math.randomseed(os.time())
 
 
 local tmp_root = os.getenv("TMPDIR") or "/tmp"
+local host_regex = [[([a-z0-9\-._~%!$&'()*+,;=]+@)?([a-z0-9\-._~%]+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])(:?[0-9]+)*]]
 
 
 local function create_temp_dir(copy_cert_and_key)
@@ -87,7 +88,10 @@ local function count_results(logs_dir)
       local status = m[2]
       local host = m[3]
       if host then
-        host = string.match(m[3], "[^:]+")
+        local host_no_port = ngx.re.match(m[3], host_regex)
+        if host_no_port then
+          host = host_no_port[1]
+        end
       else
         host = "nonamehost"
       end

@@ -8,8 +8,6 @@
 local enterprise_utils = require "kong.enterprise_edition.utils"
 local listeners = require "kong.conf_loader.listeners"
 local log = require "kong.cmd.utils.log"
-local ee = require "kong.enterprise_edition"
-local ee_dist_const = require "kong.enterprise_edition.distributions_constants"
 
 local pl_stringx = require "pl.stringx"
 local pl_path = require "pl.path"
@@ -771,12 +769,6 @@ local function load(conf)
   -- preserve user-facing name `enforce_rbac` but use
   -- `rbac` in code to minimize changes
   conf.rbac = conf.enforce_rbac
-
-  if not ee.license_can("ee_plugins") then
-    for _, p in ipairs(ee_dist_const.plugins) do
-      conf.loaded_plugins[p]=nil
-    end
-  end
 
   return true
 end

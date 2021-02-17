@@ -32,6 +32,20 @@ local METRICS = {
   requests = "request_count"
 }
 
+local UNLICENSED = {
+  ["payload"] = {
+    ["admin_seats"] = "0",
+    ["customer"] = "UNLICENSED",
+    ["dataplanes"] = "0",
+    ["license_creation_date"] = "2017-07-20",
+    ["license_expiration_date"] = "2017-7-20",
+    ["license_key"] = "UNLICENSED",
+    ["product_subscription"] = "UNLICENSED",
+    ["support_plan"] = "UNLICENSED",
+  },
+  ["signature"] = "UNLICENSED",
+  ["version"] = "v1"
+}
 
 local persistence_handler
 
@@ -68,7 +82,8 @@ end
 local function get_license_data()
   return kong.license and
          kong.license.license and
-         kong.license.license.payload
+         kong.license.license.payload or
+         UNLICENSED.payload
 end
 
 -- retrieves all merged counters data from all nodes that is stored in the database
@@ -197,10 +212,6 @@ function _M.new(opts)
 end
 
 function _M:init()
-  if get_license_data() == nil then
-    return nil, "license data is missing"
-  end
-
   -- get node id (uuid)
   local node_id, err = knode.get_id()
   if err then

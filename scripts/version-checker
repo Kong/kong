@@ -185,7 +185,7 @@ function check {
     if confirm "Do you want to bump $name: $version -> $to"; then
       bump $index $to
     elif confirm "Do you want to issue a bump on the plugin itself"; then
-      if ! bump_plugin $index; then
+      if ! bump_plugin; then
         >&2 echo "Seems something went wrong with the bump script"
         confirm "Do you want a shell on this plugin to fix the mess" && $SHELL
       fi
@@ -193,10 +193,11 @@ function check {
       if confirm "Do you want to re-run this step, and maybe bump the yml"; then
         check "$@"
       fi
+    elif confirm "Do you want to create a release of this plugin"; then
+      bump_plugin --no-bump --release && check "$@"
     fi
   popd
 }
-
 
 function bump {
   # This is not a plugin bumping, it just bumps WITHIN build.yml if a tag
@@ -205,7 +206,7 @@ function bump {
   # yq does what it can do, but clearly this could work better either with
   # a clever sed, or some python / ruby helper to not mess up with the output
   # or get more options on how to format it
-  yq w -i -I 4 $DISTRIBUTIONS_PATH/kong-images/build.yml "enterprise[$1].version" -- "$2"
+  yq e ".enterprise.[$1].version = \"$2\"" -I 2 -i $DISTRIBUTIONS_PATH/kong-images/build.yml
 }
 
 
@@ -218,7 +219,7 @@ function something_changed {
 function bump_plugin {
   # XXX not sure why we need this
   local errcode=0
-  bash $LOCAL_PATH/bump-plugin || errcode=$?
+  bash $LOCAL_PATH/bump-plugin "$@" || errcode=$?
   echo Result was: $errcode
   return $errcode
 }
@@ -238,7 +239,7 @@ function main {
 
   local counter=0
   pushd $DISTRIBUTIONS_PATH
-    for entry in $(yq r kong-images/build.yml -j | jq -c '.enterprise[]'); do
+    for entry in $(yq e kong-images/build.yml -j | jq -c '.enterprise[]'); do
       check $counter $entry
       ((counter=counter+1))
     done
@@ -252,7 +253,7 @@ function main {
     fi
   popd
 
-  cat $DISTRIBUTIONS_PATH/kong-images/build.yml | yq r - -I 4
+  cat $DISTRIBUTIONS_PATH/kong-images/build.yml | yq e - -I 4
 }
 
 

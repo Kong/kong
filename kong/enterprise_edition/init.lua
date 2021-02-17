@@ -5,11 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local log        = require "kong.cmd.utils.log"
-local meta       = require "kong.enterprise_edition.meta"
 local pl_file    = require "pl.file"
 local pl_utils   = require "pl.utils"
 local pl_path    = require "pl.path"
+
+local log        = require "kong.cmd.utils.log"
+local meta       = require "kong.enterprise_edition.meta"
 local constants  = require "kong.constants"
 local workspaces = require "kong.workspaces"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
@@ -26,6 +27,9 @@ local tracing = require "kong.tracing"
 local counters = require "kong.workspaces.counters"
 local workspace_config = require "kong.portal.workspace_config"
 
+local cjson = require "cjson.safe"
+
+local fmt = string.format
 
 local kong = kong
 local ws_constants  = constants.WORKSPACE_CONFIG
@@ -52,9 +56,6 @@ _M.handlers = {
         local slash_handler = require "kong.api.routes.kong"["/"]
         app:match("ws_root" .. "/", "/:workspace_name/kong",
         app_helpers.respond_to(slash_handler))
-
-        -- license API allow / deny
-        app:before_filter(license_helpers.license_can_proceed)
 
         return true
       end)
@@ -107,44 +108,12 @@ _M.handlers = {
       hooks.register_hook("balancer:to-ip:post", function(trace)
         trace:finish()
       end)
-
     end
   },
   init_worker = {
     after = function(ctx)
-      license_helpers.report_expired_license()
 
-      kong.worker_events.register(function(data, event, source, pid)
-        local l = {}
-        for _, v in kong.db.licenses:each() do
-          l = v
-        end
-
-        if l then
-          kong.license = license_helpers.is_valid_license(l.payload)
-        end
-      end, "declarative", "flip_config")
-
-      kong.worker_events.register(function(data, event, source, pid)
-        if data.schema.name == "licenses" and
-        (event == "update" or event == "insert" or event == "create") then
-          kong.license = license_helpers.is_valid_license(data.entity.payload)
-        end
-      end, "dao:crud")
-
-      kong.worker_events.register(function(data, event, source, pid)
-        if data.schema.name == "licenses" and
-        (event == "delete") then
-          local l = {}
-          for _, v in kong.db.licenses:each() do
-            l = v
-          end
-
-          if l then
-            kong.license = license_helpers.is_valid_license(l.payload)
-          end
-        end
-      end, "dao:crud")
+      kong.licensing:init_worker(kong.worker_events)
 
       -- register event_hooks hooks
       if event_hooks.enabled() then
@@ -246,9 +215,6 @@ function _M.feature_flags_init(config)
   end
 end
 
-_M.read_license_info = license_helpers.read_license_info
-_M.license_conf = license_helpers.license_conf
-_M.license_can = license_helpers.license_can
 
 local function write_kconfig(configs, filename)
   local kconfig_str = "window.K_CONFIG = {\n"
@@ -416,5 +382,227 @@ function _M.prepare_portal(self, kong_config)
     WORKSPACE = prepare_variable(workspace.name)
   }
 end
+
+
+function _M.license_hooks(config)
+
+  local nop = function() end
+
+  -- license API allow / deny
+  hooks.register_hook("api:init:pre", function(app)
+    app:before_filter(license_helpers.license_can_proceed)
+
+    return true
+  end)
+
+  -- add license info
+  hooks.register_hook("api:kong:info", function(info)
+    if kong.license then
+      info.license = utils.deep_copy(kong.license).license.payload
+      info.license.license_key = nil
+    end
+
+    return info
+  end)
+
+  -- add EE disabled plugins
+  hooks.register_hook("api:kong:info", function(info)
+
+    -- do nothing
+    if kong.licensing:can("ee_plugins") then
+      info.plugins.disabled_on_server = {}
+
+      return info
+    end
+
+    -- very careful modifying `info.plugins.available_on_server` since it
+    -- will affect `kong.configuration.loaded_plugins` by reference
+
+    info.plugins.available_on_server = constants.CE_PLUGINS_MAP
+    info.plugins.disabled_on_server = constants.EE_PLUGINS_MAP
+
+    -- remove EE plugins from `info.plugins.enabled_in_cluster`, even if its
+    -- configured it won't run
+
+    local cluster = setmetatable({}, cjson.array_mt)
+    local _cluster = info.plugins.enabled_in_cluster
+
+    for i = 1, #_cluster do
+      if not constants.EE_PLUGINS_MAP[_cluster[i]] then
+        cluster[#cluster + 1] = _cluster[i]
+      end
+    end
+
+    info.plugins.enabled_in_cluster = cluster
+
+    return info
+  end)
+
+  -- override settings by license
+  hooks.register_hook("api:kong:info", function(info)
+    for k, v in pairs(kong.licensing.conf) do
+      info.configuration[k] = v
+    end
+
+    return info
+  end)
+
+
+  local function wrap_method(thing, name, method)
+    thing[name] = method(thing[name] or nop)
+  end
+
+  local phase_checker = require "kong.pdk.private.phases"
+
+  local function patch_handler(handler, name)
+    for phase, _ in pairs(phase_checker.phases) do
+
+      if handler[phase] and phase ~= 'init_worker' and type(handler[phase]) == "function" then
+        wrap_method(handler, phase, function(parent)
+          return function(...)
+            ngx.log(ngx.DEBUG, fmt("calling patched method '%s:%s'", name, phase))
+            if not kong.licensing:can("ee_plugins") then
+              ngx.log(ngx.DEBUG, fmt("nop'ing '%s:%s, ee_plugins=false", name, phase))
+              return
+            end
+
+            return parent(...)
+          end
+        end)
+      end
+    end
+
+    return handler
+  end
+
+  -- XXX For now, this uses the strategy of patching all EE plugin handlers
+  -- we have arrived here fishing for a bug. Many strategies were tried, but
+  -- the bug persisted. The bug ended up being something small not really
+  -- related to the strategy, so we do not know if any of the methods we tried
+  -- were good or not. But we know this one (a bit overkill) works
+  -- XXX: come back and try the different elegant strategies
+  hooks.register_hook("dao:plugins:load", function(handlers)
+
+    for plugin, _ in pairs(constants.EE_PLUGINS_MAP) do
+      if handlers[plugin] then
+        handlers[plugin] = patch_handler(handlers[plugin], plugin)
+      end
+    end
+
+    return true
+  end)
+
+  local err = function(...)
+    return fmt("'%s' is an enterprise only %s", ...)
+  end
+
+  -- XXX return here if data_plane. Data plane needs to get a config from the
+  -- control plane, that will include a license + entities that it needs
+  -- to accept. If we restrict these, then it does not work
+  if config.role == "data_plane" then
+    return
+  end
+
+  -- API and entity restriction be here
+
+  -- disable EE plugins on the entity level
+  -- XXX Check performance penalty on these
+  hooks.register_hook("db:schema:plugins:new", function(entity, name)
+
+    wrap_method(entity, "validate", function(parent)
+      return function(self, input, ...)
+
+        local name = input.name
+
+        if not kong.licensing:can("ee_plugins") and constants.EE_PLUGINS_MAP[name] then
+          return nil, { name = err(name, "plugin") }
+        end
+
+        return parent(self, input, ...)
+      end
+    end)
+
+    return true
+  end)
+
+
+  local function get_plugin_entities(plugin)
+    local has_daos, daos_schemas = utils.load_module_if_exists("kong.plugins." .. plugin .. ".daos")
+    if not has_daos then
+      return nop
+    end
+
+    local it = daos_schemas[1] and ipairs or pairs
+
+    return it(daos_schemas)
+  end
+
+
+  local function forbidden()
+    return kong.response.exit(403, { message = "Forbidden" })
+  end
+
+
+  -- disable EE plugins entities and custom api endpoints
+  -- XXX Check performance penalty on these
+  local enterprise_plugin_entities = {}
+
+  for _, plugin in ipairs(constants.EE_PLUGINS) do
+    for _, schema in get_plugin_entities(plugin) do
+      enterprise_plugin_entities[schema.name] = true
+    end
+  end
+
+  hooks.register_hook("db:schema:entity:new", function(entity, name)
+
+    local hit = enterprise_plugin_entities[name]
+    local err = { licensing = err(name, "entity") }
+
+    wrap_method(entity, "validate", function(parent)
+      return function(...)
+
+        if hit and not kong.licensing:can("ee_plugins") then
+          return nil, err
+        end
+
+        local deny_entity = kong.licensing.deny_entity
+
+        if deny_entity and deny_entity[name] then
+          return nil, err
+        end
+
+        return parent(...)
+      end
+    end)
+
+    return true
+  end)
+
+  hooks.register_hook("api:helpers:attach_new_db_routes:before", function(app, route_path, methods, schema)
+
+    local hit = enterprise_plugin_entities[schema.name]
+
+    wrap_method(methods, "before", function(parent)
+      return function(...)
+
+        if hit and not kong.licensing:can("ee_plugins") then
+          return forbidden()
+        end
+
+        local deny_entity = kong.licensing.deny_entity
+
+        if deny_entity and deny_entity[schema.name] then
+          return forbidden()
+        end
+
+        return parent(...)
+      end
+    end)
+
+    return true
+  end)
+
+end
+
 
 return _M

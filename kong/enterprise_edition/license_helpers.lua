@@ -15,25 +15,13 @@
 -- be called once (or very carfully) due to it migth be fetching a
 -- tampered LICENSE FILE (in case the user modified after kong
 -- started).
---
--- featureset is a table with 2 keys
--- - conf: overrides from kong.conf
--- - abilities: custom abilities
---
--- Access to the features is done via `license_can` and
--- `license_conf` public methods.
---
--- `license_can` is responsible for giving a boolean answer to any
--- part of the code that asks for a particular license ability. It can
--- override values in the featureset table, or make programatic
--- decisions. Another trick is to supercharge the featureset table
--- with lambdas in case we need it.
---
 
-local cjson      = require "cjson.safe"
-local pl_path    = require "pl.path"
-local log        = require "kong.cmd.utils.log"
+
+local cjson          = require "cjson.safe"
+local pl_path        = require "pl.path"
+local log            = require "kong.cmd.utils.log"
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
+local license_utils  = require "kong.enterprise_edition.license_utils"
 
 
 local timer_at = ngx.timer.at
@@ -53,35 +41,53 @@ local DEFAULT_KONG_LICENSE_PATH = "/etc/kong/license.json"
 local function get_license_string()
   local license_data_env = os.getenv("KONG_LICENSE_DATA")
   if license_data_env then
+    ngx.log(ngx.DEBUG, "[license-helpers] loaded license from KONG_LICENSE_DATA")
     return license_data_env
   end
 
   local license_path
   if pl_path.exists(DEFAULT_KONG_LICENSE_PATH) then
+    ngx.log(ngx.DEBUG, "[license-helpers] loaded license from default Kong license path")
     license_path = DEFAULT_KONG_LICENSE_PATH
-
   else
     license_path = os.getenv("KONG_LICENSE_PATH")
     if not license_path then
-      ngx.log(ngx.NOTICE, "KONG_LICENSE_PATH is not set")
+      if kong and kong.db and kong.db.licenses then
+        -- Load license from database
+        local license
+        for l in kong.db.licenses:each() do
+          -- Select the last updated license
+          if not license or license.updated_at < l.updated_at then
+            license = l
+          end
+        end
+        if license then
+          ngx.log(ngx.DEBUG, "[license-helpers] loaded license from database; using license id: ", license.id)
+          return license.payload
+        end
+      end
+
+      -- License was not loaded from DB so return initial error
+      ngx.log(ngx.DEBUG, "[license-helpers] KONG_LICENSE_PATH is not set")
       return nil
     end
   end
 
   local license_file = io.open(license_path, "r")
   if not license_file then
-    ngx.log(ngx.NOTICE, "could not open license file")
+    ngx.log(ngx.NOTICE, "[license-helpers] could not open license file")
     return nil
   end
 
   local license_data = license_file:read("*a")
   if not license_data then
-    ngx.log(ngx.NOTICE, "could not read license file contents")
+    ngx.log(ngx.NOTICE, "[license-helpers] could not read license file contents")
     return nil
   end
 
   license_file:close()
 
+  ngx.log(ngx.DEBUG, "[license-helpers] loaded license from KONG_LICENSE_PATH")
   return license_data
 end
 
@@ -114,32 +120,23 @@ end
 function _M.read_license_info()
   local license_data = get_license_string()
   if not license_data or (license_data == "") then
-    ngx.log(ngx.NOTICE, "could not decode license JSON: No license found")
+    ngx.log(ngx.NOTICE, "[license-helpers] could not decode license JSON: No license found")
     return nil
   end
 
   local license, err = cjson.decode(license_data)
   if err then
-    ngx.log(ngx.ERR, "could not decode license JSON: " .. err)
+    ngx.log(ngx.ERR, "[license-helpers] could not decode license JSON: " .. err)
     return nil
   end
 
   return license
 end
 
-
-function _M.featureset()
-  local l_type
-  local lic
-  -- HACK: when called from runner, the license is not read yet, and
-  -- even when read there at the call site,
-  if not kong or not kong.license then
-    lic = _M.read_license_info()
-  else
-    lic = kong.license
-  end
-
+_M.get_type = function(lic)
   local expiration_time = license_expiration_time(lic)
+
+  local l_type
 
   if not expiration_time then
     l_type = "free"
@@ -150,22 +147,24 @@ function _M.featureset()
     l_type = "full"
   end
 
+  return l_type
+end
+
+
+_M.get_featureset = function(l_type)
+  local lic
+  -- HACK: when called from runner, the license is not read yet, and
+  -- even when read there at the call site,
+  if not kong or not kong.license then
+    lic = _M.read_license_info()
+  else
+    lic = kong.license
+  end
+
+  l_type = l_type or _M.get_type(lic)
+
   return dist_constants.featureset[l_type]
 end
-
-function _M.license_can(ability)
-  return not (_M.featureset().abilities[ability] == false)
-end
-
-function _M.ability(ability)
-  local featureset = _M.featureset()
-  return featureset.abilities and featureset.abilities[ability]
-end
-
-function _M.license_conf()
-  return _M.featureset().conf
-end
-
 
 
 -- Hold a lock for the whole interval (exptime) to prevent multiple
@@ -234,8 +233,8 @@ function _M.license_can_proceed(self)
   local method = ngx.req.get_method()
 
   local route = self.route_name
-  local allow = _M.ability("allow_admin_api") or {}
-  local deny = _M.ability("deny_admin_api") or {}
+  local allow = kong.licensing.allow_admin_api or {}
+  local deny = kong.licensing.deny_admin_api or {}
 
   if (deny[route] and (deny[route][method] or deny[route]["*"]))
     and not (allow[route] and (allow[route][method] or allow[route]["*"]))
@@ -243,7 +242,7 @@ function _M.license_can_proceed(self)
     return kong.response.exit(403, { message = "Forbidden" })
   end
 
-  if not _M.license_can("write_admin_api")
+  if not kong.licensing:can("write_admin_api")
     and (method == "POST" or
          method == "PUT" or
          method == "PATCH" or
@@ -253,49 +252,38 @@ function _M.license_can_proceed(self)
   then
     return kong.response.exit(403, { message = "Forbidden" })
   end
-end
 
-local function validation_error_to_string(error)
-    if error == "ERROR_NO_ERROR" then -- 0
-      return "no error"
-    elseif error == "ERROR_LICENSE_PATH_NOT_SET" then -- 1
-      return "license path environment variable not set"
-    elseif error == "ERROR_INTERNAL_ERROR" then -- 2
-      return "internal error"
-    elseif error == "ERROR_OPEN_LICENSE_FILE" then -- 3
-      return "error opening license file"
-    elseif error == "ERROR_READ_LICENSE_FILE" then -- 4
-      return "error reading license file"
-    elseif error == "ERROR_INVALID_LICENSE_JSON" then -- 5
-      return "could not decode license json"
-    elseif error == "ERROR_INVALID_LICENSE_FORMAT" then -- 6
-      return "invalid license format"
-    elseif error == "ERROR_VALIDATION_PASS" then -- 7
-      return "validation passed"
-    elseif error == "ERROR_VALIDATION_FAIL" then -- 8
-      return "validation failed"
-    elseif error == "ERROR_LICENSE_EXPIRED" then -- 9
-      return "license expired"
-    elseif error == "ERROR_INVALID_EXPIRATION_DATE" then -- 10
-      return "invalid license expiration date"
-    elseif error == "ERROR_GRACE_PERIOD" then -- 11
-      return "license in grace period; contact support@konghq.com"
-    end
-
-    return "UNKNOWN ERROR"
-end
-
-local function validate_kong_license(license)
-  return dist_constants.validate_kong_license(license)
-end
-
-local function is_valid_license(license)
-  if validate_kong_license(license) == "ERROR_VALIDATION_PASS" then
-    return cjson.decode(license)
+  if not license_utils.license_validation_can_proceed()
+    and not (method == "GET") then
+    -- Force a 400 (Bad Request) and attach the error message
+    local msg = "license library cannot be loaded"
+    ngx.log(ngx.ERR, msg)
+    return kong.response.exit(400, { message = msg })
   end
 end
 
-_M.validation_error_to_string = validation_error_to_string
+local function validate_kong_license(license)
+  return license_utils.validate_kong_license(license)
+end
+
+local function is_valid_license(license)
+  local result = validate_kong_license(license)
+  if result == "ERROR_VALIDATION_PASS" or
+     result == "ERROR_GRACE_PERIOD" or
+     result == "ERROR_LICENSE_EXPIRED" then
+    if result ~= "ERROR_VALIDATION_PASS" then
+      local message = "The license being added is expired"
+      if result == "ERROR_LICENSE_EXPIRED" then
+        message = message .. "; some functionality may not be available"
+      end
+      ngx.log(ngx.WARN, message)
+    end
+    return true, cjson.decode(license)
+  end
+
+  return false, "Unable to validate license: " .. license_utils.validation_error_to_string(result)
+end
+
 _M.validate_kong_license = validate_kong_license
 _M.is_valid_license = is_valid_license
 

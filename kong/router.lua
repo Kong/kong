@@ -13,6 +13,7 @@ local bit           = require "bit"
 
 
 local hostname_type = utils.hostname_type
+local normalize     = require("kong.tools.uri").normalize
 local subsystem     = ngx.config.subsystem
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
@@ -1735,6 +1736,8 @@ function _M.new(routes)
         if idx then
           req_uri = sub(req_uri, 1, idx - 1)
         end
+
+        req_uri = normalize(req_uri, true)
       end
 
       local match_t = find_route(req_method, req_uri, req_host, req_scheme,
@@ -1775,11 +1778,11 @@ function _M.new(routes)
   else -- stream
     local server_name = require("ngx.ssl").server_name
 
-    function self.exec()
+    function self.exec(ctx)
       local src_ip = var.remote_addr
       local src_port = tonumber(var.remote_port, 10)
       local dst_ip = var.server_addr
-      local dst_port = tonumber(ngx.ctx.host_port, 10)
+      local dst_port = tonumber((ctx or ngx.ctx).host_port, 10)
                     or tonumber(var.server_port, 10)
       -- error value for non-TLS connections ignored intentionally
       local sni, _ = server_name()

@@ -1,7 +1,7 @@
 [![][kong-logo]][kong-url]
 
 [![Build Status][badge-action-image]][badge-action-url]
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Kong/kong/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/License-Proprietary-blue.svg)](https://konghq.com/enterprisesoftwarelicense/)
 [![Twitter](https://img.shields.io/twitter/follow/thekonginc.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=thekonginc)
 
 :monkey: [Master Preview Environment](http://master.kong-ee.previewer.konghq.com:8002/dashboard)
@@ -155,6 +155,9 @@ Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
 online version of Kong's source code documentation in the [Plugin Development
 Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
 
+For a quick start with custom plugin development, check out [Pongo](https://github.com/Kong/kong-pongo)
+and the [plugin template](https://github.com/Kong/kong-plugin) explained in detail below.
+
 #### Docker
 
 You can use Docker / docker-compose and a mounted volume to develop Kong by
@@ -168,6 +171,23 @@ dependencies needed to run a particular branch of Kong locally, as well
 as easily switching across versions, configurations and dependencies. It
 has support for running Kong in Hybrid (CP/DP) mode, testing migrations,
 running a Kong cluster, among other [features](https://github.com/Kong/gojira/blob/master/doc/manual.md).
+
+#### Kong Pongo
+
+[Pongo](https://github.com/Kong/kong-pongo) is another CLI like Gojira,
+but specific for plugin development. It is docker-compose based and will
+create local test environments including all dependencies. Core features
+are running tests, integrated linter, config initialization, CI support,
+and custom dependencies.
+
+#### Kong Plugin Template
+
+The [plugin template](https://github.com/Kong/kong-plugin) provides a basic
+plugin and is considered a best-practices plugin repository. When writing
+custom plugins we strongly suggest you start by using this repository as a
+starting point. It contains the proper file structures, configuration files,
+and CI setup to get up and running quickly. This repository seamlessly
+integrates with [Pongo](https://github.com/Kong/kong-pongo).
 
 #### Vagrant
 
