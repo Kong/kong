@@ -12,7 +12,7 @@ local helpers     = require "spec.helpers"
 local LICENSE_DATA_TNAME = "license_data"
 local license_creation_date = "2019-03-03"
 
-local current_date = tostring(os.date("%Y-%d-%m"))
+local current_date = tostring(os.date("%Y-%m-%d"))
 local license_strategies = {
   "licensed",
   "unlicensed",
