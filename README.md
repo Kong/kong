@@ -148,12 +148,12 @@ Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
 For a quick start with custom plugin development, check out [Pongo](https://github.com/Kong/kong-pongo)
 and the [plugin template](https://github.com/Kong/kong-plugin) explained in detail below.
 
-#### Docker
+### Docker
 
 You can use Docker / docker-compose and a mounted volume to develop Kong by
 following the instructions on [Kong/kong-build-tools](https://github.com/Kong/kong-build-tools#developing-kong).
 
-#### Kong Gojira
+### Kong Gojira
 
 [Gojira](https://github.com/Kong/gojira) is a CLI that uses docker-compose
 internally to make the necessary setup of containers to get all
@@ -162,7 +162,7 @@ as easily switching across versions, configurations and dependencies. It
 has support for running Kong in Hybrid (CP/DP) mode, testing migrations,
 running a Kong cluster, among other [features](https://github.com/Kong/gojira/blob/master/doc/manual.md).
 
-#### Kong Pongo
+### Kong Pongo
 
 [Pongo](https://github.com/Kong/kong-pongo) is another CLI like Gojira,
 but specific for plugin development. It is docker-compose based and will
@@ -170,7 +170,7 @@ create local test environments including all dependencies. Core features
 are running tests, integrated linter, config initialization, CI support,
 and custom dependencies.
 
-#### Kong Plugin Template
+### Kong Plugin Template
 
 The [plugin template](https://github.com/Kong/kong-plugin) provides a basic
 plugin and is considered a best-practices plugin repository. When writing
@@ -179,12 +179,12 @@ starting point. It contains the proper file structures, configuration files,
 and CI setup to get up and running quickly. This repository seamlessly
 integrates with [Pongo](https://github.com/Kong/kong-pongo).
 
-#### Vagrant
+### Vagrant
 
 You can use a Vagrant box running Kong and Postgres that you can find at
 [Kong/kong-vagrant](https://github.com/Kong/kong-vagrant).
 
-#### Source Install
+### Source Install
 
 Kong mostly is an OpenResty application made of Lua source files, but also
 requires some additional third-party dependencies. We recommend installing
@@ -205,7 +205,7 @@ $ git checkout next
 $ luarocks make
 ```
 
-#### Running for development
+### Running for development
 
 Check out the [development section](https://github.com/Kong/kong/blob/next/kong.conf.default#L244)
 of the default configuration file for properties to tweak in order to ease
@@ -216,7 +216,7 @@ and [`lua_package_cpath`](https://github.com/openresty/lua-nginx-module#lua_pack
 directives will allow Kong to find your custom plugin's source code wherever it
 might be in your system.
 
-#### Tests
+### Tests
 
 Install the development dependencies ([busted], [luacheck]) with:
 
@@ -271,7 +271,7 @@ languages) is performing static linting of your code. You can use [luacheck]
 $ make lint
 ```
 
-#### Makefile
+### Makefile
 
 When developing, you can use the `Makefile` for doing the following operations:
 
