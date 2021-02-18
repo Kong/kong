@@ -10,18 +10,21 @@ local BatchQueue = require "kong.tools.batch_queue"
 local cjson_safe = require "cjson.safe"
 local http = require "resty.http"
 
-local allowed_to_run = true
+local date = require "date"
+
 local queue
 
 local CollectorHandler = BasePlugin:extend()
 
 local messaging = require "kong.tools.messaging"
+
 local TELEMETRY_VERSION = "v1"
 local TELEMETRY_TYPE = "collector"
-local SHM = ngx.shared.kong
-local SHM_KEY = "collector-request-har"
 
-local COLLECTOR_TYPE_STATS = 0x1
+local SHM_KEY = "collector-har-buffering"
+local SHM = ngx.shared.kong
+
+local COLLECTOR_TYPE_STATS = 0x3
 
 
 CollectorHandler.PRIORITY = 903
@@ -59,6 +62,23 @@ local function json_array_concat(entries)
   return "[" .. table.concat(entries, ",") .. "]"
 end
 
+local function update_ticket_to_ride(premature, self)
+  local now = ngx.now()
+  local license_data = (kong.license and kong.license.license) and kong.license.license.payload or nil
+
+  if license_data then
+    local delta = date.diff(license_data.license_expiration_date, now)
+    if delta:spandays() >= -30 then  -- 30 days of grace period
+      self.valid_license = true
+    else
+      self.valid_license = false
+    end
+  else
+    self.valid_license = false
+  end
+
+  ngx.timer.at(60, update_ticket_to_ride, self)
+end
 
 local function create_queue(conf, self)
   -- batch_max_size <==> conf.queue_size
@@ -138,31 +158,28 @@ end
 
 function CollectorHandler:new()
   if string.match(kong.version, "enterprise") then
-    allowed_to_run = true
-    self.hybrid = kong.configuration.role ~= "traditional"
-    self.role = kong.configuration.role
-
-    if self.hybrid then
-      self.messaging, err = make_message_pipe(self)
-      if not self.messaging then
-        kong.log.err("Could not start pipe between DP and CP for Collector Plugin")
-      end
-    end
+    self.kong_ee = true
   else
-    allowed_to_run = false
+    self.kong_ee = false
   end
+
+  self.hybrid = kong.configuration.role ~= "traditional"
+  self.role = kong.configuration.role
+  self.valid_license = false
 end
 
 
-function CollectorHandler:init(...)
-end
+function CollectorHandler:init_worker()
+  update_ticket_to_ride(false, self)
 
-function CollectorHandler:init_worker(conf)
-  if not allowed_to_run then
-    return
-  end
   -- start messanging pipe/register pipe
   if self.hybrid then
+    local err
+    self.messaging, err = make_message_pipe(self)
+    if not self.messaging then
+      kong.log.err("Could not start pipe between DP and CP for Collector Plugin: " .. err)
+    end
+
     if self.role == "data_plane" then
       return self.messaging:start_client(get_server_name())
     else
@@ -173,7 +190,7 @@ end
 
 
 function CollectorHandler:log(conf)
-  if not allowed_to_run or (self.hybrid and self.role ~= "data_plane") then
+  if not self.kong_ee or not self.valid_license or (self.hybrid and self.role ~= "data_plane") then
     return
   end
 
@@ -192,5 +209,3 @@ function CollectorHandler:log(conf)
 end
 
 return CollectorHandler
-
-
