@@ -36,6 +36,7 @@ local timer_every  = ngx.timer.every
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
 local unpack       = unpack
+local escape       = require("kong.tools.uri").escape
 
 
 local ERR   = ngx.ERR
@@ -1121,6 +1122,7 @@ return {
       local forwarded_proto
       local forwarded_host
       local forwarded_port
+      local forwarded_path
       local forwarded_prefix
 
       -- X-Forwarded-* Headers Parsing
@@ -1137,12 +1139,21 @@ return {
         forwarded_proto  = var.http_x_forwarded_proto  or scheme
         forwarded_host   = var.http_x_forwarded_host   or host
         forwarded_port   = var.http_x_forwarded_port   or port
+        forwarded_path   = var.http_x_forwarded_path
         forwarded_prefix = var.http_x_forwarded_prefix
 
       else
         forwarded_proto  = scheme
         forwarded_host   = host
         forwarded_port   = port
+      end
+
+      if not forwarded_path then
+        forwarded_path = var.request_uri
+        local p = find(forwarded_path, "?", 2, true)
+        if p then
+          forwarded_path = sub(forwarded_path, 1, p - 1)
+        end
       end
 
       if not forwarded_prefix and match_t.prefix ~= "/" then
@@ -1211,7 +1222,7 @@ return {
       --       router, which might have truncated it (`strip_uri`).
       -- `host` is the original header to be preserved if set.
       var.upstream_scheme = match_t.upstream_scheme -- COMPAT: pdk
-      var.upstream_uri    = match_t.upstream_uri
+      var.upstream_uri    = escape(match_t.upstream_uri)
       var.upstream_host   = match_t.upstream_host
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
@@ -1236,6 +1247,7 @@ return {
       var.upstream_x_forwarded_proto  = forwarded_proto
       var.upstream_x_forwarded_host   = forwarded_host
       var.upstream_x_forwarded_port   = forwarded_port
+      var.upstream_x_forwarded_path   = forwarded_path
       var.upstream_x_forwarded_prefix = forwarded_prefix
 
       -- At this point, the router and `balancer_setup_stage1` have been

@@ -143,6 +143,7 @@ server {
         set $upstream_x_forwarded_proto  '';
         set $upstream_x_forwarded_host   '';
         set $upstream_x_forwarded_port   '';
+        set $upstream_x_forwarded_path   '';
         set $upstream_x_forwarded_prefix '';
         set $kong_proxy_mode             'http';
 
@@ -155,6 +156,7 @@ server {
         proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
         proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
         proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+        proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
         proxy_pass_header     Server;
@@ -179,6 +181,7 @@ server {
         grpc_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
         grpc_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
         grpc_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+        grpc_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         grpc_set_header      X-Real-IP          $remote_addr;
         grpc_pass_header     Server;
@@ -197,6 +200,7 @@ server {
         grpc_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
         grpc_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
         grpc_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+        grpc_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         grpc_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         grpc_set_header      X-Real-IP          $remote_addr;
         grpc_pass_header     Server;
@@ -230,6 +234,7 @@ server {
         proxy_set_header      X-Forwarded-Proto  $upstream_x_forwarded_proto;
         proxy_set_header      X-Forwarded-Host   $upstream_x_forwarded_host;
         proxy_set_header      X-Forwarded-Port   $upstream_x_forwarded_port;
+        proxy_set_header      X-Forwarded-Path   $upstream_x_forwarded_path;
         proxy_set_header      X-Forwarded-Prefix $upstream_x_forwarded_prefix;
         proxy_set_header      X-Real-IP          $remote_addr;
         proxy_pass_header     Server;
