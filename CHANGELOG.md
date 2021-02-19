@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [0.2.14](#0214---20210219)
 - [0.2.13](#0213---20201208)
 - [0.2.12](#0212---20201013)
 - [0.2.11](#0211---20200916)
@@ -18,7 +19,11 @@
 - [0.1.1](#011---20191212)
 - [0.1.0](#010---20191212)
 
-##  [0.2.12] - 2020/12/8
+##  [0.2.14] - 2021/02/19
+
+- Bump lua-resty-acme to 0.6.x; this fixes several issues with Pebble test server.
+
+##  [0.2.13] - 2020/12/8
 
 - Support CA that requires External Account Binding (EAB).
 - Set neg_ttl to non-zero in dbless mode as well.
@@ -102,6 +107,7 @@ causing validation failures.
 - Initial release of ACME plugin for Kong.
 
 
+[0.2.14]: https://github.com/Kong/kong-plugin-acme/compare/0.2.13...0.2.14
 [0.2.13]: https://github.com/Kong/kong-plugin-acme/compare/0.2.12...0.2.13
 [0.2.12]: https://github.com/Kong/kong-plugin-acme/compare/0.2.11...0.2.12
 [0.2.11]: https://github.com/Kong/kong-plugin-acme/compare/0.2.10...0.2.11
