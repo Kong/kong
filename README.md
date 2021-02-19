@@ -93,6 +93,8 @@ Kong has been built with the following leading principles:
   the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and
   APIs.
+- **Runtime**: Manage all your Services.
+- **Vitals**: Monitor your Services.
 
 For more info about plugins and integrations, you can check out the [Kong
 Hub](https://docs.konghq.com/hub/).
