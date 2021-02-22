@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local pl_file = require "pl.file"
 local cjson   = require "cjson"
 local utils   = require "kong.tools.utils"
 
@@ -483,7 +484,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("errors when CA doesn't exist", function()
         local uuid = utils.uuid()
-        local res = assert(admin_client:send({
+        assert(admin_client:send({
           method  = "PATCH",
           path    = "/plugins/" .. plugin.id,
           body    = {
@@ -493,9 +494,6 @@ for _, strategy in helpers.each_strategy() do
             ["Content-Type"] = "application/json"
           }
         }))
-        local body = assert.res_status(400, res)
-        local json = cjson.decode(body)
-        assert.same({ "the CA certificate '" .. uuid .. "' does not exist", }, json.fields.config.ca_certificates)
 
         local res = assert(mtls_client:send {
           method  = "GET",
@@ -503,6 +501,8 @@ for _, strategy in helpers.each_strategy() do
         })
         -- expected worker crash
         assert.res_status(500, res)
+        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+        assert.matches("CA Certificate '" .. uuid .. "' does not exist", err_log, nil, true)
 
       end)
     end)
