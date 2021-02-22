@@ -282,6 +282,11 @@ local function validate_admin_gui_session(conf, errors)
       errors[#errors+1] = "admin_gui_session_conf must be valid json or not set: "
         .. err .. " - " .. conf.admin_gui_session_conf
     else
+      -- apply default session storage "kong"
+      if not session_config.storage or session_config.storage == "" then
+        session_config.storage = "kong"
+      end
+
       conf.admin_gui_session_conf = session_config
 
       -- used for writing back to prefix/.kong_env

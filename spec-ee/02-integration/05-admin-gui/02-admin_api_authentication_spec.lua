@@ -417,6 +417,45 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      describe("DELETE", function()
+        it("it invalidates the session when admin_gui_session_conf storage is 'kong' (default)", function()
+          local cookie = get_admin_cookie_basic_auth(client, super_admin.username, 'hunter1')
+
+          local res = assert(client:send({
+            method = "GET",
+            path = "/services",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          }))
+
+          assert.res_status(200, res)
+
+          local res = assert(client:send({
+            method = "DELETE",
+            path = "/auth?session_logout=true",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          }))
+
+          assert.res_status(200, res)
+
+          local res = assert(client:send({
+            method = "GET",
+            path = "/services",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          }))
+
+          assert.res_status(401, res)
+        end)
+      end)
+
       describe('#Cache Invalidation:', function()
         local cache_key, cookie
 
