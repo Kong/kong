@@ -23,6 +23,7 @@ local tablex      = require "pl.tablex"
 local worker_id   = ngx.worker.id
 local decode_args = ngx.decode_args
 local encode_args = ngx.encode_args
+local timer_at    = ngx.timer.at
 local tonumber    = tonumber
 local concat      = table.concat
 local base64      = codec.base64
@@ -42,10 +43,12 @@ local function cache_jwks(data)
 end
 
 
-local function init_worker()
-  KEYS = {}
+local function warmup(premature)
+  if premature then
+    return
+  end
 
-  if kong.db and kong.db.jwt_signer_jwks and worker_id() == 0 then
+  if kong and kong.db and kong.db.jwt_signer_jwks then
     for row, err in kong.db.jwt_signer_jwks:each() do
       if err then
         log.warn("warmup of jwks cache failed with: ", err)
@@ -56,6 +59,18 @@ local function init_worker()
         local cache_key = kong.db.jwt_signer_jwks:cache_key(row.name)
         kong.cache:get(cache_key, nil, cache_jwks, row)
       end
+    end
+  end
+end
+
+
+local function init_worker()
+  KEYS = {}
+
+  if worker_id() == 0 then
+    local ok, err = timer_at(0, warmup)
+    if not ok then
+      log.warn("unable to create jwks cache warmup timer: ", err)
     end
   end
 
