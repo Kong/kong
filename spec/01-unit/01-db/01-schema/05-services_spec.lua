@@ -329,7 +329,6 @@ describe("services", function()
       local invalid_hosts = {
         "/example",
         ".example",
-        "example.",
         "example:",
         "mock;bin",
         "example.com/org",
@@ -388,6 +387,7 @@ describe("services", function()
         "hello.abcd",
         "example_api.com",
         "localhost",
+        "example.test.",
         -- below:
         -- punycode examples from RFC3492;
         -- https://tools.ietf.org/html/rfc3492#page-14
