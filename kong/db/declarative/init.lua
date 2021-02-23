@@ -122,6 +122,10 @@ end
 --     },
 
 --   }
+-- @tparam string contents the json/yml/lua being parsed
+-- @tparam string|nil filename. If nil, json will be tried first, then yaml, then lua (unless deactivated by accept)
+-- @tparam table|nil table which specifies which content types are active. By default it is yaml and json only.
+-- @tparam string|nil old_hash used to avoid loading the same content more than once, if present
 -- @treturn nil|string error message, only if error happened
 -- @treturn nil|table err_t, only if error happened
 -- @treturn table|nil a table with the following format:
@@ -143,8 +147,20 @@ function Config:parse_string(contents, filename, accept, old_hash)
   -- do not accept Lua by default
   accept = accept or { yaml = true, json = true }
 
+  local tried_one = false
   local dc_table, err
-  if accept.yaml and ((not filename) or filename:match("ya?ml$")) then
+  if accept.json
+    and (filename == nil or filename:match("json$"))
+  then
+    tried_one = true
+    dc_table, err = cjson.decode(contents)
+  end
+
+  if type(dc_table) ~= "table"
+    and accept.yaml
+    and (filename == nil or filename:match("ya?ml$"))
+  then
+    tried_one = true
     local pok
     pok, dc_table, err = pcall(lyaml.load, contents)
     if not pok then
@@ -153,12 +169,18 @@ function Config:parse_string(contents, filename, accept, old_hash)
 
     elseif type(dc_table) == "table" then
       convert_nulls(dc_table, lyaml.null, null)
+
+    else
+      err = "expected an object"
+      dc_table = nil
     end
+  end
 
-  elseif accept.json and filename:match("json$") then
-    dc_table, err = cjson.decode(contents)
-
-  elseif accept.lua and filename:match("lua$") then
+  if type(dc_table) ~= "table"
+    and accept.lua
+    and (filename == nil or filename:match("lua$"))
+  then
+    tried_one = true
     local chunk, pok
     chunk, err = loadstring(contents)
     if chunk then
@@ -169,29 +191,24 @@ function Config:parse_string(contents, filename, accept, old_hash)
         dc_table = nil
       end
     end
-
-  else
-    local accepted = {}
-    for k, _ in pairs(accept) do
-      table.insert(accepted, k)
-    end
-    table.sort(accepted)
-    local err = "unknown file extension (" ..
-                table.concat(accepted, ", ") ..
-                " " .. (#accepted == 1 and "is" or "are") ..
-                " supported): " .. filename
-    return nil, err, { error = err }
-  end
-
-  if dc_table ~= nil and type(dc_table) ~= "table" then
-    dc_table = nil
-    err = "expected an object"
   end
 
   if type(dc_table) ~= "table" then
-    err = "failed parsing declarative configuration" ..
-        (filename and " file " .. filename or "") ..
-        (err and ": " .. err or "")
+    if not tried_one then
+      local accepted = {}
+      for k, _ in pairs(accept) do
+        accepted[#accepted + 1] = k
+      end
+      table.sort(accepted)
+
+      err = "unknown file type: " ..
+            tostring(filename) ..
+            ". (Accepted types: " ..
+            table.concat(accepted, ", ") .. ")"
+    else
+      err = "failed parsing declarative configuration" .. (err and (": " .. err) or "")
+    end
+
     return nil, err, { error = err }
   end
 
