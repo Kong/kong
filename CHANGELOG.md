@@ -1,3 +1,9 @@
+## v1.9.0
+
+- Add `config.disable_session` to be able to disable session creation with specified
+  authentication methods
+
+
 ## v1.8.3
 
 - Fix init worker on clients could take a long time
@@ -6,7 +12,7 @@
 ## v1.8.2
 
 - Fix consumer and discovery invalidation events that were returning when the operation
-  was `create`. This could leave some cache entries in cache that need to be invalidated.
+  was `create`. This could leave some cache entries in cache that need to be invalidated
 - Fix a circular dependency issue with `redirect` function
 
 

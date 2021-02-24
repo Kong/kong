@@ -7,7 +7,7 @@
 
 local OICHandler = {
   PRIORITY = 1000,
-  VERSION  = "1.8.3",
+  VERSION  = "1.9.0",
 }
 
 
@@ -2114,21 +2114,40 @@ function OICHandler.access(_, conf)
     end)
   end
 
-
   if auth_methods.session then
-    -- remove session cookie from the upstream request?
-    log("starting session and hiding session cookie from upstream")
-    session:hide()
-    session:start()
-    if session_regenerate then
-      log("regenerating session identifier")
-      session:regenerate()
-    elseif session_modified then
-      log("saving session")
-      session:save()
-    else
-      log("closing session")
-      session:close()
+    if session_present then
+      log("hiding session cookie from upstream")
+      session:hide()
+    end
+
+    if session_regenerate or session_modified or session_present then
+      local skip_session
+      local disable_session = args.get_conf_arg("disable_session")
+      if disable_session then
+        for _, session_auth_method in ipairs(disable_session) do
+          if session_auth_method == auth_method then
+            skip_session = true
+            break
+          end
+        end
+      end
+
+      if not skip_session then
+        if session_regenerate then
+          log("regenerating session identifier")
+          session:regenerate()
+
+        elseif session_modified then
+          log("saving session")
+          session:save()
+
+        elseif session_present then
+          log("starting session")
+          session:start()
+          log("closing session")
+          session:close()
+        end
+      end
     end
   end
 

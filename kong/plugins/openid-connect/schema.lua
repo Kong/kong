@@ -1483,6 +1483,25 @@ local config = {
             },
           },
           {
+            disable_session = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+                one_of = {
+                  "password",
+                  "client_credentials",
+                  "authorization_code",
+                  "bearer",
+                  "introspection",
+                  "kong_oauth2",
+                  "refresh_token",
+                  "session",
+                },
+              },
+            },
+          },
+          {
             cache_ttl = {
               required = false,
               type     = "number",
