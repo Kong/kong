@@ -1,8 +1,17 @@
+## v1.8.0
+
+### Fixed
+
+- Cache now uses `upsert` instead of `insert/update` with database
+- Key rotation is now more resilient on errors
+- Dbless improvements
+
+
 ## v1.7.0
 
 ### Important
 
-- fix a security vulnerability that allowed verification of HS-family signatures
+- Fix a security vulnerability that allowed verification of HS-family signatures
   with an empty/null/nil secret allowing anyone to craft valid tokens to pass signature
   verification
 
