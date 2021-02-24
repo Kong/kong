@@ -432,7 +432,7 @@ local function do_authentication(conf)
   proof_chain, err = trust_table.store:verify(chain[1], intermidiate, true)
   if proof_chain then
     -- get the matching CA id
-    local ca = proof_chain[1]
+    local ca = proof_chain[#proof_chain]
 
     local digest
     digest, err = ca:digest()
