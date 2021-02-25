@@ -692,11 +692,10 @@ end
 function Kong.rewrite()
   local proxy_mode = var.kong_proxy_mode
   if proxy_mode == "grpc" or proxy_mode == "unbuffered"  then
-    kong_resty_ctx.apply_ref() -- if kong_proxy_mode is gRPC/unbuffered, this is executing
-    kong_resty_ctx.stash_ref() -- after an internal redirect. Restore (and restash)
-                               -- context to avoid re-executing phases
+    kong_resty_ctx.apply_ref()    -- if kong_proxy_mode is gRPC/unbuffered, this is executing
+    local ctx = ngx.ctx           -- after an internal redirect. Restore (and restash)
+    kong_resty_ctx.stash_ref(ctx) -- context to avoid re-executing phases
 
-    local ctx = ngx.ctx
     ctx.KONG_REWRITE_ENDED_AT = get_now_ms()
     ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
 
