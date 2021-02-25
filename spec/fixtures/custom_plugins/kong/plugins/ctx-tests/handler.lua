@@ -4,6 +4,7 @@ local type = type
 local assert = assert
 local subsystem = ngx.config.subsystem
 local math = math
+local get_phase = ngx.get_phase
 
 
 local function is_nil(ctx, name)
@@ -135,6 +136,13 @@ local function has_correct_proxy_latency(ctx)
     latency = ctx.KONG_BALANCER_ENDED_AT - ngx.req.start_time() * 1000
     if ctx.KONG_PROXY_LATENCY ~= latency then
       return false, "[ctx-tests] KONG_PROXY_LATENCY is not calculated correctly (request start time)"
+    end
+  end
+
+  if get_phase() == "log" then
+    local log = kong.log.serialize()
+    if ctx.KONG_PROXY_LATENCY > log.latencies.kong then
+      return false, "[ctx-tests] kong.log.serialize() latency is less than KONG_PROXY_LATENCY"
     end
   end
 
