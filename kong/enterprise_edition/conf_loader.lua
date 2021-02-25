@@ -165,6 +165,17 @@ local EE_CONF_INFERENCES = {
   cluster_telemetry_listen = { typ = "array" },
   cluster_telemetry_server_name = { typ = "string" },
   cluster_telemetry_endpoint  = { typ = "string" },
+
+  admin_gui_header_txt = { typ = "string" },
+  admin_gui_header_bg_color = { typ = "string" },
+  admin_gui_header_txt_color = { typ = "string" },
+
+  admin_gui_footer_txt = { typ = "string" },
+  admin_gui_footer_bg_color = { typ = "string" },
+  admin_gui_footer_txt_color = { typ = "string" },
+
+  admin_gui_login_banner_title = { typ = "string" },
+  admin_gui_login_banner_body = { typ = "string" },
 }
 
 

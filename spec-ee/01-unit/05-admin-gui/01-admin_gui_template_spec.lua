@@ -56,6 +56,14 @@ describe("admin_gui template", function()
       admin_gui_auth = 'basic-auth',
       admin_gui_url = "http://0.0.0.0:8002",
       admin_api_uri = "https://admin-reference.kong-cloud.com",
+      admin_gui_header_txt = "header_text",
+      admin_gui_header_bg_color = "white",
+      admin_gui_header_txt_color = "black",
+      admin_gui_footer_txt = "footer_text",
+      admin_gui_footer_bg_color = "red",
+      admin_gui_footer_txt_color = "blue",
+      admin_gui_login_banner_title = "banner_title",
+      admin_gui_login_banner_body = "banner_body",
       proxy_url = "http://0.0.0.0:8000",
       admin_gui_listeners = {
         {
@@ -124,6 +132,14 @@ describe("admin_gui template", function()
       assert.matches("'RBAC_ENFORCED': 'false'", admin_idx, nil, true)
       assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
       assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_TXT': 'header_text'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_BG_COLOR': 'white'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_TXT_COLOR': 'black'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_TXT': 'footer_text'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_BG_COLOR': 'red'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_TXT_COLOR': 'blue'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_LOGIN_BANNER_TITLE': 'banner_title'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_LOGIN_BANNER_BODY': 'banner_body'", admin_idx, nil, true)
     end)
 
     it("inserts new values when called again", function()
@@ -135,6 +151,14 @@ describe("admin_gui template", function()
       new_conf.proxy_url = 'http://127.0.0.1:8000'
       new_conf.admin_gui_flags = "{ HIDE_VITALS: true }"
       new_conf.admin_gui_auth_header = 'Kong-Admin-Userz'
+      new_conf.admin_gui_header_txt = "header_text_2"
+      new_conf.admin_gui_header_bg_color = "#f73333"
+      new_conf.admin_gui_header_txt_color = "green"
+      new_conf.admin_gui_footer_txt = "footer_text_2"
+      new_conf.admin_gui_footer_bg_color = "#000000"
+      new_conf.admin_gui_footer_txt_color = "yellow"
+      new_conf.admin_gui_login_banner_title = "banner_title_2"
+      new_conf.admin_gui_login_banner_body = "banner_body_2"
 
       -- update template
       ee.prepare_admin(new_conf)
@@ -151,6 +175,14 @@ describe("admin_gui template", function()
       assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
       assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-Userz'", admin_idx, nil, true)
       assert.matches("'FEATURE_FLAGS': '{ HIDE_VITALS: true }'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_TXT': 'header_text_2'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_BG_COLOR': '#f73333'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_TXT_COLOR': 'green'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_TXT': 'footer_text_2'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_BG_COLOR': '#000000'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_TXT_COLOR': 'yellow'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_LOGIN_BANNER_TITLE': 'banner_title_2'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_LOGIN_BANNER_BODY': 'banner_body_2'", admin_idx, nil, true)
     end)
   end)
 
@@ -164,6 +196,14 @@ describe("admin_gui template", function()
       admin_gui_url = "http://0.0.0.0:8002",
       proxy_url = "http://0.0.0.0:8000",
       admin_api_uri = "0.0.0.0:8001",
+      admin_gui_header_txt = "header_text",
+      admin_gui_header_bg_color = "white",
+      admin_gui_header_txt_color = "black",
+      admin_gui_footer_txt = "footer_text",
+      admin_gui_footer_bg_color = "red",
+      admin_gui_footer_txt_color = "blue",
+      admin_gui_login_banner_title = "banner_title",
+      admin_gui_login_banner_body = "banner_body",
       anonymous_reports = false,
       admin_gui_listeners = {
         {
@@ -233,6 +273,14 @@ describe("admin_gui template", function()
       assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
       assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", admin_idx, nil, true)
       assert.matches("'ANONYMOUS_REPORTS': 'false'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_TXT': 'header_text'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_BG_COLOR': 'white'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_TXT_COLOR': 'black'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_TXT': 'footer_text'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_BG_COLOR': 'red'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_TXT_COLOR': 'blue'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_LOGIN_BANNER_TITLE': 'banner_title'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_LOGIN_BANNER_BODY': 'banner_body'", admin_idx, nil, true)
     end)
 
     it("inserts new values when called again", function()
@@ -243,6 +291,14 @@ describe("admin_gui template", function()
       new_conf.proxy_url = 'http://127.0.0.1:8000'
       new_conf.admin_gui_flags = "{ HIDE_VITALS: true }"
       new_conf.anonymous_reports = true
+      new_conf.admin_gui_header_txt = "header_text_2"
+      new_conf.admin_gui_header_bg_color = "#f73333"
+      new_conf.admin_gui_header_txt_color = "green"
+      new_conf.admin_gui_footer_txt = "footer_text_2"
+      new_conf.admin_gui_footer_bg_color = "#000000"
+      new_conf.admin_gui_footer_txt_color = "yellow"
+      new_conf.admin_gui_login_banner_title = "banner_title_2"
+      new_conf.admin_gui_login_banner_body = "banner_body_2"
 
       -- update template
       ee.prepare_admin(new_conf)
@@ -261,6 +317,14 @@ describe("admin_gui template", function()
       assert.matches("'RBAC_USER_HEADER': 'Kong-Admin-User'", admin_idx, nil, true)
       assert.matches("'FEATURE_FLAGS': '{ HIDE_VITALS: true }'", admin_idx, nil, true)
       assert.matches("'ANONYMOUS_REPORTS': 'true'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_TXT': 'header_text_2'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_BG_COLOR': '#f73333'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_HEADER_TXT_COLOR': 'green'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_TXT': 'footer_text_2'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_BG_COLOR': '#000000'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_FOOTER_TXT_COLOR': 'yellow'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_LOGIN_BANNER_TITLE': 'banner_title_2'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_LOGIN_BANNER_BODY': 'banner_body_2'", admin_idx, nil, true)
     end)
   end)
 
