@@ -18,99 +18,143 @@ local utils = require "kong.tools.utils"
 --   can be expanded using the `line:expand()` method.
 
 local tests = {
-  -- service_path    route_path  strip_path     path_handling  request_path     expected_path
-  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/",             "/",                  },
-  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/route",        "/route",             },
-  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/route/",       "/route/",            },
-  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/routereq",     "/routereq",          },
-  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/route/req",    "/route/req",         },
-  -- 5
-  {  "/",            "/route",   false,         {"v0", "v1"},  "/route",        "/route",             },
-  {  "/",            "/route",   false,         {"v0", "v1"},  "/route/",       "/route/",            },
-  {  "/",            "/route",   false,         {"v0", "v1"},  "/routereq",     "/routereq",          },
-  {  "/",            "/route",   true,          {"v0", "v1"},  "/route",        "/",                  },
-  {  "/",            "/route",   true,          {"v0", "v1"},  "/route/",       "/",                  },
-  {  "/",            "/route",   true,          {"v0", "v1"},  "/routereq",     "/req",               },
-  -- 11
-  {  "/",            "/route/",  false,         {"v0", "v1"},  "/route/",       "/route/",            },
-  {  "/",            "/route/",  false,         {"v0", "v1"},  "/route/req",    "/route/req",         },
-  {  "/",            "/route/",  true,          {"v0", "v1"},  "/route/",       "/",                  },
-  {  "/",            "/route/",  true,          {"v0", "v1"},  "/route/req",    "/req",               },
-  -- 15
-  {  "/srv",         "/rou",     false,         "v0",          "/roureq",       "/srv/roureq",        },
-  {  "/srv",         "/rou",     false,         "v1",          "/roureq",       "/srvroureq",         },
-  {  "/srv",         "/rou",     true,          "v0",          "/roureq",       "/srv/req",           },
-  {  "/srv",         "/rou",     true,          "v1",          "/roureq",       "/srvreq",            },
-  -- 19
-  {  "/srv/",        "/rou",     false,         {"v0", "v1"},  "/rou",          "/srv/rou",           },
-  {  "/srv/",        "/rou",     true,          "v0",          "/rou",          "/srv",               },
-  {  "/srv/",        "/rou",     true,          "v1",          "/rou",          "/srv/",              },
-  -- 22
-  {  "/service",     "/",        {false, true}, {"v0", "v1"},  "/",             "/service",           },
-  {  "/service",     "/",        {false, true}, "v0",          "/route",        "/service/route",     },
-  {  "/service",     "/",        {false, true}, "v1",          "/route",        "/serviceroute",      },
-  {  "/service",     "/",        {false, true}, "v0",          "/route/",       "/service/route/",    },
-  {  "/service",     "/",        {false, true}, "v1",          "/route/",       "/serviceroute/",     },
-  -- 27
-  {  "/service",     "/",        {false, true}, "v0",          "/routereq",     "/service/routereq",  },
-  {  "/service",     "/",        {false, true}, "v1",          "/routereq",     "/serviceroutereq",   },
-  {  "/service",     "/",        {false, true}, "v0",          "/route/req",    "/service/route/req", },
-  {  "/service",     "/",        {false, true}, "v1",          "/route/req",    "/serviceroute/req",  },
-  -- 31
-  {  "/service",     "/route",   false,         "v0",          "/route",        "/service/route",     },
-  {  "/service",     "/route",   false,         "v1",          "/route",        "/serviceroute",      },
-  {  "/service",     "/route",   false,         "v0",          "/route/",       "/service/route/",    },
-  {  "/service",     "/route",   false,         "v1",          "/route/",       "/serviceroute/",     },
-  {  "/service",     "/route",   false,         "v0",          "/routereq",     "/service/routereq",  },
-  {  "/service",     "/route",   false,         "v1",          "/routereq",     "/serviceroutereq",   },
-  {  "/service",     "/route",   true,          {"v0", "v1"},  "/route",        "/service",           },
-  {  "/service",     "/route",   true,          {"v0", "v1"},  "/route/",       "/service/",          },
-  {  "/service",     "/route",   true,          "v0",          "/routereq",     "/service/req",       },
-  {  "/service",     "/route",   true,          "v1",          "/routereq",     "/servicereq",        },
-  -- 41
-  {  "/service",     "/route/",  false,         "v0",          "/route/",       "/service/route/",    },
-  {  "/service",     "/route/",  false,         "v1",          "/route/",       "/serviceroute/",     },
-  {  "/service",     "/route/",  false,         "v0",          "/route/req",    "/service/route/req", },
-  {  "/service",     "/route/",  false,         "v1",          "/route/req",    "/serviceroute/req",  },
-  {  "/service",     "/route/",  true,          "v0",          "/route/",       "/service/",          },
-  {  "/service",     "/route/",  true,          "v1",          "/route/",       "/service",           },
-  {  "/service",     "/route/",  true,          "v0",          "/route/req",    "/service/req",       },
-  {  "/service",     "/route/",  true,          "v1",          "/route/req",    "/servicereq",        },
-  -- 49
-  {  "/service/",    "/",        {false, true}, "v0",          "/route/",       "/service/route/",    },
-  {  "/service/",    "/",        {false, true}, "v1",          "/route/",       "/service/route/",    },
-  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/",             "/service/",          },
-  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/route",        "/service/route",     },
-  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/routereq",     "/service/routereq",  },
-  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/route/req",    "/service/route/req", },
-  -- 55
-  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route",        "/service/route",      },
-  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route/",       "/service/route/",     },
-  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/routereq",     "/service/routereq",   },
-  {  "/service/",    "/route",   true,          "v0",          "/route",        "/service",            },
-  {  "/service/",    "/route",   true,          "v1",          "/route",        "/service/",           },
-  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/route/",       "/service/",           },
-  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/routereq",     "/service/req",        },
-  -- 62
-  {  "/service/",    "/route/",  false,         {"v0", "v1"},  "/route/",       "/service/route/",     },
-  {  "/service/",    "/route/",  false,         {"v0", "v1"},  "/route/req",    "/service/route/req",  },
-  {  "/service/",    "/route/",  true,          {"v0", "v1"},  "/route/",       "/service/",           },
-  {  "/service/",    "/route/",  true,          {"v0", "v1"},  "/route/req",    "/service/req",        },
-  -- 66
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/",                 "/",                    },
+  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/route",            "/route",               },
+  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/route/",           "/route/",              },
+  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/routereq",         "/routereq",            },
+  {  "/",            "/",        {false, true}, {"v0", "v1"},  "/route/req",        "/route/req",           }, -- 5
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/",            "/route",   false,         {"v0", "v1"},  "/route",            "/route",               },
+  {  "/",            "/route",   false,         {"v0", "v1"},  "/route/",           "/route/",              },
+  {  "/",            "/route",   false,         {"v0", "v1"},  "/routereq",         "/routereq",            },
+  {  "/",            "/route",   true,          {"v0", "v1"},  "/route",            "/",                    },
+  {  "/",            "/route",   true,          {"v0", "v1"},  "/route/",           "/",                    },
+  {  "/",            "/route",   true,          {"v0", "v1"},  "/routereq",         "/req",                 }, -- 11
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/",            "/route/",  false,         {"v0", "v1"},  "/route/",           "/route/",              },
+  {  "/",            "/route/",  false,         {"v0", "v1"},  "/route/req",        "/route/req",           },
+  {  "/",            "/route/",  true,          {"v0", "v1"},  "/route/",           "/",                    },
+  {  "/",            "/route/",  true,          {"v0", "v1"},  "/route/req",        "/req",                 }, -- 15
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/srv",         "/rou",     false,         "v0",          "/roureq",           "/srv/roureq",          },
+  {  "/srv",         "/rou",     false,         "v1",          "/roureq",           "/srvroureq",           },
+  {  "/srv",         "/rou",     true,          "v0",          "/roureq",           "/srv/req",             },
+  {  "/srv",         "/rou",     true,          "v1",          "/roureq",           "/srvreq",              }, -- 19
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/srv/",        "/rou",     false,         {"v0", "v1"},  "/rou",              "/srv/rou",             },
+  {  "/srv/",        "/rou",     true,          "v0",          "/rou",              "/srv",                 },
+  {  "/srv/",        "/rou",     true,          "v1",          "/rou",              "/srv/",                }, -- 22
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/",        {false, true}, {"v0", "v1"},  "/",                 "/service",             },
+  {  "/service",     "/",        {false, true}, "v0",          "/route",            "/service/route",       },
+  {  "/service",     "/",        {false, true}, "v1",          "/route",            "/serviceroute",        },
+  {  "/service",     "/",        {false, true}, "v0",          "/route/",           "/service/route/",      },
+  {  "/service",     "/",        {false, true}, "v1",          "/route/",           "/serviceroute/",       }, -- 27
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/",        {false, true}, "v0",          "/routereq",         "/service/routereq",    },
+  {  "/service",     "/",        {false, true}, "v1",          "/routereq",         "/serviceroutereq",     },
+  {  "/service",     "/",        {false, true}, "v0",          "/route/req",        "/service/route/req",   },
+  {  "/service",     "/",        {false, true}, "v1",          "/route/req",        "/serviceroute/req",    }, -- 31
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/route",   false,         "v0",          "/route",            "/service/route",       },
+  {  "/service",     "/route",   false,         "v1",          "/route",            "/serviceroute",        },
+  {  "/service",     "/route",   false,         "v0",          "/route/",           "/service/route/",      },
+  {  "/service",     "/route",   false,         "v1",          "/route/",           "/serviceroute/",       },
+  {  "/service",     "/route",   false,         "v0",          "/routereq",         "/service/routereq",    },
+  {  "/service",     "/route",   false,         "v1",          "/routereq",         "/serviceroutereq",     },
+  {  "/service",     "/route",   true,          {"v0", "v1"},  "/route",            "/service",             },
+  {  "/service",     "/route",   true,          {"v0", "v1"},  "/route/",           "/service/",            },
+  {  "/service",     "/route",   true,          "v0",          "/routereq",         "/service/req",         },
+  {  "/service",     "/route",   true,          "v1",          "/routereq",         "/servicereq",          }, -- 41
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/route/",  false,         "v0",          "/route/",           "/service/route/",      },
+  {  "/service",     "/route/",  false,         "v1",          "/route/",           "/serviceroute/",       },
+  {  "/service",     "/route/",  false,         "v0",          "/route/req",        "/service/route/req",   },
+  {  "/service",     "/route/",  false,         "v1",          "/route/req",        "/serviceroute/req",    },
+  {  "/service",     "/route/",  true,          "v0",          "/route/",           "/service/",            },
+  {  "/service",     "/route/",  true,          "v1",          "/route/",           "/service",             },
+  {  "/service",     "/route/",  true,          "v0",          "/route/req",        "/service/req",         },
+  {  "/service",     "/route/",  true,          "v1",          "/route/req",        "/servicereq",          }, -- 49
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service/",    "/",        {false, true}, "v0",          "/route/",           "/service/route/",      },
+  {  "/service/",    "/",        {false, true}, "v1",          "/route/",           "/service/route/",      },
+  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/",                 "/service/",            },
+  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/route",            "/service/route",       },
+  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/routereq",         "/service/routereq",    },
+  {  "/service/",    "/",        {false, true}, {"v0", "v1"},  "/route/req",        "/service/route/req",   }, -- 55
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route",            "/service/route",       },
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route/",           "/service/route/",      },
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/routereq",         "/service/routereq",    },
+  {  "/service/",    "/route",   true,          "v0",          "/route",            "/service",             },
+  {  "/service/",    "/route",   true,          "v1",          "/route",            "/service/",            },
+  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/route/",           "/service/",            },
+  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/routereq",         "/service/req",         }, -- 62
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service/",    "/route/",  false,         {"v0", "v1"},  "/route/",           "/service/route/",      },
+  {  "/service/",    "/route/",  false,         {"v0", "v1"},  "/route/req",        "/service/route/req",   },
+  {  "/service/",    "/route/",  true,          {"v0", "v1"},  "/route/",           "/service/",            },
+  {  "/service/",    "/route/",  true,          {"v0", "v1"},  "/route/req",        "/service/req",         }, -- 66
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
   -- The following cases match on host (not paths)
-  {  "/",            nil,        {false, true}, {"v0", "v1"},  "/",             "/",                  },
-  {  "/",            nil,        {false, true}, {"v0", "v1"},  "/route",        "/route",             },
-  {  "/",            nil,        {false, true}, {"v0", "v1"},  "/route/",       "/route/",            },
-  -- 69
-  {  "/service",     nil,        {false, true}, {"v0", "v1"},  "/",             "/service",           },
-  {  "/service",     nil,        {false, true}, "v0",          "/route",        "/service/route",     },
-  {  "/service",     nil,        {false, true}, "v1",          "/route",        "/serviceroute",      },
-  {  "/service",     nil,        {false, true}, "v0",          "/route/",       "/service/route/",    },
-  {  "/service",     nil,        {false, true}, "v1",          "/route/",       "/serviceroute/",     },
-  -- 74
-  {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/",             "/service/",          },
-  {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/route",        "/service/route",     },
-  {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/route/",       "/service/route/",    },
+  {  "/",            nil,        {false, true}, {"v0", "v1"},  "/",                 "/",                    },
+  {  "/",            nil,        {false, true}, {"v0", "v1"},  "/route",            "/route",               },
+  {  "/",            nil,        {false, true}, {"v0", "v1"},  "/route/",           "/route/",              }, -- 69
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     nil,        {false, true}, {"v0", "v1"},  "/",                 "/service",             },
+  {  "/service",     nil,        {false, true}, "v0",          "/route",            "/service/route",       },
+  {  "/service",     nil,        {false, true}, "v1",          "/route",            "/serviceroute",        },
+  {  "/service",     nil,        {false, true}, "v0",          "/route/",           "/service/route/",      },
+  {  "/service",     nil,        {false, true}, "v1",          "/route/",           "/serviceroute/",       }, -- 74
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/",                 "/service/",            },
+  {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/route",            "/service/route",       },
+  {  "/service/",    nil,        {false, true}, {"v0", "v1"},  "/route/",           "/service/route/",      }, -- 77
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/route",   true,          "v0",          "/route./req",       "/service/req",         },
+  {  "/service",     "/route",   true,          "v1",          "/route./req",       "/servicereq",          },
+  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/route./req",       "/service/req",         }, -- 80
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/route",   true,          "v0",          "/route%2E/req",     "/service/req",         },
+  {  "/service",     "/route",   true,          "v1",          "/route%2E/req",     "/servicereq",          },
+  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/route%2E/req",     "/service/req",         },
+  {  "/service",     "/route",   true,          "v0",          "/route%2e/req",     "/service/req",         },
+  {  "/service",     "/route",   true,          "v1",          "/route%2e/req",     "/servicereq",          },
+  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/route%2e/req",     "/service/req",         }, -- 86
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/route",   true,          "v0",          "/route../req",      "/service/req",         },
+  {  "/service",     "/route",   true,          "v1",          "/route../req",      "/servicereq",          },
+  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/route../req",      "/service/req",         }, -- 89
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/route",   true,          "v0",          "/route%2E%2E/req",  "/service/req",         },
+  {  "/service",     "/route",   true,          "v1",          "/route%2E%2E/req",  "/servicereq",          },
+  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/route%2E%2E/req",  "/service/req",         },
+  {  "/service",     "/route",   true,          "v0",          "/route%2e%2E/req",  "/service/req",         },
+  {  "/service",     "/route",   true,          "v1",          "/route%2e%2E/req",  "/servicereq",          },
+  {  "/service/",    "/route",   true,          {"v0", "v1"},  "/route%2e%2E/req",  "/service/req",         }, -- 95
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/route",   false,         "v0",          "/route./req",       "/service/route./req",  },
+  {  "/service",     "/route",   false,         "v1",          "/route./req",       "/serviceroute./req",   },
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route./req",       "/service/route./req",  }, -- 98
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/route",   false,         "v0",          "/route%2E/req",     "/service/route./req",  },
+  {  "/service",     "/route",   false,         "v1",          "/route%2E/req",     "/serviceroute./req",   },
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route%2E/req",     "/service/route./req",  },
+  {  "/service",     "/route",   false,         "v0",          "/route%2e/req",     "/service/route./req",  },
+  {  "/service",     "/route",   false,         "v1",          "/route%2e/req",     "/serviceroute./req",   },
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route%2e/req",     "/service/route./req",  }, -- 104
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/route",   false,         "v0",          "/route../req",      "/service/route../req", },
+  {  "/service",     "/route",   false,         "v1",          "/route../req",      "/serviceroute../req",  },
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route../req",      "/service/route../req", }, -- 107
+  -- service_path    route_path  strip_path     path_handling  request_path         expected_path
+  {  "/service",     "/route",   false,         "v0",          "/route%2E%2E/req",  "/service/route../req", },
+  {  "/service",     "/route",   false,         "v1",          "/route%2E%2E/req",  "/serviceroute../req",  },
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route%2E%2E/req",  "/service/route../req", },
+  {  "/service",     "/route",   false,         "v0",          "/route%2e%2E/req",  "/service/route../req", },
+  {  "/service",     "/route",   false,         "v1",          "/route%2e%2E/req",  "/serviceroute../req",  },
+  {  "/service/",    "/route",   false,         {"v0", "v1"},  "/route%2e%2E/req",  "/service/route../req", }, -- 113
 }
 
 
