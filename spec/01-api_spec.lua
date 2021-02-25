@@ -154,7 +154,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/consumers/bob/mtls-auth",
             body    = {
               subject_name   = "1234",
-              ca_certificate = {id = "abcd"}
+              ca_certificate = { id = ca.id },
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -164,7 +164,7 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.equal(consumer.id, json.consumer.id)
           assert.equal("1234", json.subject_name)
-          assert.equal("abcd", json.ca_certificate.id)
+          assert.equal(ca.id, json.ca_certificate.id)
         end)
       end)
 
