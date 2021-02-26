@@ -633,5 +633,40 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(string.match(res.body, 'DogsRKewl'))
       end)
     end)
+
+    describe("default route", function()
+      local db
+
+      setup(function()
+        _, db, _ = helpers.get_db_utils(strategy)
+        assert(helpers.start_kong({
+          database    = strategy,
+          portal      = true,
+          portal_is_legacy = false,
+        }))
+
+        configure_portal(db, "default")
+
+        ngx.sleep(5)
+        db:truncate("files")
+
+        create_workspace_files("default")
+        ngx.sleep(2)
+      end)
+
+      teardown(function()
+        db:truncate()
+        helpers.stop_kong()
+      end)
+
+      it("returns 404 when passed an illegal redirect in path", function()
+        local res = assert(gui_client_request({
+          method = "GET",
+          path = "//wwww.google.com/",
+        }))
+
+        assert.res_status(404, res)
+      end)
+    end)
   end)
 end

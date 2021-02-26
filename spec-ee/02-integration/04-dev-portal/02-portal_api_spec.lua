@@ -4812,6 +4812,51 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
       end)
+
+      describe("Default Route", function()
+        lazy_setup(function()
+          helpers.stop_kong()
+          assert(db:truncate())
+
+          assert(helpers.start_kong({
+            database = strategy,
+            portal = true,
+            portal_auth = "basic-auth",
+            enforce_rbac = rbac,
+            portal_session_conf = PORTAL_SESSION_CONF,
+            portal_auth_password_complexity = [[{"kong-preset": "min_8"}]],
+            admin_gui_url = "http://localhost:8080",
+          }))
+
+          configure_portal(db, {
+            portal = true,
+            portal_auth = "basic-auth",
+            portal_is_legacy = false,
+          })
+        end)
+
+        lazy_teardown(function()
+          helpers.stop_kong()
+        end)
+
+        before_each(function()
+          portal_api_client = assert(ee_helpers.portal_api_client())
+        end)
+
+        after_each(function()
+          close_clients(portal_api_client)
+        end)
+
+        it("returns 404 when passed an illegal redirect in path", function()
+          local res = assert(portal_api_client:send {
+            method = "GET",
+            path = "//wwww.google.com/",
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          assert.res_status(404, res)
+        end)
+      end)
     end)
   end
 end
