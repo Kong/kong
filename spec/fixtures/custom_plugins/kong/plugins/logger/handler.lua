@@ -26,6 +26,13 @@ function LoggerHandler:certificate(conf)
 end
 
 
+function LoggerHandler:preread(conf)
+  LoggerHandler.super.preread(self)
+
+  kong.log("preread phase")
+end
+
+
 function LoggerHandler:rewrite(conf)
   LoggerHandler.super.rewrite(self)
 
