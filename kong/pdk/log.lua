@@ -737,10 +737,8 @@ do
         },
         tries = (ctx.balancer_data or {}).tries,
         latencies = {
-          kong = (ctx.KONG_ACCESS_TIME or 0) +
-                 (ctx.KONG_RECEIVE_TIME or 0) +
-                 (ctx.KONG_REWRITE_TIME or 0) +
-                 (ctx.KONG_BALANCER_TIME or 0),
+          kong = (ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0) +
+                 (ctx.KONG_RECEIVE_TIME or 0),
           proxy = ctx.KONG_WAITING_TIME or -1,
           request = var.request_time * 1000
         },
@@ -749,7 +747,7 @@ do
         service = ctx.service,
         consumer = ctx.authenticated_consumer,
         client_ip = var.remote_addr,
-        started_at = req.start_time() * 1000
+        started_at = ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
       })
     end
 
@@ -777,7 +775,7 @@ do
         session_tls = {
           version = session_tls_ver,
           cipher = var.ssl_cipher,
-          client_verify = ngx.ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
+          client_verify = ctx.CLIENT_VERIFY_OVERRIDE or var.ssl_client_verify,
         }
       end
 
@@ -797,8 +795,7 @@ do
         },
         tries = (ctx.balancer_data or {}).tries,
         latencies = {
-          kong = (ctx.KONG_PREREAD_TIME or 0) +
-                 (ctx.KONG_BALANCER_TIME or 0),
+          kong = ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0,
           session = var.session_time * 1000,
         },
         authenticated_entity = authenticated_entity,
@@ -806,7 +803,7 @@ do
         service = ctx.service,
         consumer = ctx.authenticated_consumer,
         client_ip = var.remote_addr,
-        started_at = req.start_time() * 1000
+        started_at = ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
       })
     end
   end
