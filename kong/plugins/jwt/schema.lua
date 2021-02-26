@@ -27,6 +27,12 @@ return {
                 type = "string",
                 one_of = { "exp", "nbf" },
           }, }, },
+          { scopes_claim = { type = "string", default = "scope" }, },
+          { scopes_required = {
+            type = "set",
+            elements = {
+              type = "string",
+          }, }, },
           { anonymous = { type = "string" }, },
           { run_on_preflight = { type = "boolean", required = true, default = true }, },
           { maximum_expiration = {

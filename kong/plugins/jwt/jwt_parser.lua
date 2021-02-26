@@ -435,11 +435,14 @@ function _M:validate_scopes(scopes_claim, scopes_required)
 
     if (matches) then
       -- First match win
-      return matches
+      return matches, {}
     end
   end
 
-  return false
+  local errors
+  errors = add_error(errors, scopes_claim, "has no match")
+
+  return false, errors
 end
 
 --- Check that the maximum allowed expiration is not reached
