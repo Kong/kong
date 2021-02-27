@@ -206,7 +206,7 @@ local function do_authentication(conf)
     end
   end
 
-  if table.getn(conf.scopes_required) > 0 then
+  if #conf.scopes_required > 0 then
     local ok, errors = jwt:validate_scopes(conf.scopes_claim, conf.scopes_required)
 
     if not ok then

@@ -410,7 +410,6 @@ end
 -- @return A Boolean indicating true if the scope are valid
 function _M:validate_scopes(scopes_claim, scopes_required)
   local claim_raw= self.claims[scopes_claim]
-  local claim_values = {}
   local claim
 
   -- claim can be express as
@@ -424,7 +423,7 @@ function _M:validate_scopes(scopes_claim, scopes_required)
 
 
   for _, scope_requirement in ipairs(scopes_required) do
-    local matches = false
+    local matches
     local scope_requirement_type = type(scope_requirement)
 
     if scope_requirement_type == "string" and scope_requirement:find(',') then
@@ -439,7 +438,7 @@ function _M:validate_scopes(scopes_claim, scopes_required)
     end
   end
 
-  local errors
+  local errors = {}
   errors = add_error(errors, scopes_claim, "has no match")
 
   return false, errors
