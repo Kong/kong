@@ -6,6 +6,7 @@ local bit           = require "bit"
 
 
 local hostname_type = utils.hostname_type
+local normalize     = require("kong.tools.uri").normalize
 local subsystem     = ngx.config.subsystem
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
@@ -734,8 +735,10 @@ do
               ctx.matches.uri = uri_t.value
 
               if m.uri_postfix then
+                ctx.matches.uri_prefix = sub(ctx.req_uri, 1, -(#m.uri_postfix + 1))
+
                 -- remove the uri_postfix group
-                m[#m]          = nil
+                m[#m] = nil
                 m.uri_postfix = nil
               end
 
@@ -748,6 +751,7 @@ do
           end
 
           -- plain or prefix match from the index
+          ctx.matches.uri_prefix = sub(ctx.req_uri, 1, #uri_t.value)
           ctx.matches.uri_postfix = sub(ctx.req_uri, #uri_t.value + 1)
           ctx.matches.uri = uri_t.value
 
@@ -770,8 +774,10 @@ do
             ctx.matches.uri = uri_t.value
 
             if m.uri_postfix then
+              ctx.matches.uri_prefix = sub(ctx.req_uri, 1, -(#m.uri_postfix + 1))
+
               -- remove the uri_postfix group
-              m[#m]          = nil
+              m[#m] = nil
               m.uri_postfix = nil
             end
 
@@ -786,6 +792,7 @@ do
           -- plain or prefix match (not from the index)
           local from, to = find(ctx.req_uri, uri_t.value, nil, true)
           if from == 1 then
+            ctx.matches.uri_prefix = sub(ctx.req_uri, 1, to)
             ctx.matches.uri_postfix = sub(ctx.req_uri, to + 1)
             ctx.matches.uri = uri_t.value
 
@@ -1038,6 +1045,9 @@ function _M.new(routes)
   -- iterations over sets of routes per request
   local categories = {}
 
+  -- all routes indexed by id
+  local routes_by_id = {}
+
 
   local cache = lrucache.new(MATCH_LRUCACHE_SIZE)
 
@@ -1049,11 +1059,11 @@ function _M.new(routes)
 
     for i = 1, #routes do
 
-      local paths = routes[i].route.paths
+      local route = utils.deep_copy(routes[i], false)
+      local paths = utils.deep_copy(route.route.paths, false)
       if paths ~= nil and #paths > 1 then
         -- split routes by paths to sort properly
         for j = 1, #paths do
-          local route = routes[i]
           local index = #marshalled_routes + 1
           local err
 
@@ -1068,12 +1078,15 @@ function _M.new(routes)
         local index = #marshalled_routes + 1
         local err
 
-        marshalled_routes[index], err = marshall_route(routes[i])
+        marshalled_routes[index], err = marshall_route(route)
         if not marshalled_routes[index] then
           return nil, err
         end
       end
 
+      if routes[i].route.id ~= nil then
+        routes_by_id[routes[i].route.id] = routes[i]
+      end
     end
 
     -- sort wildcard hosts and uri regexes since those rules
@@ -1429,9 +1442,17 @@ function _M.new(routes)
             local upstream_url_t = matched_route.upstream_url_t
             local matches        = ctx.matches
 
+            if matched_route.route.id and routes_by_id[matched_route.route.id].route then
+              matched_route.route = routes_by_id[matched_route.route.id].route
+            end
+
+            local request_prefix
+
             -- Path construction
 
             if matched_route.type == "http" then
+              request_prefix = matched_route.strip_uri and matches.uri_prefix or nil
+
               -- if we do not have a path-match, then the postfix is simply the
               -- incoming path, without the initial slash
               local request_postfix = matches.uri_postfix or sub(req_uri, 2, -1)
@@ -1520,6 +1541,7 @@ function _M.new(routes)
               upstream_scheme = upstream_url_t.scheme,
               upstream_uri    = upstream_uri,
               upstream_host   = upstream_host,
+              prefix          = request_prefix,
               matches         = {
                 uri_captures  = matches.uri_captures,
                 uri           = matches.uri,
@@ -1579,6 +1601,8 @@ function _M.new(routes)
         if idx then
           req_uri = sub(req_uri, 1, idx - 1)
         end
+
+        req_uri = normalize(req_uri, true)
       end
 
       local match_t = find_route(req_method, req_uri, req_host,
