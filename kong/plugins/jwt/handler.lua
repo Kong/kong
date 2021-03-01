@@ -76,7 +76,7 @@ local function load_credential(jwt_secret_key)
 end
 
 
-local function set_consumer(consumer, credential, token)
+local function set_consumer(consumer, credential, token, validated_scopes)
   kong.client.authenticate(consumer, credential)
 
   local set_header = kong.service.request.set_header
@@ -112,6 +112,12 @@ local function set_consumer(consumer, credential, token)
     clear_header(constants.HEADERS.ANONYMOUS)
   else
     set_header(constants.HEADERS.ANONYMOUS, true)
+  end
+
+  if validated_scopes then
+    set_header(constants.HEADERS.VALIDATED_SCOPES, table.concat(validated_scopes, ','))
+  else
+    clear_header(constants.HEADERS.VALIDATED_SCOPES)
   end
 
   if token then
@@ -206,11 +212,14 @@ local function do_authentication(conf)
     end
   end
 
+  local validated_scopes = {}
   if #conf.scopes_required > 0 then
-    local ok, errors = jwt:validate_scopes(conf.scopes_claim, conf.scopes_required)
+    local ok, filtered_scopes = jwt:validate_scopes(conf.scopes_claim, conf.scopes_required)
 
     if not ok then
-      return false, { status = 401, errors = errors }
+      return false, { status = 401, message = "Invalid scope" }
+    else
+      validated_scopes = filtered_scopes
     end
   end
 
@@ -231,7 +240,7 @@ local function do_authentication(conf)
     }
   end
 
-  set_consumer(consumer, jwt_secret, token)
+  set_consumer(consumer, jwt_secret, token, validated_scopes)
 
   return true
 end
