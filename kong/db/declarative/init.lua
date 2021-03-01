@@ -1,5 +1,5 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
-local topological_sort = require "kong.db.schema.topological_sort"
+local schema_topological_sort = require "kong.db.schema.topological_sort"
 local workspaces = require "kong.workspaces"
 local pl_file = require "pl.file"
 local lyaml = require "lyaml"
@@ -341,7 +341,7 @@ function declarative.load_into_db(entities, meta)
       return nil, "unknown entity: " .. entity_name
     end
   end
-  local sorted_schemas, err = topological_sort(schemas)
+  local sorted_schemas, err = schema_topological_sort(schemas)
   if not sorted_schemas then
     return nil, err
   end
@@ -382,7 +382,7 @@ local function export_from_db(emitter, skip_ws)
       table.insert(schemas, dao.schema)
     end
   end
-  local sorted_schemas, err = topological_sort(schemas)
+  local sorted_schemas, err = schema_topological_sort(schemas)
   if not sorted_schemas then
     return nil, err
   end
