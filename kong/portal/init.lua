@@ -147,6 +147,9 @@ app.handle_error = function(self, err, trace)
   return kong.response.exit(500, { message = "An unexpected error occurred" })
 end
 
+-- api_helpers default route only allows redirects to valid app routes
+app.default_route = api_helpers.default_route
+
 
 -- Instantiate a single helper object for wrapped methods
 local handler_helpers = {
