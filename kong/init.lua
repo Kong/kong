@@ -575,7 +575,7 @@ function Kong.init()
     stream_api.load_handlers()
   end
 
-  if kong.configuration.database == "off" then
+  if config.database == "off" then
     local err
     declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
     if not declarative_entities then
@@ -591,7 +591,9 @@ function Kong.init()
       error("error building initial plugins: " .. tostring(err))
   end
 
-    assert(runloop.build_router("init"))
+    if config.role ~= "control_plane" then
+      assert(runloop.build_router("init"))
+    end
   end
 
   ee.handlers.init.after()
@@ -696,15 +698,18 @@ function Kong.init_worker()
   -- ]]
 
   ok, err = load_declarative_config(kong.configuration,
-    declarative_entities, declarative_meta)
+                                    declarative_entities,
+                                    declarative_meta)
   if not ok then
     stash_init_worker_error("failed to load declarative config file: " .. err)
     return
   end
 
-  ok, err = execute_cache_warmup(kong.configuration)
-  if not ok then
-    ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
+  if kong.configuration.role ~= "control_plane" then
+    ok, err = execute_cache_warmup(kong.configuration)
+    if not ok then
+      ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
+    end
   end
 
   runloop.init_worker.before()
@@ -724,7 +729,9 @@ function Kong.init_worker()
   ee.handlers.init_worker.after(ngx.ctx)
   -- ]]
 
-  plugin_servers.start()
+  if kong.configuration.role ~= "control_plane" then
+    plugin_servers.start()
+  end
 
   if subsystem == "http" then
     clustering.init_worker(kong.configuration)

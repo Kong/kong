@@ -15,6 +15,8 @@ local rbac = require "kong.rbac"
 local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
+local process = require "ngx.process"
+
 local endpoints  = require "kong.api.endpoints"
 local hooks = require "kong.hooks"
 
@@ -112,7 +114,9 @@ return {
   ["/"] = {
     GET = function(self, dao, helpers)
       local distinct_plugins = setmetatable({}, cjson.array_mt)
-      local prng_seeds = {}
+      local pids = {
+        master = process.get_master_pid()
+      }
 
       do
         local set = {}
@@ -133,23 +137,6 @@ return {
 
       do
         local kong_shm = ngx.shared.kong
-
-        local master_pid, err = kong_shm:get("pids:master")
-        if not master_pid then
-          err = err or "not found"
-          ngx.log(ngx.ERR, "could not get master process id: ", err)
-
-        else
-          local master_seed, err = kong_shm:get("seeds:" .. master_pid)
-          if not master_seed then
-            err = err or "not found"
-            ngx.log(ngx.ERR, "could not get process id for master process: ", err)
-
-          else
-            prng_seeds["pid: " .. master_pid] = master_seed
-          end
-        end
-
         local worker_count = ngx.worker.count() - 1
         for i = 0, worker_count do
           local worker_pid, err = kong_shm:get("pids:" .. i)
@@ -158,14 +145,11 @@ return {
             ngx.log(ngx.ERR, "could not get worker process id for worker #", i , ": ", err)
 
           else
-            local worker_seed, err = kong_shm:get("seeds:" .. worker_pid)
-            if not worker_seed then
-              err = err or "not found"
-              ngx.log(ngx.ERR, "could not get PRNG seed for worker #", i, ":", err)
-
-            else
-              prng_seeds["pid: " .. worker_pid] = worker_seed
+            if not pids.workers then
+              pids.workers = {}
             end
+
+            pids.workers[i + 1] = worker_pid
           end
         end
       end
@@ -193,7 +177,7 @@ return {
         },
         lua_version = lua_version,
         configuration = conf_loader.remove_sensitive(singletons.configuration),
-        prng_seeds = prng_seeds,
+        pids = pids,
       })))
     end
   },
