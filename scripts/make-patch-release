@@ -120,14 +120,14 @@ case "$step" in
    version_bump)
       if ! grep -q "patch = $patch" kong/meta.lua
       then
-         sed -i 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
+         sed -i.bak 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
          git add kong/meta.lua
       fi
       if ! [ -f "$rockspec" ]
       then
          git mv kong-*-0.rockspec "$rockspec"
-         sed -i 's/^version = ".*"/version = "'$version'-0"/' "$rockspec"
-         sed -i 's/^  tag = ".*"/  tag = "'$version'"/' "$rockspec"
+         sed -i.bak 's/^version = ".*"/version = "'$version'-0"/' "$rockspec"
+         sed -i.bak 's/^  tag = ".*"/  tag = "'$version'"/' "$rockspec"
       fi
 
       git status
