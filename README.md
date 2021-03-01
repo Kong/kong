@@ -102,7 +102,7 @@ config.tos_accepted |            | `false`    | If you are using Let's Encrypt, 
 config.eab_kid      |            |            | External account binding (EAB) key id. You usually don't need to set this unless it is explicitly required by the CA.
 config.eab_hmac_key |            |            | External account binding (EAB) base64-encoded URL string of the HMAC key. You usually don't need to set this unless it is explicitly required by the CA.
 
-`config.storage_config` is a table for all posisble storage types, by default it is:
+`config.storage_config` is a table for all possible storage types, by default it is:
 ```json
     "storage_config": {
         "kong": {},
