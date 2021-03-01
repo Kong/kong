@@ -404,6 +404,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(204, res)
       end)
 
+      -- Falls through to step 2 of https://docs.konghq.com/hub/kong-inc/mtls-auth/#matching-behaviors
       it("falls back to auto-matching", function()
         local res = assert(mtls_client:send {
           method  = "GET",
@@ -481,6 +482,19 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
       end)
+      lazy_teardown(function()
+        local res = assert(admin_client:send({
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin.id,
+          body    = {
+            config = { anonymous = nil, },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+      end)
 
       it("works with right credentials and anonymous", function()
         local res = assert(mtls_client:send {
@@ -489,9 +503,9 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("customized@example.com", json.headers["X-Consumer-Username"])
-        assert.equal(customized_consumer.id, json.headers["X-Consumer-Id"])
-        assert.equal("consumer-id-3", json.headers["X-Consumer-Custom-Id"])
+        assert.equal("foo@example.com", json.headers["X-Consumer-Username"])
+        assert.equal(consumer.id, json.headers["X-Consumer-Id"])
+        assert.equal("consumer-id-2", json.headers["X-Consumer-Custom-Id"])
         assert.is_nil(json.headers["X-Anonymous-Consumer"])
       end)
 
