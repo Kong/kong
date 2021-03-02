@@ -18,6 +18,7 @@ local dns_client = require "resty.dns.client"
 
 
 local toip = dns_client.toip
+local ngx = ngx
 local log = ngx.log
 local sleep = ngx.sleep
 local null = ngx.null
@@ -1009,6 +1010,10 @@ local function execute(target, ctx)
     end
 
     if balancer then
+      if not ctx then
+        ctx = ngx.ctx
+      end
+
       -- store for retries
       target.balancer = balancer
 
