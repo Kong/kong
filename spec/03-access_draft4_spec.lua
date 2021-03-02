@@ -382,6 +382,159 @@ for _, strategy in helpers.each_strategy()do
         assert.same("header 'x-kong-name' validation failed, [error] failed to validate item 1: wrong type: expected integer, got string", json.message)
       end)
 
+      it("parameter type[object] validation for multi/single header with a object(delim: =) value #explode -> true", function()
+        local param_schema = {
+          {
+            name = "x-kong-name",
+            ["in"] = "header",
+            required = true,
+            schema = '{"type": "object"}',
+            style = "simple",
+            explode = true,
+          }
+        }
+        add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["x-kong-name"] = "role=admin,firstName=Alex",
+          },
+          body = { }
+        })
+        assert.response(res).has.status(200)
+        assert.response(res).has.jsonbody()
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["x-kong-name"] = "role=admin,firstName=Alex",
+          },
+          body = { }
+        })
+        assert.response(res).has.status(200)
+        assert.response(res).has.jsonbody()
+      end)
+
+     it("parameter type[object] validation for multi/single headers with a object(delim: ,) value #explode -> false", function()
+        local param_schema = {
+          {
+            name = "x-kong-name",
+            ["in"] = "header",
+            required = true,
+            schema = '{"type": "object"}',
+            style = "simple",
+            explode = false,
+          }
+        }
+        add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["x-kong-name"] = "role,admin,firstName,Alex",
+          },
+          body = { }
+        })
+        assert.response(res).has.status(200)
+        assert.response(res).has.jsonbody()
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["x-kong-name"] = "role,admin,firstName,Alex",
+          },
+          body = { }
+        })
+        assert.response(res).has.status(200)
+        assert.response(res).has.jsonbody()
+      end)
+
+      for _, explode in ipairs({true, false}) do
+      -- behavior for explode->true & explode->false are identical
+
+          local param_schema = {
+            {
+              name = "x-kong-name",
+              ["in"] = "header",
+              required = true,
+              schema = '{"type": "string"}',
+              style = "simple",
+              explode = explode,
+            }
+          }
+
+        it("parameter type[primitive] validation for single header with a primitive value #explode -> " .. tostring(explode), function()
+          add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
+
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["x-kong-name"] = "a",
+            },
+            body = { }
+          })
+          assert.response(res).has.status(200)
+          assert.response(res).has.jsonbody()
+        end)
+      end
+
+      for _, explode in ipairs({true, false}) do
+      -- behavior for explode->true & explode->false are identical
+
+          local param_schema = {
+            {
+              name = "kong-name",
+              ["in"] = "header",
+              required = true,
+              schema = '{"type": "array", "items": {"type": "string"}}',
+              style = "simple",
+              explode = explode,
+            }
+          }
+
+        it("parameter type[simple] validation for single header with comma separated values #explode -> " .. tostring(explode), function()
+          add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
+
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["kong-name"] = "a,b,c",
+            },
+            body = { }
+          })
+          assert.response(res).has.status(200)
+          assert.response(res).has.jsonbody()
+        end)
+
+        it("parameter type[simple] validation for single headers without csvs with #explode -> " .. tostring(explode), function()
+          add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["kong-name"] = "a",
+            },
+            body = { }
+          })
+          assert.response(res).has.status(400)
+          local json = assert.response(res).has.jsonbody()
+          assert.same("header 'kong-name' validation failed, [error] wrong type: expected array, got string", json.message)
+        end)
+      end
     end)
   end)
 end
