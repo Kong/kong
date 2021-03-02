@@ -1396,18 +1396,16 @@
                                  #
                                  #         LuaJIT bytecode loading is disabled.
 
-#untrusted_lua_sandbox_requires =
-                                 # Comma-separated list of modules allowed to be loaded
-                                 # with `require` inside the sandboxed environment. Ignored
-                                 # if `untrusted_lua` is not `sandbox`.
-                                 #
-                                 # Note: certain modules, when allowed, may cause sandbox
-                                 # escaping trivial.
+#untrusted_lua_sandbox_requires = # Comma-separated list of modules allowed to be loaded
+                                  # with `require` inside the sandboxed environment. Ignored
+                                  # if `untrusted_lua` is not `sandbox`.
+                                  #
+                                  # Note: certain modules, when allowed, may cause sandbox
+                                  # escaping trivial.
 
-#untrusted_lua_sandbox_environment =
-                                 # Comma-separated list of global Lua variables
-                                 # that should be made available inside the sandboxed
-                                 # environment. Ignored if `untrusted_lua` is not `sandbox`.
-                                 #
-                                 # Note: certain variables, when made available,
-                                 # may cause sandbox escaping trivial.
+#untrusted_lua_sandbox_environment = # Comma-separated list of global Lua variables
+                                     # that should be made available inside the sandboxed
+                                     # environment. Ignored if `untrusted_lua` is not `sandbox`.
+                                     #
+                                     # Note: certain variables, when made available,
+                                     # may cause sandbox escaping trivial.
