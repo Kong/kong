@@ -217,7 +217,7 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)
-        assert.same({ "the CA certificate '123' is not a valid UUID", }, json.fields.config.ca_certificates)
+        assert.same({ "expected a valid UUID", }, json.fields.config.ca_certificates)
       end)
 
       it("succeeds with valid ca_certificates", function()
@@ -240,26 +240,6 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ ca.id, }, json.config.ca_certificates)
       end)
 
-      it("errors with a ca_certificate that does not exist", function()
-        local uuid = utils.uuid()
-        local res = assert(admin_client:send {
-          method  = "POST",
-          path    = "/plugins",
-          body    = {
-            route = { id = route2.id },
-            name       = "mtls-auth",
-            config     = {
-              ca_certificates = { uuid, },
-            },
-          },
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        })
-        local body = assert.res_status(400, res)
-        local json = cjson.decode(body)
-        assert.same({ "the CA certificate '" .. uuid .. "' does not exist", }, json.fields.config.ca_certificates)
-      end)
     end)
 
     describe("/consumers/:consumer/mtls-auth/:id", function()
@@ -469,29 +449,9 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(cred)
         end)
 
-        it("fails with deleted ca_certificates", function()
-          local res = assert(admin_client:send {
-            method  = "POST",
-            path    = "/plugins",
-            body    = {
-              route = { id = route2.id },
-              name       = "mtls-auth",
-              config     = {
-                ca_certificates = { ca.id, },
-              },
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = assert.res_status(400, res)
-          local json = cjson.decode(body)
-          assert.same({ "the CA certificate '" .. ca.id .. "' does not exist", }, json.fields.config.ca_certificates)
-        end)
       end)
 
     end)
-
 
     describe("/mtls-auths", function()
       local consumer2
