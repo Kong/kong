@@ -207,19 +207,36 @@ describe("Admin API #off", function()
             _format_version = "1.1",
             consumers = {
               {
-                username = "bobby",
+                username = "bobby_in_json_body",
               },
             },
           },
           headers = {
             ["Content-Type"] = "application/json"
-          }
+          },
         })
 
         assert.response(res).has.status(201)
       end)
 
-      it("accepts configuration as a JSON string", function()
+      it("accepts configuration as YAML body", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = helpers.unindent([[
+            _format_version: "1.1"
+            consumers:
+              - username: "bobby_in_yaml_body"
+          ]]),
+          headers = {
+            ["Content-Type"] = "text/yaml"
+          },
+        })
+
+        assert.response(res).has.status(201)
+      end)
+
+      it("accepts configuration as a JSON string under `config` JSON key", function()
         local res = assert(client:send {
           method = "POST",
           path = "/config",
@@ -229,15 +246,34 @@ describe("Admin API #off", function()
               "_format_version" : "1.1",
               "consumers" : [
                 {
-                  "username" : "bobby",
-                },
-              ],
+                  "username" : "bobby_in_json_under_config"
+                }
+              ]
             }
             ]],
           },
           headers = {
             ["Content-Type"] = "application/json"
-          }
+          },
+        })
+
+        assert.response(res).has.status(201)
+      end)
+
+      it("accepts configuration as a YAML string under `config` JSON key", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = helpers.unindent([[
+              _format_version: "1.1"
+              consumers:
+                - username: "bobby_in_yaml_under_config"
+            ]]),
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
         })
 
         assert.response(res).has.status(201)
@@ -253,15 +289,16 @@ describe("Admin API #off", function()
               "_format_version" : "1.1",
               "consumers" : [
                 {
-                  "username" : "previous",
-                },
-              ],
+                  "username" : "previous"
+                }
+              ]
             }
             ]],
+            type = "json",
           },
           headers = {
             ["Content-Type"] = "application/json"
-          }
+          },
         })
 
         assert.response(res).has.status(201)
@@ -289,7 +326,7 @@ describe("Admin API #off", function()
         for i = 1, 20000 do
           table.insert(consumers, [[
             {
-              "username" : "bobby-]] .. i .. [[",
+              "username" : "bobby-]] .. i .. [["
             }
           ]])
         end
@@ -332,25 +369,6 @@ describe("Admin API #off", function()
           end
         end, WORKER_SYNC_TIMEOUT)
 
-      end)
-
-      it("accepts configuration as a YAML string", function()
-        local res = assert(client:send {
-          method = "POST",
-          path = "/config",
-          body = {
-            config = [[
-            _format_version: "1.1"
-            consumers:
-            - username: bobby
-            ]],
-          },
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        })
-
-        assert.response(res).has.status(201)
       end)
 
       it("accepts configuration containing null as a YAML string", function()

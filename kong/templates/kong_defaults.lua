@@ -313,4 +313,15 @@ cluster_telemetry_server_name = NONE
 untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
+
+admin_gui_header_txt = NONE
+admin_gui_header_bg_color = NONE
+admin_gui_header_txt_color = NONE
+
+admin_gui_footer_txt = NONE
+admin_gui_footer_bg_color = NONE
+admin_gui_footer_txt_color = NONE
+
+admin_gui_login_banner_title = NONE
+admin_gui_login_banner_body = NONE
 ]]

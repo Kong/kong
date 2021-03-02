@@ -150,8 +150,8 @@ dev: remove install dependencies
 
 lint:
 	@luacheck -q .
-	@!(grep -R -E -n -w '#only|#o' spec && echo "#only or #o tag detected") >&2
-	@!(grep -R -E -n -- '---\s+ONLY' t && echo "--- ONLY block detected") >&2
+	@!(grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected") >&2
+	@!(grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected") >&2
 
 test:
 	@$(TEST_CMD) spec/01-unit
