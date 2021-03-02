@@ -11,6 +11,7 @@ local constants = require "kong.constants"
 local ws_constants = constants.WORKSPACE_CONFIG
 local renderer = require "kong.portal.renderer"
 local workspace_config = require "kong.portal.workspace_config"
+local api_helpers = require "kong.api.api_helpers"
 
 
 local kong = kong
@@ -88,6 +89,9 @@ app.handle_error = function(self, err, trace)
   ngx.log(ngx.ERR, err, "\n", trace)
   return kong.response.exit(500, { message = "An unexpected error occurred" })
 end
+
+-- api_helpers default route only allows redirects to valid app routes
+app.default_route = api_helpers.default_route
 
 app:before_filter(function(self)
   local config = kong.configuration
