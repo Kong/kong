@@ -281,7 +281,7 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
     -- but we still want to know when the access phase "started"
     local access_start_mu =
       ctx.KONG_ACCESS_START and ctx.KONG_ACCESS_START * 1000
-      or proxy_span.start_timestamp
+      or proxy_span.timestamp
     proxy_span:annotate("kas", access_start_mu)
 
     local access_finish_mu =
