@@ -54,7 +54,10 @@ return function(ctx, config)
 
   -- prepare body
   local body, isBase64Encoded
-  local skip_large_bodies = config and config.skip_large_bodies or true
+  local skip_large_bodies = true
+  if config and config.skip_large_bodies ~= nil then
+    skip_large_bodies = config.skip_large_bodies
+  end
   do
     body = request_util.read_request_body(skip_large_bodies)
     if body ~= "" then
