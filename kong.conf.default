@@ -1425,8 +1425,8 @@
                                   # if `untrusted_lua` is not `sandbox`.
                                   #
                                   # For example, say you have configured the
-                                  # Exit Transformer plugin and it contains the
-                                  # following `requires`:
+                                  # Serverless pre-function plugin and it
+                                  # contains the following `requires`:
                                   #
                                   # ```
                                   # local template = require "resty.template"
