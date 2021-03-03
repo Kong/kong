@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.1.0](#100---20210303)
 - [1.0.0](#100---20200820)
 - [0.9.0](#090---20200617)
 - [0.8.0](#080---20200424)
@@ -17,6 +18,11 @@
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
 
+
+##  [1.1.0] - 2021/03/03
+
+- Export Kong Enterprise Edition licensing information.
+  [#110](https://github.com/Kong/kong-plugin-prometheus/pull/110)
 
 ##  [1.0.0] - 2020/08/20
 
@@ -129,6 +135,7 @@ initialized
 
 - Initial release of Prometheus plugin for Kong.
 
+[1.1.0]: https://github.com/Kong/kong-plugin-prometheus/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.9.0...1.0.0
 [0.9.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.8.0...0.9.0
 [0.8.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.7.1...0.8.0
