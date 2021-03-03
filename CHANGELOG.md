@@ -1,3 +1,8 @@
+## Unreleased
+
+- tests(*) add tests for edge cases
+- Bump openapi3-deserializer to 1.1.0
+
 ## 1.1.2
 
 - chore(*) add copyright
