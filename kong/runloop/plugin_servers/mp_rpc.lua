@@ -1,5 +1,13 @@
+local kong_global = require "kong.global"
+local cjson = require "cjson.safe"
 local msgpack = require "MessagePack"
 
+local ngx_ssl = require "ngx.ssl"
+
+local ngx = ngx
+local kong = kong
+
+local cjson_encode = cjson.encode
 local mp_pack = msgpack.pack
 local mp_unpacker = msgpack.unpacker
 
@@ -35,7 +43,7 @@ local function mp_empty_map(buffer)
 end
 
 --- fix_mmap(t) : preprocess complex maps
-function Rpc.fix_mmap(t)
+local function fix_mmap(t)
   local o, empty = {}, true
 
   for k, v in pairs(t) do
@@ -57,6 +65,157 @@ function Rpc.fix_mmap(t)
 
   return o
 end
+
+
+
+
+--[[
+
+Kong API exposed to external plugins
+
+--]]
+
+
+-- global method search and cache
+local function index_table(table, field)
+  if table[field] then
+    return table[field]
+  end
+
+  local res = table
+  for segment, e in ngx.re.gmatch(field, "\\w+", "o") do
+    if res[segment[0]] then
+      res = res[segment[0]]
+    else
+      return nil
+    end
+  end
+  return res
+end
+
+
+local get_field
+do
+  local exposed_api = {
+    kong = kong,
+
+    ["kong.log.serialize"] = function()
+      local saved = Rpc.save_for_later[coroutine.running()]
+      return cjson_encode(saved and saved.serialize_data or kong.log.serialize())
+    end,
+
+    ["kong.nginx.get_var"] = function(v)
+      return ngx.var[v]
+    end,
+
+    ["kong.nginx.get_tls1_version_str"] = ngx_ssl.get_tls1_version_str,
+
+    ["kong.nginx.get_ctx"] = function(k)
+      local saved = Rpc.save_for_later[coroutine.running()]
+      local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
+      return ngx_ctx[k]
+    end,
+
+    ["kong.nginx.set_ctx"] = function(k, v)
+      local saved = Rpc.save_for_later[coroutine.running()]
+      local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
+      ngx_ctx[k] = v
+    end,
+
+    ["kong.ctx.shared.get"] = function(k)
+      local saved = Rpc.save_for_later[coroutine.running()]
+      local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
+      return ctx_shared[k]
+    end,
+
+    ["kong.ctx.shared.set"] = function(k, v)
+      local saved = Rpc.save_for_later[coroutine.running()]
+      local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
+      ctx_shared[k] = v
+    end,
+
+    ["kong.nginx.req_start_time"] = ngx.req.start_time,
+
+    ["kong.request.get_query"] = function(max)
+      return fix_mmap(kong.request.get_query(max))
+    end,
+
+    ["kong.request.get_headers"] = function(max)
+      return fix_mmap(kong.request.get_headers(max))
+    end,
+
+    ["kong.response.get_headers"] = function(max)
+      return fix_mmap(kong.response.get_headers(max))
+    end,
+
+    ["kong.service.response.get_headers"] = function(max)
+      return fix_mmap(kong.service.response.get_headers(max))
+    end,
+  }
+
+  local method_cache = {}
+
+  function get_field(method)
+    if method_cache[method] then
+      return method_cache[method]
+
+    else
+      method_cache[method] = index_table(exposed_api, method)
+      return method_cache[method]
+    end
+  end
+end
+
+
+local function call_pdk_method(cmd, args)
+  local method = get_field(cmd)
+  if not method then
+    kong.log.err("could not find pdk method: ", cmd)
+    return
+  end
+
+  local saved = Rpc.save_for_later[coroutine.running()]
+  if saved and saved.plugin_name then
+    kong_global.set_namespaced_log(kong, saved.plugin_name)
+  end
+
+  if type(args) == "table" then
+    return method(unpack(args))
+  end
+
+  return method(args)
+end
+
+
+-- return objects via the appropriately typed StepXXX method
+local get_step_method
+do
+  local by_pdk_method = {
+    ["kong.client.get_credential"] = "plugin.StepCredential",
+    ["kong.client.load_consumer"] = "plugin.StepConsumer",
+    ["kong.client.get_consumer"] = "plugin.StepConsumer",
+    ["kong.client.authenticate"] = "plugin.StepCredential",
+    ["kong.node.get_memory_stats"] = "plugin.StepMemoryStats",
+    ["kong.router.get_route"] = "plugin.StepRoute",
+    ["kong.router.get_service"] = "plugin.StepService",
+    ["kong.request.get_query"] = "plugin.StepMultiMap",
+    ["kong.request.get_headers"] = "plugin.StepMultiMap",
+    ["kong.response.get_headers"] = "plugin.StepMultiMap",
+    ["kong.service.response.get_headers"] = "plugin.StepMultiMap",
+  }
+
+  function get_step_method(step_in, pdk_res, pdk_err)
+    if not pdk_res and pdk_err then
+      return "plugin.StepError", pdk_err
+    end
+
+    return ((type(pdk_res) == "table" and pdk_res._method)
+      or by_pdk_method[step_in.Data.Method]
+      or "plugin.Step"), pdk_res
+  end
+end
+
+
 
 
 function Rpc:call(method, ...)
@@ -111,12 +270,97 @@ function Rpc:call(method, ...)
 end
 
 
+function Rpc:call_start_instance(plugin_name, conf)
+  local status, err = self:call("plugin.StartInstance", {
+    Name = plugin_name,
+    Config = cjson_encode(conf)
+  })
+
+  if status == nil then
+    return err
+  end
+
+  return {
+    id = status.Id,
+    conf = conf,
+    seq = conf.__seq__,
+    Config = status.Config,
+    rpc = self,
+  }
+end
+
+
+function Rpc:call_close_instance(instance_id)
+  return self:call("plugin.CloseInstance", instance_id)
+end
+
+
+
 function Rpc:notification(label, args)
   local f = self.notifications_callbacks[label]
   if f then
     f(self, args)
   end
 end
+
+
+--[[
+
+--- Event loop -- instance reconnection
+
+--]]
+
+local function bridge_loop(instance_rpc, instance_id, phase)
+  if not instance_rpc then
+    kong.log.err("no instance_rpc: ", debug.traceback())
+  end
+  local step_in, err = instance_rpc:call("plugin.HandleEvent", {
+    InstanceId = instance_id,
+    EventName = phase,
+  })
+  if not step_in then
+    return step_in, err
+  end
+
+  local event_id = step_in.EventId
+
+  while true do
+    if step_in.Data == "ret" then
+      break
+    end
+
+    local pdk_res, pdk_err = call_pdk_method(
+      step_in.Data.Method,
+      step_in.Data.Args)
+
+    local step_method, step_res = get_step_method(step_in, pdk_res, pdk_err)
+
+    step_in, err = instance_rpc:call(step_method, {
+      EventId = event_id,
+      Data = step_res,
+    })
+    if not step_in then
+      return step_in, err
+    end
+  end
+end
+
+
+function Rpc:handle_event(plugin_name, conf, phase)
+  local instance_id = self.get_instance_id(plugin_name, conf)
+  local _, err = bridge_loop(self, instance_id, phase)
+
+  if err then
+    kong.log.err(err)
+
+    if string.match(err, "No plugin instance") then
+      self.reset_instance(plugin_name, conf)
+      return self:handle_event(plugin_name, conf, phase)
+    end
+  end
+end
+
+
 
 
 return Rpc
