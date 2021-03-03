@@ -1404,11 +1404,11 @@
                                  # Examples of `untrusted_lua = sandbox`
                                  # behavior:
                                  #
-                                 # * You can't change global values such as
-                                 # `kong.license`.
-                                 # * You can run a local function:
-                                 # `local foo = 1 + 1`. However, running the
-                                 # same function at the OS level is not allowed:
+                                 # * You can't access or change global values
+                                 # such as `kong.configuration.pg_password`
+                                 # * You can run harmless lua:
+                                 # `local foo = 1 + 1`. However, OS level
+                                 # functions are not allowed, like:
                                  # `os.execute('rm -rf /*')`.
                                  #
                                  # For a full allowed/disallowed list, see:
