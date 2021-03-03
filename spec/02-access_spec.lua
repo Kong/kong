@@ -50,6 +50,42 @@ wWaPbub8SN2jKnT0g6ZWuca4VwEo1fRaBkzSZDqXwhkBDWP8UBqLXMXWHdZaT8NK
 -----END CERTIFICATE-----
 ]]
 
+local other_CA = [[
+-----BEGIN CERTIFICATE-----
+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
+-----END CERTIFICATE-----
+]]
+
 local mtls_fixtures = { http_mock = {
   mtls_server_block = [[
     server {
@@ -57,6 +93,7 @@ local mtls_fixtures = { http_mock = {
         listen 10121;
 
         location = /example_client {
+            # Combined cert, contains client first and intermediate second
             proxy_ssl_certificate ../spec/fixtures/client_example.com.crt;
             proxy_ssl_certificate_key ../spec/fixtures/client_example.com.key;
             proxy_ssl_name example.com;
@@ -94,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
     local bp, db
     local anonymous_user, consumer, customized_consumer, service, route
     local plugin
-    local ca_cert
+    local ca_cert, other_ca_cert
 
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
@@ -131,6 +168,10 @@ for _, strategy in helpers.each_strategy() do
 
       ca_cert = assert(db.ca_certificates:insert({
         cert = CA,
+      }))
+
+      other_ca_cert = assert(db.ca_certificates:insert({
+        cert = other_CA,
       }))
 
       plugin = assert(bp.plugins:insert {
@@ -261,18 +302,28 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("custom credential", function()
+      local plugin_id
       lazy_setup(function()
         local res = assert(admin_client:send({
           method  = "POST",
           path    = "/consumers/" .. customized_consumer.id  .. "/mtls-auth",
           body    = {
-            subject_name   = "foo@example.com"
+            subject_name   = "foo@example.com",
           },
           headers = {
             ["Content-Type"] = "application/json"
           }
         }))
-        assert.res_status(201, res)
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        plugin_id = json.id
+      end)
+      lazy_teardown(function()
+        local res = assert(admin_client:send({
+          method  = "DELETE",
+          path    = "/consumers/" .. customized_consumer.id  .. "/mtls-auth/" .. plugin_id,
+        }))
+        assert.res_status(204, res)
       end)
 
       it("overrides auto-matching", function()
@@ -285,6 +336,85 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("customized@example.com", json.headers["X-Consumer-Username"])
         assert.equal(customized_consumer.id, json.headers["X-Consumer-Id"])
         assert.equal("consumer-id-3", json.headers["X-Consumer-Custom-Id"])
+      end)
+    end)
+
+    describe("custom credential with ca_certificate", function()
+      local plugin_id
+      lazy_setup(function()
+        local res = assert(admin_client:send({
+          method  = "POST",
+          path    = "/consumers/" .. customized_consumer.id  .. "/mtls-auth",
+          body    = {
+            subject_name   = "foo@example.com",
+            ca_certificate = { id = ca_cert.id },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        plugin_id = json.id
+      end)
+      lazy_teardown(function()
+        local res = assert(admin_client:send({
+          method  = "DELETE",
+          path    = "/consumers/" .. customized_consumer.id  .. "/mtls-auth/" .. plugin_id,
+        }))
+        assert.res_status(204, res)
+      end)
+
+      it("overrides auto-matching", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/example_client",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("customized@example.com", json.headers["X-Consumer-Username"])
+        assert.equal(customized_consumer.id, json.headers["X-Consumer-Id"])
+        assert.equal("consumer-id-3", json.headers["X-Consumer-Custom-Id"])
+      end)
+    end)
+
+    describe("custom credential with invalid ca_certificate", function()
+      local plugin_id
+      lazy_setup(function()
+        local res = assert(admin_client:send({
+          method  = "POST",
+          path    = "/consumers/" .. customized_consumer.id  .. "/mtls-auth",
+          body    = {
+            subject_name   = "foo@example.com",
+            ca_certificate = { id = other_ca_cert.id },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        plugin_id = json.id
+      end)
+      lazy_teardown(function()
+        local res = assert(admin_client:send({
+          method  = "DELETE",
+          path    = "/consumers/" .. customized_consumer.id  .. "/mtls-auth/" .. plugin_id,
+        }))
+        assert.res_status(204, res)
+      end)
+
+      -- Falls through to step 2 of https://docs.konghq.com/hub/kong-inc/mtls-auth/#matching-behaviors
+      it("falls back to auto-matching", function()
+        local res = assert(mtls_client:send {
+          method  = "GET",
+          path    = "/example_client",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("foo@example.com", json.headers["X-Consumer-Username"])
+        assert.equal(consumer.id, json.headers["X-Consumer-Id"])
+        assert.equal("consumer-id-2", json.headers["X-Consumer-Custom-Id"])
       end)
     end)
 
@@ -352,6 +482,19 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
       end)
+      lazy_teardown(function()
+        local res = assert(admin_client:send({
+          method  = "PATCH",
+          path    = "/plugins/" .. plugin.id,
+          body    = {
+            config = { anonymous = nil, },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+        assert.res_status(200, res)
+      end)
 
       it("works with right credentials and anonymous", function()
         local res = assert(mtls_client:send {
@@ -360,9 +503,9 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("customized@example.com", json.headers["X-Consumer-Username"])
-        assert.equal(customized_consumer.id, json.headers["X-Consumer-Id"])
-        assert.equal("consumer-id-3", json.headers["X-Consumer-Custom-Id"])
+        assert.equal("foo@example.com", json.headers["X-Consumer-Username"])
+        assert.equal(consumer.id, json.headers["X-Consumer-Id"])
+        assert.equal("consumer-id-2", json.headers["X-Consumer-Custom-Id"])
         assert.is_nil(json.headers["X-Anonymous-Consumer"])
       end)
 
@@ -630,7 +773,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ message = "No required TLS certificate was sent" }, json)
       end)
 
-      it("request cert for host for host bar", function()
+      it("request cert for host bar", function()
         local res = assert(proxy_ssl_client_bar:send {
           method  = "GET",
           path    = "/get",

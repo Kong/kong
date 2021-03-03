@@ -147,6 +147,25 @@ for _, strategy in helpers.each_strategy() do
           body = assert.res_status(409, res)
           assert.matches("unique constraint violation", body, nil, true)
         end)
+
+        it("creates a mtls-auth credential with consumer ca_certificate", function()
+          local res = assert(admin_client:send({
+            method  = "POST",
+            path    = "/consumers/bob/mtls-auth",
+            body    = {
+              subject_name   = "1234",
+              ca_certificate = { id = ca.id },
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          }))
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer.id)
+          assert.equal("1234", json.subject_name)
+          assert.equal(ca.id, json.ca_certificate.id)
+        end)
       end)
 
       describe("GET", function()
