@@ -1,3 +1,17 @@
+# Kong request validator plugin changelog
+
+### Releasing new versions
+
+- update changelog below
+- update rockspec version
+- update version in `handler.lua`
+- commit as `chore(*) release x.y.z`
+- tag commit as `x.y.z`
+- push commit and tags
+- do not upload to luarocks since this is a private repo
+
+For steps 2 - 6 above [this script](https://github.com/Kong/kong-ee/blob/master/scripts/bump-plugin) can be used.
+
 ## Unreleased
 
 - tests(*) add tests for edge cases
