@@ -278,6 +278,25 @@
                          # 14 days. That is, if CP haven't heard from a DP for
                          # 14 days, its entry will be removed.
 
+#cluster_ocsp = off
+                         # Whether to check for revocation status of DP
+                         # certificates using OCSP (Online Certificate Status Protocol).
+                         # If enabled, the DP certificate should contain the
+                         # "Certificate Authority Information Access" extension
+                         # and the OCSP method with URI of which the OCSP responder
+                         # can be reached.
+                         #
+                         # Valid values to this setting are:
+                         #
+                         # - `on`: OCSP revocation check is enabled and DP
+                         #   must pass the check in order to establish
+                         #   connection with CP.
+                         # - `off`: OCSP revocation check is disabled.
+                         # - `optional`: OCSP revocation check will be attempted,
+                         #   however, if the required extension is not
+                         #   found inside DP provided certificate
+                         #   or communication with the OCSP responder
+                         #   failed, then DP is still allowed through.
 #------------------------------------------------------------------------------
 # NGINX
 #------------------------------------------------------------------------------
