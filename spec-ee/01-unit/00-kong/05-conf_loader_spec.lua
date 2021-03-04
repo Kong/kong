@@ -480,6 +480,18 @@ describe("ee conf loader", function()
                          "character 3 - { 'secret': 'i-am-invalid-json' }" }
       assert.same(expected, msgs)
     end)
+
+    it("defaults sessions storage to 'kong'", function()
+      local conf = {
+        admin_gui_auth = "basic-auth",
+        admin_gui_session_conf = "{ \"secret\": \"super-secret\" }",
+      }
+
+      ee_conf_loader.validate_admin_gui_session(conf, msgs)
+
+      assert.equal("kong", conf.admin_gui_session_conf.storage)
+      assert.same({}, msgs)
+    end)
   end)
 
   describe("validate_admin_gui_ssl()", function()
