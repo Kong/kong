@@ -11,11 +11,10 @@
 - do not upload to luarocks since this is a private repo
 
 For steps 2 - 6 above [this script](https://github.com/Kong/kong-ee/blob/master/scripts/bump-plugin) can be used.
+## 1.1.3
 
-## Unreleased
-
-- tests(*) add tests for edge cases
-- Bump openapi3-deserializer to 1.1.0
+- chore(*) bump openapi3-deserialiser to 1.1.0
+- tests(request-validator) add tests for header validation
 
 ## 1.1.2
 
