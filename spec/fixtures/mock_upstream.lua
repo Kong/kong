@@ -95,7 +95,7 @@ local kong = {
   table = require("kong.pdk.table").new()
 }
 
-local ocsp_good = true
+local ocsp_status = "good"
 
 local function parse_multipart_form_params(body, content_type)
   if not content_type then
@@ -464,12 +464,23 @@ end
 
 
 local function handle_ocsp()
-  ngx.print(ngx.decode_base64((ocsp_good and OCSP_RESPONSE_GOOD or OCSP_RESPONSE_REVOKED):gsub("\n", "")))
+  if ocsp_status == "good" then
+    ngx.print(ngx.decode_base64(OCSP_RESPONSE_GOOD:gsub("\n", "")))
+
+  elseif ocsp_status == "revoked" then
+    ngx.print(ngx.decode_base64(OCSP_RESPONSE_REVOKED:gsub("\n", "")))
+
+  elseif ocsp_status == "error" then
+    ngx.exit(500)
+
+  else
+    assert("unknown ocsp_status:" ..ocsp_status)
+  end
 end
 
 
-local function set_ocsp(revoked)
-  ocsp_good = not revoked
+local function set_ocsp(status)
+  ocsp_status = status
 end
 
 
