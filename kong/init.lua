@@ -71,7 +71,6 @@ local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
 local stream_api = require "kong.tools.stream_api"
-local clustering = require "kong.clustering"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
@@ -83,6 +82,7 @@ local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local clustering
 
 local kong             = kong
 local ngx              = ngx
@@ -115,6 +115,9 @@ if not enable_keepalive then
                     "(was the dyn_upstream_keepalive patch applied?) ",
                     "set the 'nginx_upstream_keepalive' configuration ",
                     "property instead of 'upstream_keepalive_pool_size'")
+end
+if subsystem == "http" then
+  clustering = require "kong.clustering"
 end
 
 
