@@ -51,11 +51,6 @@ function check_requirements() {
    need git
    need hub
    need sed
-
-   if [[ ! "$(sed --version)" =~ "GNU sed" ]]; then
-      echo "FAIL: sed command isn't GNU."
-      exit 1
-   fi
 }
 
 #-------------------------------------------------------------------------------
