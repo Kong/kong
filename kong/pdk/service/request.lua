@@ -32,7 +32,7 @@ local preread_and_balancer = phase_checker.new(PHASES.preread, PHASES.balancer)
 ---
 -- Produce a lexicographically ordered querystring, given a table of values.
 --
--- @param args A table where keys are strings and values are strings, booleans,
+-- @tparam table args A table where keys are strings and values are strings, booleans,
 -- or an array of strings or booleans.
 -- @treturn string|nil an URL-encoded query string, or nil if an error ocurred
 -- @treturn string|nil and an error message if an error ocurred, or nil
@@ -122,7 +122,7 @@ local function new(self)
   -- normalized in any way and should **not** include the querystring.
   -- @function kong.service.request.set_path
   -- @phases `access`
-  -- @param path The path string. Example: "/v2/movies"
+  -- @tparam string path The path string. Example: "/v2/movies"
   -- @return Nothing; throws an error on invalid inputs.
   -- @usage
   -- kong.service.request.set_path("/v2/movies")
@@ -192,7 +192,7 @@ local function new(self)
     --
     -- @function kong.service.request.set_method
     -- @phases `rewrite`, `access`
-    -- @param method The method string, which should be given in all
+    -- @tparam string method The method string, which should be given in all
     -- uppercase. Supported values are: `"GET"`, `"HEAD"`, `"PUT"`, `"POST"`,
     -- `"DELETE"`, `"OPTIONS"`, `"MKCOL"`, `"COPY"`, `"MOVE"`, `"PROPFIND"`,
     -- `"PROPPATCH"`, `"LOCK"`, `"UNLOCK"`, `"PATCH"`, `"TRACE"`.

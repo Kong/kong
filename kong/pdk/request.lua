@@ -410,7 +410,7 @@ local function new(self)
   --
   -- @function kong.request.get_raw_query
   -- @phases rewrite, access, header_filter, body_filter, log, admin_api
-  -- @return string the query component of the request's URL
+  -- @treturn string the query component of the request's URL
   -- @usage
   -- -- Given a request to https://example.com/foo?msg=hello%20world&bla=&bar
   --
