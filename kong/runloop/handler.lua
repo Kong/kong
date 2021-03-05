@@ -1102,6 +1102,12 @@ return {
     end,
     after = NOOP,
   },
+  certificate = {
+    before = function(_)
+      certificate.execute()
+    end,
+    after = NOOP,
+  },
   preread = {
     before = function(ctx)
       ctx.host_port = HOST_PORTS[var.server_port] or var.server_port
@@ -1133,12 +1139,6 @@ return {
         return kong.response.exit(errcode, body)
       end
     end
-  },
-  certificate = {
-    before = function(_)
-      certificate.execute()
-    end,
-    after = NOOP,
   },
   rewrite = {
     before = function(ctx)

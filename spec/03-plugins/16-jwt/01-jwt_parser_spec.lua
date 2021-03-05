@@ -137,6 +137,15 @@ describe("Plugin: jwt (parser)", function()
       }, fixtures.es256_private_key, 'ES256')
       assert.truthy(token)
     end)
+
+    it("should encode using ES384", function()
+      local token = jwt_parser.encode({
+        sub   = "5656565656",
+        name  = "Jane Doe",
+        admin = true
+      }, fixtures.es384_private_key, 'ES384')
+      assert.truthy(token)
+    end)
   end)
   describe("Decoding", function()
     it("throws an error if not given a string", function()
@@ -213,6 +222,14 @@ describe("Plugin: jwt (parser)", function()
         local token = jwt_parser.encode({sub = "foo"}, fixtures.es256_private_key, 'ES256')
         local jwt = assert(jwt_parser:new(token))
         assert.True(jwt:verify_signature(fixtures.es256_public_key))
+        assert.False(jwt:verify_signature(fixtures.rs256_public_key:gsub('1z+', 'zzz')))
+      end
+    end)
+    it("using ES384", function()
+      for _ = 1, 500 do
+        local token = jwt_parser.encode({sub = "foo"}, fixtures.es384_private_key, 'ES384')
+        local jwt = assert(jwt_parser:new(token))
+        assert.True(jwt:verify_signature(fixtures.es384_public_key))
         assert.False(jwt:verify_signature(fixtures.rs256_public_key:gsub('1z+', 'zzz')))
       end
     end)

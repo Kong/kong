@@ -44,6 +44,7 @@ return {
             "RS384",
             "RS512",
             "ES256",
+            "ES384"
           },
       }, },
       { tags = typedefs.tags },

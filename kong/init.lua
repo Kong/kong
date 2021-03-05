@@ -740,6 +740,24 @@ function Kong.init_worker()
 end
 
 
+function Kong.ssl_certificate()
+  kong_global.set_phase(kong, PHASES.certificate)
+
+  -- this doesn't really work across the phases currently (OpenResty 1.13.6.2),
+  -- but it returns a table (rewrite phase clears it)
+  local ctx = ngx.ctx
+  log_init_worker_errors(ctx)
+
+  -- this is the first phase to run on an HTTPS request
+  ctx.workspace = kong.default_workspace
+
+  runloop.certificate.before(ctx)
+  local plugins_iterator = runloop.get_updated_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, "certificate", ctx)
+  runloop.certificate.after(ctx)
+end
+
+
 function Kong.preread()
   local ctx = ngx.ctx
   if not ctx.KONG_PROCESSING_START then
@@ -778,32 +796,13 @@ function Kong.preread()
 end
 
 
-function Kong.ssl_certificate()
-  kong_global.set_phase(kong, PHASES.certificate)
-
-  -- this doesn't really work across the phases currently (OpenResty 1.13.6.2),
-  -- but it returns a table (rewrite phase clears it)
-  local ctx = ngx.ctx
-  log_init_worker_errors(ctx)
-
-  -- this is the first phase to run on an HTTPS request
-  ctx.workspace = kong.default_workspace
-
-  runloop.certificate.before(ctx)
-  local plugins_iterator = runloop.get_updated_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "certificate", ctx)
-  runloop.certificate.after(ctx)
-end
-
-
 function Kong.rewrite()
   local proxy_mode = var.kong_proxy_mode
   if proxy_mode == "grpc" or proxy_mode == "unbuffered"  then
-    kong_resty_ctx.apply_ref() -- if kong_proxy_mode is gRPC/unbuffered, this is executing
-    kong_resty_ctx.stash_ref() -- after an internal redirect. Restore (and restash)
-                               -- context to avoid re-executing phases
+    kong_resty_ctx.apply_ref()    -- if kong_proxy_mode is gRPC/unbuffered, this is executing
+    local ctx = ngx.ctx           -- after an internal redirect. Restore (and restash)
+    kong_resty_ctx.stash_ref(ctx) -- context to avoid re-executing phases
 
-    local ctx = ngx.ctx
     ctx.KONG_REWRITE_ENDED_AT = get_now_ms()
     ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
 
@@ -900,94 +899,6 @@ function Kong.access()
 
   if ctx.buffered_proxying and ngx.req.http_version() < 2 then
     return Kong.response()
-  end
-end
-
-do
-  local HTTP_METHODS = {
-    GET       = ngx.HTTP_GET,
-    HEAD      = ngx.HTTP_HEAD,
-    PUT       = ngx.HTTP_PUT,
-    POST      = ngx.HTTP_POST,
-    DELETE    = ngx.HTTP_DELETE,
-    OPTIONS   = ngx.HTTP_OPTIONS,
-    MKCOL     = ngx.HTTP_MKCOL,
-    COPY      = ngx.HTTP_COPY,
-    MOVE      = ngx.HTTP_MOVE,
-    PROPFIND  = ngx.HTTP_PROPFIND,
-    PROPPATCH = ngx.HTTP_PROPPATCH,
-    LOCK      = ngx.HTTP_LOCK,
-    UNLOCK    = ngx.HTTP_UNLOCK,
-    PATCH     = ngx.HTTP_PATCH,
-    TRACE     = ngx.HTTP_TRACE,
-  }
-
-  function Kong.response()
-    local plugins_iterator = runloop.get_plugins_iterator()
-
-    local ctx = ngx.ctx
-
-    -- buffered proxying (that also executes the balancer)
-    ngx.req.read_body()
-
-    local options = {
-      always_forward_body = true,
-      share_all_vars      = true,
-      method              = HTTP_METHODS[ngx.req.get_method()],
-      ctx                 = ctx,
-    }
-
-    local res = ngx.location.capture("/kong_buffered_http", options)
-    if res.truncated then
-      kong_global.set_phase(kong, PHASES.error)
-      ngx.status = 502
-      return kong_error_handlers(ctx)
-    end
-
-    kong_global.set_phase(kong, PHASES.response)
-
-    local status = res.status
-    local headers = res.header
-    local body = res.body
-
-    ctx.buffered_status = status
-    ctx.buffered_headers = headers
-    ctx.buffered_body = body
-
-    -- fake response phase (this runs after the balancer)
-    if not ctx.KONG_RESPONSE_START then
-      ctx.KONG_RESPONSE_START = get_now_ms()
-
-      if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
-        ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_RESPONSE_START
-        ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT -
-          ctx.KONG_BALANCER_START
-      end
-    end
-
-    if not ctx.KONG_WAITING_TIME then
-      ctx.KONG_WAITING_TIME = ctx.KONG_RESPONSE_START -
-        (ctx.KONG_BALANCER_ENDED_AT or ctx.KONG_ACCESS_ENDED_AT)
-    end
-
-    if not ctx.KONG_PROXY_LATENCY then
-      ctx.KONG_PROXY_LATENCY = ctx.KONG_RESPONSE_START - ctx.KONG_PROCESSING_START
-    end
-
-    kong.response.set_status(status)
-    kong.response.set_headers(headers)
-
-    runloop.response.before(ctx)
-    execute_plugins_iterator(plugins_iterator, "response", ctx)
-    runloop.response.after(ctx)
-
-    ctx.KONG_RESPONSE_ENDED_AT = get_now_ms()
-    ctx.KONG_RESPONSE_TIME = ctx.KONG_RESPONSE_ENDED_AT - ctx.KONG_RESPONSE_START
-
-    -- buffered response
-    ngx.print(body)
-    -- jump over the balancer to header_filter
-    ngx.exit(status)
   end
 end
 
@@ -1159,6 +1070,95 @@ function Kong.balancer()
   -- runloop.balancer.after(ctx)
   -- ee.handlers.balancer.after(ctx)
   trace:finish()
+end
+
+
+do
+  local HTTP_METHODS = {
+    GET       = ngx.HTTP_GET,
+    HEAD      = ngx.HTTP_HEAD,
+    PUT       = ngx.HTTP_PUT,
+    POST      = ngx.HTTP_POST,
+    DELETE    = ngx.HTTP_DELETE,
+    OPTIONS   = ngx.HTTP_OPTIONS,
+    MKCOL     = ngx.HTTP_MKCOL,
+    COPY      = ngx.HTTP_COPY,
+    MOVE      = ngx.HTTP_MOVE,
+    PROPFIND  = ngx.HTTP_PROPFIND,
+    PROPPATCH = ngx.HTTP_PROPPATCH,
+    LOCK      = ngx.HTTP_LOCK,
+    UNLOCK    = ngx.HTTP_UNLOCK,
+    PATCH     = ngx.HTTP_PATCH,
+    TRACE     = ngx.HTTP_TRACE,
+  }
+
+  function Kong.response()
+    local plugins_iterator = runloop.get_plugins_iterator()
+
+    local ctx = ngx.ctx
+
+    -- buffered proxying (that also executes the balancer)
+    ngx.req.read_body()
+
+    local options = {
+      always_forward_body = true,
+      share_all_vars      = true,
+      method              = HTTP_METHODS[ngx.req.get_method()],
+      ctx                 = ctx,
+    }
+
+    local res = ngx.location.capture("/kong_buffered_http", options)
+    if res.truncated then
+      kong_global.set_phase(kong, PHASES.error)
+      ngx.status = 502
+      return kong_error_handlers(ctx)
+    end
+
+    kong_global.set_phase(kong, PHASES.response)
+
+    local status = res.status
+    local headers = res.header
+    local body = res.body
+
+    ctx.buffered_status = status
+    ctx.buffered_headers = headers
+    ctx.buffered_body = body
+
+    -- fake response phase (this runs after the balancer)
+    if not ctx.KONG_RESPONSE_START then
+      ctx.KONG_RESPONSE_START = get_now_ms()
+
+      if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
+        ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_RESPONSE_START
+        ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT -
+          ctx.KONG_BALANCER_START
+      end
+    end
+
+    if not ctx.KONG_WAITING_TIME then
+      ctx.KONG_WAITING_TIME = ctx.KONG_RESPONSE_START -
+        (ctx.KONG_BALANCER_ENDED_AT or ctx.KONG_ACCESS_ENDED_AT)
+    end
+
+    if not ctx.KONG_PROXY_LATENCY then
+      ctx.KONG_PROXY_LATENCY = ctx.KONG_RESPONSE_START - ctx.KONG_PROCESSING_START
+    end
+
+    kong.response.set_status(status)
+    kong.response.set_headers(headers)
+
+    runloop.response.before(ctx)
+    execute_plugins_iterator(plugins_iterator, "response", ctx)
+    runloop.response.after(ctx)
+
+    ctx.KONG_RESPONSE_ENDED_AT = get_now_ms()
+    ctx.KONG_RESPONSE_TIME = ctx.KONG_RESPONSE_ENDED_AT - ctx.KONG_RESPONSE_START
+
+    -- buffered response
+    ngx.print(body)
+    -- jump over the balancer to header_filter
+    ngx.exit(status)
+  end
 end
 
 

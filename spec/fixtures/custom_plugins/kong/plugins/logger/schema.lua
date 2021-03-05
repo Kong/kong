@@ -5,6 +5,20 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local typedefs = require "kong.db.schema.typedefs"
+
 return {
-  fields = {}
+  name = "ctx-tests",
+  fields = {
+    {
+      protocols = typedefs.protocols { default = { "http", "https", "tcp", "tls", "grpc", "grpcs" } },
+    },
+    {
+      config = {
+        type = "record",
+        fields = {
+        },
+      },
+    },
+  },
 }
