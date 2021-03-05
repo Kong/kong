@@ -92,7 +92,7 @@ function bump_docs_kong_versions() {
                state = "edition"
             end
          elseif state == "edition" then
-            if line:match("^  edition.*community.*") then
+            if line:match("^  edition.*gateway%-oss.*") then
                fd_out:write("  version: \"'$version'\"\n")
                state = "wait_for_luarocks_version"
             else
