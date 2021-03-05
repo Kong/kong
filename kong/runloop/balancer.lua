@@ -1236,27 +1236,23 @@ local function set_host_header(balancer_data)
   local orig_upstream_host = upstream_host
   local phase = get_phase()
 
+  upstream_host = balancer_data.hostname
 
-  if phase == "balancer" then
-    upstream_host = balancer_data.hostname
+  local upstream_scheme = var.upstream_scheme
+  if  upstream_scheme == "http"  and balancer_data.port ~= 80 or
+      upstream_scheme == "https" and balancer_data.port ~= 443 or
+      upstream_scheme == "grpc"  and balancer_data.port ~= 80 or
+      upstream_scheme == "grpcs" and balancer_data.port ~= 443
+  then
+    upstream_host = upstream_host .. ":" .. balancer_data.port
+  end
 
-    local upstream_scheme = var.upstream_scheme
-    if upstream_scheme == "http"  and balancer_data.port ~= 80 or
-       upstream_scheme == "https" and balancer_data.port ~= 443 or
-       upstream_scheme == "grpc"  and balancer_data.port ~= 80 or
-       upstream_scheme == "grpcs" and balancer_data.port ~= 443
-    then
-      upstream_host = upstream_host .. ":" .. balancer_data.port
+  if upstream_host ~= orig_upstream_host then
+    var.upstream_host = upstream_host
+
+    if phase == "balancer" then
+      return recreate_request()
     end
-
-    if upstream_host ~= orig_upstream_host then
-      var.upstream_host = upstream_host
-
-      if phase == "balancer" then
-        return recreate_request()
-      end
-    end
-
   end
 
   return true
