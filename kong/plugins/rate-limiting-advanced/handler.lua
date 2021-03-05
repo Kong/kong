@@ -227,6 +227,11 @@ function NewRLHandler:init_worker()
     ratelimiting.clear_config(config.namespace)
     new_namespace(config, start_timer)
 
+    -- recommendation have changed with FT-928
+    if config.sync_rate > 0 and config.sync_rate < 1 then
+      kong.log.warn("Config option 'sync_rate' " .. config.sync_rate .. " is between 0 and 1; a config update is recommended")
+    end
+
     -- clear the timer if we dont need it
     if config.sync_rate <= 0 then
       if ratelimiting.config[config.namespace] then

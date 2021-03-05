@@ -140,6 +140,11 @@ return {
           return nil, "Non-negative retry_after_jitter_max value is expected"
         end
 
+        -- a decimal between 0 and 1 messes with internal time calculations
+        if config.sync_rate > 0 and config.sync_rate < 1 then
+          return nil, "Config option 'sync_rate' must not be a decimal between 0 and 1"
+        end
+
         return true
       end
     }},
