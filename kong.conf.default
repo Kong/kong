@@ -42,10 +42,26 @@
                                           # it will be placed under the
                                           # `prefix` location.
 
+
 #proxy_error_log = logs/error.log         # Path for proxy port request error
                                           # logs. The granularity of these logs
                                           # is adjusted by the `log_level`
                                           # property.
+
+#proxy_stream_access_log = logs/access.log basic # Path for tcp streams proxy port access
+                                                 # logs. Set this value to `off` to
+                                                 # disable logging proxy requests.
+                                                 # If this value is a relative path,
+                                                 # it will be placed under the
+                                                 # `prefix` location.
+                                                 # `basic` is defined as `'$remote_addr [$time_local] '
+                                                 # '$protocol $status $bytes_sent $bytes_received '
+                                                 # '$session_time'`
+
+#proxy_stream_error_log = logs/error.log         # Path for tcp streams proxy port request error
+                                                 # logs. The granularity of these logs
+                                                 # is adjusted by the `log_level`
+                                                 # property.
 
 #admin_access_log = logs/admin_access.log # Path for Admin API request access
                                           # logs. If Hybrid Mode is enabled

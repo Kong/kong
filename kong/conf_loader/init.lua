@@ -587,6 +587,8 @@ local CONF_INFERENCES = {
 
   proxy_access_log = { typ = "string" },
   proxy_error_log = { typ = "string" },
+  proxy_stream_access_log = { typ = "string" },
+  proxy_stream_error_log = { typ = "string" },
   admin_access_log = { typ = "string" },
   admin_error_log = { typ = "string" },
   status_access_log = { typ = "string" },
