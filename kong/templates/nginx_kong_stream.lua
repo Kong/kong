@@ -79,10 +79,13 @@ server {
     listen $(entry.listener);
 > end
 
+> _, count = proxy_access_log:gsub("%S+", "")
 > if proxy_access_log == "off" then
     access_log off;
-> else
+> elseif count == 1 then
     access_log ${{PROXY_ACCESS_LOG}} basic;
+> else
+    access_log ${{PROXY_ACCESS_LOG}};
 > end
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 

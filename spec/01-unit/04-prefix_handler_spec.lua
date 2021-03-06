@@ -466,6 +466,24 @@ describe("NGINX conf compiler", function()
     end)
 
     describe("injected NGINX directives", function()
+      it("injects proxy_access_log directive", function()
+        local conf = assert(conf_loader(nil, {
+          proxy_access_log = "/dev/stdout",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("access_log%s/dev/stdout;", nginx_conf)
+        local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("access_log%s/dev/stdout basic;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          proxy_access_log = "/dev/stdout custom",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("access_log%s/dev/stdout custom;", nginx_conf)
+        local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("access_log%s/dev/stdout custom;", nginx_conf)
+      )
+
       it("injects nginx_main_* directives", function()
         local conf = assert(conf_loader(nil, {
           nginx_main_pcre_jit = "on",
