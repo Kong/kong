@@ -1,3 +1,10 @@
+## Unreleased
+
+## 0.3.1
+
+- fix(mtls-auth) Grab CA from the end of the proof chain instead of the beginning
+- fix(schema) remove CA existence check (FTI-2296)
+
 ## 0.3.0
 
 - fix(plugin) check the existence of all CAs when creating the plugin
