@@ -147,6 +147,12 @@ if [[ "$TEST_SUITE" == "pdk" ]]; then
   cpanm --notest --local-lib=$TRAVIS_BUILD_DIR/perl5 local::lib && eval $(perl -I $TRAVIS_BUILD_DIR/perl5/lib/perl5/ -Mlocal::lib)
 fi
 
+# ------------------------------------
+# Install additional test dependencies
+# ------------------------------------
+go get -u github.com/tsenart/vegeta
+vegeta -version
+
 # ---------------
 # Run gRPC server
 # ---------------
