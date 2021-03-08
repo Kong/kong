@@ -88,6 +88,9 @@ end
 
 
 local function post_target_endpoint(upstream_id, host, port, endpoint)
+  if host == "[::1]" then
+    host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
+  end
   local path = "/upstreams/" .. upstream_id
                              .. "/targets/"
                              .. utils.format_host(host, port)
@@ -294,6 +297,9 @@ do
   add_target = function(bp, upstream_id, host, port, data)
     port = port or gen_port()
     local req = utils.deep_copy(data) or {}
+    if host == "[::1]" then
+      host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
+    end
     req.target = req.target or utils.format_host(host, port)
     req.weight = req.weight or 10
     req.upstream = { id = upstream_id }
@@ -303,6 +309,9 @@ do
 
   update_target = function(bp, upstream_id, host, port, data)
     local req = utils.deep_copy(data) or {}
+    if host == "[::1]" then
+      host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
+    end
     req.target = req.target or utils.format_host(host, port)
     req.weight = req.weight or 10
     req.upstream = { id = upstream_id }
@@ -349,6 +358,9 @@ local poll_wait_health
 local poll_wait_address_health
 do
   local function poll_wait(upstream_id, host, port, admin_port, fn)
+    if host == "[::1]" then
+      host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
+    end
     local hard_timeout = ngx.now() + 5
     while ngx.now() < hard_timeout do
       local health = get_upstream_health(upstream_id, admin_port)
@@ -518,7 +530,7 @@ end
 
 local localhosts = {
   ipv4 = "127.0.0.1",
-  ipv6 = "[0000:0000:0000:0000:0000:0000:0000:0001]",
+  ipv6 = "[::1]",
   hostname = "localhost",
 }
 
