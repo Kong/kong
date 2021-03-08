@@ -49,6 +49,7 @@ local function make_request(http, config)
     host = config.host,
     port = config.scheme == "https" and 443 or 80,
     ssl = config.scheme == "https" and {
+      server_name = config.host,
       verify = false,
     },
     proxy = config.proxy_url and {
