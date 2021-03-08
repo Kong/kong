@@ -1,3 +1,4 @@
+local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
 local ngx_ssl = require "ngx.ssl"
 
@@ -224,10 +225,16 @@ do
   }
 
   local method_cache = {}
+  for k, v in pairs(exposed_api) do
+    method_cache[k] = v
+  end
 
   function get_field(method)
     if method_cache[method] then
       return method_cache[method]
+
+    elseif method:sub(1, 9) == "kong.log." then
+      return kong.log[method:sub(10)]
 
     else
       method_cache[method] = index_table(exposed_api, method)
@@ -238,6 +245,11 @@ end
 
 
 local function call_pdk_method(cmd, args)
+  local saved = save_for_later[coroutine.running()]
+  if saved and saved.plugin_name then
+    kong_global.set_namespaced_log(kong, saved.plugin_name)
+  end
+
   local method = get_field(cmd)
   if not method then
     kong.log.err("could not find pdk method: ", cmd)
@@ -351,6 +363,7 @@ local function build_phases(plugin)
     if phase == "log" then
       plugin[phase] = function(self, conf)
         local saved = {
+          plugin_name = self.name,
           serialize_data = kong.log.serialize(),
           ngx_ctx = ngx.ctx,
           ctx_shared = kong.ctx.shared,

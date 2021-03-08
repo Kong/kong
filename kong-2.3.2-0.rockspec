@@ -23,10 +23,10 @@ dependencies = {
   "version == 1.0.1",
   "resty-redis-cluster == 1.02-4",
   "kong-lapis == 1.8.1.2",
-  "lua-cassandra == 1.5.0",
+  "lua-cassandra == 1.5.1",
   -- XXX EE: do not use pgmoon here
   -- XXX EE: we're using a special pgmoon branch in .ci/setup_env.sh and k-d
-  -- "pgmoon",
+  -- "pgmoon == 1.12.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
@@ -54,7 +54,7 @@ dependencies = {
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.2",
   "kong-plugin-serverless-functions ~> 2.1",
-  "kong-prometheus-plugin ~> 1.0",
+  "kong-prometheus-plugin ~> 1.1",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.3",
   "kong-plugin-session == 2.4.3",
