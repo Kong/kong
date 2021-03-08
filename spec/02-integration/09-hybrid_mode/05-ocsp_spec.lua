@@ -151,6 +151,74 @@ for _, strategy in helpers.each_strategy() do
         end, 5)
       end)
     end)
+
+    describe("OCSP responder errors, DP are not allowed", function()
+      lazy_setup(function()
+        helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "clustering_data_planes",
+          "upstreams",
+          "targets",
+          "certificates",
+        }) -- runs migrations
+
+        assert(helpers.start_kong({
+          role = "control_plane",
+          cluster_cert = "spec/fixtures/ocsp_certs/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/ocsp_certs/kong_clustering.key",
+          cluster_ocsp = "on",
+          db_update_frequency = 0.1,
+          database = strategy,
+          cluster_listen = "127.0.0.1:9005",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          -- additional attributes for PKI:
+          cluster_mtls = "pki",
+          cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
+        }))
+
+        assert(helpers.start_kong({
+          role = "data_plane",
+          database = "off",
+          prefix = "servroot2",
+          cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
+          cluster_cert_key = "spec/fixtures/ocsp_certs/kong_data_plane.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/ocsp_certs/ca.crt",
+          cluster_control_plane = "127.0.0.1:9005",
+          proxy_listen = "0.0.0.0:9002",
+          -- additional attributes for PKI:
+          cluster_mtls = "pki",
+          cluster_server_name = "kong_clustering",
+        }))
+
+        set_ocsp_status("error")
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong("servroot2")
+        helpers.stop_kong()
+      end)
+      describe("status API", function()
+        it("shows DP status", function()
+          helpers.wait_until(function()
+            local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
+            if logs:find('DP client certificate revocation check failed: OCSP responder returns bad HTTP status code: 500', nil, true) then
+              local admin_client = helpers.admin_client()
+              finally(function()
+                admin_client:close()
+              end)
+
+              local res = assert(admin_client:get("/clustering/data-planes"))
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+
+              assert.equal(0, #json.data)
+              return true
+            end
+          end, 5)
+        end)
+      end)
+    end)
   end)
 
   describe("cluster_ocsp = off works with #" .. strategy .. " backend", function()

@@ -384,11 +384,13 @@ do
     end
 
     local ocsp_resp = res.body
-    if ocsp_resp and #ocsp_resp > 0 then
-      res, err = ocsp.validate_ocsp_response(ocsp_resp, der_cert)
-      if not res then
-        return false, "failed to validate OCSP response: " .. err
-      end
+    if not ocsp_resp or #ocsp_resp == 0 then
+      return nil, "unexpected response from OCSP responder: empty body"
+    end
+
+    res, err = ocsp.validate_ocsp_response(ocsp_resp, der_cert)
+    if not res then
+      return false, "failed to validate OCSP response: " .. err
     end
 
     return true

@@ -379,7 +379,6 @@ end
 
 
 local function handle_ocsp()
-  ngx.log(ngx.ERR, ngx.config.prefix())
   if ocsp_status == "good" then
     ngx.print(pl_file.read(ngx.config.prefix() .. "/../spec/fixtures/ocsp_certs/resp-good.dat"))
 

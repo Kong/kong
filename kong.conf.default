@@ -284,7 +284,10 @@
                          # If enabled, the DP certificate should contain the
                          # "Certificate Authority Information Access" extension
                          # and the OCSP method with URI of which the OCSP responder
-                         # can be reached.
+                         # can be reached from CP.
+                         #
+                         # OCSP checks are only performed on CP nodes, it has no
+                         # effect on DP nodes.
                          #
                          # Valid values to this setting are:
                          #
