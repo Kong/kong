@@ -25,7 +25,6 @@ local datasets = {
   insert_status_codes_by_consumer_and_route = VITALS_TYPE_STATUS_CODE_BY_CONSUMER_AND_ROUTE,
   insert_status_code_classes = VITALS_TYPE_STATUS_CODE_CLASSES,
   insert_status_code_classes_by_workspace = VITALS_TYPE_STATUS_CODE_BY_WORKSPACE,
-  insert_consumer_stats = VITALS_TYPE_CONSUMER_STATS,
 }
 
 local datasets_lookup = {}
@@ -142,7 +141,7 @@ local function get_serve_ingest_func(self)
       ngx.log(ngx.DEBUG, _log_prefix, "processing type ", stats_type)
 
       if stats_type == VITALS_TYPE_STATS then
-        local ok, err = real_strategy:insert_stats(flush_data)
+        local ok, err = real_strategy:insert_stats(flush_data, node_id)
         if not ok then
           ngx.log(ngx.ERR, _log_prefix, "error writing: ", err)
         end
@@ -154,6 +153,11 @@ local function get_serve_ingest_func(self)
         local ok, err = real_strategy:delete_stats(expiries)
         if not ok then
           ngx.log(ngx.WARN, _log_prefix, "failed to delete stats: ", err)
+        end
+      elseif stats_type == VITALS_TYPE_CONSUMER_STATS then
+        local ok, err = real_strategy:insert_consumer_stats(flush_data, node_id)
+        if not ok then
+          ngx.log(ngx.WARN, _log_prefix, "error writing type ", stats_type, ": ", err)
         end
       else
         local f = datasets_lookup[stats_type]
