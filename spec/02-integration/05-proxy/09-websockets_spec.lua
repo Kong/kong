@@ -2,13 +2,15 @@ local client = require "resty.websocket.client"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+for _, enable_buffering in ipairs({ false, true }) do
 for _, strategy in helpers.each_strategy() do
-  describe("Websockets [#" .. strategy .. "]", function()
+  describe("Websockets [#" .. strategy .. "]" .. (enable_buffering and " with buffering on" or ""), function()
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-      })
+        enable_buffering and "plugins"
+      }, enable_buffering and { "enable-buffering" } or nil)
 
       local service = bp.services:insert {
         name = "ws",
@@ -22,8 +24,19 @@ for _, strategy in helpers.each_strategy() do
         strip_path  = true,
       }
 
+      if enable_buffering then
+        bp.plugins:insert({
+          name = "enable-buffering",
+          protocols = { "http", "https", "grpc", "grpcs" },
+          service = ngx.null,
+          consumer = ngx.null,
+          route = ngx.null,
+        })
+      end
+
       assert(helpers.start_kong({
         database   = strategy,
+        plugins    = enable_buffering and "bundled,enable-buffering",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
@@ -151,4 +164,5 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+end
 end
