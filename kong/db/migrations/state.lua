@@ -53,12 +53,18 @@ local function load_subsystems(db, plugin_names)
     error("plugin_names must be a table", 2)
   end
 
+  local sorted_plugin_names = {}
+  for name in pairs(plugin_names) do
+    sorted_plugin_names[#sorted_plugin_names + 1] = name
+  end
+  table.sort(sorted_plugin_names)
+
   local subsystems = require("kong.db.migrations.subsystems")
 
   local res = {}
   for _, ss in ipairs(subsystems) do
     if ss.name:match("%*") then
-      for plugin_name in pairs(plugin_names) do
+      for _, plugin_name in ipairs(sorted_plugin_names) do
         local namespace = ss.namespace:gsub("%*", plugin_name)
 
         local ok, mig_idx = utils.load_module_if_exists(namespace)

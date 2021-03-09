@@ -133,7 +133,7 @@ local function new(self)
   -- If not set yet, it returns `nil`.
   -- @function kong.client.get_credential
   -- @phases access, header_filter, body_filter, log
-  -- @return the authenticated credential
+  -- @treturn string the authenticated credential
   -- @usage
   -- local credential = kong.client.get_credential()
   -- if credential then
@@ -154,7 +154,7 @@ local function new(self)
   -- @function kong.client.load_consumer
   -- @phases access, header_filter, body_filter, log
   -- @tparam string consumer_id The consumer id to look up.
-  -- @tparam [opt] search_by_username boolean. If truthy,
+  -- @tparam[opt] boolean search_by_username. If truthy,
   -- then if the consumer was not found by id,
   -- then a second search by username will be performed
   -- @treturn table|nil consumer entity or nil
@@ -251,7 +251,7 @@ local function new(self)
   -- erroneous requests.
   -- @function kong.client.get_protocol
   -- @phases access, header_filter, body_filter, log
-  -- @tparam [opt] allow_terminated boolean. If set, the `X-Forwarded-Proto` header will be checked when checking for https
+  -- @tparam[opt] boolean allow_terminated. If set, the `X-Forwarded-Proto` header will be checked when checking for https
   -- @treturn string|nil `"http"`, `"https"`, `"tcp"`, `"tls"` or `nil`
   -- @treturn nil|err nil if success, or error message if failure
   -- @usage
