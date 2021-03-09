@@ -3,6 +3,23 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("db.migrations.State", function()
+    describe("load", function()
+      it("loads subsystems in alphabetical order", function()
+        local _, db = helpers.get_db_utils(strategy)
+        local state = State.load(db)
+
+        local namespaces = {}
+        local sorted_namespaces = {}
+        for i, subsystem in ipairs(state.executed_migrations) do
+          namespaces[i] = subsystem.namespace
+          sorted_namespaces[i] = subsystem.namespace
+        end
+        table.sort(sorted_namespaces)
+
+        assert.same(namespaces, sorted_namespaces)
+      end)
+    end)
+
     describe("is_migration_executed", function()
       local db
       local state
