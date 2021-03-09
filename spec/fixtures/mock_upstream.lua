@@ -10,12 +10,14 @@ local cjson_safe = require "cjson.safe"
 local cjson      = require "cjson"
 local ws_server  = require "resty.websocket.server"
 local pl_stringx = require "pl.stringx"
+local pl_file    = require "pl.file"
 
 
 local kong = {
   table = require("kong.pdk.table").new()
 }
 
+local ocsp_status = "good"
 
 local function parse_multipart_form_params(body, content_type)
   if not content_type then
@@ -383,6 +385,27 @@ local function reset_log(logname)
 end
 
 
+local function handle_ocsp()
+  if ocsp_status == "good" then
+    ngx.print(pl_file.read(ngx.config.prefix() .. "/../spec/fixtures/ocsp_certs/resp-good.dat"))
+
+  elseif ocsp_status == "revoked" then
+    ngx.print(pl_file.read(ngx.config.prefix() .. "/../spec/fixtures/ocsp_certs/resp-revoked.dat"))
+
+  elseif ocsp_status == "error" then
+    ngx.exit(500)
+
+  else
+    assert("unknown ocsp_status:" ..ocsp_status)
+  end
+end
+
+
+local function set_ocsp(status)
+  ocsp_status = status
+end
+
+
 return {
   get_default_json_response   = get_default_json_response,
   filter_access_by_method     = filter_access_by_method,
@@ -394,4 +417,6 @@ return {
   retrieve_log                = retrieve_log,
   count_log                   = count_log,
   reset_log                   = reset_log,
+  handle_ocsp                 = handle_ocsp,
+  set_ocsp                    = set_ocsp,
 }

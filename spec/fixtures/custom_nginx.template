@@ -739,6 +739,20 @@ http {
         location = /echo_sni {
             return 200 'SNI=$ssl_server_name\n';
         }
+
+        location = /ocsp {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.handle_ocsp()
+            }
+        }
+
+        location = /set_ocsp {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.set_ocsp(ngx.var.arg_status)
+            }
+        }
     }
 > end -- role ~= "data_plane"
 
