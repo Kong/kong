@@ -353,6 +353,20 @@ describe("routes schema", function()
       assert.is_nil(err)
       assert.is_true(ok)
     end)
+
+    it("accepts valid utf-8 characters in paths", function()
+      local route = Routes:process_auto_fields({
+        protocols = { "http" },
+        service = { id = a_valid_uuid },
+        methods = {},
+        hosts = {},
+        paths = { "/ovo/😀" },
+      }, "insert")
+
+      local ok, err = Routes:validate(route)
+      assert.is_nil(err)
+      assert.is_true(ok)
+    end)
   end)
 
   describe("hosts attribute", function()

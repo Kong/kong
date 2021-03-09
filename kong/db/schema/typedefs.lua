@@ -63,13 +63,20 @@ end
 
 
 local function validate_path(path)
-  if not match(path, "^/[%w%.%-%_%~%/%%%:%@" ..
-                     "%!%$%&%'%(%)%*%+%,%;%=" .. -- RFC 3986 "sub-delims"
-                     "]*$")
+  local ok, index = utils.validate_utf8(path)
+  if not ok then
+     return nil, "invalid utf-8 character sequence detected at position " ..
+                 tostring(index), "utf-8"
+  end
+
+  if not match(path, "^/[%w%-%_%.%~" .. -- RFC 3986 unreserved characters
+                     "%!%#%$%&%'%(%)%*%+%,%/%:%;%=%?%@%[%]" ..
+                     -- RFC 3986 reserved characters
+                     "\128-\244]*$")
   then
     return nil,
            "invalid path: '" .. path ..
-           "' (characters outside of the reserved list of RFC 3986 found)",
+           "' (characters outside of the reserved and unreserved list of RFC 3986 found)",
            "rfc3986"
   end
 

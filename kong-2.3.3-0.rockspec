@@ -209,6 +209,7 @@ build = {
     ["kong.db.migrations.core.011_212_to_213"] = "kong/db/migrations/core/011_212_to_213.lua",
     ["kong.db.migrations.core.012_213_to_220"] = "kong/db/migrations/core/012_213_to_220.lua",
     ["kong.db.migrations.core.013_220_to_230"] = "kong/db/migrations/core/013_220_to_230.lua",
+    ["kong.db.migrations.core.014_230_to_240"] = "kong/db/migrations/core/014_230_to_240.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",

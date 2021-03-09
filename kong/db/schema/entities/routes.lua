@@ -66,11 +66,10 @@ return {
                     }},
                   },
 
-  -- TODO: add migrations and remove this in 2.4.0
   transformations = {
     {
       input = { "paths" },
-      on_read = function(paths)
+      on_write = function(paths)
         for i, uri in ipairs(paths) do
           paths[i] = normalize(paths[i], true)
         end
