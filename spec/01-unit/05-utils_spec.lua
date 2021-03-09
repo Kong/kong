@@ -826,4 +826,28 @@ describe("Utils", function()
       end, "bad argument #1 'str'")
     end)
   end)
+
+  describe("topological_sort", function()
+    local get_neighbors = function(x) return x end
+    local ts = utils.topological_sort
+
+    it("it puts destinations first", function()
+      local a = { id = "a" }
+      local b = { id = "b", a }
+      local c = { id = "c", a, b }
+      local d = { id = "d", c }
+
+      local x = ts({ c, d, a, b }, get_neighbors)
+      assert.same({ a, b, c, d }, x)
+    end)
+
+    it("returns an error if cycles are found", function()
+      local a = { id = "a" }
+      local b = { id = "b", a }
+      a[1] = b
+      local x, err = ts({ a, b }, get_neighbors)
+      assert.is_nil(x)
+      assert.equals("Cycle detected, cannot sort topologically", err)
+    end)
+  end)
 end)
