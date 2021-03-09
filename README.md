@@ -17,7 +17,7 @@ from startups to Global 5000 as well as government organizations.
 [Forum](https://discuss.konghq.com) |
 [Blog](https://konghq.com/blog) |
 IRC (freenode): [#kong](https://webchat.freenode.net/?channels=kong) |
-[Nightly Builds][kong-nightly-master]
+[Master Builds][kong-master-builds]
 
 ## Summary
 
@@ -124,8 +124,7 @@ code, other repos are also under active development:
   Heroku in one click.
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
   Instaclustr manage your Cassandra cluster.
-- [Nightly Builds][kong-nightly-master]: Builds of the master branch available
-  every morning at about 9AM PST.
+- [Master Builds][kong-master-builds]: Docker images for each commit in the `master` branch.
 
 You can find every supported distribution at the [official installation page](https://konghq.com/install/).
 
@@ -311,7 +310,7 @@ limitations under the License.
 [kong-url]: https://konghq.com/
 [kong-logo]: https://konghq.com/wp-content/uploads/2018/05/kong-logo-github-readme.png
 [kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
-[kong-nightly-master]: https://bintray.com/kong/kong-nightly/master
+[kong-master-builds]: https://hub.docker.com/r/kong/kong/tags
 [badge-action-url]: https://github.com/Kong/kong/actions
 [badge-action-image]: https://github.com/Kong/kong/workflows/Build%20&%20Test/badge.svg
 
