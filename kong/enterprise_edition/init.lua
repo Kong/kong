@@ -39,6 +39,15 @@ local _M = {}
 _M.handlers = {
   init = {
     after = function()
+
+      -- XXX not ideal: re-prepare manager after license load
+      -- ask devx if we really need to `prepare_admin` so early on
+      -- cmd/utils/prefix_handler or just here would be fine
+      -- setup Kong Enterprise interfaces based on current configuration
+      if kong.configuration.admin_gui_listeners then
+        _M.prepare_admin(kong.configuration)
+      end
+
       rbac.register_dao_hooks(kong.db)
       counters.register_dao_hooks()
 
@@ -114,6 +123,22 @@ _M.handlers = {
     after = function(ctx)
 
       kong.licensing:init_worker(kong.worker_events)
+
+      -- register actions on configuration change (ie: license)
+      --   * anything that _always_ checks on runtime for a config will
+      --     work without any further change (rbac)
+      --   * things that check for settings only on init won't work unless
+      --     we handle the change (see vitals on kong/init.lua)
+      kong.worker_events.register(function(data, event, source, pid)
+
+        -- XXX won't work since worker process has no permissions over static
+        -- file `kconfig.js` that this generates for admin
+        -- if kong.configuration.admin_gui_listeners then
+        --   _M.prepare_admin(kong.configuration)
+        -- end
+
+        -- anything else?
+      end, "kong:configuration", "change")
 
       -- register event_hooks hooks
       if event_hooks.enabled() then
