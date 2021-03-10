@@ -68,4 +68,22 @@ describe(JWKS_URI, function()
     }, algs)
   end)
 
+  it("removes private keys for all supported algorithms", function()
+    local res = admin_client:get(JWKS_URI)
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+    assert.is_table(json)
+
+    for _, jwk in ipairs(json.keys) do
+      assert.equal(nil, jwk.k)
+      assert.equal(nil, jwk.d)
+      assert.equal(nil, jwk.p)
+      assert.equal(nil, jwk.dp)
+      assert.equal(nil, jwk.dq)
+      assert.equal(nil, jwk.qi)
+      assert.equal(nil, jwk.oth)
+      assert.equal(nil, jwk.r)
+      assert.equal(nil, jwk.t)
+    end
+  end)
 end)

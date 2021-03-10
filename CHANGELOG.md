@@ -3,7 +3,9 @@
 - Add `config.disable_session` to be able to disable session creation with specified
   authentication methods
 - Change `Cache-Control="no-store"` instead of `Cache-Control="no-cache, no-store"`,
-  and only set `Pragme="no-cache"` with HTTP 1.0 (and below).
+  and only set `Pragme="no-cache"` with HTTP 1.0 (and below)
+- Fix `/openid-connect/jwks` to not expose private keys (this bug was introduced in
+  `1.6.0` and affects all versions up to `1.8.3`)
 
 
 ## v1.8.3

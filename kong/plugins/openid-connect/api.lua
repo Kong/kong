@@ -14,6 +14,7 @@ local json       = require "cjson.safe"
 local escape_uri = ngx.escape_uri
 local ipairs     = ipairs
 local kong       = kong
+local type       = type
 local null       = ngx.null
 local fmt        = string.format
 
@@ -48,18 +49,27 @@ end
 
 
 local function filter_jwks(jwks)
-  local keys = utils.deep_copy(jwks)
-  for _, jwk in ipairs(keys) do
-    jwk.k = nil
-    jwk.d = nil
-    jwk.p = nil
-    jwk.q = nil
-    jwk.dp = nil
-    jwk.dq = nil
-    jwk.qi = nil
+  if type(jwks) ~= "table" then
+    return nil
   end
 
-  return keys
+  local keyset = utils.deep_copy(jwks)
+  if type(keyset) == "table" and type(keyset.keys) == "table" then
+    for _, jwk in ipairs(keyset.keys) do
+      jwk.k = nil
+      jwk.d = nil
+      jwk.p = nil
+      jwk.q = nil
+      jwk.dp = nil
+      jwk.dq = nil
+      jwk.qi = nil
+      jwk.oth = nil
+      jwk.r = nil
+      jwk.t = nil
+    end
+  end
+
+  return keyset
 end
 
 

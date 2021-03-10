@@ -152,6 +152,24 @@ local jwk = schema.define {
         required = false,
       },
     },
+    {
+      oth = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      r = {
+        type = "string",
+        required = false,
+      },
+    },
+    {
+      t = {
+        type = "string",
+        required = false,
+      },
+    },
   },
 }
 
