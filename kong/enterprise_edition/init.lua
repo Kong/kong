@@ -446,15 +446,6 @@ function _M.license_hooks(config)
     return info
   end)
 
-  -- override settings by license
-  hooks.register_hook("api:kong:info", function(info)
-    for k, v in pairs(kong.licensing.conf) do
-      info.configuration[k] = v
-    end
-
-    return info
-  end)
-
 
   local function wrap_method(thing, name, method)
     thing[name] = method(thing[name] or nop)
