@@ -18,6 +18,7 @@ local null          = ngx.null
 local header        = ngx.header
 local set_header    = ngx.req.set_header
 local encode_base64 = ngx.encode_base64
+local http_version  = ngx.req.http_version
 
 
 local function append_header(name, value)
@@ -177,8 +178,10 @@ end
 
 
 local function no_cache_headers()
-  header["Cache-Control"] = "no-cache, no-store"
-  header["Pragma"]        = "no-cache"
+  header["Cache-Control"] = "no-store"
+  if http_version() <= 1.0 then
+    header["Pragma"] = "no-cache"
+  end
 end
 
 
