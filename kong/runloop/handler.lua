@@ -10,6 +10,7 @@ local constants    = require "kong.constants"
 local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
+local declarative  = require "kong.db.declarative"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 
 
@@ -201,7 +202,7 @@ local function register_events()
 
         balancer.init()
 
-        ngx.shared.kong:incr(constants.DECLARATIVE_FLIPS.name, 1, 0, constants.DECLARATIVE_FLIPS.ttl)
+        declarative.lock()
 
         return true
       end)
