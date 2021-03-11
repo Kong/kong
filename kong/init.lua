@@ -196,7 +196,6 @@ do
   reset_kong_shm = function(config)
     local kong_shm = ngx.shared.kong
     local dbless = config.database == "off"
-    local declarative_config = dbless and config.declarative_config
 
     if dbless then -- prevent POST /config from happening while initializing
       kong_shm:add(DECLARATIVE_FLIPS_KEY, 0, DECLARATIVE_FLIPS_TTL)
@@ -210,14 +209,11 @@ do
 
     local preserved = {}
 
-    local new_page
-    if declarative_config then
-      new_page = old_page == 1 and 2 or 1
-
-    else
-      new_page = old_page
-
-      if dbless then
+    local new_page = old_page
+    if dbless then
+      if config.declarative_config then
+        new_page = old_page == 1 and 2 or 1
+      else
         preserved[DECLARATIVE_LOAD_KEY] = kong_shm:get(DECLARATIVE_LOAD_KEY)
         preserved[DECLARATIVE_HASH_KEY] = kong_shm:get(DECLARATIVE_HASH_KEY)
       end
