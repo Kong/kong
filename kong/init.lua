@@ -116,6 +116,7 @@ local ngx_ALERT        = ngx.ALERT
 local ngx_CRIT         = ngx.CRIT
 local ngx_ERR          = ngx.ERR
 local ngx_WARN         = ngx.WARN
+local ngx_NOTICE       = ngx.NOTICE
 local ngx_INFO         = ngx.INFO
 local ngx_DEBUG        = ngx.DEBUG
 local subsystem        = ngx.config.subsystem
@@ -898,8 +899,21 @@ function Kong.access()
   -- we intent to proxy, though balancer may fail on that
   ctx.KONG_PROXIED = true
 
-  if ctx.buffered_proxying and ngx.req.http_version() < 2 then
-    return Kong.response()
+
+  if ctx.buffered_proxying then
+    local version = ngx.req.http_version()
+    local upgrade = var.upstream_upgrade or ""
+    if version < 2 and upgrade == "" then
+      return Kong.response()
+    end
+
+    if version >= 2 then
+      ngx_log(ngx_NOTICE, "response buffering was turned off: incompatible HTTP version (", version, ")")
+    else
+      ngx_log(ngx_NOTICE, "response buffering was turned off: connection upgrade (", upgrade, ")")
+    end
+
+    ctx.buffered_proxying = nil
   end
 end
 
