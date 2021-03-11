@@ -1300,11 +1300,13 @@ return {
         -- stripping the empty querystring.
         -- We overcome this behavior with our own logic, to preserve user
         -- desired semantics.
-        local upstream_uri = var.upstream_uri
+        local upstream_uri = escape(var.upstream_uri)
 
         if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
-          var.upstream_uri = upstream_uri .. "?" .. (var.args or "")
+          upstream_uri = upstream_uri .. "?" .. (var.args or "")
         end
+
+        var.upstream_uri = upstream_uri
       end
 
       local balancer_data = ctx.balancer_data
