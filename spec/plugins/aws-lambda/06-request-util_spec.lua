@@ -1,124 +1,283 @@
-local default_client_body_buffer_size = 1024 * 8
-
-describe("[AWS Lambda] request-util", function()
-
-  local mock_request
-  local old_ngx
-  local request_util
-  local body_data
-  local body_data_filepath
+local helpers = require "spec.helpers"
+local fixtures = require "spec.plugins.aws-lambda.fixtures"
 
 
-  setup(function()
-    old_ngx = ngx
-    _G.ngx = setmetatable({
-      req = {
-        read_body = function()
-          body_data = mock_request.body
+for _, strategy in helpers.each_strategy() do
+  describe("[AWS Lambda] request-util [#" .. strategy .. "]", function()
+    local proxy_client
+    local admin_client
 
-          -- if the request body is greater than the client buffer size, buffer
-          -- it to disk and set the filepath
-          if #body_data > default_client_body_buffer_size then
-            body_data_filepath = os.tmpname()
-            local f = io.open(body_data_filepath, "w")
-            f:write(body_data)
-            f:close()
-            body_data = nil
-          end
-        end,
-        get_body_data = function()
-          -- will be nil if request was large and required buffering
-          return body_data
-        end,
-        get_body_file = function()
-          -- will be nil if request wasn't large enough to buffer
-          return body_data_filepath
-        end
-      },
-      log = function() end,
-    }, {
-      -- look up any unknown key in the mock request, eg. .var and .ctx tables
-      __index = function(self, key)
-        return mock_request and mock_request[key]
-      end,
-    })
-
-    -- always reload
-    package.loaded["kong.plugins.aws-lambda.request-util"] = nil
-    request_util = require "kong.plugins.aws-lambda.request-util"
-  end)
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      }, { "aws-lambda" })
 
 
-  teardown(function()
-
-    body_data = nil
-
-    -- ignore return value, file might not exist
-    os.remove(body_data_filepath)
-
-    body_data_filepath = nil
-
-    -- always unload and restore
-    package.loaded["kong.plugins.aws-lambda.request-util"] = nil
-    ngx = old_ngx         -- luacheck: ignore
-  end)
-
-
-  describe("when skip_large_bodies is true", function()
-    local config = {skip_large_bodies = true}
-
-    it("it skips file-buffered body > max buffer size", function()
-      mock_request = {
-        body = string.rep("x", 1024 * 9 )
+      local route1 = bp.routes:insert {
+        hosts = { "gw.skipfile.com" },
       }
-      spy.on(ngx.req, "read_body")
-      spy.on(ngx.req, "get_body_file")
-      local out = request_util.read_request_body(config.skip_large_bodies)
-      assert.spy(ngx.req.read_body).was.called(1)
-      -- the payload was buffered to disk, but won't be read because we're skipping
-      assert.spy(ngx.req.get_body_file).was.called(1)
-      assert.is_nil(out)
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route1.id },
+        config   = {
+          port                  = 10001,
+          aws_key               = "mock-key",
+          aws_secret            = "mock-secret",
+          aws_region            = "us-east-1",
+          function_name         = "kongLambdaTest",
+          awsgateway_compatible = true,
+          forward_request_body  = true,
+          skip_large_bodies     = true,
+        },
+      }
+
+      local route2 = bp.routes:insert {
+        hosts = { "gw.readfile.com" },
+      }
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route2.id },
+        config   = {
+          port                  = 10001,
+          aws_key               = "mock-key",
+          aws_secret            = "mock-secret",
+          aws_region            = "us-east-1",
+          function_name         = "kongLambdaTest",
+          awsgateway_compatible = true,
+          forward_request_body  = true,
+          skip_large_bodies     = false,
+        },
+      }
+
+      local route3 = bp.routes:insert {
+        hosts = { "plain.skipfile.com" },
+      }
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route3.id },
+        config   = {
+          port                  = 10001,
+          aws_key               = "mock-key",
+          aws_secret            = "mock-secret",
+          aws_region            = "us-east-1",
+          function_name         = "kongLambdaTest",
+          awsgateway_compatible = false,
+          forward_request_body  = true,
+          skip_large_bodies     = true,
+        },
+      }
+
+      local route4 = bp.routes:insert {
+        hosts = { "plain.readfile.com" },
+      }
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route4.id },
+        config   = {
+          port                  = 10001,
+          aws_key               = "mock-key",
+          aws_secret            = "mock-secret",
+          aws_region            = "us-east-1",
+          function_name         = "kongLambdaTest",
+          awsgateway_compatible = false,
+          forward_request_body  = true,
+          skip_large_bodies     = false,
+        },
+      }
+
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        plugins = "aws-lambda",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, fixtures))
     end)
 
-    it("it reads body < max buffer size", function()
-      mock_request = {
-        body = string.rep("x", 1024 * 2 )
-      }
-      spy.on(ngx.req, "read_body")
-      spy.on(ngx.req, "get_body_file")
-      local out = request_util.read_request_body(config.skip_large_bodies)
-      assert.spy(ngx.req.read_body).was.called(1)
-      assert.spy(ngx.req.get_body_file).was.called(0)
-      assert.is_not_nil(out)
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+      os.execute(":> " .. helpers.test_conf.nginx_err_logs) -- clean log files
     end)
+
+    after_each(function ()
+      proxy_client:close()
+      admin_client:close()
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+
+    describe("plain:", function() -- plain serialization, not AWS gateway compatible
+
+      describe("when skip_large_bodies is true", function()
+
+        it("it skips file-buffered body > max buffer size", function()
+          local request_body = ("a"):rep(32 * 1024)  -- 32 kb
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+            headers = {
+              ["Host"] = "plain.skipfile.com"
+            },
+            body = request_body
+          })
+          assert.response(res).has.status(200, res)
+          local body = assert.response(res).has.jsonbody()
+          assert.is_string(res.headers["x-amzn-RequestId"])
+          assert.equal("", body.request_body) -- empty because it was skipped
+          assert.logfile().has.line("request body was buffered to disk, too large", true)
+        end)
+
+
+        it("it reads body < max buffer size", function()
+          local request_body = ("a"):rep(1 * 1024)  -- 1 kb
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+            headers = {
+              ["Host"] = "plain.skipfile.com"
+            },
+            body = request_body,
+          })
+          assert.response(res).has.status(200, res)
+          local body = assert.response(res).has.jsonbody()
+          assert.is_string(res.headers["x-amzn-RequestId"])
+          assert.equal(ngx.encode_base64(request_body), body.request_body) -- matches because it was small enough
+          assert.logfile().has.no.line("request body was buffered to disk, too large", true)
+        end)
+
+      end)
+
+
+
+      describe("when skip_large_bodies is false", function()
+
+        it("it reads file-buffered body > max buffer size", function()
+          local request_body = ("a"):rep(32 * 1024)  -- 32 kb
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+            headers = {
+              ["Host"] = "plain.readfile.com"
+            },
+            body = request_body
+          })
+          assert.response(res).has.status(200, res)
+          local body = assert.response(res).has.jsonbody()
+          assert.is_string(res.headers["x-amzn-RequestId"])
+          assert.equal(ngx.encode_base64(request_body), body.request_body) -- matches because it was read from file
+          assert.logfile().has.no.line("request body was buffered to disk, too large", true)
+        end)
+
+
+        it("it reads body < max buffer size", function()
+          local request_body = ("a"):rep(1 * 1024)  -- 1 kb
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+            headers = {
+              ["Host"] = "plain.readfile.com"
+            },
+            body = request_body,
+          })
+          assert.response(res).has.status(200, res)
+          local body = assert.response(res).has.jsonbody()
+          assert.is_string(res.headers["x-amzn-RequestId"])
+          assert.equal(ngx.encode_base64(request_body), body.request_body) -- matches because it was small enough
+          assert.logfile().has.no.line("request body was buffered to disk, too large", true)
+        end)
+
+      end)
+    end)
+
+
+
+    describe("aws-gw:", function() -- AWS gateway compatible serialization
+
+      describe("when skip_large_bodies is true", function()
+
+        it("it skips file-buffered body > max buffer size", function()
+          local request_body = ("a"):rep(32 * 1024)  -- 32 kb
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+            headers = {
+              ["Host"] = "gw.skipfile.com"
+            },
+            body = request_body
+          })
+          assert.response(res).has.status(200, res)
+          local body = assert.response(res).has.jsonbody()
+          assert.is_string(res.headers["x-amzn-RequestId"])
+          assert.equal("", body.body) -- empty because it was skipped
+          assert.logfile().has.line("request body was buffered to disk, too large", true)
+        end)
+
+
+        it("it reads body < max buffer size", function()
+          local request_body = ("a"):rep(1 * 1024)  -- 1 kb
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+            headers = {
+              ["Host"] = "gw.skipfile.com"
+            },
+            body = request_body,
+          })
+          assert.response(res).has.status(200, res)
+          local body = assert.response(res).has.jsonbody()
+          assert.is_string(res.headers["x-amzn-RequestId"])
+          assert.equal(ngx.encode_base64(request_body), body.body) -- matches because it was small enough
+          assert.logfile().has.no.line("request body was buffered to disk, too large", true)
+        end)
+
+      end)
+
+
+
+      describe("when skip_large_bodies is false", function()
+
+        it("it reads file-buffered body > max buffer size", function()
+          local request_body = ("a"):rep(32 * 1024)  -- 32 kb
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+            headers = {
+              ["Host"] = "gw.readfile.com"
+            },
+            body = request_body
+          })
+          assert.response(res).has.status(200, res)
+          local body = assert.response(res).has.jsonbody()
+          assert.is_string(res.headers["x-amzn-RequestId"])
+          assert.equal(ngx.encode_base64(request_body), body.body) -- matches because it was read from file
+          assert.logfile().has.no.line("request body was buffered to disk, too large", true)
+        end)
+
+
+        it("it reads body < max buffer size", function()
+          local request_body = ("a"):rep(1 * 1024)  -- 1 kb
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+            headers = {
+              ["Host"] = "gw.readfile.com"
+            },
+            body = request_body,
+          })
+          assert.response(res).has.status(200, res)
+          local body = assert.response(res).has.jsonbody()
+          assert.is_string(res.headers["x-amzn-RequestId"])
+          assert.equal(ngx.encode_base64(request_body), body.body) -- matches because it was small enough
+          assert.logfile().has.no.line("request body was buffered to disk, too large", true)
+        end)
+
+      end)
+    end)
+
   end)
-
-  describe("when skip_large_bodies is false", function()
-    local config = {skip_large_bodies = false}
-
-    it("it reads file-buffered body > max buffer size", function()
-      mock_request = {
-        body = string.rep("x", 1024 * 10 )
-      }
-      spy.on(ngx.req, "read_body")
-      spy.on(ngx.req, "get_body_file")
-      local out = request_util.read_request_body(config.skip_large_bodies)
-      assert.spy(ngx.req.read_body).was.called(1)
-      -- this payload was buffered to disk, and was read
-      assert.spy(ngx.req.get_body_file).was.called(1)
-      assert.is_not_nil(out)
-    end)
-
-    it("it reads body < max buffer size", function()
-      mock_request = {
-        body = string.rep("x", 1024 * 2 )
-      }
-      spy.on(ngx.req, "read_body")
-      spy.on(ngx.req, "get_body_file")
-      local out = request_util.read_request_body(config.skip_large_bodies)
-      assert.spy(ngx.req.read_body).was.called(1)
-      assert.spy(ngx.req.get_body_file).was.called(0)
-      assert.is_not_nil(out)
-    end)
-  end)
-end)
+end
