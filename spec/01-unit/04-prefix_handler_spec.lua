@@ -485,6 +485,16 @@ describe("NGINX conf compiler", function()
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
         assert.matches("access_log%s/dev/stdout%scustom;", nginx_conf)
         local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("access_log%s/dev/stdout%sbasic;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          proxy_stream_access_log = "/dev/stdout custom",
+          stream_listen = "0.0.0.0:9100",
+          nginx_stream_tcp_nodelay = "on",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("access_log%s/dev/stdout;", nginx_conf)
+        local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
         assert.matches("access_log%s/dev/stdout%scustom;", nginx_conf)
       end)
 

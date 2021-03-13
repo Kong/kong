@@ -79,7 +79,7 @@ server {
     listen $(entry.listener);
 > end
 
-    access_log ${{STREAM_ACCESS_LOG}}
+    access_log ${{PROXY_STREAM_ACCESS_LOG}};
     error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > for _, ip in ipairs(trusted_ips) do
