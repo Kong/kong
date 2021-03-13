@@ -7,6 +7,7 @@ admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
 status_access_log = off
 status_error_log = logs/status_error.log
+stream_access_log = logs/access.log basic
 plugins = bundled
 port_maps = NONE
 host_ports = NONE
