@@ -39,13 +39,13 @@ function workspaces.set_workspace(ws)
 end
 
 
-function workspaces.get_workspace_id()
+function workspaces.get_workspace_id(ctx)
   local r = base.get_request()
   if not r then
     return nil
   end
 
-  return ngx.ctx.workspace or kong.default_workspace
+  return (ctx or ngx.ctx).workspace or kong.default_workspace
 end
 
 

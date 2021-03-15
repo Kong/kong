@@ -97,18 +97,28 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.is_string(json.configuration.pg_password)
       assert.not_equal("hide_me", json.configuration.pg_password)
     end)
-    it("returns PRNG seeds", function()
+    it("returns process ids", function()
       local res = assert(client:send {
         method = "GET",
         path = "/",
       })
       local body = assert.response(res).has.status(200)
       local json = cjson.decode(body)
-      assert.is_table(json.prng_seeds)
-      for k in pairs(json.prng_seeds) do
-        assert.matches("pid: %d+", k)
-        assert.matches("%d+", k)
+      assert.is_table(json.pids)
+      assert.matches("%d+", json.pids.master)
+      for _, v in pairs(json.pids.workers) do
+        assert.matches("%d+", v)
       end
+    end)
+
+    it("does not return PRNG seeds", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/",
+      })
+      local body = assert.response(res).has.status(200)
+      local json = cjson.decode(body)
+      assert.is_nil(json.prng_seeds)
     end)
   end)
 

@@ -55,7 +55,7 @@ end
 
 local function validate_params(params, conf)
   -- check username and signature are present
-  if not params.username and params.signature then
+  if not params.username or not params.signature then
     return nil, "username or signature missing"
   end
 

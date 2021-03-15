@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.3.0-0"
+version = "2.3.3-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.3.0"
+  tag = "2.3.3"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -32,7 +32,7 @@ dependencies = {
   "lua_pack == 1.0.5",
   "lua-resty-dns-client == 5.2.1",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.4.0",
+  "lua-resty-healthcheck == 1.4.1",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
@@ -135,6 +135,7 @@ build = {
     ["kong.tools.stream_api"] = "kong/tools/stream_api.lua",
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
+    ["kong.tools.uri"] = "kong/tools/uri.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",

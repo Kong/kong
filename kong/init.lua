@@ -96,9 +96,11 @@ local ngx_ALERT        = ngx.ALERT
 local ngx_CRIT         = ngx.CRIT
 local ngx_ERR          = ngx.ERR
 local ngx_WARN         = ngx.WARN
+local ngx_NOTICE       = ngx.NOTICE
 local ngx_INFO         = ngx.INFO
 local ngx_DEBUG        = ngx.DEBUG
 local subsystem        = ngx.config.subsystem
+local start_time       = ngx.req.start_time
 local type             = type
 local error            = error
 local ipairs           = ipairs
@@ -492,7 +494,7 @@ function Kong.init()
     stream_api.load_handlers()
   end
 
-  if kong.configuration.database == "off" then
+  if config.database == "off" then
     local err
     declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
     if not declarative_entities then
@@ -508,7 +510,9 @@ function Kong.init()
       error("error building initial plugins: " .. tostring(err))
     end
 
-    assert(runloop.build_router("init"))
+    if config.role ~= "control_plane" then
+      assert(runloop.build_router("init"))
+    end
   end
 
   db:close()
@@ -594,15 +598,18 @@ function Kong.init_worker()
   kong.db:set_events_handler(worker_events)
 
   ok, err = load_declarative_config(kong.configuration,
-    declarative_entities, declarative_meta)
+                                    declarative_entities,
+                                    declarative_meta)
   if not ok then
     stash_init_worker_error("failed to load declarative config file: " .. err)
     return
   end
 
-  ok, err = execute_cache_warmup(kong.configuration)
-  if not ok then
-    ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
+  if kong.configuration.role ~= "control_plane" then
+    ok, err = execute_cache_warmup(kong.configuration)
+    if not ok then
+      ngx_log(ngx_ERR, "failed to warm up the DB cache: " .. err)
+    end
   end
 
   runloop.init_worker.before()
@@ -619,7 +626,9 @@ function Kong.init_worker()
 
   runloop.init_worker.after()
 
-  plugin_servers.start()
+  if kong.configuration.role ~= "control_plane" then
+    plugin_servers.start()
+  end
 
   if subsystem == "http" then
     clustering.init_worker(kong.configuration)
@@ -630,11 +639,11 @@ end
 function Kong.preread()
   local ctx = ngx.ctx
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = get_now_ms()
+    ctx.KONG_PROCESSING_START = start_time() * 1000
   end
 
   if not ctx.KONG_PREREAD_START then
-    ctx.KONG_PREREAD_START = ctx.KONG_PROCESSING_START
+    ctx.KONG_PREREAD_START = get_now_ms()
   end
 
   kong_global.set_phase(kong, PHASES.preread)
@@ -649,6 +658,7 @@ function Kong.preread()
   if not ctx.service then
     ctx.KONG_PREREAD_ENDED_AT = get_now_ms()
     ctx.KONG_PREREAD_TIME = ctx.KONG_PREREAD_ENDED_AT - ctx.KONG_PREREAD_START
+    ctx.KONG_RESPONSE_LATENCY = ctx.KONG_PREREAD_ENDED_AT - ctx.KONG_PROCESSING_START
 
     ngx_log(ngx_WARN, "no Service found with those values")
     return ngx.exit(503)
@@ -673,7 +683,7 @@ function Kong.ssl_certificate()
   log_init_worker_errors(ctx)
 
   -- this is the first phase to run on an HTTPS request
-  ngx.ctx.workspace = kong.default_workspace
+  ctx.workspace = kong.default_workspace
 
   runloop.certificate.before(ctx)
   local plugins_iterator = runloop.get_updated_plugins_iterator()
@@ -698,7 +708,7 @@ function Kong.rewrite()
 
   local ctx = ngx.ctx
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = ngx.req.start_time() * 1000
+    ctx.KONG_PROCESSING_START = start_time() * 1000
   end
 
   if not ctx.KONG_REWRITE_START then
@@ -706,7 +716,7 @@ function Kong.rewrite()
   end
 
   kong_global.set_phase(kong, PHASES.rewrite)
-  kong_resty_ctx.stash_ref()
+  kong_resty_ctx.stash_ref(ctx)
 
   local is_https = var.https == "on"
   if not is_https then
@@ -715,18 +725,18 @@ function Kong.rewrite()
 
   runloop.rewrite.before(ctx)
 
+  if not ctx.workspace then
+    ctx.workspace = kong.default_workspace
+  end
+
   -- On HTTPS requests, the plugins iterator is already updated in the ssl_certificate phase
   local plugins_iterator
   if is_https then
     plugins_iterator = runloop.get_plugins_iterator()
   else
-    -- this is the first phase to run on a plain HTTP request
-    ngx.ctx.workspace = kong.default_workspace
-
     plugins_iterator = runloop.get_updated_plugins_iterator()
   end
 
-  ctx.workspace = kong.default_workspace
   execute_plugins_iterator(plugins_iterator, "rewrite", ctx)
 
   runloop.rewrite.after(ctx)
@@ -783,8 +793,21 @@ function Kong.access()
   -- we intent to proxy, though balancer may fail on that
   ctx.KONG_PROXIED = true
 
-  if ctx.buffered_proxying and ngx.req.http_version() < 2 then
-    return Kong.response()
+
+  if ctx.buffered_proxying then
+    local version = ngx.req.http_version()
+    local upgrade = var.upstream_upgrade or ""
+    if version < 2 and upgrade == "" then
+      return Kong.response()
+    end
+
+    if version >= 2 then
+      ngx_log(ngx_NOTICE, "response buffering was turned off: incompatible HTTP version (", version, ")")
+    else
+      ngx_log(ngx_NOTICE, "response buffering was turned off: connection upgrade (", upgrade, ")")
+    end
+
+    ctx.buffered_proxying = nil
   end
 end
 
@@ -826,7 +849,7 @@ do
     if res.truncated then
       kong_global.set_phase(kong, PHASES.error)
       ngx.status = 502
-      return kong_error_handlers(ngx)
+      return kong_error_handlers(ctx)
     end
 
     kong_global.set_phase(kong, PHASES.response)
@@ -943,7 +966,7 @@ function Kong.balancer()
       end
     end
 
-    local ok, err, errcode = balancer_execute(balancer_data)
+    local ok, err, errcode = balancer_execute(balancer_data, ctx)
     if not ok then
       ngx_log(ngx_ERR, "failed to retry the dns/balancer resolver for ",
               tostring(balancer_data.host), "' with: ", tostring(err))
@@ -973,7 +996,7 @@ function Kong.balancer()
 
     if balancer_data.scheme == "https" then
       -- upstream_host is SNI
-      pool = pool .. "|" .. ngx.var.upstream_host
+      pool = pool .. "|" .. var.upstream_host
 
       if ctx.service and ctx.service.client_certificate then
         pool = pool .. "|" .. ctx.service.client_certificate.id
@@ -1042,7 +1065,7 @@ end
 function Kong.header_filter()
   local ctx = ngx.ctx
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = ngx.req.start_time() * 1000
+    ctx.KONG_PROCESSING_START = start_time() * 1000
   end
 
   if not ctx.workspace then
@@ -1192,6 +1215,10 @@ function Kong.log()
   if not ctx.KONG_LOG_START then
     ctx.KONG_LOG_START = get_now_ms()
     if subsystem == "stream" then
+      if not ctx.KONG_PROCESSING_START then
+        ctx.KONG_PROCESSING_START = start_time() * 1000
+      end
+
       if ctx.KONG_PREREAD_START and not ctx.KONG_PREREAD_ENDED_AT then
         ctx.KONG_PREREAD_ENDED_AT = ctx.KONG_LOG_START
         ctx.KONG_PREREAD_TIME = ctx.KONG_PREREAD_ENDED_AT -
@@ -1202,6 +1229,17 @@ function Kong.log()
         ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_LOG_START
         ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT -
                                  ctx.KONG_BALANCER_START
+      end
+
+      if ctx.KONG_PROXIED then
+        if not ctx.KONG_PROXY_LATENCY then
+          ctx.KONG_PROXY_LATENCY = ctx.KONG_LOG_START -
+                                   ctx.KONG_PROCESSING_START
+        end
+
+      elseif not ctx.KONG_RESPONSE_LATENCY then
+        ctx.KONG_RESPONSE_LATENCY = ctx.KONG_LOG_START -
+                                    ctx.KONG_PROCESSING_START
       end
 
     else
@@ -1257,8 +1295,6 @@ function Kong.log()
 
   kong_global.set_phase(kong, PHASES.log)
 
-  local ctx = ngx.ctx
-
   runloop.log.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "log", ctx)
@@ -1297,7 +1333,7 @@ local function serve_content(module, options)
   kong_global.set_phase(kong, PHASES.admin_api)
 
   local ctx = ngx.ctx
-  ctx.KONG_PROCESSING_START = ngx.req.start_time() * 1000
+  ctx.KONG_PROCESSING_START = start_time() * 1000
   ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or get_now_ms()
 
 
@@ -1346,7 +1382,7 @@ function Kong.admin_header_filter()
   local ctx = ngx.ctx
 
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = ngx.req.start_time() * 1000
+    ctx.KONG_PROCESSING_START = start_time() * 1000
   end
 
   if not ctx.KONG_ADMIN_HEADER_FILTER_START then

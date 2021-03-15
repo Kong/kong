@@ -155,6 +155,13 @@ for _, strategy in helpers.each_strategy() do
         assert.same(0, #stdout)
         assert.same(0, #stderr)
       end)
+
+      it("-p accepts a prefix override", function()
+        local code, stdout, stderr = run_kong("migrations bootstrap -p /dev/null")
+        assert.equal(1, code)
+        assert.equal(0, #stdout)
+        assert.match("/dev/null is not a directory", stderr, 1, true)
+      end)
     end)
 
     describe("list", function()

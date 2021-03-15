@@ -4,6 +4,7 @@ local typedefs = require "kong.db.schema.typedefs"
 return {
   name = "jwt",
   fields = {
+    { consumer = typedefs.no_consumer },
     { protocols = typedefs.protocols_http },
     { config = {
         type = "record",
@@ -19,7 +20,7 @@ return {
               default = {}
           }, },
           { key_claim_name = { type = "string", default = "iss" }, },
-          { secret_is_base64 = { type = "boolean", default = false }, },
+          { secret_is_base64 = { type = "boolean", required = true, default = false }, },
           { claims_to_verify = {
               type = "set",
               elements = {
@@ -27,7 +28,7 @@ return {
                 one_of = { "exp", "nbf" },
           }, }, },
           { anonymous = { type = "string" }, },
-          { run_on_preflight = { type = "boolean", default = true }, },
+          { run_on_preflight = { type = "boolean", required = true, default = true }, },
           { maximum_expiration = {
             type = "number",
             default = 0,

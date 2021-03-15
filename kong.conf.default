@@ -372,10 +372,6 @@
                          #   `net.core.somaxconn` at the same time to match or
                          #   exceed the `backlog` number set.
                          #
-                         # **Note:** The `ssl` suffix is not supported,
-                         # and each address/port will accept TCP with or
-                         # without TLS enabled.
-                         #
                          # Examples:
                          #
                          # ```
@@ -550,40 +546,65 @@
                                  #
                                  # See http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout
 
-#ssl_cert =                      # The absolute path to the SSL certificate for
-                                 # `proxy_listen` values with SSL enabled.
+#ssl_cert =                      # Comma-separated list of the absolute path to the certificates for
+                                 # `proxy_listen` values with TLS enabled.
+                                 #
+                                 # If more than one certificates are specified, it can be used to provide
+                                 # alternate type of certificate (for example, ECC certificate) that will be served
+                                 # to clients that supports them. Note to properly serve using ECC certificates,
+                                 # it is recommended to also set `ssl_cipher_suite` to
+                                 # `modern` or `intermediate`.
+                                 #
+                                 # Unless this option is explicitly set, Kong will auto-generate
+                                 # a pair of default certificates (RSA + ECC) first time it starts up and use
+                                 # it for serving TLS requests.
 
-#ssl_cert_key =                  # The absolute path to the SSL key for
-                                 # `proxy_listen` values with SSL enabled.
+#ssl_cert_key =                  # Comma-separated list of the absolute path to the keys for
+                                 # `proxy_listen` values with TLS enabled.
+                                 #
+                                 # If more than one certificate was specified for `ssl_cert`, then this
+                                 # option should contain the corresponding key for all certificates
+                                 # provided in the same order.
+                                 #
+                                 # Unless this option is explicitly set, Kong will auto-generate
+                                 # a pair of default private keys (RSA + ECC) first time it starts up and use
+                                 # it for serving TLS requests.
 
-#client_ssl = off                # Determines if Nginx should send client-side
-                                 # SSL certificates when proxying requests.
+#client_ssl = off                # Determines if Nginx should attempt to send client-side
+                                 # TLS certificates and perform Mutual TLS Authentication
+                                 # with upstream service when proxying requests.
 
 #client_ssl_cert =               # If `client_ssl` is enabled, the absolute
-                                 # path to the client SSL certificate for the
-                                 # `proxy_ssl_certificate` directive. Note that
-                                 # this value is statically defined on the
-                                 # node, and currently cannot be configured on
-                                 # a per-API basis.
+                                 # path to the client certificate for the `proxy_ssl_certificate` directive.
+                                 #
+                                 # This value can be overwritten dynamically with the `client_certificate`
+                                 # attribute of the `Service` object.
 
 #client_ssl_cert_key =           # If `client_ssl` is enabled, the absolute
-                                 # path to the client SSL key for the
-                                 # `proxy_ssl_certificate_key` address. Note
-                                 # this value is statically defined on the
-                                 # node, and currently cannot be configured on
-                                 # a per-API basis.
+                                 # path to the client TLS key for the `proxy_ssl_certificate_key` directive.
+                                 #
+                                 # This value can be overwritten dynamically with the `client_certificate`
+                                 # attribute of the `Service` object.
 
-#admin_ssl_cert =                # The absolute path to the SSL certificate for
-                                 # `admin_listen` values with SSL enabled.
+#admin_ssl_cert =                # Comma-separated list of the absolute path to the certificates for
+                                 # `admin_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert` for detailed usage.
 
-#admin_ssl_cert_key =            # The absolute path to the SSL key for
-                                 # `admin_listen` values with SSL enabled.
+#admin_ssl_cert_key =            # Comma-separated list of the absolute path to the keys for
+                                 # `admin_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert_key` for detailed usage.
 
-#status_ssl_cert =               # The absolute path to the SSL certificate for
-                                 # `status_listen` values with SSL enabled.
+#status_ssl_cert =               # Comma-separated list of the absolute path to the certificates for
+                                 # `status_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert` for detailed usage.
 
-#status_ssl_cert_key =           # The absolute path to the SSL key for
-                                 # `status_listen` values with SSL enabled.
+#status_ssl_cert_key =           # Comma-separated list of the absolute path to the keys for
+                                 # `status_listen` values with TLS enabled.
+                                 #
+                                 # See docs for `ssl_cert_key` for detailed usage.
 
 #headers = server_tokens, latency_tokens
                                  # Comma-separated list of headers Kong should
@@ -1336,57 +1357,98 @@
                                  # See https://github.com/openresty/lua-nginx-module#lua_socket_pool_size
 
 #untrusted_lua = sandbox
-                                 # Accepted values are:
+                                 # Controls loading of Lua functions from admin-supplied
+                                 # sources such as the Admin API. LuaJIT bytecode
+                                 # loading is always disabled.
                                  #
-                                 # - `off`: disallow any loading of Lua functions
-                                 #          from admin supplied sources (such as via the Admin API).
+                                 # **Warning:** LuaJIT is not designed as a secure
+                                 # runtime for running malicious code, therefore
+                                 # you should properly protect your Admin API endpoint
+                                 # even with sandboxing enabled. The sandbox only
+                                 # provides protection against trivial attackers or
+                                 # unintentional modification of the Kong global
+                                 # environment.
                                  #
-                                 #          Note using the `off` option will render plugins such as
-                                 #          Serverless Functions unusable.
-                                 # - `sandbox`: allow loading of Lua functions from admin
-                                 #              supplied sources, but use a sandbox when
-                                 #              executing them. The sandboxed
-                                 #              function will have restricted access
-                                 #              to the global environment and only
-                                 #              have access to standard Lua functions
-                                 #              that will generally not cause harm to
-                                 #              the Kong node.
+                                 # Accepted values are: `off`, `sandbox`, or
+                                 # `on`:
                                  #
-                                 #              In this mode, the `require` function inside
-                                 #              the sandbox only allows loading external Lua
-                                 #              modules that are explicitly listed in
-                                 #              `untrusted_lua_sandbox_requires` below.
+                                 # * `off`: Disallow loading of any arbitrary
+                                 #          Lua functions. The `off` option
+                                 #          disables any functionality that runs
+                                 #          arbitrary Lua code, including the
+                                 #          Serverless Functions plugins and any
+                                 #          transformation plugin that allows
+                                 #          custom Lua functions.
                                  #
-                                 #              LuaJIT bytecode loading is disabled.
+                                 # * `sandbox`: Allow loading of Lua functions,
+                                 #              but use a sandbox when executing
+                                 #              them. The sandboxed function has
+                                 #              restricted access to the global
+                                 #              environment and only has access
+                                 #              to standard Lua functions that
+                                 #              will generally not cause harm to
+                                 #              the Kong Gateway node.
                                  #
-                                 #              Warning: LuaJIT is not designed as a secure
-                                 #              runtime for running malicious code, therefore,
-                                 #              you should properly protect your Admin API endpoint
-                                 #              even with sandboxing enabled. The sandbox only
-                                 #              provides protection against trivial attackers or
-                                 #              unintentional modification of the Kong global
-                                 #              environment.
-                                 # - `on`: allow loading of Lua functions from admin
-                                 #         supplied sources and do not use a sandbox when
-                                 #         executing them. Functions will have unrestricted
-                                 #         access to global environment and able to load any
-                                 #         Lua modules. This is similar to the behavior in Kong
-                                 #         prior to 2.3.0.
+                                 # * `on`: Functions have unrestricted
+                                 #         access to the global environment and
+                                 #         can load any Lua modules. This is
+                                 #         similar to the behavior in
+                                 #         Kong Gateway prior to 2.3.0.
                                  #
-                                 #         LuaJIT bytecode loading is disabled.
+                                 # The default `sandbox` environment does not
+                                 # allow importing other modules or libraries,
+                                 # or executing anything at the OS level (for
+                                 # example, file read/write). The global
+                                 # environment is also not accessible.
+                                 #
+                                 # Examples of `untrusted_lua = sandbox`
+                                 # behavior:
+                                 #
+                                 # * You can't access or change global values
+                                 # such as `kong.configuration.pg_password`
+                                 # * You can run harmless lua:
+                                 # `local foo = 1 + 1`. However, OS level
+                                 # functions are not allowed, like:
+                                 # `os.execute('rm -rf /*')`.
+                                 #
+                                 # For a full allowed/disallowed list, see:
+                                 # https://github.com/kikito/sandbox.lua/blob/master/sandbox.lua
+                                 #
+                                 # To customize the sandbox environment, use
+                                 # the `untrusted_lua_sandbox_requires` and
+                                 # `untrusted_lua_sandbox_environment`
+                                 # parameters below.
 
-#untrusted_lua_sandbox_requires =
-                                 # Comma-separated list of modules allowed to be loaded
-                                 # with `require` inside the sandboxed environment. Ignored
-                                 # if `untrusted_lua` is not `sandbox`.
-                                 #
-                                 # Note: certain modules, when allowed, may cause sandbox
-                                 # escaping trivial.
+#untrusted_lua_sandbox_requires = # Comma-separated list of modules allowed to
+                                  # be loaded with `require` inside the
+                                  # sandboxed environment. Ignored
+                                  # if `untrusted_lua` is not `sandbox`.
+                                  #
+                                  # For example, say you have configured the
+                                  # Serverless pre-function plugin and it
+                                  # contains the following `requires`:
+                                  #
+                                  # ```
+                                  # local template = require "resty.template"
+                                  # local split = require "kong.tools.utils".split
+                                  # ```
+                                  #
+                                  # To run the plugin, add the modules to the
+                                  # allowed list:
+                                  # ```
+                                  # untrusted_lua_sandbox_requires = resty.template, kong.tools.utils
+                                  # ```
+                                  #
+                                  # **Warning:** Allowing certain modules may
+                                  # create opportunities to escape the
+                                  # sandbox. For example, allowing `os` or
+                                  # `luaposix` may be unsafe.
 
-#untrusted_lua_sandbox_environment =
-                                 # Comma-separated list of global Lua variables
-                                 # that should be made available inside the sandboxed
-                                 # environment. Ignored if `untrusted_lua` is not `sandbox`.
-                                 #
-                                 # Note: certain variables, when made available,
-                                 # may cause sandbox escaping trivial.
+#untrusted_lua_sandbox_environment = # Comma-separated list of global Lua
+                                     # variables that should be made available
+                                     # inside the sandboxed environment. Ignored
+                                     # if `untrusted_lua` is not `sandbox`.
+                                     #
+                                     # **Warning**: Certain variables, when made
+                                     # available, may create opportunities to
+                                     # escape the sandbox.

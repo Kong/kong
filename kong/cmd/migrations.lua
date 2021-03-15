@@ -45,6 +45,8 @@ Options:
 
  -c,--conf        (optional string) Configuration file.
 
+ -p,--prefix      (optional string)   Override prefix directory.
+
 ]]
 
 
@@ -80,7 +82,9 @@ local function execute(args)
     log.disable()
   end
 
-  local conf = assert(conf_loader(args.conf))
+  local conf = assert(conf_loader(args.conf, {
+    prefix = args.prefix
+  }))
 
   package.path = conf.lua_package_path .. ";" .. package.path
 

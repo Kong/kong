@@ -88,7 +88,7 @@ local function load_configuration(ctx,
                                   route_id,
                                   service_id,
                                   consumer_id)
-  local ws_id = workspaces.get_workspace_id() or kong.default_workspace
+  local ws_id = workspaces.get_workspace_id(ctx) or kong.default_workspace
   local key = kong.db.plugins:cache_key(name,
                                         route_id,
                                         service_id,
@@ -325,7 +325,7 @@ local function iterate(self, phase, ctx)
   if ctx and not ctx.plugins then
     ctx.plugins = {}
   end
-  local ws_id = workspaces.get_workspace_id() or kong.default_workspace
+  local ws_id = workspaces.get_workspace_id(ctx) or kong.default_workspace
 
   local ws = self.ws[ws_id]
   if not ws then

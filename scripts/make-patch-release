@@ -38,6 +38,22 @@ function usage() {
 }
 
 #-------------------------------------------------------------------------------
+function need() {
+  req="$1"
+
+  if [ -z $(which "$req") ]; then
+     echo "Required command $req not found."
+     exit 1
+  fi
+}
+
+function check_requirements() {
+   need git
+   need hub
+   need sed
+}
+
+#-------------------------------------------------------------------------------
 # Default help
 #-------------------------------------------------------------------------------
 
@@ -50,6 +66,8 @@ fi
 #-------------------------------------------------------------------------------
 # Variables
 #-------------------------------------------------------------------------------
+
+check_requirements
 
 version="$1"
 step="$2"
@@ -120,14 +138,14 @@ case "$step" in
    version_bump)
       if ! grep -q "patch = $patch" kong/meta.lua
       then
-         sed -i 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
+         sed -i.bak 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
          git add kong/meta.lua
       fi
       if ! [ -f "$rockspec" ]
       then
          git mv kong-*-0.rockspec "$rockspec"
-         sed -i 's/^version = ".*"/version = "'$version'-0"/' "$rockspec"
-         sed -i 's/^  tag = ".*"/  tag = "'$version'"/' "$rockspec"
+         sed -i.bak 's/^version = ".*"/version = "'$version'-0"/' "$rockspec"
+         sed -i.bak 's/^  tag = ".*"/  tag = "'$version'"/' "$rockspec"
       fi
 
       git status
@@ -173,7 +191,7 @@ case "$step" in
          cd ../docs.konghq.com
       else
          cd ..
-         git clone https://github.com/kong/docs.konghq.com
+         git clone git@github.com:Kong/docs.konghq.com.git
          cd docs.konghq.com
       fi
       git checkout master
@@ -183,7 +201,7 @@ case "$step" in
 
       git diff
 
-      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/docs.konghq.com" \
+      CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:Kong/docs.konghq.com.git" \
               "or Ctrl-C to cancel."
 
       set -e
@@ -240,7 +258,7 @@ case "$step" in
          cd ../docker-kong
       else
          cd ..
-         git clone https://github.com/kong/docker-kong
+         git clone git@github.com:Kong/docker-kong.git
          cd docker-kong
       fi
 
@@ -264,7 +282,7 @@ case "$step" in
          cd ../docker-kong
       else
          cd ..
-         git clone https://github.com/kong/docker-kong
+         git clone git@github.com:Kong/docker-kong.git
          cd docker-kong
       fi
 
@@ -281,7 +299,7 @@ case "$step" in
          cd ../homebrew-kong
       else
          cd ..
-         git clone https://github.com/kong/homebrew-kong
+         git clone git@github.com:Kong/homebrew-kong.git
          cd homebrew-kong
       fi
 
@@ -292,7 +310,7 @@ case "$step" in
 
       git diff
 
-      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/homebrew-kong" \
+      CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:Kong/homebrew-kong" \
               "or Ctrl-C to cancel."
 
       set -e
@@ -311,7 +329,7 @@ case "$step" in
          cd ../kong-pongo
       else
          cd ..
-         git clone https://github.com/kong/kong-pongo
+         git clone git@github.com:Kong/kong-pongo.git
          cd kong-pongo
       fi
 
@@ -330,7 +348,7 @@ case "$step" in
          cd ../kong-vagrant
       else
          cd ..
-         git clone https://github.com/kong/kong-vagrant
+         git clone git@github.com:Kong/kong-vagrant.git
          cd kong-vagrant
       fi
 
@@ -341,7 +359,7 @@ case "$step" in
 
       git diff
 
-      CONFIRM "If everything looks all right, press Enter to commit and send a PR to https://github.com/kong/kong-vagrant" \
+      CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:Kong/kong-vagrant" \
               "or Ctrl-C to cancel."
 
       set -e

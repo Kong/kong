@@ -150,7 +150,11 @@ local function validate_function(fun, opts)
 
   local success, func2 = pcall(func1)
 
-  if success and type(func2) == "function" then
+  if not success then
+    return false, func2
+  end
+
+  if type(func2) == "function" then
     return func2
   end
 

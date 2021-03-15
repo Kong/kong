@@ -1,6 +1,9 @@
 # Table of Contents
 
 
+- [2.3.3](#233)
+- [2.3.2](#232)
+- [2.3.1](#231)
 - [2.3.0](#230)
 - [2.2.1](#221)
 - [2.2.0](#220)
@@ -50,6 +53,113 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.3.3]
+
+> Released 2021/03/05
+
+This is a patch release in the 2.3 series. Being a patch release, it
+strictly contains bugfixes. The are no new features or breaking changes.
+
+### Dependencies
+
+- Bump OpenSSL from `1.1.1i` to `1.1.1j`.
+  [6859](https://github.com/Kong/kong/pull/6859)
+
+### Fixes
+
+##### Core
+
+- Ensure control plane nodes do not execute healthchecks.
+  [6805](https://github.com/Kong/kong/pull/6805)
+- Ensure only one worker executes active healthchecks.
+  [6844](https://github.com/Kong/kong/pull/6844)
+- Declarative config can be now loaded as an inline yaml file by `kong config`
+  (previously it was possible only as a yaml string inside json). JSON declarative
+  config is now parsed with the `cjson` library, instead of with `libyaml`.
+  [6852](https://github.com/Kong/kong/pull/6852)
+- When using eventual worker consistency now every Nginx worker deals with its
+  upstreams changes, avoiding unnecessary synchronization among workers.
+  [6833](https://github.com/Kong/kong/pull/6833)
+
+##### Admin API
+
+- Remove `prng_seed` from the Admin API and add PIDs instead.
+  [6842](https://github.com/Kong/kong/pull/6842)
+
+##### PDK
+
+- Ensure `kong.log.serialize` properly calculates reported latencies.
+  [6869](https://github.com/Kong/kong/pull/6869)
+
+##### Plugins
+
+- HMAC-Auth: fix issue where the plugin would check if both a username and
+  signature were specified, rather than either.
+  [6826](https://github.com/Kong/kong/pull/6826)
+
+
+[Back to TOC](#table-of-contents)
+
+
+## [2.3.2]
+
+> Released 2021/02/09
+
+This is a patch release in the 2.3 series. Being a patch release, it
+strictly contains bugfixes. The are no new features or breaking changes.
+
+### Fixes
+
+##### Core
+
+- Fix an issue where certain incoming URI may make it possible to
+  bypass security rules applied on Route objects. This fix make such
+  attacks more difficult by always normalizing the incoming request's
+  URI before matching against the Router.
+  [#6821](https://github.com/Kong/kong/pull/6821)
+- Properly validate Lua input in sandbox module.
+  [#6765](https://github.com/Kong/kong/pull/6765)
+- Mark boolean fields with default values as required.
+  [#6785](https://github.com/Kong/kong/pull/6785)
+
+
+##### CLI
+
+- `kong migrations` now accepts a `-p`/`--prefix` flag.
+  [#6819](https://github.com/Kong/kong/pull/6819)
+
+##### Plugins
+
+- JWT: disallow plugin on consumers.
+  [#6777](https://github.com/Kong/kong/pull/6777)
+- rate-limiting: improve counters accuracy.
+  [#6802](https://github.com/Kong/kong/pull/6802)
+
+
+[Back to TOC](#table-of-contents)
+
+
+## [2.3.1]
+
+> Released 2021/01/26
+
+This is a patch release in the 2.3 series. Being a patch release, it
+strictly contains bugfixes. The are no new features or breaking changes.
+
+### Fixes
+
+##### Core
+
+- lua-resty-dns-client was bumped to 5.2.1, which fixes an issue that could
+  lead to a busy loop when renewing addresses. 
+  [#6760](https://github.com/Kong/kong/pull/6760)
+- Fixed an issue that made Kong return HTTP 500 Internal Server Error instead
+  of HTTP 502 Bad Gateway on upstream connection errors when using buffered
+  proxying. [#6735](https://github.com/Kong/kong/pull/6735)
+
+[Back to TOC](#table-of-contents)
 
 
 ## [2.3.0]
@@ -5726,6 +5836,9 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.3.3]: https://github.com/Kong/kong/compare/2.3.2...2.3.3
+[2.3.2]: https://github.com/Kong/kong/compare/2.3.1...2.3.2
+[2.3.1]: https://github.com/Kong/kong/compare/2.3.0...2.3.1
 [2.3.0]: https://github.com/Kong/kong/compare/2.2.0...2.3.0
 [2.2.1]: https://github.com/Kong/kong/compare/2.2.0...2.2.1
 [2.2.0]: https://github.com/Kong/kong/compare/2.1.3...2.2.0

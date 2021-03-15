@@ -47,8 +47,8 @@ return {
                 one_of = METHODS,
           }, }, },
           { max_age = { type = "number" }, },
-          { credentials = { type = "boolean", default = false }, },
-          { preflight_continue = { type = "boolean", default = false }, },
+          { credentials = { type = "boolean", required = true, default = false }, },
+          { preflight_continue = { type = "boolean", required = true, default = false }, },
     }, }, },
   },
 }
