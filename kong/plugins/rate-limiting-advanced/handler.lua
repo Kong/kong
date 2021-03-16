@@ -140,19 +140,6 @@ local function new_namespace(config, init_timer)
   return ret
 end
 
-local function each_by_name(entity, name)
-  local iter = entity:each(1000)
-  local function iterator()
-    local element, err = iter()
-    if err then return nil, err end
-    if element == nil then return end
-    if element.name == name then return element, nil end
-    return iterator()
-  end
-
-  return iterator
-end
-
 function NewRLHandler:new()
   NewRLHandler.super.new(self, "new-rl")
   event_hooks.publish("rate-limiting-advanced", "rate-limit-exceeded", {
@@ -162,37 +149,8 @@ function NewRLHandler:new()
   })
 end
 
-local function create_namespaces()
-  -- to start with, load existing plugins and create the
-  -- namespaces/sync timers
-  local namespaces = {}
-  for plugin, err in each_by_name(kong.db.plugins, "rate-limiting-advanced") do
-    if err then
-      return nil, err
-    end
-
-    local namespace = plugin.config.namespace
-
-    if not namespaces[namespace] then
-      local ret = new_namespace(plugin.config, true)
-
-      if ret then
-        namespaces[namespace] = true
-      end
-    end
-  end
-  return true
-end
-
-
 function NewRLHandler:init_worker()
   local worker_events = kong.worker_events
-
-  local _, err = create_namespaces()
-  if err then
-    kong.log.err("err in fetching plugins: ", err)
-  end
-
   -- event handlers to update recurring sync timers
 
   -- catch any plugins update and forward config data to each worker
