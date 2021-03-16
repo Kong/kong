@@ -79,7 +79,6 @@ local runloop = require "kong.runloop.handler"
 local tracing = require "kong.tracing"
 local keyring = require "kong.keyring.startup"
 local stream_api = require "kong.tools.stream_api"
-local clustering = require "kong.clustering"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
@@ -91,6 +90,7 @@ local balancer_execute = require("kong.runloop.balancer").execute
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local clustering
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
@@ -116,6 +116,7 @@ local ngx_ALERT        = ngx.ALERT
 local ngx_CRIT         = ngx.CRIT
 local ngx_ERR          = ngx.ERR
 local ngx_WARN         = ngx.WARN
+local ngx_NOTICE       = ngx.NOTICE
 local ngx_INFO         = ngx.INFO
 local ngx_DEBUG        = ngx.DEBUG
 local subsystem        = ngx.config.subsystem
@@ -136,6 +137,9 @@ if not enable_keepalive then
                     "(was the dyn_upstream_keepalive patch applied?) ",
                     "set the 'nginx_upstream_keepalive' configuration ",
                     "property instead of 'upstream_keepalive_pool_size'")
+end
+if subsystem == "http" then
+  clustering = require "kong.clustering"
 end
 
 
@@ -897,8 +901,21 @@ function Kong.access()
   -- we intent to proxy, though balancer may fail on that
   ctx.KONG_PROXIED = true
 
-  if ctx.buffered_proxying and ngx.req.http_version() < 2 then
-    return Kong.response()
+
+  if ctx.buffered_proxying then
+    local version = ngx.req.http_version()
+    local upgrade = var.upstream_upgrade or ""
+    if version < 2 and upgrade == "" then
+      return Kong.response()
+    end
+
+    if version >= 2 then
+      ngx_log(ngx_NOTICE, "response buffering was turned off: incompatible HTTP version (", version, ")")
+    else
+      ngx_log(ngx_NOTICE, "response buffering was turned off: connection upgrade (", upgrade, ")")
+    end
+
+    ctx.buffered_proxying = nil
   end
 end
 

@@ -643,6 +643,8 @@ local CONF_INFERENCES = {
   cluster_ca_cert = { typ = "string" },
   cluster_server_name = { typ = "string" },
   cluster_data_plane_purge_delay = { typ = "number" },
+  cluster_ocsp = { enum = { "on", "off", "optional" } },
+
   kic = { typ = "boolean" },
   pluginserver_names = { typ = "array" },
 

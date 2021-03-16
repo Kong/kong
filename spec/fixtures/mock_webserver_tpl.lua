@@ -50,6 +50,9 @@ http {
           return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
         else
           host = host_no_port[2]
+          if host == "[0000:0000:0000:0000:0000:0000:0000:0001]" then
+            host = "[::1]"
+          end
         end
         ngx.shared.server_values:set(host .. "_healthy", true)
         ngx.shared.server_values:set(host .. "_timeout", false)
@@ -70,6 +73,9 @@ http {
           return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
         else
           host = host_no_port[2]
+          if host == "[0000:0000:0000:0000:0000:0000:0000:0001]" then
+            host = "[::1]"
+          end
         end
         ngx.shared.server_values:set(host .. "_healthy", false)
         ngx.log(ngx.INFO, "Host ", host, " is now unhealthy")
@@ -89,6 +95,9 @@ http {
           return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
         else
           host = host_no_port[2]
+          if host == "[0000:0000:0000:0000:0000:0000:0000:0001]" then
+            host = "[::1]"
+          end
         end
         ngx.shared.server_values:set(host .. "_timeout", true)
         ngx.log(ngx.INFO, "Host ", host, " is timeouting now")
@@ -102,12 +111,17 @@ http {
 
     location = /status {
       access_by_lua_block {
+        local i = require 'inspect'
+        ngx.log(ngx.ERR, "INSPECT status (headers): ", i(ngx.req.get_headers()))
         local host = ngx.req.get_headers()["host"] or "localhost"
         local host_no_port = ngx.re.match(host, [=[([a-z0-9\-._~%!$&'()*+,;=]+@)?([a-z0-9\-._~%]+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\])(:?[0-9]+)*]=])
         if host_no_port == nil then
           return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
         else
           host = host_no_port[2]
+          if host == "[0000:0000:0000:0000:0000:0000:0000:0001]" then
+            host = "[::1]"
+          end
         end
         local server_values = ngx.shared.server_values
 
@@ -137,6 +151,9 @@ http {
             return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
           else
             host = host_no_port[2]
+            if host == "[0000:0000:0000:0000:0000:0000:0000:0001]" then
+              host = "[::1]"
+            end
           end
           local status
 

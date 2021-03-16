@@ -12,6 +12,7 @@ local semaphore = require("ngx.semaphore")
 local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local ssl = require("ngx.ssl")
+local http = require("resty.http")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
@@ -51,6 +52,7 @@ local KONG_VERSION = kong.version
 local MAX_PAYLOAD = 4 * 1024 * 1024 -- 4MB
 local PING_INTERVAL = 30 -- 30 seconds
 local PING_WAIT = PING_INTERVAL * 1.5
+local OCSP_TIMEOUT = 5000
 local WS_OPTS = {
   timeout = 5000,
   max_payload_len = MAX_PAYLOAD,
@@ -326,6 +328,71 @@ end
 _M.communicate = communicate
 
 
+local check_for_revocation_status
+do
+  local get_full_client_certificate_chain = require("resty.kong.tls").get_full_client_certificate_chain
+  check_for_revocation_status = function ()
+    --- XXX EE: ensure the OCSP code path is isolated
+    local ocsp = require("ngx.ocsp")
+    --- EE
+
+    local cert, err = get_full_client_certificate_chain()
+    if not cert then
+      return nil, err
+    end
+
+    local der_cert
+    der_cert, err = ssl.cert_pem_to_der(cert)
+    if not der_cert then
+      return nil, "failed to convert certificate chain from PEM to DER: " .. err
+    end
+
+    local ocsp_url
+    ocsp_url, err = ocsp.get_ocsp_responder_from_der_chain(der_cert)
+    if not ocsp_url then
+      return nil, err or "OCSP responder endpoint can not be determined, " ..
+                         "maybe the client certificate is missing the " ..
+                         "required extensions"
+    end
+
+    local ocsp_req
+    ocsp_req, err = ocsp.create_ocsp_request(der_cert)
+    if not ocsp_req then
+      return nil, "failed to create OCSP request: " .. err
+    end
+
+    local c = http.new()
+    local res
+    res, err = c:request_uri(ocsp_url, {
+      headers = {
+        ["Content-Type"] = "application/ocsp-request"
+      },
+      timeout = OCSP_TIMEOUT,
+      method = "POST",
+      body = ocsp_req,
+    })
+
+    if not res then
+      return nil, "failed sending request to OCSP responder: " .. tostring(err)
+    end
+    if res.status ~= 200 then
+      return nil, "OCSP responder returns bad HTTP status code: " .. res.status
+    end
+
+    local ocsp_resp = res.body
+    if not ocsp_resp or #ocsp_resp == 0 then
+      return nil, "unexpected response from OCSP responder: empty body"
+    end
+
+    res, err = ocsp.validate_ocsp_response(ocsp_resp, der_cert)
+    if not res then
+      return false, "failed to validate OCSP response: " .. err
+    end
+
+    return true
+  end
+end
+
 local function validate_client_cert(cert)
   if not cert then
     return false, "Data Plane failed to present client certificate " ..
@@ -352,6 +419,18 @@ local function validate_client_cert(cert)
       return false, "Data Plane presented incorrect client certificate " ..
                     "during handshake, expected CN as subdomain of: " ..
                     CERT_CN_PARENT .. " got: " .. cn
+    end
+  elseif kong.configuration.cluster_ocsp ~= "off" then
+    local res, err = check_for_revocation_status()
+    if res == false then
+      ngx_log(ngx_ERR, "DP client certificate was revoked: ", err)
+      return ngx_exit(444)
+
+    elseif not res then
+      ngx_log(ngx_WARN, "DP client certificate revocation check failed: ", err)
+      if kong.configuration.cluster_ocsp == "on" then
+        return ngx_exit(444)
+      end
     end
   end
   -- with cluster_mtls == "pki", always return true as in this mode we only check
