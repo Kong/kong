@@ -12,7 +12,6 @@ local semaphore = require("ngx.semaphore")
 local ws_client = require("resty.websocket.client")
 local ws_server = require("resty.websocket.server")
 local ssl = require("ngx.ssl")
-local ocsp = require("ngx.ocsp")
 local http = require("resty.http")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
@@ -333,6 +332,10 @@ local check_for_revocation_status
 do
   local get_full_client_certificate_chain = require("resty.kong.tls").get_full_client_certificate_chain
   check_for_revocation_status = function ()
+    --- XXX EE: ensure the OCSP code path is isolated
+    local ocsp = require("ngx.ocsp")
+    --- EE
+
     local cert, err = get_full_client_certificate_chain()
     if not cert then
       return nil, err
