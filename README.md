@@ -134,7 +134,7 @@ code, other repos are also under active development:
   Heroku in one click.
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
   Instaclustr manage your Cassandra cluster.
-- [Master Builds][kong-master-builds]: Docker images for each commit in the `master` branch.
+- [Nightly Builds][kong-nightly-master]: Builds of the master branch available every morning at about 9AM PST.
 
 You can find every supported distribution at the [official installation page](https://konghq.com/install/).
 
