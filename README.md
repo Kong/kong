@@ -112,6 +112,9 @@ kong_bandwidth{type="ingress",service="google"} 254
 # HELP kong_datastore_reachable Datastore reachable from Kong, 0 is unreachable
 # TYPE kong_datastore_reachable gauge
 kong_datastore_reachable 1
+# HELP kong_http_consumer_status HTTP status codes for customer per service/route in Kong
+# TYPE kong_http_consumer_status counter
+kong_http_consumer_status{service="upstream",route="default",code="200",consumer="consumer1"} 5185
 # HELP kong_http_status HTTP status codes per service in Kong
 # TYPE kong_http_status counter
 kong_http_status{code="301",service="google"} 2
