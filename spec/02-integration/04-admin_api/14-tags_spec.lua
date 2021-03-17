@@ -13,6 +13,7 @@ describe("Admin API - tags", function()
       lazy_setup(function()
         bp = helpers.get_db_utils(strategy, {
           "consumers",
+          "plugins",
         })
 
         for i = 1, 2 do
@@ -24,6 +25,15 @@ describe("Admin API - tags", function()
           assert.is_nil(err)
           assert.is_nil(err_t)
           assert.same(consumer.tags, row.tags)
+
+          bp.plugins:insert({
+            name = "file-log",
+            consumer = { id = row.id },
+            config = {
+              path = os.tmpname(),
+            },
+            tags = { "corp_a", "consumer" .. i }
+          })
         end
 
         assert(helpers.start_kong {
@@ -71,6 +81,17 @@ describe("Admin API - tags", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equals(2, #json.data)
+      end)
+
+      it("ignores tags when filtering by multiple filters #6779", function()
+        local res = client:get("/consumers/adminapi-filter-by-tag-1/plugins?tags=consumer2")
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals(1, #json.data)
+
+        assert.contains('corp_a', json.data[1].tags)
+        assert.contains('consumer1', json.data[1].tags)
+        assert.not_contains('consumer2', json.data[1].tags)
       end)
 
       it("errors if filter by mix of AND and OR", function()
