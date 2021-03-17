@@ -5,13 +5,14 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local _M = {}
-
-local tablex = require "pl.tablex"
+local tx = require "pl.tablex"
 
 local license_helpers = require "kong.enterprise_edition.license_helpers"
 
-local compare = tablex.deepcompare
+local tx_deepcopy = tx.deepcopy
+local tx_deepcompare = tx.deepcompare
+
+local _M = {}
 
 -- Provides easy to access License confs and features
 --
@@ -29,65 +30,78 @@ local compare = tablex.deepcompare
 -- anything in LIC_TYPE -> fetureset can be a function, instead of returning
 -- the function, it returns the result of the function (and stores it)
 
-local _features = {}
 
-_M.features = setmetatable({}, {
-  __index = function(self, key)
+local MagicTable = function(uberself, lazy, evaluator)
 
-    local methods = {
-      clear = table.clear,
-      update = function(self, data)
-        self:clear()
-        _features = data
-      end,
-    }
+  local source
 
-    if methods[key] then
-      return methods[key]
-    end
+  if lazy then
+    source = {}
+  end
 
-    local value = _features[key]
+  local evaluator = evaluator or function(self, value)
+    return value(self)
+  end
 
-    if type(value) == "function" then
-      value = value(_M.configuration)
-    end
+  local methods = {
+    clear = table.clear,
+    update = function(self, data, eval)
 
-    rawset(self, key, value)
+      -- update source when lazy
+      if lazy then
+        source = data
 
-    return value
-  end,
-})
+        return
+      end
 
+      -- [...] this does the same as pl.tablex.update
+      for k, v in pairs(data) do
 
--- A configuration table that proxies on the following priority:
---   1. license conf (license conf overrides)
---   2. kong configuration (kong init conf)
--- It can be used as a transparent replacement of kong.configuration
-_M.configuration = setmetatable({}, {
-  __index = function(self, key)
+        if eval and type(v) == "function" then
+          v = evaluator(self, v)
+        end
 
-    local methods = {
-      clear = table.clear,
-    }
+        rawset(self, k, v)
+      end
+    end,
+  }
+
+  local index = function(self, key)
 
     if methods[key] then
       return methods[key]
     end
 
-    local value = _M.features.conf[key]
+    local value
 
-    if value == nil then
-      value = _M.kong_conf[key]
+    if lazy then
+      value = source[key]
+
+      if type(value) == "function" then
+        value = evaluator(self, value)
+      end
+
+      rawset(self, key, value)
+    else
+      value = rawget(self, key)
     end
 
-    rawset(self, key, value)
-
     return value
-  end,
-  __newindex = function()
-    error("cannot write to configuration", 2)
-  end,
-})
+  end
+
+  return setmetatable(uberself, {
+    __index = index,
+    __newindex = function() error("cannot write to MagicTable™", 2) end,
+  })
+end
+
+
+_M.MagicTable = MagicTable
+
+-- Lazy magic table
+_M.features = MagicTable({}, true)
+-- Non lazy magic table
+_M.configuration = MagicTable({}, false)
 
 
 function _M:register_events(events_handler)
@@ -97,7 +111,7 @@ function _M:register_events(events_handler)
     local license = license_helpers.read_license_info()
 
     -- nothing changed
-    if kong and kong.license and compare(kong.license, license) then
+    if kong and kong.license and tx_deepcompare(kong.license, license) then
       ngx.log(ngx.DEBUG, "[licensing] license has not changed")
       return
     end
@@ -112,7 +126,7 @@ function _M:register_events(events_handler)
     local license = license_helpers.read_license_info()
 
     -- nothing changed
-    if kong and kong.license and compare(kong.license, license) then
+    if kong and kong.license and tx_deepcompare(kong.license, license) then
       ngx.log(ngx.DEBUG, "[licensing] license has not changed")
       return
     end
@@ -161,8 +175,13 @@ function _M:update(license)
   end
 
   _M.l_type = license_helpers.get_type(license)
-  _M.features:update(license_helpers.get_featureset(_M.l_type))
+
+  _M.features:clear()
+  _M.features:update(tx_deepcopy(license_helpers.get_featureset(_M.l_type)))
+
   _M.configuration:clear()
+  _M.configuration:update(tx_deepcopy(_M.kong_conf))
+  _M.configuration:update(_M.features.conf or {}, true)
 
   ngx.log(ngx.DEBUG, "[licensing] license type: ", _M.l_type)
 end
