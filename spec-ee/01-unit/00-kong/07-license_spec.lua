@@ -5,6 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local cjson = require "cjson"
+
 local lic_helper = require "kong.enterprise_edition.license_helpers"
 local licensing = require "kong.enterprise_edition.licensing"
 
@@ -359,17 +361,25 @@ describe("licensing", function()
     local kong_conf = {
       enforce_rbac = 'on',
       flux_percolator = 'off',
+      hard_stuff = { foo = 'bar' },
+      removeme = 'i am here',
     }
 
     local whatever_spy = spy.new(function()
       return "hello world"
     end)
 
+    local some_function = function() return 'exists' end
+
+    local NOOP = function() end
+
     -- Some license overrides and feature flags
     local featureset = {
       conf = {
         enforce_rbac = 'off',
         gravity_override = 'on',
+        magic = some_function,
+        removeme = NOOP,
       },
       some_stuff = { "neato" },
       boolean_flag = true,
@@ -382,12 +392,21 @@ describe("licensing", function()
       end,
     }
 
+    local expected_conf = {
+      enforce_rbac = 'off',
+      gravity_override = 'on',
+      flux_percolator = 'off',
+      magic = 'exists',
+      hard_stuff = { foo = 'bar' },
+    }
+
     local lic
     local license = { some = "license_data" }
 
     lazy_setup(function()
       assert(stub(lic_helper, "get_featureset").returns(featureset))
       assert(stub(lic_helper, "read_license_info").returns(license))
+
       lic = licensing(kong_conf)
     end)
 
@@ -418,8 +437,30 @@ describe("licensing", function()
         assert.equal("off", lic.configuration.enforce_rbac)
       end)
 
-      pending("can be deep_copied, dumped, etc", function()
-        -- XXX It cannot ... ish
+      it("evaluates functions on featureset", function()
+        assert.equal("exists", lic.configuration.magic)
+      end)
+
+      it("a NOOP evaluates removing the key", function()
+        assert.is_nil(lic.configuration.removeme)
+      end)
+
+      it("cannot be modified", function()
+        assert.error(function() lic.configuration.foo = "bar" end)
+      end)
+
+      it("can be deep_copied, dumped, etc", function()
+        assert.equal(cjson.encode(expected_conf), cjson.encode(lic.configuration))
+      end)
+
+      it("is kong_conf + features.conf", function()
+        assert.same(expected_conf, lic.configuration)
+      end)
+
+      it("leaves kong_conf alone", function()
+        lic.configuration.hard_stuff.waaat = "lol"
+        assert.is_nil(kong_conf.hard_stuff.waaat)
+        finally(function() lic.configuration.hard_stuff.waaat = nil end)
       end)
     end)
 
@@ -429,9 +470,12 @@ describe("licensing", function()
         conf = {
           enforce_rbac = 'off',
           gravity_override = 'on',
+          magic = some_function,
+          removeme = NOOP,
         },
         some_stuff = { "neato" },
         boolean_flag = true,
+        hascheezburger = false,
         boolean_function = true,
         whatever_function = "hello world",
       }
@@ -494,6 +538,82 @@ describe("licensing", function()
         -- retired memes are calling, they are asking you to visit them
         assert.is_false(lic:can("hascheezburger"))
       end)
+    end)
+
+    describe("MagicTable™", function()
+      local magic_table
+
+      describe("lazy = true", function()
+        lazy_setup(function()
+          local some_data = {
+            foo = "bar",
+            bar = "baz",
+            whatever = function()
+              return "hello world"
+            end,
+          }
+          magic_table = lic.MagicTable({}, true)
+          magic_table:update(some_data)
+        end)
+
+        it("lazily evaluates a particular source of data", function()
+          assert.equal("bar", magic_table.foo)
+          assert.same({ foo = "bar"} , magic_table)
+          assert.equal("baz", magic_table.bar)
+          assert.same({ foo = "bar", bar = "baz" } , magic_table)
+        end)
+
+        it("evaluates functions", function()
+          assert.equal("hello world", magic_table.whatever)
+        end)
+      end)
+
+      describe("lazy = false", function()
+        local some_data = {
+          foo = "bar",
+          bar = "baz",
+          hard = { stuff = "hey" },
+        }
+
+        before_each(function()
+          magic_table = lic.MagicTable({}, false)
+          magic_table:update(some_data)
+        end)
+
+        it("updates itself data", function()
+          assert.same({
+            foo = "bar",
+            bar = "baz",
+            hard = { stuff = "hey" },
+          }, magic_table)
+        end)
+
+        it("can be progressively updated", function()
+          magic_table:update({ bar = "hey there" })
+          assert.same({
+            foo = "bar",
+            bar = "hey there",
+            hard = { stuff = "hey" },
+          }, magic_table)
+          assert.equal("hey there", magic_table.bar)
+        end)
+
+        it("a progressive update can evaluate functions", function()
+          magic_table:update({
+            something = "normal",
+            -- NOOP removes values
+            foo = function() end,
+            hey_there = function() return "hello world" end
+          }, true)
+          assert.same({
+            bar = "baz",
+            hard = { stuff = "hey" },
+            something = "normal",
+            hey_there = "hello world",
+          }, magic_table)
+        end)
+      end)
+
     end)
 
   end)

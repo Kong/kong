@@ -390,7 +390,6 @@ describe("routes schema", function()
       local invalid_hosts = {
         "/example",
         ".example",
-        "example.",
         "example:",
         "mock;bin",
         "example.com/org",

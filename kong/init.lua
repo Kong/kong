@@ -517,8 +517,7 @@ function Kong.init()
   singletons.licensing     = licensing(config)
   config                   = singletons.licensing.configuration
   kong.configuration       = singletons.licensing.configuration
-  -- XXX uncomment this once we remove meta magic from licensing
-  -- singletons.configuration = singletons.licensing.configurartion
+  singletons.configuration = singletons.licensing.configuration
 
   kong.licensing = singletons.licensing
 
