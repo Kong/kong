@@ -950,9 +950,12 @@ _M.check_hostname = function(address)
   end
 
   -- Reject prefix/trailing dashes and dots in each segment
-  -- note: punycode allowes prefixed dash, if the characters before the dash are escaped
-  for _, segment in ipairs(split(name, ".")) do
-    if segment == "" or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
+  -- notes:
+  --   - punycode allows prefixed dash, if the characters before the dash are escaped
+  --   - FQDN can end in dots
+  for index, segment in ipairs(split(name, ".")) do
+    if segment:match("-$") or segment:match("^%.") or segment:match("%.$") or
+       (segment == "" and index ~= #split(name, ".")) then
       return nil, "invalid hostname: " .. address
     end
   end
