@@ -1,3 +1,8 @@
+## 1.4.1
+
+- fix(rla) do not pre-create namespaces on init-worker
+- feature(conf) disallow decimal values between 0,1 in sync_rate [FT-928]
+
 ## 1.4.0
 
 - Add a jitter (random delay) to the Retry-After header of denied requests (status = 429) in order to (help) prevent all the clients to come back at the same time
