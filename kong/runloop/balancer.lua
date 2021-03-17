@@ -1227,7 +1227,7 @@ end
 
 
 local function set_host_header(balancer_data)
-  if balancer_data.preserve_host == true then
+  if balancer_data.preserve_host then
     return true
   end
 
