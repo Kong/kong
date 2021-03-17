@@ -13,6 +13,11 @@ return {
                      err = "not a valid filename",
           }, },
           { reopen = { type = "boolean", required = true, default = false }, },
+          { censored_fields = { required = false,
+                                type = "array",
+                                elements = { type = 'string' },
+                                default = {},
+          }, },
     }, }, },
   }
 }

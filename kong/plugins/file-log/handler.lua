@@ -2,6 +2,7 @@
 local ffi = require "ffi"
 local cjson = require "cjson"
 local system_constants = require "lua_system_constants"
+local attribute_remover = require "kong.plugins.file-log.attribute_remover"
 
 
 local kong = kong
@@ -70,7 +71,8 @@ local FileLogHandler = {
 
 function FileLogHandler:log(conf)
   local message = kong.log.serialize()
-  log(conf, message)
+  censored_message = attribute_remover.delete_attributes(message, conf.censored_fields)
+  log(conf, censored_message)
 end
 
 
