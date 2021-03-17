@@ -12,7 +12,9 @@ return {
   fields = {
     { config = {
         type = "record",
-        fields = {},
+        fields = {
+          { per_consumer = { type = "boolean", default = false }, },
+        },
         custom_validator = validate_shared_dict,
     }, },
   },

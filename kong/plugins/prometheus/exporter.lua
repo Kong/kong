@@ -91,6 +91,10 @@ local function init()
                                          "Total bandwidth in bytes " ..
                                          "consumed per service/route in Kong",
                                          {"service", "route", "type"})
+  metrics.consumer_status = prometheus:counter("http_consumer_status",
+                                          "HTTP status codes for customer per service/route in Kong",
+                                          {"service", "route", "code", "consumer"})
+
   if enterprise then
     enterprise.init(prometheus)
   end
@@ -104,6 +108,7 @@ end
 -- Since in the prometheus library we create a new table for each diverged label
 -- so putting the "more dynamic" label at the end will save us some memory
 local labels_table = {0, 0, 0}
+local labels_table4 = {0, 0, 0, 0}
 local upstream_target_addr_health_table = {
   { value = 0, labels = { 0, 0, 0, "healthchecks_off" } },
   { value = 0, labels = { 0, 0, 0, "healthy" } },
@@ -125,7 +130,7 @@ end
 local log
 
 if ngx.config.subsystem == "http" then
-  function log(message)
+  function log(message, serialized)
     if not metrics then
       kong.log.err("prometheus: can not log metrics because of an initialization "
               .. "error, please make sure that you've declared "
@@ -179,6 +184,14 @@ if ngx.config.subsystem == "http" then
     if kong_proxy_latency ~= nil and kong_proxy_latency >= 0 then
       labels_table[3] = "kong"
       metrics.latency:observe(kong_proxy_latency, labels_table)
+    end
+
+    if serialized.consumer ~= nil then
+      labels_table4[1] = labels_table[1]
+      labels_table4[2] = labels_table[2]
+      labels_table4[3] = message.response.status
+      labels_table4[4] = serialized.consumer
+      metrics.consumer_status:inc(1, labels_table4)
     end
   end
 
