@@ -15,6 +15,7 @@ local split = utils.split
 local strip = utils.strip
 local string_find = string.find
 local string_gsub = string.gsub
+local string_byte = string.byte
 local check_https = utils.check_https
 local encode_args = utils.encode_args
 local random_string = utils.random_string
@@ -31,6 +32,7 @@ local _M = {}
 
 
 local EMPTY = {}
+local SLASH = string_byte("/")
 local RESPONSE_TYPE = "response_type"
 local STATE = "state"
 local CODE = "code"
@@ -161,7 +163,7 @@ end
 
 local function get_redirect_uris(client_id)
   local client, err
-  if client_id and client_id ~= "" then
+  if type(client_id) == "string" and client_id ~= "" then
     local credential_cache_key = kong.db.oauth2_credentials:cache_key(client_id)
     client, err = kong.cache:get(credential_cache_key, nil,
                                  load_oauth2_credential_by_client_id,
@@ -1037,26 +1039,51 @@ local function do_authentication(conf)
   return true
 end
 
+local function invalid_oauth2_method(endpoint_name)
+  return {
+     status = 405,
+     message = {
+     [ERROR] = "invalid_method",
+       error_description = "The HTTP method " ..
+       kong.request.get_method() ..
+       " is invalid for the " .. endpoint_name .. " endpoint"
+     },
+     headers = {
+       ["WWW-Authenticate"] = 'Bearer realm="service" error=' ..
+                              '"invalid_method" error_description=' ..
+                              '"The HTTP method ' .. kong.request.get_method()
+                              .. ' is invalid for the ' ..
+                              endpoint_name .. ' endpoint"'
+     }
+   }
+end
 
 function _M.execute(conf)
+  local path = kong.request.get_path()
+  local has_end_slash = string_byte(path, -1) == SLASH
+
+  if string_find(path, "/oauth2/token", has_end_slash and -14 or -13, true) then
+    if kong.request.get_method() ~= "POST" then
+      local err = invalid_oauth2_method("token")
+      return kong.response.exit(err.status, err.message, err.headers)
+    end
+
+    return issue_token(conf)
+  end
+
+  if string_find(path, "/oauth2/authorize", has_end_slash and -18 or -17, true) then
+    if kong.request.get_method() ~= "POST" then
+      local err = invalid_oauth2_method("authorization")
+      return kong.response.exit(err.status, err.message, err.headers)
+    end
+
+    return authorize(conf)
+  end
+
   if conf.anonymous and kong.client.get_credential() then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
-  end
-
-  if kong.request.get_method() == "POST" then
-    local path = kong.request.get_path()
-
-    local from = string_find(path, "/oauth2/token", nil, true)
-    if from then
-      return issue_token(conf)
-    end
-
-    from = string_find(path, "/oauth2/authorize", nil, true)
-    if from then
-      return authorize(conf)
-    end
   end
 
   local ok, err = do_authentication(conf)
