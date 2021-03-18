@@ -1,68 +1,45 @@
-dist: trusty
-sudo: required
+dist: bionic
 
-language: java
-
-jdk:
-  - oraclejdk8
-
-notifications:
-  email: false
-
-services:
-  - redis-server
-
-addons:
-  postgresql: "9.5"
-  apt:
-    packages:
-      - net-tools
-      - libpcre3-dev
-      - build-essential
-
-services:
-  - redis
-  - docker
+jobs:
+  include:
+  - name: Kong CE 2.1.x
+    env: KONG_VERSION=2.1.x
+  - name: Kong CE 2.2.x
+    env: KONG_VERSION=2.2.x
+  - name: Kong CE 2.3.x
+    env: KONG_VERSION=2.3.x
+  - name: Kong CE Master
+    env: KONG_VERSION=nightly
+  - name: Kong EE 1.5.0.x
+    env: KONG_VERSION=1.5.0.x
+  - name: Kong EE 2.1.4.x
+    env: KONG_VERSION=2.1.4.x
+  - name: Kong EE 2.2.1.x
+    env: KONG_VERSION=2.2.1.x
+  - name: Kong Enterprise nightly
+    env: KONG_VERSION=nightly-ee
 
 env:
   global:
-    - PLUGIN_NAME=grpc-gateway
-    - LUAROCKS=3.0.4
-    - OPENSSL=1.1.1d
-    - KONG_REPOSITORY=kong
-    - KONG_LATEST=master
-    - CASSANDRA_BASE=2.2.12
-    - CASSANDRA_LATEST=3.9
-    - OPENRESTY_LATEST=1.15.8.1
-    - DOWNLOAD_CACHE=$HOME/download-cache
-    - INSTALL_CACHE=$HOME/install-cache
-    - BUSTED_ARGS="-o gtest -v --exclude-tags=flaky,ipv6"
-    - TEST_FILE_PATH=$TRAVIS_BUILD_DIR/spec
-    - KONG_PLUGINS=bundled,$PLUGIN_NAME
-    - KONG_TEST_PLUGINS=$KONG_PLUGINS
-
-  matrix:
-    - OPENRESTY=$OPENRESTY_LATEST
-      CASSANDRA=$CASSANDRA_BASE
-      KONG_TAG=$KONG_LATEST
-    - OPENRESTY=$OPENRESTY_LATEST
-      CASSANDRA=$CASSANDRA_LATEST
-      KONG_TAG=$KONG_LATEST
-
+  # for Enterprise images
+  - BINTRAY_USERNAME=kong-automation@kong
+  - BINTRAY_REPO=kong
+  - NIGHTLY_EE_USER=kong-automation@kong
+  - secure: a4vzoqoR6DfDfbMDxJjDS3+eH4rY/TAC+30jwtZP/cHBXvp9afAtm4a28RC9fynv+WGtetRukAZ1ZIVX6cG/V2leZ6EZEQyc7unakIfGXkXPnruMhoaDv9kVW/A2txBSqTkYzx2nPoIkR4YSKzFao8q6d8tcA4dsyWcXSi7E1nEFgIg9qauPxqRYpj0RDqRtOTC34JPLSEE+k1vm+shsihxNpAznWE7ka46+ADtG/Js7V4OTjENgp89W+5I8YnsEyR4QJI0Q+RTnlLKL0c1tCiV9QSYmmN0/e42gIrSUsdCGTtZap1rIB0kdqPvq3XTuNSS0keZLcbVECSoX/hIXWsu1FVhHC0QTrCsRJ00tgzy2upyjVTHqNB4b4zLeT6evUiRlxvdyxdATKFgVkrxsVvb9Fa5d+EEBtRasx6ysmSyzyaCyKvpbqmi6rUFueGqu3F8MfTbNA5NsYDPdly/zsnsSE5r6pwyZDra86yUhNNoIjKNLpqgze+w2Evn/PC12A29tyTFF/G1PxyNkvP+i9ykcym9BNjCLFRyTfXpe0FPCam3BYMX6IciTLMfDCnJFv6S6+Y8aCfEc3d+vv2VjF4fDhC1j7NVXWBpvbojSYKop2knacyxEjgif2J9B+ieim6HEHMOZXOvrXaSowt+Rrax5CiiAsgs1G7FrBSVhJ/o=
+  - secure: ZaYOG2rLfScLsDmdR2iPFg050bGW2305rAaYXHP/L1tLLsYfNGtBhwM1oR9ytXPaV9x13QPbeJIUthtDZf66diX0E7zZvUacyNu981OJ+7BS+MC5cmLomeHGaiDrP3LF7NLBrjqEQUo3o9CEV8LdaPkAu8c/ww3SC6+rSKfExk9/veYle9xq+EuTO6+eFiyAvC52QutnNPN/GqviLCTMyFKjBk9+ZZd1FQT0wrkKL6SsZIIqaJwzAWPM9Z5iRve5SpE74O+EMPixb+DGauG5AprDYBFDrUPEhQkmqNciq1mFS3/ddbibdd/sdJZjcPy1RxiBaNkp8AVcN+A57MLNBfIMrEYKEfiiIXy2ms/06OGTqh/LXAfJYWA/85UZTz3hzATmW9uC++MGt8Ch6x+t5uF3ce2ALQZUEY3RDfEqOwlEjMC9SGNjyg9bdddNPFggf8VrPAxRmjzk0dX2l6bNou5bi973ZXx15W9S6JgmtDh/43Qwb4hjjGibz5QDaJeGxikl2jn1/naw4xivt445o9j/1p8BOyQZj8V8CpMSFWSXjYM5sK1bL6VOKT1k1WopA3Qb57/XRMIg/JVnFDmsh89dhw/e2P5eeRj68Hi/bC33AINrqX8jjVG7JqIIYsUfhYdEGzrmCj7sELrsyIZnllsUnLu+hwgX7Qf7o7lQAMY=
 install:
-  - git clone --single-branch https://$GITHUB_TOKEN:@github.com/Kong/kong-ci ../kong-ci
-  - source ../kong-ci/setup_plugin_env.sh
+- git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
+- "../kong-pongo/pongo.sh up"
+- "../kong-pongo/pongo.sh build"
 
 script:
-  # grpcbin docker container is started by kong-ci/setup_plugin_env.sh
-  - cp ../kong-plugin-${PLUGIN_NAME}/spec/fixtures/grpc/* ../kong-ci/kong/spec/fixtures/grpc
-  - eval $LUACHECK_CMD
-  - eval $BUSTED_CMD
+- "../kong-pongo/pongo.sh lint"
+- "../kong-pongo/pongo.sh run"
 
-cache:
-  apt: true
-  pip: true
-  directories:
-    - $DOWNLOAD_CACHE
-    - $INSTALL_CACHE
-    - $HOME/.ccm/repository
+notifications:
+  slack:
+    if: branch = master AND type != pull_request
+    on_success: change
+    on_failure: always
+    rooms:
+      secure: ccbZspnOq726E0Ihg8F3o3hyVSQJc46anoH5XTwj2gnydT3w2foSQ5N6mZslR8PFHNGv5ItrBUrhr+xblMj0OqhMQDoWudTXW/HGxc6C+cKS4a1HLfrJNd9KFo2eVfsJSwvVcOSf47dpzi8x5D8Gqbr21imNUHz7C7RgiVe0TdO/k5BVa1dAPZ3AjgypS16d5xkKbR+SpeuaEsXOcZ7JGQNbLQBn0rrHq88r0NoEfUHW27kCcHgMIk5J9avJa2K1TGJVmFV90GGzqO0yZ9pEMhPx0z1bvD/Qy87VhVRK9FtsASJYfUWisgUn1tTwIqAXOun9bBT3ZjFn0eP4bq2o6qe+8yP45Rit2rH7020mkHZRlta1SNdMlA/MKL3jbS7SWF5wX+bCKly4o8mPN2SZwT7zLkZY+UmoHhoadyVME6+yNbaF/e6WYIoarc42hlITDb7aEUQekaIuhbANFHB/QUiTQu7oD5WKJ59gT8b1lYItQCqOx8dOWrYIcDm5CyihosRyaOpDGjBSfTQjl6g/5fbooU0EtBsTuGOpuFzrkdlUZu6VIzwpfw2E8TUcnXdMKNzOep7hxRrdXS9HCETHMx2/CENCpdl6QPJXoP3/XhoIVj91ZXAbHe/dv6QQ2yfnGvFfn0TwWD6B1m63EwbQnPPDu58D9kw5OXoee+EZcNg=
