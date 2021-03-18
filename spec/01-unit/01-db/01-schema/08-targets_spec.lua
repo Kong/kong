@@ -26,7 +26,7 @@ describe("targets", function()
 
       local ok, err = validate({ target = "\\\\bad\\\\////name////", upstream = upstream })
       assert.falsy(ok)
-      assert.same({ target = "Invalid target; not a valid hostname or ip address"}, err)
+      assert.same({ target = "Invalid target ('\\\\bad\\\\////name////'); not a valid hostname or ip address"}, err)
     end)
   end)
 end)

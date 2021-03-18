@@ -199,15 +199,15 @@ describe("load upstreams", function()
 
       ok, err = Upstreams:validate({ name = "123.123.123.123" })
       assert.falsy(ok)
-      assert.same({ name = "Invalid name; no ip addresses allowed" }, err)
+      assert.same({ name = "Invalid name ('123.123.123.123'); no ip addresses allowed" }, err)
 
       ok, err = Upstreams:validate({ name = "\\\\bad\\\\////name////" })
       assert.falsy(ok)
-      assert.same({ name = "Invalid name; must be a valid hostname" }, err)
+      assert.same({ name = "Invalid name ('\\\\bad\\\\////name////'); must be a valid hostname" }, err)
 
       ok, err = Upstreams:validate({ name = "name:80" })
       assert.falsy(ok)
-      assert.same({ name = "Invalid name; no port allowed" }, err)
+      assert.same({ name = "Invalid name ('name:80'); no port allowed" }, err)
     end)
 
     -- acceptance
