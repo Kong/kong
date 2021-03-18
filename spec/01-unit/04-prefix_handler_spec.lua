@@ -495,9 +495,9 @@ describe("NGINX conf compiler", function()
           nginx_stream_tcp_nodelay = "on",
         }))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.matches("error_log%s/dev/stdout;", nginx_conf)
+        assert.matches("error_log%s/dev/stdout%snotice;", nginx_conf)
         local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
-        assert.matches("error_log%slogs/error.log;", nginx_conf)
+        assert.matches("error_log%slogs/error.log%snotice;", nginx_conf)
 
         local conf = assert(conf_loader(nil, {
           proxy_stream_error_log = "/dev/stdout",
@@ -505,9 +505,9 @@ describe("NGINX conf compiler", function()
           nginx_stream_tcp_nodelay = "on",
         }))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.matches("error_log%slogs/error.log;", nginx_conf)
+        assert.matches("error_log%slogs/error.log%snotice;", nginx_conf)
         local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
-        assert.matches("error_log%s/dev/stdout;", nginx_conf)
+        assert.matches("error_log%s/dev/stdout%snotice;", nginx_conf)
       end)
 
       it("injects nginx_main_* directives", function()
