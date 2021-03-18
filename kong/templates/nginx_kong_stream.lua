@@ -80,7 +80,7 @@ server {
 > end
 
     access_log ${{PROXY_STREAM_ACCESS_LOG}};
-    error_log  ${{PROXY_STREAM_ERROR_LOG}} ${{LOG_LEVEL}};
+    error_log ${{PROXY_STREAM_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > for _, ip in ipairs(trusted_ips) do
     set_real_ip_from $(ip);
