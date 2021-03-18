@@ -2,18 +2,20 @@ dist: bionic
 
 jobs:
   include:
-  - name: Kong CE 1.3.x
-    env: KONG_VERSION=1.3.x
-  - name: Kong CE 1.5.x
-    env: KONG_VERSION=1.5.x
-  - name: Kong CE 2.0.x
-    env: KONG_VERSION=2.0.x
-  - name: Kong Enterprise 1.3.0.x
-    env: KONG_VERSION=1.3.0.x
-  - name: Kong Enterprise 1.5.0.x
-    env: KONG_VERSION=1.5.0.x
-  - name: Kong Enterprise nightly
-    env: KONG_VERSION=nightly-ee
+  - name: Kong CE 2.2.x
+    env: KONG_VERSION=2.2.x
+  - name: Kong CE 2.3.x
+    env: KONG_VERSION=2.3.x
+  - name: Kong CE Master
+    env: KONG_VERSION=nightly
+  #- name: Kong EE 1.5.0.x      # pending resolution re
+  #  env: KONG_VERSION=1.5.0.x  #  https://github.com/Kong/kong-pongo/pull/147
+  #- name: Kong EE 2.1.4.x      # context: current EE images are out of date in Pongo
+  #  env: KONG_VERSION=2.1.4.x  # so they do not include required sandbox modules
+  #- name: Kong EE 2.2.1.x
+  #  env: KONG_VERSION=2.2.1.x
+  #- name: Kong Enterprise nightly
+  #  env: KONG_VERSION=nightly-ee
 
 env:
   global:
