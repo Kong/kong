@@ -12,6 +12,11 @@
 - test rockspec; `luarocks install kong-plugin-aws-lambda`
 
 
+## aws-lambda 3.5.3 19-Mar-2021
+
+- fix: respect `skip_large_bodies` config setting when using
+  AWS API Gateway compatibility
+
 ## aws-lambda 3.5.2 6-Nov-2020
 
 - tests: just fix test suite for upcoming change to `ssl_cert` on Kong project
