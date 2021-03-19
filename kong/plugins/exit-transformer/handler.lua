@@ -93,15 +93,10 @@ local function get_functions(conf)
 
   local functions = {}
 
-  for _, fn_str in ipairs(conf.functions) do
-    -- XXX kong request always available
-    local env = {
-      kong = {
-        request = setmetatable({}, { __index = kong.request })
-      }
-    }
+  local sandbox_opts = { env = { kong = kong } }
 
-    local f, err = sandbox.validate_function(fn_str, { env = env })
+  for _, fn_str in ipairs(conf.functions) do
+    local f, err = sandbox.validate_function(fn_str, sandbox_opts)
     if err then f = no_op(err) end
 
     table.insert(functions, f)
