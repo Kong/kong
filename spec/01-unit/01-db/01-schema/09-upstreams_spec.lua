@@ -199,15 +199,15 @@ describe("load upstreams", function()
 
       ok, err = Upstreams:validate({ name = "123.123.123.123" })
       assert.falsy(ok)
-      assert.same({ name = "Invalid name; no ip addresses allowed" }, err)
+      assert.same({ name = "Invalid name ('123.123.123.123'); no ip addresses allowed" }, err)
 
       ok, err = Upstreams:validate({ name = "\\\\bad\\\\////name////" })
       assert.falsy(ok)
-      assert.same({ name = "Invalid name; must be a valid hostname" }, err)
+      assert.same({ name = "Invalid name ('\\\\bad\\\\////name////'); must be a valid hostname" }, err)
 
       ok, err = Upstreams:validate({ name = "name:80" })
       assert.falsy(ok)
-      assert.same({ name = "Invalid name; no port allowed" }, err)
+      assert.same({ name = "Invalid name ('name:80'); no port allowed" }, err)
     end)
 
     -- acceptance
@@ -289,7 +289,6 @@ describe("load upstreams", function()
         {{ active = { https_sni = "127.0.0.1:8080", }}, invalid_ip },
         {{ active = { https_sni = "/example", }}, invalid_host },
         {{ active = { https_sni = ".example", }}, invalid_host },
-        {{ active = { https_sni = "example.", }}, invalid_host },
         {{ active = { https_sni = "example:", }}, invalid_host },
         {{ active = { https_sni = "mock;bin", }}, invalid_host },
         {{ active = { https_sni = "example.com/org", }}, invalid_host },
@@ -392,6 +391,7 @@ describe("load upstreams", function()
         { active = { http_path = "/" }},
         { active = { http_path = "/test" }},
         { active = { https_sni = "example.com" }},
+        { active = { https_sni = "example.test.", }},
         { active = { https_verify_certificate = false }},
         { active = { healthy = { interval = 0 }}},
         { active = { healthy = { http_statuses = { 200, 300 } }}},

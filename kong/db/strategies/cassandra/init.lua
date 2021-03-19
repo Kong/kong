@@ -1364,7 +1364,7 @@ do
     opts.paging_state = offset
     opts.workspace = options and options.workspace
 
-    if options and options.tags then
+    if not foreign_key and options and options.tags then
       return query_page_for_tags(self, size, offset, options.tags, options.tags_cond, opts)
     end
 

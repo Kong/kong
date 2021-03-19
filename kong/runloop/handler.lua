@@ -1245,7 +1245,8 @@ return {
       var.upstream_host   = match_t.upstream_host
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
-      if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
+      local upgrade = var.http_upgrade
+      if upgrade and lower(upgrade) == "websocket" then
         var.upstream_connection = "keep-alive, Upgrade"
         var.upstream_upgrade    = "websocket"
 
@@ -1400,11 +1401,13 @@ return {
 
       -- clear hop-by-hop response headers:
       for _, header_name in csv(var.upstream_http_connection) do
-        header[header_name] = nil
+        if header_name ~= "close" and header_name ~= "upgrade" and header_name ~= "keep-alive" then
+          header[header_name] = nil
+        end
       end
 
-      if var.upstream_http_upgrade and
-         lower(var.upstream_http_upgrade) ~= lower(var.upstream_upgrade) then
+      local upgrade = var.upstream_http_upgrade
+      if upgrade and lower(upgrade) ~= lower(var.upstream_upgrade) then
         header["Upgrade"] = nil
       end
 
