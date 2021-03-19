@@ -197,11 +197,10 @@ local function sanitize_route_param(param)
 end
 
 
-local function sanitize_routes_ngx_nulls(methods, paths, hosts, headers, snis)
+local function sanitize_routes_ngx_nulls(methods, paths, headers, snis)
   return
     sanitize_route_param(type(methods) == "string" and { methods } or methods),
     sanitize_route_param(type(paths) == "string" and { paths } or paths),
-    sanitize_route_param(type(hosts) == "string" and { hosts } or hosts),
     sanitize_route_param(headers),
     sanitize_route_param(type(snis) == "string" and { snis } or snis)
 end
@@ -217,9 +216,17 @@ local function is_route_crud_allowed_smart(req, router)
   router = router or singletons.router
   local params = req.params
 
-  local methods, uris, hosts, headers, snis = sanitize_routes_ngx_nulls(
-    params.methods, params.paths, params.hosts, params.headers, params.snis
+  local methods, uris, headers, snis = sanitize_routes_ngx_nulls(
+    params.methods, params.paths, params.headers, params.snis
   )
+
+  --[[
+    Retrieve the hosts from the method body of args
+
+    NOTE: PATCH, POST, and PUT all populate req.args.post table
+  --]]
+  local hosts = req.args and req.args.post and req.args.post.hosts
+  hosts = sanitize_route_param(type(hosts) == "string" and { hosts } or hosts)
 
   local ws = workspaces.get_workspace()
   for perm in permutations(methods and values(methods) or split(ALL_METHODS),

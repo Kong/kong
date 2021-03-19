@@ -31,7 +31,7 @@ local function any(t, p)
 end
 
 
-local function post(path, body, headers, expected_status)
+local function send_request(method, default_status, path, body, headers, expected_status)
   headers = headers or {}
   if not headers["Content-Type"] then
     headers["Content-Type"] = "application/json"
@@ -42,34 +42,24 @@ local function post(path, body, headers, expected_status)
   end
 
   local res = assert(client:send{
-    method = "POST",
+    method = method,
     path = path,
     body = body or {},
     headers = headers
   })
 
-  return cjson.decode(assert.res_status(expected_status or 201, res))
+  return cjson.decode(assert.res_status(expected_status or default_status, res))
 end
 
 
+local function post(path, body, headers, expected_status)
+  return send_request("POST", 201, path, body, headers, expected_status)
+end
 local function patch(path, body, headers, expected_status)
-  headers = headers or {}
-  if not headers["Content-Type"] then
-    headers["Content-Type"] = "application/json"
-  end
-
-  if any(tablex.keys(body), function(x) return x:match( "%[%]$") end) then
-    headers["Content-Type"] = "application/x-www-form-urlencoded"
-  end
-
-  local res = assert(client:send{
-    method = "PATCH",
-    path = path,
-    body = body or {},
-    headers = headers
-  })
-
-  return cjson.decode(assert.res_status(expected_status or 200, res))
+  return send_request("PATCH", 200, path, body, headers, expected_status)
+end
+local function put(path, body, headers, expected_status)
+  return send_request("PUT", 200, path, body, headers, expected_status)
 end
 
 
@@ -294,12 +284,12 @@ describe("DB [#".. strategy .. "] routes are checked for colisions ", function()
     end
   end)
 
-  it("doesnt collide if we are in the same ws", function()
+  it("doesn't collide if we are in the same ws", function()
     post("/ws1/services/default-service/routes",
       {['hosts[]'] = "example.org"})
   end)
 
-  it("doesnt collide for distinct routes", function()
+  it("doesn't collide for distinct routes", function()
     post("/ws2/services/default-service/routes",
       {['hosts[]'] = "new-host.org"})
   end)
@@ -308,10 +298,20 @@ describe("DB [#".. strategy .. "] routes are checked for colisions ", function()
     patch("/ws1/routes/".. route.id, {["protocols[]"] = "http"})
   end)
 
-  it("collides when updating", function()
+  it("#collides when updating with patch", function()
     local r = post("/ws2/services/default-service/routes",
       {['hosts[]'] = "bla.org"})
     patch("/ws2/routes/" .. r.id, {['hosts[]'] = "example.org"}, nil, 409)
+  end)
+
+  it("can be added with put", function()
+    put("/ws1/routes/".. route.id, {['hosts[]'] = "example.org", ["protocols[]"] = "http"})
+  end)
+
+  it("#collides when adding with put", function()
+    local r = post("/ws2/services/default-service/routes",
+      {['hosts[]'] = "bla.org"})
+    put("/ws2/routes/" .. r.id, {['hosts[]'] = "example.org"}, nil, 409)
   end)
 
   -- it("doesn't collide when updating itself", function()
