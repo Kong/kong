@@ -1,3 +1,16 @@
+1.3.0 - 2021-03-19
+
+New features:
+  - Support for Jaeger style uber-trace-id headers (#101), thanks @nvx!
+  - Support for OT headers (#103), thanks @ishg!
+  - Allow insertion of custom tags on the Zipkin request trace (#102)
+
+Fixes:
+  - The w3c parsing function was returning a non-used extra value, and it now early-exits (#100), thanks @nvx!
+  - Creation of baggage items on child spans is now possible (#98), thanks @Asafb26!
+  - Fixed a bug in which span timestamping could sometimes raise an error (#105), thanks @Asafb26!
+
+
 1.2.0 - 2020-11-11
 
 New features:
