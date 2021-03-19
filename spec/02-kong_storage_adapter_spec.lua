@@ -144,14 +144,6 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    before_each(function()
-      client = helpers.proxy_ssl_client()
-    end)
-
-    after_each(function()
-      if client then client:close() end
-    end)
-
     describe("kong adapter - ", function()
       it("kong adapter stores consumer", function()
         local res, cookie
@@ -162,26 +154,34 @@ for _, strategy in helpers.each_strategy() do
         }
 
         -- make sure the anonymous consumer can't get in (request termination)
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(403)
+        client:close()
 
         -- make a request with a valid key, grab the cookie for later
         request.headers.apikey = "kong"
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
         cookie = assert.response(res).has.header("Set-Cookie")
+        client:close()
 
         ngx.sleep(2)
 
         -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
         request.headers.cookie = cookie
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
 
         -- one more time to ensure session was not destroyed or errored out
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
 
         -- make sure it's in the db
         local sid = get_sid_from_cookie(cookie)
@@ -202,9 +202,11 @@ for _, strategy in helpers.each_strategy() do
 
           for _ = 1, number do
             request.headers.cookie = cookie
+            client = helpers.proxy_ssl_client()
             res = assert(client:send(request))
             assert.response(res).has.status(200)
             did_renew = did_renew or res.headers['Set-Cookie'] ~= nil
+            client:close()
 
             cookie = res.headers['Set-Cookie'] or cookie
             ngx.sleep(step)
@@ -214,13 +216,18 @@ for _, strategy in helpers.each_strategy() do
         end
 
         -- make sure the anonymous consumer can't get in (request termination)
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(403)
+        client:close()
 
         -- make a request with a valid key, grab the cookie for later
         request.headers.apikey = "kong"
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
+
         cookie = assert.response(res).has.header("Set-Cookie")
 
         ngx.sleep(2)
@@ -228,8 +235,10 @@ for _, strategy in helpers.each_strategy() do
         -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
         request.headers.cookie = cookie
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
 
         -- renewal period, make sure requests still come through and
         -- if set-cookie header comes through, attach it to subsequent requests
@@ -245,28 +254,35 @@ for _, strategy in helpers.each_strategy() do
         }
 
         -- make sure the anonymous consumer can't get in (request termination)
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(403)
+        client:close()
 
         -- make a request with a valid key, grab the cookie for later
         request.headers.apikey = "kong"
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
         cookie = assert.response(res).has.header("Set-Cookie")
+        client:close()
 
         ngx.sleep(2)
 
         -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
         request.headers.cookie = cookie
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
 
         -- session should be in the table initially
         local sid = get_sid_from_cookie(cookie)
         assert.equal(sid, db.sessions:select_by_session_id(sid).session_id)
 
         -- logout request
+        client = helpers.proxy_ssl_client()
         res = assert(client:send({
           method = "DELETE",
           path = "/test2/status/200?session_logout=true",
@@ -275,8 +291,8 @@ for _, strategy in helpers.each_strategy() do
             host = "httpbin.org",
           }
         }))
-
         assert.response(res).has.status(200)
+        client:close()
 
         local found, err = db.sessions:select_by_session_id(sid)
 
@@ -293,21 +309,27 @@ for _, strategy in helpers.each_strategy() do
           headers = { host = "httpbin.org", },
         }
 
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(403)
+        client:close()
 
         -- make a request with a valid key, grab the cookie for later
         request.headers.apikey = "kong"
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
         cookie = assert.response(res).has.header("Set-Cookie")
+        client:close()
 
         ngx.sleep(2)
 
         request.headers.apikey = nil
         request.headers.cookie = cookie
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
 
         local json = cjson.decode(assert.res_status(200, res))
         assert.equal('beatles, ramones', json.headers['x-authenticated-groups'])

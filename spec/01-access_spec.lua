@@ -154,16 +154,9 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    before_each(function()
-      client = helpers.proxy_ssl_client()
-    end)
-
-    after_each(function()
-      if client then client:close() end
-    end)
-
     describe("request", function()
       it("plugin attaches Set-Cookie and cookie response headers", function()
+        client = helpers.proxy_ssl_client()
         local res = assert(client:send {
           method = "GET",
           path = "/test1/status/200",
@@ -172,8 +165,8 @@ for _, strategy in helpers.each_strategy() do
             apikey = "kong",
           },
         })
-
         assert.response(res).has.status(200)
+        client:close()
 
         local cookie = assert.response(res).has.header("Set-Cookie")
         local cookie_name = utils.split(cookie, "=")[1]
@@ -198,13 +191,17 @@ for _, strategy in helpers.each_strategy() do
         }
 
         -- make sure the anonymous consumer can't get in (request termination)
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(403)
+        client:close()
 
         -- make a request with a valid key, grab the cookie for later
         request.headers.apikey = "kong"
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
 
         cookie = assert.response(res).has.header("Set-Cookie")
         assert.equal("da_cookie", utils.split(cookie, "=")[1])
@@ -217,8 +214,10 @@ for _, strategy in helpers.each_strategy() do
         -- use the cookie without the key to ensure cookie still lets them in
         request.headers.apikey = nil
         request.headers.cookie = cookie
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
       end)
 
       it("consumer headers are set correctly on request", function()
@@ -231,16 +230,20 @@ for _, strategy in helpers.each_strategy() do
 
         -- make a request with a valid key, grab the cookie for later
         request.headers.apikey = "kong"
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
 
         cookie = assert.response(res).has.header("Set-Cookie")
 
         request.headers.apikey = nil
         request.headers.cookie = cookie
 
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -267,16 +270,20 @@ for _, strategy in helpers.each_strategy() do
 
         -- make a request with a valid key, grab the cookie for later
         request.headers.apikey = "kong"
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
 
         cookie = assert.response(res).has.header("Set-Cookie")
 
         request.headers.apikey = nil
         request.headers.cookie = cookie
 
+        client = helpers.proxy_ssl_client()
         res = assert(client:send(request))
         assert.response(res).has.status(200)
+        client:close()
 
         local json = cjson.decode(assert.res_status(200, res))
         assert.equal('agents, doubleagents', json.headers[lower(constants.HEADERS.AUTHENTICATED_GROUPS)])
