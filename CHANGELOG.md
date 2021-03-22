@@ -12,6 +12,10 @@
 - test rockspec; `luarocks install kong-plugin-aws-lambda`
 
 
+## aws-lambda 3.5.4 22-Mar-2021
+
+- tests: just fix the test suite so that it works with kong repo too
+
 ## aws-lambda 3.5.3 19-Mar-2021
 
 - fix: respect `skip_large_bodies` config setting when using

@@ -2,7 +2,7 @@ local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local meta    = require "kong.meta"
 local pl_file = require "pl.file"
-local fixtures = require "spec.plugins.aws-lambda.fixtures"
+local fixtures = require "spec.fixtures.aws-lambda"
 
 local TEST_CONF = helpers.test_conf
 local server_tokens = meta._SERVER_TOKENS

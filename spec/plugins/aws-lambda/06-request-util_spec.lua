@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local fixtures = require "spec.plugins.aws-lambda.fixtures"
+local fixtures = require "spec.fixtures.aws-lambda"
 
 
 for _, strategy in helpers.each_strategy() do
