@@ -120,7 +120,7 @@ local function add_top_level_entities(fields, entities)
 end
 
 
-local function copy_record(record, include_foreign)
+local function copy_record(record, include_foreign, duplicates, name)
   local copy = utils.deep_copy(record, false)
   if include_foreign then
     return copy
@@ -135,6 +135,12 @@ local function copy_record(record, include_foreign)
       fdata.required = false
     end
   end
+
+  if duplicates and name then
+    duplicates[name] = duplicates[name] or {}
+    table.insert(duplicates[name], copy)
+  end
+
   return copy
 end
 
@@ -148,6 +154,7 @@ end
 -- @tparam map<string,table> records A map of top-level record definitions,
 -- indexable by entity name. These records are modified in-place.
 local function nest_foreign_relationships(records, include_foreign)
+  local duplicates = {}
   for entity, record in pairs(records) do
     for _, f in ipairs(record.fields) do
       local _, fdata = next(f)
@@ -158,9 +165,18 @@ local function nest_foreign_relationships(records, include_foreign)
         table.insert(records[ref].fields, {
           [entity] = {
             type = "array",
-            elements = copy_record(record, include_foreign),
+            elements = copy_record(record, include_foreign, duplicates, entity),
           },
         })
+
+        for _, dest in ipairs(duplicates[ref] or {}) do
+          table.insert(dest.fields, {
+            [entity] = {
+              type = "array",
+              elements = copy_record(record, include_foreign, duplicates, entity)
+            }
+          })
+        end
       end
     end
   end
