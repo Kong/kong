@@ -3,6 +3,7 @@ local config = {
 }
 
 
+local Schema = require "kong.db.schema"
 local connector = require "kong.db.strategies.postgres.connector".new(config)
 
 
@@ -254,6 +255,127 @@ describe("kong.db [#postgres] connector", function()
 
         assert.same(1, #errors)
       end)
+    end)
+  end)
+
+  describe("connector.get_topologically_sorted_table_names", function()
+    local function schema_new(s)
+      return { schema = assert(Schema.new(s)) }
+    end
+
+    local ts = connector._get_topologically_sorted_table_names
+
+    it("prepends cluster_events no matter what", function()
+      assert.same({"cluster_events"},  ts({}))
+    end)
+
+    it("sorts an array of unrelated schemas alphabetically by name", function()
+      local a = schema_new({ name = "a", ttl = true, fields = {} })
+      local b = schema_new({ name = "b", ttl = true, fields = {} })
+      local c = schema_new({ name = "c", ttl = true, fields = {} })
+
+      assert.same({"cluster_events", "a", "b", "c"},  ts({ c, a, b }))
+    end)
+
+    it("ignores non-ttl schemas", function()
+      local a = schema_new({ name = "a", ttl = true, fields = {} })
+      local b = schema_new({ name = "b", fields = {} })
+      local c = schema_new({ name = "c", ttl = true, fields = {} })
+
+      assert.same({"cluster_events", "a", "c"},  ts({ c, a, b }))
+    end)
+
+    it("it puts destinations first", function()
+      local a = schema_new({ name = "a", ttl = true, fields = {} })
+      local c = schema_new({
+        name = "c",
+        ttl = true,
+        fields = {
+          { a = { type = "foreign", reference = "a" }, },
+        }
+      })
+      local b = schema_new({
+        name = "b",
+        ttl = true,
+        fields = {
+          { a = { type = "foreign", reference = "a" }, },
+          { c = { type = "foreign", reference = "c" }, },
+        }
+      })
+
+      assert.same({"cluster_events", "a", "c", "b"},  ts({ a, b, c }))
+    end)
+
+    it("puts core entities first, even when no relations", function()
+      local a = schema_new({ name = "a", ttl = true, fields = {} })
+      local routes = schema_new({ name = "routes", ttl = true, fields = {} })
+
+      assert.same({"cluster_events", "routes", "a"},  ts({ a, routes }))
+    end)
+
+    it("puts workspaces before core and others, when no relations", function()
+      local a = schema_new({ name = "a", ttl = true, fields = {} })
+      local workspaces = schema_new({ name = "workspaces", ttl = true, fields = {} })
+      local routes = schema_new({ name = "routes", ttl = true, fields = {} })
+
+      assert.same({"cluster_events", "workspaces", "routes", "a"},  ts({ a, routes, workspaces }))
+    end)
+
+    it("puts workspaces first, core entities second, and other entities afterwards, even with relations", function()
+      local a = schema_new({ name = "a", ttl = true, fields = {} })
+      local services = schema_new({ name = "services", ttl = true, fields = {} })
+      local b = schema_new({
+        name = "b",
+        ttl = true,
+        fields = {
+          { service = { type = "foreign", reference = "services" }, },
+          { a = { type = "foreign", reference = "a" }, },
+        }
+      })
+      local routes = schema_new({
+        name = "routes",
+        ttl = true,
+        fields = {
+          { service = { type = "foreign", reference = "services" }, },
+        }
+      })
+      local workspaces = schema_new({ name = "workspaces", ttl = true, fields = {} })
+      assert.same({ "cluster_events", "workspaces", "services", "routes", "a", "b" },
+                  ts({ services, b, a, workspaces, routes }))
+    end)
+
+    it("overrides core order if dependencies force it", function()
+      -- This scenario is here in case in the future we allow plugin entities to precede core entities
+      -- Not applicable today (kong 2.3.x) but maybe in future releases
+      local a = schema_new({ name = "a", ttl = true, fields = {} })
+      local services = schema_new({ name = "services", ttl = true, fields = {
+        { a = { type = "foreign", reference = "a" } } -- we somehow forced services to depend on a
+      }})
+      local workspaces = schema_new({ name = "workspaces", ttl = true, fields = {
+        { a = { type = "foreign", reference = "a" } } -- we somehow forced workspaces to depend on a
+      } })
+
+      assert.same({ "cluster_events", "a", "workspaces", "services" },  ts({ services, a, workspaces }))
+    end)
+
+    it("returns an error if cycles are found", function()
+      local a = schema_new({
+        name = "a",
+        ttl = true,
+        fields = {
+          { b = { type = "foreign", reference = "b" }, },
+        }
+      })
+      local b = schema_new({
+        name = "b",
+        ttl = true,
+        fields = {
+          { a = { type = "foreign", reference = "a" }, },
+        }
+      })
+      local x, err = ts({ a, b })
+      assert.is_nil(x)
+      assert.equals("Cycle detected, cannot sort topologically", err)
     end)
   end)
 end)

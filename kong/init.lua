@@ -123,11 +123,8 @@ if subsystem == "http" then
 end
 
 
-local WORKER_COUNT = ngx.worker.count()
 local DECLARATIVE_LOAD_KEY = constants.DECLARATIVE_LOAD_KEY
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
-local DECLARATIVE_FLIPS_KEY = constants.DECLARATIVE_FLIPS.name
-local DECLARATIVE_FLIPS_TTL = constants.DECLARATIVE_FLIPS.ttl
 
 
 local declarative_entities
@@ -199,10 +196,10 @@ do
   reset_kong_shm = function(config)
     local kong_shm = ngx.shared.kong
     local dbless = config.database == "off"
-    local declarative_config = dbless and config.declarative_config
 
-    if dbless then -- prevent POST /config from happening while initializing
-      kong_shm:add(DECLARATIVE_FLIPS_KEY, 0, DECLARATIVE_FLIPS_TTL)
+    if dbless then
+      -- prevent POST /config while initializing dbless
+      declarative.try_lock()
     end
 
     local old_page = kong_shm:get(DECLARATIVE_PAGE_KEY)
@@ -213,14 +210,11 @@ do
 
     local preserved = {}
 
-    local new_page
-    if declarative_config then
-      new_page = old_page == 1 and 2 or 1
-
-    else
-      new_page = old_page
-
-      if dbless then
+    local new_page = old_page
+    if dbless then
+      if config.declarative_config then
+        new_page = old_page == 1 and 2 or 1
+      else
         preserved[DECLARATIVE_LOAD_KEY] = kong_shm:get(DECLARATIVE_LOAD_KEY)
         preserved[DECLARATIVE_HASH_KEY] = kong_shm:get(DECLARATIVE_HASH_KEY)
       end
@@ -234,7 +228,8 @@ do
 
     kong_shm:flush_all()
     if dbless then
-      kong_shm:add(DECLARATIVE_FLIPS_KEY, 0, DECLARATIVE_FLIPS_TTL)
+      -- reinstate the lock to hold POST /config, which was flushed with the previous `flush_all`
+      declarative.try_lock()
     end
     for key, value in pairs(preserved) do
       kong_shm:set(key, value)
@@ -385,12 +380,7 @@ local function load_declarative_config(kong_config, entities, meta)
   end)
 
   if ok then
-    if kong_shm:get(DECLARATIVE_FLIPS_KEY) then
-      local flips = kong_shm:incr(DECLARATIVE_FLIPS_KEY, 1)
-      if flips and flips >= WORKER_COUNT then
-        kong_shm:delete(DECLARATIVE_FLIPS_KEY)
-      end
-    end
+    declarative.try_unlock()
 
     local default_ws = kong.db.workspaces:select_by_name("default")
     kong.default_workspace = default_ws and default_ws.id or kong.default_workspace

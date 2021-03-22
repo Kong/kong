@@ -5,6 +5,7 @@ local Entity = require("kong.db.schema.entity")
 local Schema = require("kong.db.schema")
 local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
+local schema_topological_sort = require "kong.db.schema.topological_sort"
 
 
 local null = ngx.null
@@ -14,7 +15,6 @@ local DeclarativeConfig = {}
 
 
 local all_schemas
-local core_entities
 local errors = Errors.new("declarative")
 
 
@@ -120,7 +120,7 @@ local function add_top_level_entities(fields, entities)
 end
 
 
-local function copy_record(record, include_foreign)
+local function copy_record(record, include_foreign, duplicates, name)
   local copy = utils.deep_copy(record, false)
   if include_foreign then
     return copy
@@ -135,6 +135,12 @@ local function copy_record(record, include_foreign)
       fdata.required = false
     end
   end
+
+  if duplicates and name then
+    duplicates[name] = duplicates[name] or {}
+    table.insert(duplicates[name], copy)
+  end
+
   return copy
 end
 
@@ -148,6 +154,7 @@ end
 -- @tparam map<string,table> records A map of top-level record definitions,
 -- indexable by entity name. These records are modified in-place.
 local function nest_foreign_relationships(records, include_foreign)
+  local duplicates = {}
   for entity, record in pairs(records) do
     for _, f in ipairs(record.fields) do
       local _, fdata = next(f)
@@ -158,9 +165,18 @@ local function nest_foreign_relationships(records, include_foreign)
         table.insert(records[ref].fields, {
           [entity] = {
             type = "array",
-            elements = copy_record(record, include_foreign),
+            elements = copy_record(record, include_foreign, duplicates, entity),
           },
         })
+
+        for _, dest in ipairs(duplicates[ref] or {}) do
+          table.insert(dest.fields, {
+            [entity] = {
+              type = "array",
+              elements = copy_record(record, include_foreign, duplicates, entity)
+            }
+          })
+        end
       end
     end
   end
@@ -692,26 +708,20 @@ end
 
 
 function DeclarativeConfig.load(plugin_set, include_foreign)
-  if not core_entities then
-    -- a copy of constants.CORE_ENTITIES without "tags"
-    core_entities = {}
-    for _, entity in ipairs(constants.CORE_ENTITIES) do
-      if entity ~= "tags" then
-        table.insert(core_entities, entity)
-      end
-    end
-  end
-
-  local known_entities = utils.deep_copy(core_entities, false)
 
   all_schemas = {}
-  for _, entity in ipairs(core_entities) do
-    local mod = require("kong.db.schema.entities." .. entity)
-    local definition = utils.deep_copy(mod, false)
-    all_schemas[entity] = Entity.new(definition)
+  local schemas_array = {}
+  for _, entity in ipairs(constants.CORE_ENTITIES) do
+    -- tags are treated differently from the rest of entities in declarative config
+    if entity ~= "tags" then
+      local mod = require("kong.db.schema.entities." .. entity)
+      local schema = Entity.new(mod)
+      all_schemas[entity] = schema
+      schemas_array[#schemas_array + 1] = schema
 
-    -- load core entities subschemas
-    assert(load_entity_subschemas(entity, all_schemas[entity]))
+      -- load core entities subschemas
+      assert(load_entity_subschemas(entity, schema))
+    end
   end
 
   for plugin in pairs(plugin_set) do
@@ -722,8 +732,15 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
     end
     for entity, schema in pairs(entities) do
       all_schemas[entity] = schema
-      table.insert(known_entities, entity)
+      schemas_array[#schemas_array + 1] = schema
     end
+  end
+
+  schemas_array = schema_topological_sort(schemas_array)
+
+  local known_entities = {}
+  for i, schema in ipairs(schemas_array) do
+    known_entities[i] = schema.name
   end
 
   local fields, records = build_fields(known_entities, include_foreign)

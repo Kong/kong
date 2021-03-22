@@ -942,9 +942,12 @@ _M.check_hostname = function(address)
   end
 
   -- Reject prefix/trailing dashes and dots in each segment
-  -- note: punycode allowes prefixed dash, if the characters before the dash are escaped
-  for _, segment in ipairs(split(name, ".")) do
-    if segment == "" or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
+  -- notes:
+  --   - punycode allows prefixed dash, if the characters before the dash are escaped
+  --   - FQDN can end in dots
+  for index, segment in ipairs(split(name, ".")) do
+    if segment:match("-$") or segment:match("^%.") or segment:match("%.$") or
+       (segment == "" and index ~= #split(name, ".")) then
       return nil, "invalid hostname: " .. address
     end
   end
@@ -1350,5 +1353,74 @@ do
 end
 _M.get_mime_type = get_mime_type
 _M.get_error_template = get_error_template
+
+
+local topological_sort do
+
+  local function visit(current, neighbors_map, visited, marked, sorted)
+    if visited[current] then
+      return true
+    end
+
+    if marked[current] then
+      return nil, "Cycle detected, cannot sort topologically"
+    end
+
+    marked[current] = true
+
+    local schemas_pointing_to_current = neighbors_map[current]
+    if schemas_pointing_to_current then
+      local neighbor, ok, err
+      for i = 1, #schemas_pointing_to_current do
+        neighbor = schemas_pointing_to_current[i]
+        ok, err = visit(neighbor, neighbors_map, visited, marked, sorted)
+        if not ok then
+          return nil, err
+        end
+      end
+    end
+
+    marked[current] = false
+
+    visited[current] = true
+
+    insert(sorted, 1, current)
+
+    return true
+  end
+
+  topological_sort = function(items, get_neighbors)
+    local neighbors_map = {}
+    local source, destination
+    local neighbors
+    for i = 1, #items do
+      source = items[i] -- services
+      neighbors = get_neighbors(source)
+      for j = 1, #neighbors do
+        destination = neighbors[j] --routes
+        neighbors_map[destination] = neighbors_map[destination] or {}
+        insert(neighbors_map[destination], source)
+      end
+    end
+
+    local sorted = {}
+    local visited = {}
+    local marked = {}
+
+    local current, ok, err
+    for i = 1, #items do
+      current = items[i]
+      if not visited[current] and not marked[current] then
+        ok, err = visit(current, neighbors_map, visited, marked, sorted)
+        if not ok then
+          return nil, err
+        end
+      end
+    end
+
+    return sorted
+  end
+end
+_M.topological_sort = topological_sort
 
 return _M

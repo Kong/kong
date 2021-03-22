@@ -1319,6 +1319,39 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           local json = cjson.decode(body)
           assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
         end)
+        it("returns an error when missing client_id and missing client_secret is sent", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "POST",
+            path    = "/oauth2/token",
+            body    = {
+              scope            = "email",
+              response_type    = "token",
+              grant_type       = "client_credentials",
+            },
+            headers = {
+              ["Host"]         = "oauth2_4.com",
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
+        end)
+        it("returns an error when empty client_id and empty client_secret is sent regardless of method", function()
+          local res = assert(proxy_ssl_client:send {
+            method  = "GET",
+            path    = "/oauth2/token?client_id&grant_type=client_credentials&client_secret",
+            body    = {},
+            headers = {
+              ["Host"]         = "oauth2_4.com",
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(405, res)
+          local json = cjson.decode(body)
+          assert.same({ error_description = "The HTTP method GET is invalid for the token endpoint",
+                        error = "invalid_method" }, json)
+        end)
         it("returns an error when grant_type is not sent", function()
           local res = assert(proxy_ssl_client:send {
             method  = "POST",

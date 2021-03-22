@@ -164,11 +164,6 @@ local constants = {
   PROTOCOLS = protocols,
   PROTOCOLS_WITH_SUBSYSTEM = protocols_with_subsystem,
 
-  DECLARATIVE_FLIPS = {
-    name = "declarative:flips",
-    ttl = 60,
-  },
-
   DECLARATIVE_PAGE_KEY = "declarative:page",
   DECLARATIVE_LOAD_KEY = "declarative_config:loaded",
   DECLARATIVE_HASH_KEY = "declarative_config:hash",

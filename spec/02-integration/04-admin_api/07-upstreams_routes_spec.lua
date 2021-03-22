@@ -212,7 +212,7 @@ describe("Admin API: #" .. strategy, function()
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
             assert.equals("schema violation", json.name)
-            assert.same({ name = "Invalid name; must be a valid hostname" }, json.fields)
+            assert.same({ name = "Invalid name ('some invalid host name'); must be a valid hostname" }, json.fields)
 
             -- Invalid slots parameter
             res = assert(client:send {
@@ -566,7 +566,7 @@ describe("Admin API: #" .. strategy, function()
 
             body = assert.response(res).has.status(400)
             local json = cjson.decode(body)
-            assert.same("Invalid name; no ip addresses allowed", json.message)
+            assert.same("Invalid name ('1.2.3.4'); no ip addresses allowed", json.message)
           end
         end)
       end)

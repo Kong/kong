@@ -562,14 +562,14 @@ describe("Utils", function()
       it("validates hostnames", function()
         local valids = {"hello.com", "hello.fr", "test.hello.com", "1991.io", "hello.COM",
                         "HELLO.com", "123helloWORLD.com", "example.123", "example-api.com",
-                        "hello.abcd", "example_api.com", "localhost",
+                        "hello.abcd", "example_api.com", "localhost", "example.",
                         -- punycode examples from RFC3492; https://tools.ietf.org/html/rfc3492#page-14
                         -- specifically the japanese ones as they mix ascii with escaped characters
                         "3B-ww4c5e180e575a65lsy2b", "-with-SUPER-MONKEYS-pc58ag80a8qai00g7n9n",
                         "Hello-Another-Way--fc4qua05auwb3674vfr0b", "2-u9tlzr9756bt3uc0v",
                         "MajiKoi5-783gue6qz075azm5e", "de-jg4avhby1noc0d", "d9juau41awczczp",
                         }
-        local invalids = {"/example", ".example", "example.", "exam;ple",
+        local invalids = {"/example", ".example", "exam;ple",
                           "example.com/org",
                           "example-.org", "example.org-",
                           "hello..example.com", "hello-.example.com",
@@ -824,6 +824,30 @@ describe("Utils", function()
       assert.has_error(function()
         utils.nginx_conf_time_to_seconds("abcd")
       end, "bad argument #1 'str'")
+    end)
+  end)
+
+  describe("topological_sort", function()
+    local get_neighbors = function(x) return x end
+    local ts = utils.topological_sort
+
+    it("it puts destinations first", function()
+      local a = { id = "a" }
+      local b = { id = "b", a }
+      local c = { id = "c", a, b }
+      local d = { id = "d", c }
+
+      local x = ts({ c, d, a, b }, get_neighbors)
+      assert.same({ a, b, c, d }, x)
+    end)
+
+    it("returns an error if cycles are found", function()
+      local a = { id = "a" }
+      local b = { id = "b", a }
+      a[1] = b
+      local x, err = ts({ a, b }, get_neighbors)
+      assert.is_nil(x)
+      assert.equals("Cycle detected, cannot sort topologically", err)
     end)
   end)
 end)
