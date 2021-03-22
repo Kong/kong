@@ -1,10 +1,14 @@
 local cjson = require "cjson"
+local sandbox = require "kong.tools.sandbox"
 
 
 local kong = kong
 local ngx = ngx
 local timer_at = ngx.timer.at
 local udp = ngx.socket.udp
+
+
+local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 
 
 local function log(premature, conf, str)
@@ -43,6 +47,12 @@ local UdpLogHandler = {
 
 
 function UdpLogHandler:log(conf)
+  if conf.custom_fields_by_lua then
+    for key, expression in pairs(conf.custom_fields_by_lua) do
+      kong.log.set_serialize_value(key, sandbox.sandbox(expression, sandbox_opts)())
+    end
+  end
+
   local ok, err = timer_at(0, log, conf, cjson.encode(kong.log.serialize()))
   if not ok then
     kong.log.err("could not create timer: ", err)

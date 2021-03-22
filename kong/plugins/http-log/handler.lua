@@ -3,6 +3,7 @@ local cjson = require "cjson"
 local url = require "socket.url"
 local http = require "resty.http"
 local table_clear = require "table.clear"
+local sandbox = require "kong.tools.sandbox"
 
 
 local kong = kong
@@ -13,6 +14,9 @@ local tonumber = tonumber
 local concat = table.concat
 local fmt = string.format
 local pairs = pairs
+
+
+local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 
 
 local queues = {} -- one queue per unique plugin config
@@ -155,6 +159,12 @@ local HttpLogHandler = {
 
 
 function HttpLogHandler:log(conf)
+  if conf.custom_fields_by_lua then
+    for key, expression in pairs(conf.custom_fields_by_lua) do
+      kong.log.set_serialize_value(key, sandbox.sandbox(expression, sandbox_opts)())
+    end
+  end
+
   local entry = cjson.encode(kong.log.serialize())
 
   local queue_id = get_queue_id(conf)
