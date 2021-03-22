@@ -65,6 +65,11 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         $TEST_CMD $p || echo "* $p" >> .failed
     done
 
+    OLD_LUA_PATH=$LUA_PATH
+    if [ "$OLD_LUA_PATH" == "" ]; then
+        OLD_LUA_PATH=";"
+    fi
+
     cat kong-*.rockspec | grep kong- | grep -v zipkin | grep -v sidecar | grep "~" | grep -v kong-prometheus-plugin | while read line ; do
         REPOSITORY=`echo $line | sed "s/\"/ /g" | awk -F" " '{print $1}'`
         VERSION=`luarocks show $REPOSITORY | grep $REPOSITORY | head -1 | awk -F" " '{print $2}' | cut -f1 -d"-"`
@@ -86,6 +91,7 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         luarocks make
         popd
 
+        LUA_PATH="/tmp/test-$REPOSITORY/?.lua;/tmp/test-$REPOSITORY/?/init.lua;$OLD_LUA_PATH"
         $TEST_CMD /tmp/test-$REPOSITORY/spec/ || echo "* $REPOSITORY" >> .failed
 
     done
