@@ -235,9 +235,13 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
     return
   end
 
+  if ngx.config.subsystem ~= "http" then
+    return
+  end
+
   while not ngx.worker.exiting() do
     kong.log.notice("Starting " .. server_def.name or "")
-    server_def.proc = assert(ngx_pipe.spawn(server_def.start_command, {
+    server_def.proc = assert(ngx_pipe.spawn("exec " .. server_def.start_command, {
       merge_stderr = true,
     }))
     server_def.proc:set_timeouts(nil, nil, nil, 0)     -- block until something actually happens
