@@ -88,7 +88,9 @@ end
 local function cassandra_foreach_row(connector, table_name, f)
   local coordinator = connector:connect_migrations()
 
-  for rows, err in coordinator:iterate("SELECT * FROM " .. table_name) do
+  for rows, err in coordinator:iterate("SELECT * FROM " .. table_name,
+                                       nil,
+                                       { keyspace = connector.keyspace }) do
     if err then
       return nil, err
     end
