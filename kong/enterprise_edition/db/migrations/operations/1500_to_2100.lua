@@ -233,6 +233,79 @@ local postgres = {
       log.debug("ws_fixup_workspaceable_rows: "..  entity.name .. " DONE")
     end,
 
+    -- TODO description
+    ws_fixup_consumer_plugin_rows = function(_, connector, entity)
+      log.debug("ws_fixup_consumer_plugin_rows: "..  entity.name)
+
+      local code = {}
+      for _, unique in ipairs(entity.uniques) do
+        table.insert(code,
+          render([[
+            INSERT INTO ws_migrations_backup (entity_type, entity_id, unique_field_name, unique_field_value)
+            SELECT '$(TABLE)', $(TABLE).$(PK)::text, '$(UNIQUE)', $(TABLE).$(UNIQUE)
+            FROM $(TABLE);
+          ]], {
+            TABLE = entity.name,
+            PK = entity.primary_key,
+            UNIQUE = unique
+          })
+        )
+      end
+      local consumer_plugin = false
+      for _, fk in ipairs(entity.fks) do
+        if fk.reference == "consumers" then
+          consumer_plugin = true
+          break
+        end
+      end
+      if consumer_plugin then
+        table.insert(code,
+          render([[
+            UPDATE $(TABLE)
+            SET ws_id = c.ws_id
+            FROM consumers c
+            WHERE $(TABLE).consumer_id = c.id;
+          ]], {
+            TABLE = entity.name
+          })
+        )
+      else
+        table.insert(code,
+          render([[
+            UPDATE $(TABLE)
+            SET ws_id = we.workspace_id
+            FROM workspace_entities we
+            WHERE entity_type='$(TABLE)'
+              AND unique_field_name='$(PK)'
+              AND unique_field_value=$(TABLE).$(PK)::text;
+          ]], {
+            TABLE = entity.name,
+            PK = entity.primary_key,
+          })
+        )
+      end
+
+      -- remove prefixes:
+      if #entity.uniques > 0 then
+        local fields = {}
+        for _, f in ipairs(entity.uniques) do
+          table.insert(fields, f .. " = regexp_replace(" .. f .. ", '^(' || (SELECT string_agg(name, '|') FROM workspaces) ||'):', '')")
+        end
+
+        table.insert(code,
+          render([[
+            UPDATE $(TABLE) SET $(FIELDS);
+          ]], {
+            TABLE = entity.name,
+            FIELDS = table.concat(fields, ", "),
+          })
+        )
+      end
+
+      postgres_run_query_in_transaction(connector, table.concat(code))
+      log.debug("ws_fixup_consumer_plugin_rows: "..  entity.name .. " DONE")
+    end,
+
     ws_clean_kong_admin_rbac_user = function(_, connector)
       connector:query([[
         UPDATE rbac_users
@@ -361,6 +434,9 @@ local cassandra = {
       end)
 
       connector:query(table.concat(code, ";\n"))
+    end,
+
+    ws_fixup_consumer_plugin_rows = function(_, connector, entity)
     end,
 
     ws_clean_kong_admin_rbac_user = function(_, connector)
@@ -500,8 +576,8 @@ local function ws_migrate_plugin(plugin_entities)
 
   local function ws_migration_teardown(ops)
     return function(connector)
-      if ops:has_workspace_entities(connector)[1] then
-        ops:ws_adjust_data(connector, plugin_entities)
+      for _, entity in ipairs(plugin_entities) do
+        ops.ws_fixup_consumer_plugin_rows(ops, connector, entity)
       end
     end
   end
