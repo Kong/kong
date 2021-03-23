@@ -520,7 +520,7 @@ local function new(self)
             end
             keys[i] = k
             i = i + 1
-            if string_find(v, boundary_check, 1, true) then
+            if string_find(tostring(v), boundary_check, 1, true) then
               boundary_ok = false
             end
           end
