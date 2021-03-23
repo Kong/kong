@@ -56,8 +56,6 @@ local fixtures = {
 
 for _, strategy in helpers.each_strategy() do
   describe("Balancer: least-connections [#" .. strategy .. "]", function()
-    local proxy_client
-    local admin_client
     local upstream1_id
 
     lazy_setup(function()
@@ -102,8 +100,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     before_each(function()
-      proxy_client = helpers.proxy_client()
-      admin_client = helpers.admin_client()
       -- wait until helper servers are alive
       helpers.wait_until(function()
         local client = helpers.proxy_client()
@@ -117,11 +113,6 @@ for _, strategy in helpers.each_strategy() do
         client:close()
         return res.status == 200
       end, 20)
-    end)
-
-    after_each(function ()
-      proxy_client:close()
-      admin_client:close()
     end)
 
     lazy_teardown(function()
