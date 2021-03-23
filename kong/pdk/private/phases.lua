@@ -28,8 +28,13 @@ local PHASES = {
 
 
 do
-  local n = 0
+  local t = {}
   for k, v in pairs(PHASES) do
+    t[k] = v
+  end
+
+  local n = 0
+  for k, v in pairs(t) do
     n = n + 1
     PHASES[v] = k
   end
