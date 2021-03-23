@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
 
 
-
 for _, strategy in helpers.each_strategy() do
 
 describe("kong start/stop #" .. strategy, function()
@@ -483,18 +482,11 @@ describe("kong start/stop #" .. strategy, function()
           database = "off",
           declarative_config = yaml_file,
         })
+
         assert.falsy(ok)
-        assert.matches(helpers.unindent[[
-          in 'services':
-            - in entry 1 of 'services':
-              in 'protocol': expected one of: grpc, grpcs, http, https, tcp, tls, udp
-              in 'name': invalid value '@gobo': the only accepted ascii characters are alphanumerics or ., -, _, and ~
-            - in entry 2 of 'services':
-              in 'routes':
-                - in entry 1 of 'routes':
-                  in 'hosts':
-                    - in entry 2 of 'hosts': invalid hostname: \\99
-        ]], err, nil, true)
+        assert.matches("in 'protocol': expected one of: grpc, grpcs, http, https, tcp, tls, udp", err, nil, true)
+        assert.matches("in 'name': invalid value '@gobo': the only accepted ascii characters are alphanumerics or ., -, _, and ~", err, nil, true)
+        assert.matches("in entry 2 of 'hosts': invalid hostname: \\\\99", err, nil, true)
       end)
     end
 

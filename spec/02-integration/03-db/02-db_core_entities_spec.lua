@@ -1,18 +1,27 @@
-local Errors  = require "kong.db.errors"
+local Errors = require "kong.db.errors"
 local defaults = require "kong.db.strategies.connector".defaults
-local utils   = require "kong.tools.utils"
+local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
-local cjson   = require "cjson"
+local cjson = require "cjson"
 local ssl_fixtures = require "spec.fixtures.ssl"
-local openssl_x509  = require "resty.openssl.x509"
-local str           = require "resty.string"
+local openssl_x509 = require "resty.openssl.x509"
+local str = require "resty.string"
 
 
-local fmt      = string.format
+local fmt = string.format
+local null = ngx.null
+local sort = table.sort
 local unindent = helpers.unindent
 
 
 local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
+
+
+local function sort_source_or_destination(s1, _)
+  if s1.ip and s1.ip ~= null and s1.port and s1.port ~= null then
+    return true
+  end
+end
 
 
 for _, strategy in helpers.each_strategy() do
@@ -1019,6 +1028,12 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.is_nil(err_t)
             assert.is_nil(err)
+
+            sort(route_inserted.sources, sort_source_or_destination)
+            sort(route_inserted.destinations, sort_source_or_destination)
+            sort(route.sources, sort_source_or_destination)
+            sort(route.destinations, sort_source_or_destination)
+
             assert.same(route_inserted, route)
           end)
         end)

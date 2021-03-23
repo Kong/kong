@@ -5,11 +5,6 @@ local lyaml = require "lyaml"
 local lfs = require "lfs"
 
 
-local function trim(s)
-  return s:gsub("%s+", " "):gsub("^%s*", ""):gsub("%s*$", "")
-end
-
-
 local function sort_by_name(a, b)
   return a.name < b.name
 end
@@ -221,15 +216,10 @@ describe("kong config", function()
     })
     assert.falsy(ok)
 
-    assert.same(trim([[
-      Error: Failed parsing:
-      in 'services':
-      - in entry 1 of 'services':
-        in 'host': expected a string
-        in 'port': value should be between 0 and 65535
-        in 'routes': expected an array
-      Run with --v (verbose) or --vv (debug) for more details
-    ]]), trim(err))
+    assert.match("Error: Failed parsing:", err)
+    assert.match("in 'host': expected a string", err)
+    assert.match("in 'port': value should be between 0 and 65535", err)
+    assert.match("in 'routes': expected an array", err)
   end)
 
   it("#db config db_import is idempotent based on endpoint_key and cache_key", function()
@@ -390,6 +380,7 @@ describe("kong config", function()
     assert(db.consumers:truncate())
     assert(db.acls:truncate())
     assert(db.certificates:truncate())
+    assert(db.ca_certificates:truncate())
     assert(db.targets:truncate())
     assert(db.upstreams:truncate())
 
