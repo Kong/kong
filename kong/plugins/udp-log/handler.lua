@@ -1,5 +1,5 @@
 local cjson = require "cjson"
-local sandbox = require "kong.tools.sandbox"
+local sandbox = require "kong.tools.sandbox".sandbox
 
 
 local kong = kong
@@ -48,8 +48,9 @@ local UdpLogHandler = {
 
 function UdpLogHandler:log(conf)
   if conf.custom_fields_by_lua then
+    local set_serialize_value = kong.log.set_serialize_value
     for key, expression in pairs(conf.custom_fields_by_lua) do
-      kong.log.set_serialize_value(key, sandbox.sandbox(expression, sandbox_opts)())
+      set_serialize_value(key, sandbox(expression, sandbox_opts)())
     end
   end
 

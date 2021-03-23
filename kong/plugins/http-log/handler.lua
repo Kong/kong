@@ -3,7 +3,7 @@ local cjson = require "cjson"
 local url = require "socket.url"
 local http = require "resty.http"
 local table_clear = require "table.clear"
-local sandbox = require "kong.tools.sandbox"
+local sandbox = require "kong.tools.sandbox".sandbox
 
 
 local kong = kong
@@ -160,8 +160,9 @@ local HttpLogHandler = {
 
 function HttpLogHandler:log(conf)
   if conf.custom_fields_by_lua then
+    local set_serialize_value = kong.log.set_serialize_value
     for key, expression in pairs(conf.custom_fields_by_lua) do
-      kong.log.set_serialize_value(key, sandbox.sandbox(expression, sandbox_opts)())
+      set_serialize_value(key, sandbox(expression, sandbox_opts)())
     end
   end
 

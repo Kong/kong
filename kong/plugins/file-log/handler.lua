@@ -2,7 +2,7 @@
 local ffi = require "ffi"
 local cjson = require "cjson"
 local system_constants = require "lua_system_constants"
-local sandbox = require "kong.tools.sandbox"
+local sandbox = require "kong.tools.sandbox".sandbox
 
 
 local kong = kong
@@ -74,8 +74,9 @@ local FileLogHandler = {
 
 function FileLogHandler:log(conf)
   if conf.custom_fields_by_lua then
+    local set_serialize_value = kong.log.set_serialize_value
     for key, expression in pairs(conf.custom_fields_by_lua) do
-      kong.log.set_serialize_value(key, sandbox.sandbox(expression, sandbox_opts)())
+      set_serialize_value(key, sandbox(expression, sandbox_opts)())
     end
   end
 
