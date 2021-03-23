@@ -631,11 +631,10 @@ end
 
 
 function Kong.ssl_certificate()
+  local ctx = ngx.ctx
+
   kong_global.set_phase(kong, PHASES.certificate)
 
-  -- this doesn't really work across the phases currently (OpenResty 1.13.6.2),
-  -- but it returns a table (rewrite phase clears it)
-  local ctx = ngx.ctx
   log_init_worker_errors(ctx)
 
   -- this is the first phase to run on an HTTPS request
