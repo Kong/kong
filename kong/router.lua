@@ -1164,39 +1164,50 @@ do
     end,
   }
 
-
-  reduce = function(category, bit_category, ctx)
-    -- run cached reducer
-    if type(reducers[bit_category]) == "function" then
-      return reducers[bit_category](category, ctx), category.all
-    end
-
-    -- build and cache reducer
-
+  local build_cached_reducer = function(bit_category)
+    local reducers_count = 0
     local reducers_set = {}
+    local header_rule = 0
 
     for _, bit_match_rule in ipairs(SORTED_MATCH_RULES) do
       if band(bit_category, bit_match_rule) ~= 0 then
-        reducers_set[#reducers_set + 1] = reducers[bit_match_rule]
+        reducers_count = reducers_count + 1
+        reducers_set[reducers_count] = reducers[bit_match_rule]
+        if bit_match_rule == MATCH_RULES.HEADER then
+          header_rule = reducers_count
+        end
       end
     end
 
-    reducers[bit_category] = function(category, ctx)
+    return function(category, ctx)
       local min_len = 0
       local smallest_set
 
-      for i = 1, #reducers_set do
+      for i = 1, reducers_count do
         local candidates = reducers_set[i](category, ctx)
-        if candidates ~= nil and (not smallest_set or #candidates < min_len)
-        then
-          min_len = #candidates
-          smallest_set = candidates
+        if candidates ~= nil then
+          if i == header_rule then
+            return candidates
+          end
+          local candidates_len = #candidates
+          if not smallest_set or candidates_len < min_len then
+            min_len = candidates_len
+            smallest_set = candidates
+          end
         end
       end
 
       return smallest_set
     end
+  end
 
+  reduce = function(category, bit_category, ctx)
+    if type(reducers[bit_category]) ~= "function" then
+      -- build and cache reducer
+      reducers[bit_category] = build_cached_reducer(bit_category)
+    end
+
+    -- run cached reducer
     return reducers[bit_category](category, ctx), category.all
   end
 end
