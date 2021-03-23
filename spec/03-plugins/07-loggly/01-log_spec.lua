@@ -40,6 +40,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "logging3.com" },
       }
 
+      local route5 = bp.routes:insert {
+        hosts = { "logging4.com" },
+      }
+
       bp.plugins:insert {
         route = { id = route1.id },
         name     = "loggly",
@@ -85,6 +89,20 @@ for _, strategy in helpers.each_strategy() do
           host = "127.0.0.1",
           port = UDP_PORT,
           key  = "123456789"
+        }
+      }
+
+      bp.plugins:insert {
+        route = { id = route5.id },
+        name     = "loggly",
+        config   = {
+          host = "127.0.0.1",
+          port = UDP_PORT,
+          key  = "123456789",
+          custom_fields_by_lua = {
+            new_field = "return 123",
+            route = "return nil", -- unset route field
+          }
         }
       }
 
@@ -315,6 +333,31 @@ for _, strategy in helpers.each_strategy() do
       }, 500)
       assert.equal("14", pri)
       assert.equal("127.0.0.1", message.client_ip)
+    end)
+
+    describe("custom log values by lua", function()
+      it("logs custom values", function()
+        local pri, message = run({
+          method  = "GET",
+          path    = "/status/500",
+          headers = {
+            host  = "logging4.com"
+          }
+        }, 500)
+        assert.equal("14", pri)
+        assert.equal(123, message.new_field)
+      end)
+      it("unsets existing log values", function()
+        local pri, message = run({
+          method  = "GET",
+          path    = "/status/500",
+          headers = {
+            host  = "logging4.com"
+          }
+        }, 500)
+        assert.equal("14", pri)
+        assert.equal(nil, message.route)
+      end)
     end)
   end)
 end

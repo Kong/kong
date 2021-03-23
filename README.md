@@ -132,6 +132,7 @@ code, other repos are also under active development:
   using Azure Resource Manager.
 - [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
   Heroku in one click.
+- [Kong on IBM Cloud](https://github.com/andrew40404/installing-kong-IBM-cloud) - How to deploy Kong on IBM Cloud
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
   Instaclustr manage your Cassandra cluster.
 - [Nightly Builds][kong-nightly-master]: Builds of the master branch available every morning at about 9AM PST.

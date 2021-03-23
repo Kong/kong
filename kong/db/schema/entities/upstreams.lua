@@ -11,16 +11,26 @@ local utils = require "kong.tools.utils"
 local null = ngx.null
 
 
+local function get_name_for_error(name)
+  local ok = utils.validate_utf8(name)
+  if not ok then
+    return "Invalid name"
+  end
+
+  return "Invalid name ('" .. name .. "')"
+end
+
+
 local validate_name = function(name)
   local p = utils.normalize_ip(name)
   if not p then
-    return nil, "Invalid name; must be a valid hostname"
+    return nil, get_name_for_error(name) .. "; must be a valid hostname"
   end
   if p.type ~= "name" then
-    return nil, "Invalid name; no ip addresses allowed"
+    return nil, get_name_for_error(name) .. "; no ip addresses allowed"
   end
   if p.port then
-    return nil, "Invalid name; no port allowed"
+    return nil, get_name_for_error(name) .. "; no port allowed"
   end
   return true
 end

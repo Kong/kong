@@ -23,6 +23,16 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_truthy(ok)
   end)
 
+  it("accepts custom fields by lua", function()
+    local ok, err = validate({
+        http_endpoint = "http://myservice.com/path",
+        custom_fields_by_lua = {
+          foo = "return 'bar'",
+        }
+      })
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
 
   it("does accept allowed headers", function()
     local ok, err = validate({
@@ -93,6 +103,4 @@ describe(PLUGIN_NAME .. ": (schema)", function()
           }, err)
         assert.is_falsy(ok)
       end)
-
-
   end)

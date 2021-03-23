@@ -7,6 +7,7 @@
 
 local lsyslog = require "lsyslog"
 local cjson = require "cjson"
+local sandbox = require "kong.tools.sandbox".sandbox
 
 
 local kong = kong
@@ -26,6 +27,9 @@ local LOG_LEVELS = {
   alert = 1,
   emerg = 0
 }
+
+
+local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 
 
 local function send_to_syslog(log_level, severity, message)
@@ -60,6 +64,13 @@ local SysLogHandler = {
 
 
 function SysLogHandler:log(conf)
+  if conf.custom_fields_by_lua then
+    local set_serialize_value = kong.log.set_serialize_value
+    for key, expression in pairs(conf.custom_fields_by_lua) do
+      set_serialize_value(key, sandbox(expression, sandbox_opts)())
+    end
+  end
+
   local message = kong.log.serialize()
   local ok, err = timer_at(0, log, conf, message)
   if not ok then
