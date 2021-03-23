@@ -24,7 +24,7 @@ describe("Proxy error handlers", function()
     end
   end)
 
-  it("HTTP 494", function()
+  it("HTTP 400", function()
     local res = assert(proxy_client:send {
       method = "GET",
       path = "/",
@@ -32,10 +32,10 @@ describe("Proxy error handlers", function()
         ["X-Large"] = string.rep("a", 2^10 * 10), -- default large_client_header_buffers is 8k
       }
     })
-    assert.res_status(494, res)
+    assert.res_status(400, res)
     local body = res:read_body()
     assert.matches("kong/", res.headers.server, nil, true)
-    assert.equal("Request header or cookie too large\n", body)
+    assert.equal("Bad request\n", body)
   end)
 
   it("does not expose OpenResty version", function()
