@@ -114,6 +114,7 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "least1.test"
           },
         }))
+        client:close()
         return res.status == 200
       end, 10)
     end)
