@@ -90,10 +90,10 @@ end
 -- @tparam array<string> entities The list of entity names
 -- @treturn map<string,table> A map of record definitions added to `fields`,
 -- indexable by entity name
-local function add_top_level_entities(fields, entities)
+local function add_top_level_entities(fields, known_entities)
   local records = {}
 
-  for _, entity in ipairs(entities) do
+  for _, entity in ipairs(known_entities) do
     local definition = utils.deep_copy(all_schemas[entity], false)
 
     for k, _ in pairs(definition.fields) do
@@ -212,7 +212,7 @@ local function reference_foreign_by_name(records)
 end
 
 
-local function build_fields(entities, include_foreign)
+local function build_fields(known_entities, include_foreign)
   local fields = {
     { _format_version = { type = "string", required = true, one_of = {"1.1", "2.1"} } },
     { _transform = { type = "boolean", default = true } },
@@ -222,7 +222,7 @@ local function build_fields(entities, include_foreign)
     _ignore = true,
   })
 
-  local records = add_top_level_entities(fields, entities)
+  local records = add_top_level_entities(fields, known_entities)
   nest_foreign_relationships(records, include_foreign)
 
   return fields, records
@@ -606,13 +606,13 @@ end
 
 
 local function find_default_ws(entities)
-  for k, v in pairs(entities.workspaces or {}) do
+  for _, v in pairs(entities.workspaces or {}) do
     if v.name == "default" then return v.id end
   end
 end
 
 
-local function insert_default_workspace_if_not_given(self, entities)
+local function insert_default_workspace_if_not_given(_, entities)
   local default_workspace = find_default_ws(entities) or "0dc6f45b-8f8d-40d2-a504-473544ee190b"
 
   if not entities.workspaces then
