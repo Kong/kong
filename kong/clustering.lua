@@ -398,7 +398,8 @@ do
 end
 
 
-local MAJOR_MINOR_PATTERN = "^(%d+%.%d+)%.%d+"
+local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
+
 local function should_send_config_update(node_version, node_plugins)
   if not node_version or not node_plugins then
     return false, "your DP did not provide version information to the CP, " ..
@@ -408,27 +409,61 @@ local function should_send_config_update(node_version, node_plugins)
                   "automatically once this DP also upgrades to 2.3 or later"
   end
 
-  local minor_cp = KONG_VERSION:match(MAJOR_MINOR_PATTERN)
-  local minor_node = node_version:match(MAJOR_MINOR_PATTERN)
-  if minor_cp ~= minor_node then
-    return false, "version mismatches, CP version: " .. minor_cp ..
-                  " DP version: " .. minor_node,
+  local major_cp, minor_cp = KONG_VERSION:match(MAJOR_MINOR_PATTERN)
+  local major_node, minor_node = node_version:match(MAJOR_MINOR_PATTERN)
+  minor_cp = tonumber(minor_cp)
+  minor_node = tonumber(minor_node)
+
+  if major_cp ~= major_node or minor_cp - 2 > minor_node or minor_cp < minor_node then
+    return false, "version incompatible, CP version: " .. KONG_VERSION ..
+                  " DP version: " .. node_version ..
+                  " DP versions acceptable are " ..
+                  major_cp .. "." .. math.max(0, minor_cp - 2) .. " to " ..
+                  major_cp .. "." .. minor_cp .. "(edges included)",
                   CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
   end
 
-  for i, p in ipairs(PLUGINS_LIST) do
-    local np = node_plugins[i]
+  -- allow DP to have a superset of CP's plugins
+  local p, np
+  local i, j = #PLUGINS_LIST, #node_plugins
+
+  if j < i then
+    return false, "CP and DP does not have same set of plugins installed",
+                  CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+  end
+
+  while i > 0 and j > 0 do
+    p = PLUGINS_LIST[i]
+    np = node_plugins[j]
+
     if p.name ~= np.name then
-      return false, "CP and DP does not have same set of plugins installed",
-                    CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+      goto continue
     end
 
-    if p.version ~= np.version then
-      return false, "plugin \"" .. p.name .. "\" version differs between " ..
-                    "CP and DP, CP has version " .. tostring(p.version) ..
-                    " while DP has version " .. tostring(np.version),
-                    CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+    -- ignore plugins without a version (route-by-header is deprecated)
+    if p.version and np.version then
+      -- major/minor check that ignores anything after the second digit
+      local major_minor_p = p.version:match("^(%d+%.%d+)") or "not_a_version"
+      local major_minor_np = np.version:match("^(%d+%.%d+)") or "still_not_a_version"
+
+      if major_minor_p ~= major_minor_np then
+        return false, "plugin \"" .. p.name .. "\" version incompatible, " ..
+                      "CP version: " .. tostring(p.version) ..
+                      " DP version: " .. tostring(np.version) ..
+                      " DP plugin version acceptable is "..
+                      major_minor_p .. ".x",
+                      CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+      end
     end
+
+    i = i - 1
+    ::continue::
+    j = j - 1
+  end
+
+  if i > 0 then
+    return false, "CP and DP does not have same set of plugins installed",
+                  CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
   end
 
   return true
