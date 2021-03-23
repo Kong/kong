@@ -30,6 +30,23 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      local route2 = bp.routes:insert {
+        hosts = { "custom_udp_logging.com" },
+      }
+
+      bp.plugins:insert {
+        route = { id = route2.id },
+        name     = "udp-log",
+        config   = {
+          host   = "127.0.0.1",
+          port   = UDP_PORT,
+          custom_fields_by_lua = {
+            new_field = "return 123",
+            route = "return nil", -- unset route field
+          },
+        },
+      }
+
       local grpc_service = assert(bp.services:insert {
         name = "grpc-service",
         url = "grpc://localhost:15002",
@@ -119,6 +136,54 @@ for _, strategy in helpers.each_strategy() do
         log_message.latencies.proxy
 
       assert.True(is_latencies_sum_adding_up)
+    end)
+
+    describe("custom log values by lua", function()
+      it("logs custom values", function()
+        local udp_thread = helpers.udp_server(UDP_PORT)
+
+        -- Making the request
+        local r = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/delay/2",
+          headers = {
+            host  = "custom_udp_logging.com",
+          },
+        })
+
+        assert.response(r).has.status(200)
+        -- Getting back the UDP server input
+        local ok, res = udp_thread:join()
+        assert.True(ok)
+        assert.is_string(res)
+
+        -- Making sure it's alright
+        local log_message = cjson.decode(res)
+        assert.same(123, log_message.new_field)
+      end)
+
+      it("unsets existing log values", function()
+        local udp_thread = helpers.udp_server(UDP_PORT)
+
+        -- Making the request
+        local r = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/delay/2",
+          headers = {
+            host  = "custom_udp_logging.com",
+          },
+        })
+
+        assert.response(r).has.status(200)
+        -- Getting back the UDP server input
+        local ok, res = udp_thread:join()
+        assert.True(ok)
+        assert.is_string(res)
+
+        -- Making sure it's alright
+        local log_message = cjson.decode(res)
+        assert.same(nil, log_message.route)
+      end)
     end)
 
     it("logs proper latencies (#grpc) #flaky", function()

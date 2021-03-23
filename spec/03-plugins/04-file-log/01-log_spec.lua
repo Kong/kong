@@ -74,6 +74,23 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      local route4 = bp.routes:insert {
+        hosts = { "file_logging_by_lua.com" },
+      }
+
+      bp.plugins:insert {
+        route = { id = route4.id },
+        name     = "file-log",
+        config   = {
+          path   = FILE_LOG_PATH,
+          reopen = true,
+          custom_fields_by_lua = {
+            new_field = "return 123",
+            route = "return nil", -- unset route field
+          },
+        },
+      }
+
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -123,6 +140,62 @@ for _, strategy in helpers.each_strategy() do
       assert.same(uuid, log_message.request.headers["file-log-uuid"])
       assert.is_number(log_message.request.size)
       assert.is_number(log_message.response.size)
+    end)
+
+    describe("custom log values by lua", function()
+      it("logs custom values to file", function()
+        local uuid = utils.random_string()
+
+        -- Making the request
+        local res = assert(proxy_client:send({
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["file-log-uuid"] = uuid,
+            ["Host"] = "file_logging_by_lua.com"
+          }
+        }))
+        assert.res_status(200, res)
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, 10)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.same(uuid, log_message.request.headers["file-log-uuid"])
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+        assert.same(123, log_message.new_field)
+      end)
+
+      it("unsets existing log values", function()
+        local uuid = utils.random_string()
+
+        -- Making the request
+        local res = assert(proxy_client:send({
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["file-log-uuid"] = uuid,
+            ["Host"] = "file_logging_by_lua.com"
+          }
+        }))
+        assert.res_status(200, res)
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, 10)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.same(uuid, log_message.request.headers["file-log-uuid"])
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
+        assert.same(nil, log_message.route)
+      end)
     end)
 
     it("logs to file #grpc", function()

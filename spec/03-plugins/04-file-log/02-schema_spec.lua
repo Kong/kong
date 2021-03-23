@@ -39,11 +39,29 @@ describe("Plugin: file-log (schema)", function()
       output = true,
       error = nil,
     },
+    ----------------------------------------
+    {
+      name = "accepts custom fields set by lua code",
+      input = {
+        path = "/tmp/log.txt",
+        custom_fields_by_lua = {
+          foo = "return 'bar'",
+        }
+      },
+      output = true,
+      error = nil,
+    },
   }
 
   local file_log_schema
 
   lazy_setup(function()
+    _G.kong = {
+      configuration = {
+        untrusted_lua = "sandbox"
+      }
+    }
+
     file_log_schema = Schema.new(require("kong.plugins.file-log.schema"))
   end)
 
@@ -53,8 +71,8 @@ describe("Plugin: file-log (schema)", function()
         protocols = { "http" },
         config = t.input
       })
-      assert.same(t.output, output)
       assert.same(t.error, err)
+      assert.same(t.output, output)
     end)
   end
 end)

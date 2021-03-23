@@ -2,6 +2,7 @@
 local ffi = require "ffi"
 local cjson = require "cjson"
 local system_constants = require "lua_system_constants"
+local sandbox = require "kong.tools.sandbox".sandbox
 
 
 local kong = kong
@@ -18,6 +19,9 @@ local S_IROTH = system_constants.S_IROTH()
 
 local oflags = bit.bor(O_WRONLY, O_CREAT, O_APPEND)
 local mode = bit.bor(S_IRUSR, S_IWUSR, S_IRGRP, S_IROTH)
+
+
+local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 
 
 local C = ffi.C
@@ -69,6 +73,13 @@ local FileLogHandler = {
 
 
 function FileLogHandler:log(conf)
+  if conf.custom_fields_by_lua then
+    local set_serialize_value = kong.log.set_serialize_value
+    for key, expression in pairs(conf.custom_fields_by_lua) do
+      set_serialize_value(key, sandbox(expression, sandbox_opts)())
+    end
+  end
+
   local message = kong.log.serialize()
   log(conf, message)
 end

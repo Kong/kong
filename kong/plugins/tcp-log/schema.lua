@@ -13,6 +13,7 @@ return {
           { keepalive = { type = "number", default = 60000 }, },
           { tls = { type = "boolean", required = true, default = false }, },
           { tls_sni = { type = "string" }, },
+          { custom_fields_by_lua = typedefs.lua_code },
         },
     }, },
   }
