@@ -1,6 +1,19 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
 
+-- Note: remove the below hack when https://github.com/Kong/kong/pull/6952 is merged
+local stream_available, _ = pcall(require, "kong.tools.stream_api")
+
+local spec_path = debug.getinfo(1).source:match("@?(.*/)")
+
+local nginx_conf
+if stream_available then
+  nginx_conf = spec_path .. "/fixtures/prometheus/custom_nginx.template"
+else
+  nginx_conf = "./spec/fixtures/custom_nginx.template"
+end
+-- Note ends
+
 describe("Plugin: prometheus (access via status API)", function()
   local proxy_client
   local status_client
@@ -122,7 +135,7 @@ describe("Plugin: prometheus (access via status API)", function()
     }
 
     assert(helpers.start_kong {
-        nginx_conf = "spec/fixtures/custom_nginx.template",
+        nginx_conf = nginx_conf,
         plugins = "bundled, prometheus",
         status_listen = "0.0.0.0:9500",
     })

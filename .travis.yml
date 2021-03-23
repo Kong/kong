@@ -4,6 +4,9 @@ jobs:
   include:
   - name: Kong CE 2.1.x
     env: KONG_VERSION=2.1.x
+  # included for stream API subrequest
+  - name: Kong CE 2.3.x
+    env: KONG_VERSION=2.3.x
   - name: Nightly EE-master
     env: KONG_VERSION=nightly-ee POSTGRES=latest CASSANDRA=latest
   #- name: Nightly CE-master
