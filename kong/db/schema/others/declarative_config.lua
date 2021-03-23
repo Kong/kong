@@ -159,9 +159,11 @@ end
 -- (e.g. `service` as a string key in the `routes` entry).
 -- @tparam map<string,table> records A map of top-level record definitions,
 -- indexable by entity name. These records are modified in-place.
-local function nest_foreign_relationships(records, include_foreign)
+local function nest_foreign_relationships(known_entities, records, include_foreign)
   local duplicates = {}
-  for entity, record in pairs(records) do
+  for i = #known_entities, 1, -1 do
+    local entity = known_entities[i]
+    local record = records[entity]
     for _, f in ipairs(record.fields) do
       local _, fdata = next(f)
       if fdata.type == "foreign" then
@@ -189,8 +191,10 @@ local function nest_foreign_relationships(records, include_foreign)
 end
 
 
-local function reference_foreign_by_name(records)
-  for entity, record in pairs(records) do
+local function reference_foreign_by_name(known_entities, records)
+  for i = #known_entities, 1, -1 do
+    local entity = known_entities[i]
+    local record = records[entity]
     for _, f in ipairs(record.fields) do
       local fname, fdata = next(f)
       if fdata.type == "foreign" then
@@ -223,7 +227,7 @@ local function build_fields(known_entities, include_foreign)
   })
 
   local records = add_top_level_entities(fields, known_entities)
-  nest_foreign_relationships(records, include_foreign)
+  nest_foreign_relationships(known_entities, records, include_foreign)
 
   return fields, records
 end
@@ -761,7 +765,7 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
   -- with "string"-type fields only after the subschemas have been loaded,
   -- otherwise they will detect the mismatch.
   if not include_foreign then
-    reference_foreign_by_name(records)
+    reference_foreign_by_name(known_entities, records)
   end
 
   local def = {
