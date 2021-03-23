@@ -1533,6 +1533,42 @@ luassert:register("assertion", "contains", contains,
                   "assertion.contains.negative",
                   "assertion.contains.positive")
 
+local deep_sort do
+  local function deep_compare(a, b)
+    if a == nil then
+      a = ""
+    end
+
+    if b == nil then
+      b = ""
+    end
+
+    deep_sort(a)
+    deep_sort(b)
+
+    if type(a) ~= type(b) then
+      return type(a) < type(b)
+    end
+
+    if type(a) == "table" then
+      return deep_compare(a[1], b[1])
+    end
+
+    return a < b
+  end
+
+  function deep_sort(t)
+    if type(t) == "table" then
+      for _, v in pairs(t) do
+        deep_sort(v)
+      end
+      table.sort(t, deep_compare)
+    end
+
+    return t
+  end
+end
+
 
 --- Assertion to check the status-code of a http response.
 -- @function status
@@ -2778,6 +2814,7 @@ end
   make_yaml_file = make_yaml_file,
   setenv = setenv,
   unsetenv = unsetenv,
+  deep_sort = deep_sort,
 
   -- launching Kong subprocesses
   start_kong = start_kong,
