@@ -116,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         client:close()
         return res.status == 200
-      end, 10)
+      end, 20)
     end)
 
     after_each(function ()
