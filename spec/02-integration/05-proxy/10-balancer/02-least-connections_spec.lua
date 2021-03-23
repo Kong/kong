@@ -8,6 +8,19 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 
+local function get_available_port()
+  local socket = require("socket")
+  local server = assert(socket.bind("*", 0))
+  local _, port = server:getsockname()
+  server:close()
+  return port
+end
+
+
+local test_port1 = get_available_port()
+local test_port2 = get_available_port()
+
+
 -- create two servers, one double the delay of the other
 local fixtures = {
   http_mock = {
@@ -15,7 +28,7 @@ local fixtures = {
 
       server {
           server_name mock_delay_100;
-          listen 10001;
+          listen ]] .. test_port1 .. [[;
 
           location ~ "/leastconnections" {
               content_by_lua_block {
@@ -30,7 +43,7 @@ local fixtures = {
 
       server {
           server_name mock_delay_200;
-          listen 10002;
+          listen ]] .. test_port2 .. [[;
 
           location ~ "/leastconnections" {
               content_by_lua_block {
@@ -79,13 +92,13 @@ for _, strategy in helpers.each_strategy() do
 
       assert(bp.targets:insert({
         upstream = upstream1,
-        target = "127.0.0.1:10001",
+        target = "127.0.0.1:" .. test_port1,
         weight = 100,
       }))
 
       assert(bp.targets:insert({
         upstream = upstream1,
-        target = "127.0.0.1:10002",
+        target = "127.0.0.1:" .. test_port2,
         weight = 100,
       }))
 
@@ -283,7 +296,7 @@ for _, strategy in helpers.each_strategy() do
             ["Content-Type"] = "application/json",
           },
           body = {
-            target = "127.0.0.1:10001",
+            target = "127.0.0.1:" .. test_port1,
             weight = 100
           },
         }))
@@ -302,7 +315,7 @@ for _, strategy in helpers.each_strategy() do
         api_client:close()
         local found = false
         for _, entry in ipairs(body.data) do
-          if entry.target == "127.0.0.1:10001" and entry.weight == 100 then
+          if entry.target == "127.0.0.1:" .. test_port1 and entry.weight == 100 then
             found = true
             break
           end
@@ -313,7 +326,7 @@ for _, strategy in helpers.each_strategy() do
         api_client = helpers.admin_client()
         res, err = api_client:send({
           method = "DELETE",
-          path = "/upstreams/" .. an_upstream.id .. "/targets/127.0.0.1:10001",
+          path = "/upstreams/" .. an_upstream.id .. "/targets/127.0.0.1:" .. test_port1,
         })
         assert.is_nil(err)
         assert.same(204, res.status)
@@ -330,7 +343,7 @@ for _, strategy in helpers.each_strategy() do
         api_client:close()
         local found = false
         for _, entry in ipairs(body.data) do
-          if entry.target == "127.0.0.1:10001" and entry.weight == 0 then
+          if entry.target == "127.0.0.1:" .. test_port1 and entry.weight == 0 then
             found = true
             break
           end

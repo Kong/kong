@@ -18,6 +18,7 @@ local constants    = require "kong.constants"
 local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
+local declarative  = require "kong.db.declarative"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 
 
@@ -209,7 +210,7 @@ local function register_events()
 
         balancer.init()
 
-        ngx.shared.kong:incr(constants.DECLARATIVE_FLIPS.name, 1, 0, constants.DECLARATIVE_FLIPS.ttl)
+        declarative.lock()
 
         return true
       end)
@@ -1360,6 +1361,15 @@ return {
       local balancer_data = ctx.balancer_data
       balancer_data.scheme = var.upstream_scheme -- COMPAT: pdk
 
+      -- The content of var.upstream_host is only set by the router if
+      -- preserve_host is true
+      --
+      -- We can't rely on var.upstream_host for balancer retries inside
+      -- `set_host_header` because it would never be empty after the first -- balancer try
+      if var.upstream_host ~= nil and var.upstream_host ~= "" then
+        balancer_data.preserve_host = true
+      end
+
       local ok, err, errcode = balancer_execute(ctx)
       if not ok then
         local body = utils.get_default_exit_body(errcode, err)
@@ -1368,33 +1378,22 @@ return {
 
       var.upstream_scheme = balancer_data.scheme
 
-      do
-        -- set the upstream host header if not `preserve_host`
-        local upstream_host = var.upstream_host
-        local upstream_scheme = var.upstream_scheme
+      local ok, err = balancer.set_host_header(balancer_data)
+      if not ok then
+        ngx.log(ngx.ERR, "failed to set balancer Host header: ", err)
 
-        if not upstream_host or upstream_host == "" then
-          upstream_host = balancer_data.hostname
+        return ngx.exit(500)
+      end
 
-          if upstream_scheme == "http"  and balancer_data.port ~= 80 or
-             upstream_scheme == "https" and balancer_data.port ~= 443 or
-             upstream_scheme == "grpc"  and balancer_data.port ~= 80 or
-             upstream_scheme == "grpcs" and balancer_data.port ~= 443
-          then
-            upstream_host = upstream_host .. ":" .. balancer_data.port
-          end
+      -- the nginx grpc module does not offer a way to overrride the
+      -- :authority pseudo-header; use our internal API to do so
+      local upstream_host = var.upstream_host
+      local upstream_scheme = var.upstream_scheme
 
-          var.upstream_host = upstream_host
-        end
-
-        -- the nginx grpc module does not offer a way to overrride
-        -- the :authority pseudo-header; use our internal API to
-        -- do so
-        if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
-          ok, err = kong.service.request.set_header(":authority", upstream_host)
-          if not ok then
-            log(ERR, "failed to set :authority header: ", err)
-          end
+      if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
+        ok, err = kong.service.request.set_header(":authority", upstream_host)
+        if not ok then
+          log(ERR, "failed to set :authority header: ", err)
         end
       end
 

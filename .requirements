@@ -13,9 +13,9 @@ RESTY_OPENSSL_VERSION=1.1.1j
 RESTY_PCRE_VERSION=8.44
 LIBYAML_VERSION=0.2.5
 KONG_GO_PLUGINSERVER_VERSION=v0.6.1
-KONG_BUILD_TOOLS_VERSION=4.13.0
+KONG_BUILD_TOOLS_VERSION=4.14.1
 # TODO: Remove one of these KONG_BUILD_TOOLS vars (and from KD)
-KONG_BUILD_TOOLS_BRANCH=4.13.0
+KONG_BUILD_TOOLS_BRANCH=4.14.1
 
 # here go enterprise build specific ones which might or might not have the
 # same names as core for building the final package.
