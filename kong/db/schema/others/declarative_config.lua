@@ -9,7 +9,13 @@ local schema_topological_sort = require "kong.db.schema.topological_sort"
 
 
 local null = ngx.null
-
+local type = type
+local next = next
+local pairs = pairs
+local ipairs = ipairs
+local insert = table.insert
+local concat = table.concat
+local tostring = tostring
 
 local DeclarativeConfig = {}
 
@@ -33,9 +39,9 @@ function DeclarativeConfig.pk_string(schema, object)
   else
     local out = {}
     for _, k in ipairs(schema.primary_key) do
-      table.insert(out, tostring(object[k]))
+      insert(out, tostring(object[k]))
     end
-    return table.concat(out, ":")
+    return concat(out, ":")
   end
 end
 
@@ -64,12 +70,12 @@ end
 
 local function add_extra_attributes(fields, opts)
   if opts._comment then
-    table.insert(fields, {
+    insert(fields, {
       _comment = { type = "string", },
     })
   end
   if opts._ignore then
-    table.insert(fields, {
+    insert(fields, {
       _ignore = { type = "array", elements = { type = "any" } },
     })
   end
@@ -108,7 +114,7 @@ local function add_top_level_entities(fields, entities)
       _comment = true,
       _ignore = true,
     })
-    table.insert(fields, {
+    insert(fields, {
       [entity] = {
         type = "array",
         elements = records[entity],
@@ -138,7 +144,7 @@ local function copy_record(record, include_foreign, duplicates, name)
 
   if duplicates and name then
     duplicates[name] = duplicates[name] or {}
-    table.insert(duplicates[name], copy)
+    insert(duplicates[name], copy)
   end
 
   return copy
@@ -162,7 +168,7 @@ local function nest_foreign_relationships(records, include_foreign)
         local ref = fdata.reference
         -- allow nested entities
         -- (e.g. `routes` inside `services`)
-        table.insert(records[ref].fields, {
+        insert(records[ref].fields, {
           [entity] = {
             type = "array",
             elements = copy_record(record, include_foreign, duplicates, entity),
@@ -170,7 +176,7 @@ local function nest_foreign_relationships(records, include_foreign)
         })
 
         for _, dest in ipairs(duplicates[ref] or {}) do
-          table.insert(dest.fields, {
+          insert(dest.fields, {
             [entity] = {
               type = "array",
               elements = copy_record(record, include_foreign, duplicates, entity)
@@ -307,7 +313,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
           if ref and v ~= null then
             expected[entity] = expected[entity] or {}
             expected[entity][ref] = expected[entity][ref] or {}
-            table.insert(expected[entity][ref], {
+            insert(expected[entity][ref], {
               key = k,
               value = v,
               at = key or item_id or i
@@ -351,7 +357,7 @@ local function validate_references(self, input)
           errors[a][k.at] = errors[a][k.at] or {}
           local msg = "invalid reference '" .. k.key .. ": " .. k.value ..
                       "' (no such entry in '" .. b .. "')"
-          table.insert(errors[a][k.at], msg)
+          insert(errors[a][k.at], msg)
         end
       end
     end
@@ -379,12 +385,12 @@ local function build_cache_key(entity, item, schema, parent_fk, child_key)
       return nil
 
     elseif type(item[k]) == "string" then
-      table.insert(ck, item[k])
+      insert(ck, item[k])
 
     elseif item[k] == nil then
       if k == child_key then
         if parent_fk.id and next(parent_fk, "id") == nil then
-          table.insert(ck, parent_fk.id)
+          insert(ck, parent_fk.id)
         else
           -- FIXME support building cache_keys with fk's whose pk is not id
           return nil
@@ -394,11 +400,11 @@ local function build_cache_key(entity, item, schema, parent_fk, child_key)
         return nil
 
       else
-        table.insert(ck, "")
+        insert(ck, "")
       end
     end
   end
-  return table.concat(ck, ":")
+  return concat(ck, ":")
 end
 
 
