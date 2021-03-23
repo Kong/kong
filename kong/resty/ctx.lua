@@ -10,6 +10,8 @@
 --   * updated module functions signatures
 --   * made module function idempotent
 --   * replaced thrown errors with warn logs
+--   * allow passing of context
+--   * updated to work with new 1.19.x apis
 
 local ffi = require "ffi"
 local base = require "resty.core.base"
@@ -19,6 +21,19 @@ local C = ffi.C
 local ngx = ngx
 local tonumber = tonumber
 local registry = debug.getregistry()
+local subsystem = ngx.config.subsystem
+
+
+local ngx_lua_ffi_get_ctx_ref
+if subsystem == "http" then
+  ngx_lua_ffi_get_ctx_ref = C.ngx_http_lua_ffi_get_ctx_ref
+elseif subsystem == "stream" then
+  ngx_lua_ffi_get_ctx_ref = C.ngx_stream_lua_ffi_get_ctx_ref
+end
+
+
+local in_ssl_phase = ffi.new("int[1]")
+local ssl_ctx_ref = ffi.new("int[1]")
 
 
 local FFI_NO_REQ_CTX = base.FFI_NO_REQ_CTX
@@ -44,8 +59,7 @@ function _M.stash_ref(ctx)
       local _ = ngx.ctx -- load context if not previously loaded
     end
   end
-
-  local ctx_ref = C.ngx_http_lua_ffi_get_ctx_ref(r)
+  local ctx_ref = ngx_lua_ffi_get_ctx_ref(r, in_ssl_phase, ssl_ctx_ref)
   if ctx_ref == FFI_NO_REQ_CTX then
     ngx.log(ngx.WARN, "could not stash ngx.ctx ref: no ctx found")
     return
