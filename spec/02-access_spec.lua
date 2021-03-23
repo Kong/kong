@@ -4,6 +4,19 @@ local pl_file = require "pl.file"
 local TCP_SERVICE_PORT = 8189
 local TCP_PROXY_PORT = 9007
 
+-- Note: remove the below hack when https://github.com/Kong/kong/pull/6952 is merged
+local stream_available, _ = pcall(require, "kong.tools.stream_api")
+
+local spec_path = debug.getinfo(1).source:match("@?(.*/)")
+
+local nginx_conf
+if stream_available then
+  nginx_conf = spec_path .. "/fixtures/prometheus/custom_nginx.template"
+else
+  nginx_conf = "./spec/fixtures/custom_nginx.template"
+end
+-- Note ends
+
 describe("Plugin: prometheus (access)", function()
   local proxy_client
   local admin_client
@@ -71,7 +84,7 @@ describe("Plugin: prometheus (access)", function()
 
     helpers.tcp_server(TCP_SERVICE_PORT)
     assert(helpers.start_kong {
-        nginx_conf = "spec/fixtures/custom_nginx.template",
+        nginx_conf = nginx_conf,
         plugins = "bundled, prometheus",
         stream_listen = "127.0.0.1:" .. TCP_PROXY_PORT,
     })
