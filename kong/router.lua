@@ -672,6 +672,75 @@ local function index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
 end
 
 
+local function sort_routes(r1, r2)
+  if r1.submatch_weight ~= r2.submatch_weight then
+    return r1.submatch_weight > r2.submatch_weight
+  end
+
+  do
+    local r1_n_headers = #r1.headers
+    local r2_n_headers = #r2.headers
+
+    if r1_n_headers ~= r2_n_headers then
+      return r1_n_headers > r2_n_headers
+    end
+  end
+
+  do
+    local rp1 = r1.route.regex_priority or 0
+    local rp2 = r2.route.regex_priority or 0
+
+    if rp1 ~= rp2 then
+      return rp1 > rp2
+    end
+  end
+
+  if r1.max_uri_length ~= r2.max_uri_length then
+    return r1.max_uri_length > r2.max_uri_length
+  end
+
+  --if #r1.route.protocols ~= #r2.route.protocols then
+  --  return #r1.route.protocols < #r2.route.protocols
+  --end
+
+  if r1.route.created_at ~= nil and r2.route.created_at ~= nil then
+    return r1.route.created_at < r2.route.created_at
+  end
+end
+
+
+local function sort_categories(c1, c2)
+  if c1.match_weight ~= c2.match_weight then
+    return c1.match_weight > c2.match_weight
+  end
+
+  return c1.category_bit > c2.category_bit
+end
+
+
+local function sort_uris(p1, p2)
+  return #p1.value > #p2.value
+end
+
+
+local function sort_sources(r1, _)
+  for _, source in ipairs(r1.sources) do
+    if source.ip and source.port then
+      return true
+    end
+  end
+end
+
+
+local function sort_destinations(r1, _)
+  for _, destination in ipairs(r1.destinations) do
+    if destination.ip and destination.port then
+      return true
+    end
+  end
+end
+
+
 local function categorize_route_t(route_t, bit_category, categories)
   local category = categories[bit_category]
   if not category then
@@ -1238,41 +1307,7 @@ function _M.new(routes)
     -- * regex uris > plain uris
     -- * longer plain URIs > shorter plain URIs
 
-    sort(marshalled_routes, function(r1, r2)
-      if r1.submatch_weight ~= r2.submatch_weight then
-        return r1.submatch_weight > r2.submatch_weight
-      end
-
-      do
-        local r1_n_headers = #r1.headers
-        local r2_n_headers = #r2.headers
-
-        if r1_n_headers ~= r2_n_headers then
-          return r1_n_headers > r2_n_headers
-        end
-      end
-
-      do
-        local rp1 = r1.route.regex_priority or 0
-        local rp2 = r2.route.regex_priority or 0
-
-        if rp1 ~= rp2 then
-          return rp1 > rp2
-        end
-      end
-
-      if r1.max_uri_length ~= r2.max_uri_length then
-        return r1.max_uri_length > r2.max_uri_length
-      end
-
-      --if #r1.route.protocols ~= #r2.route.protocols then
-      --  return #r1.route.protocols < #r2.route.protocols
-      --end
-
-      if r1.route.created_at ~= nil and r2.route.created_at ~= nil then
-        return r1.route.created_at < r2.route.created_at
-      end
-    end)
+    sort(marshalled_routes, sort_routes)
 
     for i = 1, #marshalled_routes do
       local route_t = marshalled_routes[i]
@@ -1301,13 +1336,7 @@ function _M.new(routes)
     })
   end
 
-  sort(categories_weight_sorted, function(c1, c2)
-    if c1.match_weight ~= c2.match_weight then
-      return c1.match_weight > c2.match_weight
-    end
-
-    return c1.category_bit > c2.category_bit
-  end)
+  sort(categories_weight_sorted, sort_categories)
 
   for i, c in ipairs(categories_weight_sorted) do
     categories_lookup[c.category_bit] = i
@@ -1316,29 +1345,15 @@ function _M.new(routes)
   -- the number of categories to iterate on for this instance of the router
   local categories_len = #categories_weight_sorted
 
-  sort(prefix_uris, function(p1, p2)
-    return #p1.value > #p2.value
-  end)
+  sort(prefix_uris, sort_uris)
 
   for _, category in pairs(categories) do
     for _, routes in pairs(category.routes_by_sources) do
-      sort(routes, function(r1, r2)
-        for _, source in ipairs(r1.sources) do
-          if source.ip and source.port then
-            return true
-          end
-        end
-      end)
+      sort(routes, sort_sources)
     end
 
     for _, routes in pairs(category.routes_by_destinations) do
-      sort(routes, function(r1, r2)
-        for _, destination in ipairs(r1.destinations) do
-          if destination.ip and destination.port then
-            return true
-          end
-        end
-      end)
+      sort(routes, sort_destinations)
     end
   end
 
