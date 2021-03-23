@@ -109,7 +109,9 @@ for _, strategy in helpers.each_strategy() do
           --["Proxy-Authenticate"]  = "Basic",
           ["Proxy-Authorization"] = "Basic YWxhZGRpbjpvcGVuc2VzYW1l",
           ["TE"]                  = "trailers, deflate;q=0.5",
-          ["Transfer-Encoding"]   = "identity",
+          --["Transfer-Encoding"]   = "identity", -- Removed with OpenResty 1.19.3.1 as Nginx errors with:
+                                                  -- client sent unknown "Transfer-Encoding": "identity"
+
           -- This is a response header, so we don't remove it, should we?
           --["Trailer"]             = "Expires",
           ["Upgrade"]             = "example/1, foo/2",
