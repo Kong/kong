@@ -27,9 +27,8 @@ local fixtures = {
               content_by_lua_block {
                 local delay = 100
                 ngx.sleep(delay/1000)
-                ngx.status = 200
                 ngx.say(delay)
-                ngx.exit(0)
+                ngx.exit(200)
               }
           }
       }
@@ -42,9 +41,8 @@ local fixtures = {
               content_by_lua_block {
                 local delay = 200
                 ngx.sleep(delay/1000)
-                ngx.status = 200
                 ngx.say(delay)
-                ngx.exit(0)
+                ngx.exit(200)
               }
           }
       }
