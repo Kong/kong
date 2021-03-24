@@ -110,6 +110,22 @@ local function ws_and_rbac_helper(self)
 end
 
 
+local function validate_schema(db_entity_name, params)
+  local entity = kong.db[db_entity_name]
+  local schema = entity and entity.schema or nil
+  if not schema then
+    return kong.response.exit(404, { message = "No entity named '"
+                              .. db_entity_name .. "'" })
+  end
+  local schema = assert(Schema.new(schema))
+  local _, err_t = schema:validate(schema:process_auto_fields(params, "insert"))
+  if err_t then
+    return kong.response.exit(400, errors:schema_violation(err_t))
+  end
+  return kong.response.exit(200, { message = "schema validation successful" })
+end
+
+
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
@@ -263,24 +279,17 @@ return {
       return kong.response.exit(200, copy)
     end
   },
+  ["/schemas/plugins/validate"] = {
+    POST = function(self, db, helpers)
+      return validate_schema("plugins", self.params)
+    end
+  },
   ["/schemas/:db_entity_name/validate"] = {
     POST = function(self, db, helpers)
       local db_entity_name = self.params.db_entity_name
       -- What happens when db_entity_name is a field name in the schema?
       self.params.db_entity_name = nil
-      local entity = kong.db[db_entity_name]
-      local schema = entity and entity.schema or nil
-      if not schema then
-        return kong.response.exit(404, { message = "No entity named '"
-                                  .. db_entity_name .. "'" })
-      end
-      local schema = assert(Schema.new(schema))
-      local _, err_t = schema:validate(schema:process_auto_fields(
-                                        self.params, "insert"))
-      if err_t then
-        return kong.response.exit(400, errors:schema_violation(err_t))
-      end
-      return kong.response.exit(200, { message = "schema validation successful" })
+      return validate_schema(db_entity_name, self.params)
     end
   },
   ["/schemas/plugins/:name"] = {

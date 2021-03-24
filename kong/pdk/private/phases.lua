@@ -35,8 +35,13 @@ local PHASES = {
 
 
 do
-  local n = 0
+  local t = {}
   for k, v in pairs(PHASES) do
+    t[k] = v
+  end
+
+  local n = 0
+  for k, v in pairs(t) do
     n = n + 1
     PHASES[v] = k
   end
@@ -124,6 +129,7 @@ end
 local public_phases = setmetatable({
   request = new_phase(PHASES.rewrite,
                       PHASES.access,
+                      PHASES.response,
                       PHASES.header_filter,
                       PHASES.body_filter,
                       PHASES.log,

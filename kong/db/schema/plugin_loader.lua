@@ -71,7 +71,9 @@ local function convert_legacy_schema(name, old_schema)
             new_fdata.type = "map"
           else
             new_fdata.type = "record"
-            new_fdata.required = true
+            if new_fdata.required == nil then
+              new_fdata.required = true
+            end
           end
 
         elseif v == "array" then

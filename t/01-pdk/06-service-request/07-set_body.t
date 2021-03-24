@@ -772,9 +772,20 @@ qq{
 
         location /t {
             content_by_lua_block {
+                local inspect = require "inspect"
+                local cjson = require "cjson"
+
                 ngx.req.read_body()
+
                 local headers = ngx.req.get_headers()
-                ngx.say("body: {", tostring(ngx.req.get_body_data()), "}")
+
+                local body = ngx.req.get_body_data()
+                local json = cjson.decode(body)
+
+                ngx.say("foo: ", inspect(json.foo))
+                ngx.say("a: ", inspect(json.a))
+                ngx.say("aa: ", inspect(json.aa))
+                ngx.say("zzz: ", inspect(json.zzz))
                 ngx.say("content-length: {", tostring(headers["Content-Length"]), "}")
                 ngx.say("content-type: {", tostring(headers["Content-Type"]), "}")
             }
@@ -801,7 +812,10 @@ qq{
 --- request
 POST /t
 --- response_body
-body: {{"aa":true,"zzz":"goodbye world","foo":"hello world","a":true}}
+foo: "hello world"
+a: true
+aa: true
+zzz: "goodbye world"
 content-length: {62}
 content-type: {application/json}
 --- no_error_log
@@ -819,9 +833,19 @@ qq{
 
         location /t {
             content_by_lua_block {
+                local inspect = require "inspect"
+                local cjson = require "cjson"
+
                 ngx.req.read_body()
+
                 local headers = ngx.req.get_headers()
-                ngx.say("body: {", tostring(ngx.req.get_body_data()), "}")
+                local body = ngx.req.get_body_data()
+                local json = cjson.decode(body)
+
+                ngx.say("foo: ", inspect(json.foo))
+                ngx.say("a: ", inspect(json.a))
+                ngx.say("aa: ", inspect(json.aa))
+                ngx.say("zzz: ", inspect(json.zzz))
                 ngx.say("content-length: {", tostring(headers["Content-Length"]), "}")
                 ngx.say("content-type: {", tostring(headers["Content-Type"]), "}")
             }
@@ -848,7 +872,10 @@ qq{
 --- request
 POST /t
 --- response_body
-body: {{"aa":["zzz",true,true,"aaa"],"zzz":"goodbye world","foo":"hello world","a":true}}
+foo: "hello world"
+a: true
+aa: { "zzz", true, true, "aaa" }
+zzz: "goodbye world"
 content-length: {81}
 content-type: {application/json}
 --- no_error_log

@@ -5,6 +5,7 @@
 - [2.3.2](#232)
 - [2.3.1](#231)
 - [2.3.0](#230)
+- [2.2.2](#222)
 - [2.2.1](#221)
 - [2.2.0](#220)
 - [2.1.4](#214)
@@ -310,6 +311,26 @@ and **a Plugin Servers**.
   lead to runtime errors. [#6710](https://github.com/Kong/kong/pull/6710)
 
 [Back to TOC](#table-of-contents)
+
+
+## [2.2.2]
+
+> Released 2021/03/01
+
+This is a patch release in the 2.2 series. Being a patch release, it
+strictly contains bugfixes. The are no new features or breaking changes.
+
+### Fixes
+
+##### Plugins
+
+- `serverless-functions`: introduce a sandboxing capability, *enabled* by default,
+  where only Kong PDK, OpenResty `ngx` APIs, and some Lua standard libraries are
+  allowed. Read the documentation [here](https://docs.konghq.com/hub/kong-inc/serverless-functions/#sandboxing).
+  [#32](https://github.com/Kong/kong-plugin-serverless-functions/pull/32/)
+
+[Back to TOC](#table-of-contents)
+
 
 ## [2.2.1]
 
@@ -5839,6 +5860,7 @@ First version running with Cassandra.
 [2.3.2]: https://github.com/Kong/kong/compare/2.3.1...2.3.2
 [2.3.1]: https://github.com/Kong/kong/compare/2.3.0...2.3.1
 [2.3.0]: https://github.com/Kong/kong/compare/2.2.0...2.3.0
+[2.2.2]: https://github.com/Kong/kong/compare/2.2.1...2.2.2
 [2.2.1]: https://github.com/Kong/kong/compare/2.2.0...2.2.1
 [2.2.0]: https://github.com/Kong/kong/compare/2.1.3...2.2.0
 [2.1.4]: https://github.com/Kong/kong/compare/2.1.3...2.1.4

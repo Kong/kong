@@ -77,6 +77,7 @@ local function get_server_defs()
             config.go_pluginserver_exe, config.prefix, config.go_plugins_dir),
         info_command = ("%s -plugins-directory %q -dump-plugin-info %%q"):format(
             config.go_pluginserver_exe, config.go_plugins_dir),
+        protocol = "MsgPack:1",
       }
     end
   end
@@ -152,12 +153,15 @@ local function ask_info(server_def)
 
   local infos_dump = fd:read("*a")
   fd:close()
-  local infos = cjson_decode(infos_dump)
-  if type(infos) ~= "table" then
+  local dump = cjson_decode(infos_dump)
+  if type(dump) ~= "table" then
     error(string.format("Not a plugin info table: \n%s\n%s",
       server_def.query_command, infos_dump))
     return
   end
+
+  server_def.protocol = dump.Protocol or "MsgPack:1"
+  local infos = dump.Plugins or dump
 
   for _, plugin_info in ipairs(infos) do
     register_plugin_info(server_def, plugin_info)
