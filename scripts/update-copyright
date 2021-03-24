@@ -103,10 +103,6 @@ local HARDCODED_ROCK_LICENSES = {
     url = "https://github.com/diegonehab/luasocket/blob/master/LICENSE",
     text = MIT_LICENSE:format("Copyright © 2004-2013 Diego Nehab"),
   },
-  ["luasyslog"] = {
-    url = "https://web.archive.org/web/20101223090603/http://lua.net-core.org/sputnik.lua?p=Telesto:About",
-    text = MIT_LICENSE:format("Copyright © 2007-2007 netcore.org, DarkGod"),
-  },
   ["mimetypes"] = {
     url = "https://bitbucket.org/leafstorm/lua-mimetypes/src/default/LICENSE",
     text = MIT_LICENSE:format('Copyright (c) 2011 Matthew "LeafStorm" Frazier') ..
