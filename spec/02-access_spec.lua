@@ -121,6 +121,8 @@ describe("Plugin: prometheus (access)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
       return body:find('kong_http_status{service="mock-service",route="http-route",code="200"} 1', nil, true)
     end)
 
@@ -139,6 +141,8 @@ describe("Plugin: prometheus (access)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
       return body:find('kong_http_status{service="mock-service",route="http-route",code="400"} 1', nil, true)
     end)
   end)
@@ -162,6 +166,8 @@ describe("Plugin: prometheus (access)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
       return body:find('kong_http_status{service="mock-grpc-service",route="grpc-route",code="200"} 1', nil, true)
     end)
 
@@ -183,6 +189,8 @@ describe("Plugin: prometheus (access)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
       return body:find('kong_http_status{service="mock-grpcs-service",route="grpcs-route",code="200"} 1', nil, true)
     end)
   end)
@@ -202,6 +210,8 @@ describe("Plugin: prometheus (access)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
       return body:find('kong_stream_status{service="tcp-service",route="tcp-route",code="200"} 1', nil, true)
     end)
   end)
@@ -233,13 +243,15 @@ describe("Plugin: prometheus (access)", function()
       method  = "GET",
       path    = "/metrics",
     })
-    assert.res_status(200, res)
+    local body = assert.res_status(200, res)
 
     -- make sure no errors
     local logs = pl_file.read(test_error_log_path)
     for line in logs:gmatch("[^\r\n]+") do
       assert.not_match("[error]", line, nil, true)
     end
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
 
   it("scrape response has metrics and comments only", function()
@@ -253,6 +265,7 @@ describe("Plugin: prometheus (access)", function()
       assert.matches("^[#|kong]", line)
     end
 
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
 
   it("exposes db reachability metrics", function()
@@ -262,6 +275,8 @@ describe("Plugin: prometheus (access)", function()
     })
     local body = assert.res_status(200, res)
     assert.matches('kong_datastore_reachable 1', body, nil, true)
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
 
   it("exposes Lua worker VM stats", function()
@@ -271,6 +286,8 @@ describe("Plugin: prometheus (access)", function()
     })
     local body = assert.res_status(200, res)
     assert.matches('kong_memory_workers_lua_vms_bytes', body, nil, true)
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
 
   it("exposes lua_shared_dict metrics", function()
@@ -283,5 +300,152 @@ describe("Plugin: prometheus (access)", function()
                    '{shared_dict="prometheus_metrics"} 5242880', body, nil, true)
     assert.matches('kong_memory_lua_shared_dict_bytes' ..
                    '{shared_dict="prometheus_metrics"}', body, nil, true)
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+  end)
+
+  it("does not expose per consumer metrics by default", function()
+    local res = assert(admin_client:send {
+      method  = "GET",
+      path    = "/metrics",
+    })
+    local body = assert.res_status(200, res)
+    assert.not_match('http_consumer_status', body, nil, true)
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+  end)
+end)
+
+describe("Plugin: prometheus (access) per-consumer metrics", function()
+  local proxy_client
+  local admin_client
+
+  setup(function()
+    local bp = helpers.get_db_utils()
+
+    local service = bp.services:insert {
+      name = "mock-service",
+      host = helpers.mock_upstream_host,
+      port = helpers.mock_upstream_port,
+      protocol = helpers.mock_upstream_protocol,
+    }
+
+    local route = bp.routes:insert {
+      protocols = { "http" },
+      name = "http-route",
+      paths = { "/" },
+      methods = { "GET" },
+      service = service,
+    }
+
+    bp.plugins:insert {
+      protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
+      name = "prometheus",
+      config = {
+        per_consumer = true,
+      }
+    }
+
+    bp.plugins:insert {
+      name  = "key-auth",
+      route = route,
+    }
+
+    local consumer = bp.consumers:insert {
+      username = "alice",
+    }
+
+    bp.keyauth_credentials:insert {
+      key      = "alice-key",
+      consumer = consumer,
+    }
+
+    assert(helpers.start_kong {
+        nginx_conf = nginx_conf,
+        plugins = "bundled, prometheus",
+    })
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
+  end)
+
+  teardown(function()
+    if proxy_client then
+      proxy_client:close()
+    end
+    if admin_client then
+      admin_client:close()
+    end
+
+    helpers.stop_kong()
+  end)
+
+  it("increments the count for proxied requests", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+        apikey = 'alice-key',
+      }
+    })
+    assert.res_status(200, res)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_consumer_status{service="mock-service",route="http-route",code="200",consumer="alice"} 1', nil, true)
+    end)
+
+    res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/400",
+      headers = {
+        host = helpers.mock_upstream_host,
+        apikey = 'alice-key',
+      }
+    })
+    assert.res_status(400, res)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_consumer_status{service="mock-service",route="http-route",code="400",consumer="alice"} 1', nil, true)
+    end)
+  end)
+
+  it("behave correctly if consumer is not found", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+      }
+    })
+    assert.res_status(401, res)
+
+    local body
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      body = assert.res_status(200, res)
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="200"} 1', nil, true)
+    end)
+
+    assert.not_match('kong_http_consumer_status{service="mock-service",route="http-route",code="401",consumer="alice"} 1', body, nil, true)
+    assert.matches('kong_http_status{service="mock-service",route="http-route",code="401"} 1', body, nil, true)
+
+    assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
 end)
