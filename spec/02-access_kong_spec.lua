@@ -296,7 +296,7 @@ for _, strategy in helpers.each_strategy()do
             f1 = "value!"
           }
         })
-        assert.res_status(200, res)
+        assert.response(res).has.status(200)
 
         local res = assert(proxy_client:send {
           method = "GET",
@@ -306,7 +306,50 @@ for _, strategy in helpers.each_strategy()do
           },
           body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
         })
-        assert.res_status(400, res)
+        assert.response(res).has.status(400)
+        local body = assert.response(res).has.jsonbody()
+        assert.same({ message = "request body doesn't conform to schema" }, body)
+      end)
+
+      it("block non supported content-type with a verbose message", function()
+        local schema = [[
+          [
+            {
+              "f1": {
+                "type": "string",
+                "required": true
+              }
+            }
+          ]
+        ]]
+
+        add_plugin(admin_client, {body_schema = schema, allowed_content_types = {
+          "application/json",
+        }, verbose_response = true }, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            f1 = "value!"
+          }
+        })
+        assert.response(res).has.status(200)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/xml",
+          },
+          body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        })
+        assert.response(res).has.status(400)
+        local body = assert.response(res).has.jsonbody()
+        assert.same({ message = "specified Content-Type is not allowed" }, body)
       end)
 
       it("allows type-wildcard content-type", function()

@@ -13,6 +13,7 @@ local deserialize = require "resty.openapi3.deserializer"
 
 local EMPTY = pl_tablex.readonly({})
 local DENY_BODY_MESSAGE = "request body doesn't conform to schema"
+local DENY_BODY_MESSAGE_CT = "specified Content-Type is not allowed"
 local DENY_PARAM_MESSAGE = "request param doesn't conform to schema"
 
 local kong = kong
@@ -287,6 +288,9 @@ function RequestValidator:access(conf)
   if conf.body_schema then
     local content_type = kong.request.get_header("content-type")
     if not content_type_allowed(conf, content_type) then
+      if conf.verbose_response then
+        return kong.response.exit(400, { message = DENY_BODY_MESSAGE_CT })
+      end
       return kong.response.exit(400, { message = DENY_BODY_MESSAGE })
     end
 
