@@ -591,6 +591,17 @@ typedefs.semantic_version = Schema.define {
   },
 }
 
+local function validate_lua_expression(expression)
+  local sandbox = require "kong.tools.sandbox"
+  return sandbox.validate_safe(expression)
+end
+
+typedefs.lua_code = Schema.define {
+  type = "map",
+  keys = { type = "string", len_min = 1, },
+  values = { type = "string", len_min = 1, custom_validator = validate_lua_expression },
+}
+
 setmetatable(typedefs, {
   __index = function(_, k)
     error("schema typedef error: definition " .. k .. " does not exist", 2)

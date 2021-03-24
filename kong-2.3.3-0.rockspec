@@ -39,7 +39,7 @@ dependencies = {
   "bcrypt == 2.1",
   "lpeg_patterns == 0.5",
   "http == 0.3",
-  "lua-resty-dns-client == 5.2.2",
+  "lua-resty-dns-client == 5.2.3",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-healthcheck == 1.4.1",
   "lua-resty-cookie == 0.1.0",
@@ -52,7 +52,7 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
-  "kong-plugin-zipkin ~> 1.2",
+  "kong-plugin-zipkin ~> 1.3",
   "kong-plugin-serverless-functions ~> 2.1",
   "kong-prometheus-plugin ~> 1.1",
   "kong-proxy-cache-plugin ~> 1.3",

@@ -30,6 +30,40 @@ local function validate_periods_order(limit)
 end
 
 
+local function is_dbless()
+  local _, database, role = pcall(function()
+    return kong.configuration.database,
+           kong.configuration.role
+  end)
+
+  return database == "off" or role == "control_plane"
+end
+
+
+local policy
+if is_dbless() then
+  policy = {
+    type = "string",
+    default = "local",
+    one_of = {
+      "local",
+      "redis",
+    },
+  }
+
+else
+  policy = {
+    type = "string",
+    default = "cluster",
+    one_of = {
+      "local",
+      "cluster",
+      "redis",
+    },
+  }
+end
+
+
 return {
   name = "response-ratelimiting",
   fields = {
@@ -42,10 +76,7 @@ return {
                          default = "consumer",
                          one_of = { "consumer", "credential", "ip" },
           }, },
-          { policy = { type = "string",
-                       default = "cluster",
-                       one_of = { "local", "cluster", "redis" },
-          }, },
+          { policy = policy },
           { fault_tolerant = { type = "boolean", required = true, default = true }, },
           { redis_host = typedefs.host },
           { redis_port = typedefs.port({ default = 6379 }), },

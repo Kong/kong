@@ -196,6 +196,32 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      local service9 = bp.services:insert{
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+
+      local route9 = bp.routes:insert {
+        hosts   = { "custom_http_logging.test" },
+        service = service9
+      }
+
+      bp.plugins:insert {
+        route = { id = route9.id },
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/custom_http",
+          custom_fields_by_lua = {
+            new_field = "return 123",
+            route = "return nil", -- unset route field
+          },
+        }
+      }
+
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -247,6 +273,39 @@ for _, strategy in helpers.each_strategy() do
           return true
         end
       end, 10)
+    end)
+
+    describe("custom log values by lua", function()
+      it("logs custom values", function()
+        local res = assert(proxy_client:send({
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "custom_http_logging.test"
+          }
+        }))
+        assert.res_status(200, res)
+
+        helpers.wait_until(function()
+          local client = assert(helpers.http_client(helpers.mock_upstream_host,
+          helpers.mock_upstream_port))
+          local res = assert(client:send {
+            method  = "GET",
+            path    = "/read_log/custom_http",
+            headers = {
+              Accept = "application/json"
+            }
+          })
+          local raw = assert.res_status(200, res)
+          local body = cjson.decode(raw)
+
+          if #body.entries == 1 then
+            assert.same("127.0.0.1", body.entries[1].client_ip)
+            assert.same(123, body.entries[1].new_field)
+            return true
+          end
+        end, 10)
+      end)
     end)
 
     it("logs to HTTP (#grpc)", function()

@@ -42,6 +42,7 @@ return {
               },
             },
           } },
+          { custom_fields_by_lua = typedefs.lua_code },
         },
         custom_validator = function(config)
           -- check no double userinfo + authorization header
