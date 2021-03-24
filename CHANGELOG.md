@@ -1,6 +1,7 @@
 # Table of Contents
 
-- [1.1.0](#100---20210303)
+- [1.2.0](#120---20210324)
+- [1.1.0](#110---20210303)
 - [1.0.0](#100---20200820)
 - [0.9.0](#090---20200617)
 - [0.8.0](#080---20200424)
@@ -18,6 +19,13 @@
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
 
+
+##  [1.2.0] - 2021/03/24
+
+- Fix an issue where there's no stream listner or stream API is not avaiable,
+/metrics endpoint may timeout [#108](https://github.com/Kong/kong-plugin-prometheus/pull/108)
+- Export per-consumer status [#115](https://github.com/Kong/kong-plugin-prometheus/pull/115)
+(Thanks, [samsk](https://github.com/samsk)!)
 
 ##  [1.1.0] - 2021/03/03
 
@@ -135,6 +143,7 @@ initialized
 
 - Initial release of Prometheus plugin for Kong.
 
+[1.2.0]: https://github.com/Kong/kong-plugin-prometheus/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/Kong/kong-plugin-prometheus/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.9.0...1.0.0
 [0.9.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.8.0...0.9.0
