@@ -12,14 +12,11 @@
 
 For steps 2 - 6 above [this script](https://github.com/Kong/kong-ee/blob/master/scripts/bump-plugin) can be used.
 
-## unreleased
-
-- content-type failures are now reported as such when verbose_response is enabled
-
 ## 1.1.3
 
 - chore(*) bump openapi3-deserialiser to 1.1.0
 - tests(request-validator) add tests for header validation
+- content-type failures are now reported as such when verbose_response is enabled
 
 ## 1.1.2
 
