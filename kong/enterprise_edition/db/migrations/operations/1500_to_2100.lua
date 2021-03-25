@@ -45,6 +45,42 @@ local function postgres_list_tables(connector)
   return tables
 end
 
+local function postgres_remove_prefixes_code(entity, code)
+  if #entity.uniques > 0 then
+    local fields = {}
+    for _, f in ipairs(entity.uniques) do
+      table.insert(fields, f .. " = regexp_replace(" .. f .. ", '^(' || (SELECT string_agg(name, '|') FROM workspaces) ||'):', '')")
+    end
+
+    table.insert(code,
+      render([[
+        UPDATE $(TABLE) SET $(FIELDS);
+      ]], {
+        TABLE = entity.name,
+        FIELDS = table.concat(fields, ", "),
+      })
+    )
+  end
+end
+
+local function postgres_workspaceable_code(entity, code)
+  table.insert(code,
+    render([[
+
+      -- fixing up workspaceable rows for $(TABLE)
+
+      UPDATE $(TABLE)
+      SET ws_id = we.workspace_id
+      FROM workspace_entities we
+      WHERE entity_type='$(TABLE)'
+        AND unique_field_name='$(PK)'
+        AND unique_field_value=$(TABLE).$(PK)::text;
+    ]], {
+      TABLE = entity.name,
+      PK = entity.primary_key,
+    })
+  )
+end
 
 local function cassandra_list_tables(connector)
   local coordinator = connector:connect_migrations()
@@ -186,71 +222,65 @@ local postgres = {
       -- populate ws_id:
       -- XXX EE shared entities will pick one of the workspaces
       -- they're in.
-      local tables, err = postgres_list_tables(connector)
+      local existing_tables, err = postgres_list_tables(connector)
       if err then
         ngx.log(ngx.ERR, [[err: ]], type(err)=='string' and err or type(err))
         return nil, err
       end
 
-      if tables.workspace_entities then
-        table.insert(code,
-          render([[
-
-            -- fixing up workspaceable rows for $(TABLE)
-
-            UPDATE $(TABLE)
-            SET ws_id = we.workspace_id
-            FROM workspace_entities we
-            WHERE entity_type='$(TABLE)'
-              AND unique_field_name='$(PK)'
-              AND unique_field_value=$(TABLE).$(PK)::text;
-          ]], {
-            TABLE = entity.name,
-            PK = entity.primary_key,
-          })
-        )
+      if existing_tables.workspace_entities then
+        postgres_workspaceable_code(entity, code)
       end
 
-      -- remove prefixes:
-
-      if #entity.uniques > 0 then
-        local fields = {}
-        for _, f in ipairs(entity.uniques) do
-          table.insert(fields, f .. " = regexp_replace(" .. f .. ", '^(' || (SELECT string_agg(name, '|') FROM workspaces) ||'):', '')")
-        end
-
-        table.insert(code,
-          render([[
-            UPDATE $(TABLE) SET $(FIELDS);
-          ]], {
-            TABLE = entity.name,
-            FIELDS = table.concat(fields, ", "),
-          })
-        )
-      end
+      postgres_remove_prefixes_code(entity, code)
 
       postgres_run_query_in_transaction(connector, table.concat(code))
       log.debug("ws_fixup_workspaceable_rows: "..  entity.name .. " DONE")
     end,
 
-    -- TODO description
+    -- Used to assign the ws_id for plugins that depend on a consumer. Those
+    -- plugin entities end up with a DB constraint that requires the consumer
+    -- and any plugin entity data to exist in the same workspace. But in the
+    -- case of a shared consumer it is possible that the ws_id picked for that
+    -- consumer does not match the ws_id for the associated plugin entity from
+    -- the data in the workspace_entities table.
+    --
+    -- To avoid hitting this constraint we set the ws_id for each plugin entity
+    -- based on the associated consumer, instead of from the workspace_entities
+    -- table.
+    --
+    -- This function does not affect data on the `plugins` table but on tables
+    -- created by each installed Kong Plugin.
     ws_fixup_consumer_plugin_rows = function(_, connector, entity)
       log.debug("ws_fixup_consumer_plugin_rows: "..  entity.name)
 
       local code = {}
-      for _, unique in ipairs(entity.uniques) do
-        table.insert(code,
-          render([[
-            INSERT INTO ws_migrations_backup (entity_type, entity_id, unique_field_name, unique_field_value)
-            SELECT '$(TABLE)', $(TABLE).$(PK)::text, '$(UNIQUE)', $(TABLE).$(UNIQUE)
-            FROM $(TABLE);
-          ]], {
-            TABLE = entity.name,
-            PK = entity.primary_key,
-            UNIQUE = unique
-          })
-        )
+
+      -- customers can be in the middle of a failed 1.5 -> 2.1 migration with no
+      -- way to create the ws_migrations_backup table. In this case, proceed
+      -- with the migration to fix the customer.
+      local existing_tables, err = postgres_list_tables(connector)
+      if err then
+        ngx.log(ngx.ERR, [[err: ]], type(err)=='string' and err or type(err))
+        return nil, err
       end
+
+      if existing_tables.ws_migrations_backup then
+        for _, unique in ipairs(entity.uniques) do
+          table.insert(code,
+            render([[
+              INSERT INTO ws_migrations_backup (entity_type, entity_id, unique_field_name, unique_field_value)
+              SELECT '$(TABLE)', $(TABLE).$(PK)::text, '$(UNIQUE)', $(TABLE).$(UNIQUE)
+              FROM $(TABLE);
+            ]], {
+              TABLE = entity.name,
+              PK = entity.primary_key,
+              UNIQUE = unique
+            })
+          )
+        end
+      end
+      
       local consumer_plugin = false
       for _, fk in ipairs(entity.fks) do
         if fk.reference == "consumers" then
@@ -270,37 +300,14 @@ local postgres = {
           })
         )
       else
-        table.insert(code,
-          render([[
-            UPDATE $(TABLE)
-            SET ws_id = we.workspace_id
-            FROM workspace_entities we
-            WHERE entity_type='$(TABLE)'
-              AND unique_field_name='$(PK)'
-              AND unique_field_value=$(TABLE).$(PK)::text;
-          ]], {
-            TABLE = entity.name,
-            PK = entity.primary_key,
-          })
-        )
-      end
-
-      -- remove prefixes:
-      if #entity.uniques > 0 then
-        local fields = {}
-        for _, f in ipairs(entity.uniques) do
-          table.insert(fields, f .. " = regexp_replace(" .. f .. ", '^(' || (SELECT string_agg(name, '|') FROM workspaces) ||'):', '')")
+        -- If this is not a consumer based plugin, fall back to existing
+        -- behavior for setting ws_id from workspace_entities table.
+        if existing_tables.workspace_entities then
+          postgres_workspaceable_code(entity, code)
         end
-
-        table.insert(code,
-          render([[
-            UPDATE $(TABLE) SET $(FIELDS);
-          ]], {
-            TABLE = entity.name,
-            FIELDS = table.concat(fields, ", "),
-          })
-        )
       end
+
+      postgres_remove_prefixes_code(entity, code)
 
       postgres_run_query_in_transaction(connector, table.concat(code))
       log.debug("ws_fixup_consumer_plugin_rows: "..  entity.name .. " DONE")
