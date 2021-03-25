@@ -625,6 +625,7 @@ local CONF_INFERENCES = {
 
   kic = { typ = "boolean" },
   pluginserver_names = { typ = "array" },
+  protobuf_includes = { typ = "array" },
 
   untrusted_lua = { enum = { "on", "off", "sandbox" } },
   untrusted_lua_sandbox_requires = { typ = "array" },

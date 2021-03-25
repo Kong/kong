@@ -137,6 +137,9 @@
                                                             # dump info of all plugins it
                                                             # manages
 
+#protobuf_includes = /usr/include   # Comma-separated list of directories to search for
+                                    # Protocol Buffers definition files.
+
 #port_maps =                     # With this configuration parameter, you can
                                  # let the Kong to know about the port from
                                  # which the packets are forwarded to it. This

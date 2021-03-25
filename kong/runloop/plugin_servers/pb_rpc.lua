@@ -211,7 +211,10 @@ local function load_service()
   local p = protoc.new()
   --p:loadfile("kong/pluginsocket.proto")
 
-  p:addpath("/usr/include")
+  for _, path in ipairs(kong.configuration.protobuf_includes) do
+    kong.log.notice("ProtoBuf include path: ", path)
+    p:addpath(path)
+  end
   local parsed = p:parsefile("kong/pluginsocket.proto")
 
   local service = {}
