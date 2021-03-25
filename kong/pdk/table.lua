@@ -55,8 +55,10 @@ end
 --- Merges the contents of two tables together, producing a new one.
 -- The entries of both tables are copied non-recursively to the new one.
 -- If both tables have the same key, the second one takes precedence.
--- @tparam table t1 The first table
--- @tparam table t2 The second table
+-- If only one table is given, it returns a copy.
+-- @function kong.table.merge
+-- @tparam[opt] table t1 The first table
+-- @tparam[opt] table t2 The second table
 -- @treturn table The (new) merged table
 -- @usage
 -- local t1 = {1, 2, 3, foo = "f"}
