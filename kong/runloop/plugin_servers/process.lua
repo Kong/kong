@@ -224,7 +224,7 @@ local function grab_logs(proc, name)
       raw_log(ngx_INFO, prefix .. line)
     end
 
-    if not data and err == "closed" then
+    if not data and (err == "closed" or ngx.worker.exiting()) then
       return
     end
   end
@@ -249,7 +249,7 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
     while true do
       grab_logs(server_def.proc, server_def.name)
       local ok, reason, status = server_def.proc:wait()
-      if ok ~= nil or reason == "exited" then
+      if ok ~= nil or reason == "exited" or ngx.worker.exiting() then
         kong.log.notice("external pluginserver '", server_def.name, "' terminated: ", tostring(reason), " ", tostring(status))
         break
       end
