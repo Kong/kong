@@ -1564,6 +1564,42 @@ luassert:register("assertion", "contains", contains,
                   "assertion.contains.negative",
                   "assertion.contains.positive")
 
+local deep_sort do
+  local function deep_compare(a, b)
+    if a == nil then
+      a = ""
+    end
+
+    if b == nil then
+      b = ""
+    end
+
+    deep_sort(a)
+    deep_sort(b)
+
+    if type(a) ~= type(b) then
+      return type(a) < type(b)
+    end
+
+    if type(a) == "table" then
+      return deep_compare(a[1], b[1])
+    end
+
+    return a < b
+  end
+
+  function deep_sort(t)
+    if type(t) == "table" then
+      for _, v in pairs(t) do
+        deep_sort(v)
+      end
+      table.sort(t, deep_compare)
+    end
+
+    return t
+  end
+end
+
 
 --- Assertion to check the status-code of a http response.
 -- @function status
@@ -2643,7 +2679,7 @@ end
 -- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
 -- are required.
 -- Other fields that can be overwritten are:
--- `node_hostname`, `node_id`, `node_version`. If absent,
+-- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
 -- they are automatically filled.
 -- @return msg if handshake succeeded and initial message received from CP or nil, err
 local function clustering_client(opts)
@@ -2658,14 +2694,14 @@ local function clustering_client(opts)
               "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
               "&node_version=" .. (opts.node_version or KONG_VERSION)
 
-  local opts = {
+  local conn_opts = {
     ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
     client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
     client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
     server_name = "kong_clustering",
   }
 
-  local res, err = c:connect(uri, opts)
+  local res, err = c:connect(uri, conn_opts)
   if not res then
     return nil, err
   end
@@ -2673,13 +2709,12 @@ local function clustering_client(opts)
                                         plugins = opts.node_plugins_list or
                                                   PLUGINS_LIST,
                                       }))
-
   assert(c:send_binary(payload))
 
   assert(c:send_ping(string.rep("0", 32)))
 
-  local data, typ
-  data, typ = c:recv_frame()
+  local data, typ, err
+  data, typ, err = c:recv_frame()
   c:close()
 
   if typ == "binary" then
@@ -2691,7 +2726,7 @@ local function clustering_client(opts)
     return "PONG"
   end
 
-  return nil, "unknown frame from CP: " .. typ
+  return nil, "unknown frame from CP: " .. (typ or err)
 end
 
 
@@ -2809,6 +2844,7 @@ end
   make_yaml_file = make_yaml_file,
   setenv = setenv,
   unsetenv = unsetenv,
+  deep_sort = deep_sort,
 
   -- launching Kong subprocesses
   start_kong = start_kong,

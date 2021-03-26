@@ -87,6 +87,7 @@ local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
 local cache_warmup = require "kong.cache.warmup"
 local balancer_execute = require("kong.runloop.balancer").execute
+local balancer_set_host_header = require("kong.runloop.balancer").set_host_header
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
@@ -734,11 +735,10 @@ end
 
 
 function Kong.ssl_certificate()
+  local ctx = ngx.ctx
+
   kong_global.set_phase(kong, PHASES.certificate)
 
-  -- this doesn't really work across the phases currently (OpenResty 1.13.6.2),
-  -- but it returns a table (rewrite phase clears it)
-  local ctx = ngx.ctx
   log_init_worker_errors(ctx)
 
   -- this is the first phase to run on an HTTPS request
@@ -989,6 +989,13 @@ function Kong.balancer()
       ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
       return ngx.exit(errcode)
+    end
+
+    ok, err = balancer_set_host_header(balancer_data)
+    if not ok then
+      ngx_log(ngx_ERR, "failed to set balancer Host header: ", err)
+
+      return ngx.exit(500)
     end
 
   else

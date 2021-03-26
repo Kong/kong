@@ -984,7 +984,7 @@ describe("NGINX conf compiler", function()
             local handle = io.popen("ls -l " .. conf[prefix .. "ssl_cert_default" .. suffix])
             local result = handle:read("*a")
             handle:close()
-            assert.matches("-rw-r--r--", result, nil, true)
+            assert.matches("%-rw%-r[-w]%-r%-%-", result, nil, false)
 
             handle = io.popen("ls -l " .. conf[prefix .. "ssl_cert_key_default" .. suffix])
             result = handle:read("*a")

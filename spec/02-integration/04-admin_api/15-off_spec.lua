@@ -881,6 +881,11 @@ describe("Admin API #off", function()
 
       local body = assert.response(res).has.status(200)
       local json = cjson.decode(body)
+
+      table.sort(json.data, function(t1, t2)
+        return t1.target < t2.target
+      end)
+
       assert.same("10.20.30.40:8000", json.data[1].target)
       assert.same("50.60.70.80:90", json.data[2].target)
 

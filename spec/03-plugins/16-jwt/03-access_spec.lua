@@ -846,8 +846,8 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "jwt3.com"
           }
         })
-        local body = assert.res_status(401, res)
-        assert.equal('{"nbf":"must be a number","exp":"must be a number"}', body)
+        local body = cjson.decode(assert.res_status(401, res))
+        assert.same({ nbf="must be a number", exp="must be a number" }, body)
       end)
       it("checks if the fields are valid: `exp` claim", function()
         local payload = {
