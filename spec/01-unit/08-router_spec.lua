@@ -1417,6 +1417,82 @@ describe("Router", function()
       end)
     end)
 
+    describe("normalization stopgap measurements", function()
+      local use_case = {
+        -- percent encoding with unreserved char, route should be plain text
+        {
+          service = service,
+          route   = {
+            paths = {
+              "/plain/a.b%2Ec", -- /plain/a.b.c
+            },
+          },
+        },
+        -- regex
+        {
+          service = service,
+          route   = {
+            paths = {
+              "/reg%65x/\\d+", -- /regex/\d+
+            },
+          },
+        },
+        {
+          service = service,
+          route   = {
+            paths = {
+              "/regex-meta/%5Cd\\+%2E", -- /regex/\d+.
+            },
+          },
+        },
+        {
+          service = service,
+          route   = {
+            paths = {
+              "/regex-reserved%2Fabc", -- /regex-reserved/abc
+            },
+          },
+        },
+      }
+      local router = assert(Router.new(use_case))
+
+      it("matches against plain text paths", function()
+        local match_t = router.select("GET", "/plain/a.b.c", "example.com")
+        assert.truthy(match_t)
+        assert.same(use_case[1].route, match_t.route)
+
+        match_t = router.select("GET", "/plain/aab.c", "example.com")
+        assert.falsy(match_t)
+      end)
+
+      it("matches against regex paths", function()
+        local match_t = router.select("GET", "/regex/123", "example.com")
+        assert.truthy(match_t)
+        assert.same(use_case[2].route, match_t.route)
+
+        match_t = router.select("GET", "/regex/\\d+", "example.com")
+        assert.falsy(match_t)
+      end)
+
+      it("escapes meta character after percent decoding from regex paths", function()
+        local match_t = router.select("GET", "/regex-meta/123a", "example.com")
+        assert.falsy(match_t)
+
+        match_t = router.select("GET", "/regex-meta/\\d+.", "example.com")
+        assert.truthy(match_t)
+        assert.same(use_case[3].route, match_t.route)
+      end)
+
+      it("leave reserved characters alone in regex paths", function()
+        local match_t = router.select("GET", "/regex-reserved/abc", "example.com")
+        assert.falsy(match_t)
+
+        match_t = router.select("GET", "/regex-reserved%2Fabc", "example.com")
+        assert.truthy(match_t)
+        assert.same(use_case[4].route, match_t.route)
+      end)
+    end)
+
     describe("edge-cases", function()
       it("[host] and [uri] have higher priority than [method]", function()
         local use_case = {
