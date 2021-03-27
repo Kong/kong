@@ -54,6 +54,9 @@
                                                  # If this value is a relative path,
                                                  # it will be placed under the
                                                  # `prefix` location.
+                                                 # `basic` is defined as `'$remote_addr [$time_local] '
+                                                 # '$protocol $status $bytes_sent $bytes_received '
+                                                 # '$session_time'`
 
 #proxy_stream_error_log = logs/error.log         # Path for tcp streams proxy port request error
                                                  # logs. The granularity of these logs
