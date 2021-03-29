@@ -111,6 +111,10 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       hosts = { "test26.test" }
     })
 
+    local route27 = bp.routes:insert({
+      hosts = { "test27.test" }
+    })
+
     bp.plugins:insert {
       route = { id = route1.id },
       name = "request-transformer",
@@ -425,6 +429,16 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
         },
         replace = {
           headers = {"x-to-Replace:false"},
+        }
+      }
+    }
+
+    bp.plugins:insert {
+      route = { id = route27.id },
+      name = "request-transformer",
+      config = {
+        replace = {
+          uri = "/requests/tést",
         }
       }
     }
@@ -1139,6 +1153,20 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.request(r).has.no.queryparam("q1")
       local value = assert.request(r).has.queryparam("q2")
       assert.equals("v2", value)
+    end)
+
+    pending("escape UTF-8 characters when replacing upstream path - enable after Kong 2.4", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/requests/wrong_path",
+        headers = {
+          host = "test27.test"
+        }
+      })
+      assert.response(r).has.status(200)
+      local body = assert(assert.response(r).has.jsonbody())
+      assert.equals(helpers.mock_upstream_url ..
+                    "/requests/t%C3%A9st", body.url)
     end)
   end)
 
