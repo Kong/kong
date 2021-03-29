@@ -30,6 +30,14 @@ $ curl http://localhost:8001/plugins -d name=prometheus
 
 ### Scraping metrics
 
+#### Via Kong's Status API
+
+Metrics are available on the status API at `/metrics` endpoint:
+```
+curl http://localhost:800x/metrics
+```
+This is the preferred method.
+
 #### Via Kong's Admin API
 
 Metrics are available on the admin API at `/metrics` endpoint:
