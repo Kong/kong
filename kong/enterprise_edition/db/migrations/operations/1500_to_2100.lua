@@ -468,7 +468,7 @@ local cassandra = {
 
         -- if consumer entity then match it's ws_id with consumers ws_id
         if row['consumer_id'] then
-          ws_id = ws_id or connector:query(render([[
+          ws_id = connector:query(render([[
               SELECT ws_id FROM $(KEYSPACE).consumers
               WHERE id = '$(ID)';
             ]], {
