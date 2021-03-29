@@ -95,9 +95,9 @@ local function cassandra_list_tables(connector)
     ]], connector.keyspace)
   else
     cql = fmt([[
-      SELECT columnfamily_name 
+      SELECT columnfamily_name
         FROM system.schema_columnfamilies
-      WHERE keyspace_name='%s'; 
+      WHERE keyspace_name='%s';
     ]], connector.keyspace)
   end
 
@@ -280,7 +280,7 @@ local postgres = {
           )
         end
       end
-      
+
       local consumer_plugin = false
       for _, fk in ipairs(entity.fks) do
         if fk.reference == "consumers" then
@@ -444,6 +444,76 @@ local cassandra = {
     end,
 
     ws_fixup_consumer_plugin_rows = function(_, connector, entity)
+      local code = {}
+
+      local ws_prefix_fixups = cassandra_get_prefix_fixups_table(connector)
+      local tables = cassandra_list_tables(connector)
+
+      cassandra_foreach_row(connector, entity.name, function(row)
+        local ws_name, ws_id
+        local fields = {}
+
+        for _, f in ipairs(entity.uniques) do
+          local value = row[f]
+          if row[f] then
+            local colon_pos = row[f]:find(":")
+            if colon_pos then
+              ws_name = ws_name or row[f]:sub(1, colon_pos)
+              value = string.gsub(row[f], "^[^:]+:", ws_prefix_fixups)
+            end
+
+            table.insert(fields, fmt("%s = '%s'", f, value))
+          end
+        end
+
+        -- if consumer entity then match it's ws_id with consumers ws_id
+        if row['consumer_id'] then
+          ws_id = ws_id or connector:query(render([[
+              SELECT ws_id FROM $(KEYSPACE).consumers
+              WHERE id = '$(ID)';
+            ]], {
+            KEYSPACE = connector.keyspace,
+            ID = row['consumer_id'],
+          }))
+        end
+
+        if not ws_name and tables.workspace_entities then
+          -- assumes that primary keys are 'id',
+          -- which is currently true for all workspaceable entities
+          ws_name = ws_name or connector:query(render([[
+            SELECT workspace_name FROM $(KEYSPACE).workspace_entities
+            WHERE entity_id = '$(ID)' LIMIT 1 ALLOW FILTERING;
+          ]], {
+              KEYSPACE = connector.keyspace,
+              ID = row[entity.primary_key],
+            }))
+
+          ws_name = ws_name                and
+            ws_name[1]             and
+            ws_name[1].workspace_name and
+            ws_name[1].workspace_name .. ":"
+        end
+        if not ws_name or not ws_prefix_fixups[ws_name] then
+          -- data is already adjusted, bail out
+          return
+        end
+
+        table.insert(fields, "ws_id = " .. (ws_id and ws_id or ws_prefix_fixups[ws_name]:sub(1, -2)))
+
+        table.insert(code, render([[
+          UPDATE $(KEYSPACE).$(TABLE) SET $(FIELDS) WHERE id = $(ID) $(PARTITION);
+        ]], {
+          KEYSPACE = connector.keyspace,
+          TABLE = entity.name,
+          FIELDS = table.concat(fields, ", "),
+          ID = row[entity.primary_key],
+          PARTITION = cassandra_table_is_partitioned(connector, entity.name)
+            and fmt([[ AND partition = '%s']], entity.name)
+            or "",
+        }))
+      end)
+
+      connector:query(table.concat(code, ";\n"))
     end,
 
     ws_clean_kong_admin_rbac_user = function(_, connector)
@@ -549,7 +619,7 @@ local cassandra = {
         return connector:query(render([[
           SELECT * FROM system.schema_columns
           WHERE keyspace_name='$(KEYSPACE)'
-            AND columnfamily_name='workspace_entities'; 
+            AND columnfamily_name='workspace_entities';
         ]], {
           KEYSPACE = connector.keyspace,
         }))
