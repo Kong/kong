@@ -10,8 +10,6 @@ local cjson = require "cjson.safe"
 local runloop_handler = require "kong.runloop.handler"
 local sandbox = require "kong.tools.sandbox"
 
-local BasePlugin = require "kong.plugins.base_plugin"
-
 local PLUGIN_NAME    = require("kong.plugins.exit-transformer").PLUGIN_NAME
 local PLUGIN_VERSION = require("kong.plugins.exit-transformer").PLUGIN_VERSION
 
@@ -60,22 +58,14 @@ local function get_conf()
   return nil
 end
 
-local _M = BasePlugin:extend()
+local _M = {}
 
 _M.PRIORITY = 9999
 _M.VERSION = PLUGIN_VERSION
 
-function _M:new()
-  _M.super.new(self, PLUGIN_NAME)
-end
-
 function _M:init_worker()
   kong.response.register_hook("exit", self.exit, self)
   kong.response.register_hook("send", self.exit, self)
-end
-
-function _M:access(conf)
-  _M.super.access(self)
 end
 
 
@@ -107,11 +97,11 @@ local function get_functions(conf)
   return functions
 end
 
+function _M:access() end
+
 function _M:exit(status, body, headers)
   -- Do not transform already transformed requests
-  -- we can either set up something on our own context, like
-  -- ngx.ctx.hooked_exit = true or trust this one set by the response module.
-  if ngx.ctx.KONG_EXITED then
+  if ngx.ctx.exit_transformed then
     return status, body, headers
   end
 
@@ -122,6 +112,7 @@ function _M:exit(status, body, headers)
 
   -- Try to get plugin configuration for current context
   local conf = get_conf()
+
   if not conf then
     return status, body, headers
   end
