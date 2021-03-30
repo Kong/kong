@@ -212,6 +212,7 @@ local function load_service()
   --p:loadfile("kong/pluginsocket.proto")
 
   p:addpath("/usr/include")
+  p:addpath("/usr/local/opt/protobuf/include/")
   local parsed = p:parsefile("kong/pluginsocket.proto")
 
   local service = {}
