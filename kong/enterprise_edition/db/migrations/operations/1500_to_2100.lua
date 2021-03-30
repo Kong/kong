@@ -494,7 +494,7 @@ local cassandra = {
 
     ws_set_default_ws_for_admin_entities = function(_, connector)
       local coordinator = connector:connect_migrations()
-      local entities = { "rbac_user", "consumer" }
+      local entities = { "rbac_user" }
 
       local default_ws, err = connector:query(render([[
         SELECT id FROM $(KEYSPACE).workspaces
