@@ -56,8 +56,9 @@ local function get_server_defs()
   if not _servers then
     _servers = {}
 
-    if config.pluginserver_names then
+    if config.pluginserver_names[1] then
       for i, name in ipairs(config.pluginserver_names) do
+        name = name:lower()
         kong.log.debug("search config for pluginserver named: ", name)
         local env_prefix = "pluginserver_" .. name:gsub("-", "_")
         _servers[i] = {
