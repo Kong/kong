@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixed
+
+- exit functions running twice per response.
+
 ## 0.3.1
 
 ### Fixed

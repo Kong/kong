@@ -108,6 +108,13 @@ local function get_functions(conf)
 end
 
 function _M:exit(status, body, headers)
+  -- Do not transform already transformed requests
+  -- we can either set up something on our own context, like
+  -- ngx.ctx.hooked_exit = true or trust this one set by the response module.
+  if ngx.ctx.KONG_EXITED then
+    return status, body, headers
+  end
+
   -- Do not transform admin requests
   if not ngx.ctx.is_proxy_request then
     return status, body, headers
@@ -133,6 +140,8 @@ function _M:exit(status, body, headers)
   for _, fn in ipairs(functions) do
     status, body, headers = fn(status, body, headers)
   end
+
+  ngx.ctx.exit_transformed = true
 
   return status, body, headers
 end

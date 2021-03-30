@@ -143,6 +143,55 @@ for _, strategy in helpers.each_strategy() do
         name = "key-auth",
         route = { id = route6.id },
       }
+
+
+      -- Add a plugin that generates a kong.response.exit on access phase, to
+      -- make sure the exit hook runs only once
+
+      local route7 = bp.routes:insert {
+        hosts = { "test7.com" },
+      }
+
+      bp.plugins:insert {
+        name = "pre-function",
+        route = { id = route7.id },
+        -- access phase uses delayed response
+        config = { access = { [[ return function()
+          kong.response.exit(418, { count = 0 })
+        end ]] } }
+      }
+
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = route7.id },
+        config = { functions = { [[ return function(status, body, headers)
+          return status, { count = body.count + 1 }, headers
+        end ]] } },
+      }
+
+      -- Add a plugin that generates a kong.response.exit on a phase that does
+      -- not use delayed response
+
+      local route8 = bp.routes:insert {
+        hosts = { "test8.com" },
+      }
+
+      bp.plugins:insert {
+        name = "pre-function",
+        route = { id = route8.id },
+        config = { header_filter = { [[ return function()
+          kong.response.exit(418, { count = 0 })
+        end ]] } }
+      }
+
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = route8.id },
+        config = { functions = { [[ return function(status, body, headers)
+          return status, { count = body.count + 1 }, headers
+        end ]] } },
+      }
+
       -- start kong
       assert(helpers.start_kong(conf))
     end)
@@ -259,6 +308,37 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = res:read_body()
         assert.equal("hello world", body)
+      end)
+
+      -- https://konghq.atlassian.net/browse/FTI-2412
+      -- XXX honestly, we want this to happen for _any_ phase
+      -- OTT: seems busted does not accept tags with dashes.
+      describe("does run the exit hook only once #FTI2412", function()
+        it("on delayed responses", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/request",  -- makes mockbin return the entire request
+            headers = {
+              host = "test7.com",
+              something = "hello world",
+            }
+          })
+          local body = assert.response(res).has.status(418)
+          assert.equal("{\"count\":1}", body)
+        end)
+
+        it("on non delayed responses", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/request",  -- makes mockbin return the entire request
+            headers = {
+              host = "test8.com",
+              something = "hello world",
+            }
+          })
+          local body = assert.response(res).has.status(418)
+          assert.equal("{\"count\":1}", body)
+        end)
       end)
     end) end end)
   end)
