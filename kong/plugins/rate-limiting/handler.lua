@@ -47,7 +47,7 @@ local RateLimitingHandler = {}
 
 
 RateLimitingHandler.PRIORITY = 901
-RateLimitingHandler.VERSION = "2.2.1"
+RateLimitingHandler.VERSION = "2.2.2"
 
 
 local function get_identifier(conf)

@@ -7,6 +7,8 @@ local concat = table.concat
 local pairs = pairs
 local floor = math.floor
 local fmt = string.format
+local tonumber = tonumber
+local tostring = tostring
 
 
 local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
@@ -74,10 +76,17 @@ return {
           len = len + 1
           buf[len] = fmt([[
             INSERT INTO "ratelimiting_metrics" ("identifier", "period", "period_date", "service_id", "route_id", "value", "ttl")
-                 VALUES ('%s', '%s', TO_TIMESTAMP('%s') AT TIME ZONE 'UTC', '%s', '%s', %d, CURRENT_TIMESTAMP AT TIME ZONE 'UTC' + INTERVAL '%d second')
+                 VALUES (%s, %s, TO_TIMESTAMP(%s) AT TIME ZONE 'UTC', %s, %s, %s, CURRENT_TIMESTAMP AT TIME ZONE 'UTC' + INTERVAL %s)
             ON CONFLICT ("identifier", "period", "period_date", "service_id", "route_id") DO UPDATE
                     SET "value" = "ratelimiting_metrics"."value" + EXCLUDED."value"
-          ]], identifier, period, floor(period_date / 1000), service_id, route_id, value, EXPIRATION[period])
+          ]],
+            connector:escape_literal(identifier),
+            connector:escape_literal(period),
+            connector:escape_literal(tonumber(fmt("%.3f", floor(period_date / 1000)))),
+            connector:escape_literal(service_id),
+            connector:escape_literal(route_id),
+            connector:escape_literal(value),
+            connector:escape_literal(tostring(EXPIRATION[period]) .. " second"))
         end
       end
 
