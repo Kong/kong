@@ -1,4 +1,4 @@
-    - text: Plugin Development Kit
+    - text: Plugin Development Guide
       url: $(base_url)
       items:
 # for _, mod in ipairs(modules) do

@@ -1,5 +1,5 @@
 project = "kong"
-title = "Plugin Development Kit"
+title = "Plugin Development Guide"
 format = "markdown"
 backtick_references = false
 no_lua_ref = true
