@@ -34,6 +34,11 @@ function RequestTerminationHandler:access(conf)
 
     content = {
       message = conf.message or DEFAULT_RESPONSE[status],
+      kong = {
+        node_id = kong.node.get_id(),
+        worker_pid = ngx.worker.pid(),
+        hostname = kong.node.get_hostname(),
+      },
       request = {
         scheme = kong.request.get_scheme(),
         host = kong.request.get_host(),
