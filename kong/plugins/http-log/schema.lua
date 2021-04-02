@@ -17,7 +17,8 @@ return {
           { retry_count = { type = "integer", default = 10 }, },
           { queue_size = { type = "integer", default = 1 }, },
           { flush_timeout = { type = "number", default = 2 }, },
-          { headers = typedefs.headers {
+          { headers = {
+            type = "map",
             keys = typedefs.header_name {
               match_none = {
                 {
@@ -34,7 +35,10 @@ return {
                 },
               },
             },
-          } },
+            values = {
+              type = "string",
+            },
+          }},
           { custom_fields_by_lua = typedefs.lua_code },
         },
         custom_validator = function(config)
