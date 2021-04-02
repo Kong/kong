@@ -299,6 +299,8 @@ build = {
 
     ["kong.plugins.http-log.handler"] = "kong/plugins/http-log/handler.lua",
     ["kong.plugins.http-log.schema"] = "kong/plugins/http-log/schema.lua",
+    ["kong.plugins.http-log.migrations"] = "kong/plugins/http-log/migrations/init.lua",
+    ["kong.plugins.http-log.migrations.001_230_to_240"] = "kong/plugins/http-log/migrations/001_230_to_240.lua",
 
     ["kong.plugins.file-log.handler"] = "kong/plugins/file-log/handler.lua",
     ["kong.plugins.file-log.schema"] = "kong/plugins/file-log/schema.lua",
