@@ -67,7 +67,9 @@ local function load_subsystems(db, plugin_names)
       for _, plugin_name in ipairs(sorted_plugin_names) do
         local namespace = ss.namespace:gsub("%*", plugin_name)
 
-        local ok, mig_idx = utils.load_module_if_exists(namespace)
+        -- explicitly load using ".init" since "/?/init.lua" isn't always in a
+        -- Lua-path by default, see https://github.com/Kong/kong/issues/6867
+        local ok, mig_idx = utils.load_module_if_exists(namespace .. ".init")
         if ok then
           if type(mig_idx) ~= "table" then
             return nil, fmt_err(db, "migrations index from '%s' must be a table",
