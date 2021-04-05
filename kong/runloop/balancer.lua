@@ -536,6 +536,7 @@ end
 
 local function load_upstreams_dict_into_memory()
   local upstreams_dict = {}
+  local found = nil
 
   -- build a dictionary, indexed by the upstream name
   for up, err in singletons.db.upstreams:each(nil, GLOBAL_QUERY_OPTS) do
@@ -545,9 +546,10 @@ local function load_upstreams_dict_into_memory()
     end
 
     upstreams_dict[up.ws_id .. ":" .. up.name] = up.id
+    found = true
   end
 
-  return upstreams_dict
+  return found and upstreams_dict
 end
 _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
 
@@ -923,9 +925,8 @@ local function init()
     return
   end
 
-  local opts = { neg_ttl = 10 }
-  local upstreams_dict, err = singletons.core_cache:get("balancer:upstreams",
-                                      opts, load_upstreams_dict_into_memory)
+  local upstreams_dict, err = get_all_upstreams()
+
   if err then
     log(CRIT, "failed loading list of upstreams: ", err)
     return
