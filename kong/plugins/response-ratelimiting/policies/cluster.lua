@@ -7,6 +7,7 @@ local concat = table.concat
 local pairs = pairs
 local floor = math.floor
 local fmt = string.format
+local tonumber = tonumber
 
 
 return {
@@ -79,10 +80,16 @@ return {
         len = len + 1
         buf[len] = fmt([[
           INSERT INTO "response_ratelimiting_metrics" ("identifier", "period", "period_date", "service_id", "route_id", "value")
-               VALUES ('%s', '%s_%s', TO_TIMESTAMP('%s') AT TIME ZONE 'UTC', '%s', '%s', %d)
+               VALUES (%s, %s, TO_TIMESTAMP(%s) AT TIME ZONE 'UTC', %s, %s, %s)
           ON CONFLICT ("identifier", "period", "period_date", "service_id", "route_id") DO UPDATE
                   SET "value" = "response_ratelimiting_metrics"."value" + EXCLUDED."value";
-        ]], identifier, name, period, floor(period_date / 1000), service_id, route_id, value)
+        ]],
+          connector:escape_literal(identifier),
+          connector:escape_literal(fmt("%s_%s", name, period)),
+          connector:escape_literal(tonumber(fmt("%.3f", floor(period_date / 1000)))),
+          connector:escape_literal(service_id),
+          connector:escape_literal(route_id),
+          connector:escape_literal(value))
       end
 
       if len > 1 then
@@ -109,12 +116,17 @@ return {
       local q = fmt([[
         SELECT "value"
           FROM "response_ratelimiting_metrics"
-         WHERE "identifier" = '%s'
-           AND "period" = '%s_%s'
-           AND "period_date" = TO_TIMESTAMP('%s') AT TIME ZONE 'UTC'
-           AND "service_id" = '%s'
-           AND "route_id" = '%s'
-      ]], identifier, name, period, floor(periods[period] / 1000), service_id, route_id)
+         WHERE "identifier" = %s
+           AND "period" = %s
+           AND "period_date" = TO_TIMESTAMP(%s) AT TIME ZONE 'UTC'
+           AND "service_id" = %s
+           AND "route_id" = %s
+      ]],
+        connector:escape_literal(identifier),
+        connector:escape_literal(fmt("%s_%s", name, period)),
+        connector:escape_literal(tonumber(fmt("%.3f", floor(periods[period] / 1000)))),
+        connector:escape_literal(service_id),
+        connector:escape_literal(route_id))
 
       local res, err = connector:query(q)
       if not res then

@@ -1,6 +1,4 @@
 local typedefs = require "kong.db.schema.typedefs"
-local normalize = require("kong.tools.uri").normalize
-local ipairs = ipairs
 
 
 return {
@@ -65,18 +63,4 @@ return {
                       then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls'",
                     }},
                   },
-
-  -- TODO: add migrations and remove this in 2.4.0
-  transformations = {
-    {
-      input = { "paths" },
-      on_read = function(paths)
-        for i, uri in ipairs(paths) do
-          paths[i] = normalize(paths[i], true)
-        end
-
-        return { paths = paths, }
-      end,
-    },
-  },
 }
