@@ -213,7 +213,11 @@ local function load_service()
 
   p:addpath("/usr/include")
   p:addpath("/usr/local/opt/protobuf/include/")
-  local parsed = p:parsefile("kong/pluginsocket.proto")
+
+  p:addpath("/usr/local/kong/lib/")
+  p:addpath("kong")
+
+  local parsed = p:parsefile("pluginsocket.proto")
 
   local service = {}
   for i, s in ipairs(parsed.service) do
@@ -237,7 +241,7 @@ local function load_service()
 
   p:loadfile("google/protobuf/empty.proto")
   p:loadfile("google/protobuf/struct.proto")
-  p:loadfile("kong/pluginsocket.proto")
+  p:loadfile("pluginsocket.proto")
 
   return service
 end
