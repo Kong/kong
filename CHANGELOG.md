@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.4.0-beta.2](#240-beta2)
+- [2.4.0](#240)
 - [2.3.3](#233)
 - [2.3.2](#232)
 - [2.3.1](#231)
@@ -57,14 +57,13 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.4.0-beta.2]
+## [2.4.0]
 
-> Released 2021/03/24
+> Released 2021/04/06
 
-This is a _beta_ pre-release of the upcoming Kong 2.4 series. Since 2.4 is a
-minor release there are no breaking changes with respect to the 2.x series.
-Please note that this is a feature-frozen release, up to the 2.4.0 release only
-bug fixes will be added.
+This is a new release of Kong, with no breaking changes with respect to the 2.x series,
+with Javascript PDK, Improved CP/DP updates and UTF-8 Tags, amongst other improvements
+and fixes.
 
 ### Dependencies
 
@@ -92,12 +91,14 @@ repository will allow you to do both easily.
   [#6925](https://github.com/Kong/kong/pull/6925)
 - Bump pgmoon from 1.11.0 to 1.12.0.
   [#6741](https://github.com/Kong/kong/pull/6741)
-- Bump lua-resty-openssl from 0.6.11 to 0.7.0.
-  [#6862](https://github.com/Kong/kong/pull/6862)
+- Bump lua-resty-openssl from 0.6.11 to 0.7.2.
+  [#6967](https://github.com/Kong/kong/pull/6967)
 - Bump kong-plugin-zipkin from 1.2 to 1.3.
   [#6936](https://github.com/Kong/kong/pull/6936)
 - Bump kong-prometheus-plugin from 1.0 to 1.2.
   [#6958](https://github.com/Kong/kong/pull/6958)
+- Bump lua-cassandra from 1.5.0 to 1.5.1
+  [#6857](https://github.com/Kong/kong/pull/6857)
 
 ### Additions
 
@@ -107,26 +108,39 @@ repository will allow you to do both easily.
   Data Planes that are missing minor updates to still connect to the
   Control Plane. Also, now Data Plane is allowed to have a superset of Control
   Plane plugins. [6932](https://github.com/Kong/kong/pull/6932)
+- Added configuration options for the Kong Sandbox
+  [6681](https://github.com/Kong/kong/pull/6681)
+- Allowed UTF-8 in Tags [6784](https://github.com/Kong/kong/pull/6784)
+- Added support for Online Certificate Status Protocol responder found in cluster
+  [6887](https://github.com/Kong/kong/pull/6887)
+
 
 ##### PDK
 
+- [JavaScript Plugin Development Kit (PDK)](https://github.com/Kong/kong-js-pdk)
+  is released alongside with Kong 2.4. It allows user to write Kong plugins in
+  JavaScript and TypeScript.
 - Beta release of Protobuf plugin communication protocol, which can be used in
   place of MessagePack to communicate with non-Lua plugins.
   [6941](https://github.com/Kong/kong/pull/6941)
+- Enabled `ssl_certificate` phase on plugins with stream module
+  [6873](https://github.com/Kong/kong/pull/6873)
 
 ##### Plugins
 
-- zipkin: support for Jaeger style uber-trace-id headers.
+- Zipkin: support for Jaeger style uber-trace-id headers.
   [101](https://github.com/Kong/kong-plugin-zipkin/pull/101)
   Thanks [nvx](https://github.com/nvx) for the patch!
-- zipkin: support for OT headers.
+- Zipkin: support for OT headers.
   [103](https://github.com/Kong/kong-plugin-zipkin/pull/103)
   Thanks [ishg](https://github.com/ishg) for the patch!
-- zipkin: allow insertion of custom tags on the Zipkin request trace.
+- Zipkin: allow insertion of custom tags on the Zipkin request trace.
   [102](https://github.com/Kong/kong-plugin-zipkin/pull/102)
-- zipkin: creation of baggage items on child spans is now possible.
+- Zipkin: creation of baggage items on child spans is now possible.
   [98](https://github.com/Kong/kong-plugin-zipkin/pull/98)
   Thanks [Asafb26](https://github.com/Asafb26) for the patch!
+- JWT: Add ES384 support [6854](https://github.com/Kong/kong/pull/6854)
+  Thanks [pariviere](https://github.com/pariviere) for the patch!
 - Several plugins: capability to set new log fields, or unset existing fields,
   by executing custom Lua code in the Log phase.
   [6944](https://github.com/Kong/kong/pull/6944)
@@ -160,12 +174,24 @@ repository will allow you to do both easily.
   [6901](https://github.com/Kong/kong/pull/6901)
 - Buffered responses are disabled on connection upgrades.
   [6902](https://github.com/Kong/kong/pull/6902)
+- Make entity relationship traverse-order-independent
+  [6743](https://github.com/Kong/kong/pull/6743)
+- The host header is updated between balancer retries
+  [6976](https://github.com/Kong/kong/pull/6796)
+- The router prioritizes the route with most matching headers when matching
+  headers [6638](https://github.com/Kong/kong/pull/6638)
+- Fixed an edge case on multipart/form-data boundary check
+  [6638](https://github.com/Kong/kong/pull/6638)
 
 ##### PDK
 
 - Now Kong does not leave plugin servers alive after exiting and does not try to
   start them in the unsupported stream subsystem.
   [6849](https://github.com/Kong/kong/pull/6849)
+- Go does not cache `kong.log` methods
+  [6701](https://github.com/Kong/kong/pull/6701)
+- The `response` phase is included on the list of public phases
+  [6638](https://github.com/Kong/kong/pull/6638)
 
 ##### Plugins
 
