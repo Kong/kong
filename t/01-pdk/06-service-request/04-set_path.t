@@ -129,3 +129,79 @@ GET /t
 this is /foo
 --- no_error_log
 [error]
+
+
+
+=== TEST 5: service.request.set_path() escapes UTF-8 characters
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
+    server {
+        server_name K0nG;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
+
+        location /foó/😀 {
+            content_by_lua_block {
+                ngx.say("this works!")
+            }
+        }
+    }
+}
+--- config
+    location = /t {
+        set $upstream_uri '/t';
+
+        rewrite_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.service.request.set_path("/foó/😀")
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_NXSOCK/nginx.sock:$upstream_uri;
+    }
+--- request
+GET /t
+--- response_body
+this works!
+--- no_error_log
+[error]
+
+
+
+=== TEST 6: service.request.set_path() does not touch reserved characters
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
+    server {
+        server_name K0nG;
+        listen unix:$ENV{TEST_NGINX_NXSOCK}/nginx.sock;
+
+        location /foo {
+            content_by_lua_block {
+                ngx.say("this works!")
+            }
+        }
+    }
+}
+--- config
+    location = /t {
+        set $upstream_uri '/t';
+
+        rewrite_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.service.request.set_path("/fo%6F")
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_NXSOCK/nginx.sock:$upstream_uri;
+    }
+--- request
+GET /t
+--- response_body
+this works!
+--- no_error_log
+[error]
