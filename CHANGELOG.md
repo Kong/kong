@@ -85,13 +85,13 @@ repository will allow you to do both easily.
   [#6699](https://github.com/Kong/kong/pull/6699)
 - Bump luasec from 0.9 to 1.0.
   [#6814](https://github.com/Kong/kong/pull/6814)
-- Bump lua-resty-dns-client from 5.2.1 to 5.2.3.
-  [#6937](https://github.com/Kong/kong/pull/6937)
+- Bump lua-resty-dns-client from 5.2.1 to 6.0.0.
+  [#6999](https://github.com/Kong/kong/pull/6999)
 - Bump kong-lapis from 1.8.1.2 to 1.8.3.1.
   [#6925](https://github.com/Kong/kong/pull/6925)
 - Bump pgmoon from 1.11.0 to 1.12.0.
   [#6741](https://github.com/Kong/kong/pull/6741)
-- Bump lua-resty-openssl from 0.6.11 to 0.7.2.
+- Bump lua-resty-openssl from 0.6.9 to 0.7.2.
   [#6967](https://github.com/Kong/kong/pull/6967)
 - Bump kong-plugin-zipkin from 1.2 to 1.3.
   [#6936](https://github.com/Kong/kong/pull/6936)
@@ -108,12 +108,11 @@ repository will allow you to do both easily.
   Data Planes that are missing minor updates to still connect to the
   Control Plane. Also, now Data Plane is allowed to have a superset of Control
   Plane plugins. [6932](https://github.com/Kong/kong/pull/6932)
-- Added configuration options for the Kong Sandbox
+- Added configuration options for the Kong Sandbox.
   [6681](https://github.com/Kong/kong/pull/6681)
 - Allowed UTF-8 in Tags [6784](https://github.com/Kong/kong/pull/6784)
-- Added support for Online Certificate Status Protocol responder found in cluster
+- Added support for Online Certificate Status Protocol responder found in cluster.
   [6887](https://github.com/Kong/kong/pull/6887)
-
 
 ##### PDK
 
@@ -123,7 +122,7 @@ repository will allow you to do both easily.
 - Beta release of Protobuf plugin communication protocol, which can be used in
   place of MessagePack to communicate with non-Lua plugins.
   [6941](https://github.com/Kong/kong/pull/6941)
-- Enabled `ssl_certificate` phase on plugins with stream module
+- Enabled `ssl_certificate` phase on plugins with stream module.
   [6873](https://github.com/Kong/kong/pull/6873)
 
 ##### Plugins
@@ -174,14 +173,16 @@ repository will allow you to do both easily.
   [6901](https://github.com/Kong/kong/pull/6901)
 - Buffered responses are disabled on connection upgrades.
   [6902](https://github.com/Kong/kong/pull/6902)
-- Make entity relationship traverse-order-independent
+- Make entity relationship traverse-order-independent.
   [6743](https://github.com/Kong/kong/pull/6743)
-- The host header is updated between balancer retries
-  [6976](https://github.com/Kong/kong/pull/6796)
+- The host header is updated between balancer retries.
+  [6796](https://github.com/Kong/kong/pull/6796)
 - The router prioritizes the route with most matching headers when matching
-  headers [6638](https://github.com/Kong/kong/pull/6638)
-- Fixed an edge case on multipart/form-data boundary check
+  headers. [6638](https://github.com/Kong/kong/pull/6638)
+- Fixed an edge case on multipart/form-data boundary check.
   [6638](https://github.com/Kong/kong/pull/6638)
+- Paths are now properly normalized inside Route objects.
+  [6976](https://github.com/Kong/kong/pull/6976)
 
 ##### PDK
 
@@ -192,16 +193,23 @@ repository will allow you to do both easily.
   [6701](https://github.com/Kong/kong/pull/6701)
 - The `response` phase is included on the list of public phases
   [6638](https://github.com/Kong/kong/pull/6638)
+- Config file style and options case are now consistent all around.
+  [6981](https://github.com/Kong/kong/pull/6981)
+- Added right protobuf MacOS path to enable external plugins in Homebrew
+  installations. [6980](https://github.com/Kong/kong/pull/6980)
+- Auto-escape upstream path to avoid proxying errors.
+  [6978](https://github.com/Kong/kong/pull/6978)
+- Ports are now declared as `Int`. [6994](https://github.com/Kong/kong/pull/6994)
 
 ##### Plugins
 
 - oauth2: better handling more cases of client invalid token generation.
   [6594](https://github.com/Kong/kong/pull/6594)
   Thanks [jeremyjpj0916](https://github.com/jeremyjpj0916) for the patch!
-- zipkin: the w3c parsing function was returning a non-used extra value, and it
+- Zipkin: the w3c parsing function was returning a non-used extra value, and it
   now early-exits. [100](https://github.com/Kong/kong-plugin-zipkin/pull/100)
   Thanks [nvx](https://github.com/nvx) for the patch!
-- zipkin: fixed a bug in which span timestamping could sometimes raise an error.
+- Zipkin: fixed a bug in which span timestamping could sometimes raise an error.
   [105](https://github.com/Kong/kong-plugin-zipkin/pull/105)
   Thanks [Asafb26](https://github.com/Asafb26) for the patch!
 
