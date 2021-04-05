@@ -62,7 +62,7 @@
 > Released 2021/04/06
 
 This is a new release of Kong, with no breaking changes with respect to the 2.x series,
-with Javascript PDK, Improved CP/DP updates and UTF-8 Tags, amongst other improvements
+with JavaScript PDK, improved CP/DP updates and UTF-8 Tags, amongst other improvements
 and fixes.
 
 ### Dependencies
