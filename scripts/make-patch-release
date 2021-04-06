@@ -24,6 +24,7 @@ function usage() {
    step "write_changelog"  "prepare the changelog"
    step "commit_changelog" "commit the changelog"
    step "version_bump"     "bump and commit the version number"
+   step "update_copyright" "update copyright file"
    step "submit"           "push and submit a release PR"
    step "docs_pr"          "push and submit a docs.konghq.com PR for the release"
    step "merge"            "merge, tag and sign the release"
@@ -132,6 +133,14 @@ case "$step" in
 
       SUCCESS "The changelog is now committed locally." \
               "You are ready to run the next step:" \
+              "    $0 $version update_copyright"
+      ;;
+   #---------------------------------------------------------------------------
+   update_copyright)
+      update_copyright "$version"
+
+      SUCCESS "The COPYRIGHT file is updated locally." \
+              "You are ready to run the next step:" \
               "    $0 $version version_bump"
       ;;
    #---------------------------------------------------------------------------
@@ -163,6 +172,7 @@ case "$step" in
               "You are ready to run the next step:" \
               "    $0 $version submit"
       ;;
+
    #---------------------------------------------------------------------------
    submit)
       if ! git log -n 1 | grep -q "release: $version"

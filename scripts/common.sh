@@ -1,5 +1,7 @@
 #!/bin/bash
 
+scripts_folder=$(dirname "$0")
+
 #-------------------------------------------------------------------------------
 function commit_changelog() {
     if ! git status CHANGELOG.md | grep -q "modified:"
@@ -17,6 +19,20 @@ function commit_changelog() {
         git commit -m "docs(changelog) add $1 changes"
         git log -n 1
 }
+
+#-------------------------------------------------------------------------------
+function update_copyright() {
+   if ! "$scripts_folder/update-copyright"
+   then
+      die "Could not update copyright file. Check logs for missing licenses, add hardcoded ones if needed"
+   fi
+
+   git add COPYRIGHT
+
+   git commit -m "docs(COPYRIGHT) update copyright for $1"
+   git log -n 1
+}
+
 
 #-------------------------------------------------------------------------------
 function bump_homebrew() {
