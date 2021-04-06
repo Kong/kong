@@ -33,6 +33,17 @@ return {
             elements = { type = "string" },
             default = {}
           }, },
+          { claims_headers =  {
+            type = "array",
+            default = {
+              "iss:x-jwt-iss",
+              "sub:x-jwt-sub",
+              "scope:x-jwt-scope",
+              "_validated_scope:x-jwt-validated-scope"
+            },
+            required = true,
+            elements = { type = "string", match = "^[^:]+:.*$" },
+          }, },
           { anonymous = { type = "string" }, },
           { run_on_preflight = { type = "boolean", required = true, default = true }, },
           { maximum_expiration = {

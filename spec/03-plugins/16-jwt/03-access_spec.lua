@@ -40,7 +40,7 @@ for _, strategy in helpers.each_strategy() do
 
       local routes = {}
 
-      for i = 1, 14 do
+      for i = 1, 15 do
         routes[i] = bp.routes:insert {
           hosts = { "jwt" .. i .. ".com" },
         }
@@ -152,6 +152,12 @@ for _, strategy in helpers.each_strategy() do
         name     = "jwt",
         route = { id = routes[14].id },
         config   = { scopes_required = { "giveaccess"} },
+      })
+
+      plugins:insert({
+        name     = "jwt",
+        route = { id = routes[15].id },
+        config   = { scopes_required = { "giveaccess"}, claims_headers = { } },
       })
 
       plugins:insert({
@@ -829,6 +835,53 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(hs_jwt_secret_2.key, body.headers["x-credential-identifier"])
         assert.equal(nil, body.headers["x-credential-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
+      end)
+    end)
+
+    describe("JWT claims to header", function()
+      it ("contains X-JWT-Iss", function()
+        local payload = {
+          iss = jwt_secret.key,
+          sub = "jdoe",
+          scope = "giveaccess"
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local authorization = "Bearer " .. jwt
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Authorization"] = authorization,
+            ["Host"]          = "jwt14.com",
+          }
+        })
+
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal(jwt_secret.key, body.headers["x-jwt-iss"])
+        assert.equal("jdoe", body.headers["x-jwt-sub"])
+        assert.is_nil(body.headers["x-validated-scope"])
+      end)
+
+      it ("no header is produce if claims_headers config if empty", function()
+        local payload = {
+          iss = jwt_secret.key,
+          sub = "jdoe",
+          scope = "giveaccess"
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local authorization = "Bearer " .. jwt
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Authorization"] = authorization,
+            ["Host"]          = "jwt15.com",
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.is_nil(body.headers["x-validated-scope"])
+        assert.is_nil(body.headers["x-jwt-sub"])
+        assert.is_nil(body.headers["x-jwt-iss"])
       end)
     end)
 
