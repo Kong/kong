@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.4.0](#240)
+- [2.4.0-rc.1](#240)
 - [2.3.3](#233)
 - [2.3.2](#232)
 - [2.3.1](#231)
@@ -57,12 +57,13 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.4.0]
+## [2.4.0-rc.1]
 
 > Released 2021/04/06
 
-This is a new release of Kong, with no breaking changes with respect to the 2.x series,
-with JavaScript PDK, improved CP/DP updates and UTF-8 Tags, amongst other improvements
+This is a Release Candidate release of Kong, with no breaking changes with respect to the 2.x series,
+Since 2.4 is a minor release there are no breaking changes with respect to the 2.x series.
+This release includes JavaScript PDK, improved CP/DP updates and UTF-8 Tags, amongst other improvements
 and fixes.
 
 ### Dependencies
@@ -107,17 +108,17 @@ repository will allow you to do both easily.
 - Relaxed version check between Control Planes and Data Planes, allowing
   Data Planes that are missing minor updates to still connect to the
   Control Plane. Also, now Data Plane is allowed to have a superset of Control
-  Plane plugins. [6932](https://github.com/Kong/kong/pull/6932)
-- Added configuration options for the Kong Sandbox.
-  [6681](https://github.com/Kong/kong/pull/6681)
-- Allowed UTF-8 in Tags [6784](https://github.com/Kong/kong/pull/6784)
+  Plane plugins.
+  [6932](https://github.com/Kong/kong/pull/6932)
+- Allowed UTF-8 in Tags
+  [6784](https://github.com/Kong/kong/pull/6784)
 - Added support for Online Certificate Status Protocol responder found in cluster.
   [6887](https://github.com/Kong/kong/pull/6887)
 
 ##### PDK
 
 - [JavaScript Plugin Development Kit (PDK)](https://github.com/Kong/kong-js-pdk)
-  is released alongside with Kong 2.4. It allows user to write Kong plugins in
+  is released alongside with Kong 2.4. It allows users to write Kong plugins in
   JavaScript and TypeScript.
 - Beta release of Protobuf plugin communication protocol, which can be used in
   place of MessagePack to communicate with non-Lua plugins.
@@ -138,7 +139,8 @@ repository will allow you to do both easily.
 - Zipkin: creation of baggage items on child spans is now possible.
   [98](https://github.com/Kong/kong-plugin-zipkin/pull/98)
   Thanks [Asafb26](https://github.com/Asafb26) for the patch!
-- JWT: Add ES384 support [6854](https://github.com/Kong/kong/pull/6854)
+- JWT: Add ES384 support
+  [6854](https://github.com/Kong/kong/pull/6854)
   Thanks [pariviere](https://github.com/pariviere) for the patch!
 - Several plugins: capability to set new log fields, or unset existing fields,
   by executing custom Lua code in the Log phase.
@@ -158,13 +160,16 @@ repository will allow you to do both easily.
   value configured in the correct upstream entity.
   [6796](https://github.com/Kong/kong/pull/6796)
 - Schema validations now log more descriptive error messages when types are
-  invalid. [6593](https://github.com/Kong/kong/pull/6593)
+  invalid.
+  [6593](https://github.com/Kong/kong/pull/6593)
   Thanks [WALL-E](https://github.com/WALL-E) for the patch!
 - Kong now ignores tags in Cassandra when filtering by multiple entities, which
   is the expected behavior and the one already existent when using Postgres
-  databases. [6931](https://github.com/Kong/kong/pull/6931)
+  databases.
+  [6931](https://github.com/Kong/kong/pull/6931)
 - `Upgrade` header is not cleared anymore when response `Connection` header
-  contains `Upgrade`. [6929](https://github.com/Kong/kong/pull/6929)
+  contains `Upgrade`.
+  [6929](https://github.com/Kong/kong/pull/6929)
 - Accept fully-qualified domain names ending in dots.
   [6864](https://github.com/Kong/kong/pull/6864)
 - Kong does not try to warmup upstream names when warming up DNS entries.
@@ -178,11 +183,14 @@ repository will allow you to do both easily.
 - The host header is updated between balancer retries.
   [6796](https://github.com/Kong/kong/pull/6796)
 - The router prioritizes the route with most matching headers when matching
-  headers. [6638](https://github.com/Kong/kong/pull/6638)
+  headers.
+  [6638](https://github.com/Kong/kong/pull/6638)
 - Fixed an edge case on multipart/form-data boundary check.
   [6638](https://github.com/Kong/kong/pull/6638)
 - Paths are now properly normalized inside Route objects.
   [6976](https://github.com/Kong/kong/pull/6976)
+- Do not cache empty upstream name dictionary.
+  [7002](https://github.com/Kong/kong/pull/7002)
 
 ##### PDK
 
@@ -196,10 +204,12 @@ repository will allow you to do both easily.
 - Config file style and options case are now consistent all around.
   [6981](https://github.com/Kong/kong/pull/6981)
 - Added right protobuf MacOS path to enable external plugins in Homebrew
-  installations. [6980](https://github.com/Kong/kong/pull/6980)
+  installations.
+  [6980](https://github.com/Kong/kong/pull/6980)
 - Auto-escape upstream path to avoid proxying errors.
   [6978](https://github.com/Kong/kong/pull/6978)
-- Ports are now declared as `Int`. [6994](https://github.com/Kong/kong/pull/6994)
+- Ports are now declared as `Int`.
+  [6994](https://github.com/Kong/kong/pull/6994)
 
 ##### Plugins
 
@@ -207,7 +217,8 @@ repository will allow you to do both easily.
   [6594](https://github.com/Kong/kong/pull/6594)
   Thanks [jeremyjpj0916](https://github.com/jeremyjpj0916) for the patch!
 - Zipkin: the w3c parsing function was returning a non-used extra value, and it
-  now early-exits. [100](https://github.com/Kong/kong-plugin-zipkin/pull/100)
+  now early-exits.
+  [100](https://github.com/Kong/kong-plugin-zipkin/pull/100)
   Thanks [nvx](https://github.com/nvx) for the patch!
 - Zipkin: fixed a bug in which span timestamping could sometimes raise an error.
   [105](https://github.com/Kong/kong-plugin-zipkin/pull/105)
@@ -6017,7 +6028,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.4.0-beta.2]: https://github.com/Kong/kong/compare/2.3.3...2.4.0-beta.2
+[2.4.0-rc.1]: https://github.com/Kong/kong/compare/2.3.3...2.4.0-rc.1
 [2.3.3]: https://github.com/Kong/kong/compare/2.3.2...2.3.3
 [2.3.2]: https://github.com/Kong/kong/compare/2.3.1...2.3.2
 [2.3.1]: https://github.com/Kong/kong/compare/2.3.0...2.3.1
