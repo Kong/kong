@@ -611,6 +611,13 @@ local CONF_INFERENCES = {
 
   lua_ssl_trusted_certificate = { typ = "array" },
   lua_ssl_verify_depth = { typ = "number" },
+  lua_ssl_protocols = {
+    typ = "string",
+    directives = {
+      "nginx_http_lua_ssl_protocols",
+      "nginx_stream_lua_ssl_protocols",
+    },
+  },
   lua_socket_pool_size = { typ = "number" },
 
   role = { enum = { "data_plane", "control_plane", "traditional", }, },
