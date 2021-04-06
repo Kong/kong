@@ -25,11 +25,6 @@ local ee_core_entities = {
     uniques = {"name"},
     fks = {},
   }, {
-    name = "legacy_files",
-    primary_key = "id",
-    uniques = {"name"},
-    fks = {},
-  }, {
     name = "files",
     primary_key = "id",
     uniques = {"path"},

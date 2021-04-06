@@ -578,21 +578,21 @@ for _, strategy in helpers.each_strategy() do
                 method = "GET",
                 path = "/noauth-test/files/unauthenticated/register",
               })
-              assert.same(200, res.status)
+              assert.same(404, res.status)
               noauth_register = cjson.decode(res.body)
 
               res = client_request({
                 method = "GET",
                 path = "/noauth-test/files/dashboard",
               })
-              assert.same(200, res.status)
+              assert.same(404, res.status)
               noauth_dashboard = cjson.decode(res.body)
 
               res = client_request({
                 method = "GET",
                 path = "/noauth-test/files/settings",
               })
-              assert.same(200, res.status)
+              assert.same(404, res.status)
               noauth_settings = cjson.decode(res.body)
 
               return true
@@ -606,7 +606,9 @@ for _, strategy in helpers.each_strategy() do
             })
           end)
 
-          it("renders 404 page when blacklisted pages are requested", function()
+          -- We are no longer migrating legacy_files to support new workspaces since legacy portal
+          -- is going away in 2.2
+          pending("renders 404 page when blacklisted pages are requested", function()
             local res = gui_client_request({
               method = "GET",
               path = "/noauth-test/dashboard",
@@ -1583,7 +1585,9 @@ for _, strategy in helpers.each_strategy() do
           assert.equals(1, stringx.count(body, '/default/page_pair'))
         end)
 
-        it("can render sitemap for authenticated user (new workspace default files)", function()
+        -- We are no longer migrating legacy_files to support new workspaces since legacy portal
+        -- is going away in 2.2
+        pending("can render sitemap for authenticated user (new workspace default files)", function()
           local res = gui_client_request({
             method = "GET",
             path = "/sitemaptest/sitemap.xml",
@@ -1630,7 +1634,9 @@ for _, strategy in helpers.each_strategy() do
           assert.equals(0, stringx.count(body, '/default/specs/spec_page'))
         end)
 
-        it("can render sitemap for unauthenticated user (new workspace default files)", function()
+        -- We are no longer migrating legacy_files to support new workspaces since legacy portal
+        -- is going away in 2.2
+        pending("can render sitemap for unauthenticated user (new workspace default files)", function()
           local res = gui_client_request({
             method = "GET",
             path = "/sitemaptest/sitemap.xml",
