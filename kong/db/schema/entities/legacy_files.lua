@@ -22,7 +22,7 @@ local type = Schema.define {
 return {
   name = "legacy_files",
   primary_key = { "id" },
-  workspaceable = true,
+  workspaceable = false,
   endpoint_key = "name",
   generate_admin_api = false,
   db_export = false,
