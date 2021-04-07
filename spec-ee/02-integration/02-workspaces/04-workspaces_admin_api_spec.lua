@@ -412,7 +412,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert(bp.workspaces:insert {
           name = "foo",
           meta = {
-            color = "red",
+            color = "#255255",
           }
         })
 
@@ -435,13 +435,13 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert(bp.workspaces:insert {
           name = "upfoo",
         })
-
+        local image = "data:image/png;base64,fakeimage"
         local res = assert(client:patch("/workspaces/upfoo", {
           body   = {
             comment = "foo comment",
             meta = {
-              color = "red",
-              thumbnail = "cool"
+              color = "#255255",
+              thumbnail = image
             }
           },
           headers = {
@@ -453,7 +453,8 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         local json = cjson.decode(body)
 
         assert.equals("foo comment", json.comment)
-        assert.equals("red", json.meta.color)
+        assert.equals("#255255", json.meta.color)
+        assert.equals(image, json.meta.thumbnail)
       end)
 
       it("creates default files if portal is turned on", function()
@@ -994,7 +995,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert(bp.workspaces:insert {
           name = "foo-fighter",
           meta = {
-            color = "red",
+            color = "#255255",
           }
         })
 
@@ -1003,7 +1004,7 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         local json = cjson.decode(body)
 
         assert.equals("foo-fighter", json.name)
-        assert.equals("red", json.meta.color)
+        assert.equals("#255255", json.meta.color)
       end)
 
       it("sends the appropriate status on an invalid entity", function()
