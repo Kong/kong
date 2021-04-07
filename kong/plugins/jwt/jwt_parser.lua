@@ -448,23 +448,25 @@ function _M:validate_scopes(scopes_claim, scopes_required)
   end
 
 
-  for _, scope_requirement in ipairs(scopes_required) do
-    local matches
-    local filtered_scopes
-    local scope_requirement_type = type(scope_requirement)
+  if claim ~= nil then
+    for _, scope_requirement in ipairs(scopes_required) do
+      local matches
+      local filtered_scopes
+      local scope_requirement_type = type(scope_requirement)
 
-    if scope_requirement_type == "string" and scope_requirement:find(',') then
-      matches, filtered_scopes = claim_has_requirements(claim, split(scope_requirement, ','))
-    else
-      matches, filtered_scopes = claim_has_requirements(claim, scope_requirement)
-    end
+      if scope_requirement_type == "string" and scope_requirement:find(',') then
+        matches, filtered_scopes = claim_has_requirements(claim, split(scope_requirement, ','))
+      else
+        matches, filtered_scopes = claim_has_requirements(claim, scope_requirement)
+      end
 
-    if (matches) then
-      -- First match win
-      return matches, filtered_scopes
+      if (matches) then
+        -- First match win
+        return matches, filtered_scopes
+      end
     end
   end
-
+  
   return false, {}
 end
 

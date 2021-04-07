@@ -1000,6 +1000,20 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
+      it("scope is required but not scope exists in JWT", function()
+        local payload = {
+          iss = jwt_secret.key
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request/?jwt=" .. jwt,
+          headers = {
+            ["Host"] = "jwt14.com"
+          }
+        })
+        assert.res_status(401, res)
+      end)
     end)
 
     describe("ctx.authenticated_jwt_token", function()
