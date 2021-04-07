@@ -1,6 +1,4 @@
-local pl_utils = require("pl.utils")
 local perf = require("spec.helpers.perf")
-local cjson = require("cjson")
 local helpers
 
 local _M = {}

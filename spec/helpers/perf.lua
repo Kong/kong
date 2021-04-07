@@ -66,6 +66,8 @@ local my_logger = new_logger("[controller]")
 -- stdoud and stderr is returned
 -- @param opts.stop_signal function return true to abort execution
 local function execute(cmd, opts)
+  -- my_logger.debug("exec: ", cmd)
+
   local proc, err = ngx_pipe.spawn(cmd, {
     merge_stderr = true,
   })
@@ -73,6 +75,9 @@ local function execute(cmd, opts)
     return false, "failed to start process: " .. err
   end
 
+  -- set stdout/stderr read timeout to 1s for faster noticing process exit
+  -- proc:set_timeouts(write_timeout?, stdout_read_timeout?, stderr_read_timeout?, wait_timeout?)
+  proc:set_timeouts(nil, 1000, 1000, nil)
   if opts and opts.stdin then
     proc:write(opts.stdin)
   end
@@ -82,6 +87,12 @@ local function execute(cmd, opts)
   local ret = {}
 
   while true do
+    -- is it alive?
+    local ok, err = proc:kill(0)
+    if not ok then
+      break
+    end
+
     local l, err = proc:stdout_read_line()
     if l then
       if log_output then
@@ -138,6 +149,10 @@ local driver_functions = {
 }
 
 local function check_driver_sanity(mod)
+  if type(mod) ~= "table" then
+    error("Driver must return a table")
+  end
+
   for _, func in ipairs(driver_functions) do
     if not mod[func] then
       error("Driver " .. debug.getinfo(mod.new, "S").source ..
@@ -146,7 +161,7 @@ local function check_driver_sanity(mod)
   end
 end
 
-local known_drivers = { "docker" }
+local known_drivers = { "docker", "local" }
 local function use_driver(name, opts)
   name = name or "docker"
 

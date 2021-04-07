@@ -1,11 +1,15 @@
 local perf = require("spec.helpers.perf")
 
---perf.set_log_level(ngx.DEBUG)
-perf.set_log_level(ngx.INFO)
-perf.use_driver("docker")
+perf.set_log_level(ngx.DEBUG)
+--perf.set_log_level(ngx.INFO)
+--perf.use_driver("docker")
+perf.use_driver("local")
 
-for _, version in ipairs({"2.3", "2.2"}) do
-  describe("poc", function()
+-- local versions = { "2.2", "2.3" }
+local versions = { "5fd75b2add2cbceb1e0576494d30b6c422b58626", "de8ef431d780985a78933bd89c813092db10f060" }
+
+for _, version in ipairs(versions) do
+  describe("perf test for Kong " .. version, function()
     lazy_setup(function()
       local helpers = perf.setup()
 
@@ -34,12 +38,13 @@ for _, version in ipairs({"2.3", "2.2"}) do
       local route1 = bp.routes:insert {
         paths = { "/test" },
         service = service,
+        strip_path = false,
       }
     end)
 
     before_each(function()
       perf.start_kong(version, {
-        -- kong configs
+        --kong configs
       })
     end)
 
@@ -51,7 +56,7 @@ for _, version in ipairs({"2.3", "2.2"}) do
       perf.teardown()
     end)
 
-    it("does something", function()
+    it("/test", function()
       assert(perf.start_load({
         path = "/test",
         connections = 1,
