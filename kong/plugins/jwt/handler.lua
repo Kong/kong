@@ -10,6 +10,7 @@ local ipairs = ipairs
 local tostring = tostring
 local re_gmatch = ngx.re.gmatch
 local match = string.match
+local noop = function() end
 
 
 local JwtHandler = {
