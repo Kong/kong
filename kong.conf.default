@@ -1452,3 +1452,9 @@
                                      # **Warning**: Certain variables, when made
                                      # available, may create opportunities to
                                      # escape the sandbox.
+
+#lua_transform_underscores_in_response_headers = off # Does not transform
+                                                     # underscores (_) in the response 
+                                                     # header names specified in the 
+                                                     # ngx.header.HEADER API to hypens (-).
+
