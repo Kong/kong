@@ -2,11 +2,27 @@ local perf = require("spec.helpers.perf")
 
 perf.set_log_level(ngx.DEBUG)
 --perf.set_log_level(ngx.INFO)
---perf.use_driver("docker")
-perf.use_driver("local")
+--perf.set_retry_count(3)
 
--- local versions = { "2.2", "2.3" }
-local versions = { "5fd75b2add2cbceb1e0576494d30b6c422b58626", "de8ef431d780985a78933bd89c813092db10f060" }
+-- perf.use_driver("docker")
+-- local versions = { "2.3.2", "2.3.3" }
+
+-- perf.use_driver("local")
+-- local versions = { "5fd75b2add2cbceb1e0576494d30b6c422b58626", "de8ef431d780985a78933bd89c813092db10f060" }
+
+perf.use_driver("terraform", {
+  provider = "equinix-metal",
+  tfvars = {
+    -- Kong Benchmarking
+    packet_project = "?",
+    -- TODO: use an org token
+    packet_auth_token = "?",
+    -- packet_plan = "baremetal_1",
+    -- packet_region = "sjc1",
+    -- packet_os = "ubuntu_20_04",
+  }
+})
+local versions = { "2.3.2", "2.3.3" }
 
 for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version, function()
@@ -49,20 +65,22 @@ for _, version in ipairs(versions) do
     end)
 
     after_each(function()
-      assert(perf.stop_kong())
+      perf.stop_kong()
     end)
 
     lazy_teardown(function()
       perf.teardown()
+      -- terraform teardown all infra
+      -- perf.teardown(true)
     end)
 
     it("/test", function()
-      assert(perf.start_load({
+      perf.start_load({
         path = "/test",
-        connections = 1,
-        threads = 1,
+        connections = 1000,
+        threads = 5,
         duration = 10,
-      }))
+      })
 
       ngx.sleep(10)
 

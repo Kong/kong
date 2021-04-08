@@ -12,6 +12,8 @@ else
 end
 
 local LOG_LEVEL = ngx.NOTICE
+-- how many times for each "driver" operation
+local RETRY_COUNT = 3
 local DRIVER
 
 -- Some logging helpers
@@ -120,6 +122,41 @@ local function execute(cmd, opts)
   end
 end
 
+local function wait_output(cmd, pattern, timeout)
+  timeout = timeout or 5
+  local found
+  local co = coroutine.create(function()
+    while not found do
+      local line = coroutine.yield("yield")
+      if line:match(pattern) then
+        found = true
+      end
+    end
+  end)
+
+  -- start
+  coroutine.resume(co)
+
+  -- don't kill it, it me finish by itself
+  local exec = ngx.thread.spawn(function()
+    local ok, err = execute(cmd, {
+      logger = function(_, _, line)
+        return coroutine.running(co) and coroutine.resume(co, line)
+      end,
+      stop_signal = function() if found then return 9 end end,
+    })
+  end)
+
+  ngx.update_time()
+  local s = ngx.now()
+  while not found and ngx.now() - s <= timeout do
+    ngx.update_time()
+    ngx.sleep(0.1)
+  end
+
+  return found
+end
+
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
   int unsetenv(const char *name);
@@ -145,7 +182,7 @@ end
 
 -- Real user facing functions
 local driver_functions = {
-  "start_upstream", "start_kong", "stop_kong", "setup", "teardown", "start_load", "wait_result",
+  "start_upstream", "start_kong", "stop_kong", "setup", "teardown", "get_start_load_cmd",
 }
 
 local function check_driver_sanity(mod)
@@ -161,7 +198,7 @@ local function check_driver_sanity(mod)
   end
 end
 
-local known_drivers = { "docker", "local" }
+local known_drivers = { "docker", "local", "terraform" }
 local function use_driver(name, opts)
   name = name or "docker"
 
@@ -183,15 +220,20 @@ local function use_driver(name, opts)
   DRIVER = mod.new(opts)
 end
 
--- @param opts.tries number retry count
-local function invoke_driver(method, opts, ...)
+local function set_retry_count(try)
+  if type(try) ~= "number" then
+    error("expect a number, got " .. type(try))
+  end
+  RETRY_COUNT = try
+end
+
+local function invoke_driver(method, ...)
   if not DRIVER then
     error("No driver selected, call use_driver first", 2)
   end
-  tries = opts and opts.tries or 3
   local happy
   local r, err
-  for i=1, tries do
+  for i=1, RETRY_COUNT do
     r, err = DRIVER[method](DRIVER, ...)
     if not r then
       my_logger.warn("failed in ", method, ": ", err or "nil", ", tries: ", i)
@@ -201,7 +243,7 @@ local function invoke_driver(method, opts, ...)
     end
   end
   if not happy then
-    error(method .. " finally failed after " .. tries .. " tries", 2)
+    error(method .. " finally failed after " .. RETRY_COUNT .. " tries", 2)
   end
   return r
 end
@@ -212,15 +254,84 @@ local _M = {
   set_log_level = set_log_level,
   setenv = setenv,
   unsetenv = unsetenv,
+  set_retry_count = set_retry_count,
   execute = execute,
+  wait_output = wait_output,
 }
 
 for _, d in ipairs(driver_functions) do
   _M[d] = function(...)
-    local argv = {...}
-    -- copy the last table as opts, keep others as it is
-    return invoke_driver(d, argv[#argv], ...)
+    return invoke_driver(d, ...)
   end
+end
+
+local load_thread
+local load_should_stop
+
+-- @param opts.path string request path
+-- @param opts.connections number connection count
+-- @param opts.threads number request thread count
+-- @param opts.duration number perf test duration
+function _M.start_load(opts)
+  if load_thread then
+    error("load is already started, stop it using wait_result() first", 2)
+  end
+
+  local load_cmd_stub = "wrk -c " .. (opts.connections or 1000) ..
+                        " -t " .. (opts.threads or 5) ..
+                        " -d " .. (opts.duration or 10) ..
+                        " %s://%s:%s/" .. (opts.path or "")
+  
+  load_cmd_stub = invoke_driver("get_start_load_cmd", load_cmd_stub)
+  load_should_stop = false
+
+  load_thread = ngx.thread.spawn(function()
+    return execute(load_cmd_stub,
+        {
+          stop_signal = function() if load_should_stop then return 9 end end,
+        })
+  end)
+end
+
+function _M.wait_result(opts)
+  if not load_thread then
+    error("load haven't been started or already collected, " .. 
+          "start it using start_load() first", 2)
+  end
+
+  local timeout = opts and opts.timeout or 3
+  local ok, res, err
+
+  -- ngx.update_time()
+  -- local s = ngx.now()
+  -- while not found and ngx.now() - s <= timeout do
+  --   ngx.update_time()
+  --   ngx.sleep(0.1)
+  --   if coroutine.status(self.load_thread) ~= "running" then
+  --     break
+  --   end
+  -- end
+  -- print(coroutine.status(self.load_thread), coroutine.running(self.load_thread))
+
+  -- if coroutine.status(self.load_thread) == "running" then
+  --   self.load_should_stop = true
+  --   return false, "timeout waiting for load to stop (" .. timeout .. "s)"
+  -- end
+
+  local ok, res, err = ngx.thread.wait(load_thread)
+  load_should_stop = true
+  load_thread = nil
+
+  if not ok or err then
+    error("failed to wait result: " .. (res or "nil") ..
+          " err: " .. (err or "nil"))
+  end
+
+  return res
+end
+
+function _M.combine_results(...)
+  local results = {...}
 end
 
 return _M

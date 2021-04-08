@@ -14,8 +14,6 @@ function _M.new(opts)
     upstream_nginx_pid = nil,
     nginx_bin = nil,
     wrk_bin = nil,
-    load_thread = nil,
-    load_should_stop = true,
     git_head = nil,
     git_stashed = false,
   }, mt)
@@ -160,46 +158,11 @@ function _M:stop_kong()
   return true
 end
 
--- @param opts.path string request path
--- @param opts.connections number connection count
--- @param opts.threads number request thread count
--- @param opts.duration number perf test duration
-function _M:start_load(opts)
-  if self.load_thread then
-    return false, "load is already started, stop it using stop_load() first"
-  end
-
+function _M:get_start_load_cmd(stub)
   local kong_ip = helpers.get_proxy_ip()
   local kong_port = helpers.get_proxy_port()
 
-  self.load_should_stop = false
-
-  opts = opts or {}
-
-  self.load_thread = ngx.thread.spawn(function()
-    return perf.execute(
-        " wrk -c " .. (opts.connections or 1000) ..
-        " -t " .. (opts.threads or 5) ..
-        " -d " .. (opts.duration or 10) ..
-        (" http://%s:%d/%s"):format(kong_ip, kong_port, opts.path or ""),
-        {
-          stop_signal = function() if self.load_should_stop then return 9 end end,
-        })
-  end)
-
-  return true
-end
-
-function _M:wait_result(opts)
-  local ok, res, err = ngx.thread.wait(self.load_thread)
-  self.load_should_stop = true
-  self.load_thread = nil
-
-  if not ok then
-    return false, "failed to wait result: " .. res
-  end
-
-  return res, err
+  return stub:format("http", kong_ip, kong_port)
 end
 
 return _M

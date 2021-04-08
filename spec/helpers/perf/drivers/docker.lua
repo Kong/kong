@@ -4,6 +4,8 @@ local helpers
 local _M = {}
 local mt = {__index = _M}
 
+local UPSTREAM_PORT = 8088
+
 function _M.new(opts)
   return setmetatable({
     opts = opts,
@@ -11,8 +13,6 @@ function _M.new(opts)
     psql_ct_id = nil,
     kong_ct_id = nil,
     worker_ct_id = nil,
-    load_thread = nil,
-    load_should_stop = true,
   }, mt)
 end
 
@@ -95,41 +95,6 @@ local function wait_port(port, seconds)
   return false
 end
 
-local function wait_log(cid, pattern, timeout)
-  timeout = timeout or 5
-  local found
-  local co = coroutine.create(function()
-    while not found do
-      local line = coroutine.yield("yield")
-      if line:match(pattern) then
-        found = true
-      end
-    end
-  end)
-
-  -- start
-  coroutine.resume(co)
-
-  -- don't kill it, it me finish by itself
-  local exec = ngx.thread.spawn(function()
-    local ok, err = perf.execute("docker logs -f " .. cid, {
-      logger = function(_, _, line)
-        return coroutine.running(co) and coroutine.resume(co, line)
-      end,
-      stop_signal = function() if found then return 9 end end,
-    })
-  end)
-
-  ngx.update_time()
-  local s = ngx.now()
-  while not found and ngx.now() - s <= timeout do
-    ngx.update_time()
-    ngx.sleep(0.1)
-  end
-
-  return found
-end
-
 function _M:teardown()
   for _, cid in ipairs({"worker_ct_id", "kong_ct_id", "psql_ct_id" }) do
     if self[cid] then
@@ -164,7 +129,7 @@ function _M:setup()
   end
 
   -- wait
-  if not wait_log(self.psql_ct_id, "is ready to accept connections") then
+  if not perf.wait_output("docker logs -f " .. self.psql_ct_id, "is ready to accept connections") then
     return false, "timeout waiting psql to start (5s)"
   end
 
@@ -195,7 +160,7 @@ function _M:start_upstream(conf)
         RUN apk update && apk add wrk
         RUN echo -e '\
         server {\
-          listen 80;\
+          listen %d;\
           location =/health { \
             return 200; \
           } \
@@ -210,14 +175,14 @@ function _M:start_upstream(conf)
         STOPSIGNAL SIGQUIT
 
         CMD ["nginx", "-g", "daemon off;"]
-      ]]):format(conf:gsub("\n", "\\n"))
+      ]]):format(UPSTREAM_PORT, conf:gsub("\n", "\\n"))
       }
     )
     if err then
       return false, err
     end
 
-    local cid, err = create_container(self, "-p 80", "perf-test-upstream")
+    local cid, err = create_container(self, "-p " .. UPSTREAM_PORT, "perf-test-upstream")
     if err then
       return false, "error running docker create when creating upstream: " .. err
     end
@@ -238,7 +203,7 @@ function _M:start_upstream(conf)
 
   self.log.info("worker is started")
 
-  return "http://" .. worker_vip .. ":80"
+  return "http://" .. worker_vip .. ":" .. UPSTREAM_PORT
 end
 
 function _M:start_kong(version, kong_conf)
@@ -255,7 +220,7 @@ function _M:start_kong(version, kong_conf)
       "-p 8000 --link " .. self.psql_ct_id .. ":postgres " ..
       "-e KONG_PG_HOST=postgres " ..
       "-e KONG_PG_DATABASE=kong_tests " .. extra_config,
-      "kong:" .. version .. "-alpine")
+      "kong:" .. version)
     if err then
       return false, "error running docker create when creating kong container: " .. err
     end
@@ -274,7 +239,7 @@ function _M:start_kong(version, kong_conf)
   end
 
   -- wait
-  if not wait_log(self.kong_ct_id, " start worker process") then
+  if not perf.wait_output("docker logs -f " .. self.kong_ct_id, " start worker process") then
     return false, "timeout waiting kong to start (5s)"
   end
   
@@ -288,14 +253,7 @@ function _M:stop_kong()
   end
 end
 
--- @param opts.path string request path
--- @param opts.connections number connection count
--- @param opts.threads number request thread count
--- @param opts.duration number perf test duration
-function _M:start_load(opts)
-  if self.load_thread then
-    return false, "load is already started, stop it using stop_load() first"
-  end
+function _M:get_start_load_cmd(stub)
   if not self.kong_ct_id then
     return false, "kong container is not created yet"
   end
@@ -305,54 +263,7 @@ function _M:start_load(opts)
     return false, "unable to read kong container's private IP: " .. err
   end
 
-  self.load_should_stop = false
-
-  opts = opts or {}
-
-  self.load_thread = ngx.thread.spawn(function()
-    return perf.execute(
-        "docker exec " .. self.worker_ct_id ..
-        " wrk -c " .. (opts.connections or 1000) ..
-        " -t " .. (opts.threads or 5) ..
-        " -d " .. (opts.duration or 10) ..
-        " http://" .. kong_vip .. ":8000" .. (opts.path or "/"),
-        {
-          stop_signal = function() if self.load_should_stop then return 9 end end,
-        })
-  end)
-
-  return true
-end
-
-function _M:wait_result(opts)
-  local timeout = opts and opts.timeout or 3
-  local ok, res, err
-
-  -- ngx.update_time()
-  -- local s = ngx.now()
-  -- while not found and ngx.now() - s <= timeout do
-  --   ngx.update_time()
-  --   ngx.sleep(0.1)
-  --   if coroutine.status(self.load_thread) ~= "running" then
-  --     break
-  --   end
-  -- end
-  -- print(coroutine.status(self.load_thread), coroutine.running(self.load_thread))
-
-  -- if coroutine.status(self.load_thread) == "running" then
-  --   self.load_should_stop = true
-  --   return false, "timeout waiting for load to stop (" .. timeout .. "s)"
-  -- end
-
-  local ok, res, err = ngx.thread.wait(self.load_thread)
-  self.load_should_stop = true
-  self.load_thread = nil
-
-  if not ok then
-    return false, "failed to wait result: " .. res
-  end
-
-  return res, err
+  return "docker exec " .. self.worker_ct_id .. " " .. stub:format("http", kong_vip, "8000")
 end
 
 return _M
