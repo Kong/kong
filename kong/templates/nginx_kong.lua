@@ -36,6 +36,7 @@ lua_shared_dict kong_cassandra              5m;
 > end
 
 underscores_in_headers on;
+lua_transform_underscores_in_response_headers off;
 > if ssl_ciphers then
 ssl_ciphers ${{SSL_CIPHERS}};
 > end

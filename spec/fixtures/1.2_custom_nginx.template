@@ -32,6 +32,7 @@ http {
 
     proxy_ssl_server_name on;
     underscores_in_headers on;
+    lua_transform_underscores_in_response_headers off;
 
     lua_package_path '${{LUA_PACKAGE_PATH}};;';
     lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
