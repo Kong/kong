@@ -662,7 +662,7 @@ end
 -- It will get the metrics from the dictionary, sort them, and expose them
 -- aling with TYPE and HELP comments.
 function Prometheus:collect()
-  ngx.header.content_type = "text/plain"
+  ngx.header["Content-Type"] = "text/plain"
   ngx.print(self:metric_data())
 end
 
