@@ -149,6 +149,12 @@ local function extract_options(args, schema, context)
     then
       options.type = args.type
     end
+
+    -- rbac role paging filter portal and default roles
+    if schema.name == "rbac_roles" and args.filter and context == "page"
+    then
+      options.filter = args.filter
+    end
     --]] EE
 
     if schema.fields.tags and args.tags ~= nil and context == "page" then
