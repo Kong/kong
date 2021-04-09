@@ -812,7 +812,7 @@ function kong_oauth2.load(ctx, access_token, ttl, use_cache)
     return nil, err
   end
 
-  return token, credential, consumer
+  return token, nil, credential, consumer
 end
 
 

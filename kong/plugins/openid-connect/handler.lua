@@ -388,7 +388,11 @@ function OICHandler.access(_, conf)
     end
 
     -- bearer token authentication
-    if auth_methods.bearer or auth_methods.introspection or auth_methods.kong_oauth2 then
+    if auth_methods.bearer
+    or auth_methods.introspection
+    or auth_methods.userinfo
+    or auth_methods.kong_oauth2
+    then
       log("trying to find bearer token")
       local bearer_token_param_type = args.get_param_types("bearer_token_param_type")
       for _, location in ipairs(bearer_token_param_type) do
@@ -973,6 +977,8 @@ function OICHandler.access(_, conf)
   local auth_method
   local token_introspected
   local jwt_token_introspected
+  local userinfo_data = nil
+  local userinfo_loaded = false
 
   local downstream_headers
 
@@ -982,7 +988,10 @@ function OICHandler.access(_, conf)
       log("verifying bearer token")
       tokens_decoded, err = oic.token:verify(tokens_encoded)
       if type(tokens_decoded) ~= "table" then
-        if not auth_methods.kong_oauth2 and not auth_methods.introspection then
+        if not auth_methods.introspection and
+           not auth_methods.userinfo      and
+           not auth_methods.kong_oauth2
+        then
           log("unable to verify bearer token")
           return response.unauthorized(err or "invalid jwt token")
         end
@@ -1017,42 +1026,67 @@ function OICHandler.access(_, conf)
 
       if auth_methods.kong_oauth2 then
         log("trying to find matching kong oauth2 token")
-        token_introspected, credential, consumer = cache.kong_oauth2.load(ctx, access_token, ttl, true)
+        token_introspected, err, credential, consumer = cache.kong_oauth2.load(ctx, access_token, ttl, true)
         if type(token_introspected) == "table" then
           log("authenticated using kong oauth2")
           token_introspected.active = true
+          auth_method = "kong_oauth2"
+
+        elseif err then
+          log("unable to authenticate with kong oauth2 (", err, ")")
 
         else
           log("unable to authenticate with kong oauth2")
         end
       end
 
-      if type(token_introspected) ~= "table" or token_introspected.active ~= true then
+      if type(token_introspected) ~= "table" then
         if auth_methods.introspection then
           log("trying to introspect bearer token")
           token_introspected, err = introspect_token(access_token, ttl)
           if type(token_introspected) == "table" then
             if token_introspected.active == true then
               log("authenticated using introspection")
+              auth_method = "introspection"
 
             else
               log("token is not active anymore")
             end
 
+          elseif err then
+            log("unable to authenticate using introspection (", err, ")")
+
           else
             log("unable to authenticate using introspection")
           end
         end
+      end
 
-        if type(token_introspected) ~= "table" or token_introspected.active ~= true then
-          log("authentication with bearer token failed")
-          return response.unauthorized(err or "invalid or inactive token")
+      if type(token_introspected) ~= "table" then
+        if auth_methods.userinfo then
+          log("trying to validate token with user info endpoint")
+          if type(userinfo_data) ~= "table" and not userinfo_loaded then
+            userinfo_data, err = userinfo_load(access_token)
+            userinfo_loaded = true
+
+            if type(userinfo_data) == "table" then
+              log("authenticated using user info endpoint")
+              token_introspected = { active = true }
+              auth_method = "userinfo"
+
+            elseif err then
+              log("unable to authenticate using user info endpoint (", err, ")")
+
+            else
+              log("unable to authenticate using user info endpoint")
+            end
+          end
         end
+      end
 
-        auth_method = "introspection"
-
-      else
-        auth_method = "kong_oauth2"
+      if type(token_introspected) ~= "table" or token_introspected.active ~= true then
+        log("authentication with bearer token failed")
+        return response.unauthorized(err or "invalid or inactive token")
       end
 
       exp = claims.exp(token_introspected, tokens_encoded, ttl.now, exp_default)
@@ -1064,7 +1098,7 @@ function OICHandler.access(_, conf)
         log("introspecting jwt bearer token")
         jwt_token_introspected, err = introspect_token(tokens_encoded.access_token, ttl)
         if type(jwt_token_introspected) == "table" then
-          if jwt_token_introspected.active then
+          if jwt_token_introspected.active == true then
             log("jwt bearer token is active and not revoked")
 
           else
@@ -1546,8 +1580,6 @@ function OICHandler.access(_, conf)
     check_required("roles", "roles_required", "roles_claim", { "roles" })
   end
 
-  local userinfo_data = nil
-  local userinfo_loaded = false
   local search_userinfo = args.get_conf_arg("search_user_info")
 
   -- consumer mapping

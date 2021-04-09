@@ -6,6 +6,7 @@
 - Add `config.userinfo_query_args_names`
 - Add `config.userinfo_query_args_values`
 - Add `config.userinfo_query_args_client`
+- Add `userinfo` as an option to `config.auth_methods`
 
 
 ## v1.9.0

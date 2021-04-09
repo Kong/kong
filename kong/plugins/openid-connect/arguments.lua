@@ -662,6 +662,7 @@ local function create_get_auth_methods(get_conf_arg)
         "authorization_code",
         "bearer",
         "introspection",
+        "userinfo",
         "kong_oauth2",
         "refresh_token",
         "session",
