@@ -278,8 +278,10 @@ local function claim_has_requirements(claim_raw, requirement)
     local all = true
     local matches = {}
 
-    for word in requirement:gmatch("%w+") do
-      local match = claim_raw:find(word) ~= nil
+    for word in requirement:gmatch("[%w%p]+") do
+      -- activate plain text matching
+      -- to avoid interpretation of lua magic characters
+      local match = claim_raw:find(word, 0, true) ~= nil
       if match then
         table.insert(matches, word)
       end
