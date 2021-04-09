@@ -726,6 +726,60 @@ local config = {
             },
           },
           {
+            userinfo_headers_names = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            userinfo_headers_values = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            userinfo_headers_client = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            userinfo_query_args_names = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            userinfo_query_args_values = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
+            userinfo_query_args_client = {
+              required = false,
+              type     = "array",
+              elements = {
+                type   = "string",
+              },
+            },
+          },
+          {
             token_exchange_endpoint = typedefs.url {
               required = false,
             },

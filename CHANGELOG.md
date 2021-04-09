@@ -1,3 +1,13 @@
+## v2.0.0
+
+- Add `config.userinfo_headers_names`
+- Add `config.userinfo_headers_values`
+- Add `config.userinfo_headers_client`
+- Add `config.userinfo_query_args_names`
+- Add `config.userinfo_query_args_values`
+- Add `config.userinfo_query_args_client`
+
+
 ## v1.9.0
 
 - Add `config.disable_session` to be able to disable session creation with specified

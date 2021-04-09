@@ -1069,13 +1069,18 @@ end
 local userinfo = {}
 
 
-local function userinfo_load(oic, access_token)
+local function userinfo_load(oic, access_token, opts)
   log.notice("loading user info using access token from identity provider")
-  return oic:userinfo(access_token)
+  local body, err, _ = oic:userinfo(access_token, opts)
+  if not body then
+    return nil, err
+  end
+
+  return body
 end
 
 
-function userinfo.load(oic, access_token, ttl, use_cache)
+function userinfo.load(oic, access_token, ttl, use_cache, opts)
   if not access_token then
     return nil, "no access token given for user info"
   end
@@ -1086,10 +1091,10 @@ function userinfo.load(oic, access_token, ttl, use_cache)
   }, "#userinfo=")), true))
 
   if use_cache and key then
-    return cache_get("oic:" .. key, ttl, userinfo_load, oic, access_token)
+    return cache_get("oic:" .. key, ttl, userinfo_load, oic, access_token, opts)
 
   else
-    return userinfo_load(oic, access_token)
+    return userinfo_load(oic, access_token, opts)
   end
 end
 

@@ -17,6 +17,7 @@ local claims          = require "kong.plugins.openid-connect.claims"
 local clients         = require "kong.plugins.openid-connect.clients"
 local headers         = require "kong.plugins.openid-connect.headers"
 local sessions        = require "kong.plugins.openid-connect.sessions"
+local userinfo        = require "kong.plugins.openid-connect.userinfo"
 local consumers       = require "kong.plugins.openid-connect.consumers"
 local responses       = require "kong.plugins.openid-connect.responses"
 local arguments       = require "kong.plugins.openid-connect.arguments"
@@ -180,6 +181,7 @@ function OICHandler.access(_, conf)
   end
 
   -- initialize functions
+  local userinfo_load    = userinfo.new(args, oic, cache)
   local introspect_token = introspect.new(args, oic, cache)
   local session_open     = sessions.new(args, secret)
 
@@ -1543,9 +1545,8 @@ function OICHandler.access(_, conf)
     check_required("roles", "roles_required", "roles_claim", { "roles" })
   end
 
-  local userinfo = false
+  local userinfo_data = nil
   local userinfo_loaded = false
-  local cache_userinfo  = args.get_conf_arg("cache_user_info")
   local search_userinfo = args.get_conf_arg("search_user_info")
 
   -- consumer mapping
@@ -1618,17 +1619,11 @@ function OICHandler.access(_, conf)
       end
 
       if not consumer and search_userinfo then
-        if type(userinfo) ~= "table" and not userinfo_loaded then
-          log("loading user info")
-          if cache_userinfo then
-            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
-          else
-            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
-          end
-
+        if type(userinfo_data) ~= "table" and not userinfo_loaded then
+          userinfo_data, err = userinfo_load(tokens_encoded.access_token)
           userinfo_loaded = true
 
-          if type(userinfo) == "table" then
+          if type(userinfo_data) == "table" then
             log("user info loaded")
           elseif err then
             log("user info could not be loaded (", err, ")")
@@ -1637,9 +1632,9 @@ function OICHandler.access(_, conf)
           end
         end
 
-        if type(userinfo) == "table" then
+        if type(userinfo_data) == "table" then
           log("trying to find consumer using user info")
-          consumer, err = consumers.find({ payload = userinfo }, consumer_claim, false, consumer_by, ttl)
+          consumer, err = consumers.find({ payload = userinfo_data }, consumer_claim, false, consumer_by, ttl)
           if consumer then
             log("consumer was found with user info")
           elseif err then
@@ -1729,17 +1724,11 @@ function OICHandler.access(_, conf)
       end
 
       if not credential_value and search_userinfo then
-        if type(userinfo) ~= "table" and not userinfo_loaded then
-          log("loading user info")
-          if cache_userinfo then
-            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
-          else
-            userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
-          end
-
+        if type(userinfo_data) ~= "table" and not userinfo_loaded then
+          userinfo_data, err = userinfo_load(tokens_encoded.access_token, ttl)
           userinfo_loaded = true
 
-          if type(userinfo) == "table" then
+          if type(userinfo_data) == "table" then
             log("user info loaded")
           elseif err then
             log("user info could not be loaded (", err, ")")
@@ -1748,9 +1737,9 @@ function OICHandler.access(_, conf)
           end
         end
 
-        if type(userinfo) == "table" then
+        if type(userinfo_data) == "table" then
           log("trying to find credential using user info")
-          credential_value = claims.find(userinfo, credential_claim)
+          credential_value = claims.find(userinfo_data, credential_claim)
           if credential_value then
             log("credential claim found in user info")
           else
@@ -1820,17 +1809,11 @@ function OICHandler.access(_, conf)
     end
 
     if not authenticated_groups and search_userinfo then
-      if type(userinfo) ~= "table" and not userinfo_loaded then
-        log("loading user info")
-        if cache_userinfo then
-          userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
-        else
-          userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
-        end
-
+      if type(userinfo_data) ~= "table" and not userinfo_loaded then
+        userinfo_data, err = userinfo_load(tokens_encoded.access_token, ttl)
         userinfo_loaded = true
 
-        if type(userinfo) == "table" then
+        if type(userinfo_data) == "table" then
           log("user info loaded")
         elseif err then
           log("user info could not be loaded (", err, ")")
@@ -1839,9 +1822,9 @@ function OICHandler.access(_, conf)
         end
       end
 
-      if type(userinfo) == "table" then
+      if type(userinfo_data) == "table" then
         log("trying to find credential using user info")
-        authenticated_groups = claims.find(userinfo, authenticated_groups_claim)
+        authenticated_groups = claims.find(userinfo_data, authenticated_groups_claim)
         if authenticated_groups then
           log("authenticated groups claim found in user info")
         else
@@ -1948,17 +1931,11 @@ function OICHandler.access(_, conf)
             end
 
             if not value and search_userinfo then
-              if type(userinfo) ~= "table" and not userinfo_loaded then
-                log("loading user info")
-                if cache_userinfo then
-                  userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
-                else
-                  userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
-                end
-
+              if type(userinfo_data) ~= "table" and not userinfo_loaded then
+                userinfo_data, err = userinfo_load(tokens_encoded.access_token, ttl)
                 userinfo_loaded = true
 
-                if userinfo then
+                if userinfo_data then
                   log("user info loaded")
                 elseif err then
                   log("user info could not be loaded (", err, ")")
@@ -1967,8 +1944,8 @@ function OICHandler.access(_, conf)
                 end
               end
 
-              if type(userinfo) == "table" then
-                value = headers.get(args.get_value(userinfo[claim]))
+              if type(userinfo_data) == "table" then
+                value = headers.get(args.get_value(userinfo_data[claim]))
               end
             end
 
@@ -2018,17 +1995,11 @@ function OICHandler.access(_, conf)
             end
 
             if not value and search_userinfo then
-              if type(userinfo) ~= "table" and not userinfo_loaded then
-                log("loading user info")
-                if cache_userinfo then
-                  userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
-                else
-                  userinfo, err = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
-                end
-
+              if type(userinfo_data) ~= "table" and not userinfo_loaded then
+                userinfo_data, err = userinfo_load(tokens_encoded.access_token, ttl)
                 userinfo_loaded = true
 
-                if type(userinfo) == "table" then
+                if type(userinfo_data) == "table" then
                   log("user info loaded")
                 elseif err then
                   log("user info could not be loaded (", err, ")")
@@ -2037,8 +2008,8 @@ function OICHandler.access(_, conf)
                 end
               end
 
-              if type(userinfo) == "table" then
-                value = headers.get(args.get_value(userinfo[claim]))
+              if type(userinfo_data) == "table" then
+                value = headers.get(args.get_value(userinfo_data[claim]))
               end
             end
 
@@ -2058,17 +2029,11 @@ function OICHandler.access(_, conf)
       return introspect_token(tokens_encoded.access_token, ttl)
     end)
 
-    headers.set(args, "user_info", userinfo or function()
+    headers.set(args, "user_info", userinfo_data or function()
       if not userinfo_loaded then
-        if cache_userinfo then
-          userinfo = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
-        else
-          userinfo = cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
-        end
-
+        userinfo_data, err = userinfo_load(tokens_encoded.access_token, ttl)
         userinfo_loaded = true
-
-        return userinfo
+        return userinfo_data
       end
     end)
 
