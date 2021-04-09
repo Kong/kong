@@ -339,7 +339,7 @@ local function metric_data()
 end
 
 local function collect(with_stream)
-  ngx.header.content_type = "text/plain; charset=UTF-8"
+  ngx.header["Content-Type"] = "text/plain; charset=UTF-8"
 
   ngx.print(metric_data())
 
