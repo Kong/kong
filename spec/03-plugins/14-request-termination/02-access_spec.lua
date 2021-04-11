@@ -136,7 +136,7 @@ for _, strategy in helpers.each_strategy() do
         route  = { id = route10.id },
         config = {
           echo = true,
-          echo_trigger = "gimme-an-echo",
+          trigger = "gimme-an-echo",
           status_code = 404
         },
       }
@@ -312,8 +312,8 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(server_tokens, res.headers["Server"])
     end)
 
-    describe("echo & echo_trigger", function()
-      it("echos a request if no echo_trigger is set", function()
+    describe("echo & trigger", function()
+      it("echos a request if no trigger is set", function()
         local res = assert(proxy_client:send {
           method = "GET",
           query = {

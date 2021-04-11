@@ -21,17 +21,20 @@ RequestTerminationHandler.VERSION = "2.0.1"
 function RequestTerminationHandler:access(conf)
   local status  = conf.status_code
   local content = conf.body
+  local req_headers, req_query
+
+  if conf.trigger or conf.echo then
+    req_headers = kong.request.get_headers()
+    req_query = kong.request.get_query()
+
+    if conf.trigger
+       and not req_headers[conf.trigger]
+       and not req_query[conf.trigger] then
+      return -- trigger set but not found, nothing to do
+    end
+  end
 
   if conf.echo then
-    local req_headers = kong.request.get_headers()
-    local req_query = kong.request.get_query()
-
-    if conf.echo_trigger and
-       not req_headers[conf.echo_trigger] and
-       not req_query[conf.echo_trigger] then
-      return -- no trigger found, nothing to do
-    end
-
     content = {
       message = conf.message or DEFAULT_RESPONSE[status],
       kong = {
