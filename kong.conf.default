@@ -68,7 +68,7 @@
 
 #status_access_log = off                  # Path for Status API request access
                                           # logs. The default value of `off`
-                                          # implies that loggin for this API
+                                          # implies that logging for this API
                                           # is disabled by default.
                                           # If this value is a relative path,
                                           # it will be placed under the
