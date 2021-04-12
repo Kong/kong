@@ -56,17 +56,19 @@ local function new_logger(namespace)
     warn = function(...) log(ngx.WARN, namespace, ...) end,
     err = function(...) log(ngx.ERR, namespace, ...) end,
     crit = function(...) log(ngx.CRIT, namespace, ...) end,
+    log_exec = function(...) log(ngx.DEBUG, namespace, "=> ", ...) end,
   }, {
     __call = function(self, lvl, ...) log(lvl, namespace, ...) end,
   })
 end
 local my_logger = new_logger("[controller]")
 
--- TODO: might time out
+--- Spawns a child process and get its exit code and outputs
 -- @param opts.stdin string the stdin buffer
 -- @param opts.logger function(lvl, _, line) stdout+stderr writer; if not defined, whole
 -- stdoud and stderr is returned
 -- @param opts.stop_signal function return true to abort execution
+-- @return stdout+stderr, err if opts.logger not set; bool+err if opts.logger set
 local function execute(cmd, opts)
   -- my_logger.debug("exec: ", cmd)
 
@@ -98,7 +100,7 @@ local function execute(cmd, opts)
     local l, err = proc:stdout_read_line()
     if l then
       if log_output then
-        opts.logger(ngx.DEBUG, "=> ", l)
+        opts.logger(l)
       else
         table.insert(ret, l)
       end
@@ -140,7 +142,7 @@ local function wait_output(cmd, pattern, timeout)
   -- don't kill it, it me finish by itself
   local exec = ngx.thread.spawn(function()
     local ok, err = execute(cmd, {
-      logger = function(_, _, line)
+      logger = function(line)
         return coroutine.running(co) and coroutine.resume(co, line)
       end,
       stop_signal = function() if found then return 9 end end,
@@ -220,6 +222,10 @@ local function use_driver(name, opts)
   DRIVER = mod.new(opts)
 end
 
+--- Set driver operation retry count
+-- @function set_retry_count
+-- @param try number the retry time for each driver operation
+-- @return nothing.
 local function set_retry_count(try)
   if type(try) ~= "number" then
     error("expect a number, got " .. type(try))
@@ -259,19 +265,54 @@ local _M = {
   wait_output = wait_output,
 }
 
-for _, d in ipairs(driver_functions) do
-  _M[d] = function(...)
-    return invoke_driver(d, ...)
-  end
+--- Start the upstream (nginx) with given conf
+-- @function start_upstream
+-- @param conf string the Nginx nginx snippet under server{} context
+-- @return nothing. Throws an error if any.
+function _M.start_upstream(conf)
+  return invoke_driver("start_upstream", conf)
+end
+
+--- Start Kong with given version and conf
+-- @function start_kong
+-- @param version string Kong version
+-- @param kong_confs table Kong configuration as a lua table
+-- @return nothing. Throws an error if any.
+function _M.start_kong(version, kong_confs)
+  return invoke_driver("start_kong", version, kong_confs)
+end
+
+--- Stop Kong
+-- @function stop_kong
+-- @return nothing. Throws an error if any.
+function _M.stop_kong()
+  return invoke_driver("stop_kong")
+end
+
+--- Setup env vars and return the configured helpers utility
+-- @function setup
+-- @return table the `helpers` utility as if it's require("spec.helpers")
+function _M.setup()
+  return invoke_driver("setup")
+end
+
+--- Cleanup all the stuff
+-- @function teardown
+-- @return nothing. Throws an error if any.
+function _M.teardown()
+  return invoke_driver("setup")
 end
 
 local load_thread
 local load_should_stop
 
+--- Start to send load to Kong
+-- @function start_load
 -- @param opts.path string request path
 -- @param opts.connections number connection count
 -- @param opts.threads number request thread count
 -- @param opts.duration number perf test duration
+-- @return nothing. Throws an error if any.
 function _M.start_load(opts)
   if load_thread then
     error("load is already started, stop it using wait_result() first", 2)
@@ -293,6 +334,10 @@ function _M.start_load(opts)
   end)
 end
 
+--- Wait the load test to finish and get result
+-- @function start_load
+-- @param opts.path string request path
+-- @return string the test report text
 function _M.wait_result(opts)
   if not load_thread then
     error("load haven't been started or already collected, " .. 

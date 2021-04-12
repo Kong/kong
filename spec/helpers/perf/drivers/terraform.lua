@@ -57,7 +57,7 @@ local function execute_batch(self, remote_ip, cmds, continue_on_error)
       cmd = ssh_execute_wrap(self, remote_ip, cmd)
     end
     local ok, err = perf.execute(cmd, {
-      logger = remote_ip and self.ssh_log or self.log
+      logger = (remote_ip and self.ssh_log or self.log).log_exec
     })
     if err then
       if not continue_on_error then
@@ -205,7 +205,7 @@ end
 
 function _M:stop_kong()
   return perf.execute(ssh_execute_wrap(self, self.kong_ip, "kong stop"),
-                                { logger = self.ssh_log })
+                                { logger = self.ssh_log.log_exec })
 end
 
 function _M:get_start_load_cmd(stub)

@@ -47,7 +47,7 @@ local function create_container(self, args, img)
   local out, err = perf.execute("docker images --format '{{.Repository}}:{{.Tag}}' " .. img)
   -- plain pattern find
   if err or not out:find(img, nil, true) then
-    local ok, err = perf.execute("docker pull " .. img, { logger = self.log })
+    local ok, err = perf.execute("docker pull " .. img, { logger = self.log.log_exec })
     if err then
       return false, err
     end
@@ -98,7 +98,7 @@ end
 function _M:teardown()
   for _, cid in ipairs({"worker_ct_id", "kong_ct_id", "psql_ct_id" }) do
     if self[cid] then
-      perf.execute("docker rm -f " .. self[cid], { logger = self.log })
+      perf.execute("docker rm -f " .. self[cid], { logger = self.log.log_exec })
       self[cid] = nil
     end
   end
@@ -154,7 +154,7 @@ function _M:start_upstream(conf)
     local ok, err = perf.execute(
       "docker build --progress plain -t perf-test-upstream -",
       {
-        logger = self.log,
+        logger = self.log.log_exec,
         stdin = ([[
         FROM nginx:alpine
         RUN apk update && apk add wrk
