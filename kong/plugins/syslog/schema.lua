@@ -3,17 +3,20 @@ local typedefs = require "kong.db.schema.typedefs"
 local severity = {
   type = "string",
   default = "info",
-  one_of = { "debug", "info", "notice", "warning", "err", "crit", "alert", "emerg" },
+  required = true,
+  one_of = { "debug", "info", "notice", "warning",
+             "err", "crit", "alert", "emerg" },
 }
 
 local facility = {
   type = "string",
-  default = "USER",
-  one_of = { "AUTH", "AUTHPRIV", "CRON", "DAEMON",
-             "FTP", "KERN", "LPR", "MAIL",
-             "NEWS", "SYSLOG", "USER", "UUCP",
-             "LOCAL0", "LOCAL1", "LOCAL2", "LOCAL3",
-             "LOCAL4", "LOCAL5", "LOCAL6", "LOCAL7" },
+  default = "user",
+  required = true,
+  one_of = { "auth", "authpriv", "cron", "daemon",
+             "ftp", "kern", "lpr", "mail",
+             "news", "syslog", "user", "uucp",
+             "local0", "local1", "local2", "local3",
+             "local4", "local5", "local6", "local7" },
 }
 
 return {
