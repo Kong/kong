@@ -20,6 +20,7 @@ local band       = bit.band
 local bxor       = bit.bxor
 local fmt        = string.format
 local escape_uri = ngx.escape_uri
+local null       = ngx.null
 
 local rbac_users          = kong.db.rbac_users
 local rbac_roles          = kong.db.rbac_roles
@@ -98,25 +99,25 @@ local function post_process_actions(row)
 end
 
 
-local function post_process_filter_roles(row)
-  -- remove portal roles
-  if string.sub(row.name, 1, PORTAL_PREFIX_LEN) == PORTAL_PREFIX then
-    return
-  end
-
-  -- remove default roles
-  if row.is_default then
-    return
-  end
-
-  return row
-end
-
-
 local function post_process_role(role)
   -- don't expose column that is for internal use only
   role.is_default = nil
   return role
+end
+
+
+local function post_process_filter_roles(role)
+  -- remove default roles
+  if role.is_default then
+    return
+  end
+
+  -- remove portal roles
+  if string.sub(role.name, 1, PORTAL_PREFIX_LEN) == PORTAL_PREFIX then
+    return
+  end
+
+  return post_process_role(role)
 end
 
 
@@ -377,9 +378,38 @@ return {
     schema = rbac_roles.schema,
     methods = {
       GET  = function(self, db, helpers, parent)
-        return endpoints.get_collection_endpoint(rbac_roles.schema)
-                                                (self, db, helpers,
-                                                 post_process_filter_roles)
+      local next_url = {}
+      local next_page = null
+      local args = self.args.uri
+
+      self.args.uri.filter = post_process_filter_roles
+      local data, _, err_t, offset =
+        endpoints.page_collection(self, db, rbac_roles.schema, "filter_page")
+
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if offset then
+        table.insert(next_url, fmt("offset=%s", escape_uri(offset)))
+
+        if args.tags then
+          table.insert(next_url,
+            "tags=" .. (type(args.tags) == "table" and args.tags[1] or args.tags))
+        end
+
+        next_page = "/rbac/roles?" .. table.concat(next_url, "&")
+      else
+        offset = null
+      end
+
+      setmetatable(data, cjson.empty_array_mt)
+
+      return kong.response.exit(200, {
+        data   = data,
+        offset = offset,
+        next   = next_page,
+      })
       end,
       POST = endpoints.post_collection_endpoint(rbac_roles.schema),
     }

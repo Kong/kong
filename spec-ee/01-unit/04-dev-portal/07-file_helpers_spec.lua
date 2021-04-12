@@ -628,6 +628,41 @@ describe("file helpers", function()
         parsed_file = file_helpers.parse_content(file)
         assert.equals(parsed_file.route, "/documentation/petstore")
       end)
+
+      it("returns route = nil if collection is not set in 'portal.conf.yaml'", function()
+        singletons.db = {
+          files = {
+            each = function() end,
+            select_by_path = function() end,
+          }
+        }
+
+        file = {
+          path = "content/_dogs/floofer.txt",
+          contents = [[
+            ---
+            stub: doggo
+            title: pupperdino
+            ---
+          ]],
+        }
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(parsed_file.route, nil)
+
+        file = {
+          path = "content/_employees/candice.txt",
+          contents = [[]],
+        }
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(parsed_file.route, nil)
+
+        file = {
+          path = "specs/petstore.yaml",
+          contents = [[]],
+        }
+        parsed_file = file_helpers.parse_content(file)
+        assert.equals(parsed_file.route, "/documentation/petstore")
+      end)
     end)
   end)
 end)

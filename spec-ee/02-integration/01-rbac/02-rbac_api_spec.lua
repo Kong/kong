@@ -9,8 +9,16 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local ee_helpers = require "spec-ee.helpers"
+local pl_file = require "pl.file"
+local constants = require "kong.constants"
+
+
+local PORTAL_PREFIX = constants.PORTAL_PREFIX
+local null = ngx.null
+
 
 local client
+
 
 local function post(path, body, headers, expected_status)
   headers = headers or {}
@@ -806,43 +814,105 @@ describe("Admin API RBAC with #" .. strategy, function()
       end)
 
       it("filters out portal roles", function()
-        local res = assert(client:send {
-          method = "POST",
-          path = "/portal-enabled-workspace/rbac/roles",
-          body = {
-            name = "regular_rbac_role",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
+        local regular_role = post("/portal-enabled-workspace/rbac/roles", {
+          name = "regular_rbac_role",
+        }, nil, 201)
 
-        local body = assert.res_status(201, res)
-        local regular_role = cjson.decode(body)
+        -- generate more portal rows than page size
+        -- this will test filtering of portal rows
+        -- where the valid roles are beyond the first page of results
+        for i = 1, 10 do
+          post("/portal-enabled-workspace/developers/roles", {
+            name = "portal_role_" .. i,
+          }, nil, 201)
+        end
 
-        local res = assert(client:send {
-          method = "POST",
-          path = "/portal-enabled-workspace/developers/roles",
-          body = {
-            name = "portal_role",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-        })
+        local res = get("/portal-enabled-workspace/rbac/roles?size=3", nil, 200)
 
-        assert.res_status(201, res)
+        assert.equals(1, #res.data)
+        assert.equals(regular_role.id, res.data[1].id)
+      end)
 
-        local res = assert(client:send {
-          method = "GET",
-          path = "/portal-enabled-workspace/rbac/roles"
-        })
+      it("returns empty - filtering portal roles < page size", function()
+        for i = 1, 10 do
+          post("/portal-enabled-workspace/developers/roles", {
+            name = "portal_role_" .. i,
+          }, nil, 201)
+        end
 
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
+        local res = get("/portal-enabled-workspace/rbac/roles?size=20", nil, 200)
 
-        assert.equals(1, #json.data)
-        assert.equals(regular_role.id, json.data[1].id)
+        assert.equals(null, res.next)
+        assert.equals(0, #res.data)
+      end)
+
+      it("returns empty - filtering portal roles == page size", function()
+        for i = 1, 10 do
+          post("/portal-enabled-workspace/developers/roles", {
+            name = "portal_role_" .. i,
+          }, nil, 201)
+        end
+
+        local res = get("/portal-enabled-workspace/rbac/roles?size=10", nil, 200)
+
+        assert.equals(null, res.next)
+        assert.equals(0, #res.data)
+      end)
+
+      it("returns empty - filtering portal roles > page size", function()
+        for i = 1, 10 do
+          post("/portal-enabled-workspace/developers/roles", {
+            name = "portal_role_" .. i,
+          }, nil, 201)
+        end
+
+        local res = get("/portal-enabled-workspace/rbac/roles?size=3", nil, 200)
+
+        assert.equals(null, res.next)
+        assert.equals(0, #res.data)
+      end)
+
+      it("paginates", function()
+        for i = 1, 25 do
+          post("/portal-enabled-workspace/rbac/roles", {
+            name = "regular_rbac_role_".. i,
+          }, nil, 201)
+
+          post("/portal-enabled-workspace/developers/roles", {
+            name = "portal_role_" .. i,
+          }, nil, 201)
+        end
+
+        local res = get("/portal-enabled-workspace/rbac/roles?size=10", nil, 200)
+
+        assert.equals(10, #res.data)
+
+        local res = get("/portal-enabled-workspace" .. res.next .. "&size=10", nil, 200)
+
+        assert.equals(10, #res.data)
+
+        local res = get("/portal-enabled-workspace" .. res.next .. "&size=10", nil, 200)
+
+        assert.equals(5, #res.data)
+        assert.equals(null, res.next)
+      end)
+
+      it('logs a warning when exiting after 1000 iterations', function()
+        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+        assert.not_matches("unable to retrieve full page of rbac_roles after 1000 iterations",
+                       err_log, nil, true)
+
+        for i = 1, 1001 do
+          bp.rbac_roles:insert({
+            name = PORTAL_PREFIX .. "portal_role_" .. i,
+          })
+        end
+
+        get("/rbac/roles?size=1", nil, 200)
+
+        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+        assert.matches("unable to retrieve full page of rbac_roles after 1000 iterations",
+                       err_log, nil, true)
       end)
     end)
   end)
