@@ -1796,11 +1796,31 @@
                                  # ignored, regardless of their lifetime. The
                                  # default special value of 'all' results in all
                                  # trace types being written, regardless of type.
-                                 # Included trace types are: 'query',
-                                 # 'legacy_query', `router', 'balancer.getPeer',
-                                 # 'balancer.toip', 'connect.toip',
-                                 # 'access.before', and 'access.after',
-                                 # 'cassandra_iterate, and 'plugin'.
+                                 #
+                                 # The following trace types are included:
+                                 #
+                                 # - `query`: trace the database query
+                                 # - `legacy_query`: (deprecated) trace the
+                                 #    database query with legacy DAO
+                                 # - `router`: trace Kong routing the request;
+                                 #    internal routing time
+                                 # - `balancer`: trace the execution of the overall
+                                 #    balancer phase
+                                 # - `balancer.getPeer`: trace Kong selecting an
+                                 #    upstream peer from the ring-balancer
+                                 # - `balancer.toip`: trace balancer to resolve
+                                 #    peer's host to IP
+                                 # - `connect.toip`: trace cosocket to resolve
+                                 #    target's host to IP
+                                 # - `access.before`: trace the preprocessing of
+                                 #    access phase, like parameter parsing, route
+                                 #    matching, and balance preparation
+                                 # - `access.after`: trace the postprocess of
+                                 #    access phase, like balancer execution and
+                                 #    internal variable assigning
+                                 # - `cassandra_iterate`: trace Cassandra driver to
+                                 #    paginate over results
+                                 # - `plugin`: trace plugins phase handlers
 
 #tracing_debug_header =          # Defines the name of the HTTP request header
                                  # that must be present in order to generate
