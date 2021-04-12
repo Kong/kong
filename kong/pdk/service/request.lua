@@ -19,6 +19,7 @@ local ngx_var = ngx.var
 local table_insert = table.insert
 local table_sort = table.sort
 local table_concat = table.concat
+local type = type
 local string_find = string.find
 local string_sub = string.sub
 local string_lower = string.lower
@@ -27,6 +28,7 @@ local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
 local check_phase = phase_checker.check
+local escape = require("kong.tools.uri").escape
 
 
 local PHASES = phase_checker.phases
@@ -125,11 +127,16 @@ local function new(self)
 
 
   ---
-  -- Sets the path component for the request to the service. It is not
-  -- normalized in any way and should **not** include the querystring.
+  -- Sets the path component for the request to the service.
+  --
+  -- The input accepts any valid *normalized* URI (including UTF-8 characters)
+  -- and this API will perform necessary escaping according to the RFC
+  -- to make the request valid.
+  --
+  -- Input should **not** include the querystring.
   -- @function kong.service.request.set_path
   -- @phases `access`
-  -- @tparam string path The path string. Example: "/v2/movies"
+  -- @tparam string path The path string. Special characters and UTF-8 characters are allowed. Example: "/v2/movies" or "/foo/😀"
   -- @return Nothing; throws an error on invalid inputs.
   -- @usage
   -- kong.service.request.set_path("/v2/movies")
@@ -144,9 +151,7 @@ local function new(self)
       error("path must start with /", 2)
     end
 
-    -- TODO: is this necessary in specific phases?
-    -- ngx.req.set_uri(path)
-    ngx_var.upstream_uri = path
+    ngx_var.upstream_uri = escape(path)
   end
 
 

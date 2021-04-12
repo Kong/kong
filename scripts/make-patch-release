@@ -194,7 +194,7 @@ case "$step" in
          git clone git@github.com:Kong/docs.konghq.com.git
          cd docs.konghq.com
       fi
-      git checkout master
+      git checkout main
       git pull
       git checkout -B "$branch"
       bump_docs_kong_versions
@@ -209,7 +209,7 @@ case "$step" in
       git commit -m "chore(*) update release metadata for $version"
 
       git push --set-upstream origin "$branch"
-      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
+      hub pull-request -b main -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
 
       SUCCESS "Make sure you give Team Docs a heads-up" \
               "once the release is pushed to the main repo." \
