@@ -770,10 +770,9 @@ local function new(self, major_version)
     --
     -- ---
     --
-    -- ```lua
     -- -- In L4 proxy mode
     -- return kong.response.exit(200, "Success")
-    -- ```
+    -- 
     function _RESPONSE.exit(status, body, headers)
       if self.worker_events and ngx.get_phase() == "content" then
         self.worker_events.poll()
