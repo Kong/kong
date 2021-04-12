@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.4.0-rc.1](#240-rc1)
+- [2.4.0](#240)
 - [2.3.3](#233)
 - [2.3.2](#232)
 - [2.3.1](#231)
@@ -57,12 +57,11 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.4.0-rc.1]
+## [2.4.0]
 
 > Released 2021/04/06
 
-This is a Release Candidate release of Kong, with no breaking changes with respect to the 2.x series,
-Since 2.4 is a minor release there are no breaking changes with respect to the 2.x series.
+This is the final release of Kong 2.4.0, with no breaking changes with respect to the 2.x series.
 This release includes JavaScript PDK, improved CP/DP updates and UTF-8 Tags, amongst other improvements
 and fixes.
 
@@ -191,6 +190,8 @@ repository will allow you to do both easily.
   [6976](https://github.com/Kong/kong/pull/6976)
 - Do not cache empty upstream name dictionary.
   [7002](https://github.com/Kong/kong/pull/7002)
+- Do not assume upstreams do not exist after init phase.
+  [7010](https://github.com/Kong/kong/pull/7010)
 
 ##### PDK
 
@@ -6028,7 +6029,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.4.0-rc.1]: https://github.com/Kong/kong/compare/2.3.3...2.4.0-rc.1
+[2.4.0]: https://github.com/Kong/kong/compare/2.3.3...2.4.0
 [2.3.3]: https://github.com/Kong/kong/compare/2.3.2...2.3.3
 [2.3.2]: https://github.com/Kong/kong/compare/2.3.1...2.3.2
 [2.3.1]: https://github.com/Kong/kong/compare/2.3.0...2.3.1
