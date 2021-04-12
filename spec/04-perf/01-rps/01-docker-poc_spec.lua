@@ -75,20 +75,24 @@ for _, version in ipairs(versions) do
     end)
 
     it("/test", function()
-      perf.start_load({
-        path = "/test",
-        connections = 1000,
-        threads = 5,
-        duration = 10,
-      })
+      local results = {}
+      for i=1,3 do
+        perf.start_load({
+          path = "/test",
+          connections = 1000,
+          threads = 5,
+          duration = 10,
+        })
 
-      ngx.sleep(10)
+        ngx.sleep(10)
 
-      local result = assert(perf.wait_result({
-        timeout = 5
-      }))
+        local result = assert(perf.wait_result())
 
-      print("### Result for kong ", version, ":\n", result, err)
+        print(("### Result for kong %s (run %d):\n%s"):format(version, i, result))
+        results[i] = result
+      end
+
+      print("### Combined results:\n" .. assert(perf.combine_results(results)))
     end)
   end)
 end

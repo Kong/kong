@@ -124,6 +124,12 @@ local function execute(cmd, opts)
   end
 end
 
+--- Execute a command and return until pattern is found in its output
+-- @function wait_output
+-- @param cmd string the command the execute
+-- @param pattern string the pattern to find in stdout and stderr
+-- @param timeout number time in seconds to wait for the pattern
+-- @return bool whether the pattern is found
 local function wait_output(cmd, pattern, timeout)
   timeout = timeout or 5
   local found
@@ -201,6 +207,11 @@ local function check_driver_sanity(mod)
 end
 
 local known_drivers = { "docker", "local", "terraform" }
+--- Unset an environment variable
+-- @function use_driver
+-- @param name string name of the driver to use
+-- @param opts[optional] table config parameters passed to the driver
+-- @return nothing. Throws an error if any.
 local function use_driver(name, opts)
   name = name or "docker"
 
@@ -375,8 +386,56 @@ function _M.wait_result(opts)
   return res
 end
 
-function _M.combine_results(...)
-  local results = {...}
+local function sum(t)
+  local s = 0
+  for _, i in ipairs(t) do
+    if type(i) == "number" then
+      s = s + i
+    end
+  end
+
+  return s
+end
+
+-- Note: could also use custom lua code in wrk
+local function parse_wrk_result(r)
+  local rps = string.match(r, "Requests/sec:%s+([%d%.]+)")
+  rps = tonumber(rps)
+  local count = string.match(r, "([%d]+)%s+requests in")
+  count = tonumber(count)
+  local lat_avg, avg_m, lat_max, max_m = string.match(r, "Latency%s+([%d%.]+)(m?)s%s+[%d%.]+m?s%s+([%d%.]+)(m?)s")
+  lat_avg = tonumber(lat_avg) * (avg_m == "m" and 1 or 1000)
+  lat_max = tonumber(lat_max) * (max_m == "m" and 1 or 1000)
+  return rps, count, lat_avg, lat_max
+end
+
+function _M.combine_results(results)
+  local count = #results
+  if count == 0 then
+    return "(no results)"
+  end
+
+  local rpss = table.new(count, 0)
+  local latencies_avg = table.new(count, 0)
+  local latencies_max = table.new(count, 0)
+  local count = 0
+
+  for i, r in ipairs(results) do
+    local r, c, la, lm = parse_wrk_result(r)
+    rpss[i] = r
+    count = count + c
+    latencies_avg[i] = la * c
+    latencies_max[i] = lm
+  end
+
+  local rps = sum(rpss) / 3
+  local latency_avg = sum(latencies_avg) / count
+  local latency_max = math.max(unpack(latencies_max))
+
+  return ([[
+RPS     Avg: %3.2f
+Latency Avg: %3.2fms    Max: %3.2fms
+  ]]):format(rps, latency_avg, latency_max)
 end
 
 return _M
