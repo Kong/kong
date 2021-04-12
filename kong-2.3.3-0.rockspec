@@ -28,7 +28,7 @@ dependencies = {
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
-  "luasyslog == 1.0.0",
+  "luasyslog == 2.0.1",
   "kikito/sandbox == 1.0.1",
   "lua_pack == 1.0.5",
   "lua-resty-mail == 1.0.2",
