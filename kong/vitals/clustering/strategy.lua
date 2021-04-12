@@ -32,6 +32,7 @@ local datasets = {
   insert_status_codes_by_consumer_and_route = VITALS_TYPE_STATUS_CODE_BY_CONSUMER_AND_ROUTE,
   insert_status_code_classes = VITALS_TYPE_STATUS_CODE_CLASSES,
   insert_status_code_classes_by_workspace = VITALS_TYPE_STATUS_CODE_BY_WORKSPACE,
+  insert_consumer_stats = VITALS_TYPE_CONSUMER_STATS,
 }
 
 local datasets_lookup = {}
