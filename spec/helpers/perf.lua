@@ -420,8 +420,8 @@ function _M.combine_results(results)
   local latencies_max = table.new(count, 0)
   local count = 0
 
-  for i, r in ipairs(results) do
-    local r, c, la, lm = parse_wrk_result(r)
+  for i, result in ipairs(results) do
+    local r, c, la, lm = parse_wrk_result(result)
     rpss[i] = r
     count = count + c
     latencies_avg[i] = la * c
