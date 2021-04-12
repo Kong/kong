@@ -115,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
         -- check whether the results have 3 object as per the spec file
         local count = 0
         for _ in pairs(body) do count = count+1 end
-        assert.equal(3,count)
+        assert.equal(2,count)
       end)
     end)
 
