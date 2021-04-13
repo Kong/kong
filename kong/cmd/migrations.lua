@@ -218,7 +218,7 @@ local function execute(args)
   conf.cassandra_timeout = args.db_timeout -- connect + send + read
   conf.cassandra_schema_consensus_timeout = args.db_timeout
 
-  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, true))
 
   _G.kong = kong_global.new()
   kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK

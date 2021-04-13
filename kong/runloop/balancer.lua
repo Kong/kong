@@ -459,7 +459,7 @@ do
       balancer_types = {
         ["consistent-hashing"] = require("resty.dns.balancer.consistent_hashing"),
         ["least-connections"] = require("resty.dns.balancer.least_connections"),
-        ["round-robin"] = require("resty.dns.balancer.ring"),
+        ["round-robin"] = require("resty.dns.balancer.round_robin"),
       }
     end
     local balancer, err = balancer_types[upstream.algorithm].new({

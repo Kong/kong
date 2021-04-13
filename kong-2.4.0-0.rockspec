@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.3.3-0"
+version = "2.4.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.3.3"
+  tag = "2.4.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -33,13 +33,14 @@ dependencies = {
   "luasyslog == 2.0.1",
   "kikito/sandbox == 1.0.1",
   "lua_pack == 1.0.5",
+  "lua-resty-dns-client == 6.0.0",
+  "lua-protobuf",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.08",
   "lua-resty-rsa == 0.04",
   "bcrypt == 2.1",
   "lpeg_patterns == 0.5",
   "http == 0.3",
-  "lua-resty-dns-client == 5.2.3",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-healthcheck == 1.4.1",
   "lua-resty-cookie == 0.1.0",
@@ -212,6 +213,7 @@ build = {
     ["kong.tools.messaging"] = "kong/tools/messaging.lua",
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
     ["kong.tools.uri"] = "kong/tools/uri.lua",
+    ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
 
     ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
     ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",

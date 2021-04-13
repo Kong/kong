@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.4.0](#240)
 - [2.3.3](#233)
 - [2.3.2](#232)
 - [2.3.1](#231)
@@ -54,6 +55,177 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.4.0]
+
+> Released 2021/04/06
+
+This is the final release of Kong 2.4.0, with no breaking changes with respect to the 2.x series.
+This release includes JavaScript PDK, improved CP/DP updates and UTF-8 Tags, amongst other improvements
+and fixes.
+
+### Dependencies
+
+- :warning: For Kong 2.4, the required OpenResty version has been bumped to
+  [1.19.3.1](http://openresty.org/en/changelog-1019003.html), and the set of
+  patches included has changed, including the latest release of
+  [lua-kong-nginx-module](https://github.com/Kong/lua-kong-nginx-module).
+  If you are installing Kong from one of our distribution
+  packages, you are not affected by this change.
+
+**Note:** if you are not using one of our distribution packages and compiling
+OpenResty from source, you must still apply Kong's [OpenResty
+patches](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools/patches)
+(and, as highlighted above, compile OpenResty with the new
+lua-kong-nginx-module). Our [kong-build-tools](https://github.com/Kong/kong-build-tools)
+repository will allow you to do both easily.
+
+- Bump luarocks from 3.4.0 to 3.5.0.
+  [#6699](https://github.com/Kong/kong/pull/6699)
+- Bump luasec from 0.9 to 1.0.
+  [#6814](https://github.com/Kong/kong/pull/6814)
+- Bump lua-resty-dns-client from 5.2.1 to 6.0.0.
+  [#6999](https://github.com/Kong/kong/pull/6999)
+- Bump kong-lapis from 1.8.1.2 to 1.8.3.1.
+  [#6925](https://github.com/Kong/kong/pull/6925)
+- Bump pgmoon from 1.11.0 to 1.12.0.
+  [#6741](https://github.com/Kong/kong/pull/6741)
+- Bump lua-resty-openssl from 0.6.9 to 0.7.2.
+  [#6967](https://github.com/Kong/kong/pull/6967)
+- Bump kong-plugin-zipkin from 1.2 to 1.3.
+  [#6936](https://github.com/Kong/kong/pull/6936)
+- Bump kong-prometheus-plugin from 1.0 to 1.2.
+  [#6958](https://github.com/Kong/kong/pull/6958)
+- Bump lua-cassandra from 1.5.0 to 1.5.1
+  [#6857](https://github.com/Kong/kong/pull/6857)
+
+### Additions
+
+##### Core
+
+- Relaxed version check between Control Planes and Data Planes, allowing
+  Data Planes that are missing minor updates to still connect to the
+  Control Plane. Also, now Data Plane is allowed to have a superset of Control
+  Plane plugins.
+  [6932](https://github.com/Kong/kong/pull/6932)
+- Allowed UTF-8 in Tags
+  [6784](https://github.com/Kong/kong/pull/6784)
+- Added support for Online Certificate Status Protocol responder found in cluster.
+  [6887](https://github.com/Kong/kong/pull/6887)
+
+##### PDK
+
+- [JavaScript Plugin Development Kit (PDK)](https://github.com/Kong/kong-js-pdk)
+  is released alongside with Kong 2.4. It allows users to write Kong plugins in
+  JavaScript and TypeScript.
+- Beta release of Protobuf plugin communication protocol, which can be used in
+  place of MessagePack to communicate with non-Lua plugins.
+  [6941](https://github.com/Kong/kong/pull/6941)
+- Enabled `ssl_certificate` phase on plugins with stream module.
+  [6873](https://github.com/Kong/kong/pull/6873)
+
+##### Plugins
+
+- Zipkin: support for Jaeger style uber-trace-id headers.
+  [101](https://github.com/Kong/kong-plugin-zipkin/pull/101)
+  Thanks [nvx](https://github.com/nvx) for the patch!
+- Zipkin: support for OT headers.
+  [103](https://github.com/Kong/kong-plugin-zipkin/pull/103)
+  Thanks [ishg](https://github.com/ishg) for the patch!
+- Zipkin: allow insertion of custom tags on the Zipkin request trace.
+  [102](https://github.com/Kong/kong-plugin-zipkin/pull/102)
+- Zipkin: creation of baggage items on child spans is now possible.
+  [98](https://github.com/Kong/kong-plugin-zipkin/pull/98)
+  Thanks [Asafb26](https://github.com/Asafb26) for the patch!
+- JWT: Add ES384 support
+  [6854](https://github.com/Kong/kong/pull/6854)
+  Thanks [pariviere](https://github.com/pariviere) for the patch!
+- Several plugins: capability to set new log fields, or unset existing fields,
+  by executing custom Lua code in the Log phase.
+  [6944](https://github.com/Kong/kong/pull/6944)
+
+### Fixes
+
+##### Core
+
+- Changed default values and validation rules for plugins that were not
+  well-adjusted for dbless or hybrid modes.
+  [6885](https://github.com/Kong/kong/pull/6885)
+- Topological sort now prioritizes core, avoiding problems when plugin entities
+  use core entities but don't explicitly depend on them.
+  [6880](https://github.com/Kong/kong/pull/6880)
+- If needed, `Host` header is now updated between balancer retries, using the
+  value configured in the correct upstream entity.
+  [6796](https://github.com/Kong/kong/pull/6796)
+- Schema validations now log more descriptive error messages when types are
+  invalid.
+  [6593](https://github.com/Kong/kong/pull/6593)
+  Thanks [WALL-E](https://github.com/WALL-E) for the patch!
+- Kong now ignores tags in Cassandra when filtering by multiple entities, which
+  is the expected behavior and the one already existent when using Postgres
+  databases.
+  [6931](https://github.com/Kong/kong/pull/6931)
+- `Upgrade` header is not cleared anymore when response `Connection` header
+  contains `Upgrade`.
+  [6929](https://github.com/Kong/kong/pull/6929)
+- Accept fully-qualified domain names ending in dots.
+  [6864](https://github.com/Kong/kong/pull/6864)
+- Kong does not try to warmup upstream names when warming up DNS entries.
+  [6891](https://github.com/Kong/kong/pull/6891)
+- Migrations order is now guaranteed to be always the same.
+  [6901](https://github.com/Kong/kong/pull/6901)
+- Buffered responses are disabled on connection upgrades.
+  [6902](https://github.com/Kong/kong/pull/6902)
+- Make entity relationship traverse-order-independent.
+  [6743](https://github.com/Kong/kong/pull/6743)
+- The host header is updated between balancer retries.
+  [6796](https://github.com/Kong/kong/pull/6796)
+- The router prioritizes the route with most matching headers when matching
+  headers.
+  [6638](https://github.com/Kong/kong/pull/6638)
+- Fixed an edge case on multipart/form-data boundary check.
+  [6638](https://github.com/Kong/kong/pull/6638)
+- Paths are now properly normalized inside Route objects.
+  [6976](https://github.com/Kong/kong/pull/6976)
+- Do not cache empty upstream name dictionary.
+  [7002](https://github.com/Kong/kong/pull/7002)
+- Do not assume upstreams do not exist after init phase.
+  [7010](https://github.com/Kong/kong/pull/7010)
+
+##### PDK
+
+- Now Kong does not leave plugin servers alive after exiting and does not try to
+  start them in the unsupported stream subsystem.
+  [6849](https://github.com/Kong/kong/pull/6849)
+- Go does not cache `kong.log` methods
+  [6701](https://github.com/Kong/kong/pull/6701)
+- The `response` phase is included on the list of public phases
+  [6638](https://github.com/Kong/kong/pull/6638)
+- Config file style and options case are now consistent all around.
+  [6981](https://github.com/Kong/kong/pull/6981)
+- Added right protobuf MacOS path to enable external plugins in Homebrew
+  installations.
+  [6980](https://github.com/Kong/kong/pull/6980)
+- Auto-escape upstream path to avoid proxying errors.
+  [6978](https://github.com/Kong/kong/pull/6978)
+- Ports are now declared as `Int`.
+  [6994](https://github.com/Kong/kong/pull/6994)
+
+##### Plugins
+
+- oauth2: better handling more cases of client invalid token generation.
+  [6594](https://github.com/Kong/kong/pull/6594)
+  Thanks [jeremyjpj0916](https://github.com/jeremyjpj0916) for the patch!
+- Zipkin: the w3c parsing function was returning a non-used extra value, and it
+  now early-exits.
+  [100](https://github.com/Kong/kong-plugin-zipkin/pull/100)
+  Thanks [nvx](https://github.com/nvx) for the patch!
+- Zipkin: fixed a bug in which span timestamping could sometimes raise an error.
+  [105](https://github.com/Kong/kong-plugin-zipkin/pull/105)
+  Thanks [Asafb26](https://github.com/Asafb26) for the patch!
+
+[Back to TOC](#table-of-contents)
 
 
 ## [2.3.3]
@@ -154,7 +326,7 @@ strictly contains bugfixes. The are no new features or breaking changes.
 ##### Core
 
 - lua-resty-dns-client was bumped to 5.2.1, which fixes an issue that could
-  lead to a busy loop when renewing addresses. 
+  lead to a busy loop when renewing addresses.
   [#6760](https://github.com/Kong/kong/pull/6760)
 - Fixed an issue that made Kong return HTTP 500 Internal Server Error instead
   of HTTP 502 Bad Gateway on upstream connection errors when using buffered
@@ -5856,6 +6028,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.4.0]: https://github.com/Kong/kong/compare/2.3.3...2.4.0
 [2.3.3]: https://github.com/Kong/kong/compare/2.3.2...2.3.3
 [2.3.2]: https://github.com/Kong/kong/compare/2.3.1...2.3.2
 [2.3.1]: https://github.com/Kong/kong/compare/2.3.0...2.3.1
