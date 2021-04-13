@@ -70,6 +70,7 @@ rm -rf ./autodoc/output
 ./autodoc/admin-api/generate.lua && \
 ./autodoc/cli/generate.lua && \
 ./autodoc/conf/generate.lua && \
+./autodoc/upgrading/generate.lua && \
 ./autodoc/pdk/generate.lua
 
 if [ -z "$DOCS_REPO" ] || [ -z "$DOCS_VERSION" ]
@@ -93,7 +94,7 @@ then
     echo
     echo "docs repo: $DOCS_REPO"
     echo "docs version: $DOCS_VERSION"
-
+    echo
 else
     echoerr
     echoerr "Could not find the docs repo in $DOCS_REPO . Please clone it there so I can copy the autodocs files there"
@@ -151,9 +152,15 @@ copy autodoc/output/nav/docs_nav.yml.admin-api.in "$DOCS_REPO/autodoc-nav/docs_n
 copy autodoc/output/configuration.md "$DOCS_APP/configuration.md"
 copy autodoc/output/cli.md "$DOCS_APP/cli.md"
 
-rm -rf "$DOCS_APP/pdk/*"
+rm -rf "$DOCS_APP/upgrading.md"
+copy autodoc/output/upgrading.md "$DOCS_APP/upgrading.md"
+
+rm -rf "$DOCS_APP/pdk/"
 mkdir -p "$DOCS_APP/pdk"
-copy autodoc/output/pdk/* "$DOCS_APP/pdk/"
+
+for module in autodoc/output/pdk/*; do
+  copy "$module" "$DOCS_APP/pdk/"
+done
 
 echo "Patching $DOCS_NAV with autodoc/output/pdk_nav.yml ..."
 insert_pdk_nav_file_into_docs_nav_file ./autodoc/output/_pdk_nav.yml "$DOCS_NAV"

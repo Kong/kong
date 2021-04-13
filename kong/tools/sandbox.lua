@@ -1,4 +1,4 @@
-local _sandbox = require "sandbox"
+local _sandbox = require "kong.tools.kong-lua-sandbox"
 
 local table = table
 local fmt = string.format

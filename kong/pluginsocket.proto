@@ -244,8 +244,8 @@ extend google.protobuf.MethodOptions {
 service Kong {
     rpc Client_GetIp(google.protobuf.Empty) returns (String);
     rpc Client_GetForwardedIp(google.protobuf.Empty) returns (String);
-    rpc Client_GetPort(google.protobuf.Empty) returns (String);
-    rpc Client_GetForwardedPort(google.protobuf.Empty) returns (String);
+    rpc Client_GetPort(google.protobuf.Empty) returns (Int);
+    rpc Client_GetForwardedPort(google.protobuf.Empty) returns (Int);
     rpc Client_GetCredential(google.protobuf.Empty) returns (AuthenticatedCredential);
     rpc Client_LoadConsumer(ConsumerSpec) returns (Consumer);
     rpc Client_GetConsumer(google.protobuf.Empty) returns (Consumer);

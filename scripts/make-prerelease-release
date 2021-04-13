@@ -24,6 +24,7 @@ function usage() {
    step "switch"           "switch or create to the release branch"
    step "write_changelog"  "prepare the changelog"
    step "commit_changelog" "commit the changelog"
+   step "update_copyright" "update copyright file"
    step "version_bump"     "bump and commit the version number"
    step "submit"           "push and submit a release PR"
    step "tag"              "tag and sign the release candidate"
@@ -123,6 +124,15 @@ case "$step" in
       commit_changelog "$version"
 
       SUCCESS "The changelog is now committed locally." \
+              "You are ready to run the next step:" \
+              "    $0 -v $version -s update_copyright"
+      ;;
+
+   #---------------------------------------------------------------------------
+   update_copyright)
+      update_copyright "$version"
+
+      SUCCESS "The COPYRIGHT file is updated locally." \
               "You are ready to run the next step:" \
               "    $0 -v $version -s version_bump"
       ;;

@@ -1437,6 +1437,17 @@
                                  #
                                  # See https://github.com/openresty/lua-nginx-module#lua_ssl_verify_depth
 
+#lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3   # Defines the TLS versions supported
+                                               # when handshaking with OpenResty's
+                                               # TCP cosocket APIs.
+                                               #
+                                               # This affects connections made by Lua
+                                               # code, such as connections to the
+                                               # database Kong uses, or when sending logs
+                                               # using a logging plugin. It does *not*
+                                               # affect connections made to the upstream
+                                               # Service or from downstream clients.
+
 #lua_package_path = ./?.lua;./?/init.lua;  # Sets the Lua module search path
                                            # (LUA_PATH). Useful when developing
                                            # or using custom plugins not stored
