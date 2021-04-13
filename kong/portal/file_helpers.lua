@@ -397,7 +397,7 @@ local function parse_content(file, email_tokens)
     end
 
     -- headmatter layout takes precidence
-    if collection_conf.layout and not headmatter.layout then
+    if collection_conf and collection_conf.layout and not headmatter.layout then
       layout = collection_conf.layout
     end
   end

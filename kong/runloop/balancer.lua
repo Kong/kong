@@ -11,7 +11,6 @@ local workspaces = require "kong.workspaces"
 local utils = require "kong.tools.utils"
 local hooks = require "kong.hooks"
 local get_certificate = require("kong.runloop.certificate").get_certificate
-local recreate_request = require("ngx.balancer").recreate_request
 
 
 -- due to startup/require order, cannot use the ones from 'kong' here
@@ -39,8 +38,6 @@ local table_concat = table.concat
 local table_remove = table.remove
 local timer_at = ngx.timer.at
 local run_hook = hooks.run_hook
-local var = ngx.var
-local get_phase = ngx.get_phase
 
 
 local CRIT = ngx.CRIT
@@ -430,7 +427,7 @@ do
 
   local creating = {}
 
-  wait = function(id, name)
+  wait = function(id)
     local timeout = 30
     local step = 0.001
     local ratio = 2
@@ -438,18 +435,8 @@ do
     while timeout > 0 do
       sleep(step)
       timeout = timeout - step
-      if id ~= nil then
-        if not creating[id] then
-          return true
-        end
-      else
-        if upstream_by_name[name] ~= nil then
-          return true
-        end
-        local phase = get_phase()
-        if phase ~= "init_worker" and phase ~= "init" then
-          return false
-        end
+      if not creating[id] then
+        return true
       end
       if timeout <= 0 then
         break
@@ -543,6 +530,7 @@ end
 
 local function load_upstreams_dict_into_memory()
   local upstreams_dict = {}
+  local found = nil
 
   -- build a dictionary, indexed by the upstream name
   for up, err in singletons.db.upstreams:each(nil, GLOBAL_QUERY_OPTS) do
@@ -552,9 +540,10 @@ local function load_upstreams_dict_into_memory()
     end
 
     upstreams_dict[up.ws_id .. ":" .. up.name] = up.id
+    found = true
   end
 
-  return upstreams_dict
+  return found and upstreams_dict
 end
 _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
 
@@ -591,26 +580,6 @@ local function get_upstream_by_name(upstream_name)
     return upstream_by_name[key]
   end
 
-  -- wait until upstream is loaded on init()
-  local ok = wait(nil, key)
-
-  if ok == false then
-    -- no upstream by this name
-    return false
-  end
-
-  if ok == nil then
-    return nil, "timeout waiting upstream to be loaded: " .. key
-  end
-
-  if upstream_by_name[key] then
-    return upstream_by_name[key]
-  end
-
-  -- couldn't find upstream at upstream_by_name[key] and there was no timeout
-  -- when waiting for the upstream to be loaded on init().
-  -- this is a worst-case scenario, so as a last option, we will try to load
-  -- all upstreams from the DB into memory to find the upstream
   local upstreams_dict, err = get_all_upstreams()
   if err then
     return nil, err
@@ -804,7 +773,7 @@ local get_value_to_hash = function(upstream, ctx)
                    (ctx.authenticated_credential or EMPTY_T).id
 
     elseif hash_on == "ip" then
-      identifier = var.remote_addr
+      identifier = ngx.var.remote_addr
 
     elseif hash_on == "header" then
       identifier = ngx.req.get_headers()[upstream[header_field_name]]
@@ -813,7 +782,7 @@ local get_value_to_hash = function(upstream, ctx)
       end
 
     elseif hash_on == "cookie" then
-      identifier = var["cookie_" .. upstream.hash_on_cookie]
+      identifier = ngx.var["cookie_" .. upstream.hash_on_cookie]
 
       -- If the cookie doesn't exist, create one and store in `ctx`
       -- to be added to the "Set-Cookie" header in the response
@@ -930,9 +899,8 @@ local function init()
     return
   end
 
-  local opts = { neg_ttl = 10 }
-  local upstreams_dict, err = singletons.core_cache:get("balancer:upstreams",
-                                      opts, load_upstreams_dict_into_memory)
+  local upstreams_dict, err = get_all_upstreams()
+
   if err then
     log(CRIT, "failed loading list of upstreams: ", err)
     return
@@ -1233,39 +1201,6 @@ local function get_upstream_health(upstream_id)
 end
 
 
-local function set_host_header(balancer_data)
-  if balancer_data.preserve_host then
-    return true
-  end
-
-  -- set the upstream host header if not `preserve_host`
-  local upstream_host = var.upstream_host
-  local orig_upstream_host = upstream_host
-  local phase = get_phase()
-
-  upstream_host = balancer_data.hostname
-
-  local upstream_scheme = var.upstream_scheme
-  if  upstream_scheme == "http"  and balancer_data.port ~= 80 or
-      upstream_scheme == "https" and balancer_data.port ~= 443 or
-      upstream_scheme == "grpc"  and balancer_data.port ~= 80 or
-      upstream_scheme == "grpcs" and balancer_data.port ~= 443
-  then
-    upstream_host = upstream_host .. ":" .. balancer_data.port
-  end
-
-  if upstream_host ~= orig_upstream_host then
-    var.upstream_host = upstream_host
-
-    if phase == "balancer" then
-      return recreate_request()
-    end
-  end
-
-  return true
-end
-
-
 --------------------------------------------------------------------------------
 -- Get healthcheck information for a balancer.
 -- @param upstream_id the id of the upstream.
@@ -1337,7 +1272,6 @@ return {
   get_upstream_by_id = get_upstream_by_id,
   get_balancer_health = get_balancer_health,
   stop_healthcheckers = stop_healthcheckers,
-  set_host_header = set_host_header,
 
   -- ones below are exported for test purposes only
   _create_balancer = create_balancer,

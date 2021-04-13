@@ -156,7 +156,7 @@ local function new(self)
 
 
   ---
-  -- Returns the consumer from the datastore (or cache).
+  -- Returns the consumer from the datastore.
   -- Will look up the consumer by id, and optionally will do a second search by name.
   -- @function kong.client.load_consumer
   -- @phases access, header_filter, body_filter, log

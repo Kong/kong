@@ -74,6 +74,22 @@ local config_schema = {
   }
 }
 
+local function validate_color_hex(value)
+  if value:match('^#%w%w%w%w%w%w$') then
+    return true
+  end
+
+  return nil, string.format("'%s' is not a valid color", tostring(value))
+end
+
+local function validate_image(value)
+  if value:match('^data:image/[a-zA-Z]+;base64,[a-zA-Z0-9/+]+=*$') then
+    return true
+  end
+
+  return nil, string.format("thumbnail is not a valid image data uri", tostring(value))
+end
+
 
 -- XXX by attempting to make the `meta` field a map, I found a bug in
 -- Kong's cassandra query serializer (where it'd attempt to index an
@@ -82,10 +98,8 @@ local config_schema = {
 local config_meta = {
   type = "record",
   fields = {
-    -- XXX add a validator for this field (perhaps `matches` with a Lua
-    -- pattern for the color hex code?
-    { color = { type = "string" } },
-    { thumbnail = { type = "string" } },
+    { color = { type = "string", custom_validator = validate_color_hex } },
+    { thumbnail = { type = "string", custom_validator = validate_image } },
   }
 }
 
