@@ -70,6 +70,7 @@ rm -rf ./autodoc/output
 ./autodoc/admin-api/generate.lua && \
 ./autodoc/cli/generate.lua && \
 ./autodoc/conf/generate.lua && \
+./autodoc/upgrading/generate.lua && \
 ./autodoc/pdk/generate.lua
 
 if [ -z "$DOCS_REPO" ] || [ -z "$DOCS_VERSION" ]
@@ -150,6 +151,9 @@ copy autodoc/output/nav/docs_nav.yml.admin-api.in "$DOCS_REPO/autodoc-nav/docs_n
 
 copy autodoc/output/configuration.md "$DOCS_APP/configuration.md"
 copy autodoc/output/cli.md "$DOCS_APP/cli.md"
+
+rm -rf "$DOCS_APP/upgrading.md"
+copy autodoc/output/upgrading.md "$DOCS_APP/upgrading.md"
 
 rm -rf "$DOCS_APP/pdk/"
 mkdir -p "$DOCS_APP/pdk"
