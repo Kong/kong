@@ -423,7 +423,7 @@ do
 
   local creating = {}
 
-  wait = function(id, name)
+  wait = function(id)
     local timeout = 30
     local step = 0.001
     local ratio = 2
@@ -431,18 +431,8 @@ do
     while timeout > 0 do
       sleep(step)
       timeout = timeout - step
-      if id ~= nil then
-        if not creating[id] then
-          return true
-        end
-      else
-        if upstream_by_name[name] ~= nil then
-          return true
-        end
-        local phase = get_phase()
-        if phase ~= "init_worker" and phase ~= "init" then
-          return false
-        end
+      if not creating[id] then
+        return true
       end
       if timeout <= 0 then
         break
@@ -586,26 +576,6 @@ local function get_upstream_by_name(upstream_name)
     return upstream_by_name[key]
   end
 
-  -- wait until upstream is loaded on init()
-  local ok = wait(nil, key)
-
-  if ok == false then
-    -- no upstream by this name
-    return false
-  end
-
-  if ok == nil then
-    return nil, "timeout waiting upstream to be loaded: " .. key
-  end
-
-  if upstream_by_name[key] then
-    return upstream_by_name[key]
-  end
-
-  -- couldn't find upstream at upstream_by_name[key] and there was no timeout
-  -- when waiting for the upstream to be loaded on init().
-  -- this is a worst-case scenario, so as a last option, we will try to load
-  -- all upstreams from the DB into memory to find the upstream
   local upstreams_dict, err = get_all_upstreams()
   if err then
     return nil, err
