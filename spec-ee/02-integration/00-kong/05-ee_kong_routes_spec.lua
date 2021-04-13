@@ -12,6 +12,8 @@ local admins = require "kong.enterprise_edition.admins_helpers"
 local ee_helpers = require "spec-ee.helpers"
 local rbac = require "kong.rbac"
 
+local compare_no_order = require "pl.tablex".compare_no_order
+
 
 local function insert_admin(db, workspace, name, role, email)
   local ws, err = db.workspaces:select_by_name(workspace)
@@ -377,7 +379,7 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      assert.same(expected, json.permissions)
+      assert.True(compare_no_order(expected, json.permissions))
     end)
 
     it("workspaces", function()

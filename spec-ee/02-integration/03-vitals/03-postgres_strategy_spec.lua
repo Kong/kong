@@ -879,7 +879,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         assert.same(err, "cutoff_times.minutes must be a number")
       end)
 
-      it("deletes stale data", function()
+      it("#flaky deletes stale data", function()
         local node_id = utils.uuid()
         local now = time()
 

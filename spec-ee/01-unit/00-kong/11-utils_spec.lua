@@ -55,20 +55,61 @@ describe("request", function()
         describe("data", function()
           describe("encodes data as body if body is not specified", function()
             it("defaulting content type to multipart/form-data", function()
+              local match = require("luassert.match")
+              local function is_request(state, arguments)
+                local compare_no_order = require "pl.tablex".compare_no_order
+
+                local function compare_header(actual, boundary)
+                  return compare_no_order({
+                    ["Content-Type"] = "multipart/form-data; boundary=" .. boundary,
+                  }, actual)
+                end
+
+                local function compare_body(actual, boundary, data)
+                  -- Import string functions (e.g. split)
+                  require "pl.stringx".import()
+
+                  -- Verify start/end and gather the form content
+                  local expected_start = "--" .. boundary .. "\r\n"
+                  local expected_end = "--" .. boundary .. "--\r\n"
+                  local starts_with = actual:sub(1, #expected_start) == expected_start
+                  local ends_with = actual:sub(-#expected_end) == expected_end
+                  local actual_form_content = actual:sub(1 + #expected_start, -(1 + #expected_end))
+                  actual_form_content = actual_form_content:split("--" .. boundary .. "\r\n")
+
+                  local expected_form_content = {}
+                  for k, v in pairs(data) do
+                    table.insert(expected_form_content, "Content-Disposition: form-data; name=\"" .. k .. "\"\r\n\r\n" .. v .. "\r\n")
+                  end
+
+                  return starts_with and
+                         ends_with and
+                         compare_no_order(expected_form_content, actual_form_content)
+                end
+
+                return function(value)
+                  return arguments[1].method == value.method and
+                         arguments[1].ssl_verify == value.ssl_verify and
+                         compare_header(value.headers, arguments[2]) and
+                         compare_body(value.body, arguments[2], arguments[3])
+                end
+              end
+              assert:register("matcher", "is_request", is_request)
+
+              local data = { foo = "bar", bar = "baz" }
               request(url, {
                 method = method,
-                data = { foo = "bar", bar = "baz" }
+                data = data
               })
 
-              opts = {
-                method = method,
-                ssl_verify = false,
-                body = "--8fd84e9444e3946c\r\nContent-Disposition: form-data; name=\"foo\"\r\n\r\nbar\r\n--8fd84e9444e3946c\r\nContent-Disposition: form-data; name=\"bar\"\r\n\r\nbaz\r\n--8fd84e9444e3946c--\r\n",
-                headers = {
-                  ["Content-Type"] = "multipart/form-data; boundary=8fd84e9444e3946c",
-                },
-              }
-              assert.stub(client.request_uri).was.called_with(client, url, opts)
+              local boundary = "8fd84e9444e3946c"
+              assert.stub(client.request_uri).was.called_with(client, url, match.is_request({
+                  method = method,
+                  ssl_verify = false,
+                  headers = {
+                    ["Content-Type"] = "multipart/form-data; boundary=" .. boundary,
+                  }
+                }, boundary, data))
             end)
 
             it("with content-type application/#json body is data as json", function()

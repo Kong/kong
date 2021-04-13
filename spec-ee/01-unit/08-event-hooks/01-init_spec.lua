@@ -19,6 +19,16 @@ end)
 
 local request = utils.request
 
+local match = require("luassert.match")
+
+local function is_request(state, arguments)
+  local compare_no_order = require "pl.tablex".compare_no_order
+  return function(value)
+    return compare_no_order(arguments[1], value)
+  end
+end
+assert:register("matcher", "is_request", is_request)
+
 local function mock_cache()
   local store = {}
   local clock = 0
@@ -304,7 +314,7 @@ describe("event-hooks", function()
     describe("receives a source, an event and some data", function()
       it("calls worker_events post", function()
         event_hooks.emit("some_source", "some_event", { some = "data" })
-        local unique = "some_source:some_event:7b3d404f5cde4a0b9b8fb4789a0098cb"
+        local unique = "some_source:some_event:bc31a334fcc4ed689f4ea9ab824f23b3"
         local source = "event-hooks:some_source"
         local event = "some_event"
         local data = { some = "data" }
@@ -318,7 +328,7 @@ describe("event-hooks", function()
     describe("generates the digest of a data message", function()
       it("defaults to the whole data when an event has not been published", function()
         local data = { some = "data", with_more = "data" }
-        assert.equal("fcd3b17e549f0a83f5bd14aa85d2f2cb",
+        assert.equal("80dfae20a5ce00b394c00a4c42658c67",
                      event_hooks.digest(data))
       end)
 
@@ -327,7 +337,7 @@ describe("event-hooks", function()
         local more_data = { some = "data", with_more = "data", and_more = "snowflake" }
         local fields = { "some", "with_more" }
 
-        assert.equal("fcd3b17e549f0a83f5bd14aa85d2f2cb",
+        assert.equal("80dfae20a5ce00b394c00a4c42658c67",
                      event_hooks.digest(data, { fields = fields }))
         assert.equal(event_hooks.digest(more_data, { fields = fields }),
                      event_hooks.digest(data, { fields = fields }))
@@ -336,7 +346,7 @@ describe("event-hooks", function()
       it("changes digest when a relevant field changes", function()
         local data = { some = "data", with_more = "data", and_more = "data" }
         local more_data = { some = "data", with_more = "snowflake", and_more = "snowflake" }
-        local fields = { "somne", "with_more" }
+        local fields = { "some", "with_more" }
 
         assert.not_equal(event_hooks.digest(data, { fields = fields }),
                          event_hooks.digest(more_data, { fields = fields }))
@@ -773,15 +783,15 @@ describe("event-hooks", function()
           ["content-type"] = "application/json",
         }
 
-        assert.stub(request).was.called_with(entity.config.url, {
+        assert.stub(request).was.called_with(entity.config.url, match.is_request({
           method = "POST",
           body = expected_body,
           headers = expected_headers,
-        })
+        }))
       end)
 
       describe("secret", function()
-        -- request responsability to use this function to add a header
+        -- request responsibility to use this function to add a header
         it("sends a signing function to request", function()
           entity.config = {
             url = "http://foobar.com",
@@ -811,12 +821,12 @@ describe("event-hooks", function()
           ["content-type"] = "application/json",
         }
 
-        assert.stub(request).was.called_with(entity.config.url, {
+        assert.stub(request).was.called_with(entity.config.url, match.is_request({
           method = "POST",
           body = expected_body,
           headers = expected_headers,
           ssl_verify = false,
-        })
+        }))
 
       end)
 
@@ -839,11 +849,11 @@ describe("event-hooks", function()
             ["content-type"] = "application/json",
             ["some-header"] = "some value",
           }
-          assert.stub(request).was.called_with(entity.config.url, {
+          assert.stub(request).was.called_with(entity.config.url, match.is_request({
             method = "POST",
             headers = expected_headers,
             body = expected_body,
-          })
+          }))
         end)
 
         it("has an operation argument", function()
@@ -865,11 +875,11 @@ describe("event-hooks", function()
             ["content-type"] = "application/json",
             ["some-header"] = "some value",
           }
-          assert.stub(request).was.called_with(entity.config.url, {
+          assert.stub(request).was.called_with(entity.config.url, match.is_request({
             method = "POST",
             headers = expected_headers,
             body = expected_body,
-          })
+          }))
         end)
       end)
 
@@ -891,11 +901,11 @@ describe("event-hooks", function()
             ["content-type"] = "application/json",
             ["X-Give-Me"] = "some tests",
           }
-          assert.stub(request).was.called_with(entity.config.url, {
+          assert.stub(request).was.called_with(entity.config.url, match.is_request({
             method = "POST",
             headers = expected_headers,
             body = expected_body,
-          })
+          }))
         end)
       end)
     end)

@@ -10,6 +10,8 @@ local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local ee_helpers = require "spec-ee.helpers"
 
+local compare_no_order = require "pl.tablex".compare_no_order
+
 local client
 
 local function post(path, body, headers, expected_status)
@@ -2662,7 +2664,7 @@ describe("Admin API RBAC with #" .. strategy, function()
         post("/ws1234/rbac/roles", {name = "ws1234-admin"})
         local perm = post("/ws1234/rbac/roles/ws1234-admin/endpoints",
           {actions = "*", endpoint="*"})
-        assert.same({ "delete", "create", "update", "read" }, perm.actions)
+        assert.True(compare_no_order({ "delete", "create", "update", "read" }, perm.actions))
         assert.same("*", perm.endpoint)
         assert.is_false(perm.negative)
         assert.same("ws1234", perm.workspace)

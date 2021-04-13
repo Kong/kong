@@ -5,8 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local helpers    = require "spec.helpers"
-local cjson      = require "cjson"
+local helpers = require "spec.helpers"
+local cjson = require "cjson"
+
+local compare_no_order = require "pl.tablex".compare_no_order
 
 for _, strategy in helpers.each_strategy() do
   describe("Admin API - Open API Spec routes - #" .. strategy, function()
@@ -351,7 +353,7 @@ for _, strategy in helpers.each_strategy() do
                   assert.equal(4, #resp_body_json.routes)
 
                   for id, route in ipairs(resp_body_json.routes) do
-                    assert.same(expected_routes[id].methods, route.methods)
+                    assert.True(compare_no_order(expected_routes[id].methods, route.methods))
                     assert.same(expected_routes[id].paths, route.paths)
                     assert.same(expected_routes[id].protocols, route.protocols)
                   end
@@ -767,7 +769,7 @@ for _, strategy in helpers.each_strategy() do
                   assert.equal(4, #resp_body_json.routes)
 
                   for id, route in ipairs(resp_body_json.routes) do
-                    assert.same(expected_routes[id].methods, route.methods)
+                    assert.True(compare_no_order(expected_routes[id].methods, route.methods))
                     assert.same(expected_routes[id].paths, route.paths)
                     assert.same(expected_routes[id].protocols, route.protocols)
                   end

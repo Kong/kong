@@ -10,7 +10,7 @@ local cjson = require "cjson"
 local lic_helper = require "kong.enterprise_edition.license_helpers"
 local licensing = require "kong.enterprise_edition.licensing"
 
-local match = require 'luassert.match'
+local match = require "luassert.match"
 
 describe("licensing", function()
 
@@ -450,7 +450,11 @@ describe("licensing", function()
       end)
 
       it("can be deep_copied, dumped, etc", function()
-        assert.equal(cjson.encode(expected_conf), cjson.encode(lic.configuration))
+        -- Decode the deep copied tables for easier comparison
+        -- Note: Not all strings are created equal after encoding; order of JSON
+        assert.same(cjson.decode(cjson.encode((expected_conf))),
+                    cjson.decode(cjson.encode(lic.configuration)))
+
       end)
 
       it("is kong_conf + features.conf", function()

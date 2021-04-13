@@ -15,6 +15,8 @@ local enums = require "kong.enterprise_edition.dao.enums"
 local lower = string.lower
 local time = ngx.time
 
+local tablex_sort = require("pl.tablex").sort
+
 
 local _M = {}
 
@@ -227,5 +229,21 @@ _M.request = function(url, opts)
 
   return client:request_uri(url, params)
 end
+
+local function normalize_table(data)
+  local hash
+  for k, v in tablex_sort(data) do
+    if type(v) == "table" then
+      v = normalize_table(v)
+    end
+    if v and type(v) == "string" then
+      hash = hash and (hash .. ":" .. k .. ":" .. v) or (k .. ":" .. v)
+    else
+      hash = hash and (hash .. ":" .. k) or k
+    end
+  end
+  return hash
+end
+_M.normalize_table = normalize_table
 
 return _M

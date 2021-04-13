@@ -12,6 +12,8 @@ local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local utils = require "kong.tools.utils"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 
+local compare_no_order = require "pl.tablex".compare_no_order
+
 local client
 local db, dao
 local post = ee_helpers.post
@@ -820,9 +822,9 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          assert.same({"test-group-1", "test-group-3"}, json.groups)
-          assert.same({ "delete", "create", "update", "read" },
-                      json.permissions.endpoints["*"]["*"].actions)
+          assert.True(compare_no_order({"test-group-1", "test-group-3"}, json.groups))
+          assert.True(compare_no_order({ "delete", "create", "update", "read" },
+                      json.permissions.endpoints["*"]["*"].actions))
 
           res = assert(client:send({
             method = "POST",
@@ -872,7 +874,7 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.same({"test-group-3"}, json.groups)
-          assert.same({["ws2"] = {
+          assert.True(compare_no_order({["ws2"] = {
             ["*"] = {
               actions = {
                 "delete",
@@ -882,7 +884,7 @@ for _, strategy in helpers.each_strategy() do
               },
               negative = false
             }
-          }}, json.permissions.endpoints)
+          }}, json.permissions.endpoints))
 
 
           -- can only access entities in their workspace

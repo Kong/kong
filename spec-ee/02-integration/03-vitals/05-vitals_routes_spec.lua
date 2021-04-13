@@ -13,6 +13,8 @@ local cjson       = require "cjson"
 local time        = ngx.time
 local fmt         = string.format
 
+local compare_no_order = require "pl.tablex".compare_no_order
+
 for _, db_strategy in helpers.each_strategy() do
   describe("Admin API Vitals with #" .. db_strategy, function()
     local client, db, strategy, bp, connector
@@ -401,7 +403,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("fails intermittently -- retrieves the vitals minutes data for all nodes", function()
@@ -438,7 +440,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("returns a 400 if called with invalid interval", function()
@@ -506,7 +508,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("retrieves the vitals minutes data for a requested node", function()
@@ -539,7 +541,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("returns empty stats if the requested node hasn't reported data", function()
@@ -562,7 +564,7 @@ for _, db_strategy in helpers.each_strategy() do
               stats = {},
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("returns a 400 if called with invalid interval", function()
@@ -656,7 +658,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           --XXX EE: flaky
@@ -687,7 +689,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("returns a 400 if called with invalid interval", function()
@@ -777,7 +779,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("retrieves the minutes-level response code data for the cluster", function()
@@ -830,7 +832,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
         end)
       end)
@@ -899,7 +901,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("retrieves the minutes-level response code data for a given workspace", function()
@@ -953,7 +955,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("returns a 404 if called with invalid workspace_id", function()
@@ -1091,7 +1093,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("retrieves the minutes-level response code data for a given service", function()
@@ -1154,7 +1156,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("returns a 400 if called with invalid interval", function()
@@ -1324,7 +1326,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("retrieves the minutes-level response code data for a given route", function()
@@ -1382,7 +1384,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("returns a 400 if called with invalid interval", function()
@@ -1564,7 +1566,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("retrieves the minutes-level response code data for a given consumer", function()
@@ -1627,7 +1629,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("returns a 400 if called with invalid interval", function()
@@ -1794,7 +1796,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("retrieves the minutes-level response code data for a given consumer", function()
@@ -1863,7 +1865,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("returns a 400 if called with invalid interval", function()
@@ -2012,7 +2014,7 @@ for _, db_strategy in helpers.each_strategy() do
               }
             }
 
-            assert.same(expected, json)
+            assert.True(compare_no_order(expected, json))
           end)
 
           it("returns a 404 if called with invalid consumer_id path param", function()

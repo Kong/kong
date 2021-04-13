@@ -409,7 +409,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(uuid, log_message.request.headers["x-uuid"])
     end)
 
-    it("executes global plugins on Nginx-produced client errors (HTTP 494) for default ws service", function()
+    it("executes global plugins on Nginx-produced client errors (HTTP 400) for default ws service", function()
       -- triggers error_page directive
       local uuid = utils.uuid()
 
@@ -422,7 +422,7 @@ for _, strategy in helpers.each_strategy() do
           ["X-UUID"] = uuid,
         }
       })
-      assert.res_status(494, res)
+      assert.res_status(400, res)
 
       -- TEST: ensure that our logging plugin was executed and wrote
       -- something to disk.
@@ -435,9 +435,8 @@ for _, strategy in helpers.each_strategy() do
       local log = pl_file.read(FILE_LOG_PATH_GLOBAL_DEFAULT)
       local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
 
-      assert.equal(uuid, log_message.request.headers["x-uuid"])
       assert.equal("header_filter", res.headers["Log-Plugin-Phases"])
-      assert.equal(494, log_message.response.status)
+      assert.equal(400, log_message.response.status)
     end)
   end)
 

@@ -12,6 +12,7 @@ local to_hex = require "resty.string".to_hex
 local BatchQueue = require "kong.tools.batch_queue"
 local sandbox = require "kong.tools.sandbox"
 local request = require "kong.enterprise_edition.utils".request
+local normalize_table = require "kong.enterprise_edition.utils".normalize_table
 
 local fmt = string.format
 local ngx_null = ngx.null
@@ -165,13 +166,13 @@ _M.digest = function(data, opts)
   local fields = opts.fields
   local data = fields and tx.intersection(data, tx.makeset(fields)) or data
 
-  local str, err = cjson.encode(data)
-
+  -- Ensure the data is valid JSON
+  local _, err = cjson.encode(data)
   if err then
     return nil, err
   end
 
-  return md5(str)
+  return md5(normalize_table(data))
 end
 
 

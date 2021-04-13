@@ -44,9 +44,13 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
+          local length = 0
+          for _, _ in pairs(json) do length = length + 1 end
+          assert.equals(2, length)
+
           assert(utils.is_array(json.data))
           assert.equal(0, #json.data)
-          assert.equal('{"next":null,"data":[]}', body)
+          assert.equal(cjson.null, json.next)
         end)
       end)
 
