@@ -695,9 +695,7 @@ end
 -- @return success A boolean indicating wether the module was found.
 -- @return module The retrieved module, or the error in case of a failure
 function _M.load_module_if_exists(module_name)
-  local status, res = xpcall(require, function(err)
-                                        return debug.traceback(err)
-                                      end, module_name)
+  local status, res = xpcall(require, debug.traceback, module_name)
   if status then
     return true, res
   -- Here we match any character because if a module has a dash '-' in its name, we would need to escape it.
