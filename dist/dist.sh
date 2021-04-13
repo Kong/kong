@@ -64,6 +64,52 @@ case $ACTION in
     use_local DOCKER_KONG_PATH || git_clone_tmp docker-kong $KONG_DOCKER_KONG_VERSION
     pushd $tmpath
       ./bintray-release.sh "$@"
+
+      # TODO: Remove below after Bintray sunset
+      # Handle push to freemium Bintray repository
+      IS_LATEST=0
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          -u)
+            USERNAME="$2"
+            shift
+            ;;
+          -k)
+            PASSWORD="$2"
+            shift
+            ;;
+          -p)
+            PLATFORM="$2"
+            shift
+            ;;
+          -R)
+            RELEASE_SCOPE="$(echo "$2" | awk '{print tolower($0)}')"
+            shift
+            ;;
+          -l)
+            IS_LATEST=1
+            ;;
+          -v)
+            VERSION="$2"
+            shift
+            ;;
+        esac
+        shift
+      done
+      if [[ "$RELEASE_SCOPE" == "ga" ]]; then
+        docker login -u $USERNAME -p $PASSWORD kong-docker-kong-gateway-docker.bintray.io
+
+        docker tag kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:"$VERSION"-"$PLATFORM" \
+                   kong-docker-kong-gateway-docker.bintray.io/kong-enterprise-edition:"$VERSION"-"$PLATFORM"
+        docker push kong-docker-kong-gateway-docker.bintray.io/kong-enterprise-edition:"$VERSION"-"$PLATFORM"
+
+        if [[ $IS_LATEST -eq 1 ]]; then
+          docker tag kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:"$VERSION"-"$PLATFORM" \
+                     kong-docker-kong-gateway-docker.bintray.io/kong-enterprise-edition:latest
+          docker push kong-docker-kong-gateway-docker.bintray.io/kong-enterprise-edition:latest
+        fi
+      fi
+      # TODO: Remove above after Bintray sunset
     popd
     ;;
   get)
