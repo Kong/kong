@@ -325,7 +325,7 @@ local function compile_nginx_conf(kong_config, template)
   return compile_conf(kong_config, template)
 end
 
-local function prepare_prefix(kong_config, nginx_custom_template_path)
+local function prepare_prefix(kong_config, nginx_custom_template_path, skip_write)
   log.verbose("preparing nginx prefix directory at %s", kong_config.prefix)
 
   if not pl_path.exists(kong_config.prefix) then
@@ -412,6 +412,10 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   elseif ulimit < 4096 then
     log.warn([[ulimit is currently set to "%d". For better performance set it]] ..
              [[ to at least "4096" using "ulimit -n"]], ulimit)
+  end
+
+  if skip_write then
+    return true
   end
 
   -- compile Nginx configurations
