@@ -17,6 +17,9 @@ local hmac_sha1 = ngx.hmac_sha1
 local ipairs = ipairs
 local fmt = string.format
 local string_lower = string.lower
+local kong_request = kong.request
+local kong_client = kong.client
+local kong_service_request = kong.service.request
 
 
 local AUTHORIZATION = "authorization"
@@ -140,9 +143,9 @@ local function create_hash(request_uri, hmac_params)
       elseif header == "request-line" then
         -- request-line in hmac headers list
         local request_line = fmt("%s %s HTTP/%.01f",
-                                 kong.request.get_method(),
+                                 kong_request.get_method(),
                                  request_uri,
-                                 assert(kong.request.get_http_version()))
+                                 assert(kong_request.get_http_version()))
         signing_string = signing_string .. request_line
 
       else
@@ -163,7 +166,7 @@ end
 
 
 local function validate_signature(hmac_params)
-  local signature_1 = create_hash(kong.request.get_path_with_query(), hmac_params)
+  local signature_1 = create_hash(kong_request.get_path_with_query(), hmac_params)
   local signature_2 = decode_base64(hmac_params.signature)
   if signature_1 == signature_2 then
     return true
@@ -202,7 +205,7 @@ end
 
 
 local function validate_clock_skew(date_header_name, allowed_clock_skew)
-  local date = kong.request.get_header(date_header_name)
+  local date = kong_request.get_header(date_header_name)
   if not date then
     return false
   end
@@ -222,13 +225,13 @@ end
 
 
 local function validate_body()
-  local body, err = kong.request.get_raw_body()
+  local body, err = kong_request.get_raw_body()
   if err then
     kong.log.debug(err)
     return false
   end
 
-  local digest_received = kong.request.get_header(DIGEST)
+  local digest_received = kong_request.get_header(DIGEST)
   if not digest_received then
     -- if there is no digest and no body, it is ok
     return body == ""
@@ -243,10 +246,10 @@ end
 
 
 local function set_consumer(consumer, credential)
-  kong.client.authenticate(consumer, credential)
+  kong_client.authenticate(consumer, credential)
 
-  local set_header = kong.service.request.set_header
-  local clear_header = kong.service.request.clear_header
+  local set_header = kong_service_request.set_header
+  local clear_header = kong_service_request.clear_header
 
   if consumer and consumer.id then
     set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
@@ -283,8 +286,8 @@ end
 
 
 local function do_authentication(conf)
-  local authorization = kong.request.get_header(AUTHORIZATION)
-  local proxy_authorization = kong.request.get_header(PROXY_AUTHORIZATION)
+  local authorization = kong_request.get_header(AUTHORIZATION)
+  local proxy_authorization = kong_request.get_header(PROXY_AUTHORIZATION)
 
   -- If both headers are missing, return 401
   if not (authorization or proxy_authorization) then
@@ -308,11 +311,11 @@ local function do_authentication(conf)
   if not hmac_params.username then
     hmac_params = retrieve_hmac_fields(authorization)
     if hmac_params and conf.hide_credentials then
-      kong.service.request.clear_header(AUTHORIZATION)
+      kong_service_request.clear_header(AUTHORIZATION)
     end
 
   elseif conf.hide_credentials then
-    kong.service.request.clear_header(PROXY_AUTHORIZATION)
+    kong_service_request.clear_header(PROXY_AUTHORIZATION)
   end
 
   local ok, err = validate_params(hmac_params, conf)
@@ -344,7 +347,7 @@ local function do_authentication(conf)
   local consumer_cache_key, consumer
   consumer_cache_key = kong.db.consumers:cache_key(credential.consumer.id)
   consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                      kong.client.load_consumer,
+                                      kong_client.load_consumer,
                                       credential.consumer.id)
   if err then
     return error(err)
@@ -360,7 +363,7 @@ local _M = {}
 
 
 function _M.execute(conf)
-  if conf.anonymous and kong.client.get_credential() then
+  if conf.anonymous and kong_client.get_credential() then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
@@ -372,7 +375,7 @@ function _M.execute(conf)
       -- get anonymous user
       local consumer_cache_key = kong.db.consumers:cache_key(conf.anonymous)
       local consumer, err      = kong.cache:get(consumer_cache_key, nil,
-                                                kong.client.load_consumer,
+                                                kong_client.load_consumer,
                                                 conf.anonymous, true)
       if err then
         return error(err)
