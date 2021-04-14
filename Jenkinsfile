@@ -23,7 +23,7 @@ pipeline {
                     }
                     allOf {
                         triggeredBy 'TimerTrigger'
-                        anyOf { branch 'master'; branch 'next' }
+                        anyOf { branch 'master'; }
                     }
                 }
             }
@@ -134,7 +134,7 @@ pipeline {
         stage('Release Per Commit') {
             when {
                 beforeAgent true
-                anyOf { branch 'master'; branch 'next' }
+                anyOf { branch 'master'; }
             }
             agent {
                 node {
