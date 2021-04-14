@@ -138,7 +138,7 @@ experience (both for you and for the Kong team), please read
 you start.
 
 If you are planning on developing on Kong, you'll need a development
-installation. The `next` branch holds the latest unreleased source code.
+installation. The `master` branch holds the latest unreleased source code.
 
 You can read more about writing your own plugins in the [Plugin Development
 Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
@@ -199,7 +199,7 @@ $ git clone https://github.com/Kong/kong
 $ cd kong/
 
 # you might want to switch to the development branch. See CONTRIBUTING.md
-$ git checkout next
+$ git checkout master
 
 # install the Lua sources
 $ luarocks make
@@ -207,7 +207,7 @@ $ luarocks make
 
 #### Running for development
 
-Check out the [development section](https://github.com/Kong/kong/blob/next/kong.conf.default#L244)
+Check out the [development section](https://github.com/Kong/kong/blob/master/kong.conf.default#L244)
 of the default configuration file for properties to tweak in order to ease
 the development process for Kong.
 
