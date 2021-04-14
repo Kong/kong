@@ -165,8 +165,6 @@ format to use or the appropriate code style.
 Once you have read them, and you are ready to submit your Pull Request, be sure
 to verify a few things:
 
-- Your work was based on the appropriate branch (`master` vs. `next`), and you
-  are opening your Pull Request against the appropriate one
 - Your commit history is clean: changes are atomic and the git message format
   was respected
 - Rebase your work on top of the base branch (seek help online on how to use
@@ -198,13 +196,6 @@ not forget to include your name if you are an external contributor. :wink:
 [Back to TOC](#table-of-contents)
 
 #### Git branches
-
-We work on two branches: `master`, where non-breaking changes land, and `next`,
-where important features or breaking changes land in-between major releases.
-
-When contributing to Kong, this distinction is important. Please ensure that
-you are basing your work on top of the appropriate branch, it might save you
-some time down the road!
 
 If you have write access to the GitHub repository, please follow the following
 naming scheme when pushing your branch(es):
