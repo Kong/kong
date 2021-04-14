@@ -7,5 +7,5 @@
 
 return {
   PLUGIN_NAME = "exit-transformer",
-  PLUGIN_VERSION = "0.3.1",
+  PLUGIN_VERSION = "0.3.2",
 }

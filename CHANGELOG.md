@@ -1,7 +1,6 @@
-## Unreleased
+## 0.3.2
 
-### Fixed
-
+- fix plugin not running on latest 2.3 and 2.4
 - exit functions running twice per response.
 
 ## 0.3.1
