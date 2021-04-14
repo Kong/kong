@@ -15,6 +15,7 @@
 - Add `config.downstream_introspection_jwt_header`
 - Add `userinfo` as an option to `config.auth_methods`
 - Add `introspection` and `userinfo` as options to `ignore_signature`
+- Add introspection of opaque tokens for claims verification
 
 
 ## v1.9.0

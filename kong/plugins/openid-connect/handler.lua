@@ -1517,6 +1517,15 @@ function OICHandler.access(_, conf)
           claim_lookup = default
         end
 
+        if not introspected and type(tokens_decoded) == "table" and type(tokens_decoded.access_token) ~= "table" then
+          log("introspecting token to verify required ", name)
+          introspection_data, err, introspection_jwt = introspect_token(tokens_encoded.access_token, ttl)
+          introspected = true
+          if err then
+            log("error introspecting token to verify required ", name " (", err, ")")
+          end
+        end
+
         local access_token_values
         if type(introspection_data) == "table" then
           access_token_values = claims.find(introspection_data, claim_lookup)
