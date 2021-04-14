@@ -35,9 +35,7 @@ pipeline {
     ENABLE_OPENTRACING = 0
     DOCKER_IMAGE_NAME="migration-tests"
     BINTRAY_LICENSE = credentials('BINTRAY_LICENSE')
-    KONG_LICENSE_DATA = sh(script: """
-        curl --fail -s -L -u "${env.BINTRAY_LICENSE_USR}:${env.BINTRAY_LICENSE_PSW}" https://kong.bintray.com/kong/license.json
-    """, returnStdout: true)
+    KONG_LICENSE_DATA = credentials('KONG_LICENSE_DATA')
   }
 
   stages {
