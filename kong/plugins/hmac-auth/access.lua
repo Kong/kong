@@ -16,6 +16,7 @@ local re_gmatch = ngx.re.gmatch
 local hmac_sha1 = ngx.hmac_sha1
 local ipairs = ipairs
 local fmt = string.format
+local string_lower = string.lower
 
 
 local AUTHORIZATION = "authorization"
@@ -132,13 +133,18 @@ local function create_hash(request_uri, hmac_params)
     local header_value = kong.request.get_header(header)
 
     if not header_value then
-      if header == "request-line" then
+      if header == "@request-target" then
+        local request_target = string_lower(kong.request.get_method()) .. " " .. request_uri
+        signing_string = signing_string .. header .. ": " .. request_target
+
+      elseif header == "request-line" then
         -- request-line in hmac headers list
         local request_line = fmt("%s %s HTTP/%.01f",
                                  kong.request.get_method(),
                                  request_uri,
                                  assert(kong.request.get_http_version()))
         signing_string = signing_string .. request_line
+
       else
         signing_string = signing_string .. header .. ":"
       end
