@@ -26,9 +26,22 @@ local ngx           = ngx
 local null          = ngx.null
 local time          = ngx.time
 local sub           = string.sub
+local find          = string.find
 local tonumber      = tonumber
 local tostring      = tostring
 local kong          = kong
+
+
+local TOKEN_DECODE_OPTS = {
+  verify_signature = false,
+  verify_claims    = false,
+}
+
+
+local TOKEN_DECODE_SIGNATURE_OPTS = {
+  verify_signature = true,
+  verify_claims    = false,
+}
 
 
 local discovery_data = { n = 0 }
@@ -132,6 +145,66 @@ end
 
 local function cache_issuer(discovery)
   return discovery
+end
+
+
+local function parse_jwt_response(oic, body, headers, ignore_signature, hint)
+  local token, jwt
+  if type(headers) == "table" then
+    local content_type = headers["Content-Type"]
+    if type(content_type) == "string" then
+      if find(content_type, "application/jwt", 1, true) == 1 or
+         find(content_type, hint, 1, true) == 1
+      then
+        local decoded, err = oic.token:decode(body, ignore_signature and TOKEN_DECODE_OPTS
+                                                                      or TOKEN_DECODE_SIGNATURE_OPTS)
+        if not decoded then
+          if err then
+            return nil, "unable to decode jwt response (" .. err .. ")"
+          end
+
+          return nil, "unable to decode jwt response"
+        end
+
+        if type(decoded) ~= "table" then
+          return nil, "invalid jwt response received"
+        end
+
+        if type(decoded.payload) ~= "table" then
+          return nil, "invalid jwt response payload received"
+        end
+
+        token = decoded.payload
+        jwt = body
+
+        if hint == "application/token-introspection+jwt" and type(token.token_introspection) == "table" then
+          token = token.token_introspection
+        end
+
+        log("jwt response received")
+      end
+    end
+  end
+
+  if not token then
+    local err
+    token, err = json.decode(body)
+    if not token then
+      if err then
+        return nil, "unable to decode json response (" .. err .. ")"
+      end
+
+      return nil, "unable to decode json response"
+    end
+
+    if type(token) ~= "table" then
+      return nil, "invalid json response received"
+    end
+
+    log("json response received")
+  end
+
+  return token, nil, jwt
 end
 
 
@@ -819,20 +892,32 @@ end
 local introspection = {}
 
 
-local function introspection_load(oic, access_token, hint, ttl, opts)
+local function introspection_load(oic, access_token, hint, ttl, ignore_signature, opts)
   log.notice("introspecting access token with identity provider")
-  local token, err = oic.token:introspect(access_token, hint or "access_token", opts)
-  if not token then
+  local body, err, headers = oic.token:introspect(access_token, hint or "access_token", opts)
+  if not body then
     return nil, err or "unable to introspect token"
+  end
+
+  local token
+  local jwt
+
+  token, err, jwt = parse_jwt_response(oic, body, headers, ignore_signature, "application/token-introspection+jwt")
+  if not token then
+    if err then
+      return nil, "unable to parse introspection response: " .. err
+    else
+      return nil, "unable to parse introspection response"
+    end
   end
 
   local exp, cache_ttl = get_expiry_and_cache_ttl(token, ttl)
 
-  return { exp, token }, nil, cache_ttl
+  return { exp, token, jwt }, nil, cache_ttl
 end
 
 
-function introspection.load(oic, access_token, hint, ttl, use_cache, opts)
+function introspection.load(oic, access_token, hint, ttl, use_cache, ignore_signature, opts)
   if not access_token then
     return nil, "no access token given for token introspection"
   end
@@ -846,27 +931,28 @@ function introspection.load(oic, access_token, hint, ttl, use_cache, opts)
   local err
 
   if use_cache and key then
-    res, err = cache_get("oic:" .. key, ttl, introspection_load, oic, access_token, hint, ttl, opts)
-    if not res then
+    res, err = cache_get("oic:" .. key, ttl, introspection_load, oic, access_token, hint, ttl, ignore_signature, opts)
+    if type(res) ~= "table" then
       return nil, err or "unable to introspect token"
     end
 
     local exp = res[1]
     if exp ~= 0 and exp < ttl.now then
       cache_invalidate("oic:" .. key)
-      res, err = introspection_load(oic, access_token, hint, ttl, opts)
+      res, err = introspection_load(oic, access_token, hint, ttl, ignore_signature, opts)
     end
 
   else
-    res, err = introspection_load(oic, access_token, hint, ttl, opts)
+    res, err = introspection_load(oic, access_token, hint, ttl, ignore_signature, opts)
   end
 
-  if not res then
+  if type(res) ~= "table" then
     return nil, err or "unable to introspect token"
   end
 
   local token = res[2]
-  return token
+  local jwt   = res[3]
+  return token, nil, jwt
 end
 
 
@@ -955,7 +1041,7 @@ function tokens.load(oic, args, ttl, use_cache, flush, salt)
 
   if use_cache and key then
     res, err = cache_get("oic:" .. key, ttl, tokens_load, oic, args, ttl)
-    if not res then
+    if type(res) ~= "table" then
       return nil, err or "unable to exchange credentials"
     end
 
@@ -1069,18 +1155,33 @@ end
 local userinfo = {}
 
 
-local function userinfo_load(oic, access_token, opts)
+local function userinfo_load(oic, access_token, ttl, ignore_signature, opts)
   log.notice("loading user info using access token from identity provider")
-  local body, err, _ = oic:userinfo(access_token, opts)
+
+  local body, err, headers = oic:userinfo(access_token, opts)
   if not body then
     return nil, err
   end
 
-  return body
+  local token
+  local jwt
+
+  token, err, jwt = parse_jwt_response(oic, body, headers, ignore_signature, "application/userinfo+jwt")
+  if not token then
+    if err then
+      return nil, "unable to parse userinfo response: " .. err
+    else
+      return nil, "unable to parse userinfo response"
+    end
+  end
+
+  local exp, cache_ttl = get_expiry_and_cache_ttl(token, ttl)
+
+  return { exp, token, jwt }, nil, cache_ttl
 end
 
 
-function userinfo.load(oic, access_token, ttl, use_cache, opts)
+function userinfo.load(oic, access_token, ttl, use_cache, ignore_signature, opts)
   if not access_token then
     return nil, "no access token given for user info"
   end
@@ -1090,12 +1191,30 @@ function userinfo.load(oic, access_token, ttl, use_cache, opts)
     access_token
   }, "#userinfo=")), true))
 
+  local res, err
   if use_cache and key then
-    return cache_get("oic:" .. key, ttl, userinfo_load, oic, access_token, opts)
+    res, err = cache_get("oic:" .. key, ttl, userinfo_load, oic, access_token, ttl, ignore_signature, opts)
+    if type(res) ~= "table" then
+      return nil, err or "unable to load user info"
+    end
 
+    local exp = res[1]
+    if exp ~= 0 and exp < ttl.now then
+      cache_invalidate("oic:" .. key)
+      res, err = userinfo_load(oic, access_token, ttl, ignore_signature, opts)
+    end
   else
-    return userinfo_load(oic, access_token, opts)
+    res, err = userinfo_load(oic, access_token, ttl, ignore_signature, opts)
   end
+
+  if type(res) ~= "table" then
+    return nil, err or "unable to load user info"
+  end
+
+  local token = res[2]
+  local jwt   = res[3]
+
+  return token, nil, jwt
 end
 
 

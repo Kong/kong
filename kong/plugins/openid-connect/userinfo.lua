@@ -12,12 +12,13 @@ local type = type
 local ipairs = ipairs
 
 
-local function new(args, oic, cache)
+local function new(args, oic, cache, ignore_signature)
   local opts
   local use_cache
   return function(access_token, ttl)
     if not opts then
       use_cache            = args.get_conf_arg("cache_user_info")
+      local accept         = args.get_conf_arg("userinfo_accept", "application/json")
       local endpoint       = args.get_conf_arg("userinfo_endpoint")
       local client_headers = args.get_conf_arg("userinfo_headers_client")
       local client_args    = args.get_conf_arg("userinfo_query_args_client")
@@ -36,6 +37,14 @@ local function new(args, oic, cache)
             headers[header_name] = header_value
           end
         end
+      end
+
+      if accept then
+        if not headers then
+          headers = {}
+        end
+
+        headers["Accept"] = accept
       end
 
       if client_args then
@@ -64,6 +73,7 @@ local function new(args, oic, cache)
 
       opts = {
         userinfo_endpoint = endpoint,
+        userinfo_format   = "string",
         headers           = headers,
         query             = qargs,
       }
@@ -71,11 +81,11 @@ local function new(args, oic, cache)
 
     if use_cache then
       log("loading user info with caching enabled")
-      return cache.userinfo.load(oic, access_token, ttl, true, opts)
+    else
+      log("loading user info")
     end
 
-    log("loading user info")
-    return cache.userinfo.load(oic, access_token, ttl, false, opts)
+    return cache.userinfo.load(oic, access_token, ttl, use_cache, ignore_signature, opts)
   end
 end
 

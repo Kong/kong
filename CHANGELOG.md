@@ -6,7 +6,15 @@
 - Add `config.userinfo_query_args_names`
 - Add `config.userinfo_query_args_values`
 - Add `config.userinfo_query_args_client`
+- Add `config.introspection_check_active`
+- Add `config.introspection_accept`
+- Add `config.userinfo_accept`
+- Add `config.upstream_user_info_jwt_header`
+- Add `config.upstream_introspection_jwt_header`
+- Add `config.downstream_user_info_jwt_header`
+- Add `config.downstream_introspection_jwt_header`
 - Add `userinfo` as an option to `config.auth_methods`
+- Add `introspection` and `userinfo` as options to `ignore_signature`
 
 
 ## v1.9.0

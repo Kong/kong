@@ -640,6 +640,25 @@ local config = {
             },
           },
           {
+            introspection_check_active = {
+              required = false,
+              type     = "boolean",
+              default  = true,
+            },
+          },
+          {
+            introspection_accept = {
+              required = false,
+              type     = "string",
+              default  = "application/json",
+              one_of   = {
+                "application/json",
+                "application/token-introspection+jwt",
+                "application/jwt",
+              },
+            },
+          },
+          {
             introspection_headers_names = {
               required = false,
               type     = "array",
@@ -726,6 +745,17 @@ local config = {
           {
             userinfo_endpoint = typedefs.url {
               required = false,
+            },
+          },
+          {
+            userinfo_accept = {
+              required = false,
+              type     = "string",
+              default  = "application/json",
+              one_of   = {
+                "application/json",
+                "application/jwt",
+              },
             },
           },
           {
@@ -1220,7 +1250,19 @@ local config = {
             },
           },
           {
+            upstream_user_info_jwt_header = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
             upstream_introspection_header = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
+            upstream_introspection_jwt_header = {
               required = false,
               type     = "string",
             },
@@ -1286,7 +1328,19 @@ local config = {
             },
           },
           {
+            downstream_user_info_jwt_header = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
             downstream_introspection_header = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
+            downstream_introspection_jwt_header = {
               required = false,
               type     = "string",
             },
@@ -1529,6 +1583,8 @@ local config = {
                   "authorization_code",
                   "refresh_token",
                   "session",
+                  "introspection",
+                  "userinfo",
                 },
               },
             },

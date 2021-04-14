@@ -12,7 +12,7 @@ local type = type
 local ipairs = ipairs
 
 
-local function new(args, oic, cache)
+local function new(args, oic, cache, ignore_signature)
   local opts
   local hint
   local use_cache
@@ -20,6 +20,7 @@ local function new(args, oic, cache)
     if not opts then
       use_cache            = args.get_conf_arg("cache_introspection")
       hint                 = args.get_conf_arg("introspection_hint", "access_token")
+      local accept         = args.get_conf_arg("introspection_accept", "application/json")
       local endpoint       = args.get_conf_arg("introspection_endpoint")
       local auth_method    = args.get_conf_arg("introspection_endpoint_auth_method")
       local client_headers = args.get_conf_arg("introspection_headers_client")
@@ -39,6 +40,14 @@ local function new(args, oic, cache)
             headers[header_name] = header_value
           end
         end
+      end
+
+      if accept then
+        if not headers then
+          headers = {}
+        end
+
+        headers["Accept"] = accept
       end
 
       if client_args then
@@ -68,6 +77,7 @@ local function new(args, oic, cache)
       opts = {
         introspection_endpoint             = endpoint,
         introspection_endpoint_auth_method = auth_method,
+        introspection_format               = "string",
         headers                            = headers,
         args                               = pargs,
       }
@@ -75,11 +85,11 @@ local function new(args, oic, cache)
 
     if use_cache then
       log("introspecting token with caching enabled")
-      return cache.introspection.load(oic, access_token, hint, ttl, true, opts)
+    else
+      log("introspecting token")
     end
 
-    log("introspecting token")
-    return cache.introspection.load(oic, access_token, hint, ttl, false, opts)
+    return cache.introspection.load(oic, access_token, hint, ttl, use_cache, ignore_signature, opts)
   end
 end
 
@@ -87,4 +97,3 @@ end
 return {
   new = new
 }
-

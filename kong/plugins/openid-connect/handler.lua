@@ -55,6 +55,9 @@ local TOKEN_DECODE_OPTS = {
 }
 
 
+local CLIENT_CREDENTIALS_GRANT = "client_credentials"
+local PASSWORD_GRANT = "password"
+local REFRESH_TOKEN_GRANT = "refresh_token"
 local JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 
 
@@ -182,8 +185,6 @@ function OICHandler.access(_, conf)
   end
 
   -- initialize functions
-  local userinfo_load    = userinfo.new(args, oic, cache)
-  local introspect_token = introspect.new(args, oic, cache)
   local session_open     = sessions.new(args, secret)
 
   -- load enabled authentication methods
@@ -550,7 +551,7 @@ function OICHandler.access(_, conf)
             token_endpoint_args = {
               {
                 refresh_token    = refresh_token,
-                grant_type       = "refresh_token",
+                grant_type       = REFRESH_TOKEN_GRANT,
                 ignore_signature = ignore_signature.refresh_token,
               },
             }
@@ -565,13 +566,13 @@ function OICHandler.access(_, conf)
           local usr, pwd, loc1
           if auth_methods.password then
             log("trying to find credentials for password grant")
-            usr, pwd, loc1 = args.get_credentials("password", "username",  "password")
+            usr, pwd, loc1 = args.get_credentials(PASSWORD_GRANT, "username",  "password")
           end
 
           local cid, sec, loc2, assertion, loc3
           if auth_methods.client_credentials then
             log("trying to find credentials for client credentials grant")
-            cid, sec, loc2 = args.get_credentials("client_credentials", "client_id", "client_secret")
+            cid, sec, loc2 = args.get_credentials(CLIENT_CREDENTIALS_GRANT, "client_id", "client_secret")
             if not cid or not sec then
               assertion, loc3 = args.get_credentials(JWT_BEARER_GRANT, "assertion")
             end
@@ -584,13 +585,13 @@ function OICHandler.access(_, conf)
               {
                 username         = usr,
                 password         = pwd,
-                grant_type       = "password",
+                grant_type       = PASSWORD_GRANT,
                 ignore_signature = ignore_signature.password,
               },
               {
                 client_id        = cid,
                 client_secret    = sec,
-                grant_type       = "client_credentials",
+                grant_type       = CLIENT_CREDENTIALS_GRANT,
                 ignore_signature = ignore_signature.client_credentials,
               },
             }
@@ -602,7 +603,7 @@ function OICHandler.access(_, conf)
               {
                 username         = usr,
                 password         = pwd,
-                grant_type       = "password",
+                grant_type       = PASSWORD_GRANT,
                 ignore_signature = ignore_signature.password,
               },
               {
@@ -619,7 +620,7 @@ function OICHandler.access(_, conf)
               {
                 username         = usr,
                 password         = pwd,
-                grant_type       = "password",
+                grant_type       = PASSWORD_GRANT,
                 ignore_signature = ignore_signature.password,
               },
             }
@@ -631,7 +632,7 @@ function OICHandler.access(_, conf)
               {
                 client_id        = cid,
                 client_secret    = sec,
-                grant_type       = "client_credentials",
+                grant_type       = CLIENT_CREDENTIALS_GRANT,
                 ignore_signature = ignore_signature.client_credentials,
               },
             }
@@ -974,13 +975,17 @@ function OICHandler.access(_, conf)
 
   local tokens_decoded
 
-  local auth_method
-  local token_introspected
-  local jwt_token_introspected
+  local auth_method = nil
+  local introspection_data = nil
+  local introspection_jwt = nil
+  local introspected = false
   local userinfo_data = nil
+  local userinfo_jwt = nil
   local userinfo_loaded = false
+  local downstream_headers = nil
 
-  local downstream_headers
+  local userinfo_load    = userinfo.new(args, oic, cache, ignore_signature.userinfo)
+  local introspect_token = introspect.new(args, oic, cache, ignore_signature.introspection)
 
   -- retrieve or verify tokens
   if bearer_token then
@@ -1005,6 +1010,8 @@ function OICHandler.access(_, conf)
       end
     end
 
+    local introspection_check_active = args.get_conf_arg("introspection_check_active", true) ~= false
+
     if not auth_methods.bearer or type(tokens_decoded) ~= "table" or type(tokens_decoded.access_token) ~= "table" then
       if type(tokens_decoded) ~= "table" then
         tokens_decoded, err = oic.token:decode(tokens_encoded, TOKEN_DECODE_OPTS)
@@ -1026,10 +1033,10 @@ function OICHandler.access(_, conf)
 
       if auth_methods.kong_oauth2 then
         log("trying to find matching kong oauth2 token")
-        token_introspected, err, credential, consumer = cache.kong_oauth2.load(ctx, access_token, ttl, true)
-        if type(token_introspected) == "table" then
+        introspection_data, err, credential, consumer = cache.kong_oauth2.load(ctx, access_token, ttl, true)
+        if type(introspection_data) == "table" then
           log("authenticated using kong oauth2")
-          token_introspected.active = true
+          introspection_data.active = true
           auth_method = "kong_oauth2"
 
         elseif err then
@@ -1040,16 +1047,17 @@ function OICHandler.access(_, conf)
         end
       end
 
-      if type(token_introspected) ~= "table" then
+      if type(introspection_data) ~= "table" then
         if auth_methods.introspection then
           log("trying to introspect bearer token")
-          token_introspected, err = introspect_token(access_token, ttl)
-          if type(token_introspected) == "table" then
-            if token_introspected.active == true then
+          introspection_data, err, introspection_jwt = introspect_token(access_token, ttl)
+          introspected = true
+          if type(introspection_data) == "table" then
+            if introspection_data.active == true then
               log("authenticated using introspection")
               auth_method = "introspection"
 
-            else
+            elseif introspection_check_active then
               log("token is not active anymore")
             end
 
@@ -1062,16 +1070,16 @@ function OICHandler.access(_, conf)
         end
       end
 
-      if type(token_introspected) ~= "table" then
+      if type(introspection_data) ~= "table" then
         if auth_methods.userinfo then
           log("trying to validate token with user info endpoint")
-          if type(userinfo_data) ~= "table" and not userinfo_loaded then
-            userinfo_data, err = userinfo_load(access_token)
+          if type(userinfo_data) ~= "table" then
+            userinfo_data, err, userinfo_jwt = userinfo_load(access_token, ttl, ignore_signature.userinfo)
             userinfo_loaded = true
 
             if type(userinfo_data) == "table" then
               log("authenticated using user info endpoint")
-              token_introspected = { active = true }
+              introspection_data = { active = true }
               auth_method = "userinfo"
 
             elseif err then
@@ -1084,24 +1092,30 @@ function OICHandler.access(_, conf)
         end
       end
 
-      if type(token_introspected) ~= "table" or token_introspected.active ~= true then
+      if type(introspection_data) ~= "table" then
         log("authentication with bearer token failed")
-        return response.unauthorized(err or "invalid or inactive token")
+        return response.unauthorized(err or "invalid introspection results")
       end
 
-      exp = claims.exp(token_introspected, tokens_encoded, ttl.now, exp_default)
+      if introspection_check_active and introspection_data.active ~= true then
+        log("authentication with bearer token failed")
+        return response.unauthorized(err or "inactive token")
+      end
+
+      exp = claims.exp(introspection_data, tokens_encoded, ttl.now, exp_default)
 
     else
       log("bearer token verified")
 
       if args.get_conf_arg("introspect_jwt_tokens", false) then
         log("introspecting jwt bearer token")
-        jwt_token_introspected, err = introspect_token(tokens_encoded.access_token, ttl)
-        if type(jwt_token_introspected) == "table" then
-          if jwt_token_introspected.active == true then
+        introspection_data, err, introspection_jwt = introspect_token(tokens_encoded.access_token, ttl)
+        introspected = true
+        if type(introspection_data) == "table" then
+          if introspection_data.active == true then
             log("jwt bearer token is active and not revoked")
 
-          else
+          elseif introspection_check_active then
             return response.unauthorized("jwt bearer token is not active anymore or has been revoked")
           end
 
@@ -1110,7 +1124,7 @@ function OICHandler.access(_, conf)
           return response.unauthorized(err)
         end
 
-        exp = claims.exp(jwt_token_introspected, tokens_encoded, ttl.now, exp_default)
+        exp = claims.exp(introspection_data, tokens_encoded, ttl.now, exp_default)
       end
 
       if not exp then
@@ -1194,10 +1208,10 @@ function OICHandler.access(_, conf)
           log("trying to exchange credentials using token endpoint with caching enabled")
           tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl, true, false, salt)
 
-          if type(tokens_encoded) == "table"        and
-            (arg.grant_type == "refresh_token"      or
-             arg.grant_type == "password"           or
-             arg.grant_type == "client_credentials" or
+          if type(tokens_encoded) == "table"            and
+            (arg.grant_type == REFRESH_TOKEN_GRANT      or
+             arg.grant_type == PASSWORD_GRANT           or
+             arg.grant_type == CLIENT_CREDENTIALS_GRANT or
              arg.grant_type == JWT_BEARER_GRANT)
           then
             log("verifying tokens")
@@ -1220,7 +1234,7 @@ function OICHandler.access(_, conf)
         if type(tokens_encoded) == "table" then
           log("exchanged credentials with tokens")
           if arg.grant_type == JWT_BEARER_GRANT then
-            auth_method = "client_credentials"
+            auth_method = CLIENT_CREDENTIALS_GRANT
           else
             auth_method = arg.grant_type or "authorization_code"
           end
@@ -1504,20 +1518,12 @@ function OICHandler.access(_, conf)
         end
 
         local access_token_values
-        if type(token_introspected) == "table" then
-          access_token_values = claims.find(token_introspected, claim_lookup)
+        if type(introspection_data) == "table" then
+          access_token_values = claims.find(introspection_data, claim_lookup)
           if access_token_values then
             log(name, " found in introspection results")
           else
             log(name, " not found in introspection results")
-          end
-
-        elseif type(jwt_token_introspected) == "table" then
-          access_token_values = claims.find(jwt_token_introspected, claim_lookup)
-          if access_token_values then
-            log(name, " found in jwt introspection results")
-          else
-            log(name, " not found in jwt introspection results")
           end
         end
 
@@ -1591,26 +1597,15 @@ function OICHandler.access(_, conf)
       local consumer_by = args.get_conf_arg("consumer_by")
 
       if not consumer then
-        if type(token_introspected) == "table" then
+        if type(introspection_data) == "table" then
           log("trying to find consumer using introspection response")
-          consumer, err = consumers.find({ payload = token_introspected }, consumer_claim, false, consumer_by, ttl)
+          consumer, err = consumers.find({ payload = introspection_data }, consumer_claim, false, consumer_by, ttl)
           if consumer then
             log("consumer was found with introspection results")
           elseif err then
             log("consumer was not found with introspection results (", err, ")")
           else
             log("consumer was not found with introspection results")
-          end
-
-        elseif type(jwt_token_introspected) == "table" then
-          log("trying to find consumer using jwt introspection response")
-          consumer, err = consumers.find({ payload = jwt_token_introspected }, consumer_claim, false, consumer_by, ttl)
-          if consumer then
-            log("consumer was found with jwt introspection results")
-          elseif err then
-            log("consumer was not found with jwt introspection results (", err, ")")
-          else
-            log("consumer was not found with jwt introspection results")
           end
         end
       end
@@ -1653,7 +1648,7 @@ function OICHandler.access(_, conf)
 
       if not consumer and search_userinfo then
         if type(userinfo_data) ~= "table" and not userinfo_loaded then
-          userinfo_data, err = userinfo_load(tokens_encoded.access_token)
+          userinfo_data, err, userinfo_jwt = userinfo_load(tokens_encoded.access_token, ttl)
           userinfo_loaded = true
 
           if type(userinfo_data) == "table" then
@@ -1709,20 +1704,12 @@ function OICHandler.access(_, conf)
       log("finding credential claim value")
 
       local credential_value
-      if type(token_introspected) == "table" then
-        credential_value = claims.find(token_introspected, credential_claim)
+      if type(introspection_data) == "table" then
+        credential_value = claims.find(introspection_data, credential_claim)
         if credential_value then
           log("credential claim found in introspection results")
         else
           log("credential claim not found in introspection results")
-        end
-
-      elseif type(jwt_token_introspected) == "table" then
-        credential_value = claims.find(jwt_token_introspected, credential_claim)
-        if credential_value then
-          log("credential claim found in jwt introspection results")
-        else
-          log("credential claim not found in jwt introspection results")
         end
       end
 
@@ -1758,7 +1745,7 @@ function OICHandler.access(_, conf)
 
       if not credential_value and search_userinfo then
         if type(userinfo_data) ~= "table" and not userinfo_loaded then
-          userinfo_data, err = userinfo_load(tokens_encoded.access_token, ttl)
+          userinfo_data, err, userinfo_jwt = userinfo_load(tokens_encoded.access_token, ttl)
           userinfo_loaded = true
 
           if type(userinfo_data) == "table" then
@@ -1802,8 +1789,8 @@ function OICHandler.access(_, conf)
     log("finding authenticated groups claim value")
 
     local authenticated_groups
-    if type(token_introspected) == "table" then
-      authenticated_groups = claims.find(token_introspected, authenticated_groups_claim)
+    if type(introspection_data) == "table" then
+      authenticated_groups = claims.find(introspection_data, authenticated_groups_claim)
       if authenticated_groups then
         log("authenticated groups claim found in introspection results")
       else
@@ -1843,7 +1830,7 @@ function OICHandler.access(_, conf)
 
     if not authenticated_groups and search_userinfo then
       if type(userinfo_data) ~= "table" and not userinfo_loaded then
-        userinfo_data, err = userinfo_load(tokens_encoded.access_token, ttl)
+        userinfo_data, err, userinfo_jwt = userinfo_load(tokens_encoded.access_token, ttl)
         userinfo_loaded = true
 
         if type(userinfo_data) == "table" then
@@ -1935,12 +1922,8 @@ function OICHandler.access(_, conf)
           local name = args.get_value(upstream_headers_names[i])
           if name then
             local value
-            if type(token_introspected) == "table" then
-              value = headers.get(args.get_value(token_introspected[claim]))
-            end
-
-            if not value and type(jwt_token_introspected) == "table" then
-              value = headers.get(args.get_value(jwt_token_introspected[claim]))
+            if type(introspection_data) == "table" then
+              value = headers.get(args.get_value(introspection_data[claim]))
             end
 
             if not value and type(tokens_encoded) == "table" then
@@ -1965,7 +1948,7 @@ function OICHandler.access(_, conf)
 
             if not value and search_userinfo then
               if type(userinfo_data) ~= "table" and not userinfo_loaded then
-                userinfo_data, err = userinfo_load(tokens_encoded.access_token, ttl)
+                userinfo_data, err, userinfo_jwt = userinfo_load(tokens_encoded.access_token, ttl)
                 userinfo_loaded = true
 
                 if userinfo_data then
@@ -1999,12 +1982,8 @@ function OICHandler.access(_, conf)
           local name = args.get_value(downstream_headers_names[i])
           if name then
             local value
-            if type(token_introspected) == "table" then
-              value = headers.get(args.get_value(token_introspected[claim]))
-            end
-
-            if not value and type(jwt_token_introspected) == "table" then
-              value = headers.get(args.get_value(jwt_token_introspected[claim]))
+            if type(introspection_data) == "table" then
+              value = headers.get(args.get_value(introspection_data[claim]))
             end
 
             if not value and type(tokens_encoded) == "table" then
@@ -2029,7 +2008,7 @@ function OICHandler.access(_, conf)
 
             if not value and search_userinfo then
               if type(userinfo_data) ~= "table" and not userinfo_loaded then
-                userinfo_data, err = userinfo_load(tokens_encoded.access_token, ttl)
+                userinfo_data, err, userinfo_jwt = userinfo_load(tokens_encoded.access_token, ttl)
                 userinfo_loaded = true
 
                 if type(userinfo_data) == "table" then
@@ -2058,16 +2037,48 @@ function OICHandler.access(_, conf)
     headers.set(args, "access_token",  token_exchanged or tokens_encoded.access_token)
     headers.set(args, "id_token",      tokens_encoded.id_token)
     headers.set(args, "refresh_token", tokens_encoded.refresh_token)
-    headers.set(args, "introspection", token_introspected or jwt_token_introspected or function()
-      return introspect_token(tokens_encoded.access_token, ttl)
+    headers.set(args, "introspection", introspection_data or function()
+      if not introspected then
+        introspection_data, err, introspection_jwt = introspect_token(tokens_encoded.access_token, ttl)
+        introspected = true
+        if err then
+          log("error introspecting token (", err, ")")
+        end
+      end
+      return introspection_data
+    end)
+
+    headers.set(args, "introspection_jwt", introspection_jwt or function()
+      if not introspected then
+        introspection_data, err, introspection_jwt = introspect_token(tokens_encoded.access_token, ttl)
+        introspected = true
+        if err then
+          log("error introspecting token (", err, ")")
+        end
+      end
+      return introspection_jwt
     end)
 
     headers.set(args, "user_info", userinfo_data or function()
       if not userinfo_loaded then
-        userinfo_data, err = userinfo_load(tokens_encoded.access_token, ttl)
+        userinfo_data, err, userinfo_jwt = userinfo_load(tokens_encoded.access_token, ttl)
+        if err then
+          log("error loading userinfo (", err, ")")
+        end
         userinfo_loaded = true
-        return userinfo_data
       end
+      return userinfo_data
+    end)
+
+    headers.set(args, "user_info_jwt", userinfo_jwt or function()
+      if not userinfo_loaded then
+        userinfo_data, err, userinfo_jwt = userinfo_load(tokens_encoded.access_token, ttl)
+        if err then
+          log("error loading userinfo (", err, ")")
+        end
+        userinfo_loaded = true
+      end
+      return userinfo_jwt
     end)
 
     headers.set(args, "access_token_jwk", function()
@@ -2183,10 +2194,8 @@ function OICHandler.access(_, conf)
 
             local response_tokens
             if output_introspection then
-              if token_introspected then
-                response_tokens = token_introspected
-              elseif jwt_token_introspected then
-                response_tokens = jwt_token_introspected
+              if introspection_data then
+                response_tokens = introspection_data
               elseif output_tokens then
                 response_tokens = tokens_encoded
               end
@@ -2251,10 +2260,8 @@ function OICHandler.access(_, conf)
                   value = tokens_encoded
 
                 elseif name == "introspection" then
-                  if token_introspected then
-                    value = token_introspected
-                  elseif jwt_token_introspected then
-                    value = jwt_token_introspected
+                  if introspection_data then
+                    value = introspection_data
                   end
 
                 else
