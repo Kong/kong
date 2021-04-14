@@ -95,7 +95,8 @@ local function retrieve_hmac_fields(authorization_header)
     local iterator, iter_err = re_gmatch(authorization_header,
                                          "\\s*[Hh]mac\\s*username=\"(.+)\"," ..
                                          "\\s*algorithm=\"(.+)\",\\s*header" ..
-                                         "s=\"(.+)\",\\s*signature=\"(.+)\"")
+                                         "s=\"(.+)\",\\s*signature=\"(.+)\"",
+                                         "jo")
     if not iterator then
       kong.log.err(iter_err)
       return
