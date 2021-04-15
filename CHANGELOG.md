@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.2.1](#121---20210415)
 - [1.2.0](#120---20210324)
 - [1.1.0](#110---20210303)
 - [1.0.0](#100---20200820)
@@ -19,10 +20,14 @@
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
 
+##  [1.2.1] - 2021/04/15
+
+- Fix an issue where the Content-Length header could be potentially mispelled
+  [#124](https://github.com/Kong/kong-plugin-prometheus/pull/124)
 
 ##  [1.2.0] - 2021/03/24
 
-- Fix an issue where there's no stream listner or stream API is not avaiable,
+- Fix an issue where there's no stream listener or stream API is not available,
 /metrics endpoint may timeout [#108](https://github.com/Kong/kong-plugin-prometheus/pull/108)
 - Export per-consumer status [#115](https://github.com/Kong/kong-plugin-prometheus/pull/115)
 (Thanks, [samsk](https://github.com/samsk)!)
