@@ -322,7 +322,11 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
 
       tag_with_service_and_route(span)
 
-      span:finish((try.balancer_start + try.balancer_latency) * 1000)
+      if try.balancer_latency ~= nil then
+        span:finish((try.balancer_start + try.balancer_latency) * 1000)
+      else
+        span:finish(now_mu)
+      end
       reporter:report(span)
     end
     proxy_span:set_tag("peer.hostname", balancer_data.hostname) -- could be nil
