@@ -76,7 +76,8 @@ local function check_phase(accepted_phases)
       -- treat custom content blocks as the Admin API
       current_phase = PHASES.admin_api
     else
-      error("no phase in kong.ctx.core.phase")
+      error(fmt("no phase in kong.ctx.core.phase, (need one of %s)",
+                table.concat(get_phases_names(accepted_phases), ", ")))
     end
   end
 
