@@ -322,10 +322,11 @@ local function new(self, major_version)
   -- elseif kong.response.get_source() == "exit" then
   --   kong.log("There was an early exit while processing the request")
   -- end
-  function _RESPONSE.get_source()
-    check_phase(header_body_log)
-
-    local ctx = ngx.ctx
+  function _RESPONSE.get_source(ctx)
+    if ctx == nil then
+      check_phase(header_body_log)
+      ctx = ngx.ctx
+    end
 
     if ctx.KONG_UNEXPECTED then
       return "error"
