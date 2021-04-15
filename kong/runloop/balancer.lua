@@ -644,15 +644,27 @@ local function on_target_event(operation, target)
   local upstream_id = target.upstream.id
   local upstream_name = target.upstream.name
 
-  log(DEBUG, "target ", operation, " for upstream ", upstream_id,
-      upstream_name and " (" .. upstream_name ..")" or "")
+  local upstream_cache_key = "balancer:upstreams:" .. upstream_id
+  local target_cache_key = "balancer:targets:" .. upstream_id
 
-  singletons.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
+  if singletons.db.strategy ~= "off" then
+    if kong.configuration.worker_consistency == "eventual" then
+      set_worker_state_stale()
+    end
+    singletons.core_cache:invalidate_local(target_cache_key)
+  end
 
-  local upstream = get_upstream_by_id(upstream_id)
+  local upstream
+  if kong.configuration.worker_consistency == "eventual" then
+    -- force loading the upstream to the cache
+    upstream = singletons.core_cache:get(upstream_cache_key, nil,
+      load_upstream_into_memory, upstream_id)
+  else
+    upstream = get_upstream_by_id(upstream_id)
+  end
+
   if not upstream then
-    log(ERR, "target ", operation, ": upstream not found for ", upstream_id,
-        upstream_name and " (" .. upstream_name ..")" or "")
+    log(ERR, "upstream not found for ", upstream_id)
     return
   end
 
@@ -663,12 +675,24 @@ local function on_target_event(operation, target)
     return
   end
 
-  local new_balancer, err = create_balancer(upstream, true)
-  if not new_balancer then
-    return nil, err
+  local port
+  target.name, port = match(target.target, "^(.-):(%d+)$")
+  target.port = tonumber(port)
+  if operation == "create" then
+    if target.weight > 0 then
+      balancer:addHost(target.name, target.port, target.weight)
+    else
+      balancer:removeHost(target.name, target.port)
+    end
+  elseif operation == "delete" or operation == "update" then
+    balancer:removeHost(target.name, target.port)
+    if operation == "update" then
+      if target.weight > 0 then
+        balancer:addHost(target.name, target.port, target.weight)
+      end
+    end
   end
-
-  return true
+  
 end
 
 
