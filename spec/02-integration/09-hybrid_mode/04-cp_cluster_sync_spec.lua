@@ -32,7 +32,6 @@ for _, strategy in helpers.each_strategy() do
         role = "control_plane",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         database = strategy,
       }))
 
@@ -44,7 +43,6 @@ for _, strategy in helpers.each_strategy() do
         role = "control_plane",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         database = strategy,
       }))
 
