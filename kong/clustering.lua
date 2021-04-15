@@ -351,6 +351,24 @@ local function validate_shared_cert()
   end
 end
 
+local function get_shared_cert_expiration_time()
+  local cert = ngx_var.ssl_client_raw_cert
+
+  if not cert then
+    ngx_log(ngx_ERR, "Data Plane failed to present client certificate " ..
+      "during handshake")
+    return ngx_exit(444)
+  end
+
+  cert = assert(openssl_x509.new(cert, "PEM"))
+  local not_after, err = cert:get_not_after()
+  if err then
+    ngx_log(ngx_ERR, "Error occurred while reading DP client certificate expiration time")
+    return nil, err
+  end
+  return not_after, nil
+end
+
 
 local check_for_revocation_status
 do
@@ -652,6 +670,7 @@ function _M.handle_cp_websocket()
         queue.post()
 
         last_seen = ngx_time()
+        local shared_cert_expiration_time, _ = get_shared_cert_expiration_time()
 
         local ok
         ok, err = kong.db.clustering_data_planes:upsert({ id = node_id, }, {
@@ -661,6 +680,7 @@ function _M.handle_cp_websocket()
           ip = node_ip,
           version = node_version,
           sync_status = sync_status,
+          cert_expiry_timestamp = shared_cert_expiration_time
         }, { ttl = kong.configuration.cluster_data_plane_purge_delay, })
         if not ok then
           ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
