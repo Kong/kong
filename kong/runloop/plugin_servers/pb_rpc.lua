@@ -18,11 +18,6 @@ local st_unpack = string.unpack     -- luacheck: ignore string
 local Rpc = {}
 Rpc.__index = Rpc
 
-local pp = require "pl.pretty".write
-
-
-
-
 
 local pb_unwrap
 do
@@ -83,7 +78,6 @@ do
   local structpb_value, structpb_list, structpb_struct
 
   function structpb_value(v)
-    kong.log.debug("structpb_value: ", pp(v))
     local t = type(v)
 
     local bool_v = nil
@@ -205,6 +199,35 @@ local function load_service()
       ctx_shared[k] = v
     end,
 
+    ["kong.response.get_status"] = function()
+      local saved = Rpc.save_for_later[coroutine.running()]
+      return saved and saved.response_status or kong.response.get_status()
+    end,
+
+    ["kong.response.get_headers"] = function(max)
+      local saved = Rpc.save_for_later[coroutine.running()]
+      return saved and saved.response_headers or kong.response.get_headers(max)
+    end,
+
+    ["kong.response.get_header"] = function(name)
+      local saved = Rpc.save_for_later[coroutine.running()]
+      if not saved then
+        return kong.response.get_header(name)
+      end
+
+      local header_value = saved.response_headers and saved.response_headers[name]
+      if type(header_value) == "table" then
+        header_value = header_value[1]
+      end
+
+      return header_value
+    end,
+
+    ["kong.response.get_source"] = function()
+      local saved = Rpc.save_for_later[coroutine.running()]
+      return kong.response.get_source(saved and saved.ngx_ctx or nil)
+    end,
+
     ["kong.nginx.req_start_time"] = ngx.req.start_time,
   }
 
@@ -258,7 +281,6 @@ end
 
 local function call_pdk(method_name, arg)
   local method = rpc_service[method_name]
-  kong.log.debug("method ", method_name, ": ", pp(method))
   if not method then
     return nil, ("method %q not found"):format(method_name)
   end
@@ -269,7 +291,6 @@ local function call_pdk(method_name, arg)
   end
 
   arg = assert(pb.decode(method.input_type, arg))
-  kong.log.debug("args decoded: ", pp(arg))
   local unwrap = pb_unwrap[method.input_type] or identity_function
   local wrap = pb_wrap[method.output_type] or identity_function
 
@@ -279,7 +300,6 @@ local function call_pdk(method_name, arg)
     return ""
   end
 
-  kong.log.debug("reply wrapped: ", pp(reply))
   reply = assert(pb.encode(method.output_type, reply))
 
   return reply

@@ -144,12 +144,38 @@ do
       return fix_mmap(kong.request.get_headers(max))
     end,
 
+    ["kong.response.get_status"] = function()
+      local saved = Rpc.save_for_later[coroutine.running()]
+      return saved and saved.response_status or kong.response.get_status()
+    end,
+
     ["kong.response.get_headers"] = function(max)
-      return fix_mmap(kong.response.get_headers(max))
+      local saved = Rpc.save_for_later[coroutine.running()]
+      local headers = saved and saved.response_headers or kong.response.get_headers(max)
+      return fix_mmap(headers)
+    end,
+
+    ["kong.response.get_header"] = function(name)
+      local saved = Rpc.save_for_later[coroutine.running()]
+      if not saved then
+        return kong.response.get_header(name)
+      end
+
+      local header_value = saved.response_headers and saved.response_headers[name]
+      if type(header_value) == "table" then
+        header_value = header_value[1]
+      end
+
+      return header_value
     end,
 
     ["kong.service.response.get_headers"] = function(max)
       return fix_mmap(kong.service.response.get_headers(max))
+    end,
+
+    ["kong.response.get_source"] = function()
+      local saved = Rpc.save_for_later[coroutine.running()]
+      return kong.response.get_source(saved and saved.ngx_ctx or nil)
     end,
   }
 
