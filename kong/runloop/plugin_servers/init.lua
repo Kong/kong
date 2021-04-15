@@ -151,6 +151,8 @@ local function build_phases(plugin)
           serialize_data = kong.log.serialize(),
           ngx_ctx = ngx.ctx,
           ctx_shared = kong.ctx.shared,
+          response_headers = ngx.resp.get_headers(100),
+          response_status = ngx.status,
         }
 
         ngx_timer_at(0, function()
