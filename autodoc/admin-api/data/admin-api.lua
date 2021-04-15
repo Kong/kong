@@ -480,8 +480,12 @@ return {
     tags = {
       title = [[ Tags ]],
       description = [[
-        Tags are strings associated to entities in Kong. Each tag must be composed of one or more
-        alphanumeric characters, `_`, `-`, `.` or `~`.
+        Tags are strings associated to entities in Kong.
+
+        Tags can contain almost all UTF-8 characters, with the following exceptions:
+
+        - `,` and `/` are reserved for filtering tags with "and" and "or", so they are not allowed in tags.
+        - Non-printable ASCII (for example, the space character) is not allowed.
 
         Most core entities can be *tagged* via their `tags` attribute, upon creation or edition.
 
