@@ -1427,6 +1427,19 @@ return {
         end
       end
 
+      -- if this is the last try and it failed, save its state to correctly log it
+      local status = ngx.status
+      if status > 499 and ctx.balancer_data then
+        local balancer_data = ctx.balancer_data
+        local try_count = balancer_data.try_count
+        local retries = balancer_data.retries
+        if try_count > retries then
+          local current_try = balancer_data.tries[try_count]
+          current_try.state = "failed"
+          current_try.code = status
+        end
+      end
+
       local hash_cookie = ctx.balancer_data.hash_cookie
       if not hash_cookie then
         return
