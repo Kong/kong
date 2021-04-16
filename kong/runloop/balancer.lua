@@ -644,23 +644,9 @@ local function on_target_event(operation, target)
   local upstream_id = target.upstream.id
   local upstream_name = target.upstream.name
 
-  local upstream_cache_key = "balancer:upstreams:" .. upstream_id
-  local target_cache_key = "balancer:targets:" .. upstream_id
-
-  if singletons.db.strategy ~= "off" then
-    if kong.configuration.worker_consistency == "eventual" then
-      set_worker_state_stale()
-    end
-    singletons.core_cache:invalidate_local(target_cache_key)
-  end
-
-  local upstream
-  if kong.configuration.worker_consistency == "eventual" then
-    -- force loading the upstream to the cache
-    upstream = singletons.core_cache:get(upstream_cache_key, nil,
-      load_upstream_into_memory, upstream_id)
-  else
-    upstream = get_upstream_by_id(upstream_id)
+  local upstream, err = get_upstream_by_id(upstream_id)
+  if err then
+    return nil, err
   end
 
   if not upstream then
@@ -685,6 +671,11 @@ local function on_target_event(operation, target)
       balancer:removeHost(target.name, target.port)
     end
   elseif operation == "delete" or operation == "update" then
+    local target_cache_key = "balancer:targets:" .. upstream_id
+    if singletons.db.strategy ~= "off" then
+      singletons.core_cache:invalidate_local(target_cache_key)
+    end
+    
     balancer:removeHost(target.name, target.port)
     if operation == "update" then
       if target.weight > 0 then
