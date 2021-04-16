@@ -28,7 +28,7 @@ local COLLECTOR_TYPE_STATS = 0x3
 
 
 CollectorHandler.PRIORITY = 903
-CollectorHandler.VERSION = "2.0.4"
+CollectorHandler.VERSION = "2.1.0"
 
 -- Sends the provided payload (a string) to the configured plugin host
 -- @return true if everything was sent correctly, falsy if error
