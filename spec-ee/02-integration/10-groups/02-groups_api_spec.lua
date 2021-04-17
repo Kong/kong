@@ -1,3 +1,10 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
 local helpers	   = require "spec.helpers"
 local cjson 	   = require "cjson"
 local utils 	   = require "kong.tools.utils"
@@ -407,7 +414,7 @@ for _, strategy in helpers.each_strategy() do
           local res_roles_default = get_request("/default/rbac/roles", token)
 
           assert.same(_role.id, res_roles_default.data[1].id)
-          check_create(404, group.id, group, _role, workspace)	
+          check_create(404, group.id, group, _role, workspace)
         end)
 
         it("The endpoint should create a mapping with correct params by id", function()

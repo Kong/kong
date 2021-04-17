@@ -8,7 +8,7 @@ pipeline {
       timeout(time: 45, unit: 'MINUTES')
   }
   environment {
-    GITHUB_TOKEN = credentials('GITHUB_TOKEN')
+    GITHUB_TOKEN = credentials('github_bot_access_token')
     BINTRAY = credentials('bintray')
     REDHAT = credentials('redhat')
     PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
