@@ -87,6 +87,44 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      local route5 = bp.routes:insert {
+        hosts = { "base.sixtyfour.test" },
+      }
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route5.id },
+        config   = {
+          port                  = 10001,
+          aws_key               = "mock-key",
+          aws_secret            = "mock-secret",
+          aws_region            = "us-east-1",
+          function_name         = "kongLambdaTest",
+          awsgateway_compatible = false,
+          forward_request_body  = true,
+          skip_large_bodies     = false,
+          --base64_encode_body    = true,
+        },
+      }
+
+      local route6 = bp.routes:insert {
+        hosts = { "notbase.sixtyfour.test" },
+      }
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route6.id },
+        config   = {
+          port                  = 10001,
+          aws_key               = "mock-key",
+          aws_secret            = "mock-secret",
+          aws_region            = "us-east-1",
+          function_name         = "kongLambdaTest",
+          awsgateway_compatible = false,
+          forward_request_body  = true,
+          skip_large_bodies     = false,
+          base64_encode_body    = false,
+        },
+      }
+
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -277,6 +315,43 @@ for _, strategy in helpers.each_strategy() do
         end)
 
       end)
+    end)
+
+
+
+    describe("base64 body encoding", function()
+
+      it("enabled", function()
+        local request_body = ("encodemeplease")
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+          headers = {
+            ["Host"] = "base.sixtyfour.test"
+          },
+          body = request_body,
+        })
+        assert.response(res).has.status(200, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal(ngx.encode_base64(request_body), body.request_body)
+      end)
+
+
+      it("disabled", function()
+        local request_body = ("donotencodemeplease")
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+          headers = {
+            ["Host"] = "notbase.sixtyfour.test"
+          },
+          body = request_body,
+        })
+        assert.response(res).has.status(200, res)
+        local body = assert.response(res).has.jsonbody()
+        assert.equal(request_body, body.request_body)
+      end)
+
     end)
 
   end)

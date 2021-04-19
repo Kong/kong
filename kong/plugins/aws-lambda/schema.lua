@@ -96,6 +96,10 @@ return {
           type = "boolean",
           default = true,
         } },
+        { base64_encode_body = {
+          type = "boolean",
+          default = true,
+        } },
       }
     },
   } },

@@ -146,7 +146,7 @@ function AWSLambdaHandler:access(conf)
       local body_args, err = kong.request.get_body()
       if err and err:match("content type") then
         body_args = {}
-        if not raw_content_types[content_type] then
+        if not raw_content_types[content_type] and conf.base64_encode_body then
           -- don't know what this body MIME type is, base64 it just in case
           body_raw = ngx_encode_base64(body_raw)
           upstream_body.request_body_base64 = true

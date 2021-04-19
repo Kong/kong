@@ -55,12 +55,21 @@ return function(ctx, config)
   -- prepare body
   local body, isBase64Encoded
   local skip_large_bodies = true
-  if config and config.skip_large_bodies ~= nil then
-    skip_large_bodies = config.skip_large_bodies
+  local base64_encode_body = true
+
+  if config then
+    if config.skip_large_bodies ~= nil then
+      skip_large_bodies = config.skip_large_bodies
+    end
+
+    if config.base64_encode_body ~= nil then
+      base64_encode_body = config.base64_encode_body
+    end
   end
+
   do
     body = request_util.read_request_body(skip_large_bodies)
-    if body ~= "" then
+    if body ~= "" and base64_encode_body then
       body = ngx_encode_base64(body)
       isBase64Encoded = true
     else
