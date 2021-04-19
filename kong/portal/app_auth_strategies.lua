@@ -4,6 +4,7 @@
 -- subject to the terms of the Kong Master Software License Agreement found
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
 local cjson = require "cjson"
 
 local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
