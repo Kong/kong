@@ -154,8 +154,9 @@ repository will allow you to do both easily.
 - Changed default values and validation rules for plugins that were not
   well-adjusted for dbless or hybrid modes.
   [6885](https://github.com/Kong/kong/pull/6885)
-- Topological sort now prioritizes core, avoiding problems when plugin entities
-  use core entities but don't explicitly depend on them.
+- Kong 2.4 ensures that all the Core entities are loaded before loading
+  any plugins. This fixes an error in which Plugins to could not link to
+  or modify Core entities because they would not be loaded yet
   [6880](https://github.com/Kong/kong/pull/6880)
 - If needed, `Host` header is now updated between balancer retries, using the
   value configured in the correct upstream entity.
