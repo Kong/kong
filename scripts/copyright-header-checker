@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+LOCAL_PATH="$(dirname "$(realpath "$0")")"
+# shellcheck disable=SC1090
+source "$LOCAL_PATH/common.sh"
+
+check_copyright_header_lua_files() {
+  local path="$1"
+  local copyright_header="$LOCAL_PATH/COPYRIGHT-HEADER"
+  local sha
+  sha=$(shasum "$copyright_header" | cut -f1 -d' ')
+  local files_missing_copyright_header=()
+
+  shopt -s globstar nullglob
+  for file in "$path"/**/*.lua; do
+    # Add if not exists
+    if ! grep -Fq "$sha" "$file"; then
+      files_missing_copyright_header+=("${file#"$path/"}")
+    fi
+  done
+
+  if [ ${#files_missing_copyright_header[@]} -ne 0 ]; then
+    >&2 printf "Lua files missing copyright header:\n"
+    for file in "${files_missing_copyright_header[@]}"; do
+      >&2 printf "  %s\n" "$file"
+    done
+    exit 1
+  fi
+}
+
+check_copyright_header_lua_files "$(realpath "$LOCAL_PATH"/..)"
