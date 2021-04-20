@@ -1060,6 +1060,7 @@ local function check_and_infer(conf, opts)
 
     if conf.cluster_mtls == "shared" then
       table.insert(conf.lua_ssl_trusted_certificate, conf.cluster_cert)
+
     elseif conf.cluster_mtls == "pki" then
       table.insert(conf.lua_ssl_trusted_certificate, conf.cluster_ca_cert)
     end
