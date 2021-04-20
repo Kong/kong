@@ -3,7 +3,7 @@ variable "packet_auth_token" {
   description = "The pre-existing Packet auth token"
 }
 
-variable "packet_project" {
+variable "packet_project_id" {
   type        = string
   description = "The pre-existing Packet project ID under which to create the devices"
 }

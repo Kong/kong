@@ -190,7 +190,9 @@ end
 
 -- Real user facing functions
 local driver_functions = {
-  "start_upstream", "start_kong", "stop_kong", "setup", "teardown", "get_start_load_cmd",
+  "start_upstream", "start_kong", "stop_kong", "setup", "teardown",
+  "get_start_load_cmd", "get_start_stapxx_cmd", "get_wait_stapxx_cmd",
+  "generate_flamegraph",
 }
 
 local function check_driver_sanity(mod)
@@ -309,9 +311,11 @@ end
 
 --- Cleanup all the stuff
 -- @function teardown
+-- @param full[optional] boolean teardown all stuff, including those will
+-- make next test spin up faster
 -- @return nothing. Throws an error if any.
-function _M.teardown()
-  return invoke_driver("setup")
+function _M.teardown(full)
+  return invoke_driver("teardown", full)
 end
 
 local load_thread
@@ -351,6 +355,37 @@ function _M.start_load(opts)
   end)
 end
 
+local stapxx_thread
+local stapxx_should_stop
+
+--- Start to send load to Kong
+-- @function start_load
+-- @param sample_name string stapxx sample name
+-- @param ... string extra arguments passed to stapxx script
+-- @return nothing. Throws an error if any.
+function _M.start_stapxx(sample_name, ...)
+  if stapxx_thread then
+    error("stapxx is already started, stop it using wait_result() first", 2)
+  end
+
+  local start_cmd = invoke_driver("get_start_stapxx_cmd", sample_name, ...)
+  stapxx_should_stop = false
+
+  stapxx_thread = ngx.thread.spawn(function()
+    return execute(start_cmd,
+        {
+          stop_signal = function() if stapxx_should_stop then return 3 end end,
+        })
+  end)
+
+  local wait_cmd = invoke_driver("get_wait_stapxx_cmd")
+  if not wait_output(wait_cmd, "stap_", 30) then
+    return false, "timeout waiting systemtap probe to load"
+  end
+
+  return true
+end
+
 --- Wait the load test to finish and get result
 -- @function start_load
 -- @param opts.path string request path
@@ -379,6 +414,18 @@ function _M.wait_result(opts)
   --   self.load_should_stop = true
   --   return false, "timeout waiting for load to stop (" .. timeout .. "s)"
   -- end
+
+  if stapxx_thread then
+    local ok, res, err = ngx.thread.wait(stapxx_thread)
+    stapxx_should_stop = true
+    stapxx_thread = nil
+    if not ok or err then
+      my_logger.warn("failed to wait stapxx to finish: ",
+        (res or "nil"),
+        " err: " .. (err or "nil"))
+    end
+    my_logger.debug("stap++ output: ", res)
+  end
 
   local ok, res, err = ngx.thread.wait(load_thread)
   load_should_stop = true
@@ -415,6 +462,9 @@ local function parse_wrk_result(r)
   return rps, count, lat_avg, lat_max
 end
 
+--- Compute average of RPS and latency from multiple wrk output
+-- @results table the table holds raw wrk outputs
+-- @return string. The human readable result of average RPS and latency
 function _M.combine_results(results)
   local count = #results
   if count == 0 then
@@ -442,6 +492,36 @@ function _M.combine_results(results)
 RPS     Avg: %3.2f
 Latency Avg: %3.2fms    Max: %3.2fms
   ]]):format(rps, latency_avg, latency_max)
+end
+
+--- Wait until the systemtap probe is loaded
+-- @function wait_stap_probe
+function _M.wait_stap_probe(timeout)
+  return invoke_driver("wait_stap_probe", timeout or 20)
+end
+
+--- Generate the flamegraph and return SVG
+-- @function generate_flamegraph
+-- @return string. The SVG image as string.
+function _M.generate_flamegraph(filename)
+  if not filename then
+    error("filename must be specified for generate_flamegraph")
+  end
+  if string.sub(filename, #filename-3, #filename):lower() ~= ".svg" then
+    filename = filename .. ".svg"
+  end
+
+  local out = invoke_driver("generate_flamegraph")
+
+  local f, err = io.open(filename, "w")
+  if not f then
+    error("failed to open " .. filename .. " for writing flamegraph: " .. err)
+  end
+
+  f:write(out)
+  f:close()
+
+  my_logger.debug("flamegraph written to ", filename)
 end
 
 return _M

@@ -9,7 +9,7 @@ resource "packet_device" "kong" {
   facilities       = [var.packet_region]
   operating_system = var.packet_os
   billing_cycle    = "hourly"
-  project_id       = var.packet_project
+  project_id       = var.packet_project_id
   depends_on = [
     packet_ssh_key.key,
     null_resource.key_chown,
@@ -34,7 +34,7 @@ resource "packet_device" "worker" {
   facilities       = [var.packet_region]
   operating_system = var.packet_os
   billing_cycle    = "hourly"
-  project_id       = var.packet_project
+  project_id       = var.packet_project_id
   depends_on = [
     packet_ssh_key.key,
     null_resource.key_chown,

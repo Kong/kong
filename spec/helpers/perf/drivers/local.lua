@@ -1,5 +1,6 @@
 local perf = require("spec.helpers.perf")
 local pl_path = require("pl.path")
+local tools = require("kong.tools.utils")
 local helpers
 
 local _M = {}
@@ -16,6 +17,8 @@ function _M.new(opts)
     wrk_bin = nil,
     git_head = nil,
     git_stashed = false,
+    systemtap_sanity_checked = false,
+    systemtap_dest_path = nil,
   }, mt)
 end
 
@@ -50,6 +53,7 @@ function _M:setup()
 end
 
 function _M:teardown()
+  print("in teardown " .. (self.upstream_nginx_pid or "nil"))
   if self.upstream_nginx_pid then
     local ok, err = perf.execute("kill " .. self.upstream_nginx_pid)
     if err then
@@ -88,7 +92,7 @@ function _M:start_upstream(conf)
     pid nginx.pid;
     error_log error.log;
     http {
-      access_log access.log;
+      access_log off;
       server {
         listen %d;
         %s
@@ -163,6 +167,93 @@ function _M:get_start_load_cmd(stub)
   local kong_port = helpers.get_proxy_port()
 
   return stub:format("http", kong_ip, kong_port)
+end
+
+local function check_systemtap_sanity(self)
+  local bin, err = perf.execute("which stap")
+  if not bin then
+    return nil, "systemtap binary not found"
+  end
+
+  -- try compile the kernel module
+  local out, err = perf.execute("sudo stap -ve 'probe begin { print(\"hello\\n\"); exit();}'")
+  if err then
+    return nil, "systemtap failed to compile kernel module: " .. (out or "nil") ..
+                " err: " .. (err or "nil") .. "\n Did you install gcc and kernel headers?"
+  end
+
+  local cmds = {
+    "stat /tmp/stapxx || git clone https://github.com/Kong/stapxx /tmp/stapxx",
+    "stat /tmp/perf-ost || git clone https://github.com/openresty/openresty-systemtap-toolkit /tmp/perf-ost",
+    "stat /tmp/perf-fg || git clone https://github.com/brendangregg/FlameGraph /tmp/perf-fg"
+  }
+  for _, cmd in ipairs(cmds) do
+    local ok, err = perf.execute(cmd)
+    if err then
+      return nil, cmd .. " failed: " .. err
+    end
+  end
+
+  return true
+end
+
+function _M:get_start_stapxx_cmd(sample, ...)
+  if not self.systemtap_sanity_checked then
+    local ok, err = check_systemtap_sanity(self)
+    if not ok then
+      return nil, err
+    end
+    self.systemtap_sanity_checked = true
+  end
+
+  -- find one of kong's child process hopefully it's a worker
+  -- (does kong have cache loader/manager?)
+  local pid, err = perf.execute("pid=$(cat servroot/pids/nginx.pid);" ..
+                                "cat /proc/$pid/task/$pid/children | awk '{print $1}'")
+  if not pid then
+    return nil, "failed to get Kong worker PID: " .. (err or "nil")
+  end
+
+  local args = table.concat({...}, " ")
+
+  self.systemtap_dest_path = "/tmp/" .. tools.random_string()
+  return "sudo /tmp/stapxx/stap++ /tmp/stapxx/samples/" .. sample ..
+          " --skip-badvars -D MAXSKIPPED=1000000 -x " .. pid ..
+          " " .. args ..
+          " > " .. self.systemtap_dest_path .. ".bt"
+end
+
+function _M:get_wait_stapxx_cmd(timeout)
+  return "lsmod | grep stap_"
+end
+
+function _M:generate_flamegraph(filename)
+  local path = self.systemtap_dest_path
+  self.systemtap_dest_path = nil
+
+  local f = io.open(path .. ".bt")
+  if not f or f:seek("end") == 0 then
+    return nil, "systemtap output is empty, possibly no sample are captured"
+  end
+  f:close()
+
+  local cmds = {
+    "/tmp/perf-ost/fix-lua-bt " .. path .. ".bt > " .. path .. ".fbt",
+    "/tmp/perf-fg/stackcollapse.pl " .. path .. ".fbt > " .. path .. ".cbt",
+    "/tmp/perf-fg/flamegraph.pl " .. path .. ".cbt > " .. path .. ".svg",
+    "cat " .. path .. ".svg",
+  }
+  local out, err
+  for _, cmd in ipairs(cmds) do
+    out, err = perf.execute(cmd)
+    if err then
+      return nil, cmd .. " failed: " .. err
+    end
+  end
+
+  perf.execute("rm " .. path .. ".*")
+
+  return out
 end
 
 return _M

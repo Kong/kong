@@ -161,6 +161,7 @@ function _M:start_upstream(conf)
         RUN echo -e '\
         server {\
           listen %d;\
+          access_log off;\
           location =/health { \
             return 200; \
           } \
@@ -264,6 +265,18 @@ function _M:get_start_load_cmd(stub)
   end
 
   return "docker exec " .. self.worker_ct_id .. " " .. stub:format("http", kong_vip, "8000")
+end
+
+function _M:get_start_stapxx_cmd()
+  error("SystemTap support not yet implemented in docker driver")
+end
+
+function _M:get_wait_stapxx_cmd()
+  error("SystemTap support not yet implemented in docker driver")
+end
+
+function _M:generate_flamegraph()
+  error("SystemTap support not yet implemented in docker driver")
 end
 
 return _M

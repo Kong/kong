@@ -1,35 +1,36 @@
 local perf = require("spec.helpers.perf")
 
 perf.set_log_level(ngx.DEBUG)
---perf.set_log_level(ngx.INFO)
 --perf.set_retry_count(3)
 
--- perf.use_driver("docker")
--- local versions = { "2.3.2", "2.3.3" }
+local driver = os.getenv("KONG_PERF_DRIVER") or "docker"
 
--- perf.use_driver("local")
--- local versions = { "5fd75b2add2cbceb1e0576494d30b6c422b58626", "de8ef431d780985a78933bd89c813092db10f060" }
+if driver == "terraform" then
+  perf.use_driver("terraform", {
+    provider = "equinix-metal",
+    tfvars = {
+      -- Kong Benchmarking
+      packet_project_id = os.getenv("PACKET_PROJECT_ID"),
+      -- TODO: use an org token
+      packet_auth_token = os.getenv("PACKET_AUTH_TOKEN"),
+      -- packet_plan = "baremetal_1",
+      -- packet_region = "sjc1",
+      -- packet_os = "ubuntu_20_04",
+    }
+  })
+else
+  perf.use_driver(driver)
+end
 
-perf.use_driver("terraform", {
-  provider = "equinix-metal",
-  tfvars = {
-    -- Kong Benchmarking
-    packet_project = "?",
-    -- TODO: use an org token
-    packet_auth_token = "?",
-    -- packet_plan = "baremetal_1",
-    -- packet_region = "sjc1",
-    -- packet_os = "ubuntu_20_04",
-  }
-})
-local versions = { "2.3.2", "2.3.3" }
+local versions = { "2.3.3", "2.4.0" }
 
 for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version, function()
+    local bp, db
     lazy_setup(function()
       local helpers = perf.setup()
 
-      local bp, db = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
         "plugins",

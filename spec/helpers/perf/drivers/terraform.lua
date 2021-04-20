@@ -35,10 +35,14 @@ function _M.new(opts)
     kong_internal_ip = nil,
     worker_ip = nil,
     worker_internal_ip = nil,
+    systemtap_sanity_checked = false,
+    systemtap_dest_path = nil,
   }, mt)
 end
 
 local function ssh_execute_wrap(self, ip, cmd)
+  -- to quote a ', one need to finish the current ', quote the ' then start a new '
+  cmd = string.gsub(cmd, "'", "'\\''")
   return "ssh " ..
           "-o IdentityFile=" .. self.work_dir .. "/id_rsa " .. -- TODO: no hardcode
           "-o TCPKeepAlive=yes -o ServerAliveInterval=300 " ..
@@ -153,8 +157,8 @@ end
 function _M:start_upstream(conf)
   conf = conf or ""
   conf = ngx.encode_base64(([[server {
-              listen %d reuseport;
-              keepalive_requests 10000;
+              listen %d;
+              access_log off;
               location =/health {
                 return 200;
               }
@@ -165,7 +169,7 @@ function _M:start_upstream(conf)
     "apt-get update", "apt-get install -y --force-yes nginx",
     -- ubuntu where's wrk in apt?
     "wget -nv http://mirrors.kernel.org/ubuntu/pool/universe/w/wrk/wrk_4.1.0-3_amd64.deb -O wrk.deb",
-    "dpkg -i wrk.deb || apt-get -f -y install",
+    "dpkg -l wrk || (dpkg -i wrk.deb || apt-get -f -y install)",
     "echo " .. conf .. " | base64 -d > /etc/nginx/conf.d/perf-test.conf",
     "nginx -t",
     "systemctl restart nginx",
@@ -195,7 +199,7 @@ function _M:start_kong(version, kong_conf)
     "dpkg -i k.deb || apt-get -f -y install",
     "echo " .. kong_conf_blob .. " | base64 -d > /etc/kong/kong.conf",
     "kong check",
-    "kong start || kong restart",
+    "ulimit -n 655360; kong start || kong restart",
   })
   if not ok then
     return false, err
@@ -212,6 +216,87 @@ end
 function _M:get_start_load_cmd(stub)
   return ssh_execute_wrap(self, self.worker_ip,
             stub:format("http", self.kong_internal_ip, "8000"))
+end
+
+local function check_systemtap_sanity(self)
+  local ok, err = execute_batch(self, self.kong_ip, {
+    "apt-get install systemtap gcc linux-headers-$(uname -r) -y --force-yes",
+    "which stap",
+    "stat /tmp/stapxx || git clone https://github.com/Kong/stapxx /tmp/stapxx",
+    "stat /tmp/perf-ost || git clone https://github.com/openresty/openresty-systemtap-toolkit /tmp/perf-ost",
+    "stat /tmp/perf-fg || git clone https://github.com/brendangregg/FlameGraph /tmp/perf-fg"
+  })
+  if not ok then
+    return false, err
+  end
+
+  -- try compile the kernel module
+  local out, err = perf.execute(ssh_execute_wrap(self, self.kong_ip,
+          "sudo stap -ve 'probe begin { print(\"hello\\n\"); exit();}'"))
+  if err then
+    return nil, "systemtap failed to compile kernel module: " .. (out or "nil") ..
+                " err: " .. (err or "nil") .. "\n Did you install gcc and kernel headers?"
+  end
+
+  return true
+end
+
+function _M:get_start_stapxx_cmd(sample, ...)
+  if not self.systemtap_sanity_checked then
+    local ok, err = check_systemtap_sanity(self)
+    if not ok then
+      return nil, err
+    end
+    self.systemtap_sanity_checked = true
+  end
+
+  -- find one of kong's child process hopefully it's a worker
+  -- (does kong have cache loader/manager?)
+  local pid, err = perf.execute(ssh_execute_wrap(self, self.kong_ip,
+                      "pid=$(cat /usr/local/kong/pids/nginx.pid); " ..
+                      "cat /proc/$pid/task/$pid/children | awk '{print $1}'"))
+  if not pid or not tonumber(pid) then
+    return nil, "failed to get Kong worker PID: " .. (err or "nil")
+  end
+
+  local args = table.concat({...}, " ")
+
+  self.systemtap_dest_path = "/tmp/" .. tools.random_string()
+  return ssh_execute_wrap(self, self.kong_ip,
+            "sudo /tmp/stapxx/stap++ /tmp/stapxx/samples/" .. sample ..
+            " --skip-badvars -D MAXSKIPPED=1000000 -x " .. pid ..
+            " " .. args ..
+            " > " .. self.systemtap_dest_path .. ".bt"
+          )
+end
+
+function _M:get_wait_stapxx_cmd(timeout)
+  return ssh_execute_wrap(self, self.kong_ip, "lsmod | grep stap_")
+end
+
+function _M:generate_flamegraph(filename)
+  local path = self.systemtap_dest_path
+  self.systemtap_dest_path = nil
+
+  local out, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "cat " .. path .. ".bt"))
+  if not out or #out == 0 then
+    return nil, "systemtap output is empty, possibly no sample are captured"
+  end
+
+  local ok, err = execute_batch(self, self.kong_ip, {
+    "/tmp/perf-ost/fix-lua-bt " .. path .. ".bt > " .. path .. ".fbt",
+    "/tmp/perf-fg/stackcollapse.pl " .. path .. ".fbt > " .. path .. ".cbt",
+    "/tmp/perf-fg/flamegraph.pl " .. path .. ".cbt > " .. path .. ".svg",
+  })
+  if not ok then
+    return false, err
+  end
+
+  local out, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "cat " .. path .. ".svg"))
+
+  perf.execute(ssh_execute_wrap(self, self.kong_ip, "rm " .. path .. ".*"))
+
+  return out
 end
 
 return _M
