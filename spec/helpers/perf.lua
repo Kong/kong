@@ -329,10 +329,16 @@ function _M.start_load(opts)
     error("load is already started, stop it using wait_result() first", 2)
   end
 
+  local path = opts.path or ""
+  -- strip leading /
+  if path:sub(1, 1) == "/" then
+    path = path:sub(2)
+  end
+
   local load_cmd_stub = "wrk -c " .. (opts.connections or 1000) ..
                         " -t " .. (opts.threads or 5) ..
                         " -d " .. (opts.duration or 10) ..
-                        " %s://%s:%s/" .. (opts.path or "")
+                        " %s://%s:%s/" .. path
   
   load_cmd_stub = invoke_driver("get_start_load_cmd", load_cmd_stub)
   load_should_stop = false

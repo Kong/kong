@@ -153,7 +153,8 @@ end
 function _M:start_upstream(conf)
   conf = conf or ""
   conf = ngx.encode_base64(([[server {
-              listen %d;
+              listen %d reuseport;
+              keepalive_requests 10000;
               location =/health {
                 return 200;
               }
