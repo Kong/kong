@@ -114,7 +114,6 @@ for _, strategy in helpers.each_strategy() do
           role = "control_plane",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
-          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
           database = strategy,
           prefix = "servroot",
           cluster_listen = "127.0.0.1:9005",
@@ -127,7 +126,6 @@ for _, strategy in helpers.each_strategy() do
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
-          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "0.0.0.0:9002",
         }))

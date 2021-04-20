@@ -9,7 +9,6 @@ describe("invalid config are rejected", function()
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         admin_listen = "off",
       })
 
@@ -23,7 +22,6 @@ describe("invalid config are rejected", function()
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         cluster_listen = "off",
       })
 
@@ -37,7 +35,6 @@ describe("invalid config are rejected", function()
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         database = "off",
       })
 
@@ -51,7 +48,6 @@ describe("invalid config are rejected", function()
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         cluster_mtls = "pki",
       })
 
@@ -67,7 +63,6 @@ describe("invalid config are rejected", function()
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         proxy_listen = "off",
       })
 
@@ -81,7 +76,6 @@ describe("invalid config are rejected", function()
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
       })
 
       assert.False(ok)

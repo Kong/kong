@@ -1053,6 +1053,17 @@ local function check_and_infer(conf, opts)
       errors[#errors + 1] = "only in-memory storage can be used when role = \"data_plane\"\n" ..
                             "Hint: set database = off in your kong.conf"
     end
+
+    if not conf.lua_ssl_trusted_certificate then
+      conf.lua_ssl_trusted_certificate = {}
+    end
+
+    if conf.cluster_mtls == "shared" then
+      table.insert(conf.lua_ssl_trusted_certificate, conf.cluster_cert)
+
+    elseif conf.cluster_mtls == "pki" then
+      table.insert(conf.lua_ssl_trusted_certificate, conf.cluster_ca_cert)
+    end
   end
 
   if conf.cluster_data_plane_purge_delay < 60 then
