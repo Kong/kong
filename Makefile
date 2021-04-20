@@ -29,7 +29,7 @@ RESTY_LUAROCKS_VERSION ?= `grep RESTY_LUAROCKS_VERSION $(KONG_SOURCE_LOCATION)/.
 RESTY_OPENSSL_VERSION ?= `grep RESTY_OPENSSL_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_PCRE_VERSION ?= `grep RESTY_PCRE_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 KONG_BUILD_TOOLS ?= `grep KONG_BUILD_TOOLS_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
-GRPCURL_VERSION ?= '9846afccbc2f34255dfb459dc6f0196a2b6dbe05'
+GRPCURL_VERSION ?= 1.8.0
 OPENRESTY_PATCHES_BRANCH ?= master
 KONG_NGINX_MODULE_BRANCH ?= master
 
@@ -124,14 +124,9 @@ dependencies: bin/grpcurl
 	done;
 
 bin/grpcurl:
-ifeq (, $(shell which go))
-	$(error "error building grpcurl: no go compiler found in PATH")
-endif
-	@cd bin && \
-	go mod init grpcurl && \
-	go get -v -d github.com/fullstorydev/grpcurl@$(GRPCURL_VERSION) && \
-	go build -ldflags '-X "main.version=kong dev build $(GRPCURL_VERSION)"' github.com/fullstorydev/grpcurl/cmd/grpcurl && \
-	rm -f go.mod go.sum
+	@curl -s -S -L \
+		https://github.com/fullstorydev/grpcurl/releases/download/v1.8.0/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(MACHINE).tar.gz | tar xz -C bin;
+	@rm bin/LICENSE
 
 dev: remove install dependencies
 
