@@ -134,6 +134,7 @@ Here's a list of all the parameters which can be used in this plugin's configura
 |`config.proxy_url` <br>*semi-optional* || An optional value that defines whether the plugin should connect through the given proxy server URL. This value is required if `proxy_scheme` is defined.
 |`config.proxy_scheme` <br>*semi-optional* || An optional value that defines which HTTP protocol scheme to use in order to connect through the proxy server. The schemes supported are: `http` and `https`. This value is required if `proxy_url` is defined.
 |`config.skip_large_bodies` <br>*optional* | `true` | An optional value that defines whether very large bodies (that are buffered to disk) should be sent by Kong. Note that sending very large bodies will have an impact on the system memory.
+|`config.base64_encode_body` <br>*optional* | `true` | An optional value that defines whether request and response bodies should be base64 encoded or not.
 
 ## Notes
 
