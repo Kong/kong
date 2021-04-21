@@ -83,7 +83,6 @@ local balancer_set_host_header = require("kong.runloop.balancer").set_host_heade
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
-local clustering
 
 local kong             = kong
 local ngx              = ngx
@@ -118,9 +117,6 @@ if not enable_keepalive then
                     "(was the dyn_upstream_keepalive patch applied?) ",
                     "set the 'nginx_upstream_keepalive' configuration ",
                     "property instead of 'upstream_keepalive_pool_size'")
-end
-if subsystem == "http" then
-  clustering = require "kong.clustering"
 end
 
 
@@ -494,8 +490,10 @@ function Kong.init()
     certificate.init()
   end
 
-  if subsystem == "http" then
-    clustering.init(config)
+  if subsystem == "http" and
+     (config.role == "data_plane" or config.role == "control_plane")
+  then
+    kong.clustering = require("kong.clustering").new(config)
   end
 
   -- Load plugins as late as possible so that everything is set up
@@ -648,8 +646,8 @@ function Kong.init_worker()
     plugin_servers.start()
   end
 
-  if subsystem == "http" then
-    clustering.init_worker(kong.configuration)
+  if kong.clustering then
+    kong.clustering:init_worker()
   end
 end
 
@@ -1459,7 +1457,7 @@ function Kong.serve_cluster_listener(options)
 
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
-  return clustering.handle_cp_websocket()
+  return kong.clustering.child:handle_cp_websocket()
 end
 
 

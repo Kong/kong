@@ -177,6 +177,10 @@ local constants = {
     { PLUGIN_SET_INCOMPATIBLE     = "plugin_set_incompatible", },
     { PLUGIN_VERSION_INCOMPATIBLE = "plugin_version_incompatible", },
   },
+  CLUSTERING_MAX_PAYLOAD = 4 * 1024 * 1024, -- 4MB,
+  CLUSTERING_TIMEOUT = 5000, -- 5 seconds
+  CLUSTERING_PING_INTERVAL = 30, -- 30 seconds
+  CLUSTERING_OCSP_TIMEOUT = 5000, -- 5 seconds
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do
