@@ -2,7 +2,6 @@ local perf = require("spec.helpers.perf")
 local pl_path = require("pl.path")
 local cjson = require("cjson")
 local tools = require("kong.tools.utils")
-local helpers
 
 local _M = {}
 local mt = {__index = _M}
@@ -60,7 +59,7 @@ local function execute_batch(self, remote_ip, cmds, continue_on_error)
     if remote_ip then
       cmd = ssh_execute_wrap(self, remote_ip, cmd)
     end
-    local ok, err = perf.execute(cmd, {
+    local _, err = perf.execute(cmd, {
       logger = (remote_ip and self.ssh_log or self.log).log_exec
     })
     if err then
@@ -74,7 +73,7 @@ local function execute_batch(self, remote_ip, cmds, continue_on_error)
 end
 
 function _M:setup(opts)
-  local bin, err = perf.execute("which terraform")
+  local bin, _ = perf.execute("which terraform")
   if not bin then
     return nil, "terraform binary not found"
   end
@@ -133,12 +132,11 @@ function _M:setup(opts)
   self.log.info("Infra is up! However, executing psql remotely may take a while...")
   package.loaded["spec.helpers"] = nil
   for i=1, 3 do 
-    local pok, pret, _ = pcall(require, "spec.helpers")
+    local pok, pret = pcall(require, "spec.helpers")
     if pok then
-      helpers = pret
       return pret
     end
-    self.log.warn("unable to load spec.helpers: " .. (perr or "nil") .. ", try " .. i)
+    self.log.warn("unable to load spec.helpers: " .. (pret or "nil") .. ", try " .. i)
     ngx.sleep(1)
   end
   error("Unable to load spec.helpers")
@@ -303,7 +301,7 @@ function _M:generate_flamegraph(filename)
   local path = self.systemtap_dest_path
   self.systemtap_dest_path = nil
 
-  local out, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "cat " .. path .. ".bt"))
+  local out, _ = perf.execute(ssh_execute_wrap(self, self.kong_ip, "cat " .. path .. ".bt"))
   if not out or #out == 0 then
     return nil, "systemtap output is empty, possibly no sample are captured"
   end
@@ -317,7 +315,7 @@ function _M:generate_flamegraph(filename)
     return false, err
   end
 
-  local out, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "cat " .. path .. ".svg"))
+  local out, _ = perf.execute(ssh_execute_wrap(self, self.kong_ip, "cat " .. path .. ".svg"))
 
   perf.execute(ssh_execute_wrap(self, self.kong_ip, "rm " .. path .. ".*"))
 

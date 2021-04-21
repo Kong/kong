@@ -50,11 +50,11 @@ local wrk_script = [[
 
 for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #baseline #no_plugins", function()
-    local bp, db
+    local bp
     lazy_setup(function()
       local helpers = perf.setup()
 
-      bp, db = helpers.get_db_utils(strategy, {
+      bp = helpers.get_db_utils("postgres", {
         "routes",
         "services",
       })
@@ -138,11 +138,11 @@ for _, version in ipairs(versions) do
   end)
 
   describe("perf test for Kong " .. version .. " #baseline #key-auth", function()
-    local bp, db
+    local bp
     lazy_setup(function()
       local helpers = perf.setup()
 
-      bp, db = helpers.get_db_utils(strategy, {
+      bp = helpers.get_db_utils("postgres", {
         "routes",
         "services",
         "plugins",

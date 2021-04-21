@@ -22,7 +22,7 @@ else
   perf.use_driver(driver)
 end
 
-local versions = { "2.3.3", "2.4.0" }
+local versions = { "feat/perf-test", "feat/testtest" }
 
 local SERVICE_COUNT = 10
 local ROUTE_PER_SERVICE = 10
@@ -50,11 +50,11 @@ local wrk_script = [[
 
 for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #baseline #no_plugins", function()
-    local bp, db
+    local bp
     lazy_setup(function()
       local helpers = perf.setup()
 
-      bp, db = helpers.get_db_utils(strategy, {
+      bp = helpers.get_db_utils("postgres", {
         "routes",
         "services",
       })
@@ -110,7 +110,7 @@ for _, version in ipairs(versions) do
 
       print(("### Result for Kong %s:\n%s"):format(version, result))
 
-      perf.generate_flamegraph(version .. "-baseline.svg")
+      perf.generate_flamegraph(version:gsub("/", "#") .. "-baseline.svg")
     end)
   end)
 end

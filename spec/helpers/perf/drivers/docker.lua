@@ -21,14 +21,13 @@ local function start_container(cid)
   if not cid then
     return false, "container does not exist"
   end
-  local out, err
   
-  out, err = perf.execute("docker start " .. cid)
+  local _, err = perf.execute("docker start " .. cid)
   if err then
     return false, "docker start:" .. err
   end
 
-  out, err = perf.execute("docker inspect --format='{{.State.Running}}' " .. cid)
+  local out, err = perf.execute("docker inspect --format='{{.State.Running}}' " .. cid)
   if err then
     return false, "docker inspect:" .. err
   end
@@ -48,7 +47,7 @@ local function create_container(self, args, img)
   local out, err = perf.execute("docker images --format '{{.Repository}}:{{.Tag}}' " .. img)
   -- plain pattern find
   if err or not out:find(img, nil, true) then
-    local ok, err = perf.execute("docker pull " .. img, { logger = self.log.log_exec })
+    local _, err = perf.execute("docker pull " .. img, { logger = self.log.log_exec })
     if err then
       return false, err
     end
@@ -67,7 +66,9 @@ local function create_container(self, args, img)
 end
 
 local function get_container_port(cid)
-  out, err = perf.execute("docker inspect --format='{{range $p, $conf := .NetworkSettings.Ports}}{{if $conf}}{{(index $conf 0).HostPort}}{{end}}{{end}}' " .. cid)
+  local out, err = perf.execute(
+    "docker inspect " .. 
+    "--format='{{range $p, $conf := .NetworkSettings.Ports}}{{if $conf}}{{(index $conf 0).HostPort}}{{end}}{{end}}' " .. cid)
   if err then
     return false, "docker inspect:" .. err .. ": " .. (out or "nil")
   end
@@ -76,24 +77,12 @@ local function get_container_port(cid)
 end
 
 local function get_container_vip(cid)
-  out, err = perf.execute("docker inspect --format='{{.NetworkSettings.Networks.bridge.IPAddress}}' " .. cid)
+  local out, err = perf.execute("docker inspect --format='{{.NetworkSettings.Networks.bridge.IPAddress}}' " .. cid)
   if err then
     return false, "docker inspect:" .. err .. ": " .. (out or "nil")
   end
 
   return out
-end
-
-local function wait_port(port, seconds)
-  seconds = seconds or 5
-  for i=1,seconds do
-    local ok, err = perf.execute("echo 1 | nc -zv -w 1 127.0.0.1 " .. port)
-    if ok then
-      return true
-    end
-    ngx.sleep(1)
-  end
-  return false
 end
 
 function _M:teardown()
@@ -152,7 +141,7 @@ function _M:start_upstream(conf)
   end
 
   if not self.worker_ct_id then
-    local ok, err = perf.execute(
+    local _, err = perf.execute(
       "docker build --progress plain -t perf-test-upstream -",
       {
         logger = self.log.log_exec,

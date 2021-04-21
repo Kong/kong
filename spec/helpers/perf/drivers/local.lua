@@ -25,9 +25,9 @@ function _M.new(opts)
 end
 
 function _M:setup()
-  local bin, err
+  local bin
   for _, test in ipairs({"nginx", "/usr/local/openresty/nginx/sbin/nginx"}) do
-    bin, err = perf.execute("which nginx")
+    bin, _ = perf.execute("which nginx")
     if bin then
       self.nginx_bin = bin
       break
@@ -38,13 +38,13 @@ function _M:setup()
     return nil, "nginx binary not found, either install nginx package or Kong"
   end
 
-  bin, err = perf.execute("which wrk")
+  bin = perf.execute("which wrk")
   if not bin then
     return nil, "wrk binary not found"
   end
   self.wrk_bin = bin
 
-  bin, err = perf.execute("which git")
+  bin = perf.execute("which git")
   if not bin then
     return nil, "git binary not found"
   end
@@ -56,7 +56,7 @@ end
 
 function _M:teardown()
   if self.upstream_nginx_pid then
-    local ok, err = perf.execute("kill " .. self.upstream_nginx_pid)
+    local _, err = perf.execute("kill " .. self.upstream_nginx_pid)
     if err then
       return false, "stopping upstream: " .. err
     end
@@ -126,12 +126,13 @@ function _M:start_upstream(conf)
 end
 
 function _M:start_kong(version, kong_conf)
-  local hash, err = perf.execute("git rev-parse HEAD")
+  local res, err
+  local hash, _ = perf.execute("git rev-parse HEAD")
   if not hash or not hash:match("[a-f0-f]+") then
     self.log.warn("\"version\" is ignored when not in a git repository")
   else
     -- am i on a named branch/tag?
-    local n, err = perf.execute("git rev-parse --abbrev-ref HEAD")
+    local n, _ = perf.execute("git rev-parse --abbrev-ref HEAD")
     if n then
       hash = n
     end
@@ -139,7 +140,7 @@ function _M:start_kong(version, kong_conf)
     n, err = perf.execute("git status --untracked-files=no --porcelain")
     if not err and (n and #n > 0) then
       self.log.info("saving your working directory")
-      n, err = perf.execute("git stash save kong-perf-test-autosaved")
+      res, err = perf.execute("git stash save kong-perf-test-autosaved")
       if err then
         error("Cannot save your working directory: " .. err .. (res or "nil"))
       end
@@ -183,7 +184,7 @@ function _M:get_start_load_cmd(stub, script)
 end
 
 local function check_systemtap_sanity(self)
-  local bin, err = perf.execute("which stap")
+  local bin, _ = perf.execute("which stap")
   if not bin then
     return nil, "systemtap binary not found"
   end
@@ -201,7 +202,7 @@ local function check_systemtap_sanity(self)
     "stat /tmp/perf-fg || git clone https://github.com/brendangregg/FlameGraph /tmp/perf-fg"
   }
   for _, cmd in ipairs(cmds) do
-    local ok, err = perf.execute(cmd)
+    local _, err = perf.execute(cmd)
     if err then
       return nil, cmd .. " failed: " .. err
     end

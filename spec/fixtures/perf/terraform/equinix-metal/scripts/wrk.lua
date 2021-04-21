@@ -1,3 +1,4 @@
+-- luacheck: ignore
 --This script is executed in conjuction with the wrk benchmarking tool via demo.sh
 math.randomseed(os.time()) -- Generate PRNG seed
 local rand = math.random -- Cache random method

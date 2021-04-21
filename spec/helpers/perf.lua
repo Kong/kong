@@ -92,7 +92,7 @@ local function execute(cmd, opts)
 
   while true do
     -- is it alive?
-    local ok, err = proc:kill(0)
+    local ok = proc:kill(0)
     if not ok then
       break
     end
@@ -146,8 +146,8 @@ local function wait_output(cmd, pattern, timeout)
   coroutine.resume(co)
 
   -- don't kill it, it me finish by itself
-  local exec = ngx.thread.spawn(function()
-    local ok, err = execute(cmd, {
+  ngx.thread.spawn(function()
+    execute(cmd, {
       logger = function(line)
         return coroutine.running(co) and coroutine.resume(co, line)
       end,
@@ -398,8 +398,8 @@ function _M.wait_result(opts)
           "start it using start_load() first", 2)
   end
 
-  local timeout = opts and opts.timeout or 3
-  local ok, res, err
+  -- local timeout = opts and opts.timeout or 3
+  -- local ok, res, err
 
   -- ngx.update_time()
   -- local s = ngx.now()
