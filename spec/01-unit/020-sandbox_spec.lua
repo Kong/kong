@@ -207,7 +207,7 @@ describe("sandbox functions wrapper", function()
 
       -- XXX These could be more or less more attractive to the eyes
       describe("environment", function()
-        local requires = { "foo", "bar", "baz" }
+        local requires = { "__sandbox_foo", "__sandbox_bar", "__sandbox_baz" }
         local modules = {
           "foo.bar",
           "bar",
@@ -221,6 +221,8 @@ describe("sandbox functions wrapper", function()
           return find(r, o[h])
         end
 
+        local mod_mock = function() end
+
         lazy_setup(function()
           _G.foo = { bar = { hello = "world" }, baz = "fuzz" }
           _G.bar = { "baz", "fuzz", { bye = "world" } }
@@ -229,6 +231,10 @@ describe("sandbox functions wrapper", function()
 
           _G.kong.configuration.untrusted_lua_sandbox_requires = requires
           _G.kong.configuration.untrusted_lua_sandbox_environment = modules
+
+          for _, mod in ipairs(requires) do
+            package.loaded[mod] = mod_mock
+          end
         end)
 
         lazy_teardown(function()
@@ -236,6 +242,10 @@ describe("sandbox functions wrapper", function()
           _G.bar = nil
           _G.baz = nil
           _G.fizz = nil
+
+          for _, mod in ipairs(requires) do
+            package.loaded[mod] = nil
+          end
 
           _G.kong.configuration = deep_copy(base_conf)
         end)
@@ -286,14 +296,8 @@ describe("sandbox functions wrapper", function()
         describe("fake require", function()
           it("can require config.untrusted_lua_sandbox_requires", function()
             for _, mod in ipairs(requires) do
-                local mock = function() end
-                local _o = package.loaded[mod]
-                package.loaded[mod] = mock
-
-                local fn = string.format("return require('%s')", mod)
-                assert.equal(mock, sandbox.sandbox(fn)())
-
-                finally(function() package.loaded[mod] = _o end)
+              local fn = string.format("return require('%s')", mod)
+              assert.equal(mod_mock, sandbox.sandbox(fn)())
             end
           end)
 

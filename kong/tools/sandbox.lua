@@ -57,29 +57,28 @@ local lazy_conf_methods = {
            kong.configuration.untrusted_lua and
            kong.configuration.untrusted_lua == 'sandbox'
   end,
-  requires = function(self)
-    local conf_r = kong and
-                   kong.configuration and
-                   kong.configuration.untrusted_lua_sandbox_requires or {}
-    local requires = {}
-    for _, r in ipairs(conf_r) do requires[r] = true end
-    return requires
-  end,
   env_vars = function(self)
     return kong and
            kong.configuration and
            kong.configuration.untrusted_lua_sandbox_environment or {}
   end,
   environment = function(self)
+    local conf_r = kong and
+                   kong.configuration and
+                   kong.configuration.untrusted_lua_sandbox_requires or {}
+
+    local requires = {}
+    for _, r in ipairs(conf_r) do requires[r] = require(r) end
+
     local env = {
         -- home brewed require function that only requires what we consider
         -- safe :)
         ["require"] = function(m)
-          if not self.requires[m] then
+          if not requires[m] then
             error(fmt("require '%s' not allowed within sandbox", m))
           end
 
-          return require(m)
+          return requires[m]
         end,
     }
 
