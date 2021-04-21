@@ -323,10 +323,11 @@ local load_should_stop
 
 --- Start to send load to Kong
 -- @function start_load
--- @param opts.path string request path
--- @param opts.connections number connection count
--- @param opts.threads number request thread count
--- @param opts.duration number perf test duration
+-- @param opts.path[optional] string request path, default to /
+-- @param opts.connections[optional] number connection count, default to 1000
+-- @param opts.threads[optional] number request thread count, default to 5
+-- @param opts.duration[optional] number perf test duration in seconds, default to 10
+-- @param opts.script[optional] string content of wrk script, default to nil
 -- @return nothing. Throws an error if any.
 function _M.start_load(opts)
   if load_thread then
@@ -342,13 +343,14 @@ function _M.start_load(opts)
   local load_cmd_stub = "wrk -c " .. (opts.connections or 1000) ..
                         " -t " .. (opts.threads or 5) ..
                         " -d " .. (opts.duration or 10) ..
+                        " %s " ..  -- script place holder
                         " %s://%s:%s/" .. path
   
-  load_cmd_stub = invoke_driver("get_start_load_cmd", load_cmd_stub)
+  local load_cmd = invoke_driver("get_start_load_cmd", load_cmd_stub, opts.script)
   load_should_stop = false
 
   load_thread = ngx.thread.spawn(function()
-    return execute(load_cmd_stub,
+    return execute(load_cmd,
         {
           stop_signal = function() if load_should_stop then return 9 end end,
         })

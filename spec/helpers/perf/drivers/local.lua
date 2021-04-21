@@ -8,6 +8,8 @@ local mt = {__index = _M}
 
 local UPSTREAM_PORT = 62412
 
+local WRK_SCRIPT_PREFIX = "/tmp/perf-wrk-"
+
 function _M.new(opts)
   return setmetatable({
     opts = opts,
@@ -53,7 +55,6 @@ function _M:setup()
 end
 
 function _M:teardown()
-  print("in teardown " .. (self.upstream_nginx_pid or "nil"))
   if self.upstream_nginx_pid then
     local ok, err = perf.execute("kill " .. self.upstream_nginx_pid)
     if err then
@@ -77,6 +78,8 @@ function _M:teardown()
       self.git_stashed = false
     end
   end
+
+  perf.execute("rm " .. WRK_SCRIPT_PREFIX .. "*.lua")
 
   return self:stop_kong()
 end
@@ -162,11 +165,21 @@ function _M:stop_kong()
   return true
 end
 
-function _M:get_start_load_cmd(stub)
+function _M:get_start_load_cmd(stub, script)
   local kong_ip = helpers.get_proxy_ip()
   local kong_port = helpers.get_proxy_port()
 
-  return stub:format("http", kong_ip, kong_port)
+  local script_path
+  if script then
+    script_path = WRK_SCRIPT_PREFIX .. tools.random_string() .. ".lua"
+    local f = assert(io.open(script_path, "w"))
+    assert(f:write(script))
+    assert(f:close())
+  end
+
+  script_path = script_path and ("-s " .. script_path) or ""
+
+  return stub:format(script_path, "http", kong_ip, kong_port)
 end
 
 local function check_systemtap_sanity(self)

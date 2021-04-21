@@ -132,8 +132,16 @@ function _M:setup(opts)
 
   self.log.info("Infra is up! However, executing psql remotely may take a while...")
   package.loaded["spec.helpers"] = nil
-  helpers = require("spec.helpers")
-  return helpers
+  for i=1, 3 do 
+    local pok, pret, _ = pcall(require, "spec.helpers")
+    if pok then
+      helpers = pret
+      return pret
+    end
+    self.log.warn("unable to load spec.helpers: " .. (perr or "nil") .. ", try " .. i)
+    ngx.sleep(1)
+  end
+  error("Unable to load spec.helpers")
 end
 
 function _M:teardown(full)
@@ -166,6 +174,7 @@ function _M:start_upstream(conf)
             }]]):format(UPSTREAM_PORT, conf)):gsub("\n", "")
 
   local ok, err = execute_batch(self, self.worker_ip, {
+    "echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
     "apt-get update", "apt-get install -y --force-yes nginx",
     -- ubuntu where's wrk in apt?
     "wget -nv http://mirrors.kernel.org/ubuntu/pool/universe/w/wrk/wrk_4.1.0-3_amd64.deb -O wrk.deb",
@@ -193,6 +202,7 @@ function _M:start_kong(version, kong_conf)
   kong_conf_blob = ngx.encode_base64(kong_conf_blob):gsub("\n", "")
 
   local ok, err = execute_batch(self, self.kong_ip, {
+    "echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
     "dpkg -l kong && (kong stop; dpkg -r kong) || true", -- stop and remove kong if installed
     "wget -nv https://bintray.com/kong/kong-deb/download_file?file_path=kong-" ..
               version .. ".focal.amd64.deb -O k.deb",
@@ -213,9 +223,24 @@ function _M:stop_kong()
                                 { logger = self.ssh_log.log_exec })
 end
 
-function _M:get_start_load_cmd(stub)
+function _M:get_start_load_cmd(stub, script)
+  local script_path
+  if script then
+    script_path = string.format("/tmp/wrk-%s.lua", tools.random_string())
+    local out, err = perf.execute(
+      ssh_execute_wrap(self, self.worker_ip, "tee " .. script_path),
+      {
+        stdin = script,
+      })
+    if err then
+      return false, "failed to write script in remote machine: " .. (out or err)
+    end
+  end
+
+  script_path = script_path and ("-s " .. script_path) or ""
+
   return ssh_execute_wrap(self, self.worker_ip,
-            stub:format("http", self.kong_internal_ip, "8000"))
+            stub:format(script_path, "http", self.kong_internal_ip, "8000"))
 end
 
 local function check_systemtap_sanity(self)

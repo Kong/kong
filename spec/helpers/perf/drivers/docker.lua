@@ -1,4 +1,5 @@
 local perf = require("spec.helpers.perf")
+local tools = require("kong.tools.utils")
 local helpers
 
 local _M = {}
@@ -254,7 +255,7 @@ function _M:stop_kong()
   end
 end
 
-function _M:get_start_load_cmd(stub)
+function _M:get_start_load_cmd(stub, script)
   if not self.kong_ct_id then
     return false, "kong container is not created yet"
   end
@@ -264,7 +265,23 @@ function _M:get_start_load_cmd(stub)
     return false, "unable to read kong container's private IP: " .. err
   end
 
-  return "docker exec " .. self.worker_ct_id .. " " .. stub:format("http", kong_vip, "8000")
+  local script_path
+  if script then
+    script_path = string.format("/tmp/wrk-%s.lua", tools.random_string())
+    local out, err = perf.execute(string.format(
+    "docker exec -i %s tee %s", self.worker_ct_id, script_path),
+    {
+      stdin = script,
+    })
+    if err then
+      return false, "failed to write script in container: " .. (out or err)
+    end
+  end
+
+  script_path = script_path and ("-s " .. script_path) or ""
+
+  return "docker exec " .. self.worker_ct_id .. " " ..
+          stub:format(script_path, "http", kong_vip, "8000")
 end
 
 function _M:get_start_stapxx_cmd()
