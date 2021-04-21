@@ -52,6 +52,7 @@ upstream_keepalive = NONE
 upstream_keepalive_pool_size = 60
 upstream_keepalive_max_requests = 100
 upstream_keepalive_idle_timeout = 60
+error_template_html_location = NONE
 
 nginx_user = kong kong
 nginx_worker_processes = auto

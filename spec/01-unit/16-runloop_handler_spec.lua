@@ -26,7 +26,7 @@ local function setup_it_block()
         warn = function() end,
       },
       response = {
-        exit = function() end,
+        error = function() end,
       },
       worker_events = {
         register = function() end,

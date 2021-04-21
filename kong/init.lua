@@ -269,10 +269,7 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
       if not cok then
         kong.log.err(cerr)
-        ctx.delayed_response = {
-          status_code = 500,
-          content = { message  = "An unexpected error occurred" },
-        }
+        kong.response.error(500)
       end
     end
 
@@ -774,7 +771,7 @@ function Kong.access()
 
     ctx.buffered_proxying = nil
 
-    return kong.response.exit(503, { message = "no Service found with those values"})
+    return kong.response.error(503, "no Service found with those values")
   end
 
   runloop.access.after(ctx)

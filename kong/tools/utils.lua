@@ -13,6 +13,7 @@ local uuid = require "resty.jit-uuid"
 local pl_stringx = require "pl.stringx"
 local pl_stringio = require "pl.stringio"
 local pl_utils = require "pl.utils"
+local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local zlib = require "ffi-zlib"
 
@@ -1107,7 +1108,7 @@ do
   local MIN_STATUS_CODE      = 100
   local MAX_STATUS_CODE      = 599
 
-  function _M.get_default_exit_body(status, message)
+  function _M.get_default_exit_message(status, message)
     if type(status) ~= "number" then
       error("code must be a number", 2)
 
@@ -1115,11 +1116,18 @@ do
       error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
     end
 
+   local body = _overrides[status] or message or _defaults[status]
+
     if status == 204 then
       return nil
     end
 
-    local body = _overrides[status] or message or _defaults[status]
+    return body
+  end
+
+  function _M.get_default_exit_body(status, message)
+    local body = _M.get_default_exit_message(status, message)
+
     if body ~= nil and type(body) ~= "table" then
       body = { message = body }
     end
@@ -1274,7 +1282,7 @@ do
     [CONTENT_TYPE_DEFAULT]  = "application/json; charset=utf-8",
   }
 
-  local ERROR_TEMPLATES = {
+  local DEFAULT_ERROR_TEMPLATES = {
     [CONTENT_TYPE_GRPC]   = "",
     [CONTENT_TYPE_HTML]   = [[
 <!doctype html>
@@ -1290,9 +1298,7 @@ do
 </html>
 ]],
     [CONTENT_TYPE_JSON]   = [[
-{
-  "message":"%s"
-}]],
+{"message":"%s"}]],
     [CONTENT_TYPE_PLAIN]  = "%s\n",
     [CONTENT_TYPE_XML]    = [[
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1301,6 +1307,21 @@ do
 </error>
 ]],
   }
+
+  local configured_error_templates
+
+  local function get_configured_error_templates()
+    if not configured_error_templates then
+      configured_error_templates = {}
+
+      if kong.configuration.error_template_html_location and pl_path.exists(kong.configuration.error_template_html_location) then
+        configured_error_templates.html = assert(pl_file.read(kong.configuration.error_template_html_location))
+      end
+      
+    end
+
+    return configured_error_templates
+  end
 
   get_mime_type = function(content_header, use_default)
     use_default = use_default == nil or use_default
@@ -1330,20 +1351,22 @@ do
 
 
   get_error_template = function(mime_type)
+   local configured_error_templates = get_configured_error_templates()
+
     if mime_type == CONTENT_TYPE_JSON or mime_type == MIME_TYPES[CONTENT_TYPE_JSON] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_JSON]
+      return DEFAULT_ERROR_TEMPLATES[CONTENT_TYPE_JSON]
 
     elseif mime_type == CONTENT_TYPE_HTML or mime_type == MIME_TYPES[CONTENT_TYPE_HTML] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_HTML]
+      return configured_error_templates.html or DEFAULT_ERROR_TEMPLATES[CONTENT_TYPE_HTML]
 
     elseif mime_type == CONTENT_TYPE_XML or mime_type == MIME_TYPES[CONTENT_TYPE_XML] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_XML]
+      return DEFAULT_ERROR_TEMPLATES[CONTENT_TYPE_XML]
 
     elseif mime_type == CONTENT_TYPE_PLAIN or mime_type == MIME_TYPES[CONTENT_TYPE_PLAIN] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_PLAIN]
+      return DEFAULT_ERROR_TEMPLATES[CONTENT_TYPE_PLAIN]
 
     elseif mime_type == CONTENT_TYPE_GRPC or mime_type == MIME_TYPES[CONTENT_TYPE_GRPC] then
-      return ERROR_TEMPLATES[CONTENT_TYPE_GRPC]
+      return DEFAULT_ERROR_TEMPLATES[CONTENT_TYPE_GRPC]
 
     end
 

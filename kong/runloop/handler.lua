@@ -1090,8 +1090,8 @@ return {
     after = function(ctx)
       local ok, err, errcode = balancer_execute(ctx)
       if not ok then
-        local body = utils.get_default_exit_body(errcode, err)
-        return kong.response.exit(errcode, body)
+        local body = utils.get_default_exit_message(errcode, err)
+        return kong.response.error(errcode, body)
       end
     end
   },
@@ -1121,7 +1121,7 @@ return {
       local router = get_updated_router()
       local match_t = router.exec()
       if not match_t then
-        return kong.response.exit(404, { message = "no Route matched with those values" })
+        return kong.response.error(404, "no Route matched with those values")
       end
 
       ctx.workspace = match_t.route and match_t.route.ws_id
@@ -1186,7 +1186,7 @@ return {
         local redirect_status_code = route.https_redirect_status_code or 426
 
         if redirect_status_code == 426 then
-          return kong.response.exit(426, { message = "Please use HTTPS protocol" }, {
+          return kong.response.error(426, "Please use HTTPS protocol", {
             ["Connection"] = "Upgrade",
             ["Upgrade"]    = "TLS/1.2, HTTP/1.1",
           })
@@ -1206,7 +1206,7 @@ return {
       if (protocols and (protocols.grpc or protocols.grpcs) and http_version ~= 2 and
         (content_type and sub(content_type, 1, #"application/grpc") == "application/grpc"))
       then
-        return kong.response.exit(426, { message = "Please use HTTP2 protocol" }, {
+        return kong.response.error(426, "Please use HTTP2 protocol", {
           ["connection"] = "Upgrade",
           ["upgrade"]    = "HTTP/2",
         })
@@ -1216,7 +1216,7 @@ return {
       if (protocols and (protocols.grpc or protocols.grpcs) and
         (not content_type or sub(content_type, 1, #"application/grpc") ~= "application/grpc"))
       then
-        return kong.response.exit(415, { message = "Non-gRPC request matched gRPC route" })
+        return kong.response.error(415, "Non-gRPC request matched gRPC route")
       end
 
       -- mismatch: grpc request matched grpcs route
@@ -1323,8 +1323,8 @@ return {
 
       local ok, err, errcode = balancer_execute(ctx)
       if not ok then
-        local body = utils.get_default_exit_body(errcode, err)
-        return kong.response.exit(errcode, body)
+        local body = utils.get_default_exit_message(errcode, err)
+        return kong.response.error(errcode, body)
       end
 
       var.upstream_scheme = balancer_data.scheme
@@ -1333,7 +1333,7 @@ return {
       if not ok then
         ngx.log(ngx.ERR, "failed to set balancer Host header: ", err)
 
-        return ngx.exit(500)
+        return exit(500)
       end
 
       -- the nginx grpc module does not offer a way to overrride the
