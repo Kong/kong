@@ -40,11 +40,11 @@ transformations, and more through plugins.
 
 Kong has been built with the following leading principles:
 
-* **High Performance**: Sub-millisecond processing latency to support mission
-  critical use cases and high throughput.
+* **High Performance**: Sub-millisecond processing latency to support 
+* mission-critical use cases and high throughput.
 * **Extensibility**: With a pluggable architecture to extend Kong in Lua or GoLang
   with Kong's Plugin SDK.
-* **Portability**: To run on every platform, every cloud and to natively support
+* **Portability**: To run on every platform, every cloud, and to natively support
   Kubernetes via our modern Ingress Controller.
 
 ## Features
@@ -134,7 +134,7 @@ You can find every supported distribution at the [official installation page](ht
 We encourage community contributions to Kong. To make sure it is a smooth
 experience (both for you and for the Kong team), please read
 [CONTRIBUTING.md](CONTRIBUTING.md), [DEVELOPER.md](DEVELOPER.md),
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [COPYRIGHT](COPYRIGHT) before
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [COPYRIGHT](COPYRIGHT) before
 you start.
 
 If you are planning on developing on Kong, you'll need a development
@@ -261,7 +261,7 @@ $ make test-all
 ```
 
 Consult the [run_tests.sh](.ci/run_tests.sh) script for a more advanced example
-usage of the tests suites and the Makefile.
+usage of the test suites and the Makefile.
 
 Finally, a very useful tool in Lua development (as with many other dynamic
 languages) is performing static linting of your code. You can use [luacheck]
