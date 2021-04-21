@@ -31,7 +31,7 @@ return {
           { client_errors_severity = severity },
           { server_errors_severity = severity },
           { custom_fields_by_lua = typedefs.lua_code },
-          { syslog_facility = facility },
+          { facility = facility },
     }, }, },
   },
 }

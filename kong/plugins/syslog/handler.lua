@@ -72,13 +72,13 @@ local function log(premature, conf, message)
   end
 
   if message.response.status >= 500 then
-    send_to_syslog(conf.log_level, conf.server_errors_severity, message, conf.syslog_facility)
+    send_to_syslog(conf.log_level, conf.server_errors_severity, message, conf.facility)
 
   elseif message.response.status >= 400 then
-    send_to_syslog(conf.log_level, conf.client_errors_severity, message, conf.syslog_facility)
+    send_to_syslog(conf.log_level, conf.client_errors_severity, message, conf.facility)
 
   else
-    send_to_syslog(conf.log_level, conf.successful_severity, message, conf.syslog_facility)
+    send_to_syslog(conf.log_level, conf.successful_severity, message, conf.facility)
   end
 end
 
