@@ -41,6 +41,12 @@ describe("kong start/stop #" .. strategy, function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
     assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
   end)
+  it("stop honors custom Kong prefix higher than environment variable", function()
+    assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
+    helpers.setenv("KONG_PREFIX", "/tmp/dne")
+    finally(function() helpers.unsetenv("KONG_PREFIX") end)
+    assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
+  end)
   it("start/stop Kong with only stream listeners enabled", function()
     assert(helpers.kong_exec("start ", {
       prefix = helpers.test_conf.prefix,
