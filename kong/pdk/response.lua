@@ -785,7 +785,7 @@ local function new(self, major_version)
     --
     -- -- In L4 proxy mode
     -- return kong.response.exit(200, "Success")
-    -- 
+    --
     function _RESPONSE.exit(status, body, headers)
       if self.worker_events and ngx.get_phase() == "content" then
         self.worker_events.poll()
@@ -857,8 +857,18 @@ local function new(self, major_version)
               "are accepted", 2)
       end
 
-      if body ~= nil and type(body) ~= "string" then
-        error("body must be a nil or a string", 2)
+      if body ~= nil then
+        if type(body) == "table" then
+          local err
+          body, err = cjson.encode(body)
+          if err then
+            error("invalid body: " .. err, 2)
+          end
+        end
+
+        if type(body) ~= "string" then
+          error("body must be a nil, string or table", 2)
+        end
       end
 
       if body then
