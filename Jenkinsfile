@@ -1,5 +1,9 @@
 pipeline {
-    agent none
+    agent {
+        node {
+            label 'bionic'
+        }
+    }
     options {
         retry(1)
         timeout(time: 2, unit: 'HOURS')
@@ -9,31 +13,22 @@ pipeline {
         DOCKER_CREDENTIALS = credentials('dockerhub')
         DOCKER_USERNAME = "${env.DOCKER_CREDENTIALS_USR}"
         DOCKER_PASSWORD = "${env.DOCKER_CREDENTIALS_PSW}"
+        AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
+        BINTRAY_USR = 'kong-inc_travis-ci@kong'
+        BINTRAY_KEY = credentials('bintray_travis_key')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         KONG_PACKAGE_NAME = "kong"
         DOCKER_CLI_EXPERIMENTAL = "enabled"
+        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
     }
     stages {
-        stage('Release Per Commit') {
+        stage('Release Per Commit') { /* daily/master builds */
             when {
                 beforeAgent true
                 anyOf { branch 'master'; }
             }
-            agent {
-                node {
-                    label 'bionic'
-                }
-            }
             environment {
-                KONG_PACKAGE_NAME = "kong"
-                KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                BINTRAY_USR = 'kong-inc_travis-ci@kong'
-                BINTRAY_KEY = credentials('bintray_travis_key')
-                AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
-                AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
                 CACHE = "false"
-                UPDATE_CACHE = "true"
-                DEBUG = "0"
                 RELEASE_DOCKER_ONLY="true"
                 PACKAGE_TYPE="apk"
                 RESTY_IMAGE_BASE="alpine"
@@ -55,11 +50,6 @@ pipeline {
             }
             parallel {
                 stage('Ubuntu Xenial Release') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
                     environment {
                         PACKAGE_TYPE = 'deb'
                         RESTY_IMAGE_BASE = 'ubuntu'
@@ -67,13 +57,6 @@ pipeline {
                         CACHE = 'false'
                         UPDATE_CACHE = 'true'
                         USER = 'travis'
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
-                        BINTRAY_KEY = credentials('bintray_travis_key')
-                        AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
-                        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-                        DEBUG = 0
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -87,20 +70,9 @@ pipeline {
                     }
                 }
                 stage('Ubuntu Releases') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
                     environment {
                         PACKAGE_TYPE = 'deb'
                         RESTY_IMAGE_BASE = 'ubuntu'
-                        RESTY_IMAGE_TAG = 'bionic'
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
-                        BINTRAY_KEY = credentials('bintray_travis_key')
-                        DEBUG = 0
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -110,21 +82,11 @@ pipeline {
                     }
                 }
                 stage('Centos Releases') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
                     environment {
                         PACKAGE_TYPE = 'rpm'
                         RESTY_IMAGE_BASE = 'centos'
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
-                        BINTRAY_KEY = credentials('bintray_travis_key')
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
-                        DEBUG = 0
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -135,21 +97,11 @@ pipeline {
                     }
                 }
                 stage('RedHat Releases') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
                     environment {
                         PACKAGE_TYPE = 'rpm'
                         RESTY_IMAGE_BASE = 'rhel'
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
-                        BINTRAY_KEY = credentials('bintray_travis_key')
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
-                        DEBUG = 0
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -160,19 +112,9 @@ pipeline {
                     }
                 }
                 stage('Debian Releases') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
                     environment {
                         PACKAGE_TYPE = 'deb'
                         RESTY_IMAGE_BASE = 'debian'
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
-                        BINTRAY_KEY = credentials('bintray_travis_key')
-                        DEBUG = 0
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -184,21 +126,9 @@ pipeline {
                     }
                 }
                 stage('Other Releases'){
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
                     environment {
                         PACKAGE_TYPE = 'deb'
                         RESTY_IMAGE_BASE = 'debian'
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                        BINTRAY_USR = 'kong-inc_travis-ci@kong'
-                        BINTRAY_KEY = credentials('bintray_travis_key')
-                        AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
-                        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-                        DEBUG = 0
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -222,11 +152,6 @@ pipeline {
             }
             parallel {
                 stage('PR Docker') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
                     environment {
                         GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
@@ -251,11 +176,6 @@ pipeline {
                     }
                 }
                 stage('PR Homebrew') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
                     environment {
                         GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
@@ -280,11 +200,6 @@ pipeline {
                     }
                 }
                 stage('PR Vagrant') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
                     environment {
                         GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
@@ -309,11 +224,6 @@ pipeline {
                     }
                 }
                 stage('PR Pongo') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
                     environment {
                         GITHUB_TOKEN = credentials('github_bot_access_token')
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
