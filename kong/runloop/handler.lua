@@ -342,6 +342,11 @@ local function register_events()
   end, "crud", "certificates")
 
 
+  if kong.configuration.role == "control_plane" then
+    return
+  end
+
+
   -- target updates
 
 
