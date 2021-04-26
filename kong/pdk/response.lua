@@ -991,8 +991,19 @@ local function new(self, major_version)
         MAX_STATUS_CODE), 2)
     end
 
-    if message ~= nil and type(message) ~= "string" then
-        error("message must be a nil or a string", 2)
+    if message ~= nil then
+      if type(message) == "table" then
+        local err
+        message, err = cjson.encode(message)
+        if err then
+          error("could not JSON encode the error message: " .. err, 2)
+        end
+      end
+
+      if type(message) ~= "string" then
+        error("message must be a nil, a string or a table", 2)
+      end
+
     end
 
     if headers ~= nil and type(headers) ~= "table" then
