@@ -15,6 +15,10 @@ This plugin exposes metrics in [Prometheus Exposition format](https://github.com
 - *DB reachability*: Can the Kong node reach it's Database or not (Guage 0/1).
 - *Connections*: Various NGINX connection metrics like active, reading, writing,
   accepted connections.
+- *Memory Usage*:
+   - *Shared dict usage*: Memory usage for each shared dictionaries in bytes.
+   - *Shared dict capacity*: Capacity for each shared dictionaries in bytes.
+   - *Lua VM memory usage*: Memory usage for Lua VM on each worker in bytes.
 
 ### Grafana Dashboard
 
@@ -132,7 +136,6 @@ kong_latency_bucket{type="kong",service="google",le="00001.0"} 1
 kong_latency_bucket{type="kong",service="google",le="00002.0"} 1
 .
 .
-.
 kong_latency_bucket{type="kong",service="google",le="+Inf"} 2
 kong_latency_bucket{type="request",service="google",le="00300.0"} 1
 kong_latency_bucket{type="request",service="google",le="00400.0"} 1
@@ -159,6 +162,19 @@ kong_nginx_http_current_connections{state="reading"} 0
 kong_nginx_http_current_connections{state="total"} 8
 kong_nginx_http_current_connections{state="waiting"} 0
 kong_nginx_http_current_connections{state="writing"} 1
+# HELP kong_memory_lua_shared_dict_bytes Allocated slabs in bytes in a shared_dict
+# TYPE kong_memory_lua_shared_dict_bytes gauge
+kong_memory_lua_shared_dict_bytes{shared_dict="kong",kong_subsystem="http"} 40960
+.
+.
+# HELP kong_memory_lua_shared_dict_total_bytes Total capacity in bytes of a shared_dict
+# TYPE kong_memory_lua_shared_dict_total_bytes gauge
+kong_memory_lua_shared_dict_total_bytes{shared_dict="kong",kong_subsystem="http"} 5242880
+.
+.
+# HELP kong_memory_workers_lua_vms_bytes Allocated bytes in worker Lua VM
+# TYPE kong_memory_workers_lua_vms_bytes gauge
+kong_memory_workers_lua_vms_bytes{pid="7281",kong_subsystem="http"} 41124353
 # HELP kong_nginx_metric_errors_total Number of nginx-lua-prometheus errors
 # TYPE kong_nginx_metric_errors_total counter
 kong_nginx_metric_errors_total 0

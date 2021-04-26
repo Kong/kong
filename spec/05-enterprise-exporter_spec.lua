@@ -53,8 +53,8 @@ t("Plugin: prometheus (exporter) enterprise licenses", function()
     })
     local body = assert.res_status(200, res)
 
-    assert.matches('kong_enterprise_license_signature %d+', body, nil, true)
-    assert.matches('kong_enterprise_license_expiration %d+', body, nil, true)
+    assert.matches('kong_enterprise_license_signature %d+', body)
+    assert.matches('kong_enterprise_license_expiration %d+', body)
     assert.matches('kong_enterprise_license_features{feature="ee_plugins"}', body, nil, true)
     assert.matches('kong_enterprise_license_features{feature="write_admin_api"}', body, nil, true)
 
