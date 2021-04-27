@@ -361,12 +361,15 @@ describe("Plugin: prometheus (access via status API)", function()
     }
     admin_client:close()
 
-    local res = assert(status_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local body = assert.res_status(200, res)
-    assert.not_match('kong_upstream_target_health{upstream="mock-upstream-healthchecksoff"', body, nil, true)
+    local body
+    helpers.wait_until(function()
+      local res = assert(status_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      body = assert.res_status(200, res)
+      return not body:find('kong_upstream_target_health{upstream="mock-upstream-healthchecksoff"', nil, true)
+    end)
     assert.not_match('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80"', body, nil, true)
   end)
 
