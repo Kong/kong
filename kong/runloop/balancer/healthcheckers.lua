@@ -1,47 +1,26 @@
 local pl_tablex = require "pl.tablex"
 local singletons = require "kong.singletons"
+local get_certificate = require "kong.runloop.certificate".get_certificate
 
 local balancers = require "kong.runloop.balancer.balancers"
 local upstreams = require "kong.runloop.balancer.upstreams"
 
-local toip = dns_client.toip
 local ngx = ngx
 local log = ngx.log
-local sleep = ngx.sleep
-local null = ngx.null
-local min = math.min
-local max = math.max
-local type = type
-local sub = string.sub
-local find = string.find
-local match = string.match
 local pairs = pairs
 local ipairs = ipairs
 local tostring = tostring
-local tonumber = tonumber
 local assert = assert
-local table = table
-local table_concat = table.concat
-local table_remove = table.remove
-local timer_at = ngx.timer.at
-local run_hook = hooks.run_hook
-local var = ngx.var
-local get_phase = ngx.get_phase
 
-
-local CRIT = ngx.CRIT
 local ERR = ngx.ERR
 local WARN = ngx.WARN
-local DEBUG = ngx.DEBUG
-local EMPTY_T = pl_tablex.readonly {}
-local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
 local healthcheckers_M = {}
 
 
 
-local function stop_healthchecker(balancer)
+function healthcheckers_M.stop_healthchecker(balancer)
   local healthchecker = balancer.healthchecker
   if healthchecker then
     local ok, err = healthchecker:clear()
@@ -376,10 +355,10 @@ function healthcheckers_M.stop_healthcheckers()
   for _, id in pairs(upstreams.get_all_upstreams()) do
     local balancer = balancers.get_balancer_by_id(id)
     if balancer then
-      stop_healthchecker(balancer)
+      healthcheckers_M.stop_healthchecker(balancer)
     end
 
-    set_balancer(id, nil)
+    balancers.set_balancer(id, nil)
   end
 end
 
