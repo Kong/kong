@@ -1,6 +1,4 @@
 local pl_tablex = require "pl.tablex"
-local singletons = require "kong.singletons"
-local workspaces = require "kong.workspaces"
 local utils = require "kong.tools.utils"
 local hooks = require "kong.hooks"
 local get_certificate = require("kong.runloop.certificate").get_certificate
@@ -19,22 +17,12 @@ local dns_client = require "resty.dns.client"
 local toip = dns_client.toip
 local ngx = ngx
 local log = ngx.log
-local sleep = ngx.sleep
 local null = ngx.null
-local min = math.min
-local max = math.max
 local type = type
-local sub = string.sub
-local find = string.find
-local match = string.match
 local pairs = pairs
-local ipairs = ipairs
 local tostring = tostring
-local tonumber = tonumber
-local assert = assert
 local table = table
 local table_concat = table.concat
-local table_remove = table.remove
 local timer_at = ngx.timer.at
 local run_hook = hooks.run_hook
 local var = ngx.var
@@ -46,8 +34,6 @@ local ERR = ngx.ERR
 local WARN = ngx.WARN
 local DEBUG = ngx.DEBUG
 local EMPTY_T = pl_tablex.readonly {}
-local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
-
 
 
 
@@ -145,7 +131,7 @@ end
 
 local function init()
   if kong.configuration.worker_consistency == "strict" then
-    create_balancers()
+    balancers.create_balancers()
     return
   end
 
@@ -156,24 +142,26 @@ local function init()
   end
 
   for _, id in pairs(upstreams_dict) do
-    local upstream, err = upstreams.get_upstream_by_id(id)
+    local upstream
+    upstream, err = upstreams.get_upstream_by_id(id)
     if upstream == nil or err then
       log(WARN, "failed loading upstream ", id, ": ", err)
     end
 
-    local _, err = balancers.create_balancer(upstream)
+    _, err = balancers.create_balancer(upstream)
     if err then
       log(CRIT, "failed creating balancer for upstream ", upstream.name, ": ", err)
     end
 
-    local target, err = targets.fetch_targets(upstream)
+    local target
+    target, err = targets.fetch_targets(upstream)
     if target == nil or err then
       log(WARN, "failed loading targets for upstream ", id, ": ", err)
     end
   end
 
   local frequency = kong.configuration.worker_state_update_frequency or 1
-  local _, err = timer_at(frequency, upstreams.update_balancer_state)
+  _, err = timer_at(frequency, upstreams.update_balancer_state)
   if err then
     log(CRIT, "unable to start update proxy state timer: ", err)
   else

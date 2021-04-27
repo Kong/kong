@@ -6,39 +6,23 @@
 ---
 ---
 ---
+local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local workspaces = require "kong.workspaces"
+local balancers
+local healthcheckers
 
-local toip = dns_client.toip
 local ngx = ngx
 local log = ngx.log
-local sleep = ngx.sleep
 local null = ngx.null
-local min = math.min
-local max = math.max
-local type = type
-local sub = string.sub
-local find = string.find
-local match = string.match
-local pairs = pairs
 local ipairs = ipairs
-local tostring = tostring
-local tonumber = tonumber
-local assert = assert
 local table = table
-local table_concat = table.concat
 local table_remove = table.remove
 local timer_at = ngx.timer.at
-local run_hook = hooks.run_hook
-local var = ngx.var
-local get_phase = ngx.get_phase
 
 
 local CRIT = ngx.CRIT
 local ERR = ngx.ERR
-local WARN = ngx.WARN
-local DEBUG = ngx.DEBUG
-local EMPTY_T = pl_tablex.readonly {}
 
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
@@ -172,7 +156,7 @@ local function do_upstream_event(operation, upstream_data)
       return
     end
 
-    local _, err = create_balancer(upstream)
+    local _, err = balancers.create_balancer(upstream)
     if err then
       log(CRIT, "failed creating balancer for ", upstream_name, ": ", err)
     end
@@ -185,11 +169,11 @@ local function do_upstream_event(operation, upstream_data)
 
     local balancer = balancers[upstream_id]
     if balancer then
-      stop_healthchecker(balancer)
+      healthcheckers.stop_healthchecker(balancer)
     end
 
     if operation == "delete" then
-      set_balancer(upstream_id, nil)
+      balancers.set_balancer(upstream_id, nil)
       upstream_by_name[by_name_key] = nil
 
     else
@@ -200,7 +184,7 @@ local function do_upstream_event(operation, upstream_data)
         return
       end
 
-      local _, err = create_balancer(upstream, true)
+      local _, err = balancers.create_balancer(upstream, true)
       if err then
         log(ERR, "failed recreating balancer for ", upstream_name, ": ", err)
       end
@@ -271,5 +255,10 @@ function upstreams.on_upstream_event(operation, upstream_data)
   end
 end
 
+
+function upstreams.init()
+  balancers = require "kong.runloop.balancer.balancers"
+  healthcheckers = require "kong.runloop.balancer.healthcheckers"
+end
 
 return upstreams

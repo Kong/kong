@@ -1,4 +1,6 @@
 
+local balancers = require "kong.runloop.balancer.balancers"
+
 local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
 local random = math.random
@@ -73,7 +75,7 @@ end
 
 function roundrobin_balancer:getPeer(cacheOnly, handle, hashValue)
   if not self.healthy then
-    return nil, balancer_base.errors.ERR_BALANCER_UNHEALTHY
+    return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
   end
 
   if handle then
@@ -103,12 +105,12 @@ function roundrobin_balancer:getPeer(cacheOnly, handle, hashValue)
         handle.address = address
         return ip, port, hostname, handle
 
-      elseif port == balancer_base.errors.ERR_DNS_UPDATED then
+      elseif port == balancers.errors.ERR_DNS_UPDATED then
         -- if healty we just need to try again
         if not self.healthy then
-          return nil, balancer_base.errors.ERR_BALANCER_UNHEALTHY
+          return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
         end
-      elseif port == balancer_base.errors.ERR_ADDRESS_UNAVAILABLE then
+      elseif port == balancers.errors.ERR_ADDRESS_UNAVAILABLE then
         ngx_log(ngx_DEBUG, self.log_prefix, "found address but it was unavailable. ",
           " trying next one.")
       else
@@ -120,7 +122,7 @@ function roundrobin_balancer:getPeer(cacheOnly, handle, hashValue)
 
   until self.pointer == starting_pointer
 
-  return nil, balancer_base.errors.ERR_NO_PEERS_AVAILABLE
+  return nil, balancers.errors.ERR_NO_PEERS_AVAILABLE
 end
 
 

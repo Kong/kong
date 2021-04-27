@@ -1,7 +1,5 @@
 
 
-local singletons = require "kong.singletons"
-local workspaces = require "kong.workspaces"
 local dns_client = require "resty.dns.client"
 
 local upstreams = require "kong.runloop.balancer.upstreams"
@@ -11,33 +9,16 @@ local healthcheckers
 local ngx = ngx
 local log = ngx.log
 local sleep = ngx.sleep
-local null = ngx.null
 local min = math.min
 local max = math.max
-local type = type
 local sub = string.sub
 local find = string.find
-local match = string.match
 local pairs = pairs
-local ipairs = ipairs
-local tostring = tostring
-local tonumber = tonumber
-local assert = assert
-local table = table
-local table_concat = table.concat
-local table_remove = table.remove
-local timer_at = ngx.timer.at
-local var = ngx.var
-local get_phase = ngx.get_phase
 
 
 local CRIT = ngx.CRIT
 local ERR = ngx.ERR
-local WARN = ngx.WARN
 local DEBUG = ngx.DEBUG
-local EMPTY_T = pl_tablex.readonly {}
-local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
-
 
 local balancers_M = {}
 
@@ -45,11 +26,22 @@ local balancers_by_id = {}
 local balancer_types  = {}
 
 
+balancers_M.errors = setmetatable({
+  ERR_DNS_UPDATED = "Cannot get peer, a DNS update changed the balancer structure, please retry",
+  ERR_ADDRESS_UNAVAILABLE = "Address is marked as unavailable",
+  ERR_NO_PEERS_AVAILABLE = "No peers are available",
+  ERR_BALANCER_UNHEALTHY = "Balancer is unhealthy",
+}, {
+  __index = function(self, key)
+    error("invalid key: " .. tostring(key))
+  end
+})
+
 function balancers_M.get_balancer_by_id(id)
   return balancers_by_id[id]
 end
 
-local function set_balancer(upstream_id, balancer)
+function balancers_M.set_balancer(upstream_id, balancer)
   local prev = balancers_by_id[upstream_id]
   if prev then
     prev.healthchecker = nil
@@ -134,7 +126,7 @@ local function create_balancer_exclusive(upstream)
 
   -- only make the new balancer available for other requests after it
   -- is fully set up.
-  set_balancer(upstream.id, balancer)
+  balancers_M.set_balancer(upstream.id, balancer)
 
   return balancer
 end
