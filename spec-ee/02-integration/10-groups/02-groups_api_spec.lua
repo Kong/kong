@@ -414,7 +414,7 @@ for _, strategy in helpers.each_strategy() do
           local res_roles_default = get_request("/default/rbac/roles", token)
 
           assert.same(_role.id, res_roles_default.data[1].id)
-          check_create(404, group.id, group, _role, workspace)	
+          check_create(404, group.id, group, _role, workspace)
         end)
 
         it("The endpoint should create a mapping with correct params by id", function()
