@@ -194,18 +194,13 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
   for i = #targets, 1, -1 do
     local entry = targets[i]
     if not seen[entry.target] then
-      if entry.weight == 0 then
-        seen[entry.target] = true
+      -- add what we want to send to the client in our array
+      len = len + 1
+      all_active_targets[len] = entry
 
-      else
-        -- add what we want to send to the client in our array
-        len = len + 1
-        all_active_targets[len] = entry
-
-        -- track that we found this host:port so we only show
-        -- the most recent active one
-        seen[entry.target] = true
-      end
+      -- track that we found this host:port so we only show
+      -- the most recent active one
+      seen[entry.target] = true
     end
   end
 
