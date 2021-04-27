@@ -302,51 +302,67 @@ describe("Plugin: prometheus (access via status API)", function()
   end)
 
   it("exposes upstream's target health metrics - healthchecks-off", function()
-    local res = assert(status_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local body = assert.res_status(200, res)
-    assert.matches('kong_upstream_target_health{upstream="mock-upstream-healthchecksoff",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="healthchecks_off"} 1', body, nil, true)
+    local body
+    helpers.wait_until(function()
+      local res = assert(status_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+
+      body = assert.res_status(200, res)
+      return body:find('kong_upstream_target_health{upstream="mock-upstream-healthchecksoff",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="healthchecks_off"} 1', nil, true)
+    end)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream-healthchecksoff",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="healthy"} 0', body, nil, true)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream-healthchecksoff",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="unhealthy"} 0', body, nil, true)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream-healthchecksoff",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="dns_error"} 0', body, nil, true)
   end)
 
   it("exposes upstream's target health metrics - healthy", function()
-    local res = assert(status_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local body = assert.res_status(200, res)
+    local body
+    helpers.wait_until(function()
+      local res = assert(status_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+
+      body = assert.res_status(200, res)
+      return body:find('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="healthy"} 1', nil, true)
+    end)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="healthchecks_off"} 0', body, nil, true)
-    assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="healthy"} 1', body, nil, true)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="unhealthy"} 0', body, nil, true)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",address="' .. helpers.mock_upstream_host .. ':' .. helpers.mock_upstream_port .. '",state="dns_error"} 0', body, nil, true)
   end)
 
   it("exposes upstream's target health metrics - unhealthy", function()
-    local res = assert(status_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local body = assert.res_status(200, res)
-    assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':8001",address="' .. helpers.mock_upstream_host .. ':8001",state="healthchecks_off"} 0', body, nil, true)
+    local body
+    helpers.wait_until(function()
+      local res = assert(status_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+
+      body = assert.res_status(200, res)
+      return body:find('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':8001",address="' .. helpers.mock_upstream_host .. ':8001",state="unhealthy"} 1', nil, true)
+    end)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':8001",address="' .. helpers.mock_upstream_host .. ':8001",state="healthy"} 0', body, nil, true)
-    assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':8001",address="' .. helpers.mock_upstream_host .. ':8001",state="unhealthy"} 1', body, nil, true)
+    assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':8001",address="' .. helpers.mock_upstream_host .. ':8001",state="healthchecks_off"} 0', body, nil, true)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="' .. helpers.mock_upstream_host .. ':8001",address="' .. helpers.mock_upstream_host .. ':8001",state="dns_error"} 0', body, nil, true)
   end)
 
   it("exposes upstream's target health metrics - dns_error", function()
-    local res = assert(status_client:send {
-      method  = "GET",
-      path    = "/metrics",
-    })
-    local body = assert.res_status(200, res)
-    assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="healthchecks_off"} 0', body, nil, true)
+    local body
+    helpers.wait_until(function()
+      local res = assert(status_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+
+      body = assert.res_status(200, res)
+      return body:find('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="dns_error"} 1', nil, true)
+    end)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="healthy"} 0', body, nil, true)
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="unhealthy"} 0', body, nil, true)
-    assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="dns_error"} 1', body, nil, true)
+    assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="healthchecks_off"} 0', body, nil, true)
   end)
 
   it("remove metrics from deleted upstreams and targets", function()
