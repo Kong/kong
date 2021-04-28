@@ -243,6 +243,7 @@ end
 local function execute_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws
   local delay_response
+  local errors
 
   if ctx then
     old_ws = ctx.workspace
@@ -262,7 +263,21 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
     kong_global.set_namespaced_log(kong, plugin.name)
 
     if not delay_response then
-      plugin.handler[phase](plugin.handler, configuration)
+      -- guard against failed handler in "init_worker" phase only because it will
+      -- cause Kong to not correctly initialize and can not be recovered automatically.
+      if phase == "init_worker" then
+        local ok, err = pcall(plugin.handler[phase], plugin.handler, configuration)
+        if not ok then
+          errors = errors or {}
+          errors[#errors + 1] = {
+            plugin = plugin.name,
+            err = err,
+          }
+        end
+
+      else
+        plugin.handler[phase](plugin.handler, configuration)
+      end
 
     elseif not ctx.delayed_response then
       local co = coroutine.create(plugin.handler.access)
@@ -282,6 +297,8 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
       ctx.workspace = old_ws
     end
   end
+
+  return errors
 end
 
 
@@ -616,7 +633,14 @@ function Kong.init_worker()
   end
 
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "init_worker")
+  local errors = execute_plugins_iterator(plugins_iterator, "init_worker")
+  if errors then
+    for _, e in ipairs(errors) do
+      local err = "failed to execute the \"init_worker\" " ..
+                  "handler for plugin \"" .. e.plugin .."\": " .. e.err
+      stash_init_worker_error(err)
+    end
+  end
 
   runloop.init_worker.after()
 

@@ -7,6 +7,7 @@ local pl_stringx = require "pl.stringx"
 
 
 local LOG_WAIT_TIMEOUT = 10
+local TEST_CONF = helpers.test_conf
 
 
 for _, strategy in helpers.each_strategy() do
@@ -1089,6 +1090,7 @@ for _, strategy in helpers.each_strategy() do
           assert(helpers.start_kong {
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
+            plugins = "short-circuit,init-worker-lua-error",
           })
 
           proxy_client = helpers.proxy_client()
@@ -1118,6 +1120,11 @@ for _, strategy in helpers.each_strategy() do
             status  = 200,
             message = "plugin executed"
           }, json)
+        end)
+
+        it("protects against failed init_worker handler, FTI-2473", function()
+          local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
+          assert.matches([[worker initialization error: failed to execute the "init_worker" handler for plugin "init-worker-lua-error"]], logs, nil, true)
         end)
       end)
 
