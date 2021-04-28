@@ -8,7 +8,7 @@ pipeline {
       timeout(time: 45, unit: 'MINUTES')
   }
   environment {
-    GITHUB_TOKEN = credentials('GITHUB_TOKEN')
+    GITHUB_TOKEN = credentials('github_bot_access_token')
     BINTRAY = credentials('bintray')
     REDHAT = credentials('redhat')
     PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
@@ -23,7 +23,7 @@ pipeline {
     //  script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
     //)}"""
     // XXX: Can't bother to fix this now. This works, right? :)
-    KONG_VERSION = "2.3.3.0"
+    KONG_VERSION = "2.4.0.0"
   }
   stages {
     // choice between internal, rc1, rc2, rc3, rc4 ....,  GA

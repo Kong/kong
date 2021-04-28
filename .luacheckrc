@@ -28,6 +28,14 @@ exclude_files = {
     "pgmoon/",
 }
 
+files["kong/tools/kong-lua-sandbox.lua"] = {
+     read_globals = {
+        "_ENV",
+        "table.pack",
+        "table.unpack",
+     }
+}
+
 
 files["kong/hooks.lua"] = {
     read_globals = {

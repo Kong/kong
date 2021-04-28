@@ -1,3 +1,10 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
 local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
 local protoc = require "protoc"
@@ -212,7 +219,12 @@ local function load_service()
   --p:loadfile("kong/pluginsocket.proto")
 
   p:addpath("/usr/include")
-  local parsed = p:parsefile("kong/pluginsocket.proto")
+  p:addpath("/usr/local/opt/protobuf/include/")
+
+  p:addpath("/usr/local/kong/lib/")
+  p:addpath("kong")
+
+  local parsed = p:parsefile("pluginsocket.proto")
 
   local service = {}
   for i, s in ipairs(parsed.service) do
@@ -236,7 +248,7 @@ local function load_service()
 
   p:loadfile("google/protobuf/empty.proto")
   p:loadfile("google/protobuf/struct.proto")
-  p:loadfile("kong/pluginsocket.proto")
+  p:loadfile("pluginsocket.proto")
 
   return service
 end

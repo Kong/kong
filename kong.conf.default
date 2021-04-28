@@ -1437,6 +1437,17 @@
                                  #
                                  # See https://github.com/openresty/lua-nginx-module#lua_ssl_verify_depth
 
+#lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3   # Defines the TLS versions supported
+                                               # when handshaking with OpenResty's
+                                               # TCP cosocket APIs.
+                                               #
+                                               # This affects connections made by Lua
+                                               # code, such as connections to the
+                                               # database Kong uses, or when sending logs
+                                               # using a logging plugin. It does *not*
+                                               # affect connections made to the upstream
+                                               # Service or from downstream clients.
+
 #lua_package_path = ./?.lua;./?/init.lua;  # Sets the Lua module search path
                                            # (LUA_PATH). Useful when developing
                                            # or using custom plugins not stored
@@ -2275,11 +2286,31 @@
                                  # ignored, regardless of their lifetime. The
                                  # default special value of `all` results in all
                                  # trace types being written, regardless of type.
-                                 # Included trace types are: `query`,
-                                 # `legacy_query`, `router`, `balancer.getPeer`,
-                                 # `balancer.toip`, `connect.toip`,
-                                 # `access.before`, and `access.after`,
-                                 # `cassandra_iterate`, and `plugin`.
+                                 #
+                                 # The following trace types are included:
+                                 #
+                                 # - `query`: trace the database query
+                                 # - `legacy_query`: (deprecated) trace the
+                                 #    database query with legacy DAO
+                                 # - `router`: trace Kong routing the request;
+                                 #    internal routing time
+                                 # - `balancer`: trace the execution of the overall
+                                 #    balancer phase
+                                 # - `balancer.getPeer`: trace Kong selecting an
+                                 #    upstream peer from the ring-balancer
+                                 # - `balancer.toip`: trace balancer to resolve
+                                 #    peer's host to IP
+                                 # - `connect.toip`: trace cosocket to resolve
+                                 #    target's host to IP
+                                 # - `access.before`: trace the preprocessing of
+                                 #    access phase, like parameter parsing, route
+                                 #    matching, and balance preparation
+                                 # - `access.after`: trace the postprocess of
+                                 #    access phase, like balancer execution and
+                                 #    internal variable assigning
+                                 # - `cassandra_iterate`: trace Cassandra driver to
+                                 #    paginate over results
+                                 # - `plugin`: trace plugins phase handlers
 
 #tracing_debug_header =          # Defines the name of the HTTP request header
                                  # that must be present in order to generate
