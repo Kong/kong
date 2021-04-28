@@ -26,6 +26,7 @@ local api_helpers = require "kong.api.api_helpers"
 local tracing = require "kong.tracing"
 local counters = require "kong.workspaces.counters"
 local workspace_config = require "kong.portal.workspace_config"
+local BasePlugin = require "kong.plugins.base_plugin"
 
 local cjson = require "cjson.safe"
 
@@ -481,7 +482,12 @@ function _M.license_hooks(config)
   local function patch_handler(handler, name)
     for phase, _ in pairs(phase_checker.phases) do
 
-      if handler[phase] and phase ~= 'init_worker' and type(handler[phase]) == "function" then
+      -- TODO: only patch each phase handler once
+      if handler[phase] and phase ~= 'init_worker'
+         and type(handler[phase]) == "function"
+         and handler[phase] ~= BasePlugin[phase]
+      then -- only patch the handler if overriden by plugin
+
         wrap_method(handler, phase, function(parent)
           return function(...)
             ngx.log(ngx.DEBUG, fmt("calling patched method '%s:%s'", name, phase))
