@@ -55,7 +55,7 @@ init_by_lua_block {
                 local k, v = next(shared, i)
                 i = k
                 if k and k:sub(1, #stream_shdict_prefix) == stream_shdict_prefix then
-                    k = k:sub(#stream_shdict_prefix+1)
+                    k = k:sub(#stream_shdict_prefix + 1)
                 end
                 return k, v
             end
