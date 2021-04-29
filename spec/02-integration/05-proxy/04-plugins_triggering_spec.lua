@@ -1207,4 +1207,58 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
   end)
+
+  describe("Plugins triggering [#" .. strategy .. "] with TLS keepalive", function()
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+      -- Global configuration
+      local service = bp.services:insert {
+        name = "mock",
+      }
+
+      local route = bp.routes:insert {
+        paths     = { "/route-1" },
+        protocols = { "https" },
+        service    = service,
+      }
+
+      bp.routes:insert {
+        paths      = { "/route-2" },
+        protocols  = { "https" },
+        service    = service,
+      }
+
+      bp.plugins:insert {
+        name    = "request-termination",
+        route   = { id = route.id },
+        config  = {
+          status_code = 201,
+        },
+      }
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("certificate phase clears context, fix #7054", function()
+      local proxy_client = helpers.proxy_ssl_client()
+
+      local res = assert(proxy_client:get("/route-1/status/200"))
+      assert.res_status(201, res)
+
+      local res = assert(proxy_client:get("/route-2/status/200"))
+      assert.res_status(200, res)
+    end)
+  end)
 end
