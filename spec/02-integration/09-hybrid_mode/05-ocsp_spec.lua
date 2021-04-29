@@ -54,12 +54,12 @@ for _, strategy in helpers.each_strategy() do
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
           cluster_cert_key = "spec/fixtures/ocsp_certs/kong_data_plane.key",
-          lua_ssl_trusted_certificate = "spec/fixtures/ocsp_certs/ca.crt",
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "0.0.0.0:9002",
           -- additional attributes for PKI:
           cluster_mtls = "pki",
           cluster_server_name = "kong_clustering",
+          cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         }))
 
         set_ocsp_status("good")
@@ -123,12 +123,12 @@ for _, strategy in helpers.each_strategy() do
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
           cluster_cert_key = "spec/fixtures/ocsp_certs/kong_data_plane.key",
-          lua_ssl_trusted_certificate = "spec/fixtures/ocsp_certs/ca.crt",
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "0.0.0.0:9002",
           -- additional attributes for PKI:
           cluster_mtls = "pki",
           cluster_server_name = "kong_clustering",
+          cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         }))
 
         set_ocsp_status("revoked")
@@ -142,7 +142,7 @@ for _, strategy in helpers.each_strategy() do
       it("revoked DP certificate can not connect to CP", function()
         helpers.wait_until(function()
           local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
-          if logs:find('client certificate was revoked: failed to validate OCSP response: certificate status "revoked" in the OCSP response', nil, true) then
+          if logs:find([[client certificate was revoked: failed to validate OCSP response: certificate status "revoked" in the OCSP response]], 1, true) then
             local admin_client = helpers.admin_client()
             finally(function()
               admin_client:close()
@@ -155,7 +155,7 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(0, #json.data)
             return true
           end
-        end, 5)
+        end, 10)
       end)
     end)
 
@@ -190,12 +190,12 @@ for _, strategy in helpers.each_strategy() do
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
           cluster_cert_key = "spec/fixtures/ocsp_certs/kong_data_plane.key",
-          lua_ssl_trusted_certificate = "spec/fixtures/ocsp_certs/ca.crt",
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "0.0.0.0:9002",
           -- additional attributes for PKI:
           cluster_mtls = "pki",
           cluster_server_name = "kong_clustering",
+          cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         }))
 
         set_ocsp_status("error")
@@ -260,12 +260,12 @@ for _, strategy in helpers.each_strategy() do
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
           cluster_cert_key = "spec/fixtures/ocsp_certs/kong_data_plane.key",
-          lua_ssl_trusted_certificate = "spec/fixtures/ocsp_certs/ca.crt",
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "0.0.0.0:9002",
           -- additional attributes for PKI:
           cluster_mtls = "pki",
           cluster_server_name = "kong_clustering",
+          cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         }))
 
         set_ocsp_status("revoked")
@@ -331,12 +331,12 @@ for _, strategy in helpers.each_strategy() do
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
           cluster_cert_key = "spec/fixtures/ocsp_certs/kong_data_plane.key",
-          lua_ssl_trusted_certificate = "spec/fixtures/ocsp_certs/ca.crt",
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "0.0.0.0:9002",
           -- additional attributes for PKI:
           cluster_mtls = "pki",
           cluster_server_name = "kong_clustering",
+          cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         }))
 
         set_ocsp_status("revoked")
@@ -398,12 +398,12 @@ for _, strategy in helpers.each_strategy() do
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/ocsp_certs/kong_data_plane.crt",
           cluster_cert_key = "spec/fixtures/ocsp_certs/kong_data_plane.key",
-          lua_ssl_trusted_certificate = "spec/fixtures/ocsp_certs/ca.crt",
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "0.0.0.0:9002",
           -- additional attributes for PKI:
           cluster_mtls = "pki",
           cluster_server_name = "kong_clustering",
+          cluster_ca_cert = "spec/fixtures/ocsp_certs/ca.crt",
         }))
 
         set_ocsp_status("error")
