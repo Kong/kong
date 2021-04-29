@@ -82,6 +82,7 @@ for _, version in ipairs(versions) do
 
     before_each(function()
       perf.start_kong(version, {
+        nginx_worker_processes = 1,
         --kong configs
       })
     end)
