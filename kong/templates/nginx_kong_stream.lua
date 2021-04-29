@@ -47,9 +47,21 @@ $(el.name) $(el.value);
 init_by_lua_block {
     -- shared dictionaries conflict between stream/http modules. use a prefix.
     local shared = ngx.shared
+    local stream_shdict_prefix = "stream_"
     ngx.shared = setmetatable({}, {
+        __pairs = function()
+            local i
+            return function()
+                local k, v = next(shared, i)
+                i = k
+                if k and k:sub(1, #stream_shdict_prefix) == stream_shdict_prefix then
+                    k = k:sub(#stream_shdict_prefix + 1)
+                end
+                return k, v
+            end
+        end,
         __index = function(t, k)
-            return shared["stream_" .. k]
+            return shared[stream_shdict_prefix .. k]
         end,
     })
 
