@@ -18,10 +18,12 @@ local ngx = ngx
 local PHASES = phase_checker.phases
 local REWRITE_AND_LATER = phase_checker.new(PHASES.rewrite,
                                             PHASES.access,
+                                            PHASES.response,
                                             PHASES.balancer,
                                             PHASES.log)
 local REWRITE_BEFORE_LOG = phase_checker.new(PHASES.rewrite,
                                              PHASES.access,
+                                             PHASES.response,
                                              PHASES.balancer)
 
 
