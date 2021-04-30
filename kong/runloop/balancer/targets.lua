@@ -8,6 +8,7 @@
 
 local singletons = require "kong.singletons"
 
+local dns_client = require "kong.runloop.balancer.dns_client"
 local upstreams = require "kong.runloop.balancer.upstreams"
 local balancers   -- require at init time to avoid dependency loop
 
@@ -31,6 +32,7 @@ local targets_M = {}
 
 function targets_M.init()
   balancers = require "kong.runloop.balancer.balancers"
+  dns_client.init()
 end
 
 
@@ -75,28 +77,13 @@ end
 
 -- resolve a target, filling the list of addresses
 local function resolve_target(balancer, target)
-  kong.log.debug("querying dns for ", target.name)    -- TODO: field .name?
-
-  local dns = balancer.dns
-  local newQuery, err, try_list = dns.resolve(target.name)
-  if err then
-    kong.log.warn("querying dns for ", target.name,
-            " failed: ", err , ". Tried ", tostring(try_list))
-
-    -- query failed, create a fake record
-    -- the empty record will cause all existing addresses to be removed
-    newQuery = {
-      expire = time() + self.balancer.requeryInterval,
-      touched = time(),
-      __dnsError = err,
-    }
-  end
-
-  assert_atomicity(update_dns_result, self, newQuery, dns)
-
-  schedule_dns_renewal(self)
-
-  return true
+  dns_client.queryDns({
+    hostname = target.name,
+    port = target.port,
+    nodeWeight = target.weight,
+    target = target,
+    balancer = balancer,
+  })
 end
 
 function targets_M.resolve_targets(balancer, targets_list)
