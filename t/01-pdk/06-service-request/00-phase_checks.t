@@ -37,6 +37,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = true,
                 access        = true,
+                response      = true,
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
@@ -48,6 +49,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = "forced false",
                 access        = true,
+                response      = true,
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
@@ -59,6 +61,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = true,
                 access        = true,
+                response      = true,
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
@@ -70,6 +73,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = "forced false",
                 access        = true,
+                response      = true,
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
@@ -81,6 +85,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = true,
                 access        = true,
+                response      = true,
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
@@ -92,6 +97,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = true,
                 access        = true,
+                response      = true,
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
@@ -103,6 +109,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = true,
                 access        = true,
+                response      = true,
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
@@ -114,6 +121,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = true,
                 access        = true,
+                response      = true,
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
@@ -125,6 +133,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = true,
                 access        = true,
+                response      = true,
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
@@ -136,6 +145,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = true,
                 access        = true,
+                response      = true,
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
@@ -147,6 +157,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = true,
                 access        = true,
+                response      = true,
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
@@ -158,6 +169,7 @@ qq{
                 certificate   = "pending",
                 rewrite       = true,
                 access        = true,
+                response      = true,
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
@@ -184,6 +196,7 @@ qq{
 
         access_by_lua_block {
             phase_check_functions(phases.access)
+            phase_check_functions(phases.response)
             phase_check_functions(phases.admin_api)
         }
 
