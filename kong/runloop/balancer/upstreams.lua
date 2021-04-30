@@ -27,11 +27,11 @@ local ERR = ngx.ERR
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
-local upstreams = {}
+local upstreams_M = {}
 local upstream_by_name = {}
 
 
-function upstreams.init()
+function upstreams_M.init()
   balancers = require "kong.runloop.balancer.balancers"
   healthcheckers = require "kong.runloop.balancer.healthcheckers"
 end
@@ -52,7 +52,7 @@ end
 --_load_upstream_into_memory = load_upstream_into_memory
 
 
-function upstreams.get_upstream_by_id(upstream_id)
+function upstreams_M.get_upstream_by_id(upstream_id)
   local upstream_cache_key = "balancer:upstreams:" .. upstream_id
 
   return singletons.core_cache:get(upstream_cache_key, nil,
@@ -91,7 +91,7 @@ local opts = { neg_ttl = 10 }
 -- by their name.
 -- @return The upstreams dictionary (a map with upstream names as string keys
 -- and upstream entity tables as values), or nil+error
-function upstreams.get_all_upstreams()
+function upstreams_M.get_all_upstreams()
   local upstreams_dict, err = singletons.core_cache:get("balancer:upstreams", opts,
                                                         load_upstreams_dict_into_memory)
   if err then
@@ -106,7 +106,7 @@ end
 -- caching, invalidation, db access, et al.
 -- @param upstream_name string.
 -- @return upstream table, or `false` if not found, or nil+error
-function upstreams.get_upstream_by_name(upstream_name)
+function upstreams_M.get_upstream_by_name(upstream_name)
   local ws_id = workspaces.get_workspace_id()
   local key = ws_id .. ":" .. upstream_name
 
@@ -114,7 +114,7 @@ function upstreams.get_upstream_by_name(upstream_name)
     return upstream_by_name[key]
   end
 
-  local upstreams_dict, err = upstreams.get_all_upstreams()
+  local upstreams_dict, err = upstreams_M.get_all_upstreams()
   if err then
     return nil, err
   end
@@ -124,7 +124,7 @@ function upstreams.get_upstream_by_name(upstream_name)
     return false -- no upstream by this name
   end
 
-  local upstream, err = upstreams.get_upstream_by_id(upstream_id)
+  local upstream, err = upstreams_M.get_upstream_by_id(upstream_id)
   if err then
     return nil, err
   end
@@ -134,7 +134,7 @@ function upstreams.get_upstream_by_name(upstream_name)
   return upstream
 end
 
-function upstreams.setUpstream_by_name(upstream)
+function upstreams_M.setUpstream_by_name(upstream)
   local ws_id = workspaces.get_workspace_id()
   upstream_by_name[ws_id .. ":" .. upstream.name] = upstream
 end
@@ -153,7 +153,7 @@ local function do_upstream_event(operation, upstream_data)
   local by_name_key = ws_id .. ":" .. upstream_name
 
   if operation == "create" then
-    local upstream, err = upstreams.get_upstream_by_id(upstream_id)
+    local upstream, err = upstreams_M.get_upstream_by_id(upstream_id)
     if err then
       return nil, err
     end
@@ -169,12 +169,12 @@ local function do_upstream_event(operation, upstream_data)
     end
 
   elseif operation == "delete" or operation == "update" then
-    local target_cache_key = "balancer:targets:"   .. upstream_id
+    local target_cache_key = "balancer:targets:" .. upstream_id
     if singletons.db.strategy ~= "off" then
       singletons.core_cache:invalidate_local(target_cache_key)
     end
 
-    local balancer = balancers[upstream_id]
+    local balancer = balancers.get_balancer_by_id(upstream_id)
     if balancer then
       healthcheckers.stop_healthchecker(balancer)
     end
@@ -184,8 +184,7 @@ local function do_upstream_event(operation, upstream_data)
       upstream_by_name[by_name_key] = nil
 
     else
-      local upstream = upstreams.get_upstream_by_id(upstream_id)
-
+      local upstream = upstreams_M.get_upstream_by_id(upstream_id)
       if not upstream then
         log(ERR, "upstream not found for ", upstream_id)
         return
@@ -211,33 +210,25 @@ local function set_upstream_events_queue(operation, upstream_data)
 end
 
 
-local function get_upstream_events_queue()
-  -- is this copy really needed
-  return utils.deep_copy(upstream_events_queue)
-end
-
-
-function upstreams.update_balancer_state(premature)
+function upstreams_M.update_balancer_state(premature)
   if premature then
     return
   end
 
-  local events_queue = get_upstream_events_queue()
 
-  for i, v in ipairs(events_queue) do
-    -- handle the oldest (first) event from the queue
-    local _, err = do_upstream_event(v.operation, v.upstream_data, v.workspaces)
+  while upstream_events_queue[1] do
+    local event  = upstream_events_queue[1]
+    local _, err = do_upstream_event(event.operation, event.upstream_data, event.workspaces)
     if err then
       log(CRIT, "failed handling upstream event: ", err)
       return
     end
 
-    -- if no err, remove the upstream event from the queue
-    table_remove(upstream_events_queue, i)
+    table_remove(upstream_events_queue, 1)
   end
 
   local frequency = kong.configuration.worker_state_update_frequency or 1
-  local _, err = timer_at(frequency, upstreams.update_balancer_state)
+  local _, err = timer_at(frequency, upstreams_M.update_balancer_state)
   if err then
     log(CRIT, "unable to reschedule update proxy state timer: ", err)
   end
@@ -251,7 +242,7 @@ end
 -- Called on any changes to an upstream.
 -- @param operation "create", "update" or "delete"
 -- @param upstream_data table with `id` and `name` fields
-function upstreams.on_upstream_event(operation, upstream_data)
+function upstreams_M.on_upstream_event(operation, upstream_data)
   if kong.configuration.worker_consistency == "strict" then
     local _, err = do_upstream_event(operation, upstream_data)
     if err then
@@ -262,4 +253,4 @@ function upstreams.on_upstream_event(operation, upstream_data)
   end
 end
 
-return upstreams
+return upstreams_M
