@@ -130,6 +130,11 @@ end
 
 
 local function init()
+  targets.init()
+  upstreams.init()
+  balancers.init()
+  healthcheckers.init()
+
   if kong.configuration.worker_consistency == "strict" then
     balancers.create_balancers()
     return

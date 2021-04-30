@@ -22,8 +22,11 @@ local DEBUG = ngx.DEBUG
 
 local balancers_M = {}
 
+local balancer_mt = {}
+balancer_mt.__index = balancer_mt
+
 local balancers_by_id = {}
-local balancer_types  = {}
+local algorithm_types = {}
 
 
 balancers_M.errors = setmetatable({
@@ -32,10 +35,16 @@ balancers_M.errors = setmetatable({
   ERR_NO_PEERS_AVAILABLE = "No peers are available",
   ERR_BALANCER_UNHEALTHY = "Balancer is unhealthy",
 }, {
-  __index = function(self, key)
+  __index = function(_, key)
     error("invalid key: " .. tostring(key))
   end
 })
+
+
+function balancers_M.init()
+  healthcheckers = require "kong.runloop.balancer.healthcheckers"
+end
+
 
 function balancers_M.get_balancer_by_id(id)
   return balancers_by_id[id]
@@ -93,31 +102,42 @@ local function create_balancer_exclusive(upstream)
     return nil, "failed fetching targets:" .. err
   end
 
-  if balancer_types == nil then
-    balancer_types = {
-      ["consistent-hashing"] = require("resty.dns.balancer.consistent_hashing"),
-      ["least-connections"] = require("resty.dns.balancer.least_connections"),
-      ["round-robin"] = require("resty.dns.balancer.round_robin"),
+  if algorithm_types == nil then
+    algorithm_types = {
+      --["consistent-hashing"] = require("resty.dns.balancer.consistent_hashing"),
+      --["least-connections"] = require("resty.dns.balancer.least_connections"),
+      ["round-robin"] = require("kong.runloop.balancer.round_robin"),
     }
   end
-  local balancer, err = balancer_types[upstream.algorithm].new({
+
+  local balancer = setmetatable({
+    upstream_id = upstream.id,
     log_prefix = "upstream:" .. upstream.name,
     wheelSize = upstream.slots,  -- will be ignored by least-connections
     dns = dns_client,
     healthThreshold = health_threshold,
     hosts = targets_list,
-  })
+  }, balancer_mt)
   if not balancer then
     return nil, "failed creating balancer:" .. err
   end
 
+  local algorithm, err = algorithm_types[upstream.algorithm].new({
+    balancer = balancer,
+    upstream = upstream,
+  })
+  if not algorithm then
+    return nil, "failed instantiating the " .. upstream.algorithm .. " algorithm:" .. err
+  end
+  balancer.algorithm = algorithm
+
   --add_targets(balancer, targets_list)
 
-  balancer.upstream_id = upstream.id
+  --balancer.upstream_id = upstream.id
 
-  if healthcheckers == nil then
-    healthcheckers = require "kong.runloop.balancer.healthcheckers"
-  end
+  --if healthcheckers == nil then
+  --  healthcheckers = require "kong.runloop.balancer.healthcheckers"
+  --end
 
   local ok, err = healthcheckers.create_healthchecker(balancer, upstream)
   if not ok then
@@ -174,7 +194,6 @@ function balancers_M.get_balancer(target, no_create)
   -- do not apply here
   local hostname = target.host
 
-
   -- first go and find the upstream object, from cache or the db
   local upstream, err = upstreams.get_upstream_by_name(hostname)
   if upstream == false then
@@ -224,8 +243,25 @@ function balancers_M.create_balancers()
   log(DEBUG, "initialized ", oks, " balancer(s), ", errs, " error(s)")
 end
 
+--------- balancer object methods
 
+function balancer_mt:addressIter()
+end
 
+function balancer_mt:setAddressStatus()
+end
 
+function balancer_mt:setCallback()
+end
+
+function balancer_mt:getSatus()
+end
+
+-- replaces host:getSatus() for each host
+function balancer_mt:getHealthStatus()
+end
+
+function balancer_mt:getPeer()
+end
 
 return balancers_M
