@@ -1,7 +1,5 @@
 
 
-local dns_client = require "resty.dns.client"
-
 local upstreams = require "kong.runloop.balancer.upstreams"
 local targets = require "kong.runloop.balancer.targets"
 local healthcheckers
@@ -114,7 +112,6 @@ local function create_balancer_exclusive(upstream)
     upstream_id = upstream.id,
     log_prefix = "upstream:" .. upstream.name,
     wheelSize = upstream.slots,  -- will be ignored by least-connections
-    dns = dns_client,
     healthThreshold = health_threshold,
     hosts = targets_list,
   }, balancer_mt)
