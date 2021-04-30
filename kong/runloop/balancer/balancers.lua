@@ -245,6 +245,12 @@ end
 
 --------- balancer object methods
 
+function balancer_mt:addHost()
+end
+
+function balancer_mt:removeHost()
+end
+
 function balancer_mt:addressIter()
 end
 
