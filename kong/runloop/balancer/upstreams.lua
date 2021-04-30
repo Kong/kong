@@ -30,6 +30,13 @@ local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 local upstreams = {}
 local upstream_by_name = {}
 
+
+function upstreams.init()
+  balancers = require "kong.runloop.balancer.balancers"
+  healthcheckers = require "kong.runloop.balancer.healthcheckers"
+end
+
+
 ------------------------------------------------------------------------------
 -- Loads a single upstream entity.
 -- @param upstream_id string
@@ -253,12 +260,6 @@ function upstreams.on_upstream_event(operation, upstream_data)
   else
     set_upstream_events_queue(operation, upstream_data)
   end
-end
-
-
-function upstreams.init()
-  balancers = require "kong.runloop.balancer.balancers"
-  healthcheckers = require "kong.runloop.balancer.healthcheckers"
 end
 
 return upstreams

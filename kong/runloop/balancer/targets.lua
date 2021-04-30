@@ -9,7 +9,7 @@
 local singletons = require "kong.singletons"
 
 local upstreams = require "kong.runloop.balancer.upstreams"
-local balancers
+local balancers   -- require at init time to avoid dependency loop
 
 local ngx = ngx
 local log = ngx.log
@@ -27,6 +27,12 @@ local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
 
 local targets_M = {}
+
+
+function targets_M.init()
+  balancers = require "kong.runloop.balancer.balancers"
+end
+
 
 ------------------------------------------------------------------------------
 -- Loads the targets from the DB.
@@ -125,11 +131,6 @@ function targets_M.on_target_event(operation, target)
   end
 
   return true
-end
-
-
-function targets_M.init()
-  balancers = require "kong.runloop.balancer.balancers"
 end
 
 return targets_M

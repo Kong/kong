@@ -19,6 +19,9 @@ local WARN = ngx.WARN
 local healthcheckers_M = {}
 
 
+function healthcheckers_M.init()
+end
+
 
 function healthcheckers_M.stop_healthchecker(balancer)
   local healthchecker = balancer.healthchecker
