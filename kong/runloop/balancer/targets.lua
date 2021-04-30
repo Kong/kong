@@ -73,23 +73,43 @@ function targets_M.fetch_targets(upstream)
 end
 
 
---------------------------------------------------------------------------------
--- Add targets to the balancer.
--- @param balancer balancer object
--- @param targets list of targets to be applied
-function targets_M.add_targets(balancer, targets)
+-- resolve a target, filling the list of addresses
+local function resolve_target(balancer, target)
+  kong.log.debug("querying dns for ", target.name)    -- TODO: field .name?
 
-  for _, target in ipairs(targets) do
-    if target.weight > 0 then
-      assert(balancer:addHost(target.name, target.port, target.weight))
-    else
-      assert(balancer:removeHost(target.name, target.port))
+  local dns = balancer.dns
+  local newQuery, err, try_list = dns.resolve(target.name)
+  if err then
+    kong.log.warn("querying dns for ", target.name,
+            " failed: ", err , ". Tried ", tostring(try_list))
+
+    -- query failed, create a fake record
+    -- the empty record will cause all existing addresses to be removed
+    newQuery = {
+      expire = time() + self.balancer.requeryInterval,
+      touched = time(),
+      __dnsError = err,
+    }
+  end
+
+  assert_atomicity(update_dns_result, self, newQuery, dns)
+
+  schedule_dns_renewal(self)
+
+  return true
+end
+
+function targets_M.resolve_targets(balancer, targets_list)
+  for _, target in ipairs(targets_list) do
+    local resolved, err = resolve_target(balancer, target)
+    if not resolved then
+      return nil, err
     end
 
   end
+
+  return targets_list
 end
-
-
 
 --==============================================================================
 -- Event Callbacks
