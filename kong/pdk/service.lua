@@ -16,9 +16,11 @@ local check_phase = phase_checker.check
 
 
 local PHASES = phase_checker.phases
-local access_and_rewrite_and_balancer =
-    phase_checker.new(PHASES.rewrite, PHASES.access, PHASES.balancer)
+local access_response_rewrite_balancer =
+    phase_checker.new(PHASES.rewrite, PHASES.access, PHASES.balancer, PHASES.response)
 
+local access_response =
+    phase_checker.new(PHASES.access, PHASES.response)
 
 local function new()
   local service = {}
@@ -35,7 +37,7 @@ local function new()
   -- Upstream entities currently configured.
   --
   -- @function kong.service.set_upstream
-  -- @phases access
+  -- @phases `access`, `response`
   -- @tparam string host
   -- @treturn boolean|nil `true` on success, or `nil` if no upstream entities
   -- where found
@@ -49,7 +51,7 @@ local function new()
   --   return
   -- end
   function service.set_upstream(host)
-    check_phase(PHASES.access)
+    check_phase(access_response)
 
     if type(host) ~= "string" then
       error("host must be a string", 2)
@@ -77,14 +79,14 @@ local function new()
   -- representing the port on which to connect to.
   --
   -- @function kong.service.set_target
-  -- @phases access
+  -- @phases `access`, `response`
   -- @tparam string host
   -- @tparam number port
   -- @usage
   -- kong.service.set_target("service.local", 443)
   -- kong.service.set_target("192.168.130.1", 80)
   function service.set_target(host, port)
-    check_phase(PHASES.access)
+    check_phase(access_response)
 
     if type(host) ~= "string" then
       error("host must be a string", 2)
@@ -122,7 +124,7 @@ local function new()
     -- returned by functions such as [ngx.ssl.parse\_pem\_priv\_key](https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/ssl.md#parse_pem_priv_key).
     --
     -- @function kong.service.set_tls_cert_key
-    -- @phases `rewrite`, `access`, `balancer`
+    -- @phases `rewrite`, `access`, `response`, `balancer`
     -- @tparam cdata chain The client certificate chain
     -- @tparam cdata key The client certificate private key
     -- @treturn boolean|nil `true` if the operation succeeded, `nil` if an error occurred
@@ -136,7 +138,7 @@ local function new()
     --   -- do something with error
     -- end
     service.set_tls_cert_key = function(chain, key)
-      check_phase(access_and_rewrite_and_balancer)
+      check_phase(access_response_rewrite_balancer)
 
       if type(chain) ~= "cdata" then
         error("chain must be a parsed cdata object", 2)
@@ -163,7 +165,7 @@ local function new()
     -- then TLS verification will always fail with "unable to get local issuer certificate" error.
     --
     -- @function kong.service.set_tls_verify
-    -- @phases `rewrite`, `access`, `balancer`
+    -- @phases `rewrite`, `access`, `response`, `balancer`
     -- @tparam boolean on Whether to enable TLS certificate verification for the current request
     -- @treturn boolean|nil `true` if the operation succeeded, `nil` if an error occurred
     -- @treturn string|nil An error message describing the error if there was one
@@ -173,7 +175,7 @@ local function new()
     --   -- do something with error
     -- end
     service.set_tls_verify = function(on)
-      check_phase(access_and_rewrite_and_balancer)
+      check_phase(access_response_rewrite_balancer)
 
       if type(on) ~= "boolean" then
         error("argument must be a boolean", 2)
@@ -191,7 +193,7 @@ local function new()
     -- directive or using the [kong.service.set_tls_verify](#kongserviceset_tls_verify) function.
     --
     -- @function kong.service.set_tls_verify_depth
-    -- @phases `rewrite`, `access`, `balancer`
+    -- @phases `rewrite`, `access`, `response`, `balancer`
     -- @tparam number depth Depth to use when validating. Must be non-negative
     -- @treturn boolean|nil `true` if the operation succeeded, `nil` if an error occurred
     -- @treturn string|nil An error message describing the error if there was one
@@ -201,7 +203,7 @@ local function new()
     --   -- do something with error
     -- end
     service.set_tls_verify_depth = function(depth)
-      check_phase(access_and_rewrite_and_balancer)
+      check_phase(access_response_rewrite_balancer)
 
       if type(depth) ~= "number" then
         error("argument must be a number", 2)
@@ -222,7 +224,7 @@ local function new()
     -- [examples](https://github.com/Kong/lua-kong-nginx-module#restykongtlsset_upstream_ssl_trusted_store) from the Kong/lua-kong-nginx-module repo.
     --
     -- @function kong.service.set_tls_verify_store
-    -- @phases `rewrite`, `access`, `balancer`
+    -- @phases `rewrite`, `access`, `response`, `balancer`
     -- @tparam table store resty.openssl.x509.store object to use
     -- @treturn boolean|nil `true` if the operation succeeded, `nil` if an error occurred
     -- @treturn string|nil An error message describing the error if there was one
@@ -236,7 +238,7 @@ local function new()
     --   -- do something with error
     -- end
     service.set_tls_verify_store = function(store)
-      check_phase(access_and_rewrite_and_balancer)
+      check_phase(access_response_rewrite_balancer)
 
       if type(store) ~= "table" then
         error("argument must be a resty.openssl.x509.store object", 2)
