@@ -12,7 +12,7 @@ high performance and extensibility.
 Actively maintained, Kong is widely used in production at companies ranging
 from startups to Global 5000 as well as government organizations.
 
-[Installation](https://konghq.com/install) |
+[Installation](https://konghq.com/install/#kong-community) |
 [Documentation](https://docs.konghq.com) |
 [Forum](https://discuss.konghq.com) |
 [Blog](https://konghq.com/blog) |
@@ -127,7 +127,7 @@ code, other repos are also under active development:
   Instaclustr manage your Cassandra cluster.
 - [Master Builds][kong-master-builds]: Docker images for each commit in the `master` branch.
 
-You can find every supported distribution at the [official installation page](https://konghq.com/install/).
+You can find every supported distribution at the [official installation page](https://konghq.com/install/#kong-community).
 
 ## Development
 
