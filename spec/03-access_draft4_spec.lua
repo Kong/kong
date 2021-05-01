@@ -222,6 +222,108 @@ for _, strategy in helpers.each_strategy()do
         assert.same("request body doesn't conform to schema", json.message)
       end)
 
+
+
+      describe("simple JSON", function()
+
+        it("validates plain boolean", function()
+          local schema = [[ { "type": "boolean" } ]]
+          add_plugin(admin_client, {body_schema = schema}, 201)
+
+          local res = proxy_client:get("/status/200", {
+            headers = { ["Content-Type"] = "application/json" },
+            body = "true"
+          })
+          assert.response(res).has.status(200)
+
+          local res = proxy_client:get("/status/200", {
+            headers = { ["Content-Type"] = "application/json" },
+            body = '"a string value"'
+          })
+          assert.response(res).has.status(400)
+        end)
+
+
+        it("validates plain string", function()
+          local schema = [[ { "type": "string" } ]]
+          add_plugin(admin_client, {body_schema = schema}, 201)
+
+          local res = proxy_client:get("/status/200", {
+            headers = { ["Content-Type"] = "application/json" },
+            body = '"hello world"'
+          })
+          assert.response(res).has.status(200)
+
+          local res = proxy_client:get("/status/200", {
+            headers = { ["Content-Type"] = "application/json" },
+            body = "true"
+          })
+          assert.response(res).has.status(400)
+        end)
+
+
+        it("validates plain number", function()
+          local schema = [[ { "type": "number" } ]]
+          add_plugin(admin_client, {body_schema = schema}, 201)
+
+          local res = proxy_client:get("/status/200", {
+            headers = { ["Content-Type"] = "application/json" },
+            body = '123'
+          })
+          assert.response(res).has.status(200)
+
+          local res = proxy_client:get("/status/200", {
+            headers = { ["Content-Type"] = "application/json" },
+            body = "true"
+          })
+          assert.response(res).has.status(400)
+        end)
+
+
+        it("allows anything", function()
+          local schema = [[ {} ]]
+          add_plugin(admin_client, {body_schema = schema}, 201)
+
+          -- string
+          local res = proxy_client:get("/status/200", {
+            headers = { ["Content-Type"] = "application/json" },
+            body = '"hello world"'
+          })
+          assert.response(res).has.status(200)
+
+          -- boolean
+          local res = proxy_client:get("/status/200", {
+            headers = { ["Content-Type"] = "application/json" },
+            body = 'true'
+          })
+          assert.response(res).has.status(200)
+
+          -- number
+          local res = proxy_client:get("/status/200", {
+            headers = { ["Content-Type"] = "application/json" },
+            body = '123'
+          })
+          assert.response(res).has.status(200)
+
+          -- object
+          local res = proxy_client:get("/status/200", {
+            headers = { ["Content-Type"] = "application/json" },
+            body = '{ "hello": "world" }'
+          })
+          assert.response(res).has.status(200)
+
+          -- array
+          local res = proxy_client:get("/status/200", {
+            headers = { ["Content-Type"] = "application/json" },
+            body = '[ "hello", "world" ]'
+          })
+          assert.response(res).has.status(200)
+        end)
+
+      end)
+
+
+
       it("validates parameters with version draft4", function()
         local schema = [[
             {
