@@ -7,8 +7,8 @@ local random = math.random
 
 local MAX_WHEEL_SIZE = 2^32
 
-local roundrobin_balancer = {}
-roundrobin_balancer.__index = roundrobin_balancer
+local roundrobin_algorithm = {}
+roundrobin_algorithm.__index = roundrobin_algorithm
 
 -- calculate the greater common divisor, used to find the smallest wheel
 -- possible
@@ -30,7 +30,7 @@ local function wheel_shuffle(wheel)
 end
 
 
-function roundrobin_balancer:afterHostUpdate()
+function roundrobin_algorithm:afterHostUpdate()
   local new_wheel = {}
   local total_points = 0
   local total_weight = 0
@@ -73,7 +73,7 @@ function roundrobin_balancer:afterHostUpdate()
 end
 
 
-function roundrobin_balancer:getPeer(cacheOnly, handle, hashValue)
+function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
   if not self.healthy then
     return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
   end
@@ -126,10 +126,10 @@ function roundrobin_balancer:getPeer(cacheOnly, handle, hashValue)
 end
 
 
-function roundrobin_balancer.new(opts)
+function roundrobin_algorithm.new(opts)
   assert(type(opts) == "table", "Expected an options table, but got: "..type(opts))
 
-  local balancer = setmetatable({
+  local algorithm = setmetatable({
     log_prefix = opts.log_prefix or "round-robin",
     health_threshold = opts.health_threshold,
     hosts = opts.hosts or {},
@@ -138,11 +138,11 @@ function roundrobin_balancer.new(opts)
     wheelSize = 0,
     maxWheelSize = opts.maxWheelSize or opts.wheelSize or MAX_WHEEL_SIZE,
     wheel = {},
-  }, roundrobin_balancer)
+  }, roundrobin_algorithm)
 
-  balancer:afterHostUpdate()
+  algorithm:afterHostUpdate()
 
-  return balancer
+  return algorithm
 end
 
-return roundrobin_balancer
+return roundrobin_algorithm

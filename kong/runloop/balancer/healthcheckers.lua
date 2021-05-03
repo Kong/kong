@@ -50,7 +50,7 @@ local function populate_healthchecker(hc, balancer, upstream)
         -- with data from another worker, and apply to the new balancer.
         local tgt_status = hc:get_target_status(ipaddr, port, host.hostname)
         if tgt_status ~= nil then
-          balancer:setAddressStatus(tgt_status, ipaddr, port, host.hostname)
+          balancer:setAddressStatus(addr, tgt_status)
         end
 
       else
@@ -139,7 +139,7 @@ do
 
       local hostname = tgt.hostname
       local ok, err
-      ok, err = balancer:setAddressStatus(status, tgt.ip, tgt.port, hostname)
+      ok, err = balancer:setAddressStatus(status, balancer:findAddress(tgt.ip, tgt.port, hostname))
 
       --local health = status and "healthy" or "unhealthy"
       --for _, subscriber in ipairs(healthcheck_subscribers) do
@@ -300,10 +300,9 @@ function healthcheckers_M.get_upstream_health(upstream_id)
   end
 
   local health_info = {}
-  local hosts = balancer.hosts
-  for _, host in ipairs(hosts) do
-    local key = host.hostname .. ":" .. host.port
-    health_info[key] = host:getStatus()
+  for _, target in ipairs(balancer.targets) do
+    local key = target.hostname .. ":" .. target.port
+    health_info[key] = balancer:getTargetStatus(target)
     for _, address in ipairs(health_info[key].addresses) do
       if using_hc then
         address.health = address.healthy and "HEALTHY" or "UNHEALTHY"

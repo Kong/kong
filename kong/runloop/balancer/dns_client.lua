@@ -16,21 +16,10 @@ local ngx = ngx
 
 local ngx_now = ngx.now
 local table_sort = table.sort
---local table_remove = table.remove
---local table_concat = table.concat
---local math_floor = math.floor
 local string_format = string.format
---local ngx_log = ngx.log
---local ngx_DEBUG = ngx.DEBUG
---local ngx_WARN = ngx.WARN
---local balancer_id_counter = 0
 local log_DEBUG = kong.log.debug
 local log_WARN = kong.log.warn
 
---local DEFAULT_WEIGHT = 10   -- default weight for a host, if not provided
---local DEFAULT_PORT = 80     -- Default port to use (A and AAAA only) when not provided
---local TTL_0_RETRY = 60      -- Maximum life-time for hosts added with ttl=0, requery after it expires
---local REQUERY_INTERVAL = 30 -- Interval for requerying failed dns queries
 local SRV_0_WEIGHT = 1      -- SRV record with weight 0 should be hit minimally, hence we replace by 1
 
 local EMPTY = setmetatable({},
@@ -235,10 +224,10 @@ local function update_dns_result(host, newQuery)
     log_DEBUG("dns record type changed for ",
             host.hostname, ", ", (oldSorted[1] or EMPTY).type, " -> ",rtype)
     for i = #oldSorted, 1, -1 do  -- reverse order because we're deleting items
-      balancer:disableAddress(host, oldSorted[i])
+      balancer:disableAddress(host.target, oldSorted[i])
     end
     for _, entry in ipairs(newSorted) do -- use sorted table for deterministic order
-      balancer:addAddress(host, entry)
+      balancer:addAddress(host.target, entry)
     end
     dirty = true
   else
@@ -256,7 +245,7 @@ local function update_dns_result(host, newQuery)
         log_DEBUG("new dns record entry for ",
                 host.hostname, ": ", (newEntry.target or newEntry.address),
                 ":", newEntry.port) -- port = nil for A or AAAA records
-        balancer:addAddress(host, newEntry)     -- TODO: move method to balancer?
+        balancer:addAddress(host.target, newEntry)     -- TODO: move method to balancer?
         dirty = true
       else
         -- it already existed (same ip, port)
@@ -266,7 +255,7 @@ local function update_dns_result(host, newQuery)
         then
           -- weight changed (can only be an SRV)
           --host:findAddress(oldEntry):change(newEntry.weight == 0 and SRV_0_WEIGHT or newEntry.weight)
-          balancer:changeWeight(oldEntry, newEntry.weight == 0 and SRV_0_WEIGHT or newEntry.weight)
+          balancer:changeWeight(host.target, oldEntry, newEntry.weight == 0 and SRV_0_WEIGHT or newEntry.weight)
           dirty = true
         else
           log_DEBUG("unchanged dns record entry for ",
@@ -285,7 +274,7 @@ local function update_dns_result(host, newQuery)
           log_DEBUG("removed dns record entry for ",
                   host.hostname, ": ", (entry.target or entry.address),
                   ":", entry.port) -- port = nil for A or AAAA records
-          balancer:disableAddress(host, entry)
+          balancer:disableAddress(host.target, entry)
         end
       end
       dirty = true
@@ -302,10 +291,10 @@ local function update_dns_result(host, newQuery)
             host.hostname)
 
     -- allow balancer to update its algorithm
-    balancer:afterHostUpdate(host)
+    balancer:afterHostUpdate(host.target)
 
     -- delete addresses previously disabled
-    balancer:deleteDisabledAddresses(host)
+    balancer:deleteDisabledAddresses(host.target)
   end
 
   log_DEBUG("querying dns and updating for ", host.hostname, " completed")

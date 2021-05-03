@@ -12,6 +12,7 @@ local max = math.max
 local sub = string.sub
 local find = string.find
 local pairs = pairs
+local table_remove = table.remove
 
 
 local CRIT = ngx.CRIT
@@ -261,33 +262,161 @@ end
 function balancer_mt:addressIter()
 end
 
-function balancer_mt:setAddressStatus()
+function balancer_mt:findAddress(ip, port, hostname)
+  for _, target in ipairs(self.targets) do
+    if target.hostname == hostname then
+      for _, address in ipairs(target.addresses) do
+        if address.ip == ip and address.port == port
+        then
+          return address
+        end
+      end
+    end
+  end
 end
 
-function balancer_mt:disableAddress(host, address)
+
+function balancer_mt:setAddressStatus(address, status)
+  if type(address) ~= "table"
+    or type(address.target) ~= "table"
+    or address.target.balancer ~= self
+  then
+    return
+  end
+
+  address.status = status
+end
+
+function balancer_mt:disableAddress(target, address)
   -- from host:disableAddress()
 end
 
-function balancer_mt:addAddress(host, address)
+
+function balancer_mt:addAddress(target, address)
   -- from host:addAddress
+  if type(address) ~= "table"
+    or type(target) ~= "table"
+    or target.balancer ~= self
+  then
+    return
+  end
+
+  local addresses = target.addresses
+  for _, addr in ipairs(addresses) do
+    if addr.ip == address.ip and addr.port == address.port then
+      -- already there, should we update something? add weights?
+      return
+    end
+  end
+
+  address.target = target
+  addresses[#address + 1] = address
 end
 
-function balancer_mt:changeWeight(oldEndry, newWeight)
+
+function balancer_mt:changeWeight(target, entry, newWeight)
   -- from host:findAddress() + address:change()
+
+  -- not sure if "oldEntry" is the actual address record
+  for _, addr in ipairs(target.addresses) do
+    if (addr.ip == (entry.address or entry.target)) and
+        addr.port == (entry.port or self.port)
+    then
+      target.weight = target.weight + newWeight - addr.weight
+      addr.weight = newWeight
+      break
+    end
+  end
 end
 
-function balancer_mt:deleteDisabledAddresses(host)
+
+function balancer_mt:deleteDisabledAddresses(target)
   -- from host:deleteAddresses
+  local addresses = target.addresses
+  local dirty = false
+
+  for i = #addresses, 1, -1 do -- deleting entries, hence reverse traversal
+    local addr = addresses[i]
+
+    if addr.disabled then
+    self:callback("removed", addr, addr.ip, addr.port,
+          target.hostname, addr.hostHeader)
+     dirty = true
+      table_remove(addresses, i)
+    end
+  end
+
+  if dirty then
+    if self.algorithm and self.algorithm.afterHostUpdate then
+      self.algorithm:afterHostUpdate()
+    end
+  end
 end
 
-function balancer_mt:setCallback()
+
+function balancer_mt:setCallback(callback)
+  assert(type(callback) == "function", "expected a callback function")
+
+  self.callback = function(balancer, action, address, ip, port, hostname, hostheader)
+    local ok, err = ngx.timer.at(0, function()
+      callback(balancer, action, address, ip, port, hostname, hostheader)
+    end)
+
+    if not ok then
+      ngx.log(ngx.ERR, self.log_prefix, "failed to create the timer: ", err)
+    end
+  end
+
+  return true
 end
 
-function balancer_mt:getSatus()
+
+function balancer_mt:getTargetStatus(target)
+  local dns_source = "unknown"    -- TODO: get some info here
+
+  local addresses = {}
+  local status = {
+    host = target.hostname,
+    port = target.port,
+    dns = dns_source,
+    nodeWeight = target.nodeWeight,
+    weight = {
+      total = target.weight,
+      unavailable = target.unavailableWeight,
+      available = target.weight - target.unavailableWeight,
+    },
+    addresses = addresses,
+  }
+
+  for i, addr in ipairs(target.addresses) do
+    addresses[i] = {
+      ip = addr.ip,
+      port = addr.port,
+      weight = addr.weight,
+      healthy = addr.available,
+    }
+  end
+
+  return status
 end
 
--- replaces host:getSatus() for each host
-function balancer_mt:getHealthStatus()
+function balancer_mt:getStatus()
+  local hosts = {}
+  local status = {
+    healthy = self.healthy,
+    weight = {
+      total = self.weight,
+      unavailable = self.unavailableWeight,
+      available = self.weight - self.unavailableWeight,
+    },
+    hosts = hosts,
+  }
+
+  for i, target in ipairs(self.targets) do
+    hosts[i] = self:getTargetStatus(target)
+  end
+
+  return status
 end
 
 function balancer_mt:getPeer()
