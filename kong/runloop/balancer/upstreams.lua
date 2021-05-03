@@ -6,7 +6,7 @@
 ---
 ---
 ---
-local utils = require "kong.tools.utils"
+--local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local workspaces = require "kong.workspaces"
 local balancers
@@ -15,7 +15,7 @@ local healthcheckers
 local ngx = ngx
 local log = ngx.log
 local null = ngx.null
-local ipairs = ipairs
+--local ipairs = ipairs
 local table = table
 local table_remove = table.remove
 local timer_at = ngx.timer.at
