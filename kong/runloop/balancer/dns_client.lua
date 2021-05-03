@@ -163,6 +163,7 @@ end
 local function update_dns_result(host, newQuery)
   -- TODO: move most of the datastructure updating to balancer methods
   -- this should be mostly a translation/forwarding procedure
+  local balancer = host and host.balancer
 
   local oldQuery = host.lastQuery or {}
   local oldSorted = host.lastSorted or {}
@@ -181,7 +182,8 @@ local function update_dns_result(host, newQuery)
   -- if the very first request ever reports ttl=0 (we assume we're not hitting the edgecase
   -- in that case)
   if (newQuery[1] or EMPTY).ttl == 0 and
-     (((oldQuery[1] or EMPTY).ttl or 0) == 0 or oldQuery.__ttl0Flag) then
+     (((oldQuery[1] or EMPTY).ttl or 0) == 0 or oldQuery.__ttl0Flag)
+  then
     -- ttl = 0 means we need to lookup on every request.
     -- To enable lookup on each request we 'abuse' a virtual SRV record. We set the ttl
     -- to `ttl0Interval` seconds, and set the `target` field to the hostname that needs
@@ -193,14 +195,13 @@ local function update_dns_result(host, newQuery)
     if oldQuery.__ttl0Flag then
       -- still ttl 0 so nothing changed
       oldQuery.touched = ngx_now()
-      oldQuery.expire = oldQuery.touched + host.balancer.ttl0Interval
+      oldQuery.expire = oldQuery.touched + balancer.ttl0Interval
       log_DEBUG("no dns changes detected for ",
               host.hostname, ", still using ttl=0")
       return true
     end
 
-    log_DEBUG("ttl=0 detected for ",
-            host.hostname)
+    log_DEBUG("ttl=0 detected for ", host.hostname)
     newQuery = {
         {
           type = resolver.TYPE_SRV,
@@ -209,9 +210,9 @@ local function update_dns_result(host, newQuery)
           port = host.port,
           weight = host.nodeWeight,
           priority = 1,
-          ttl = host.balancer.ttl0Interval,
+          ttl = balancer.ttl0Interval,
         },
-        expire = ngx_now() + host.balancer.ttl0Interval,
+        expire = ngx_now() + balancer.ttl0Interval,
         touched = ngx_now(),
         __ttl0Flag = true,        -- flag marking this record as a fake SRV one
       }
@@ -223,8 +224,7 @@ local function update_dns_result(host, newQuery)
   if not rtype then
     -- we got an empty query table, so assume A record, because it's empty
     -- all existing addresses will be removed
-    log_DEBUG("blank dns record for ",
-              host.hostname, ", assuming A-record")
+    log_DEBUG("blank dns record for ", host.hostname, ", assuming A-record")
     rtype = resolver.TYPE_A
   end
   local newSorted = sorts[rtype](newQuery)
@@ -235,10 +235,10 @@ local function update_dns_result(host, newQuery)
     log_DEBUG("dns record type changed for ",
             host.hostname, ", ", (oldSorted[1] or EMPTY).type, " -> ",rtype)
     for i = #oldSorted, 1, -1 do  -- reverse order because we're deleting items
-      host:disableAddress(oldSorted[i])     -- TODO: move method to balancer?
+      balancer:disableAddress(host, oldSorted[i])
     end
     for _, entry in ipairs(newSorted) do -- use sorted table for deterministic order
-      host:addAddress(entry)     -- TODO: move method to balancer?
+      balancer:addAddress(host, entry)
     end
     dirty = true
   else
@@ -256,15 +256,17 @@ local function update_dns_result(host, newQuery)
         log_DEBUG("new dns record entry for ",
                 host.hostname, ": ", (newEntry.target or newEntry.address),
                 ":", newEntry.port) -- port = nil for A or AAAA records
-        host:addAddress(newEntry)     -- TODO: move method to balancer?
+        balancer:addAddress(host, newEntry)     -- TODO: move method to balancer?
         dirty = true
       else
         -- it already existed (same ip, port)
         if newEntry.weight and
            newEntry.weight ~= oldEntry.weight and
-           not (newEntry.weight == 0  and oldEntry.weight == SRV_0_WEIGHT) then
+           not (newEntry.weight == 0  and oldEntry.weight == SRV_0_WEIGHT)
+        then
           -- weight changed (can only be an SRV)
-          host:findAddress(oldEntry):change(newEntry.weight == 0 and SRV_0_WEIGHT or newEntry.weight)
+          --host:findAddress(oldEntry):change(newEntry.weight == 0 and SRV_0_WEIGHT or newEntry.weight)
+          balancer:changeWeight(oldEntry, newEntry.weight == 0 and SRV_0_WEIGHT or newEntry.weight)
           dirty = true
         else
           log_DEBUG("unchanged dns record entry for ",
@@ -283,7 +285,7 @@ local function update_dns_result(host, newQuery)
           log_DEBUG("removed dns record entry for ",
                   host.hostname, ": ", (entry.target or entry.address),
                   ":", entry.port) -- port = nil for A or AAAA records
-          host:disableAddress(entry)
+          balancer:disableAddress(host, entry)
         end
       end
       dirty = true
@@ -300,10 +302,10 @@ local function update_dns_result(host, newQuery)
             host.hostname)
 
     -- allow balancer to update its algorithm
-    host.balancer:afterHostUpdate(host)
+    balancer:afterHostUpdate(host)
 
     -- delete addresses previously disabled
-    host:deleteAddresses()
+    balancer:deleteDisabledAddresses(host)
   end
 
   log_DEBUG("querying dns and updating for ", host.hostname, " completed")
