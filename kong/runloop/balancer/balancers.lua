@@ -18,11 +18,11 @@ local CRIT = ngx.CRIT
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
 
-local DEFAULT_WEIGHT = 10   -- default weight for a host, if not provided
-local DEFAULT_PORT = 80     -- Default port to use (A and AAAA only) when not provided
+--local DEFAULT_WEIGHT = 10   -- default weight for a host, if not provided
+--local DEFAULT_PORT = 80     -- Default port to use (A and AAAA only) when not provided
 local TTL_0_RETRY = 60      -- Maximum life-time for hosts added with ttl=0, requery after it expires
 local REQUERY_INTERVAL = 30 -- Interval for requerying failed dns queries
-local SRV_0_WEIGHT = 1      -- SRV record with weight 0 should be hit minimally, hence we replace by 1
+--local SRV_0_WEIGHT = 1      -- SRV record with weight 0 should be hit minimally, hence we replace by 1
 
 
 local balancers_M = {}
@@ -115,11 +115,12 @@ local function create_balancer_exclusive(upstream)
     }
   end
 
+  local opts = {}    -- TODO: see if we should use config or something
+
   local balancer = setmetatable({
     upstream_id = upstream.id,
     log_prefix = "upstream:" .. upstream.name,
     wheelSize = upstream.slots,  -- will be ignored by least-connections
-    healthThreshold = health_threshold,
     hosts = targets_list,
 
 
@@ -127,7 +128,7 @@ local function create_balancer_exclusive(upstream)
     requeryInterval = opts.requery or REQUERY_INTERVAL,  -- how often to requery failed dns lookups (seconds)
     ttl0Interval = opts.ttl0 or TTL_0_RETRY, -- refreshing ttl=0 records
     healthy = false, -- initial healthstatus of the balancer
-    healthThreshold = opts.healthThreshold or 0, -- % healthy weight for overall balancer health
+    healthThreshold = health_threshold or 0, -- % healthy weight for overall balancer health
     useSRVname = not not opts.useSRVname, -- force to boolean
   }, balancer_mt)
   if not balancer then

@@ -18,7 +18,7 @@ local null = ngx.null
 local match = string.match
 local ipairs = ipairs
 local tonumber = tonumber
-local assert = assert
+--local assert = assert
 
 
 local ERR = ngx.ERR

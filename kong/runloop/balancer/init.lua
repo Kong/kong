@@ -165,6 +165,7 @@ local function init()
     end
   end
 
+  local _
   local frequency = kong.configuration.worker_state_update_frequency or 1
   _, err = timer_at(frequency, upstreams.update_balancer_state)
   if err then
