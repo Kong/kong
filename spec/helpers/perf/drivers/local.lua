@@ -129,9 +129,12 @@ function _M:stop_kong()
   return true
 end
 
-function _M:get_start_load_cmd(stub, script)
-  local kong_ip = helpers.get_proxy_ip()
-  local kong_port = helpers.get_proxy_port()
+function _M:get_start_load_cmd(stub, script, uri)
+  if not uri then
+    uri = string.format("http://%s:%s",
+                        helpers.get_proxy_ip(),
+                        helpers.get_proxy_port())
+  end
 
   local script_path
   if script then
@@ -143,7 +146,7 @@ function _M:get_start_load_cmd(stub, script)
 
   script_path = script_path and ("-s " .. script_path) or ""
 
-  return stub:format(script_path, "http", kong_ip, kong_port)
+  return stub:format(script_path, uri)
 end
 
 local function check_systemtap_sanity(self)

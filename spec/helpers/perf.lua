@@ -332,6 +332,7 @@ local load_should_stop
 --- Start to send load to Kong
 -- @function start_load
 -- @param opts.path[optional] string request path, default to /
+-- @param opts.uri[optional] string base URI except path, default to http://kong-ip:kong-port/
 -- @param opts.connections[optional] number connection count, default to 1000
 -- @param opts.threads[optional] number request thread count, default to 5
 -- @param opts.duration[optional] number perf test duration in seconds, default to 10
@@ -351,10 +352,10 @@ function _M.start_load(opts)
   local load_cmd_stub = "wrk -c " .. (opts.connections or 1000) ..
                         " -t " .. (opts.threads or 5) ..
                         " -d " .. (opts.duration or 10) ..
-                        " %s " ..  -- script place holder
-                        " %s://%s:%s/" .. path
-  
-  local load_cmd = invoke_driver("get_start_load_cmd", load_cmd_stub, opts.script)
+                        " %s " .. -- script place holder
+                        " %s/" .. path
+
+  local load_cmd = invoke_driver("get_start_load_cmd", load_cmd_stub, opts.script, opts.uri)
   load_should_stop = false
 
   load_thread = ngx.thread.spawn(function()
@@ -537,14 +538,14 @@ end
 
 local git_stashed, git_head
 function _M.git_checkout(version)
-  if not execute("git status") then
-    error("git binary not found or PWD is not Kong repository")
+  if not execute("which git") then
+    error("git binary not found")
   end
 
   local res, err
   local hash, _ = execute("git rev-parse HEAD")
   if not hash or not hash:match("[a-f0-f]+") then
-    my_logger.warn("\"version\" is ignored when not in a git repository")
+    error("Unable to parse HEAD pointer, is this a git repository?")
   else
     -- am i on a named branch/tag?
     local n, _ = execute("git rev-parse --abbrev-ref HEAD")

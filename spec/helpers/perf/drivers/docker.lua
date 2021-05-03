@@ -231,7 +231,7 @@ function _M:start_kong(version, kong_conf)
     self.kong_ct_id = cid
 
     if use_git then
-      perf.exec("docker cp ./kong " .. self.kong_ct_id .. ":/usr/local/share/lua/5.1/")
+      perf.execute("docker cp ./kong " .. self.kong_ct_id .. ":/usr/local/share/lua/5.1/")
     end
   end
 
@@ -261,14 +261,17 @@ function _M:stop_kong()
   end
 end
 
-function _M:get_start_load_cmd(stub, script)
-  if not self.kong_ct_id then
-    return false, "kong container is not created yet"
-  end
+function _M:get_start_load_cmd(stub, script, uri)
+  if not uri then
+    if not self.kong_ct_id then
+      return false, "kong container is not created yet"
+    end
 
-  local kong_vip, err = get_container_vip(self.kong_ct_id)
-  if err then
-    return false, "unable to read kong container's private IP: " .. err
+    local kong_vip, err = get_container_vip(self.kong_ct_id)
+    if err then
+      return false, "unable to read kong container's private IP: " .. err
+    end
+    uri = string.format("http://%s:8000", kong_vip)
   end
 
   local script_path
@@ -287,7 +290,7 @@ function _M:get_start_load_cmd(stub, script)
   script_path = script_path and ("-s " .. script_path) or ""
 
   return "docker exec " .. self.worker_ct_id .. " " ..
-          stub:format(script_path, "http", kong_vip, "8000")
+          stub:format(script_path, uri)
 end
 
 function _M:get_start_stapxx_cmd()

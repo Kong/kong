@@ -48,8 +48,47 @@ local wrk_script = [[
   end
 ]]
 
+describe("perf test #baseline", function()
+  local upstream_uri
+  lazy_setup(function()
+    perf.setup()
+
+    upstream_uri = perf.start_upstream([[
+      location = /test {
+        return 200;
+      }
+      ]])
+  end)
+
+  lazy_teardown(function()
+    perf.teardown(os.getenv("PERF_TEST_TERADOWN_ALL") or false)
+  end)
+
+  it("upstream directly", function()
+    local results = {}
+    for i=1,3 do
+      perf.start_load({
+        uri = upstream_uri,
+        path = "/test",
+        connections = 1000,
+        threads = 5,
+        duration = 10,
+      })
+
+      ngx.sleep(10)
+
+      local result = assert(perf.wait_result())
+
+      print(("### Result for upstream directly (run %d):\n%s"):format(i, result))
+      results[i] = result
+    end
+
+    print("### Combined results:\n" .. assert(perf.combine_results(results)))
+  end)
+end)
+
 for _, version in ipairs(versions) do
-  describe("perf test for Kong " .. version .. " #baseline #no_plugins", function()
+  describe("perf test for Kong " .. version .. " #simple #no_plugins", function()
     local bp
     lazy_setup(function()
       local helpers = perf.setup()
@@ -137,7 +176,7 @@ for _, version in ipairs(versions) do
     end)
   end)
 
-  describe("perf test for Kong " .. version .. " #baseline #key-auth", function()
+  describe("perf test for Kong " .. version .. " #simple #key-auth", function()
     local bp
     lazy_setup(function()
       local helpers = perf.setup()

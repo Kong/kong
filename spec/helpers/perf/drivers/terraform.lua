@@ -248,7 +248,11 @@ function _M:stop_kong()
                                 { logger = self.ssh_log.log_exec })
 end
 
-function _M:get_start_load_cmd(stub, script)
+function _M:get_start_load_cmd(stub, script, uri)
+  if not uri then
+    uri = string.format("http://%s:8000", self.kong_internal_ip)
+  end
+
   local script_path
   if script then
     script_path = string.format("/tmp/wrk-%s.lua", tools.random_string())
@@ -265,7 +269,7 @@ function _M:get_start_load_cmd(stub, script)
   script_path = script_path and ("-s " .. script_path) or ""
 
   return ssh_execute_wrap(self, self.worker_ip,
-            stub:format(script_path, "http", self.kong_internal_ip, "8000"))
+            stub:format(script_path, uri))
 end
 
 local function check_systemtap_sanity(self)
