@@ -1,6 +1,6 @@
 local perf = require("spec.helpers.perf")
 
-perf.set_log_level(ngx.INFO)
+perf.set_log_level(ngx.DEBUG)
 --perf.set_retry_count(3)
 
 local driver = os.getenv("PERF_TEST_DRIVER") or "docker"
@@ -22,7 +22,7 @@ else
   perf.use_driver(driver)
 end
 
-local versions = { "2.3.1", "2.3.3", "2.4.0" }
+local versions = { "git:master", "git:perf/uri-normalization" }
 
 local SERVICE_COUNT = 10
 local ROUTE_PER_SERVICE = 10

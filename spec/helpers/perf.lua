@@ -63,6 +63,14 @@ local function new_logger(namespace)
 end
 local my_logger = new_logger("[controller]")
 
+string.startswith = function(s, start) -- luacheck: ignore
+  return s and start and start ~= "" and s:sub(1, #start) == start
+end
+
+string.endswith = function(s, e) -- luacheck: ignore
+  return s and e and e ~= "" and s:sub(#s-#e+1, #s) == e
+end
+
 --- Spawns a child process and get its exit code and outputs
 -- @param opts.stdin string the stdin buffer
 -- @param opts.logger function(lvl, _, line) stdout+stderr writer; if not defined, whole
@@ -524,6 +532,72 @@ function _M.generate_flamegraph(filename)
   f:close()
 
   my_logger.debug("flamegraph written to ", filename)
+end
+
+
+local git_stashed, git_head
+function _M.git_checkout(version)
+  if not execute("git status") then
+    error("git binary not found or PWD is not Kong repository")
+  end
+
+  local res, err
+  local hash, _ = execute("git rev-parse HEAD")
+  if not hash or not hash:match("[a-f0-f]+") then
+    my_logger.warn("\"version\" is ignored when not in a git repository")
+  else
+    -- am i on a named branch/tag?
+    local n, _ = execute("git rev-parse --abbrev-ref HEAD")
+    if n then
+      hash = n
+    end
+    -- anything to save?
+    n, err = execute("git status --untracked-files=no --porcelain")
+    if not err and (n and #n > 0) then
+      my_logger.info("saving your working directory")
+      res, err = execute("git stash save kong-perf-test-autosaved")
+      if err then
+        error("Cannot save your working directory: " .. err .. (res or "nil"))
+      end
+      git_stashed = true
+    end
+
+    my_logger.debug("switching away from ", hash, " to ", version)
+
+    res, err = execute("git checkout " .. version)
+    if err then
+      error("Cannot switch to " .. version .. ":\n" .. res)
+    end
+    if not git_head then
+      git_head = hash
+    end
+  end
+end
+
+function _M.git_restore()
+  if git_head then
+    local res, err = execute("git checkout " .. git_head)
+    if err then
+      return false, "git checkout: " .. res
+    end
+    git_head = nil
+
+    if git_stashed then
+      local res, err = execute("git stash pop")
+      if err then
+        return false, "git stash pop: " .. res
+      end
+      git_stashed = false
+    end
+  end
+end
+
+function _M.get_kong_version()
+  local ok, meta, _ = pcall(require, "kong.meta")
+  if ok then
+    return meta._VERSION
+  end
+  error("can't read Kong version from kong.meta: " .. (meta or "nil"))
 end
 
 return _M

@@ -63,21 +63,7 @@ function _M:teardown()
     self.upstream_nginx_pid = nil
   end
 
-  if self.git_head then
-    local res, err = perf.execute("git checkout " .. self.git_head)
-    if err then
-      return false, "git checkout: " .. res
-    end
-    self.git_head = nil
-
-    if self.git_stashed then
-      local res, err = perf.execute("git stash pop")
-      if err then
-        return false, "git stash pop: " .. res
-      end
-      self.git_stashed = false
-    end
-  end
+  perf.git_restore()
 
   perf.execute("rm " .. WRK_SCRIPT_PREFIX .. "*.lua")
 
@@ -126,37 +112,14 @@ function _M:start_upstream(conf)
 end
 
 function _M:start_kong(version, kong_conf)
-  local res, err
-  local hash, _ = perf.execute("git rev-parse HEAD")
-  if not hash or not hash:match("[a-f0-f]+") then
-    self.log.warn("\"version\" is ignored when not in a git repository")
-  else
-    -- am i on a named branch/tag?
-    local n, _ = perf.execute("git rev-parse --abbrev-ref HEAD")
-    if n then
-      hash = n
-    end
-    -- anything to save?
-    n, err = perf.execute("git status --untracked-files=no --porcelain")
-    if not err and (n and #n > 0) then
-      self.log.info("saving your working directory")
-      res, err = perf.execute("git stash save kong-perf-test-autosaved")
-      if err then
-        error("Cannot save your working directory: " .. err .. (res or "nil"))
-      end
-      self.git_stashed = true
-    end
-
-    self.log.debug("switching away from ", hash, " to ", version)
-
-    local res, err = perf.execute("git checkout " .. version)
-    if err then
-      error("Cannot switch to " .. version .. ":\n" .. res)
-    end
-    if not self.git_head then
-      self.git_head = hash
-    end
+  if not version:startsiwth("git:") then
+    return nil, "\"local\" driver only support testing between git commits, " ..
+                "version should be prefixed with \"git:\""
   end
+
+  version = version:sub(#("git:")+1)
+
+  perf.git_checkout(version)
 
   return helpers.start_kong(kong_conf)
 end

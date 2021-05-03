@@ -92,6 +92,9 @@ function _M:teardown()
       self[cid] = nil
     end
   end
+
+  perf.git_restore()
+
   return true
 end
 
@@ -202,6 +205,16 @@ function _M:start_kong(version, kong_conf)
     error("Kong version is not defined", 2)
   end
 
+  local use_git
+
+  if version:startswith("git:") then
+    perf.git_checkout(version:sub(#("git:")+1))
+    use_git = true
+
+    version = perf.get_kong_version()
+    self.log.debug("current git hash resolves to docker version ", version)
+  end
+
   if not self.kong_ct_id then
     local extra_config = ""
     for k, v in pairs(kong_conf) do
@@ -216,6 +229,10 @@ function _M:start_kong(version, kong_conf)
       return false, "error running docker create when creating kong container: " .. err
     end
     self.kong_ct_id = cid
+
+    if use_git then
+      perf.exec("docker cp ./kong " .. self.kong_ct_id .. ":/usr/local/share/lua/5.1/")
+    end
   end
 
   self.log.info("kong container ID is ", self.kong_ct_id)

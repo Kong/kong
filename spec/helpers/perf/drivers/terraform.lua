@@ -156,6 +156,9 @@ function _M:teardown(full)
       return false, err
     end
   end
+
+  perf.git_restore()
+
   -- otherwise do nothing
   return true
 end
@@ -172,14 +175,15 @@ function _M:start_upstream(conf)
             }]]):format(UPSTREAM_PORT, conf)):gsub("\n", "")
 
   local ok, err = execute_batch(self, self.worker_ip, {
-    "echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
-    "apt-get update", "apt-get install -y --force-yes nginx",
+    "sudo id",
+    "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
+    "sudo apt-get update", "sudo apt-get install -y --force-yes nginx",
     -- ubuntu where's wrk in apt?
     "wget -nv http://mirrors.kernel.org/ubuntu/pool/universe/w/wrk/wrk_4.1.0-3_amd64.deb -O wrk.deb",
-    "dpkg -l wrk || (dpkg -i wrk.deb || apt-get -f -y install)",
-    "echo " .. conf .. " | base64 -d > /etc/nginx/conf.d/perf-test.conf",
-    "nginx -t",
-    "systemctl restart nginx",
+    "dpkg -l wrk || (sudo dpkg -i wrk.deb || sudo apt-get -f -y install)",
+    "echo " .. conf .. " | sudo base64 -d > /etc/nginx/conf.d/perf-test.conf",
+    "sudo nginx -t",
+    "sudo systemctl restart nginx",
   })
   if not ok then
     return nil, err
@@ -199,15 +203,38 @@ function _M:start_kong(version, kong_conf)
   end
   kong_conf_blob = ngx.encode_base64(kong_conf_blob):gsub("\n", "")
 
+  local use_git
+
+  if version:startswith("git:") then
+    perf.git_checkout(version:sub(#("git:")+1))
+    use_git = true
+
+    version = perf.get_kong_version()
+    self.log.debug("current git hash resolves to Kong version ", version)
+  end
+
   local ok, err = execute_batch(self, self.kong_ip, {
-    "echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
-    "dpkg -l kong && (kong stop; dpkg -r kong) || true", -- stop and remove kong if installed
+    "sudo id",
+    "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
+    "dpkg -l kong && (sudo kong stop; sudo dpkg -r kong) || true", -- stop and remove kong if installed
+    "rm -rf /usr/local/share/lua/5.1/kong",
     "wget -nv https://bintray.com/kong/kong-deb/download_file?file_path=kong-" ..
               version .. ".focal.amd64.deb -O k.deb",
-    "dpkg -i k.deb || apt-get -f -y install",
-    "echo " .. kong_conf_blob .. " | base64 -d > /etc/kong/kong.conf",
-    "kong check",
-    "ulimit -n 655360; kong start || kong restart",
+    "sudo dpkg -i k.deb || sudo apt-get -f -y install",
+    "echo " .. kong_conf_blob .. " | sudo base64 -d > /etc/kong/kong.conf",
+    "sudo kong check",
+  })
+  if not ok then
+    return false, err
+  end
+
+  local ok, err = execute_batch(self, nil, {
+    -- upload
+    use_git and ("tar zc kong | " .. ssh_execute_wrap(self, self.kong_ip,
+      "sudo tar zx -C /usr/local/share/lua/5.1")) or "echo use stock files",
+    -- start kong
+    ssh_execute_wrap(self, self.kong_ip,
+      "ulimit -n 655360; kong start || kong restart")
   })
   if not ok then
     return false, err

@@ -22,7 +22,7 @@ else
   perf.use_driver(driver)
 end
 
-local versions = { "feat/perf-test", "feat/testtest" }
+local versions = { "2.3.1", "2.3.2" }
 
 local SERVICE_COUNT = 10
 local ROUTE_PER_SERVICE = 10
