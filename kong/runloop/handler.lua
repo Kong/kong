@@ -171,6 +171,136 @@ local function csv(s)
 end
 
 
+local function register_balancer_events(core_cache, worker_events, cluster_events)
+  -- target updates
+
+
+  -- worker_events local handler: event received from DAO
+  worker_events.register(function(data)
+    local operation = data.operation
+    local target = data.entity
+    -- => to worker_events node handler
+    local ok, err = worker_events.post("balancer", "targets", {
+        operation = data.operation,
+        entity = data.entity,
+      })
+    if not ok then
+      log(ERR, "failed broadcasting target ",
+        operation, " to workers: ", err)
+    end
+    -- => to cluster_events handler
+    local key = fmt("%s:%s", operation, target.upstream.id)
+    ok, err = cluster_events:broadcast("balancer:targets", key)
+    if not ok then
+      log(ERR, "failed broadcasting target ", operation, " to cluster: ", err)
+    end
+  end, "crud", "targets")
+
+
+  -- worker_events node handler
+  worker_events.register(function(data)
+    local operation = data.operation
+    local target = data.entity
+
+    -- => to balancer update
+    balancer.on_target_event(operation, target)
+  end, "balancer", "targets")
+
+
+  -- cluster_events handler
+  cluster_events:subscribe("balancer:targets", function(data)
+    local operation, key = unpack(utils.split(data, ":"))
+    local entity
+    if key ~= "all" then
+      entity = {
+        upstream = { id = key },
+      }
+    else
+      entity = "all"
+    end
+    -- => to worker_events node handler
+    local ok, err = worker_events.post("balancer", "targets", {
+        operation = operation,
+        entity = entity
+      })
+    if not ok then
+      log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
+    end
+  end)
+
+
+  -- manual health updates
+  cluster_events:subscribe("balancer:post_health", function(data)
+    local pattern = "([^|]+)|([^|]*)|([^|]+)|([^|]+)|([^|]+)|(.*)"
+    local hostname, ip, port, health, id, name = data:match(pattern)
+    port = tonumber(port)
+    local upstream = { id = id, name = name }
+    if ip == "" then
+      ip = nil
+    end
+    local _, err = balancer.post_health(upstream, hostname, ip, port, health == "1")
+    if err then
+      log(ERR, "failed posting health of ", name, " to workers: ", err)
+    end
+  end)
+
+
+  -- upstream updates
+
+
+  -- worker_events local handler: event received from DAO
+  worker_events.register(function(data)
+    local operation = data.operation
+    local upstream = data.entity
+    -- => to worker_events node handler
+    local ok, err = worker_events.post("balancer", "upstreams", {
+        operation = data.operation,
+        entity = data.entity,
+      })
+    if not ok then
+      log(ERR, "failed broadcasting upstream ",
+        operation, " to workers: ", err)
+    end
+    -- => to cluster_events handler
+    local key = fmt("%s:%s:%s", operation, upstream.id, upstream.name)
+    local ok, err = cluster_events:broadcast("balancer:upstreams", key)
+    if not ok then
+      log(ERR, "failed broadcasting upstream ", operation, " to cluster: ", err)
+    end
+  end, "crud", "upstreams")
+
+
+  -- worker_events node handler
+  worker_events.register(function(data)
+    local operation = data.operation
+    local upstream = data.entity
+
+    singletons.core_cache:invalidate_local("balancer:upstreams")
+    singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
+
+    -- => to balancer update
+    balancer.on_upstream_event(operation, upstream)
+  end, "balancer", "upstreams")
+
+
+  cluster_events:subscribe("balancer:upstreams", function(data)
+    local operation, id, name = unpack(utils.split(data, ":"))
+    local entity = {
+      id = id,
+      name = name,
+    }
+    -- => to worker_events node handler
+    local ok, err = worker_events.post("balancer", "upstreams", {
+        operation = operation,
+        entity = entity
+      })
+    if not ok then
+      log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
+    end
+  end)
+end
+
+
 local function register_events()
   -- initialize local local_events hooks
   local db             = kong.db
@@ -342,137 +472,9 @@ local function register_events()
   end, "crud", "certificates")
 
 
-  if kong.configuration.role == "control_plane" then
-    return
+  if kong.configuration.role ~= "control_plane" then
+    register_balancer_events(core_cache, worker_events, cluster_events)
   end
-
-
-  -- target updates
-
-
-  -- worker_events local handler: event received from DAO
-  worker_events.register(function(data)
-    local operation = data.operation
-    local target = data.entity
-    -- => to worker_events node handler
-    local ok, err = worker_events.post("balancer", "targets", {
-        operation = data.operation,
-        entity = data.entity,
-      })
-    if not ok then
-      log(ERR, "failed broadcasting target ",
-        operation, " to workers: ", err)
-    end
-    -- => to cluster_events handler
-    local key = fmt("%s:%s", operation, target.upstream.id)
-    ok, err = cluster_events:broadcast("balancer:targets", key)
-    if not ok then
-      log(ERR, "failed broadcasting target ", operation, " to cluster: ", err)
-    end
-  end, "crud", "targets")
-
-
-  -- worker_events node handler
-  worker_events.register(function(data)
-    local operation = data.operation
-    local target = data.entity
-
-    -- => to balancer update
-    balancer.on_target_event(operation, target)
-  end, "balancer", "targets")
-
-
-  -- cluster_events handler
-  cluster_events:subscribe("balancer:targets", function(data)
-    local operation, key = unpack(utils.split(data, ":"))
-    local entity
-    if key ~= "all" then
-      entity = {
-        upstream = { id = key },
-      }
-    else
-      entity = "all"
-    end
-    -- => to worker_events node handler
-    local ok, err = worker_events.post("balancer", "targets", {
-        operation = operation,
-        entity = entity
-      })
-    if not ok then
-      log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
-    end
-  end)
-
-
-  -- manual health updates
-  cluster_events:subscribe("balancer:post_health", function(data)
-    local pattern = "([^|]+)|([^|]*)|([^|]+)|([^|]+)|([^|]+)|(.*)"
-    local hostname, ip, port, health, id, name = data:match(pattern)
-    port = tonumber(port)
-    local upstream = { id = id, name = name }
-    if ip == "" then
-      ip = nil
-    end
-    local _, err = balancer.post_health(upstream, hostname, ip, port, health == "1")
-    if err then
-      log(ERR, "failed posting health of ", name, " to workers: ", err)
-    end
-  end)
-
-
-  -- upstream updates
-
-
-  -- worker_events local handler: event received from DAO
-  worker_events.register(function(data)
-    local operation = data.operation
-    local upstream = data.entity
-    -- => to worker_events node handler
-    local ok, err = worker_events.post("balancer", "upstreams", {
-        operation = data.operation,
-        entity = data.entity,
-      })
-    if not ok then
-      log(ERR, "failed broadcasting upstream ",
-        operation, " to workers: ", err)
-    end
-    -- => to cluster_events handler
-    local key = fmt("%s:%s:%s", operation, upstream.id, upstream.name)
-    local ok, err = cluster_events:broadcast("balancer:upstreams", key)
-    if not ok then
-      log(ERR, "failed broadcasting upstream ", operation, " to cluster: ", err)
-    end
-  end, "crud", "upstreams")
-
-
-  -- worker_events node handler
-  worker_events.register(function(data)
-    local operation = data.operation
-    local upstream = data.entity
-
-    singletons.core_cache:invalidate_local("balancer:upstreams")
-    singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
-
-    -- => to balancer update
-    balancer.on_upstream_event(operation, upstream)
-  end, "balancer", "upstreams")
-
-
-  cluster_events:subscribe("balancer:upstreams", function(data)
-    local operation, id, name = unpack(utils.split(data, ":"))
-    local entity = {
-      id = id,
-      name = name,
-    }
-    -- => to worker_events node handler
-    local ok, err = worker_events.post("balancer", "upstreams", {
-        operation = operation,
-        entity = entity
-      })
-    if not ok then
-      log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
-    end
-  end)
 end
 
 
