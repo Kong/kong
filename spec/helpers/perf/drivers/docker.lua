@@ -5,7 +5,7 @@ local helpers
 local _M = {}
 local mt = {__index = _M}
 
-local UPSTREAM_PORT = 8088
+local UPSTREAM_PORT = 18088
 
 function _M.new(opts)
   return setmetatable({
@@ -164,12 +164,12 @@ function _M:start_upstream(conf)
         # copy paste
         ENTRYPOINT ["/docker-entrypoint.sh"]
 
-        EXPOSE 80
+        EXPOSE %d
 
         STOPSIGNAL SIGQUIT
 
         CMD ["nginx", "-g", "daemon off;"]
-      ]]):format(UPSTREAM_PORT, conf:gsub("\n", "\\n"))
+      ]]):format(UPSTREAM_PORT, conf:gsub("\n", "\\n"), UPSTREAM_PORT)
       }
     )
     if err then

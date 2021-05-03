@@ -213,14 +213,21 @@ function _M:start_kong(version, kong_conf)
     self.log.debug("current git hash resolves to Kong version ", version)
   end
 
+  local download_path
+  if version:sub(1, 1) == "2" then
+    download_path = "gateway-2.x-ubuntu-focal"
+  else
+    error("Unknown download location for Kong version " .. version)
+  end
+
   local ok, err = execute_batch(self, self.kong_ip, {
     "sudo id",
     "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
     "dpkg -l kong && (sudo kong stop; sudo dpkg -r kong) || true", -- stop and remove kong if installed
     "rm -rf /usr/local/share/lua/5.1/kong",
-    "wget -nv https://bintray.com/kong/kong-deb/download_file?file_path=kong-" ..
-              version .. ".focal.amd64.deb -O k.deb",
-    "sudo dpkg -i k.deb || sudo apt-get -f -y install",
+    "wget -nv https://download.konghq.com/" .. download_path .. "/pool/all/k/kong/kong_" ..
+              version .. "_amd64.deb -O kong-" .. version .. ".deb",
+    "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     "echo " .. kong_conf_blob .. " | sudo base64 -d > /etc/kong/kong.conf",
     "sudo kong check",
   })

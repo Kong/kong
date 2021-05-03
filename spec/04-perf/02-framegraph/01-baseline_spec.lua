@@ -22,7 +22,12 @@ else
   perf.use_driver(driver)
 end
 
-local versions = { "2.3.1", "2.3.2" }
+local versions = {}
+
+local env_versions = os.getenv("PERF_TEST_VERSIONS")
+if env_versions then
+  versions = split(env_versions, ",")
+end
 
 local SERVICE_COUNT = 10
 local ROUTE_PER_SERVICE = 10

@@ -1,4 +1,5 @@
 local perf = require("spec.helpers.perf")
+local split = require("pl.stringx").split
 
 perf.set_log_level(ngx.DEBUG)
 --perf.set_retry_count(3)
@@ -22,7 +23,12 @@ else
   perf.use_driver(driver)
 end
 
-local versions = { "git:master", "git:perf/uri-normalization" }
+local versions = {}
+
+local env_versions = os.getenv("PERF_TEST_VERSIONS")
+if env_versions then
+  versions = split(env_versions, ",")
+end
 
 local SERVICE_COUNT = 10
 local ROUTE_PER_SERVICE = 10
@@ -47,6 +53,15 @@ local wrk_script = [[
     return wrk.format(nil, url_path, headers)
   end
 ]]
+
+local function print_and_save(s, path)
+  os.execute("mkdir -p output")
+  print(s)
+  local f = io.open(path or "output/result.txt", "a")
+  f:write(s)
+  f:write("\n")
+  f:close()
+end
 
 describe("perf test #baseline", function()
   local upstream_uri
@@ -79,11 +94,11 @@ describe("perf test #baseline", function()
 
       local result = assert(perf.wait_result())
 
-      print(("### Result for upstream directly (run %d):\n%s"):format(i, result))
+      print_and_save(("### Result for upstream directly (run %d):\n%s"):format(i, result))
       results[i] = result
     end
 
-    print("### Combined results:\n" .. assert(perf.combine_results(results)))
+    print_and_save("### Combined result for upstream directly:\n" .. assert(perf.combine_results(results)))
   end)
 end)
 
@@ -147,11 +162,11 @@ for _, version in ipairs(versions) do
 
         local result = assert(perf.wait_result())
 
-        print(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
 
-      print("### Combined results:\n" .. assert(perf.combine_results(results)))
+      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
     end)
 
     it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes", function()
@@ -168,11 +183,11 @@ for _, version in ipairs(versions) do
 
         local result = assert(perf.wait_result())
 
-        print(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
 
-      print("### Combined results:\n" .. assert(perf.combine_results(results)))
+      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
     end)
   end)
 
@@ -256,11 +271,11 @@ for _, version in ipairs(versions) do
 
         local result = assert(perf.wait_result())
 
-        print(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
         results[i] = result
       end
 
-      print("### Combined results:\n" .. assert(perf.combine_results(results)))
+      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
     end)
   end)
 end
