@@ -16,6 +16,10 @@ __DATA__
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(502)
@@ -30,9 +34,7 @@ Accept: application/json
 --- response_headers_like
 Content-Type: application/json; charset=utf-8
 --- response_body chop
-{
-  "message":"An invalid response was received from the upstream server"
-}
+{"message":"An invalid response was received from the upstream server"}
 --- no_error_log
 [error]
 
@@ -43,6 +45,10 @@ Content-Type: application/json; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(400)
@@ -55,9 +61,7 @@ GET /t
 --- response_headers_like
 Content-Type: application/json; charset=utf-8
 --- response_body chop
-{
-  "message":"Bad request"
-}
+{"message":"Bad request"}
 --- no_error_log
 [error]
 
@@ -68,6 +72,10 @@ Content-Type: application/json; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             local headers = {
@@ -100,6 +108,10 @@ Content-Type: application/xml
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(502)
@@ -137,6 +149,7 @@ Content-Type: text/html; charset=utf-8
     location = /error_handler {
         internal;
         content_by_lua_block {
+            
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.exit(200, "nothing happened")
@@ -145,6 +158,10 @@ Content-Type: text/html; charset=utf-8
 
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(500)
@@ -157,9 +174,7 @@ GET /t
 --- response_headers_like
 Content-Type: application/json; charset=utf-8
 --- response_body chop
-{
-  "message":"An unexpected error occurred"
-}
+{"message":"An unexpected error occurred"}
 --- no_error_log
 [error]
 
@@ -170,6 +185,10 @@ Content-Type: application/json; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(419, "I'm not a teapot")
@@ -184,9 +203,7 @@ Accept: application/json
 --- response_headers_like
 Content-Type: application/json; charset=utf-8
 --- response_body chop
-{
-  "message":"I'm not a teapot"
-}
+{"message":"I'm not a teapot"}
 --- no_error_log
 [error]
 
@@ -197,6 +214,10 @@ Content-Type: application/json; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(500, "oh no")
@@ -211,9 +232,7 @@ Accept: application/json
 --- response_headers_like
 Content-Type: application/json; charset=utf-8
 --- response_body chop
-{
-  "message":"oh no"
-}
+{"message":"oh no"}
 --- no_error_log
 [error]
 
@@ -224,6 +243,10 @@ Content-Type: application/json; charset=utf-8
 --- config
     location = /t {
         content_by_lua_block {
+            kong = {
+              configuration = {},
+            }
+
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
             return pdk.response.error(410)
