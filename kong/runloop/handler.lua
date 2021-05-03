@@ -81,6 +81,7 @@ local _set_update_router
 local _set_build_router
 local _set_router
 local _set_router_version
+local _register_balancer_events
 
 
 local update_lua_mem
@@ -804,6 +805,11 @@ do
   _set_router_version = function(v)
     router_version = v
   end
+
+  -- for tests only
+  _register_balancer_events = function(f)
+    register_balancer_events = f
+  end
 end
 
 
@@ -958,6 +964,7 @@ return {
   _set_update_plugins_iterator = _set_update_plugins_iterator,
   _get_updated_router = get_updated_router,
   _update_lua_mem = update_lua_mem,
+  _register_balancer_events = _register_balancer_events,
 
   init_worker = {
     before = function()
