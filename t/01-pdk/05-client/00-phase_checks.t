@@ -121,7 +121,7 @@ qq{
                 rewrite       = "forced false",
                 access        = true,
                 header_filter = "forced false",
-                response      = true,
+                response      = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
                 admin_api     = "forced false",
