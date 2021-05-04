@@ -23,8 +23,6 @@ local AUTH_AND_LATER = phase_checker.new(PHASES.access,
                                          PHASES.response,
                                          PHASES.body_filter,
                                          PHASES.log)
-local ACCESS_RESPONSE = phase_checker.new(PHASES.access,
-                                          PHASES.response)
 local TABLE_OR_NIL = { ["table"] = true, ["nil"] = true }
 
 
@@ -223,7 +221,7 @@ local function new(self)
   -- that at least one of them exists. Otherwise this function will throw an
   -- error.
   -- @function kong.client.authenticate
-  -- @phases access, response
+  -- @phases access
   -- @tparam table|nil consumer The consumer to set. Note: if no
   -- value is provided, then any existing value will be cleared!
   -- @tparam table|nil credential The credential to set. Note: if
@@ -232,7 +230,7 @@ local function new(self)
   -- -- assuming `credential` and `consumer` have been set by some authentication code
   -- kong.client.authenticate(consumer, credentials)
   function _CLIENT.authenticate(consumer, credential)
-    check_phase(ACCESS_RESPONSE)
+    check_phase(PHASES.access)
 
     if not TABLE_OR_NIL[type(consumer)] then
       error("consumer must be a table or nil", 2)
