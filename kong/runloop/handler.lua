@@ -1058,7 +1058,7 @@ return {
     after = NOOP,
   },
   certificate = {
-    before = function(_)
+    before = function(ctx) -- Note: ctx here is for a connection (not for a single request)
       certificate.execute()
     end,
     after = NOOP,
