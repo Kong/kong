@@ -608,6 +608,8 @@ local CONF_INFERENCES = {
 
   proxy_access_log = { typ = "string" },
   proxy_error_log = { typ = "string" },
+  proxy_stream_access_log = { typ = "string" },
+  proxy_stream_error_log = { typ = "string" },
   admin_access_log = { typ = "string" },
   admin_error_log = { typ = "string" },
   status_access_log = { typ = "string" },
@@ -1126,6 +1128,17 @@ local function check_and_infer(conf, opts)
     if conf.database ~= "off" then
       errors[#errors + 1] = "only in-memory storage can be used when role = \"data_plane\"\n" ..
                             "Hint: set database = off in your kong.conf"
+    end
+
+    if not conf.lua_ssl_trusted_certificate then
+      conf.lua_ssl_trusted_certificate = {}
+    end
+
+    if conf.cluster_mtls == "shared" then
+      table.insert(conf.lua_ssl_trusted_certificate, conf.cluster_cert)
+
+    elseif conf.cluster_mtls == "pki" then
+      table.insert(conf.lua_ssl_trusted_certificate, conf.cluster_ca_cert)
     end
   end
 

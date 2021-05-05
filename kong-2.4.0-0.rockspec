@@ -34,7 +34,7 @@ dependencies = {
   "kikito/sandbox == 1.0.1",
   "lua_pack == 1.0.5",
   "lua-resty-dns-client == 6.0.0",
-  "lua-protobuf",
+  "lua-protobuf == 0.3.2",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.08",
   "lua-resty-rsa == 0.04",

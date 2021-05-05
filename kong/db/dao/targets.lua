@@ -69,7 +69,37 @@ end
 
 function _TARGETS:upsert(pk, entity, options)
   entity.id = pk.id
-  return self:insert(entity, options)
+
+  if entity.target then
+    local formatted_target, err = format_target(entity.target)
+    if not formatted_target then
+      local err_t = self.errors:schema_violation({ target = err })
+      return nil, tostring(err_t), err_t
+    end
+    entity.target = formatted_target
+  end
+
+  -- backward compatibility with Kong older than 2.2.0
+  local workspace = workspaces.get_workspace_id()
+  local opts = { nulls = true, workspace = workspace }
+  for existent in self:each_for_upstream(entity.upstream, nil, opts) do
+    if existent.target == entity.target then
+      -- if the upserting entity is newer, update
+      if entity.created_at > existent.created_at then
+        local ok, err, err_t = self.super.delete(self, { id = existent.id }, opts)
+        if ok then
+          return self.super.insert(self, entity, options)
+        end
+
+        return ok, err, err_t
+      end
+      -- if upserting entity is older, keep the existent entity
+      return true
+
+    end
+  end
+
+  return self.super.insert(self, entity, options)
 end
 
 

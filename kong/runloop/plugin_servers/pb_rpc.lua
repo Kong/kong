@@ -11,8 +11,6 @@ local protoc = require "protoc"
 local pb = require "pb"
 require "lua_pack"
 
-local ngx_ssl = require "ngx.ssl"
-
 local ngx = ngx
 local kong = kong
 
@@ -24,11 +22,6 @@ local st_unpack = string.unpack     -- luacheck: ignore string
 
 local Rpc = {}
 Rpc.__index = Rpc
-
-local pp = require "pl.pretty".write
-
-
-
 
 
 local pb_unwrap
@@ -90,7 +83,6 @@ do
   local structpb_value, structpb_list, structpb_struct
 
   function structpb_value(v)
-    kong.log.debug("structpb_value: ", pp(v))
     local t = type(v)
 
     local bool_v = nil
@@ -174,47 +166,6 @@ local function index_table(table, field)
 end
 
 local function load_service()
-  local exposed_api = {
-    kong = kong,
-
-    ["kong.log.serialize"] = function()
-      local saved = Rpc.save_for_later[coroutine.running()]
-      return cjson_encode(saved and saved.serialize_data or kong.log.serialize())
-    end,
-
-    ["kong.nginx.get_var"] = function(v)
-      return ngx.var[v]
-    end,
-
-    ["kong.nginx.get_tls1_version_str"] = ngx_ssl.get_tls1_version_str,
-
-    ["kong.nginx.get_ctx"] = function(k)
-      local saved = Rpc.save_for_later[coroutine.running()]
-      local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
-      return ngx_ctx[k]
-    end,
-
-    ["kong.nginx.set_ctx"] = function(k, v)
-      local saved = Rpc.save_for_later[coroutine.running()]
-      local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
-      ngx_ctx[k] = v
-    end,
-
-    ["kong.ctx.shared.get"] = function(k)
-      local saved = Rpc.save_for_later[coroutine.running()]
-      local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
-      return ctx_shared[k]
-    end,
-
-    ["kong.ctx.shared.set"] = function(k, v)
-      local saved = Rpc.save_for_later[coroutine.running()]
-      local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
-      ctx_shared[k] = v
-    end,
-
-    ["kong.nginx.req_start_time"] = ngx.req.start_time,
-  }
-
   local p = protoc.new()
   --p:loadfile("kong/pluginsocket.proto")
 
@@ -238,7 +189,7 @@ local function load_service()
 
       service[lower_name] = {
         method_name = method_name,
-        method = index_table(exposed_api, lower_name),
+        method = index_table(Rpc.exposed_api, lower_name),
         input_type = m.input_type,
         output_type = m.output_type,
       }
@@ -265,7 +216,6 @@ end
 
 local function call_pdk(method_name, arg)
   local method = rpc_service[method_name]
-  kong.log.debug("method ", method_name, ": ", pp(method))
   if not method then
     return nil, ("method %q not found"):format(method_name)
   end
@@ -276,7 +226,6 @@ local function call_pdk(method_name, arg)
   end
 
   arg = assert(pb.decode(method.input_type, arg))
-  kong.log.debug("args decoded: ", pp(arg))
   local unwrap = pb_unwrap[method.input_type] or identity_function
   local wrap = pb_wrap[method.output_type] or identity_function
 
@@ -286,7 +235,6 @@ local function call_pdk(method_name, arg)
     return ""
   end
 
-  kong.log.debug("reply wrapped: ", pp(reply))
   reply = assert(pb.encode(method.output_type, reply))
 
   return reply
