@@ -1193,6 +1193,12 @@
                                 # in the cache never expire, which means that
                                 # `db_cache_ttl` should preserve its default
                                 # value of 0.
+                                #
+                                # If the Hybrid mode `role` is set to `data_plane`
+                                # and there's no configuration cache file,
+                                # this configuration is used before connecting
+                                # to the Control Plane node as a user-controlled
+                                # fallback.
 
 #------------------------------------------------------------------------------
 # DATASTORE CACHE
