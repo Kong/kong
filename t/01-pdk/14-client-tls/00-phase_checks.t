@@ -36,6 +36,7 @@ qq{
 
             access_by_lua_block {
                 phase_check_functions(phases.access)
+                phase_check_functions(phases.response)
                 phase_check_functions(phases.admin_api)
             }
 
@@ -68,6 +69,7 @@ qq{
                 rewrite       = false,
                 access        = false,
                 header_filter = false,
+                response      = false,
                 body_filter   = false,
                 log           = false,
                 admin_api     = false,
@@ -79,6 +81,7 @@ qq{
                 rewrite       = false,
                 access        = false,
                 header_filter = false,
+                response      = false,
                 body_filter   = false,
                 log           = false,
                 admin_api     = false,
@@ -89,6 +92,7 @@ qq{
                 certificate   = false,
                 rewrite       = true,
                 access        = true,
+                response      = true,
                 header_filter = false,
                 body_filter   = false,
                 log           = true,
@@ -101,6 +105,7 @@ qq{
                 rewrite       = nil,
                 access        = nil,
                 header_filter = "forced false",
+                response      = false,
                 body_filter   = "forced false",
                 log           = "forced false",
                 admin_api     = false,

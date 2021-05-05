@@ -44,6 +44,7 @@ local phases_with_ctx =
     phase_checker.new(PHASES.rewrite,
                       PHASES.access,
                       PHASES.header_filter,
+                      PHASES.response,
                       PHASES.body_filter,
                       PHASES_LOG)
 local _LEVELS = {
@@ -221,7 +222,7 @@ local serializers = {
 -- ```
 --
 -- @function kong.log
--- @phases init_worker, certificate, rewrite, access, header_filter, body_filter, log
+-- @phases init_worker, certificate, rewrite, access, header_filter, response, body_filter, log
 -- @param ... all params will be concatenated and stringified before being sent to the log
 -- @return Nothing; throws an error on invalid inputs.
 --
@@ -261,7 +262,7 @@ local serializers = {
 -- ```
 --
 -- @function kong.log.LEVEL
--- @phases init_worker, certificate, rewrite, access, header_filter, body_filter, log
+-- @phases init_worker, certificate, rewrite, access, header_filter, response, body_filter, log
 -- @param ... all params will be concatenated and stringified before being sent to the log
 -- @return Nothing; throws an error on invalid inputs.
 -- @usage
@@ -403,7 +404,7 @@ end
 -- library to pretty-print its arguments.
 --
 -- @function kong.log.inspect
--- @phases init_worker, certificate, rewrite, access, header_filter, body_filter, log
+-- @phases init_worker, certificate, rewrite, access, header_filter, response, body_filter, log
 -- @param ... Parameters will be concatenated with spaces between them and
 -- rendered as described
 -- @usage
@@ -433,7 +434,7 @@ do
     -- formatting of arguments.
     --
     -- @function kong.log.inspect.on
-    -- @phases init_worker, certificate, rewrite, access, header_filter, body_filter, log
+    -- @phases init_worker, certificate, rewrite, access, header_filter, response, body_filter, log
     -- @usage
     -- kong.log.inspect.on()
     function self.on()
@@ -446,7 +447,7 @@ do
     -- `kong.log.inspect()` will be nopped.
     --
     -- @function kong.log.inspect.off
-    -- @phases init_worker, certificate, rewrite, access, header_filter, body_filter, log
+    -- @phases init_worker, certificate, rewrite, access, header_filter, response, body_filter, log
     -- @usage
     -- kong.log.inspect.off()
     function self.off()
@@ -495,7 +496,7 @@ end
 -- phase in most real-usage cases.
 --
 -- @function kong.log.set_serialize_value
--- @phases certificate, rewrite, access, header_filter, body_filter, log
+-- @phases certificate, rewrite, access, header_filter, response, body_filter, log
 -- @tparam string key the name of the field.
 -- @tparam number|string|boolean|table value value to be set. When a table is used, its keys must be numbers, strings, booleans, and its values can be numbers, strings or other tables like itself, recursively.
 -- @tparam table options can contain two entries: options.mode can be `set` (the default, always sets), `add` (only add if entry does not already exist) and `replace` (only change value if it already exists).
