@@ -219,7 +219,35 @@ Content-Type: application/json; charset=utf-8
 
 
 
-=== TEST 8: service.response.error() use accept header "*" mime sub-type
+=== TEST 8: service.response.error() overrides default message with a table entry
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+            return pdk.response.error(502, { ["a field"] = "not a default message" })
+        }
+    }
+
+--- request
+GET /t
+--- more_headers
+Accept: application/xml
+--- error_code: 502
+--- response_headers_like
+Content-Type: application/xml; charset=utf-8
+--- response_body
+<?xml version="1.0" encoding="UTF-8"?>
+<error>
+  <message>{"a field":"not a default message"}</message>
+</error>
+--- no_error_log
+[error]
+
+
+
+=== TEST 9: service.response.error() use accept header "*" mime sub-type
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -244,7 +272,7 @@ Gone
 
 
 
-=== TEST 9: response.error() maps http 400 to grpc InvalidArgument
+=== TEST 10: response.error() maps http 400 to grpc InvalidArgument
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -270,7 +298,7 @@ grpc-message: InvalidArgument
 
 
 
-=== TEST 10: response.error() maps http 401 to grpc Unauthenticated
+=== TEST 11: response.error() maps http 401 to grpc Unauthenticated
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -296,7 +324,7 @@ grpc-message: Unauthenticated
 
 
 
-=== TEST 11: response.error() maps http 403 to grpc PermissionDenied
+=== TEST 12: response.error() maps http 403 to grpc PermissionDenied
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -322,7 +350,7 @@ grpc-message: PermissionDenied
 
 
 
-=== TEST 12: response.error() maps http 429 to grpc ResourceExhausted
+=== TEST 13: response.error() maps http 429 to grpc ResourceExhausted
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
