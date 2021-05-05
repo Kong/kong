@@ -7,7 +7,8 @@ function Workspaces:truncate()
     return true
   end
 
-  local default_ws, err = self:insert({ name = "default" })
+  local name = "default"
+  local default_ws, err = self:upsert_by_name(name, { name = name })
   if err then
     kong.log.err(err)
     return

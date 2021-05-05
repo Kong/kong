@@ -1415,8 +1415,10 @@ function DAO:row_to_entity(row, options)
     entity.ws_id = ws_id
 
     -- special behavior for blue-green migrations
-    if self.schema.workspaceable and ws_id == null or ws_id == nil then
-      entity.ws_id = kong.default_workspace
+    if self.schema.workspaceable then
+      if ws_id == null or ws_id == nil then
+        entity.ws_id = kong.default_workspace
+      end
     end
   end
 
@@ -1455,8 +1457,21 @@ end
 
 function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
 
+  local inspect = require "inspect"
+  ngx.log(ngx.ERR, "DAO:CACHE_KEY -> KEY: ", inspect(key))
+  ngx.log(ngx.ERR, "DAO:CACHE_KEY -> WS_ID: ", inspect(ws_id))
+  ngx.log(ngx.ERR, "DAO:CACHE_KEY -> WORKSPACEABLE: ", inspect(self.schema.workspaceable))
+  ngx.log(ngx.ERR, "DAO:CACHE_KEY -> GET_WORKSPACE_ID: ", inspect(workspaces.get_workspace_id()))
+  ngx.log(ngx.ERR, "DAO:CACHE_KEY -> DEFAULT_WORKSPACE: ", inspect(kong and kong.default_workspace))
+
   if self.schema.workspaceable then
-    ws_id = ws_id or workspaces.get_workspace_id()
+    if ws_id == nil or ws_id == null then
+      ws_id = workspaces.get_workspace_id() or kong.default_workspace
+    end
+  end
+
+  if ws_id == null then
+    ws_id = nil
   end
 
   -- Fast path: passing the cache_key/primary_key entries in

@@ -408,6 +408,8 @@ local function get_ws_id()
   if phase ~= "init" and phase ~= "init_worker" then
     return ngx.ctx.workspace or kong.default_workspace
   end
+
+  return kong.default_workspace
 end
 
 

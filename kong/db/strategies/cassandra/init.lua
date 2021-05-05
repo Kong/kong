@@ -63,8 +63,11 @@ end
 
 local function get_ws_id()
   local phase = get_phase()
-  return (phase ~= "init" and phase ~= "init_worker")
-         and ngx.ctx.workspace or kong.default_workspace
+  if phase ~= "init" and phase ~= "init_worker" then
+    return ngx.ctx.workspace or kong.default_workspace
+  end
+
+  return kong.default_workspace
 end
 
 

@@ -1075,9 +1075,11 @@ return {
         return exit(500)
       end
 
-      ctx.workspace = match_t.route and match_t.route.ws_id
-
       local route = match_t.route
+      if route and route.ws_id then
+        ctx.workspace = route.ws_id
+      end
+
       local service = match_t.service
       local upstream_url_t = match_t.upstream_url_t
 
@@ -1124,7 +1126,10 @@ return {
         return kong.response.exit(404, { message = "no Route matched with those values" })
       end
 
-      ctx.workspace = match_t.route and match_t.route.ws_id
+      local route = match_t.route
+      if route and route.ws_id then
+        ctx.workspace = match_t.route.ws_id
+      end
 
       local http_version   = ngx.req.http_version()
       local scheme         = var.scheme
@@ -1133,7 +1138,6 @@ return {
                           or tonumber(var.server_port, 10)
       local content_type   = var.content_type
 
-      local route          = match_t.route
       local service        = match_t.service
       local upstream_url_t = match_t.upstream_url_t
 

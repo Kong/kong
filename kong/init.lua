@@ -514,7 +514,7 @@ function Kong.init()
 
   else
     local default_ws = db.workspaces:select_by_name("default")
-    kong.default_workspace = default_ws and default_ws.id
+    kong.default_workspace = default_ws and default_ws.id or kong.default_workspace
 
     local ok, err = runloop.build_plugins_iterator("init")
     if not ok then
@@ -1349,7 +1349,9 @@ function Kong.handle_error()
     local plugins_iterator = runloop.get_updated_plugins_iterator()
     for _ in plugins_iterator:iterate("content", ctx) do
       -- just build list of plugins
-      ctx.workspace = old_ws
+      if old_ws then
+        ctx.workspace = old_ws
+      end
     end
   end
 
