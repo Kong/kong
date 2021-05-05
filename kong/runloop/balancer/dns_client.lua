@@ -104,7 +104,7 @@ local function resolve_timer_callback()
     --print("timer on: ",key, " the value is: ", tostring((host or EMPTY).hostname))
     if host then
       log_DEBUG("executing requery for: ", host.hostname)
-      host:queryDns(host, false) -- timer-context; cacheOnly always false
+      client_M.queryDns(host, false) -- timer-context; cacheOnly always false
     end
   end
 end
@@ -116,7 +116,7 @@ end
 -- IMPORTANT: this construct should not prevent GC of the Host object
 local function schedule_dns_renewal(host)
   local record_expiry = (host.lastQuery or EMPTY).expire or 0
-  local key = host.balancer.id .. ":" .. host.hostname .. ":" .. host.port
+  local key = host.balancer.upstream_id .. ":" .. host.hostname .. ":" .. host.port
 
   -- because of the DNS cache, a stale record will most likely be returned by the
   -- client, and queryDns didn't do anything, other than start a background renewal
@@ -142,7 +142,7 @@ end
 
 -- remove a Host from the DNS renewal timer
 local function cancel_dns_renewal(host)
-  local key = host.balancer.id .. ":" .. host.hostname .. ":" .. host.port
+  local key = host.balancer.upstream_id .. ":" .. host.hostname .. ":" .. host.port
   renewal_weak_cache[key] = nil
   renewal_heap:remove(key)
 end
@@ -150,7 +150,7 @@ end
 
 
 local function update_dns_result(host, newQuery)
-  -- TODO: move most of the datastructure updating to balancer methods
+  -- TODO: move most of the datastructure updating to a balancer method
   -- this should be mostly a translation/forwarding procedure
   local balancer = host and host.balancer
 
@@ -245,7 +245,7 @@ local function update_dns_result(host, newQuery)
         log_DEBUG("new dns record entry for ",
                 host.hostname, ": ", (newEntry.target or newEntry.address),
                 ":", newEntry.port) -- port = nil for A or AAAA records
-        balancer:addAddress(host.target, newEntry)     -- TODO: move method to balancer?
+        balancer:addAddress(host.target, newEntry)
         dirty = true
       else
         -- it already existed (same ip, port)

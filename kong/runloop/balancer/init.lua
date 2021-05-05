@@ -37,23 +37,6 @@ local EMPTY_T = pl_tablex.readonly {}
 
 
 
--- Caching logic
---
--- We retain 3 entities in cache:
---
--- 1) `"balancer:upstreams"` - a list of upstreams
---    to be invalidated on any upstream change
--- 2) `"balancer:upstreams:" .. id` - individual upstreams
---    to be invalidated on individual basis
--- 3) `"balancer:targets:" .. id`
---    target for an upstream along with the upstream it belongs to
---
--- Distinction between 1 and 2 makes it possible to invalidate individual
--- upstreams, instead of all at once forcing to rebuild all balancers
-
-
-
-
 -- Calculates hash-value.
 -- Will only be called once per request, on first try.
 -- @param upstream the upstream entity
@@ -69,14 +52,14 @@ local function get_value_to_hash(upstream, ctx)
 
   for _ = 1,2 do
 
-   if hash_on == "consumer" then
+    if hash_on == "consumer" then
       if not ctx then
         ctx = ngx.ctx
       end
 
       -- consumer, fallback to credential
       identifier = (ctx.authenticated_consumer or EMPTY_T).id or
-                   (ctx.authenticated_credential or EMPTY_T).id
+          (ctx.authenticated_credential or EMPTY_T).id
 
     elseif hash_on == "ip" then
       identifier = var.remote_addr
@@ -188,15 +171,15 @@ end
 -- pool, in this case any port number provided will be ignored, as the pool
 -- provides it.
 --
--- @param target the data structure as defined in `core.access.before` where
+-- @balancer_data target the data structure as defined in `core.access.before` where
 -- it is created.
 -- @return true on success, nil+error message+status code otherwise
-local function execute(target, ctx)
-  if target.type ~= "name" then
+local function execute(balancer_data, ctx)
+  if balancer_data.type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
-    target.ip = target.host
-    target.port = target.port or 80 -- TODO: remove this fallback value
-    target.hostname = target.host
+    balancer_data.ip       = balancer_data.host
+    balancer_data.port     = balancer_data.port or 80 -- TODO: remove this fallback value
+    balancer_data.hostname = balancer_data.host
     return true
   end
 
@@ -204,16 +187,16 @@ local function execute(target, ctx)
   --   it runs before the `balancer` context (in the `access` context),
   -- when tries >= 2,
   --   then it performs a retry in the `balancer` context
-  local dns_cache_only = target.try_count ~= 0
+  local dns_cache_only = balancer_data.try_count ~= 0
   local balancer, upstream, hash_value
 
   if dns_cache_only then
     -- retry, so balancer is already set if there was one
-    balancer = target.balancer
+    balancer = balancer_data.balancer
 
   else
     -- first try, so try and find a matching balancer/upstream object
-    balancer, upstream = balancers.get_balancer(target)
+    balancer, upstream = balancers.get_balancer(balancer_data)
     if balancer == nil then -- `false` means no balancer, `nil` is error
       return nil, upstream, 500
     end
@@ -224,14 +207,14 @@ local function execute(target, ctx)
       end
 
       -- store for retries
-      target.balancer = balancer
+      balancer_data.balancer = balancer
 
       -- calculate hash-value
       -- only add it if it doesn't exist, in case a plugin inserted one
-      hash_value = target.hash_value
+      hash_value             = balancer_data.hash_value
       if not hash_value then
         hash_value = get_value_to_hash(upstream, ctx)
-        target.hash_value = hash_value
+        balancer_data.hash_value = hash_value
       end
 
       if ctx and ctx.service and not ctx.service.client_certificate then
@@ -261,9 +244,9 @@ local function execute(target, ctx)
   local ip, port, hostname, handle
   if balancer then
     -- have to invoke the ring-balancer
-    local hstate = run_hook("balancer:get_peer:pre", target.host)
+    local hstate = run_hook("balancer:get_peer:pre", balancer_data.host)
     ip, port, hostname, handle = balancer:getPeer(dns_cache_only,
-                                          target.balancer_handle,
+                                          balancer_data.balancer_handle,
                                           hash_value)
     run_hook("balancer:get_peer:post", hstate)
     if not ip and
@@ -271,16 +254,16 @@ local function execute(target, ctx)
       return nil, "failure to get a peer from the ring-balancer", 503
     end
     hostname = hostname or ip
-    target.hash_value = hash_value
-    target.balancer_handle = handle
+    balancer_data.hash_value = hash_value
+    balancer_data.balancer_handle = handle
 
   else
     -- have to do a regular DNS lookup
     local try_list
-    local hstate = run_hook("balancer:to_ip:pre", target.host)
-    ip, port, try_list = toip(target.host, target.port, dns_cache_only)
+    local hstate = run_hook("balancer:to_ip:pre", balancer_data.host)
+    ip, port, try_list = toip(balancer_data.host, balancer_data.port, dns_cache_only)
     run_hook("balancer:to_ip:post", hstate)
-    hostname = target.host
+    hostname = balancer_data.host
     if not ip then
       log(ERR, "DNS resolution failed: ", port, ". Tried: ", tostring(try_list))
       if port == "dns server error: 3 name error" or
@@ -294,12 +277,12 @@ local function execute(target, ctx)
     return nil, port, 500
   end
 
-  target.ip = ip
-  target.port = port
+  balancer_data.ip   = ip
+  balancer_data.port = port
   if upstream and upstream.host_header ~= nil then
-    target.hostname = upstream.host_header
+    balancer_data.hostname = upstream.host_header
   else
-    target.hostname = hostname
+    balancer_data.hostname = hostname
   end
   return true
 end

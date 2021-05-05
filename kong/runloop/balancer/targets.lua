@@ -55,6 +55,7 @@ local function load_targets_into_memory(upstream_id)
     local port
     target.name, port = match(target.target, "^(.-):(%d+)$")
     target.port = tonumber(port)
+    target.addresses = {}
   end
 
   return targets

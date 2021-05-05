@@ -23,7 +23,7 @@ local DEBUG = ngx.DEBUG
 --local DEFAULT_PORT = 80     -- Default port to use (A and AAAA only) when not provided
 local TTL_0_RETRY = 60      -- Maximum life-time for hosts added with ttl=0, requery after it expires
 local REQUERY_INTERVAL = 30 -- Interval for requerying failed dns queries
---local SRV_0_WEIGHT = 1      -- SRV record with weight 0 should be hit minimally, hence we replace by 1
+local SRV_0_WEIGHT = 1      -- SRV record with weight 0 should be hit minimally, hence we replace by 1
 
 
 local balancers_M = {}
@@ -57,12 +57,6 @@ function balancers_M.get_balancer_by_id(id)
 end
 
 function balancers_M.set_balancer(upstream_id, balancer)
-  local prev = balancers_by_id[upstream_id]
-  if prev then
-    prev.healthchecker = nil
-    prev.healthchecker_callbacks = nil
-    prev.upstream_id = nil
-  end
   balancers_by_id[upstream_id] = balancer
 end
 
@@ -122,8 +116,7 @@ local function create_balancer_exclusive(upstream)
     upstream_id = upstream.id,
     log_prefix = "upstream:" .. upstream.name,
     wheelSize = upstream.slots,  -- will be ignored by least-connections
-    hosts = targets_list,
-
+    targets = targets_list,
 
     resolveTimer = nil,
     requeryInterval = opts.requery or REQUERY_INTERVAL,  -- how often to requery failed dns lookups (seconds)
@@ -199,14 +192,14 @@ end
 
 
 -- looks up a balancer for the target.
--- @param target the table with the target details
+-- @param balancer_data the table with the target details
 -- @param no_create (optional) if true, do not attempt to create
 -- (for thorough testing purposes)
 -- @return balancer if found, `false` if not found, or nil+error on error
-function balancers_M.get_balancer(target, no_create)
+function balancers_M.get_balancer(balancer_data, no_create)
   -- NOTE: only called upon first lookup, so `cache_only` limitations
   -- do not apply here
-  local hostname = target.host
+  local hostname = balancer_data.host
 
   -- first go and find the upstream object, from cache or the db
   local upstream, err = upstreams.get_upstream_by_name(hostname)
@@ -264,7 +257,7 @@ end
 
 function balancer_mt:findAddress(ip, port, hostname)
   for _, target in ipairs(self.targets) do
-    if target.hostname == hostname then
+    if target.name == hostname then
       for _, address in ipairs(target.addresses) do
         if address.ip == ip and address.port == port
         then
@@ -292,36 +285,51 @@ function balancer_mt:disableAddress(target, address)
 end
 
 
-function balancer_mt:addAddress(target, address)
+function balancer_mt:addAddress(target, entry)
   -- from host:addAddress
-  if type(address) ~= "table"
+  if type(entry) ~= "table"
     or type(target) ~= "table"
     or target.balancer ~= self
   then
     return
   end
 
+  local entry_ip = entry.address or entry.target
+  local entry_port = (entry.port ~= 0 and entry.port) or target.port
   local addresses = target.addresses
   for _, addr in ipairs(addresses) do
-    if addr.ip == address.ip and addr.port == address.port then
+    if addr.ip == entry_ip and addr.port == entry_port then
       -- already there, should we update something? add weights?
       return
     end
   end
 
-  address.target = target
-  addresses[#address + 1] = address
+  local weight = entry.weight  -- this is nil for anything else than SRV
+  if weight == 0 then
+    -- Special case: SRV with weight = 0 should be included, but with
+    -- the lowest possible probability of being hit. So we force it to
+    -- weight 1.
+    weight = SRV_0_WEIGHT
+  end
+  addresses[#addresses + 1] = {
+    ip = entry_ip,
+    port = entry_port,
+    weight = weight or target.weight,
+    target = target,
+    useSRVname = self.useSRVname,
+  }
+
 end
 
 
 function balancer_mt:changeWeight(target, entry, newWeight)
   -- from host:findAddress() + address:change()
 
-  -- not sure if "oldEntry" is the actual address record
+  local entry_ip = entry.address or entry.target
+  local entry_port = (entry.port ~= 0 and entry.port) or target.port
+
   for _, addr in ipairs(target.addresses) do
-    if (addr.ip == (entry.address or entry.target)) and
-        addr.port == (entry.port or self.port)
-    then
+    if (addr.ip == entry_ip) and addr.port == entry_port then
       target.weight = target.weight + newWeight - addr.weight
       addr.weight = newWeight
       break
@@ -341,8 +349,8 @@ function balancer_mt:deleteDisabledAddresses(target)
     if addr.disabled then
     self:callback("removed", addr, addr.ip, addr.port,
           target.hostname, addr.hostHeader)
-     dirty = true
-      table_remove(addresses, i)
+    dirty = true
+    table_remove(addresses, i)
     end
   end
 
@@ -420,6 +428,7 @@ function balancer_mt:getStatus()
 end
 
 function balancer_mt:getPeer()
+  return self.algorithm:getPeer()
 end
 
 return balancers_M

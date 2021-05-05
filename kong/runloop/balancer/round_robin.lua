@@ -1,7 +1,7 @@
 
 local balancers = require "kong.runloop.balancer.balancers"
 
-local ngx_log = ngx.log
+local log = kong.log.debug
 local ngx_DEBUG = ngx.DEBUG
 local random = math.random
 
@@ -48,7 +48,7 @@ function roundrobin_algorithm:afterHostUpdate()
   end
 
   if total_weight == 0 then
-    ngx_log(ngx_DEBUG, self.log_prefix, "trying to set a round-robin balancer with no addresses")
+    log("trying to set a round-robin balancer with no addresses")
     return
   end
 
@@ -111,10 +111,10 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
           return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
         end
       elseif port == balancers.errors.ERR_ADDRESS_UNAVAILABLE then
-        ngx_log(ngx_DEBUG, self.log_prefix, "found address but it was unavailable. ",
+        log("found address but it was unavailable. ",
           " trying next one.")
       else
-        -- an unknown error occured
+        -- an unknown error occurred
         return nil, port
       end
 
@@ -129,20 +129,21 @@ end
 function roundrobin_algorithm.new(opts)
   assert(type(opts) == "table", "Expected an options table, but got: "..type(opts))
 
-  local algorithm = setmetatable({
-    log_prefix = opts.log_prefix or "round-robin",
-    health_threshold = opts.health_threshold,
-    hosts = opts.hosts or {},
+  local balancer = opts.balancer
+
+  local self = setmetatable({
+    health_threshold = balancer.health_threshold,
+    hosts = balancer.targets or {},
 
     pointer = 1,
     wheelSize = 0,
-    maxWheelSize = opts.maxWheelSize or opts.wheelSize or MAX_WHEEL_SIZE,
+    maxWheelSize = balancer.maxWheelSize or balancer.wheelSize or MAX_WHEEL_SIZE,
     wheel = {},
   }, roundrobin_algorithm)
 
-  algorithm:afterHostUpdate()
+  self:afterHostUpdate()
 
-  return algorithm
+  return self
 end
 
 return roundrobin_algorithm

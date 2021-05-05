@@ -6,7 +6,6 @@
 ---
 ---
 ---
---local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local workspaces = require "kong.workspaces"
 local balancers
@@ -15,8 +14,6 @@ local healthcheckers
 local ngx = ngx
 local log = ngx.log
 local null = ngx.null
---local ipairs = ipairs
-local table = table
 local table_remove = table.remove
 local timer_at = ngx.timer.at
 
@@ -35,6 +32,24 @@ function upstreams_M.init()
   balancers = require "kong.runloop.balancer.balancers"
   healthcheckers = require "kong.runloop.balancer.healthcheckers"
 end
+
+
+
+
+-- Caching logic
+--
+-- We retain 3 entities in cache:
+--
+-- 1) `"balancer:upstreams"` - a list of upstreams
+--    to be invalidated on any upstream change
+-- 2) `"balancer:upstreams:" .. id` - individual upstreams
+--    to be invalidated on individual basis
+-- 3) `"balancer:targets:" .. id`
+--    target for an upstream along with the upstream it belongs to
+--
+-- Distinction between 1 and 2 makes it possible to invalidate individual
+-- upstreams, instead of all at once forcing to rebuild all balancers
+
 
 
 ------------------------------------------------------------------------------
@@ -60,8 +75,7 @@ function upstreams_M.get_upstream_by_id(upstream_id)
 end
 
 
-----  ( healthcheckers stuff ? ) ----
-
+------------------------------------------------------------------------------
 
 local function load_upstreams_dict_into_memory()
   local upstreams_dict = {}
@@ -84,7 +98,6 @@ end
 
 
 local opts = { neg_ttl = 10 }
-
 
 ------------------------------------------------------------------------------
 -- Implements a simple dictionary with all upstream-ids indexed
@@ -172,6 +185,7 @@ local function do_upstream_event(operation, upstream_data)
     local target_cache_key = "balancer:targets:" .. upstream_id
     if singletons.db.strategy ~= "off" then
       singletons.core_cache:invalidate_local(target_cache_key)
+      -- TODO: invalidate addresses and their renewals?
     end
 
     local balancer = balancers.get_balancer_by_id(upstream_id)
