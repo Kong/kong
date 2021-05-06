@@ -3654,12 +3654,18 @@ for _, strategy in helpers.each_strategy() do
     client = assert(helpers.admin_client())
     services = map(create_service, {1, 2, 3, 4})
 
-    post("/rbac/users", {name = "bob", user_token = "bob"})
+    post("/rbac/users", {name = "bob", user_token = "bob "})
+    -- user_token deliberately with a trailing space
+    post("/rbac/users", {name = "trailingspace", user_token = "trailingspace "})
+    -- user_token deliberately with a leading space
+    post("/rbac/users", {name = "leadingspace", user_token = " leadingspace"})
     post("/rbac/roles" , {name = "mock-role"})
     post("/rbac/roles/mock-role/entities", {entity_id = services[2].id, entity_type = "services", actions = "read"})
     post("/rbac/roles/mock-role/entities", {entity_id = services[3].id, entity_type = "services", actions = "delete"})
     post("/rbac/roles/mock-role/entities", {entity_id = services[4].id, entity_type = "services", actions = "update"})
     post("/rbac/users/bob/roles", {roles = "mock-role"})
+    post("/rbac/users/leadingspace/roles", {roles = "mock-role"})
+    post("/rbac/users/trailingspace/roles", {roles = "mock-role"})
 
     helpers.stop_kong()
     assert(helpers.start_kong {
@@ -3703,6 +3709,9 @@ for _, strategy in helpers.each_strategy() do
     get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "wrong"}, 401)
     get("/services/" .. services[1].id , {["Kong-Admin-Token"] = "bob"}, 403)
     get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "bob"}, 200)
+    -- check for positive authentication without a trailing space
+    get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "leadingspace"}, 200)
+    get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "trailingspace"}, 200)
   end)
 
   -- it(".update checks rbac via put", function()
