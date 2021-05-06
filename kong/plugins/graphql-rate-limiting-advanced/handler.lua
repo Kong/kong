@@ -7,7 +7,6 @@
 
 -- Copyright (C) Kong Inc.
 
-local BasePlugin   = require "kong.plugins.base_plugin"
 local GqlSchema    = require "kong.gql.schema"
 local build_ast    = require "kong.gql.query.build_ast"
 local ratelimiting = require "kong.tools.public.rate-limiting"
@@ -21,15 +20,14 @@ local kong     = kong
 local max      = math.max
 local tonumber = tonumber
 
-local NewRLHandler = BasePlugin:extend()
+local NewRLHandler = {
+  PRIORITY = 902,
+  VERSION = "0.2.3"
+}
 
 
 local RATELIMIT_LIMIT = "X-RateLimit-Limit"
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
-
-
-NewRLHandler.PRIORITY = 902
-NewRLHandler.VERSION = "0.2.3"
 
 
 local human_window_size_lookup = {
@@ -125,7 +123,6 @@ end
 
 
 function NewRLHandler:new()
-  NewRLHandler.super.new(self, "graphql-rate-limiting-advanced")
   self.gql_schema = {}
   self.costs = {}
 end
