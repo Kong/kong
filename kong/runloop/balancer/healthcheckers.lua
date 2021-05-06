@@ -6,15 +6,13 @@ local balancers = require "kong.runloop.balancer.balancers"
 local upstreams = require "kong.runloop.balancer.upstreams"
 
 local ngx = ngx
-local log = ngx.log
 local pairs = pairs
 local ipairs = ipairs
 local tostring = tostring
 local assert = assert
 
-local ERR = ngx.ERR
-local WARN = ngx.WARN
-
+local log_ERR = kong.log.err
+local log_WARN = kong.log.warn
 
 local healthcheckers_M = {}
 
@@ -28,7 +26,7 @@ function healthcheckers_M.stop_healthchecker(balancer)
   if healthchecker then
     local ok, err = healthchecker:clear()
     if not ok then
-      log(ERR, "[healthchecks] error clearing healthcheck data: ", err)
+      log_ERR("[healthchecks] error clearing healthcheck data: ", err)
     end
     healthchecker:stop()
     local hc_callback = balancer.healthchecker_callbacks
@@ -37,27 +35,26 @@ function healthcheckers_M.stop_healthchecker(balancer)
 end
 
 
-
 local function populate_healthchecker(hc, balancer, upstream)
-  for weight, addr, host in balancer:addressIter() do
-    if weight > 0 then
-      local ipaddr = addr.ip
-      local port = addr.port
-      local ok, err = hc:add_target(ipaddr, port, host.hostname, true,
+  balancer:eachAddress(function(address, target)
+    if address.weight > 0 then
+      local ipaddr = address.ip
+      local port = address.port
+      local ok, err = hc:add_target(ipaddr, port, target.name, true,
         upstream.host_header)
       if ok then
         -- Get existing health status which may have been initialized
         -- with data from another worker, and apply to the new balancer.
-        local tgt_status = hc:get_target_status(ipaddr, port, host.hostname)
+        local tgt_status = hc:get_target_status(ipaddr, port, target.name)
         if tgt_status ~= nil then
-          balancer:setAddressStatus(addr, tgt_status)
+          balancer:setAddressStatus(address, tgt_status)
         end
 
       else
-        log(ERR, "[healthchecks] failed adding target: ", err)
+        log_ERR("[healthchecks] failed adding target: ", err)
       end
     end
-  end
+  end)
 end
 
 
@@ -90,7 +87,7 @@ do
       else
         balancer_status = "UNHEALTHY"
       end
-      log(WARN, "[healthchecks] balancer ", healthchecker.name,
+      log_WARN("[healthchecks] balancer ", healthchecker.name,
         " reported health status changed to ", balancer_status)
 
     else
@@ -101,22 +98,22 @@ do
           local ok, err = healthchecker:add_target(ip, port, hostname, true,
             upstream.host_header)
           if not ok then
-            log(ERR, "[healthchecks] failed adding a target: ", err)
+            log_WARN("[healthchecks] failed adding a target: ", err)
           end
 
         elseif action == "removed" then
           local ok, err = healthchecker:remove_target(ip, port, hostname)
           if not ok then
-            log(ERR, "[healthchecks] failed removing a target: ", err)
+            log_ERR("[healthchecks] failed removing a target: ", err)
           end
 
         else
-          log(WARN, "[healthchecks] unknown status from balancer: ",
+          log_WARN("[healthchecks] unknown status from balancer: ",
             tostring(action))
         end
 
       else
-        log(ERR, "[healthchecks] upstream ", hostname, " (", ip, ":", port,
+        log_ERR("[healthchecks] upstream ", hostname, " (", ip, ":", port,
           ") not found for received status: ", tostring(action))
       end
 
@@ -126,7 +123,7 @@ do
   -- @param hc The healthchecker object
   -- @param balancer The balancer object
   -- @param upstream_id The upstream id
-  local function attach_healthchecker_to_balancer(hc, balancer, upstream_id)
+  local function attach_healthchecker_to_balancer(hc, balancer)
     local hc_callback = function(tgt, event)
       local status
       if event == hc.events.healthy then
@@ -141,13 +138,8 @@ do
       local ok, err
       ok, err = balancer:setAddressStatus(status, balancer:findAddress(tgt.ip, tgt.port, hostname))
 
-      --local health = status and "healthy" or "unhealthy"
-      --for _, subscriber in ipairs(healthcheck_subscribers) do
-      --  subscriber(upstream_id, tgt.ip, tgt.port, hostname, health)
-      --end
-
       if not ok then
-        log(WARN, "[healthchecks] failed setting peer status (upstream: ", hc.name, "): ", err)
+        log_WARN("[healthchecks] failed setting peer status (upstream: ", hc.name, "): ", err)
       end
     end
 
@@ -155,8 +147,6 @@ do
     -- and attach lifetime of callback to that of the balancer.
     singletons.worker_events.register_weak(hc_callback, hc.EVENT_SOURCE)
     balancer.healthchecker_callbacks = hc_callback
-
-    -- The lifetime of the healthchecker is based on that of the balancer.
     balancer.healthchecker = hc
 
     balancer.report_http_status = function(handle, status)
@@ -164,7 +154,7 @@ do
       local hostname = handle.address.host and handle.address.host.hostname or nil
       local _, err = hc:report_http_status(ip, port, hostname, status, "passive")
       if err then
-        log(ERR, "[healthchecks] failed reporting status: ", err)
+        log_ERR("[healthchecks] failed reporting status: ", err)
       end
     end
 
@@ -173,7 +163,7 @@ do
       local hostname = handle.address.host and handle.address.host.hostname or nil
       local _, err = hc:report_tcp_failure(ip, port, hostname, nil, "passive")
       if err then
-        log(ERR, "[healthchecks] failed reporting status: ", err)
+        log_ERR("[healthchecks] failed reporting status: ", err)
       end
     end
 
@@ -182,7 +172,7 @@ do
       local hostname = handle.address.host and handle.address.host.hostname or nil
       local _, err = hc:report_timeout(ip, port, hostname, "passive")
       if err then
-        log(ERR, "[healthchecks] failed reporting status: ", err)
+        log_ERR("[healthchecks] failed reporting status: ", err)
       end
     end
   end
@@ -220,7 +210,7 @@ do
     if upstream.client_certificate then
       local cert, err = get_certificate(upstream.client_certificate)
       if not cert then
-        log(ERR, "unable to fetch upstream client TLS certificate ",
+        log_ERR("unable to fetch upstream client TLS certificate ",
           upstream.client_certificate.id, ": ", err)
         return nil, err
       end

@@ -125,28 +125,21 @@ local function create_balancer_exclusive(upstream)
     healthThreshold = health_threshold or 0, -- % healthy weight for overall balancer health
     useSRVname = not not opts.useSRVname, -- force to boolean
   }, balancer_mt)
-  if not balancer then
-    return nil, "failed creating balancer:" .. err
+
+  for _, target in ipairs(targets_list) do
+    target.balancer = balancer
   end
 
-  local algorithm, err = algorithm_types[upstream.algorithm].new({
+  balancer.algorithm, err = algorithm_types[upstream.algorithm].new({
     balancer = balancer,
     upstream = upstream,
   })
-  if not algorithm then
+  if not balancer.algorithm then
     return nil, "failed instantiating the " .. upstream.algorithm .. " algorithm:" .. err
   end
-  balancer.algorithm = algorithm
 
-  --add_targets(balancer, targets_list)
-
-  --balancer.upstream_id = upstream.id
-
-  --if healthcheckers == nil then
-  --  healthcheckers = require "kong.runloop.balancer.healthcheckers"
-  --end
-
-  local ok, err = healthcheckers.create_healthchecker(balancer, upstream)
+  local ok
+  ok, err = healthcheckers.create_healthchecker(balancer, upstream)
   if not ok then
     log(ERR, "[healthchecks] error creating health checker: ", err)
   end
@@ -236,7 +229,7 @@ function balancers_M.create_balancers()
     local name = sub(ws_and_name, (find(ws_and_name, ":", 1, true)))
 
     local upstream = upstreams.get_upstream_by_id(id)
-    local ok, err
+    local ok
     if upstream ~= nil then
       ok, err = balancers_M.create_balancer(upstream)
     end
@@ -252,7 +245,12 @@ end
 
 --------- balancer object methods
 
-function balancer_mt:addressIter()
+function balancer_mt:eachAddress(f, ...)
+  for _, target in ipairs(self.targets) do
+    for _, address in ipairs(target.addresses) do
+      f(address, target, ...)
+    end
+  end
 end
 
 function balancer_mt:findAddress(ip, port, hostname)
@@ -280,8 +278,12 @@ function balancer_mt:setAddressStatus(address, status)
   address.status = status
 end
 
-function balancer_mt:disableAddress(target, address)
+function balancer_mt:disableAddress(target, entry)
   -- from host:disableAddress()
+  local address = self.changeWeight(target, entry, 0)
+  if address then
+    address.disabled = true
+  end
 end
 
 
@@ -332,7 +334,7 @@ function balancer_mt:changeWeight(target, entry, newWeight)
     if (addr.ip == entry_ip) and addr.port == entry_port then
       target.weight = target.weight + newWeight - addr.weight
       addr.weight = newWeight
-      break
+      return addr
     end
   end
 end
@@ -348,7 +350,7 @@ function balancer_mt:deleteDisabledAddresses(target)
 
     if addr.disabled then
     self:callback("removed", addr, addr.ip, addr.port,
-          target.hostname, addr.hostHeader)
+          target.name, addr.hostHeader)
     dirty = true
     table_remove(addresses, i)
     end

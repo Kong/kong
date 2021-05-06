@@ -185,7 +185,6 @@ local function do_upstream_event(operation, upstream_data)
     local target_cache_key = "balancer:targets:" .. upstream_id
     if singletons.db.strategy ~= "off" then
       singletons.core_cache:invalidate_local(target_cache_key)
-      -- TODO: invalidate addresses and their renewals?
     end
 
     local balancer = balancers.get_balancer_by_id(upstream_id)
