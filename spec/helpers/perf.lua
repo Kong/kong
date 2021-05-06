@@ -594,6 +594,9 @@ function _M.git_restore()
 end
 
 function _M.get_kong_version()
+  -- unload the module if it's previously loaded
+  package.loaded["kong.meta"] = nil
+
   local ok, meta, _ = pcall(require, "kong.meta")
   if ok then
     return meta._VERSION
