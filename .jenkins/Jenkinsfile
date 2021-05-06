@@ -8,7 +8,6 @@ pipeline {
     timeout(time: 100, unit: 'MINUTES')
   }
   environment {
-    BINTRAY = credentials('bintray')
     GITHUB = credentials('GITHUB_TOKEN')
     GOJIRA='/tmp/gojira/gojira.sh'
     GOJIRA_USE_SNAPSHOT='1'
