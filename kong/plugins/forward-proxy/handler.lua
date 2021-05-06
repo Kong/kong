@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local BasePlugin = require "kong.plugins.base_plugin"
 local meta       = require "kong.meta"
 local http       = require "resty.http"
 local ee         = require "kong.enterprise_edition"
@@ -27,16 +26,10 @@ local _prefix_log = "[forward-proxy] "
 local server_header = meta._NAME .. "/" .. meta._VERSION
 
 
-local ForwardProxyHandler = BasePlugin:extend()
-
-
-ForwardProxyHandler.PRIORITY = 50
-ForwardProxyHandler.VERSION = "1.0.4"
-
-
-function ForwardProxyHandler:new()
-  ForwardProxyHandler.super.new(self, "forward-proxy")
-end
+local ForwardProxyHandler = {
+  PRIORITY = 50,
+  VERSION = "1.0.4"
+}
 
 
 local function get_now()
@@ -133,7 +126,6 @@ end
 
 
 function ForwardProxyHandler:access(conf)
-  ForwardProxyHandler.super.access(self)
 
   -- connect to the proxy
   local httpc = http:new()
