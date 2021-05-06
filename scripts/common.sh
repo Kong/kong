@@ -36,7 +36,7 @@ function update_copyright() {
 
 #-------------------------------------------------------------------------------
 function bump_homebrew() {
-   curl -L -o "kong-$version.tar.gz" "https://bintray.com/kong/kong-src/download_file?file_path=kong-$version.tar.gz"
+   curl -L -o "kong-$version.tar.gz" "https://download.konghq.com/gateway-src/kong-$version.tar.gz"
    sum=$(sha256sum "kong-$version.tar.gz" | awk '{print $1}')
    sed -i 's/kong-[0-9.]*.tar.gz/kong-'$version'.tar.gz/' Formula/kong.rb
    sed -i 's/sha256 ".*"/sha256 "'$sum'"/' Formula/kong.rb

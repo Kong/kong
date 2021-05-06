@@ -246,7 +246,7 @@ case "$step" in
       hub release create -F release-$version.txt "$version"
       rm -f release-$version.txt
 
-      SUCCESS "Make sure the packages are built and available on Bintray" \
+      SUCCESS "Make sure the packages are built and available on download.konghq.com" \
               "before continuing to the following steps." \
               "Once they are built, you may run the following steps in parallel:" \
               "* 'homebrew'" \
