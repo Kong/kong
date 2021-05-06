@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local BasePlugin = require "kong.plugins.base_plugin"
 local BatchQueue = require "kong.tools.batch_queue"
 local cjson_safe = require "cjson.safe"
 local http = require "resty.http"
@@ -14,7 +13,10 @@ local date = require "date"
 
 local queue
 
-local CollectorHandler = BasePlugin:extend()
+local CollectorHandler = {
+  PRIORITY = 903,
+  VERSION = "2.1.0"
+}
 
 local messaging = require "kong.tools.messaging"
 
@@ -25,10 +27,6 @@ local SHM_KEY = "collector-har-buffering"
 local SHM = ngx.shared.kong
 
 local COLLECTOR_TYPE_STATS = 0x3
-
-
-CollectorHandler.PRIORITY = 903
-CollectorHandler.VERSION = "2.1.0"
 
 -- Sends the provided payload (a string) to the configured plugin host
 -- @return true if everything was sent correctly, falsy if error

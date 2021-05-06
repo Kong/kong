@@ -16,6 +16,10 @@
  - [2.0.4](#204---20210113)
  - [2.0.3](#203---20210101)
 
+## Unreleased
+
+- fix(*) BasePlugin inheritance removal (FT-1701)
+
 ## [2.0.4] - 2020/01/13
 ### Added
 - Support for hybrid mode
