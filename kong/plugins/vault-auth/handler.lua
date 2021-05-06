@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local constants = require "kong.constants"
-local BasePlugin = require "kong.plugins.base_plugin"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local vault_lib = require "kong.plugins.vault-auth.vault"
@@ -19,16 +18,10 @@ local type = type
 local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
 
-local VaultAuthHandler = BasePlugin:extend()
-
-
-VaultAuthHandler.PRIORITY = 1003
-VaultAuthHandler.VERSION = "1.0.0"
-
-
-function VaultAuthHandler:new()
-  VaultAuthHandler.super.new(self, "vault-auth")
-end
+local VaultAuthHandler = {
+  PRIORITY = 1003,
+  VERSION = "1.0.0"
+}
 
 
 local validate_vault_cred
@@ -230,8 +223,6 @@ end
 
 
 function VaultAuthHandler:access(conf)
-  VaultAuthHandler.super.access(self)
-
   -- check if preflight request and whether it should be authenticated
   if not conf.run_on_preflight and kong.request.get_method() == "OPTIONS" then
     return
