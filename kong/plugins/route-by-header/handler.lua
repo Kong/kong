@@ -13,18 +13,13 @@ local ipairs = ipairs
 local lower = string.lower
 
 
-local BasePlugin = require "kong.plugins.base_plugin"
-
-
-local RouteByHeaderHandler = BasePlugin:extend()
+local RouteByHeaderHandler = {
+  priority = 2000,
+  version  = "0.1.0"
+}
 
 
 local conf_cache = setmetatable({}, {__mod = "k"})
-
-
-function RouteByHeaderHandler:new()
-  RouteByHeaderHandler.super:new(self, "route-by-header")
-end
 
 
 local function update_balancer_address(target, type)
@@ -63,7 +58,6 @@ end
 
 
 function RouteByHeaderHandler:access(conf)
-  RouteByHeaderHandler.super.access(self)
   local config = conf_cache[conf]
   if not config then
     for _, rule in ipairs(conf.rules) do
@@ -74,10 +68,6 @@ function RouteByHeaderHandler:access(conf)
   end
   apply_rules(config)
 end
-
-
-RouteByHeaderHandler.priority = 2000
-RouteByHeaderHandler.version  = "0.1.0"
 
 
 return RouteByHeaderHandler

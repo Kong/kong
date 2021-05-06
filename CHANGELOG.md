@@ -1,3 +1,7 @@
+## Unreleased
+
+- fix(*) BasePlugin inheritance removal (FT-1701)
+
 ## 0.3.1
 
 - chore(test) remove C*2.2 test
