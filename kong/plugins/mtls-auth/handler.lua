@@ -14,19 +14,19 @@ if ngx.config.subsystem ~= "http" then
     return {}
 end
 
-local BasePlugin = require("kong.plugins.base_plugin")
 local mtls_cache = require("kong.plugins.mtls-auth.cache")
 local access = require("kong.plugins.mtls-auth.access")
 local certificate = require("kong.plugins.mtls-auth.certificate")
 local kong_global = require("kong.global")
 
 
-local MtlsAuthHandler = BasePlugin:extend()
+local MtlsAuthHandler = {
+  PRIORITY = 1006,
+  VERSION = "0.3.1"
+}
 
 
 function MtlsAuthHandler:access(conf)
-  MtlsAuthHandler.super.access(self)
-
   access.execute(conf)
 end
 
@@ -43,14 +43,8 @@ function MtlsAuthHandler:init_worker()
     kong_global.reset_log(kong)
   end
 
-  MtlsAuthHandler.super.init_worker(self)
-
   mtls_cache.init_worker()
 end
-
-
-MtlsAuthHandler.PRIORITY = 1006
-MtlsAuthHandler.VERSION = "0.3.1"
 
 
 return MtlsAuthHandler

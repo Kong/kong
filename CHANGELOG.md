@@ -1,5 +1,7 @@
 ## Unreleased
 
+- fix(*) BasePlugin inheritance removal (FT-1701)
+
 ## 0.3.1
 
 - fix(mtls-auth) Grab CA from the end of the proof chain instead of the beginning
