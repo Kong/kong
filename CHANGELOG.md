@@ -1,3 +1,7 @@
+## Unreleased
+
+- fix(*) BasePlugin inheritance removal (FT-1701)
+
 ## 0.2.2
 
 - chore(spec) fix missing get_hostname
