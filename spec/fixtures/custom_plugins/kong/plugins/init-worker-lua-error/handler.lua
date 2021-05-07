@@ -5,19 +5,15 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
--- Copyright (C) Kong Inc.
-local access = require "kong.plugins.hmac-auth.access"
+local InitWorkerLuaError = {}
 
 
-local HMACAuthHandler = {
-  PRIORITY = 1000,
-  VERSION = "2.3.0",
-}
+InitWorkerLuaError.PRIORITY = 1000
 
 
-function HMACAuthHandler:access(conf)
-  access.execute(conf)
+function InitWorkerLuaError:init_worker(conf)
+  error("this fails intentionally")
 end
 
 
-return HMACAuthHandler
+return InitWorkerLuaError
