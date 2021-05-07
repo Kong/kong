@@ -182,6 +182,42 @@ describe("runloop handler", function()
       assert.equal(mock_router, handler._get_updated_router())
     end)
 
+    it("does not call register_balancer_events if role is control_plane", function()
+      setup_it_block()
+
+      kong.configuration.role = "control_plane"
+
+      local handler = require "kong.runloop.handler"
+
+      local register_balancer_events_spy = spy.new(function() end)
+
+      handler._set_router(mock_router)
+
+      handler._register_balancer_events(register_balancer_events_spy)
+
+      handler.init_worker.before()
+
+      assert.spy(register_balancer_events_spy).was_called(0)
+    end)
+
+    it("call register_balancer_events if role is data_plane", function()
+      setup_it_block()
+
+      kong.configuration.role = "data_plane"
+
+      local handler = require "kong.runloop.handler"
+
+      local register_balancer_events_spy = spy.new(function() end)
+
+      handler._set_router(mock_router)
+
+      handler._register_balancer_events(register_balancer_events_spy)
+
+      handler.init_worker.before()
+
+      assert.spy(register_balancer_events_spy).was_called(1)
+    end)
+
     it("calls build_router if router version changes and worker_consistency is strict", function()
       setup_it_block()
 
