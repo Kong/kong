@@ -7,6 +7,9 @@ on:
   # don't know the timezone but it's daily at least
   - cron:  '0 7 * * *'
 
+env:
+  terraform_version: '0.15.3'
+
 jobs:
   perf:
     name: RPS, latency and flamegraphs
@@ -16,7 +19,8 @@ jobs:
       (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
       (github.event_name == 'issue_comment' && github.event.action == 'created' &&
         github.event.issue.pull_request &&
-        (startsWith(github.event.comment.body, '/perf') ||startsWith(github.event.comment.body, '/flamegraph'))
+        contains('["OWNER", "COLLABORATOR", "MEMBER"]', github.event.comment.author_association) &&
+        (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
       )
 
     steps:
@@ -56,6 +60,11 @@ jobs:
         sudo apt install libyaml-dev -y
         sudo make dev
 
+        # terraform!
+        wget https://releases.hashicorp.com/terraform/${{ env.terraform_version }}/terraform_${{ env.terraform_version }}_linux_amd64.zip
+        unzip terraform_${{ env.terraform_version }}_linux_amd64.zip
+        sudo mv terraform /usr/bin/
+
     - name: Choose perf suites
       id: choose_perf
       run: |
@@ -79,9 +88,24 @@ jobs:
     - name: Run Tests
       env:
         PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
+        PERF_TEST_PACKET_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
+        PERF_TEST_PACKET_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
+        PERF_TEST_DRIVER: terraform
       run: |
         bin/busted -o gtest spec/04-perf/${{ steps.choose_perf.outputs.suite }}/ \
           -t "${{ steps.choose_perf.outputs.tags }}"
+        
+    - name: Teardown
+      # Note: by default each job has if: ${{ success() }}
+      if: always()
+      env:
+        PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
+        PERF_TEST_PACKET_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
+        PERF_TEST_PACKET_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
+        PERF_TEST_DRIVER: terraform
+        PERF_TEST_TERADOWN_ALL: "true"
+      run: |
+        bin/busted -o gtest spec/04-perf/99-teardown/
 
     - name: Save results
       uses: actions/upload-artifact@v2
@@ -105,7 +129,7 @@ jobs:
         if [[ "${{ steps.choose_perf.outputs.suite }}" == "02-flamegraph" ]]; then
           result="Please see Github Actions artifacts for flamegraphs"
         else
-          result=$(cat output/result.txt)
+          result=$(cat output/result.txt) || true
         fi
 
         # https://github.community/t/set-output-truncates-multiline-strings/16852/2

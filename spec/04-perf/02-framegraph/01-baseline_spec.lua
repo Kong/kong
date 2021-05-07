@@ -1,4 +1,5 @@
 local perf = require("spec.helpers.perf")
+local split = require("pl.stringx").split
 
 perf.set_log_level(ngx.DEBUG)
 --perf.set_retry_count(3)

@@ -14,18 +14,6 @@ resource "packet_device" "kong" {
     packet_ssh_key.key,
     null_resource.key_chown,
   ]
-
-  provisioner "file" {
-    connection {
-      type        = "ssh"
-      user        = "root"
-      host        = self.access_public_ipv4
-      private_key = file(local_file.key_priv.filename)
-    }
-
-    content     = "admin_listen = ${self.access_private_ipv4}:8001\n"
-    destination = "/etc/kong_admin"
-  }
 }
 
 resource "packet_device" "worker" {
@@ -39,18 +27,6 @@ resource "packet_device" "worker" {
     packet_ssh_key.key,
     null_resource.key_chown,
   ]
-
-  provisioner "file" {
-    connection {
-      type        = "ssh"
-      user        = "root"
-      host        = self.access_public_ipv4
-      private_key = file(local_file.key_priv.filename)
-    }
-
-    content     = "KONG=${packet_device.kong.access_private_ipv4}"
-    destination = "/etc/kong_admin"
-  }
 
   provisioner "file" {
     connection {

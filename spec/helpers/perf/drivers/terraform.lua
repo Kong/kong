@@ -127,7 +127,7 @@ function _M:setup(opts)
 
   perf.setenv("KONG_PG_HOST", self.kong_ip)
   perf.setenv("KONG_PG_PASSWORD", PG_PASSWORD)
-  self.log.debug("(In a low voice) pg_password is " .. PG_PASSWORD)
+  -- self.log.debug("(In a low voice) pg_password is " .. PG_PASSWORD)
 
   self.log.info("Infra is up! However, executing psql remotely may take a while...")
   package.loaded["spec.helpers"] = nil
@@ -355,7 +355,7 @@ function _M:generate_flamegraph(filename)
 
   local out, _ = perf.execute(ssh_execute_wrap(self, self.kong_ip, "cat " .. path .. ".svg"))
 
-  perf.execute(ssh_execute_wrap(self, self.kong_ip, "rm " .. path .. ".*"))
+  perf.execute(ssh_execute_wrap(self, self.kong_ip, "rm -v " .. path .. ".*"))
 
   return out
 end

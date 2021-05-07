@@ -546,32 +546,32 @@ function _M.git_checkout(version)
   local hash, _ = execute("git rev-parse HEAD")
   if not hash or not hash:match("[a-f0-f]+") then
     error("Unable to parse HEAD pointer, is this a git repository?")
-  else
-    -- am i on a named branch/tag?
-    local n, _ = execute("git rev-parse --abbrev-ref HEAD")
-    if n then
-      hash = n
-    end
-    -- anything to save?
-    n, err = execute("git status --untracked-files=no --porcelain")
-    if not err and (n and #n > 0) then
-      my_logger.info("saving your working directory")
-      res, err = execute("git stash save kong-perf-test-autosaved")
-      if err then
-        error("Cannot save your working directory: " .. err .. (res or "nil"))
-      end
-      git_stashed = true
-    end
+  end
 
-    my_logger.debug("switching away from ", hash, " to ", version)
-
-    res, err = execute("git checkout " .. version)
+  -- am i on a named branch/tag?
+  local n, _ = execute("git rev-parse --abbrev-ref HEAD")
+  if n and n ~= "HEAD"then
+    hash = n
+  end
+  -- anything to save?
+  n, err = execute("git status --untracked-files=no --porcelain")
+  if not err and (n and #n > 0) then
+    my_logger.info("saving your working directory")
+    res, err = execute("git stash save kong-perf-test-autosaved")
     if err then
-      error("Cannot switch to " .. version .. ":\n" .. res)
+      error("Cannot save your working directory: " .. err .. (res or "nil"))
     end
-    if not git_head then
-      git_head = hash
-    end
+    git_stashed = true
+  end
+
+  my_logger.debug("switching away from ", hash, " to ", version)
+
+  res, err = execute("git checkout " .. version)
+  if err then
+    error("Cannot switch to " .. version .. ":\n" .. res)
+  end
+  if not git_head then
+    git_head = hash
   end
 end
 
