@@ -563,7 +563,7 @@ function _M.git_checkout(version)
 
   -- am i on a named branch/tag?
   local n, _ = execute("git rev-parse --abbrev-ref HEAD")
-  if n and n ~= "HEAD"then
+  if n and n ~= "HEAD" then
     hash = n
   end
   -- anything to save?

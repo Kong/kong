@@ -161,6 +161,8 @@ jobs:
 
           ```
           ${{ steps.output.outputs.result }}
+
+          Kong error logs are also available in Github Actions artifacts.
           ```
 
           </details>
