@@ -115,7 +115,7 @@ function _M:start_upstream(conf)
 end
 
 function _M:start_kong(version, kong_conf)
-  if not version:startsiwth("git:") then
+  if not version:startswith("git:") then
     return nil, "\"local\" driver only support testing between git commits, " ..
                 "version should be prefixed with \"git:\""
   end
