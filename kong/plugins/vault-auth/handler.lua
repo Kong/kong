@@ -20,7 +20,7 @@ local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
 local VaultAuthHandler = {
   PRIORITY = 1003,
-  VERSION = "1.0.0"
+  VERSION = "0.2.2"
 }
 
 
