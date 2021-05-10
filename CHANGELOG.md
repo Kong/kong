@@ -1,6 +1,7 @@
-## Unreleased
+## 0.3.2
 
 - fix(*) BasePlugin inheritance removal (FT-1701)
+- tests(conf) Adding busted config to ensure we get STDOUT messages
 
 ## 0.3.1
 
