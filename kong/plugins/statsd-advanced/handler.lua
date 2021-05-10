@@ -11,7 +11,7 @@ local log_helper      = require "kong.plugins.statsd-advanced.log_helper"
 
 local StatsdHandler = {
   PRIORITY = 11,
-  VERSION = "0.2.2"
+  VERSION = "0.2.3"
 }
 
 
