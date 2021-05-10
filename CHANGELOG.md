@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.4.1](#241)
 - [2.4.0](#240)
 - [2.3.3](#233)
 - [2.3.2](#232)
@@ -55,6 +56,77 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.4.1]
+
+> Released 2021/05/11
+
+This is a patch release in the 2.4 series. Being a patch release, it
+strictly contains bugfixes. The are no new features or breaking changes.
+
+### Dependencies
+
+- Bump `luasec` from 1.0.0 to 1.0.1
+  [#7126](https://github.com/Kong/kong/pull/7126)
+- Bump `prometheus` plugin from 1.2.0 to 1.2.1
+  [#7061](https://github.com/Kong/kong/pull/7061)
+
+### Fixes
+
+##### Core
+
+- Ensure healthchecks and balancers are not created on control plane nodes.
+  [#7085](https://github.com/Kong/kong/pull/7085)
+- Optimize URL normalization code.
+  [#7100](https://github.com/Kong/kong/pull/7100)
+- Fix issue where control plane nodes would needlessly invalidate and send new
+  configuration to data plane nodes.
+  [#7112](https://github.com/Kong/kong/pull/7112)
+- Ensure HTTP code `405` is handled by Kong's error page.
+  [#6933](https://github.com/Kong/kong/pull/6933)
+- Ensure errors in plugins `init_worker` do not break Kong's worker initialization.
+  [#7099](https://github.com/Kong/kong/pull/7099)
+- Fix issue where two subsequent TLS keepalive requests would lead to incorrect
+  plugin execution.
+  [#7102](https://github.com/Kong/kong/pull/7102)
+- Ensure Targets upsert operation behaves similarly to other entities' upsert method.
+  [#7052](https://github.com/Kong/kong/pull/7052)
+- Ensure failed balancer retry is saved and accounted for in log data.
+  [#6972](https://github.com/Kong/kong/pull/6972)
+
+
+##### CLI
+
+- Ensure `kong start` and `kong stop` prioritize CLI flag `--prefix` over environment
+  variable `KONG_PREFIX`.
+  [#7080](https://github.com/Kong/kong/pull/7080)
+
+##### Configuration
+
+- Ensure Stream subsystem allows for configuration of access logs format.
+  [#7046](https://github.com/Kong/kong/pull/7046)
+
+##### Admin API
+
+- Ensure targets with weight 0 are displayed in the Admin API.
+  [#7094](https://github.com/Kong/kong/pull/7094)
+
+##### PDK
+
+- Ensure new `response` phase is accounted for in phase checkers.
+  [#7109](https://github.com/Kong/kong/pull/7109)
+
+##### Plugins
+
+- Ensure plugins written in languages other than Lua can use `kong.response.get_*`
+  methods - e.g., `kong.response.get_status`.
+  [#7048](https://github.com/Kong/kong/pull/7048)
+- `hmac-auth`: enable JIT compilation of authorization header regex.
+  [#7037](https://github.com/Kong/kong/pull/7037)
+
+
+[Back to TOC](#table-of-contents)
 
 
 ## [2.4.0]
@@ -6034,6 +6106,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.4.1]: https://github.com/Kong/kong/compare/2.4.0...2.4.1
 [2.4.0]: https://github.com/Kong/kong/compare/2.3.3...2.4.0
 [2.3.3]: https://github.com/Kong/kong/compare/2.3.2...2.3.3
 [2.3.2]: https://github.com/Kong/kong/compare/2.3.1...2.3.2
