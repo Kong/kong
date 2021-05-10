@@ -6,7 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 -- Copyright (C) Kong Inc.
-local BasePlugin  = require "kong.plugins.base_plugin"
 local groups = require "kong.plugins.canary.groups"
 
 local balancer    = require "kong.runloop.balancer"
@@ -26,15 +25,10 @@ local log_prefix = "[canary] "
 local conf_cache = setmetatable({},{__mode = "k"})
 
 
-local Canary    = BasePlugin:extend()
-Canary.PRIORITY = 13
-Canary.VERSION  = "0.3.0"
-
-
-
-function Canary:new()
-  Canary.super.new(self, "canary")
-end
+local Canary = {
+  PRIORITY = 13,
+  VERSION  = "0.4.4"
+}
 
 local hashing  -- need a forward declaration here
 hashing = {
@@ -165,8 +159,6 @@ local function upstream_healthy(host, port)
 end
 
 function Canary:access(conf)
-  Canary.super.access(self)
-
   if conf.upstream_fallback and not upstream_healthy(conf.upstream_host,
                                                      conf.upstream_port) then
     ngx.log(NGX_DEBUG, log_prefix, "canary upstream is unhealthy, not switching to it")

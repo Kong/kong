@@ -1,3 +1,7 @@
+## 0.4.4
+
+- fix(*) BasePlugin inheritance removal (FT-1701)
+
 ## 0.4.3
 
 - chore(*) add copyright
