@@ -119,7 +119,10 @@ for _, version in ipairs(versions) do
 
       print(("### Result for Kong %s:\n%s"):format(version, result))
 
-      perf.generate_flamegraph("output/" .. version:gsub("[:/]", "#") .. "-simple.svg")
+      perf.generate_flamegraph(
+        "output/" .. version:gsub("[:/]", "#") .. "-simple.svg",
+        "Flame graph for Kong " .. version .. " #simple #no_plugins"
+      )
 
       perf.save_error_log("output/" .. version:gsub("[:/]", "#") .. "-simple.log")
     end)

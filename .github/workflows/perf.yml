@@ -139,7 +139,7 @@ jobs:
       id: output
       run: |
         if [[ "${{ steps.choose_perf.outputs.suite }}" == "02-flamegraph" ]]; then
-          result="Please see Github Actions artifacts for flamegraphs"
+          result="Please see Github Actions artifacts for flamegraphs."
         else
           result=$(cat output/result.txt) || true
         fi

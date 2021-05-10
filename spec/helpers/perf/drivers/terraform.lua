@@ -341,7 +341,7 @@ function _M:get_wait_stapxx_cmd(timeout)
   return ssh_execute_wrap(self, self.kong_ip, "lsmod | grep stap_")
 end
 
-function _M:generate_flamegraph(filename)
+function _M:generate_flamegraph(filename, title)
   local path = self.systemtap_dest_path
   self.systemtap_dest_path = nil
 
@@ -353,7 +353,7 @@ function _M:generate_flamegraph(filename)
   local ok, err = execute_batch(self, self.kong_ip, {
     "/tmp/perf-ost/fix-lua-bt " .. path .. ".bt > " .. path .. ".fbt",
     "/tmp/perf-fg/stackcollapse.pl " .. path .. ".fbt > " .. path .. ".cbt",
-    "/tmp/perf-fg/flamegraph.pl " .. path .. ".cbt > " .. path .. ".svg",
+    "/tmp/perf-fg/flamegraph.pl --title='" .. title .. "' " .. path .. ".cbt > " .. path .. ".svg",
   })
   if not ok then
     return false, err

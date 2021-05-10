@@ -514,15 +514,22 @@ end
 --- Generate the flamegraph and return SVG
 -- @function generate_flamegraph
 -- @return Nothing. Throws an error if any.
-function _M.generate_flamegraph(filename)
+function _M.generate_flamegraph(filename, title)
   if not filename then
     error("filename must be specified for generate_flamegraph")
   end
   if string.sub(filename, #filename-3, #filename):lower() ~= ".svg" then
     filename = filename .. ".svg"
   end
+  
+  if not title then
+    title = "Flame graph"
+  end
+  if git_head then
+    title = title .. " (based on " .. _M.get_kong_version() .. ")"
+  end
 
-  local out = invoke_driver("generate_flamegraph")
+  local out = invoke_driver("generate_flamegraph", title)
 
   local f, err = io.open(filename, "w")
   if not f then
