@@ -23,8 +23,8 @@ function usage() {
    step "create"           "create the branch"
    step "write_changelog"  "prepare the changelog"
    step "commit_changelog" "commit the changelog"
-   step "version_bump"     "bump and commit the version number"
    step "update_copyright" "update copyright file"
+   step "version_bump"     "bump and commit the version number"
    step "submit"           "push and submit a release PR"
    step "docs_pr"          "push and submit a docs.konghq.com PR for the release"
    step "merge"            "merge, tag and sign the release"
@@ -79,6 +79,7 @@ minor=${rest%%.*}
 patch=${rest##*.}
 rockspec="kong-$version-0.rockspec"
 branch="release/$version"
+base="release/$major.$minor.x"
 
 if ! [[ "$version" =~ ^[0-9]+.[0-9]+.[0-9]$ ]]
 then
@@ -101,7 +102,7 @@ case "$step" in
       fi
 
       set -e
-      git checkout master
+      git checkout "$base"
       git pull
       git checkout -B "$branch"
 
@@ -187,7 +188,7 @@ case "$step" in
 
       set -e
       git push --set-upstream origin "$branch"
-      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
+      hub pull-request -b "$base" -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
 
       SUCCESS "Now get the above PR reviewed and approved." \
               "Once it is approved, you can continue to the 'merge' step." \
