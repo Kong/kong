@@ -1,4 +1,4 @@
-## Unreleased
+## 1.0.5
 
 - fix(*) BasePlugin inheritance removal (FT-1701)
 

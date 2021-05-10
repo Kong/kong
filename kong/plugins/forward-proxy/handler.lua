@@ -28,7 +28,7 @@ local server_header = meta._NAME .. "/" .. meta._VERSION
 
 local ForwardProxyHandler = {
   PRIORITY = 50,
-  VERSION = "1.0.4"
+  VERSION = "1.0.5"
 }
 
 
