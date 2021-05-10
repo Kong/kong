@@ -54,6 +54,8 @@ local wrk_script = [[
   end
 ]]
 
+os.execute("mkdir -p output")
+
 for _, version in ipairs(versions) do
   describe("perf test for Kong " .. version .. " #simple #no_plugins", function()
     local bp
@@ -117,7 +119,7 @@ for _, version in ipairs(versions) do
 
       print(("### Result for Kong %s:\n%s"):format(version, result))
 
-      perf.generate_flamegraph(version:gsub("[:/]", "#") .. "-simple.svg")
+      perf.generate_flamegraph("output/" .. version:gsub("[:/]", "#") .. "-simple.svg")
 
       perf.save_error_log("output/" .. version:gsub("[:/]", "#") .. "-simple.log")
     end)

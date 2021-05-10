@@ -117,7 +117,6 @@ jobs:
         name: rps-and-latency
         path: |
           output/result.txt
-          output/*.log
         retention-days: 31
 
     - name: Save flamegrpahs
@@ -126,6 +125,13 @@ jobs:
         name: flamegraphs
         path: |
           output/*.svg
+        retention-days: 31
+
+    - name: Save error logs
+      uses: actions/upload-artifact@v2
+      with:
+        name: error_logs
+        path: |
           output/*.log
         retention-days: 31
 
@@ -166,3 +172,5 @@ jobs:
           ```
 
           </details>
+
+          [Download Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
