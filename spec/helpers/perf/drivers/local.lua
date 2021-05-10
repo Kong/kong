@@ -218,7 +218,7 @@ function _M:get_wait_stapxx_cmd(timeout)
   return "lsmod | grep stap_"
 end
 
-function _M:generate_flamegraph(filename)
+function _M:generate_flamegraph(title)
   local path = self.systemtap_dest_path
   self.systemtap_dest_path = nil
 

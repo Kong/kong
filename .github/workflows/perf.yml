@@ -82,9 +82,6 @@ jobs:
             tags="baseline,single_route"
           fi
         fi
-        # TEST
-        suite="02-flamegraph"
-        tags="simple"
 
         echo ::set-output name=suite::"$suite"
         echo ::set-output name=tags::"$tags"
