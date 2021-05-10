@@ -14,7 +14,7 @@ local arguments  = require "kong.api.arguments"
 
 local DeGraphQLHandler = {
   PRIORITY = 1005,
-  VERSION = "0.1.1"
+  VERSION = "0.1.2"
 }
 
 local pairs = pairs
