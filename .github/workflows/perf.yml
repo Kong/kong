@@ -84,7 +84,9 @@ jobs:
         else
           # if not specified by comment, run both
           suites="01-rps 02-flamegraph"
-          tags="baseline,single_route,simple"
+          if [[ -z $tags ]]; then
+            tags="baseline,single_route,simple"
+          fi
         fi
 
         echo ::set-output name=suites::"$suites"
