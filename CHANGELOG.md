@@ -1,3 +1,7 @@
+## 1.4.2
+
+- fix(*) BasePlugin inheritance removal (FT-1701)
+
 ## 1.4.1
 
 - fix(rla) do not pre-create namespaces on init-worker

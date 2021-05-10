@@ -7,7 +7,6 @@
 
 -- Copyright (C) Kong Inc.
 
-local BasePlugin   = require "kong.plugins.base_plugin"
 local ratelimiting = require "kong.tools.public.rate-limiting"
 local schema       = require "kong.plugins.rate-limiting-advanced.schema"
 local event_hooks  = require "kong.enterprise_edition.event_hooks"
@@ -22,7 +21,10 @@ local time     = ngx.time
 local tonumber = tonumber
 
 
-local NewRLHandler = BasePlugin:extend()
+local NewRLHandler = {
+  PRIORITY = 902,
+  VERSION = "1.4.2"
+}
 
 
 local X_RATELIMIT_LIMIT = "X-RateLimit-Limit"
@@ -35,10 +37,6 @@ local RATELIMIT_LIMIT = "RateLimit-Limit"
 local RATELIMIT_REMAINING = "RateLimit-Remaining"
 local RATELIMIT_RESET = "RateLimit-Reset"
 local RATELIMIT_RETRY_AFTER = "Retry-After"
-
-
-NewRLHandler.PRIORITY = 902
-NewRLHandler.VERSION = "1.4.1"
 
 
 local human_window_size_lookup = {
@@ -141,7 +139,6 @@ local function new_namespace(config, init_timer)
 end
 
 function NewRLHandler:new()
-  NewRLHandler.super.new(self, "new-rl")
   event_hooks.publish("rate-limiting-advanced", "rate-limit-exceeded", {
     fields = { "consumer", "ip", "service", "rate", "limit", "window" },
     unique = { "consumer", "ip", "service" },
