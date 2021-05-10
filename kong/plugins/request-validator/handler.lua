@@ -8,7 +8,6 @@
 local cjson = require("cjson.safe").new()
 local lrucache = require "resty.lrucache"
 local pl_tablex = require "pl.tablex"
-local BasePlugin = require "kong.plugins.base_plugin"
 local deserialize = require "resty.openapi3.deserializer"
 
 local EMPTY = pl_tablex.readonly({})
@@ -261,17 +260,13 @@ local function validate_parameters(location, parameter)
 end
 
 
-local RequestValidator = BasePlugin:extend()
-
-
-function RequestValidator:new()
-  RequestValidator.super.new(self, "request-validator")
-end
+local RequestValidator = {
+  PRIORITY = 999,
+  VERSION = "1.1.5"
+}
 
 
 function RequestValidator:access(conf)
-  RequestValidator.super.access(self)
-
   -- validate parameters
   clear_environment()
   for _, parameter in ipairs(conf.parameter_schema or EMPTY) do
@@ -318,8 +313,5 @@ function RequestValidator:access(conf)
   end
 
 end
-
-RequestValidator.PRIORITY = 999
-RequestValidator.VERSION = "1.1.4"
 
 return RequestValidator
