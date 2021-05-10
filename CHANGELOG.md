@@ -12,6 +12,11 @@
 
 For steps 2 - 6 above [this script](https://github.com/Kong/kong-ee/blob/master/scripts/bump-plugin) can be used.
 
+## 1.1.4
+
+- chore(*) bump lua-resty-ljsonschema from 1.1.1 to 1.1.2 to fix a bug, where a
+  property called "id" was mistaken for a schema id
+
 ## 1.1.3
 
 - chore(*) bump openapi3-deserialiser to 1.1.0
