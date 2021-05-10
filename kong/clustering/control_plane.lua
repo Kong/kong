@@ -49,7 +49,6 @@ local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
-local MT = { __index = _M, }
 
 
 local function is_timeout(err)
@@ -59,11 +58,14 @@ end
 
 function _M.new(parent)
   local self = {
-    parent = assert(parent),
     clients = setmetatable({}, { __mode = "k", })
   }
 
-  return setmetatable(self, MT)
+  return setmetatable(self, {
+    __index = function(tab, key)
+      return _M[key] or parent[key]
+    end,
+  })
 end
 
 
@@ -122,10 +124,10 @@ function _M:validate_shared_cert()
   cert = assert(openssl_x509.new(cert, "PEM"))
   local digest = assert(cert:digest("sha256"))
 
-  if digest ~= self.parent.cert_digest then
+  if digest ~= self.cert_digest then
     ngx_log(ngx_ERR, "Data Plane presented incorrect client certificate " ..
                      "during handshake, expected digest: " ..
-                     self.parent.cert_digest ..
+                     self.cert_digest ..
                      " got: " .. digest)
     return ngx_exit(444)
   end
@@ -221,7 +223,7 @@ function _M:should_send_config_update(node_version, node_plugins)
 
   -- allow DP to have a superset of CP's plugins
   local p, np
-  local i, j = #self.parent.plugins_list, #node_plugins
+  local i, j = #self.plugins_list, #node_plugins
 
   if j < i then
     return false, "CP and DP does not have same set of plugins installed",
@@ -229,7 +231,7 @@ function _M:should_send_config_update(node_version, node_plugins)
   end
 
   while i > 0 and j > 0 do
-    p = self.parent.plugins_list[i]
+    p = self.plugins_list[i]
     np = node_plugins[j]
 
     if p.name ~= np.name then
@@ -268,10 +270,10 @@ end
 
 function _M:handle_cp_websocket()
   -- use mutual TLS authentication
-  if self.parent.conf.cluster_mtls == "shared" then
+  if self.conf.cluster_mtls == "shared" then
     self:validate_shared_cert()
 
-  elseif self.parent.conf.cluster_ocsp ~= "off" then
+  elseif self.conf.cluster_ocsp ~= "off" then
     local res, err = check_for_revocation_status()
     if res == false then
       ngx_log(ngx_ERR, "DP client certificate was revoked: ", err)
@@ -279,7 +281,7 @@ function _M:handle_cp_websocket()
 
     elseif not res then
       ngx_log(ngx_WARN, "DP client certificate revocation check failed: ", err)
-      if self.parent.conf.cluster_ocsp == "on" then
+      if self.conf.cluster_ocsp == "on" then
         return ngx_exit(444)
       end
     end
@@ -415,7 +417,7 @@ function _M:handle_cp_websocket()
           ip = node_ip,
           version = node_version,
           sync_status = sync_status,
-        }, { ttl = self.parent.conf.cluster_data_plane_purge_delay, })
+        }, { ttl = self.conf.cluster_data_plane_purge_delay, })
         if not ok then
           ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)
         end
@@ -604,7 +606,7 @@ function _M:init_worker()
   end, "clustering", "push_config")
 
   ngx.timer.at(0, push_config_loop, self, push_config_semaphore,
-               self.parent.conf.db_update_frequency)
+               self.conf.db_update_frequency)
 end
 
 

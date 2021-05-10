@@ -42,7 +42,6 @@ local WS_OPTS = {
 }
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
-local MT = { __index = _M, }
 
 
 local function is_timeout(err)
@@ -52,11 +51,14 @@ end
 
 function _M.new(parent)
   local self = {
-    parent = assert(parent),
     declarative_config = declarative.new_config(parent.conf),
   }
 
-  return setmetatable(self, MT)
+  return setmetatable(self, {
+    __index = function(tab, key)
+      return _M[key] or parent[key]
+    end,
+  })
 end
 
 
@@ -184,7 +186,7 @@ function _M:communicate(premature)
     return
   end
 
-  local conf = self.parent.conf
+  local conf = self.conf
 
   -- TODO: pick one random CP
   local address = conf.cluster_control_plane
@@ -197,8 +199,8 @@ function _M:communicate(premature)
 
   local opts = {
     ssl_verify = true,
-    client_cert = self.parent.cert,
-    client_priv_key = self.parent.cert_key,
+    client_cert = self.cert,
+    client_priv_key = self.cert_key,
   }
   if conf.cluster_mtls == "shared" then
     opts.server_name = "kong_clustering"
@@ -226,7 +228,7 @@ function _M:communicate(premature)
   -- sync will be allowed later
   local _
   _, err = c:send_binary(cjson_encode({ type = "basic_info",
-                                        plugins = self.parent.plugins_list, }))
+                                        plugins = self.plugins_list, }))
   if err then
     ngx_log(ngx_ERR, "unable to send basic information to control plane: ", uri,
                      " err: ", err,

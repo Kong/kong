@@ -16,6 +16,7 @@ function _M.new(conf)
   local self = {
     conf = conf,
   }
+
   setmetatable(self, MT)
 
   -- note: pl_file.read throws error on failure so
@@ -32,6 +33,11 @@ function _M.new(conf)
   self.child = require("kong.clustering." .. conf.role).new(self)
 
   return self
+end
+
+
+function _M:handle_cp_websocket()
+  return self.child:handle_cp_websocket()
 end
 
 
