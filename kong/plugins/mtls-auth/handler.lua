@@ -22,7 +22,7 @@ local kong_global = require("kong.global")
 
 local MtlsAuthHandler = {
   PRIORITY = 1006,
-  VERSION = "0.3.1"
+  VERSION = "0.3.2"
 }
 
 
