@@ -78,6 +78,18 @@ local function update_ticket_to_ride(premature, self)
   ngx.timer.at(60, update_ticket_to_ride, self)
 end
 
+local function obfuscate_query_parameters(entry)
+  for key, value in pairs(entry['request']['querystring']) do
+    if tonumber(value) == nil then
+      entry['request']['querystring'][key] = string.rep('x', #value)
+    else
+      entry['request']['querystring'][key] = string.rep('0', #value)
+    end
+  end
+
+  return entry
+end
+
 local function create_queue(conf, self)
   -- batch_max_size <==> conf.queue_size
   local batch_max_size = conf.queue_size or 1
@@ -186,7 +198,6 @@ function CollectorHandler:init_worker()
   end
 end
 
-
 function CollectorHandler:log(conf)
   if not self.kong_ee or not self.valid_license or (self.hybrid and self.role ~= "data_plane") then
     return
@@ -201,7 +212,7 @@ function CollectorHandler:log(conf)
   end
 
   if entry then
-    queue:add(entry)
+    queue:add(obfuscate_query_parameters(entry))
   end
 
 end
