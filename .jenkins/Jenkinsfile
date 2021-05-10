@@ -8,7 +8,7 @@ pipeline {
     timeout(time: 100, unit: 'MINUTES')
   }
   environment {
-    GITHUB = credentials('GITHUB_TOKEN')
+    GITHUB_TOKEN = credentials('github_bot_access_token')
     GOJIRA='/tmp/gojira/gojira.sh'
     GOJIRA_USE_SNAPSHOT='1'
   }
@@ -16,7 +16,7 @@ pipeline {
     stage('prepare') {
 
       steps {
-        sh 'git clone https://$GITHUB:@github.com/Kong/kong-gojira.git /tmp/gojira || true'
+        sh 'git clone https://$GITHUB_TOKEN@github.com/Kong/kong-gojira.git /tmp/gojira || true'
         sh '$GOJIRA up       -k . --alone'
         sh '$GOJIRA run      -k . make dev'
         sh '$GOJIRA snapshot -k .'
