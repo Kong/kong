@@ -74,7 +74,7 @@ jobs:
         if [[ $suite == "/flamegraph" ]]; then
           suite="02-flamegraph"
           if [[ -z $tags ]]; then
-            tags="single_route"
+            tags="simple"
           fi
         else
           suite="01-rps"
@@ -113,6 +113,7 @@ jobs:
         name: rps-and-latency
         path: |
           output/result.txt
+          output/*.log
         retention-days: 31
 
     - name: Save flamegrpahs
@@ -121,6 +122,7 @@ jobs:
         name: flamegraphs
         path: |
           output/*.svg
+          output/*.log
         retention-days: 31
 
     - name: Output

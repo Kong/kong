@@ -8,6 +8,7 @@ local mt = {__index = _M}
 
 local UPSTREAM_PORT = 8088
 local PG_PASSWORD = tools.random_string()
+local KONG_ERROR_LOG_PATH = "/tmp/error.log"
 
 function _M.new(opts)
   local provider = opts and opts.provider or "equinix-metal"
@@ -197,6 +198,10 @@ function _M:start_kong(version, kong_conf)
   kong_conf["pg_password"] = PG_PASSWORD
   kong_conf["pg_database"] = "kong_tests"
 
+  kong_conf['proxy_access_log'] = "/dev/null"
+  kong_conf['proxy_error_log'] = KONG_ERROR_LOG_PATH
+  kong_conf['admin_error_log'] = KONG_ERROR_LOG_PATH
+
   local kong_conf_blob = ""
   for k, v in pairs(kong_conf) do
     kong_conf_blob = string.format("%s\n%s=%s\n", kong_conf_blob, k, v)
@@ -221,6 +226,7 @@ function _M:start_kong(version, kong_conf)
   end
 
   local ok, err = execute_batch(self, self.kong_ip, {
+    "echo > " .. KONG_ERROR_LOG_PATH,
     "sudo id",
     "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
     "dpkg -l kong && (sudo kong stop; sudo dpkg -r kong) || true", -- stop and remove kong if installed
@@ -355,9 +361,16 @@ function _M:generate_flamegraph(filename)
 
   local out, _ = perf.execute(ssh_execute_wrap(self, self.kong_ip, "cat " .. path .. ".svg"))
 
-  perf.execute(ssh_execute_wrap(self, self.kong_ip, "rm -v " .. path .. ".*"))
+  perf.execute(ssh_execute_wrap(self, self.kong_ip, "rm -v " .. path .. ".*"),
+              { logger = self.ssh_log.log_exec })
 
   return out
+end
+
+function _M:save_error_log(path)
+  return perf.execute(ssh_execute_wrap(self, self.kong_ip,
+          "cat " .. KONG_ERROR_LOG_PATH) .. " >" .. path,
+          { logger = self.ssh_log.log_exec })
 end
 
 return _M

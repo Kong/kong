@@ -200,7 +200,7 @@ end
 local driver_functions = {
   "start_upstream", "start_kong", "stop_kong", "setup", "teardown",
   "get_start_load_cmd", "get_start_stapxx_cmd", "get_wait_stapxx_cmd",
-  "generate_flamegraph",
+  "generate_flamegraph", "save_error_log",
 }
 
 local function check_driver_sanity(mod)
@@ -513,7 +513,7 @@ end
 
 --- Generate the flamegraph and return SVG
 -- @function generate_flamegraph
--- @return string. The SVG image as string.
+-- @return Nothing. Throws an error if any.
 function _M.generate_flamegraph(filename)
   if not filename then
     error("filename must be specified for generate_flamegraph")
@@ -535,6 +535,19 @@ function _M.generate_flamegraph(filename)
   my_logger.debug("flamegraph written to ", filename)
 end
 
+
+--- Save Kong error log locally
+-- @function save_error_log
+-- @return Nothing. Throws an error if any.
+function _M.save_error_log(filename)
+  if not filename then
+    error("filename must be specified for save_error_log")
+  end
+
+  invoke_driver("save_error_log", filename)
+
+  my_logger.debug("Kong error log written to ", filename)
+end
 
 local git_stashed, git_head
 function _M.git_checkout(version)

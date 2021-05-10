@@ -9,6 +9,7 @@ local mt = {__index = _M}
 local UPSTREAM_PORT = 62412
 
 local WRK_SCRIPT_PREFIX = "/tmp/perf-wrk-"
+local KONG_ERROR_LOG_PATH = "/tmp/error.log"
 
 function _M.new(opts)
   return setmetatable({
@@ -65,7 +66,8 @@ function _M:teardown()
 
   perf.git_restore()
 
-  perf.execute("rm " .. WRK_SCRIPT_PREFIX .. "*.lua")
+  perf.execute("rm -v " .. WRK_SCRIPT_PREFIX .. "*.lua",
+              { logger = self.log.log_exec })
 
   return self:stop_kong()
 end
@@ -91,7 +93,8 @@ function _M:start_upstream(conf)
   f:close()
 
   local res, err = perf.execute("nginx -c " .. nginx_conf_path ..
-                                " -p " .. nginx_prefix)
+                                " -p " .. nginx_prefix,
+                                { logger = self.log.log_exec })
 
   if err then
     return false, "failed to start nginx: " .. err .. ": " .. (res or "nil")
@@ -120,6 +123,14 @@ function _M:start_kong(version, kong_conf)
   version = version:sub(#("git:")+1)
 
   perf.git_checkout(version)
+
+  -- cleanup log file
+  perf.execute("echo > /tmp/kong_error.log")
+
+  kong_conf = kong_conf or {}
+  kong_conf['proxy_access_log'] = "/dev/null"
+  kong_conf['proxy_error_log'] = KONG_ERROR_LOG_PATH
+  kong_conf['admin_error_log'] = KONG_ERROR_LOG_PATH
 
   return helpers.start_kong(kong_conf)
 end
@@ -168,7 +179,7 @@ local function check_systemtap_sanity(self)
     "stat /tmp/perf-fg || git clone https://github.com/brendangregg/FlameGraph /tmp/perf-fg"
   }
   for _, cmd in ipairs(cmds) do
-    local _, err = perf.execute(cmd)
+    local _, err = perf.execute(cmd, { logger = self.log.log_exec })
     if err then
       return nil, cmd .. " failed: " .. err
     end
@@ -225,7 +236,7 @@ function _M:generate_flamegraph(filename)
   }
   local out, err
   for _, cmd in ipairs(cmds) do
-    out, err = perf.execute(cmd)
+    out, err = perf.execute(cmd, { logger = self.log.log_exec })
     if err then
       return nil, cmd .. " failed: " .. err
     end
@@ -234,6 +245,11 @@ function _M:generate_flamegraph(filename)
   perf.execute("rm " .. path .. ".*")
 
   return out
+end
+
+function _M:save_error_log(path)
+  return perf.execute("mv " .. KONG_ERROR_LOG_PATH .. " " .. path,
+                      { logger = self.log.log_exec })
 end
 
 return _M

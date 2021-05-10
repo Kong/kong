@@ -55,7 +55,7 @@ local wrk_script = [[
 ]]
 
 for _, version in ipairs(versions) do
-  describe("perf test for Kong " .. version .. " #baseline #no_plugins", function()
+  describe("perf test for Kong " .. version .. " #simple #no_plugins", function()
     local bp
     lazy_setup(function()
       local helpers = perf.setup()
@@ -117,7 +117,9 @@ for _, version in ipairs(versions) do
 
       print(("### Result for Kong %s:\n%s"):format(version, result))
 
-      perf.generate_flamegraph(version:gsub("/", "#") .. "-baseline.svg")
+      perf.generate_flamegraph(version:gsub("[:/]", "#") .. "-simple.svg")
+
+      perf.save_error_log("output/" .. version:gsub("[:/]", "#") .. "-simple.log")
     end)
   end)
 end

@@ -222,8 +222,10 @@ function _M:start_kong(version, kong_conf)
     end
     local cid, err = create_container(self,
       "-p 8000 --link " .. self.psql_ct_id .. ":postgres " ..
+      extra_config .. " " ..
       "-e KONG_PG_HOST=postgres " ..
-      "-e KONG_PG_DATABASE=kong_tests " .. extra_config,
+      "-e KONG_PROXY_ACCESS_LOG=/dev/null " ..
+      "-e KONG_PG_DATABASE=kong_tests ",
       "kong:" .. version)
     if err then
       return false, "error running docker create when creating kong container: " .. err
@@ -303,6 +305,11 @@ end
 
 function _M:generate_flamegraph()
   error("SystemTap support not yet implemented in docker driver")
+end
+
+function _M:save_error_log(path)
+  return perf.execute("docker logs " .. self.kong_ct_id .. " 2>" .. path,
+                      { logger = self.log.log_exec })
 end
 
 return _M

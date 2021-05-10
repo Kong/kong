@@ -167,6 +167,8 @@ for _, version in ipairs(versions) do
       end
 
       print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+
+      perf.save_error_log("output/" .. version:gsub("[:/]", "#") .. "-single_route.log")
     end)
 
     it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes", function()
@@ -188,6 +190,8 @@ for _, version in ipairs(versions) do
       end
 
       print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+
+      perf.save_error_log("output/" .. version:gsub("[:/]", "#") .. "-multiple_routes.log")
     end)
   end)
 
@@ -276,6 +280,8 @@ for _, version in ipairs(versions) do
       end
 
       print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+
+      perf.save_error_log("output/" .. version:gsub("[:/]", "#") .. "-key_auth.log")
     end)
   end)
 end
