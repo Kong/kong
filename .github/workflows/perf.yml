@@ -68,22 +68,26 @@ jobs:
     - name: Choose perf suites
       id: choose_perf
       run: |
-        suite=$(echo "${{ github.event.comment.body }}" | awk '{print $1}')
+        suites=$(echo "${{ github.event.comment.body }}" | awk '{print $1}')
         tags=$(echo "${{ github.event.comment.body }}" | awk '{print $2}')
 
         if [[ $suite == "/flamegraph" ]]; then
-          suite="02-flamegraph"
+          suites="02-flamegraph"
           if [[ -z $tags ]]; then
             tags="simple"
           fi
-        else
-          suite="01-rps"
+        elif [[ $suite == "/flamegraph" ]]; then
+          suites="01-rps"
           if [[ -z $tags ]]; then
             tags="baseline,single_route"
           fi
+        else
+          # if not specified by comment, run both
+          suites="01-rps 02-flamegraph"
+          tags="baseline,single_route,simple"
         fi
 
-        echo ::set-output name=suite::"$suite"
+        echo ::set-output name=suites::"$suites"
         echo ::set-output name=tags::"$tags"
 
     - name: Run Tests
@@ -93,8 +97,10 @@ jobs:
         PERF_TEST_PACKET_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
       run: |
-        bin/busted -o gtest spec/04-perf/${{ steps.choose_perf.outputs.suite }}/ \
-          -t "${{ steps.choose_perf.outputs.tags }}"
+        for suite in ${{ steps.choose_perf.outputs.suites }}; do
+          bin/busted -o gtest spec/04-perf/$suite/ \
+            -t "${{ steps.choose_perf.outputs.tags }}"
+        done
         
     - name: Teardown
       # Note: by default each job has if: ${{ success() }}
@@ -135,11 +141,11 @@ jobs:
     - name: Output
       id: output
       run: |
-        if [[ "${{ steps.choose_perf.outputs.suite }}" == "02-flamegraph" ]]; then
+        if [[ "${{ steps.choose_perf.outputs.suites }}" =~ "02-flamegraph" ]]; then
           result="Please see Github Actions artifacts for flamegraphs."
-        else
-          result=$(cat output/result.txt) || true
         fi
+
+        result="${result}\n$(cat output/result.txt)" || true
 
         # https://github.community/t/set-output-truncates-multiline-strings/16852/2
         result="${result//'%'/'%25'}"
@@ -158,7 +164,7 @@ jobs:
         body: |
           ## :rocket: Performance test result
 
-          **Test Suite**: ${{ steps.choose_perf.outputs.suite }} (${{ steps.choose_perf.outputs.tags }})
+          **Test Suite**: ${{ steps.choose_perf.outputs.suites }} (${{ steps.choose_perf.outputs.tags }})
 
           <details><summary>Click to expand</summary>
 
