@@ -1,3 +1,7 @@
+## 1.0.5
+
+- fix(*) BasePlugin inheritance removal (FT-1701)
+
 ## 1.0.4
 
 - Simulate log phase to resolve pdk error when used with a logging plugin
