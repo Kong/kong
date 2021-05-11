@@ -144,10 +144,12 @@ jobs:
       id: output
       run: |
         if [[ "${{ steps.choose_perf.outputs.suites }}" =~ "02-flamegraph" ]]; then
-          result="Please see Github Actions artifacts for flamegraphs."
+          result="Please see Github Actions artifacts for flamegraphs.
+
+          "
         fi
 
-        result="${result}\n$(cat output/result.txt)" || true
+        result="${result}$(cat output/result.txt)" || true
 
         # https://github.community/t/set-output-truncates-multiline-strings/16852/2
         result="${result//'%'/'%25'}"
