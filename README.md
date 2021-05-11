@@ -50,7 +50,7 @@ transformations, and more through plugins.
 
 Kong has been built with the following leading principles:
 
-* **High Performance**: Sub-millisecond processing latency to support 
+* **High Performance**: Sub-millisecond processing latency to support
 * mission-critical use cases and high throughput.
 * **Extensibility**: With a pluggable architecture to extend Kong in Lua or GoLang
   with Kong's Plugin SDK.
@@ -303,7 +303,7 @@ Enterprise](https://konghq.com/kong-enterprise-edition/).
 ## License
 
 ```
-Copyright 2016-2020 Kong Inc.
+Copyright 2016-2021 Kong Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
