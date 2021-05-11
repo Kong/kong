@@ -9,8 +9,9 @@ pipeline {
   }
   environment {
     GITHUB_TOKEN = credentials('github_bot_access_token')
-    BINTRAY = credentials('bintray')
     REDHAT = credentials('redhat')
+    PULP = credentials('PULP')
+    DOCKERHUB_KONGCLOUD_PUSH = credentials('DOCKERHUB_KONGCLOUD_PUSH')
     PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
     PRIVATE_KEY_PASSWORD = credentials('kong.private.gpg-key.asc.password')
     // This cache dir will contain files owned by root, and user ubuntu will
@@ -59,61 +60,61 @@ pipeline {
             sh "./dist/dist.sh build centos:7 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh sign centos:7 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test centos:7 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:7 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p centos:7 -e -R ${env.RELEASE_SCOPE}"
           },
           centos8: {
             sh "./dist/dist.sh build centos:8 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh sign centos:8 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test centos:8 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p centos:8 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p centos:8 -e -R ${env.RELEASE_SCOPE}"
           },
           debian8: {
             sh "./dist/dist.sh build debian:8 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test debian:8 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:8 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p debian:8 -e -R ${env.RELEASE_SCOPE}"
           },
           debian9: {
             sh "./dist/dist.sh build debian:9 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test debian:9 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p debian:9 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p debian:9 -e -R ${env.RELEASE_SCOPE}"
           },
           ubuntu1604: {
             sh "./dist/dist.sh build ubuntu:16.04 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test ubuntu:16.04 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:16.04 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p ubuntu:16.04 -e -R ${env.RELEASE_SCOPE}"
           },
           ubuntu1804: {
             sh "./dist/dist.sh build ubuntu:18.04 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test ubuntu:18.04 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:18.04 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p ubuntu:18.04 -e -R ${env.RELEASE_SCOPE}"
           },
           ubuntu2004: {
             sh "./dist/dist.sh build ubuntu:20.04 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test ubuntu:20.04 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p ubuntu:20.04 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -V -u $PULP_USR -k $PULP_PSW -p ubuntu:20.04 -e -R ${env.RELEASE_SCOPE}"
           },
           amazonlinux2: {
             sh "./dist/dist.sh build amazonlinux:2 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh sign amazonlinux:2 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test amazonlinux:2 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p amazonlinux:2 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p amazonlinux:2 -e -R ${env.RELEASE_SCOPE}"
           },
           alpine: {
             sh "./dist/dist.sh build alpine ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test alpine ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p alpine -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p alpine -e -R ${env.RELEASE_SCOPE}"
           },
           rhel7: {
             sh "./dist/dist.sh build rhel:7 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh sign rhel:7 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test rhel:7 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:7 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p rhel:7 -e -R ${env.RELEASE_SCOPE}"
           },
           rhel8: {
             sh "./dist/dist.sh build rhel:8 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh sign rhel:8 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test rhel:8 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel:8 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p rhel:8 -e -R ${env.RELEASE_SCOPE}"
           },
         )
       }
@@ -123,19 +124,31 @@ pipeline {
         parallel (
           // beware! $KONG_VERSION might have an ending \n that swallows everything after it
           alpine: {
-            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-            // Docker with anonymous reports off. jenkins has no permission + is old method
-            // sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            sh "./dist/dist.sh docker-hub-release -u $DOCKERHUB_KONGCLOUD_PUSH_USR \
+                                                  -k $DOCKERHUB_KONGCLOUD_PUSH_PSW \
+                                                  -pu $PULP_USR \
+                                                  -pk $PULP_PSW \
+                                                  -p alpine \
+                                                  -R ${env.RELEASE_SCOPE} \
+                                                  -v $KONG_VERSION"
           },
           centos7: {
-            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-            // Docker with anonymous reports off. jenkins has no permission + is old method
-            // sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p centos -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            sh "./dist/dist.sh docker-hub-release -u $DOCKERHUB_KONGCLOUD_PUSH_USR \
+                                                  -k $DOCKERHUB_KONGCLOUD_PUSH_PSW \
+                                                  -pu $PULP_USR \
+                                                  -pk $PULP_PSW \
+                                                  -p centos \
+                                                  -R ${env.RELEASE_SCOPE} \
+                                                  -v $KONG_VERSION"
           },
           rhel: {
-            sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-            // Docker with anonymous reports off. jenkins has no permission + is old method
-            // sh "./dist/dist.sh bintray-release -u $BINTRAY_USR -k $BINTRAY_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
+            sh "./dist/dist.sh docker-hub-release -u $DOCKERHUB_KONGCLOUD_PUSH_USR \
+                                                  -k $DOCKERHUB_KONGCLOUD_PUSH_PSW \
+                                                  -pu $PULP_USR \
+                                                  -pk $PULP_PSW \
+                                                  -p rhel \
+                                                  -R ${env.RELEASE_SCOPE} \
+                                                  -v $KONG_VERSION"
           },
         )
       }
