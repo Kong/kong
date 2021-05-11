@@ -65,6 +65,11 @@
 This is a patch release in the 2.4 series. Being a patch release, it
 strictly contains bugfixes. The are no new features or breaking changes.
 
+### Distribution
+
+- :warning: Starting with this release, Kong packages are no longer distributed
+  through Bintray. Please download from [download.konghq.com](download.konghq.com).
+
 ### Dependencies
 
 - Bump `luasec` from 1.0.0 to 1.0.1
