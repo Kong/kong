@@ -11,12 +11,11 @@ local tablex = require "pl.tablex"
 local Router = require("lapis.router").Router
 
 local arguments  = require "kong.api.arguments"
-local BasePlugin = require "kong.plugins.base_plugin"
 
-local PLUGIN_NAME    = require("kong.plugins.degraphql").PLUGIN_NAME
-local PLUGIN_VERSION = require("kong.plugins.degraphql").PLUGIN_VERSION
-
-local _M = BasePlugin:extend()
+local DeGraphQLHandler = {
+  PRIORITY = 1005,
+  VERSION = "0.1.2"
+}
 
 local pairs = pairs
 local string_gsub = string.gsub
@@ -47,15 +46,9 @@ function format(text, args)
 end
 
 
-function _M:new()
-  _M.super.new(self, PLUGIN_NAME)
-end
-
-
 -- XXX Look at how kong router is built, invalidated, etc
 -- semaphores and stuff
-function _M:init_worker()
-  _M.super.init_worker(self)
+function DeGraphQLHandler:init_worker()
   self:init_router()
   kong.worker_events.register(function(data)
     self:init_router()
@@ -74,7 +67,7 @@ end
 
 -- XXX Look at how kong router is built, invalidated, etc
 -- semaphores and stuff
-function _M:init_router()
+function DeGraphQLHandler:init_router()
 
   local routers = {}
 
@@ -98,7 +91,7 @@ function _M:init_router()
 end
 
 
-function _M:get_query()
+function DeGraphQLHandler:get_query()
   local service_id = ngx.ctx.service.id
 
   if not self.routers[service_id] then
@@ -123,8 +116,7 @@ function _M:get_query()
 end
 
 
-function _M:access(conf)
-  _M.super.access(self)
+function DeGraphQLHandler:access(conf)
 
   if not self.router then
     self:init_router()
@@ -140,20 +132,4 @@ function _M:access(conf)
 end
 
 
-function _M:header_filter(conf)
-  _M.super.header_filter(self)
-  -- anything we want to affect response headers?
-  -- ngx.header["Bye-World"] = "this is on the response"
-end
-
-
-function _M:body_filter(conf)
-  _M.super.body_filter(self)
-  -- Do something with the body, if we wanted?
-end
-
-
-_M.PRIORITY = 1005
-_M.VERSION = PLUGIN_VERSION
-
-return _M
+return DeGraphQLHandler
