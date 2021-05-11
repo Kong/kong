@@ -99,7 +99,6 @@ local healthcheck_subscribers = {}
 -- functions forward-declarations
 local create_balancers
 local set_upstream_events_queue
-local get_upstream_events_queue
 
 local function set_balancer(upstream_id, balancer)
   local prev = balancers[upstream_id]
@@ -860,11 +859,6 @@ do
     }
   end
 
-
-  get_upstream_events_queue = function()
-    return utils.deep_copy(upstream_events_queue)
-  end
-
 end
 
 
@@ -873,10 +867,8 @@ local function update_balancer_state(premature)
     return
   end
 
-  local events_queue = get_upstream_events_queue()
-
-  for i, v in ipairs(events_queue) do
-    -- handle the oldest (first) event from the queue
+  while upstream_events_queue[1] do
+    local v = upstream_events_queue[1]
     local _, err = do_upstream_event(v.operation, v.upstream_data, v.workspaces)
     if err then
       log(CRIT, "failed handling upstream event: ", err)
@@ -884,7 +876,7 @@ local function update_balancer_state(premature)
     end
 
     -- if no err, remove the upstream event from the queue
-    table_remove(upstream_events_queue, i)
+    table_remove(upstream_events_queue, 1)
   end
 
   local frequency = kong.configuration.worker_state_update_frequency or 1

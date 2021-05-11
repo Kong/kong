@@ -175,6 +175,7 @@ http {
             ngx.log(ngx.INFO, "[COUNT] slash ", status)
           end
 
+          ngx.sleep(${delay}/1000)
           ngx.exit(status)
       }
     }

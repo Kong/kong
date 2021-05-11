@@ -489,8 +489,12 @@ return {
     tags = {
       title = [[ Tags ]],
       description = [[
-        Tags are strings associated to entities in Kong. Each tag must be composed of one or more
-        alphanumeric characters, `_`, `-`, `.` or `~`.
+        Tags are strings associated to entities in Kong.
+
+        Tags can contain almost all UTF-8 characters, with the following exceptions:
+
+        - `,` and `/` are reserved for filtering tags with "and" and "or", so they are not allowed in tags.
+        - Non-printable ASCII (for example, the space character) is not allowed.
 
         Most core entities can be *tagged* via their `tags` attribute, upon creation or edition.
 
@@ -1441,7 +1445,7 @@ return {
         id = { skip = true },
         created_at = { skip = true },
         ["name"] = { description = [[This is a hostname, which must be equal to the `host` of a Service.]] },
-        ["slots"] = { description = [[The number of slots in the loadbalancer algorithm (`10`-`65536`).]] },
+        ["slots"] = { description = [[The number of slots in the load balancer algorithm. If `algorithm` is set to `round-robin`, this setting determines the maximum number of slots. If `algorithm` is set to `consistent-hashing`, this setting determines the actual number of slots in the algorithm. Accepts an integer in the range `10`-`65536`.]] },
         ["algorithm"] = { description = [[Which load balancing algorithm to use.]] },
         ["hash_on"] = { description = [[What to use as hashing input. Using `none` results in a weighted-round-robin scheme with no hashing.]] },
         ["hash_fallback"] = { description = [[What to use as hashing input if the primary `hash_on` does not return a hash (eg. header is missing, or no Consumer identified). Not available if `hash_on` is set to `cookie`.]] },

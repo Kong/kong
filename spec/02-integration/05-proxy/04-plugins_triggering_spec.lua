@@ -14,6 +14,7 @@ local pl_stringx = require "pl.stringx"
 
 
 local LOG_WAIT_TIMEOUT = 10
+local TEST_CONF = helpers.test_conf
 
 
 for _, strategy in helpers.each_strategy() do
@@ -1096,6 +1097,7 @@ for _, strategy in helpers.each_strategy() do
           assert(helpers.start_kong {
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
+            plugins = "short-circuit,init-worker-lua-error",
           })
 
           proxy_client = helpers.proxy_client()
@@ -1125,6 +1127,11 @@ for _, strategy in helpers.each_strategy() do
             status  = 200,
             message = "plugin executed"
           }, json)
+        end)
+
+        it("protects against failed init_worker handler, FTI-2473", function()
+          local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
+          assert.matches([[worker initialization error: failed to execute the "init_worker" handler for plugin "init-worker-lua-error"]], logs, nil, true)
         end)
       end)
 
@@ -1212,6 +1219,60 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
       end
+    end)
+  end)
+
+  describe("Plugins triggering [#" .. strategy .. "] with TLS keepalive", function()
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+      -- Global configuration
+      local service = bp.services:insert {
+        name = "mock",
+      }
+
+      local route = bp.routes:insert {
+        paths     = { "/route-1" },
+        protocols = { "https" },
+        service    = service,
+      }
+
+      bp.routes:insert {
+        paths      = { "/route-2" },
+        protocols  = { "https" },
+        service    = service,
+      }
+
+      bp.plugins:insert {
+        name    = "request-termination",
+        route   = { id = route.id },
+        config  = {
+          status_code = 201,
+        },
+      }
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("certificate phase clears context, fix #7054", function()
+      local proxy_client = helpers.proxy_ssl_client()
+
+      local res = assert(proxy_client:get("/route-1/status/200"))
+      assert.res_status(201, res)
+
+      local res = assert(proxy_client:get("/route-2/status/200"))
+      assert.res_status(200, res)
     end)
   end)
 end

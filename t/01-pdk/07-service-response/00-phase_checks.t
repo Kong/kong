@@ -38,6 +38,7 @@ qq{
                 rewrite       = "forced false",
                 access        = "forced false",
                 header_filter = true,
+                response      = true,
                 body_filter   = true,
                 log           = true,
                 admin_api     = "forced false",
@@ -49,6 +50,7 @@ qq{
                 rewrite       = "forced false",
                 access        = "forced false",
                 header_filter = true,
+                response      = true,
                 body_filter   = true,
                 log           = true,
                 admin_api     = "forced false",
@@ -60,6 +62,7 @@ qq{
                 rewrite       = "forced false",
                 access        = "forced false",
                 header_filter = true,
+                response      = true,
                 body_filter   = true,
                 log           = true,
                 admin_api     = "forced false",
@@ -71,6 +74,7 @@ qq{
                 rewrite       = "pending",
                 access        = "pending",
                 header_filter = "pending",
+                response      = "pending",
                 body_filter   = "pending",
                 log           = "pending",
                 admin_api     = "pending",
@@ -82,6 +86,7 @@ qq{
                 rewrite       = "pending",
                 access        = "pending",
                 header_filter = "pending",
+                response      = "pending",
                 body_filter   = "pending",
                 log           = "pending",
                 admin_api     = "pending",
@@ -105,6 +110,7 @@ qq{
 
         access_by_lua_block {
             phase_check_functions(phases.access)
+            phase_check_functions(phases.response)
             phase_check_functions(phases.admin_api)
         }
 

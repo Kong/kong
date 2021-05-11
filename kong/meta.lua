@@ -10,7 +10,7 @@ local ee_meta = require "kong.enterprise_edition.meta"
 local version = setmetatable({
   major = 2,
   minor = 4,
-  patch = 0,
+  patch = 1,
   --suffix = "rc.1"
 }, {
   -- our Makefile during certain releases adjusts this line. Any changes to

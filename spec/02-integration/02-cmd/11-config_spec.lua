@@ -197,6 +197,119 @@ describe("kong config", function()
     }))
   end)
 
+  it("#db config db_import deals with repeated targets", function()
+    -- Since Kong 2.2.0 there's no more target history, but we must make sure
+    -- that old configs still can be imported.
+    local filename = helpers.make_yaml_file([[
+      _format_version: "1.1"
+      _transform: false
+      _format_version: '2.1'
+      parameters:
+      - created_at: ~
+        key: cluster_id
+        value: 36ad7d46-b95c-44f6-a79e-edb1f33baaf7
+      upstreams:
+      - hash_on_header: ~
+        algorithm: round-robin
+        host_header: ~
+        hash_on_cookie: ~
+        created_at: 1618602527
+        hash_on_cookie_path: /
+        hash_fallback: none
+        hash_fallback_header: ~
+        healthchecks:
+          active:
+            https_verify_certificate: true
+            http_path: /
+            https_sni: ~
+            type: http
+            concurrency: 10
+            healthy:
+              interval: 0
+              http_statuses:
+              - 200
+              - 302
+              successes: 0
+            unhealthy:
+              http_failures: 0
+              http_statuses:
+              - 429
+              - 404
+              - 500
+              - 501
+              - 502
+              - 503
+              - 504
+              - 505
+              interval: 0
+              tcp_failures: 0
+              timeouts: 0
+            timeout: 1
+          threshold: 0
+          passive:
+            healthy:
+              successes: 0
+              http_statuses:
+              - 200
+              - 201
+              - 202
+              - 203
+              - 204
+              - 205
+              - 206
+              - 207
+              - 208
+              - 226
+              - 300
+              - 301
+              - 302
+              - 303
+              - 304
+              - 305
+              - 306
+              - 307
+              - 308
+            unhealthy:
+              http_failures: 0
+              http_statuses:
+              - 429
+              - 500
+              - 503
+              tcp_failures: 0
+              timeouts: 0
+            type: http
+        slots: 10000
+        client_certificate: ~
+        name: upstreama
+        hash_on: none
+        tags: ~
+        id: ab0060c9-7830-415a-9a84-d2d5dd76a04c
+      targets:
+      - upstream: ab0060c9-7830-415a-9a84-d2d5dd76a04c
+        target: 127.0.0.1:6664
+        created_at: 1618602543.967
+        weight: 50
+        tags: ~
+        id: d72fa60a-31d3-436a-a4cb-a35444618a7a
+      - upstream: ab0060c9-7830-415a-9a84-d2d5dd76a04c
+        target: 127.0.0.1:6664
+        created_at: 1618602544.967
+        weight: 100
+        tags: ~
+        id: d72fa60a-31d3-436a-a4cb-a35444618a7b
+      - upstream: ab0060c9-7830-415a-9a84-d2d5dd76a04c
+        target: 127.0.0.1:6661
+        created_at: 1618602534.682
+        weight: 100
+        tags: ~
+        id: fe590183-61a1-4b59-b77c-5d70835d9714
+    ]])
+
+    assert(helpers.kong_exec("config db_import " .. filename, {
+      prefix = helpers.test_conf.prefix,
+    }))
+  end)
+
   it("#db config db_import catches errors in input", function()
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",

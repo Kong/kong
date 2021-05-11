@@ -162,7 +162,7 @@ Verify the three new containers are up and running with `docker ps` on a separat
 ```
     git clone https://github.com/Kong/kong.git
     cd kong
-    git checkout next
+    git checkout master
     make dev
 ```
 
