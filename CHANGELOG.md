@@ -68,7 +68,7 @@ strictly contains bugfixes. The are no new features or breaking changes.
 ### Distribution
 
 - :warning: Starting with this release, Kong packages are no longer distributed
-  through Bintray. Please download from [download.konghq.com](download.konghq.com).
+  through Bintray. Please download from [download.konghq.com](https://download.konghq.com).
 
 ### Dependencies
 
