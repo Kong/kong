@@ -32,7 +32,7 @@ local balancer_mt = {}
 balancer_mt.__index = balancer_mt
 
 local balancers_by_id = {}
-local algorithm_types = {}
+local algorithm_types
 
 
 balancers_M.errors = setmetatable({
@@ -130,6 +130,15 @@ local function create_balancer_exclusive(upstream)
     target.balancer = balancer
   end
 
+  targets_list, err = targets.resolve_targets(targets_list)
+  if not targets_list then
+    return nil, "failed resolving targets:" .. err
+  end
+
+  if not algorithm_types[upstream.algorithm] then
+    return nil, "unknown algorithm " .. upstream.algorithm
+  end
+
   balancer.algorithm, err = algorithm_types[upstream.algorithm].new({
     balancer = balancer,
     upstream = upstream,
@@ -160,7 +169,6 @@ end
 -- @param recreate (boolean, optional) create new balancer even if one exists
 -- @return The new balancer object, or nil+error
 function balancers_M.create_balancer(upstream, recreate)
-
   if balancers_by_id[upstream.id] and not recreate then
     return balancers_by_id[upstream.id]
   end
@@ -429,7 +437,19 @@ function balancer_mt:getStatus()
   return status
 end
 
+function balancer_mt:afterHostUpdate()
+  if not self.algorithm or not self.algorithm.afterHostUpdate then
+    return
+  end
+
+  return self.algorithm:afterHostUpdate()
+end
+
 function balancer_mt:getPeer()
+  if not self.algorithm or not self.algorithm.afterHostUpdate then
+    return
+  end
+
   return self.algorithm:getPeer()
 end
 

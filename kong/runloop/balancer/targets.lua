@@ -15,6 +15,7 @@ local balancers   -- require at init time to avoid dependency loop
 local ngx = ngx
 local null = ngx.null
 local ngx_now = ngx.now
+local log = ngx.log
 local string_format = string.format
 local string_match  = string.match
 local ipairs = ipairs
@@ -22,9 +23,9 @@ local tonumber = tonumber
 local table_sort = table.sort
 --local assert = assert
 
-local log_ERR   = kong.log.err
-local log_DEBUG = kong.log.debug
-local log_WARN = kong.log.warn
+local ERR = ngx.ERR
+local WARN = ngx.WARN
+local DEBUG = ngx.DEBUG
 
 local SRV_0_WEIGHT = 1      -- SRV record with weight 0 should be hit minimally, hence we replace by 1
 local EMPTY = setmetatable({},
@@ -90,13 +91,9 @@ local function resolve_target(target)
   targets_M.queryDns(target)
 end
 
-function targets_M.resolve_targets(balancer, targets_list)
+function targets_M.resolve_targets(targets_list)
   for _, target in ipairs(targets_list) do
-    local resolved, err = resolve_target(balancer, target)
-    if not resolved then
-      return nil, err
-    end
-
+    queryDns(target)
   end
 
   return targets_list
@@ -116,14 +113,14 @@ function targets_M.on_target_event(operation, target)
   local upstream_id = target.upstream.id
   local upstream_name = target.upstream.name
 
-  log_DEBUG("target ", operation, " for upstream ", upstream_id,
+  log(DEBUG, "target ", operation, " for upstream ", upstream_id,
     upstream_name and " (" .. upstream_name ..")" or "")
 
   singletons.core_cache:invalidate_local("balancer:targets:" .. upstream_id)
 
   local upstream = upstreams.get_upstream_by_id(upstream_id)
   if not upstream then
-    log_ERR("target ", operation, ": upstream not found for ", upstream_id,
+    log(ERR, "target ", operation, ": upstream not found for ", upstream_id,
       upstream_name and " (" .. upstream_name ..")" or "")
     return
   end
@@ -131,7 +128,7 @@ function targets_M.on_target_event(operation, target)
 -- move this to upstreams?
   local balancer = balancers.get_balancer_by_id(upstream_id)
   if not balancer then
-    log_ERR("target ", operation, ": balancer not found for ", upstream_id,
+    log(ERR, "target ", operation, ": balancer not found for ", upstream_id,
       upstream_name and " (" .. upstream_name ..")" or "")
     return
   end
@@ -222,7 +219,7 @@ function resolve_timer_callback()
     local target = renewal_weak_cache[key] -- can return nil if GC'ed
 
     if target then
-      log_DEBUG("executing requery for: ", target.name)
+      log(DEBUG, "executing requery for: ", target.name)
       queryDns(target, false) -- timer-context; cacheOnly always false
     end
   end
@@ -268,7 +265,7 @@ local function update_dns_result(target, newQuery)
   -- we're using the dns' own cache to check for changes.
   -- if our previous result is the same table as the current result, then nothing changed
   if oldQuery == newQuery then
-    log_DEBUG("no dns changes detected for ", target.name)
+    log(DEBUG, "no dns changes detected for ", target.name)
 
     return true    -- exit, nothing changed
   end
@@ -293,12 +290,12 @@ local function update_dns_result(target, newQuery)
       -- still ttl 0 so nothing changed
       oldQuery.touched = ngx_now()
       oldQuery.expire = oldQuery.touched + balancer.ttl0Interval
-      log_DEBUG("no dns changes detected for ",
+      log(DEBUG, "no dns changes detected for ",
               target.name, ", still using ttl=0")
       return true
     end
 
-    log_DEBUG("ttl=0 detected for ", target.name)
+    log(DEBUG, "ttl=0 detected for ", target.name)
     newQuery = {
         {
           type = dns_client.TYPE_SRV,
@@ -321,7 +318,7 @@ local function update_dns_result(target, newQuery)
   if not rtype then
     -- we got an empty query table, so assume A record, because it's empty
     -- all existing addresses will be removed
-    log_DEBUG("blank dns record for ", target.name, ", assuming A-record")
+    log(DEBUG, "blank dns record for ", target.name, ", assuming A-record")
     rtype = dns_client.TYPE_A
   end
   local newSorted = sorts[rtype](newQuery)
@@ -329,7 +326,7 @@ local function update_dns_result(target, newQuery)
 
   if rtype ~= (oldSorted[1] or EMPTY).type then
     -- DNS recordtype changed; recycle everything
-    log_DEBUG("dns record type changed for ",
+    log(DEBUG, "dns record type changed for ",
             target.name, ", ", (oldSorted[1] or EMPTY).type, " -> ",rtype)
     for i = #oldSorted, 1, -1 do  -- reverse order because we're deleting items
       balancer:disableAddress(target, oldSorted[i])
@@ -350,7 +347,7 @@ local function update_dns_result(target, newQuery)
       local oldEntry = oldSorted[oldSorted[key] or "__key_not_found__"]
       if not oldEntry then
         -- it's a new entry
-        log_DEBUG("new dns record entry for ",
+        log(DEBUG, "new dns record entry for ",
                 target.name, ": ", (newEntry.target or newEntry.address),
                 ":", newEntry.port) -- port = nil for A or AAAA records
         balancer:addAddress(target, newEntry)
@@ -366,7 +363,7 @@ local function update_dns_result(target, newQuery)
           balancer:changeWeight(target, oldEntry, newEntry.weight == 0 and SRV_0_WEIGHT or newEntry.weight)
           dirty = true
         else
-          log_DEBUG("unchanged dns record entry for ",
+          log(DEBUG, "unchanged dns record entry for ",
                   target.name, ": ", (newEntry.target or newEntry.address),
                   ":", newEntry.port) -- port = nil for A or AAAA records
         end
@@ -379,7 +376,7 @@ local function update_dns_result(target, newQuery)
       -- new query result
       for _, entry in ipairs(oldSorted) do
         if not done[entry.__balancerSortKey] then
-          log_DEBUG("removed dns record entry for ",
+          log(DEBUG, "removed dns record entry for ",
                   target.name, ": ", (entry.target or entry.address),
                   ":", entry.port) -- port = nil for A or AAAA records
           balancer:disableAddress(target, entry)
@@ -395,7 +392,7 @@ local function update_dns_result(target, newQuery)
   if dirty then
     -- above we already added and updated records. Removed addresses are disabled, and
     -- need yet to be deleted from the Host
-    log_DEBUG("updating balancer based on dns changes for ",
+    log(DEBUG, "updating balancer based on dns changes for ",
             target.name)
 
     -- allow balancer to update its algorithm
@@ -405,7 +402,7 @@ local function update_dns_result(target, newQuery)
     balancer:deleteDisabledAddresses(target)
   end
 
-  log_DEBUG("querying dns and updating for ", target.name, " completed")
+  log(DEBUG, "querying dns and updating for ", target.name, " completed")
   return true
 end
 
@@ -414,7 +411,7 @@ end
 -- This method always succeeds, but it might leave the balancer in a 0-weight
 -- state if none of the hosts resolves.
 function queryDns(target, cacheOnly)
-  log_DEBUG("querying dns for ", target.name)
+  log(DEBUG, "querying dns for ", target.name)
 
   -- first thing we do is the dns query, this is the only place we possibly
   -- yield (cosockets in the dns lib). So once that is done, we're 'atomic'
@@ -425,7 +422,7 @@ function queryDns(target, cacheOnly)
   local newQuery, err, try_list = dns_client.resolve(target.name, nil, cacheOnly)
 
   if err then
-    log_WARN("querying dns for ", target.name,
+    log(WARN, "querying dns for ", target.name,
             " failed: ", err , ". Tried ", tostring(try_list))
 
     -- query failed, create a fake record
