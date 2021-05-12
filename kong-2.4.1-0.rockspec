@@ -68,11 +68,14 @@ build = {
     ["kong.concurrency"] = "kong/concurrency.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
-    ["kong.clustering"] = "kong/clustering.lua",
     ["kong.hooks"] = "kong/hooks.lua",
 
     ["kong.conf_loader"] = "kong/conf_loader/init.lua",
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
+
+    ["kong.clustering"] = "kong/clustering/init.lua",
+    ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
+    ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
