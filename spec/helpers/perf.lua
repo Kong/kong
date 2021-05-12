@@ -511,6 +511,8 @@ function _M.wait_stap_probe(timeout)
   return invoke_driver("wait_stap_probe", timeout or 20)
 end
 
+local git_stashed, git_head
+
 --- Generate the flamegraph and return SVG
 -- @function generate_flamegraph
 -- @return Nothing. Throws an error if any.
@@ -556,7 +558,6 @@ function _M.save_error_log(filename)
   my_logger.debug("Kong error log written to ", filename)
 end
 
-local git_stashed, git_head
 function _M.git_checkout(version)
   if not execute("which git") then
     error("git binary not found")
