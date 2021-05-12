@@ -17,8 +17,8 @@ https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#where-to-seek-for-help
 -->
 
 ### Summary
-
-SUMMARY_GOES_HERE
+- Kong version (`$ kong version`)
+- A concise summary of the bug.
 
 ### Steps To Reproduce
 
@@ -28,8 +28,6 @@ SUMMARY_GOES_HERE
 4.
 
 ### Additional Details & Logs
-
-- Kong version (`$ kong version`)
 - Kong debug-level startup logs (`$ kong start --vv`)
 - Kong error logs (`<KONG_PREFIX>/logs/error.log`)
 - Kong configuration (the output of a GET request to Kong's Admin port - see
