@@ -22,6 +22,7 @@ local log = ngx.log
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
 local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
+local unescape_uri = ngx.unescape_uri
 
 local _M = {}
 
@@ -461,7 +462,10 @@ function _M.before_filter(self)
 
     -- workspace name: if no workspace name was provided as the first segment
     -- in the path (:8001/:workspace/), consider it is the default workspace
-    local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
+    local ws_name = workspaces.DEFAULT_WORKSPACE
+    if self.params.workspace_name then
+      ws_name = unescape_uri(self.params.workspace_name)
+    end
 
     -- fetch the workspace for current request
     local workspace, err = kong.db.workspaces:select_by_name(ws_name)
