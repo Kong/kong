@@ -142,7 +142,7 @@ for _, strategy in helpers.each_strategy() do
       it("revoked DP certificate can not connect to CP", function()
         helpers.wait_until(function()
           local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
-          if logs:find('client certificate was revoked: failed to validate OCSP response: certificate status "revoked" in the OCSP response', nil, true) then
+          if logs:find([[client certificate was revoked: failed to validate OCSP response: certificate status "revoked" in the OCSP response]], 1, true) then
             local admin_client = helpers.admin_client()
             finally(function()
               admin_client:close()
@@ -155,7 +155,7 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(0, #json.data)
             return true
           end
-        end, 5)
+        end, 10)
       end)
     end)
 

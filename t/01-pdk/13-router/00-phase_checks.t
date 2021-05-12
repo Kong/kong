@@ -47,6 +47,7 @@ qq{
                 rewrite       = "forced false",
                 access        = true,
                 header_filter = true,
+                response      = true,
                 body_filter   = true,
                 log           = true,
                 admin_api     = "forced false",
@@ -58,6 +59,7 @@ qq{
                 rewrite       = "forced false",
                 access        = true,
                 header_filter = true,
+                response      = true,
                 body_filter   = true,
                 log           = true,
                 admin_api     = "forced false",
@@ -84,6 +86,7 @@ qq{
 
         access_by_lua_block {
             phase_check_functions(phases.access)
+            phase_check_functions(phases.response)
             phase_check_functions(phases.admin_api)
         }
 

@@ -50,11 +50,11 @@ transformations, and more through plugins.
 
 Kong has been built with the following leading principles:
 
-* **High Performance**: Sub-millisecond processing latency to support mission
-  critical use cases and high throughput.
+* **High Performance**: Sub-millisecond processing latency to support
+* mission-critical use cases and high throughput.
 * **Extensibility**: With a pluggable architecture to extend Kong in Lua or GoLang
   with Kong's Plugin SDK.
-* **Portability**: To run on every platform, every cloud and to natively support
+* **Portability**: To run on every platform, every cloud, and to natively support
   Kubernetes via our modern Ingress Controller.
 
 ## Features
@@ -137,18 +137,18 @@ code, other repos are also under active development:
   Instaclustr manage your Cassandra cluster.
 - [Nightly Builds][kong-nightly-master]: Builds of the master branch available every morning at about 9AM PST.
 
-You can find every supported distribution at the [official installation page](https://konghq.com/install/).
+You can find every supported distribution at the [official installation page](https://konghq.com/install/#kong-community).
 
 ## Development
 
 We encourage community contributions to Kong. To make sure it is a smooth
 experience (both for you and for the Kong team), please read
 [CONTRIBUTING.md](CONTRIBUTING.md), [DEVELOPER.md](DEVELOPER.md),
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [COPYRIGHT](COPYRIGHT) before
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [COPYRIGHT](COPYRIGHT) before
 you start.
 
 If you are planning on developing on Kong, you'll need a development
-installation. The `next` branch holds the latest unreleased source code.
+installation. The `master` branch holds the latest unreleased source code.
 
 You can read more about writing your own plugins in the [Plugin Development
 Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
@@ -209,7 +209,7 @@ $ git clone https://github.com/Kong/kong
 $ cd kong/
 
 # you might want to switch to the development branch. See CONTRIBUTING.md
-$ git checkout next
+$ git checkout master
 
 # install the Lua sources
 $ luarocks make
@@ -217,7 +217,7 @@ $ luarocks make
 
 #### Running for development
 
-Check out the [development section](https://github.com/Kong/kong/blob/next/kong.conf.default#L244)
+Check out the [development section](https://github.com/Kong/kong/blob/master/kong.conf.default#L244)
 of the default configuration file for properties to tweak in order to ease
 the development process for Kong.
 
@@ -271,7 +271,7 @@ $ make test-all
 ```
 
 Consult the [run_tests.sh](.ci/run_tests.sh) script for a more advanced example
-usage of the tests suites and the Makefile.
+usage of the test suites and the Makefile.
 
 Finally, a very useful tool in Lua development (as with many other dynamic
 languages) is performing static linting of your code. You can use [luacheck]
@@ -303,7 +303,7 @@ Enterprise](https://konghq.com/kong-enterprise-edition/).
 ## License
 
 ```
-Copyright 2016-2020 Kong Inc.
+Copyright 2016-2021 Kong Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

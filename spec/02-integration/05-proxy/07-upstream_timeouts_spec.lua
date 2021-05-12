@@ -42,7 +42,6 @@ for _, strategy in helpers.each_strategy() do
         if not route.protocols then
           route.protocols = { "http" }
         end
-
         bp.routes:insert(route)
       end
 
@@ -53,7 +52,8 @@ for _, strategy in helpers.each_strategy() do
       bp, _ = helpers.get_db_utils(strategy, {
         "routes",
         "services",
-      })
+        "plugins",
+      }, { "ctx-checker-last" })
 
       insert_routes {
         {
@@ -82,7 +82,15 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      bp.plugins:insert {
+        name = "ctx-checker-last",
+        config = {
+          ctx_check_field = "balancer_data",
+        }
+      }
+
       assert(helpers.start_kong({
+        plugins    = "ctx-checker-last",
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
@@ -121,6 +129,26 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.res_status(504, res)
+      end)
+      it("sets status for last try", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/delay/2",
+        })
+
+        assert.res_status(504, res)
+
+        local balancer_data = res.headers["ctx-checker-last-balancer-data"]
+        -- extract the "tries" field
+        local tries = ngx.re.match(balancer_data, [[^.+tries \= \{ (\{.+\})\, .+\}\,.+\}$]], "o")
+        -- split tries
+        local individual_tries = ngx.re.match(tries[1], [[(\{.+\})\, (\{.+\}\,) (\{.+\})\, (\{.+\}\,)( \{.+\})]], "o")
+        -- check for state and code fields
+        for i = 1, #individual_tries do
+          assert(string.match(individual_tries[i], [[state = "failed"]]))
+          assert(string.match(individual_tries[i], [[code = 504]]))
+        end
+
       end)
     end)
 

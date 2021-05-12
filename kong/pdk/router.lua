@@ -21,6 +21,7 @@ local check_phase = phase_checker.check
 local PHASES = phase_checker.phases
 local ROUTER_PHASES = phase_checker.new(PHASES.access,
                                         PHASES.header_filter,
+                                        PHASES.response,
                                         PHASES.body_filter,
                                         PHASES.log)
 
@@ -33,7 +34,7 @@ local function new(self)
   -- route.
   --
   -- @function kong.router.get_route
-  -- @phases access, header_filter, body_filter, log
+  -- @phases access, header_filter, response, body_filter, log
   -- @treturn table the `route` entity.
   -- @usage
   -- local route = kong.router.get_route()
@@ -50,7 +51,7 @@ local function new(self)
   -- upstream service.
   --
   -- @function kong.router.get_service
-  -- @phases access, header_filter, body_filter, log
+  -- @phases access, header_filter, response, body_filter, log
   -- @treturn table the `service` entity.
   -- @usage
   -- if kong.router.get_service() then
