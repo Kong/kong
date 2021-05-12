@@ -40,7 +40,7 @@ local file_descriptors = {}
 -- @param `conf`     Configuration table, holds http endpoint details
 -- @param `message`  Message to be logged
 local function log(conf, message)
-  local msg = cjson.encode(message) .. "\n"
+  local msg = os.date("%Y/%m/%d %X ") .. cjson.encode(message) .. "\n"
   local fd = file_descriptors[conf.path]
 
   if fd and conf.reopen then
