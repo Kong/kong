@@ -77,8 +77,7 @@ pipeline {
     timeout(time: 100, unit: 'MINUTES')
   }
   environment {
-    GITHUB = credentials('GITHUB_TOKEN')
-    GITHUB_TOKEN = credentials('GITHUB_TOKEN')
+    GITHUB_TOKEN = credentials('github_bot_access_token')
     DOCKER_REGISTRY_URL = "registry.kongcloud.io"
     // This will map DOCKER_REGISTRY_USR and DOCKER_REGISTRY_PSW
     DOCKER_REGISTRY = credentials('DOCKER_REGISTRY')

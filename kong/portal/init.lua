@@ -25,6 +25,7 @@ local ERR = ngx.ERR
 local fmt = string.format
 local sub = string.sub
 local find = string.find
+local unescape_uri = ngx.unescape_uri
 
 
 local NEEDS_BODY = tablex.readonly({ PUT = 1, POST = 2, PATCH = 3 })
@@ -175,7 +176,10 @@ app:before_filter(function(self)
   ctx.rbac = nil
 
   local invoke_plugin = singletons.invoke_plugin
-  local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
+  local ws_name = workspaces.DEFAULT_WORKSPACE
+  if self.params.workspace_name then
+    ws_name = unescape_uri(self.params.workspace_name)
+  end
 
   local ws, err = kong.db.workspaces:select_by_name(ws_name)
   if err then
