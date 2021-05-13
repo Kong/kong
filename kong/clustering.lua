@@ -49,7 +49,7 @@ local deflate_gzip = utils.deflate_gzip
 -- XXX EE
 local get_cn_parent_domain = utils.get_cn_parent_domain
 
-
+local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
 local MAX_PAYLOAD = 4 * 1024 * 1024 -- 4MB
 local PING_INTERVAL = 30 -- 30 seconds
@@ -69,6 +69,7 @@ local WEAK_KEY_MT = { __mode = "k", }
 local CERT_DIGEST, CERT_CN_PARENT
 local CERT, CERT_KEY
 local PLUGINS_LIST
+local PLUGINS_MAP = {}
 local clients = setmetatable({}, WEAK_KEY_MT)
 local prefix = ngx.config.prefix()
 local CONFIG_CACHE = prefix .. "/config.cache.json.gz"
@@ -680,47 +681,33 @@ local function should_send_config_update(node_version, node_plugins)
                   CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
   end
 
-  -- allow DP to have a superset of CP's plugins
-  local p, np
-  local i, j = #PLUGINS_LIST, #node_plugins
+  -- iterate over control plane plugins map
+  for plugin_name, plugin_meta in pairs(PLUGINS_MAP) do
 
-  if j < i then
-    return false, "CP and DP does not have same set of plugins installed",
-                  CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
-  end
+    -- check plugin only if it is included in the current config export
+    if plugin_meta.included == 1 then
+      -- if plugin isn't enabled on the data plane node return immediately
+      if not node_plugins[plugin_name] then
+        return false, "CP and DP do not have same set of plugins installed, " ..
+          "plugin: " .. tostring(plugin_name) .. " is missing",
+                        CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+      end
 
-  while i > 0 and j > 0 do
-    p = PLUGINS_LIST[i]
-    np = node_plugins[j]
+      local major_minor_p = plugin_meta.version:match("^(%d+%.%d+)") or "not_a_version"
+      local major_minor_np = node_plugins[plugin_name].version:match("^(%d+%.%d+)") or "still_not_a_version"
 
-    if p.name ~= np.name then
-      goto continue
-    end
-
-    -- ignore plugins without a version (route-by-header is deprecated)
-    if p.version and np.version then
-      -- major/minor check that ignores anything after the second digit
-      local major_minor_p = p.version:match("^(%d+%.%d+)") or "not_a_version"
-      local major_minor_np = np.version:match("^(%d+%.%d+)") or "still_not_a_version"
-
-      if major_minor_p ~= major_minor_np then
-        return false, "plugin \"" .. p.name .. "\" version incompatible, " ..
-                      "CP version: " .. tostring(p.version) ..
-                      " DP version: " .. tostring(np.version) ..
-                      " DP plugin version acceptable is "..
-                      major_minor_p .. ".x",
-                      CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+      -- ignore plugins without a version (route-by-header is deprecated)
+      if plugin_meta.version and node_plugins[plugin_name].version then
+        if major_minor_p ~= major_minor_np then
+          return false, "plugin \"" .. plugin_name .. "\" version incompatible, " ..
+            "CP version: " .. tostring(plugin_meta.version) ..
+            " DP version: " .. tostring(node_plugins[plugin_name].version) ..
+            " DP plugin version acceptable is "..
+            major_minor_p .. ".x",
+          CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+        end
       end
     end
-
-    i = i - 1
-    ::continue::
-    j = j - 1
-  end
-
-  if i > 0 then
-    return false, "CP and DP does not have same set of plugins installed",
-                  CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
   end
 
   return true
@@ -732,6 +719,24 @@ local function export_deflated_reconfigure_payload()
   if not config_table then
     return nil, err
   end
+
+  -- reset plugins map
+  for _, plugin_meta in pairs(PLUGINS_MAP) do
+    plugin_meta.included = 0
+  end
+
+  -- update plugins map
+  if config_table.plugins then
+    for _, plugin in pairs(config_table.plugins) do
+      PLUGINS_MAP[plugin.name].included = 1
+    end
+  end
+
+  -- store serialized plugins map for troubleshooting purposes
+  local shm_key_name = "clustering:cp_plugins_map:worker_" .. ngx.worker.id()
+  kong_dict:set(shm_key_name, cjson_encode(PLUGINS_MAP));
+
+  ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
   local payload, err = cjson_encode({
     type = "reconfigure",
@@ -805,20 +810,31 @@ function _M.handle_cp_websocket()
     }
   end
 
-  clients[wb] = queue
+  local NODE_PLUGINS_MAP = {}
+  for _, plugin in pairs(node_plugins) do
+    NODE_PLUGINS_MAP[plugin.name] = { version = plugin.version }
+  end
+
+  clients[wb] = {
+    queue = queue,
+    node_hostname = node_hostname,
+    node_ip = node_ip,
+    node_version = node_version,
+    node_plugins = NODE_PLUGINS_MAP
+  }
+
+  if not deflated_reconfigure_payload then
+    assert(export_deflated_reconfigure_payload())
+  end
 
   local res, sync_status
-  res, err, sync_status = should_send_config_update(node_version, node_plugins)
+  res, err, sync_status = should_send_config_update(node_version, NODE_PLUGINS_MAP)
   if res then
     sync_status = CLUSTERING_SYNC_STATUS.NORMAL
-    if not deflated_reconfigure_payload then
-      assert(export_deflated_reconfigure_payload())
-    end
 
     if deflated_reconfigure_payload then
       table_insert(queue, deflated_reconfigure_payload)
       queue.post()
-
     else
       ngx_log(ngx_ERR, "unable to export config from database: ".. err)
     end
@@ -925,7 +941,7 @@ function _M.handle_cp_websocket()
           end
 
         else
-          ok, err = should_send_config_update(node_version, node_plugins)
+          ok, err = should_send_config_update(node_version, NODE_PLUGINS_MAP)
           if ok then
             -- config update
             local _, err = wb:send_binary(payload)
@@ -983,10 +999,19 @@ local function push_config()
   end
 
   local n = 0
-  for _, queue in pairs(clients) do
-    table_insert(queue, payload)
-    queue.post()
-    n = n + 1
+  for _, client in pairs(clients) do
+    -- perform plugin compatibility check
+    local res, err = should_send_config_update(client.node_version, client.node_plugins)
+    if res then
+      table_insert(client.queue, payload)
+      client.queue.post()
+      n = n + 1
+    else
+      ngx_log(ngx_WARN, "unable to send updated configuration to " ..
+        "DP node with hostname: " .. client.node_hostname ..
+        " ip: " .. client.node_ip ..
+        " reason: " .. err)
+    end
   end
 
   ngx_log(ngx_DEBUG, "config pushed to ", n, " clients")
@@ -1113,6 +1138,12 @@ function _M.init_worker(conf)
   PLUGINS_LIST = pl_tablex.map(function(p)
     return { name = p.name, version = p.handler.VERSION, }
   end, PLUGINS_LIST)
+
+  if conf.role == "control_plane" then
+    for _, plugin in pairs(PLUGINS_LIST) do
+      PLUGINS_MAP[plugin.name] = { version = plugin.version, included = 0 }
+    end
+  end
 
   if conf.role == "data_plane" then
     -- ROLE = "data_plane"

@@ -247,15 +247,46 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           cluster_version_check = "major_minor",
         }))
+
+        local admin_client = helpers.admin_client()
+        -- configure a few plugins
+        local res = assert(admin_client:post("/plugins", {
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+          body = {
+            name  = "key-auth"
+          }
+        }))
+        assert.res_status(201, res)
       end)
 
       lazy_teardown(function()
         helpers.stop_kong()
       end)
 
+      local plugins_map = {}
+      -- generate a map of current plugins
+      local plugin_list = pl_tablex.deepcopy(helpers.get_plugins_list())
+      for _, plugin in pairs(plugin_list) do
+        plugins_map[plugin.name] = plugin.version
+      end
+
       -- STARTS allowed cases
       local allowed_cases = {
         ["CP and DP version and plugins matches"] = {},
+        ["CP configured plugins list matches DP enabled plugins list"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          plugins_list = {
+            {  name = "key-auth", version = plugins_map["key-auth"] }
+          }
+        },
+        ["CP configured plugins list matches DP enabled plugins version"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          plugins_list = {
+            {  name = "key-auth", version = plugins_map["key-auth"] }
+          }
+        },
         ["CP and DP patch version mismatches"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, 4),
         },
@@ -335,6 +366,20 @@ for _, strategy in helpers.each_strategy() do
 
       -- STARTS blocked cases
       local blocked_cases = {
+        ["CP configured plugin list missmatches DP enabled plugins list"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE,
+          plugins_list = {
+            {  name="banana-plugin", version="1.0.0" }
+          }
+        },
+        ["CP configured plugin list missmatches DP enabled plugins list version"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
+          plugins_list = {
+            {  name="key-auth", version="1.0.0" }
+          }
+        },
         ["CP and DP major version mismatches"] = {
           dp_version = "1.0.0",
           expected = CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE,
@@ -347,62 +392,6 @@ for _, strategy in helpers.each_strategy() do
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR+1, PATCH),
           expected = CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE,
         },
-      }
-
-      local pl1 = pl_tablex.deepcopy(helpers.get_plugins_list())
-      for i, p in ipairs(pl1) do
-        local v = pl1[i].version
-        local minor = v and v:match("%d+%.(%d+)")
-        -- find a plugin that has minor larger than 1 :joy:
-        -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
-        if minor and tonumber(minor) and tonumber(minor) > 1 then
-          pl1[i].version = string.format("%d.%d.%d",
-            tonumber(v:match("(%d+)")),
-            tonumber(v:match("%d+%.(%d+)")) - 1,
-            tonumber(v:match("%d+%.%d+%.(%d+)"))
-          )
-          break
-        end
-      end
-      blocked_cases["CP and DP plugin minor version mismatch"] = {
-        plugins_list = pl1,
-        expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
-      }
-
-      local pl2 = pl_tablex.deepcopy(helpers.get_plugins_list())
-      for i, p in ipairs(pl2) do
-        local v = pl2[i].version
-        local major = v and v:match("(%d+)")
-        -- find a plugin that has major larger than 1 :joy:
-        -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
-        if major and tonumber(major) and tonumber(major) > 1 then
-          pl2[i].version = string.format("%d.%d.%d",
-            tonumber(major - 1),
-            tonumber(v:match("%d+%.(%d+)")),
-            tonumber(v:match("%d+%.%d+%.(%d+)"))
-          )
-          break
-        end
-      end
-      blocked_cases["CP and DP plugin major version mismatch"] = {
-        plugins_list = pl2,
-        expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
-      }
-
-      local pl3 = pl_tablex.deepcopy(helpers.get_plugins_list())
-      table.remove(pl3, #pl3/2)
-      blocked_cases["DP plugin set is subset of CP"] = {
-        plugins_list = pl3,
-        expected = CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE,
-      }
-
-      local pl4 = pl_tablex.deepcopy(helpers.get_plugins_list())
-      table.remove(pl4, 2)
-      table.insert(pl4, 4, { name = "banana", version = "1.1.1" })
-      table.insert(pl4, { name = "pineapple", version = "1.1.1" })
-      blocked_cases["CP and DP plugin set mismatch"] = {
-        plugins_list = pl4,
-        expected = CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE,
       }
 
       for desc, harness in pairs(blocked_cases) do
