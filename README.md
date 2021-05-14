@@ -137,7 +137,7 @@ code, other repos are also under active development:
   Instaclustr manage your Cassandra cluster.
 - [Nightly Builds][kong-nightly-master]: Builds of the master branch available every morning at about 9AM PST.
 
-You can find every supported distribution at the [official installation page](https://konghq.com/install/).
+You can find every supported distribution at the [official installation page](https://konghq.com/install/#kong-community).
 
 ## Development
 

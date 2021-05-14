@@ -182,5 +182,22 @@ for _, strategy in helpers.each_strategy() do
       })
       return cjson.decode(assert.res_status(400, res))
     end)
+
+    it("escapes the workspace properly (chars .-)", function()
+      local workspaces_names = {"ws-special", "ws.special", "ws-.special"}
+      for _, ws_name in ipairs(workspaces_names) do
+        post("/workspaces", {name = ws_name})
+        local service1 = post("/" ..  ws_name .. "/services", {name = "service1", host = "httpbin2.org"})
+        local route_path = "/" .. ws_name .. "/ver1/hello"
+        local res = assert(client:send{
+          method = "POST",
+          path = "/" .. ws_name .. "/services/service1/routes",
+          body = '{"protocols":["http"],"methods":["GET"],"hosts":[],"paths":["' .. route_path .. '"],"strip_path":true,"preserve_host":false,"service":{"id":"'.. service1.id .. '"}}',
+          headers = {["Content-Type"] = "application/json"}
+        })
+        assert.res_status(201, res)
+      end
+    end)
+
   end)
 end
