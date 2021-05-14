@@ -119,27 +119,39 @@ pipeline {
         )
       }
     }
-  //   stage("Build & Push Docker Images") {
-  //     steps {
-  //       parallel (
-  //         // beware! $KONG_VERSION might have an ending \n that swallows everything after it
-  //         alpine: {
-  //           sh "./dist/dist.sh pulp-release -u $PULP_USR -k $PULP_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-  //           // Docker with anonymous reports off. jenkins has no permission + is old method
-  //           // sh "./dist/dist.sh pulp-release -u $PULP_USR -k $PULP_PSW -l -p alpine -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
-  //         },
-  //         centos7: {
-  //           sh "./dist/dist.sh pulp-release -u $PULP_USR -k $PULP_PSW -p centos -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-  //           // Docker with anonymous reports off. jenkins has no permission + is old method
-  //           // sh "./dist/dist.sh pulp-release -u $PULP_USR -k $PULP_PSW -p centos -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
-  //         },
-  //         rhel: {
-  //           sh "./dist/dist.sh pulp-release -u $PULP_USR -k $PULP_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -v $KONG_VERSION"
-  //           // Docker with anonymous reports off. jenkins has no permission + is old method
-  //           // sh "./dist/dist.sh pulp-release -u $PULP_USR -k $PULP_PSW -p rhel -e -R ${env.RELEASE_SCOPE} -a -v $KONG_VERSION"
-  //         },
-  //       )
-  //     }
-  //   }
+    stage("Build & Push Docker Images") {
+      steps {
+        parallel (
+          // beware! $KONG_VERSION might have an ending \n that swallows everything after it
+          alpine: {
+            sh "./dist/dist.sh docker-hub-release -u $DOCKERHUB_KONGCLOUD_PUSH_USR \
+                                                  -k $DOCKERHUB_KONGCLOUD_PUSH_PSW \
+                                                  -pu $PULP_USR \
+                                                  -pk $PULP_PSW \
+                                                  -p alpine \
+                                                  -R ${env.RELEASE_SCOPE} \
+                                                  -v $KONG_VERSION"
+          },
+          centos7: {
+            sh "./dist/dist.sh docker-hub-release -u $DOCKERHUB_KONGCLOUD_PUSH_USR \
+                                                  -k $DOCKERHUB_KONGCLOUD_PUSH_PSW \
+                                                  -pu $PULP_USR \
+                                                  -pk $PULP_PSW \
+                                                  -p centos \
+                                                  -R ${env.RELEASE_SCOPE} \
+                                                  -v $KONG_VERSION"
+          },
+          rhel: {
+            sh "./dist/dist.sh docker-hub-release -u $DOCKERHUB_KONGCLOUD_PUSH_USR \
+                                                  -k $DOCKERHUB_KONGCLOUD_PUSH_PSW \
+                                                  -pu $PULP_USR \
+                                                  -pk $PULP_PSW \
+                                                  -p rhel \
+                                                  -R ${env.RELEASE_SCOPE} \
+                                                  -v $KONG_VERSION"
+          },
+        )
+      }
+    }
   }
 }
