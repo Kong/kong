@@ -91,7 +91,7 @@ pipeline {
           ubuntu2004: {
             sh "./dist/dist.sh build ubuntu:20.04 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test ubuntu:20.04 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $PULP_USR -k $PULP_PSW -p ubuntu:20.04 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p ubuntu:20.04 -e -R ${env.RELEASE_SCOPE}"
           },
           amazonlinux2: {
             sh "./dist/dist.sh build amazonlinux:2 ${env.RELEASE_SCOPE}"
