@@ -32,6 +32,7 @@ local max           = math.max
 local band          = bit.band
 local bor           = bit.bor
 
+local REGEX_PREFIX  = "(*LIMIT_MATCH=10000)"
 local SLASH         = byte("/")
 
 local ERR           = ngx.ERR
@@ -497,7 +498,7 @@ local function marshall_route(r)
           local path = normalize_regex(path)
 
           -- regex URI
-          local strip_regex  = path .. [[(?<uri_postfix>.*)]]
+          local strip_regex  = REGEX_PREFIX .. path .. [[(?<uri_postfix>.*)]]
           local has_captures = has_capturing_groups(path)
 
           local uri_t    = {
