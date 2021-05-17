@@ -1,0 +1,8 @@
+## 0.2.0
+
+- allow mocking plugin to work in dbless and hybrid modes
+- fix to handle query param fields not in examples
+
+## 0.1.0
+
+- Initial release
