@@ -1,3 +1,7 @@
+## 0.2.1
+
+- fix(*) luarock spec version
+
 ## 0.2.0
 
 - allow mocking plugin to work in dbless and hybrid modes
