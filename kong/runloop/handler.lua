@@ -1528,7 +1528,9 @@ return {
             balancer_data.balancer_handle, status)
         end
         -- release the handle, so the balancer can update its statistics
-        balancer_data.balancer_handle:release()
+        if balancer_data.balancer_handle.release then
+          balancer_data.balancer_handle:release()
+        end
       end
     end
   }

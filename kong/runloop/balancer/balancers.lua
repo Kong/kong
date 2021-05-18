@@ -117,6 +117,8 @@ local function create_balancer_exclusive(upstream)
     log_prefix = "upstream:" .. upstream.name,
     wheelSize = upstream.slots,  -- will be ignored by least-connections
     targets = targets_list,
+    weight = 0,
+    unavailableWeight = 0,
 
     resolveTimer = nil,
     requeryInterval = opts.requery or REQUERY_INTERVAL,  -- how often to requery failed dns lookups (seconds)
@@ -251,6 +253,7 @@ function balancers_M.create_balancers()
   log(DEBUG, "initialized ", oks, " balancer(s), ", errs, " error(s)")
 end
 
+
 --------- balancer object methods
 
 function balancer_mt:eachAddress(f, ...)
@@ -275,7 +278,7 @@ function balancer_mt:findAddress(ip, port, hostname)
 end
 
 
-function balancer_mt:setAddressStatus(address, status)
+function balancer_mt:setAddressStatus(address, available)
   if type(address) ~= "table"
     or type(address.target) ~= "table"
     or address.target.balancer ~= self
@@ -283,12 +286,24 @@ function balancer_mt:setAddressStatus(address, status)
     return
   end
 
-  address.status = status
+  if address.available == available then
+    return
+  end
+
+  address.available = available
+  local delta = address.weight
+  if available then
+    delta = -delta
+  end
+  address.target.unavailableWeight = address.target.unavailableWeight + delta
+  self.unavailableWeight = self.unavailableWeight + delta
+  self:updateStatus()
 end
+
 
 function balancer_mt:disableAddress(target, entry)
   -- from host:disableAddress()
-  local address = self.changeWeight(target, entry, 0)
+  local address = self:changeWeight(target, entry, 0)
   if address then
     address.disabled = true
   end
@@ -321,14 +336,20 @@ function balancer_mt:addAddress(target, entry)
     -- weight 1.
     weight = SRV_0_WEIGHT
   end
+  weight = weight or target.weight
   addresses[#addresses + 1] = {
     ip = entry_ip,
     port = entry_port,
-    weight = weight or target.weight,
+    weight = weight,
     target = target,
     useSRVname = self.useSRVname,
   }
 
+  target.weight = target.weight + weight
+  self.weight = self.weight + weight
+  target.unavailableWeight = target.unavailableWeight + weight
+  self.unavailableWeight = self.unavailableWeight + weight
+  self:updateStatus()
 end
 
 
@@ -340,8 +361,18 @@ function balancer_mt:changeWeight(target, entry, newWeight)
 
   for _, addr in ipairs(target.addresses) do
     if (addr.ip == entry_ip) and addr.port == entry_port then
-      target.weight = target.weight + newWeight - addr.weight
+      local delta = newWeight - addr.weight
+
+      target.weight = target.weight + delta
+      self.weight = self.weight + delta
+
+      if not addr.available then
+        target.unavailableWeight = target.unavailableWeight + delta
+        self.unavailableWeight = self.unavailableWeight + delta
+      end
+
       addr.weight = newWeight
+      self:updateStatus()
       return addr
     end
   end
@@ -368,6 +399,25 @@ function balancer_mt:deleteDisabledAddresses(target)
     if self.algorithm and self.algorithm.afterHostUpdate then
       self.algorithm:afterHostUpdate()
     end
+  end
+end
+
+
+function balancer_mt:updateStatus()
+  local old_status = self.healthy
+
+  if self.weight == 0 then
+    self.healthy = false
+  else
+    self.healthy = ((self.weight - self.unavailableWeight) / self.weight * 100 > self.healthThreshold)
+  end
+
+  if self.healthy == old_status then
+    return -- no status change
+  end
+
+  if self.callback then
+    self:callback("health", self.healthy)
   end
 end
 
@@ -445,12 +495,22 @@ function balancer_mt:afterHostUpdate()
   return self.algorithm:afterHostUpdate()
 end
 
-function balancer_mt:getPeer()
+
+function balancers_M.getAddressPeer(address, cacheOnly)
+  return targets.getAddressPeer(address, cacheOnly)
+end
+
+
+function balancer_mt:getPeer(...)
   if not self.algorithm or not self.algorithm.afterHostUpdate then
     return
   end
 
-  return self.algorithm:getPeer()
+  if not self.healthy then
+    return nil, balancers_M.errors.ERR_BALANCER_UNHEALTHY
+  end
+
+  return self.algorithm:getPeer(...)
 end
 
 return balancers_M

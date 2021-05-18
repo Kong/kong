@@ -73,16 +73,12 @@ end
 
 
 function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
-  if not self.healthy then
-    return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
-  end
-
   if handle then
     -- existing handle, so it's a retry
     handle.retryCount = handle.retryCount + 1
   else
     -- no handle, so this is a first try
-    handle = self:getHandle()  -- no GC specific handler needed
+    handle = {}   -- self:getHandle()  -- no GC specific handler needed
     handle.retryCount = 0
   end
 
@@ -98,7 +94,7 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
 
     address = self.wheel[self.pointer]
     if address ~= nil and address.available and not address.disabled then
-      ip, port, hostname = address:getPeer(cacheOnly)
+      ip, port, hostname = balancers.getAddressPeer(address, cacheOnly)
       if ip then
         -- success, update handle
         handle.address = address

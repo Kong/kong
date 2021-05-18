@@ -137,7 +137,7 @@ do
 
       local hostname = tgt.hostname
       local ok, err
-      ok, err = balancer:setAddressStatus(status, balancer:findAddress(tgt.ip, tgt.port, hostname))
+      ok, err = balancer:setAddressStatus(balancer:findAddress(tgt.ip, tgt.port, hostname), status)
 
       if not ok then
         log(WARN, "[healthchecks] failed setting peer status (upstream: ", hc.name, "): ", err)

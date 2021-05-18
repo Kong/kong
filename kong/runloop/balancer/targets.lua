@@ -66,6 +66,7 @@ local function load_targets_into_memory(upstream_id)
     target.name, port = string_match(target.target, "^(.-):(%d+)$")
     target.port = tonumber(port)
     target.addresses = {}
+    target.unavailableWeight = 0
   end
 
   return targets
@@ -85,11 +86,6 @@ function targets_M.fetch_targets(upstream)
       load_targets_into_memory, upstream.id)
 end
 
-
--- resolve a target, filling the list of addresses
-local function resolve_target(target)
-  targets_M.queryDns(target)
-end
 
 function targets_M.resolve_targets(targets_list)
   for _, target in ipairs(targets_list) do
@@ -437,6 +433,40 @@ function queryDns(target, cacheOnly)
   assert_atomicity(update_dns_result, target, newQuery)
 
   schedule_dns_renewal(target)
+end
+
+
+local function targetExpired(target)
+  return not target.lastQuery or target.lastQuery.expire < ngx_now()
+end
+
+
+function targets_M.getAddressPeer(address, cacheOnly)
+  if not address.available then
+    return nil, balancers.errors.ERR_ADDRESS_UNAVAILABLE
+  end
+
+  local target = address.target
+  if targetExpired(target) and not cacheOnly then
+    queryDns(target, cacheOnly)
+    if address.target ~= target then
+      return nil, balancers.errors.ERR_DNS_UPDATED
+    end
+  end
+
+  if address.ipType == "name" then    -- missing classification. (can it be a "name"?)
+    -- SRV type record with a named target
+    local ip, port, try_list = address.host.balancer.dns.toip(address.ip, address.port, cacheOnly)
+    if not ip then
+      port = tostring(port) .. ". Tried: " .. tostring(try_list)
+      return ip, port
+    end
+
+    return ip, port, address.hostHeader
+  end
+
+  return address.ip, address.port, address.hostHeader
+
 end
 
 

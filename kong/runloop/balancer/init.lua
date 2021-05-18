@@ -211,7 +211,7 @@ local function execute(balancer_data, ctx)
 
       -- calculate hash-value
       -- only add it if it doesn't exist, in case a plugin inserted one
-      hash_value             = balancer_data.hash_value
+      hash_value = balancer_data.hash_value
       if not hash_value then
         hash_value = get_value_to_hash(upstream, ctx)
         balancer_data.hash_value = hash_value
