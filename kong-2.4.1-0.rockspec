@@ -70,7 +70,6 @@ build = {
     ["kong.hooks"] = "kong/hooks.lua",
 
     ["kong.conf_loader"] = "kong/conf_loader/init.lua",
-    ["kong.conf_loader.feature_flags"] = "kong/conf_loader/feature_flags.lua",
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
 
     ["kong.clustering"] = "kong/clustering/init.lua",
