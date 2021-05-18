@@ -78,9 +78,14 @@ local function get_kong_version()
   error("can't read Kong version from kong.meta: " .. (meta or "nil"))
 end
 
+local function is_git_repo()
+  return perf.execute("git status")
+end
+
 
 return {
   git_checkout = git_checkout,
   git_restore = git_restore,
   get_kong_version = get_kong_version,
+  is_git_repo = is_git_repo,
 }

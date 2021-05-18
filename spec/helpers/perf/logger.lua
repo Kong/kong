@@ -9,9 +9,6 @@ else
 end
 
 local LOG_LEVEL = ngx.NOTICE
--- how many times for each "driver" operation
-local RETRY_COUNT = 3
-local DRIVER
 
 -- Some logging helpers
 local level_cfg = {

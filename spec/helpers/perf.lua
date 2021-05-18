@@ -6,7 +6,9 @@ local git = require("spec.helpers.perf.git")
 
 local my_logger = logger.new_logger("[controller]")
 
+-- how many times for each "driver" operation
 local RETRY_COUNT = 3
+local DRIVER
 
 -- Real user facing functions
 local driver_functions = {
@@ -343,8 +345,9 @@ function _M.generate_flamegraph(filename, title)
   if not title then
     title = "Flame graph"
   end
-  if git_head then
-    title = title .. " (based on " .. _M.get_kong_version() .. ")"
+
+  if git.is_git_repo() then
+    title = title .. " (based on " .. git.get_kong_version() .. ")"
   end
 
   local out = invoke_driver("generate_flamegraph", title)
