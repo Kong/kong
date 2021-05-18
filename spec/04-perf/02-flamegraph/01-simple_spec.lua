@@ -100,7 +100,7 @@ for _, version in ipairs(versions) do
     end)
 
     lazy_teardown(function()
-      perf.teardown(os.getenv("PERF_TEST_TERADOWN_ALL") or false)
+      perf.teardown(os.getenv("PERF_TEST_TEARDOWN_ALL") or false)
     end)
 
     it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes", function()

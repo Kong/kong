@@ -24,4 +24,4 @@ else
   perf.use_driver(driver)
 end
 
-perf.teardown(os.getenv("PERF_TEST_TERADOWN_ALL") or false)
+perf.teardown(os.getenv("PERF_TEST_TEARDOWN_ALL") or false)

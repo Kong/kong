@@ -112,7 +112,7 @@ jobs:
         PERF_TEST_PACKET_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
         PERF_TEST_PACKET_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
-        PERF_TEST_TERADOWN_ALL: "true"
+        PERF_TEST_TEARDOWN_ALL: "true"
       run: |
         bin/busted -o gtest spec/04-perf/99-teardown/
 
