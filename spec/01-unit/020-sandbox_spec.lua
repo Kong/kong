@@ -240,6 +240,11 @@ describe("sandbox functions wrapper", function()
           _G.kong.configuration = deep_copy(base_conf)
         end)
 
+        it("has access to string.rep", function()
+          assert.same("aaa", sandbox.sandbox("return string.rep('a', 3)")())
+          assert.is_true(sandbox.sandbox("return ('a'):rep(3) == 'aaa'")())
+        end)
+
         it("has access to config.untrusted_lua_sandbox_environment", function()
           for _, m in ipairs(modules) do
             assert.same(find(m, _G), sandbox.sandbox(fmt("return %s", m))())

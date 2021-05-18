@@ -1,5 +1,5 @@
 local sandbox = {
-  _VERSION      = "kong-lua-sandbox 1.0",
+  _VERSION      = "kong-lua-sandbox 1.1",
   _DESCRIPTION  = "A pure-lua solution for running untrusted Lua code.",
   _URL          = "https://github.com/kong/kong-lua-sandbox",
   _LICENSE      = [[
@@ -43,7 +43,6 @@ local BASE_ENV = {}
 
 -- List of unsafe packages/functions:
 --
--- * string.rep: can be used to allocate millions of bytes in 1 operation
 -- * {set|get}metatable: can be used to modify the metatable of global objects (strings, integers)
 -- * collectgarbage: can affect performance of other systems
 -- * dofile: can access the server filesystem
@@ -74,8 +73,8 @@ math.sin   math.sinh math.sqrt  math.tan  math.tanh
 os.clock os.difftime os.time
 
 string.byte string.char  string.find  string.format string.gmatch
-string.gsub string.len   string.lower string.match  string.reverse
-string.sub  string.upper
+string.gsub string.len   string.lower string.match  string.rep
+string.reverse string.sub  string.upper
 
 table.insert table.maxn table.remove table.sort
 
@@ -104,8 +103,6 @@ end)
 
 -- auxiliary functions/variables
 
-local string_rep = string.rep
-
 local function sethook(f, key, quota)
   if type(debug) ~= 'table' or type(debug.sethook) ~= 'function' then return end
   debug.sethook(f, key, quota)
@@ -113,7 +110,6 @@ end
 
 local function cleanup()
   sethook()
-  string.rep = string_rep -- luacheck: no global
 end
 
 -- Public interface: sandbox.protect
@@ -160,8 +156,6 @@ function sandbox.protect(code, options)
       end
       sethook(timeout, "", quota)
     end
-
-    string.rep = nil -- luacheck: no global
 
     local t = table.pack(pcall(f, ...))
 
