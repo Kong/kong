@@ -181,6 +181,7 @@ local function get_req_body_json()
 end
 
 
+-- validates the 'required' property of a schema
 local function validate_required(location, parameter)
   if location == "query" and parameter.style == "deepObject" then
     return true
@@ -242,7 +243,8 @@ local function validate_data(location, parameter)
     setmetatable(result, cjson.array_mt)
   end
 
-  return validator(result)
+  local ok, err = validator(result)
+  return ok, err, result
 end
 
 
@@ -251,9 +253,9 @@ local function validate_parameters(location, parameter)
     return false
   end
 
-  local ok, err = validate_data(location, parameter)
+  local ok, err, data = validate_data(location, parameter)
   if not ok then
-    return false, err
+    return false, err, data
   end
 
   return true
@@ -270,11 +272,14 @@ function RequestValidator:access(conf)
   -- validate parameters
   clear_environment()
   for _, parameter in ipairs(conf.parameter_schema or EMPTY) do
-    local ok, err = validate_parameters(parameter["in"], parameter)
+    local ok, err, data = validate_parameters(parameter["in"], parameter)
     if not ok then
       if err and conf.verbose_response then
-        return kong.response.exit(400, { message = fmt("%s '%s' validation failed, [error] %s", parameter["in"],
-                                                       parameter.name, err)})
+        return kong.response.exit(400, {
+            message = fmt("%s '%s' validation failed, [error] %s",
+                          parameter["in"], parameter.name, err),
+            data = data,
+        })
       end
       return kong.response.exit(400, { message = DENY_PARAM_MESSAGE })
     end

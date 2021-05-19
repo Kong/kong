@@ -480,8 +480,12 @@ for _, strategy in helpers.each_strategy()do
             f1 = "abc"
           }
         })
-        local json = cjson.decode(assert.res_status(400, res))
-        assert.same("header 'x-kong-name' validation failed, [error] failed to validate item 1: wrong type: expected integer, got string", json.message)
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody()
+        assert.same({
+          message = "header 'x-kong-name' validation failed, [error] failed to validate item 1: wrong type: expected integer, got string",
+          data = { "a", "b", "c" }
+        }, json)
       end)
 
       it("parameter type[object] validation for multi/single header with a object(delim: =) value #explode -> true", function()
@@ -522,7 +526,7 @@ for _, strategy in helpers.each_strategy()do
         assert.response(res).has.jsonbody()
       end)
 
-     it("parameter type[object] validation for multi/single headers with a object(delim: ,) value #explode -> false", function()
+      it("parameter type[object] validation for multi/single headers with a object(delim: ,) value #explode -> false", function()
         local param_schema = {
           {
             name = "x-kong-name",

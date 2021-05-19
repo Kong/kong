@@ -12,6 +12,12 @@
 
 For steps 2 - 6 above [this script](https://github.com/Kong/kong-ee/blob/master/scripts/bump-plugin) can be used.
 
+## unreleased
+
+- fix(verbose) add more verbosity to error messages. When parameters fail to
+  validate, and verbose errors are requested, a copy of the deserialized value
+  is included in the response.
+
 ## 1.1.5
 
 - fix(*) BasePlugin inheritance removal (FT-1701)
