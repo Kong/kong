@@ -128,6 +128,7 @@ local function execute(args)
 
         local report = {
           decl_fmt_version = meta._format_version,
+          file_ext = pl_path.extension(filename),
         }
         kong_reports.send("config-db-import", report)
       end
