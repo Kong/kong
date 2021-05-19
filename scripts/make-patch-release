@@ -285,6 +285,11 @@ case "$step" in
       git tag -s "$version" -m "$version"
       git push origin "$version"
 
+      make_github_release_file
+
+      hub release create -F release-$version.txt "$version"
+      rm -f release-$version.txt
+
       SUCCESS "Now you can run the next step:" \
               "    $0 $version submit_docker"
       ;;
