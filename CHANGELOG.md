@@ -1,3 +1,7 @@
+## 0.3.3
+
+- fix(handler) ensure certificate phase is set in ngx.ctx
+
 ## 0.3.2
 
 - fix(*) BasePlugin inheritance removal (FT-1701)
