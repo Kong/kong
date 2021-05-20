@@ -18,6 +18,7 @@ local mtls_cache = require("kong.plugins.mtls-auth.cache")
 local access = require("kong.plugins.mtls-auth.access")
 local certificate = require("kong.plugins.mtls-auth.certificate")
 local kong_global = require("kong.global")
+local PHASES = kong_global.phases
 
 
 local MtlsAuthHandler = {
@@ -37,6 +38,9 @@ function MtlsAuthHandler:init_worker()
   local orig_ssl_certificate = Kong.ssl_certificate
   Kong.ssl_certificate = function()
     orig_ssl_certificate()
+
+    -- ensure phases are set
+    kong_global.set_phase(kong, PHASES.certificate)
 
     kong_global.set_namespaced_log(kong, "mtls-auth")
     certificate.execute()
