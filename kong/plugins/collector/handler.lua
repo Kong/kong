@@ -31,33 +31,31 @@ local COLLECTOR_TYPE_STATS = 0x3
 -- Sends the provided payload (a string) to the configured plugin host
 -- @return true if everything was sent correctly, falsy if error
 -- @return error message if there was an error
-local function send_payload(data_encoded)
-  local data = cjson_safe.decode(data_encoded)
+local function send_payload(http_endpoint, payload)
   local client = http.new()
 
-  local headers = { ["Content-Type"] = "application/json", ["Content-Length"] = #data.payload }
-
-  local params = { method = "POST", body = data.payload, headers = headers }
-
-  local trimmed_endpoint = data.http_endpoint:gsub("(.-)/$", "%1")
+  local headers = { ["Content-Type"] = "application/json", ["Content-Length"] = #payload }
+  local params = { method = "POST", body = payload, headers = headers }
+  local trimmed_endpoint = http_endpoint:gsub("(.-)/$", "%1")
   local res, err = client:request_uri(trimmed_endpoint .. '/hars' , params)
 
   if not res then
-    return nil, "failed request to " .. data.http_endpoint .. ": " .. err
+    return nil, "failed request to " .. http_endpoint .. ": " .. err
   end
 
-  local success = res.status < 400
-  local err_msg
-
-  if not success then
-    err_msg = "request to " .. data.http_endpoint .. " returned " .. tostring(res.status)
+  if res.status < 400 then
+    return false, "request to " .. http_endpoint .. " returned " .. tostring(res.status)
   end
 
-  return success, err_msg
+  return true
 end
 
 local function json_array_concat(entries)
-  return "[" .. table.concat(entries, ",") .. "]"
+  local serialized_entries = {}
+  for i, entry in ipairs(entries) do
+    serialized_entries[i] = cjson_safe.encode(entry)
+  end
+  return "[" .. table.concat(serialized_entries, ",") .. "]"
 end
 
 local function update_ticket_to_ride(premature, self)
@@ -97,19 +95,18 @@ local function create_queue(conf, self)
     local payload
 
     if #entries == 1 or batch_max_size == 1 then
-      payload = entries[1]
+      payload = cjson_safe.encode(entries[1])
     else
       payload = json_array_concat(entries)
     end
 
-    local data = {
-      http_endpoint = conf.http_endpoint,
-      payload = payload
-    }
-
     if not self.hybrid then
-      return send_payload(cjson_safe.encode(data))
+      return send_payload(conf.http_endpoint, payload)
     else
+      local data = {
+        http_endpoint = conf.http_endpoint,
+        payload = payload
+      }
       return self.messaging:send_message(COLLECTOR_TYPE_STATS, cjson_safe.encode(data), true)
     end
   end
@@ -130,8 +127,11 @@ local function create_queue(conf, self)
 end
 
 local function get_serve_ingest_func(self)
-  return function(payload)
-    send_payload(payload[2])
+  return function(data)
+    if data[2] then
+      local payload = cjson_safe.decode(data[2])
+      send_payload(payload["http_endpoint"], payload["payload"])
+    end
   end
 end
 
@@ -166,7 +166,7 @@ local function get_server_name()
   return server_name
 end
 
-function CollectorHandler:new()
+function CollectorHandler:init_worker()
   if string.match(kong.version, "enterprise") then
     self.kong_ee = true
   else
@@ -176,10 +176,6 @@ function CollectorHandler:new()
   self.hybrid = kong.configuration.role ~= "traditional"
   self.role = kong.configuration.role
   self.valid_license = false
-end
-
-
-function CollectorHandler:init_worker()
   update_ticket_to_ride(false, self)
 
   -- start messanging pipe/register pipe
@@ -205,7 +201,6 @@ function CollectorHandler:log(conf)
 
   local entry = kong.log.serialize()
   entry["request"]["post_data"] = {}
-  entry = cjson_safe.encode(entry)
 
   if not queue then
     create_queue(conf, self)
