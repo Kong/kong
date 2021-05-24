@@ -76,7 +76,7 @@ jobs:
           if [[ -z $tags ]]; then
             tags="simple"
           fi
-        elif [[ $suite == "/flamegraph" ]]; then
+        elif [[ $suite == "/perf" ]]; then
           suites="01-rps"
           if [[ -z $tags ]]; then
             tags="baseline,single_route"

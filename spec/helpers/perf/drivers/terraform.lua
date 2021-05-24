@@ -131,8 +131,8 @@ function _M:setup(opts)
   -- self.log.debug("(In a low voice) pg_password is " .. PG_PASSWORD)
 
   self.log.info("Infra is up! However, executing psql remotely may take a while...")
-  package.loaded["spec.helpers"] = nil
-  for i=1, 3 do 
+  for i=1, 3 do
+    package.loaded["spec.helpers"] = nil
     local pok, pret = pcall(require, "spec.helpers")
     if pok then
       return pret
