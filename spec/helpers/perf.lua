@@ -218,8 +218,7 @@ function _M.start_stapxx(sample_name, ...)
 end
 
 --- Wait the load test to finish and get result
--- @function start_load
--- @param opts.path string request path
+-- @function wait_result
 -- @return string the test report text
 function _M.wait_result(opts)
   if not load_thread then
@@ -282,14 +281,16 @@ local function sum(t)
 end
 
 -- Note: could also use custom lua code in wrk
+local nan = 0/0
 local function parse_wrk_result(r)
   local rps = string.match(r, "Requests/sec:%s+([%d%.]+)")
   rps = tonumber(rps)
   local count = string.match(r, "([%d]+)%s+requests in")
   count = tonumber(count)
+  -- Note: doesn't include case where unit is us: Latency     0.00us    0.00us   0.00us    -nan%
   local lat_avg, avg_m, lat_max, max_m = string.match(r, "Latency%s+([%d%.]+)(m?)s%s+[%d%.]+m?s%s+([%d%.]+)(m?)s")
-  lat_avg = tonumber(lat_avg) * (avg_m == "m" and 1 or 1000)
-  lat_max = tonumber(lat_max) * (max_m == "m" and 1 or 1000)
+  lat_avg = tonumber(lat_avg or nan) * (avg_m == "m" and 1 or 1000)
+  lat_max = tonumber(lat_max or nan) * (max_m == "m" and 1 or 1000)
   return rps, count, lat_avg, lat_max
 end
 
