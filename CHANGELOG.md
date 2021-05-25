@@ -1,5 +1,6 @@
 # Table of Contents
 
+ - [2.2.0](#220---20210525)
  - [2.1.1](#211---20210510)
  - [2.1.0](#210---20210416)
  - [2.0.2](#202---20201118)
@@ -17,6 +18,11 @@
  - [1.5.0](#150---20190813)
  - [2.0.4](#204---20210113)
  - [2.0.3](#203---20210101)
+
+## [2.2.0] - 2021/05/25
+
+- fixes a regression added by BasePlugin inheritance removal
+- Query parameters are now sent obfuscated to collector
 
 ## [2.1.1] - 2021/05/10
 
