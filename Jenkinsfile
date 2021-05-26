@@ -11,8 +11,10 @@ pipeline {
         DOCKER_PASSWORD = "${env.DOCKER_CREDENTIALS_PSW}"
         KONG_PACKAGE_NAME = "kong"
         DOCKER_CLI_EXPERIMENTAL = "enabled"
-        PULP = credentials('PULP')
-        PULP_HOST = "https://api.pulp.konnect-prod.konghq.com"
+        PULP_HOST_PROD = "https://api.pulp.konnect-prod.konghq.com"
+        PULP_PROD = credentials('PULP')
+        PULP_HOST_STAGE = "https://api.pulp.konnect-stage.konghq.com"
+        PULP_STAGE = credentials('PULP_STAGE')
         GITHUB_TOKEN = credentials('github_bot_access_token')
         DEBUG = 0
     }
