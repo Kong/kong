@@ -35,8 +35,7 @@ int write(int fd, const void * ptr, int numbytes);
 -- fd tracking utility functions
 local file_descriptors = {}
 
--- Log to a file. Function used as callback from an nginx timer.
--- @param `premature` see OpenResty `ngx.timer.at()`
+-- Log to a file. 
 -- @param `conf`     Configuration table, holds http endpoint details
 -- @param `message`  Message to be logged
 local function log(conf, message)
