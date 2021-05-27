@@ -6,7 +6,11 @@ local concat = table.concat
 local select = select
 local balancer = require("kong.runloop.balancer")
 
+local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
+
 local stream_available, stream_api = pcall(require, "kong.tools.stream_api")
+
+local role = kong.configuration.role
 
 local DEFAULT_BUCKETS = { 1, 2, 5, 7, 10, 15, 20, 25, 30, 40, 50, 60, 70,
                           80, 90, 100, 200, 300, 400, 500, 1000,
@@ -99,12 +103,33 @@ local function init()
   if enterprise then
     enterprise.init(prometheus)
   end
+
+
+  -- Hybrid mode status
+  if role == "control_plane" then
+    metrics.data_plane_last_seen = prometheus:gauge("data_plane_last_seen",
+                                              "Last time data plane contacted control plane",
+                                              {"node_id", "hostname", "ip"})
+    metrics.data_plane_config_hash = prometheus:gauge("data_plane_config_hash",
+                                              "Config hash numeric value of the data plane",
+                                              {"node_id", "hostname", "ip"})
+
+    metrics.data_plane_version_compatible = prometheus:gauge("data_plane_version_compatible",
+                                              "Version compatible status of the data plane, 0 is incompatible",
+                                              {"node_id", "hostname", "ip", "kong_version"})
+  end
 end
 
 local function init_worker()
   prometheus:init_worker()
 end
 
+-- Convert the MD5 hex string to its numeric representation
+-- Note the following will be represented as a float instead of int64 since luajit
+-- don't like int64. Good news is prometheus uses float instead of int64 as well
+local function config_hash_to_number(hash_str)
+  return tonumber("0x" .. hash_str)
+end
 
 -- Since in the prometheus library we create a new table for each diverged label
 -- so putting the "more dynamic" label at the end will save us some memory
@@ -334,6 +359,38 @@ local function metric_data()
 
   if enterprise then
     enterprise.metric_data()
+  end
+
+  -- Hybrid mode status
+  if role == "control_plane" then
+    -- Cleanup old metrics
+    metrics.data_plane_last_seen:reset()
+    metrics.data_plane_config_hash:reset()
+
+    for data_plane, err in kong.db.clustering_data_planes:each() do
+      if err then
+        kong.log.err("failed to list data planes: ", err)
+        goto next_data_plane
+      end
+
+      local labels = { data_plane.id, data_plane.hostname, data_plane.ip }
+
+      metrics.data_plane_last_seen:set(data_plane.last_seen, labels)
+      metrics.data_plane_config_hash:set(config_hash_to_number(data_plane.config_hash), labels)
+
+      labels[4] = data_plane.version
+      local compatible = 1
+
+      if data_plane.sync_status == CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
+        or data_plane.sync_status == CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+        or data_plane.sync_status == CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE then
+
+        compatible = 0
+      end
+      metrics.data_plane_version_compatible:set(compatible, labels)
+
+::next_data_plane::
+    end
   end
 
   return prometheus:metric_data()
