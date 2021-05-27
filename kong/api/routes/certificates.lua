@@ -14,9 +14,8 @@ local unescape_uri = ngx.unescape_uri
 local function prepare_params(self)
   local id = unescape_uri(self.params.certificates)
   local method = self.req.method
-  local name
   if not utils.is_valid_uuid(id) then
-    name = arguments.infer_value(id, kong.db.snis.schema.fields.name)
+    local name = arguments.infer_value(id, kong.db.snis.schema.fields.name)
 
     local sni, _, err_t = kong.db.snis:select_by_name(name)
     if err_t then
@@ -28,7 +27,7 @@ local function prepare_params(self)
 
     else
       if method ~= "PUT" then
-        return kong.response.exit(404, { message = "SNI not found" })
+        return kong.response.exit(404, { message = "SNI could not be found" })
       end
 
       id = utils.uuid()
