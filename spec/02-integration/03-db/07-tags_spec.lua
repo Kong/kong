@@ -450,11 +450,15 @@ for _, strategy in helpers.each_strategy() do
       for entity_name, dao in pairs(db.daos) do
         if dao.schema.fields.tags then
           it(entity_name, function()
+            -- note: in Postgres 13, EXECUTE FUNCTION sync_tags()
+            -- is used instead of EXECUTE PROCEDURE sync_tags().
+            -- The LIKE operator makes the test compatible with both
+            -- old and new versions of Postgres
             local res, err = db.connector:query(string.format([[
               SELECT event_manipulation
                 FROM information_schema.triggers
               WHERE event_object_table='%s'
-                AND action_statement='EXECUTE PROCEDURE sync_tags()'
+                AND action_statement LIKE 'EXECUTE %% sync_tags()'
                 AND action_timing='AFTER'
                 AND action_orientation='ROW';
             ]], entity_name))
