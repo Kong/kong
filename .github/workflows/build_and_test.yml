@@ -85,12 +85,6 @@ jobs:
     - name: Checkout Kong source code
       uses: actions/checkout@v2
 
-    - name: Checkout docs.konghq.com
-      uses: actions/checkout@v2
-      with:
-        repository: Kong/docs.konghq.com
-        path: docs.konghq.com
-
     - name: Lookup build cache
       uses: actions/cache@v1
       id: cache-deps
@@ -105,7 +99,6 @@ jobs:
       run: |
           eval `luarocks path`
           scripts/autodoc
-          rm -rf docs.konghq.com
 
     - name: Lint Lua code
       run: |
