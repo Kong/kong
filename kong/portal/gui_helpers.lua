@@ -16,6 +16,7 @@ local legacy_renderer = require "kong.portal.legacy_renderer"
 local kong = kong
 local _M = {}
 local config = singletons.configuration
+local unescape_uri = ngx.unescape_uri
 
 
 local function send_workspace_not_found_error(err)
@@ -71,7 +72,11 @@ end
 
 
 function _M.set_workspace_by_path(self)
-  local workspace_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
+  local workspace_name = workspaces.DEFAULT_WORKSPACE
+  if self.params.workspace_name then
+    workspace_name = unescape_uri(self.params.workspace_name)
+  end
+
   local workspace, err = kong.db.workspaces:select_by_name(workspace_name)
 
   if err then
@@ -79,7 +84,7 @@ function _M.set_workspace_by_path(self)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
-  if workspace and workspace.name == self.params.workspace_name then
+  if workspace and self.params.workspace_name and workspace.name == workspace_name then
     -- strip workspace from path if not default
     self.path = self.path:sub(# ("/" .. workspace_name) + 1)
   end

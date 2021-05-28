@@ -8,8 +8,9 @@
 local ee_helpers = require "spec-ee.helpers"
 local helpers    = require "spec.helpers"
 
-local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
+local escape_uri = ngx.escape_uri
 
+local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
 
 local function configure_portal(db, workspace_name)
   local workspace = db.workspaces:select_by_name(workspace_name)
@@ -673,6 +674,57 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         assert.res_status(404, res)
+      end)
+    end)
+
+    describe("workspace that contains special chars", function()
+      local db
+
+      setup(function()
+        _, db, _ = helpers.get_db_utils(strategy)
+        assert(helpers.start_kong({
+          database    = strategy,
+          portal      = true,
+          portal_gui_use_subdomains = false,
+          portal_is_legacy = false,
+          portal_auth = "basic-auth",
+          portal_auto_approve = true,
+          portal_session_conf = PORTAL_SESSION_CONF
+        }))
+
+        local res = client_request({
+          method = "POST",
+          path = "/workspaces",
+          body = {
+            name = "ws-Áæ",
+            config = {
+              portal_auth = "key-auth",
+              portal = true
+            },
+          },
+          headers = {["Content-Type"] = "application/json"},
+        })
+        assert.equals(201, res.status)
+      end)
+
+      teardown(function()
+        db:truncate()
+        helpers.stop_kong()
+      end)
+
+      it("correctly unescape the url to identify routes", function()
+        local ws_name_escaped = escape_uri("ws-Áæ")
+        local res = gui_client_request({
+          method = "GET",
+          path = "/" .. ws_name_escaped,
+        })
+        assert.equals(res.status, 200)
+
+        local res = gui_client_request({
+          method = "GET",
+          path = "/" .. ws_name_escaped .. "/documentation",
+        })
+        assert.equals(res.status, 200)
       end)
     end)
   end)

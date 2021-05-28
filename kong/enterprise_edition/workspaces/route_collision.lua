@@ -265,12 +265,16 @@ local function validate_path_with_regexes(path, pattern)
   local ws = workspaces.get_workspace()
 
   local pat = compiled_template:render({
-    workspace = ws.name
+    workspace = ws.name:gsub("[-.]", "%%%1")
   })
 
   if not match(path, format("^%s$", pat)) then
+    -- the workspace shouldn't be escaped for the error message
+    local unescaped_pat = compiled_template:render({
+      workspace = ws.name
+    })
     return false,
-    format("invalid path: '%s' (should match pattern '%s')", path, pat)
+    format("invalid path: '%s' (should match pattern '%s')", path, unescaped_pat)
   end
 
   return true

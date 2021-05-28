@@ -72,6 +72,23 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
         assert.equals(0, files_count)
       end)
 
+      it("handles workspace name with special characters on creation", function()
+        local res = assert(client:post("/workspaces", {
+          body = {
+            name = "ws-Áæ",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        }))
+
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        assert.is_true(utils.is_valid_uuid(json.id))
+        assert.equals("ws-Áæ", json.name)
+      end)
+
       it("handles empty workspace name passed on creation", function()
         local res = assert(client:post("/workspaces", {
           body = {},
@@ -365,6 +382,30 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         -- total is number created + default
         assert.equals(num_to_create + 1, #json.data)
+      end)
+
+      it("handles a list of workspaces with special chars", function()
+        -- add a ws that contains special chars
+        assert(bp.workspaces:insert({
+          name = "ws-Áæ",
+        }))
+
+        local res = assert(client:send {
+          method = "GET",
+          path   = "/workspaces",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        -- make sure the name is properly returned by the endpoint
+        local ws_found = false
+        for _, ws in pairs(json.data) do
+          if ws.name == "ws-Áæ" then
+            ws_found = true
+          end
+        end
+        assert.True(ws_found, "workspace ws-Áæ not found.")
       end)
 
       it("returns 404 if called from other than default workspace", function()
@@ -1005,6 +1046,26 @@ describe("Workspaces Admin API (#" .. strategy .. "): ", function()
 
         assert.equals("foo-fighter", json.name)
         assert.equals("#255255", json.meta.color)
+      end)
+
+      it("retrieves a single workspace that has a name with special chars", function()
+        local res = assert(client:get("/workspaces/ws-Áæ"))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals("ws-Áæ", json.name)
+
+        -- special chars can be escaped
+        local ws_escaped_name = ngx.escape_uri("ws-Áæ")
+        local res = assert(client:get("/workspaces/" .. ws_escaped_name))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals("ws-Áæ", json.name)
+      end)
+
+      it("can fetch workspace data with encoded uri", function()
+        local encoded_ws_name = ngx.escape_uri("ws-Áæ")
+        local res = client:get("/" ..  encoded_ws_name .. "/services")
+        assert.res_status(200, res)
       end)
 
       it("sends the appropriate status on an invalid entity", function()
