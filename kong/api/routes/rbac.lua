@@ -20,6 +20,7 @@ local band       = bit.band
 local bxor       = bit.bxor
 local fmt        = string.format
 local escape_uri = ngx.escape_uri
+local unescape_uri = ngx.unescape_uri
 local null       = ngx.null
 
 local rbac_users          = kong.db.rbac_users
@@ -751,7 +752,7 @@ return {
 
         local filter = {
           role = { id = self.params.role.id, },
-          workspace = self.params.workspace,
+          workspace = unescape_uri(self.params.workspace),
           endpoint = self.params.endpoint,
         }
 
@@ -771,7 +772,7 @@ return {
       DELETE = function(self, db, helpers)
         local filter = {
           role = { id = self.params.role_id, },
-          workspace = self.params.workspace,
+          workspace = unescape_uri(self.params.workspace),
           endpoint = self.params.endpoint,
         }
         db.rbac_role_endpoints:delete(filter)

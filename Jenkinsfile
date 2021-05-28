@@ -24,7 +24,7 @@ pipeline {
     //  script: '[ -n $TAG_NAME ] && echo $TAG_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+" || echo -n $BRANCH_NAME | grep -o -P "\\d+\\.\\d+\\.\\d+\\.\\d+"'
     //)}"""
     // XXX: Can't bother to fix this now. This works, right? :)
-    KONG_VERSION = "2.4.1.0"
+    KONG_VERSION = "2.4.1.1"
   }
   stages {
     // choice between internal, rc1, rc2, rc3, rc4 ....,  GA
@@ -91,7 +91,7 @@ pipeline {
           ubuntu2004: {
             sh "./dist/dist.sh build ubuntu:20.04 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test ubuntu:20.04 ${env.RELEASE_SCOPE}"
-            sh "./dist/dist.sh release -V -u $PULP_USR -k $PULP_PSW -p ubuntu:20.04 -e -R ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p ubuntu:20.04 -e -R ${env.RELEASE_SCOPE}"
           },
           amazonlinux2: {
             sh "./dist/dist.sh build amazonlinux:2 ${env.RELEASE_SCOPE}"
