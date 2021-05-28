@@ -11,6 +11,7 @@ local utils = require "kong.tools.utils"
 local ee_helpers = require "spec-ee.helpers"
 local pl_file = require "pl.file"
 local constants = require "kong.constants"
+local escape_uri = ngx.escape_uri
 
 
 local PORTAL_PREFIX = constants.PORTAL_PREFIX
@@ -3027,6 +3028,59 @@ describe("Admin API RBAC with #" .. strategy, function()
 
         table.sort(json.actions)
         assert.same({ "read" }, json.actions)
+      end)
+
+      it("unescape workspace names properly for special chars", function()
+        local ws_name = "ws-Áæ"
+        local ws_name_escaped = escape_uri(ws_name)
+        post("/workspaces", {name = ws_name})
+        post("/".. ws_name_escaped .. "/rbac/roles", {name = "role1"})
+        local res = assert(client:send {
+          method = "POST",
+          path = "/".. ws_name_escaped .. "/rbac/roles/role1/endpoints/",
+          body = {
+            endpoint = "/foo",
+            actions = "*",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local endpoint_path = "/".. ws_name_escaped .. "/rbac/roles/role1/endpoints/" .. ws_name_escaped .. "/foo"
+        local res = assert(client:send {
+          method = "GET",
+          path = endpoint_path,
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals(ws_name, json.workspace)
+        assert.equals("/foo", json.endpoint)
+
+        local res = assert(client:send {
+          method = "PATCH",
+          path = endpoint_path,
+          body = {
+            comment = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(200, res)
+
+        local res = assert(client:send {
+          method = "DELETE",
+          path = endpoint_path,
+        })
+        assert.res_status(204, res)
+        -- also check that the delete has not silently failed
+        local res = assert(client:send {
+          method = "GET",
+          path = endpoint_path,
+        })
+        assert.res_status(404, res)
       end)
 
       describe("errors", function()
