@@ -55,8 +55,8 @@ jobs:
           source .ci/setup_env_github.sh
           make dev
 
-  lint-and-unit-tests:
-    name: Lint & Unit tests
+  lint-doc-and-unit-tests:
+    name: Lint, Doc and Unit tests
     runs-on: ubuntu-20.04
     needs: build
 
