@@ -387,6 +387,15 @@ typedefs.name = Schema.define {
 }
 
 
+typedefs.rbac_user_token = Schema.define {
+  type = "string",
+  unique = true,
+  required = true,
+  unique_across_ws = true,
+  custom_validator = validate_utf8_string
+}
+
+
 typedefs.utf8_name = Schema.define {
   type = "string",
   unique = true,

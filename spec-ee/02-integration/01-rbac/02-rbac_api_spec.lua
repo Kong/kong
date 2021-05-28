@@ -11,6 +11,7 @@ local utils = require "kong.tools.utils"
 local ee_helpers = require "spec-ee.helpers"
 local pl_file = require "pl.file"
 local constants = require "kong.constants"
+local escape_uri = ngx.escape_uri
 
 
 local PORTAL_PREFIX = constants.PORTAL_PREFIX
@@ -3029,6 +3030,59 @@ describe("Admin API RBAC with #" .. strategy, function()
         assert.same({ "read" }, json.actions)
       end)
 
+      it("unescape workspace names properly for special chars", function()
+        local ws_name = "ws-Áæ"
+        local ws_name_escaped = escape_uri(ws_name)
+        post("/workspaces", {name = ws_name})
+        post("/".. ws_name_escaped .. "/rbac/roles", {name = "role1"})
+        local res = assert(client:send {
+          method = "POST",
+          path = "/".. ws_name_escaped .. "/rbac/roles/role1/endpoints/",
+          body = {
+            endpoint = "/foo",
+            actions = "*",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local endpoint_path = "/".. ws_name_escaped .. "/rbac/roles/role1/endpoints/" .. ws_name_escaped .. "/foo"
+        local res = assert(client:send {
+          method = "GET",
+          path = endpoint_path,
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals(ws_name, json.workspace)
+        assert.equals("/foo", json.endpoint)
+
+        local res = assert(client:send {
+          method = "PATCH",
+          path = endpoint_path,
+          body = {
+            comment = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(200, res)
+
+        local res = assert(client:send {
+          method = "DELETE",
+          path = endpoint_path,
+        })
+        assert.res_status(204, res)
+        -- also check that the delete has not silently failed
+        local res = assert(client:send {
+          method = "GET",
+          path = endpoint_path,
+        })
+        assert.res_status(404, res)
+      end)
+
       describe("errors", function()
         it("when the given role does not exist", function()
           local res = assert(client:send {
@@ -3654,12 +3708,18 @@ for _, strategy in helpers.each_strategy() do
     client = assert(helpers.admin_client())
     services = map(create_service, {1, 2, 3, 4})
 
-    post("/rbac/users", {name = "bob", user_token = "bob"})
+    post("/rbac/users", {name = "bob", user_token = "bob "})
+    -- user_token deliberately with a trailing space
+    post("/rbac/users", {name = "trailingspace", user_token = "trailingspace "})
+    -- user_token deliberately with a leading space
+    post("/rbac/users", {name = "leadingspace", user_token = " leadingspace"})
     post("/rbac/roles" , {name = "mock-role"})
     post("/rbac/roles/mock-role/entities", {entity_id = services[2].id, entity_type = "services", actions = "read"})
     post("/rbac/roles/mock-role/entities", {entity_id = services[3].id, entity_type = "services", actions = "delete"})
     post("/rbac/roles/mock-role/entities", {entity_id = services[4].id, entity_type = "services", actions = "update"})
     post("/rbac/users/bob/roles", {roles = "mock-role"})
+    post("/rbac/users/leadingspace/roles", {roles = "mock-role"})
+    post("/rbac/users/trailingspace/roles", {roles = "mock-role"})
 
     helpers.stop_kong()
     assert(helpers.start_kong {
@@ -3703,6 +3763,9 @@ for _, strategy in helpers.each_strategy() do
     get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "wrong"}, 401)
     get("/services/" .. services[1].id , {["Kong-Admin-Token"] = "bob"}, 403)
     get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "bob"}, 200)
+    -- check for positive authentication without a trailing space
+    get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "leadingspace"}, 200)
+    get("/services/" .. services[2].id , {["Kong-Admin-Token"] = "trailingspace"}, 200)
   end)
 
   -- it(".update checks rbac via put", function()

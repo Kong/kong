@@ -24,13 +24,16 @@ return {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
     { name           = {type = "string", required = true, unique = true}},
-    { user_token     = {type = "string", required = true, unique = true, unique_across_ws = true }},
+    { user_token     = typedefs.rbac_user_token },
     { user_token_ident = { type = "string"}},
     { comment = { type = "string"} },
     { enabled = { type = "boolean", required = true, default = true}}
   },
 
   check = function(user)
+    -- make sure the token doesn't start or end with a whitespace
+    user.user_token = user.user_token:gsub("%s+", "")
+
     local ident = rbac.get_token_ident(user.user_token)
 
     -- first make sure it's not a duplicate
