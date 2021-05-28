@@ -9,17 +9,15 @@ void setBuildStatus(String message, String state) {
   ]);
 }
 
-//  * ubuntu dockerfile targets xenial (so 16.04)
+// Use "flags" and "prefix" to specify additional naming for tags
 def distros = [
-  [ name: "alpine", flags: [ "--ljbc 0"], prefix: "no-ljbc" ],
+  // [ name: "alpine", flags: [ "--ljbc 0"], prefix: "no-ljbc" ],
   [ name: "alpine" ],
-  [ name: "ubuntu:16.04" ],
 ]
 
 def builds = [:]
 
 for (x in distros) {
-
   def args = ([
     x.name,
     ([x.prefix, "nightly"] - null).join("-"),
