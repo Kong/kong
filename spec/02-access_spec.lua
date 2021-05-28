@@ -1,6 +1,16 @@
 local admin_api = require "spec.fixtures.admin_api"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local pl_file = require "pl.file"
+
+
+local function count_log_lines(pattern)
+  local cfg = helpers.test_conf
+  local logs = pl_file.read(cfg.prefix .. "/" .. cfg.proxy_error_log)
+  local _, count = logs:gsub(pattern, "")
+  return count
+end
+
 
 for _, strategy in helpers.each_strategy() do
 describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
@@ -2118,6 +2128,9 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.status(500)
     end)
     it("rendering error (header) is correctly propagated in error.log, issue #25", function()
+      local pattern = [[error:%[string "TMP"%]:4: attempt to call global 'foo' %(a nil value%)]]
+      local start_count = count_log_lines(pattern)
+
       local r = assert(client:send {
         method = "GET",
         path = "/",
@@ -2128,13 +2141,8 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.status(500)
 
       helpers.wait_until(function()
-        local pl_file = require "pl.file"
-
-        local cfg = helpers.test_conf
-        local logs = pl_file.read(cfg.prefix .. "/" .. cfg.proxy_error_log)
-        local _, count = logs:gsub([[error:%[string "TMP"%]:4: attempt to call global 'foo' %(a nil value%)]], "")
-
-        return count == 1 or count == 2 -- Kong 2.2+ == 1, Pre 2.2 == 2
+        local count = count_log_lines(pattern)
+        return count - start_count >= 1 -- Kong 2.2+ == 1, Pre 2.2 == 2
       end, 5)
     end)
     it("type function is available in template environment", function()
