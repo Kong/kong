@@ -351,6 +351,7 @@ local function new_ws_data()
   if subsystem == "stream" then
     phases = {
       init_worker = {},
+      certificate = {},
       preread     = {},
       log         = {},
     }

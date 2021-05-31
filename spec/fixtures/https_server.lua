@@ -90,7 +90,7 @@ local function count_results(logs_dir)
       if host then
         local host_no_port = ngx.re.match(m[3], host_regex)
         if host_no_port then
-          host = host_no_port[1]
+          host = host_no_port[2]
         end
       else
         host = "nonamehost"
@@ -143,6 +143,7 @@ function https_server.start(self)
 
   local conf_params = {
     base_path = self.base_path,
+    delay = self.delay,
     cert_path = "./",
     check_hostname = self.check_hostname,
     logs_dir = self.logs_dir,
@@ -209,7 +210,7 @@ function https_server.shutdown(self)
 end
 
 
-function https_server.new(port, hostname, protocol, check_hostname, workers)
+function https_server.new(port, hostname, protocol, check_hostname, workers, delay)
   local self = setmetatable({}, https_server)
   local host
   local hosts
@@ -226,6 +227,7 @@ function https_server.new(port, hostname, protocol, check_hostname, workers)
   end
 
   self.check_hostname = check_hostname or false
+  self.delay = tonumber(delay) or 0
   self.host = host or "localhost"
   self.hosts = hosts
   self.http_port = port

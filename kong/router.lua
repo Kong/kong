@@ -38,6 +38,64 @@ local ERR           = ngx.ERR
 local WARN          = ngx.WARN
 
 
+local normalize_regex
+do
+  local RESERVED_CHARACTERS = {
+    [0x21] = true, -- !
+    [0x23] = true, -- #
+    [0x24] = true, -- $
+    [0x25] = true, -- %
+    [0x26] = true, -- &
+    [0x27] = true, -- '
+    [0x28] = true, -- (
+    [0x29] = true, -- )
+    [0x2A] = true, -- *
+    [0x2B] = true, -- +
+    [0x2C] = true, -- ,
+    [0x2F] = true, -- /
+    [0x3A] = true, -- :
+    [0x3B] = true, -- ;
+    [0x3D] = true, -- =
+    [0x3F] = true, -- ?
+    [0x40] = true, -- @
+    [0x5B] = true, -- [
+    [0x5D] = true, -- ]
+  }
+  local REGEX_META_CHARACTERS = {
+    [0x2E] = true, -- .
+    [0x5E] = true, -- ^
+    -- $ in RESERVED_CHARACTERS
+    -- * in RESERVED_CHARACTERS
+    -- + in RESERVED_CHARACTERS
+    [0x2D] = true, -- -
+    -- ? in RESERVED_CHARACTERS
+    -- ( in RESERVED_CHARACTERS
+    -- ) in RESERVED_CHARACTERS
+    -- [ in RESERVED_CHARACTERS
+    -- ] in RESERVED_CHARACTERS
+    [0x7B] = true, -- {
+    [0x7D] = true, -- }
+    [0x5C] = true, -- \
+    [0x7C] = true, -- |
+  }
+  local ngx_re_gsub = ngx.re.gsub
+  local string_char = string.char
+
+  function normalize_regex(regex)
+    -- Decoding percent-encoded triplets of unreserved characters
+    return ngx_re_gsub(regex, "%([\\dA-F]{2})", function(m)
+      local hex = m[1]
+      local num = tonumber(hex, 16)
+      if RESERVED_CHARACTERS[num] then
+        return upper(m[0])
+      end
+
+      return (REGEX_META_CHARACTERS[num] and "\\" or "") .. string_char(num)
+    end, "joi")
+  end
+end
+
+
 local clear_tab
 local log
 do
@@ -428,7 +486,7 @@ local function marshall_route(r)
 
           local uri_t = {
             is_prefix = true,
-            value     = path,
+            value     = normalize(path, true),
           }
 
           route_t.uris[path] = uri_t
@@ -436,6 +494,8 @@ local function marshall_route(r)
           route_t.max_uri_length = max(route_t.max_uri_length, #path)
 
         else
+          local path = normalize_regex(path)
+
           -- regex URI
           local strip_regex  = path .. [[(?<uri_postfix>.*)]]
           local has_captures = has_capturing_groups(path)
@@ -668,6 +728,75 @@ local function index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
 
   for sni in pairs(route_t.snis) do
     plain_indexes.snis[sni] = true
+  end
+end
+
+
+local function sort_routes(r1, r2)
+  if r1.submatch_weight ~= r2.submatch_weight then
+    return r1.submatch_weight > r2.submatch_weight
+  end
+
+  do
+    local r1_n_headers = #r1.headers
+    local r2_n_headers = #r2.headers
+
+    if r1_n_headers ~= r2_n_headers then
+      return r1_n_headers > r2_n_headers
+    end
+  end
+
+  do
+    local rp1 = r1.route.regex_priority or 0
+    local rp2 = r2.route.regex_priority or 0
+
+    if rp1 ~= rp2 then
+      return rp1 > rp2
+    end
+  end
+
+  if r1.max_uri_length ~= r2.max_uri_length then
+    return r1.max_uri_length > r2.max_uri_length
+  end
+
+  --if #r1.route.protocols ~= #r2.route.protocols then
+  --  return #r1.route.protocols < #r2.route.protocols
+  --end
+
+  if r1.route.created_at ~= nil and r2.route.created_at ~= nil then
+    return r1.route.created_at < r2.route.created_at
+  end
+end
+
+
+local function sort_categories(c1, c2)
+  if c1.match_weight ~= c2.match_weight then
+    return c1.match_weight > c2.match_weight
+  end
+
+  return c1.category_bit > c2.category_bit
+end
+
+
+local function sort_uris(p1, p2)
+  return #p1.value > #p2.value
+end
+
+
+local function sort_sources(r1, _)
+  for _, source in ipairs(r1.sources) do
+    if source.ip and source.port then
+      return true
+    end
+  end
+end
+
+
+local function sort_destinations(r1, _)
+  for _, destination in ipairs(r1.destinations) do
+    if destination.ip and destination.port then
+      return true
+    end
   end
 end
 
@@ -1095,39 +1224,50 @@ do
     end,
   }
 
-
-  reduce = function(category, bit_category, ctx)
-    -- run cached reducer
-    if type(reducers[bit_category]) == "function" then
-      return reducers[bit_category](category, ctx), category.all
-    end
-
-    -- build and cache reducer
-
+  local build_cached_reducer = function(bit_category)
+    local reducers_count = 0
     local reducers_set = {}
+    local header_rule = 0
 
     for _, bit_match_rule in ipairs(SORTED_MATCH_RULES) do
       if band(bit_category, bit_match_rule) ~= 0 then
-        reducers_set[#reducers_set + 1] = reducers[bit_match_rule]
+        reducers_count = reducers_count + 1
+        reducers_set[reducers_count] = reducers[bit_match_rule]
+        if bit_match_rule == MATCH_RULES.HEADER then
+          header_rule = reducers_count
+        end
       end
     end
 
-    reducers[bit_category] = function(category, ctx)
+    return function(category, ctx)
       local min_len = 0
       local smallest_set
 
-      for i = 1, #reducers_set do
+      for i = 1, reducers_count do
         local candidates = reducers_set[i](category, ctx)
-        if candidates ~= nil and (not smallest_set or #candidates < min_len)
-        then
-          min_len = #candidates
-          smallest_set = candidates
+        if candidates ~= nil then
+          if i == header_rule then
+            return candidates
+          end
+          local candidates_len = #candidates
+          if not smallest_set or candidates_len < min_len then
+            min_len = candidates_len
+            smallest_set = candidates
+          end
         end
       end
 
       return smallest_set
     end
+  end
 
+  reduce = function(category, bit_category, ctx)
+    if type(reducers[bit_category]) ~= "function" then
+      -- build and cache reducer
+      reducers[bit_category] = build_cached_reducer(bit_category)
+    end
+
+    -- run cached reducer
     return reducers[bit_category](category, ctx), category.all
   end
 end
@@ -1238,41 +1378,7 @@ function _M.new(routes)
     -- * regex uris > plain uris
     -- * longer plain URIs > shorter plain URIs
 
-    sort(marshalled_routes, function(r1, r2)
-      if r1.submatch_weight ~= r2.submatch_weight then
-        return r1.submatch_weight > r2.submatch_weight
-      end
-
-      do
-        local r1_n_headers = #r1.headers
-        local r2_n_headers = #r2.headers
-
-        if r1_n_headers ~= r2_n_headers then
-          return r1_n_headers > r2_n_headers
-        end
-      end
-
-      do
-        local rp1 = r1.route.regex_priority or 0
-        local rp2 = r2.route.regex_priority or 0
-
-        if rp1 ~= rp2 then
-          return rp1 > rp2
-        end
-      end
-
-      if r1.max_uri_length ~= r2.max_uri_length then
-        return r1.max_uri_length > r2.max_uri_length
-      end
-
-      --if #r1.route.protocols ~= #r2.route.protocols then
-      --  return #r1.route.protocols < #r2.route.protocols
-      --end
-
-      if r1.route.created_at ~= nil and r2.route.created_at ~= nil then
-        return r1.route.created_at < r2.route.created_at
-      end
-    end)
+    sort(marshalled_routes, sort_routes)
 
     for i = 1, #marshalled_routes do
       local route_t = marshalled_routes[i]
@@ -1301,13 +1407,7 @@ function _M.new(routes)
     })
   end
 
-  sort(categories_weight_sorted, function(c1, c2)
-    if c1.match_weight ~= c2.match_weight then
-      return c1.match_weight > c2.match_weight
-    end
-
-    return c1.category_bit > c2.category_bit
-  end)
+  sort(categories_weight_sorted, sort_categories)
 
   for i, c in ipairs(categories_weight_sorted) do
     categories_lookup[c.category_bit] = i
@@ -1316,29 +1416,15 @@ function _M.new(routes)
   -- the number of categories to iterate on for this instance of the router
   local categories_len = #categories_weight_sorted
 
-  sort(prefix_uris, function(p1, p2)
-    return #p1.value > #p2.value
-  end)
+  sort(prefix_uris, sort_uris)
 
   for _, category in pairs(categories) do
     for _, routes in pairs(category.routes_by_sources) do
-      sort(routes, function(r1, r2)
-        for _, source in ipairs(r1.sources) do
-          if source.ip and source.port then
-            return true
-          end
-        end
-      end)
+      sort(routes, sort_sources)
     end
 
     for _, routes in pairs(category.routes_by_destinations) do
-      sort(routes, function(r1, r2)
-        for _, destination in ipairs(r1.destinations) do
-          if destination.ip and destination.port then
-            return true
-          end
-        end
-      end)
+      sort(routes, sort_destinations)
     end
   end
 

@@ -24,7 +24,7 @@ local _CTX_NAMESPACES_KEY = {}
 -- Since only relevant in the context of a request, this table cannot be
 -- accessed from the top-level chunk of Lua modules. Instead, it can only be
 -- accessed in request phases, which are represented by the `rewrite`,
--- `access`, `header_filter`, `body_filter`, `log`, and `preread` phases of
+-- `access`, `header_filter`, `response`, `body_filter`, `log`, and `preread` phases of
 -- the plugin interfaces. Accessing this table in those functions (and their
 -- callees) is fine.
 --
@@ -33,7 +33,7 @@ local _CTX_NAMESPACES_KEY = {}
 -- conflict could result in the overwrite of data.
 --
 -- @table kong.ctx.shared
--- @phases rewrite, access, header_filter, body_filter, log, preread
+-- @phases rewrite, access, header_filter, response, body_filter, log, preread
 -- @usage
 -- -- Two plugins A and B, and if plugin A has a higher priority than B's
 -- -- (it executes before B):
@@ -78,7 +78,7 @@ local _CTX_NAMESPACES_KEY = {}
 -- save some value for post-processing during the `log` phase:
 --
 -- @table kong.ctx.plugin
--- @phases rewrite, access, header_filter, body_filter, log, preread
+-- @phases rewrite, access, header_filter, response, body_filter, log, preread
 -- @usage
 -- -- plugin handler.lua
 --

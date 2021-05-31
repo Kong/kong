@@ -1,50 +1,27 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 
+local https_server = helpers.https_server
+
+local function get_available_port()
+  local socket = require("socket")
+  local server = assert(socket.bind("*", 0))
+  local _, port = server:getsockname()
+  server:close()
+  return port
+end
+
+
+local test_port1 = get_available_port()
+local test_port2 = get_available_port()
+
+
 -- create two servers, one double the delay of the other
-local fixtures = {
-  http_mock = {
-    least_connections = [[
-
-      server {
-          server_name mock_delay_100;
-          listen 10001;
-
-          location ~ "/leastconnections" {
-              content_by_lua_block {
-                local delay = 100
-                ngx.sleep(delay/1000)
-                ngx.status = 200
-                ngx.say(delay)
-                ngx.exit(0)
-              }
-          }
-      }
-
-      server {
-          server_name mock_delay_200;
-          listen 10002;
-
-          location ~ "/leastconnections" {
-              content_by_lua_block {
-                local delay = 200
-                ngx.sleep(delay/1000)
-                ngx.status = 200
-                ngx.say(delay)
-                ngx.exit(0)
-              }
-          }
-      }
-
-  ]]
-  },
-}
-
+local server1 = https_server.new(test_port1, "127.0.0.1", "http", false, nil, 100)
+local server2 = https_server.new(test_port2, "127.0.0.1", "http", false, nil, 200)
 
 for _, strategy in helpers.each_strategy() do
   describe("Balancer: least-connections [#" .. strategy .. "]", function()
-    local proxy_client
-    local admin_client
     local upstream1_id
 
     lazy_setup(function()
@@ -72,42 +49,20 @@ for _, strategy in helpers.each_strategy() do
 
       assert(bp.targets:insert({
         upstream = upstream1,
-        target = "127.0.0.1:10001",
+        target = "127.0.0.1:" .. test_port1,
         weight = 100,
       }))
 
       assert(bp.targets:insert({
         upstream = upstream1,
-        target = "127.0.0.1:10002",
+        target = "127.0.0.1:" .. test_port2,
         weight = 100,
       }))
 
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      }, nil, nil, fixtures))
-    end)
-
-    before_each(function()
-      proxy_client = helpers.proxy_client()
-      admin_client = helpers.admin_client()
-      -- wait until helper servers are alive
-      helpers.wait_until(function()
-        local client = helpers.proxy_client()
-        local res = assert(client:send({
-          method = "GET",
-          path = "/leastconnections",
-          headers = {
-            ["Host"] = "least1.test"
-          },
-        }))
-        return res.status == 200
-      end, 10)
-    end)
-
-    after_each(function ()
-      proxy_client:close()
-      admin_client:close()
+      }))
     end)
 
     lazy_teardown(function()
@@ -115,9 +70,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("balances by least-connections", function()
+      server1:start()
+      server2:start()
       local thread_max = 50 -- maximum number of threads to use
       local done = false
-      local results = {}
       local threads = {}
 
       local handler = function()
@@ -131,8 +87,6 @@ for _, strategy in helpers.each_strategy() do
             },
           }))
           assert(res.status == 200)
-          local body = tonumber(assert(res:read_body()))
-          results[body] = (results[body] or 0) + 1
           client:close()
         end
       end
@@ -154,8 +108,9 @@ for _, strategy in helpers.each_strategy() do
         ngx.thread.wait(threads[i])
       end
 
-      --assert.equal(results,false)
-      local ratio = results[100]/results[200]
+      local results1 = server1:shutdown()
+      local results2 = server2:shutdown()
+      local ratio = results1.ok/results2.ok
       assert.near(2, ratio, 0.8)
     end)
 
@@ -253,7 +208,7 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
-        }, nil, nil, fixtures))
+        }))
       end)
 
       lazy_teardown(function()
@@ -276,7 +231,7 @@ for _, strategy in helpers.each_strategy() do
             ["Content-Type"] = "application/json",
           },
           body = {
-            target = "127.0.0.1:10001",
+            target = "127.0.0.1:" .. test_port1,
             weight = 100
           },
         }))
@@ -295,7 +250,7 @@ for _, strategy in helpers.each_strategy() do
         api_client:close()
         local found = false
         for _, entry in ipairs(body.data) do
-          if entry.target == "127.0.0.1:10001" and entry.weight == 100 then
+          if entry.target == "127.0.0.1:" .. test_port1 and entry.weight == 100 then
             found = true
             break
           end
@@ -306,7 +261,7 @@ for _, strategy in helpers.each_strategy() do
         api_client = helpers.admin_client()
         res, err = api_client:send({
           method = "DELETE",
-          path = "/upstreams/" .. an_upstream.id .. "/targets/127.0.0.1:10001",
+          path = "/upstreams/" .. an_upstream.id .. "/targets/127.0.0.1:" .. test_port1,
         })
         assert.is_nil(err)
         assert.same(204, res.status)
@@ -323,7 +278,7 @@ for _, strategy in helpers.each_strategy() do
         api_client:close()
         local found = false
         for _, entry in ipairs(body.data) do
-          if entry.target == "127.0.0.1:10001" and entry.weight == 0 then
+          if entry.target == "127.0.0.1:" .. test_port1 and entry.weight == 0 then
             found = true
             break
           end

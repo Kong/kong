@@ -105,6 +105,10 @@ local function execute(args)
     end
     filename = pl_path.abspath(filename)
 
+    if pl_path.extension(filename) == ".lua" then
+      log.warn("db_import of .lua files is deprecated; please convert your file into .yaml or .json")
+    end
+
     local entities, err, _, meta = dc:parse_file(filename, accepted_formats)
     if not entities then
       error("Failed parsing:\n" .. err)
@@ -128,6 +132,7 @@ local function execute(args)
 
         local report = {
           decl_fmt_version = meta._format_version,
+          file_ext = pl_path.extension(filename),
         }
         kong_reports.send("config-db-import", report)
       end

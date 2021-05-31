@@ -1,15 +1,14 @@
+
+local proc_mgmt = require "kong.runloop.plugin_servers.process"
 local cjson = require "cjson.safe"
 local ngx_ssl = require "ngx.ssl"
 
-local proc_mgmt = require "kong.runloop.plugin_servers.process"
-local rpc = require "kong.runloop.plugin_servers.mp_rpc"
-
 local ngx = ngx
 local kong = kong
-local unpack = unpack
+local ngx_var = ngx.var
+local coroutine_running = coroutine.running
 local get_plugin_info = proc_mgmt.get_plugin_info
 local ngx_timer_at = ngx.timer.at
-local cjson_encode = cjson.encode
 
 --- keep request data a bit longer, into the log timer
 local save_for_later = {}
@@ -20,29 +19,101 @@ local rpc_notifications = {}
 --- currently running plugin instances
 local running_instances = {}
 
+local exposed_api = {
+  kong = kong,
+
+  ["kong.log.serialize"] = function()
+    local saved = save_for_later[coroutine_running()]
+    return cjson.encode(saved and saved.serialize_data or kong.log.serialize())
+  end,
+
+  ["kong.nginx.get_var"] = function(v)
+    return ngx_var[v]
+  end,
+
+  ["kong.nginx.get_tls1_version_str"] = ngx_ssl.get_tls1_version_str,
+
+  ["kong.nginx.get_ctx"] = function(k)
+    local saved = save_for_later[coroutine_running()]
+    local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
+    return ngx_ctx[k]
+  end,
+
+  ["kong.nginx.set_ctx"] = function(k, v)
+    local saved = save_for_later[coroutine_running()]
+    local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
+    ngx_ctx[k] = v
+  end,
+
+  ["kong.ctx.shared.get"] = function(k)
+    local saved = save_for_later[coroutine_running()]
+    local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
+    return ctx_shared[k]
+  end,
+
+  ["kong.ctx.shared.set"] = function(k, v)
+    local saved = save_for_later[coroutine_running()]
+    local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
+    ctx_shared[k] = v
+  end,
+
+  ["kong.response.get_status"] = function()
+    local saved = save_for_later[coroutine_running()]
+    return saved and saved.response_status or kong.response.get_status()
+  end,
+
+  ["kong.response.get_headers"] = function(max)
+    local saved = save_for_later[coroutine_running()]
+    return saved and saved.response_headers or kong.response.get_headers(max)
+  end,
+
+  ["kong.response.get_header"] = function(name)
+    local saved = save_for_later[coroutine_running()]
+    if not saved then
+      return kong.response.get_header(name)
+    end
+
+    local header_value = saved.response_headers and saved.response_headers[name]
+    if type(header_value) == "table" then
+      header_value = header_value[1]
+    end
+
+    return header_value
+  end,
+
+  ["kong.response.get_source"] = function()
+    local saved = save_for_later[coroutine_running()]
+    return kong.response.get_source(saved and saved.ngx_ctx or nil)
+  end,
+
+  ["kong.nginx.req_start_time"] = ngx.req.start_time,
+}
 
 
---[[
+local get_instance_id
+local reset_instance
 
-RPC
-
-Each plugin server specifies a socket path to communicate.  Protocol is the same
-as Go plugins.
-
-CONSIDER:
-
-- when a plugin server notifies a new PID, Kong should request all plugins info again.
-  Should it use RPC at this time, instead of commandline?
-
-- Should we add a new notification to ask kong to request plugin info again?
-
---]]
-
+local protocol_implementations = {
+  ["MsgPack:1"] = "kong.runloop.plugin_servers.mp_rpc",
+  ["ProtoBuf:1"] = "kong.runloop.plugin_servers.pb_rpc",
+}
 
 local function get_server_rpc(server_def)
   if not server_def.rpc then
+
+    local rpc_modname = protocol_implementations[server_def.protocol]
+    if not rpc_modname then
+      kong.log.error("Unknown protocol implementation: ", server_def.protocol)
+      return nil, "Unknown protocol implementation"
+    end
+
+    local rpc = require (rpc_modname)
+    rpc.get_instance_id = rpc.get_instance_id or get_instance_id
+    rpc.reset_instance = rpc.reset_instance or reset_instance
+    rpc.save_for_later = rpc.save_for_later or save_for_later
+    rpc.exposed_api = rpc.exposed_api or exposed_api
+
     server_def.rpc = rpc.new(server_def.socket, rpc_notifications)
-    --kong.log.debug("server_def: ", server_def, "   .rpc: ", server_def.rpc)
   end
 
   return server_def.rpc
@@ -54,7 +125,7 @@ end
 --- pluginserver each configuration in the database is handled by a different
 --- instance.  Biggest complexity here is due to the remote (and thus non-atomic
 --- and fallible) operation of starting the instance at the server.
-local function get_instance_id(plugin_name, conf)
+function get_instance_id(plugin_name, conf)
   local key = type(conf) == "table" and conf.__key__ or plugin_name
   local instance_info = running_instances[key]
 
@@ -89,34 +160,31 @@ local function get_instance_id(plugin_name, conf)
   local plugin_info = get_plugin_info(plugin_name)
   local server_rpc  = get_server_rpc(plugin_info.server_def)
 
-  local status, err = server_rpc:call("plugin.StartInstance", {
-    Name = plugin_name,
-    Config = cjson_encode(conf)
-  })
-  if status == nil then
+  local new_instance_info, err = server_rpc:call_start_instance(plugin_name, conf)
+  if new_instance_info == nil then
     kong.log.err("starting instance: ", err)
     -- remove claim, some other thread might succeed
     running_instances[key] = nil
     error(err)
   end
 
-  instance_info.id = status.Id
-  instance_info.conf = conf
-  instance_info.seq = conf.__seq__
-  instance_info.Config = status.Config
-  instance_info.rpc = server_rpc
+  instance_info.id = new_instance_info.id
+  instance_info.conf = new_instance_info.conf
+  instance_info.seq = new_instance_info.seq
+  instance_info.Config = new_instance_info.Config
+  instance_info.rpc = new_instance_info.rpc
 
   if old_instance_id then
     -- there was a previous instance with same key, close it
-    server_rpc:call("plugin.CloseInstance", old_instance_id)
+    server_rpc:call_close_instance(old_instance_id)
     -- don't care if there's an error, maybe other thread closed it first.
   end
 
-  return status.Id
+  return instance_info.id
 end
 
 --- reset_instance: removes an instance from the table.
-local function reset_instance(plugin_name, conf)
+function reset_instance(plugin_name, conf)
   local key = type(conf) == "table" and conf.__key__ or plugin_name
   running_instances[key] = nil
 end
@@ -139,204 +207,6 @@ end
 
 
 
---[[
-
-Kong API exposed to external plugins
-
---]]
-
-
--- global method search and cache
-local function index_table(table, field)
-  if table[field] then
-    return table[field]
-  end
-
-  local res = table
-  for segment, e in ngx.re.gmatch(field, "\\w+", "o") do
-    if res[segment[0]] then
-      res = res[segment[0]]
-    else
-      return nil
-    end
-  end
-  return res
-end
-
-
-local get_field
-do
-  local exposed_api = {
-    kong = kong,
-
-    ["kong.log.serialize"] = function()
-      local saved = save_for_later[coroutine.running()]
-      return cjson_encode(saved and saved.serialize_data or kong.log.serialize())
-    end,
-
-    ["kong.nginx.get_var"] = function(v)
-      return ngx.var[v]
-    end,
-
-    ["kong.nginx.get_tls1_version_str"] = ngx_ssl.get_tls1_version_str,
-
-    ["kong.nginx.get_ctx"] = function(k)
-      local saved = save_for_later[coroutine.running()]
-      local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
-      return ngx_ctx[k]
-    end,
-
-    ["kong.nginx.set_ctx"] = function(k, v)
-      local saved = save_for_later[coroutine.running()]
-      local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
-      ngx_ctx[k] = v
-    end,
-
-    ["kong.ctx.shared.get"] = function(k)
-      local saved = save_for_later[coroutine.running()]
-      local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
-      return ctx_shared[k]
-    end,
-
-    ["kong.ctx.shared.set"] = function(k, v)
-      local saved = save_for_later[coroutine.running()]
-      local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
-      ctx_shared[k] = v
-    end,
-
-    ["kong.nginx.req_start_time"] = ngx.req.start_time,
-
-    ["kong.request.get_query"] = function(max)
-      return rpc.fix_mmap(kong.request.get_query(max))
-    end,
-
-    ["kong.request.get_headers"] = function(max)
-      return rpc.fix_mmap(kong.request.get_headers(max))
-    end,
-
-    ["kong.response.get_headers"] = function(max)
-      return rpc.fix_mmap(kong.response.get_headers(max))
-    end,
-
-    ["kong.service.response.get_headers"] = function(max)
-      return rpc.fix_mmap(kong.service.response.get_headers(max))
-    end,
-  }
-
-  local method_cache = {}
-
-  function get_field(method)
-    if method_cache[method] then
-      return method_cache[method]
-
-    else
-      method_cache[method] = index_table(exposed_api, method)
-      return method_cache[method]
-    end
-  end
-end
-
-
-local function call_pdk_method(cmd, args)
-  local method = get_field(cmd)
-  if not method then
-    kong.log.err("could not find pdk method: ", cmd)
-    return
-  end
-
-  if type(args) == "table" then
-    return method(unpack(args))
-  end
-
-  return method(args)
-end
-
-
--- return objects via the appropriately typed StepXXX method
-local get_step_method
-do
-  local by_pdk_method = {
-    ["kong.client.get_credential"] = "plugin.StepCredential",
-    ["kong.client.load_consumer"] = "plugin.StepConsumer",
-    ["kong.client.get_consumer"] = "plugin.StepConsumer",
-    ["kong.client.authenticate"] = "plugin.StepCredential",
-    ["kong.node.get_memory_stats"] = "plugin.StepMemoryStats",
-    ["kong.router.get_route"] = "plugin.StepRoute",
-    ["kong.router.get_service"] = "plugin.StepService",
-    ["kong.request.get_query"] = "plugin.StepMultiMap",
-    ["kong.request.get_headers"] = "plugin.StepMultiMap",
-    ["kong.response.get_headers"] = "plugin.StepMultiMap",
-    ["kong.service.response.get_headers"] = "plugin.StepMultiMap",
-  }
-
-  function get_step_method(step_in, pdk_res, pdk_err)
-    if not pdk_res and pdk_err then
-      return "plugin.StepError", pdk_err
-    end
-
-    return ((type(pdk_res) == "table" and pdk_res._method)
-      or by_pdk_method[step_in.Data.Method]
-      or "plugin.Step"), pdk_res
-  end
-end
-
-
-
---[[
-
---- Event loop -- instance reconnection
-
---]]
-
-local function bridge_loop(instance_rpc, instance_id, phase)
-  if not instance_rpc then
-    kong.log.err("no instance_rpc: ", debug.traceback())
-  end
-  local step_in, err = instance_rpc:call("plugin.HandleEvent", {
-    InstanceId = instance_id,
-    EventName = phase,
-  })
-  if not step_in then
-    return step_in, err
-  end
-
-  local event_id = step_in.EventId
-
-  while true do
-    if step_in.Data == "ret" then
-      break
-    end
-
-    local pdk_res, pdk_err = call_pdk_method(
-      step_in.Data.Method,
-      step_in.Data.Args)
-
-    local step_method, step_res = get_step_method(step_in, pdk_res, pdk_err)
-
-    step_in, err = instance_rpc:call(step_method, {
-      EventId = event_id,
-      Data = step_res,
-    })
-    if not step_in then
-      return step_in, err
-    end
-  end
-end
-
-
-local function handle_event(instance_rpc, plugin_name, conf, phase)
-  local instance_id = get_instance_id(plugin_name, conf)
-  local _, err = bridge_loop(instance_rpc, instance_id, phase)
-
-  if err then
-    kong.log.err(err)
-
-    if string.match(err, "No plugin instance") then
-      reset_instance(plugin_name, conf)
-      return handle_event(instance_rpc, plugin_name, conf, phase)
-    end
-  end
-end
 
 
 --- Phase closures
@@ -351,16 +221,19 @@ local function build_phases(plugin)
     if phase == "log" then
       plugin[phase] = function(self, conf)
         local saved = {
+          plugin_name = self.name,
           serialize_data = kong.log.serialize(),
           ngx_ctx = ngx.ctx,
           ctx_shared = kong.ctx.shared,
+          response_headers = ngx.resp.get_headers(100),
+          response_status = ngx.status,
         }
 
         ngx_timer_at(0, function()
-          local co = coroutine.running()
+          local co = coroutine_running()
           save_for_later[co] = saved
 
-          handle_event(server_rpc, self.name, conf, phase)
+          server_rpc:handle_event(self.name, conf, phase)
 
           save_for_later[co] = nil
         end)
@@ -368,7 +241,7 @@ local function build_phases(plugin)
 
     else
       plugin[phase] = function(self, conf)
-        handle_event(server_rpc, self.name, conf, phase)
+        server_rpc:handle_event(self.name, conf, phase)
       end
     end
   end
@@ -420,7 +293,7 @@ function plugin_servers.start()
 
   local pluginserver_timer = proc_mgmt.pluginserver_timer
 
-  for i, server_def in ipairs(proc_mgmt.get_server_defs()) do
+  for _, server_def in ipairs(proc_mgmt.get_server_defs()) do
     if server_def.start_command then
       ngx_timer_at(0, pluginserver_timer, server_def)
     end

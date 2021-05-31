@@ -173,7 +173,7 @@ local function new(self, major_version)
   -- returned as-is.
   --
   -- @function kong.response.get_status
-  -- @phases header_filter, body_filter, log, admin_api
+  -- @phases header_filter, response, body_filter, log, admin_api
   -- @treturn number status The HTTP status code currently set for the
   -- downstream response
   -- @usage
@@ -199,7 +199,7 @@ local function new(self, major_version)
   -- of the first occurrence of this header.
   --
   -- @function kong.response.get_header
-  -- @phases header_filter, body_filter, log, admin_api
+  -- @phases header_filter, response, body_filter, log, admin_api
   -- @tparam string name The name of the header
   --
   -- Header names are case-insensitive and dashes (`-`) can be written as
@@ -254,7 +254,7 @@ local function new(self, major_version)
   -- be greater than **1** and not greater than **1000**.
   --
   -- @function kong.response.get_headers
-  -- @phases header_filter, body_filter, log, admin_api
+  -- @phases header_filter, response, body_filter, log, admin_api
   -- @tparam[opt] number max_headers Limits how many headers are parsed
   -- @treturn table headers A table representation of the headers in the
   -- response
@@ -312,7 +312,7 @@ local function new(self, major_version)
   --   contacting the proxied Service.
   --
   -- @function kong.response.get_source
-  -- @phases header_filter, body_filter, log, admin_api
+  -- @phases header_filter, response, body_filter, log, admin_api
   -- @treturn string the source.
   -- @usage
   -- if kong.response.get_source() == "service" then
@@ -322,10 +322,11 @@ local function new(self, major_version)
   -- elseif kong.response.get_source() == "exit" then
   --   kong.log("There was an early exit while processing the request")
   -- end
-  function _RESPONSE.get_source()
-    check_phase(header_body_log)
-
-    local ctx = ngx.ctx
+  function _RESPONSE.get_source(ctx)
+    if ctx == nil then
+      check_phase(header_body_log)
+      ctx = ngx.ctx
+    end
 
     if ctx.KONG_UNEXPECTED then
       return "error"
@@ -347,11 +348,8 @@ local function new(self, major_version)
   -- Allows changing the downstream response HTTP status code before sending it
   -- to the client.
   --
-  -- This function should be used in the `header_filter` phase, as Kong is
-  -- preparing headers to be sent back to the client.
-  --
   -- @function kong.response.set_status
-  -- @phases rewrite, access, header_filter, admin_api
+  -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam number status The new status
   -- @return Nothing; throws an error on invalid input.
   -- @usage
@@ -382,10 +380,19 @@ local function new(self, major_version)
   -- Sets a response header with the given value. This function overrides any
   -- existing header with the same name.
   --
-  -- This function should be used in the `header_filter` phase, as Kong is
-  -- preparing headers to be sent back to the client.
+  -- Note: Underscores in Header names are automatically transformed into dashes
+  -- by default. If you want to deactivate this behavior you should set
+  -- the `lua_transform_underscores_in_response_headers` nginx config option to `off`
+  --
+  -- This setting can be set in the Kong Config file:
+  --
+  --     nginx_http_lua_transform_underscores_in_response_headers = off
+  --
+  -- Be aware that changing this setting might slightly break any plugins that
+  -- rely on the automatic underscore conversion.
+  --
   -- @function kong.response.set_header
-  -- @phases rewrite, access, header_filter, admin_api
+  -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam string name The name of the header
   -- @tparam string|number|boolean value The new value for the header
   -- @return Nothing; throws an error on invalid input.
@@ -412,10 +419,8 @@ local function new(self, major_version)
   -- the response, then it is added with the given value, similarly to
   -- `kong.response.set_header().`
   --
-  -- This function should be used in the `header_filter` phase, as Kong is
-  -- preparing headers to be sent back to the client.
   -- @function kong.response.add_header
-  -- @phases rewrite, access, header_filter, admin_api
+  -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam string name The header name
   -- @tparam string|number|boolean value The header value
   -- @return Nothing; throws an error on invalid input.
@@ -442,11 +447,8 @@ local function new(self, major_version)
   -- Removes all occurrences of the specified header in the response sent to
   -- the client.
   --
-  -- This function should be used in the `header_filter` phase, as Kong is
-  -- preparing headers to be sent back to the client.
-  --
   -- @function kong.response.clear_header
-  -- @phases rewrite, access, header_filter, admin_api
+  -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam string name The name of the header to be cleared
   -- @return Nothing; throws an error on invalid input.
   -- @usage
@@ -476,9 +478,6 @@ local function new(self, major_version)
   -- (corresponding to a header's name), and each value is a string, or an
   -- array of strings.
   --
-  -- This function should be used in the `header_filter` phase, as Kong is
-  -- preparing headers to be sent back to the client.
-  --
   -- The resulting headers are produced in lexicographical order. The order of
   -- entries with the same name (when values are given as an array) is
   -- retained.
@@ -487,7 +486,7 @@ local function new(self, major_version)
   -- specified in the `headers` argument. Other headers remain unchanged.
   --
   -- @function kong.response.set_headers
-  -- @phases rewrite, access, header_filter, admin_api
+  -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam table headers
   -- @return Nothing; throws an error on invalid input.
   -- @usage
@@ -770,10 +769,9 @@ local function new(self, major_version)
     --
     -- ---
     --
-    -- ```lua
     -- -- In L4 proxy mode
     -- return kong.response.exit(200, "Success")
-    -- ```
+    --
     function _RESPONSE.exit(status, body, headers)
       if self.worker_events and ngx.get_phase() == "content" then
         self.worker_events.poll()
@@ -845,8 +843,18 @@ local function new(self, major_version)
               "are accepted", 2)
       end
 
-      if body ~= nil and type(body) ~= "string" then
-        error("body must be a nil or a string", 2)
+      if body ~= nil then
+        if type(body) == "table" then
+          local err
+          body, err = cjson.encode(body)
+          if err then
+            error("invalid body: " .. err, 2)
+          end
+        end
+
+        if type(body) ~= "string" then
+          error("body must be a nil, string or table", 2)
+        end
       end
 
       if body then
@@ -969,8 +977,19 @@ local function new(self, major_version)
         MAX_STATUS_CODE), 2)
     end
 
-    if message ~= nil and type(message) ~= "string" then
-        error("message must be a nil or a string", 2)
+    if message ~= nil then
+      if type(message) == "table" then
+        local err
+        message, err = cjson.encode(message)
+        if err then
+          error("could not JSON encode the error message: " .. err, 2)
+        end
+      end
+
+      if type(message) ~= "string" then
+        error("message must be a nil, a string or a table", 2)
+      end
+
     end
 
     if headers ~= nil and type(headers) ~= "table" then

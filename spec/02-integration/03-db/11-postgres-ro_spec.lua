@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
-local pl_file = require "pl.file"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -130,11 +129,9 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         assert.res_status(404, res)
-
-        local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-        assert.matches("get_updated_router(): could not rebuild router: " ..
-                       "could not load routes: [postgres] connection " ..
-                       "refused (stale router will be used)", err_log, nil, true)
+        assert.logfile().has.line("get_updated_router(): could not rebuild router: " ..
+                                  "could not load routes: [postgres] connection " ..
+                                  "refused (stale router will be used)", true)
       end)
     end)
   end)

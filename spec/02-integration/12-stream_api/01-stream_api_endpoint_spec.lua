@@ -23,7 +23,7 @@ describe("Stream module API endpoint", function()
     it("error response for unknown path", function()
       local res, err = stream_api.request("not-this", "nope", socket_path)
       assert.is.falsy(res)
-      assert.equal("no handler", err)
+      assert.equal("stream-api errmsg: no handler", err)
     end)
 
     it("calls an echo handler", function ()

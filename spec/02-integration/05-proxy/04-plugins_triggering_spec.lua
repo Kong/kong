@@ -3,10 +3,49 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
-local pl_stringx = require "pl.stringx"
 
 
 local LOG_WAIT_TIMEOUT = 10
+local TEST_CONF = helpers.test_conf
+
+
+local function find_log_line(FILE_LOG_PATH, uuid, custom_check)
+  if pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0 then
+    local f = assert(io.open(FILE_LOG_PATH, "r"))
+    local line = f:read("*line")
+
+    while line do
+      local log_message = assert(cjson.decode(line))
+      if log_message.client_ip == "127.0.0.1" then
+        if uuid and log_message.request.headers["x-uuid"] ~= uuid then
+          goto continue
+        end
+
+        if custom_check and not custom_check(log_message) then
+          goto continue
+        end
+
+        -- found
+        f:close()
+        return log_message
+      end
+
+      ::continue::
+      line = f:read("*line")
+    end
+
+    f:close()
+  end
+
+  return false
+end
+
+
+local function wait_for_log_line(FILE_LOG_PATH, uuid, custom_check)
+  helpers.wait_until(function()
+    return find_log_line(FILE_LOG_PATH, uuid, custom_check)
+  end, LOG_WAIT_TIMEOUT)
+end
 
 
 for _, strategy in helpers.each_strategy() do
@@ -391,14 +430,7 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("127.0.0.1", log_message.client_ip)
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        wait_for_log_line(FILE_LOG_PATH, uuid)
       end)
 
       it("execute a header_filter plugin", function()
@@ -460,14 +492,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("obtained even with error", body, nil, true)
 
         -- access phase got a chance to inject the logging plugin
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("127.0.0.1", log_message.client_ip)
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        wait_for_log_line(FILE_LOG_PATH, uuid)
       end)
     end)
 
@@ -568,6 +593,12 @@ for _, strategy in helpers.each_strategy() do
 
 
       lazy_setup(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
@@ -718,15 +749,7 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("127.0.0.1", log_message.client_ip)
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        wait_for_log_line(FILE_LOG_PATH, uuid)
       end)
 
 
@@ -752,18 +775,12 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
-        assert.equal("refused", log_message.request.headers.host)
-        assert.equal("POST", log_message.request.method)
-        assert.equal("bar", log_message.request.querystring.foo)
-        assert.equal("/status/200?foo=bar", log_message.upstream_uri)
+        wait_for_log_line(FILE_LOG_PATH, uuid, function(log_message)
+        return "refused" == log_message.request.headers.host
+               and "POST" == log_message.request.method
+               and "bar" == log_message.request.querystring.foo
+               and "/status/200?foo=bar" == log_message.upstream_uri
+        end)
       end)
 
 
@@ -784,15 +801,7 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("127.0.0.1", log_message.client_ip)
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        wait_for_log_line(FILE_LOG_PATH, uuid)
       end)
 
 
@@ -813,15 +822,7 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("127.0.0.1", log_message.client_ip)
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        wait_for_log_line(FILE_LOG_PATH, uuid)
       end)
 
 
@@ -847,22 +848,16 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
-        assert.equal("connect_timeout", log_message.request.headers.host)
-        assert.equal("POST", log_message.request.method)
-        assert.equal("bar", log_message.request.querystring.foo)
-        assert.equal("/status/200?foo=bar", log_message.upstream_uri)
+        wait_for_log_line(FILE_LOG_PATH, uuid, function(log_message)
+          return "connect_timeout" == log_message.request.headers.host
+                 and "POST" == log_message.request.method
+                 and "bar" == log_message.request.querystring.foo
+                 and "/status/200?foo=bar" == log_message.upstream_uri
+        end)
       end)
 
 
-      it("executes a global log plugin on Nginx-produced client errors (HTTP 494)", function()
+      it("executes a global log plugin on Nginx-produced client errors (HTTP 400)", function()
         -- triggers error_page directive
         local uuid = utils.uuid()
 
@@ -875,7 +870,7 @@ for _, strategy in helpers.each_strategy() do
             ["X-UUID"] = uuid,
           }
         })
-        assert.res_status(494, res)
+        assert.res_status(400, res)
 
         -- close and reopen to flush the request
         proxy_client:close()
@@ -884,20 +879,13 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
-        assert.equal(494, log_message.response.status)
+        wait_for_log_line(FILE_LOG_PATH, nil, function(log_message)
+          return 400 == log_message.response.status
+        end)
       end)
 
 
-      it("log plugins sees same request in error_page handler (HTTP 494)", function()
+      it("log plugins sees same request in error_page handler (HTTP 400)", function()
         -- triggers error_page directive
         local uuid = utils.uuid()
 
@@ -915,7 +903,7 @@ for _, strategy in helpers.each_strategy() do
           }
           --]]
         })
-        assert.res_status(494, res)
+        assert.res_status(400, res)
 
         -- close and reopen to flush the request
         proxy_client:close()
@@ -924,18 +912,11 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("POST", log_message.request.method)
-        assert.equal("bar", log_message.request.querystring.foo)
-        assert.equal("", log_message.upstream_uri) -- no URI here since Nginx could not parse request
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
-        assert.is_nil(log_message.request.headers.host) -- none as well
+        wait_for_log_line(FILE_LOG_PATH, nil, function(log_message)
+          return "POST" == log_message.request.method
+                 and "bar" == log_message.request.querystring.foo
+                 and "" == log_message.upstream_uri -- no URI here since Nginx could not parse request
+        end)
       end)
 
 
@@ -960,16 +941,10 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-
-        assert.same({}, log_message.request.headers)
-        assert.equal(414, log_message.response.status)
+        wait_for_log_line(FILE_LOG_PATH, nil, function(log_message)
+          return #log_message.request.headers == 0
+                 and 414 == log_message.response.status
+        end)
       end)
 
 
@@ -999,17 +974,12 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("POST", log_message.request.method)
-        assert.equal("", log_message.upstream_uri) -- no URI here since Nginx could not parse request
-        assert.is_nil(log_message.request.headers["x-uuid"]) -- none since Nginx could not parse request
-        assert.is_nil(log_message.request.headers.host) -- none as well
+        wait_for_log_line(FILE_LOG_PATH, nil, function(log_message)
+          return "POST" == log_message.request.method
+                 and "" == log_message.upstream_uri -- no URI here since Nginx could not parse request
+                 and nil == log_message.request.headers["x-uuid"] -- none since Nginx could not parse request
+                 and nil == log_message.request.headers.host -- none as well
+        end)
       end)
 
 
@@ -1092,6 +1062,7 @@ for _, strategy in helpers.each_strategy() do
           assert(helpers.start_kong {
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
+            plugins = "short-circuit,init-worker-lua-error",
           })
 
           proxy_client = helpers.proxy_client()
@@ -1121,6 +1092,11 @@ for _, strategy in helpers.each_strategy() do
             status  = 200,
             message = "plugin executed"
           }, json)
+        end)
+
+        it("protects against failed init_worker handler, FTI-2473", function()
+          local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
+          assert.matches([[worker initialization error: failed to execute the "init_worker" handler for plugin "init-worker-lua-error"]], logs, nil, true)
         end)
       end)
 
@@ -1208,6 +1184,60 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
       end
+    end)
+  end)
+
+  describe("Plugins triggering [#" .. strategy .. "] with TLS keepalive", function()
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+      })
+
+      -- Global configuration
+      local service = bp.services:insert {
+        name = "mock",
+      }
+
+      local route = bp.routes:insert {
+        paths     = { "/route-1" },
+        protocols = { "https" },
+        service    = service,
+      }
+
+      bp.routes:insert {
+        paths      = { "/route-2" },
+        protocols  = { "https" },
+        service    = service,
+      }
+
+      bp.plugins:insert {
+        name    = "request-termination",
+        route   = { id = route.id },
+        config  = {
+          status_code = 201,
+        },
+      }
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("certificate phase clears context, fix #7054", function()
+      local proxy_client = helpers.proxy_ssl_client()
+
+      local res = assert(proxy_client:get("/route-1/status/200"))
+      assert.res_status(201, res)
+
+      local res = assert(proxy_client:get("/route-2/status/200"))
+      assert.res_status(200, res)
     end)
   end)
 end

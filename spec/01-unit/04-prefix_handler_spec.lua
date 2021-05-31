@@ -466,6 +466,50 @@ describe("NGINX conf compiler", function()
     end)
 
     describe("injected NGINX directives", function()
+      it("injects proxy_access_log directive", function()
+        local conf = assert(conf_loader(nil, {
+          proxy_access_log = "/dev/stdout",
+          stream_listen = "0.0.0.0:9100",
+          nginx_stream_tcp_nodelay = "on",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("access_log%s/dev/stdout;", nginx_conf)
+        local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("access_log%slogs/access.log%sbasic;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          proxy_stream_access_log = "/dev/stdout custom",
+          stream_listen = "0.0.0.0:9100",
+          nginx_stream_tcp_nodelay = "on",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("access_log%slogs/access.log;", nginx_conf)
+        local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("access_log%s/dev/stdout%scustom;", nginx_conf)
+      end)
+
+      it("injects proxy_error_log directive", function()
+        local conf = assert(conf_loader(nil, {
+          proxy_error_log = "/dev/stdout",
+          stream_listen = "0.0.0.0:9100",
+          nginx_stream_tcp_nodelay = "on",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("error_log%s/dev/stdout%snotice;", nginx_conf)
+        local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("error_log%slogs/error.log%snotice;", nginx_conf)
+
+        local conf = assert(conf_loader(nil, {
+          proxy_stream_error_log = "/dev/stdout",
+          stream_listen = "0.0.0.0:9100",
+          nginx_stream_tcp_nodelay = "on",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("error_log%slogs/error.log%snotice;", nginx_conf)
+        local nginx_conf = prefix_handler.compile_kong_stream_conf(conf)
+        assert.matches("error_log%s/dev/stdout%snotice;", nginx_conf)
+      end)
+
       it("injects nginx_main_* directives", function()
         local conf = assert(conf_loader(nil, {
           nginx_main_pcre_jit = "on",
@@ -862,7 +906,7 @@ describe("NGINX conf compiler", function()
             local handle = io.popen("ls -l " .. conf[prefix .. "ssl_cert_default" .. suffix])
             local result = handle:read("*a")
             handle:close()
-            assert.matches("-rw-r--r--", result, nil, true)
+            assert.matches("%-rw%-r[-w]%-r%-%-", result, nil, false)
 
             handle = io.popen("ls -l " .. conf[prefix .. "ssl_cert_key_default" .. suffix])
             result = handle:read("*a")

@@ -238,6 +238,7 @@ local function select_by_field(self, field, value, options)
 
   local ws_id = ws(self, options)
 
+  local key
   if field ~= "cache_key" then
     local unique_across_ws = self.schema.fields[field].unique_across_ws
     if unique_across_ws then
@@ -246,9 +247,14 @@ local function select_by_field(self, field, value, options)
 
     -- only accept global query by field if field is unique across workspaces
     assert(not options or options.workspace ~= null or unique_across_ws)
+
+    key = self.schema.name .. "|" .. ws_id .. "|" .. field .. ":" .. value
+
+  else
+    -- if select_by_cache_key, use the provided cache_key as key directly
+    key = value
   end
 
-  local key = self.schema.name .. "|" .. ws_id .. "|" .. field .. ":" .. value
   return select_by_key(self, key)
 end
 

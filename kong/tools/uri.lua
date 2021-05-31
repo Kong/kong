@@ -9,7 +9,6 @@ local string_byte = string.byte
 local string_format = string.format
 local tonumber = tonumber
 local table_concat = table.concat
-local table_clear = require("table.clear")
 local ngx_re_gsub = ngx.re.gsub
 
 
@@ -38,12 +37,7 @@ local TMP_OUTPUT = require("table.new")(16, 0)
 local DOT = string_byte(".")
 local SLASH = string_byte("/")
 
-
-function _M.normalize(uri, merge_slashes)
-  table_clear(TMP_OUTPUT)
-
-  -- Decoding percent-encoded triplets of unreserved characters
-  uri = ngx_re_gsub(uri, "%([\\dA-F]{2})", function(m)
+local function percent_decode(m)
     local hex = m[1]
     local num = tonumber(hex, 16)
     if RESERVED_CHARACTERS[num] then
@@ -51,15 +45,46 @@ function _M.normalize(uri, merge_slashes)
     end
 
     return string_char(num)
-  end, "joi")
+end
+
+
+local function escape(m)
+  return string_format("%%%02X", string_byte(m[0]))
+end
+
+
+function _M.normalize(uri, merge_slashes)
+  -- check for simple cases and early exit
+  if uri == "" or uri == "/" then
+    return uri
+  end
+
+  -- check if uri needs to be percent-decoded
+  -- (this can in some cases lead to unnecessary percent-decoding)
+  if string_find(uri, "%", 1, true) then
+    -- decoding percent-encoded triplets of unreserved characters
+    uri = ngx_re_gsub(uri, "%([\\dA-F]{2})", percent_decode, "joi")
+  end
+
+  -- check if the uri contains a dot
+  -- (this can in some cases lead to unnecessary dot removal processing)
+  if string_find(uri, ".", 1, true) == nil  then
+    if not merge_slashes then
+      return uri
+    end
+
+    if string_find(uri, "//", 1, true) == nil then
+      return uri
+    end
+  end
 
   local output_n = 0
 
   while #uri > 0 do
     local FIRST = string_byte(uri, 1)
-    local SECOND = string_byte(uri, 2)
-    local THIRD = string_byte(uri, 3)
-    local FOURTH = string_byte(uri, 4)
+    local SECOND = FIRST and string_byte(uri, 2) or nil
+    local THIRD = SECOND and string_byte(uri, 3) or nil
+    local FOURTH = THIRD and string_byte(uri, 4) or nil
 
     if uri == "/." then -- /.
       uri = "/"
@@ -107,14 +132,20 @@ function _M.normalize(uri, merge_slashes)
     end
   end
 
-  return table_concat(TMP_OUTPUT, "", 1, output_n)
+  if output_n == 0 then
+    return ""
+  end
+
+  if output_n == 1 then
+    return TMP_OUTPUT[1]
+  end
+
+  return table_concat(TMP_OUTPUT, nil, 1, output_n)
 end
 
 
 function _M.escape(uri)
-  return ngx_re_gsub(uri, "[^!#$&'()*+,/:;=?@[\\]A-Z\\d-_.~%]", function(m)
-    return string_format("%%%02X", string_byte(m[0]))
-  end, "joi")
+  return ngx_re_gsub(uri, "[^!#$&'()*+,/:;=?@[\\]A-Z\\d-_.~%]", escape, "joi")
 end
 
 

@@ -37,6 +37,16 @@ local ERRORS_HTTP_CODES = {
   [Errors.codes.FOREIGN_KEYS_UNRESOLVED] = 400,
 }
 
+local TAGS_AND_REGEX
+local TAGS_OR_REGEX
+do
+  -- printable ASCII (0x21-0x7E except ','(0x2C) and '/'(0x2F),
+  -- plus non-ASCII utf8 (0x80-0xF4)
+  local tag_bytes = [[\x21-\x2B\x2D\x2E\x30-\x7E\x80-\xF4]]
+
+  TAGS_AND_REGEX = "^([" .. tag_bytes .. "]+(?:,|$))+$"
+  TAGS_OR_REGEX = "^([" .. tag_bytes .. "]+(?:/|$))+$"
+end
 
 local function get_message(default, ...)
   local message
@@ -149,11 +159,11 @@ local function extract_options(args, schema, context)
         tags = tags[1]
       end
 
-      if re_match(tags, [=[^([a-zA-Z0-9\.\-\_~]+(?:,|$))+$]=], 'jo') then
+      if re_match(tags, TAGS_AND_REGEX, 'jo') then
         -- 'a,b,c' or 'a'
         options.tags_cond = 'and'
         options.tags = split(tags, ',')
-      elseif re_match(tags, [=[^([a-zA-Z0-9\.\-\_~]+(?:/|$))+$]=], 'jo') then
+      elseif re_match(tags, TAGS_OR_REGEX, 'jo') then
         -- 'a/b/c'
         options.tags_cond = 'or'
         options.tags = split(tags, '/')

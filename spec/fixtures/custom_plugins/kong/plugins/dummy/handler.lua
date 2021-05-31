@@ -3,6 +3,8 @@ local BasePlugin = require "kong.plugins.base_plugin"
 
 local DummyHandler = BasePlugin:extend()
 
+DummyHandler.VERSION = "9.9.9"
+
 
 DummyHandler.PRIORITY = 1000
 

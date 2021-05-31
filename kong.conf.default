@@ -42,10 +42,26 @@
                                           # it will be placed under the
                                           # `prefix` location.
 
+
 #proxy_error_log = logs/error.log         # Path for proxy port request error
                                           # logs. The granularity of these logs
                                           # is adjusted by the `log_level`
                                           # property.
+
+#proxy_stream_access_log = logs/access.log basic # Path for tcp streams proxy port access
+                                                 # logs. Set this value to `off` to
+                                                 # disable logging proxy requests.
+                                                 # If this value is a relative path,
+                                                 # it will be placed under the
+                                                 # `prefix` location.
+                                                 # `basic` is defined as `'$remote_addr [$time_local] '
+                                                 # '$protocol $status $bytes_sent $bytes_received '
+                                                 # '$session_time'`
+
+#proxy_stream_error_log = logs/error.log         # Path for tcp streams proxy port request error
+                                                 # logs. The granularity of these logs
+                                                 # is adjusted by the `log_level`
+                                                 # property.
 
 #admin_access_log = logs/admin_access.log # Path for Admin API request access
                                           # logs. If Hybrid Mode is enabled
@@ -68,7 +84,7 @@
 
 #status_access_log = off                  # Path for Status API request access
                                           # logs. The default value of `off`
-                                          # implies that loggin for this API
+                                          # implies that logging for this API
                                           # is disabled by default.
                                           # If this value is a relative path,
                                           # it will be placed under the
@@ -224,9 +240,18 @@
                                  # DP node.
 
 #cluster_ca_cert =               # The trusted CA certificate file in PEM
-                                 # format used to verify the `cluster_cert`.
-                                 # Required if `cluster_mtls` is set to `pki`,
-                                 # ignored otherwise.
+                                 # format used for Control Plane to verify
+                                 # Data Plane's certificate and Data Plane
+                                 # to verify Control Plane's certificate.
+                                 # Required on data plane if `cluster_mtls`
+                                 # is set to `pki`.
+                                 # If Control Plane certificate is issued
+                                 # by a well known CA, user can set
+                                 # `lua_ssl_trusted_certificate=system`
+                                 # on Data Plane and leave this field empty.
+                                 #
+                                 # This field is ignored if `cluster_mtls` is
+                                 # set to `shared`.
 
 #------------------------------------------------------------------------------
 # HYBRID MODE DATA PLANE
@@ -278,6 +303,28 @@
                          # 14 days. That is, if CP haven't heard from a DP for
                          # 14 days, its entry will be removed.
 
+#cluster_ocsp = off
+                         # Whether to check for revocation status of DP
+                         # certificates using OCSP (Online Certificate Status Protocol).
+                         # If enabled, the DP certificate should contain the
+                         # "Certificate Authority Information Access" extension
+                         # and the OCSP method with URI of which the OCSP responder
+                         # can be reached from CP.
+                         #
+                         # OCSP checks are only performed on CP nodes, it has no
+                         # effect on DP nodes.
+                         #
+                         # Valid values to this setting are:
+                         #
+                         # - `on`: OCSP revocation check is enabled and DP
+                         #   must pass the check in order to establish
+                         #   connection with CP.
+                         # - `off`: OCSP revocation check is disabled.
+                         # - `optional`: OCSP revocation check will be attempted,
+                         #   however, if the required extension is not
+                         #   found inside DP provided certificate
+                         #   or communication with the OCSP responder
+                         #   failed, then DP is still allowed through.
 #------------------------------------------------------------------------------
 # NGINX
 #------------------------------------------------------------------------------
@@ -1094,6 +1141,12 @@
                                 # in the cache never expire, which means that
                                 # `db_cache_ttl` should preserve its default
                                 # value of 0.
+                                #
+                                # If the Hybrid mode `role` is set to `data_plane`
+                                # and there's no configuration cache file,
+                                # this configuration is used before connecting
+                                # to the Control Plane node as a user-controlled
+                                # fallback.
 
 #------------------------------------------------------------------------------
 # DATASTORE CACHE
@@ -1337,6 +1390,17 @@
                                  # based DoS attacks.
                                  #
                                  # See https://github.com/openresty/lua-nginx-module#lua_ssl_verify_depth
+
+#lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3   # Defines the TLS versions supported
+                                               # when handshaking with OpenResty's
+                                               # TCP cosocket APIs.
+                                               #
+                                               # This affects connections made by Lua
+                                               # code, such as connections to the
+                                               # database Kong uses, or when sending logs
+                                               # using a logging plugin. It does *not*
+                                               # affect connections made to the upstream
+                                               # Service or from downstream clients.
 
 #lua_package_path = ./?.lua;./?/init.lua;  # Sets the Lua module search path
                                            # (LUA_PATH). Useful when developing

@@ -2,6 +2,7 @@
 local ffi = require "ffi"
 local cjson = require "cjson"
 local system_constants = require "lua_system_constants"
+local sandbox = require "kong.tools.sandbox".sandbox
 
 
 local kong = kong
@@ -20,6 +21,9 @@ local oflags = bit.bor(O_WRONLY, O_CREAT, O_APPEND)
 local mode = bit.bor(S_IRUSR, S_IWUSR, S_IRGRP, S_IROTH)
 
 
+local sandbox_opts = { env = { kong = kong, ngx = ngx } }
+
+
 local C = ffi.C
 
 
@@ -31,8 +35,7 @@ int write(int fd, const void * ptr, int numbytes);
 -- fd tracking utility functions
 local file_descriptors = {}
 
--- Log to a file. Function used as callback from an nginx timer.
--- @param `premature` see OpenResty `ngx.timer.at()`
+-- Log to a file. 
 -- @param `conf`     Configuration table, holds http endpoint details
 -- @param `message`  Message to be logged
 local function log(conf, message)
@@ -64,11 +67,18 @@ end
 
 local FileLogHandler = {
   PRIORITY = 9,
-  VERSION = "2.0.2",
+  VERSION = "2.1.0",
 }
 
 
 function FileLogHandler:log(conf)
+  if conf.custom_fields_by_lua then
+    local set_serialize_value = kong.log.set_serialize_value
+    for key, expression in pairs(conf.custom_fields_by_lua) do
+      set_serialize_value(key, sandbox(expression, sandbox_opts)())
+    end
+  end
+
   local message = kong.log.serialize()
   log(conf, message)
 end

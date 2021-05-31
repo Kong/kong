@@ -29,6 +29,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "logging3.com" },
       }
 
+      local route4 = bp.routes:insert {
+        hosts = { "logging4.com" },
+      }
+
       bp.plugins:insert {
         route = { id = route1.id },
         name     = "syslog",
@@ -59,6 +63,21 @@ for _, strategy in helpers.each_strategy() do
           successful_severity    = "warning",
           client_errors_severity = "warning",
           server_errors_severity = "warning",
+        },
+      }
+
+      bp.plugins:insert {
+        route = { id = route4.id },
+        name     = "syslog",
+        config   = {
+          log_level              = "warning",
+          successful_severity    = "warning",
+          client_errors_severity = "warning",
+          server_errors_severity = "warning",
+          custom_fields_by_lua = {
+            new_field = "return 123",
+            route = "return nil", -- unset route field
+          },
         },
       }
 
@@ -141,6 +160,7 @@ for _, strategy in helpers.each_strategy() do
 
     local function do_test(host, expecting_same, grpc)
       local uuid = utils.uuid()
+      local resp
 
       if not grpc then
         local response = assert(proxy_client:send {
@@ -178,10 +198,16 @@ for _, strategy in helpers.each_strategy() do
         else
           assert.not_equal(uuid, json.request.headers["sys-log-uuid"])
         end
+
+        resp = stdout
       elseif expecting_same then
         local _, _, stdout = assert(helpers.execute("find /var/log -type f -mmin -5 2>/dev/null | xargs grep -l " .. uuid))
         assert.True(#stdout > 0)
+
+        resp = stdout
       end
+
+      return resp
     end
 
     it("logs to syslog if log_level is lower", function()
@@ -192,6 +218,11 @@ for _, strategy in helpers.each_strategy() do
     end)
     it("logs to syslog if log_level is the same", function()
       do_test("logging3.com", true)
+    end)
+    it("logs custom values", function()
+      local resp = do_test("logging4.com", false)
+      assert.matches("\"new_field\".*123", resp)
+      assert.not_matches("\"route\"", resp)
     end)
 
     it("logs to syslog if log_level is lower #grpc", function()

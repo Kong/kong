@@ -1,5 +1,7 @@
 #!/bin/bash
 
+scripts_folder=$(dirname "$0")
+
 #-------------------------------------------------------------------------------
 function commit_changelog() {
     if ! git status CHANGELOG.md | grep -q "modified:"
@@ -19,8 +21,22 @@ function commit_changelog() {
 }
 
 #-------------------------------------------------------------------------------
+function update_copyright() {
+   if ! "$scripts_folder/update-copyright"
+   then
+      die "Could not update copyright file. Check logs for missing licenses, add hardcoded ones if needed"
+   fi
+
+   git add COPYRIGHT
+
+   git commit -m "docs(COPYRIGHT) update copyright for $1"
+   git log -n 1
+}
+
+
+#-------------------------------------------------------------------------------
 function bump_homebrew() {
-   curl -L -o "kong-$version.tar.gz" "https://bintray.com/kong/kong-src/download_file?file_path=kong-$version.tar.gz"
+   curl -L -o "kong-$version.tar.gz" "https://download.konghq.com/gateway-src/kong-$version.tar.gz"
    sum=$(sha256sum "kong-$version.tar.gz" | awk '{print $1}')
    sed -i 's/kong-[0-9.]*.tar.gz/kong-'$version'.tar.gz/' Formula/kong.rb
    sed -i 's/sha256 ".*"/sha256 "'$sum'"/' Formula/kong.rb
@@ -176,6 +192,36 @@ function prepare_changelog() {
       fd_out:close()
    '
    mv CHANGELOG.md.new CHANGELOG.md
+}
+
+#-------------------------------------------------------------------------------
+function prepare_patch_announcement() {
+  local version="$1.$2.$3"
+
+  cat <<EOF
+============= USE BELOW ON KONG NATION ANNOUNCEMENT ==============
+TITLE: Kong $version available!
+
+BODY:
+We’re happy to announce **Kong $version**. As a patch release, it contains only **bugfixes**; no new features neither breaking changes.
+
+:package: Download [Kong $version](https://download.konghq.com) and [upgrade your cluster](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-$1$2x)!
+:spiral_notepad: More info and PR links are available at the [$version Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md#$1$2$3).
+
+:whale: The updated official Docker image is available on [Docker Hub ](https://hub.docker.com/_/kong).
+
+As always, Happy Konging! :gorilla:
+============= USE BELOW ON KONG NATION ANNOUNCEMENT ==============
+We’re happy to announce *Kong $version*. As a patch release, it contains only *bugfixes*; no new features neither breaking changes.
+
+:package: Download Kong $version: https://download.konghq.com
+:spiral_note_pad: More info and PR links are available at the $version Changelog: https://github.com/Kong/kong/blob/master/CHANGELOG.md#$1$2$3
+
+:whale: the updated official docker image is available on Docker Hub: https://hub.docker.com/_/kong
+
+As always, happy Konging! :gorilla:
+==================================================================
+EOF
 }
 
 #-------------------------------------------------------------------------------	

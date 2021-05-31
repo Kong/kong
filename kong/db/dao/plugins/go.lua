@@ -518,7 +518,7 @@ local get_plugin do
 
             local instance_id = get_instance(plugin_name, conf)
             local _, err = bridge_loop(instance_id, phase)
-            if err and string.match(err, "No plugin instance") then
+            if err and string.match(err:lower(), "no plugin instance") then
               instance_id = reset_and_get_instance(plugin_name, conf)
               bridge_loop(instance_id, phase)
             end
@@ -531,7 +531,7 @@ local get_plugin do
         plugin[phase] = function(self, conf)
           local instance_id = get_instance(plugin_name, conf)
           local _, err = bridge_loop(instance_id, phase)
-          if err and string.match(err, "No plugin instance") then
+          if err and string.match(err:lower(), "no plugin instance") then
             instance_id = reset_and_get_instance(plugin_name, conf)
             bridge_loop(instance_id, phase)
           end

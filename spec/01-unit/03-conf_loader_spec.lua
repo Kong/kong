@@ -843,6 +843,76 @@ describe("Configuration loader", function()
           }, conf.lua_ssl_trusted_certificate)
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
+        it("autoload cluster_cert or cluster_ca_cert for data plane in lua_ssl_trusted_certificate", function()
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          })
+          assert.is_nil(errors)
+          assert.same({
+            pl_path.abspath("spec/fixtures/kong_clustering.crt"),
+          }, conf.lua_ssl_trusted_certificate)
+          assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
+
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            cluster_mtls = "pki",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+            cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
+          })
+          assert.is_nil(errors)
+          assert.same({
+            pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"),
+          }, conf.lua_ssl_trusted_certificate)
+          assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
+        end)
+        it("doen't overwrite lua_ssl_trusted_certificate when autoload cluster_cert or cluster_ca_cert", function()
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt,spec/fixtures/kong_clustering_client.crt",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          })
+          assert.is_nil(errors)
+          assert.same({
+            pl_path.abspath("spec/fixtures/kong_spec.crt"),
+            pl_path.abspath("spec/fixtures/kong_clustering_client.crt"),
+            pl_path.abspath("spec/fixtures/kong_clustering.crt"),
+          }, conf.lua_ssl_trusted_certificate)
+          assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
+
+          local conf, _, errors = conf_loader(nil, {
+            role = "data_plane",
+            database = "off",
+            lua_ssl_trusted_certificate = "spec/fixtures/kong_spec.crt,spec/fixtures/kong_clustering_client.crt",
+            cluster_mtls = "pki",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+            cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
+          })
+          assert.is_nil(errors)
+          assert.same({
+            pl_path.abspath("spec/fixtures/kong_spec.crt"),
+            pl_path.abspath("spec/fixtures/kong_clustering_client.crt"),
+            pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"),
+          }, conf.lua_ssl_trusted_certificate)
+          assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
+        end)
+        it("doesn't load cluster_cert or cluster_ca_cert for control plane", function()
+          local conf, _, errors = conf_loader(nil, {
+            role = "control_plane",
+            cluster_cert = "spec/fixtures/kong_clustering.crt",
+            cluster_cert_key = "spec/fixtures/kong_clustering.key",
+            cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
+          })
+          assert.is_nil(errors)
+          assert.same({}, conf.lua_ssl_trusted_certificate)
+        end)
         it("resolves SSL cert/key to absolute path", function()
           local conf, err = conf_loader(nil, {
             ssl_cert = "spec/fixtures/kong_spec.crt",
@@ -1116,6 +1186,28 @@ describe("Configuration loader", function()
             assert.True(helpers.path.isabs(conf.status_ssl_cert[i]))
             assert.True(helpers.path.isabs(conf.status_ssl_cert_key[i]))
           end
+        end)
+      end)
+
+      describe("lua_ssl_protocls", function()
+        it("sets both lua_ssl_protocls in http and stream subsystem to TLS 1.2-1.3 by default", function()
+          local conf, err = conf_loader()
+          assert.is_nil(err)
+          assert.is_table(conf)
+
+          assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.nginx_http_lua_ssl_protocols)
+          assert.equal("TLSv1.1 TLSv1.2 TLSv1.3", conf.nginx_stream_lua_ssl_protocols)
+        end)
+
+        it("sets both lua_ssl_protocls in http and stream subsystem to user specified value", function()
+          local conf, err = conf_loader(nil, {
+            lua_ssl_protocols = "TLSv1.1"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+
+          assert.equal("TLSv1.1", conf.nginx_http_lua_ssl_protocols)
+          assert.equal("TLSv1.1", conf.nginx_stream_lua_ssl_protocols)
         end)
       end)
     end)

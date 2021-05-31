@@ -23,8 +23,8 @@ describe("sandbox functions wrapper", function()
     -- load and reference module we can spy on
     load_s = spy.new(load)
     _G.load = load_s
-    _sandbox = spy.new(require "sandbox")
-    package.loaded["sandbox"] = _sandbox
+    _sandbox = spy.new(require "kong.tools.kong-lua-sandbox")
+    package.loaded["kong.tools.kong-lua-sandbox"] = _sandbox
     sandbox = require "kong.tools.sandbox"
   end)
 
@@ -238,6 +238,11 @@ describe("sandbox functions wrapper", function()
           _G.fizz = nil
 
           _G.kong.configuration = deep_copy(base_conf)
+        end)
+
+        it("has access to string.rep", function()
+          assert.same("aaa", sandbox.sandbox("return string.rep('a', 3)")())
+          assert.is_true(sandbox.sandbox("return ('a'):rep(3) == 'aaa'")())
         end)
 
         it("has access to config.untrusted_lua_sandbox_environment", function()

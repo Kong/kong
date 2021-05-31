@@ -62,7 +62,37 @@ end
 
 function _TARGETS:upsert(pk, entity, options)
   entity.id = pk.id
-  return self:insert(entity, options)
+
+  if entity.target then
+    local formatted_target, err = format_target(entity.target)
+    if not formatted_target then
+      local err_t = self.errors:schema_violation({ target = err })
+      return nil, tostring(err_t), err_t
+    end
+    entity.target = formatted_target
+  end
+
+  -- backward compatibility with Kong older than 2.2.0
+  local workspace = workspaces.get_workspace_id()
+  local opts = { nulls = true, workspace = workspace }
+  for existent in self:each_for_upstream(entity.upstream, nil, opts) do
+    if existent.target == entity.target then
+      -- if the upserting entity is newer, update
+      if entity.created_at > existent.created_at then
+        local ok, err, err_t = self.super.delete(self, { id = existent.id }, opts)
+        if ok then
+          return self.super.insert(self, entity, options)
+        end
+
+        return ok, err, err_t
+      end
+      -- if upserting entity is older, keep the existent entity
+      return true
+
+    end
+  end
+
+  return self.super.insert(self, entity, options)
 end
 
 
@@ -164,18 +194,13 @@ function _TARGETS:page_for_upstream(upstream_pk, size, offset, options)
   for i = #targets, 1, -1 do
     local entry = targets[i]
     if not seen[entry.target] then
-      if entry.weight == 0 then
-        seen[entry.target] = true
+      -- add what we want to send to the client in our array
+      len = len + 1
+      all_active_targets[len] = entry
 
-      else
-        -- add what we want to send to the client in our array
-        len = len + 1
-        all_active_targets[len] = entry
-
-        -- track that we found this host:port so we only show
-        -- the most recent active one
-        seen[entry.target] = true
-      end
+      -- track that we found this host:port so we only show
+      -- the most recent active one
+      seen[entry.target] = true
     end
   end
 

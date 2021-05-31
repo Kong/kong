@@ -46,6 +46,7 @@ local function idempotent(tbl, err)
   end
 
   local function recurse_fields(t)
+    helpers.deep_sort(t)
     for k,v in sortedpairs(t) do
       if k == "id" and utils.is_valid_uuid(v) then
         t[k] = "UUID"
@@ -285,6 +286,7 @@ describe("declarative config: flatten", function()
                 retry_count = 10,
                 timeout = 10000,
                 headers = null,
+                custom_fields_by_lua = null,
               }
             },
             {
@@ -378,6 +380,7 @@ describe("declarative config: flatten", function()
                 retry_count = 10,
                 timeout = 10000,
                 headers = null,
+                custom_fields_by_lua = null,
               },
               consumer = {
                 id = "UUID"
@@ -560,6 +563,7 @@ describe("declarative config: flatten", function()
                   retry_count = 10,
                   timeout = 10000,
                   headers = null,
+                  custom_fields_by_lua = null,
                 },
                 consumer = null,
                 created_at = 1234567890,
@@ -600,7 +604,8 @@ describe("declarative config: flatten", function()
                   port = 10000,
                   timeout = 10000,
                   tls = false,
-                  tls_sni = null
+                  tls_sni = null,
+                  custom_fields_by_lua = null,
                 },
                 consumer = null,
                 created_at = 1234567890,
@@ -1049,6 +1054,7 @@ describe("declarative config: flatten", function()
                   retry_count = 10,
                   timeout = 10000,
                   headers = null,
+                  custom_fields_by_lua = null,
                 },
                 consumer = null,
                 created_at = 1234567890,
@@ -1089,7 +1095,8 @@ describe("declarative config: flatten", function()
                   port = 10000,
                   timeout = 10000,
                   tls = false,
-                  tls_sni = null
+                  tls_sni = null,
+                  custom_fields_by_lua = null,
                 },
                 consumer = null,
                 created_at = 1234567890,
@@ -1718,7 +1725,7 @@ describe("declarative config: flatten", function()
           ]]))
 
           config = DeclarativeConfig:flatten(config)
-          assert.same({
+          assert.same(helpers.deep_sort{
             targets = { {
                 created_at = 1234567890,
                 id = "UUID",

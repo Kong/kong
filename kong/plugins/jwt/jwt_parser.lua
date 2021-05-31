@@ -63,6 +63,19 @@ local alg_sign = {
     assert(#r == 32)
     assert(#s == 32)
     return r .. s
+  end,
+  ES384 = function(data, key)
+    local pkey = openssl_pkey.new(key)
+    local digest = openssl_digest.new("sha384")
+    assert(digest:update(data))
+    local signature = assert(pkey:sign(digest))
+
+    local derSequence = asn_sequence.parse_simple_sequence(signature)
+    local r = asn_sequence.unsign_integer(derSequence[1], 48)
+    local s = asn_sequence.unsign_integer(derSequence[2], 48)
+    assert(#r == 48)
+    assert(#s == 48)
+    return r .. s
   end
 }
 
@@ -102,6 +115,17 @@ local alg_verify = {
     asn[2] = asn_sequence.resign_integer(sub(signature, 33, 64))
     local signatureAsn = asn_sequence.create_simple_sequence(asn)
     local digest = openssl_digest.new("sha256")
+    assert(digest:update(data))
+    return pkey:verify(signatureAsn, digest)
+  end,
+  ES384 = function(data, signature, key)
+    local pkey, _ = openssl_pkey.new(key)
+    assert(#signature == 96, "Signature must be 96 bytes.")
+    local asn = {}
+    asn[1] = asn_sequence.resign_integer(sub(signature, 1, 48))
+    asn[2] = asn_sequence.resign_integer(sub(signature, 49, 96))
+    local signatureAsn = asn_sequence.create_simple_sequence(asn)
+    local digest = openssl_digest.new("sha384")
     assert(digest:update(data))
     return pkey:verify(signatureAsn, digest)
   end
@@ -218,7 +242,6 @@ local function encode_token(data, key, alg, header)
   end
 
   alg = alg or "HS256"
-
   if not alg_sign[alg] then
     error("Algorithm not supported", 2)
   end

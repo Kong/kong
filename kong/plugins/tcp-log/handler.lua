@@ -1,9 +1,13 @@
 local cjson = require "cjson"
+local sandbox = require "kong.tools.sandbox".sandbox
 
 
 local kong = kong
 local ngx = ngx
 local timer_at = ngx.timer.at
+
+
+local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 
 
 local function log(premature, conf, message)
@@ -48,11 +52,18 @@ end
 
 local TcpLogHandler = {
   PRIORITY = 7,
-  VERSION = "2.0.1",
+  VERSION = "2.1.0",
 }
 
 
 function TcpLogHandler:log(conf)
+  if conf.custom_fields_by_lua then
+    local set_serialize_value = kong.log.set_serialize_value
+    for key, expression in pairs(conf.custom_fields_by_lua) do
+      set_serialize_value(key, sandbox(expression, sandbox_opts)())
+    end
+  end
+
   local message = kong.log.serialize()
   local ok, err = timer_at(0, log, conf, message)
   if not ok then

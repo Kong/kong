@@ -1,5 +1,3 @@
-
-
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
@@ -91,6 +89,72 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(201, res))
         assert.equal(10, body.config.second)
       end)
+
+      if strategy == "off" then
+        it("sets policy to local by default on dbless", function()
+          local id = "bac2038a-205c-4013-8830-e6dde503a3e3"
+          local res = admin_client:post("/config", {
+            body = {
+              _format_version = "1.1",
+              plugins = {
+                {
+                  id = id,
+                  name = "rate-limiting",
+                  config = {
+                    second = 10
+                  }
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(201, res))
+          assert.equal("local", body.plugins[id].config.policy)
+        end)
+
+        it("does not allow setting policy to cluster on dbless", function()
+          local id = "bac2038a-205c-4013-8830-e6dde503a3e3"
+          local res = admin_client:post("/config", {
+            body = {
+              _format_version = "1.1",
+              plugins = {
+                {
+                  id = id,
+                  name = "rate-limiting",
+                  config = {
+                    policy = "cluster",
+                    second = 10
+                  }
+                }
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(400, res))
+          assert.equal("expected one of: local, redis", body.fields.plugins[1].config.policy)
+        end)
+
+      else
+        it("sets policy to cluster by default", function()
+          local res = admin_client:post("/plugins", {
+            body    = {
+              name  = "rate-limiting",
+              config = {
+                second = 10
+              }
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = cjson.decode(assert.res_status(201, res))
+          assert.equal("cluster", body.config.policy)
+        end)
+      end
     end)
   end)
 end

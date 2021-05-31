@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
 
 
-
 for _, strategy in helpers.each_strategy() do
 
 describe("kong start/stop #" .. strategy, function()
@@ -42,6 +41,12 @@ describe("kong start/stop #" .. strategy, function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
     assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
   end)
+  it("stop honors custom Kong prefix higher than environment variable", function()
+    assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
+    helpers.setenv("KONG_PREFIX", "/tmp/dne")
+    finally(function() helpers.unsetenv("KONG_PREFIX") end)
+    assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
+  end)
   it("start/stop Kong with only stream listeners enabled", function()
     assert(helpers.kong_exec("start ", {
       prefix = helpers.test_conf.prefix,
@@ -68,13 +73,10 @@ describe("kong start/stop #" .. strategy, function()
         prefix = helpers.test_conf.prefix
       }))
 
-      local pl_file = require "pl.file"
-      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-
-      assert.not_matches("[emerg]", err_log, nil, true)
-      assert.not_matches("[alert]", err_log, nil, true)
-      assert.not_matches("[crit]", err_log, nil, true)
-      assert.not_matches("[error]", err_log, nil, true)
+      assert.logfile().has.no.line("[emerg]", true)
+      assert.logfile().has.no.line("[alert]", true)
+      assert.logfile().has.no.line("[crit]", true)
+      assert.logfile().has.no.line("[error]", true)
     end)
   else
     it("should not add [emerg], [alert], [crit], [error] or [warn] lines to error log", function()
@@ -87,14 +89,11 @@ describe("kong start/stop #" .. strategy, function()
         prefix = helpers.test_conf.prefix
       }))
 
-      local pl_file = require "pl.file"
-      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
-
-      assert.not_matches("[emerg]", err_log, nil, true)
-      assert.not_matches("[alert]", err_log, nil, true)
-      assert.not_matches("[crit]", err_log, nil, true)
-      assert.not_matches("[error]", err_log, nil, true)
-      assert.not_matches("[warn]", err_log, nil, true)
+      assert.logfile().has.no.line("[emerg]", true)
+      assert.logfile().has.no.line("[alert]", true)
+      assert.logfile().has.no.line("[crit]", true)
+      assert.logfile().has.no.line("[error]", true)
+      assert.logfile().has.no.line("[warn]", true)
     end)
   end
 
@@ -489,18 +488,11 @@ describe("kong start/stop #" .. strategy, function()
           database = "off",
           declarative_config = yaml_file,
         })
+
         assert.falsy(ok)
-        assert.matches(helpers.unindent[[
-          in 'services':
-            - in entry 1 of 'services':
-              in 'protocol': expected one of: grpc, grpcs, http, https, tcp, tls, udp
-              in 'name': invalid value '@gobo': the only accepted ascii characters are alphanumerics or ., -, _, and ~
-            - in entry 2 of 'services':
-              in 'routes':
-                - in entry 1 of 'routes':
-                  in 'hosts':
-                    - in entry 2 of 'hosts': invalid hostname: \\99
-        ]], err, nil, true)
+        assert.matches("in 'protocol': expected one of: grpc, grpcs, http, https, tcp, tls, udp", err, nil, true)
+        assert.matches("in 'name': invalid value '@gobo': the only accepted ascii characters are alphanumerics or ., -, _, and ~", err, nil, true)
+        assert.matches("in entry 2 of 'hosts': invalid hostname: \\\\99", err, nil, true)
       end)
     end
 

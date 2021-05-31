@@ -5,16 +5,22 @@ local Entity = require("kong.db.schema.entity")
 local Schema = require("kong.db.schema")
 local constants = require("kong.constants")
 local plugin_loader = require("kong.db.schema.plugin_loader")
+local schema_topological_sort = require "kong.db.schema.topological_sort"
 
 
 local null = ngx.null
-
+local type = type
+local next = next
+local pairs = pairs
+local ipairs = ipairs
+local insert = table.insert
+local concat = table.concat
+local tostring = tostring
 
 local DeclarativeConfig = {}
 
 
 local all_schemas
-local core_entities
 local errors = Errors.new("declarative")
 
 
@@ -33,9 +39,9 @@ function DeclarativeConfig.pk_string(schema, object)
   else
     local out = {}
     for _, k in ipairs(schema.primary_key) do
-      table.insert(out, tostring(object[k]))
+      insert(out, tostring(object[k]))
     end
-    return table.concat(out, ":")
+    return concat(out, ":")
   end
 end
 
@@ -64,12 +70,12 @@ end
 
 local function add_extra_attributes(fields, opts)
   if opts._comment then
-    table.insert(fields, {
+    insert(fields, {
       _comment = { type = "string", },
     })
   end
   if opts._ignore then
-    table.insert(fields, {
+    insert(fields, {
       _ignore = { type = "array", elements = { type = "any" } },
     })
   end
@@ -84,10 +90,10 @@ end
 -- @tparam array<string> entities The list of entity names
 -- @treturn map<string,table> A map of record definitions added to `fields`,
 -- indexable by entity name
-local function add_top_level_entities(fields, entities)
+local function add_top_level_entities(fields, known_entities)
   local records = {}
 
-  for _, entity in ipairs(entities) do
+  for _, entity in ipairs(known_entities) do
     local definition = utils.deep_copy(all_schemas[entity], false)
 
     for k, _ in pairs(definition.fields) do
@@ -108,7 +114,7 @@ local function add_top_level_entities(fields, entities)
       _comment = true,
       _ignore = true,
     })
-    table.insert(fields, {
+    insert(fields, {
       [entity] = {
         type = "array",
         elements = records[entity],
@@ -120,7 +126,7 @@ local function add_top_level_entities(fields, entities)
 end
 
 
-local function copy_record(record, include_foreign)
+local function copy_record(record, include_foreign, duplicates, name)
   local copy = utils.deep_copy(record, false)
   if include_foreign then
     return copy
@@ -135,6 +141,12 @@ local function copy_record(record, include_foreign)
       fdata.required = false
     end
   end
+
+  if duplicates and name then
+    duplicates[name] = duplicates[name] or {}
+    insert(duplicates[name], copy)
+  end
+
   return copy
 end
 
@@ -147,28 +159,42 @@ end
 -- (e.g. `service` as a string key in the `routes` entry).
 -- @tparam map<string,table> records A map of top-level record definitions,
 -- indexable by entity name. These records are modified in-place.
-local function nest_foreign_relationships(records, include_foreign)
-  for entity, record in pairs(records) do
+local function nest_foreign_relationships(known_entities, records, include_foreign)
+  local duplicates = {}
+  for i = #known_entities, 1, -1 do
+    local entity = known_entities[i]
+    local record = records[entity]
     for _, f in ipairs(record.fields) do
       local _, fdata = next(f)
       if fdata.type == "foreign" then
         local ref = fdata.reference
         -- allow nested entities
         -- (e.g. `routes` inside `services`)
-        table.insert(records[ref].fields, {
+        insert(records[ref].fields, {
           [entity] = {
             type = "array",
-            elements = copy_record(record, include_foreign),
+            elements = copy_record(record, include_foreign, duplicates, entity),
           },
         })
+
+        for _, dest in ipairs(duplicates[ref] or {}) do
+          insert(dest.fields, {
+            [entity] = {
+              type = "array",
+              elements = copy_record(record, include_foreign, duplicates, entity)
+            }
+          })
+        end
       end
     end
   end
 end
 
 
-local function reference_foreign_by_name(records)
-  for entity, record in pairs(records) do
+local function reference_foreign_by_name(known_entities, records)
+  for i = #known_entities, 1, -1 do
+    local entity = known_entities[i]
+    local record = records[entity]
     for _, f in ipairs(record.fields) do
       local fname, fdata = next(f)
       if fdata.type == "foreign" then
@@ -190,7 +216,7 @@ local function reference_foreign_by_name(records)
 end
 
 
-local function build_fields(entities, include_foreign)
+local function build_fields(known_entities, include_foreign)
   local fields = {
     { _format_version = { type = "string", required = true, one_of = {"1.1", "2.1"} } },
     { _transform = { type = "boolean", default = true } },
@@ -200,8 +226,8 @@ local function build_fields(entities, include_foreign)
     _ignore = true,
   })
 
-  local records = add_top_level_entities(fields, entities)
-  nest_foreign_relationships(records, include_foreign)
+  local records = add_top_level_entities(fields, known_entities)
+  nest_foreign_relationships(known_entities, records, include_foreign)
 
   return fields, records
 end
@@ -291,7 +317,7 @@ local function populate_references(input, known_entities, by_id, by_key, expecte
           if ref and v ~= null then
             expected[entity] = expected[entity] or {}
             expected[entity][ref] = expected[entity][ref] or {}
-            table.insert(expected[entity][ref], {
+            insert(expected[entity][ref], {
               key = k,
               value = v,
               at = key or item_id or i
@@ -335,7 +361,7 @@ local function validate_references(self, input)
           errors[a][k.at] = errors[a][k.at] or {}
           local msg = "invalid reference '" .. k.key .. ": " .. k.value ..
                       "' (no such entry in '" .. b .. "')"
-          table.insert(errors[a][k.at], msg)
+          insert(errors[a][k.at], msg)
         end
       end
     end
@@ -363,12 +389,12 @@ local function build_cache_key(entity, item, schema, parent_fk, child_key)
       return nil
 
     elseif type(item[k]) == "string" then
-      table.insert(ck, item[k])
+      insert(ck, item[k])
 
     elseif item[k] == nil then
       if k == child_key then
         if parent_fk.id and next(parent_fk, "id") == nil then
-          table.insert(ck, parent_fk.id)
+          insert(ck, parent_fk.id)
         else
           -- FIXME support building cache_keys with fk's whose pk is not id
           return nil
@@ -378,11 +404,11 @@ local function build_cache_key(entity, item, schema, parent_fk, child_key)
         return nil
 
       else
-        table.insert(ck, "")
+        insert(ck, "")
       end
     end
   end
-  return table.concat(ck, ":")
+  return concat(ck, ":")
 end
 
 
@@ -584,13 +610,13 @@ end
 
 
 local function find_default_ws(entities)
-  for k, v in pairs(entities.workspaces or {}) do
+  for _, v in pairs(entities.workspaces or {}) do
     if v.name == "default" then return v.id end
   end
 end
 
 
-local function insert_default_workspace_if_not_given(self, entities)
+local function insert_default_workspace_if_not_given(_, entities)
   local default_workspace = find_default_ws(entities) or "0dc6f45b-8f8d-40d2-a504-473544ee190b"
 
   if not entities.workspaces then
@@ -692,26 +718,20 @@ end
 
 
 function DeclarativeConfig.load(plugin_set, include_foreign)
-  if not core_entities then
-    -- a copy of constants.CORE_ENTITIES without "tags"
-    core_entities = {}
-    for _, entity in ipairs(constants.CORE_ENTITIES) do
-      if entity ~= "tags" then
-        table.insert(core_entities, entity)
-      end
-    end
-  end
-
-  local known_entities = utils.deep_copy(core_entities, false)
 
   all_schemas = {}
-  for _, entity in ipairs(core_entities) do
-    local mod = require("kong.db.schema.entities." .. entity)
-    local definition = utils.deep_copy(mod, false)
-    all_schemas[entity] = Entity.new(definition)
+  local schemas_array = {}
+  for _, entity in ipairs(constants.CORE_ENTITIES) do
+    -- tags are treated differently from the rest of entities in declarative config
+    if entity ~= "tags" then
+      local mod = require("kong.db.schema.entities." .. entity)
+      local schema = Entity.new(mod)
+      all_schemas[entity] = schema
+      schemas_array[#schemas_array + 1] = schema
 
-    -- load core entities subschemas
-    assert(load_entity_subschemas(entity, all_schemas[entity]))
+      -- load core entities subschemas
+      assert(load_entity_subschemas(entity, schema))
+    end
   end
 
   for plugin in pairs(plugin_set) do
@@ -722,8 +742,15 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
     end
     for entity, schema in pairs(entities) do
       all_schemas[entity] = schema
-      table.insert(known_entities, entity)
+      schemas_array[#schemas_array + 1] = schema
     end
+  end
+
+  schemas_array = schema_topological_sort(schemas_array)
+
+  local known_entities = {}
+  for i, schema in ipairs(schemas_array) do
+    known_entities[i] = schema.name
   end
 
   local fields, records = build_fields(known_entities, include_foreign)
@@ -738,7 +765,7 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
   -- with "string"-type fields only after the subschemas have been loaded,
   -- otherwise they will detect the mismatch.
   if not include_foreign then
-    reference_foreign_by_name(records)
+    reference_foreign_by_name(known_entities, records)
   end
 
   local def = {

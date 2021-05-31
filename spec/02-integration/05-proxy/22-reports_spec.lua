@@ -432,7 +432,7 @@ for _, strategy in helpers.each_strategy() do
           ["X-Large"] = string.rep("a", 2^10 * 10), -- default large_client_header_buffers is 8k
         }
       })
-      assert.res_status(494, res)
+      assert.res_status(400, res)
       proxy_client:close()
 
       assert.errlog()

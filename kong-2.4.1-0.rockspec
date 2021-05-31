@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.3.3-0"
+version = "2.4.1-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.3.3"
+  tag = "2.4.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -13,37 +13,37 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.1",
-  "luasec == 0.9",
+  "luasec == 1.0.1",
   "luasocket == 3.0-rc1",
-  "penlight == 1.9.2",
+  "penlight == 1.10.0",
   "lua-resty-http == 0.15",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
   "multipart == 0.5.9",
   "version == 1.0.1",
-  "kong-lapis == 1.8.1.2",
-  "lua-cassandra == 1.5.0",
-  "pgmoon == 1.11.0",
+  "kong-lapis == 1.8.3.1",
+  "lua-cassandra == 1.5.1",
+  "pgmoon == 1.12.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
-  "luasyslog == 1.0.0",
-  "kikito/sandbox == 1.0.1",
+  "luasyslog == 2.0.1",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 5.2.1",
+  "lua-resty-dns-client == 6.0.0",
+  "lua-protobuf == 0.3.2",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-healthcheck == 1.4.1",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.6.9",
+  "lua-resty-openssl == 0.7.2",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
-  "kong-plugin-zipkin ~> 1.2",
+  "kong-plugin-zipkin ~> 1.3",
   "kong-plugin-serverless-functions ~> 2.1",
-  "kong-prometheus-plugin ~> 1.0",
+  "kong-prometheus-plugin ~> 1.2",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.3",
   "kong-plugin-session ~> 2.4",
@@ -68,11 +68,14 @@ build = {
     ["kong.concurrency"] = "kong/concurrency.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
-    ["kong.clustering"] = "kong/clustering.lua",
     ["kong.hooks"] = "kong/hooks.lua",
 
     ["kong.conf_loader"] = "kong/conf_loader/init.lua",
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
+
+    ["kong.clustering"] = "kong/clustering/init.lua",
+    ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
+    ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
@@ -136,6 +139,7 @@ build = {
     ["kong.tools.batch_queue"] = "kong/tools/batch_queue.lua",
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
     ["kong.tools.uri"] = "kong/tools/uri.lua",
+    ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
@@ -144,6 +148,7 @@ build = {
     ["kong.runloop.plugin_servers"] = "kong/runloop/plugin_servers/init.lua",
     ["kong.runloop.plugin_servers.process"] = "kong/runloop/plugin_servers/process.lua",
     ["kong.runloop.plugin_servers.mp_rpc"] = "kong/runloop/plugin_servers/mp_rpc.lua",
+    ["kong.runloop.plugin_servers.pb_rpc"] = "kong/runloop/plugin_servers/pb_rpc.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
 

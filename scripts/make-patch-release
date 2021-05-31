@@ -23,6 +23,7 @@ function usage() {
    step "create"           "create the branch"
    step "write_changelog"  "prepare the changelog"
    step "commit_changelog" "commit the changelog"
+   step "update_copyright" "update copyright file"
    step "version_bump"     "bump and commit the version number"
    step "submit"           "push and submit a release PR"
    step "docs_pr"          "push and submit a docs.konghq.com PR for the release"
@@ -34,6 +35,7 @@ function usage() {
    step "luarocks"         "upload to LuaRocks" "<api-key>"
    step "vagrant"          "(ran by CI now) bump version and submit a PR to kong-vagrant"
    step "pongo"            "(ran by CI now) bump version and submit a PR to kong-pongo"
+   step "announce"         "Get announcement messages for Kong Nation and Slack #general"
    exit 0
 }
 
@@ -78,6 +80,7 @@ minor=${rest%%.*}
 patch=${rest##*.}
 rockspec="kong-$version-0.rockspec"
 branch="release/$version"
+base="release/$major.$minor.x"
 
 if ! [[ "$version" =~ ^[0-9]+.[0-9]+.[0-9]$ ]]
 then
@@ -100,13 +103,14 @@ case "$step" in
       fi
 
       set -e
-      git checkout master
+      git checkout "$base"
       git pull
       git checkout -B "$branch"
 
       SUCCESS "Release branch was created locally." \
-              "You are ready to run the next step:" \
-              "    $0 $version write_changelog"
+              "Ensure to cherry-pick all required changes into $branch." \
+              "And proceed to the next step:" \
+              "    $0 $version cherry_pick"
       ;;
    #---------------------------------------------------------------------------
    write_changelog)
@@ -131,6 +135,14 @@ case "$step" in
       commit_changelog "$version"
 
       SUCCESS "The changelog is now committed locally." \
+              "You are ready to run the next step:" \
+              "    $0 $version update_copyright"
+      ;;
+   #---------------------------------------------------------------------------
+   update_copyright)
+      update_copyright "$version"
+
+      SUCCESS "The COPYRIGHT file is updated locally." \
               "You are ready to run the next step:" \
               "    $0 $version version_bump"
       ;;
@@ -163,6 +175,7 @@ case "$step" in
               "You are ready to run the next step:" \
               "    $0 $version submit"
       ;;
+
    #---------------------------------------------------------------------------
    submit)
       if ! git log -n 1 | grep -q "release: $version"
@@ -177,7 +190,7 @@ case "$step" in
 
       set -e
       git push --set-upstream origin "$branch"
-      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
+      hub pull-request -b "$base" -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
 
       SUCCESS "Now get the above PR reviewed and approved." \
               "Once it is approved, you can continue to the 'merge' step." \
@@ -194,7 +207,7 @@ case "$step" in
          git clone git@github.com:Kong/docs.konghq.com.git
          cd docs.konghq.com
       fi
-      git checkout master
+      git checkout main
       git pull
       git checkout -B "$branch"
       bump_docs_kong_versions
@@ -209,7 +222,7 @@ case "$step" in
       git commit -m "chore(*) update release metadata for $version"
 
       git push --set-upstream origin "$branch"
-      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
+      hub pull-request -b main -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge"
 
       SUCCESS "Make sure you give Team Docs a heads-up" \
               "once the release is pushed to the main repo." \
@@ -236,7 +249,7 @@ case "$step" in
       hub release create -F release-$version.txt "$version"
       rm -f release-$version.txt
 
-      SUCCESS "Make sure the packages are built and available on Bintray" \
+      SUCCESS "Make sure the packages are built and available on download.konghq.com" \
               "before continuing to the following steps." \
               "Once they are built, you may run the following steps in parallel:" \
               "* 'homebrew'" \
@@ -271,6 +284,11 @@ case "$step" in
       git push
       git tag -s "$version" -m "$version"
       git push origin "$version"
+
+      make_github_release_file
+
+      hub release create -F release-$version.txt "$version"
+      rm -f release-$version.txt
 
       SUCCESS "Now you can run the next step:" \
               "    $0 $version submit_docker"
@@ -388,6 +406,11 @@ case "$step" in
       SUCCESS "The LuaRocks entry is now up!"
       ;;
    #---------------------------------------------------------------------------
+   announce)
+      prepare_patch_announcement "$major" "$minor" "$patch"
+
+      SUCCESS "Copy and paste this announcement in Kong Nation and Slack #general"
+      ;;
    *)
       die "Unknown step!"
       ;;

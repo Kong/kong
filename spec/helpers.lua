@@ -1,7 +1,7 @@
 ------------------------------------------------------------------
 -- Collection of utilities to help testing Kong features and plugins.
 --
--- @copyright Copyright 2016-2020 Kong Inc. All rights reserved.
+-- @copyright Copyright 2016-2021 Kong Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module spec.helpers
 
@@ -54,6 +54,7 @@ local ssl = require "ngx.ssl"
 local ws_client = require "resty.websocket.client"
 local table_clone = require "table.clone"
 local https_server = require "spec.fixtures.https_server"
+local stress_generator = require "spec.fixtures.stress_generator"
 
 
 ffi.cdef [[
@@ -1532,6 +1533,42 @@ luassert:register("assertion", "contains", contains,
                   "assertion.contains.negative",
                   "assertion.contains.positive")
 
+local deep_sort do
+  local function deep_compare(a, b)
+    if a == nil then
+      a = ""
+    end
+
+    if b == nil then
+      b = ""
+    end
+
+    deep_sort(a)
+    deep_sort(b)
+
+    if type(a) ~= type(b) then
+      return type(a) < type(b)
+    end
+
+    if type(a) == "table" then
+      return deep_compare(a[1], b[1])
+    end
+
+    return a < b
+  end
+
+  function deep_sort(t)
+    if type(t) == "table" then
+      for _, v in pairs(t) do
+        deep_sort(v)
+      end
+      table.sort(t, deep_compare)
+    end
+
+    return t
+  end
+end
+
 
 --- Assertion to check the status-code of a http response.
 -- @function status
@@ -2611,7 +2648,7 @@ end
 -- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
 -- are required.
 -- Other fields that can be overwritten are:
--- `node_hostname`, `node_id`, `node_version`. If absent,
+-- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
 -- they are automatically filled.
 -- @return msg if handshake succeeded and initial message received from CP or nil, err
 local function clustering_client(opts)
@@ -2626,14 +2663,14 @@ local function clustering_client(opts)
               "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
               "&node_version=" .. (opts.node_version or KONG_VERSION)
 
-  local opts = {
+  local conn_opts = {
     ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
     client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
     client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
     server_name = "kong_clustering",
   }
 
-  local res, err = c:connect(uri, opts)
+  local res, err = c:connect(uri, conn_opts)
   if not res then
     return nil, err
   end
@@ -2641,13 +2678,12 @@ local function clustering_client(opts)
                                         plugins = opts.node_plugins_list or
                                                   PLUGINS_LIST,
                                       }))
-
   assert(c:send_binary(payload))
 
   assert(c:send_ping(string.rep("0", 32)))
 
-  local data, typ
-  data, typ = c:recv_frame()
+  local data, typ, err
+  data, typ, err = c:recv_frame()
   c:close()
 
   if typ == "binary" then
@@ -2659,7 +2695,7 @@ local function clustering_client(opts)
     return "PONG"
   end
 
-  return nil, "unknown frame from CP: " .. typ
+  return nil, "unknown frame from CP: " .. (typ or err)
 end
 
 
@@ -2768,6 +2804,7 @@ end
   validate_plugin_config_schema = validate_plugin_config_schema,
   clustering_client = clustering_client,
   https_server = https_server,
+  stress_generator = stress_generator,
 
   -- miscellaneous
   intercept = intercept,
@@ -2776,6 +2813,7 @@ end
   make_yaml_file = make_yaml_file,
   setenv = setenv,
   unsetenv = unsetenv,
+  deep_sort = deep_sort,
 
   -- launching Kong subprocesses
   start_kong = start_kong,

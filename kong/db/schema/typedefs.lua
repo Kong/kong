@@ -98,12 +98,41 @@ local function validate_name(name)
 end
 
 
-local function validate_utf8_name(name)
-
-  local ok, index = utils.validate_utf8(name)
+local function validate_utf8_string(str)
+  local ok, index = utils.validate_utf8(str)
 
   if not ok then
     return nil, "invalid utf-8 character sequence detected at position " .. tostring(index)
+  end
+
+  return true
+end
+
+
+local function validate_tag(tag)
+
+  local ok, err = validate_utf8_string(tag)
+  if not ok then
+    return nil, err
+  end
+
+  -- printable ASCII (33-126 except ','(44) and '/'(47),
+  -- plus non-ASCII utf8 (128-244)
+  if not match(tag, "^[\033-\043\045\046\048-\126\128-\244]+$") then
+    return nil,
+    "invalid tag '" .. tag ..
+      "': expected printable ascii (except `,` and `/`) or valid utf-8 sequences"
+  end
+
+  return true
+end
+
+
+local function validate_utf8_name(name)
+
+  local ok, err = validate_utf8_string(name)
+  if not ok then
+    return nil, err
   end
 
   if not match(name, "^[%w%.%-%_~\128-\244]+$") then
@@ -369,8 +398,9 @@ typedefs.key = Schema.define {
 typedefs.tag = Schema.define {
   type = "string",
   required = true,
-  match = "^[%w%.%-%_~]+$",
+  custom_validator = validate_tag,
 }
+
 
 typedefs.tags = Schema.define {
   type = "set",
@@ -537,6 +567,17 @@ typedefs.semantic_version = Schema.define {
       err = "must not have empty version segments"
     },
   },
+}
+
+local function validate_lua_expression(expression)
+  local sandbox = require "kong.tools.sandbox"
+  return sandbox.validate_safe(expression)
+end
+
+typedefs.lua_code = Schema.define {
+  type = "map",
+  keys = { type = "string", len_min = 1, },
+  values = { type = "string", len_min = 1, custom_validator = validate_lua_expression },
 }
 
 setmetatable(typedefs, {

@@ -1075,3 +1075,22 @@ unable to proxy stream connection, status: 500, err: error message
 --- error_log
 finalize stream session: 400
 unable to proxy stream connection, status: 400, err: error message
+
+
+
+=== TEST 42: response.exit() accepts tables as response body
+--- stream_server_config
+    preread_by_lua_block {
+        local PDK = require "kong.pdk"
+        local pdk = PDK.new()
+
+        pdk.response.exit(200, { ["message"] = "ok" } )
+    }
+
+    return "nope";
+--- stream_response chop
+{"message":"ok"}
+--- no_error_log
+[error]
+--- error_log
+finalize stream session: 200

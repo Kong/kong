@@ -923,7 +923,6 @@ local function write_admin_api(filename, data, title)
   outfd:write("#  or its associated files instead.\n")
   outfd:write("#\n")
   outfd:write("title: " .. utils.titleize(title) .. "\n")
-  outfd:write("skip_read_time: true\n")
   outfd:write("toc: false\n\n")
   for _, entity in ipairs(data.known.entities) do
     local entity_data = assert_data(data.entities[entity],
