@@ -32,6 +32,7 @@ local max           = math.max
 local band          = bit.band
 local bor           = bit.bor
 
+-- limits regex degenerate times to the low miliseconds
 local REGEX_PREFIX  = "(*LIMIT_MATCH=10000)"
 local SLASH         = byte("/")
 

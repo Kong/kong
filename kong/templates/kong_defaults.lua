@@ -87,6 +87,7 @@ nginx_upstream_keepalive_timeout = NONE
 nginx_http_upstream_keepalive = NONE
 nginx_http_upstream_keepalive_requests = NONE
 nginx_http_upstream_keepalive_timeout = NONE
+nginx_http_lua_regex_match_limit = 100000
 
 client_max_body_size = 0
 client_body_buffer_size = 8k
