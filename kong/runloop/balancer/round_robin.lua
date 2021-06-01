@@ -33,13 +33,11 @@ function roundrobin_algorithm:afterHostUpdate()
   local new_wheel = {}
   local total_points = 0
   local total_weight = 0
-  local addr_count = 0
   local divisor = 0
 
   -- calculate the gcd to find the proportional weight of each address
   for _, host in ipairs(self.hosts) do
     for _, address in ipairs(host.addresses) do
-      addr_count = addr_count + 1
       local address_weight = address.weight
       divisor = gcd(divisor, address_weight)
       total_weight = total_weight + address_weight

@@ -3,6 +3,7 @@
 local upstreams = require "kong.runloop.balancer.upstreams"
 local targets = require "kong.runloop.balancer.targets"
 local healthcheckers
+local dns_utils = require "resty.dns.utils"
 
 local ngx = ngx
 local log = ngx.log
@@ -310,6 +311,28 @@ function balancer_mt:disableAddress(target, entry)
 end
 
 
+local function setHostHeader(addr)
+  local target = addr.target
+
+  if target.nameType ~= "name" then
+    -- hostname is an IP address
+    addr.hostHeader = nil
+  else
+    -- hostname is an actual name
+    if addr.ipType ~= "name" then
+      -- the address is an ip, so use the hostname as header value
+      addr.hostHeader = target.hostname
+    else
+      -- the address itself is a nested name (SRV)
+      if addr.useSRVname then
+        addr.hostHeader = addr.ip
+      else
+        addr.hostHeader = target.name
+      end
+    end
+  end
+end
+
 function balancer_mt:addAddress(target, entry)
   -- from host:addAddress
   if type(entry) ~= "table"
@@ -337,13 +360,19 @@ function balancer_mt:addAddress(target, entry)
     weight = SRV_0_WEIGHT
   end
   weight = weight or target.weight
-  addresses[#addresses + 1] = {
+  local addr = {
     ip = entry_ip,
     port = entry_port,
     weight = weight,
     target = target,
     useSRVname = self.useSRVname,
+
+    ipType = dns_utils.hostnameType(entry_ip),  -- 'ipv4', 'ipv6' or 'name'
+    available = true,
+    disabled = false,
   }
+  setHostHeader(addr)
+  addresses[#addresses + 1] = addr
 
   target.weight = target.weight + weight
   self.weight = self.weight + weight
@@ -439,14 +468,28 @@ function balancer_mt:setCallback(callback)
 end
 
 
-function balancer_mt:getTargetStatus(target)
-  local dns_source = "unknown"    -- TODO: get some info here
+local function get_dns_source(dns_record)
+  if not dns_record then
+    return "unknown"
+  end
 
+  if dns_record.__dnsError then
+    return dns_record.__dnsError
+  end
+
+  if dns_record.__ttl0Flag then
+    return "ttl=0, virtual SRV"
+  end
+
+  return targets.get_dns_name_from_record_type(dns_record[1] and dns_record[1].type)
+end
+
+function balancer_mt:getTargetStatus(target)
   local addresses = {}
   local status = {
     host = target.hostname,
     port = target.port,
-    dns = dns_source,
+    dns = get_dns_source(target.lastQuery),
     nodeWeight = target.nodeWeight,
     weight = {
       total = target.weight,

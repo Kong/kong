@@ -292,7 +292,7 @@ function healthcheckers_M.get_upstream_health(upstream_id)
 
   local health_info = {}
   for _, target in ipairs(balancer.targets) do
-    local key = target.hostname .. ":" .. target.port
+    local key = target.name .. ":" .. target.port
     health_info[key] = balancer:getTargetStatus(target)
     for _, address in ipairs(health_info[key].addresses) do
       if using_hc then

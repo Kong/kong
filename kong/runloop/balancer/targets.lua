@@ -11,6 +11,7 @@ local singletons = require "kong.singletons"
 local dns_client = require "resty.dns.client"
 local upstreams = require "kong.runloop.balancer.upstreams"
 local balancers   -- require at init time to avoid dependency loop
+local dns_utils = require "resty.dns.utils"
 
 local ngx = ngx
 local null = ngx.null
@@ -45,6 +46,20 @@ function targets_M.init()
   ngx.timer.every(1, resolve_timer_callback)
 end
 
+local _rtype_to_name
+function targets_M.get_dns_name_from_record_type(rtype)
+  if not _rtype_to_name then
+    _rtype_to_name = {}
+
+    for k, v in pairs(dns_client) do
+      if tostring(k):sub(1,5) == "TYPE_" then
+        _rtype_to_name[v] = k:sub(6,-1)
+      end
+    end
+  end
+
+  return _rtype_to_name[rtype] or "unknown"
+end
 
 ------------------------------------------------------------------------------
 -- Loads the targets from the DB.
@@ -67,6 +82,7 @@ local function load_targets_into_memory(upstream_id)
     target.port = tonumber(port)
     target.addresses = {}
     target.unavailableWeight = 0
+    target.nameType = dns_utils.hostnameType(target.name)
   end
 
   return targets
