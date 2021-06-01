@@ -1,3 +1,7 @@
+## Unreleased
+
+- fix(*) handle special chars in path matching
+
 ## 0.2.1
 
 - fix(*) luarock spec version

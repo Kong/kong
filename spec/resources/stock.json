@@ -108,6 +108,54 @@
                           }
                 }
            }
-       }
-    }
+       },
+      "/stock-historical.v3": {
+        "get": {
+            "description": "",
+            "operationId": "GET /stock-historical.v3",
+            "produces": [
+                "application/json"
+            ],
+            "tags": [
+                "Production"
+            ],
+            "parameters": [
+                {
+                    "required": true,
+                    "in": "query",
+                    "name": "tickers",
+                    "type": "string"
+                }
+            ],
+            "responses": {
+                "200": {
+                    "description": "Status 200",
+                    "examples": {
+                        "application/json":
+                              {
+                            "meta_data" : {
+                              "api_name" : "historical_stock_price_v3",
+                              "num_total_data_points" : 1,
+                              "credit_cost" : 10,
+                              "start_date" : "yesterday",
+                              "end_date" : "yesterday"
+                            },
+                            "result_data" : {
+                              "AAPL" : [ {
+                                "date" : "2000-04-23",
+                                "volume" : 33,
+                                "high" : 100.75,
+                                "low" : 100.87,
+                                "adj_close" : 275.03,
+                                "close" : 100.03,
+                                "open" : 100.87
+                              } ]
+                            }
+                         }
+                      }
+                  }
+              }
+          }
+      }
+  }
 }

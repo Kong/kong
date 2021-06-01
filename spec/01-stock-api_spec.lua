@@ -179,5 +179,21 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
+    describe("Stock API Specification tests", function()
+      it("matches an url with special chars: /stock-historical.v3", function()
+        local r = assert(client:send {
+          method = "GET",
+          path = "/stock-historical.v3",
+          headers = {
+            host = "mocking.com"
+          }
+        })
+        -- validate that the request succeeded, response status 200
+        local body = cjson.decode(assert.res_status(200, r))
+        -- Compare meta data values against values from spec
+        assert.equal("historical_stock_price_v3",find_key(body,"api_name"))
+      end)
+    end)
+
   end)
 end
