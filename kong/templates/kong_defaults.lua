@@ -139,6 +139,7 @@ cassandra_data_centers = dc1:2,dc2:3
 cassandra_schema_consensus_timeout = 10000
 
 declarative_config = NONE
+declarative_config_string = NONE
 
 db_update_frequency = 5
 db_update_propagation = 0

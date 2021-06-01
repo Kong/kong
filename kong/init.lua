@@ -209,7 +209,7 @@ do
 
     local new_page = old_page
     if dbless then
-      if config.declarative_config then
+      if config.declarative_config or config.declarative_config_string then
         new_page = old_page == 1 and 2 or 1
       else
         preserved[DECLARATIVE_LOAD_KEY] = kong_shm:get(DECLARATIVE_LOAD_KEY)
@@ -342,14 +342,20 @@ local function parse_declarative_config(kong_config)
 
   local dc = declarative.new_config(kong_config)
 
-  if not kong_config.declarative_config then
+  if not kong_config.declarative_config and not kong_config.declarative_config_string then
     -- return an empty configuration,
     -- including only the default workspace
     local entities, _, _, meta = dc:parse_table({ _format_version = "2.1" })
     return entities, nil, meta
   end
 
-  local entities, err, _, meta = dc:parse_file(kong_config.declarative_config)
+  local entities, err, meta
+  if kong_config.declarative_config ~= nil then
+    entities, err, _, meta = dc:parse_file(kong_config.declarative_config)
+  elseif kong_config.declarative_config_string ~= nil then
+    entities, err, _, meta = dc:parse_string(kong_config.declarative_config_string)
+  end
+
   if not entities then
     return nil, "error parsing declarative config file " ..
                 kong_config.declarative_config .. ":\n" .. err
