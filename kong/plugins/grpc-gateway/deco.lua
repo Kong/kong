@@ -78,8 +78,6 @@ local function parse_options_path(path)
   return path_regex, match_groups
 end
 
--- TODO: Any fields in the request message which are not bound by the path template
-
 -- parse, compile and load .proto file
 -- returns a table mapping valid request URLs to input/output types
 local _proto_info = {}

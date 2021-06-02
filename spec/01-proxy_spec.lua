@@ -77,6 +77,18 @@ for _, strategy in helpers.each_strategy() do
       assert.same({reply = "hello john_doe"}, data)
     end)
 
+    test("removes unbound query args", function()
+      local res, err = proxy_client:get("/v1/messages/john_doe?arg1=1&arg2=2")
+
+      assert.equal(200, res.status)
+      assert.is_nil(err)
+
+      local body = res:read_body()
+      local data = cjson.decode(body)
+
+      assert.same({reply = "hello john_doe"}, data)
+    end)
+
     test("unknown path", function()
       local res, _ = proxy_client:get("/v1/messages/john_doe/bai")
       assert.not_equal(200, res.status)

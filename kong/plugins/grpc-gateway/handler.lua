@@ -61,6 +61,8 @@ function grpc_gateway:access(conf)
   kong_service_request_set_raw_body(body)
 
   ngx.req.set_uri(dec.rewrite_path)
+  -- clear any query args
+  ngx.req.set_uri_args("")
   kong_service_request_set_method("POST")
 end
 
