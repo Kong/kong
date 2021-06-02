@@ -32,12 +32,15 @@ jobs:
     
     - name: Install OpenResty
       run: |
+        openresty_version=$(cat .requirements | grep RESTY_VERSION= | cut -d= -f2)
+
         sudo apt-get -y install --no-install-recommends wget gnupg ca-certificates
         wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
         echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | \
           sudo tee /etc/apt/sources.list.d/openresty.list
         sudo apt-get update
-        sudo apt install openresty
+        sudo apt-get install "openresty=${openresty_version}*" "openresty-resty=${openresty_version}*" -y
+        sudo apt-mark hold openresty
 
     - name: Install Dependencies
       run: |
