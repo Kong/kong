@@ -243,14 +243,12 @@ local function load_plugin_subschemas(fields, plugin_set, indent)
   for _, f in ipairs(fields) do
     local fname, fdata = next(f)
 
-    if fname == "plugins" then
+    -- Exclude cases where `plugins` are used expect from plugins entities.
+    -- This assumes other entities doesn't have `name` as its subschema_key.
+    if fname == "plugins" and fdata.elements and fdata.elements.subschema_key == "name" then
       for plugin in pairs(plugin_set) do
-        local _, err, err_t = plugin_loader.load_subschema(fdata.elements, plugin, errors)
+        local _, err = plugin_loader.load_subschema(fdata.elements, plugin, errors)
 
-        if err_t then
-          return nil, "schema for plugin '" .. plugin .. "' is invalid: " ..
-                      tostring(errors:schema_violation(err_t))
-        end
         if err then
           return nil, err
         end
@@ -735,10 +733,10 @@ function DeclarativeConfig.load(plugin_set, include_foreign)
   end
 
   for plugin in pairs(plugin_set) do
-    local entities, err, err_t = plugin_loader.load_entities(plugin, errors,
+    local entities, err = plugin_loader.load_entities(plugin, errors,
                                            plugin_loader.load_entity_schema)
-    if err or err_t then
-      return nil, err, err_t
+    if err then
+      return nil, err
     end
     for entity, schema in pairs(entities) do
       all_schemas[entity] = schema

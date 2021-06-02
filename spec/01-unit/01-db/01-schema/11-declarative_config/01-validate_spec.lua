@@ -851,3 +851,61 @@ describe("declarative config: validate", function()
     end)
   end)
 end)
+
+describe("declarative config: validate", function()
+
+  local daos = {
+    ["dao-keywords"] = {
+      name = "dao-keywords",
+      primary_key = {"field1"},
+      admin_api_name = "dao-keywords",
+      admin_api_nested_name = "dao-keywords",
+      fields = {
+        {field1 = {type = "string", required = true}},
+        {field2 = {type = "string", required = true}},
+      }
+    }
+  }
+
+  local plugins_set = helpers.test_conf.loaded_plugins
+  plugins_set["dao-keywords"] = true
+
+  lazy_setup(function()
+    package.loaded["kong.plugins.dao-keywords.schema"] = {
+      name = "dao-keywords",
+      fields = {
+        { config = {
+            type = "record",
+            fields = {},
+        }, },
+      }
+    }
+
+    package.loaded["kong.plugins.dao-keywords.daos"] = daos
+  end)
+
+  lazy_teardown(function()
+    package.loaded["kong.plugins.dao-keywords.schema"] = nil
+    package.loaded["kong.plugins.dao-keywords.daos"] = nil
+  end)
+
+  it("loads plugins with custom DAO that has keywords as string", function()
+    daos["dao-keywords"]["fields"][2] = {plugins = {type = "string", required = true}}
+
+    assert(declarative_config.load(plugins_set))
+  end)
+
+  it("loads plugins with custom DAO that has keywords as array", function()
+    daos["dao-keywords"]["fields"][2] = {
+      plugins = {
+        type = "array",
+        required = false,
+        elements = {
+          type = "string",
+        },
+      },
+    }
+
+    assert(declarative_config.load(plugins_set))
+  end)
+end)
