@@ -125,6 +125,10 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       hosts = { "test27.test" }
     })
 
+    local route28 = bp.routes:insert({
+      hosts = { "test28.test" }
+    })
+
     bp.plugins:insert {
       route = { id = route1.id },
       name = "request-transformer",
@@ -449,6 +453,18 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       config = {
         replace = {
           uri = "/requests/tést",
+        }
+      }
+    }
+
+    -- transformer attempts to inject a value in ngx.ctx.shared, but that will result in an invalid template
+    -- which provokes a failure
+    bp.plugins:insert {
+      route = { id = route28.id },
+      name = "request-transformer",
+      config = {
+        add = {
+          headers = { "X-Write-Attempt:$(shared.written = true)" },
         }
       }
     }
@@ -2170,6 +2186,16 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
       assert.response(r).has.status(200)
       local value = assert.request(r).has.queryparam("shared_param1")
       assert.equals("1.2.3", value)
+    end)
+    it("cannot write a value in `kong.ctx.shared`", function()
+      local r = client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "test28.test",
+        }
+      }
+      assert.response(r).has.status(500)
     end)
   end)
   describe("remove then add header (regression test)", function()

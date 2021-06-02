@@ -26,6 +26,7 @@ env:
   - secure: d8lQhUZik+Ng0+GueJzTn5+DXmWCW/Sx7eb+pbk8g5HJB4Myk3CGjdYb/wmn1oARpagQlMFCERdqYDY+NsVLL/m65aJkDsGiJYjxtE+EP7pai0gfpGD1tvBZ4te/YsbjdhNtj+nQ3nk0Ecc0S9+l99ztG7VjnBdfZbVOYLpJIzl/UNV5V/y00mdKkwTlGqppMe45XVqGdS/KkKMYm6w1OSs9YA4u9OpbzRmfvK5y1MRPNfRd1NY2+624bDEUZrPvicsofwDV7GhtPsr6hewGWmlA7/fINrE/rUaQKyFeeEkRQz7HCe9f7PlNHlPWD9nIGVbBNOaQqMmXlasdOqqMlJftukymiQdl1ALyZLa0y47MariOwzkU9aftcOQMsIwpuThWd1izzH+VVi9fWIFWvghD2MI5Ar+YxqRv2F1gLdhfte3Gaq+K8liKhiQG05GwxzWaJgAhoCY84KVh1zChjq4ZhN1zxWybEfaBboTYhKG82FKhRFppYfxLvNgUhRSBblWMsYpNsqapag4AL0GYiGnynTrlgRohHHCBSHt/6WZGOED8vCBKrd5e9iIWTK5WIipN6THQXdofA7xjbl6fEsdl5UiJc+vgRTuT96Te2LeLWswWdu0n1L+DEfLaPCPzxOXHElYe6NC/X1zsI4IEflUGHiNYS7oMkrHb4eEcz4g=
 
 install:
+- echo "$DOCKER_KEY" | docker login -u "$DOCKER_USER" --password-stdin
 - git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
 - "../kong-pongo/pongo.sh up"
 - "../kong-pongo/pongo.sh build"

@@ -136,7 +136,7 @@ local function param_value(source_template, config_array)
   -- Find or compile the specific template
   local compiled_template = compiled_templates[source_template]
   if not compiled_template then
-    compiled_template = pl_template.compile(source_template, compile_opts)
+    compiled_template = assert(pl_template.compile(source_template, compile_opts))
     compiled_templates[source_template] = compiled_template
   end
 
