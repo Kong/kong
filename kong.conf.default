@@ -904,6 +904,11 @@
 #nginx_admin_client_body_buffer_size = 10m  # Defines the buffer size for reading
                                             # the request body on Admin API.
 
+#nginx_http_lua_regex_match_limit = 100000  # Global `MATCH_LIMIT` for PCRE
+                                            # regex matching. The default of `100000` should ensure
+                                            # at worst any regex Kong executes could finish within
+                                            # roughly 2 seconds.
+
 #------------------------------------------------------------------------------
 # DATASTORE
 #------------------------------------------------------------------------------
