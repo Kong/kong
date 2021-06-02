@@ -349,7 +349,7 @@ local function parse_declarative_config(kong_config)
     return entities, nil, meta
   end
 
-  local entities, err, meta
+  local entities, err, _, meta
   if kong_config.declarative_config ~= nil then
     entities, err, _, meta = dc:parse_file(kong_config.declarative_config)
   elseif kong_config.declarative_config_string ~= nil then
