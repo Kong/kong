@@ -357,8 +357,13 @@ local function parse_declarative_config(kong_config)
   end
 
   if not entities then
-    return nil, "error parsing declarative config file " ..
-                kong_config.declarative_config .. ":\n" .. err
+    if kong_config.declarative_config ~= nil then
+      return nil, "error parsing declarative config file " ..
+                  kong_config.declarative_config .. ":\n" .. err
+    elseif kong_config.declarative_config_string ~= nil then
+      return nil, "error parsing declarative string " ..
+                  kong_config.declarative_config_string .. ":\n" .. err
+    end
   end
 
   return entities, nil, meta
