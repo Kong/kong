@@ -892,8 +892,7 @@ describe("declarative config: validate", function()
   it("loads plugins with custom DAO that has keywords as string", function()
     daos["dao-keywords"]["fields"][2] = {plugins = {type = "string", required = true}}
 
-    local _
-    DeclarativeConfig, _, DeclarativeConfig_def = assert(declarative_config.load(plugins_set))
+    assert(declarative_config.load(plugins_set))
   end)
 
   it("loads plugins with custom DAO that has keywords as array", function()
@@ -907,7 +906,6 @@ describe("declarative config: validate", function()
       },
     }
 
-    local _
-    DeclarativeConfig, _, DeclarativeConfig_def = assert(declarative_config.load(plugins_set))
+    assert(declarative_config.load(plugins_set))
   end)
 end)
