@@ -91,8 +91,16 @@ for _, strategy in helpers.each_strategy() do
 
     test("unknown path", function()
       local res, _ = proxy_client:get("/v1/messages/john_doe/bai")
-      assert.not_equal(200, res.status)
+      assert.equal(400, res.status)
       assert.equal("Bad Request", res.reason)
+    end)
+
+    test("transforms grpc-status to HTTP status code", function()
+      local res, _ = proxy_client:get("/v1/unknown/john_doe")
+      -- per ttps://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto
+      -- grpc-status: 12: UNIMPLEMENTED are mapped to http code 500
+      assert.equal(500, res.status)
+      assert.equal('12', res.headers['grpc-status'])
     end)
 
   end)

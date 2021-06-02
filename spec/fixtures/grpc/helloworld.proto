@@ -17,6 +17,13 @@ service HelloService {
       body: "*"
     }
   };
+
+  // define a gRPC method that's not implemented in grpcbin
+  rpc UnknownMethod(HelloRequest) returns (HelloResponse) {
+    option (google.api.http) = {
+      get: "/v1/unknown/{greeting}"
+    }
+  };
 }
 
 message HelloRequest {

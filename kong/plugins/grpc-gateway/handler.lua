@@ -67,6 +67,28 @@ function grpc_gateway:access(conf)
 end
 
 
+-- https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto
+local grpc_status_map = {
+   [0] = 200, -- OK
+   [1] = 499, -- CANCELLED
+   [2] = 500, -- UNKNOWN
+   [3] = 400, -- INVALID_ARGUMENT
+   [4] = 504, -- DEADLINE_EXCEEDED
+   [5] = 404, -- NOT_FOUND
+   [6] = 409, -- ALREADY_EXISTS
+   [7] = 403, -- PERMISSION_DENIED
+  [16] = 401, -- UNAUTHENTICATED
+   [8] = 429, -- RESOURCE_EXHAUSTED
+   [9] = 400, -- FAILED_PRECONDITION
+  [10] = 409, -- ABORTED
+  [11] = 400, -- OUT_OF_RANGE
+  [12] = 500, -- UNIMPLEMENTED
+  [13] = 500, -- INTERNAL
+  [14] = 503, -- UNAVAILABLE
+  [15] = 500, -- DATA_LOSS
+}
+
+
 function grpc_gateway:header_filter(conf)
   if kong_request_get_method() == "OPTIONS" then
     return
@@ -75,6 +97,16 @@ function grpc_gateway:header_filter(conf)
   local dec = kong.ctx.plugin.dec
   if dec then
     kong_response_set_header("Content-Type", "application/json")
+  end
+
+  local grpc_status = tonumber(ngx.header['grpc-status'])
+  if grpc_status then
+    local http_status = grpc_status_map[grpc_status]
+    if not http_status then
+      kong.log.warn("Unable to map grpc-status ", ngx.header['grpc-status'], " to HTTP status code")
+      http_status = 500
+    end
+    ngx.status = http_status
   end
 end
 
