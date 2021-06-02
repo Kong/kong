@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.3.0](#130---20210527)
 - [1.2.1](#121---20210415)
 - [1.2.0](#120---20210324)
 - [1.1.0](#110---20210303)
@@ -19,6 +20,14 @@
 - [0.3.0](#030---20181015)
 - [0.2.0](#020---20180924)
 - [0.1.0](#010---20180615)
+
+##  [1.3.0] - 2021/05/27
+
+- Fix exporter to attach subsystem label to memory stats
+  [#118](https://github.com/Kong/kong-plugin-prometheus/pull/118)
+- Expose dataplane status on control plane, new metrics `data_plane_last_seen`,
+  `data_plane_config_hash` and `data_plane_version_compatible` are added.
+  [#98](https://github.com/Kong/kong-plugin-prometheus/pull/98)
 
 ##  [1.2.1] - 2021/04/15
 
@@ -148,6 +157,8 @@ initialized
 
 - Initial release of Prometheus plugin for Kong.
 
+[1.3.0]: https://github.com/Kong/kong-plugin-prometheus/compare/1.2.1...1.3.0
+[1.2.1]: https://github.com/Kong/kong-plugin-prometheus/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/Kong/kong-plugin-prometheus/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/Kong/kong-plugin-prometheus/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/Kong/kong-plugin-prometheus/compare/0.9.0...1.0.0
