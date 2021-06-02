@@ -9,6 +9,7 @@ on:
 
 env:
   terraform_version: '0.15.3'
+  openresty_version: '1.19.3.1'
 
 jobs:
   perf:
@@ -37,7 +38,8 @@ jobs:
         echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | \
           sudo tee /etc/apt/sources.list.d/openresty.list
         sudo apt-get update
-        sudo apt install openresty
+        sudo apt-get install "openresty=${{ env.openresty_version }}*" -y
+        sudo apt-mark hold openresty
 
     - name: Install Dependencies
       run: |
