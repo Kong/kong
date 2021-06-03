@@ -368,19 +368,7 @@ describe("kong start/stop #" .. strategy, function()
         end, 10)
       end)
       it("starts with a valid declarative config string", function()
-        local config_string = [[{
-          "_format_version": "1.1",
-          "services": [
-            {
-              "name": "my-service",
-              "url": "http://127.0.0.1:15555",
-              "routes": [{
-                "name": "example-route",
-                "hosts": ["example.test"]
-              }]
-            }
-          ]
-        }]]
+        local config_string = [[{"_format_version":"1.1","services":[{"name":"my-service","url":"http://127.0.0.1:15555","routes":[{"name":"example-route","hosts":["example.test"]}]}]}]]
         local proxy_client
 
         finally(function()
@@ -392,6 +380,7 @@ describe("kong start/stop #" .. strategy, function()
 
         assert(helpers.start_kong({
           database = "off",
+          declarative_config = nil,
           declarative_config_string = config_string,
           nginx_worker_processes = 100, -- stress test initialization
           nginx_conf = "spec/fixtures/custom_nginx.template",
