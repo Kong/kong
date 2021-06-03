@@ -380,9 +380,7 @@ describe("kong start/stop #" .. strategy, function()
 
         assert(helpers.start_kong({
           database = "off",
-          declarative_config = nil,
           declarative_config_string = config_string,
-          nginx_worker_processes = 100, -- stress test initialization
           nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
