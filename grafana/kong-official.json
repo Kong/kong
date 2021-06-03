@@ -20,12 +20,18 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "6.4.2"
+      "version": "6.7.6"
     },
     {
       "type": "panel",
       "id": "graph",
       "name": "Graph",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "heatmap",
+      "name": "Heatmap",
       "version": ""
     },
     {
@@ -38,6 +44,12 @@
       "type": "panel",
       "id": "singlestat",
       "name": "Singlestat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
       "version": ""
     }
   ],
@@ -59,7 +71,7 @@
   "gnetId": 7424,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1571088300952,
+  "iteration": 1619542847083,
   "links": [],
   "panels": [
     {
@@ -79,6 +91,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -87,6 +105,7 @@
             "x": 0,
             "y": 1
           },
+          "hiddenSeries": false,
           "id": 1,
           "legend": {
             "alignAsTable": false,
@@ -104,10 +123,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -171,6 +191,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -179,6 +205,7 @@
             "x": 0,
             "y": 8
           },
+          "hiddenSeries": false,
           "id": 16,
           "legend": {
             "avg": false,
@@ -194,10 +221,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -268,6 +296,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -276,6 +310,7 @@
             "x": 0,
             "y": 15
           },
+          "hiddenSeries": false,
           "id": 39,
           "legend": {
             "avg": false,
@@ -291,10 +326,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -380,6 +416,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -388,6 +430,7 @@
             "x": 0,
             "y": 2
           },
+          "hiddenSeries": false,
           "id": 10,
           "legend": {
             "avg": false,
@@ -403,10 +446,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -484,6 +528,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -492,6 +542,7 @@
             "x": 8,
             "y": 2
           },
+          "hiddenSeries": false,
           "id": 11,
           "legend": {
             "avg": false,
@@ -507,10 +558,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -588,6 +640,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -596,6 +654,7 @@
             "x": 16,
             "y": 2
           },
+          "hiddenSeries": false,
           "id": 42,
           "legend": {
             "avg": false,
@@ -611,10 +670,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -692,6 +752,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -700,6 +766,7 @@
             "x": 0,
             "y": 9
           },
+          "hiddenSeries": false,
           "id": 12,
           "legend": {
             "avg": false,
@@ -715,10 +782,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -796,6 +864,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -804,6 +878,7 @@
             "x": 8,
             "y": 9
           },
+          "hiddenSeries": false,
           "id": 13,
           "legend": {
             "avg": false,
@@ -819,10 +894,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -900,6 +976,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -908,6 +990,7 @@
             "x": 16,
             "y": 9
           },
+          "hiddenSeries": false,
           "id": 41,
           "legend": {
             "avg": false,
@@ -923,10 +1006,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1004,6 +1088,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -1013,6 +1103,7 @@
             "y": 16
           },
           "height": "250",
+          "hiddenSeries": false,
           "id": 14,
           "legend": {
             "avg": false,
@@ -1028,10 +1119,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1110,6 +1202,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -1119,6 +1217,7 @@
             "y": 16
           },
           "height": "250",
+          "hiddenSeries": false,
           "id": 15,
           "legend": {
             "avg": false,
@@ -1134,10 +1233,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1216,6 +1316,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -1225,6 +1331,7 @@
             "y": 16
           },
           "height": "250",
+          "hiddenSeries": false,
           "id": 40,
           "legend": {
             "avg": false,
@@ -1240,10 +1347,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1337,6 +1445,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -1345,6 +1459,7 @@
             "x": 0,
             "y": 3
           },
+          "hiddenSeries": false,
           "id": 3,
           "legend": {
             "alignAsTable": true,
@@ -1362,10 +1477,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1429,6 +1545,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -1437,6 +1559,7 @@
             "x": 0,
             "y": 10
           },
+          "hiddenSeries": false,
           "id": 2,
           "legend": {
             "avg": false,
@@ -1452,10 +1575,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1526,6 +1650,12 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
@@ -1534,6 +1664,7 @@
             "x": 12,
             "y": 10
           },
+          "hiddenSeries": false,
           "id": 9,
           "legend": {
             "avg": false,
@@ -1549,10 +1680,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1615,7 +1747,7 @@
       "type": "row"
     },
     {
-      "collapsed": true,
+      "collapsed": false,
       "datasource": "${DS_PROMETHEUS}",
       "gridPos": {
         "h": 1,
@@ -1624,85 +1756,537 @@
         "y": 3
       },
       "id": 28,
-      "panels": [
-        {
-          "datasource": "${DS_PROMETHEUS}",
-          "gridPos": {
-            "h": 6,
-            "w": 24,
-            "x": 0,
-            "y": 4
+      "panels": [],
+      "title": "Caching",
+      "type": "row"
+    },
+    {
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
           },
-          "id": 22,
-          "options": {
-            "fieldOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "defaults": {
-                "mappings": [
+          "mappings": [
+            {
+              "from": "",
+              "id": 1,
+              "operator": "",
+              "text": "",
+              "to": "",
+              "type": 1,
+              "value": ""
+            }
+          ],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 22,
+      "options": {
+        "fieldOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": [],
+          "values": false
+        },
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "6.7.6",
+      "repeat": "instance",
+      "repeatDirection": "v",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "(kong_memory_lua_shared_dict_bytes{instance=~\"$instance\",shared_dict!~\"kong_process_events\"}/kong_memory_lua_shared_dict_total_bytes{instance=~\"$instance\",shared_dict!~\"kong_process_events\"})*100",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{shared_dict}} ({{kong_subsystem}})",
+          "refId": "A"
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Kong shared memory usage by Node ($instance)",
+      "type": "gauge"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "${DS_PROMETHEUS}",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "hiddenSeries": false,
+      "id": 43,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pluginVersion": "6.7.6",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": "instance",
+      "repeatDirection": "v",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "kong_memory_workers_lua_vms_bytes{instance=~\"$instance\"}",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "PID:{{pid}} ({{kong_subsystem}})",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Kong worker Lua VM usage by Node ($instance)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "bytes",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "bytes",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "collapsed": false,
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 45,
+      "panels": [],
+      "title": "Upstream",
+      "type": "row"
+    },
+    {
+      "cards": {
+        "cardPadding": null,
+        "cardRound": null
+      },
+      "color": {
+        "cardColor": "#b4ff00",
+        "colorScale": "sqrt",
+        "colorScheme": "interpolateRdYlGn",
+        "exponent": 0.5,
+        "mode": "spectrum"
+      },
+      "dataFormat": "tsbuckets",
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
+      "heatmap": {},
+      "hideZeroBuckets": false,
+      "highlightCards": true,
+      "id": 49,
+      "legend": {
+        "show": false
+      },
+      "pluginVersion": "7.5.4",
+      "reverseYBuckets": false,
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "sum(kong_upstream_target_health{state=\"healthy\",upstream=~\"$upstream\"}) by (upstream,target,address) * -1  + sum(kong_upstream_target_health{state=~\"(unhealthy|dns_error)\",upstream=~\"$upstream\"}) by (upstream,target,address)",
+          "format": "heatmap",
+          "hide": false,
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{upstream}}:{{target}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Healthy status",
+      "tooltip": {
+        "show": true,
+        "showHistogram": false
+      },
+      "transformations": [
+        {
+          "id": "seriesToColumns",
+          "options": {}
+        }
+      ],
+      "type": "heatmap",
+      "xAxis": {
+        "show": true
+      },
+      "xBucketNumber": null,
+      "xBucketSize": null,
+      "yAxis": {
+        "decimals": null,
+        "format": "short",
+        "logBase": 1,
+        "max": null,
+        "min": null,
+        "show": true,
+        "splitFactor": null
+      },
+      "yBucketBound": "auto",
+      "yBucketNumber": null,
+      "yBucketSize": null
+    },
+    {
+      "columns": [],
+      "datasource": "${DS_PROMETHEUS}",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed"
+          },
+          "custom": {
+            "displayMode": "auto",
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "state"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0
+                    },
+                    {
+                      "color": "green",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
                   {
                     "from": "",
                     "id": 1,
-                    "operator": "",
-                    "text": "",
+                    "text": "healthchecks_off",
                     "to": "",
                     "type": 1,
-                    "value": ""
-                  }
-                ],
-                "max": 100,
-                "min": 0,
-                "thresholds": [
-                  {
-                    "color": "green",
-                    "value": null
+                    "value": "0"
                   },
                   {
-                    "color": "yellow",
-                    "value": 70
+                    "from": "",
+                    "id": 2,
+                    "text": "healthy",
+                    "to": "",
+                    "type": 1,
+                    "value": "1"
                   },
                   {
-                    "color": "red",
-                    "value": 90
+                    "from": "",
+                    "id": 3,
+                    "text": "unhealthy",
+                    "to": "",
+                    "type": 1,
+                    "value": "-1"
                   }
-                ],
-                "unit": "percent"
-              },
-              "override": {},
-              "values": false
-            },
-            "orientation": "auto",
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true
-          },
-          "pluginVersion": "6.4.2",
-          "repeat": "instance",
-          "repeatDirection": "v",
-          "scopedVars": {
-            "instance": {
-              "selected": false,
-              "text": "localhost:8001",
-              "value": "localhost:8001"
-            }
-          },
-          "targets": [
-            {
-              "expr": "(kong_memory_lua_shared_dict_bytes{instance=~\"$instance\"}/kong_memory_lua_shared_dict_total_bytes{instance=~\"$instance\"})*100",
-              "format": "time_series",
-              "instant": false,
-              "legendFormat": "{{shared_dict}}",
-              "refId": "A"
-            }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 17
+      },
+      "id": 47,
+      "options": {
+        "frameIndex": 0,
+        "showHeader": true
+      },
+      "pageSize": null,
+      "pluginVersion": "7.5.4",
+      "showHeader": true,
+      "sort": {
+        "col": 0,
+        "desc": true
+      },
+      "styles": [
+        {
+          "alias": "",
+          "align": "auto",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
           ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Kong memory usage by Node ($instance)",
-          "type": "gauge"
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "mappingType": 1,
+          "pattern": "Time",
+          "thresholds": [],
+          "type": "hidden",
+          "unit": "short"
+        },
+        {
+          "alias": "",
+          "align": "auto",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "mappingType": 1,
+          "pattern": "state",
+          "thresholds": [],
+          "type": "hidden",
+          "unit": "short"
+        },
+        {
+          "alias": "state",
+          "align": "auto",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "#FADE2A",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "mappingType": 1,
+          "pattern": "state_value",
+          "thresholds": [
+            "0",
+            "1"
+          ],
+          "type": "string",
+          "unit": "short",
+          "valueMaps": [
+            {
+              "text": "healthy",
+              "value": "1"
+            },
+            {
+              "text": "healthchecks_off",
+              "value": "0"
+            },
+            {
+              "text": "unhealthy",
+              "value": "-1"
+            }
+          ]
+        },
+        {
+          "alias": "",
+          "align": "auto",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "mappingType": 1,
+          "pattern": "Value",
+          "thresholds": [],
+          "type": "hidden",
+          "unit": "short"
         }
       ],
-      "title": "Caching",
-      "type": "row"
+      "targets": [
+        {
+          "exemplar": false,
+          "expr": "sum(\n# map state to a numeric value\n# since grafana doesn't support value mapping yet\n  label_replace(\n    label_replace(\n      label_replace(\n       kong_upstream_target_health{upstream=~\"$upstream\"}\n       # healthy is positive number\n       , \"state_value\", \"1\", \"state\", \"healthy\"\n       # healthchecks_off is 0\n      ), \"state_value\", \"0\", \"state\", \"healthchecks_off\"\n      # unhealthy is negative number\n    ), \"state_value\", \"-1\", \"state\", \"(dns_error|unhealthy)\"\n  )\n)\nby (upstream, target, address, state, state_value) > 0",
+          "format": "table",
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "transform": "table",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "state": true
+            },
+            "indexByName": {
+              "Time": 0,
+              "Value": 5,
+              "address": 3,
+              "state": 4,
+              "target": 2,
+              "upstream": 1
+            },
+            "renameByName": {
+              "Value": "report node count",
+              "state": "state_original",
+              "state_value": "state"
+            }
+          }
+        }
+      ],
+      "type": "table"
     },
     {
       "collapsed": true,
@@ -1711,7 +2295,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 25
       },
       "id": 25,
       "panels": [
@@ -1721,14 +2305,21 @@
           "dashLength": 10,
           "dashes": false,
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 5
+            "y": 6
           },
+          "hiddenSeries": false,
           "id": 17,
           "legend": {
             "avg": false,
@@ -1744,10 +2335,11 @@
           "links": [],
           "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "paceLength": 10,
           "percentage": false,
+          "pluginVersion": "7.5.4",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1815,6 +2407,10 @@
             "#d44a3a"
           ],
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "format": "none",
           "gauge": {
             "maxValue": 100,
@@ -1827,7 +2423,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 12
+            "y": 13
           },
           "id": 18,
           "interval": null,
@@ -1846,7 +2442,6 @@
           "maxDataPoints": 100,
           "nullPointMode": "connected",
           "nullText": null,
-          "options": {},
           "postfix": "",
           "postfixFontSize": "50%",
           "prefix": "",
@@ -1867,8 +2462,10 @@
           "tableColumn": "",
           "targets": [
             {
+              "exemplar": true,
               "expr": "sum(kong_nginx_http_current_connections{state=\"total\", instance=~\"$instance\"})",
               "format": "time_series",
+              "interval": "",
               "intervalFactor": 2,
               "legendFormat": "Total",
               "refId": "A"
@@ -1897,6 +2494,10 @@
             "#d44a3a"
           ],
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "format": "none",
           "gauge": {
             "maxValue": 100,
@@ -1909,7 +2510,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 12
+            "y": 13
           },
           "id": 19,
           "interval": null,
@@ -1928,7 +2529,6 @@
           "maxDataPoints": 100,
           "nullPointMode": "connected",
           "nullText": null,
-          "options": {},
           "postfix": "",
           "postfixFontSize": "50%",
           "prefix": "",
@@ -1979,6 +2579,10 @@
             "#d44a3a"
           ],
           "datasource": "${DS_PROMETHEUS}",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "format": "none",
           "gauge": {
             "maxValue": 100,
@@ -1991,7 +2595,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 12
+            "y": 13
           },
           "id": 20,
           "interval": null,
@@ -2010,7 +2614,6 @@
           "maxDataPoints": 100,
           "nullPointMode": "connected",
           "nullText": null,
-          "options": {},
           "postfix": "",
           "postfixFontSize": "50%",
           "prefix": "",
@@ -2057,7 +2660,7 @@
     }
   ],
   "refresh": false,
-  "schemaVersion": 20,
+  "schemaVersion": 22,
   "style": "dark",
   "tags": [],
   "templating": {
@@ -2066,9 +2669,12 @@
         "allValue": ".*",
         "current": {},
         "datasource": "${DS_PROMETHEUS}",
-        "definition": "",
+        "definition": "label_values(kong_http_status,service)",
+        "description": null,
+        "error": null,
         "hide": 0,
         "includeAll": true,
+        "index": -1,
         "label": "",
         "multi": true,
         "name": "service",
@@ -2088,16 +2694,19 @@
         "allValue": ".*",
         "current": {},
         "datasource": "${DS_PROMETHEUS}",
-        "definition": "label_values(kong_http_status,route)",
+        "definition": "label_values(kong_nginx_http_current_connections,instance)",
+        "description": null,
+        "error": null,
         "hide": 0,
         "includeAll": true,
+        "index": -1,
         "label": "",
         "multi": true,
-        "name": "route",
+        "name": "instance",
         "options": [],
-        "query": "label_values(kong_http_status,route)",
-        "refresh": 1,
-        "regex": "",
+        "query": "label_values(kong_nginx_http_current_connections,instance)",
+        "refresh": 2,
+        "regex": ".*",
         "skipUrlSync": false,
         "sort": 1,
         "tagValuesQuery": "",
@@ -2110,18 +2719,44 @@
         "allValue": ".*",
         "current": {},
         "datasource": "${DS_PROMETHEUS}",
-        "definition": "label_values(kong_http_status,instance)",
+        "definition": "label_values(kong_nginx_http_current_connections,route)",
+        "description": null,
+        "error": null,
         "hide": 0,
         "includeAll": true,
+        "index": -1,
         "label": "",
         "multi": true,
-        "name": "instance",
+        "name": "route",
         "options": [],
-        "query": "label_values(kong_http_status,instance)",
-        "refresh": 2,
-        "regex": ".*",
+        "query": "label_values(kong_nginx_http_current_connections,route)",
+        "refresh": 1,
+        "regex": "",
         "skipUrlSync": false,
         "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": "${DS_PROMETHEUS}",
+        "definition": "label_values(kong_upstream_target_health, upstream)",
+        "hide": 0,
+        "includeAll": true,
+        "index": -1,
+        "label": null,
+        "multi": true,
+        "name": "upstream",
+        "options": [],
+        "query": "label_values(kong_upstream_target_health, upstream)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
         "tagValuesQuery": "",
         "tags": [],
         "tagsQuery": "",
@@ -2162,5 +2797,8 @@
   "timezone": "",
   "title": "Kong (official)",
   "uid": "mY9p7dQmz",
-  "version": 41
+  "variables": {
+    "list": []
+  },
+  "version": 6
 }
