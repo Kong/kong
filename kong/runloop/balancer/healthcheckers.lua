@@ -4,6 +4,7 @@ local get_certificate = require "kong.runloop.certificate".get_certificate
 
 local balancers = require "kong.runloop.balancer.balancers"
 local upstreams = require "kong.runloop.balancer.upstreams"
+local healthcheck -- delay initialization
 
 local ngx = ngx
 local log = ngx.log
@@ -19,6 +20,7 @@ local healthcheckers_M = {}
 
 
 function healthcheckers_M.init()
+  healthcheck = require("resty.healthcheck") -- delayed initialization
 end
 
 
@@ -41,7 +43,8 @@ local function populate_healthchecker(hc, balancer, upstream)
     if address.weight > 0 then
       local ipaddr = address.ip
       local port = address.port
-      local ok, err = hc:add_target(ipaddr, port, target.name, true,
+      local hostname = target.name
+      local ok, err = hc:add_target(ipaddr, port, hostname, true,
         upstream.host_header)
       if ok then
         -- Get existing health status which may have been initialized
@@ -59,193 +62,183 @@ local function populate_healthchecker(hc, balancer, upstream)
 end
 
 
-do
-  local healthcheck -- delay initialization
+------------------------------------------------------------------------------
+-- Callback function that informs the healthchecker when targets are added
+-- or removed to a balancer and when targets health status change.
+-- @param balancer the ring balancer object that triggers this callback.
+-- @param action "added", "removed", or "health"
+-- @param address balancer address object
+-- @param ip string
+-- @param port number
+-- @param hostname string
+local function ring_balancer_callback(balancer, action, address, ip, port, hostname)
+  if kong == nil then
+    -- kong is being run in unit-test mode
+    return
+  end
+  local healthchecker = balancer.healthchecker
+  if not healthchecker then
+    return
+  end
 
-  ------------------------------------------------------------------------------
-  -- Callback function that informs the healthchecker when targets are added
-  -- or removed to a balancer and when targets health status change.
-  -- @param balancer the ring balancer object that triggers this callback.
-  -- @param action "added", "removed", or "health"
-  -- @param address balancer address object
-  -- @param ip string
-  -- @param port number
-  -- @param hostname string
-  local function ring_balancer_callback(balancer, action, address, ip, port, hostname)
-    if kong == nil then
-      -- kong is being run in unit-test mode
-      return
-    end
-    local healthchecker = balancer.healthchecker
-    if not healthchecker then
-      return
-    end
-
-    if action == "health" then
-      local balancer_status
-      if address then
-        balancer_status = "HEALTHY"
-      else
-        balancer_status = "UNHEALTHY"
-      end
-      log(WARN, "[healthchecks] balancer ", healthchecker.name,
-        " reported health status changed to ", balancer_status)
-
+  if action == "health" then
+    local balancer_status
+    if address then
+      balancer_status = "HEALTHY"
     else
-      local upstream = balancers.get_upstream(balancer)
+      balancer_status = "UNHEALTHY"
+    end
+    log(WARN, "[healthchecks] balancer ", healthchecker.name,
+      " reported health status changed to ", balancer_status)
 
-      if upstream then
-        if action == "added" then
-          local ok, err = healthchecker:add_target(ip, port, hostname, true,
-            upstream.host_header)
-          if not ok then
-            log(WARN, "[healthchecks] failed adding a target: ", err)
-          end
+  else
+    local upstream = balancers.get_upstream(balancer)
 
-        elseif action == "removed" then
-          local ok, err = healthchecker:remove_target(ip, port, hostname)
-          if not ok then
-            log(ERR, "[healthchecks] failed removing a target: ", err)
-          end
+    if upstream then
+      if action == "added" then
+        local ok, err = healthchecker:add_target(ip, port, hostname, true,
+          upstream.host_header)
+        if not ok then
+          log(WARN, "[healthchecks] failed adding a target: ", err)
+        end
 
-        else
-          log(WARN, "[healthchecks] unknown status from balancer: ",
-            tostring(action))
+      elseif action == "removed" then
+        local ok, err = healthchecker:remove_target(ip, port, hostname)
+        if not ok then
+          log(ERR, "[healthchecks] failed removing a target: ", err)
         end
 
       else
-        log(ERR, "[healthchecks] upstream ", hostname, " (", ip, ":", port,
-          ") not found for received status: ", tostring(action))
+        log(WARN, "[healthchecks] unknown status from balancer: ",
+          tostring(action))
       end
 
+    else
+      log(ERR, "[healthchecks] upstream ", hostname, " (", ip, ":", port,
+        ") not found for received status: ", tostring(action))
+    end
+
+  end
+end
+
+-- @param hc The healthchecker object
+-- @param balancer The balancer object
+-- @param upstream_id The upstream id
+local function attach_healthchecker_to_balancer(hc, balancer)
+  local function hc_callback(tgt, event)
+    local status
+    if event == hc.events.healthy then
+      status = true
+    elseif event == hc.events.unhealthy then
+      status = false
+    else
+      return
+    end
+
+    local hostname = tgt.hostname
+    local ok, err
+    ok, err = balancer:setAddressStatus(balancer:findAddress(tgt.ip, tgt.port, hostname), status)
+
+    if not ok then
+      log(WARN, "[healthchecks] failed setting peer status (upstream: ", hc.name, "): ", err)
     end
   end
 
-  -- @param hc The healthchecker object
-  -- @param balancer The balancer object
-  -- @param upstream_id The upstream id
-  local function attach_healthchecker_to_balancer(hc, balancer)
-    local hc_callback = function(tgt, event)
-      local status
-      if event == hc.events.healthy then
-        status = true
-      elseif event == hc.events.unhealthy then
-        status = false
-      else
-        return
-      end
+  -- Register event using a weak-reference in worker-events,
+  -- and attach lifetime of callback to that of the balancer.
+  singletons.worker_events.register_weak(hc_callback, hc.EVENT_SOURCE)
+  balancer.healthchecker_callbacks = hc_callback
+  balancer.healthchecker = hc
 
-      local hostname = tgt.hostname
-      local ok, err
-      ok, err = balancer:setAddressStatus(balancer:findAddress(tgt.ip, tgt.port, hostname), status)
-
-      if not ok then
-        log(WARN, "[healthchecks] failed setting peer status (upstream: ", hc.name, "): ", err)
-      end
-    end
-
-    -- Register event using a weak-reference in worker-events,
-    -- and attach lifetime of callback to that of the balancer.
-    singletons.worker_events.register_weak(hc_callback, hc.EVENT_SOURCE)
-    balancer.healthchecker_callbacks = hc_callback
-    balancer.healthchecker = hc
-
-    balancer.report_http_status = function(handle, status)
-      local ip, port = handle.address.ip, handle.address.port
-      local hostname = handle.address.host and handle.address.host.hostname or nil
-      local _, err = hc:report_http_status(ip, port, hostname, status, "passive")
-      if err then
-        log(ERR, "[healthchecks] failed reporting status: ", err)
-      end
-    end
-
-    balancer.report_tcp_failure = function(handle)
-      local ip, port = handle.address.ip, handle.address.port
-      local hostname = handle.address.host and handle.address.host.hostname or nil
-      local _, err = hc:report_tcp_failure(ip, port, hostname, nil, "passive")
-      if err then
-        log(ERR, "[healthchecks] failed reporting status: ", err)
-      end
-    end
-
-    balancer.report_timeout = function(handle)
-      local ip, port = handle.address.ip, handle.address.port
-      local hostname = handle.address.host and handle.address.host.hostname or nil
-      local _, err = hc:report_timeout(ip, port, hostname, "passive")
-      if err then
-        log(ERR, "[healthchecks] failed reporting status: ", err)
-      end
+  balancer.report_http_status = function(handle, status)
+    local ip, port = handle.address.ip, handle.address.port
+    local hostname = handle.address.host and handle.address.host.hostname or nil
+    local _, err = hc:report_http_status(ip, port, hostname, status, "passive")
+    if err then
+      log(ERR, "[healthchecks] failed reporting status: ", err)
     end
   end
 
-
-  local parsed_cert, parsed_key
-  local function parse_global_cert_and_key()
-    if not parsed_cert then
-      local pl_file = require("pl.file")
-      parsed_cert = assert(pl_file.read(kong.configuration.client_ssl_cert))
-      parsed_key = assert(pl_file.read(kong.configuration.client_ssl_cert_key))
+  balancer.report_tcp_failure = function(handle)
+    local ip, port = handle.address.ip, handle.address.port
+    local hostname = handle.address.host and handle.address.host.hostname or nil
+    local _, err = hc:report_tcp_failure(ip, port, hostname, nil, "passive")
+    if err then
+      log(ERR, "[healthchecks] failed reporting status: ", err)
     end
-
-    return parsed_cert, parsed_key
   end
-  ----------------------------------------------------------------------------
-  -- Create a healthchecker object.
-  -- @param upstream An upstream entity table.
-  function healthcheckers_M.create_healthchecker(balancer, upstream)
-    if not healthcheck then
-      healthcheck = require("resty.healthcheck") -- delayed initialization
+
+  balancer.report_timeout = function(handle)
+    local ip, port = handle.address.ip, handle.address.port
+    local hostname = handle.address.host and handle.address.host.hostname or nil
+    local _, err = hc:report_timeout(ip, port, hostname, "passive")
+    if err then
+      log(ERR, "[healthchecks] failed reporting status: ", err)
     end
-
-    -- Do not run active healthchecks in `stream` module
-    local checks = upstream.healthchecks
-    if (ngx.config.subsystem == "stream" and checks.active.type ~= "tcp")
-      or (ngx.config.subsystem == "http" and checks.active.type == "tcp")
-    then
-      checks = pl_tablex.deepcopy(checks)
-      checks.active.healthy.interval = 0
-      checks.active.unhealthy.interval = 0
-    end
-
-    local ssl_cert, ssl_key
-    if upstream.client_certificate then
-      local cert, err = get_certificate(upstream.client_certificate)
-      if not cert then
-        log(ERR, "unable to fetch upstream client TLS certificate ",
-          upstream.client_certificate.id, ": ", err)
-        return nil, err
-      end
-
-      ssl_cert = cert.cert
-      ssl_key = cert.key
-
-    elseif kong.configuration.client_ssl then
-      ssl_cert, ssl_key = parse_global_cert_and_key()
-    end
-
-    local healthchecker, err = healthcheck.new({
-      name = assert(upstream.ws_id) .. ":" .. upstream.name,
-      shm_name = "kong_healthchecks",
-      checks = checks,
-      ssl_cert = ssl_cert,
-      ssl_key = ssl_key,
-    })
-
-    if not healthchecker then
-      return nil, err
-    end
-
-    populate_healthchecker(healthchecker, balancer, upstream)
-
-    attach_healthchecker_to_balancer(healthchecker, balancer, upstream.id)
-
-    balancer:setCallback(ring_balancer_callback)
-
-    return true
   end
 end
 
 
+local parsed_cert, parsed_key
+local function parse_global_cert_and_key()
+  if not parsed_cert then
+    local pl_file = require("pl.file")
+    parsed_cert = assert(pl_file.read(kong.configuration.client_ssl_cert))
+    parsed_key = assert(pl_file.read(kong.configuration.client_ssl_cert_key))
+  end
+
+  return parsed_cert, parsed_key
+end
+----------------------------------------------------------------------------
+-- Create a healthchecker object.
+-- @param upstream An upstream entity table.
+function healthcheckers_M.create_healthchecker(balancer, upstream)
+  -- Do not run active healthchecks in `stream` module
+  local checks = upstream.healthchecks
+  if (ngx.config.subsystem == "stream" and checks.active.type ~= "tcp")
+    or (ngx.config.subsystem == "http" and checks.active.type == "tcp")
+  then
+    checks = pl_tablex.deepcopy(checks)
+    checks.active.healthy.interval = 0
+    checks.active.unhealthy.interval = 0
+  end
+
+  local ssl_cert, ssl_key
+  if upstream.client_certificate then
+    local cert, err = get_certificate(upstream.client_certificate)
+    if not cert then
+      log(ERR, "unable to fetch upstream client TLS certificate ",
+        upstream.client_certificate.id, ": ", err)
+      return nil, err
+    end
+
+    ssl_cert = cert.cert
+    ssl_key = cert.key
+
+  elseif kong.configuration.client_ssl then
+    ssl_cert, ssl_key = parse_global_cert_and_key()
+  end
+
+  local healthchecker, err = healthcheck.new({
+    name = assert(upstream.ws_id) .. ":" .. upstream.name,
+    shm_name = "kong_healthchecks",
+    checks = checks,
+    ssl_cert = ssl_cert,
+    ssl_key = ssl_key,
+  })
+
+  if not healthchecker then
+    return nil, err
+  end
+
+  populate_healthchecker(healthchecker, balancer, upstream)
+
+  attach_healthchecker_to_balancer(healthchecker, balancer, upstream.id)
+
+  balancer:setCallback(ring_balancer_callback)
+
+  return true
+end
 
 
 local function is_upstream_using_healthcheck(upstream)
