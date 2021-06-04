@@ -81,6 +81,7 @@ local function load_targets_into_memory(upstream_id)
     target.name, port = string_match(target.target, "^(.-):(%d+)$")
     target.port = tonumber(port)
     target.addresses = {}
+    target.totalWeight = 0
     target.unavailableWeight = 0
     target.nameType = dns_utils.hostnameType(target.name)
   end

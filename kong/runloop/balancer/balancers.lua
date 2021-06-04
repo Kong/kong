@@ -118,7 +118,7 @@ local function create_balancer_exclusive(upstream)
     log_prefix = "upstream:" .. upstream.name,
     wheelSize = upstream.slots,  -- will be ignored by least-connections
     targets = targets_list,
-    weight = 0,
+    totalWeight = 0,
     unavailableWeight = 0,
 
     resolveTimer = nil,
@@ -284,11 +284,11 @@ function balancer_mt:setAddressStatus(address, available)
     or type(address.target) ~= "table"
     or address.target.balancer ~= self
   then
-    return
+    return nil, "not a known address"
   end
 
   if address.available == available then
-    return
+    return true, "already set"
   end
 
   address.available = available
@@ -299,6 +299,7 @@ function balancer_mt:setAddressStatus(address, available)
   address.target.unavailableWeight = address.target.unavailableWeight + delta
   self.unavailableWeight = self.unavailableWeight + delta
   self:updateStatus()
+  return true
 end
 
 
@@ -374,8 +375,8 @@ function balancer_mt:addAddress(target, entry)
   setHostHeader(addr)
   addresses[#addresses + 1] = addr
 
-  target.weight = target.weight + weight
-  self.weight = self.weight + weight
+  target.totalWeight = target.totalWeight + weight
+  self.totalWeight = self.totalWeight + weight
   target.unavailableWeight = target.unavailableWeight + weight
   self.unavailableWeight = self.unavailableWeight + weight
   self:updateStatus()
@@ -392,8 +393,8 @@ function balancer_mt:changeWeight(target, entry, newWeight)
     if (addr.ip == entry_ip) and addr.port == entry_port then
       local delta = newWeight - addr.weight
 
-      target.weight = target.weight + delta
-      self.weight = self.weight + delta
+      target.totalWeight = target.totalWeight + delta
+      self.totalWeight = self.totalWeight + delta
 
       if not addr.available then
         target.unavailableWeight = target.unavailableWeight + delta
@@ -435,10 +436,10 @@ end
 function balancer_mt:updateStatus()
   local old_status = self.healthy
 
-  if self.weight == 0 then
+  if self.totalWeight == 0 then
     self.healthy = false
   else
-    self.healthy = ((self.weight - self.unavailableWeight) / self.weight * 100 > self.healthThreshold)
+    self.healthy = ((self.totalWeight - self.unavailableWeight) / self.totalWeight * 100 > self.healthThreshold)
   end
 
   if self.healthy == old_status then
@@ -487,14 +488,14 @@ end
 function balancer_mt:getTargetStatus(target)
   local addresses = {}
   local status = {
-    host = target.hostname,
+    host = target.name,
     port = target.port,
     dns = get_dns_source(target.lastQuery),
-    nodeWeight = target.nodeWeight,
+    nodeWeight = target.nodeWeight or target.weight,
     weight = {
-      total = target.weight,
+      total = target.totalWeight,
       unavailable = target.unavailableWeight,
-      available = target.weight - target.unavailableWeight,
+      available = target.totalWeight - target.unavailableWeight,
     },
     addresses = addresses,
   }
@@ -516,9 +517,9 @@ function balancer_mt:getStatus()
   local status = {
     healthy = self.healthy,
     weight = {
-      total = self.weight,
+      total = self.totalWeight,
       unavailable = self.unavailableWeight,
-      available = self.weight - self.unavailableWeight,
+      available = self.totalWeight - self.unavailableWeight,
     },
     hosts = hosts,
   }
