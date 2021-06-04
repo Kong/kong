@@ -135,9 +135,8 @@ local function attach_healthchecker_to_balancer(hc, balancer)
       return
     end
 
-    local hostname = tgt.hostname
     local ok, err
-    ok, err = balancer:setAddressStatus(balancer:findAddress(tgt.ip, tgt.port, hostname), status)
+    ok, err = balancer:setAddressStatus(balancer:findAddress(tgt.ip, tgt.port, tgt.hostname), status)
 
     if not ok then
       log(WARN, "[healthchecks] failed setting peer status (upstream: ", hc.name, "): ", err)
@@ -151,8 +150,9 @@ local function attach_healthchecker_to_balancer(hc, balancer)
   balancer.healthchecker = hc
 
   balancer.report_http_status = function(handle, status)
-    local ip, port = handle.address.ip, handle.address.port
-    local hostname = handle.address.host and handle.address.host.hostname or nil
+    local address = handle.address
+    local ip, port = address.ip, address.port
+    local hostname = address.target and address.target.name or nil
     local _, err = hc:report_http_status(ip, port, hostname, status, "passive")
     if err then
       log(ERR, "[healthchecks] failed reporting status: ", err)
@@ -160,8 +160,9 @@ local function attach_healthchecker_to_balancer(hc, balancer)
   end
 
   balancer.report_tcp_failure = function(handle)
-    local ip, port = handle.address.ip, handle.address.port
-    local hostname = handle.address.host and handle.address.host.hostname or nil
+    local address = handle.address
+    local ip, port = address.ip, address.port
+    local hostname = address.target and address.target.name or nil
     local _, err = hc:report_tcp_failure(ip, port, hostname, nil, "passive")
     if err then
       log(ERR, "[healthchecks] failed reporting status: ", err)
@@ -169,8 +170,9 @@ local function attach_healthchecker_to_balancer(hc, balancer)
   end
 
   balancer.report_timeout = function(handle)
-    local ip, port = handle.address.ip, handle.address.port
-    local hostname = handle.address.host and handle.address.host.hostname or nil
+    local address = handle.address
+    local ip, port = address.ip, address.port
+    local hostname = address.target and address.target.name or nil
     local _, err = hc:report_timeout(ip, port, hostname, "passive")
     if err then
       log(ERR, "[healthchecks] failed reporting status: ", err)

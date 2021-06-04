@@ -473,7 +473,7 @@ function targets_M.getAddressPeer(address, cacheOnly)
 
   if address.ipType == "name" then    -- missing classification. (can it be a "name"?)
     -- SRV type record with a named target
-    local ip, port, try_list = address.host.balancer.dns.toip(address.ip, address.port, cacheOnly)
+    local ip, port, try_list = dns_client.toip(address.ip, address.port, cacheOnly)
     if not ip then
       port = tostring(port) .. ". Tried: " .. tostring(try_list)
       return ip, port
