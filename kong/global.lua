@@ -40,6 +40,8 @@ function _GLOBAL.new()
     pdk_version = nil,
 
     configuration = nil,
+
+    ngx_var = {},
   }
 end
 

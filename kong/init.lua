@@ -82,6 +82,7 @@ local balancer = require "kong.runloop.balancer"
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local kong_ngx_var = kong.ngx_var
 
 local kong             = kong
 local ngx              = ngx
@@ -731,6 +732,7 @@ end
 
 function Kong.rewrite()
   local proxy_mode = var.kong_proxy_mode
+  kong_ngx_var.kong_proxy_mode = proxy_mode
   if proxy_mode == "grpc" or proxy_mode == "unbuffered"  then
     kong_resty_ctx.apply_ref()    -- if kong_proxy_mode is gRPC/unbuffered, this is executing
     local ctx = ngx.ctx           -- after an internal redirect. Restore (and restash)

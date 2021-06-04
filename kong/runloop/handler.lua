@@ -38,6 +38,7 @@ local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
 local unpack       = unpack
 local escape       = require("kong.tools.uri").escape
+local kong_ngx_var = kong.ngx_var
 
 
 local NOOP = function() end
@@ -1287,7 +1288,7 @@ return {
       -- At this point, the router and `balancer_setup_stage1` have been
       -- executed; detect requests that need to be redirected from `proxy_pass`
       -- to `grpc_pass`. After redirection, this function will return early
-      if service and var.kong_proxy_mode == "http" then
+      if service and kong_ngx_var.kong_proxy_mode == "http" then
         if service.protocol == "grpc" or service.protocol == "grpcs" then
           return ngx.exec("@grpc")
         end
@@ -1330,7 +1331,8 @@ return {
       --
       -- We can't rely on var.upstream_host for balancer retries inside
       -- `set_host_header` because it would never be empty after the first -- balancer try
-      if var.upstream_host ~= nil and var.upstream_host ~= "" then
+      local upstream_host = var.upstream_host
+      if upstream_host ~= nil and upstream_host ~= "" then
         balancer_data.preserve_host = true
       end
 
@@ -1340,19 +1342,20 @@ return {
         return kong.response.exit(errcode, body)
       end
 
-      var.upstream_scheme = balancer_data.scheme
+      local upstream_scheme = balancer_data.scheme
+      var.upstream_scheme = upstream_scheme
 
-      local ok, err = balancer.set_host_header(balancer_data)
-      if not ok then
-        ngx.log(ngx.ERR, "failed to set balancer Host header: ", err)
+      if not balancer_data.preserve_host then
+        upstream_host, err = balancer.set_host_header(balancer_data)
+        if err then
+          ngx.log(ngx.ERR, "failed to set balancer Host header: ", err)
 
-        return ngx.exit(500)
+          return ngx.exit(500)
+        end
       end
 
       -- the nginx grpc module does not offer a way to override the
       -- :authority pseudo-header; use our internal API to do so
-      local upstream_host = var.upstream_host
-      local upstream_scheme = var.upstream_scheme
 
       if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
         ok, err = kong.service.request.set_header(":authority", upstream_host)

@@ -21,6 +21,7 @@ local error = error
 local type = type
 local WARN = ngx.WARN
 local sub = string.sub
+local kong_ngx_var = kong.ngx_var
 
 
 local PING_INTERVAL = 3600
@@ -217,7 +218,7 @@ local get_current_suffix
 if subsystem == "http" then
 function get_current_suffix(ctx)
   local scheme = var.scheme
-  local proxy_mode = var.kong_proxy_mode
+  local proxy_mode = kong_ngx_var.kong_proxy_mode
   if scheme == "http" or scheme == "https" then
     if proxy_mode == "http" or proxy_mode == "unbuffered" then
       local http_upgrade = var.http_upgrade
