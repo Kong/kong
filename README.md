@@ -1,10 +1,10 @@
 [![][kong-logo]][kong-url]
 
-![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square) ![Version](https://img.shields.io/badge/Version-2.5.0-green?style=flat-square) 
+![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square) ![Version](https://img.shields.io/github/v/release/Kong/kong?color=green&label=Version&style=flat-square) 
 
 **Kong** or **Kong Gateway (OSS)** is a cloud-native, platform-agnostic, scalable API Gateway distinguished for its high performance and extensibility via plugins.
 
-By providing functionality for proxying, routing, load balancing, health checking, authentication (and the many others listed below), Kong serves as a central layer for orchestrating microservices or conventional API traffic with ease.
+By providing functionality for proxying, routing, load balancing, health checking, authentication (and [more](#features)), Kong serves as the central layer for orchestrating microservices or conventional API traffic with ease.
 
 [Installation](https://konghq.com/install/#kong-community) | [Documentation](https://docs.konghq.com) | [Forum](https://discuss.konghq.com) | [Blog](https://konghq.com/blog) | [Builds][kong-master-builds]
 
