@@ -108,7 +108,7 @@ jobs:
     - name: Unit tests
       run: |
           eval `luarocks path`
-          bin/busted -v -o gtest spec/01-unit
+          bin/busted -v -o htest spec/01-unit
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
