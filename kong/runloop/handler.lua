@@ -1126,32 +1126,17 @@ return {
         return
       end
 
+      ctx.scheme = var.scheme
+      ctx.request_uri = var.request_uri
+
       -- routing request
       local router = get_updated_router()
-      local match_t = router.exec()
+      local match_t = router.exec(ctx)
       if not match_t then
         return kong.response.exit(404, { message = "no Route matched with those values" })
       end
 
       ctx.workspace = match_t.route and match_t.route.ws_id
-
-      local http_version   = ngx.req.http_version()
-      local scheme         = var.scheme
-      local host           = var.host
-      local port           = tonumber(ctx.host_port, 10)
-                          or tonumber(var.server_port, 10)
-      local content_type   = var.content_type
-
-      local route          = match_t.route
-      local service        = match_t.service
-      local upstream_url_t = match_t.upstream_url_t
-
-      local realip_remote_addr = var.realip_remote_addr
-      local forwarded_proto
-      local forwarded_host
-      local forwarded_port
-      local forwarded_path
-      local forwarded_prefix
 
       -- X-Forwarded-* Headers Parsing
       --
@@ -1162,22 +1147,30 @@ return {
       -- contains the IP that was originally in $remote_addr before realip
       -- module overrode that (aka the client that connected us).
 
+      local forwarded_proto
+      local forwarded_host
+      local forwarded_port
+      local forwarded_path
+      local forwarded_prefix
+
+      local realip_remote_addr = var.realip_remote_addr
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
-        forwarded_proto  = var.http_x_forwarded_proto  or scheme
-        forwarded_host   = var.http_x_forwarded_host   or host
-        forwarded_port   = var.http_x_forwarded_port   or port
+        forwarded_proto  = var.http_x_forwarded_proto  or ctx.scheme
+        forwarded_host   = var.http_x_forwarded_host   or var.host
+        forwarded_port   = var.http_x_forwarded_port   or tonumber(ctx.host_port, 10)
+                                                       or tonumber(var.server_port, 10)
         forwarded_path   = var.http_x_forwarded_path
         forwarded_prefix = var.http_x_forwarded_prefix
 
       else
-        forwarded_proto  = scheme
-        forwarded_host   = host
-        forwarded_port   = port
+        forwarded_proto  = ctx.scheme
+        forwarded_host   = var.host
+        forwarded_port   = tonumber(ctx.host_port, 10) or tonumber(var.server_port, 10)
       end
 
       if not forwarded_path then
-        forwarded_path = var.request_uri
+        forwarded_path = ctx.request_uri
         local p = find(forwarded_path, "?", 2, true)
         if p then
           forwarded_path = sub(forwarded_path, 1, p - 1)
@@ -1188,56 +1181,60 @@ return {
         forwarded_prefix = match_t.prefix
       end
 
+      local route = match_t.route
       local protocols = route.protocols
-      if (protocols and protocols.https and not protocols.http and
-          forwarded_proto ~= "https")
-      then
-        local redirect_status_code = route.https_redirect_status_code or 426
+      local http_version
 
-        if redirect_status_code == 426 then
-          return kong.response.exit(426, { message = "Please use HTTPS protocol" }, {
-            ["Connection"] = "Upgrade",
-            ["Upgrade"]    = "TLS/1.2, HTTP/1.1",
-          })
+      if protocols then
+        if protocols.https and not protocols.http and forwarded_proto ~= "https" then
+          local redirect_status_code = route.https_redirect_status_code or 426
+          if redirect_status_code == 426 then
+            return kong.response.exit(426, { message = "Please use HTTPS protocol" }, {
+              ["Connection"] = "Upgrade",
+              ["Upgrade"]    = "TLS/1.2, HTTP/1.1",
+            })
+          end
+
+          if redirect_status_code == 301
+          or redirect_status_code == 302
+          or redirect_status_code == 307
+          or redirect_status_code == 308
+          then
+            header["Location"] = "https://" .. forwarded_host .. ctx.request_uri
+            return kong.response.exit(redirect_status_code)
+          end
         end
 
-        if redirect_status_code == 301
-        or redirect_status_code == 302
-        or redirect_status_code == 307
-        or redirect_status_code == 308
-        then
-          header["Location"] = "https://" .. forwarded_host .. var.request_uri
-          return kong.response.exit(redirect_status_code)
+        if protocols.grpc or protocols.grpcs then
+          local content_type = var.content_type
+          if content_type and find(content_type, "application/grpc", 1, true) == 1 then
+            http_version = ngx.req.http_version()
+            if http_version ~= 2 then
+              -- mismatch: non-http/2 request matched grpc route
+              return kong.response.exit(426, { message = "Please use HTTP2 protocol" }, {
+                ["connection"] = "Upgrade",
+                ["upgrade"]    = "HTTP/2",
+              })
+            end
+
+          else
+            -- mismatch: non-grpc request matched grpc route
+            return kong.response.exit(415, { message = "Non-gRPC request matched gRPC route" })
+          end
+
+          if not protocols.grpc and forwarded_proto ~= "https" then
+            -- mismatch: grpc request matched grpcs route
+            return kong.response.exit(200, nil, {
+              ["content-type"] = "application/grpc",
+              ["grpc-status"] = 1,
+              ["grpc-message"] = "gRPC request matched gRPCs route",
+            })
+          end
         end
       end
 
-      -- mismatch: non-http/2 request matched grpc route
-      if (protocols and (protocols.grpc or protocols.grpcs) and http_version ~= 2 and
-        (content_type and sub(content_type, 1, #"application/grpc") == "application/grpc"))
-      then
-        return kong.response.exit(426, { message = "Please use HTTP2 protocol" }, {
-          ["connection"] = "Upgrade",
-          ["upgrade"]    = "HTTP/2",
-        })
-      end
-
-      -- mismatch: non-grpc request matched grpc route
-      if (protocols and (protocols.grpc or protocols.grpcs) and
-        (not content_type or sub(content_type, 1, #"application/grpc") ~= "application/grpc"))
-      then
-        return kong.response.exit(415, { message = "Non-gRPC request matched gRPC route" })
-      end
-
-      -- mismatch: grpc request matched grpcs route
-      if (protocols and protocols.grpcs and not protocols.grpc and
-        forwarded_proto ~= "https")
-      then
-        return kong.response.exit(200, nil, {
-          ["content-type"] = "application/grpc",
-          ["grpc-status"] = 1,
-          ["grpc-message"] = "gRPC request matched gRPCs route",
-        })
-      end
+      local service = match_t.service
+      local upstream_url_t = match_t.upstream_url_t
 
       balancer_prepare(ctx, match_t.upstream_scheme,
                        upstream_url_t.type,
@@ -1288,6 +1285,10 @@ return {
           return ngx.exec("@grpc")
         end
 
+        if not http_version then
+          http_version = ngx.req.http_version()
+        end
+
         if http_version == 1.1 then
           if route.request_buffering == false then
             if route.response_buffering == false then
@@ -1305,17 +1306,15 @@ return {
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
     after = function(ctx)
-      do
-        -- Nginx's behavior when proxying a request with an empty querystring
-        -- `/foo?` is to keep `$is_args` an empty string, hence effectively
-        -- stripping the empty querystring.
-        -- We overcome this behavior with our own logic, to preserve user
-        -- desired semantics.
-        local upstream_uri = var.upstream_uri
-
-        if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
-          var.upstream_uri = upstream_uri .. "?" .. (var.args or "")
-        end
+      -- Nginx's behavior when proxying a request with an empty querystring
+      -- `/foo?` is to keep `$is_args` an empty string, hence effectively
+      -- stripping the empty querystring.
+      -- We overcome this behavior with our own logic, to preserve user
+      -- desired semantics.
+      if sub(ctx.request_uri or var.request_uri, -1) == "?" then
+        var.upstream_uri = var.upstream_uri .. "?"
+      elseif var.is_args == "?" then
+        var.upstream_uri = var.upstream_uri .. "?" .. var.args or ""
       end
 
       local balancer_data = ctx.balancer_data
@@ -1326,7 +1325,8 @@ return {
       --
       -- We can't rely on var.upstream_host for balancer retries inside
       -- `set_host_header` because it would never be empty after the first -- balancer try
-      if var.upstream_host ~= nil and var.upstream_host ~= "" then
+      local upstream_host = var.upstream_host
+      if upstream_host ~= nil and upstream_host ~= "" then
         balancer_data.preserve_host = true
       end
 
@@ -1338,20 +1338,17 @@ return {
 
       var.upstream_scheme = balancer_data.scheme
 
-      local ok, err = balancer.set_host_header(balancer_data)
+      local ok, err = balancer.set_host_header(balancer_data, upstream_host, balancer_data.scheme)
       if not ok then
         ngx.log(ngx.ERR, "failed to set balancer Host header: ", err)
-
         return ngx.exit(500)
       end
 
       -- the nginx grpc module does not offer a way to override the
       -- :authority pseudo-header; use our internal API to do so
-      local upstream_host = var.upstream_host
       local upstream_scheme = var.upstream_scheme
-
       if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
-        ok, err = kong.service.request.set_header(":authority", upstream_host)
+        ok, err = kong.service.request.set_header(":authority", var.upstream_host)
         if not ok then
           log(ERR, "failed to set :authority header: ", err)
         end

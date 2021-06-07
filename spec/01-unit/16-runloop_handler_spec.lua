@@ -17,6 +17,8 @@ local function setup_it_block()
       timer = {
         at = function() end,
         every = function() end,
+      },
+      var = {
       }
     },
 

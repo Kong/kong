@@ -59,7 +59,7 @@ local function get_value_to_hash(upstream, ctx)
 
       -- consumer, fallback to credential
       identifier = (ctx.authenticated_consumer or EMPTY_T).id or
-          (ctx.authenticated_credential or EMPTY_T).id
+                   (ctx.authenticated_credential or EMPTY_T).id
 
     elseif hash_on == "ip" then
       identifier = var.remote_addr
@@ -325,31 +325,34 @@ local function post_health(upstream, hostname, ip, port, is_healthy)
 end
 
 
-local function set_host_header(balancer_data)
+local function set_host_header(balancer_data, upstream_host, upstream_scheme)
   if balancer_data.preserve_host then
     return true
   end
 
-  -- set the upstream host header if not `preserve_host`
-  local upstream_host = var.upstream_host
-  local orig_upstream_host = upstream_host
-  local phase = get_phase()
+  local skip
+  local port = balancer_data.port
+  if port == 80 then
+    upstream_scheme = upstream_scheme or var.upstream_scheme
+    if upstream_scheme == "http" or upstream_scheme == "grpc" then
+      skip = true
+    end
 
-  upstream_host = balancer_data.hostname
-
-  local upstream_scheme = var.upstream_scheme
-  if  upstream_scheme == "http"  and balancer_data.port ~= 80 or
-      upstream_scheme == "https" and balancer_data.port ~= 443 or
-      upstream_scheme == "grpc"  and balancer_data.port ~= 80 or
-      upstream_scheme == "grpcs" and balancer_data.port ~= 443
-  then
-    upstream_host = upstream_host .. ":" .. balancer_data.port
+  elseif port == 443 then
+    upstream_scheme = upstream_scheme or var.upstream_scheme
+    if upstream_scheme == "https" or upstream_scheme == "grpcs" then
+      skip = true
+    end
   end
 
-  if upstream_host ~= orig_upstream_host then
-    var.upstream_host = upstream_host
+  local current_upstream_host = balancer_data.hostname
+  if not skip then
+    current_upstream_host = current_upstream_host .. ":" .. port
+  end
 
-    if phase == "balancer" then
+  if current_upstream_host ~= (upstream_host or var.upstream_host) then
+    var.upstream_host = current_upstream_host
+    if get_phase() == "balancer" then
       return recreate_request()
     end
   end
