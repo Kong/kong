@@ -1457,8 +1457,10 @@ function Kong.log()
     vars = {
     },
     files = {
-    }
+    },
   }
+
+  local duplicates = {}
 
   for i = 1, count do
     local u = usage[i]
@@ -1479,10 +1481,18 @@ function Kong.log()
     summary.phases[u.phase] = (summary.phases[u.phase] or 0) + 1
     summary.vars[u.key] = (summary.vars[u.key] or 0) + 1
     summary.files[u.file] = (summary.files[u.file] or 0) + 1
+
+    duplicates[u.phase] = duplicates[u.phase] or {}
+    duplicates[u.phase][u.key] = duplicates[u.phase][u.key] or {}
+    duplicates[u.phase][u.key][u.type] = (duplicates[u.phase][u.key][u.type] or 0) + 1
   end
 
   local file = io.open("var_usage_summary.json", "w+")
   file:write(cjson.encode(summary))
+  file:close()
+
+  local file = io.open("var_usage_duplicates.json", "w+")
+  file:write(cjson.encode(duplicates))
   file:close()
 
   local latency = ngx.ctx.var_latency
