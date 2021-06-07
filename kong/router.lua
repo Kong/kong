@@ -37,7 +37,7 @@ local REGEX_PREFIX  = "(*LIMIT_MATCH=10000)"
 local SLASH         = byte("/")
 
 local ERR           = ngx.ERR
-local WARN          = ngx.WARN
+local INFO          = ngx.INFO
 
 
 local normalize_regex
@@ -1483,6 +1483,12 @@ function _M.new(routes)
     ctx.dst_port       = dst_port or ""
     ctx.sni            = sni or ""
 
+    -- cache some values to ngx.ctx
+    local ngx_ctx = ngx.ctx
+    ngx_ctx.req_uri        = req_uri
+    ngx_ctx.req_scheme     = req_scheme
+    ngx_ctx.req_headers    = req_headers
+
     -- input sanitization for matchers
 
     -- hosts
@@ -1771,7 +1777,7 @@ function _M.new(routes)
               -- preserve_host header logic
 
               if matched_route.preserve_host then
-                upstream_host = raw_req_host or ngx.ctx.req_headers.host
+                upstream_host = raw_req_host or ngx.ctx.req_headers["host"]
               end
             end
 
@@ -1819,26 +1825,34 @@ function _M.new(routes)
   self._set_ngx = _set_ngx
 
   if subsystem == "http" then
+    local req_headers_mt = {
+      __index = function(_, k)
+        return var["http_" .. k]
+      end
+    }
+
     function self.exec()
-      local req_headers = ngx.ctx.req_headers
       local req_method = get_method()
       local req_uri = var.request_uri
-      local req_host = var.http_host or ""
+      local req_host
       local req_scheme = var.scheme
       local sni = var.ssl_server_name
 
-      local headers
-      local err
-
-      if grab_req_headers then
-        headers, err = get_headers(MAX_REQ_HEADERS)
-        if err == "truncated" then
-          log(WARN, "retrieved ", MAX_REQ_HEADERS, " headers for evaluation ",
-                    "(max) but request had more; other headers will be ignored")
+      local headers, err = get_headers(MAX_REQ_HEADERS)
+      if err == "truncated" then
+        -- Any router has route-by-header config, emit an info log
+        if grab_req_headers then
+          log(INFO, "retrieved ", MAX_REQ_HEADERS, " headers for evaluation ",
+                    "(max) but request had more; other headers may be evaluated ",
+                    "in degraded performance")
         end
-
-        headers["host"] = nil
+        -- Only attach the metatable if there're more headers; otherwise
+        -- headers already includes all headers
+        headers = setmetatable(headers, req_headers_mt)
       end
+
+      req_host = headers["host"] or ""
+      headers["host"] = nil
 
       do
         local idx = find(req_uri, "?", 2, true)
@@ -1859,7 +1873,7 @@ function _M.new(routes)
 
       -- debug HTTP request header logic
 
-      if req_headers.kong_debug then
+      if headers["kong-debug"] then
         if match_t.route then
           if match_t.route.id then
             header["Kong-Route-Id"] = match_t.route.id

@@ -215,11 +215,11 @@ local get_current_suffix
 
 if subsystem == "http" then
 function get_current_suffix(ctx)
-  local scheme = var.scheme
+  local scheme = ctx.req_scheme
   local proxy_mode = ctx.kong_proxy_mode or var.kong_proxy_mode
   if scheme == "http" or scheme == "https" then
     if proxy_mode == "http" or proxy_mode == "unbuffered" then
-      local http_upgrade = ctx.req_headers.upgrade
+      local http_upgrade = ctx.req_headers["upgrade"]
       if http_upgrade and lower(http_upgrade) == "websocket" then
         if scheme == "http" then
           return "ws"

@@ -1165,11 +1165,11 @@ return {
       local req_headers = ctx.req_headers
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
-        forwarded_proto  = var.http_x_forwarded_proto  or scheme
-        forwarded_host   = var.http_x_forwarded_host   or host
-        forwarded_port   = var.http_x_forwarded_port   or port
-        forwarded_path   = var.http_x_forwarded_path
-        forwarded_prefix = var.http_x_forwarded_prefix
+        forwarded_proto  = req_headers["x-forwarded-proto"]  or scheme
+        forwarded_host   = req_headers["x-forwarded-host"]   or host
+        forwarded_port   = req_headers["x-forwarded-port"]   or port
+        forwarded_path   = req_headers["x-forwarded-path"]
+        forwarded_prefix = req_headers["x-forwarded-prefix"]
 
       else
         forwarded_proto  = scheme
@@ -1256,7 +1256,7 @@ return {
       var.upstream_host   = match_t.upstream_host
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
-      local upgrade = req_headers.upgrade
+      local upgrade = req_headers["upgrade"]
       if upgrade and lower(upgrade) == "websocket" then
         var.upstream_connection = "keep-alive, Upgrade"
         var.upstream_upgrade    = "websocket"
@@ -1266,7 +1266,7 @@ return {
       end
 
       -- X-Forwarded-* Headers
-      local http_x_forwarded_for = req_headers.x_forwarded_for
+      local http_x_forwarded_for = req_headers["x-forwarded-for"]
       if http_x_forwarded_for then
         var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
                                        realip_remote_addr
@@ -1361,7 +1361,7 @@ return {
       local req_headers = ctx.req_headers
 
       -- clear hop-by-hop request headers:
-      for _, header_name in csv(req_headers.connection) do
+      for _, header_name in csv(req_headers["connection"]) do
         -- some of these are already handled by the proxy module,
         -- upgrade being an exception that is handled below with
         -- special semantics.
@@ -1376,18 +1376,18 @@ return {
       end
 
       -- add te header only when client requests trailers (proxy removes it)
-      for _, header_name in csv(req_headers.te) do
+      for _, header_name in csv(req_headers["te"]) do
         if header_name == "trailers" then
           var.upstream_te = "trailers"
           break
         end
       end
 
-      if req_headers.proxy then
+      if req_headers["proxy"] then
         clear_header("Proxy")
       end
 
-      if req_headers.proxy_connection then
+      if req_headers["proxy-connection"] then
         clear_header("Proxy-Connection")
       end
     end
