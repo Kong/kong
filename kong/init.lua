@@ -102,6 +102,7 @@ local subsystem        = ngx.config.subsystem
 local start_time       = ngx.req.start_time
 local type             = type
 local error            = error
+local concat           = table.concat
 local ipairs           = ipairs
 local assert           = assert
 local tostring         = tostring
@@ -121,6 +122,10 @@ end
 
 local DECLARATIVE_LOAD_KEY = constants.DECLARATIVE_LOAD_KEY
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
+
+
+local POOL
+local POOL_OPTS
 
 
 local declarative_entities
@@ -148,7 +153,7 @@ do
     end
 
     table.insert(init_worker_errors, err)
-    init_worker_errors_str = table.concat(init_worker_errors, ", ")
+    init_worker_errors_str = concat(init_worker_errors, ", ")
 
     return ngx_log(ngx_CRIT, "worker initialization error: ", err,
                              "; this node must be restarted")
@@ -432,9 +437,9 @@ local function list_migrations(migtable)
       table.insert(mignames, mig.name)
     end
     table.insert(list, string.format("%s (%s)", t.subsystem,
-                       table.concat(mignames, ", ")))
+                       concat(mignames, ", ")))
   end
-  return table.concat(list, " ")
+  return concat(list, " ")
 end
 
 
@@ -929,7 +934,6 @@ function Kong.balancer()
     ok, err = balancer.set_host_header(balancer_data)
     if not ok then
       ngx_log(ngx_ERR, "failed to set balancer Host header: ", err)
-
       return ngx.exit(500)
     end
 
@@ -941,27 +945,44 @@ function Kong.balancer()
     end
   end
 
-  local pool_opts
   local kong_conf = kong.configuration
+  local has_pool
 
   if enable_keepalive and kong_conf.upstream_keepalive_pool_size > 0
      and subsystem == "http"
   then
-    local pool = balancer_data.ip .. "|" .. balancer_data.port
-
-    if balancer_data.scheme == "https" then
-      -- upstream_host is SNI
-      pool = pool .. "|" .. var.upstream_host
-
-      if ctx.service and ctx.service.client_certificate then
-        pool = pool .. "|" .. ctx.service.client_certificate.id
-      end
+    if not POOL then
+      POOL = kong.table.new(4, 0)
     end
 
-    pool_opts = {
-      pool = pool,
-      pool_size = kong_conf.upstream_keepalive_pool_size,
-    }
+    POOL[1] = balancer_data.ip
+    POOL[2] = balancer_data.port
+
+    local i
+    if balancer_data.scheme == "https" then
+      -- upstream_host is SNI
+      POOL[3] = var.upstream_host
+
+      if ctx.service and ctx.service.client_certificate then
+        POOL[4] = ctx.service.client_certificate.id
+        i = 4
+
+      else
+        i = 3
+      end
+
+    else
+      i = 2
+    end
+
+    if not POOL_OPTS then
+      POOL_OPTS = kong.table.new(0, 2)
+      POOL_OPTS.pool_size = kong_conf.upstream_keepalive_pool_size
+    end
+
+    POOL_OPTS.pool = concat(POOL, "|", 1, i)
+
+    has_pool = true
   end
 
   current_try.ip   = balancer_data.ip
@@ -970,7 +991,7 @@ function Kong.balancer()
   -- set the targets as resolved
   ngx_log(ngx_DEBUG, "setting address (try ", balancer_data.try_count, "): ",
                      balancer_data.ip, ":", balancer_data.port)
-  local ok, err = set_current_peer(balancer_data.ip, balancer_data.port, pool_opts)
+  local ok, err = set_current_peer(balancer_data.ip, balancer_data.port, POOL_OPTS)
   if not ok then
     ngx_log(ngx_ERR, "failed to set the current peer (address: ",
             tostring(balancer_data.ip), " port: ", tostring(balancer_data.port),
@@ -990,15 +1011,15 @@ function Kong.balancer()
     ngx_log(ngx_ERR, "could not set upstream timeouts: ", err)
   end
 
-  if pool_opts then
+  if has_pool then
     ok, err = enable_keepalive(kong_conf.upstream_keepalive_idle_timeout,
                                kong_conf.upstream_keepalive_max_requests)
     if not ok then
       ngx_log(ngx_ERR, "could not enable connection keepalive: ", err)
     end
 
-    ngx_log(ngx_DEBUG, "enabled connection keepalive (pool=", pool_opts.pool,
-                       ", pool_size=", pool_opts.pool_size,
+    ngx_log(ngx_DEBUG, "enabled connection keepalive (pool=", POOL_OPTS.pool,
+                       ", pool_size=", POOL_OPTS.pool_size,
                        ", idle_timeout=", kong_conf.upstream_keepalive_idle_timeout,
                        ", max_requests=", kong_conf.upstream_keepalive_max_requests, ")")
   end
