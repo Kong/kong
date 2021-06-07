@@ -760,8 +760,6 @@ function Kong.rewrite()
     log_init_worker_errors(ctx)
   end
 
-  kong_global.init_req_headers(kong, ctx)
-
   runloop.rewrite.before(ctx)
 
   if not ctx.workspace then
