@@ -88,13 +88,34 @@ end
 ngx.var = setmetatable({}, {
   __newindex = function(_, k, v)
     local traceback = debug.traceback()
-    collect_var_usage("set", k, v, traceback)
+    collect_var_usage("set", k, v, traceback, now)
+    ngx.update_time()
+    local now = ngx.now() * 1000
     ngx_var_orig[k] = v
+    ngx.update_time()
+    local latency = ngx.now() * 1000 - now
+    local var_latency = ngx.ctx.var_latency
+    if not var_latency then
+      var_latency = {}
+    end
+    var_latency.set = (var_latency.set or 0) + latency
+    ngx.ctx.var_latency = var_latency
   end,
   __index = function(_, k)
     local traceback = debug.traceback()
     collect_var_usage("get", k, ngx_var_orig[k], traceback)
-    return ngx_var_orig[k]
+    ngx.update_time()
+    local now = ngx.now() * 1000
+    local v = ngx_var_orig[k]
+    ngx.update_time()
+    local latency = (ngx.now() * 1000 - now)
+    local var_latency = ngx.ctx.var_latency
+    if not var_latency then
+      var_latency = {}
+    end
+    var_latency.get = (var_latency.get or 0) + latency
+    ngx.ctx.var_latency = var_latency
+    return v
   end
 })
 
@@ -1462,6 +1483,13 @@ function Kong.log()
 
   local file = io.open("var_usage_summary.json", "w+")
   file:write(cjson.encode(summary))
+  file:close()
+
+  local latency = ngx.ctx.var_latency
+  latency.total = (latency.get or 0) + (latency.set or 0)
+
+  local file = io.open("var_usage_latency.json", "w+")
+  file:write(cjson.encode(latency))
   file:close()
 
   -- this is not used for now, but perhaps we need it later?
