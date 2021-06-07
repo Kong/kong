@@ -1162,6 +1162,7 @@ return {
       -- contains the IP that was originally in $remote_addr before realip
       -- module overrode that (aka the client that connected us).
 
+      local req_headers = ctx.req_headers
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
         forwarded_proto  = var.http_x_forwarded_proto  or scheme
@@ -1255,7 +1256,7 @@ return {
       var.upstream_host   = match_t.upstream_host
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
-      local upgrade = var.http_upgrade
+      local upgrade = req_headers.upgrade
       if upgrade and lower(upgrade) == "websocket" then
         var.upstream_connection = "keep-alive, Upgrade"
         var.upstream_upgrade    = "websocket"
@@ -1265,7 +1266,7 @@ return {
       end
 
       -- X-Forwarded-* Headers
-      local http_x_forwarded_for = var.http_x_forwarded_for
+      local http_x_forwarded_for = req_headers.x_forwarded_for
       if http_x_forwarded_for then
         var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
                                        realip_remote_addr
@@ -1283,7 +1284,7 @@ return {
       -- At this point, the router and `balancer_setup_stage1` have been
       -- executed; detect requests that need to be redirected from `proxy_pass`
       -- to `grpc_pass`. After redirection, this function will return early
-      if service and var.kong_proxy_mode == "http" then
+      if service and (ctx.kong_proxy_mode or var.kong_proxy_mode) == "http" then
         if service.protocol == "grpc" or service.protocol == "grpcs" then
           return ngx.exec("@grpc")
         end
@@ -1357,8 +1358,10 @@ return {
         end
       end
 
+      local req_headers = ctx.req_headers
+
       -- clear hop-by-hop request headers:
-      for _, header_name in csv(var.http_connection) do
+      for _, header_name in csv(req_headers.connection) do
         -- some of these are already handled by the proxy module,
         -- upgrade being an exception that is handled below with
         -- special semantics.
@@ -1373,18 +1376,18 @@ return {
       end
 
       -- add te header only when client requests trailers (proxy removes it)
-      for _, header_name in csv(var.http_te) do
+      for _, header_name in csv(req_headers.te) do
         if header_name == "trailers" then
           var.upstream_te = "trailers"
           break
         end
       end
 
-      if var.http_proxy then
+      if req_headers.proxy then
         clear_header("Proxy")
       end
 
-      if var.http_proxy_connection then
+      if req_headers.proxy_connection then
         clear_header("Proxy-Connection")
       end
     end
