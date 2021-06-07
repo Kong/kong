@@ -31,6 +31,72 @@ assert(package.loaded["resty.core"], "lua-resty-core must be loaded; make " ..
                                      "sure 'lua_load_resty_core' is not "..
                                      "disabled.")
 
+local ngx_var_orig = ngx.var
+
+
+local function read_file_and_line(traceback)
+  local t = traceback:find("\t", nil, true)
+  traceback = traceback:sub(t + 1)
+  local t = traceback:find("\t", nil, true)
+  traceback = traceback:sub(t + 1)
+  local e = traceback:find(" ", nil, true)
+  traceback = traceback:sub(1, e - 2)
+  local c = traceback:find(":", 1, true)
+  local file = traceback:sub(1, c - 1)
+  local line = tonumber(traceback:sub(c + 1))
+  return file, line
+end
+
+
+local function collect_var_usage(t, k, v, traceback)
+  local file, line = read_file_and_line(traceback)
+  local strip = require "kong.tools.utils".strip
+
+  local i = 0
+  local code
+  for l in io.lines(file) do
+    i = i + 1
+    if i == line then
+      code = strip(l)
+      break
+    end
+  end
+
+  local header = k:find("http_", 1, true) == 1
+  local info = {
+    type = t,
+    phase = ngx.get_phase(),
+    key = k,
+    value = v,
+    file = file,
+    line = line,
+    code = code,
+    header = header,
+    --traceback = traceback
+  }
+
+  local var_usage = ngx.ctx.var_usage
+  if not var_usage then
+    var_usage = {}
+  end
+
+  table.insert(var_usage, info)
+
+  ngx.ctx.var_usage = var_usage
+end
+
+ngx.var = setmetatable({}, {
+  __newindex = function(_, k, v)
+    local traceback = debug.traceback()
+    collect_var_usage("set", k, v, traceback)
+    ngx_var_orig[k] = v
+  end,
+  __index = function(_, k)
+    local traceback = debug.traceback()
+    collect_var_usage("get", k, ngx_var_orig[k], traceback)
+    return ngx_var_orig[k]
+  end
+})
 
 local constants = require "kong.constants"
 do
@@ -1266,73 +1332,73 @@ function Kong.log()
       if ctx.KONG_PREREAD_START and not ctx.KONG_PREREAD_ENDED_AT then
         ctx.KONG_PREREAD_ENDED_AT = ctx.KONG_LOG_START
         ctx.KONG_PREREAD_TIME = ctx.KONG_PREREAD_ENDED_AT -
-                                ctx.KONG_PREREAD_START
+          ctx.KONG_PREREAD_START
       end
 
       if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
         ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_LOG_START
         ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT -
-                                 ctx.KONG_BALANCER_START
+          ctx.KONG_BALANCER_START
       end
 
       if ctx.KONG_PROXIED then
         if not ctx.KONG_PROXY_LATENCY then
           ctx.KONG_PROXY_LATENCY = ctx.KONG_LOG_START -
-                                   ctx.KONG_PROCESSING_START
+            ctx.KONG_PROCESSING_START
         end
 
       elseif not ctx.KONG_RESPONSE_LATENCY then
         ctx.KONG_RESPONSE_LATENCY = ctx.KONG_LOG_START -
-                                    ctx.KONG_PROCESSING_START
+          ctx.KONG_PROCESSING_START
       end
 
     else
       if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
         ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_ACCESS_START or
-                                    ctx.KONG_BALANCER_START or
-                                    ctx.KONG_RESPONSE_START or
-                                    ctx.KONG_HEADER_FILTER_START or
-                                    ctx.BODY_FILTER_START or
-                                    ctx.KONG_LOG_START
+          ctx.KONG_BALANCER_START or
+          ctx.KONG_RESPONSE_START or
+          ctx.KONG_HEADER_FILTER_START or
+          ctx.BODY_FILTER_START or
+          ctx.KONG_LOG_START
         ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT -
-                                ctx.KONG_REWRITE_START
+          ctx.KONG_REWRITE_START
       end
 
       if ctx.KONG_ACCESS_START and not ctx.KONG_ACCESS_ENDED_AT then
         ctx.KONG_ACCESS_ENDED_AT = ctx.KONG_BALANCER_START or
-                                   ctx.KONG_RESPONSE_START or
-                                   ctx.KONG_HEADER_FILTER_START or
-                                   ctx.BODY_FILTER_START or
-                                   ctx.KONG_LOG_START
+          ctx.KONG_RESPONSE_START or
+          ctx.KONG_HEADER_FILTER_START or
+          ctx.BODY_FILTER_START or
+          ctx.KONG_LOG_START
         ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT -
-                               ctx.KONG_ACCESS_START
+          ctx.KONG_ACCESS_START
       end
 
       if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
         ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_RESPONSE_START or
-                                     ctx.KONG_HEADER_FILTER_START or
-                                     ctx.BODY_FILTER_START or
-                                     ctx.KONG_LOG_START
+          ctx.KONG_HEADER_FILTER_START or
+          ctx.BODY_FILTER_START or
+          ctx.KONG_LOG_START
         ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT -
-                                 ctx.KONG_BALANCER_START
+          ctx.KONG_BALANCER_START
       end
 
       if ctx.KONG_HEADER_FILTER_START and not ctx.KONG_HEADER_FILTER_ENDED_AT then
         ctx.KONG_HEADER_FILTER_ENDED_AT = ctx.BODY_FILTER_START or
-                                          ctx.KONG_LOG_START
+          ctx.KONG_LOG_START
         ctx.KONG_HEADER_FILTER_TIME = ctx.KONG_HEADER_FILTER_ENDED_AT -
-                                      ctx.KONG_HEADER_FILTER_START
+          ctx.KONG_HEADER_FILTER_START
       end
 
       if ctx.KONG_BODY_FILTER_START and not ctx.KONG_BODY_FILTER_ENDED_AT then
         ctx.KONG_BODY_FILTER_ENDED_AT = ctx.KONG_LOG_START
         ctx.KONG_BODY_FILTER_TIME = ctx.KONG_BODY_FILTER_ENDED_AT -
-                                    ctx.KONG_BODY_FILTER_START
+          ctx.KONG_BODY_FILTER_START
       end
 
       if ctx.KONG_PROXIED and not ctx.KONG_WAITING_TIME then
         ctx.KONG_WAITING_TIME = ctx.KONG_LOG_START -
-                                (ctx.KONG_BALANCER_ENDED_AT or ctx.KONG_ACCESS_ENDED_AT)
+          (ctx.KONG_BALANCER_ENDED_AT or ctx.KONG_ACCESS_ENDED_AT)
       end
     end
   end
@@ -1344,6 +1410,59 @@ function Kong.log()
   execute_plugins_iterator(plugins_iterator, "log", ctx)
   runloop.log.after(ctx)
 
+  local usage = ngx.ctx.var_usage
+  local cjson = require "cjson.safe"
+
+  local file = io.open("var_usage_data.json", "w+")
+  file:write(cjson.encode(usage))
+  file:close()
+
+  local count = #usage
+
+  local summary = {
+    counts = {
+      headers = 0,
+      others = 0,
+      sets = 0,
+      gets = 0,
+      total = count,
+    },
+    headers = {
+    },
+    others = {
+    },
+    phases = {
+    },
+    vars = {
+    },
+    files = {
+    }
+  }
+
+  for i = 1, count do
+    local u = usage[i]
+    if u.header then
+      summary.counts.headers = summary.counts.headers + 1
+      summary.headers[u.key] = (summary.headers[u.key] or 0) + 1
+    else
+      summary.counts.others = summary.counts.others + 1
+      summary.others[u.key] = (summary.others[u.key] or 0) + 1
+    end
+
+    if u.type == "get" then
+      summary.counts.gets = (summary.counts.gets or 0) + 1
+    else
+      summary.counts.sets = (summary.counts.sets or 0) + 1
+    end
+
+    summary.phases[u.phase] = (summary.phases[u.phase] or 0) + 1
+    summary.vars[u.key] = (summary.vars[u.key] or 0) + 1
+    summary.files[u.file] = (summary.files[u.file] or 0) + 1
+  end
+
+  local file = io.open("var_usage_summary.json", "w+")
+  file:write(cjson.encode(summary))
+  file:close()
 
   -- this is not used for now, but perhaps we need it later?
   --ctx.KONG_LOG_ENDED_AT = get_now_ms()
