@@ -1,5 +1,4 @@
 dist: bionic
-
 jobs:
   include:
   - name: Enterprise 2.1.4.x
@@ -16,26 +15,21 @@ jobs:
     env: KONG_VERSION=nightly-ee POSTGRES=latest CASSANDRA=latest
   - name: Nightly CE-master
     env: KONG_VERSION=nightly POSTGRES=latest CASSANDRA=latest
-
 env:
   global:
   # for Enterprise images
-  - BINTRAY_USERNAME=kong-automation@kong
-  - BINTRAY_REPO=kong
-  - secure: XRJMsixYJLZZtQMrIQCBEgI16Qf/lMh/66/MRTpPqPRg/+kmSLPWq8/ZSwCdHOCsHr3iUi3z6XLF1FABMIPRH3R4fvwJIiLLjbR3D6X+16lKA864yL0+Y5Cp8rD6oo9UjeTligGV1xqwlufzVD5tv50NXqMmxSclGTWPc3BUHZMaiFd9kKnyR/rAc6Yy1HswaaHFbjmmnygQ/OOG3VhnfgylMsKkXkTFJTQxIYqMnV3rqk0rAaSGpLyM+A7CFOEwqgJ43Ywl4f2bCyKrikolbQvWLFL9SNSFJzdz7sMpind8JWh3+xEjCZoGQvwp48CIlb4GulTiTC/e3K6tC70M1qKMfkW360NVkipXE7N++/jKpwntE0O2FBU+dIuUv2P//DU5KBo79BMbPY1xGdzc3WpvCK7i5xt3OTtGPKQ3KTQb/ZWM7kWvqmoh7Vw/qyIXRH9OUlQu0opEaa0aqCBuQXjsoEgoDX+OLUXzuq1A1qAIq5cuQaHQfEn2FFyGkWgcvkl4KoRLWateV1PwMTccQZ2ohYDpEW08kZrrPei32pBGVO+Bp9OBjJ2gfTuTRvZHsvc6wJlrohAXs4oZBkEuXJb9SpWzQuzibt0XvJ1srevZNmaQTF1kFI5867FZdrxgv6MTQ265ccDXmEH75+fyhARozSTdAAoPpBTheiGDEoY=
-  # for Nightly Enterprise images
-  - NIGHTLY_EE_USER=kong-automation@kong
-  - secure: i1IUmr2JcrHQx8qRo7N41ltkd5tL7SGgh9CTrFEhDqFMSiWKdzuBbxQJAIV5pbyOVnMBBndJ4XJtw59zf0OgLubvDCr04yM4UdWlceIfBsWQN/AkgrvLfJWL+5UbaTTXyRvPGpJznDkSFosAy4btY2C4w8dk8Gwu15m6/s6d+hXOs+Q7+YWn4N8uQ4N03dDfoChQj5NFBFODh0jPJQbOFjNQsN7IsB8RkZjBVlFb6pGlRbcOmu2xLpIGw8bzStYTZTAM5hEvZeotQuM9a8RTOWd0OmhvFxOaLRberNPLiKFnaltfqnyfJGeZS+GLt7aSbFBfn/tkmnkFYn1sGonCkhvD07Wm0bIWoX9AU3cauY+L0t8T8OJhK+xL8lWOnXCcehfB4tJ6jQLDY0Kg76yRt8AKf/CZzukksg+MEIaon58qNXDO9XTS6ykvdsLIBfbYwjUKCgp+WfCHrJL7hshwsSrVAXDkNMfVKTug3K0VuaD9BM08X6H5xuttZ+O3vcbEXMh+2FZ5YQ3UBiF0tqYS7YvOdBMeAimr75QExkAP/dSXNb5wxcCwBCrK3gI2/3EOm96io46AQND08bqSueK8WA0lepauX500qDkBi4NjJ/wiJC/gsAz1C9/v8DFNY5g2oSoozt6tbsx6xECLOdkKlaa7kzU3zqvw65Hn2Oq3kbo=
-
+  - PULP_USERNAME=admin
+  - secure: qLQpFz79OAmWsZuhSmOx62RIKCXT0tbPtTriTSQ00YDTzIfeU02LZ6XOuq1B4LwndaQaHHcM6K8s1vND8XBLPLuNPow6/SmWNkua3WmBxwQwNKA4oPd4Wb/M1PtI1ZCrj503WYKzdLOUPv/yez8V6IbUMuFC5iAMQdljUV+ygDWvvCB6bWdBt/cfYTP2nDp4vgkelQtaQaNuxPYFghch/mPL5pG9FavZy4sE20ckLelHDR1xuaQmvc4kuesTumbBePxzO1dRtcAZuGeAXIJBqDl7SgC0AwsfNZBXmORQGuVFthTHMWq3ZaBXOHTE/a54qz/0+YadGbGmDTQvGdBP9XA3h6eAlHWElLYVbdlNEt7zoRhP/C0dtpQus+kRzo2/GCff99CVVv0Lupve6an0AV4h46GcQ8J6J25kwvPQAhrDk8qvkcYZVspOCYU1j/2FSagj6O9E/JeKFo7JMdSllQpex43YzM1k4dnJfAf3TzSslGZVdvnEOiL2tGKHbLZkQSvR6Ax0fiF0jD9HDHcvjnFd1EBYC0pFyDM274WIte9D4LxXKp3vWwwGOoXUgxojReFNwz/xdw6JAMY+7lzO0QMRhYWs7dWn2CW5PAhC1kb+uLJwwzvWI+N70XLuEhO1ClIwH5ela0TlVwiJGutcWzcMvDg6WSr9vberwk0aXoA=
+  # for Enterprise nightly images
+  - DOCKER_USERNAME=kongcloudpull
+  - secure: LruPuOUZuawukX4dYFrkeIQfHLkEqrXMhMgcLzNYYo/0V6vv3M7Nu2sGek8jwReNAbfXYuDM3T1U3PND5FYVJzz/FPGUdBVsCVFipjTeEKEjCrVr7gdB9yeJj91QtJum+sOoIrXj+VuRK+4VCeVhpSfB9WjnIT8NxedH7UkS1THsKA0AVIlUNGFtycS9dfCqzZivPyyVu6woUWQjyytg+90Q7KHMqtz8e3GhETNPP4bVyAjMEnc/0w1KOFJBUK0iPJ/Xbhz61z4RrnjvTG9dV75UHexI4aPOvUVZCCautKUl2TDbjO65eLeMT2+EK9T0c8wUikTjfMc/td5HfszTRs+8oOymUj7UN9LIvUShZ8PdlqiOgsIvJKrrzHkVrk3hTgw3qIsGWnj5WgP3cPKV2As7Q7FcHPmirh041bpSEI1FjfOp8zQUQlqqWLIOiFl6mYlbY6xHgvHzjiisNXhxJXfM9P5hVJneFhAmreHHwiW9dht0LmS1suwwALkmbgc892khi4qzCbtWcn7b/UzNeOmjLdSunQChvsCvv4aVnImVkvXDxmqODnJ5Ozad7Ysf28G3222fFPnVbu5zS8h/zmtSqcgHCBSP0DNx8m5ocHqh7UW7XpYjOKEMGpio/3T3GP/yogtNAdHKeJkF/iyzLYpe5tteAYgO0nLSmG+qmzk=
 install:
 - git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
 - "../kong-pongo/pongo.sh up"
 - "../kong-pongo/pongo.sh build"
-
 script:
 - "../kong-pongo/pongo.sh lint"
 - "../kong-pongo/pongo.sh run"
-
 notifications:
   slack:
     if: branch = master AND type != pull_request
