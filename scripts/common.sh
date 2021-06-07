@@ -8,12 +8,12 @@ function commit_changelog() {
         then
             die "No changes in CHANGELOG.md to commit. Did you write the changelog?"
         fi
-    
+
         git diff CHANGELOG.md
-    
+
         CONFIRM "If everything looks all right, press Enter to commit" \
                   "or Ctrl-C to cancel."
-    
+
         set -e
         git add CHANGELOG.md
         git commit -m "docs(changelog) add $1 changes"
@@ -30,6 +30,19 @@ function update_copyright() {
    git add COPYRIGHT
 
    git commit -m "docs(COPYRIGHT) update copyright for $1"
+   git log -n 1
+}
+
+#-------------------------------------------------------------------------------
+function update_admin_api_def() {
+   if ! "$scripts_folder/gen-admin-api-def.sh"
+   then
+      die "Could not update kong-admin-api.yml file. Check script output for any error messages."
+   fi
+
+   git add kong-admin-api.yml
+
+   git commit -m "docs(kong-admin-api.yml) update Admin API definition for $1"
    git log -n 1
 }
 
@@ -224,25 +237,25 @@ As always, happy Konging! :gorilla:
 EOF
 }
 
-#-------------------------------------------------------------------------------	
-function step() {	
-   box="   "	
-   color="$nocolor"	
-   if [ "$version" != "<x.y.z>" ]	
-   then	
-      if [ -e "/tmp/.step-$1-$version" ]	
-      then	
-         color="$green"	
-         box="[x]"	
-      else	
-         color="$bold"	
-         box="[ ]"	
-      fi	
-   fi	
-   echo -e "$color $box Step $c) $2"	
-   echo "        $0 $version $1 $3"	
-   echo -e "$nocolor"	
-   c="$[c+1]"	
+#-------------------------------------------------------------------------------
+function step() {
+   box="   "
+   color="$nocolor"
+   if [ "$version" != "<x.y.z>" ]
+   then
+      if [ -e "/tmp/.step-$1-$version" ]
+      then
+         color="$green"
+         box="[x]"
+      else
+         color="$bold"
+         box="[ ]"
+      fi
+   fi
+   echo -e "$color $box Step $c) $2"
+   echo "        $0 $version $1 $3"
+   echo -e "$nocolor"
+   c="$[c+1]"
 }
 
 #-------------------------------------------------------------------------------
@@ -255,10 +268,10 @@ function update_docker {
         git clone https://github.com/kong/docker-kong
         cd docker-kong
     fi
-    
+
     git pull
     git checkout -B "release/$1"
-    
+
     set -e
     ./update.sh "$1"
 }
