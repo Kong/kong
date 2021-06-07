@@ -100,7 +100,7 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
 
       elseif port == balancers.errors.ERR_DNS_UPDATED then
         -- if healty we just need to try again
-        if not self.healthy then
+        if not self.balancer.healthy then
           return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
         end
       elseif port == balancers.errors.ERR_ADDRESS_UNAVAILABLE then
@@ -127,6 +127,7 @@ function roundrobin_algorithm.new(opts)
   local self = setmetatable({
     health_threshold = balancer.health_threshold,
     hosts = balancer.targets or {},
+    balancer = balancer,
 
     pointer = 1,
     wheelSize = 0,

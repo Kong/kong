@@ -550,10 +550,6 @@ function balancer_mt:getPeer(...)
     return
   end
 
-  if not self.healthy then
-    return nil, balancers_M.errors.ERR_BALANCER_UNHEALTHY
-  end
-
   return self.algorithm:getPeer(...)
 end
 

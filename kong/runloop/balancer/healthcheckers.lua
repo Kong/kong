@@ -49,7 +49,7 @@ local function populate_healthchecker(hc, balancer, upstream)
       if ok then
         -- Get existing health status which may have been initialized
         -- with data from another worker, and apply to the new balancer.
-        local tgt_status = hc:get_target_status(ipaddr, port, target.name)
+        local tgt_status = hc:get_target_status(ipaddr, port, hostname)
         if tgt_status ~= nil then
           balancer:setAddressStatus(address, tgt_status)
         end
