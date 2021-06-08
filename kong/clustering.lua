@@ -693,11 +693,11 @@ local function should_send_config_update(node_version, node_plugins)
                         CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
       end
 
-      local major_minor_p = plugin_meta.version:match("^(%d+%.%d+)") or "not_a_version"
-      local major_minor_np = node_plugins[plugin_name].version:match("^(%d+%.%d+)") or "still_not_a_version"
-
       -- ignore plugins without a version (route-by-header is deprecated)
       if plugin_meta.version and node_plugins[plugin_name].version then
+        local major_minor_p = plugin_meta.version:match("^(%d+%.%d+)") or "not_a_version"
+        local major_minor_np = node_plugins[plugin_name].version:match("^(%d+%.%d+)") or "still_not_a_version"
+        
         if major_minor_p ~= major_minor_np then
           return false, "plugin \"" .. plugin_name .. "\" version incompatible, " ..
             "CP version: " .. tostring(plugin_meta.version) ..
