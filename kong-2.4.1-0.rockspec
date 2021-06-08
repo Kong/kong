@@ -55,7 +55,7 @@ dependencies = {
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.3",
   "kong-plugin-serverless-functions ~> 2.1",
-  "kong-prometheus-plugin ~> 1.2",
+  "kong-prometheus-plugin ~> 1.3",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.3",
   "kong-plugin-session ~> 2.4",
@@ -80,11 +80,14 @@ build = {
     ["kong.concurrency"] = "kong/concurrency.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
-    ["kong.clustering"] = "kong/clustering.lua",
     ["kong.hooks"] = "kong/hooks.lua",
 
     ["kong.conf_loader"] = "kong/conf_loader/init.lua",
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
+
+    ["kong.clustering"] = "kong/clustering/init.lua",
+    ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
+    ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
@@ -243,6 +246,7 @@ build = {
     ["kong.runloop.plugin_servers"] = "kong/runloop/plugin_servers/init.lua",
     ["kong.runloop.plugin_servers.process"] = "kong/runloop/plugin_servers/process.lua",
     ["kong.runloop.plugin_servers.mp_rpc"] = "kong/runloop/plugin_servers/mp_rpc.lua",
+    ["kong.runloop.plugin_servers.pb_rpc"] = "kong/runloop/plugin_servers/pb_rpc.lua",
 
     ["kong.db.schema.entities.credentials"] = "kong/db/schema/entities/credentials.lua",
     ["kong.db.schema.entities.files"] = "kong/db/schema/entities/files.lua",

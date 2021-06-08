@@ -54,7 +54,7 @@ return {
           This page refers to the Admin API for running Kong configured with a
           database (Postgres or Cassandra). For using the Admin API for Kong
           in DB-less mode, please refer to the
-          <a href="/{{page.kong_version}}/db-less-admin-api">Admin API for DB-less Mode</a>
+          <a href="/gateway-oss/{{page.kong_version}}/db-less-admin-api">Admin API for DB-less Mode</a>
           page.
         </div>
 
@@ -2141,14 +2141,10 @@ return {
     },
 
     footer = [[
-      [clustering]: /{{page.kong_version}}/clustering
-      [cli]: /{{page.kong_version}}/cli
-      [active]: /{{page.kong_version}}/health-checks-circuit-breakers/#active-health-checks
-      [healthchecks]: /{{page.kong_version}}/health-checks-circuit-breakers
-      [secure-admin-api]: /{{page.kong_version}}/secure-admin-api
-      [proxy-reference]: /{{page.kong_version}}/proxy
-      [db-less]: /{{page.kong_version}}/db-less-and-declarative-config
-      [admin-api]: /{{page.kong_version}}/admin-api
+      [active]: /gateway-oss/{{page.kong_version}}/health-checks-circuit-breakers/#active-health-checks
+      [healthchecks]: /gateway-oss/{{page.kong_version}}/health-checks-circuit-breakers
+      [secure-admin-api]: /gateway-oss/{{page.kong_version}}/secure-admin-api
+      [proxy-reference]: /gateway-oss/{{page.kong_version}}/proxy
     ]],
 
     general = {

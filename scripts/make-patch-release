@@ -35,6 +35,7 @@ function usage() {
    step "luarocks"         "upload to LuaRocks" "<api-key>"
    step "vagrant"          "(ran by CI now) bump version and submit a PR to kong-vagrant"
    step "pongo"            "(ran by CI now) bump version and submit a PR to kong-pongo"
+   step "announce"         "Get announcement messages for Kong Nation and Slack #general"
    exit 0
 }
 
@@ -107,8 +108,9 @@ case "$step" in
       git checkout -B "$branch"
 
       SUCCESS "Release branch was created locally." \
-              "You are ready to run the next step:" \
-              "    $0 $version write_changelog"
+              "Ensure to cherry-pick all required changes into $branch." \
+              "And proceed to the next step:" \
+              "    $0 $version cherry_pick"
       ;;
    #---------------------------------------------------------------------------
    write_changelog)
@@ -283,6 +285,11 @@ case "$step" in
       git tag -s "$version" -m "$version"
       git push origin "$version"
 
+      make_github_release_file
+
+      hub release create -F release-$version.txt "$version"
+      rm -f release-$version.txt
+
       SUCCESS "Now you can run the next step:" \
               "    $0 $version submit_docker"
       ;;
@@ -399,6 +406,11 @@ case "$step" in
       SUCCESS "The LuaRocks entry is now up!"
       ;;
    #---------------------------------------------------------------------------
+   announce)
+      prepare_patch_announcement "$major" "$minor" "$patch"
+
+      SUCCESS "Copy and paste this announcement in Kong Nation and Slack #general"
+      ;;
    *)
       die "Unknown step!"
       ;;
