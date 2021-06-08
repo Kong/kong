@@ -108,6 +108,7 @@ jobs:
     - name: Unit tests
       run: |
           eval `luarocks path`
+          make dev
           bin/busted -v -o htest spec/01-unit
 
   integration-tests-postgres:
