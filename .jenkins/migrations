@@ -23,25 +23,20 @@ pipeline {
 
   environment {
     GITHUB_TOKEN = credentials('github_bot_access_token')
-    DOCKER_REGISTRY_URL = "registry.kongcloud.io"
-    // This will map DOCKER_REGISTRY_USR and DOCKER_REGISTRY_PSW
-    DOCKER_REGISTRY = credentials('DOCKER_REGISTRY')
-    // This will map BINTRAY_USR and BINTRAY_PSW
-    BINTRAY = credentials('bintray')
+    // This will map DOCKERHUB_KONGCLOUD_PULL_USR and DOCKERHUB_KONGCLOUD_PULL_PSW
+    DOCKERHUB_KONGCLOUD_PULL = credentials('DOCKERHUB_KONGCLOUD_PULL')
     SEALY_ALWAYS_TEARDOWN = 1
     PATH = "${env.PATH}:~/.local/bin"
     // Speed up build
     ENABLE_OPENTRACING = 0
     DOCKER_IMAGE_NAME="migration-tests"
-    BINTRAY_LICENSE = credentials('BINTRAY_LICENSE')
     KONG_LICENSE_DATA = credentials('KONG_LICENSE_DATA')
   }
 
   stages {
     stage('prepare environment') {
       steps {
-        sh "docker login -u ${env.BINTRAY_USR} -p ${env.BINTRAY_PSW} kong-docker-kong-enterprise-edition-docker.bintray.io"
-        sh "docker login -u ${env.DOCKER_REGISTRY_USR} -p ${env.DOCKER_REGISTRY_PSW} registry.kongcloud.io"
+        sh "docker login -u ${env.DOCKERHUB_KONGCLOUD_PULL_USR} -p ${env.DOCKERHUB_KONGCLOUD_PULL_PSW}"
         sh "mkdir -p ~/.local/bin"
 
         sh "git clone https://$GITHUB_TOKEN:@github.com/Kong/gojira-enterprise.git /tmp/gojira"
@@ -60,14 +55,14 @@ pipeline {
       }
     }
 
-    stage('next/2.1.x.x to here') {
+    stage('2.1 to here') {
       steps {
         parallel (
-          "Kong EE next/2.1.x.x to here (pg)": {
-            sh "sealy --from registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path"
+          "Kong EE 2.1 to here (pg)": {
+            sh "sealy --from kong/kong-gateway:2.1 --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path"
           },
-          "Kong EE next/2.1.x.x to here (c*)": {
-            sh "sealy --from registry.kongcloud.io/kong-enterprise-edition:next-2.1.x.x-nightly-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path --cassandra"
+          "Kong EE 2.1 to here (c*)": {
+            sh "sealy --from kong/kong-gateway:2.1 --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path --cassandra"
           }
         )
       }
@@ -77,10 +72,10 @@ pipeline {
       steps {
         parallel (
           "Kong EE next/2.2.x.x to here (pg)": {
-            sh "sealy --from registry.kongcloud.io/kong-enterprise-edition:next-2.2.x.x-nightly-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path"
+            sh "sealy --from kong/kong-gateway-internal:2.2-nightly --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path"
           },
           "Kong EE next/2.2.x.x to here (c*)": {
-            sh "sealy --from registry.kongcloud.io/kong-enterprise-edition:next-2.2.x.x-nightly-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path --cassandra"
+            sh "sealy --from kong/kong-gateway-internal:2.2-nightly --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path --cassandra"
           }
         )
       }
@@ -90,10 +85,10 @@ pipeline {
       steps {
         parallel (
           "Kong EE < 1.5 to here should err on upgrade! (pg)": {
-            sh "! sealy --from kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.3.0.2-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/empty"
+            sh "! sealy --from kong/kong-gateway-private:1.3.0.3-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/empty"
           },
           "Kong EE < 1.5 to here should err on upgrade! (c*)": {
-            sh "! sealy --from kong-docker-kong-enterprise-edition-docker.bintray.io/kong-enterprise-edition:1.3.0.2-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/empty --cassandra"
+            sh "! sealy --from kong/kong-gateway-private:1.3.0.3-alpine --to ${env.DOCKER_IMAGE_NAME} --seeds paths/empty --cassandra"
           }
         )
       }
