@@ -23,6 +23,27 @@ ngx.log(ngx.DEBUG, "Loading Status API endpoints")
 -- Load core health route
 api_helpers.attach_routes(app, require "kong.api.routes.health")
 
+-- Load core upstream readonly routes
+-- Customized routes in upstreams doesn't call `parent`, otherwise we will need
+-- api/init.lua:customize_routes to pass `parent`.
+local upstream_routes = {}
+for route_path, definition in pairs(require "kong.api.routes.upstreams") do
+  local method_handlers = {}
+  for method_name, method_handler in pairs(definition) do
+    if method_name:upper() == "GET" then
+      method_handlers[method_name] = method_handler
+    end
+  end
+
+  if method_handlers then
+    upstream_routes[route_path] = {
+      schema = kong.db.upstreams.schema,
+      methods = method_handlers,
+    }
+  end
+end
+
+api_helpers.attach_new_db_routes(app, upstream_routes)
 
 -- Load plugins status routes
 if singletons.configuration and singletons.configuration.loaded_plugins then
