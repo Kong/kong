@@ -12,7 +12,7 @@ return {
         type = "record",
         fields = {
           { ldap_host = typedefs.host({ required = true }), },
-          { ldap_port = typedefs.port({ required = true }), },
+          { ldap_port = typedefs.port({ required = true, default = 389 }), },
           { ldaps = { type = "boolean", required = true, default = false } },
           { start_tls = { type = "boolean", required = true, default = false }, },
           { verify_ldap_host = { type = "boolean", required = true, default = false }, },

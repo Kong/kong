@@ -9,6 +9,20 @@ describe("Plugin: ldap-auth (schema)", function()
       assert.equals("'ldaps' and 'start_tls' cannot be enabled simultaneously", err.config["@entity"][1])
     end)
   end)
+
+  describe("defaults", function()
+    it("default port 389 assigned", function()
+      local ok, err = v({ldap_host = "example.com", base_dn="dc=example.com,dc=com", attribute="cn"}, schema_def)
+      assert.falsy(err)
+      assert.equals(389, ok.config["ldap_port"])
+    end)
+
+    it("default port override", function()
+      local ok, err = v({ldap_host = "example.com", ldap_port = 12345, base_dn="dc=example.com,dc=com", attribute="cn"}, schema_def)
+      assert.falsy(err)
+      assert.equals(12345, ok.config["ldap_port"])
+    end)
+  end)
 end)
 
 
