@@ -166,14 +166,31 @@ end
 
 function _M:start_upstream(conf)
   conf = conf or ""
-  conf = ngx.encode_base64(([[server {
-              listen %d;
-              access_log off;
-              location =/health {
-                return 200;
-              }
-              %s
-            }]]):format(UPSTREAM_PORT, conf)):gsub("\n", "")
+  conf = ngx.encode_base64(([[
+  worker_processes auto;
+  worker_cpu_affinity auto;
+  error_log /var/log/nginx/error.log;
+  pid /run/nginx.pid;
+  worker_rlimit_nofile 20480;
+
+  events {
+     accept_mutex off;
+     worker_connections 10620;
+  }
+
+  http {
+     access_log off;
+     server_tokens off;
+     keepalive_requests 10000;
+     tcp_nodelay on;
+
+     server {
+         listen %d reuseport;
+         location / {
+             return 200 " performancetestperformancetestperformancetestperformancetestperformancetest";
+         }
+     }
+  }]]):format(UPSTREAM_PORT, conf)):gsub("\n", "")
 
   local ok, err = execute_batch(self, self.worker_ip, {
     "sudo id",
@@ -182,7 +199,7 @@ function _M:start_upstream(conf)
     -- ubuntu where's wrk in apt?
     "wget -nv http://mirrors.kernel.org/ubuntu/pool/universe/w/wrk/wrk_4.1.0-3_amd64.deb -O wrk.deb",
     "dpkg -l wrk || (sudo dpkg -i wrk.deb || sudo apt-get -f -y install)",
-    "echo " .. conf .. " | sudo base64 -d > /etc/nginx/conf.d/perf-test.conf",
+    "echo " .. conf .. " | sudo base64 -d > /etc/nginx/nginx.conf",
     "sudo nginx -t",
     "sudo systemctl restart nginx",
   })
@@ -352,7 +369,7 @@ function _M:generate_flamegraph(title)
 
   local ok, err = execute_batch(self, self.kong_ip, {
     "/tmp/perf-ost/fix-lua-bt " .. path .. ".bt > " .. path .. ".fbt",
-    "/tmp/perf-fg/stackcollapse.pl " .. path .. ".fbt > " .. path .. ".cbt",
+    "/tmp/perf-fg/stackcollapse-stap.pl " .. path .. ".fbt > " .. path .. ".cbt",
     "/tmp/perf-fg/flamegraph.pl --title='" .. title .. "' " .. path .. ".cbt > " .. path .. ".svg",
   })
   if not ok then
