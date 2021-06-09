@@ -1,6 +1,13 @@
 local cache_warmup = require("kong.cache.warmup")
 
 
+local async = {
+  run = function(_, func, ...)
+    return func(false, ...)
+  end
+}
+
+
 local function mock_entity(db_data, entity_name, cache_key)
   return {
     schema = {
@@ -94,6 +101,7 @@ describe("cache_warmup", function()
       },
       core_cache = mock_cache(cache_table),
       cache = mock_cache({}),
+      async = async,
     }
 
     cache_warmup._mock_kong(kong)
@@ -128,6 +136,7 @@ describe("cache_warmup", function()
       core_cache = mock_cache(cache_table),
       cache = mock_cache({}),
       log = mock_log(nil, logged_notices),
+      async = async,
     }
 
     cache_warmup._mock_kong(kong)
@@ -165,6 +174,7 @@ describe("cache_warmup", function()
       core_cache = mock_cache(cache_table),
       cache = mock_cache({}),
       log = mock_log(nil, logged_notices),
+      async = async,
     }
 
     cache_warmup._mock_kong(kong)
@@ -200,11 +210,7 @@ describe("cache_warmup", function()
         my_entity = mock_entity(db_data, "my_entity", "aaa"),
         services = mock_entity(db_data, "services", "name"),
       },
-      async = {
-        run = function(_, func, ...)
-          return func(false, ...)
-        end
-      },
+      async = async,
       core_cache = mock_cache(cache_table),
       cache = mock_cache({}),
       dns = {
@@ -264,7 +270,8 @@ describe("cache_warmup", function()
         toip = function(query)
           table.insert(dns_queries, query)
         end,
-      }
+      },
+      async = async,
     }
 
     cache_warmup._mock_kong(kong)
@@ -295,6 +302,7 @@ describe("cache_warmup", function()
       core_cache = {},
       cache = {},
       log = mock_log(logged_warnings),
+      async = async,
     }
 
     cache_warmup._mock_kong(kong)
@@ -330,6 +338,7 @@ describe("cache_warmup", function()
       configuration = {
         mem_cache_size = 12345,
       },
+      async = async,
     }
 
     cache_warmup._mock_kong(kong)
