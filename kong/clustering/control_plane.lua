@@ -417,6 +417,7 @@ function _M:handle_cp_websocket()
           ip = node_ip,
           version = node_version,
           sync_status = sync_status,
+          plugin_versions = node_plugins,
         }, { ttl = self.conf.cluster_data_plane_purge_delay, })
         if not ok then
           ngx_log(ngx_ERR, "unable to update clustering data plane status: ", err)

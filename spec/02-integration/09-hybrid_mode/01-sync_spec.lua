@@ -70,6 +70,20 @@ for _, strategy in helpers.each_strategy() do
               assert.matches("^(%d+%.%d+)%.%d+", v.version)
               assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
 
+              assert.is_not_nil(v.plugin_versions)
+
+              local dp_dummy_plugin
+              for _, plugin in ipairs(v.plugin_versions) do
+                if plugin.name == "dummy" then
+                  dp_dummy_plugin = plugin
+                end
+              end
+
+              assert.same({
+                name = "dummy",
+                version = "9.9.9",
+              }, dp_dummy_plugin)
+
               return true
             end
           end

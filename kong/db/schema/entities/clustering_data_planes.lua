@@ -30,5 +30,14 @@ return {
                       default = "unknown",
                     }
     },
+    { plugin_versions = { type = "array",
+                          elements = { type = "record",
+                                       fields = {
+                                       { name = { type = "string", required = true, } },
+                                       { version = typedefs.semantic_version },
+                                        }
+                                     },
+                        }
+    },
   },
 }
