@@ -1,18 +1,23 @@
 [![][kong-logo]][kong-url]
 
-![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square) ![Version](https://img.shields.io/github/v/release/Kong/kong?color=green&label=Version&style=flat-square) 
+![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/Kong/kong?style=flat-square) ![Docker Pulls](https://img.shields.io/docker/pulls/_/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![Version](https://img.shields.io/github/v/release/Kong/kong?color=green&label=Version&style=flat-square)  ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)
 
-**Kong** or **Kong Gateway (OSS)** is a cloud-native, platform-agnostic, scalable API Gateway distinguished for its high performance and extensibility via plugins.
+
+**Kong** or **Kong Gateway** is a cloud-native, platform-agnostic, scalable API Gateway distinguished for its high performance and extensibility via plugins.
 
 By providing functionality for proxying, routing, load balancing, health checking, authentication (and [more](#features)), Kong serves as the central layer for orchestrating microservices or conventional API traffic with ease.
 
+---
+
 [Installation](https://konghq.com/install/#kong-community) | [Documentation](https://docs.konghq.com) | [Forum](https://discuss.konghq.com) | [Blog](https://konghq.com/blog) | [Builds][kong-master-builds]
+
+---
 
 ## Getting Started
 
 Let’s test drive Kong by adding authentication to an API in under 5 minutes.
 
-We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/install/docker/) procedure if you’d prefer to run Kong Gateway (OSS) in a DB-less mode. 
+We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/install/docker/) procedure if you’d prefer to run Kong Gateway in a DB-less mode. 
 
 Whether you’re running in the cloud, on bare metal or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
 
@@ -37,7 +42,7 @@ Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/
 
 ## Features
 
-By centralizing common API functionality across all your organization's services, Kong Gateway (OSS) creates more freedom for engineering teams to focus on the challenges that matter most. 
+By centralizing common API functionality across all your organization's services, Kong Gateway creates more freedom for engineering teams to focus on the challenges that matter most. 
 
 The top Kong features include:
 - Advanced routing, load balancing, health checking - all configurable via an admin API or declarative configuration.
@@ -56,12 +61,16 @@ Contribute to the Plugin Hub and ensure your next innovative idea is published a
 
 ## Contributing
 
-We ❤️  pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong Gateway (OSS), please familiarize yourself with the following developer resources:
-- [CONTRIBUTING.md](https://github.com/Kong/kong/blob/master/CONTRIBUTING.md)
-- [DEVELOPER.md](https://github.com/Kong/kong/blob/master/DEVELOPER.md)
-- [CODE_OF_CONDUCT.md](https://github.com/Kong/kong/blob/master/CODE_OF_CONDUCT.md) and [COPYRIGHT](https://github.com/Kong/kong/blob/master/COPYRIGHT)
+We ❤️  pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong Gateway, please familiarize yourself with the following developer resources:
+- [CONTRIBUTING](CONTRIBUTING.md)
+- [DEVELOPER](DEVELOPER.md)
+- [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) and [COPYRIGHT](COPYRIGHT)
 
 Use the [Plugin Development Guide](https://docs.konghq.com/latest/plugin-development/) for building new and creative plugins, or browse the online version of Kong's source code documentation in the [Plugin Development Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/). Developers can build plugins in [Lua](https://docs.konghq.com/gateway-oss/latest/plugin-development/), [Go](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-go-plugins) or [JavaScript](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-javascript-plugins).
+
+## Releases
+
+Please see the [Changelog](CHANGELOG.md) for more details about a given release. The [SemVer Specification](https://semver.org) is followed when versioning Gateway releases.
 
 ## Join the Community
 
@@ -73,7 +82,7 @@ Use the [Plugin Development Guide](https://docs.konghq.com/latest/plugin-develop
 - Visit our homepage to learn more: [https://konghq.com/](https://konghq.com/)
 
 ## Konnect
-Kong Inc. offers commercial subscriptions that enhance the Kong Gateway (OSS) in a variety of ways. Customers of Kong's [Konnect](https://konghq.com/kong-konnect/) subscription take advantage of additional gateway functionality, commercial support, and access to Kong's managed (SaaS) control plane platform. The Konnect platform features include real-time analytics, a service catalog, developer portals, and so much more! [Get started](https://konghq.com/get-started/) with Konnect.
+Kong Inc. offers commercial subscriptions that enhance the Kong Gateway in a variety of ways. Customers of Kong's [Konnect](https://konghq.com/kong-konnect/) subscription take advantage of additional gateway functionality, commercial support, and access to Kong's managed (SaaS) control plane platform. The Konnect platform features include real-time analytics, a service catalog, developer portals, and so much more! [Get started](https://konghq.com/get-started/) with Konnect.
 
 ## License
 
