@@ -5,7 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local clustering = require "kong.clustering"
+local singletons = require "kong.singletons"
 
 local subsystem = ngx.config.subsystem
 
@@ -108,7 +108,7 @@ local function start_ws_client(self, server_name)
     kong.node.get_id() .. "&node_hostname=" .. knode.get_hostname()
 
   local log_prefix = get_log_prefix(self)
-  assert(ngx.timer.at(0, clustering.telemetry_communicate, uri, server_name, function(connected, send_func)
+  assert(ngx.timer.at(0, singletons.clustering.telemetry_communicate, singletons.clustering, uri, server_name, function(connected, send_func)
     if connected then
       ngx.log(ngx.DEBUG, log_prefix, "telemetry websocket is connected")
       self.ws_send_func = send_func
@@ -116,7 +116,7 @@ local function start_ws_client(self, server_name)
       ngx.log(ngx.DEBUG, log_prefix, "telemetry websocket is disconnected")
       self.ws_send_func = nil
     end
-  end))
+  end), nil)
 end
 
 local function check_address(address)
@@ -190,7 +190,7 @@ function _M.new(opts)
 end
 
 function _M:register_for_messages()
-  clustering.register_server_on_message(self.message_type, function(msg, queued_send)
+  singletons.clustering.register_server_on_message(self.message_type, function(msg, queued_send)
     -- decode message
     local payload, err = self.unpack_message(msg, self.message_type, self.message_type_version)
     if err then

@@ -325,14 +325,14 @@ local function ws_event_loop(ws, on_connection, on_error, on_message)
 
 end
 
-function _M:telemetry_communicate(premature, uri, server_name, on_connection, on_message)
+local function telemetry_communicate(premature, self, uri, server_name, on_connection, on_message)
   if premature then
     -- worker wants to exit
     return
   end
 
   local reconnect = function(delay)
-    return ngx.timer.at(delay, self.telemetry_communicate, uri, server_name, on_connection, on_message)
+    return ngx.timer.at(delay, telemetry_communicate, self, uri, server_name, on_connection, on_message)
   end
 
   local c = assert(ws_client:new(WS_OPTS))
@@ -373,6 +373,8 @@ function _M:telemetry_communicate(premature, uri, server_name, on_connection, on
   wait()
 
 end
+
+_M.telemetry_communicate = telemetry_communicate
 
 function _M:handle_cp_telemetry_websocket()
   -- use mutual TLS authentication

@@ -14,6 +14,7 @@ local _M = {
   router = nil,
   -- XXX EE
   licensing = nil,
+  clustering = nil,
 }
 
 return _M

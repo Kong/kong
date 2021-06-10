@@ -569,7 +569,8 @@ function Kong.init()
   if subsystem == "http" and
      (config.role == "data_plane" or config.role == "control_plane")
   then
-    kong.clustering = require("kong.clustering").new(config)
+    singletons.clustering = require("kong.clustering").new(config)
+    kong.clustering = singletons.clustering
   end
 
   -- Load plugins as late as possible so that everything is set up
