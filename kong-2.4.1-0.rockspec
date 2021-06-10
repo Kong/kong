@@ -43,7 +43,6 @@ dependencies = {
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.3",
   "kong-plugin-serverless-functions ~> 2.1",
-  "kong-prometheus-plugin ~> 1.3",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.3",
   "kong-plugin-session ~> 2.4",
@@ -384,5 +383,14 @@ build = {
 
     ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
     ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",
+
+    ["kong.plugins.prometheus.api"] = "kong/plugins/prometheus/api.lua",
+    ["kong.plugins.prometheus.status_api"] = "kong/plugins/prometheus/status_api.lua",
+    ["kong.plugins.prometheus.exporter"] = "kong/plugins/prometheus/exporter.lua",
+    ["kong.plugins.prometheus.enterprise.exporter"] = "kong/plugins/prometheus/enterprise/exporter.lua",
+    ["kong.plugins.prometheus.handler"] = "kong/plugins/prometheus/handler.lua",
+    ["kong.plugins.prometheus.prometheus"] = "kong/plugins/prometheus/prometheus.lua",
+    ["kong.plugins.prometheus.serve"] = "kong/plugins/prometheus/serve.lua",
+    ["kong.plugins.prometheus.schema"] = "kong/plugins/prometheus/schema.lua",
   }
 }
