@@ -43,7 +43,7 @@ local function send_payload(http_endpoint, payload)
     return nil, "failed request to " .. http_endpoint .. ": " .. err
   end
 
-  if res.status < 400 then
+  if res.status >= 400 then
     return false, "request to " .. http_endpoint .. " returned " .. tostring(res.status)
   end
 
