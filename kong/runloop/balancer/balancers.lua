@@ -322,7 +322,7 @@ local function setHostHeader(addr)
     -- hostname is an actual name
     if addr.ipType ~= "name" then
       -- the address is an ip, so use the hostname as header value
-      addr.hostHeader = target.hostname
+      addr.hostHeader = target.name
     else
       -- the address itself is a nested name (SRV)
       if addr.useSRVname then
