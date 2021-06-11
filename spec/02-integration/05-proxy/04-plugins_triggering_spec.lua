@@ -10,11 +10,49 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
-local pl_stringx = require "pl.stringx"
 
 
 local LOG_WAIT_TIMEOUT = 10
 local TEST_CONF = helpers.test_conf
+
+
+local function find_log_line(FILE_LOG_PATH, uuid, custom_check)
+  if pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0 then
+    local f = assert(io.open(FILE_LOG_PATH, "r"))
+    local line = f:read("*line")
+
+    while line do
+      local log_message = assert(cjson.decode(line))
+      if log_message.client_ip == "127.0.0.1" then
+        if uuid and log_message.request.headers["x-uuid"] ~= uuid then
+          goto continue
+        end
+
+        if custom_check and not custom_check(log_message) then
+          goto continue
+        end
+
+        -- found
+        f:close()
+        return log_message
+      end
+
+      ::continue::
+      line = f:read("*line")
+    end
+
+    f:close()
+  end
+
+  return false
+end
+
+
+local function wait_for_log_line(FILE_LOG_PATH, uuid, custom_check)
+  helpers.wait_until(function()
+    return find_log_line(FILE_LOG_PATH, uuid, custom_check)
+  end, LOG_WAIT_TIMEOUT)
+end
 
 
 for _, strategy in helpers.each_strategy() do
@@ -399,14 +437,7 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("127.0.0.1", log_message.client_ip)
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        wait_for_log_line(FILE_LOG_PATH, uuid)
       end)
 
       it("execute a header_filter plugin", function()
@@ -468,14 +499,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("obtained even with error", body, nil, true)
 
         -- access phase got a chance to inject the logging plugin
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("127.0.0.1", log_message.client_ip)
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        wait_for_log_line(FILE_LOG_PATH, uuid)
       end)
     end)
 
@@ -576,6 +600,12 @@ for _, strategy in helpers.each_strategy() do
 
 
       lazy_setup(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+
         db:truncate("routes")
         db:truncate("services")
         db:truncate("consumers")
@@ -726,15 +756,7 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("127.0.0.1", log_message.client_ip)
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        wait_for_log_line(FILE_LOG_PATH, uuid)
       end)
 
 
@@ -760,18 +782,12 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
-        assert.equal("refused", log_message.request.headers.host)
-        assert.equal("POST", log_message.request.method)
-        assert.equal("bar", log_message.request.querystring.foo)
-        assert.equal("/status/200?foo=bar", log_message.upstream_uri)
+        wait_for_log_line(FILE_LOG_PATH, uuid, function(log_message)
+        return "refused" == log_message.request.headers.host
+               and "POST" == log_message.request.method
+               and "bar" == log_message.request.querystring.foo
+               and "/status/200?foo=bar" == log_message.upstream_uri
+        end)
       end)
 
 
@@ -792,15 +808,7 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("127.0.0.1", log_message.client_ip)
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        wait_for_log_line(FILE_LOG_PATH, uuid)
       end)
 
 
@@ -821,15 +829,7 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("127.0.0.1", log_message.client_ip)
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
+        wait_for_log_line(FILE_LOG_PATH, uuid)
       end)
 
 
@@ -855,18 +855,12 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal(uuid, log_message.request.headers["x-uuid"])
-        assert.equal("connect_timeout", log_message.request.headers.host)
-        assert.equal("POST", log_message.request.method)
-        assert.equal("bar", log_message.request.querystring.foo)
-        assert.equal("/status/200?foo=bar", log_message.upstream_uri)
+        wait_for_log_line(FILE_LOG_PATH, uuid, function(log_message)
+          return "connect_timeout" == log_message.request.headers.host
+                 and "POST" == log_message.request.method
+                 and "bar" == log_message.request.querystring.foo
+                 and "/status/200?foo=bar" == log_message.upstream_uri
+        end)
       end)
 
 
@@ -892,15 +886,9 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-
-        assert.equal(400, log_message.response.status)
+        wait_for_log_line(FILE_LOG_PATH, nil, function(log_message)
+          return 400 == log_message.response.status
+        end)
       end)
 
 
@@ -931,16 +919,11 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("POST", log_message.request.method)
-        assert.equal("bar", log_message.request.querystring.foo)
-        assert.equal("", log_message.upstream_uri) -- no URI here since Nginx could not parse request
+        wait_for_log_line(FILE_LOG_PATH, nil, function(log_message)
+          return "POST" == log_message.request.method
+                 and "bar" == log_message.request.querystring.foo
+                 and "" == log_message.upstream_uri -- no URI here since Nginx could not parse request
+        end)
       end)
 
 
@@ -965,16 +948,10 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-
-        assert.same({}, log_message.request.headers)
-        assert.equal(414, log_message.response.status)
+        wait_for_log_line(FILE_LOG_PATH, nil, function(log_message)
+          return #log_message.request.headers == 0
+                 and 414 == log_message.response.status
+        end)
       end)
 
 
@@ -1004,17 +981,12 @@ for _, strategy in helpers.each_strategy() do
         -- TEST: ensure that our logging plugin was executed and wrote
         -- something to disk.
 
-        helpers.wait_until(function()
-          return pl_path.exists(FILE_LOG_PATH)
-                 and pl_path.getsize(FILE_LOG_PATH) > 0
-        end, LOG_WAIT_TIMEOUT)
-
-        local log = pl_file.read(FILE_LOG_PATH)
-        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
-        assert.equal("POST", log_message.request.method)
-        assert.equal("", log_message.upstream_uri) -- no URI here since Nginx could not parse request
-        assert.is_nil(log_message.request.headers["x-uuid"]) -- none since Nginx could not parse request
-        assert.is_nil(log_message.request.headers.host) -- none as well
+        wait_for_log_line(FILE_LOG_PATH, nil, function(log_message)
+          return "POST" == log_message.request.method
+                 and "" == log_message.upstream_uri -- no URI here since Nginx could not parse request
+                 and nil == log_message.request.headers["x-uuid"] -- none since Nginx could not parse request
+                 and nil == log_message.request.headers.host -- none as well
+        end)
       end)
 
 

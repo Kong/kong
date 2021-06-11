@@ -1,0 +1,186 @@
+name: Performance Test
+
+on:
+  pull_request:
+  issue_comment:
+  schedule:
+  # don't know the timezone but it's daily at least
+  - cron:  '0 7 * * *'
+
+env:
+  terraform_version: '0.15.3'
+
+jobs:
+  perf:
+    name: RPS, latency and flamegraphs
+    runs-on: ubuntu-20.04
+    if: |
+      github.event_name == 'schedule' ||
+      (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'perf(')) ||
+      (github.event_name == 'issue_comment' && github.event.action == 'created' &&
+        github.event.issue.pull_request &&
+        contains('["OWNER", "COLLABORATOR", "MEMBER"]', github.event.comment.author_association) &&
+        (startsWith(github.event.comment.body, '/perf') || startsWith(github.event.comment.body, '/flamegraph'))
+      )
+
+    steps:
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+      # Fetch all history for all tags and branches
+      with:
+        fetch-depth: 0
+    
+    - name: Install OpenResty
+      run: |
+        openresty_version=$(cat .requirements | grep RESTY_VERSION= | cut -d= -f2)
+
+        sudo apt-get -y install --no-install-recommends wget gnupg ca-certificates
+        wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
+        echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | \
+          sudo tee /etc/apt/sources.list.d/openresty.list
+        sudo apt-get update
+        sudo apt-get install "openresty=${openresty_version}*" "openresty-resty=${openresty_version}*" -y
+        sudo apt-mark hold openresty
+
+    - name: Install Dependencies
+      run: |
+        wget https://luarocks.org/releases/luarocks-3.7.0.tar.gz -O - |tar zxvf -
+        pushd luarocks-*/
+        ./configure --with-lua=/usr/local/openresty/luajit/ \
+          --lua-suffix=jit \
+          --with-lua-include=/usr/local/openresty/luajit/include/luajit-2.1
+        sudo make install
+        popd
+
+        # just need the lua files to let all imports happy
+        # the CI won't actually run Kong locally
+        git clone https://github.com/kong/lua-kong-nginx-module /tmp/lua-kong-nginx-module
+        pushd /tmp/lua-kong-nginx-module
+        sudo make LUA_LIB_DIR=/usr/local/share/lua/5.1/ install
+        popd
+
+        # in Kong repository
+        sudo apt install libyaml-dev -y
+        sudo make dev
+
+        # terraform!
+        wget https://releases.hashicorp.com/terraform/${{ env.terraform_version }}/terraform_${{ env.terraform_version }}_linux_amd64.zip
+        unzip terraform_${{ env.terraform_version }}_linux_amd64.zip
+        sudo mv terraform /usr/bin/
+
+    - name: Choose perf suites
+      id: choose_perf
+      run: |
+        suites=$(echo "${{ github.event.comment.body }}" | awk '{print $1}')
+        tags=$(echo "${{ github.event.comment.body }}" | awk '{print $2}')
+
+        if [[ $suite == "/flamegraph" ]]; then
+          suites="02-flamegraph"
+          if [[ -z $tags ]]; then
+            tags="simple"
+          fi
+        elif [[ $suite == "/perf" ]]; then
+          suites="01-rps"
+          if [[ -z $tags ]]; then
+            tags="baseline,single_route"
+          fi
+        else
+          # if not specified by comment, run both
+          suites="01-rps 02-flamegraph"
+          if [[ -z $tags ]]; then
+            tags="baseline,single_route,simple"
+          fi
+        fi
+
+        echo ::set-output name=suites::"$suites"
+        echo ::set-output name=tags::"$tags"
+
+    - name: Run Tests
+      env:
+        PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
+        PERF_TEST_PACKET_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
+        PERF_TEST_PACKET_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
+        PERF_TEST_DRIVER: terraform
+      run: |
+        for suite in ${{ steps.choose_perf.outputs.suites }}; do
+          bin/busted -o gtest spec/04-perf/$suite/ \
+            -t "${{ steps.choose_perf.outputs.tags }}"
+        done
+        
+    - name: Teardown
+      # Note: by default each job has if: ${{ success() }}
+      if: always()
+      env:
+        PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
+        PERF_TEST_PACKET_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
+        PERF_TEST_PACKET_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
+        PERF_TEST_DRIVER: terraform
+        PERF_TEST_TEARDOWN_ALL: "true"
+      run: |
+        bin/busted -o gtest spec/04-perf/99-teardown/
+
+    - name: Save results
+      uses: actions/upload-artifact@v2
+      with:
+        name: rps-and-latency
+        path: |
+          output/result.txt
+        retention-days: 31
+
+    - name: Save flamegrpahs
+      uses: actions/upload-artifact@v2
+      with:
+        name: flamegraphs
+        path: |
+          output/*.svg
+        retention-days: 31
+
+    - name: Save error logs
+      uses: actions/upload-artifact@v2
+      with:
+        name: error_logs
+        path: |
+          output/*.log
+        retention-days: 31
+
+    - name: Output
+      id: output
+      run: |
+        if [[ "${{ steps.choose_perf.outputs.suites }}" =~ "02-flamegraph" ]]; then
+          result="Please see Github Actions artifacts for flamegraphs.
+
+          "
+        fi
+
+        result="${result}$(cat output/result.txt)" || true
+
+        # https://github.community/t/set-output-truncates-multiline-strings/16852/2
+        result="${result//'%'/'%25'}"
+        result="${result//$'\n'/'%0A'}"
+        result="${result//$'\r'/'%0D'}"
+
+        echo ::set-output name=result::"$result"
+    
+    - name: Comment
+      if: |
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'issue_comment' && github.event.issue.pull_request)
+      uses: actions-ecosystem/action-create-comment@v1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        body: |
+          ## :rocket: Performance test result
+
+          **Test Suite**: ${{ steps.choose_perf.outputs.suites }} (${{ steps.choose_perf.outputs.tags }})
+
+          <details><summary>Click to expand</summary>
+
+          ```
+          ${{ steps.output.outputs.result }}
+
+          Kong error logs are also available in Github Actions artifacts.
+          ```
+
+          </details>
+
+          [Download Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)

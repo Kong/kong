@@ -1,0 +1,361 @@
+name: Build & Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build dependencies
+    runs-on: ubuntu-20.04
+
+    env:
+      DOWNLOAD_ROOT: $HOME/download-root
+
+    steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Lookup build cache
+      uses: actions/cache@v2
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+
+    - name: Checkout kong-build-tools
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: Kong/kong-build-tools
+        path: kong-build-tools
+        ref: master
+
+    - name: Checkout go-pluginserver
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: Kong/go-pluginserver
+        path: go-pluginserver
+
+    - name: Add to Path
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+
+    - name: Install packages
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: sudo apt update && sudo apt install libyaml-dev valgrind
+
+    - name: Build Kong dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+          source .ci/setup_env_github.sh
+          make dev
+
+  lint-doc-and-unit-tests:
+    name: Lint, Doc and Unit tests
+    runs-on: ubuntu-20.04
+    needs: build
+
+    env:
+      KONG_TEST_PG_DATABASE: kong
+      KONG_TEST_PG_USER: kong
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: kong
+          POSTGRES_DB: kong
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
+
+    steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Lookup build cache
+      uses: actions/cache@v2
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+
+    - name: Check autodoc generation
+      run: |
+          eval `luarocks path`
+          scripts/autodoc
+
+    - name: Lint Lua code
+      run: |
+          eval `luarocks path`
+          luacheck -q .
+
+    - name: Unit tests
+      run: |
+          eval `luarocks path`
+          bin/busted -v -o htest spec/01-unit
+
+  integration-tests-postgres:
+    name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
+    runs-on: ubuntu-20.04
+    needs: build
+
+    strategy:
+      matrix:
+        suite: [integration, plugins]
+        split: [all, first (01-04), second (>= 05)]
+        exclude:
+          - suite: plugins
+            split: first (01-04)
+          - suite: plugins
+            split: second (>= 05)
+          - suite: integration
+            split: all
+
+    env:
+      KONG_TEST_PG_DATABASE: kong
+      KONG_TEST_PG_USER: kong
+      KONG_TEST_DATABASE: postgres
+      TEST_SUITE: ${{ matrix.suite }}
+      TEST_SPLIT: ${{ matrix.split }}
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: kong
+          POSTGRES_DB: kong
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
+
+      grpcbin:
+        image: moul/grpcbin
+        ports:
+          - 15002:9000
+          - 15003:9001
+
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: --entrypoint redis-server
+
+    steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Lookup build cache
+      uses: actions/cache@v2
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+
+    - name: Add gRPC test host names
+      run: |
+          echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
+
+    - name: Tests
+      run: |
+          eval `luarocks path`
+          make dev
+          .ci/run_tests.sh
+
+  integration-tests-dbless:
+    name: DB-less integration tests
+    runs-on: ubuntu-20.04
+    needs: build
+
+    env:
+      KONG_TEST_PG_DATABASE: kong
+      KONG_TEST_PG_USER: kong
+      KONG_TEST_DATABASE: 'off'
+      TEST_SUITE: dbless
+
+    services:
+      grpcbin:
+        image: moul/grpcbin
+        ports:
+          - 15002:9000
+          - 15003:9001
+
+    steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Lookup build cache
+      uses: actions/cache@v2
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+
+    - name: Add gRPC test host names
+      run: |
+          echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
+
+    - name: Tests
+      run: |
+          eval `luarocks path`
+          make dev
+          .ci/run_tests.sh
+
+  integration-tests-cassandra:
+    name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
+    runs-on: ubuntu-20.04
+    needs: build
+
+    strategy:
+      matrix:
+        suite: [integration, plugins]
+        cassandra_version: [3]
+        split: [all, first (01-04), second (>= 05)]
+        exclude:
+          - suite: plugins
+            split: first (01-04)
+          - suite: plugins
+            split: second (>= 05)
+          - suite: integration
+            split: all
+
+    env:
+      KONG_TEST_DATABASE: cassandra
+      TEST_SUITE: ${{ matrix.suite }}
+      TEST_SPLIT: ${{ matrix.split }}
+
+    services:
+      cassandra:
+        image: cassandra:${{ matrix.cassandra_version }}
+        ports:
+          - 7199:7199
+          - 7000:7000
+          - 9160:9160
+          - 9042:9042
+        options: --health-cmd "cqlsh -e 'describe cluster'" --health-interval 5s --health-timeout 5s --health-retries 8
+
+      grpcbin:
+        image: moul/grpcbin
+        ports:
+          - 15002:9000
+          - 15003:9001
+
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: --entrypoint redis-server
+
+    steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Lookup build cache
+      uses: actions/cache@v2
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+
+    - name: Add gRPC test host names
+      run: |
+          echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
+
+    - name: Tests
+      run: |
+          eval `luarocks path`
+          make dev
+          .ci/run_tests.sh
+
+  pdk-tests:
+    name: PDK tests
+    runs-on: ubuntu-20.04
+    needs: build
+
+    env:
+      TEST_SUITE: pdk
+
+    steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v2
+
+    - name: Lookup build cache
+      uses: actions/cache@v2
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+
+    - name: Add to Path
+      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$DOWNLOAD_ROOT/cpanm" >> $GITHUB_PATH
+
+    - name: Install Test::Nginx
+      run: |
+          CPAN_DOWNLOAD=$DOWNLOAD_ROOT/cpanm
+          mkdir -p $CPAN_DOWNLOAD
+          curl -o $CPAN_DOWNLOAD/cpanm https://cpanmin.us
+          chmod +x $CPAN_DOWNLOAD/cpanm
+
+          echo "Installing CPAN dependencies..."
+          cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
+          cpanm --notest Test::Nginx
+
+    - name: Tests
+      run: |
+          eval `luarocks path`
+          make dev
+
+          eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
+          .ci/run_tests.sh
