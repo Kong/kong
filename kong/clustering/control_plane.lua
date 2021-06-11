@@ -1,16 +1,19 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
 local _M = {}
 
 
 local semaphore = require("ngx.semaphore")
 local ws_server = require("resty.websocket.server")
-local ssl = require("ngx.ssl")
-local ocsp = require("ngx.ocsp")
-local http = require("resty.http")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
 local constants = require("kong.constants")
-local openssl_x509 = require("resty.openssl.x509")
 local string = string
 local assert = assert
 local setmetatable = setmetatable
@@ -34,6 +37,7 @@ local table_remove = table.remove
 local deflate_gzip = utils.deflate_gzip
 
 
+local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
@@ -47,7 +51,6 @@ local WS_OPTS = {
 }
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
-local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 
 
@@ -61,11 +64,15 @@ function _M.new(parent)
     clients = setmetatable({}, { __mode = "k", })
   }
 
-  return setmetatable(self, {
+  setmetatable(self, {
     __index = function(tab, key)
       return _M[key] or parent[key]
     end,
   })
+
+  self.plugins_map = {}
+
+  return self
 end
 
 
@@ -74,6 +81,25 @@ function _M:export_deflated_reconfigure_payload()
   if not config_table then
     return nil, err
   end
+
+  -- reset plugins map
+  for _, plugin_meta in pairs(self.plugins_map) do
+    plugin_meta.included = 0
+  end
+
+  -- update plugins map
+  if config_table.plugins then
+    for _, plugin in pairs(config_table.plugins) do
+      self.plugins_map[plugin.name].included = 1
+    end
+  end
+
+
+  -- store serialized plugins map for troubleshooting purposes
+  local shm_key_name = "clustering:cp_plugins_map:worker_" .. ngx.worker.id()
+  kong_dict:set(shm_key_name, cjson_encode(self.plugins_map));
+
+  ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
   local payload, err = cjson_encode({
     type = "reconfigure",
@@ -103,96 +129,22 @@ function _M:push_config()
   end
 
   local n = 0
-  for _, queue in pairs(self.clients) do
-    table_insert(queue, payload)
-    queue.post()
-    n = n + 1
+  for _, client in pairs(self.clients) do
+    -- perform plugin compatibility check
+    local res, err = self:should_send_config_update(client.node_version, client.node_plugins)
+    if res then
+      table_insert(client.queue, payload)
+      client.queue.post()
+      n = n + 1
+    else
+      ngx_log(ngx_WARN, "unable to send updated configuration to " ..
+        "DP node with hostname: " .. client.node_hostname ..
+        " ip: " .. client.node_ip ..
+        " reason: " .. err)
+    end
   end
 
   ngx_log(ngx_DEBUG, "config pushed to ", n, " clients")
-end
-
-function _M:validate_shared_cert()
-  local cert = ngx_var.ssl_client_raw_cert
-
-  if not cert then
-    ngx_log(ngx_ERR, "Data Plane failed to present client certificate " ..
-                     "during handshake")
-    return ngx_exit(444)
-  end
-
-  cert = assert(openssl_x509.new(cert, "PEM"))
-  local digest = assert(cert:digest("sha256"))
-
-  if digest ~= self.cert_digest then
-    ngx_log(ngx_ERR, "Data Plane presented incorrect client certificate " ..
-                     "during handshake, expected digest: " ..
-                     self.cert_digest ..
-                     " got: " .. digest)
-    return ngx_exit(444)
-  end
-end
-
-
-local check_for_revocation_status
-do
-  local get_full_client_certificate_chain = require("resty.kong.tls").get_full_client_certificate_chain
-  check_for_revocation_status = function()
-    local cert, err = get_full_client_certificate_chain()
-    if not cert then
-      return nil, err
-    end
-
-    local der_cert
-    der_cert, err = ssl.cert_pem_to_der(cert)
-    if not der_cert then
-      return nil, "failed to convert certificate chain from PEM to DER: " .. err
-    end
-
-    local ocsp_url
-    ocsp_url, err = ocsp.get_ocsp_responder_from_der_chain(der_cert)
-    if not ocsp_url then
-      return nil, err or "OCSP responder endpoint can not be determined, " ..
-                         "maybe the client certificate is missing the " ..
-                         "required extensions"
-    end
-
-    local ocsp_req
-    ocsp_req, err = ocsp.create_ocsp_request(der_cert)
-    if not ocsp_req then
-      return nil, "failed to create OCSP request: " .. err
-    end
-
-    local c = http.new()
-    local res
-    res, err = c:request_uri(ocsp_url, {
-      headers = {
-        ["Content-Type"] = "application/ocsp-request"
-      },
-      timeout = OCSP_TIMEOUT,
-      method = "POST",
-      body = ocsp_req,
-    })
-
-    if not res then
-      return nil, "failed sending request to OCSP responder: " .. tostring(err)
-    end
-    if res.status ~= 200 then
-      return nil, "OCSP responder returns bad HTTP status code: " .. res.status
-    end
-
-    local ocsp_resp = res.body
-    if not ocsp_resp or #ocsp_resp == 0 then
-      return nil, "unexpected response from OCSP responder: empty body"
-    end
-
-    res, err = ocsp.validate_ocsp_response(ocsp_resp, der_cert)
-    if not res then
-      return false, "failed to validate OCSP response: " .. err
-    end
-
-    return true
-  end
 end
 
 
@@ -221,47 +173,33 @@ function _M:should_send_config_update(node_version, node_plugins)
                   CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
   end
 
-  -- allow DP to have a superset of CP's plugins
-  local p, np
-  local i, j = #self.plugins_list, #node_plugins
+  -- iterate over control plane plugins map
+  for plugin_name, plugin_meta in pairs(self.plugins_map) do
 
-  if j < i then
-    return false, "CP and DP does not have same set of plugins installed",
-                  CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
-  end
+    -- check plugin only if it is included in the current config export
+    if plugin_meta.included == 1 then
+      -- if plugin isn't enabled on the data plane node return immediately
+      if not node_plugins[plugin_name] then
+        return false, "CP and DP do not have same set of plugins installed, " ..
+          "plugin: " .. tostring(plugin_name) .. " is missing",
+                        CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+      end
 
-  while i > 0 and j > 0 do
-    p = self.plugins_list[i]
-    np = node_plugins[j]
-
-    if p.name ~= np.name then
-      goto continue
-    end
-
-    -- ignore plugins without a version (route-by-header is deprecated)
-    if p.version and np.version then
-      -- major/minor check that ignores anything after the second digit
-      local major_minor_p = p.version:match("^(%d+%.%d+)") or "not_a_version"
-      local major_minor_np = np.version:match("^(%d+%.%d+)") or "still_not_a_version"
-
-      if major_minor_p ~= major_minor_np then
-        return false, "plugin \"" .. p.name .. "\" version incompatible, " ..
-                      "CP version: " .. tostring(p.version) ..
-                      " DP version: " .. tostring(np.version) ..
-                      " DP plugin version acceptable is "..
-                      major_minor_p .. ".x",
-                      CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+      -- ignore plugins without a version (route-by-header is deprecated)
+      if plugin_meta.version and node_plugins[plugin_name].version then
+        local major_minor_p = plugin_meta.version:match("^(%d+%.%d+)") or "not_a_version"
+        local major_minor_np = node_plugins[plugin_name].version:match("^(%d+%.%d+)") or "still_not_a_version"
+        
+        if major_minor_p ~= major_minor_np then
+          return false, "plugin \"" .. plugin_name .. "\" version incompatible, " ..
+            "CP version: " .. tostring(plugin_meta.version) ..
+            " DP version: " .. tostring(node_plugins[plugin_name].version) ..
+            " DP plugin version acceptable is "..
+            major_minor_p .. ".x",
+          CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+        end
       end
     end
-
-    i = i - 1
-    ::continue::
-    j = j - 1
-  end
-
-  if i > 0 then
-    return false, "CP and DP does not have same set of plugins installed",
-                  CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
   end
 
   return true
@@ -270,21 +208,10 @@ end
 
 function _M:handle_cp_websocket()
   -- use mutual TLS authentication
-  if self.conf.cluster_mtls == "shared" then
-    self:validate_shared_cert()
-
-  elseif self.conf.cluster_ocsp ~= "off" then
-    local res, err = check_for_revocation_status()
-    if res == false then
-      ngx_log(ngx_ERR, "DP client certificate was revoked: ", err)
-      return ngx_exit(444)
-
-    elseif not res then
-      ngx_log(ngx_WARN, "DP client certificate revocation check failed: ", err)
-      if self.conf.cluster_ocsp == "on" then
-        return ngx_exit(444)
-      end
-    end
+  local ok, err = self:validate_client_cert(ngx_var.ssl_client_raw_cert)
+  if not ok then
+    ngx_log(ngx_ERR, err)
+    return ngx_exit(444)
   end
 
   local node_id = ngx_var.arg_node_id
@@ -331,15 +258,27 @@ function _M:handle_cp_websocket()
     }
   end
 
-  self.clients[wb] = queue
+  local NODE_PLUGINS_MAP = {}
+  for _, plugin in pairs(node_plugins) do
+    NODE_PLUGINS_MAP[plugin.name] = { version = plugin.version }
+  end
+
+  self.clients[wb] = {
+    queue = queue,
+    node_hostname = node_hostname,
+    node_ip = node_ip,
+    node_version = node_version,
+    node_plugins = NODE_PLUGINS_MAP
+  }
+
+  if not self.deflated_reconfigure_payload then
+    assert(self:export_deflated_reconfigure_payload())
+  end
 
   local res, sync_status
-  res, err, sync_status = self:should_send_config_update(node_version, node_plugins)
+  res, err, sync_status = self:should_send_config_update(node_version, NODE_PLUGINS_MAP)
   if res then
     sync_status = CLUSTERING_SYNC_STATUS.NORMAL
-    if not self.deflated_reconfigure_payload then
-      assert(self:export_deflated_reconfigure_payload())
-    end
 
     if self.deflated_reconfigure_payload then
       table_insert(queue, self.deflated_reconfigure_payload)
@@ -451,7 +390,7 @@ function _M:handle_cp_websocket()
           end
 
         else
-          ok, err = self:should_send_config_update(node_version, node_plugins)
+          ok, err = self:should_send_config_update(node_version, NODE_PLUGINS_MAP)
           if ok then
             -- config update
             local _, err = wb:send_binary(payload)
@@ -550,6 +489,10 @@ function _M:init_worker()
   -- ROLE = "control_plane"
 
   local push_config_semaphore = semaphore.new()
+
+  for _, plugin in pairs(self.plugins_list) do
+    self.plugins_map[plugin.name] = { version = plugin.version, included = 0 }
+  end
 
   -- Sends "clustering", "push_config" to all workers in the same node, including self
   local function post_push_config_event()
