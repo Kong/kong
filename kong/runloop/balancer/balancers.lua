@@ -269,8 +269,7 @@ function balancer_mt:findAddress(ip, port, hostname)
   for _, target in ipairs(self.targets) do
     if target.name == hostname then
       for _, address in ipairs(target.addresses) do
-        if address.ip == ip and address.port == port
-        then
+        if address.ip == ip and address.port == port then
           return address
         end
       end
@@ -377,8 +376,6 @@ function balancer_mt:addAddress(target, entry)
 
   target.totalWeight = target.totalWeight + weight
   self.totalWeight = self.totalWeight + weight
-  target.unavailableWeight = target.unavailableWeight + weight
-  self.unavailableWeight = self.unavailableWeight + weight
   self:updateStatus()
 end
 
@@ -442,11 +439,7 @@ function balancer_mt:updateStatus()
     self.healthy = ((self.totalWeight - self.unavailableWeight) / self.totalWeight * 100 > self.healthThreshold)
   end
 
-  if self.healthy == old_status then
-    return -- no status change
-  end
-
-  if self.callback then
+  if self.callback and self.healthy ~= old_status then
     self:callback("health", self.healthy)
   end
 end
