@@ -30,7 +30,7 @@ code, other repos are also under active development:
   running Kong in Docker.
 - [Kong Packages](https://github.com/Kong/kong/releases): Pre-built packages
   for Debian, Red Hat, and OS X distributions (shipped with each release).
-- [Kong Gojira](https://github.com/Kong/gojira): a tool for
+- [Kong Gojira](https://github.com/Kong/gojira): A tool for
   testing/developing multiple versions of Kong using containers.
 - [Kong Vagrant](https://github.com/Kong/kong-vagrant): A Vagrantfile for
   provisioning a development-ready environment for Kong.
@@ -77,7 +77,7 @@ and custom dependencies.
 
 The [plugin template](https://github.com/Kong/kong-plugin) provides a basic
 plugin and is considered a best-practices plugin repository. When writing
-custom plugins we strongly suggest you start by using this repository as a
+custom plugins, we strongly suggest you start by using this repository as a
 starting point. It contains the proper file structures, configuration files,
 and CI setup to get up and running quickly. This repository seamlessly
 integrates with [Pongo](https://github.com/Kong/kong-pongo).
@@ -89,10 +89,9 @@ You can use a Vagrant box running Kong and Postgres that you can find at
 
 #### Source Install
 
-Kong mostly is an OpenResty application made of Lua source files, but also
+Kong is mostly an OpenResty application made of Lua source files, but also
 requires some additional third-party dependencies. We recommend installing
-those by following the source install instructions at
-https://docs.konghq.com/install/source/.
+those by following the [source install instructions](https://docs.konghq.com/install/source/).
 
 Instead of following the second step (Install Kong), clone this repository
 and install the latest Lua sources instead of the currently released ones:
@@ -111,7 +110,7 @@ $ luarocks make
 #### Running for development
 
 Check out the [development section](https://github.com/Kong/kong/blob/master/kong.conf.default#L244)
-of the default configuration file for properties to tweak in order to ease
+of the default configuration file for properties to tweak to ease
 the development process for Kong.
 
 Modifying the [`lua_package_path`](https://github.com/openresty/lua-nginx-module#lua_package_path)
@@ -140,7 +139,7 @@ $ make test
 ```
 
 However, the integration and plugins tests will spawn a Kong instance and
-perform their tests against it. As so, consult/edit the `spec/kong_tests.conf`
+perform their tests against it. Because these test suites perform their tests against the Kong instance, you may need to edit the `spec/kong_tests.conf`
 configuration file to make your test instance point to your Postgres/Cassandra
 servers, depending on your needs.
 
@@ -358,4 +357,3 @@ Verify the three new containers are up and running with `docker ps` on a separat
 Now run unit tests with `make test` and integration test with `make test-integration`.
 
 Hack on!
-

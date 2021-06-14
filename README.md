@@ -17,11 +17,11 @@ By providing functionality for proxying, routing, load balancing, health checkin
 
 Let’s test drive Kong by adding authentication to an API in under 5 minutes.
 
-We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/install/docker/) procedure if you’d prefer to run the Kong API Gateway in a DB-less mode. 
+We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/install/docker/) procedure if you’d prefer to run the Kong API Gateway in DB-less mode. 
 
 Whether you’re running in the cloud, on bare metal or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
 
-1) To start, clone the Docker repository and navigate to the compose folder
+1) To start, clone the Docker repository and navigate to the compose folder.
 ```cmd
   $ git clone https://github.com/Kong/docker-kong
   $ cd compose/
