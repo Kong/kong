@@ -85,8 +85,9 @@ stages:
   - lint and unit
   - test
   - name: package
-  - name: deploy
-    if: tag =~ 0. || type == cron || branch = master
+  # Master artifacts releasing is now disabled. Nightlies are created by Jenkins.
+  # - name: deploy
+  #   if: tag =~ 0. || type == cron || branch = master
 
 jobs:
   include:
@@ -104,13 +105,14 @@ jobs:
     # it's not terrible if it's uncommented. But it will break for any PR not
     # targeted at current kong master
     # (unless proper KONG_DISTRIBUTIONS_VERSION branch is set)
-    # - stage: package
-    #   if: branch != master
-    #   script: .ci/build_package.sh
-    # package and release, only on master
-    - stage: package and deploy
+    - stage: package
       if: branch = master
-      script: .ci/build_package.sh && .ci/release_artifacts.sh
+      script: .ci/build_package.sh
+    # Master artifacts releasing is now disabled. Nightlies are created by Jenkins.
+    # package and release, only on master
+    # - stage: package and deploy
+    #   if: branch = master
+    #   script: .ci/build_package.sh && .ci/release_artifacts.sh
 
 script:
   - .ci/run_tests.sh
