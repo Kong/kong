@@ -2,6 +2,8 @@ local lapis       = require "lapis"
 local utils       = require "kong.tools.utils"
 local singletons  = require "kong.singletons"
 local api_helpers = require "kong.api.api_helpers"
+local hooks       = require "kong.hooks"
+
 
 
 local ngx      = ngx
@@ -15,6 +17,9 @@ app.default_route = api_helpers.default_route
 app.handle_404 = api_helpers.handle_404
 app.handle_error = api_helpers.handle_error
 app:before_filter(api_helpers.before_filter)
+
+-- Hooks for running before_filter similar to kong/api
+assert(hooks.run_hook("status_api:init:pre", app))
 
 
 ngx.log(ngx.DEBUG, "Loading Status API endpoints")
