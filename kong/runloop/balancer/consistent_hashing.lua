@@ -11,8 +11,10 @@
 
 local balancers = require "kong.runloop.balancer.balancers"
 local xxhash32 = require "luaxxhash"
-local log_DEBUG = kong.log.debug
-local log_CRIT = kong.log.crit
+
+local ngx_log = ngx.log
+local ngx_CRIT = ngx.CRIT
+local ngx_DEBUG = ngx.DEBUG
 
 local floor = math.floor
 local table_sort = table.sort
@@ -103,7 +105,7 @@ function consistent_hashing:afterHostUpdate()
         if i > self.points then
           -- this should happen only if there are an awful amount of hosts with
           -- low relative weight.
-          log_CRIT("consistent hashing balancer requires more entries ",
+          ngx_log(ngx_CRIT, "consistent hashing balancer requires more entries ",
                   "to add the number of hosts requested, please increase the ",
                   "wheel size")
           return
@@ -112,7 +114,7 @@ function consistent_hashing:afterHostUpdate()
     end
   end
 
-  log_DEBUG("continuum of size ", self.points,
+  ngx_log(ngx_DEBUG, "continuum of size ", self.points,
           " updated with ", total_collision, " collisions")
 
   self.continuum = new_continuum
@@ -131,7 +133,7 @@ end
 -- function.
 -- @return `ip + port + hostheader` + `handle`, or `nil+error`
 function consistent_hashing:getPeer(cacheOnly, handle, valueToHash)
-  log_DEBUG("trying to get peer with value to hash: [", valueToHash, "]")
+  ngx_log(ngx_DEBUG, "trying to get peer with value to hash: [", valueToHash, "]")
   local balancer = self.balancer
   --if not balancer.healthy then
   --  return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
@@ -175,7 +177,7 @@ function consistent_hashing:getPeer(cacheOnly, handle, valueToHash)
           return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
         end
       elseif port == balancers.errors.ERR_ADDRESS_UNAVAILABLE then
-        log_DEBUG("found address but it was unavailable. ",
+        ngx_log(ngx_DEBUG, "found address but it was unavailable. ",
                 " trying next one.")
       else
         -- an unknown error occured
@@ -218,7 +220,7 @@ function consistent_hashing.new(opts)
 
   self:afterHostUpdate()
 
-  log_DEBUG("consistent_hashing balancer created")
+  ngx_log(ngx_DEBUG, "consistent_hashing balancer created")
 
   return self
 end

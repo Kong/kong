@@ -1,7 +1,6 @@
 
 local balancers = require "kong.runloop.balancer.balancers"
 
-local log_DEBUG = kong.log.debug
 local random = math.random
 
 local MAX_WHEEL_SIZE = 2^32
@@ -45,7 +44,7 @@ function roundrobin_algorithm:afterHostUpdate()
   end
 
   if total_weight == 0 then
-    log_DEBUG("trying to set a round-robin balancer with no addresses")
+    ngx.log(ngx.DEBUG, "trying to set a round-robin balancer with no addresses")
     return
   end
 
@@ -104,7 +103,7 @@ function roundrobin_algorithm:getPeer(cacheOnly, handle, hashValue)
           return nil, balancers.errors.ERR_BALANCER_UNHEALTHY
         end
       elseif port == balancers.errors.ERR_ADDRESS_UNAVAILABLE then
-        log_DEBUG("found address but it was unavailable. ",
+        ngx.log(ngx.DEBUG, "found address but it was unavailable. ",
           " trying next one.")
       else
         -- an unknown error occurred
