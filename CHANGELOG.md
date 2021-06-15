@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.5.0 RC.1](#250rc1)
 - [2.4.1](#241)
 - [2.4.0](#240)
 - [2.3.3](#233)
@@ -57,8 +58,133 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## [2.5.0RC.1]
+
+> Release date: TBD
+
+This is an RC release of Kong 2.5.0, with no breaking changes with respect to the 2.x series.
+
+As an RC it is a test version which should represent the features that will be present in the official 2.5.0 version.
+
+This version includes Control Plane resiliency to database outages and the new `declarative_config_string`, amongst
+other features and fixes.
+
+### Distribution
+
+- :warning: Since 2.4.1, Kong packages are no longer distributed
+  through Bintray. Please download from [download.konghq.com](https://download.konghq.com).
+
+### Dependencies
+
+- Bumped `openresty` from 1.19.3.1 to 1.19.3.2 [#7430](https://github.com/kong/kong/pull/7430)
+- Bumped `luasec` from 1.0 to 1.0.1 [#7126](https://github.com/kong/kong/pull/7126)[
+- Bumped `luarocks` from 3.5.0 to 3.7.0 [#7043](https://github.com/kong/kong/pull/7043)
+- Bumped `grpcurl` from 1.8.0 to 1.8.1 [#7128](https://github.com/kong/kong/pull/7128)
+- Pinned `lua-protobuf` to 0.3.2 (previously unpinned) [#7079](https://github.com/kong/kong/pull/7079)
+
+### Additions
+
+#### Core
+
+- Control Plane can send updates to new Data Planes even when database is down
+  [#6938](https://github.com/kong/kong/pull/6938)
+- Automatically add `cluster_cert` or `cluster_ca_cert` into `lua_ssl_trusted_certificate`
+  when operating under Data Plane mode
+  [#7044](https://github.com/kong/kong/pull/7044)
+- New `declarative_config_string` option allows loading declarative config directly from a string
+  [#7379](https://github.com/kong/kong/pull/7379)
+
+#### PDK
+
+- Accept tables in response body for stream subsystem
+  [#7082](https://github.com/kong/kong/pull/7082)
+
+#### Plugins
+
+- **hmac-auth**: add support for the "@request-target" field support
+  [#7037](https://github.com/kong/kong/pull/7037)
+- **syslog**: Add facility configuration capability
+  [#6081](https://github.com/kong/kong/pull/6081).
+  Thanks, [jideel](https://github.com/jideel)!
+- **Prometheus**: Expose dataplane status on control plane, new metrics data_plane_last_seen, data_plane_config_hash and data_plane_version_compatible
+  https://github.com/Kong/kong-plugin-prometheus/pull/98
+- **Zipkin**: has now service.name and route.name tags
+  https://github.com/Kong/kong-plugin-zipkin/pull/115
+
+
+### Fixes
+
+#### Core
+
+- `select_by_cache_key` does not do unnecessary cache reads in `off` strategy
+  [#7146](https://github.com/kong/kong/pull/7146)
+- Kong can handle errors that happen inside a plugin's `init_worker` handler
+  [#7099](https://github.com/kong/kong/pull/7099)
+
+#### CP/DP
+
+- Control planes don't perform health checks upon CRUD upstreams/targets events
+  [#7085](https://github.com/kong/kong/pull/7085)
+- Fixed a bug that provoked unnecessary cache flips on Data Plane
+  [#7112](https://github.com/kong/kong/pull/7112)
+- TLS keepalive request no longer can share their context
+  [#7102](https://github.com/kong/kong/pull/7102)
+- HTTP Status 405 is now handled by Kong's error handler
+  [#6933](https://github.com/kong/kong/pull/6933).
+  Thanks, [yamaken1343](https://github.com/yamaken1343)!
+
+#### Balancer
+
+- Targets with weight=0 are no longer returned by the DAO
+  [#7094](https://github.com/kong/kong/pull/7094)
+- Upserting existing Targets no longer fails
+  [#7052](https://github.com/kong/kong/pull/7052)
+- The last balancer attempt is now correctly loggged
+  [#6972](https://github.com/kong/kong/pull/6972)
+- Ensure that the correct upstream event is removed from queue when updating balancer state
+  [#7103](https://github.com/kong/kong/pull/7103)
+
+#### CLI
+
+- `prefix` argument in `kong stop` command takes precedence over environment variables
+  [#7080](https://github.com/kong/kong/pull/7080)
+
+#### Configuration
+
+- Declarative configuration correctly parses plugin entities schemas with attributes called "plugins"
+  [#7412](https://github.com/kong/kong/pull/7412)
+- The stream access log config options are now properly separated from the HTTP access log
+  [#7046](https://github.com/kong/kong/pull/7046)
+
+#### Migrations
+
+- Kong no longer assumes that `/?/init.lua` is in the Lua path when doing migrations
+  [#6993](https://github.com/kong/kong/pull/6993)
+
+#### PDK
+
+- `response.getXXX()` functions work in the log phase on external plugins
+  [#7048](https://github.com/kong/kong/pull/7048)
+- External plugins handle certain error conditions better while the Kong balancer is being refreshed
+  [#7153](https://github.com/kong/kong/pull/7153).
+  Thanks, [ealogar](https://github.com/ealogar)!
+- `kong.log`'s phase checker is correct
+  [#7109](https://github.com/kong/kong/pull/7109)
+- Kong no longer sandboxes the `string.rep` function
+  [#7167](https://github.com/kong/kong/pull/7167)
+- `kong.pdk.node` can now correctly iterate over all the shared dict metrics
+  [#7078](https://github.com/kong/kong/pull/7078)
+
+#### Plugins
+
+- **LDAP-auth**: The LDAP port has a default value
+  [#7438](https://github.com/kong/kong/pull/7438)
+- **Prometheus**: Fix exporter to attach subsystem label to memory stats
+  https://github.com/Kong/kong-plugin-prometheus/pull/118
+
 
 ## [2.4.1]
+
 
 > Released 2021/05/11
 
@@ -6111,6 +6237,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.5.0RC1]: https://github.com/Kong/kong/compare/2.4.1...2.5.0-rc.1
 [2.4.1]: https://github.com/Kong/kong/compare/2.4.0...2.4.1
 [2.4.0]: https://github.com/Kong/kong/compare/2.3.3...2.4.0
 [2.3.3]: https://github.com/Kong/kong/compare/2.3.2...2.3.3
