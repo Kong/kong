@@ -106,7 +106,7 @@ local function create_balancer_exclusive(upstream)
   if algorithm_types == nil then
     algorithm_types = {
       ["consistent-hashing"] = require("kong.runloop.balancer.consistent_hashing"),
-      --["least-connections"] = require("resty.dns.balancer.least_connections"),
+      ["least-connections"] = require("kong.runloop.balancer.least_connections"),
       ["round-robin"] = require("kong.runloop.balancer.round_robin"),
     }
   end
