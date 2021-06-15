@@ -12,6 +12,10 @@
 - test rockspec; `luarocks install kong-plugin-aws-lambda`
 
 
+## unreleased
+
+- fix: handle multivalueheaders [#59](https://github.com/Kong/kong-plugin-aws-lambda/pull/59)
+
 ## aws-lambda 3.5.4 22-Mar-2021
 
 - tests: just fix the test suite so that it works with kong repo too

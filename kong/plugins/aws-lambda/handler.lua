@@ -101,6 +101,13 @@ local function extract_proxy_response(content)
     body = ngx_decode_base64(body)
   end
 
+  local multiValueHeaders = serialized_content.multiValueHeaders
+  if multiValueHeaders then
+    for header, values in pairs(multiValueHeaders) do
+      headers[header] = values
+    end
+  end
+
   headers["Content-Length"] = #body
 
   return {

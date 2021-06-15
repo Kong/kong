@@ -111,6 +111,12 @@ for _, strategy in helpers.each_strategy() do
         service     = null,
       }
 
+      local route17 = bp.routes:insert {
+        hosts       = { "lambda17.com" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
@@ -329,6 +335,19 @@ for _, strategy in helpers.each_strategy() do
           aws_secret           = "mock-secret",
           aws_region           = "us-east-1",
           function_name        = "functionWithBase64EncodedResponse",
+          is_proxy_integration = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route17.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
+          function_name        = "functionWithMultiValueHeadersResponse",
           is_proxy_integration = true,
         }
       }
@@ -897,6 +916,18 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
         assert.equal("test", res:read_body())
+      end)
+      it("returns multivalueheaders response from a Lambda function", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+          headers = {
+            ["Host"] = "lambda17.com"
+          }
+        })
+        assert.res_status(200, res)
+        assert.is_string(res.headers.age)
+        assert.is_array(res.headers["Access-Control-Allow-Origin"])
       end)
     end)
   end)

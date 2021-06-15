@@ -24,6 +24,7 @@ env:
   - DOCKER_USERNAME=kongcloudpull
   - secure: LruPuOUZuawukX4dYFrkeIQfHLkEqrXMhMgcLzNYYo/0V6vv3M7Nu2sGek8jwReNAbfXYuDM3T1U3PND5FYVJzz/FPGUdBVsCVFipjTeEKEjCrVr7gdB9yeJj91QtJum+sOoIrXj+VuRK+4VCeVhpSfB9WjnIT8NxedH7UkS1THsKA0AVIlUNGFtycS9dfCqzZivPyyVu6woUWQjyytg+90Q7KHMqtz8e3GhETNPP4bVyAjMEnc/0w1KOFJBUK0iPJ/Xbhz61z4RrnjvTG9dV75UHexI4aPOvUVZCCautKUl2TDbjO65eLeMT2+EK9T0c8wUikTjfMc/td5HfszTRs+8oOymUj7UN9LIvUShZ8PdlqiOgsIvJKrrzHkVrk3hTgw3qIsGWnj5WgP3cPKV2As7Q7FcHPmirh041bpSEI1FjfOp8zQUQlqqWLIOiFl6mYlbY6xHgvHzjiisNXhxJXfM9P5hVJneFhAmreHHwiW9dht0LmS1suwwALkmbgc892khi4qzCbtWcn7b/UzNeOmjLdSunQChvsCvv4aVnImVkvXDxmqODnJ5Ozad7Ysf28G3222fFPnVbu5zS8h/zmtSqcgHCBSP0DNx8m5ocHqh7UW7XpYjOKEMGpio/3T3GP/yogtNAdHKeJkF/iyzLYpe5tteAYgO0nLSmG+qmzk=
 install:
+- if [ "$TRAVIS_SECURE_ENV_VARS" = "true" ]; then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; else echo "no docker credentials to log in, watch for the rate-limit"; fi
 - git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
 - "../kong-pongo/pongo.sh up"
 - "../kong-pongo/pongo.sh build"

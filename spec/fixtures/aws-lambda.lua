@@ -42,6 +42,9 @@ local fixtures = {
                     elseif string.match(ngx.var.uri, "functionWithBase64EncodedResponse") then
                       ngx.say("{\"statusCode\": 200, \"body\": \"dGVzdA==\", \"isBase64Encoded\": true}")
 
+                    elseif string.match(ngx.var.uri, "functionWithMultiValueHeadersResponse") then
+                      ngx.say("{\"statusCode\": 200, \"headers\": { \"Age\": \"3600\"}, \"multiValueHeaders\": {\"Access-Control-Allow-Origin\": [\"site1.com\", \"site2.com\"]}}")
+
                     elseif type(res) == 'string' then
                       ngx.header["Content-Length"] = #res + 1
                       ngx.say(res)
