@@ -737,8 +737,9 @@ return {
 
       GET = function(self, db, helpers)
         local endpoints = rbac.get_role_endpoints(db, self.rbac_role)
+        local workspace = unescape_uri(self.params.workspace)
         for _, e in ipairs(endpoints) do
-          if e.endpoint == self.params.endpoint  then
+          if e.endpoint == self.params.endpoint and e.workspace == workspace then
             kong.response.exit(200, post_process_actions(e))
           end
         end
