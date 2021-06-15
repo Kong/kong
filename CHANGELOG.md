@@ -1,3 +1,11 @@
+1.4.0 - 2021-06-15
+
+New features:
+  - service.name and route.name tags (#115)
+
+Fixes:
+  - balancer_latency is nil upon failure (#113), thanks @greut!
+
 1.3.0 - 2021-03-19
 
 New features:
