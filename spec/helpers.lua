@@ -805,11 +805,11 @@ end
 --- returns a pre-configured `http_client` for the Kong proxy port.
 -- @function proxy_client
 -- @param timeout (optional, number) the timeout to use
-local function proxy_client(timeout)
+local function proxy_client(timeout, forced_port)
   local proxy_ip = get_proxy_ip(false)
   local proxy_port = get_proxy_port(false)
   assert(proxy_ip, "No http-proxy found in the configuration")
-  return http_client(proxy_ip, proxy_port, timeout or 60000)
+  return http_client(proxy_ip, forced_port or proxy_port, timeout or 60000)
 end
 
 
