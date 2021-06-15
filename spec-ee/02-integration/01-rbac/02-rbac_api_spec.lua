@@ -3083,6 +3083,41 @@ describe("Admin API RBAC with #" .. strategy, function()
         assert.res_status(404, res)
       end)
 
+      it("does not retrieve entity if the wrong workspace is given", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "mock-role",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "/foo",
+            actions = "*",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+        assert.res_status(201, res)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/mock-role/endpoints/dne-workspace/foo",
+        })
+
+        assert.res_status(404, res)
+      end)
+
       describe("errors", function()
         it("when the given role does not exist", function()
           local res = assert(client:send {
