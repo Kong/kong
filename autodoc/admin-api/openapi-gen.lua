@@ -350,19 +350,13 @@ local function fill_paths(paths)
   for path, methods in pairs(paths) do
     for method, content in pairs(methods) do
       if path == "/config" then
-        content.summary = METHOD_ONLY_DBLESS
+        content.description = METHOD_ONLY_DBLESS
       elseif method ~= "get" then
-        content.summary = METHOD_NA_DBLESS
+        content.description = METHOD_NA_DBLESS
       end
 
-      if path_content[path] and path_content[path][method:upper()] and path_content[path][method:upper()].title then
-        if content.summary and content.summary:len() > 1 then
-          content.summary = content.summary .. " "
-        else
-          content.summary = ""
-        end
-
-        content.summary = content.summary .. path_content[path][method:upper()].title
+      if path_content[path] and path_content[path][method:upper()] then
+        content.summary = path_content[path][method:upper()].title
       end
     end
 
