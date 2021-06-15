@@ -17,12 +17,9 @@ local ngx_DEBUG = ngx.DEBUG
 local EMPTY = setmetatable({},
         {__newindex = function() error("The 'EMPTY' table is read-only") end})
 
-local ffi = require "ffi"
-local _structct = ffi.typeof('struct {}')
 
 local lc = {}
 lc.__index = lc
-
 
 local function insertAddr(bh, addr)
   addr.connectionCount = addr.connectionCount or 0
@@ -33,73 +30,26 @@ local function insertAddr(bh, addr)
 end
 
 -- @param delta number (+1 or -1) to update the connection count
-local function updateConnectionCount(addr, delta)
+local function updateConnectionCount(bh, addr, delta)
   addr.connectionCount = addr.connectionCount + delta
 
-  if not addr.available then
+  if not addr.available or not bh then
     return
   end
 
-  -- go update the heap position
-  local bh = ((addr.target or EMPTY).balancer or EMPTY).binaryHeap
-  if bh then
-    -- NOTE: we use `connectionCount + 1` this ensures that even on a balancer
-    -- with 0 connections the heighest weighted entry is picked first. If we'd
-    -- not add the `+1` then any target with 0 connections would always be the
-    -- first to be picked (even if it has a very low eight)
-    bh:update(addr, (addr.connectionCount + 1) / addr.weight)
-  end
+  -- NOTE: we use `connectionCount + 1` this ensures that even on a balancer
+  -- with 0 connections the heighest weighted entry is picked first. If we'd
+  -- not add the `+1` then any target with 0 connections would always be the
+  -- first to be picked (even if it has a very low eight)
+  bh:update(addr, (addr.connectionCount + 1) / addr.weight)
 end
 
-local function releaseHandle(handle)
+local function releaseHandleAddress(handle)
   if handle.address then
-    updateConnectionCount(handle.address, -1)
+    updateConnectionCount(handle.binaryHeap, handle.address, -1)
+    handle.address = nil
   end
 end
-
-
---function lcAddr:setState(available)
---    local old_available = self.available
---    self.super.setState(self, available)
---    if old_available == self.available then
---        -- nothing changed
---        return
---    end
---
---    local bh = self.host.balancer.binaryHeap
---    if self.available then
---        bh:insert((self.connectionCount + 1) / self.weight, self)
---    else
---        bh:remove(self)
---    end
---end
-
-
----- disabling the address, so delete from binaryHeap
---function lcAddr:disable()
---    self.host.balancer.binaryHeap:remove(self)
---    self.super.disable(self)
---end
-
-
---function lc:newAddress(addr)
---    addr = self.super.newAddress(self, addr)
---
---    -- inject additional properties
---    addr.connectionCount = 0
---
---    -- inject additioanl methods
---    for name, method in pairs(lcAddr) do
---        addr[name] = method
---    end
---
---    -- insert self in binary heap
---    if addr.available then
---        self.binaryHeap:insert((addr.connectionCount + 1) / addr.weight, addr)
---    end
---
---    return addr
---end
 
 function lc:getPeer(cacheOnly, handle, hashValue)
   if handle then
@@ -110,13 +60,14 @@ function lc:getPeer(cacheOnly, handle, hashValue)
     handle.failedAddresses = handle.failedAddresses or setmetatable({}, {__mode = "k"})
     handle.failedAddresses[handle.address] = true
     -- let go of previous connection
-    --handle.address:release()
-    updateConnectionCount(handle.address, -1)
-    handle.address = nil
+    releaseHandleAddress(handle)
   else
     -- no handle, so this is a first try
-    handle = { retryCount = 0 }
-    handle.token = ffi.gc(_structct(), function() releaseHandle(handle) end)
+    handle = {
+      retryCount = 0,
+      binaryHeap = self.binaryHeap,
+      release = releaseHandleAddress,
+    }
   end
 
   local address, ip, port, host
@@ -157,7 +108,6 @@ function lc:getPeer(cacheOnly, handle, hashValue)
         -- reinsert the ones we temporarily popped
         for i = 1, #reinsert do
           local addr = reinsert[i]
-          --self.binaryHeap:insert((addr.connectionCount + 1) / addr.weight, addr)
           insertAddr(self.binaryHeap, addr)
         end
         reinsert = nil -- luacheck: ignore
@@ -177,7 +127,7 @@ function lc:getPeer(cacheOnly, handle, hashValue)
     if ip then
       -- success, exit
       handle.address = address
-      updateConnectionCount(address, 1)
+      updateConnectionCount(self.binaryHeap, address, 1)
       break
     end
 
@@ -193,8 +143,7 @@ function lc:getPeer(cacheOnly, handle, hashValue)
   if ip then
     return ip, port, host, handle
   else
-    handle.address = nil
-    --handle:release(true)
+    releaseHandleAddress(handle)
     return nil, port
   end
 end
@@ -234,39 +183,13 @@ end
 --   { name = "getkong.org", port = 80, weight = 25 },  -- fully specified, as table
 -- }
 function lc.new(opts)
+  --printf("new")
   local self = setmetatable({
     binaryHeap = binaryHeap.minUnique(),
     balancer = opts.balancer
   }, lc)
 
   self:afterHostUpdate()
-
-  --assert(type(opts) == "table", "Expected an options table, but got: "..type(opts))
-  --if not opts.log_prefix then
-  --    opts.log_prefix = "least-connections"
-  --end
-  --
-  --local self = assert(balancer_base.new(opts))
-  --
-  ---- inject overridden methods
-  --for name, method in pairs(lc) do
-  --    self[name] = method
-  --end
-  --
-  ---- inject properties
-  --self.binaryHeap = binaryHeap.minUnique() -- binaryheap tracking next up address
-  --
-  ---- add the hosts provided
-  --for _, host in ipairs(opts.hosts or EMPTY) do
-  --    if type(host) ~= "table" then
-  --        host = { name = host }
-  --    end
-  --
-  --    local ok, err = self:addHost(host.name, host.port, host.weight)
-  --    if not ok then
-  --        return ok, "Failed creating a balancer: "..tostring(err)
-  --    end
-  --end
 
   ngx_log(ngx_DEBUG, "least-connections balancer created")
 
