@@ -1,8 +1,15 @@
 # Table of Contents
 
+- [0.1.3](#013---20210603)
 - [0.1.2](#012---20201105)
 - [0.1.1](#011---20200526)
 - [0.1.0](#010---20200521)
+
+##  [0.1.3] - 2021/06/03
+
+- Fix typo from gatewat to gateway (#16)
+- Correctly clear URI args in rewrite (#23)
+- Map grpc-status to HTTP status code (#25)
 
 ##  [0.1.2] - 2020/11/05
 
@@ -19,6 +26,7 @@ main protoc file's directory as base for non-absolute paths
 
 - Initial release of gRPC gateway plugin for Kong.
 
+[0.1.3]: https://github.com/Kong/kong-plugin-grpc-gateway/compare/0.1.2...0.1.3
 [0.1.2]: https://github.com/Kong/kong-plugin-grpc-gateway/compare/0.1.1...0.1.2
 [0.1.1]: https://github.com/Kong/kong-plugin-grpc-gateway/compare/0.1.0...0.1.1
 [0.1.0]
