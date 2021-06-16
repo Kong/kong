@@ -11,7 +11,7 @@ local spec_path = debug.getinfo(1).source:match("@?(.*/)")
 
 local nginx_conf
 if stream_available then
-  nginx_conf = spec_path .. "/fixtures/prometheus/custom_nginx.template"
+  nginx_conf = "./spec/fixtures/prometheus/custom_nginx.template"
 else
   nginx_conf = "./spec/fixtures/custom_nginx.template"
 end
@@ -43,7 +43,7 @@ describe("Plugin: prometheus (access)", function()
 
     local grpc_service = bp.services:insert {
       name = "mock-grpc-service",
-      url = "grpc://grpcbin:9000",
+      url = "grpc://127.0.0.1:15002",
     }
 
     bp.routes:insert {
@@ -55,7 +55,7 @@ describe("Plugin: prometheus (access)", function()
 
     local grpcs_service = bp.services:insert {
       name = "mock-grpcs-service",
-      url = "grpcs://grpcbin:9001",
+      url = "grpcs://127.0.0.1:15003",
     }
 
     bp.routes:insert {
@@ -85,16 +85,22 @@ describe("Plugin: prometheus (access)", function()
     helpers.tcp_server(TCP_SERVICE_PORT)
     assert(helpers.start_kong {
         nginx_conf = nginx_conf,
-        plugins = "bundled, prometheus",
         stream_listen = "127.0.0.1:" .. TCP_PROXY_PORT,
     })
-    proxy_client = helpers.proxy_client()
-    admin_client = helpers.admin_client()
     proxy_client_grpc = helpers.proxy_client_grpc()
     proxy_client_grpcs = helpers.proxy_client_grpcs()
   end)
 
   teardown(function()
+    helpers.stop_kong()
+  end)
+
+  before_each(function()
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
+  end)
+
+  after_each(function()
     if proxy_client then
       proxy_client:close()
     end
@@ -102,7 +108,7 @@ describe("Plugin: prometheus (access)", function()
       admin_client:close()
     end
 
-    helpers.stop_kong()
+
   end)
 
   it("increments the count for proxied requests", function()
@@ -120,7 +126,7 @@ describe("Plugin: prometheus (access)", function()
         method  = "GET",
         path    = "/metrics",
       })
-      local body = assert.res_status(200, res)
+      local body = res:read_body()
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
       return body:find('kong_http_status{service="mock-service",route="http-route",code="200"} 1', nil, true)
