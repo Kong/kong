@@ -44,6 +44,11 @@ local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 
 
+local function log(level, ...)
+  ngx_log(level, "[clustering] ", ...)
+end
+
+
 local function is_timeout(err)
   return err and string.sub(err, -7) == "timeout"
 end
@@ -72,8 +77,8 @@ function _M:update_config(config_table, update_cache)
   end
 
   if declarative.get_current_hash() == new_hash then
-    ngx_log(ngx_DEBUG, "same config received from control plane, ",
-            "no need to reload")
+    log(ngx_DEBUG, "same config received from control plane, ",
+                   "no need to reload")
     return true
   end
 
@@ -89,12 +94,12 @@ function _M:update_config(config_table, update_cache)
     -- local persistence only after load finishes without error
     local f, err = io_open(CONFIG_CACHE, "w")
     if not f then
-      ngx_log(ngx_ERR, "unable to open cache file: ", err)
+      log(ngx_ERR, "unable to open cache file: ", err)
 
     else
       res, err = f:write(assert(deflate_gzip(cjson_encode(config_table))))
       if not res then
-        ngx_log(ngx_ERR, "unable to write cache file: ", err)
+        log(ngx_ERR, "unable to write cache file: ", err)
       end
 
       f:close()
@@ -113,13 +118,13 @@ function _M:init_worker()
     if f then
       local config, err = f:read("*a")
       if not config then
-        ngx_log(ngx_ERR, "unable to read cached config file: ", err)
+        log(ngx_ERR, "unable to read cached config file: ", err)
       end
 
       f:close()
 
       if config and #config > 0 then
-        ngx_log(ngx_INFO, "found cached copy of data-plane config, loading..")
+        log(ngx_INFO, "found cached copy of data-plane config, loading..")
 
         local err
 
@@ -131,13 +136,12 @@ function _M:init_worker()
             local res
             res, err = self:update_config(config, false)
             if not res then
-              ngx_log(ngx_ERR, "unable to update running config from cache: ", err)
+              log(ngx_ERR, "unable to update running config from cache: ", err)
             end
           end
 
         else
-          ngx_log(ngx_ERR, "unable to inflate cached config: ",
-                  err, ", ignoring...")
+          log(ngx_ERR, "unable to inflate cached config: ", err, ", ignoring...")
         end
       end
 
@@ -148,7 +152,7 @@ function _M:init_worker()
                                           bit.bor(system_constants.S_IRUSR(),
                                                   system_constants.S_IWUSR()))
       if fd == -1 then
-        ngx_log(ngx_ERR, "unable to pre-create cached config file: ",
+        log(ngx_ERR, "unable to pre-create cached config file: ",
                 ffi.string(ffi.C.strerror(ffi.errno())))
 
       else
@@ -172,10 +176,10 @@ local function send_ping(c)
 
   local _, err = c:send_ping(hash)
   if err then
-    ngx_log(is_timeout(err) and ngx_NOTICE or ngx_WARN, "unable to ping control plane node: ", err)
+    log(is_timeout(err) and ngx_NOTICE or ngx_WARN, "unable to ping control plane node: ", err)
 
   else
-    ngx_log(ngx_DEBUG, "sent PING packet to control plane")
+    log(ngx_DEBUG, "sent PING packet to control plane")
   end
 end
 
@@ -214,8 +218,8 @@ function _M:communicate(premature)
   local reconnection_delay = math.random(5, 10)
   local res, err = c:connect(uri, opts)
   if not res then
-    ngx_log(ngx_ERR, "connection to control plane ", uri, " broken: ", err,
-                     " (retrying after ", reconnection_delay, " seconds)")
+    log(ngx_ERR, "connection to control plane ", uri, " broken: ", err,
+                 " (retrying after ", reconnection_delay, " seconds)")
 
     assert(ngx.timer.at(reconnection_delay, function(premature)
       self:communicate(premature)
@@ -230,9 +234,9 @@ function _M:communicate(premature)
   _, err = c:send_binary(cjson_encode({ type = "basic_info",
                                         plugins = self.plugins_list, }))
   if err then
-    ngx_log(ngx_ERR, "unable to send basic information to control plane: ", uri,
-                     " err: ", err,
-                     " (retrying after ", reconnection_delay, " seconds)")
+    log(ngx_ERR, "unable to send basic information to control plane: ", uri,
+                 " err: ", err,
+                 " (retrying after ", reconnection_delay, " seconds)")
 
     c:close()
     assert(ngx.timer.at(reconnection_delay, function(premature)
@@ -269,11 +273,11 @@ function _M:communicate(premature)
           pok, res, err = pcall(self.update_config, self, config_table, true)
           if pok then
             if not res then
-              ngx_log(ngx_ERR, "unable to update running config: ", err)
+              log(ngx_ERR, "unable to update running config: ", err)
             end
 
           else
-            ngx_log(ngx_ERR, "unable to update running config: ", res)
+            log(ngx_ERR, "unable to update running config: ", res)
           end
 
           if self.next_config == config_table then
@@ -282,7 +286,7 @@ function _M:communicate(premature)
         end
 
       elseif err ~= "timeout" then
-        ngx_log(ngx_ERR, "semaphore wait error: ", err)
+        log(ngx_ERR, "semaphore wait error: ", err)
       end
     end
   end)
@@ -316,7 +320,7 @@ function _M:communicate(premature)
 
       else
         if typ == "close" then
-          ngx_log(ngx_DEBUG, "received CLOSE frame from control plane")
+          log(ngx_DEBUG, "received CLOSE frame from control plane")
           return
         end
 
@@ -329,10 +333,10 @@ function _M:communicate(premature)
 
           if msg.type == "reconfigure" then
             if msg.timestamp then
-              ngx_log(ngx_DEBUG, "received RECONFIGURE frame from control plane with timestamp: ", msg.timestamp)
+              log(ngx_DEBUG, "received RECONFIGURE frame from control plane with timestamp: ", msg.timestamp)
 
             else
-              ngx_log(ngx_DEBUG, "received RECONFIGURE frame from control plane")
+              log(ngx_DEBUG, "received RECONFIGURE frame from control plane")
             end
 
             self.next_config = assert(msg.config_table)
@@ -348,10 +352,10 @@ function _M:communicate(premature)
           end
 
         elseif typ == "pong" then
-          ngx_log(ngx_DEBUG, "received PONG frame from control plane")
+          log(ngx_DEBUG, "received PONG frame from control plane")
 
         else
-          ngx_log(ngx_NOTICE, "received UNKNOWN (", tostring(typ), ") frame from control plane")
+          log(ngx_NOTICE, "received UNKNOWN (", tostring(typ), ") frame from control plane")
         end
       end
     end
@@ -366,10 +370,10 @@ function _M:communicate(premature)
   c:close()
 
   if not ok then
-    ngx_log(ngx_ERR, err)
+    log(ngx_ERR, err)
 
   elseif perr then
-    ngx_log(ngx_ERR, perr)
+    log(ngx_ERR, perr)
   end
 
   if not exiting() then
