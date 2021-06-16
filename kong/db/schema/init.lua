@@ -1085,6 +1085,11 @@ validate_fields = function(self, input)
       field, err = resolve_field(self, k, field, subschema)
       if field then
         _, errors[k] = self:validate_field(field, v)
+      elseif err == validation_errors.UNKNOWN and v == null and
+            kong and kong.configuration and
+            kong.configuration.role == "data_plane" then -- luacheck: ignore
+        -- extra fields with value of null in the input config are ignored
+        -- otherwise record the error
       else
         errors[k] = err
       end

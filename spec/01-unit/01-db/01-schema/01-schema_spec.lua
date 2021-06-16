@@ -914,7 +914,28 @@ describe("schema", function()
           { f = { type = "number", required = true } }
         }
       })
-      assert.falsy(Test:validate({ k = "wat" }))
+      assert.falsy(Test:validate({ f = 1, k = "wat" }))
+    end)
+
+    it("validates on unknown fields with value of null in data plane", function()
+      local Test = Schema.new({
+        fields = {
+          { f = { type = "number", required = true } }
+        }
+      })
+      assert.falsy(Test:validate({ f = 1, k = "wat" }))
+      assert.falsy(Test:validate({ f = 1, k = ngx.null }))
+
+      _G.kong = {
+        configuration = {
+          role = "data_plane",
+        },
+      }
+
+      local ok = Test:validate({ f = 1, k = ngx.null })
+
+      _G.kong = nil
+      assert.truthy(ok)
     end)
 
     local function run_custom_check_producing_error(error)
