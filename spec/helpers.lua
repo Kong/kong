@@ -2602,7 +2602,7 @@ local function start_kong(env, tables, preserve_prefix, fixtures)
     nginx_conf = " --nginx-conf " .. env.nginx_conf
   end
 
-  if dcbp and not env.declarative_config then
+  if dcbp and not env.declarative_config and not env.declarative_config_string then
     if not config_yml then
       config_yml = prefix .. "/config.yml"
       local cfg = dcbp.done()

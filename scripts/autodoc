@@ -60,7 +60,10 @@ function insert_pdk_nav_file_into_docs_nav_file() {
     local insert_line="$(( first_line - 1 ))"
 
     # delete existing pdk index, insert new pdk nav file instead
-    sed -i '' -e "${first_line},${last_line}d" -e "${insert_line}r${pdk_nav_file}" "$docs_nav_file"
+    # Passing an option to -i is required on macOS, but not required on Linux
+    # Commenting out to make the GitHub Actions build work
+    #sed -i '' -e "${first_line},${last_line}d" -e "${insert_line}r${pdk_nav_file}" "$docs_nav_file"
+    sed -i -e "${first_line},${last_line}d" -e "${insert_line}r${pdk_nav_file}" "$docs_nav_file"
 }
 
 

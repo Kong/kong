@@ -237,7 +237,7 @@ function _M:generate_flamegraph(title)
 
   local cmds = {
     "/tmp/perf-ost/fix-lua-bt " .. path .. ".bt > " .. path .. ".fbt",
-    "/tmp/perf-fg/stackcollapse.pl " .. path .. ".fbt > " .. path .. ".cbt",
+    "/tmp/perf-fg/stackcollapse-stap.pl " .. path .. ".fbt > " .. path .. ".cbt",
     "/tmp/perf-fg/flamegraph.pl --title='" .. title .. "' " .. path .. ".cbt > " .. path .. ".svg",
     "cat " .. path .. ".svg",
   }
