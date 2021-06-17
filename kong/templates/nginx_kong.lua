@@ -452,7 +452,8 @@ server {
             Kong.serve_cp_protocol()
         }
     }
-}
 > end -- cluster_v2
+
+}
 > end -- role == "control_plane"
 ]]
