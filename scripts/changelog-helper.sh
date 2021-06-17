@@ -28,7 +28,8 @@ if [ -z "$GITHUB_TOKEN" ] || [ -z "$TAG_FROM" ]; then
     exit 1
 fi
 
-curl "https://api.github.com/repos/kong/kong/compare/$TAG_FROM...master?access_token=$GITHUB_TOKEN" | \
+curl -H "Authorization: token $GITHUB_TOKEN" \
+  "https://api.github.com/repos/kong/kong/compare/$TAG_FROM...master" | \
   jq '[.commits| .[] | {message: .commit.message, author: .author.login}]'
 
 
