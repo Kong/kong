@@ -33,9 +33,7 @@ end
 function _M:init_worker()
   -- ROLE = "data_plane"
 
-  if ngx.worker.id() == 0 then
-    self:start_timer(0)
-  end
+  self:start_timer(0)
 end
 
 

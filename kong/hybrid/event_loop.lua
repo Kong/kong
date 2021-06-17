@@ -10,6 +10,10 @@ local exiting = ngx.worker.exiting
 local pcall = pcall
 local ngx_log = ngx.log
 local ngx_time = ngx.time
+local table_insert = table.insert
+local table_remove = table.remove
+local math_random = math.random
+local ipairs = ipairs
 
 
 local ngx_WARN = ngx.WARN
@@ -26,29 +30,17 @@ function _M.new(node_id)
     node_id = assert(node_id),
   }
 
-  self = setmetatable(self, _MT)
-
-  self:register_callback("kong:hybrid:ping", function(m)
-    local pong = message.new(node_id, m.src, "kong:hybrid:pong", "")
-    self:send(pong)
-    ngx_log(ngx_DEBUG, "sent pong to: ", m.src)
-  end)
-
-  self:register_callback("kong:hybrid:pong", function(m)
-    ngx_log(ngx_DEBUG, "received pong from: ", m.src)
-  end)
-
-  return self
+  return setmetatable(self, _MT)
 end
 
 
 function _M:handle_peer(peer_id, sock)
-  if self.clients[peer_id] then
-    return nil, "duplicate client: " .. peer_id
+  if not self.clients[peer_id] then
+    self.clients[peer_id] = {}
   end
 
   local q = queue.new()
-  self.clients[peer_id] = q
+  table_insert(self.clients[peer_id], q)
 
   local ping_thread = ngx.thread.spawn(function()
     while not exiting() do
@@ -67,6 +59,17 @@ function _M:handle_peer(peer_id, sock)
       local m, err = message.unpack_from_socket(sock)
       if m then
         last_seen = ngx_time()
+
+        if m.topic == "kong:hybrid:pong" then
+          goto continue
+        end
+
+        if m.topic == "kong:hybrid:ping" then
+          local m = message.new(self.node_id, peer_id, "kong:hybrid:pong", "")
+          q:enqueue(m)
+          ngx_log(ngx_DEBUG, "sent pong to: ", peer_id)
+          goto continue
+        end
 
         local callback = self.callbacks[m.topic]
         if callback then
@@ -93,6 +96,8 @@ function _M:handle_peer(peer_id, sock)
       else
         return nil, "failed to receive message from DP: " .. err
       end
+
+      ::continue::
     end
   end)
 
@@ -119,7 +124,16 @@ function _M:handle_peer(peer_id, sock)
   ngx.thread.kill(read_thread)
   ngx.thread.kill(ping_thread)
 
-  self.clients[peer_id] = nil
+  for i, queue in ipairs(self.clients[peer_id]) do
+    if queue == q then
+      table_remove(self.clients[peer_id], i)
+      break
+    end
+  end
+
+  if #self.clients[peer_id] == 0 then
+    self.clients[peer_id] = nil
+  end
 
   if not ok then
     return nil, err
@@ -138,12 +152,22 @@ function _M:send(message)
     message.src = self.node_id
   end
 
-  local q = self.clients[message.dest]
-  if not q then
+  local dest = message.dest
+  local clients = self.clients[message.dest]
+  if not clients then
     return nil, "node " .. message.dest .. " is disconnected"
   end
 
-  q:enqueue(message)
+  if dest:sub(-2) == "/*" then
+    -- broadcast to all workers
+    for _, q in ipairs(clients) do
+      q:enqueue(message)
+    end
+
+  else
+    -- pick one random worker
+    clients[math_random(#clients)]:enqueue(message)
+  end
 
   return true
 end
