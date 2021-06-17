@@ -136,4 +136,9 @@ function _M:register_callback(topic, callback)
 end
 
 
+function _M:send(message)
+  return self.loop:send(message)
+end
+
+
 return _M

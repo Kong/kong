@@ -45,6 +45,11 @@ function _M:register_callback(topic, callback)
 end
 
 
+function _M:send(message)
+  return self.child:send(message)
+end
+
+
 function _M:init_worker()
   self.child:init_worker()
 end

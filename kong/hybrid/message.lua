@@ -22,7 +22,8 @@ local function uint32_to_bytes(num)
 
   return string_char(band(rshift(num, 24), 0xFF),
                      band(rshift(num, 16), 0xFF),
-                     band(rshift(num, 8), 0xFF))
+                     band(rshift(num, 8), 0xFF),
+                     band(num, 0xFF))
 end
 
 
@@ -40,6 +41,10 @@ end
 
 function _M.new(src, dest, topic, message)
   local self = tablepool.fetch(POOL_NAME, 0, 4)
+
+  assert(dest, "dest is required")
+  assert(topic, "topic is required")
+  assert(message, "message is required")
 
   self.src = src
   self.dest = dest
