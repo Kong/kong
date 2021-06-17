@@ -49,7 +49,6 @@ dependencies = {
   "kong-plugin-session ~> 2.4",
   "kong-plugin-acme ~> 0.2",
   "kong-plugin-grpc-web ~> 0.2",
-  "kong-plugin-grpc-gateway ~> 0.1",
 }
 build = {
   type = "builtin",
@@ -393,5 +392,8 @@ build = {
     ["kong.plugins.aws-lambda.http.connect-better"]  = "kong/plugins/aws-lambda/http/connect-better.lua",
     ["kong.plugins.aws-lambda.request-util"]         = "kong/plugins/aws-lambda/request-util.lua",
 
+    ["kong.plugins.grpc-gateway.deco"] = "kong/plugins/grpc-gateway/deco.lua",
+    ["kong.plugins.grpc-gateway.handler"] = "kong/plugins/grpc-gateway/handler.lua",
+    ["kong.plugins.grpc-gateway.schema"] = "kong/plugins/grpc-gateway/schema.lua",
   }
 }
