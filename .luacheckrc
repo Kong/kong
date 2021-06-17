@@ -44,6 +44,13 @@ files["kong/hooks.lua"] = {
 }
 
 
+files["kong/db/schema/entities/workspaces.lua"] = {
+    read_globals = {
+        "table.unpack",
+    }
+}
+
+
 files["kong/plugins/ldap-auth/*.lua"] = {
     read_globals = {
         "bit.mod",
