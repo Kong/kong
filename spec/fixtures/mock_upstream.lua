@@ -66,6 +66,7 @@ local function send_text_response(text, content_type, headers)
   text = ngx.req.get_method() == "HEAD" and "" or tostring(text)
 
   ngx.header["X-Powered-By"]   = "mock_upstream"
+  ngx.header["Server"]         = "mock-upstream/1.0.0"
   ngx.header["Content-Length"] = #text + 1
   ngx.header["Content-Type"]   = content_type
 
