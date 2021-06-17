@@ -128,6 +128,8 @@ function _M:communicate(premature)
     self:start_timer()
     return
   end
+
+  self:start_timer()
 end
 
 
