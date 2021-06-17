@@ -17,9 +17,6 @@ KONG_BUILD_TOOLS_VERSION=4.19.0
 
 ## XXX EE
 
-# TODO: Remove one of these KONG_BUILD_TOOLS vars (and from KD)
-KONG_BUILD_TOOLS_BRANCH=4.17.0
-
 # here go enterprise build specific ones which might or might not have the
 # same names as core for building the final package.
 
