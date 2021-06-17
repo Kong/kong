@@ -50,7 +50,6 @@ dependencies = {
   "kong-plugin-aws-lambda ~> 3.5",
   "kong-plugin-acme ~> 0.2",
   "kong-plugin-grpc-web ~> 0.2",
-  "kong-plugin-grpc-gateway ~> 0.1",
 }
 build = {
   type = "builtin",
@@ -384,5 +383,9 @@ build = {
 
     ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
     ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",
+
+    ["kong.plugins.grpc-gateway.deco"] = "kong/plugins/grpc-gateway/deco.lua",
+    ["kong.plugins.grpc-gateway.handler"] = "kong/plugins/grpc-gateway/handler.lua",
+    ["kong.plugins.grpc-gateway.schema"] = "kong/plugins/grpc-gateway/schema.lua",
   }
 }
