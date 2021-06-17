@@ -22,8 +22,8 @@ for _, strategy in helpers.each_strategy() do
       local service1 = assert(bp.services:insert {
         name = "grpc",
         protocol = "grpc",
-        host = "grpcbin",
-        port = 9000,
+        host = "127.0.0.1",
+        port = 15002,
       })
 
       local route1 = assert(bp.routes:insert {
@@ -36,7 +36,7 @@ for _, strategy in helpers.each_strategy() do
         route = route1,
         name = "grpc-gateway",
         config = {
-          proto = "/kong-plugin/spec/fixtures/grpc/helloworld.proto",
+          proto = "./spec/fixtures/grpc/helloworld.proto",
         },
       })
 
