@@ -149,8 +149,6 @@ then
 fi
 
 copy autodoc/output/admin-api/admin-api.md "$DOCS_APP/admin-api.md"
-copy autodoc/output/admin-api/db-less-admin-api.md "$DOCS_APP/db-less-admin-api.md"
-copy autodoc/output/nav/docs_nav.yml.admin-api.in "$DOCS_REPO/autodoc-nav/docs_nav_$DOCS_VERSION.yml.head.in"
 
 copy autodoc/output/configuration.md "$DOCS_APP/configuration.md"
 copy autodoc/output/cli.md "$DOCS_APP/cli.md"
