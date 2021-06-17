@@ -6,6 +6,8 @@ local semaphore = require("ngx.semaphore")
 
 local table_insert = table.insert
 local table_remove = table.remove
+local setmetatable = setmetatable
+local assert = assert
 
 
 local _MT = { __index = _M, }
@@ -13,7 +15,7 @@ local _MT = { __index = _M, }
 
 function _M.new()
   local self = {
-    semaphore = semaphore.new(),
+    semaphore = assert(semaphore.new()),
   }
 
   return setmetatable(self, _MT)

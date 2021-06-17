@@ -19,7 +19,7 @@ local KONG_VERSION = kong.version
 
 function _M.new(parent)
   local self = {
-    loop = event_loop.new(),
+    loop = event_loop.new(kong.node.get_id()),
   }
 
   return setmetatable(self, {
@@ -34,7 +34,7 @@ function _M:init_worker()
   -- ROLE = "data_plane"
 
   if ngx.worker.id() == 0 then
-    self:start_timer()
+    self:start_timer(0)
   end
 end
 
@@ -74,7 +74,7 @@ function _M:communicate(premature)
   local res, err = sock:connect(host, port)
   if not res then
     ngx_log(ngx_ERR, "connection to control plane ", address, " failed: ", err)
-    self:communicate(premature)
+    self:start_timer()
     return
   end
 
@@ -97,18 +97,18 @@ function _M:communicate(premature)
   res, err = sock:tlshandshake(opts)
   if not res then
     ngx_log(ngx_ERR, "TLS handshake to control plane ", address, " failed: ", err)
-    self:communicate(premature)
+    self:start_timer()
     return
   end
 
   res, err = sock:send(req)
   if not res then
     ngx_log(ngx_ERR, "sending HTTP header to control plane ", address, " failed: ", err)
-    self:communicate(premature)
+    self:start_timer()
     return
   end
 
-  local basic_info = message.new(nil, "control_plane", "basic_info", mp_pack({
+  local basic_info = message.new(kong.node.get_id(), "control_plane", "basic_info", mp_pack({
     kong_version = KONG_VERSION,
     node_id = kong.node.get_id(),
   }))
@@ -116,7 +116,7 @@ function _M:communicate(premature)
   res, err = sock:send(basic_info:pack())
   if not res then
     ngx_log(ngx_ERR, "unable to send basic info to control plane ", address, " err: ", err)
-    self:communicate(premature)
+    self:start_timer()
     return
   end
 
@@ -125,7 +125,7 @@ function _M:communicate(premature)
 
   if not res then
     ngx_log(ngx_ERR, "connection to control plane broken: ", err)
-    self:communicate(premature)
+    self:start_timer()
     return
   end
 end

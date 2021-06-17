@@ -64,27 +64,45 @@ end
 
 
 function _M.unpack_from_socket(sock)
-  local src_len = string_byte(sock:receive(1))
-  local src, err = sock:receive(src_len)
+  local buf, err = sock:receive(1)
+  if not buf then
+    return nil, err
+  end
+
+  local src_len = string_byte(buf)
+  local src
+  src, err = sock:receive(src_len)
   if not src then
     return nil, err
   end
 
-  local dest_len = string_byte(sock:receive(1))
+  buf, err = sock:receive(1)
+  if not buf then
+    return nil, err
+  end
+  local dest_len = string_byte(buf)
   local dest
   dest, err = sock:receive(dest_len)
   if not dest then
     return nil, err
   end
 
-  local topic_len = string_byte(sock:receive(1))
+  buf, err = sock:receive(1)
+  if not buf then
+    return nil, err
+  end
+  local topic_len = string_byte(buf)
   local topic
   topic, err = sock:receive(topic_len)
   if not topic then
     return nil, err
   end
 
-  local message_len = bytes_to_uint32(sock:receive(4))
+  buf, err = sock:receive(4)
+  if not buf then
+    return nil, err
+  end
+  local message_len = bytes_to_uint32(buf)
   local message
   message, err = sock:receive(message_len)
   if not message then

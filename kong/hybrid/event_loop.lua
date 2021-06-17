@@ -5,32 +5,33 @@ local queue = require("kong.hybrid.queue")
 local message = require("kong.hybrid.message")
 
 
-local exiting = ngx.worker.exiting()
+local exiting = ngx.worker.exiting
 local pcall = pcall
 local ngx_log = ngx.log
 
 
 local ngx_WARN = ngx.WARN
+local _MT = { __index = _M, }
 
 
 function _M.new(node_id)
   local self = {
     callbacks = {},
     clients = {},
-    node_id = node_id,
+    node_id = assert(node_id),
   }
 
-  return self
+  return setmetatable(self, _MT)
 end
 
 
-function _M:handle_peer(node_id, sock)
-  if self.clients[node_id] then
+function _M:handle_peer(peer_id, sock)
+  if self.clients[peer_id] then
     return nil, "duplicate client: " .. node_id
   end
 
   local q = queue.new()
-  self.clients[node_id] = q
+  self.clients[peer_id] = q
 
   local read_thread = ngx.thread.spawn(function()
     while not exiting() do
@@ -59,7 +60,7 @@ function _M:handle_peer(node_id, sock)
 
   local write_thread = ngx.thread.spawn(function()
     while not exiting() do
-      local message, err = queue.dequeue()
+      local message, err = q:dequeue()
       if message then
         local res, err = sock:send(message:pack())
         message:release()
@@ -79,6 +80,8 @@ function _M:handle_peer(node_id, sock)
   ngx.thread.kill(write_thread)
   ngx.thread.kill(read_thread)
 
+  self.clients[peer_id] = nil
+
   if not ok then
     return nil, err
   end
@@ -97,11 +100,12 @@ function _M:send(message)
   end
 
   local q = self.clients[message.dest]
+  print("message.dest = ", message.dest)
   if not q then
     return nil, "node " .. message.dest .. " is disconnected"
   end
 
-  q.enqueue(message)
+  q:enqueue(message)
 
   return true
 end

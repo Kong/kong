@@ -26,7 +26,7 @@ local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
 function _M.new(parent)
   local self = {
-    loop = event_loop.new(),
+    loop = event_loop.new("control_plane"),
   }
 
   return setmetatable(self, {
