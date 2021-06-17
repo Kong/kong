@@ -218,8 +218,8 @@ build = {
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
 
     ["kong.hybrid"] = "kong/hybrid/init.lua",
-    ["kong.hybrid.control_plane"] = "kong/hybrid/control_plane.lua",
     ["kong.hybrid.data_plane"] = "kong/hybrid/data_plane.lua",
+    ["kong.hybrid.control_plane"] = "kong/hybrid/control_plane.lua",
     ["kong.hybrid.message"] = "kong/hybrid/message.lua",
     ["kong.hybrid.rpc"] = "kong/hybrid/rpc.lua",
     ["kong.hybrid.queue"] = "kong/hybrid/queue.lua",
