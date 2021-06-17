@@ -5,12 +5,12 @@ local bit = require("bit")
 local tablepool = require("tablepool")
 
 
-local band, bor, bxor = bit.band, bit.bor, bit.bxor
+local band, bor = bit.band, bit.bor
 local lshift, rshift = bit.lshift, bit.rshift
 local string_char, string_byte = string.char, string.byte
 
 
-local POOL_NAME = "clustering_message"
+local POOL_NAME = "hybrid_messages"
 local _MT = { __index = _M, }
 
 
@@ -87,6 +87,11 @@ function _M.unpack_from_socket(sock)
   end
 
   return _M.new(src, dest, topic, message)
+end
+
+
+function _M:release()
+  tablepool.release(POOL_NAME, self)
 end
 
 

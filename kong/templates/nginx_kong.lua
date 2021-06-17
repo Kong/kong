@@ -445,6 +445,14 @@ server {
             Kong.serve_cluster_listener()
         }
     }
+
+> if cluster_v2 then
+    location = /v2/outlet {
+        content_by_lua_block {
+            Kong.serve_cp_protocol()
+        }
+    }
 }
+> end -- cluster_v2
 > end -- role == "control_plane"
 ]]
