@@ -6,28 +6,14 @@ jobs:
     env: KONG_VERSION=1.3.0.x
   - name: Enterprise 1.5.0.x
     env: KONG_VERSION=1.5.0.x
-  - name: Enterprise 2.1.3.x
-    env: KONG_VERSION=2.1.3.x
-  - name: Kong CE 1.5.x
-    env: KONG_VERSION=1.5.x
-  - name: Kong CE 2.0.x
-    env: KONG_VERSION=2.0.x
-  - name: Kong CE 2.1.x
-    env: KONG_VERSION=2.1.x
+  - name: Enterprise 2.4.1.x
+    env: KONG_VERSION=2.4.1.x
+  - name: Kong CE 2.4.x
+    env: KONG_VERSION=2.4.x
   - name: Nightly EE-master
     env: KONG_VERSION=nightly-ee POSTGRES=latest CASSANDRA=latest
   #- name: Nightly CE-master
   #  env: KONG_VERSION=nightly POSTGRES=latest CASSANDRA=latest
-
-env:
-  global:
-  # for Enterprise images
-  - BINTRAY_USERNAME=kong-automation@kong
-  - BINTRAY_REPO=kong
-  - secure: f3uKrU0MUeTN1fZgy3Wef6J/HEZ3aCCwcyrmLHtxOZ7rHOSIUGms4OdN9D5zBA/Fx9OYkge/0tXRLhyTqn94ek2AEUyZUPPMKdXxGMvz6nzcK9OsU5mQoEdR/ZXUaoIygaRr8/CXJ+WYw/hht2XtxKuG15rDFGHq9w1ft6uzaOO18jTUxONI5MnUL5Pre5JnPxu9zS8t/6OokQ+rvmRKQ7dgADJTczkydJGK8Itci/IPaQLUji6YvdWvKxU+MAVL5xnnDgJZjN39yLLFP+zQfxr/t4mUrBcKIvEFnIRYU9oMjK8ISynFTunz8cZLiS7fe4Xr0/zoE0bP/HTNVEk4hdTTcZApsYKurLrBicwdoivtPzF6qHcS85ERPPo7eilbFrGkV758TPZpSoJ826wVTuvnzMAO39lKuJ+9Va1uIKo5Qh5hRrhX//eT9Qn+LqNWHVFumi8v5W5t/uUq3r4gQMrnlDhMhwIC9svRnQInW7JGaerqfI/r5w03QiNKtES6cSh/NdCvQRK6uyxe5q8AjjFaWj2uj0lZV1chqBjfDYuVf9yS9GFRDPIIQLFicEg04G4EH86XmDi8FUWpZIGYLvwQSocoKDz8ZbhtWJ0IyBAQ0l2rnc9oxP2H/LhvACh0CRGCHZN2KeyEC8Z5X5tmRkrYlZuikNoUz+1QEpxAboY=
-  # for Nightly Enterprise images
-  - NIGHTLY_EE_USER=kong-automation@kong
-  - secure: FSs/GH3/v3swcueBkSfqPur2MJUgmhJOKVu9gTQZru7+bCmnSZHq1KfGujFLAJSe2tjaFGgUWxISe2JQdWkcY7K+RAnSlYBdGUVVVc2g/HzAXPg7shB6uGQX8PuhhY749dLJeiJzrCICv21MVxu/nMF5VVydYc1Jkd8cvU/+pwdv8J9LNuTvfQH3jLa60Uwo3S1Vy8NKzZNullu6AMVN09nwWoGdSTB1w5sD29ZpezZKCcbe1nzMV7yhOUtiWTpJbOU1XOyK2sO3OBFmxUnKy9Q4VPesrCyY8py6ye0yqw+9rKZCD+DQGtT6npk6AcE93VldLOKjAOOaLIlbnrBAkPxRPvYEMzHHhmtlZWHq81qB1tG5m6Vz2rdGJiFSw4GC1xauIzZ+dp/xRaJZvGc96rKaw64koOL65feqalzBtlDwYlb0uCuqiRsLTPiqWe9eXwwmnS3EPC4LKLzX8KWIZEe6L/QHb98wWCVCPtSJk+fsLiyYing8O/aYkfGnkjlVo5lAdixXnmSefF7a0P+IGHg6ecLV52t8N6WHXixoos+OwKwRRfkZdrUfqERYYhKTqRc+h954rutu2zBtEX+rA8xcBMcvDjTawFaUFuWQYDGIH7Gbpyh2aZkxzFcEovyAJA7n+s0IGHhBG1kuMYhKPkxyBiILfAhXAEDplgAiHXg=
 
 install:
 - git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
