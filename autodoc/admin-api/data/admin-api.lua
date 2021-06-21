@@ -810,7 +810,7 @@ return {
         },
         protocols = {
           description = [[
-            An array of the protocols this Route should allow. To allow only one protocol, send a string value. See the Route Object section for a list of accepted protocols. When set to only `"https"`,
+            An array of the protocols this Route should allow. See the [Route Object](#route-object) section for a list of accepted protocols. When set to only `"https"`,
             HTTP requests are answered with an upgrade error. When set to only `"http"`, HTTPS requests are answered with an error. 
           ]],
           examples = {
