@@ -2,29 +2,14 @@ dist: bionic
 
 jobs:
   include:
-  - name: Kong CE 2.2.x
-    env: KONG_VERSION=2.2.x
-  - name: Kong CE 2.3.x
-    env: KONG_VERSION=2.3.x
+  - name: Kong CE 2.4.x
+    env: KONG_VERSION=2.4.x
   - name: Kong CE Master
     env: KONG_VERSION=nightly
-  #- name: Kong EE 1.5.0.x      # pending resolution re
-  #  env: KONG_VERSION=1.5.0.x  #  https://github.com/Kong/kong-pongo/pull/147
-  #- name: Kong EE 2.1.4.x      # context: current EE images are out of date in Pongo
-  #  env: KONG_VERSION=2.1.4.x  # so they do not include required sandbox modules
-  #- name: Kong EE 2.2.1.x
-  #  env: KONG_VERSION=2.2.1.x
-  #- name: Kong Enterprise nightly
-  #  env: KONG_VERSION=nightly-ee
-
-env:
-  global:
-  # for Enterprise images
-  - BINTRAY_USERNAME=kong-automation@kong
-  - BINTRAY_REPO=kong
-  - secure: Ob71/HUEPWq5FnFg/c3EvIQAxrfPJwSQ1b8BaM98gilVntumxN1SD7h0QSrVdElh0BmaF4WeXVkn3CJ3ihjEjmjCmAlrgJkSIbI6wZ2hQXcXiEY2LT9lpjIqlNHo6eOVzqqvfUl4NQbfoqjR5pNO4eWtJSv8tRLcv54oUkpPD2gD/ZkCfz9LnPA04JfrK4YWvx9e3vZBPzEosomixGkSZh2GTDLm8V1rYhDERxSqlNaNHxkaA3lEk1jSeVoaRkl1T6HixdNb0h5h4kLrVtVswY5LEEogNlV6gpmVjlWBkZi7unYWeX2rVStn66Jkot3n6TzarPlNLaDEIQmK3skZ1ngz8J0sp3ulyas8J5iR0Y+y/gSF87TeSjH61CZDeYeruKJp8GSlb9RrtPmxSYuok3nWwNgNU83L3VsJR1QSd3TmJ0npEJiW/2UyJLFTAF3bo7rOHQGPVMJ2DDbWhlYU5h2pymeOWkFfLgwyjEofnzsYWG6fC6XnlRJ5aLPu1AHslEdT5HXSfeigfYBiTbW0o8iUtJ80MwwutAhOlU14Mz9UbRe/gZqhXZJnOpaqZZzS9P55IvCbdMo+J+kEcFWAlQ6s0PYTtrCVGokxs6gRLlFwo1Gws3GWdicoJqpZaCUvdfC6ivVPJGLgWRYmYuPU0fFAWieJ+PdQd4EfZbfWcxg=
-  - NIGHTLY_EE_USER=kong-automation@kong
-  - secure: CDaJZctPj9tQfpnkZuBDoYT/P7wtaSXMyvpXQt0aADEMQ2Mki6QotDcGCDDzwqeAWM9DKrIIxhQLzrf/RAwU2vBIm/SdYvX5KYHP9GCVHgs8rnD6xMSOE6ohMy24wweb1qVZ/9VpK+Hl/sD5fvnEMV5mgtOkMkemU6wlt4EqYoH66bTitTdEVZD7tdz3YIM5pW1929AFIJ+V7BGGCo+CGrKFrcDacljaGRLrd4qkK1bEJyqyqpLxB3ia+vds0DuQ+ZmCdol0KJ8EMKnthZ5Itm9zwq2f/b9/dfUAFjeDROUlkAwC4Ib/nDnbK0l/gdbQQcUQ8gvTo94raF5ckqVN7r6eq1iATkPDCx/dgW+YUkCo3smhQTaPQ2l/uYXJvnIlfNXmlJJ/n55Phs4WmQSSMn8g3o39IXMgxm/9NcvFFgeyFa+MhVHpGhTSNZ5gHK5QaZhEaG0st5hKLtjrPi+JK0+4fCDKEl4UO/zmdPPw1NBHn/FnG1B40GQj5Mt7394+TTXNhx1gT47mrB/2hz21D3V6VHH52krVVHzG4e/DKJVqeTTySj6l0EGvKl/jLSfDYmBVyxKWr0vb1gxAMA3a/IbbKElEwueknuTWmf4yelP3e4IQ1kTqKFaAC9h2GEkhlcxTrxk/m8p05gRZGS3enrd3cosuQwiSw0ZUWCx6ZHc=
+  - name: Kong EE 2.4.1.x
+    env: KONG_VERSION=2.4.1.x
+  - name: Kong Enterprise nightly
+    env: KONG_VERSION=nightly-ee
 
 install:
 - git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
