@@ -131,7 +131,7 @@ You can find every supported distribution at the [official installation page](ht
 
 ## Development
 
-We encourage community contributions to Kong. To make sure it is a smooth
+We encourage every community contributions to Kong. To make sure it is a smooth
 experience (both for you and for the Kong team), please read
 [CONTRIBUTING.md](CONTRIBUTING.md), [DEVELOPER.md](DEVELOPER.md),
 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [COPYRIGHT](COPYRIGHT) before
