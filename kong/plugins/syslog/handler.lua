@@ -71,6 +71,8 @@ local function log(premature, conf, message)
     return
   end
 
+  -- TODO: revert this commit and use schema to populate default value
+  -- in 2.7 or 3.0 whichever comes eearlier.
   local facility = conf.facility or "user"
 
   if message.response.status >= 500 then
