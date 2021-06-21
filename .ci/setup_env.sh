@@ -43,9 +43,14 @@ LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD=$INSTALL_ROOT/lua-resty-openssl-aux-module
 # - defaults to master
 KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-$(dep_version KONG_NGINX_MODULE_BRANCH)}
 KONG_NGINX_MODULE_BRANCH=${KONG_NGINX_MODULE_BRANCH:-master}
+echo "KONG_NGINX_MODULE_BRANCH: $KONG_NGINX_MODULE_BRANCH"
 
+# XXX EE if we need a different version of build tools temporarily
+#        we can set KONG_BUILD_TOOLS_BRANCH in .requirements
 KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-$(dep_version KONG_BUILD_TOOLS_BRANCH)}
+KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-$(dep_version KONG_BUILD_TOOLS_VERSION)}
 KONG_BUILD_TOOLS_BRANCH=${KONG_BUILD_TOOLS_BRANCH:-master}
+echo "KONG_BUILD_TOOLS_BRANCH: $KONG_BUILD_TOOLS_BRANCH"
 
 if [ ! -d $BUILD_TOOLS_DOWNLOAD ]; then
     git clone https://github.com/Kong/kong-build-tools.git $BUILD_TOOLS_DOWNLOAD
@@ -90,6 +95,7 @@ echo kong-ngx-build \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
+    --debug \
     --add-module $LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD \
     -j $JOBS
 
@@ -160,12 +166,13 @@ if [[ "$TEST_SUITE" =~ integration|dbless|plugins ]]; then
   docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 moul/grpcbin
 fi
 
-git clone --branch feat/mtls https://github.com/Kong/pgmoon/
-
+# ------------------------------------
+# Install additional test dependencies
+# ------------------------------------
+git clone --branch $(dep_version KONG_PGMOON_VERSION) https://github.com/Kong/pgmoon/
 pushd pgmoon
 luarocks make
 popd
-
 rm -rf pgmoon
 
 nginx -V

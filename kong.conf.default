@@ -1230,6 +1230,8 @@
                                 # to the Control Plane node as a user-controlled
                                 # fallback.
 
+#declarative_config_string =    # The declarative configuration as a string
+
 #------------------------------------------------------------------------------
 # DATASTORE CACHE
 #------------------------------------------------------------------------------
