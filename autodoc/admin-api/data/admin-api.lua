@@ -652,7 +652,7 @@ return {
           ]]
         },
         host = {
-          description = [[The host of the upstream server.]],
+          description = [[The host of the upstream server. Note that the host value is case sensitive.]],
           example = "example.com",
         },
         port = {
