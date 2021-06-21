@@ -10,8 +10,6 @@ local severity = {
 
 local facility = {
   type = "string",
-  default = "user",
-  required = true,
   one_of = { "auth", "authpriv", "cron", "daemon",
              "ftp", "kern", "lpr", "mail",
              "news", "syslog", "user", "uucp",
