@@ -1,8 +1,14 @@
+#!/usr/bin/env resty
+
+setmetatable(_G, nil)
+
+
 local admin_api_data = require "autodoc.admin-api.data.admin-api"
 local kong_meta = require "kong.meta"
 local lfs = require "lfs"
 local lyaml = require "lyaml"
 local typedefs = require "kong.db.schema.typedefs"
+local lsd = require "autodoc.admin-api.lyaml-sorted-dump"
 
 local OPENAPI_VERSION = "3.1.0"
 local KONG_CONTACT_NAME = "Kong"
@@ -395,7 +401,7 @@ end
 
 
 local function write_file(filename, content)
-  local pok, yaml, err = pcall(lyaml.dump, { content })
+  local pok, yaml, err = pcall(lsd, { content })
   if not pok then
     error("lyaml failed: " .. yaml, 2)
   end
@@ -431,4 +437,4 @@ local function main(filepath)
 end
 
 
-main(arg[1])
+main(arg[1] or "kong-admin-api.yml")
