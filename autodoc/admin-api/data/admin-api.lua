@@ -829,7 +829,7 @@ return {
         hosts = {
           kind = "semi-optional",
           description = [[
-            A list of domain names that match this Route.
+            A list of domain names that match this Route. Note that the hosts value is case sensitive.
           ]],
           examples = { {"example.com", "foo.test"}, nil },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
