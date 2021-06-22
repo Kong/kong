@@ -290,7 +290,7 @@ describe("Admin API #" .. strategy, function()
           assert.response(res).has.status(200)
           local json = assert.response(res).has.jsonbody()
 
-          -- we got three active targets for this upstream
+          -- we got four active targets for this upstream
           assert.equal(4, #json.data)
 
           -- when multiple active targets are present, we only see the last one
