@@ -94,7 +94,7 @@ function _M:handle_peer(peer_id, sock)
         end
 
       else
-        return nil, "failed to receive message from DP: " .. err
+        return nil, "failed to receive message from " .. peer_id .. ": " .. err
       end
 
       ::continue::

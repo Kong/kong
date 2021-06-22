@@ -453,7 +453,6 @@ server {
         }
     }
 > end -- cluster_v2
-
 }
 > end -- role == "control_plane"
 ]]

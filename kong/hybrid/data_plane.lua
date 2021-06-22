@@ -65,8 +65,8 @@ function _M:communicate(premature)
   local host, _, port = pl_stringx.partition(address, ":")
   port = tonumber(port)
 
-  local req = "GET /v2/outlet HTTP/1.0\r\nHost:" .. address ..
-              "\r\nConnection: upgrade\r\nUpgrade: Kong-Hybrid/2\r\n\r\n"
+  local req = "GET /v2/outlet HTTP/1.1\r\nHost:" .. address ..
+              "\r\nConnection: Upgrade\r\nUpgrade: Kong-Hybrid/2\r\n\r\n"
 
   local sock = ngx.socket.tcp()
 
@@ -106,6 +106,22 @@ function _M:communicate(premature)
     self:start_timer()
     return
   end
+
+  local header_reader = sock:receiveuntil("\r\n\r\n")
+  local header, err, partial = header_reader()
+  if not header then
+    ngx_log(ngx_ERR, "failed to receive response header: ", err)
+    self:start_timer()
+    return
+  end
+
+  local m, err = ngx.re.match(header, [[^\s*HTTP/1\.1\s+]], "jo")
+  if not m then
+    ngx_log(ngx_ERR, "bad HTTP response status line: ", header)
+    self:start_timer()
+    return
+  end
+  print(header)
 
   local basic_info = message.new(kong.node.get_id(), "control_plane", "basic_info", mp_pack({
     kong_version = KONG_VERSION,
