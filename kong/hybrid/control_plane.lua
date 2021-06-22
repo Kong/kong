@@ -15,6 +15,7 @@ local mp_unpack = msgpack.unpack
 local ngx_log = ngx.log
 local ngx_exit = ngx.exit
 local ngx_var = ngx.var
+local ngx_header = ngx.header
 
 
 local ngx_WARN = ngx.WARN
@@ -137,6 +138,21 @@ function _M:handle_cp_protocol()
         return ngx_exit(444)
       end
     end
+  end
+
+  ngx_header["Upgrade"] = "Kong-Hybrid/2"
+  ngx_header["Content-Type"] = nil
+  ngx.status = 101
+
+  local ok, err = ngx.send_headers()
+  if not ok then
+    ngx_log(ngx_ERR, "failed to send response header: " .. (err or "unknonw"))
+    return ngx_exit(500)
+  end
+  ok, err = ngx.flush(true)
+  if not ok then
+    ngx_log(ngx_ERR, "failed to flush response header: " .. (err or "unknown"))
+    return ngx_exit(500)
   end
 
   local sock = assert(ngx.req.socket(true))

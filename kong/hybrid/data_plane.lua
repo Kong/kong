@@ -65,7 +65,8 @@ function _M:communicate(premature)
   local host, _, port = pl_stringx.partition(address, ":")
   port = tonumber(port)
 
-  local req = "GET /v2/outlet HTTP/1.0\r\nHost:" .. address .. "\r\n\r\n"
+  local req = "GET /v2/outlet HTTP/1.0\r\nHost:" .. address ..
+              "\r\nConnection: upgrade\r\nUpgrade: Kong-Hybrid/2\r\n\r\n"
 
   local sock = ngx.socket.tcp()
 

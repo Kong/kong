@@ -152,17 +152,13 @@ function _M:send(message)
     message.src = self.node_id
   end
 
-  local dest = message.dest
   local clients = self.clients[message.dest]
   if not clients then
     return nil, "node " .. message.dest .. " is disconnected"
   end
 
-  if dest:sub(-2) == "/*" then
-    -- broadcast to all workers
-    for _, q in ipairs(clients) do
-      q:enqueue(message)
-    end
+  if #clients == 1 then
+    clients[1]:enqueue(message)
 
   else
     -- pick one random worker
