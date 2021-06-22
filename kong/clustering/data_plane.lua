@@ -309,6 +309,8 @@ function _M:communicate(premature)
   -- * write_thread: it is the only thread that receives WS frames from the CP,
   --                 and is also responsible for handling timeout detection
 
+  local ping_immediately
+
   local config_thread = ngx.thread.spawn(function()
     while not exiting() do
       local ok, err = config_semaphore:wait(1)
@@ -321,6 +323,8 @@ function _M:communicate(premature)
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
             end
+
+            ping_immediately = true
 
           else
             ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
@@ -345,6 +349,10 @@ function _M:communicate(premature)
         ngx_sleep(1)
         if exiting() then
           return
+        end
+        if ping_immediately then
+          ping_immediately = nil
+          break
         end
       end
     end
@@ -394,8 +402,6 @@ function _M:communicate(premature)
               -- count is guaranteed to not exceed 1
               config_semaphore:post()
             end
-
-            send_ping(c, log_suffix)
           end
 
         elseif typ == "pong" then
