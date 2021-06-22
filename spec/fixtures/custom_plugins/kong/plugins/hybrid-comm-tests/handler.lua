@@ -1,10 +1,7 @@
 local ngx = ngx
 local kong = kong
-local type = type
 local assert = assert
-local subsystem = ngx.config.subsystem
 local math = math
-local get_phase = ngx.get_phase
 local message = require("kong.hybrid.message")
 
 
