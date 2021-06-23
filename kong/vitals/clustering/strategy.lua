@@ -261,7 +261,7 @@ function _M:delete_stats(...)
 end
 
 function _M:select_phone_home(...)
-  if not self.is_cp then
+  if not self.hybrid_cp then
     error("Cannot use this function in data plane", 2)
   end
 
