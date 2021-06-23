@@ -43,7 +43,7 @@ function _M:start_timer(delay)
   end
 
   if delay > 0 then
-    ngx_log(ngx_WARN, "reconnecting to control plane in ", delay, " seconds")
+    ngx_log(ngx_WARN, "[hybrid-comm] reconnecting to control plane in ", delay, " seconds")
   end
 
   assert(ngx.timer.at(delay, function(premature)
@@ -72,7 +72,7 @@ function _M:communicate(premature)
 
   local res, err = sock:connect(host, port)
   if not res then
-    ngx_log(ngx_ERR, "connection to control plane ", address, " failed: ", err)
+    ngx_log(ngx_ERR, "[hybrid-comm] connection to control plane ", address, " failed: ", err)
     self:start_timer()
     return
   end
@@ -95,14 +95,16 @@ function _M:communicate(premature)
 
   res, err = sock:tlshandshake(opts)
   if not res then
-    ngx_log(ngx_ERR, "TLS handshake to control plane ", address, " failed: ", err)
+    ngx_log(ngx_ERR, "[hybrid-comm] TLS handshake to control plane ", address,
+                     " failed: ", err)
     self:start_timer()
     return
   end
 
   res, err = sock:send(req)
   if not res then
-    ngx_log(ngx_ERR, "sending HTTP header to control plane ", address, " failed: ", err)
+    ngx_log(ngx_ERR, "[hybrid-comm] sending HTTP header to control plane ",
+                     address, " failed: ", err)
     self:start_timer()
     return
   end
@@ -110,14 +112,14 @@ function _M:communicate(premature)
   local header_reader = sock:receiveuntil("\r\n\r\n")
   local header, err, _ = header_reader()
   if not header then
-    ngx_log(ngx_ERR, "failed to receive response header: ", err)
+    ngx_log(ngx_ERR, "[hybrid-comm] failed to receive response header: ", err)
     self:start_timer()
     return
   end
 
   local m = ngx.re.match(header, [[^\s*HTTP/1\.1\s+]], "jo")
   if not m then
-    ngx_log(ngx_ERR, "bad HTTP response status line: ", header)
+    ngx_log(ngx_ERR, "[hybrid-comm] bad HTTP response status line: ", header)
     self:start_timer()
     return
   end
@@ -129,7 +131,8 @@ function _M:communicate(premature)
 
   res, err = sock:send(basic_info:pack())
   if not res then
-    ngx_log(ngx_ERR, "unable to send basic info to control plane ", address, " err: ", err)
+    ngx_log(ngx_ERR, "[hybrid-comm] unable to send basic info to " ..
+                     "control plane ", address, " err: ", err)
     self:start_timer()
     return
   end
@@ -138,7 +141,7 @@ function _M:communicate(premature)
   local res, err = self.loop:handle_peer("control_plane", sock)
 
   if not res then
-    ngx_log(ngx_ERR, "connection to control plane broken: ", err)
+    ngx_log(ngx_ERR, "[hybrid-comm] connection to control plane broken: ", err)
     self:start_timer()
     return
   end

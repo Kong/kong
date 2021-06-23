@@ -42,8 +42,8 @@ function _M:validate_shared_cert()
   local cert = ngx_var.ssl_client_raw_cert
 
   if not cert then
-    ngx_log(ngx_ERR, "Data Plane failed to present client certificate " ..
-                     "during handshake")
+    ngx_log(ngx_ERR, "[hybrid-comm] Data Plane failed to present " ..
+                     "client certificate during handshake")
     return ngx_exit(444)
   end
 
@@ -51,8 +51,8 @@ function _M:validate_shared_cert()
   local digest = assert(cert:digest("sha256"))
 
   if digest ~= self.cert_digest then
-    ngx_log(ngx_ERR, "Data Plane presented incorrect client certificate " ..
-                     "during handshake, expected digest: " ..
+    ngx_log(ngx_ERR, "[hybrid-comm] Data Plane presented incorrect "..
+                     "client certificate during handshake, expected digest: " ..
                      self.cert_digest ..
                      " got: " .. digest)
     return ngx_exit(444)
@@ -129,11 +129,11 @@ function _M:handle_cp_protocol()
   elseif self.conf.cluster_ocsp ~= "off" then
     local res, err = check_for_revocation_status()
     if res == false then
-      ngx_log(ngx_ERR, "DP client certificate was revoked: ", err)
+      ngx_log(ngx_ERR, "[hybrid-comm] DP client certificate was revoked: ", err)
       return ngx_exit(444)
 
     elseif not res then
-      ngx_log(ngx_WARN, "DP client certificate revocation check failed: ", err)
+      ngx_log(ngx_WARN, "[hybrid-comm] DP client certificate revocation check failed: ", err)
       if self.conf.cluster_ocsp == "on" then
         return ngx_exit(444)
       end
@@ -146,12 +146,12 @@ function _M:handle_cp_protocol()
 
   local ok, err = ngx.send_headers()
   if not ok then
-    ngx_log(ngx_ERR, "failed to send response header: " .. (err or "unknown"))
+    ngx_log(ngx_ERR, "[hybrid-comm] failed to send response header: " .. (err or "unknown"))
     return ngx_exit(500)
   end
   ok, err = ngx.flush(true)
   if not ok then
-    ngx_log(ngx_ERR, "failed to flush response header: " .. (err or "unknown"))
+    ngx_log(ngx_ERR, "[hybrid-comm] failed to flush response header: " .. (err or "unknown"))
     return ngx_exit(500)
   end
 
