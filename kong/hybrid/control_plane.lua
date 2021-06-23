@@ -146,7 +146,7 @@ function _M:handle_cp_protocol()
 
   local ok, err = ngx.send_headers()
   if not ok then
-    ngx_log(ngx_ERR, "failed to send response header: " .. (err or "unknonw"))
+    ngx_log(ngx_ERR, "failed to send response header: " .. (err or "unknown"))
     return ngx_exit(500)
   end
   ok, err = ngx.flush(true)
