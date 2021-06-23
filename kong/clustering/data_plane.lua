@@ -9,18 +9,14 @@ local constants = require("kong.constants")
 local utils = require("kong.tools.utils")
 local system_constants = require("lua_system_constants")
 local ffi = require("ffi")
-local tablex = require("pl.tablex")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
 local math = math
 local pcall = pcall
-local concat = table.concat
 local tostring = tostring
 local ngx = ngx
-local md5 = ngx.md5
 local ngx_log = ngx.log
-local ngx_null = ngx.null
 local ngx_sleep = ngx.sleep
 local cjson_decode = cjson.decode
 local cjson_encode = cjson.encode
@@ -54,49 +50,6 @@ local function is_timeout(err)
 end
 
 
-local function sort(t)
-  if t == ngx_null then
-    return "/null/"
-  end
-
-  local typ = type(t)
-  if typ == "table" then
-    local i = 1
-    local o = { "{" }
-    for k, v in tablex.sort(t) do
-      o[i+1] = sort(k)
-      o[i+2] = ":"
-      o[i+3] = sort(v)
-      o[i+4] = ";"
-      i=i+4
-    end
-    if i == 1 then
-      i = i + 1
-    end
-    o[i] = "}"
-
-    return concat(o, nil, 1, i)
-
-  elseif typ == "string" then
-    return '$' .. t .. '$'
-
-  elseif typ == "number" then
-    return '#' .. tostring(t) .. '#'
-
-  elseif typ == "boolean" then
-    return '?' .. tostring(t) .. '?'
-
-  else
-    return '(' .. tostring(t) .. ')'
-  end
-end
-
-
-local function hash(t)
-  return md5(sort(t))
-end
-
-
 function _M.new(parent)
   local self = {
     declarative_config = declarative.new_config(parent.conf),
@@ -110,11 +63,15 @@ function _M.new(parent)
 end
 
 
-function _M:update_config(config_table, update_cache)
+function _M:update_config(config_table, config_hash, update_cache)
   assert(type(config_table) == "table")
 
+  if not config_hash then
+    config_hash = self:calculate_config_hash(config_table)
+  end
+
   local entities, err, _, meta, new_hash =
-              self.declarative_config:parse_table(config_table, hash(config_table))
+              self.declarative_config:parse_table(config_table, config_hash)
   if not entities then
     return nil, "bad config received from control plane " .. err
   end
@@ -177,7 +134,7 @@ function _M:init_worker()
 
           if config then
             local res
-            res, err = self:update_config(config, false)
+            res, err = self:update_config(config)
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config from cache: ", err)
             end
@@ -316,9 +273,10 @@ function _M:communicate(premature)
       local ok, err = config_semaphore:wait(1)
       if ok then
         local config_table = self.next_config
+        local config_hash  = self.next_hash
         if config_table then
           local pok, res
-          pok, res, err = pcall(self.update_config, self, config_table, true)
+          pok, res, err = pcall(self.update_config, self, config_table, config_hash, true)
           if pok then
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
@@ -395,6 +353,7 @@ function _M:communicate(premature)
             end
 
             self.next_config = assert(msg.config_table)
+            self.next_hash = msg.config_hash
 
             if config_semaphore:count() <= 0 then
               -- the following line always executes immediately after the `if` check
