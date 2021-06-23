@@ -292,26 +292,14 @@ for _, strategy in helpers.each_strategy() do
             {  name = "key-auth", version = plugins_map["key-auth"] }
           }
         },
-        ["CP configured plugins list matches DP enabled plugins major version (newer dp plugin)"] = {
-          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
-          plugins_list = {
-            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".1000.1000" }
-          }
-        },
         ["CP configured plugins list matches DP enabled plugins major version (older dp plugin)"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
           plugins_list = {
             {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".0.0" }
           }
         },
-        ["CP and DP minor version mismatches (newer dp)"] = {
-          dp_version = string.format("%d.%d.%d", MAJOR, 1000, PATCH),
-        },
         ["CP and DP minor version mismatches (older dp)"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, 0, PATCH),
-        },
-        ["CP and DP patch version mismatches (newer dp)"] = {
-          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, 1000),
         },
         ["CP and DP patch version mismatches (older dp)"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, 0),
@@ -421,17 +409,51 @@ for _, strategy in helpers.each_strategy() do
             {  name="banana-plugin", version="1.0.0" }
           }
         },
-        ["CP configured plugin list mismatches DP enabled plugins list version"] = {
+        ["CP has configured plugin with older major version than in DP enabled plugins"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
           expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
           plugins_list = {
             {  name="key-auth", version="1.0.0" }
           }
         },
+        ["CP has configured plugin with newer minor version than in DP enabled plugins"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
+          plugins_list = {
+            {  name = "key-auth", version = "1000.0.0" }
+          }
+        },
+        ["CP has configured plugin with older minor version than in DP enabled plugins"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
+          plugins_list = {
+            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".1000.0" }
+          }
+        },
+        ["CP has configured plugin with older patch version than in DP enabled plugins"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
+          plugins_list = {
+            {  name = "key-auth", version = plugins_map["key-auth"]:match("(%d+.%d+)") .. ".1000" }
+          }
+        },
         ["CP and DP major version mismatches"] = {
           dp_version = "1.0.0",
           expected = CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE,
-          ignore_error = true
+          -- KONG_VERSION_INCOMPATIBLE is send during first handshake, CP closes
+          -- connection immediately if kong version mismatches.
+          -- ignore_error is needed to ignore the `closed` error
+          ignore_error = true,
+        },
+        ["CP and DP patch version mismatches (newer dp)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, 1000),
+          expected = CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE,
+          ignore_error = true,
+        },
+        ["CP and DP minor version mismatches (newer dp)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, 1000, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE,
+          ignore_error = true,
         },
       }
 
