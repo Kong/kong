@@ -52,7 +52,7 @@ local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
-local MAJOR_MINOR_PATCH_PATTERN = "^(%d+)%.(%d+)%.(%d+)"
+local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 
 
 local function log(level, ...)
@@ -60,21 +60,20 @@ local function log(level, ...)
 end
 
 
-local function extract_major_minor_patch(version)
+local function extract_major_minor(version)
   if type(version) ~= "string" then
     return nil, nil
   end
 
-  local major, minor, patch = version:match(MAJOR_MINOR_PATCH_PATTERN)
+  local major, minor = version:match(MAJOR_MINOR_PATTERN)
   if not major then
     return nil, nil
   end
 
   major = tonumber(major, 10)
   minor = tonumber(minor, 10)
-  patch = tonumber(patch, 10)
 
-  return major, minor, patch
+  return major, minor
 end
 
 
@@ -83,13 +82,12 @@ local function plugins_list_to_map(plugins_list)
   for _, plugin in ipairs(plugins_list) do
     local name = plugin.name
     local version = plugin.version
-    local major, minor, patch = extract_major_minor_patch(plugin.version)
+    local major, minor = extract_major_minor(plugin.version)
 
     if major and minor then
       versions[name] = {
         major   = major,
         minor   = minor,
-        patch   = patch,
         version = version,
       }
 
@@ -260,8 +258,8 @@ end
 
 
 function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
-  local major_cp, minor_cp, patch_cp = extract_major_minor_patch(KONG_VERSION)
-  local major_dp, minor_dp, patch_dp = extract_major_minor_patch(dp_version)
+  local major_cp, minor_cp = extract_major_minor(KONG_VERSION)
+  local major_dp, minor_dp = extract_major_minor(dp_version)
 
   if not major_cp then
     return nil, "data plane version " .. dp_version .. " is incompatible with control plane version",
@@ -281,7 +279,7 @@ function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
                 CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
   end
 
-  if minor_cp < minor_dp or (minor_cp == minor_dp and patch_cp < patch_dp) then
+  if minor_cp < minor_dp then
     return nil, "data plane version " .. dp_version ..
                 " is incompatible with older control plane version " .. KONG_VERSION,
                 CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
@@ -356,9 +354,7 @@ function _M:check_configuration_compatibility(dp_plugin_map)
         -- CP plugin needs to match DP plugins with major version
         -- CP must have plugin with equal or newer version than that on DP
         if cp_plugin.major ~= dp_plugin.major or
-          (cp_plugin.major == dp_plugin.major and cp_plugin.minor < dp_plugin.minor) or
-          (cp_plugin.major == dp_plugin.major and cp_plugin.minor == dp_plugin.minor and
-            cp_plugin.patch < dp_plugin.patch) then
+          (cp_plugin.major == dp_plugin.major and cp_plugin.minor < dp_plugin.minor) then
           local msg = "configured data plane " .. name .. " plugin version " .. dp_plugin.version ..
                       " is different to control plane plugin version " .. cp_plugin.version
           return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
