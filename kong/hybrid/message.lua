@@ -45,6 +45,10 @@ function _M.new(src, dest, topic, message)
   assert(dest, "dest is required")
   assert(topic, "topic is required")
   assert(message, "message is required")
+  assert(not src or #src < 256, "src must be under 256 bytes")
+  assert(#dest < 256, "dest must be under 256 bytes")
+  assert(#topic < 256, "topic must be under 256 bytes")
+  assert(#message < 0xFFFFFFFF, "message must be under 4GB")
 
   self.src = src
   self.dest = dest
