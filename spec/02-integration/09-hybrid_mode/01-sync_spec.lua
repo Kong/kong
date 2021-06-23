@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
     -- client so we can mock various values (e.g. node_version)
     describe("relaxed compatibility check:", function()
       lazy_setup(function()
-        helpers.get_db_utils(strategy, {
+        local bp = helpers.get_db_utils(strategy, {
           "routes",
           "services",
           "plugins",
@@ -241,6 +241,10 @@ for _, strategy in helpers.each_strategy() do
           "certificates",
           "clustering_data_planes",
         }) -- runs migrations
+
+        bp.plugins:insert {
+          name = "key-auth",
+        }
 
         assert(helpers.start_kong({
           role = "control_plane",
@@ -252,18 +256,6 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           cluster_version_check = "major_minor",
         }))
-
-        local admin_client = helpers.admin_client()
-        -- configure a few plugins
-        local res = assert(admin_client:post("/plugins", {
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            name  = "key-auth"
-          }
-        }))
-        assert.res_status(201, res)
       end)
 
       lazy_teardown(function()
