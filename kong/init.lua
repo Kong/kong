@@ -505,6 +505,10 @@ function Kong.init()
      (config.role == "data_plane" or config.role == "control_plane")
   then
     kong.clustering = require("kong.clustering").new(config)
+
+    if config.cluster_v2 then
+      kong.hybrid = require("kong.hybrid").new(config)
+    end
   end
 
   -- Load plugins as late as possible so that everything is set up
@@ -659,6 +663,10 @@ function Kong.init_worker()
 
   if kong.clustering then
     kong.clustering:init_worker()
+  end
+
+  if kong.hybrid then
+    kong.hybrid:init_worker()
   end
 end
 
@@ -1469,6 +1477,15 @@ function Kong.serve_cluster_listener(options)
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
   return kong.clustering:handle_cp_websocket()
+end
+
+
+function Kong.serve_cp_protocol(options)
+  log_init_worker_errors()
+
+  kong_global.set_phase(kong, PHASES.cluster_listener)
+
+  return kong.hybrid:handle_cp_protocol()
 end
 
 
