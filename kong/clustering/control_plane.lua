@@ -354,7 +354,7 @@ function _M:check_configuration_compatibility(dp_plugin_map)
         -- CP plugin needs to match DP plugins with major version
         -- CP must have plugin with equal or newer version than that on DP
         if cp_plugin.major ~= dp_plugin.major or
-          (cp_plugin.major == dp_plugin.major and cp_plugin.minor < dp_plugin.minor) then
+          cp_plugin.minor < dp_plugin.minor then
           local msg = "configured data plane " .. name .. " plugin version " .. dp_plugin.version ..
                       " is different to control plane plugin version " .. cp_plugin.version
           return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
