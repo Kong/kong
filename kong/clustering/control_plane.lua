@@ -126,10 +126,13 @@ function _M:export_deflated_reconfigure_payload()
     end
   end
 
+  local config_hash = self:calculate_config_hash(config_table)
+
   local payload, err = cjson_encode({
     type = "reconfigure",
     timestamp = ngx_now(),
     config_table = config_table,
+    config_hash = config_hash,
   })
   if not payload then
     return nil, err
@@ -140,9 +143,10 @@ function _M:export_deflated_reconfigure_payload()
     return nil, err
   end
 
+  self.current_config_hash = config_hash
   self.deflated_reconfigure_payload = payload
 
-  return payload
+  return payload, nil, config_hash
 end
 
 
