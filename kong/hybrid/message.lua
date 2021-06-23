@@ -12,6 +12,7 @@ local string_char, string_byte = string.char, string.byte
 
 local POOL_NAME = "hybrid_messages"
 local _MT = { __index = _M, }
+local MAX_MESSAGE_SIZE = 64 * 1024 * 1024 - 1
 
 
 --- convert a unsigned 32bit integer to network byte order
@@ -48,7 +49,7 @@ function _M.new(src, dest, topic, message)
   assert(not src or #src < 256, "src must be under 256 bytes")
   assert(#dest < 256, "dest must be under 256 bytes")
   assert(#topic < 256, "topic must be under 256 bytes")
-  assert(#message < 64 * 1024 * 1024, "message must be under 64MB")
+  assert(#message <= MAX_MESSAGE_SIZE, "message must be under 64MB")
 
   self.src = src
   self.dest = dest
@@ -107,6 +108,10 @@ function _M.unpack_from_socket(sock)
     return nil, err
   end
   local message_len = bytes_to_uint32(buf)
+  if message_len > MAX_MESSAGE_SIZE then
+    return nil, "peer attempted to send message that is larger than 64MB"
+  end
+
   local message
   message, err = sock:receive(message_len)
   if not message then
