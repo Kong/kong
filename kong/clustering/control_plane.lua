@@ -153,7 +153,7 @@ end
 function _M:push_config()
   local payload, err = self:export_deflated_reconfigure_payload()
   if not payload then
-    log(ngx_ERR, "unable to export config from database: " .. err)
+    log(ngx_ERR, "unable to export config from database: ", err)
     return
   end
 
@@ -509,7 +509,7 @@ function _M:handle_cp_websocket()
     return ngx_exit(ngx_CLOSE)
   end
 
-  ngx.log(ngx.DEBUG, "data plane connected", log_suffix)
+  log(ngx_DEBUG, "data plane connected", log_suffix)
 
   local queue
   do
@@ -685,7 +685,7 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
 
   local _, err = self:export_deflated_reconfigure_payload()
   if err then
-    log(ngx_ERR, "unable to export initial config from database: " .. err)
+    log(ngx_ERR, "unable to export initial config from database: ", err)
   end
 
   while not exiting() do
