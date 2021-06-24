@@ -399,13 +399,14 @@ function _M:handle_cp_websocket()
     log_suffix = ""
   end
 
-  local ok, err
+  local _, err
 
   -- use mutual TLS authentication
   if self.conf.cluster_mtls == "shared" then
-    ok, err = self:validate_shared_cert()
+    _, err = self:validate_shared_cert()
 
   elseif self.conf.cluster_ocsp ~= "off" then
+    local ok
     ok, err = check_for_revocation_status()
     if ok == false then
       err = "data plane client certificate was revoked: " ..  err
@@ -488,7 +489,7 @@ function _M:handle_cp_websocket()
   local purge_delay = self.conf.cluster_data_plane_purge_delay
   local update_sync_status = function()
     last_seen = ngx_time()
-    ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
+    local ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
       last_seen = last_seen,
       config_hash = config_hash ~= "" and config_hash or nil,
       hostname = dp_hostname,
@@ -501,11 +502,11 @@ function _M:handle_cp_websocket()
     end
   end
 
-  ok, err, sync_status = self:check_version_compatibility(dp_version, dp_plugins_map, log_suffix)
-  if not ok then
-    update_sync_status()
+  _, err, sync_status = self:check_version_compatibility(dp_version, dp_plugins_map, log_suffix)
+  if err then
     log(ngx_ERR, err, log_suffix)
     wb:send_close()
+    update_sync_status()
     return ngx_exit(ngx_CLOSE)
   end
 
@@ -527,7 +528,7 @@ function _M:handle_cp_websocket()
   self.clients[wb] = queue
 
   if not self.deflated_reconfigure_payload then
-    ok, err = self:export_deflated_reconfigure_payload()
+    _, err = self:export_deflated_reconfigure_payload()
   end
 
   if self.deflated_reconfigure_payload then
@@ -652,8 +653,7 @@ function _M:handle_cp_websocket()
     end
   end)
 
-  local perr
-  ok, err, perr = ngx.thread.wait(write_thread, read_thread)
+  local ok, err, perr = ngx.thread.wait(write_thread, read_thread)
 
   ngx.thread.kill(write_thread)
   ngx.thread.kill(read_thread)
