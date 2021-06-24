@@ -53,11 +53,7 @@ local PING_WAIT = PING_INTERVAL * 1.5
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
-
-
-local function log(level, ...)
-  ngx_log(level, "[clustering] ", ...)
-end
+local _log_prefix = "[clustering] "
 
 
 local function extract_major_minor(version)
@@ -153,7 +149,7 @@ end
 function _M:push_config()
   local payload, err = self:export_deflated_reconfigure_payload()
   if not payload then
-    log(ngx_ERR, "unable to export config from database: ", err)
+    ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
     return
   end
 
@@ -164,7 +160,7 @@ function _M:push_config()
     n = n + 1
   end
 
-  log(ngx_DEBUG, "config pushed to ", n, " clients")
+  ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " clients")
 end
 
 
@@ -290,7 +286,7 @@ function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
                 " is different to control plane minor version " ..
                 KONG_VERSION
 
-    log(ngx_INFO, msg, log_suffix)
+    ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
   end
 
   for _, plugin in ipairs(self.plugins_list) do
@@ -300,9 +296,9 @@ function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
 
     if not dp_plugin then
       if cp_plugin.version then
-        log(ngx_WARN, name, " plugin ", cp_plugin.version, " is missing from data plane", log_suffix)
+        ngx_log(ngx_WARN, _log_prefix, name, " plugin ", cp_plugin.version, " is missing from data plane", log_suffix)
       else
-        log(ngx_WARN, name, " plugin is missing from data plane", log_suffix)
+        ngx_log(ngx_WARN, _log_prefix, name, " plugin is missing from data plane", log_suffix)
       end
 
     else
@@ -311,18 +307,18 @@ function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
                     " is different to control plane plugin version " .. cp_plugin.version
 
         if cp_plugin.major ~= dp_plugin.major then
-          log(ngx_WARN, msg, cp_plugin.version, log_suffix)
+          ngx_log(ngx_WARN, _log_prefix, msg, cp_plugin.version, log_suffix)
 
         elseif cp_plugin.minor ~= dp_plugin.minor then
-          log(ngx_INFO, msg, log_suffix)
+          ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
         end
 
       elseif dp_plugin.version then
-        log(ngx_NOTICE, "data plane ", name, " plugin version ", dp_plugin.version,
+        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version ", dp_plugin.version,
                         " has unspecified version on control plane", log_suffix)
 
       elseif cp_plugin.version then
-        log(ngx_NOTICE, "data plane ", name, " plugin version is unspecified, ",
+        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version is unspecified, ",
                         "and is different to control plane plugin version ",
                         cp_plugin.version, log_suffix)
       end
@@ -416,30 +412,30 @@ function _M:handle_cp_websocket()
         err = "data plane client certificate revocation check failed: " .. err
 
       else
-        log(ngx_WARN, "data plane client certificate revocation check failed: ", err, log_suffix)
+        ngx_log(ngx_WARN, _log_prefix, "data plane client certificate revocation check failed: ", err, log_suffix)
         err = nil
       end
     end
   end
 
   if err then
-    log(ngx_ERR, err, log_suffix)
+    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
     return ngx_exit(ngx_CLOSE)
   end
 
   if not dp_id then
-    log(ngx_WARN, "data plane didn't pass the id", log_suffix)
+    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the id", log_suffix)
     ngx_exit(400)
   end
 
   if not dp_version then
-    log(ngx_WARN, "data plane didn't pass the version", log_suffix)
+    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the version", log_suffix)
     ngx_exit(400)
   end
 
   local wb, err = ws_server:new(WS_OPTS)
   if not wb then
-    log(ngx_ERR, "failed to perform server side websocket handshake: ", err, log_suffix)
+    ngx_log(ngx_ERR, _log_prefix, "failed to perform server side websocket handshake: ", err, log_suffix)
     return ngx_exit(ngx_CLOSE)
   end
 
@@ -477,7 +473,7 @@ function _M:handle_cp_websocket()
   end
 
   if err then
-    log(ngx_ERR, err, log_suffix)
+    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
     wb:send_close()
     return ngx_exit(ngx_CLOSE)
   end
@@ -498,19 +494,19 @@ function _M:handle_cp_websocket()
       sync_status = sync_status, -- TODO: import may have been failed though
     }, { ttl = purge_delay })
     if not ok then
-      log(ngx_ERR, "unable to update clustering data plane status: ", err, log_suffix)
+      ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)
     end
   end
 
   _, err, sync_status = self:check_version_compatibility(dp_version, dp_plugins_map, log_suffix)
   if err then
-    log(ngx_ERR, err, log_suffix)
+    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
     wb:send_close()
     update_sync_status()
     return ngx_exit(ngx_CLOSE)
   end
 
-  log(ngx_DEBUG, "data plane connected", log_suffix)
+  ngx_log(ngx_DEBUG, _log_prefix, "data plane connected", log_suffix)
 
   local queue
   do
@@ -536,7 +532,7 @@ function _M:handle_cp_websocket()
     queue.post()
 
   else
-    log(ngx_ERR, "unable to send initial configuration to data plane: ", err, log_suffix)
+    ngx_log(ngx_ERR, _log_prefix, "unable to send initial configuration to data plane: ", err, log_suffix)
   end
 
   -- how control plane connection management works:
@@ -616,10 +612,10 @@ function _M:handle_cp_websocket()
               return nil, "failed to send PONG back to data plane: " .. err
             end
 
-            log(ngx_NOTICE, "failed to send PONG back to data plane: ", err, log_suffix)
+            ngx_log(ngx_NOTICE, _log_prefix, "failed to send PONG back to data plane: ", err, log_suffix)
 
           else
-            log(ngx_DEBUG, "sent PONG packet to data plane", log_suffix)
+            ngx_log(ngx_DEBUG, _log_prefix, "sent PONG packet to data plane", log_suffix)
           end
 
         else
@@ -633,14 +629,14 @@ function _M:handle_cp_websocket()
                 return nil, "unable to send updated configuration to data plane: " .. err
               end
 
-              log(ngx_NOTICE, "unable to send updated configuration to data plane: ", err, log_suffix)
+              ngx_log(ngx_NOTICE, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
 
             else
-              log(ngx_DEBUG, "sent config update to data plane", log_suffix)
+              ngx_log(ngx_DEBUG, _log_prefix, "sent config update to data plane", log_suffix)
             end
 
           else
-            log(ngx_WARN, "unable to send updated configuration to data plane: ", err, log_suffix)
+            ngx_log(ngx_WARN, _log_prefix, "unable to send updated configuration to data plane: ", err, log_suffix)
             if sync_status ~= previous_sync_status then
               update_sync_status()
             end
@@ -665,12 +661,12 @@ function _M:handle_cp_websocket()
   --update_sync_status()
 
   if not ok then
-    log(ngx_ERR, err, log_suffix)
+    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
     return ngx_exit(ngx_ERR)
   end
 
   if perr then
-    log(ngx_ERR, perr, log_suffix)
+    ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
     return ngx_exit(ngx_ERR)
   end
 
@@ -685,7 +681,7 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
 
   local _, err = self:export_deflated_reconfigure_payload()
   if err then
-    log(ngx_ERR, "unable to export initial config from database: ", err)
+    ngx_log(ngx_ERR, _log_prefix, "unable to export initial config from database: ", err)
   end
 
   while not exiting() do
@@ -713,11 +709,11 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
         end
 
       else
-        log(ngx_ERR, "export and pushing config failed: ", err)
+        ngx_log(ngx_ERR, _log_prefix, "export and pushing config failed: ", err)
       end
 
     elseif err ~= "timeout" then
-      log(ngx_ERR, "semaphore wait error: ", err)
+      ngx_log(ngx_ERR, _log_prefix, "semaphore wait error: ", err)
     end
   end
 end
@@ -743,13 +739,13 @@ function _M:init_worker()
   local function post_push_config_event()
     local res, err = kong.worker_events.post("clustering", "push_config")
     if not res then
-      log(ngx_ERR, "unable to broadcast event: ", err)
+      ngx_log(ngx_ERR, _log_prefix, "unable to broadcast event: ", err)
     end
   end
 
   -- Handles "clustering:push_config" cluster event
   local function handle_clustering_push_config_event(data)
-    log(ngx_DEBUG, "received clustering:push_config event for ", data)
+    ngx_log(ngx_DEBUG, _log_prefix, "received clustering:push_config event for ", data)
     post_push_config_event()
   end
 
