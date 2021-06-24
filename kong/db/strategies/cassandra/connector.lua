@@ -1021,6 +1021,7 @@ do
           or string.find(err, "[Uu]ndefined column name")
           or string.find(err, "No column definition found for column")
           or string.find(err, "Undefined name .- in selection clause")
+          or string.find(err, "Column with name .- already exists")
           then
             log.warn("ignored error while running '%s' migration: %s (%s)",
                      name, err, cql:gsub("\n", " "):gsub("%s%s+", " "))
