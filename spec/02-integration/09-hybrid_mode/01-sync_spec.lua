@@ -390,10 +390,10 @@ for _, strategy in helpers.each_strategy() do
 
             for _, v in pairs(json.data) do
               if v.id == uuid then
-                assert.equal(harness.dp_version or tostring(_VERSION_TABLE),
-                              v.version)
-                assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-                return true
+                local dp_version = harness.dp_version or tostring(_VERSION_TABLE)
+                if dp_version == v.version and CLUSTERING_SYNC_STATUS.NORMAL == v.sync_status then
+                  return true
+                end
               end
             end
           end, 5)
@@ -481,10 +481,10 @@ for _, strategy in helpers.each_strategy() do
 
             for _, v in pairs(json.data) do
               if v.id == uuid then
-                assert.equal(harness.dp_version or tostring(_VERSION_TABLE),
-                              v.version)
-                assert.equal(harness.expected, v.sync_status)
-                return true
+                local dp_version = harness.dp_version or tostring(_VERSION_TABLE)
+                if dp_version == v.version and harness.expected == v.sync_status then
+                  return true
+                end
               end
             end
           end, 5)
