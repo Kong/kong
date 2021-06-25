@@ -112,9 +112,43 @@ local function patch_plugin(self, db, _, parent)
 end
 
 
+local function get_plugins_meta(self, db)
+  local handlers = kong.db.daos.plugins.handlers
+  local PHASES = require"kong.global".phases
+
+  local meta = {}
+  for name, handler in pairs(handlers) do
+    meta[name] = meta[name] or {}
+    local plugin_meta = meta[name]
+
+    local priority = handler.PRIORITY
+    if priority == math.huge then
+      priority = "inf"
+    end
+
+    plugin_meta.priority = priority
+    plugin_meta.version = handler.VERSION
+
+    local plugin_phases = {}
+    for name, handler in pairs(handler) do
+      if rawget(PHASES, name) then
+        table.insert(plugin_phases, name)
+      end
+    end
+
+    plugin_meta.phases = plugin_phases
+  end
+
+  return kong.response.exit(200, meta)
+end
+
 return {
   ["/plugins"] = {
     POST = post_plugin,
+  },
+
+  ["/plugins/meta"] = {
+    GET = get_plugins_meta,
   },
 
   ["/plugins/:plugins"] = {
