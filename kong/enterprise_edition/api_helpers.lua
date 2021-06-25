@@ -21,7 +21,6 @@ local kong = kong
 local log = ngx.log
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
-local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 local unescape_uri = ngx.unescape_uri
 
 local _M = {}
@@ -151,6 +150,21 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
 
   admin.rbac_user = rbac_user
 
+  -- Pre loading the (potentially incomplete) rbac user info ensures at least
+  -- some user info is early bound to the request context during authentication.
+  -- This is important because dao hooks may expect it to be there during
+  -- authentication, in particular for entity level rbac.
+  --
+  -- We clear the ctx at the end of this method, to ensure it is cleanly
+  -- reloaded (with more complete data) once authentication is complete.
+  do
+    local _, err = rbac.get_rbac_user_info(rbac_user)
+    if err then
+      log(ERR, _log_prefix, err)
+      return endpoints.handle_error(err)
+    end
+  end
+
   -- sets self.workspaces, ngx.ctx.workspace, and self.consumer
   _M.attach_consumer_and_workspaces(self, consumer_id)
 
@@ -224,6 +238,9 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   self.admin = admin
   -- set back workspace context from request
   ctx.workspace = old_ws
+
+  -- reset temporary rbac ctx data
+  ngx.ctx.rbac = nil
 end
 
 
@@ -255,7 +272,10 @@ function _M.attach_workspaces_roles(self, roles)
   end
 
   for _, role in ipairs(roles) do
-    local rbac_role, err = kong.db.rbac_roles:select({ id = role.id }, GLOBAL_QUERY_OPTS)
+    local rbac_role, err = kong.db.rbac_roles:select(
+      { id = role.id },
+      { workspace = ngx.null, show_ws_id = true }
+    )
     if err then
       kong.log.err("Error fetching workspaces for role: ", role.id, ": ", err)
       return endpoints.handle_error()
@@ -277,24 +297,29 @@ end
 
 function _M.attach_workspaces(self, consumer_id)
   local consumer, ws, err
-  consumer, err = kong.db.consumers:select({ id = consumer_id }, GLOBAL_QUERY_OPTS)
-  if consumer and not err then
-    ws, err = kong.db.workspaces:select({ id = consumer.ws_id })
-  end
 
-  self.workspaces = { ws }
-  self.workspaces_hash = { [ ws.id ] = ws }
-
-  if err then
-    log(ERR, _log_prefix, "Error fetching workspaces for consumer_id: ",
+  consumer, err = kong.db.consumers:select(
+    { id = consumer_id },
+    { skip_rbac = true, workspace = ngx.null, show_ws_id = true }
+  )
+  if not consumer or err then
+    log(ERR, _log_prefix, "Error fetching consumer with consumer_id: ",
       consumer_id, ": ", err)
     return endpoints.handle_error()
   end
 
-  if not ws then
-    log(ERR, "no workspace found for rbac_user:" .. consumer_id)
+  ws, err = kong.db.workspaces:select(
+    { id = consumer.ws_id },
+    { skip_rbac = true }
+  )
+  if not ws or err then
+    log(ERR, "no workspace found for consumer_id: ",
+      consumer_id, ": ", err)
     return endpoints.handle_error()
   end
+
+  self.workspaces = { ws }
+  self.workspaces_hash = { [ ws.id ] = ws }
 
   return {
     id = ws.id,
@@ -512,8 +537,8 @@ function _M.before_filter(self)
     -- ngx.var.uri is used to look for exact matches
     -- self.route_name is used to look for wildcard matches,
     -- by replacing named parameters with *
-    rbac.validate_user(self.rbac_user, self.groups)
-    rbac.validate_endpoint(self.route_name, ngx.var.uri, self.rbac_user, self.groups)
+    rbac.validate_user(self.rbac_user)
+    rbac.validate_endpoint(self.route_name, ngx.var.uri, self.rbac_user)
   end
 end
 

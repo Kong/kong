@@ -419,7 +419,7 @@ _M.get_role_endpoints = get_role_endpoints
 
 
 local function retrieve_group(dao, name)
-  local entity, err = dao:select_by_name(name)
+  local entity, err = dao:select_by_name(name, { skip_rbac = true })
 
   if err then
     return nil, err
@@ -738,7 +738,7 @@ _M._resolve_role_entity_permissions = resolve_role_entity_permissions -- for tes
 local load_rbac_ctx
 
 
-local function get_rbac_user_info(rbac_user, groups)
+local function get_rbac_user_info(rbac_user)
   local guest_user = {
     roles = {},
     user = "guest",
@@ -752,9 +752,7 @@ local function get_rbac_user_info(rbac_user, groups)
     return user
   end
 
-
-  local user, err = load_rbac_ctx(ngx.ctx, rbac_user, groups)
-
+  local user, err = load_rbac_ctx(rbac_user)
 
   if err then
     return nil, err
@@ -762,6 +760,7 @@ local function get_rbac_user_info(rbac_user, groups)
 
   return user or guest_user
 end
+_M.get_rbac_user_info = get_rbac_user_info
 
 
 local function objects_from_names(db, given_names, object_name)
@@ -789,7 +788,7 @@ _M.objects_from_names = objects_from_names
 
 
 local function is_system_table(t)
-  local reserved_tables = { "workspace*" }
+  local reserved_tables = { "workspace*", "sessions" }
   for _, v in ipairs(reserved_tables) do
     if string.find(t, v) then
       return true
@@ -1288,7 +1287,7 @@ local function update_user_token(user)
 
   local _, err = kong.db.rbac_users:update(
     { id = user.id }, { user_token = digest, user_token_ident = ident },
-    { workspace = user.ws_id }
+    { skip_rbac = true, workspace = user.ws_id }
   )
   if err then
     ngx.log(ngx.ERR, "error attempting to update user token hash: ", err)
@@ -1406,7 +1405,7 @@ function _M.merge_roles(roles1, roles2)
 end
 
 
-load_rbac_ctx = function(ctx, rbac_user, groups)
+load_rbac_ctx = function(rbac_user)
   local user = rbac_user
 
   if not user then
@@ -1538,20 +1537,20 @@ load_rbac_ctx = function(ctx, rbac_user, groups)
   return rbac_ctx
 end
 
-function _M.validate_user(rbac_user, groups)
+function _M.validate_user(rbac_user)
   if kong.configuration.rbac == "off" then
     return
+  end
+
+  local rbac_ctx, err = get_rbac_user_info(rbac_user)
+  if err then
+    ngx.log(ngx.ERR, "[rbac] ", err)
+    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   -- if it's whitelisted, we don't care who the user is
   if whitelisted_endpoints[ngx.var.uri] then
     return true
-  end
-
-  local rbac_ctx, err = get_rbac_user_info(rbac_user, groups)
-  if err then
-    ngx.log(ngx.ERR, "[rbac] ", err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
   if rbac_ctx.user == "guest" then
@@ -1560,7 +1559,7 @@ function _M.validate_user(rbac_user, groups)
 end
 
 
-function _M.validate_endpoint(route_name, route, rbac_user, groups)
+function _M.validate_endpoint(route_name, route, rbac_user)
   if route_name == "default_route" then
     return
   end
@@ -1571,7 +1570,7 @@ function _M.validate_endpoint(route_name, route, rbac_user, groups)
     return
   end
 
-  local rbac_ctx, err = get_rbac_user_info(rbac_user, groups)
+  local rbac_ctx, err = get_rbac_user_info(rbac_user)
   if err then
     ngx.log(ngx.ERR, "[rbac] ", err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })
