@@ -66,7 +66,7 @@ This is an RC release of Kong 2.5.0, with no breaking changes with respect to th
 
 As an RC it is a test version which should represent the features that will be present in the official 2.5.0 version.
 
-This version includes Control Plane resiliency to database outages and the new `declarative_config_string`, amongst
+This version includes Control Plane resiliency to database outages and the new `declarative_config_string`, among
 other features and fixes.
 
 ### Distribution
@@ -86,10 +86,11 @@ other features and fixes.
 
 #### Core
 
-- Control Plane can send updates to new Data Planes even when database is down
+- Control Planes can now send updates to new Data Planes even if the Control Planes lose connection to the database
   [#6938](https://github.com/kong/kong/pull/6938)
-- Automatically add `cluster_cert` or `cluster_ca_cert` into `lua_ssl_trusted_certificate`
-  when operating under Data Plane mode
+- Kong now automatically adds `cluster_cert`(`cluster_mtls-shared`) or `cluster_ca_cert`(`cluster-mtls=pki`) into
+  `lua_ssl_trusted_certificate` when operating under Hybrid mode. Before, Hybrid mode users needed to configure
+  `lua_ssl_trusted_certificate` manually as a requirement for Lua to verify the Control Plane’s certificate
   [#7044](https://github.com/kong/kong/pull/7044)
 - New `declarative_config_string` option allows loading declarative config directly from a string
   [#7379](https://github.com/kong/kong/pull/7379)
@@ -121,7 +122,7 @@ other features and fixes.
 - Kong can handle errors that happen inside a plugin's `init_worker` handler
   [#7099](https://github.com/kong/kong/pull/7099)
 
-#### CP/DP
+#### Hybrid Mode
 
 - Control planes don't perform health checks upon CRUD upstreams/targets events
   [#7085](https://github.com/kong/kong/pull/7085)
