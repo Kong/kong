@@ -99,7 +99,7 @@ grpc-gateway plugin first:
 
 - Control Planes can now send updates to new Data Planes even if the Control Planes lose connection to the database
   [#6938](https://github.com/kong/kong/pull/6938)
-- Kong now automatically adds `cluster_cert`(`cluster_mtls-shared`) or `cluster_ca_cert`(`cluster-mtls=pki`) into
+- Kong now automatically adds `cluster_cert`(`cluster_mtls=shared`) or `cluster_ca_cert`(`cluster_mtls=pki`) into
   `lua_ssl_trusted_certificate` when operating under Hybrid mode. Before, Hybrid mode users needed to configure
   `lua_ssl_trusted_certificate` manually as a requirement for Lua to verify the Control Plane’s certificate
   [#7044](https://github.com/kong/kong/pull/7044)
