@@ -72,7 +72,8 @@ other features and fixes.
 ### Distribution
 
 - :warning: Since 2.4.1, Kong packages are no longer distributed
-  through Bintray. Please download from [download.konghq.com](https://download.konghq.com).
+  through Bintray. Please visit [the installation docs](https://konghq.com/install/#kong-community)
+  for more details.
 
 ### Dependencies
 
