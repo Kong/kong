@@ -80,7 +80,17 @@ other features and fixes.
 - Bumped `luasec` from 1.0 to 1.0.1 [#7126](https://github.com/kong/kong/pull/7126)[
 - Bumped `luarocks` from 3.5.0 to 3.7.0 [#7043](https://github.com/kong/kong/pull/7043)
 - Bumped `grpcurl` from 1.8.0 to 1.8.1 [#7128](https://github.com/kong/kong/pull/7128)
+- Bumped `penlight` from 1.9.2 to 1.10.0 [#7127](https://github.com/Kong/kong/pull/7127)
+- Bumped `lua-resty-dns-client` from 6.0.0 to 6.0.1 [#7485](https://github.com/Kong/kong/pull/7485)
+- Bumped `kong-plugin-prometheus` from 1.2 to 1.3 [#7415](https://github.com/Kong/kong/pull/7415)
+- Bumped `kong-plugin-zipkin` from 1.3 to 1.4 [#7455](https://github.com/Kong/kong/pull/7455)
 - Pinned `lua-protobuf` to 0.3.2 (previously unpinned) [#7079](https://github.com/kong/kong/pull/7079)
+
+All Kong Gateway OSS plugins will be moved from individual repositories and centralized
+into the main Kong Gateway (OSS) repository. We are making a gradual transition, starting with the
+grpc-gateway plugin first:
+
+- Moved grpc-gateway inside the Kong repo [#7466](https://github.com/Kong/kong/pull/7466)
 
 ### Additions
 
@@ -112,6 +122,15 @@ other features and fixes.
 - **Zipkin**: has now service.name and route.name tags
   https://github.com/Kong/kong-plugin-zipkin/pull/115
 
+#### Hybrid Mode
+
+- Expose upstream healthchecks endpoint on status API
+  [#7429](https://github.com/Kong/kong/pull/7429)
+- Control Planes are more lenient when checking Data Planes' compatibility
+  [#7488](https://github.com/Kong/kong/pull/7488)
+- Groundwork for Hybrid Mode 2.0 Protocol has been started. This code isn't active by default in Kong 2.5, but it allows future development.
+  [#7462](https://github.com/Kong/kong/pull/7462)
+
 
 ### Fixes
 
@@ -121,6 +140,7 @@ other features and fixes.
   [#7146](https://github.com/kong/kong/pull/7146)
 - Kong can handle errors that happen inside a plugin's `init_worker` handler
   [#7099](https://github.com/kong/kong/pull/7099)
+
 
 #### Hybrid Mode
 
@@ -133,6 +153,10 @@ other features and fixes.
 - HTTP Status 405 is now handled by Kong's error handler
   [#6933](https://github.com/kong/kong/pull/6933).
   Thanks, [yamaken1343](https://github.com/yamaken1343)!
+- Data Planes ignore null fields coming from Control Plane when doing schema validation.
+  [#7458](https://github.com/Kong/kong/pull/7458)
+- Kong now includes the source in error logs produced by Control Planes
+  [#7494](https://github.com/Kong/kong/pull/7494)
 
 #### Balancer
 
@@ -161,6 +185,8 @@ other features and fixes.
 
 - Kong no longer assumes that `/?/init.lua` is in the Lua path when doing migrations
   [#6993](https://github.com/kong/kong/pull/6993)
+- Kong no longer emits errors when doing ALTER COLUMN operations in Apache Cassandra 4.0
+  [#7490](https://github.com/Kong/kong/pull/7490)
 
 #### PDK
 
