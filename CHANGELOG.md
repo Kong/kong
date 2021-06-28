@@ -113,7 +113,7 @@ grpc-gateway plugin first:
 
 #### Plugins
 
-- **hmac-auth**: add support for the "@request-target" field support
+- **hmac-auth**: add support for the "@request-target" pseudo-field. This ensures requests to the same target but using different request methods (such as HTTP/2) results in the same signature.
   [#7037](https://github.com/kong/kong/pull/7037)
 - **syslog**: Add facility configuration capability
   [#6081](https://github.com/kong/kong/pull/6081).
