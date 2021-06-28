@@ -78,7 +78,7 @@ other features and fixes.
 ### Dependencies
 
 - Bumped `openresty` from 1.19.3.1 to 1.19.3.2 [#7430](https://github.com/kong/kong/pull/7430)
-- Bumped `luasec` from 1.0 to 1.0.1 [#7126](https://github.com/kong/kong/pull/7126)[
+- Bumped `luasec` from 1.0 to 1.0.1 [#7126](https://github.com/kong/kong/pull/7126)
 - Bumped `luarocks` from 3.5.0 to 3.7.0 [#7043](https://github.com/kong/kong/pull/7043)
 - Bumped `grpcurl` from 1.8.0 to 1.8.1 [#7128](https://github.com/kong/kong/pull/7128)
 - Bumped `penlight` from 1.9.2 to 1.10.0 [#7127](https://github.com/Kong/kong/pull/7127)
@@ -141,7 +141,11 @@ grpc-gateway plugin first:
   [#7146](https://github.com/kong/kong/pull/7146)
 - Kong can handle errors that happen inside a plugin's `init_worker` handler
   [#7099](https://github.com/kong/kong/pull/7099)
-
+- TLS keepalive request no longer can share their context
+  [#7102](https://github.com/kong/kong/pull/7102)
+- HTTP Status 405 is now handled by Kong's error handler
+  [#6933](https://github.com/kong/kong/pull/6933).
+  Thanks, [yamaken1343](https://github.com/yamaken1343)!
 
 #### Hybrid Mode
 
@@ -149,11 +153,6 @@ grpc-gateway plugin first:
   [#7085](https://github.com/kong/kong/pull/7085)
 - Fixed a bug that provoked unnecessary cache flips on Data Plane
   [#7112](https://github.com/kong/kong/pull/7112)
-- TLS keepalive request no longer can share their context
-  [#7102](https://github.com/kong/kong/pull/7102)
-- HTTP Status 405 is now handled by Kong's error handler
-  [#6933](https://github.com/kong/kong/pull/6933).
-  Thanks, [yamaken1343](https://github.com/yamaken1343)!
 - Data Planes ignore null fields coming from Control Plane when doing schema validation.
   [#7458](https://github.com/Kong/kong/pull/7458)
 - Kong now includes the source in error logs produced by Control Planes
