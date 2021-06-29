@@ -557,7 +557,9 @@ server {
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
     ssl_prefer_server_ciphers on;
+> if ssl_ciphers then
     ssl_ciphers ${{SSL_CIPHERS}};
+> end
 > end
 
     location / {
