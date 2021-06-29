@@ -97,7 +97,6 @@ case "$step" in
       git pull
       git checkout "$base" || true
       git checkout -B "$base" || true
-      git push -u origin "$base"
 
       SUCCESS "Release branch is switched locally." \
               "You are ready to run the next step:" \
