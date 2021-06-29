@@ -31,14 +31,18 @@ function count_indents_on_line() {
     fi
 }
 
-function insert_pdk_nav_file_into_docs_nav_file() {
-    local pdk_nav_file=$1
+function insert_yaml_file_into_nav_file() {
+    local new_nav_partial_file=$1
     local docs_nav_file=$2
+    local first_line_text=$3
+
+    echo "Patching $docs_nav_file with $new_nav_partial_file ..."
 
     # find first_line and last line of the current pdk index in docs_nav_file
-    # first line contains "Plugin Development Kit"
+
+    # first line contains the content of first_line_text
     local first_line
-    first_line=$(sed -n "/text: Plugin Development Kit/=" "$docs_nav_file")
+    first_line=$(sed -n "$first_line_text" "$docs_nav_file")
 
     # find last_line by looking at the indentation of all subsequent lines, looking at the indentation
     # last line is the last one with more indentation that first_line
@@ -62,8 +66,9 @@ function insert_pdk_nav_file_into_docs_nav_file() {
     # delete existing pdk index, insert new pdk nav file instead
     # Passing an option to -i is required on macOS, but not required on Linux
     # Commenting out to make the GitHub Actions build work
-    #sed -i '' -e "${first_line},${last_line}d" -e "${insert_line}r${pdk_nav_file}" "$docs_nav_file"
-    sed -i -e "${first_line},${last_line}d" -e "${insert_line}r${pdk_nav_file}" "$docs_nav_file"
+    #sed -i '' -e "${first_line},${last_line}d" -e "${insert_line}r${new_nav_partial_file}" "$docs_nav_file"
+    # Recommended to `brew install gnu-sed && brew info gnu-sed` to override default sed on Mac
+    sed -i -e "${first_line},${last_line}d" -e "${insert_line}r${new_nav_partial_file}" "$docs_nav_file"
 }
 
 
@@ -163,5 +168,10 @@ for module in autodoc/output/pdk/*; do
   copy "$module" "$DOCS_APP/pdk/"
 done
 
-echo "Patching $DOCS_NAV with autodoc/output/pdk_nav.yml ..."
-insert_pdk_nav_file_into_docs_nav_file ./autodoc/output/_pdk_nav.yml "$DOCS_NAV"
+insert_yaml_file_into_nav_file ./autodoc/output/nav/docs_nav.yml.admin-api.in \
+                               "$DOCS_NAV" \
+                               "/title: Admin API/="
+
+insert_yaml_file_into_nav_file ./autodoc/output/_pdk_nav.yml \
+                               "$DOCS_NAV" \
+                               "/text: Plugin Development Kit/="
