@@ -186,5 +186,39 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
+
+    describe("With SSL config", function()
+      local _, db, _ = helpers.get_db_utils(strategy)
+
+      lazy_setup(function()
+        singletons.configuration = {
+          database = strategy,
+          portal = conf_on
+        }
+
+        assert(helpers.start_kong({
+          database = strategy,
+          portal = conf_on,
+          ssl_cipher_suite = "modern"
+        }))
+
+        configure_portal(db, ws_on)
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+        assert(db:truncate())
+      end)
+
+      it("load config properly when ssl_cipher_suite is set to modern", function()
+        local res = assert(client_request {
+          method = "GET",
+          path = "/default/developers"
+        })
+
+        local expected_status = get_expected_status(200, conf_on, ws_on)
+        assert.res_status(expected_status, res)
+      end)
+    end)
   end
 end
