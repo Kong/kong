@@ -476,7 +476,7 @@ end
 
 local titles = {}
 
-local function write_title(outfd, level, title)
+local function write_title(outfd, level, title, label)
   if not title then
     return
   end
@@ -485,7 +485,12 @@ local function write_title(outfd, level, title)
     level = level,
     title = title,
   })
-  outfd:write((("#"):rep(level) .. " " .. title .. "\n\n"))
+  if label then
+    label = "\n" .. label
+  else
+    label = ""
+  end
+  outfd:write((("#"):rep(level) .. " " .. title .. label .. "\n\n"))
 end
 
 local function section(outfd, title, content)
@@ -529,15 +534,15 @@ local function write_endpoint(outfd, endpoint, ep_data, dbless_methods)
     local meth_data = ep_data[method]
     if meth_data then
       assert_data(meth_data.title, "info for " .. method .. " " .. endpoint)
-      write_title(outfd, 3, meth_data.title)
       if dbless_methods
         and not dbless_methods[method]
         and (not dbless_methods[endpoint]
              or not dbless_methods[endpoint][method])
       then
+        write_title(outfd, 3, meth_data.title)
         warning_message(outfd, "**Note**: Not available in DB-less mode.")
       else
-        outfd:write('\n{:.badge .dbless}\n\n')
+        write_title(outfd, 3, meth_data.title, "{:.badge .dbless}")
       end
 
       section(outfd, nil, meth_data.description)
