@@ -263,18 +263,6 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           cluster_version_check = "major_minor",
         }))
-
-        local admin_client = helpers.admin_client()
-        -- configure a few plugins
-        local res = assert(admin_client:post("/plugins", {
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            name  = "key-auth"
-          }
-        }))
-        assert.res_status(201, res)
       end)
 
       lazy_teardown(function()
@@ -409,7 +397,7 @@ for _, strategy in helpers.each_strategy() do
 
             for _, v in pairs(json.data) do
               if v.id == uuid then
-                local dp_version = harness.dp_version or tostring(_VERSION_TABLE)
+                local dp_version = harness.dp_version or tostring(_VERSION_TABLE) .. "-enterprise-edition"
                 if dp_version == v.version and CLUSTERING_SYNC_STATUS.NORMAL == v.sync_status then
                   return true
                 end

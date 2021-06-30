@@ -168,19 +168,10 @@ function _M:push_config()
   end
 
   local n = 0
-  for _, client in pairs(self.clients) do
-    -- perform plugin compatibility check
-    local res, err = self:should_send_config_update(client.node_version, client.node_plugins)
-    if res then
-      table_insert(client.queue, payload)
-      client.queue.post()
-      n = n + 1
-    else
-      ngx_log(ngx_WARN, "unable to send updated configuration to " ..
-        "DP node with hostname: " .. client.node_hostname ..
-        " ip: " .. client.node_ip ..
-        " reason: " .. err)
-    end
+  for _, queue in pairs(self.clients) do
+    table_insert(queue, payload)
+    queue.post()
+    n = n + 1
   end
 
   ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " clients")
@@ -190,8 +181,6 @@ end
 function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
   local major_cp, minor_cp = extract_major_minor(KONG_VERSION)
   local major_dp, minor_dp = extract_major_minor(dp_version)
-
-  -- TODO: ignore plugins without a version (route-by-header is deprecated)
 
   if not major_cp then
     return nil, "data plane version " .. dp_version .. " is incompatible with control plane version",
@@ -243,7 +232,7 @@ function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
                     " is different to control plane plugin version " .. cp_plugin.version
 
         if cp_plugin.major ~= dp_plugin.major then
-          ngx_log(ngx_WARN, _log_prefix, msg, cp_plugin.version, log_suffix)
+          ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
 
         elseif cp_plugin.minor ~= dp_plugin.minor then
           ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
@@ -656,10 +645,6 @@ function _M:init_worker()
   end
 
   local push_config_semaphore = semaphore.new()
-
-  for _, plugin in pairs(self.plugins_list) do
-    self.plugins_map[plugin.name] = { version = plugin.version, included = 0 }
-  end
 
   -- Sends "clustering", "push_config" to all workers in the same node, including self
   local function post_push_config_event()
