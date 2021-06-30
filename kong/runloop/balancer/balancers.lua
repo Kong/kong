@@ -339,7 +339,7 @@ function balancer_mt:addAddress(target, entry)
     or type(target) ~= "table"
     or target.balancer ~= self
   then
-    return
+    return nil, "invalid input or non-owned target"
   end
 
   local entry_ip = entry.address or entry.target
@@ -377,6 +377,8 @@ function balancer_mt:addAddress(target, entry)
   target.totalWeight = target.totalWeight + weight
   self.totalWeight = self.totalWeight + weight
   self:updateStatus()
+
+  return true
 end
 
 
