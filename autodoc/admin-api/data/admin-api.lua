@@ -665,7 +665,7 @@ return {
           ]]
         },
         host = {
-          description = [[The host of the upstream server.]],
+          description = [[The host of the upstream server. Note that the host value is case sensitive.]],
           example = "example.com",
         },
         port = {
@@ -810,7 +810,7 @@ return {
         created_at = { skip = true },
         updated_at = { skip = true },
         name = {
-          description = [[The name of the Route.]]
+          description = [[The name of the Route. Name values must be unique.]]
         },
         regex_priority = {
           description = [[
@@ -823,8 +823,9 @@ return {
         },
         protocols = {
           description = [[
-            A list of the protocols this Route should allow. When set to `["https"]`,
-            HTTP requests are answered with a request to upgrade to HTTPS.
+            An array of the protocols this Route should allow. See the [Route Object](#route-object) section for a list of accepted protocols. 
+            
+            When set to only `"https"`, HTTP requests are answered with an upgrade error. When set to only `"http"`, HTTPS requests are answered with an error. 
           ]],
           examples = {
             {"http", "https"},
@@ -842,7 +843,7 @@ return {
         hosts = {
           kind = "semi-optional",
           description = [[
-            A list of domain names that match this Route.
+            A list of domain names that match this Route. Note that the hosts value is case sensitive.
           ]],
           examples = { {"example.com", "foo.test"}, nil },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second

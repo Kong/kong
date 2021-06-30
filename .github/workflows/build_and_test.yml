@@ -100,6 +100,11 @@ jobs:
           eval `luarocks path`
           scripts/autodoc
 
+    - name: Check Admin API definition generation
+      run: |
+          eval `luarocks path`
+          scripts/gen-admin-api-def.sh
+
     - name: Lint Lua code
       run: |
           eval `luarocks path`

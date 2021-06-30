@@ -582,6 +582,10 @@ function Kong.init()
   then
     singletons.clustering = require("kong.clustering").new(config)
     kong.clustering = singletons.clustering
+
+    if config.cluster_v2 then
+      kong.hybrid = require("kong.hybrid").new(config)
+    end
   end
 
   -- Load plugins as late as possible so that everything is set up
@@ -763,6 +767,10 @@ function Kong.init_worker()
 
   if kong.clustering then
     kong.clustering:init_worker()
+  end
+
+  if kong.hybrid then
+    kong.hybrid:init_worker()
   end
 end
 
@@ -1629,6 +1637,16 @@ function Kong.serve_cluster_telemetry_listener(options)
 
   return kong.clustering:handle_cp_telemetry_websocket()
 end
+
+
+function Kong.serve_cp_protocol(options)
+  log_init_worker_errors()
+
+  kong_global.set_phase(kong, PHASES.cluster_listener)
+
+  return kong.hybrid:handle_cp_protocol()
+end
+
 
 function Kong.stream_api()
   stream_api.handle()

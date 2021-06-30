@@ -148,43 +148,57 @@ do
 end
 
 
-function _M:validate_client_cert(cert)
+function _M:validate_client_cert(cert, log_prefix, log_suffix)
   if not cert then
-    return false, "Data Plane failed to present client certificate " ..
-                  "during handshake"
+    return false, "data plane failed to present client certificate during handshake"
   end
 
-  cert = assert(openssl_x509.new(cert, "PEM"))
+  local err
+  cert, err = openssl_x509.new(cert, "PEM")
+  if not cert then
+    return false, "unable to load data plane client certificate during handshake: " .. err
+  end
+
   if kong.configuration.cluster_mtls == "shared" then
-    local digest = assert(cert:digest("sha256"))
+    local digest, err = cert:digest("sha256")
+    if not digest then
+      return false, "unable to retrieve data plane client certificate digest during handshake: " .. err
+    end
 
     if digest ~= self.cert_digest then
-      return false, "Data Plane presented incorrect client certificate " ..
-                     "during handshake, expected digest: " .. self.cert_digest ..
-                     " got: " .. digest
+      return false, "data plane presented incorrect client certificate during handshake (expected: " ..
+                    self.cert_digest .. ", got: " .. digest .. ")"
     end
 
   elseif kong.configuration.cluster_mtls == "pki_check_cn" then
     local cn, cn_parent = get_cn_parent_domain(cert)
     if not cn then
-      return false, "Data Plane presented incorrect client certificate " ..
+      return false, "data plane presented incorrect client certificate " ..
                     "during handshake, unable to extract CN: " .. cn_parent
 
     elseif cn_parent ~= self.cert_cn_parent then
-      return false, "Data Plane presented incorrect client certificate " ..
+      return false, "data plane presented incorrect client certificate " ..
                     "during handshake, expected CN as subdomain of: " ..
                     self.cert_cn_parent .. " got: " .. cn
     end
   elseif kong.configuration.cluster_ocsp ~= "off" then
-    local res, err = check_for_revocation_status()
-    if res == false then
-      ngx_log(ngx_ERR, "DP client certificate was revoked: ", err)
-      return ngx_exit(444)
+    local ok
+    ok, err = check_for_revocation_status()
+    if ok == false then
+      err = "data plane client certificate was revoked: " ..  err
+      return false, err
 
-    elseif not res then
-      ngx_log(ngx_WARN, "DP client certificate revocation check failed: ", err)
-      if kong.configuration.cluster_ocsp == "on" then
-        return ngx_exit(444)
+    elseif not ok then
+      if self.conf.cluster_ocsp == "on" then
+        err = "data plane client certificate revocation check failed: " .. err
+        return false, err
+
+      else
+        if log_prefix and log_suffix then
+          ngx_log(ngx_WARN, log_prefix, "data plane client certificate revocation check failed: ", err, log_suffix)
+        else
+          ngx_log(ngx_WARN, "data plane client certificate revocation check failed: ", err)
+        end
       end
     end
   end

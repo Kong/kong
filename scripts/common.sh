@@ -293,6 +293,19 @@ function update_copyright() {
    git log -n 1
 }
 
+#-------------------------------------------------------------------------------
+function update_admin_api_def() {
+   if ! "$scripts_folder/gen-admin-api-def.sh"
+   then
+      die "Could not update kong-admin-api.yml file. Check script output for any error messages."
+   fi
+
+   git add kong-admin-api.yml
+
+   git commit -m "docs(kong-admin-api.yml) update Admin API definition for $1"
+   git log -n 1
+}
+
 
 #-------------------------------------------------------------------------------
 function bump_homebrew() {

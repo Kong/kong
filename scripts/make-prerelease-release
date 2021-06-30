@@ -21,20 +21,21 @@ function usage() {
       echo
    fi
    c=1
-   step "switch"           "switch or create to the release branch"
-   step "write_changelog"  "prepare the changelog"
-   step "commit_changelog" "commit the changelog"
-   step "update_copyright" "update copyright file"
-   step "version_bump"     "bump and commit the version number"
-   step "submit"           "push and submit a release PR"
-   step "tag"              "tag and sign the release candidate"
+   step "switch"               "switch or create to the release branch"
+   step "write_changelog"      "prepare the changelog"
+   step "commit_changelog"     "commit the changelog"
+   step "update_copyright"     "update copyright file"
+   step "update_admin_api_def" "update Admin API definition"
+   step "version_bump"         "bump and commit the version number"
+   step "submit"               "push and submit a release PR"
+   step "tag"                  "tag and sign the release candidate"
    if [ "$beta" == true ]
    then
-     step "docs_pr"        "push and submit a docs.konghq.com PR for the release"
-     step "update_docker"  "update and submit a PR to Kong's docker-kong repo"
-     step "merge_docker"   "merge, tag and sign Kong's docker-kong PR"
-     step "homebrew"       "bump version and submit a PR to homebrew-kong"
-     step "pongo"          "bump version and submit a PR to kong-pongo"
+     step "docs_pr"            "push and submit a docs.konghq.com PR for the release"
+     step "update_docker"      "update and submit a PR to Kong's docker-kong repo"
+     step "merge_docker"       "merge, tag and sign Kong's docker-kong PR"
+     step "homebrew"           "bump version and submit a PR to homebrew-kong"
+     step "pongo"              "bump version and submit a PR to kong-pongo"
    fi
    exit 0
 }
@@ -134,7 +135,15 @@ case "$step" in
 
       SUCCESS "The COPYRIGHT file is updated locally." \
               "You are ready to run the next step:" \
-              "    $0 -v $version -s version_bump"
+              "    $0 $version update_admin_api_def"
+      ;;
+   #---------------------------------------------------------------------------
+   update_admin_api_def)
+      update_admin_api_def "$version"
+
+      SUCCESS "The kong-admin-api.yml file is updated locally." \
+              "You are ready to run the next step:" \
+              "    $0 $version version_bump"
       ;;
    #---------------------------------------------------------------------------
    version_bump)

@@ -137,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
         headers = { host  = "http-service.test" }
       })
       assert.res_status(200, res)
-      assert.equal("got from server 'openresty'", res.headers['x-hello-from-go-at-response'])
+      assert.equal("got from server 'mock-upstream/1.0.0'", res.headers['x-hello-from-go-at-response'])
 
     end)
 
