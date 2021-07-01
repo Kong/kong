@@ -80,7 +80,7 @@ local function new(self)
   -- -- a load balancer with IP 10.0.0.1 to Kong answering the request for
   -- -- https://username:password@example.com:1234/v1/movies
   --
-  -- kong.request.get_forwarded_ip() -- "127.0.0.1"
+  -- kong.client.get_forwarded_ip() -- "127.0.0.1"
   --
   -- -- Note: assuming that 10.0.0.1 is one of the trusted IPs, and that
   -- -- the load balancer adds the right headers matching with the configuration

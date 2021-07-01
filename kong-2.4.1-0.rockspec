@@ -33,7 +33,7 @@ dependencies = {
   "luasyslog == 2.0.1",
   "kikito/sandbox == 1.0.1",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 6.0.0",
+  "lua-resty-dns-client == 6.0.1",
   "lua-protobuf == 0.3.2",
   "lua-resty-mail == 1.0.2",
   "lua-resty-redis-connector == 0.08",
@@ -405,6 +405,14 @@ build = {
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
+
+    ["kong.hybrid"] = "kong/hybrid/init.lua",
+    ["kong.hybrid.data_plane"] = "kong/hybrid/data_plane.lua",
+    ["kong.hybrid.control_plane"] = "kong/hybrid/control_plane.lua",
+    ["kong.hybrid.message"] = "kong/hybrid/message.lua",
+    ["kong.hybrid.queue"] = "kong/hybrid/queue.lua",
+    ["kong.hybrid.rpc"] = "kong/hybrid/rpc.lua",
+
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",

@@ -20,6 +20,9 @@ local PATCH = _VERSION_TABLE.patch
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 
 
+local KEY_AUTH_PLUGIN
+
+
 for _, strategy in helpers.each_strategy() do
   describe("CP/DP sync works with #" .. strategy .. " backend", function()
 
@@ -27,10 +30,11 @@ for _, strategy in helpers.each_strategy() do
       helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "clustering_data_planes",
+        "plugins",
         "upstreams",
         "targets",
         "certificates",
+        "clustering_data_planes",
       }) -- runs migrations
 
       assert(helpers.start_kong({
@@ -52,6 +56,13 @@ for _, strategy in helpers.each_strategy() do
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9002",
       }))
+
+      for _, plugin in ipairs(helpers.get_plugins_list()) do
+        if plugin.name == "key-auth" then
+          KEY_AUTH_PLUGIN = plugin
+          break
+        end
+      end
     end)
 
     lazy_teardown(function()
@@ -80,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
               return true
             end
           end
-        end, 5)
+        end, 10)
       end)
 
       it("shows DP status (#deprecated)", function()
@@ -228,11 +239,19 @@ for _, strategy in helpers.each_strategy() do
     -- client so we can mock various values (e.g. node_version)
     describe("relaxed compatibility check:", function()
       lazy_setup(function()
-        helpers.get_db_utils(strategy, {
+        local bp = helpers.get_db_utils(strategy, {
           "routes",
           "services",
+          "plugins",
+          "upstreams",
+          "targets",
+          "certificates",
           "clustering_data_planes",
         }) -- runs migrations
+
+        bp.plugins:insert {
+          name = "key-auth",
+        }
 
         assert(helpers.start_kong({
           role = "control_plane",
@@ -244,18 +263,6 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           cluster_version_check = "major_minor",
         }))
-
-        local admin_client = helpers.admin_client()
-        -- configure a few plugins
-        local res = assert(admin_client:post("/plugins", {
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            name  = "key-auth"
-          }
-        }))
-        assert.res_status(201, res)
       end)
 
       lazy_teardown(function()
@@ -284,14 +291,29 @@ for _, strategy in helpers.each_strategy() do
             {  name = "key-auth", version = plugins_map["key-auth"] }
           }
         },
-        ["CP and DP patch version mismatches"] = {
-          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, 4),
+        ["CP configured plugins list matches DP enabled plugins major version (older dp plugin)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          plugins_list = {
+            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".0.0" }
+          }
+        },
+        ["CP has configured plugin with older patch version than in DP enabled plugins"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          plugins_list = {
+            {  name = "key-auth", version = plugins_map["key-auth"]:match("(%d+.%d+)") .. ".1000" }
+          }
+        },
+        ["CP and DP minor version mismatches (older dp)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, 0, PATCH),
+        },
+        ["CP and DP patch version mismatches (older dp)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, 0),
+        },
+        ["CP and DP patch version mismatches (newer dp)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, 1000),
         },
         ["CP and DP suffix mismatches"] = {
           dp_version = tostring(_VERSION_TABLE) .. "-enterprise-version",
-        },
-        ["0 <= CP.minor - DP.minor <= 2"] = {
-          dp_version = tostring(_VERSION_TABLE) ,
         },
       }
 
@@ -302,23 +324,48 @@ for _, strategy in helpers.each_strategy() do
         plugins_list = pl1
       }
 
+
+      allowed_cases["DP plugin set is a subset of CP"] = {
+        plugins_list = { KEY_AUTH_PLUGIN }
+      }
+
       local pl2 = pl_tablex.deepcopy(helpers.get_plugins_list())
-      for i, p in ipairs(pl2) do
+      for i, _ in ipairs(pl2) do
         local v = pl2[i].version
+        local minor = v and v:match("%d+%.(%d+)%.%d+")
+        -- find a plugin that has minor version mismatch
+        -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
+        if minor and tonumber(minor) and tonumber(minor) > 2 then
+          pl2[i].version = string.format("%d.%d.%d",
+                                         tonumber(v:match("(%d+)")),
+                                         tonumber(minor - 2),
+                                         tonumber(v:match("%d+%.%d+%.(%d+)"))
+
+          )
+          break
+        end
+      end
+      allowed_cases["CP and DP plugin version matches to major"] = {
+        plugins_list = pl2
+      }
+
+      local pl3 = pl_tablex.deepcopy(helpers.get_plugins_list())
+      for i, _ in ipairs(pl3) do
+        local v = pl3[i].version
         local patch = v and v:match("%d+%.%d+%.(%d+)")
         -- find a plugin that has patch version mismatch
         -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
         if patch and tonumber(patch) and tonumber(patch) > 2 then
-          pl2[i].version = string.format("%d.%d.%d",
-            tonumber(v:match("(%d+)")),
-            tonumber(v:match("%d+%.(%d+)")),
-            tonumber(patch - 2)
+          pl3[i].version = string.format("%d.%d.%d",
+                                         tonumber(v:match("(%d+)")),
+                                         tonumber(v:match("%d+%.(%d+)")),
+                                         tonumber(patch - 2)
           )
           break
         end
       end
       allowed_cases["CP and DP plugin version matches to major.minor"] = {
-        plugins_list = pl2
+        plugins_list = pl3
       }
 
       for desc, harness in pairs(allowed_cases) do
@@ -350,10 +397,10 @@ for _, strategy in helpers.each_strategy() do
 
             for _, v in pairs(json.data) do
               if v.id == uuid then
-                assert.equal(harness.dp_version or tostring(_VERSION_TABLE) .. "-enterprise-edition", -- XXX EE: "-enterprise-edition" suffix is attached to version
-                              v.version)
-                assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-                return true
+                local dp_version = harness.dp_version or tostring(_VERSION_TABLE) .. "-enterprise-edition"
+                if dp_version == v.version and CLUSTERING_SYNC_STATUS.NORMAL == v.sync_status then
+                  return true
+                end
               end
             end
           end, 5)
@@ -363,31 +410,46 @@ for _, strategy in helpers.each_strategy() do
 
       -- STARTS blocked cases
       local blocked_cases = {
-        ["CP configured plugin list missmatches DP enabled plugins list"] = {
+        ["CP configured plugin list mismatches DP enabled plugins list"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
           expected = CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE,
           plugins_list = {
             {  name="banana-plugin", version="1.0.0" }
           }
         },
-        ["CP configured plugin list missmatches DP enabled plugins list version"] = {
+        ["CP has configured plugin with older major version than in DP enabled plugins"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
           expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
           plugins_list = {
             {  name="key-auth", version="1.0.0" }
           }
         },
+        ["CP has configured plugin with newer minor version than in DP enabled plugins"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
+          plugins_list = {
+            {  name = "key-auth", version = "1000.0.0" }
+          }
+        },
+        ["CP has configured plugin with older minor version than in DP enabled plugins"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
+          plugins_list = {
+            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".1000.0" }
+          }
+        },
         ["CP and DP major version mismatches"] = {
           dp_version = "1.0.0",
           expected = CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE,
+          -- KONG_VERSION_INCOMPATIBLE is send during first handshake, CP closes
+          -- connection immediately if kong version mismatches.
+          -- ignore_error is needed to ignore the `closed` error
+          ignore_error = true,
         },
-        ["CP.minor - DP.minor > 2"] = {
-          dp_version = string.format("%d.%d.%d", MAJOR, MINOR-3, PATCH),
+        ["CP and DP minor version mismatches (newer dp)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, 1000, PATCH),
           expected = CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE,
-        },
-        ["CP.minor - DP.minor < 0"] = {
-          dp_version = string.format("%d.%d.%d", MAJOR, MINOR+1, PATCH),
-          expected = CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE,
+          ignore_error = true,
         },
       }
 
@@ -395,7 +457,7 @@ for _, strategy in helpers.each_strategy() do
         it(desc ..", sync is blocked", function()
           local uuid = utils.uuid()
 
-          local res = assert(helpers.clustering_client({
+          local res, err = helpers.clustering_client({
             host = "127.0.0.1",
             port = 9005,
             cert = "spec/fixtures/kong_clustering.crt",
@@ -403,9 +465,16 @@ for _, strategy in helpers.each_strategy() do
             node_id = uuid,
             node_version = harness.dp_version,
             node_plugins_list = harness.plugins_list,
-          }))
+          })
 
-          assert.equals("PONG", res)
+          if not res then
+            if not harness.ignore_error then
+              error(err)
+            end
+
+          else
+            assert.equals("PONG", res)
+          end
 
           -- needs wait_until for c* convergence
           helpers.wait_until(function()
@@ -419,10 +488,10 @@ for _, strategy in helpers.each_strategy() do
 
             for _, v in pairs(json.data) do
               if v.id == uuid then
-                assert.equal(harness.dp_version or tostring(_VERSION_TABLE) .. "-enterprise-edition", -- XXX EE: "-enterprise-edition" suffix is attached to version
-                              v.version)
-                assert.equal(harness.expected, v.sync_status)
-                return true
+                local dp_version = harness.dp_version or tostring(_VERSION_TABLE)
+                if dp_version == v.version and harness.expected == v.sync_status then
+                  return true
+                end
               end
             end
           end, 5)
@@ -437,6 +506,11 @@ for _, strategy in helpers.each_strategy() do
       helpers.get_db_utils(strategy, {
         "routes",
         "services",
+        "plugins",
+        "upstreams",
+        "targets",
+        "certificates",
+        "clustering_data_planes",
       }) -- runs migrations
 
       assert(helpers.start_kong({
