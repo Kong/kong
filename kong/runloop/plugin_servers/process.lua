@@ -244,17 +244,29 @@ function proc_mgmt.pluginserver_timer(premature, server_def)
     return
   end
 
+  local next_spawn = 0
+
   while not ngx.worker.exiting() do
+    if ngx.now() < next_spawn then
+      ngx.sleep(next_spawn - ngx.now())
+    end
+
     kong.log.notice("Starting " .. server_def.name or "")
     server_def.proc = assert(ngx_pipe.spawn("exec " .. server_def.start_command, {
       merge_stderr = true,
     }))
+    next_spawn = ngx.now() + 1
     server_def.proc:set_timeouts(nil, nil, nil, 0)     -- block until something actually happens
 
     while true do
       grab_logs(server_def.proc, server_def.name)
       local ok, reason, status = server_def.proc:wait()
-      if ok ~= nil or reason == "exited" or ngx.worker.exiting() then
+      if ok == false and reason == "exit" and status == 127 then
+        kong.log.err(string.format(
+                "external pluginserger %q start command %q exited with \"command not found\"",
+                server_def.name, server_def.start_command))
+        break
+      elseif ok ~= nil or reason == "exited" or ngx.worker.exiting() then
         kong.log.notice("external pluginserver '", server_def.name, "' terminated: ", tostring(reason), " ", tostring(status))
         break
       end
