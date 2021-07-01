@@ -50,7 +50,7 @@ return {
     ]], CLUSTER_ID),
   },
   cassandra = {
-    up = string.format([[
+    up = [[
       CREATE TABLE IF NOT EXISTS parameters(
         key            text,
         value          text,
@@ -58,13 +58,19 @@ return {
         PRIMARY KEY    (key)
       );
 
-      INSERT INTO parameters (key, value) VALUES('cluster_id', '%s')
-      IF NOT EXISTS;
-
       ALTER TABLE certificates ADD cert_alt TEXT;
       ALTER TABLE certificates ADD key_alt TEXT;
       ALTER TABLE clustering_data_planes ADD version text;
       ALTER TABLE clustering_data_planes ADD sync_status text;
-    ]], CLUSTER_ID),
+    ]],
+    teardown = function(connector)
+      local coordinator = assert(connector:get_stored_connection())
+      local _, err = coordinator:execute(string.format("INSERT INTO parameters (key, value) VALUES('cluster_id', '%s') IF NOT EXISTS;", CLUSTER_ID))
+      if err then
+        return nil, err
+      end
+
+      return true
+    end
   }
 }
