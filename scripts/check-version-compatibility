@@ -1,0 +1,759 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2034
+
+##
+# To execute this script gojira needs to be installed and a GITHUB_TOKEN
+# environment variable must be available and the previous version of the Kong
+# Gateway must be known and available on Docker Hub.
+#
+# Below is an example executed from Kong/kong-ee repository with the
+# next/2.4.x.x currently checked out.
+#
+# gojira hybrid up -v $(realpath scripts/check-version-compatibility):/check-version-compatibility -di kong/kong-gateway:2.3
+# gojira hybrid run@kong-cp -di kong/kong-gateway:2.3 make dev
+# gojira hybrid run@kong-dp -di kong/kong-gateway:2.3 kong start
+# gojira hybrid run@kong-cp -di kong/kong-gateway:2.3 -e GITHUB_TOKEN /check-version-compatibility
+##
+
+ADMIN_URL="http://127.0.0.1:8001"
+FALSE=1
+TRUE=0
+VERSION_COMPATIBILITY_DEBUG=$FALSE
+
+ENABLE_ACL=(
+  --data "name=acl"
+  --data "config.allow=kongers"
+)
+
+ENABLE_ACME=(
+  --data "name=acme"
+  --data "config.account_email=example@example.com"
+)
+
+ENABLE_AWS_LAMBDA=(
+  --data "name=aws-lambda"
+  --data "config.aws_region=AWS_REGION"
+  --data "config.function_name=FUNCTION_NAME"
+)
+
+ENABLE_AZURE_FUNCTIONS=(
+  --data "name=azure-functions"
+  --data "config.functionname=FUNCTIONNAME"
+  --data "config.appname=APPNAME"
+)
+
+ENABLE_BASIC_AUTH=(
+  --data "name=basic-auth"
+)
+
+ENABLE_BOT_DETECTION=(
+  --data "name=bot-detection"
+)
+
+ENABLE_CORRELATION_ID=(
+  --data "name=correlation-id"
+)
+
+ENABLE_CORS=(
+  --data "name=cors"
+)
+
+ENABLE_DATADOG=(
+  --data "name=datadog"
+)
+
+ENABLE_FILE_LOG=(
+  --data "name=file-log"
+  --data "config.path=path/to/file.log"
+)
+
+ENABLE_GRPC_GATEWAY=(
+  --data "name=grpc-gateway"
+  --data "config.proto=path/to/file.proto"
+)
+
+ENABLE_GRPC_WEB=(
+  --data "name=grpc-web"
+  --data "config.proto=path/to/file.proto"
+)
+
+ENABLE_HMAC_AUTH=(
+  --data "name=hmac-auth"
+)
+
+ENABLE_HTTP_LOG=(
+  --data "name=http-log"
+  --data "config.http_endpoint=http://example.com"
+)
+
+ENABLE_IP_RESTRICTION=(
+  --data "name=ip-restriction"
+  --data "config.allow=1.2.3.4"
+)
+
+ENABLE_JWT=(
+  --data "name=jwt"
+)
+
+ENABLE_KEY_AUTH=(
+  --data "name=key-auth"
+)
+
+# ldap_port default is not defined for all Kong Gateway versions
+ENABLE_LDAP_AUTH=(
+  --data "name=ldap-auth"
+  --data "config.ldap_host=example.com"
+  --data "config.ldap_port=389"
+  --data "config.base_dn=dc=example,dc=com"
+  --data "config.attribute=cn"
+)
+
+ENABLE_LOGGLY=(
+  --data "name=loggly"
+  --data "config.key=KEY"
+)
+
+ENABLE_OAUTH2=(
+  --data "name=oauth2"
+  --data "config.enable_authorization_code=true"
+)
+
+ENABLE_POST_FUNCTION=(
+  --data "name=post-function"
+  --data "config.access[1]=kong.log.err('Hello World!')"
+)
+
+ENABLE_PRE_FUNCTION=(
+  --data "name=pre-function"
+  --data "config.access[1]=kong.log.err('Hello World!')"
+)
+
+ENABLE_PROMETHEUS=(
+  --data "name=prometheus"
+)
+
+ENABLE_PROXY_CACHE=(
+  --data "name=proxy-cache"
+  --data "config.strategy=memory"
+)
+
+ENABLE_RATE_LIMITING=(
+  --data "name=rate-limiting"
+  --data "config.hour=1"
+)
+
+ENABLE_REQUEST_SIZE_LIMITING=(
+  --data "name=request-size-limiting"
+)
+
+ENABLE_REQUEST_TERMINATION=(
+  --data "name=request-termination"
+)
+
+ENABLE_REQUEST_TRANSFORMER=(
+  --data "name=request-transformer"
+)
+
+ENABLE_RESPONSE_RATELIMITING=(
+  --data "name=response-ratelimiting"
+  --data "config.limits.sms.minute=20"
+)
+
+ENABLE_RESPONSE_TRANSFORMER=(
+  --data "name=response-transformer"
+)
+
+ENABLE_SESSION=(
+  --data "name=session"
+)
+
+ENABLE_STATSD=(
+  --data "name=statsd"
+)
+
+ENABLE_SYSLOG=(
+  --data "name=syslog"
+)
+
+ENABLE_TCP_LOG=(
+  --data "name=tcp-log"
+  --data "config.host=localhost"
+  --data "config.port=1234"
+)
+
+ENABLE_UDP_LOG=(
+  --data "name=udp-log"
+  --data "config.host=localhost"
+  --data "config.port=1234"
+)
+
+ENABLE_ZIPKIN=(
+  --data "name=zipkin"
+)
+
+# EE plugin configurations
+ENABLE_CANARY=(
+  --data "name=canary"
+  --data "config.percentage=50"
+  --data "config.upstream_host=example.com"
+)
+
+ENABLE_DEGRAPHQL=(
+  --data "name=degraphql"
+)
+
+ENABLE_EXIT_TRANSFORMER=(
+  --data "name=exit-transformer"
+  --data-binary "config.functions[]=return function(status, body, header) return status, body, headers end"
+)
+
+ENABLE_FORWARD_PROXY=(
+  --data "name=forward-proxy"
+  --data "config.proxy_host=example.com"
+  --data "config.proxy_port=80"
+)
+
+ENABLE_GRAPHQL_PROXY_CACHE_ADVANCED=(
+  --data "name=graphql-proxy-cache-advanced"
+  --data "config.strategy=memory"
+)
+
+ENABLE_GRAPHQL_RATE_LIMITING_ADVANCED=(
+  --data "name=graphql-rate-limiting-advanced"
+  --data "config.limit=5"
+  --data "config.window_size=30"
+  --data "config.sync_rate=-1"
+)
+
+ENABLE_JWT_SIGNER=(
+  --data "name=jwt-signer"
+)
+
+ENABLE_KAFKA_LOG=(
+  --data "name=kafka-log"
+  --data "config.bootstrap_servers[1].host=localhost"
+  --data "config.bootstrap_servers[1].port=9092"
+  --data "config.topic=kong"
+)
+
+ENABLE_KAFKA_UPSTREAM=(
+  --data "name=kafka-upstream"
+  --data "config.topic=kong"
+)
+
+ENABLE_KEY_AUTH_ENC=(
+  --data "name=key-auth-enc"
+)
+
+ENABLE_LDAP_AUTH_ADVANCED=(
+  --data "name=ldap-auth-advanced"
+  --data "config.ldap_host=example.com"
+  --data "config.base_dn=dc=example,dc=com"
+  --data "config.attribute=cn"
+)
+
+ENABLE_MOCKING=(
+  --data "name=mocking"
+  --data "config.api_specification_filename=path/to/file.json"
+)
+
+ENABLE_MTLS_AUTH=(
+  --data "name=mtls-auth"
+  --data "config.ca_certificates=abcdef12-3456-7890-abcd-ef1234567890"
+)
+
+ENABLE_OAUTH2_INTROSPECTION=(
+  --data "name=oauth2-introspection"
+  --data "config.introspection_url=http://example.com"
+  --data "config.authorization_value=Basic a29uZzprb25nCg=="
+)
+
+ENABLE_OPA=(
+  --data "name=opa"
+  --data "config.opa_path=/v1/data/example/kong/allowBoolean"
+)
+
+ENABLE_OPENID_CONNECT=(
+  --data "name=openid-connect"
+  --data "config.issuer=https://kong.example.com/oauth/v2/oauth-anonymous"
+)
+
+ENABLE_PROXY_CACHE_ADVANCED=(
+  --data "name=proxy-cache-advanced"
+  --data "config.strategy=memory"
+)
+
+ENABLE_RATE_LIMITING_ADVANCED=(
+  --data "name=rate-limiting-advanced"
+  --data "config.limit=5"
+  --data "config.window_size=30"
+  --data "config.sync_rate=-1"
+)
+
+ENABLE_REQUEST_TRANSFORMER_ADVANCED=(
+  --data "name=request-transformer-advanced"
+)
+
+# shellcheck disable=SC1111
+ENABLE_REQUEST_VALIDATOR=(
+  --data "name=request-validator"
+  --data 'config.body_schema=[{"name":{"type": "string", "required": true}}]'
+)
+
+ENABLE_RESPONSE_TRANSFORMER_ADVANCED=(
+  --data "name=response-transformer-advanced"
+  --data "config.remove.headers=x-toremove"
+)
+
+ENABLE_ROUTE_BY_HEADER=(
+  --data "name=route-by-header"
+)
+
+ENABLE_ROUTE_TRANSFORMER_ADVANCED=(
+  --data "name=route-transformer-advanced"
+  --data "config.path=/path"
+)
+
+ENABLE_STATSD_ADVANCED=(
+  --data "name=statsd-advanced"
+)
+
+ENABLE_UPSTREAM_TIMEOUT=(
+  --data "name=upstream-timeout"
+)
+
+ENABLE_VAULT_AUTH=(
+  --data "name=vault-auth"
+  --data "config.vault.id=abcdef12-3456-7890-abcd-ef1234567890"
+)
+
+function use_local_path {
+  local path=${!1}
+  if [[ -n $path ]] &&
+   [[ -d $path ]]; then
+    return 0
+  fi
+  return 1
+}
+
+function kong_version() {
+  local version
+  version="$(kong version 2>/dev/null)"
+  if [[ "$version" =~ (Enterprise)?[[:space:]]*([0-9]+\.[0-9]\.[0-9]+(\.[0-9]+)?)(-[0-9a-zA-Z]+)? ]]; then
+    KONG_VERSION="${BASH_REMATCH[2]}"
+    KONG_VERSION_SUFFIX="${BASH_REMATCH[4]}"
+
+    if [[ -z "${BASH_REMATCH[1]}" ]]; then
+      KONG_TYPE=oss
+      KONG_MAJOR_MINOR="${KONG_VERSION%.*}"
+    else
+      # Make sure the GitHub token is available
+      if [[ -z "$GITHUB_TOKEN" ]]; then
+        >&2 printf "GITHUB_TOKEN is not available\n"
+        exit 1
+      fi
+      KONG_TYPE=enterprise
+      KONG_MAJOR_MINOR="${KONG_VERSION%.*.*}"
+
+      # Determine where to get the versions for Kong Gateway plugins
+      if [[ -f /kong/.requirements ]]; then
+        KONG_TYPE=enterprise-source
+        KONG_DISTRIBUTIONS_VERSION="$(grep KONG_DISTRIBUTIONS_VERSION /kong/.requirements)"
+        KONG_DISTRIBUTIONS_VERSION="${KONG_DISTRIBUTIONS_VERSION#*=}"
+        GMP_VERSION="$(grep KONG_GMP_VERSION /kong/.requirements)"
+        GMP_VERSION="${GMP_VERSION#*=}"
+        GMP_URL="https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.bz2"
+        GMP_DIRECTORY="$(basename "$GMP_URL" .tar.bz2)"
+        GMP_FILENAME="$(basename "$GMP_URL")"
+        NETTLE_VERSION="$(grep KONG_DEP_NETTLE_VERSION /kong/.requirements)"
+        NETTLE_VERSION="${NETTLE_VERSION#*=}"
+        NETTLE_URL="https://ftp.gnu.org/gnu/nettle/nettle-${NETTLE_VERSION}.tar.gz"
+        NETTLE_DIRECTORY="$(basename "$NETTLE_URL" .tar.gz)"
+        NETTLE_FILENAME="$(basename "$NETTLE_URL")"
+        export KONG_DISTRIBUTIONS_VERSION \
+          GMP_VERSION GMP_URL GMP_DIRECTORY GMP_FILENAME \
+          NETTLE_VERSION NETTLE_URL NETTLE_DIRECTORY NETTLE_FILENAME
+      fi
+    fi
+  else
+    >&2 printf "Kong Gateway is not available\n"
+    exit 1
+  fi
+
+  export KONG_VERSION KONG_VERSION_SUFFIX KONG_TYPE KONG_MAJOR_MINOR
+}
+
+ENTERPRISE_PLUGIN_NAMES=()
+function install_enterprise_plugins() {
+  if [[ "$KONG_TYPE" == "enterprise-source" ]]; then
+    # Determine if the plugins have already been installed
+    if [[ -f /tmp/kong-version-compatibility-installed-plugins ]]; then
+      mapfile -t ENTERPRISE_PLUGIN_NAMES < <(cat /tmp/kong-version-compatibility-installed-plugins)
+      return
+    fi
+
+    # Assign known hosts for SSH operations
+    if [[ ! -d ~/.ssh ]]; then
+      mkdir ~/.ssh
+      chmod 700 ~/.ssh
+    fi
+    if use_local_path KONG_DISTRIBUTIONS_PATH; then
+      cp "$KONG_DISTRIBUTIONS_PATH/kong-images/ssh/known_hosts" ~/.ssh/known_hosts
+    else
+      hub api "repos/Kong/kong-distributions/contents/kong-images/ssh/known_hosts?ref=$KONG_DISTRIBUTIONS_VERSION" | \
+        jq -r ".content" | \
+        base64 --decode > ~/.ssh/known_hosts
+    fi
+    chmod 644 ~/.ssh/known_hosts
+
+    # Get the Enterprise plugins used for the version of Kong Gateway
+    local build_yml
+    build_yml="$(mktemp /tmp/kong-distributions_build-yml.XXXXXXXXX)"
+    if use_local_path KONG_DISTRIBUTIONS_PATH; then
+      cp "$KONG_DISTRIBUTIONS_PATH/kong-images/build.yml" "$build_yml"
+    else
+      hub api repos/Kong/kong-distributions/contents/kong-images/build.yml?ref="$KONG_DISTRIBUTIONS_VERSION" | \
+        jq -r ".content" | \
+        base64 --decode > "$build_yml"
+    fi
+    mapfile -t github_urls < <(yq e '.enterprise[].github_url' "$build_yml")
+
+    # Install the discovered plugins and libraries
+    for github_url in "${github_urls[@]}"; do
+      local repo
+      repo="$(basename "$github_url" .git)"
+      if [[ "$repo" != "kong-admin" ]] &&
+        [[ "$repo"  != "kong-portal" ]]; then
+        # Discover the SSH key for the given URL (or local path)
+        local ssh_key_name
+        local ssh_key_filename
+        ssh_key_name="$(yq e ".enterprise[] | select(.github_url == \"$github_url\") | .key_name" "$build_yml")"
+        ssh_key_filename="$(mktemp /tmp/kong-distributions_ssh-key.XXXXXXXXX)"
+        if use_local_path KONG_DISTRIBUTIONS_PATH; then
+          cp "$KONG_DISTRIBUTIONS_PATH/kong-images/ssh/$ssh_key_name" "$ssh_key_filename"
+        else
+          hub api "repos/Kong/kong-distributions/contents/kong-images/ssh/$ssh_key_name?ref=$KONG_DISTRIBUTIONS_VERSION" | \
+            jq -r ".content" | \
+            base64 --decode > "$ssh_key_filename"
+        fi
+
+        # Clone and install the plugin/library using the discovered SSH key
+        local plugin_name
+        local plugin_version
+        local repo_directory
+        plugin_name="$(yq e ".enterprise[] | select(.github_url == \"$github_url\") | .name" "$build_yml")"
+        plugin_version="$(yq e ".enterprise[] | select(.github_url == \"$github_url\") | .version" "$build_yml")"
+        repo_directory="$(mktemp -d /tmp/kong-repo.XXXXXXXXX)"
+        printf "Installing Enterprise artifact %s %s ... " "$plugin_name" "$plugin_version"
+        local quiet_argument
+        local redirect
+        if [[ $VERSION_COMPATIBILITY_DEBUG -eq $FALSE ]]; then
+          quiet_argument="--quiet"
+          redirect="2>/dev/null"
+        fi
+        ssh-agent bash -c "ssh-add $ssh_key_filename $redirect; \
+                            hub clone --branch $plugin_version \
+                              --depth 1 \
+                              --single-branch \
+                              $quiet_argument \
+                              $github_url \
+                              $repo_directory $redirect"
+        (
+          cd "$repo_directory" || return
+          luarocks make >/dev/null
+        )
+        printf "done\n"
+
+        # Determine the real name of the plugin
+        plugin_name="$(basename "$(find "$repo_directory" -type f -name "handler.lua" -exec dirname {} \;)")"
+        if [[ -n "$plugin_name" ]]; then
+          ENTERPRISE_PLUGIN_NAMES+=("$plugin_name")
+        fi
+
+        rm -rf "$repo_directory" "$ssh_key_filename"
+      fi
+    done
+    printf "\n"
+
+    # Export the installed plugins to a temporary file in the event things are re-run
+    printf "%s\n" "${ENTERPRISE_PLUGIN_NAMES[@]}" > /tmp/kong-version-compatibility-installed-plugins
+    rm -f "$build_yml"
+  fi
+}
+
+HUB_VERSION="2.14.2"
+YQ_VERSION="4.9.3"
+function install_requirements() {
+  # Install curl and jq
+  if ! hash curl 2>/dev/null || \
+     ! hash jq 2>/dev/null; then
+    if hash yum 2>/dev/null; then
+      if [[ -f /etc/centos-release ]]; then
+        yum install -y epel-release
+      elif [ -f /etc/redhat-release ]; then
+        local version
+        version="$(rpm -E "%{rhel}")"
+        yum install -y "https://dl.fedoraproject.org/pub/epel/epel-release-latest-$version.noarch.rpm"
+      fi
+      yum install -y curl jq
+    elif hash apt-get 2>/dev/null; then
+      apt-get update -y
+      apt-get install -y curl jq
+    elif hash apk 2>/dev/null; then
+      apk add curl jq
+    else
+      >&2 printf "Unknown distro; requirements cannot be installed\n"
+      exit 1
+    fi
+  fi
+
+  if [[ "$KONG_TYPE" == "enterprise-source" ]] &&
+    [[ $1 -eq $TRUE ]]; then
+    # Install ssh-agent
+    if ! hash ssh-agent 2>/dev/null; then
+      if hash yum 2>/dev/null; then
+        yum install -y openssh-clients
+      elif hash apt-get 2>/dev/null; then
+        apt-get update -y
+        apt-get install -y openssh-client
+      elif hash apk 2>/dev/null; then
+        apk add openssh-client
+      else
+        >&2 printf "Unknown distro; requirements cannot be installed\n"
+        exit 1
+      fi
+    fi
+
+    # Install hub
+    if ! hash hub 2>/dev/null; then
+      local url="https://github.com/github/hub/releases/download/v$HUB_VERSION/hub-linux-386-$HUB_VERSION.tgz"
+      local directory
+      directory="$(basename $url .tgz)"
+
+      curl -sL "$url" -o "/tmp/$directory.tgz"
+      tar xzf "/tmp/$directory.tgz" -C /tmp
+      "/tmp/$directory/install"
+      rm -rf "/tmp/$directory" "/tmp/$directory.tgz"
+    fi
+
+    # Install yq
+    if ! hash yq 2>/dev/null; then
+      local url="https://github.com/mikefarah/yq/releases/download/v$YQ_VERSION/yq_linux_386"
+      curl -sL "$url" -o /usr/local/bin/yq
+      chmod a+x /usr/local/bin/yq
+    fi
+
+    # Build and install GMP
+    if [[ ! -f "/build/usr/local/kong/lib/libgmp.so" ]]; then
+      curl -sL "$GMP_URL" -o "/tmp/$GMP_FILENAME"
+      tar xjf "/tmp/$GMP_FILENAME" -C /tmp
+      (
+        cd "/tmp/$GMP_DIRECTORY" || return
+        ./configure \
+          --build=x86_64-linux-gnu \
+          --enable-static=no \
+          --libdir=/build/usr/local/kong/lib
+        make install
+      )
+    fi
+
+    # Build and install libnettle
+    if [[ ! -f "/build/usr/local/kong/lib/libnettle.so" ]] ||
+      [[ ! -f "/build/usr/local/kong/lib/libhogweed.so" ]]; then
+      curl -sL "$NETTLE_URL" -o "/tmp/$NETTLE_FILENAME"
+      tar xzf "/tmp/$NETTLE_FILENAME" -C /tmp
+      (
+        cd "/tmp/$NETTLE_DIRECTORY" || return
+        sed -i 's/for (size_t i = 0; i < limbs; i++)/size_t i;for (i = 0; i < limbs; i++)/' rsa-sign-tr.c
+        LDFLAGS="-Wl,-rpath,/build/usr/local/kong/lib" \
+          ./configure --disable-static \
+            --with-include-path="/tmp/$GMP_DIRECTORY" \
+            --with-lib-path="/tmp/$GMP_DIRECTORY/.libs/" \
+            --libdir=/build/usr/local/kong/lib
+        make install
+      )
+    fi
+
+    rm -rf "/tmp/$GMP_DIRECTORY" "/tmp/$GMP_FILENAME" "/tmp/$NETTLE_DIRECTORY" "/tmp/$NETTLE_FILENAME"
+  fi
+}
+
+function reset_kong() {
+  # Handle additional pathing for Enterprise
+  export LD_LIBRARY_PATH="/build/usr/local/kong/lib:$LD_LIBRARY_PATH"
+  export KONG_PLUGINS="bundled${1:+,$1}"
+
+  # Reset Kong Gateway
+  kong stop >/dev/null 2>&1
+  kong migrations reset -y >/dev/null
+  kong migrations bootstrap >/dev/null
+  kong start >/dev/null
+
+  # Wait for the admin endpoint to become available
+  local status_code
+  while [[ $status_code -lt 200 ]] ||
+    [[ $status_code  -ge 300 ]]; do
+    status_code="$(curl -s -X GET -o /dev/null -w "%{http_code}" "$ADMIN_URL")"
+    if [[ $status_code -lt 200 ]] ||
+      [[ $status_code  -ge 300 ]]; then
+      sleep 1
+    fi
+  done
+
+  # Ensure Kong Gateway is being executed in a hybrid deployment
+  status_code="$(curl -s -X GET -o /dev/null -w "%{http_code}" "$ADMIN_URL/clustering/data-planes")"
+  if [[ $status_code -lt 200 ]] ||
+    [[ $status_code  -ge 300 ]]; then
+     >&2 printf "Kong Gateway is not configured for hybrid mode\n"
+     exit 1
+  fi
+}
+
+CONFIGURATION_FAILED_PLUGIN_NAMES=()
+function configure_plugin() {
+  local plugin_configuration="${1^^}"
+  plugin_configuration="ENABLE_${plugin_configuration//-/_}"
+  declare -n values=$plugin_configuration
+
+  local status_code
+  local output_filename
+  output_filename="$(mktemp /tmp/kong-configure-plugin.XXXXXXXXX)"
+  status_code="$(curl -s -X POST -o "$output_filename" -w "%{http_code}" "$ADMIN_URL/plugins" "${values[@]}")"
+  if [[ $status_code -lt 200 ]] &&
+    [[ $status_code  -ge 300 ]]; then
+    CONFIGURATION_FAILED_PLUGIN_NAMES+=("$1")
+    printf "failed to configure\n"
+    jq -r < "$output_filename"
+    rm -f "$output_filename"
+    return 1
+  fi
+  local name
+  name="$(curl -s -X GET "$ADMIN_URL/plugins" | jq -r '.data[].name')"
+  if [[ "$1" != "$name" ]]; then
+    CONFIGURATION_FAILED_PLUGIN_NAMES+=("$1")
+    printf "failed to verify configuration\n"
+    jq -r < "$output_filename"
+    rm -f "$output_filename"
+    return 1
+  fi
+  rm -f "$output_filename"
+}
+
+VERSION_COMPATIBLITY_FAILED_PLUGIN_NAMES=()
+function check_clustering_status() {
+  local sync_status
+  while [[ -z "$sync_status" ]]; do
+    sync_status="$(curl -s -X GET "$ADMIN_URL/clustering/data-planes" | jq -r '.data[].sync_status')"
+    if [[ -z "$sync_status" ]]; then
+      sleep 1
+    fi
+  done
+  printf "%s\n" "$sync_status"
+
+  if [[ "$sync_status" != "normal" ]]; then
+    VERSION_COMPATIBLITY_FAILED_PLUGIN_NAMES+=("$1")
+  fi
+}
+
+function get_list_of_plugins() {
+  local extra_plugins
+  if [[ ${#ENTERPRISE_PLUGIN_NAMES[@]} -gt 0 ]]; then
+    printf -v extra_plugins '%s,' "${ENTERPRISE_PLUGIN_NAMES[@]}"
+    extra_plugins="${extra_plugins%,}"
+  fi
+
+  reset_kong "$extra_plugins"
+  curl -s -X GET "$ADMIN_URL" | jq -r ".plugins.available_on_server | keys[]"
+}
+
+function main() {
+  local known_incompatible_plugin_names=()
+  local execute_enterprise=$TRUE
+  while [[ $# -gt 0 ]]; do
+    local key="$1"
+    case $key in
+      -ki|--known-incompatible)
+        known_incompatible_plugin_names+=("$2")
+        shift
+        ;;
+      -se|--skip-enterprise)
+        execute_enterprise=$FALSE
+        ;;
+      --debug)
+        set -x
+        VERSION_COMPATIBILITY_DEBUG=$TRUE
+        ;;
+    esac
+    shift
+  done
+
+  kong_version
+  install_requirements "$execute_enterprise"
+  if [[ $execute_enterprise -eq $TRUE ]]; then
+    install_enterprise_plugins
+  fi
+  local plugin_names=()
+  mapfile -t plugin_names < <(get_list_of_plugins)
+
+  local start
+  start="$(date -u +%s)"
+
+  for plugin_name in "${plugin_names[@]}"; do
+    # Skipping application-registration - DevPortal plugin
+    # Skipping collector - no configuration
+    # Skipping route-by-header - invalid checks on some versions of Kong
+    #                            Gateway
+    if [[ "$plugin_name" != "application-registration" ]] &&
+      [[ "$plugin_name" != "collector" ]] &&
+      [[ "$plugin_name" != "route-by-header" ]]; then
+      printf "Validating %s plugin ... " "$plugin_name"
+      reset_kong "$plugin_name"
+      if configure_plugin "$plugin_name"; then
+        check_clustering_status "$plugin_name"
+      fi
+    fi
+  done
+
+  local is_failure=$FALSE
+  if [[ ${#CONFIGURATION_FAILED_PLUGIN_NAMES[@]} -gt 0 ]]; then
+    is_failure=$TRUE
+    printf "\n\nPlugins failing configuration\n-----------------------------\n"
+    for configuration_failed_plugin_name in "${CONFIGURATION_FAILED_PLUGIN_NAMES[@]}"; do
+      >&2 printf "  %s\n" "$configuration_failed_plugin_name"
+    done
+  fi
+
+  if [[ ${#VERSION_COMPATIBLITY_FAILED_PLUGIN_NAMES[@]} -gt 0 ]]; then
+    printf "\n\nPlugins failing version compatibility\n-------------------------------------\n"
+    for version_compatiblity_failed_plugin_name in "${VERSION_COMPATIBLITY_FAILED_PLUGIN_NAMES[@]}"; do
+      local message="  $version_compatiblity_failed_plugin_name"
+      local is_known_failure=$FALSE
+      for known_incompatible_plugin_name in "${known_incompatible_plugin_names[@]}"; do
+        if [[ "$version_compatiblity_failed_plugin_name" == "$known_incompatible_plugin_name" ]]; then
+          is_known_failure=$TRUE
+          message="$message [known failure]"
+          break
+        fi
+      done
+      if [[ $is_known_failure -eq $FALSE ]]; then
+        is_failure=$TRUE
+      fi
+      >&2 printf "%s\n" "$message"
+    done
+  fi
+
+  local end
+  local elapsed
+  end="$(date -u +%s)"
+  elapsed="$((end - start))"
+  printf "\n\nElapsed time: %s seconds\n\n" "$elapsed"
+
+  printf "Version compatibilty "
+  if [[ $is_failure -eq $TRUE ]]; then
+    printf "FAILED!\n"
+    exit 1
+  fi
+  printf "PASSED!\n"
+}
+
+main "$@"

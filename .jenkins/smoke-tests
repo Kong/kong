@@ -1,0 +1,117 @@
+// https://stackoverflow.com/questions/43214730/how-to-set-github-commit-status-with-jenkinsfile-not-using-a-pull-request-builde
+void setBuildStatus(String message, String state) {
+  step([
+      $class: "GitHubCommitStatusSetter",
+      reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/kong/kong-ee"],
+      contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "Kong Gateway Smoke Tests"],
+      errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
+      statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
+  ]);
+}
+
+// Generate the CLI parameters for any known incompatibilities
+String known_incompatibilities(String csv) {
+  def known_incompatible = ""
+  if (! csv.isEmpty()) {
+    known_incompatible = '--known-incompatible ' + csv.split(',').join(' --known-incompatible ')
+  }
+  return known_incompatible
+}
+
+pipeline {
+  agent {
+    node {
+      label 'bionic'
+    }
+  }
+  options {
+      timeout(time: 45, unit: 'MINUTES')
+      disableConcurrentBuilds()
+  }
+  environment {
+    GITHUB_TOKEN = credentials('github_bot_access_token')
+    KONG_LICENSE_DATA = credentials('KONG_LICENSE_DATA')
+
+    // Docker Hub credentials to increase rate-limiting
+    DOCKERHUB_KONGCLOUD_PULL = credentials('DOCKERHUB_KONGCLOUD_PULL')
+
+    // Override gojira version (ensure master)
+    GOJIRA_VERSION = 'master'
+
+    // Only <major>.<minor> is needed for version
+    PREVIOUS_KONG_RELEASE = '2.3'
+
+    // Override PATH to include any binary installations
+    PATH = "${env.PATH}:~/.local/bin"
+
+    // Known plugin incompatibilities
+    KNOWN_INCOMPATIBILITIES = "file-log,http-log,loggly,prometheus,syslog,tcp-log,udp-log,zipkin"
+  }
+  stages {
+    stage('Login to Docker Hub') {
+      steps {
+        // Login to Docker Hub (better limits on rate-limiting)
+        sh label: 'Login to Docker Hub',
+           script: '''echo $DOCKERHUB_KONGCLOUD_PULL_PSW | \
+                        docker login \
+                          -u $DOCKERHUB_KONGCLOUD_PULL_USR \
+                          --password-stdin'''
+      }
+    }
+    stage('Install Gojira Enterprise') {
+      steps {
+        sh label: 'Clone Gojira enterprise',
+           script: 'git clone https://$GITHUB_TOKEN:@github.com/Kong/gojira-enterprise /tmp/gojira'
+        sh label: 'Create ~/.local/bin directory',
+           script: 'mkdir -p ~/.local/bin'
+        sh label: 'Install Gojira enterprise',
+           script: 'ln -s $(realpath /tmp/gojira/gojira.sh) $(realpath ~/.local/bin/gojira)'
+      }
+    }
+    stage('Version Compatibility') {
+      when {
+        not {
+          anyOf {
+            branch 'master'
+            branch 'main'
+          }
+        }
+        anyOf {
+          changeset "kong/plugins/**"
+          changeset "kong-*.rockspec"
+        }
+      }
+      steps {
+        sh label: 'Start Kong Gateway in hybrid mode',
+           script: '''gojira hybrid up \
+                        -v $(realpath scripts/check-version-compatibility):/check-version-compatibility \
+                        --dataplane-image kong/kong-gateway:$PREVIOUS_KONG_RELEASE'''
+        sh label: 'Build Kong Gateway development environment',
+           script: '''gojira hybrid run@kong-cp \
+                        --dataplane-image kong/kong-gateway:$PREVIOUS_KONG_RELEASE \
+                          make dev'''
+        sh label: 'Start Kong Gateway dataplane',
+           script: '''gojira hybrid run@kong-dp \
+                        --dataplane-image kong/kong-gateway:$PREVIOUS_KONG_RELEASE \
+                          kong start'''
+        sh label: 'Execute version compatibility smoke test',
+           script: '''gojira hybrid run@kong-cp \
+                        --dataplane-image kong/kong-gateway:$PREVIOUS_KONG_RELEASE \
+                        -e GITHUB_TOKEN \
+                          /check-version-compatibility --skip-enterprise ''' + known_incompatibilities(env.KNOWN_INCOMPATIBILITIES)
+        sh label: 'Clean gojira instances',
+           script: '''gojira hybrid nuke \
+                        --dataplane-image kong/kong-gateway:$PREVIOUS_KONG_RELEASE \
+                        -f'''
+      }
+    }
+  }
+  post {
+    success {
+      setBuildStatus("Build succeeded", "SUCCESS");
+    }
+    failure {
+      setBuildStatus("Build failed", "FAILURE");
+    }
+  }
+}
