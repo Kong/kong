@@ -163,7 +163,9 @@ function _M:init_worker()
 end
 
 
-local function send_ping(c)
+local function send_ping(c, log_suffix)
+  log_suffix = log_suffix or ""
+
   local hash = declarative.get_current_hash()
 
   if hash == true then
@@ -172,10 +174,11 @@ local function send_ping(c)
 
   local _, err = c:send_ping(hash)
   if err then
-    ngx_log(is_timeout(err) and ngx_NOTICE or ngx_WARN, _log_prefix, "unable to ping control plane node: ", err)
+    ngx_log(is_timeout(err) and ngx_NOTICE or ngx_WARN, _log_prefix,
+            "unable to send ping frame to control plane: ", err, log_suffix)
 
   else
-    ngx_log(ngx_DEBUG, _log_prefix, "sent PING packet to control plane")
+    ngx_log(ngx_DEBUG, _log_prefix, "sent ping frame to control plane", log_suffix)
   end
 end
 
@@ -190,6 +193,7 @@ function _M:communicate(premature)
 
   -- TODO: pick one random CP
   local address = conf.cluster_control_plane
+  local log_suffix = " [" .. address .. "]"
 
   local c = assert(ws_client:new(WS_OPTS))
   local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
@@ -215,7 +219,7 @@ function _M:communicate(premature)
   local res, err = c:connect(uri, opts)
   if not res then
     ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
-                 " (retrying after ", reconnection_delay, " seconds)")
+                 " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
     assert(ngx.timer.at(reconnection_delay, function(premature)
       self:communicate(premature)
@@ -231,8 +235,7 @@ function _M:communicate(premature)
                                         plugins = self.plugins_list, }))
   if err then
     ngx_log(ngx_ERR, _log_prefix, "unable to send basic information to control plane: ", uri,
-                 " err: ", err,
-                 " (retrying after ", reconnection_delay, " seconds)")
+                     " err: ", err, " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
     c:close()
     assert(ngx.timer.at(reconnection_delay, function(premature)
@@ -289,7 +292,7 @@ function _M:communicate(premature)
 
   local write_thread = ngx.thread.spawn(function()
     while not exiting() do
-      send_ping(c)
+      send_ping(c, log_suffix)
 
       for _ = 1, PING_INTERVAL do
         ngx_sleep(1)
@@ -316,7 +319,7 @@ function _M:communicate(premature)
 
       else
         if typ == "close" then
-          ngx_log(ngx_DEBUG, _log_prefix, "received CLOSE frame from control plane")
+          ngx_log(ngx_DEBUG, _log_prefix, "received close frame from control plane", log_suffix)
           return
         end
 
@@ -329,10 +332,11 @@ function _M:communicate(premature)
 
           if msg.type == "reconfigure" then
             if msg.timestamp then
-              ngx_log(ngx_DEBUG, _log_prefix, "received RECONFIGURE frame from control plane with timestamp: ", msg.timestamp)
+              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane with timestamp: ",
+                                 msg.timestamp, log_suffix)
 
             else
-              ngx_log(ngx_DEBUG, _log_prefix, "received RECONFIGURE frame from control plane")
+              ngx_log(ngx_DEBUG, _log_prefix, "received reconfigure frame from control plane", log_suffix)
             end
 
             self.next_config = assert(msg.config_table)
@@ -344,14 +348,15 @@ function _M:communicate(premature)
               config_semaphore:post()
             end
 
-            send_ping(c)
+            send_ping(c, log_suffix)
           end
 
         elseif typ == "pong" then
-          ngx_log(ngx_DEBUG, _log_prefix, "received PONG frame from control plane")
+          ngx_log(ngx_DEBUG, _log_prefix, "received pong frame from control plane", log_suffix)
 
         else
-          ngx_log(ngx_NOTICE, _log_prefix, "received UNKNOWN (", tostring(typ), ") frame from control plane")
+          ngx_log(ngx_NOTICE, _log_prefix, "received unknown (", tostring(typ), ") frame from control plane",
+                              log_suffix)
         end
       end
     end
@@ -366,10 +371,10 @@ function _M:communicate(premature)
   c:close()
 
   if not ok then
-    ngx_log(ngx_ERR, _log_prefix, err)
+    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
 
   elseif perr then
-    ngx_log(ngx_ERR, _log_prefix, perr)
+    ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
   end
 
   if not exiting() then
