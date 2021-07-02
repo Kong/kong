@@ -484,7 +484,6 @@ function _M:handle_cp_websocket()
   local sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
   local purge_delay = self.conf.cluster_data_plane_purge_delay
   local update_sync_status = function()
-    last_seen = ngx_time()
     local ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
       last_seen = last_seen,
       config_hash = config_hash ~= "" and config_hash or nil,
@@ -528,6 +527,9 @@ function _M:handle_cp_websocket()
   end
 
   if self.deflated_reconfigure_payload then
+    -- initial configuration compatibility for sync status variable
+    _, _, sync_status = self:check_configuration_compatibility(dp_plugins_map)
+
     table_insert(queue, self.deflated_reconfigure_payload)
     queue.post()
 
@@ -583,12 +585,12 @@ function _M:handle_cp_websocket()
         end
 
         config_hash = data
+        last_seen = ngx_time()
+        update_sync_status()
 
         -- queue PONG to avoid races
         table_insert(queue, "PONG")
         queue.post()
-
-        update_sync_status()
       end
     end
   end)
