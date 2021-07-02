@@ -572,6 +572,7 @@ function _M:handle_cp_websocket()
 
       else
         if typ == "close" then
+          ngx_log(ngx_DEBUG, _log_prefix, "received close frame from data plane", log_suffix)
           return
         end
 
@@ -583,6 +584,8 @@ function _M:handle_cp_websocket()
         if typ ~= "ping" then
           return nil, "invalid websocket frame received from data plane: " .. typ
         end
+
+        ngx_log(ngx_DEBUG, _log_prefix, "received ping frame from data plane", log_suffix)
 
         config_hash = data
         last_seen = ngx_time()
@@ -611,13 +614,13 @@ function _M:handle_cp_websocket()
           local _, err = wb:send_pong()
           if err then
             if not is_timeout(err) then
-              return nil, "failed to send PONG back to data plane: " .. err
+              return nil, "failed to send pong frame to data plane: " .. err
             end
 
-            ngx_log(ngx_NOTICE, _log_prefix, "failed to send PONG back to data plane: ", err, log_suffix)
+            ngx_log(ngx_NOTICE, _log_prefix, "failed to send pong frame to data plane: ", err, log_suffix)
 
           else
-            ngx_log(ngx_DEBUG, _log_prefix, "sent PONG packet to data plane", log_suffix)
+            ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
           end
 
         else
