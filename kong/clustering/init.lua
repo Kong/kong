@@ -9,6 +9,7 @@ local ngx_null = ngx.null
 local ngx_md5 = ngx.md5
 local tostring = tostring
 local assert = assert
+local error = error
 local concat = table.concat
 local sort = table.sort
 local type = type
@@ -16,19 +17,23 @@ local type = type
 
 local MT = { __index = _M, }
 
-local function table_to_sorted_string(t)
-  if t == ngx_null then
+
+local compare_sorted_strings
+
+
+local function to_sorted_string(value)
+  if value == ngx_null then
     return "/null/"
   end
 
-  local typ = type(t)
-  if typ == "table" then
+  local t = type(value)
+  if t == "table" then
     local i = 1
     local o = { "{" }
-    for k, v in pl_tablex.sort(t) do
-      o[i+1] = table_to_sorted_string(k)
+    for k, v in pl_tablex.sort(value, compare_sorted_strings) do
+      o[i+1] = to_sorted_string(k)
       o[i+2] = ":"
-      o[i+3] = table_to_sorted_string(v)
+      o[i+3] = to_sorted_string(v)
       o[i+4] = ";"
       i=i+4
     end
@@ -39,18 +44,25 @@ local function table_to_sorted_string(t)
 
     return concat(o, nil, 1, i)
 
-  elseif typ == "string" then
-    return '$' .. t .. '$'
+  elseif t == "string" then
+    return "$" .. value .. "$"
 
-  elseif typ == "number" then
-    return '#' .. tostring(t) .. '#'
+  elseif t == "number" then
+    return "#" .. tostring(value) .. "#"
 
-  elseif typ == "boolean" then
-    return '?' .. tostring(t) .. '?'
+  elseif t == "boolean" then
+    return "?" .. tostring(value) .. "?"
 
   else
-    return '(' .. tostring(t) .. ')'
+    error("invalid type to be sorted (JSON types are supported")
   end
+end
+
+
+compare_sorted_strings = function(a, b)
+  a = to_sorted_string(a)
+  b = to_sorted_string(b)
+  return a < b
 end
 
 
@@ -81,7 +93,7 @@ end
 
 
 function _M:calculate_config_hash(config_table)
-  return ngx_md5(table_to_sorted_string(config_table))
+  return ngx_md5(to_sorted_string(config_table))
 end
 
 
