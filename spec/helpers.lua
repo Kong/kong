@@ -1960,6 +1960,7 @@ do
   -- @param path A path to the log file (defaults to the test prefix's
   -- errlog).
   -- @see line
+  -- @see clean_logfile
   -- @usage
   -- assert.logfile("./my/logfile.log").has.no.line("[error]", true)
   local function modifier_errlog(state, args)
@@ -1989,7 +1990,12 @@ do
   -- @param fpath An optional path to the file (defaults to the filelog
   -- modifier)
   -- @see logfile
+  -- @see clean_logfile
   -- @usage
+  -- helpers.clean_logfile()
+  --
+  -- -- run some tests here
+  --
   -- assert.logfile().has.no.line("[error]", true)
   local function match_line(state, args)
     local regex = args[1]
@@ -2420,6 +2426,18 @@ local function get_running_conf(prefix)
 end
 
 
+--- Clears the logfile. Will overwrite the logfile with an empty file.
+-- @function clean_logfile
+-- @param logfile (optional) filename to clear, defaults to the current
+-- error-log file
+-- @return nothing
+-- @see line
+local function clean_logfile(logfile)
+  logfile = logfile or (get_running_conf() or conf).nginx_err_logs
+  os.execute(":> " .. logfile)
+end
+
+
 --- Return the actual Kong version the tests are running against.
 -- See [version.lua](https://github.com/kong/version.lua) for the format. This
 -- is mostly useful for testing plugins that should work with multiple Kong versions.
@@ -2810,6 +2828,7 @@ end
   admin_ssl_client = admin_ssl_client,
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
+  clean_logfile = clean_logfile,
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = each_strategy,
   all_strategies = all_strategies,

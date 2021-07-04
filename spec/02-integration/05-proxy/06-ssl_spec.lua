@@ -222,8 +222,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("proxy ssl verify", function()
       it("prevents requests to upstream that does not possess a trusted certificate", function()
-        -- setup: cleanup logs
-        os.execute(":> " .. helpers.test_conf.nginx_err_logs)
+        helpers.clean_logfile()
 
         local res = assert(proxy_client:send {
           method  = "GET",
