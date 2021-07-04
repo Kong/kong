@@ -145,7 +145,7 @@ end
 
 
 --- Unset an environment variable
--- @function setenv
+-- @function unsetenv
 -- @param env (string) name of the environment variable
 -- @return true on success, false otherwise
 local function unsetenv(env)
