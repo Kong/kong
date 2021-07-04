@@ -39,8 +39,7 @@ describe("#postgres upstream keepalive", function()
       kopts[k] = v
     end
 
-    -- cleanup logs
-    os.execute(":> " .. helpers.test_conf.nginx_err_logs)
+    helpers.clean_logfile()
 
     assert(helpers.start_kong(kopts, nil, nil, fixtures))
 
