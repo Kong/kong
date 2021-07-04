@@ -2884,7 +2884,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         --
         -- We want to make sure we do not attempt to parse a
         -- request body if the request isn't supposed to have
-        -- once in the first place.
+        -- one in the first place.
 
         -- setup: cleanup logs
         os.execute(":> " .. helpers.test_conf.nginx_err_logs)
