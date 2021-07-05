@@ -47,7 +47,19 @@ return function(options)
     -- the init_worker context.
     local get_phase= ngx.get_phase
     local ngx_sleep = ngx.sleep
-    local alternative_sleep = require("socket").sleep
+    local alternative_sleep do
+      local luasocket_sleep = require("socket").sleep
+      local update_time = ngx.update_time()
+
+      alternative_sleep = function(t)
+        luasocket_sleep(t)
+        -- the ngx sleep will yield and hence update time, this implementation
+        -- does not, so we must force a time update to prevent time based loops
+        -- from getting into a deadlock/spin.
+        -- See https://github.com/Kong/lua-resty-worker-events/issues/41
+        update_time()
+      end
+    end
 
     -- luacheck: globals ngx.sleep
     ngx.sleep = function(s)
