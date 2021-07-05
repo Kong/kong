@@ -10,6 +10,8 @@ local cjson = require("cjson.safe").new()
 cjson.decode_array_with_array_mt(true)
 local decode_base64 = ngx.decode_base64
 local encode_base64 = ngx.encode_base64
+local inflate_gzip = require("kong.tools.utils").inflate_gzip
+local deflate_gzip = require("kong.tools.utils").deflate_gzip
 
 describe("Plugin: response-transformer-advanced", function()
   describe("transform_json_body()", function()
@@ -918,8 +920,7 @@ describe("Plugin: response-transformer-advanced", function()
         },
       }
 
-      -- Gzip of {"p1":"v1"}
-      local body = "H4sIAHWXmV8AA6tWKjBUslIqM1Sq5QIAAElSvQwAAAA="
+      local body = encode_base64(deflate_gzip(cjson.encode( { p1 = "v1" })))
 
       headers["Content-Type"] = "application/json"
       headers["Content-Encoding"] = "gzip"
@@ -929,11 +930,9 @@ describe("Plugin: response-transformer-advanced", function()
       _G.ngx.arg = { "", true }
       handler:body_filter(conf)
 
-      local result = ngx.arg[1]
+      local result = cjson.decode(inflate_gzip(ngx.arg[1]))
 
-      -- Gzip of {"p2":"v2","p1":"v1"}
-      local resp_body = "H4sIAAAAAAAAA6tWKjBSslIqM1LSUSowBLEMlWoBWx7ObRUAAAA="
-      assert.same(resp_body, encode_base64(result))
+      assert.same({ p2 = "v2", p1 = "v1"}, result)
     end)
 
     it("invalid gzip", function()
