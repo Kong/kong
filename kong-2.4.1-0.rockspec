@@ -29,7 +29,7 @@ dependencies = {
   "lyaml == 6.2.7",
   "luasyslog == 2.0.1",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 6.0.1",
+  "lua-resty-dns-client == 6.0.2",
   "lua-protobuf == 0.3.2",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-healthcheck == 1.4.2",
