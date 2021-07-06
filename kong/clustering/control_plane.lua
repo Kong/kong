@@ -133,17 +133,18 @@ function _M:export_deflated_reconfigure_payload()
     end
   end
 
-
   -- store serialized plugins map for troubleshooting purposes
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
-
   ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
+
+  local config_hash = self:calculate_config_hash(config_table)
 
   local payload, err = cjson_encode({
     type = "reconfigure",
     timestamp = ngx_now(),
     config_table = config_table,
+    config_hash = config_hash,
   })
   if not payload then
     return nil, err
@@ -154,9 +155,10 @@ function _M:export_deflated_reconfigure_payload()
     return nil, err
   end
 
+  self.current_config_hash = config_hash
   self.deflated_reconfigure_payload = payload
 
-  return payload
+  return payload, nil, config_hash
 end
 
 
@@ -395,7 +397,6 @@ function _M:handle_cp_websocket()
   local sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
   local purge_delay = self.conf.cluster_data_plane_purge_delay
   local update_sync_status = function()
-    last_seen = ngx_time()
     local ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
       last_seen = last_seen,
       config_hash = config_hash ~= "" and config_hash or nil,
@@ -439,6 +440,9 @@ function _M:handle_cp_websocket()
   end
 
   if self.deflated_reconfigure_payload then
+    -- initial configuration compatibility for sync status variable
+    _, _, sync_status = self:check_configuration_compatibility(dp_plugins_map)
+
     table_insert(queue, self.deflated_reconfigure_payload)
     queue.post()
 
@@ -481,6 +485,7 @@ function _M:handle_cp_websocket()
 
       else
         if typ == "close" then
+          ngx_log(ngx_DEBUG, _log_prefix, "received close frame from data plane", log_suffix)
           return
         end
 
@@ -493,13 +498,15 @@ function _M:handle_cp_websocket()
           return nil, "invalid websocket frame received from data plane: " .. typ
         end
 
+        ngx_log(ngx_DEBUG, _log_prefix, "received ping frame from data plane", log_suffix)
+
         config_hash = data
+        last_seen = ngx_time()
+        update_sync_status()
 
         -- queue PONG to avoid races
         table_insert(queue, "PONG")
         queue.post()
-
-        update_sync_status()
       end
     end
   end)
@@ -520,13 +527,13 @@ function _M:handle_cp_websocket()
           local _, err = wb:send_pong()
           if err then
             if not is_timeout(err) then
-              return nil, "failed to send PONG back to data plane: " .. err
+              return nil, "failed to send pong frame to data plane: " .. err
             end
 
-            ngx_log(ngx_NOTICE, _log_prefix, "failed to send PONG back to data plane: ", err, log_suffix)
+            ngx_log(ngx_NOTICE, _log_prefix, "failed to send pong frame to data plane: ", err, log_suffix)
 
           else
-            ngx_log(ngx_DEBUG, _log_prefix, "sent PONG packet to data plane", log_suffix)
+            ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
           end
 
         else
