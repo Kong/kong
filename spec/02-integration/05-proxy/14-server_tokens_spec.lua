@@ -766,7 +766,7 @@ describe("headers [#" .. strategy .. "]", function()
         -- to ensure that the `headers` configuration value can be specified
         -- via the configuration file (vs. environment variables as the rest
         -- of this test suite uses).
-        -- This regression occured because of the dumping of config values into
+        -- This regression occurred because of the dumping of config values into
         -- .kong_env (and the lack of serialization for the `headers` table).
         assert(helpers.kong_exec("restart -c spec/fixtures/headers.conf"))
 
