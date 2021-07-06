@@ -9,7 +9,7 @@ local function init(prometheus)
   metrics.license_errors = prometheus:counter("enterprise_license_errors",
                                               "Errors when collecting license info")
   metrics.license_signature = prometheus:gauge("enterprise_license_signature",
-                                              "Last 32 bytes of the license signautre in number")
+                                              "Last 32 bytes of the license signature in number")
   metrics.license_expiration = prometheus:gauge("enterprise_license_expiration",
                                                 "Unix epoch time when the license expires, " ..
                                                 "the timestamp is substracted by 24 hours "..
