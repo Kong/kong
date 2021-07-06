@@ -68,6 +68,31 @@ for _, strategy in helpers.each_strategy() do
           },
         }
 
+        local service = assert(bp.services:insert())
+        local route   = bp.routes:insert({
+          service     = service,
+          protocols   = { "http" },
+          paths       = { "/proxy-authorization" },
+          strip_path  = true,
+        })
+
+        bp.plugins:insert({
+          route = route,
+          name = "request-transformer",
+          config = {
+            add = {
+              headers = {
+                "Proxy-Authorization:Basic ZGVtbzp0ZXN0",
+              },
+            },
+            replace = {
+              headers = {
+                "Proxy-Authorization:Basic ZGVtbzp0ZXN0",
+              },
+            },
+          },
+        })
+
         assert(helpers.start_kong(config))
       end
     end
@@ -194,6 +219,26 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(assert.res_status(200, res))
         assert.equal("keep-alive, Upgrade", json.headers.connection)
         assert.equal("websocket", json.headers.upgrade)
+      end)
+
+      it("keeps proxy-authorization header when a plugin specifies it", function()
+        local headers = request_headers({
+          ["Proxy-Authorization"] = "Basic YWxhZGRpbjpvcGVuc2VzYW1l",
+        }, "/proxy-authorization")
+
+        assert.equal("Basic ZGVtbzp0ZXN0", headers["proxy-authorization"])
+
+        local headers = request_headers({}, "/proxy-authorization")
+
+        assert.equal("Basic ZGVtbzp0ZXN0", headers["proxy-authorization"])
+      end)
+
+      it("removes proxy-authorization header if plugin specifies same value as in requests", function()
+        local headers = request_headers({
+          ["Proxy-Authorization"] = "Basic ZGVtbzp0ZXN0",
+        }, "/proxy-authorization")
+
+        assert.is_nil(headers["proxy-authorization"])
       end)
     end)
 
