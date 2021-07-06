@@ -95,6 +95,7 @@ describe("Plugin: prometheus (access)", function()
   end)
 
   teardown(function()
+    helpers.kill_tcp_server(TCP_SERVICE_PORT)
     if proxy_client then
       proxy_client:close()
     end
