@@ -39,6 +39,7 @@ dependencies = {
   "lua-resty-openssl == 0.7.2",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6",
+  "lua-resty-acme ~> 0.6",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.4",
@@ -48,7 +49,6 @@ dependencies = {
   "kong-plugin-request-transformer ~> 1.3",
   "kong-plugin-session ~> 2.4",
   "kong-plugin-aws-lambda ~> 3.5",
-  "kong-plugin-acme ~> 0.2",
   "kong-plugin-grpc-web ~> 0.2",
 }
 build = {
@@ -400,5 +400,14 @@ build = {
     ["kong.plugins.grpc-gateway.deco"] = "kong/plugins/grpc-gateway/deco.lua",
     ["kong.plugins.grpc-gateway.handler"] = "kong/plugins/grpc-gateway/handler.lua",
     ["kong.plugins.grpc-gateway.schema"] = "kong/plugins/grpc-gateway/schema.lua",
+
+    ["kong.plugins.acme.api"] = "kong/plugins/acme/api.lua",
+    ["kong.plugins.acme.client"] = "kong/plugins/acme/client.lua",
+    ["kong.plugins.acme.daos"] = "kong/plugins/acme/daos.lua",
+    ["kong.plugins.acme.handler"] = "kong/plugins/acme/handler.lua",
+    ["kong.plugins.acme.migrations.000_base_acme"] = "kong/plugins/acme/migrations/000_base_acme.lua",
+    ["kong.plugins.acme.migrations"] = "kong/plugins/acme/migrations/init.lua",
+    ["kong.plugins.acme.schema"] = "kong/plugins/acme/schema.lua",
+    ["kong.plugins.acme.storage.kong"] = "kong/plugins/acme/storage/kong.lua",
   }
 }
