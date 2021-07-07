@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local pl_file = require "pl.file"
 
 local TCP_SERVICE_PORT = 8189
 local TCP_PROXY_PORT = 9007
@@ -219,8 +218,7 @@ describe("Plugin: prometheus (access)", function()
 
   it("does not log error if no service was matched", function()
     -- cleanup logs
-    local test_error_log_path = helpers.test_conf.nginx_err_logs
-    os.execute(":> " .. test_error_log_path)
+    os.execute(":> " .. helpers.test_conf.nginx_err_logs)
 
     local res = assert(proxy_client:send {
       method  = "POST",
@@ -229,16 +227,12 @@ describe("Plugin: prometheus (access)", function()
     assert.res_status(404, res)
 
     -- make sure no errors
-    local logs = pl_file.read(test_error_log_path)
-    for line in logs:gmatch("[^\r\n]+") do
-      assert.not_match("[error]", line, nil, true)
-    end
+    assert.logfile().has.no.line("[error]", true, 10)
   end)
 
   it("does not log error during a scrape", function()
     -- cleanup logs
-    local test_error_log_path = helpers.test_conf.nginx_err_logs
-    os.execute(":> " .. test_error_log_path)
+    os.execute(":> " .. helpers.test_conf.nginx_err_logs)
 
     local res = assert(admin_client:send {
       method  = "GET",
@@ -247,10 +241,7 @@ describe("Plugin: prometheus (access)", function()
     local body = assert.res_status(200, res)
 
     -- make sure no errors
-    local logs = pl_file.read(test_error_log_path)
-    for line in logs:gmatch("[^\r\n]+") do
-      assert.not_match("[error]", line, nil, true)
-    end
+    assert.logfile().has.no.line("[error]", true, 10)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
