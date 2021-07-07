@@ -190,6 +190,11 @@ function _M.new(opts)
 end
 
 function _M:register_for_messages()
+  if not singletons.clustering then
+    ngx.log(ngx.WARN, _log_prefix, "Unable to register for messages, clustering object is not available")
+    return
+  end
+
   singletons.clustering.register_server_on_message(self.message_type, function(msg, queued_send)
     -- decode message
     local payload, err = self.unpack_message(msg, self.message_type, self.message_type_version)
