@@ -49,7 +49,7 @@ local function metric_data()
 
   local lic = kong.license.license
 
-  if lic.version ~= 1 then
+  if tonumber(lic.version) ~= 1 then
     metrics.license_errors:inc()
     kong.log.err("enterprise license version (" .. (lic.version or "nil") .. ") unsupported")
     return
