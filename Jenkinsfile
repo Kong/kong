@@ -40,7 +40,7 @@ pipeline {
                 RELEASE_DOCKER_ONLY="true"
                 PACKAGE_TYPE="apk"
                 RESTY_IMAGE_BASE="alpine"
-                RESTY_IMAGE_TAG="latest"
+                RESTY_IMAGE_TAG="3.13"
             }
             steps {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
