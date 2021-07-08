@@ -1,3 +1,8 @@
+1.4.1 - 2021-07-08
+
+Fixes:
+  - Multiple simultaneous instances of the plugin don't collide with each other (#116)
+
 1.4.0 - 2021-06-15
 
 New features:
