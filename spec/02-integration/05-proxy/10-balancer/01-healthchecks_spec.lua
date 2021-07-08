@@ -2259,7 +2259,7 @@ for _, strategy in helpers.each_strategy() do
       assert(count1.total == 0 or count1.total == total_requests, "counts should either get 0 or all hits")
       assert(count2.total == 0 or count2.total == total_requests, "counts should either get 0 or all hits")
       assert(count3.total == 0 or count3.total == total_requests, "counts should either get 0 or all hits")
-      assert.False(count1.total == count2.total and count2.total == count3.total)
+      assert.False(count1.total == count2.total == count3.total)
 
       local health = bu.get_balancer_health(upstream_name)
       assert.is.table(health)

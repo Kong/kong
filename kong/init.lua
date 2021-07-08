@@ -78,7 +78,8 @@ local kong_resty_ctx = require "kong.resty.ctx"
 local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
 local cache_warmup = require "kong.cache.warmup"
-local balancer = require "kong.runloop.balancer"
+local balancer_execute = require("kong.runloop.balancer").execute
+local balancer_set_host_header = require("kong.runloop.balancer").set_host_header
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
@@ -899,22 +900,22 @@ function Kong.balancer()
     previous_try.state, previous_try.code = get_last_failure()
 
     -- Report HTTP status for health checks
-    local balancer_instance = balancer_data.balancer
-    if balancer_instance then
+    local balancer = balancer_data.balancer
+    if balancer then
       if previous_try.state == "failed" then
         if previous_try.code == 504 then
-          balancer_instance.report_timeout(balancer_data.balancer_handle)
+          balancer.report_timeout(balancer_data.balancer_handle)
         else
-          balancer_instance.report_tcp_failure(balancer_data.balancer_handle)
+          balancer.report_tcp_failure(balancer_data.balancer_handle)
         end
 
       else
-        balancer_instance.report_http_status(balancer_data.balancer_handle,
+        balancer.report_http_status(balancer_data.balancer_handle,
                                     previous_try.code)
       end
     end
 
-    local ok, err, errcode = balancer.execute(balancer_data, ctx)
+    local ok, err, errcode = balancer_execute(balancer_data, ctx)
     if not ok then
       ngx_log(ngx_ERR, "failed to retry the dns/balancer resolver for ",
               tostring(balancer_data.host), "' with: ", tostring(err))
@@ -926,7 +927,7 @@ function Kong.balancer()
       return ngx.exit(errcode)
     end
 
-    ok, err = balancer.set_host_header(balancer_data)
+    ok, err = balancer_set_host_header(balancer_data)
     if not ok then
       ngx_log(ngx_ERR, "failed to set balancer Host header: ", err)
 

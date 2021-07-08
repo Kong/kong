@@ -49,7 +49,6 @@ end
 for _, consistency in ipairs({"strict", "eventual"}) do
   describe("Balancer (worker_consistency = " .. consistency .. ")", function()
     local singletons, balancer
-    local targets, upstreams, balancers, healthcheckers
     local UPSTREAMS_FIXTURES
     local TARGETS_FIXTURES
     local upstream_hc
@@ -67,10 +66,6 @@ for _, consistency in ipairs({"strict", "eventual"}) do
       singletons = require "kong.singletons"
       singletons.worker_events = require "resty.worker.events"
       singletons.db = {}
-      targets = require "kong.runloop.balancer.targets"
-      upstreams = require "kong.runloop.balancer.upstreams"
-      balancers = require "kong.runloop.balancer.balancers"
-      healthcheckers = require "kong.runloop.balancer.healthcheckers"
 
       singletons.worker_events.configure({
         shm = "kong_process_events", -- defined by "lua_shared_dict"
@@ -332,8 +327,6 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         end
       }
 
-      balancers.init()
-      healthcheckers.init()
 
     end)
 
@@ -343,15 +336,15 @@ for _, consistency in ipairs({"strict", "eventual"}) do
 
       it("creates a balancer with a healthchecker", function()
         setup_it_block(consistency)
-        local my_balancer = assert(balancers.create_balancer(UPSTREAMS_FIXTURES[1]))
-        local hc = assert(my_balancer.healthchecker)
+        local my_balancer = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1]))
+        local hc = assert(balancer._get_healthchecker(my_balancer))
         hc:stop()
       end)
 
       it("reuses a balancer by default", function()
-        local b1 = assert(balancers.create_balancer(UPSTREAMS_FIXTURES[1]))
-        local hc1 = b1.healthchecker
-        local b2 = balancers.create_balancer(UPSTREAMS_FIXTURES[1])
+        local b1 = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1]))
+        local hc1 = balancer._get_healthchecker(b1)
+        local b2 = balancer._create_balancer(UPSTREAMS_FIXTURES[1])
         assert.equal(b1, b2)
         assert(hc1:stop())
       end)
@@ -359,10 +352,12 @@ for _, consistency in ipairs({"strict", "eventual"}) do
       it("re-creates a balancer if told to", function()
         setup_it_block(consistency)
         balancer.init()
-        local b1 = assert(balancers.create_balancer(UPSTREAMS_FIXTURES[1], true))
-        assert(b1.healthchecker:stop())
-        local b2 = assert(balancers.create_balancer(UPSTREAMS_FIXTURES[1], true))
-        assert(b2.healthchecker:stop())
+        local b1 = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1], true))
+        local hc1 = balancer._get_healthchecker(b1)
+        assert(hc1:stop())
+        local b2 = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1], true))
+        local hc2 = balancer._get_healthchecker(b2)
+        assert(hc2:stop())
         assert.not_same(b1, b2)
       end)
     end)
@@ -373,22 +368,21 @@ for _, consistency in ipairs({"strict", "eventual"}) do
 
       it("balancer and healthchecker match; remove and re-add", function()
         setup_it_block(consistency)
-        local my_balancer = assert(balancers.get_balancer({
+        local my_balancer = assert(balancer._get_balancer({
           host = "upstream_e"
         }, true))
-        local hc = assert(my_balancer.healthchecker)
+        local hc = assert(balancer._get_healthchecker(my_balancer))
         assert.same(1, #hc.targets)
         assert.truthy(hc.targets["127.0.0.1"])
         assert.truthy(hc.targets["127.0.0.1"][2112])
       end)
 
       it("balancer and healthchecker match; remove and not re-add", function()
-        pending()
         setup_it_block(consistency)
-        local my_balancer = assert(balancers.get_balancer({
+        local my_balancer = assert(balancer._get_balancer({
           host = "upstream_f"
         }, true))
-        local hc = assert(my_balancer.healthchecker)
+        local hc = assert(balancer._get_healthchecker(my_balancer))
         assert.same(1, #hc.targets)
         assert.truthy(hc.targets["127.0.0.1"])
         assert.truthy(hc.targets["127.0.0.1"][2112])
@@ -398,7 +392,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
     describe("load_upstreams_dict_into_memory()", function()
       local upstreams_dict
       lazy_setup(function()
-        upstreams_dict = upstreams.get_all_upstreams()
+        upstreams_dict = balancer._load_upstreams_dict_into_memory()
       end)
 
       it("retrieves all upstreams as a dictionary", function()
@@ -413,9 +407,8 @@ for _, consistency in ipairs({"strict", "eventual"}) do
 
     describe("get_all_upstreams()", function()
       it("gets a map of all upstream names to ids", function()
-        pending("too implementation dependent")
         setup_it_block(consistency)
-        local upstreams_dict = upstreams.get_all_upstreams()
+        local upstreams_dict = balancer.get_all_upstreams()
 
         local fixture_dict = {}
         for _, upstream in ipairs(UPSTREAMS_FIXTURES) do
@@ -437,16 +430,18 @@ for _, consistency in ipairs({"strict", "eventual"}) do
     end)
 
     describe("load_targets_into_memory()", function()
-      local targets_for_upstream_a
+      local targets
+      local upstream
 
       it("retrieves all targets per upstream, ordered", function()
         setup_it_block(consistency)
-        targets_for_upstream_a = targets.fetch_targets({ id = "a"})
-        assert.equal(4, #targets_for_upstream_a)
-        assert(targets_for_upstream_a[1].id == "a3")
-        assert(targets_for_upstream_a[2].id == "a2")
-        assert(targets_for_upstream_a[3].id == "a4")
-        assert(targets_for_upstream_a[4].id == "a1")
+        upstream = "a"
+        targets = balancer._load_targets_into_memory(upstream)
+        assert.equal(4, #targets)
+        assert(targets[1].id == "a3")
+        assert(targets[2].id == "a2")
+        assert(targets[3].id == "a4")
+        assert(targets[4].id == "a1")
       end)
     end)
 
@@ -454,8 +449,8 @@ for _, consistency in ipairs({"strict", "eventual"}) do
       local hc, my_balancer
 
       lazy_setup(function()
-        my_balancer = assert(balancers.create_balancer(upstream_ph))
-        hc = assert(my_balancer.healthchecker)
+        my_balancer = assert(balancer._create_balancer(upstream_ph))
+        hc = assert(balancer._get_healthchecker(my_balancer))
       end)
 
       lazy_teardown(function()
@@ -491,10 +486,9 @@ for _, consistency in ipairs({"strict", "eventual"}) do
 
     describe("healthcheck events", function()
       it("(un)subscribe_to_healthcheck_events()", function()
-        pending("tests implementation, not behaviour")
         setup_it_block(consistency)
-        local my_balancer = assert(balancers.create_balancer(upstream_hc))
-        local hc = assert(my_balancer.healthchecker)
+        local my_balancer = assert(balancer._create_balancer(upstream_hc))
+        local hc = assert(balancer._get_healthchecker(my_balancer))
         local data = {}
         local cb = function(upstream_id, ip, port, hostname, health)
           table.insert(data, {
