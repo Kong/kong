@@ -39,7 +39,7 @@ pipeline {
     GOJIRA_VERSION = 'master'
 
     // Only <major>.<minor> is needed for version
-    PREVIOUS_KONG_RELEASE = '2.3'
+    PREVIOUS_KONG_RELEASE = '2.4'
 
     // Override PATH to include any binary installations
     PATH = "${env.PATH}:~/.local/bin"
