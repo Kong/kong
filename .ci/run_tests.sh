@@ -114,6 +114,7 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         $TEST_CMD $p || echo "* $p" >> .failed
     done
 
+    # XXX EE: we cannot run some of these tests because of dbless
     cat kong-*.rockspec | grep kong- | grep -v zipkin | grep -v sidecar | grep "~" | grep -v kong-prometheus-plugin | while read line ; do
         REPOSITORY=`echo $line | sed "s/\"/ /g" | awk -F" " '{print $1}'`
         VERSION=`luarocks show $REPOSITORY | grep $REPOSITORY | head -1 | awk -F" " '{print $2}' | cut -f1 -d"-"`
@@ -130,6 +131,9 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         git clone https://github.com/Kong/$REPOSITORY.git --branch v$VERSION --single-branch /tmp/test-$REPOSITORY
         sed -i 's/grpcbin:9000/localhost:15002/g' /tmp/test-$REPOSITORY/spec/*.lua
         sed -i 's/grpcbin:9001/localhost:15003/g' /tmp/test-$REPOSITORY/spec/*.lua
+        sed -i 's/host[ \t]*=[ \t]*"grpcbin"/host = "localhost"/g' /tmp/test-$REPOSITORY/spec/*.lua
+        sed -i 's/port[ \t]*=[ \t]*9000/port = 15002/g' /tmp/test-$REPOSITORY/spec/*.lua
+        sed -i 's/proto[ \t]*=[ \t]*"\/kong-plugin\/spec/proto = "spec/g' /tmp/test-$REPOSITORY/spec/*.lua
         cp -R /tmp/test-$REPOSITORY/spec/fixtures/* spec/fixtures/ || true
         pushd /tmp/test-$REPOSITORY
         luarocks make
