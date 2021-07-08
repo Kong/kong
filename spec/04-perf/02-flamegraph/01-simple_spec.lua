@@ -1,5 +1,6 @@
 local perf = require("spec.helpers.perf")
 local split = require("pl.stringx").split
+local utils = require("spec.helpers.perf.utils")
 
 perf.set_log_level(ngx.DEBUG)
 --perf.set_retry_count(3)
@@ -104,27 +105,27 @@ for _, version in ipairs(versions) do
     end)
 
     it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes", function()
-      perf.start_stapxx("lj-lua-stacks.sxx", "--arg time=30")
+      perf.start_stapxx("lj-lua-stacks.sxx", "--arg time=180")
 
       perf.start_load({
         connections = 1000,
         threads = 5,
-        duration = 30,
+        duration = 180,
         script = wrk_script,
       })
 
-      ngx.sleep(30)
+      ngx.sleep(180)
 
       local result = assert(perf.wait_result())
 
       print(("### Result for Kong %s:\n%s"):format(version, result))
 
       perf.generate_flamegraph(
-        "output/" .. version:gsub("[:/]", "#") .. "-simple.svg",
-        "Flame graph for Kong " .. version .. " #simple #no_plugins"
+        "output/" .. utils.get_test_output_filename() .. ".svg",
+        "Flame graph for Kong " .. utils.get_test_descriptor()
       )
 
-      perf.save_error_log("output/" .. version:gsub("[:/]", "#") .. "-simple.log")
+      perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
   end)
 end

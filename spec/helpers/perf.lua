@@ -6,6 +6,8 @@ local git = require("spec.helpers.perf.git")
 
 local my_logger = logger.new_logger("[controller]")
 
+utils.register_busted_hook()
+
 -- how many times for each "driver" operation
 local RETRY_COUNT = 3
 local DRIVER
@@ -109,9 +111,10 @@ local _M = {
 --- Start the upstream (nginx) with given conf
 -- @function start_upstream
 -- @param conf string the Nginx nginx snippet under server{} context
--- @return nothing. Throws an error if any.
-function _M.start_upstream(conf)
-  return invoke_driver("start_upstream", conf)
+-- @param port_count number number of ports the upstream listens to; default to 1
+-- @return upstream_uri as string or table if port_count is more than 1
+function _M.start_upstream(conf, port_count)
+  return invoke_driver("start_upstream", conf, port_count or 1)
 end
 
 --- Start Kong with given version and conf
@@ -347,7 +350,9 @@ function _M.generate_flamegraph(filename, title)
     title = "Flame graph"
   end
 
-  if git.is_git_repo() then
+  -- If current test is git-based, also attach the Kong binary package
+  -- version it based on
+  if git.is_git_repo() and git.is_git_based() then
     title = title .. " (based on " .. git.get_kong_version() .. ")"
   end
 
