@@ -12,13 +12,15 @@ local redis_connector = require "resty.redis.connector"
 local redis_cluster   = require "resty.rediscluster"
 local typedefs        = require "kong.db.schema.typedefs"
 local utils           = require "kong.tools.utils"
-local redis           = require "resty.redis"
 local reports         = require "kong.reports"
-
 
 local log = ngx.log
 local ERR = ngx.ERR
+local WARN = ngx.WARN
 local ngx_null = ngx.null
+
+local DEFAULT_TIMEOUT = 2000
+local MAX_INT = math.pow(2, 31) - 2
 
 local _M = {}
 
@@ -58,10 +60,15 @@ _M.config_schema = {
   fields = {
     { host = typedefs.host },
     { port = typedefs.port },
-    { timeout = typedefs.timeout { default = 2000 } },
+    { timeout = typedefs.timeout { default = DEFAULT_TIMEOUT } },
+    { connect_timeout = typedefs.timeout },
+    { send_timeout = typedefs.timeout },
+    { read_timeout = typedefs.timeout },
     { password = { type = "string", } },
     { sentinel_password = { type = "string", } },
     { database = { type = "integer", default = 0 } },
+    { keepalive_pool_size = { type = "integer", default = 30, between = { 1, MAX_INT } } },
+    { keepalive_backlog = { type = "integer", between = { 0, MAX_INT } } },
     { sentinel_master = { type = "string", } },
     { sentinel_role = { type = "string", one_of = { "master", "slave", "any" }, } },
     { sentinel_addresses = { type = "array", elements = { type = "string" }, len_min = 1, custom_validator =  validate_addresses } },
@@ -96,7 +103,10 @@ _M.config_schema = {
     {
       mutually_required = { "host", "port" },
     },
-  }
+    {
+      mutually_required = { "connect_timeout", "send_timeout", "read_timeout" },
+    }
+  },
 }
 
 
@@ -118,6 +128,38 @@ local function parse_addresses(addresses, ip_field_name)
 end
 
 
+-- Ensures connect, send and read timeouts are individually set if only
+-- the (deprecated) `timeout` field is given.
+local function configure_timeouts(conf)
+  local timeout = conf.timeout
+
+  if timeout ~= DEFAULT_TIMEOUT then
+    -- TODO: Move to a global util once available
+    local deprecation = {
+      msg = "redis schema field `timeout` is deprecated, " ..
+            "use `connect_timeout`, `send_timeout` and `read_timeout`",
+      deprecated_after = "2.5.0.0",
+      version_removed  = "3.0.0.0",
+    }
+
+    log(
+      WARN, deprecation.msg,
+      " (deprecated after ", deprecation.deprecated_after,
+      ", scheduled for removal in ", deprecation.version_removed, ")"
+    )
+  end
+
+  conf.connect_timeout =
+    conf.connect_timeout ~= ngx_null and conf.connect_timeout or timeout
+
+  conf.send_timeout =
+    conf.send_timeout ~= ngx_null and conf.send_timeout or timeout
+
+  conf.read_timeout =
+    conf.read_timeout ~= ngx_null and conf.read_timeout or timeout
+end
+
+
 -- Perform any needed Redis configuration; e.g., parse Sentinel addresses
 function _M.init_conf(conf)
   if is_redis_cluster(conf) then
@@ -128,6 +170,8 @@ function _M.init_conf(conf)
     conf.parsed_sentinel_addresses =
       parse_addresses(conf.sentinel_addresses, "host")
   end
+
+  configure_timeouts(conf)
 end
 
 
@@ -156,7 +200,9 @@ function _M.connection(conf)
   local connect_opts = {
     ssl = conf.ssl,
     ssl_verify = conf.ssl_verify,
-    server_name = conf.server_name
+    server_name = conf.server_name,
+    pool_size = conf.keepalive_pool_size,
+    backlog = conf.keepalive_backlog,
   }
 
   if is_redis_cluster(conf) then
@@ -167,57 +213,36 @@ function _M.connection(conf)
       name = "redis-cluster" .. table.concat(conf.cluster_addresses),
       serv_list = conf.parsed_cluster_addresses,
       auth = conf.password,
+      connect_timeout = conf.connect_timeout,
+      send_timeout = conf.send_timeout,
+      read_timeout = conf.read_timeout,
       connect_opts = connect_opts,
     })
-    if err then
+    if not red or err then
       log(ERR, "failed to connect to redis cluster: ", err)
       return nil, err
     end
-  elseif is_redis_sentinel(conf) then
-    -- creating client for redis sentinel
-    local rc = redis_connector.new()
-    rc:set_connect_timeout(conf.timeout)
+  else
+    -- use lua-resty-redis-connector for sentinel and plain redis
+    local rc = redis_connector.new({
+      connect_timeout    = conf.connect_timeout,
+      -- send_timeout is not yet supported, and so `read_timeout` is effective
+      -- for both read and send.
+      read_timeout       = conf.read_timeout,
+      master_name        = conf.sentinel_master,
+      role               = conf.sentinel_role,
+      sentinels          = conf.parsed_sentinel_addresses,
+      password           = conf.password,
+      sentinel_password  = conf.sentinel_password,
+      db                 = conf.database,
+      connection_options = connect_opts,
+    })
 
     local err
-    red, err = rc:connect_via_sentinel({
-      master_name       = conf.sentinel_master,
-      role              = conf.sentinel_role,
-      sentinels         = conf.parsed_sentinel_addresses,
-      password          = conf.password,
-      sentinel_password = conf.sentinel_password,
-      db                = conf.database,
-    })
-    if err then
-      log(ERR, "failed to connect to redis sentinel: ", err)
+    red, err = rc:connect()
+    if not red or err then
+      log(ERR, "failed to connect to redis: ", err)
       return nil, err
-    end
-  else
-    -- regular redis
-    red = redis:new()
-    red:set_timeout(conf.redis_timeout)
-
-    local ok, err = red:connect(conf.host, conf.port, connect_opts)
-    if not ok then
-      log(ERR, "failed to connect to Redis: ", err)
-      return nil, err
-    end
-
-    if is_present(conf.password) and conf.password ~= "" then
-      local ok, err = red:auth(conf.password)
-      if not ok then
-        log(ERR, "failed to auth to Redis: ", err)
-        red:close() -- dont try to hold this connection open if we failed
-        return nil, err
-      end
-    end
-
-    if is_present(conf.database) and conf.database ~= 0 then
-      local ok, err = red:select(conf.database)
-      if not ok then
-        log(ERR, "failed to change Redis database: ", err)
-        red:close()
-        return nil, err
-      end
     end
   end
 
