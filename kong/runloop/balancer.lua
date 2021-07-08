@@ -662,6 +662,8 @@ local function on_target_event(operation, target)
     return
   end
 
+  stop_healthchecker(balancer)
+
   local new_balancer, err = create_balancer(upstream, true)
   if not new_balancer then
     return nil, err
