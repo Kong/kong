@@ -82,13 +82,13 @@ jobs:
         elif [[ $suite == "/perf" ]]; then
           suites="01-rps"
           if [[ -z $tags ]]; then
-            tags="baseline,single_route"
+            tags="baseline,balancer"
           fi
         else
           # if not specified by comment, run both
           suites="01-rps 02-flamegraph"
           if [[ -z $tags ]]; then
-            tags="baseline,single_route,simple"
+            tags="baseline,balancer,simple"
           fi
         fi
 
