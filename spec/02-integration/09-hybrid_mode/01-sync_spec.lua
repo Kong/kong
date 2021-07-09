@@ -447,7 +447,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       for desc, harness in pairs(blocked_cases) do
-        it(desc ..", sync is blocked", function()
+        it(desc ..", sync is blocked #flaky", function()
           local uuid = utils.uuid()
 
           local res, err = helpers.clustering_client({
