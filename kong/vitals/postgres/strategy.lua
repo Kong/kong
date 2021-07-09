@@ -220,6 +220,7 @@ function _M.new(db, opts)
     {
       connector = db.connector,
       rotation_interval = opts.ttl_seconds or 3600,
+      list_cache = ngx.shared.kong_vitals_lists,
     }
   )
 

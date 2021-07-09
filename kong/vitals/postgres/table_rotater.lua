@@ -11,9 +11,11 @@ local timer_at   = ngx.timer.at
 local log        = ngx.log
 local WARN       = ngx.WARN
 local DEBUG      = ngx.DEBUG
+local ERR       = ngx.ERR
 local time       = ngx.time
 
 
+local TABLE_ROTATER_LOCK_KEY = "vitals:table_rotater_lock"
 local _log_prefix = "[vitals-table-rotater] "
 
 local _M = {}
@@ -49,6 +51,7 @@ function _M.new(opts)
   local self = {
     connector = opts.connector,
     rotation_interval = opts.ttl_seconds or 3600,
+    list_cache = opts.list_cache,
   }
 
   return setmetatable(self, mt)
@@ -60,7 +63,6 @@ rotation_handler = function(premature, self)
     return
   end
 
-
   -- we need a new table every `rotation_interval` seconds. Set timer
   -- to run twice more frequently, giving us >1 chance to create
   -- the table before we need it.
@@ -70,6 +72,11 @@ rotation_handler = function(premature, self)
     return
   end
 
+  -- acquire lock to avoid doing concurrent DDL queries
+  local lock = self:rotater_lock()
+  if not lock then
+    return
+  end
 
   local _, err = self:create_next_table()
   if err then
@@ -95,9 +102,17 @@ function _M:init()
     return nil, "could not create current table: " .. err
   end
 
+  -- acquire lock to avoid doing concurrent DDL queries
+  local lock = self:rotater_lock()
+
   -- start a timer to make the next table
   local ok, err = timer_at(self.rotation_interval / 2, rotation_handler, self)
   if ok then
+
+    if not lock then
+      return true
+    end
+
     ok, err = self:create_next_table()
 
     if not ok then
@@ -219,6 +234,26 @@ function _M:drop_previous_table()
       log(WARN, _log_prefix, "Failed to drop table ", row.table_name, tostring(err))
     end
   end
+end
+
+
+-- acquire a lock for rotating the table in the database
+function _M:rotater_lock()
+  local ok, err = self.list_cache:safe_add(TABLE_ROTATER_LOCK_KEY, true,
+    (self.rotation_interval / 2) - 0.01)
+  if not ok then
+    if err ~= "exists" then
+      log(ERR, _log_prefix, "failed to acquire table rotater lock: ", err)
+    end
+
+    return false
+  end
+
+  return true
+end
+
+if _G._TEST then
+  _M._rotation_handler = rotation_handler
 end
 
 
