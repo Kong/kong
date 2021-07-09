@@ -10,7 +10,6 @@ setmetatable(_G, nil)
 
 local lfs = require("lfs")
 local cjson = require("cjson")
-local pl_tablex = require("pl.tablex")
 local general = require("autodoc.admin-api.general")
 
 local method_array = {
@@ -512,7 +511,7 @@ end
 
 local titles = {}
 
-local function write_title(outfd, level, title)
+local function write_title(outfd, level, title, label)
   if not title then
     return
   end
@@ -521,7 +520,12 @@ local function write_title(outfd, level, title)
     level = level,
     title = title,
   })
-  outfd:write((("#"):rep(level) .. " " .. title .. "\n\n"))
+  if label then
+    label = "\n" .. label
+  else
+    label = ""
+  end
+  outfd:write((("#"):rep(level) .. " " .. title .. label .. "\n\n"))
 end
 
 local function section(outfd, title, content)
@@ -533,22 +537,49 @@ local function section(outfd, title, content)
   outfd:write("\n")
 end
 
-local function write_endpoint(outfd, endpoint, ep_data, methods)
+local function each_line(str)
+ if str:sub(-1)~="\n" then
+   str = str .. "\n"
+ end
+ return str:gmatch("(.-)\n")
+end
+
+local function blockquote(content)
+  local buffer = {}
+  for line in each_line(content) do
+    buffer[#buffer + 1] = "> " .. line
+  end
+  return table.concat(buffer)
+end
+
+local function warning_message(outfd, content)
+  outfd:write("\n\n{:.note}\n")
+  outfd:write(blockquote(content))
+  outfd:write("\n\n")
+end
+
+local function write_endpoint(outfd, endpoint, ep_data, dbless_methods)
   assert_data(ep_data, "data for endpoint " .. endpoint)
   if ep_data.done or ep_data.skip then
     return
   end
 
   -- check for endpoint-specific overrides (useful for db-less)
-  methods = methods and methods[endpoint] or methods
-
   for i, method in ipairs(method_array) do
-    if methods == nil or methods[method] == true then
-
     local meth_data = ep_data[method]
     if meth_data then
       assert_data(meth_data.title, "info for " .. method .. " " .. endpoint)
-      write_title(outfd, 3, meth_data.title)
+      if dbless_methods
+        and not dbless_methods[method]
+        and (not dbless_methods[endpoint]
+             or not dbless_methods[endpoint][method])
+      then
+        write_title(outfd, 3, meth_data.title)
+        warning_message(outfd, "**Note**: Not available in DB-less mode.")
+      else
+        write_title(outfd, 3, meth_data.title, "{:.badge .dbless}")
+      end
+
       section(outfd, nil, meth_data.description)
       local fk_endpoints = meth_data.fk_endpoints or {}
       section(outfd, nil, meth_data.endpoint)
@@ -561,16 +592,14 @@ local function write_endpoint(outfd, endpoint, ep_data, methods)
       section(outfd, "Response", meth_data.response)
       outfd:write("---\n\n")
     end
-
-    end
   end
   ep_data.done = true
 end
 
-local function write_endpoints(outfd, info, all_endpoints, methods)
+local function write_endpoints(outfd, info, all_endpoints, dbless_methods)
   for endpoint, ep_data in sortedpairs(info.data) do
     if endpoint:match("^/") then
-      write_endpoint(outfd, endpoint, ep_data, methods)
+      write_endpoint(outfd, endpoint, ep_data, dbless_methods)
       all_endpoints[endpoint] = ep_data
     end
   end
@@ -600,7 +629,7 @@ local function write_general_section(outfd, filename, all_endpoints, name, data_
     mod = assert(loadfile(KONG_PATH .. "/" .. filename))()
   }
 
-  write_endpoints(outfd, info, all_endpoints, data_general.methods)
+  write_endpoints(outfd, info, all_endpoints)
 
   return info
 end
@@ -951,9 +980,8 @@ local function write_admin_api(filename, data, title)
     outfd:write("\n")
     write_title(outfd, 2, ipart.title)
     outfd:write(unindent(ipart.text))
+    outfd:write("\n---\n\n")
   end
-
-  outfd:write("\n---\n\n")
 
   local all_endpoints = {}
 
@@ -981,7 +1009,7 @@ local function write_admin_api(filename, data, title)
   for _, entity_info in ipairs(entity_infos) do
     write_title(outfd, 2, entity_info.title)
     outfd:write(entity_info.intro)
-    write_endpoints(outfd, entity_info, all_endpoints, data.entities.methods)
+    write_endpoints(outfd, entity_info, all_endpoints, data.dbless_entities_methods)
   end
 
   -- Check that all endpoints were traversed
@@ -1005,7 +1033,6 @@ local function write_admin_api_nav(filename, data)
 
   local outfd = assert(io.open(outpath, "w+"))
 
-  outfd:write("# Generated via autodoc/admin-api/generate.lua\n")
   outfd:write(unindent(data.nav.header))
 
   local max_level = 3
@@ -1045,16 +1072,6 @@ local function main()
     "docs_nav.yml.admin-api.in",
     admin_api_data
   )
-
-  write_admin_api(
-    "db-less-admin-api.md",
-    dbless_data,
-    "Admin API for DB-less Mode",
-    {
-      "GET",
-    }
-  )
-
 end
 
 main()
