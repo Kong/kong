@@ -10,6 +10,7 @@ setmetatable(_G, nil)
 
 local lfs = require("lfs")
 local cjson = require("cjson")
+local pl_tablex = require("pl.tablex")
 local general = require("autodoc.admin-api.general")
 
 local method_array = {
@@ -111,11 +112,6 @@ local function deep_merge(t1, t2)
   end
   return copy
 end
-
-local dbless_data = pl_tablex.deepcopy(admin_api_data)
-local dbless_overrides = dbless_data.dbless
-dbless_data.dbless = nil
-dbless_data = deep_merge(dbless_data, dbless_overrides)
 
 admin_api_data = deep_merge(admin_api_data, pl_tablex.deepcopy(ee_admin_api_data))
 
