@@ -119,8 +119,8 @@ grpc-gateway plugin first:
 
 #### Plugins
 
-- **hmac-auth**: The HMAC Authentication plugin now includes support for the "@request-target" field in the signature
-  string. Before, the plugin used the “request-line” parameter, which contains the HTTP request method, request URI, and
+- **hmac-auth**: The HMAC Authentication plugin now includes support for the `@request-target` field in the signature
+  string. Before, the plugin used the `request-line` parameter, which contains the HTTP request method, request URI, and
   the HTTP version number. The inclusion of the HTTP version number in the signature caused requests to the same target
   but using different request methods(such as HTTP/2) to have different signatures. The newly added request-target field
   only includes the lowercase request method and request URI when calculating the hash, avoiding those issues.
@@ -155,7 +155,7 @@ grpc-gateway plugin first:
 
 - When using DB-less mode, `select_by_cache_key` now finds entities by using the provided `field` directly
   in ` select_by_key` and does not complete unnecessary cache reads. [#7146](https://github.com/kong/kong/pull/7146)
-- Kong can now finish initialization even if a plugin’s “init worker” handler fails, improving stability.
+- Kong can now finish initialization even if a plugin’s `init_worker` handler fails, improving stability.
   [#7099](https://github.com/kong/kong/pull/7099)
 - TLS keepalive requests no longer share their context. Before when two calls were made to the same "server+hostname"
   but different routes and using a keepalive connection, plugins that were active in the first call were also sometimes
