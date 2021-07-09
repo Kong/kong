@@ -11,7 +11,7 @@ local timer_at   = ngx.timer.at
 local log        = ngx.log
 local WARN       = ngx.WARN
 local DEBUG      = ngx.DEBUG
-local ERR       = ngx.ERR
+local ERR        = ngx.ERR
 local time       = ngx.time
 
 
