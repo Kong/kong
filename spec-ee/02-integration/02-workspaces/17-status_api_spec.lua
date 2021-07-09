@@ -74,6 +74,7 @@ for _, strategy in helpers.each_strategy() do
         cluster_control_plane = "127.0.0.1:9005",
         lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         prefix = "dp",
+        proxy_listen = "0.0.0.0:9808",
       }, nil, nil, fixtures))
     end)
 
@@ -91,12 +92,25 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("extracts workspace parameter for default ws", function()
+      local admin_client = helpers.admin_client(10000)
+
+      local res = admin_client:put("/routes/1", {
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          paths = { "/1" },
+        },
+      })
+      assert.res_status(200, res)
+
       helpers.wait_until(function()
-        local dp_conf = assert(helpers.get_running_conf("dp"))
-
-        local f = io.open(dp_conf.prefix .. "/config.cache.json.gz", "r")
-
-        if f then
+        local proxy_client = helpers.http_client("127.0.0.1", 9808)
+        -- serviceless route should return 503 instead of 404
+        local res = proxy_client:get("/1")
+        proxy_client:close()
+        admin_client:close()
+        if res and res.status == 503 then
           return true
         end
       end, 10)
@@ -115,12 +129,25 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("extracts workspace parameter for custom ws", function()
+      local admin_client = helpers.admin_client(10000)
+
+      local res = admin_client:put("/routes/1", {
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          paths = { "/1" },
+        },
+      })
+      assert.res_status(200, res)
+
       helpers.wait_until(function()
-        local running_conf = assert(helpers.get_running_conf("dp"))
-
-        local f = io.open(running_conf.prefix .. "/config.cache.json.gz", "r")
-
-        if f then
+        local proxy_client = helpers.http_client("127.0.0.1", 9808)
+        -- serviceless route should return 503 instead of 404
+        local res = proxy_client:get("/1")
+        proxy_client:close()
+        admin_client:close()
+        if res and res.status == 503 then
           return true
         end
       end, 10)
@@ -139,12 +166,25 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("doesn't confuse between workspaces", function()
+      local admin_client = helpers.admin_client(10000)
+
+      local res = admin_client:put("/routes/1", {
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          paths = { "/1" },
+        },
+      })
+      assert.res_status(200, res)
+
       helpers.wait_until(function()
-        local running_conf = assert(helpers.get_running_conf("dp"))
-
-        local f = io.open(running_conf.prefix .. "/config.cache.json.gz", "r")
-
-        if f then
+        local proxy_client = helpers.http_client("127.0.0.1", 9808)
+        -- serviceless route should return 503 instead of 404
+        local res = proxy_client:get("/1")
+        proxy_client:close()
+        admin_client:close()
+        if res and res.status == 503 then
           return true
         end
       end, 10)
