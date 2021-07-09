@@ -20,6 +20,7 @@ local balancer  = require "kong.runloop.balancer"
 local rbac = require "kong.rbac"
 local hooks = require "kong.hooks"
 local ee_api = require "kong.enterprise_edition.api_helpers"
+local ee_status_api = require "kong.enterprise_edition.status"
 local utils = require "kong.tools.utils"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
@@ -87,6 +88,12 @@ _M.handlers = {
         end
 
         ee_api.splatify_entity_route("files", routes)
+
+        return true
+      end)
+
+      hooks.register_hook("status_api:init:pre", function(app)
+        app:before_filter(ee_status_api.before_filter)
 
         return true
       end)
