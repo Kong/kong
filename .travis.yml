@@ -45,19 +45,21 @@ env:
     - KONG_DISTRIBUTIONS_VERSION=master
     - CACHE_DIR=$HOME/distributions-cache
     - ENABLE_OPENTRACING=0
+    - DOCKER_USERNAME=kongcloudpull
+    - secure: "MB/RJAWPgZ8+c7qt3YQ08nLMI3GPdqyGWY3bxMvZ7EbJtqStEkJDqe40ag1PYmCodieCyS/O5dT3yd+KYIuS5CRX6SNBUriUDbzqJmVrcZxof1IiiLJCKw52R1/pHTrZ5ajpnJiC2cBageQTrqYBBFez65zMZlJQfTDY8xVAFhM4Z07GnCDFzCJVv4qbZwMfnnXD2nLBuK3lwwcfzn0zZNNZ+hqGRl8l95pPx/eaJc36VsyMWmPilKbd4AH4zCPoBrPxLucbNaGjHwImAvFSsQurdYlSymS4ghsPljWW9FEUarjg+OtiDhCpCn2bXYdmplmY0WXeBXy04LBKmKJLZzVLhzvaI+CeJBQxjJCsMcHPGXwibtLPd0IloBEzqxgcRs1rPzUlPg6romdqehB53vOhZNO1l5Zft8AiCCfxnzpUF/8GZJgrXP5OMnT+I9j/+RUjT30vni9NSDQw467jrnDZ8aP4WeRSZwviJPLaT2nTeKMMqQSXm+sBo0grhEnxSpQIp+WgVKTbUyZkUlNg6FYu1iA9KPmlXNXvw3+9fR83vV6xM3xx9B75lM/SDgl2WZco9m6WvhgzohE8rjO9zS/oKSH91XJVzY0ox4Qtt4Ph+uo1TMiS1W3D22oFpThuyg2BlMKAm1pTlE7mE1jt7FwC82/BMOh3l2lxFv3c53s="
   matrix:
     # enterprise matrix begin
     # XXX add extra jobs for different cassandra versions
     - KONG_TEST_DATABASE=postgres TEST_SUITE=integration-ee
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=integration-ee
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=plugins-ee
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.11 TEST_SUITE=integration-ee
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.11 TEST_SUITE=plugins-ee
     - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins-ee
     # enterprise matrix end
     - KONG_TEST_DATABASE=postgres TEST_SUITE=integration
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=integration
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.11 TEST_SUITE=integration
     - KONG_TEST_DATABASE=off TEST_SUITE=dbless
     - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins
-    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.9 TEST_SUITE=plugins
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.11 TEST_SUITE=plugins
     - TEST_SUITE=pdk
 
 install:
@@ -66,6 +68,7 @@ install:
   - if [ "${TRAVIS_OS_NAME}" == "linux" ]; then
       sudo sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6';
     fi
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
   - source .ci/setup_env.sh
   - make dev
 
@@ -84,33 +87,16 @@ before_cache:
 stages:
   - lint and unit
   - test
-  - name: package
-  - name: deploy
-    if: tag =~ 0. || type == cron || branch = master
 
 jobs:
   include:
     - stage: lint and unit
       script:
       - make lint
-      # - scripts/autodoc
       - bin/busted -v -o htest spec/01-unit --exclude-tags=flaky
       - bin/busted -v -o htest spec-ee/01-unit --exclude-tags=flaky
       - scripts/autodoc
       env:
         - KONG_DATABASE=none
-    # package as a test step, to see if this commit breaks our packaging
-    # useful for testing changes in .ci packaging, uncomment to see effects
-    # it's not terrible if it's uncommented. But it will break for any PR not
-    # targeted at current kong master
-    # (unless proper KONG_DISTRIBUTIONS_VERSION branch is set)
-    # - stage: package
-    #   if: branch != master
-    #   script: .ci/build_package.sh
-    # package and release, only on master
-    - stage: package and deploy
-      if: branch = master
-      script: .ci/build_package.sh && .ci/release_artifacts.sh
-
 script:
   - .ci/run_tests.sh
