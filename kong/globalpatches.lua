@@ -419,4 +419,6 @@ return function(options)
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
     toip = require("resty.dns.client").toip  -- this will load utils and penlight modules for example
   end
+
+  require "kong.deprecation".init(options.cli)
 end
