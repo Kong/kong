@@ -445,6 +445,14 @@ local Kong = {}
 
 
 function Kong.init()
+  require("pl.utils").set_deprecation_func(function(msg, trace)
+    if trace then
+      ngx.log(ngx.WARN, msg, " ", trace)
+    else
+      ngx.log(ngx.WARN, msg)
+    end
+  end)
+
   local pl_path = require "pl.path"
   local conf_loader = require "kong.conf_loader"
 
