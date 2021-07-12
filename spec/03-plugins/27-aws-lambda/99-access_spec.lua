@@ -117,6 +117,12 @@ for _, strategy in helpers.each_strategy() do
         service     = null,
       }
 
+      local route18 = bp.routes:insert {
+        hosts       = { "lambda18.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
@@ -351,6 +357,24 @@ for _, strategy in helpers.each_strategy() do
           is_proxy_integration = true,
         }
       }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route18.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          function_name        = "functionWithMultiValueHeadersResponse",
+          host                 = "lambda18.test",
+          is_proxy_integration = true,
+        }
+      }
+
+      fixtures.dns_mock:A({
+        name = "lambda18.test",
+        address = "127.0.0.1",
+      })
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -917,6 +941,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         assert.equal("test", res:read_body())
       end)
+
       it("returns multivalueheaders response from a Lambda function", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -925,6 +950,19 @@ for _, strategy in helpers.each_strategy() do
             ["Host"] = "lambda17.com"
           }
         })
+        assert.res_status(200, res)
+        assert.is_string(res.headers.age)
+        assert.is_array(res.headers["Access-Control-Allow-Origin"])
+      end)
+
+      it("use host value when no region is set", function()
+        local res = assert(proxy_client:send({
+          method  = "GET",
+          path    = "/get?key1=some_value1",
+          headers = {
+            ["Host"] = "lambda18.test"
+          }
+        }))
         assert.res_status(200, res)
         assert.is_string(res.headers.age)
         assert.is_array(res.headers["Access-Control-Allow-Origin"])
