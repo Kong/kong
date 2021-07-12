@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.5.0 RC.1](#250rc1)
+- [2.5.0](#250)
 - [2.4.1](#241)
 - [2.4.0](#240)
 - [2.3.3](#233)
@@ -58,9 +58,9 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## [2.5.0RC.1]
+## [2.5.0]
 
-> Release date: TBD
+> Release date: 2021-07-13
 
 This is an RC release of Kong 2.5.0, with no breaking changes with respect to the 2.x series.
 
@@ -134,7 +134,7 @@ grpc-gateway plugin first:
   [Parameters](https://docs.konghq.com/hub/kong-inc/syslog/#parameters) section of the Syslog documentation for more
   information. [#6081](https://github.com/kong/kong/pull/6081). Thanks, [jideel](https://github.com/jideel)!
 - **Prometheus**: The Prometheus plugin now exposes connected data planes' status on the control plane. New metrics include the
-  following:  `data_plane_last_seen`, `data_plane_config_hash` and `data_plane_version_compatible`. These  
+  following:  `data_plane_last_seen`, `data_plane_config_hash` and `data_plane_version_compatible`. These
   metrics can be useful for troubleshooting when data planes have inconsistent configurations across the cluster. See the
   [Available metrics](https://docs.konghq.com/hub/kong-inc/prometheus) section of the Prometheus plugin documentation
   for more information. [98](https://github.com/Kong/kong-plugin-prometheus/pull/98)
@@ -198,11 +198,11 @@ grpc-gateway plugin first:
 
 #### Balancer
 
-- All targets are returned by the Admin API now, including targets with a `weight=0`, or disabled targets. 
+- All targets are returned by the Admin API now, including targets with a `weight=0`, or disabled targets.
   Before disabled targets were not included in the output when users attempted to list all targets. Then
   when users attempted to add the targets again, they recieved an error message telling them the targets already existed.
   [#7094](https://github.com/kong/kong/pull/7094)
-- Upserting existing targets no longer fails.  Before, because of updates made to target configurations since Kong v2.2.0, 
+- Upserting existing targets no longer fails.  Before, because of updates made to target configurations since Kong v2.2.0,
   upserting older configurations would fail. This fix allows older configurations to be imported.
   [#7052](https://github.com/kong/kong/pull/7052)
 - The last balancer attempt is now correctly logged. Before balancer tries were saved when retrying, which meant the last
@@ -250,7 +250,7 @@ grpc-gateway plugin first:
   it was failing because of a typo in the comparison. [#7153](https://github.com/kong/kong/pull/7153).
   Thanks, [ealogar](https://github.com/ealogar)!
 - With this release, `kong.log`'s phase checker now accounts for the existence of the new `response` pseudo-phase.
-  Before users may have erroneously received a safe runtime error for using a function out-of-place in the PDK. 
+  Before users may have erroneously received a safe runtime error for using a function out-of-place in the PDK.
   [#7109](https://github.com/kong/kong/pull/7109)
 - Kong no longer sandboxes the `string.rep` function. Before `string.rep` was sandboxed to disallow a single operation
   from allocating too much memory. However, a single operation allocating too much memory is no longer an issue
@@ -6328,7 +6328,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.5.0RC1]: https://github.com/Kong/kong/compare/2.4.1...2.5.0-rc.1
+[2.5.0]: https://github.com/Kong/kong/compare/2.4.1...2.5.0
 [2.4.1]: https://github.com/Kong/kong/compare/2.4.0...2.4.1
 [2.4.0]: https://github.com/Kong/kong/compare/2.3.3...2.4.0
 [2.3.3]: https://github.com/Kong/kong/compare/2.3.2...2.3.3
