@@ -18,6 +18,7 @@ local WARN = ngx.WARN
 
 local healthcheckers_M = {}
 
+local healthcheck_subscribers = {}
 
 function healthcheckers_M.init()
   healthcheck = require("resty.healthcheck") -- delayed initialization
@@ -137,6 +138,13 @@ local function attach_healthchecker_to_balancer(hc, balancer)
 
     local ok, err
     ok, err = balancer:setAddressStatus(balancer:findAddress(tgt.ip, tgt.port, tgt.hostname), status)
+
+    do
+      local health = status and "healthy" or "unhealthy"
+      for _, subscriber in ipairs(healthcheck_subscribers) do
+        subscriber(balancer.upstream_id, tgt.ip, tgt.port, tgt.hostname, health)
+      end
+    end
 
     if not ok then
       log(WARN, "[healthchecks] failed setting peer status (upstream: ", hc.name, "): ", err)
@@ -336,6 +344,37 @@ function healthcheckers_M.get_balancer_health(upstream_id)
     id = upstream_id,
     details = balancer_status,
   }
+end
+
+
+--------------------------------------------------------------------------------
+-- Subscribe to events produced by health checkers.
+-- There is no guarantee that the event reported is different from the
+-- previous report (in other words, you may get two "healthy" events in
+-- a row for the same target).
+-- @param callback Function to be called whenever a target has its
+-- status updated. The function should have the following signature:
+-- `function(upstream_id, target_ip, target_port, target_hostname, health)`
+-- where `upstream_id` is the entity id of the upstream,
+-- `target_ip`, `target_port` and `target_hostname` identify the target,
+-- and `health` is a string: "healthy", "unhealthy"
+-- The return value of the callback function is ignored.
+function healthcheckers_M.subscribe_to_healthcheck_events(callback)
+  healthcheck_subscribers[#healthcheck_subscribers + 1] = callback
+end
+
+
+--------------------------------------------------------------------------------
+-- Unsubscribe from events produced by health checkers.
+-- @param callback Function that was added as the callback.
+-- Note that this must be the same closure used for subscribing.
+function healthcheckers_M.unsubscribe_from_healthcheck_events(callback)
+  for i, c in ipairs(healthcheck_subscribers) do
+    if c == callback then
+      table.remove(healthcheck_subscribers, i)
+      return
+    end
+  end
 end
 
 
