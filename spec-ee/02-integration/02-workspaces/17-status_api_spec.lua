@@ -9,7 +9,7 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("Status API #" .. strategy .. " with workspaces", function()
-    local bp
+    local bp, db
     local client
 
     local upstream_default, upstream_ws1
@@ -23,13 +23,7 @@ for _, strategy in helpers.each_strategy() do
         address = "127.0.0.1",
       }
 
-      bp = helpers.get_db_utils(strategy, {
-        "upstreams",
-        "targets",
-        "workspaces",
-        "clustering_data_planes",
-        "certificates",
-      })
+      bp, db = helpers.get_db_utils(strategy)
 
       upstream_default = bp.upstreams:insert {}
 
@@ -60,9 +54,8 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_listen = "127.0.0.1:9005",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         prefix = "cp",
-        db_update_frequency = 0.1,
+        db_update_frequency = 3,
       }, nil, nil, fixtures))
 
       assert(helpers.start_kong({
@@ -72,7 +65,6 @@ for _, strategy in helpers.each_strategy() do
         cluster_cert = "spec/fixtures/kong_clustering.crt",
         cluster_cert_key = "spec/fixtures/kong_clustering.key",
         cluster_control_plane = "127.0.0.1:9005",
-        lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
         prefix = "dp",
         proxy_listen = "0.0.0.0:9808",
       }, nil, nil, fixtures))
@@ -81,6 +73,7 @@ for _, strategy in helpers.each_strategy() do
     lazy_teardown(function()
       assert(helpers.stop_kong("cp"))
       assert(helpers.stop_kong("dp"))
+      db:truncate()
     end)
 
     before_each(function()
@@ -93,6 +86,10 @@ for _, strategy in helpers.each_strategy() do
 
     it("extracts workspace parameter for default ws", function()
       local admin_client = helpers.admin_client(10000)
+
+      finally(function()
+        admin_client:close()
+      end)
 
       local res = admin_client:put("/routes/1", {
         headers = {
@@ -109,11 +106,10 @@ for _, strategy in helpers.each_strategy() do
         -- serviceless route should return 503 instead of 404
         local res = proxy_client:get("/1")
         proxy_client:close()
-        admin_client:close()
         if res and res.status == 503 then
           return true
         end
-      end, 10)
+      end, 5)
 
       for _, append in ipairs({ "", "/" }) do
         local res = assert(client:send {
@@ -131,6 +127,10 @@ for _, strategy in helpers.each_strategy() do
     it("extracts workspace parameter for custom ws", function()
       local admin_client = helpers.admin_client(10000)
 
+      finally(function()
+        admin_client:close()
+      end)
+
       local res = admin_client:put("/routes/1", {
         headers = {
           ["Content-Type"] = "application/json",
@@ -146,11 +146,10 @@ for _, strategy in helpers.each_strategy() do
         -- serviceless route should return 503 instead of 404
         local res = proxy_client:get("/1")
         proxy_client:close()
-        admin_client:close()
         if res and res.status == 503 then
           return true
         end
-      end, 10)
+      end, 5)
 
       for _, append in ipairs({ "", "/" }) do
         local res = assert(client:send {
@@ -168,6 +167,10 @@ for _, strategy in helpers.each_strategy() do
     it("doesn't confuse between workspaces", function()
       local admin_client = helpers.admin_client(10000)
 
+      finally(function()
+        admin_client:close()
+      end)
+
       local res = admin_client:put("/routes/1", {
         headers = {
           ["Content-Type"] = "application/json",
@@ -183,11 +186,10 @@ for _, strategy in helpers.each_strategy() do
         -- serviceless route should return 503 instead of 404
         local res = proxy_client:get("/1")
         proxy_client:close()
-        admin_client:close()
         if res and res.status == 503 then
           return true
         end
-      end, 10)
+      end, 5)
 
       for _, append in ipairs({ "", "/" }) do
         local res = assert(client:send {
