@@ -82,11 +82,14 @@ other features and fixes.
 - Bumped `luarocks` from 3.5.0 to 3.7.0 [#7043](https://github.com/kong/kong/pull/7043)
 - Bumped `grpcurl` from 1.8.0 to 1.8.1 [#7128](https://github.com/kong/kong/pull/7128)
 - Bumped `penlight` from 1.9.2 to 1.10.0 [#7127](https://github.com/Kong/kong/pull/7127)
-- Bumped `lua-resty-dns-client` from 6.0.0 to 6.0.1 [#7485](https://github.com/Kong/kong/pull/7485)
+- Bumped `lua-resty-dns-client` from 6.0.0 to 6.0.2 [#7539](https://github.com/Kong/kong/pull/7539)
 - Bumped `kong-plugin-prometheus` from 1.2 to 1.3 [#7415](https://github.com/Kong/kong/pull/7415)
 - Bumped `kong-plugin-zipkin` from 1.3 to 1.4 [#7455](https://github.com/Kong/kong/pull/7455)
 - Bumped `lua-resty-openssl` from 0.7.2 to 0.7.3 [#7509](https://github.com/Kong/kong/pull/7509)
+- Bumped `lua-resty-healthcheck` from 1.4.1 to 1.4.2 [#7511](https://github.com/Kong/kong/pull/7511)
+- Bumped `hmac-auth` from 2.3.0 to 2.4.0 [#7522](https://github.com/Kong/kong/pull/7522)
 - Pinned `lua-protobuf` to 0.3.2 (previously unpinned) [#7079](https://github.com/kong/kong/pull/7079)
+
 
 All Kong Gateway OSS plugins will be moved from individual repositories and centralized
 into the main Kong Gateway (OSS) repository. We are making a gradual transition, starting with the
@@ -167,6 +170,13 @@ grpc-gateway plugin first:
   a standard NGINX error page because the 405 wasn’t included in the error page settings of the NGINX configuration.
   [#6933](https://github.com/kong/kong/pull/6933).
   Thanks, [yamaken1343](https://github.com/yamaken1343)!
+- Custom `ngx.sleep` implementation in `init_worker` phase now invokes `update_time` in order to prevent time-based deadlocks
+  [#7532](https://github.com/Kong/kong/pull/7532)
+- `Proxy-Authorization` header is removed when it is part of the original request **or** when a plugin sets it to the
+  same value as the original request
+  [#7533](https://github.com/Kong/kong/pull/7533)
+- `HEAD` requests don't provoke an error when a Plugin implements the `response` phase
+  [#7535](https://github.com/Kong/kong/pull/7535)
 
 #### Hybrid Mode
 
@@ -181,6 +191,10 @@ grpc-gateway plugin first:
   [#7458](https://github.com/Kong/kong/pull/7458)
 - Kong now includes the source in error logs produced by Control Planes.
   [#7494](https://github.com/Kong/kong/pull/7494)
+- Data Plane config hash calculation and checking is more consistent now: it is impervious to changes in table iterations,
+  hashes are calculated in both CP and DP, and DPs send pings more immediately and with the new hash now
+  [#7483](https://github.com/Kong/kong/pull/7483)
+
 
 #### Balancer
 
@@ -256,6 +270,8 @@ grpc-gateway plugin first:
 - **Prometheus**: The Prometheus plugin exporter now attaches subsystem labels to memory stats. Before, the HTTP
   and Stream subsystems were not distinguished, so their metrics were interpreted as duplicate entries by Prometheus.
   https://github.com/Kong/kong-plugin-prometheus/pull/118
+- **External Plugins**: the return code 127 (command not found) is detected and appropriate error is returned
+  [#7523](https://github.com/Kong/kong/pull/7523)
 
 
 ## [2.4.1]
