@@ -150,8 +150,8 @@ case "$step" in
       sed -i.bak 's/major = [0-9]*/major = '$major'/' kong/meta.lua
       sed -i.bak 's/minor = [0-9]*/minor = '$minor'/' kong/meta.lua
       sed -i.bak 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
-      sed -i.bak 's/-- suffix.*/suffix = "'$prerelease'"/' kong/meta.lua
-      sed -i.bak 's/ suffix.*/ suffix = "'$prerelease'"/' kong/meta.lua
+      sed -i.bak 's/--.*suffix.*$/suffix = "'$prerelease'"/' kong/meta.lua
+
       if ! [ -f "$rockspec" ]
       then
          old_rockspec=$(ls kong-*-0.rockspec | head -n 1)
