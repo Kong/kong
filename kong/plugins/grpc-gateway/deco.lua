@@ -16,6 +16,7 @@ local bunpack = string.unpack     -- luacheck: ignore string
 local ngx = ngx
 local re_gsub = ngx.re.gsub
 local re_match = ngx.re.match
+local re_gmatch = ngx.re.gmatch
 
 local encode_json = cjson.encode
 
@@ -246,6 +247,34 @@ local function unframe(body)
   return body:sub(pos, frame_end), body:sub(frame_end + 1)
 end
 
+--[[
+  // Set value `v` at `path` in table `t`
+  // Path contains value address in dot-syntax. For example:
+  // path="a.b.c" would lead to `t[a][b][c] = c`
+]]
+local function add_to_table( t, path, v )
+  local function patch_table( t, path, v )
+    local k = table.remove( path, 1 ) -- pop out first key
+
+    if #path > 0 then
+      if t[k] == nil then
+        t[k] = {}
+      end
+
+      patch_table( t[k], path, v )
+    else 
+      t[k] = v
+    end
+  end
+
+  local keys = {}
+
+  for captures in re_gmatch( path , "[^%.]+") do
+    table.insert( keys, captures[0] )
+  end
+
+  patch_table( t, keys, v )
+end
 
 function deco:upstream(body)
   --[[
@@ -291,7 +320,14 @@ function deco:upstream(body)
     local args, err = ngx.req.get_uri_args()
     if not err then
       for k, v in pairs(args) do
-        payload[k] = v
+        --[[
+          // According to [spec](https://github.com/googleapis/googleapis/blob/master/google/api/http.proto#L113) 
+          // non-repeated message fields are supported. 
+          //
+          // For example: `GET /v1/messages/123456?revision=2&sub.subfield=foo`
+          // translates into `payload = { sub = { subfield = "foo" }}`
+        ]]--
+        add_to_table( payload, k, v )
       end
     end
   end
