@@ -36,7 +36,7 @@ dependencies = {
   "lua-resty-dns-client == 6.0.1",
   "lua-protobuf == 0.3.2",
   "lua-resty-mail == 1.0.2",
-  "lua-resty-redis-connector == 0.08",
+  "lua-resty-redis-connector == 0.11.0",
   "lua-resty-rsa == 0.04",
   "bcrypt == 2.1",
   "lpeg_patterns == 0.5",
@@ -602,7 +602,7 @@ build = {
 
     ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
     ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",
-    
+
     ["kong.plugins.grpc-gateway.deco"] = "kong/plugins/grpc-gateway/deco.lua",
     ["kong.plugins.grpc-gateway.handler"] = "kong/plugins/grpc-gateway/handler.lua",
     ["kong.plugins.grpc-gateway.schema"] = "kong/plugins/grpc-gateway/schema.lua",
