@@ -373,7 +373,7 @@ for _, strategy in helpers.each_strategy() do
 
       fixtures.dns_mock:A({
         name = "lambda18.test",
-        address = "127.0.0.1",
+        address = helpers.mock_upstream_host,
       })
 
       assert(helpers.start_kong({
