@@ -92,122 +92,169 @@ All Kong Gateway OSS plugins will be moved from individual repositories and cent
 into the main Kong Gateway (OSS) repository. We are making a gradual transition, starting with the
 grpc-gateway plugin first:
 
-- Moved grpc-gateway inside the Kong repo [#7466](https://github.com/Kong/kong/pull/7466)
+- Moved grpc-gateway inside the Kong repo. [#7466](https://github.com/Kong/kong/pull/7466)
 
 ### Additions
 
 #### Core
 
-- Control Planes can now send updates to new Data Planes even if the Control Planes lose connection to the database
+- Control Planes can now send updates to new data planes even if the control planes lose connection to the database.
   [#6938](https://github.com/kong/kong/pull/6938)
 - Kong now automatically adds `cluster_cert`(`cluster_mtls=shared`) or `cluster_ca_cert`(`cluster_mtls=pki`) into
-  `lua_ssl_trusted_certificate` when operating under Hybrid mode. Before, Hybrid mode users needed to configure
-  `lua_ssl_trusted_certificate` manually as a requirement for Lua to verify the Control Plane’s certificate
-  [#7044](https://github.com/kong/kong/pull/7044)
-- New `declarative_config_string` option allows loading declarative config directly from a string
+  `lua_ssl_trusted_certificate` when operating in Hybrid mode. Before, Hybrid mode users needed to configure
+  `lua_ssl_trusted_certificate` manually as a requirement for Lua to verify the Control Plane’s certificate.
+  See [Starting Data Plane Nodes](https://docs.konghq.com/gateway-oss/2.5.x/hybrid-mode/#starting-data-plane-nodes)
+  in the Hybrid Mode guide for more information. [#7044](https://github.com/kong/kong/pull/7044)
+- New `declarative_config_string` option allows loading a declarative config directly from a string. See the
+  [Loading The Declarative Configuration File](https://docs.konghq.com/2.5.x/db-less-and-declarative-config/#loading-the-declarative-configuration-file)
+  section of the DB-less and Declarative Configuration guide for more information.
   [#7379](https://github.com/kong/kong/pull/7379)
 
 #### PDK
 
-- Accept tables in response body for stream subsystem
+- The Kong PDK now accepts tables in the response body for Stream subsystems, just as it does for the HTTP subsystem.
+  Before developers had to check the subsystem if they wrote code that used the `exit()` function before calling it,
+  because passing the wrong argument type would break the request response.
   [#7082](https://github.com/kong/kong/pull/7082)
 
 #### Plugins
 
-- **hmac-auth**: add support for the "@request-target" pseudo-field. This ensures requests to the same target but using different request methods (such as HTTP/2) results in the same signature.
+- **hmac-auth**: The HMAC Authentication plugin now includes support for the `@request-target` field in the signature
+  string. Before, the plugin used the `request-line` parameter, which contains the HTTP request method, request URI, and
+  the HTTP version number. The inclusion of the HTTP version number in the signature caused requests to the same target
+  but using different request methods(such as HTTP/2) to have different signatures. The newly added request-target field
+  only includes the lowercase request method and request URI when calculating the hash, avoiding those issues.
+  See the [HMAC Authentication](https://docs.konghq.com/hub/kong-inc/hmac-auth) documentation for more information.
   [#7037](https://github.com/kong/kong/pull/7037)
-- **syslog**: Add facility configuration capability
-  [#6081](https://github.com/kong/kong/pull/6081).
-  Thanks, [jideel](https://github.com/jideel)!
-- **Prometheus**: Expose dataplane status on control plane, new metrics data_plane_last_seen, data_plane_config_hash and data_plane_version_compatible
-  https://github.com/Kong/kong-plugin-prometheus/pull/98
-- **Zipkin**: has now service.name and route.name tags
-  https://github.com/Kong/kong-plugin-zipkin/pull/115
+- **syslog**: The Syslog plugin now includes facility configuration options, which are a way for the plugin to group
+  error messages from different sources. See the description for the facility parameter in the
+  [Parameters](https://docs.konghq.com/hub/kong-inc/syslog/#parameters) section of the Syslog documentation for more
+  information. [#6081](https://github.com/kong/kong/pull/6081). Thanks, [jideel](https://github.com/jideel)!
+- **Prometheus**: The Prometheus plugin now exposes connected data planes' status on the control plane. New metrics include the
+  following:  `data_plane_last_seen`, `data_plane_config_hash` and `data_plane_version_compatible`. These  
+  metrics can be useful for troubleshooting when data planes have inconsistent configurations across the cluster. See the
+  [Available metrics](https://docs.konghq.com/hub/kong-inc/prometheus) section of the Prometheus plugin documentation
+  for more information. [98](https://github.com/Kong/kong-plugin-prometheus/pull/98)
+- **Zipkin**: The Zipkin plugin now includes the following tags: `kong.route`,`kong.service_name` and `kong.route_name`.
+  See the [Spans](https://docs.konghq.com/hub/kong-inc/zipkin/#spans) section of the Zipkin plugin documentation for more information.
+  [115](https://github.com/Kong/kong-plugin-zipkin/pull/115)
 
 #### Hybrid Mode
 
-- Expose upstream healthchecks endpoint on status API
-  [#7429](https://github.com/Kong/kong/pull/7429)
-- Control Planes are more lenient when checking Data Planes' compatibility
-  [#7488](https://github.com/Kong/kong/pull/7488)
-- Groundwork for Hybrid Mode 2.0 Protocol has been started. This code isn't active by default in Kong 2.5, but it allows future development.
-  [#7462](https://github.com/Kong/kong/pull/7462)
-
+- Kong now exposes an upstream health checks endpoint (using the status API) on the data plane for better
+  observability. [#7429](https://github.com/Kong/kong/pull/7429)
+- Control Planes are now more lenient when checking Data Planes' compatibility in Hybrid mode. See the
+  [Version compatibility](https://docs.konghq.com/gateway-oss/2.5.x/hybrid-mode/#version_compatibility)
+  section of the Hybrid Mode guide for more information. [#7488](https://github.com/Kong/kong/pull/7488)
+- This release starts the groundwork for Hybrid Mode 2.0 Protocol. This code isn't active by default in Kong 2.5,
+  but it allows future development. [#7462](https://github.com/Kong/kong/pull/7462)
 
 ### Fixes
 
 #### Core
 
-- `select_by_cache_key` does not do unnecessary cache reads in `off` strategy
-  [#7146](https://github.com/kong/kong/pull/7146)
-- Kong can handle errors that happen inside a plugin's `init_worker` handler
+- When using DB-less mode, `select_by_cache_key` now finds entities by using the provided `field` directly
+  in ` select_by_key` and does not complete unnecessary cache reads. [#7146](https://github.com/kong/kong/pull/7146)
+- Kong can now finish initialization even if a plugin’s `init_worker` handler fails, improving stability.
   [#7099](https://github.com/kong/kong/pull/7099)
-- TLS keepalive request no longer can share their context
-  [#7102](https://github.com/kong/kong/pull/7102)
-- HTTP Status 405 is now handled by Kong's error handler
+- TLS keepalive requests no longer share their context. Before when two calls were made to the same "server+hostname"
+  but different routes and using a keepalive connection, plugins that were active in the first call were also sometimes
+  (incorrectly) active in the second call. The wrong plugin was active because Kong was passing context in the SSL phase
+  to the plugin iterator, creating connection-wide structures in that context, which was then shared between different
+  keepalive requests. With this fix, Kong does not pass context to plugin iterators with the `certificate` phase,
+  avoiding plugin mixups.[#7102](https://github.com/kong/kong/pull/7102)
+- The HTTP status 405 is now handled by Kong's error handler. Before accessing Kong using the TRACE method returned
+  a standard NGINX error page because the 405 wasn’t included in the error page settings of the NGINX configuration.
   [#6933](https://github.com/kong/kong/pull/6933).
   Thanks, [yamaken1343](https://github.com/yamaken1343)!
 
 #### Hybrid Mode
 
-- Control planes don't perform health checks upon CRUD upstreams/targets events
+- Control planes no longer perform health checks on CRUD upstreams’ and targets’ events.
   [#7085](https://github.com/kong/kong/pull/7085)
-- Fixed a bug that provoked unnecessary cache flips on Data Plane
+- To prevent unnecessary cache flips on data planes, Kong now checks `dao:crud` events more strictly and has
+  a new cluster event, `clustering:push_config` for configuration pushes. These updates allow Kong to filter
+  invalidation events that do not actually require a database change. Furthermore, the clustering module does
+  not subscribe to the generic `invalidations` event, which has a more broad scope than database entity invalidations.
   [#7112](https://github.com/kong/kong/pull/7112)
-- Data Planes ignore null fields coming from Control Plane when doing schema validation.
+- Data Planes ignore null fields coming from Control Planes when doing schema validation.
   [#7458](https://github.com/Kong/kong/pull/7458)
-- Kong now includes the source in error logs produced by Control Planes
+- Kong now includes the source in error logs produced by Control Planes.
   [#7494](https://github.com/Kong/kong/pull/7494)
 
 #### Balancer
 
-- Targets with weight=0 are no longer returned by the DAO
+- All targets are returned by the Admin API now, including targets with a `weight=0`, or disabled targets. 
+  Before disabled targets were not included in the output when users attempted to list all targets. Then
+  when users attempted to add the targets again, they recieved an error message telling them the targets already existed.
   [#7094](https://github.com/kong/kong/pull/7094)
-- Upserting existing Targets no longer fails
+- Upserting existing targets no longer fails.  Before, because of updates made to target configurations since Kong v2.2.0, 
+  upserting older configurations would fail. This fix allows older configurations to be imported.
   [#7052](https://github.com/kong/kong/pull/7052)
-- The last balancer attempt is now correctly loggged
+- The last balancer attempt is now correctly logged. Before balancer tries were saved when retrying, which meant the last
+  retry state was not saved since there were no more retries. This update saves the failure state so it can be correctly logged.
   [#6972](https://github.com/kong/kong/pull/6972)
-- Ensure that the correct upstream event is removed from queue when updating balancer state
+- Kong now ensures that the correct upstream event is removed from the queue when updating the balancer state.
   [#7103](https://github.com/kong/kong/pull/7103)
 
 #### CLI
 
-- `prefix` argument in `kong stop` command takes precedence over environment variables
+- The `prefix` argument in the `kong stop` command now takes precedence over environment variables, as it does in the `kong start` command.
   [#7080](https://github.com/kong/kong/pull/7080)
 
 #### Configuration
 
-- Declarative configuration correctly parses plugin entities schemas with attributes called "plugins"
+- Declarative configurations now correctly parse custom plugin entities schemas with attributes called "plugins". Before
+  when using declarative configurations, users with custom plugins that included a "plugins" field would encounter startup
+  exceptions. With this fix, the declarative configuration can now distinguish between plugins schema and custom plugins fields.
   [#7412](https://github.com/kong/kong/pull/7412)
-- The stream access log config options are now properly separated from the HTTP access log
-  [#7046](https://github.com/kong/kong/pull/7046)
+- The stream access log configuration options are now properly separated from the HTTP access log. Before when users
+  used Kong with TCP, they couldn’t use a custom log format. With this fix, `proxy_stream_access_log` and `proxy_stream_error_log`
+  have been added to differentiate stream access log from the HTTP subsystem. See
+  [`proxy_stream_access_log`](https://docs.konghq.com/gateway-oss/2.5.x/configuration/#proxy_stream_access_log)
+  and [`proxy_stream_error`](https://docs.konghq.com/gateway-oss/2.5.x/configuration/#proxy_stream_error) in the Configuration
+  Property Reference for more information. [#7046](https://github.com/kong/kong/pull/7046)
 
 #### Migrations
 
-- Kong no longer assumes that `/?/init.lua` is in the Lua path when doing migrations
-  [#6993](https://github.com/kong/kong/pull/6993)
-- Kong no longer emits errors when doing ALTER COLUMN operations in Apache Cassandra 4.0
+- Kong no longer assumes that `/?/init.lua` is in the Lua path when doing migrations. Before, when users created
+  a custom plugin in a non-standard location and set `lua_package_path = /usr/local/custom/?.lua`, migrations failed.
+  Migrations failed because the Kong core file is `init.lua` and it is required as part of `kong.plugins.<name>.migrations`.
+  With this fix, migrations no longer expect `init.lua` to be a part of the path. [#6993](https://github.com/kong/kong/pull/6993)
+- Kong no longer emits errors when doing `ALTER COLUMN` operations in Apache Cassandra 4.0.
   [#7490](https://github.com/Kong/kong/pull/7490)
 
 #### PDK
 
-- `response.getXXX()` functions work in the log phase on external plugins
-  [#7048](https://github.com/kong/kong/pull/7048)
-- External plugins handle certain error conditions better while the Kong balancer is being refreshed
-  [#7153](https://github.com/kong/kong/pull/7153).
+- With this update, `kong.response.get_XXX()` functions now work in the log phase on external plugins. Before
+  `kong.response.get_XXX()` functions required data from the response object, which was not accessible in the
+  post-log timer used to call log handlers in external plugins. Now these functions work by accessing the required
+  data from the set saved at the start of the log phase. See [`kong.response`](https://docs.konghq.com/gateway-oss/{{page.kong_version}}/kong.response)
+  in the Plugin Development Kit for more information. [#7048](https://github.com/kong/kong/pull/7048)
+- External plugins handle certain error conditions better while the Kong balancer is being refreshed. Before
+  when an `instance_id` of an external plugin changed, and the plugin instance attempted to reset and retry,
+  it was failing because of a typo in the comparison. [#7153](https://github.com/kong/kong/pull/7153).
   Thanks, [ealogar](https://github.com/ealogar)!
-- `kong.log`'s phase checker is correct
+- With this release, `kong.log`'s phase checker now accounts for the existence of the new `response` pseudo-phase.
+  Before users may have erroneously received a safe runtime error for using a function out-of-place in the PDK. 
   [#7109](https://github.com/kong/kong/pull/7109)
-- Kong no longer sandboxes the `string.rep` function
+- Kong no longer sandboxes the `string.rep` function. Before `string.rep` was sandboxed to disallow a single operation
+  from allocating too much memory. However, a single operation allocating too much memory is no longer an issue
+  because in LuaJIT there are no debug hooks and it is trivial to implement a loop to allocate memory on every single iteration.
+  Additionally, since the `string` table is global and obtainable by any sandboxed string, its sandboxing provoked issues on global state.
   [#7167](https://github.com/kong/kong/pull/7167)
-- `kong.pdk.node` can now correctly iterate over all the shared dict metrics
+- The `kong.pdk.node` function can now correctly iterates over all the shared dict metrics. Before this fix,
+  users using the `kong.pdk.node` function could not see all shared dict metrics under the Stream subsystem.
   [#7078](https://github.com/kong/kong/pull/7078)
 
 #### Plugins
 
-- **LDAP-auth**: The LDAP port has a default value
+- **LDAP-auth**: The LDAP Authentication schema now includes a default value for the `config.ldap_port` parameter
+  that matches the documentation. Before the plugin documentation [Parameters](https://docs.konghq.com/hub/kong-inc/ldap-auth/#parameters)
+  section included a reference to a default value for the LDAP port; however, the default value was not included in the plugin schema.
   [#7438](https://github.com/kong/kong/pull/7438)
-- **Prometheus**: Fix exporter to attach subsystem label to memory stats
+- **Prometheus**: The Prometheus plugin exporter now attaches subsystem labels to memory stats. Before, the HTTP
+  and Stream subsystems were not distinguished, so their metrics were interpreted as duplicate entries by Prometheus.
   https://github.com/Kong/kong-plugin-prometheus/pull/118
 
 
