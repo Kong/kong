@@ -91,6 +91,7 @@ local function get_proto_info(fname)
   local p = protoc.new()
   p.include_imports = true
   p:addpath(dir)
+  p:loadfile(name)
   local parsed = p:parsefile(name)
 
   info = {}
@@ -129,7 +130,6 @@ local function get_proto_info(fname)
 
   _proto_info[fname] = info
 
-  p:loadfile(name)
   return info
 end
 
