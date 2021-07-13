@@ -2153,11 +2153,13 @@ function Schema.new(definition, is_subschema)
         -- Store the inverse relation for implementing constraints
         local constraints = assert(_cache[field.reference]).constraints
         -- Set logic to prevent duplicates when Schema is initialized multiple times
-        constraints[self.name] = {
-          schema     = self,
-          field_name = key,
-          on_delete  = field.on_delete,
-        }
+        if self.name then
+          constraints[self.name] = {
+            schema     = self,
+            field_name = key,
+            on_delete  = field.on_delete,
+          }
+        end
       end
     end
   end
