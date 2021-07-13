@@ -78,6 +78,31 @@ local function parse_options_path(path)
   return path_regex, match_groups
 end
 
+local function set_hooks()
+  if not pb.hook(".google.protobuf.Timestamp") then
+    pb.hook(".google.protobuf.Timestamp", function (t)
+      if type(t) ~= "table" then
+        error(string.format("expected table, got (%s)%q", type(t), tostring(t)))
+      end
+
+      return ngx.http_time(t.seconds + t.nanos / 1e9)
+    end)
+  end
+
+  if not pb.encode_hook(".google.protobuf.Timestamp") then
+    pb.encode_hook(".google.protobuf.Timestamp", function (t)
+      if type(t) ~= "string" then
+        error (string.format("expected time string, got (%s)%q", type(t), tostring(t)))
+      end
+      local sec = ngx.parse_http_time(t)
+      return {
+        seconds = math.floor(sec),
+        nanos = (sec % 1) * 1e9,
+      }
+    end)
+  end
+end
+
 -- parse, compile and load .proto file
 -- returns a table mapping valid request URLs to input/output types
 local _proto_info = {}
@@ -130,6 +155,7 @@ local function get_proto_info(fname)
   _proto_info[fname] = info
 
   p:loadfile(name)
+  set_hooks()
   return info
 end
 
