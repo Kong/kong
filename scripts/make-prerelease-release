@@ -71,6 +71,7 @@ rockspec="kong-$xyzversion$prerelease-0.rockspec"
 branch="release/$xyzversion"
 xyxversion="$major.$minor.0-(alpha|beta).n"
 prev_version="$xyzversion"
+base="release/$major.$minor.x"
 
 beta=false
 if [[ $version == *"beta"* ]]; then
@@ -94,9 +95,8 @@ case "$step" in
    switch)
       set -e
       git pull
-      git checkout "$branch" || true
-      git checkout -B "$branch" || true
-      git push -u origin "$branch"
+      git checkout "$base" || true
+      git checkout -B "$base" || true
 
       SUCCESS "Release branch is switched locally." \
               "You are ready to run the next step:" \
@@ -150,8 +150,8 @@ case "$step" in
       sed -i.bak 's/major = [0-9]*/major = '$major'/' kong/meta.lua
       sed -i.bak 's/minor = [0-9]*/minor = '$minor'/' kong/meta.lua
       sed -i.bak 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
-      sed -i.bak 's/-- suffix.*/suffix = "'$prerelease'"/' kong/meta.lua
-      sed -i.bak 's/ suffix.*/ suffix = "'$prerelease'"/' kong/meta.lua
+      sed -i.bak 's/--.*suffix.*$/suffix = "'$prerelease'"/' kong/meta.lua
+
       if ! [ -f "$rockspec" ]
       then
          old_rockspec=$(ls kong-*-0.rockspec | head -n 1)
@@ -188,8 +188,8 @@ case "$step" in
               "or Ctrl-C to cancel."
 
       set -e
-      git push --set-upstream origin "$branch"
-      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge" | true
+      git push --set-upstream origin "$base"
+      hub pull-request -b master -h "$base" -m "Release: $version" -l "pr/please review,pr/do not merge" | true
 
       SUCCESS "Now get the above PR reviewed and approved. Before continueing on" \
               "    $0 -v $version -s tag"
@@ -200,7 +200,7 @@ case "$step" in
               "or Ctrl-C to cancel."
 
       set -e
-      git checkout "$branch"
+      git checkout "$base"
       git pull
       git tag -s "$version" -m "$version"
       git push origin "$version"
