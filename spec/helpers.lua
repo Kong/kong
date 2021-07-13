@@ -160,7 +160,7 @@ end
 
 
 --- Unset an environment variable
--- @function setenv
+-- @function unsetenv
 -- @param env (string) name of the environment variable
 -- @return true on success, false otherwise
 local function unsetenv(env)
@@ -573,79 +573,6 @@ local function lookup(t, k)
 end
 
 
---- Waits until a specific condition is met.
--- The check function will repeatedly be called (with a fixed interval), until
--- the condition is met, or the
--- timeout value is exceeded.
--- @function wait_until
--- @param f check function that should return `truthy` when the condition has
--- been met
--- @param timeout (optional) maximum time to wait after which an error is
--- thrown, defaults to 5.
--- @return nothing. It returns when the condition is met, or throws an error
--- when it times out.
--- @usage -- wait 10 seconds for a file "myfilename" to appear
--- helpers.wait_until(function() return file_exist("myfilename") end, 10)
-local function wait_until(f, timeout, step)
-  if type(f) ~= "function" then
-    error("arg #1 must be a function", 2)
-  end
-
-  if timeout ~= nil and type(timeout) ~= "number" then
-    error("arg #2 must be a number", 2)
-  end
-
-  if step ~= nil and type(step) ~= "number" then
-    error("arg #3 must be a number", 2)
-  end
-
-  ngx.update_time()
-
-  timeout = timeout or 5
-  step = step or 0.05
-
-  local tstart = ngx.time()
-  local texp = tstart + timeout
-  local ok, res, err
-
-  repeat
-    ok, res, err = pcall(f)
-    ngx.sleep(step)
-    ngx.update_time()
-  until not ok or res or ngx.time() >= texp
-
-  if not ok then
-    -- report error from `f`, such as assert gone wrong
-    error(tostring(res), 2)
-  elseif not res and err then
-    -- report a failure for `f` to meet its condition
-    -- and eventually an error return value which could be the cause
-    error("wait_until() timeout: " .. tostring(err) .. " (after delay: " .. timeout .. "s)", 2)
-  elseif not res then
-    -- report a failure for `f` to meet its condition
-    error("wait_until() timeout (after delay " .. timeout .. "s)", 2)
-  end
-end
-
-
-local admin_client -- forward declaration
-
---- Waits for invalidation of a cached key by polling the mgt-api
--- and waiting for a 404 response.
--- @function wait_for_invalidation
--- @param key (string) the cache-key to check
--- @param timeout (optional) in seconds (for default see `wait_until`).
-local function wait_for_invalidation(key, timeout)
-  -- TODO: this code is not used, but is duplicated all over the codebase!
-  -- search codebase for "/cache/" endpoint
-  local api_client = admin_client()
-  wait_until(function()
-    local res = api_client:get("/cache/" .. key)
-    res:read_body()
-    return res.status == 404
-  end, timeout)
-end
-
 
 --- http_client.
 -- An http-client class to perform requests.
@@ -865,7 +792,7 @@ end
 -- @param timeout (optional, number) the timeout to use
 -- @param forced_port (optional, number) if provided will override the port in
 -- the Kong configuration with this port
-function admin_client(timeout, forced_port)
+local function admin_client(timeout, forced_port)
   local admin_ip, admin_port
   for _, entry in ipairs(conf.admin_listeners) do
     if entry.ssl == false then
@@ -1432,6 +1359,88 @@ local say = require "say"
 local luassert = require "luassert.assert"
 
 
+--- Waits until a specific condition is met.
+-- The check function will repeatedly be called (with a fixed interval), until
+-- the condition is met. Throws an error on timeout.
+--
+-- NOTE: this is a regular Lua function, not a Luassert assertion.
+-- @function wait_until
+-- @param f check function that should return `truthy` when the condition has
+-- been met
+-- @param timeout (optional) maximum time to wait after which an error is
+-- thrown, defaults to 5.
+-- @param step (optional) interval between checks, defaults to 0.05.
+-- @return nothing. It returns when the condition is met, or throws an error
+-- when it times out.
+-- @usage
+-- -- wait 10 seconds for a file "myfilename" to appear
+-- helpers.wait_until(function() return file_exist("myfilename") end, 10)
+local function wait_until(f, timeout, step)
+  if type(f) ~= "function" then
+    error("arg #1 must be a function", 2)
+  end
+
+  if timeout ~= nil and type(timeout) ~= "number" then
+    error("arg #2 must be a number", 2)
+  end
+
+  if step ~= nil and type(step) ~= "number" then
+    error("arg #3 must be a number", 2)
+  end
+
+  ngx.update_time()
+
+  timeout = timeout or 5
+  step = step or 0.05
+
+  local tstart = ngx.time()
+  local texp = tstart + timeout
+  local ok, res, err
+
+  repeat
+    ok, res, err = pcall(f)
+    ngx.sleep(step)
+    ngx.update_time()
+  until not ok or res or ngx.time() >= texp
+
+  if not ok then
+    -- report error from `f`, such as assert gone wrong
+    error(tostring(res), 2)
+  elseif not res and err then
+    -- report a failure for `f` to meet its condition
+    -- and eventually an error return value which could be the cause
+    error("wait_until() timeout: " .. tostring(err) .. " (after delay: " .. timeout .. "s)", 2)
+  elseif not res then
+    -- report a failure for `f` to meet its condition
+    error("wait_until() timeout (after delay " .. timeout .. "s)", 2)
+  end
+end
+
+
+--- Waits for invalidation of a cached key by polling the mgt-api
+-- and waiting for a 404 response. Throws an error on timeout.
+--
+-- NOTE: this is a regular Lua function, not a Luassert assertion.
+-- @function wait_for_invalidation
+-- @param key (string) the cache-key to check
+-- @param timeout (optional) in seconds (for default see `wait_until`).
+-- @return nothing. It returns when the key is invalidated, or throws an error
+-- when it times out.
+-- @usage
+-- local cache_key = "abc123"
+-- helpers.wait_for_invalidation(cache_key, 10)
+local function wait_for_invalidation(key, timeout)
+  -- TODO: this code is duplicated all over the codebase,
+  -- search codebase for "/cache/" endpoint
+  local api_client = admin_client()
+  wait_until(function()
+    local res = api_client:get("/cache/" .. key)
+    res:read_body()
+    return res.status == 404
+  end, timeout)
+end
+
+
 --- Generic modifier "response".
 -- Will set a "response" value in the assertion state, so following
 -- assertions will operate on the value set.
@@ -1982,6 +1991,7 @@ do
   -- @param path A path to the log file (defaults to the test prefix's
   -- errlog).
   -- @see line
+  -- @see clean_logfile
   -- @usage
   -- assert.logfile("./my/logfile.log").has.no.line("[error]", true)
   local function modifier_errlog(state, args)
@@ -2011,7 +2021,12 @@ do
   -- @param fpath An optional path to the file (defaults to the filelog
   -- modifier)
   -- @see logfile
+  -- @see clean_logfile
   -- @usage
+  -- helpers.clean_logfile()
+  --
+  -- -- run some tests here
+  --
   -- assert.logfile().has.no.line("[error]", true)
   local function match_line(state, args)
     local regex = args[1]
@@ -2433,11 +2448,24 @@ end
 -- It may differ from the default, as it may have been modified
 -- by the `env` table given to start_kong.
 -- @function get_running_conf
--- @param prefix The prefix path where the kong instance is running
+-- @param prefix (optional) The prefix path where the kong instance is running,
+-- defaults to the prefix in the default config.
 -- @return The conf table of the running instance, or nil + error.
 local function get_running_conf(prefix)
   local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
   return conf_loader.load_config_file(default_conf.kong_env)
+end
+
+
+--- Clears the logfile. Will overwrite the logfile with an empty file.
+-- @function clean_logfile
+-- @param logfile (optional) filename to clear, defaults to the current
+-- error-log file
+-- @return nothing
+-- @see line
+local function clean_logfile(logfile)
+  logfile = logfile or (get_running_conf() or conf).nginx_err_logs
+  os.execute(":> " .. logfile)
 end
 
 
@@ -2831,6 +2859,7 @@ end
   admin_ssl_client = admin_ssl_client,
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
+  clean_logfile = clean_logfile,
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = each_strategy,
   all_strategies = all_strategies,
