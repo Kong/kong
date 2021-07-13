@@ -62,12 +62,10 @@
 
 > Release date: 2021-07-13
 
-This is an RC release of Kong 2.5.0, with no breaking changes with respect to the 2.x series.
+This is the final release of Kong 2.5.0, with no breaking changes with respect to the 2.x series.
 
-As an RC it is a test version which should represent the features that will be present in the official 2.5.0 version.
-
-This version includes Control Plane resiliency to database outages and the new `declarative_config_string`, among
-other features and fixes.
+This release includes Control Plane resiliency to database outages and the new
+`declarative_config_string` config option, among other features and fixes.
 
 ### Distribution
 
@@ -89,7 +87,6 @@ other features and fixes.
 - Bumped `lua-resty-healthcheck` from 1.4.1 to 1.4.2 [#7511](https://github.com/Kong/kong/pull/7511)
 - Bumped `hmac-auth` from 2.3.0 to 2.4.0 [#7522](https://github.com/Kong/kong/pull/7522)
 - Pinned `lua-protobuf` to 0.3.2 (previously unpinned) [#7079](https://github.com/kong/kong/pull/7079)
-
 
 All Kong Gateway OSS plugins will be moved from individual repositories and centralized
 into the main Kong Gateway (OSS) repository. We are making a gradual transition, starting with the
