@@ -5,18 +5,18 @@ local string = string
 local CACHE
 
 
-local JqRequestFilter = {
+local JqFilter = {
   VERSION = "0.0.1",
   PRIORITY = 811,
 }
 
 
-function JqRequestFilter:init_worker()
-  CACHE = require "kong.plugins.jq-request-filter.cache"
+function JqFilter:init_worker()
+  CACHE = require "kong.plugins.jq-filter.cache"
 end
 
 
-function JqRequestFilter:access(conf)
+function JqFilter:access(conf)
   local request_body = kong.request.get_raw_body()
   if not request_body then
     return
@@ -50,4 +50,4 @@ function JqRequestFilter:access(conf)
 end
 
 
-return JqRequestFilter
+return JqFilter

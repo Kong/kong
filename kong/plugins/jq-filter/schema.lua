@@ -1,8 +1,7 @@
-local typedefs = require "kong.plugins.jq-request-filter.typedefs"
-
+local typedefs = require "kong.plugins.jq-filter.typedefs"
 
 return {
-  name = "jq-request-filter",
+  name = "jq-filter",
   fields = {
     typedefs.protocols,
     {
@@ -17,10 +16,12 @@ return {
                 required = true,
                 type = "record",
                 fields = {
-                  typedefs.program,
+                  typedefs.context,
                   typedefs.target,
-                  typedefs.opts,
-                  typedefs.mime,
+                  typedefs.program,
+                  typedefs.jq_options,
+                  typedefs.if_media_type,
+                  typedefs.if_status_code,
                 },
               },
             },
