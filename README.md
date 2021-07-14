@@ -46,18 +46,12 @@ can help by acting as a gateway (or a sidecar) for microservices requests while
 providing load balancing, logging, authentication, rate-limiting,
 transformations, and more through plugins.
 
-[![][kong-benefits]][kong-url]
 
-Kong has been built with the following leading principles:
+**Kong** or **Kong API Gateway** is a cloud-native, platform-agnostic, scalable API Gateway distinguished for its high performance and extensibility via plugins.
 
-* **High Performance**: Sub-millisecond processing latency to support
-* mission-critical use cases and high throughput.
-* **Extensibility**: With a pluggable architecture to extend Kong in Lua or GoLang
-  with Kong's Plugin SDK.
-* **Portability**: To run on every platform, every cloud, and to natively support
-  Kubernetes via our modern Ingress Controller.
+By providing functionality for proxying, routing, load balancing, health checking, authentication (and [more](#features)), Kong serves as the central layer for orchestrating microservices or conventional API traffic with ease.
 
-## Features
+---
 
 - **Cloud-Native**: Platform agnostic, Kong can run on any platform - from bare
   metal to containers - and it can run on every cloud natively.
@@ -215,90 +209,78 @@ $ git checkout master
 $ luarocks make
 ```
 
-#### Running for development
+---
 
-Check out the [development section](https://github.com/Kong/kong/blob/master/kong.conf.default#L244)
-of the default configuration file for properties to tweak in order to ease
-the development process for Kong.
+## Getting Started
 
-Modifying the [`lua_package_path`](https://github.com/openresty/lua-nginx-module#lua_package_path)
-and [`lua_package_cpath`](https://github.com/openresty/lua-nginx-module#lua_package_cpath)
-directives will allow Kong to find your custom plugin's source code wherever it
-might be in your system.
+Let’s test drive Kong by adding authentication to an API in under 5 minutes.
 
-#### Tests
+We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/install/docker/) procedure if you’d prefer to run the Kong API Gateway in DB-less mode.
 
-Install the development dependencies ([busted], [luacheck]) with:
+Whether you’re running in the cloud, on bare metal or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
 
-```shell
-$ make dev
+1) To start, clone the Docker repository and navigate to the compose folder.
+```cmd
+  $ git clone https://github.com/Kong/docker-kong
+  $ cd compose/
 ```
 
-Kong relies on three test suites using the [busted] testing library:
-
-* Unit tests
-* Integration tests, which require Postgres and Cassandra to be up and running
-* Plugins tests, which require Postgres to be running
-
-The first can simply be run after installing busted and running:
-
-```
-$ make test
+1) Start the Gateway stack using:
+```cmd
+  $ docker-compose up
 ```
 
-However, the integration and plugins tests will spawn a Kong instance and
-perform their tests against it. As so, consult/edit the `spec/kong_tests.conf`
-configuration file to make your test instance point to your Postgres/Cassandra
-servers, depending on your needs.
+The Gateway will be available on the following ports on localhost:
 
-You can run the integration tests (assuming **both** Postgres and Cassandra are
-running and configured according to `spec/kong_tests.conf`) with:
+`:8000` on which Kong listens for incoming HTTP traffic from your clients, and forwards it to your upstream services.
+`:8001` on which the Admin API used to configure Kong listens.
 
-```
-$ make test-integration
-```
+Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
+) to tour the Gateway features
 
-And the plugins tests with:
+## Features
 
-```
-$ make test-plugins
-```
+By centralizing common API functionality across all your organization's services, the Kong API Gateway creates more freedom for engineering teams to focus on the challenges that matter most.
 
-Finally, all suites can be run at once by simply using:
+The top Kong features include:
+- Advanced routing, load balancing, health checking - all configurable via an admin API or declarative configuration.
+- Authentication and Authorization for APIs using methods like JWT, basic auth, ACLs and more.
+- Proxy, SSL/TLS termination, and connectivity support for L4 or L7 traffic.
+- Plugins for enforcing traffic controls, req/res transformations, logging, monitoring and including a plugin developer hub.
+- Sophisticated deployment models like Declarative Databaseless Deployment and Hybrid Deployment (control plane/data plane separation) without any vendor lock-in.
+- Native ingress controller support for serving Kubernetes.
 
-```
-$ make test-all
-```
+[![][kong-benefits]][kong-url]
 
-Consult the [run_tests.sh](.ci/run_tests.sh) script for a more advanced example
-usage of the test suites and the Makefile.
+### Plugin Hub
+Plugins provide advanced functionality that extends the use of the Gateway. Many of the Kong Inc. and community-developed plugins like AWS Lambda, Correlation ID, and Response Transformer are showcased at the [Plugin Hub](https://docs.konghq.com/hub/).
 
-Finally, a very useful tool in Lua development (as with many other dynamic
-languages) is performing static linting of your code. You can use [luacheck]
-\(installed with `make dev`\) for this:
+Contribute to the Plugin Hub and ensure your next innovative idea is published and available to the broader community!
 
-```
-$ make lint
-```
+## Contributing
 
-#### Makefile
+We ❤️  pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong API Gateway, please familiarize yourself with the following developer resources:
+- [CONTRIBUTING](CONTRIBUTING.md)
+- [DEVELOPER](DEVELOPER.md)
+- [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) and [COPYRIGHT](COPYRIGHT)
 
-When developing, you can use the `Makefile` for doing the following operations:
+Use the [Plugin Development Guide](https://docs.konghq.com/latest/plugin-development/) for building new and creative plugins, or browse the online version of Kong's source code documentation in the [Plugin Development Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/). Developers can build plugins in [Lua](https://docs.konghq.com/gateway-oss/latest/plugin-development/), [Go](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-go-plugins) or [JavaScript](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-javascript-plugins).
 
-| Name               | Description                                            |
-| ------------------:| -------------------------------------------------------|
-| `install`          | Install the Kong luarock globally                      |
-| `dev`              | Install development dependencies                       |
-| `lint`             | Lint Lua files in `kong/` and `spec/`                  |
-| `test`             | Run the unit tests suite                               |
-| `test-integration` | Run the integration tests suite                        |
-| `test-plugins`     | Run the plugins test suite                             |
-| `test-all`         | Run all unit + integration + plugins tests at once     |
+## Releases
 
-## Enterprise Support & Demo
+Please see the [Changelog](CHANGELOG.md) for more details about a given release. The [SemVer Specification](https://semver.org) is followed when versioning Gateway releases.
 
-If you are working in a large organization you should learn more about [Kong
-Enterprise](https://konghq.com/kong-enterprise-edition/).
+## Join the Community
+
+- Join the Kong discussions at the Kong Nation forum: [https://discuss.konghq.com/](https://discuss.konghq.com/)
+- Follow us on Twitter: [https://twitter.com/thekonginc](https://twitter.com/thekonginc)
+- Check out the docs: [https://docs.konghq.com/](https://docs.konghq.com/)
+- Keep updated on YouTube by subscribing: [https://www.youtube.com/c/KongInc/videos](https://www.youtube.com/c/KongInc/videos)
+- Read up on the latest happenings at our blog: [https://konghq.com/blog/](https://konghq.com/blog/)
+- Visit our homepage to learn more: [https://konghq.com/](https://konghq.com/)
+
+## Konnect
+Kong Inc. offers commercial subscriptions that enhance the Kong API Gateway in a variety of ways. Customers of Kong's [Konnect](https://konghq.com/kong-konnect/) subscription take advantage of additional gateway functionality, commercial support, and access to Kong's managed (SaaS) control plane platform. The Konnect platform features include real-time analytics, a service catalog, developer portals, and so much more! [Get started](https://konghq.com/get-started/) with Konnect.
 
 ## License
 
