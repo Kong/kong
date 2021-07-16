@@ -1,0 +1,101 @@
+version: '3.5'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:6.2.0
+    hostname: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/zookeper_jaas.conf"
+    networks:
+      - ${NETWORK_NAME}
+
+    volumes:
+      - ${PONGO_WD}/.pongo/kafka/zookeper_jaas.conf:/etc/kafka/zookeper_jaas.conf
+
+  kafka:
+    image: confluentinc/cp-kafka:6.2.0
+    hostname: broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "29092:29092"
+      - "19093:19093"
+      - "9092:9092"
+      - "9093:9093"
+      - "9101:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL,SASL_SSL:SASL_SSL,SASL_PLAINTEXT:SASL_PLAINTEXT
+      KAFKA_ADVERTISED_HOST_NAME: broker
+      KAFKA_LISTENERS:  SASL_SSL://broker:9093,PLAINTEXT_HOST://broker:9092,PLAINTEXT://broker:29092,SSL://broker:29093,SASL_PLAINTEXT://broker:19093
+      KAFKA_ADVERTISED_LISTENERS: SASL_SSL://broker:9093,PLAINTEXT_HOST://broker:9092,PLAINTEXT://broker:29092,SSL://broker:29093,SASL_PLAINTEXT://broker:19093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # ssl
+      KAFKA_SSL_KEYSTORE_FILENAME: keystore/kafka.keystore.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: ssl_key_credentials
+      KAFKA_SSL_KEYSTORE_PASSWORD: confluent
+      KAFKA_SSL_KEYSTORE_TYPE: PKCS12
+      KAFKA_SSL_TRUSTSTORE_FILENAME: truststore/kafka.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: ssl_key_credentials
+      KAFKA_SSL_TRUSTSTORE_TYPE: PKCS12
+      KAFKA_SSL_KEY_PASSWORD: confluent
+      KAFKA_SSL_KEY_CREDENTIALS: ssl_key_credentials
+
+      # Enable SASL SSL configuration
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_SASL_ENABLED_MECHANISMS: SASL_PLAIN,PLAIN
+      KAFKA_SASL_MECHANISMS: PLAIN
+
+      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SASL_SSL
+
+      # KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+      # Ignores name resolution
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ''
+
+      # 'required' for mTLS
+      KAFKA_SSL_CLIENT_AUTH: 'required'
+
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+
+      # 'requested' for TLS
+      # KAFKA_SSL_CLIENT_AUTH: requested
+
+      # Enables tcp lib level debugging
+      KAFKA_OPTS: "-Djavax.net.debug=all -Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf"
+
+
+    networks:
+      - ${NETWORK_NAME}
+    volumes:
+      - ${PONGO_WD}/.pongo/kafka/truststore:/etc/kafka/secrets/truststore
+      - ${PONGO_WD}/.pongo/kafka/keystore:/etc/kafka/secrets/keystore
+      - ${PONGO_WD}/.pongo/kafka/credentials:/etc/kafka/secrets/
+      - ${PONGO_WD}/.pongo/kafka/client.config:/etc/kafka/client.config
+      - ${PONGO_WD}/.pongo/kafka/broker-config/kafka_server_jaas.conf:/etc/kafka/kafka_server_jaas.conf
+
+  rest-proxy:
+    image: confluentinc/cp-kafka-rest:6.2.0
+    depends_on:
+      - kafka
+    ports:
+      - 8082:8082
+    hostname: rest-proxy
+    healthcheck:
+      test: ["CMD", "curl" ,"http://0.0.0.0:8082/topics"]
+      interval: 10s
+      timeout: 10s
+      retries: 50 
+    environment:
+      KAFKA_REST_HOST_NAME: rest-proxy
+      KAFKA_REST_BOOTSTRAP_SERVERS: 'broker:9092'
+      KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
+    networks:
+      - ${NETWORK_NAME}
