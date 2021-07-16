@@ -8,7 +8,7 @@
 local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
-  describe("jq-filter request (" .. strategy .. ")", function()
+  describe("jq-filter (" .. strategy .. ") request", function()
     local client
 
     lazy_setup(function()
@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
 
       do
         local routes = {}
-        for i = 1, 7 do
+        for i = 1, 8 do
           table.insert(routes,
                        bp.routes:insert({
                          hosts = { "test" .. i .. ".example.com" }
@@ -126,6 +126,17 @@ for _, strategy in helpers.each_strategy() do
                 "application/json",
                 "application/x-json-custom",
               },
+            },
+          },
+        })
+
+        -- target headers
+        add_plugin(routes[8], {
+          filters = {
+            {
+              context = "request",
+              target = "headers",
+              program = ".foo",
             },
           },
         })
@@ -312,6 +323,22 @@ for _, strategy in helpers.each_strategy() do
         })
         local req = assert.request(r)
         assert.same("\"bar\"\n", req.kong_request.post_data.text)
+      end)
+
+      it("does not filter when target is headers", function()
+        local r = assert(client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "test8.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            foo = "bar",
+          },
+        })
+        local json = assert.request(r).has.jsonbody()
+        assert.same({ foo = "bar" }, json.params)
       end)
     end)
   end)

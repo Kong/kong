@@ -35,15 +35,23 @@ function JqFilter:access(conf)
     return
   end
 
+  local new_headers = {}
+
   local request_content_type = kong.request.get_header("Content-Type")
 
   for _, filter in ipairs(conf.filters) do
     if is_media_type_allowed(request_content_type, filter) then
-      request_body = CACHE(
+      local res = CACHE(
         filter.program,
         request_body,
         filter.jq_options
       )
+
+      if filter.target == "body" then
+        request_body = res
+      else
+        -- headers from json
+      end
     end
   end
 
