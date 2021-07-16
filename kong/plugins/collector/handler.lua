@@ -166,6 +166,37 @@ local function get_server_name()
   return server_name
 end
 
+
+local function start_server(self)
+  -- start messanging pipe/register pipe
+  if self.hybrid and self.role == "control_plane" and not self.messaging then
+    kong.log.debug("start messaging server")
+    local err
+    self.messaging, err = make_message_pipe(self)
+    if not self.messaging then
+      kong.log.err("Could not start pipe between DP and CP for Collector Plugin: " .. err)
+    end
+
+    self.messaging:register_for_messages()
+  end
+end
+
+
+local function start_client(self)
+  -- start messanging pipe/register pipe
+  if self.hybrid and self.role == "data_plane" and not self.messaging then
+    kong.log.debug("start messaging client")
+    local err
+    self.messaging, err = make_message_pipe(self)
+    if not self.messaging then
+      kong.log.err("Could not start pipe between DP and CP for Collector Plugin: " .. err)
+    end
+
+    self.messaging:start_client(get_server_name())
+  end
+end
+
+
 function CollectorHandler:init_worker()
   if string.match(kong.version, "enterprise") then
     self.kong_ee = true
@@ -178,26 +209,16 @@ function CollectorHandler:init_worker()
   self.valid_license = false
   update_ticket_to_ride(false, self)
 
-  -- start messanging pipe/register pipe
-  if self.hybrid then
-    local err
-    self.messaging, err = make_message_pipe(self)
-    if not self.messaging then
-      kong.log.err("Could not start pipe between DP and CP for Collector Plugin: " .. err)
-    end
-
-    if self.role == "data_plane" then
-      return self.messaging:start_client(get_server_name())
-    else
-      self.messaging:register_for_messages()
-    end
-  end
+  start_server(self)
 end
+
 
 function CollectorHandler:log(conf)
   if not self.kong_ee or not self.valid_license or (self.hybrid and self.role ~= "data_plane") then
     return
   end
+
+  start_client(self)
 
   local entry = kong.log.serialize()
   entry["request"]["post_data"] = {}
