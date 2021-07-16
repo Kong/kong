@@ -293,8 +293,7 @@ local function new(pdk, major_version)
   --
   -- @function kong.service.response.get_body
   -- @phases `header_filter`, `body_filter`, `log`
-  -- @tparam string mimetype The mime-type of the response (if known)
-  -- @tparam[opt] string mimetype the MIME type
+  -- @tparam[opt] string mimetype The mime-type of the response (if known)
   -- @tparam[opt] number max_args set a limit on the maximum number of parsed
   -- @treturn string body The raw buffered body
   -- @usage

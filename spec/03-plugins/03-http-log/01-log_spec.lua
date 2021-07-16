@@ -140,8 +140,7 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      local test_error_log_path = helpers.test_conf.nginx_err_logs
-      os.execute(":> " .. test_error_log_path)
+      helpers.clean_logfile()
 
       local grpc_service = assert(bp.services:insert {
         name = "grpc-service",

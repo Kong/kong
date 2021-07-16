@@ -78,8 +78,7 @@ local kong_resty_ctx = require "kong.resty.ctx"
 local certificate = require "kong.runloop.certificate"
 local concurrency = require "kong.concurrency"
 local cache_warmup = require "kong.cache.warmup"
-local balancer_execute = require("kong.runloop.balancer").execute
-local balancer_set_host_header = require("kong.runloop.balancer").set_host_header
+local balancer = require "kong.runloop.balancer"
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
@@ -505,6 +504,10 @@ function Kong.init()
      (config.role == "data_plane" or config.role == "control_plane")
   then
     kong.clustering = require("kong.clustering").new(config)
+
+    if config.cluster_v2 then
+      kong.hybrid = require("kong.hybrid").new(config)
+    end
   end
 
   -- Load plugins as late as possible so that everything is set up
@@ -659,6 +662,10 @@ function Kong.init_worker()
 
   if kong.clustering then
     kong.clustering:init_worker()
+  end
+
+  if kong.hybrid then
+    kong.hybrid:init_worker()
   end
 end
 
@@ -892,22 +899,22 @@ function Kong.balancer()
     previous_try.state, previous_try.code = get_last_failure()
 
     -- Report HTTP status for health checks
-    local balancer = balancer_data.balancer
-    if balancer then
+    local balancer_instance = balancer_data.balancer
+    if balancer_instance then
       if previous_try.state == "failed" then
         if previous_try.code == 504 then
-          balancer.report_timeout(balancer_data.balancer_handle)
+          balancer_instance.report_timeout(balancer_data.balancer_handle)
         else
-          balancer.report_tcp_failure(balancer_data.balancer_handle)
+          balancer_instance.report_tcp_failure(balancer_data.balancer_handle)
         end
 
       else
-        balancer.report_http_status(balancer_data.balancer_handle,
+        balancer_instance.report_http_status(balancer_data.balancer_handle,
                                     previous_try.code)
       end
     end
 
-    local ok, err, errcode = balancer_execute(balancer_data, ctx)
+    local ok, err, errcode = balancer.execute(balancer_data, ctx)
     if not ok then
       ngx_log(ngx_ERR, "failed to retry the dns/balancer resolver for ",
               tostring(balancer_data.host), "' with: ", tostring(err))
@@ -919,7 +926,7 @@ function Kong.balancer()
       return ngx.exit(errcode)
     end
 
-    ok, err = balancer_set_host_header(balancer_data)
+    ok, err = balancer.set_host_header(balancer_data)
     if not ok then
       ngx_log(ngx_ERR, "failed to set balancer Host header: ", err)
 
@@ -1045,7 +1052,7 @@ do
     }
 
     local res = ngx.location.capture("/kong_buffered_http", options)
-    if res.truncated then
+    if res.truncated and options.method ~= ngx.HTTP_HEAD then
       kong_global.set_phase(kong, PHASES.error)
       ngx.status = 502
       return kong_error_handlers(ctx)
@@ -1469,6 +1476,15 @@ function Kong.serve_cluster_listener(options)
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
   return kong.clustering:handle_cp_websocket()
+end
+
+
+function Kong.serve_cp_protocol(options)
+  log_init_worker_errors()
+
+  kong_global.set_phase(kong, PHASES.cluster_listener)
+
+  return kong.hybrid:handle_cp_protocol()
 end
 
 

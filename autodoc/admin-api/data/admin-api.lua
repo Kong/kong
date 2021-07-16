@@ -43,15 +43,7 @@ return {
   intro = {
     {
       text = [[
-        <div class="alert alert-info.blue" role="alert">
-          This page refers to the Admin API for running Kong configured with a
-          database (Postgres or Cassandra). For using the Admin API for Kong
-          in DB-less mode, please refer to the
-          <a href="/gateway-oss/{{page.kong_version}}/db-less-admin-api">Admin API for DB-less Mode</a>
-          page.
-        </div>
-
-        Kong comes with an **internal** RESTful Admin API for administration purposes.
+       {{site.base_gateway}} comes with an **internal** RESTful Admin API for administration purposes.
         Requests to the Admin API can be sent to any node in the cluster, and Kong will
         keep the configuration consistent across all nodes.
 
@@ -63,8 +55,95 @@ return {
         exposure of this API. See [this document][secure-admin-api] for a discussion
         of methods to secure the Admin API.
       ]]
-    }, {
-      title = [[Supported Content Types]],
+    },
+
+    { title = [[DB-less mode]],
+      text = [[
+
+        In [DB-less mode](../db-less-and-declarative-config), the Admin API can be used to load a new declarative
+        configuration, and for inspecting the current configuration. In DB-less mode,
+        the Admin API for each Kong node functions independently, reflecting the memory state
+        of that particular Kong node. This is the case because there is no database
+        coordination between Kong nodes.
+
+        In DB-less mode, you configure {{site.base_gateway}} declaratively.
+        Therefore, the Admin API is mostly read-only. The only tasks it can perform are all
+        related to handling the declarative config, including:
+
+        * [Validating configurations against schemas](#validate-a-configuration-against-a-schema)
+        * [Validating plugin configurations against schemas](#validate-a-plugin-configuration-against-the-schema)
+        * [Reloading the declarative configuration](#reload-declarative-configuration)
+        * [Setting a target's health status in the load balancer](#set-target-as-healthy)
+
+      ]],
+    },
+
+    { title = [[Declarative configuration]],
+      text = [[
+
+        Loading the declarative configuration of entities into {{site.base_gateway}}
+        can be done in two ways: at start-up, through the `declarative_config`
+        property, or at run-time, through the Admin API using the `/config`
+        endpoint.
+
+        To get started using declarative configuration, you need a file
+        (in YAML or JSON format) containing entity definitions. You can
+        generate a sample declarative configuration with the command:
+
+        ```
+        kong config init
+        ```
+
+        It generates a file named `kong.yml` in the current directory,
+        containing the appropriate structure and examples.
+
+
+        ### Reload Declarative Configuration
+
+        This endpoint allows resetting a DB-less Kong with a new
+        declarative configuration data file. All previous contents
+        are erased from memory, and the entities specified in the
+        given file take their place.
+
+        To learn more about the file format, see the
+        [declarative configuration](../db-less-and-declarative-config) documentation.
+
+
+        <div class="endpoint post indent">/config</div>
+
+        {:.indent}
+        Attributes | Description
+        ---:| ---
+        `config`<br>**required** | The config data (in YAML or JSON format) to be loaded.
+
+
+        #### Request Querystring Parameters
+
+        Attributes | Description
+        ---:| ---
+        `check_hash`<br>*optional* | If set to 1, Kong will compare the hash of the input config data against that of the previous one. If the configuration is identical, it will not reload it and will return HTTP 304.
+
+
+        #### Response
+
+        ```
+        HTTP 200 OK
+        ```
+
+        ``` json
+        {
+            { "services": [],
+              "routes": []
+            }
+        }
+        ```
+
+        The response contains a list of all the entities that were parsed from the
+        input file.
+      ]],
+    },
+
+    { title = [[Supported Content Types]],
       text = [[
         The Admin API accepts 3 content types on every endpoint:
 
@@ -156,7 +235,6 @@ return {
     [healthchecks]: /{{page.kong_version}}/health-checks-circuit-breakers
     [secure-admin-api]: /{{page.kong_version}}/secure-admin-api
     [proxy-reference]: /{{page.kong_version}}/proxy
-    [db-less-admin-api]: /{{page.kong_version}}/db-less-admin-api
   ]],
 
   general = {
@@ -652,7 +730,7 @@ return {
           ]]
         },
         host = {
-          description = [[The host of the upstream server.]],
+          description = [[The host of the upstream server. Note that the host value is case sensitive.]],
           example = "example.com",
         },
         port = {
@@ -797,7 +875,7 @@ return {
         created_at = { skip = true },
         updated_at = { skip = true },
         name = {
-          description = [[The name of the Route.]]
+          description = [[The name of the Route. Name values must be unique.]]
         },
         regex_priority = {
           description = [[
@@ -810,8 +888,9 @@ return {
         },
         protocols = {
           description = [[
-            A list of the protocols this Route should allow. When set to `["https"]`,
-            HTTP requests are answered with a request to upgrade to HTTPS.
+            An array of the protocols this Route should allow. See the [Route Object](#route-object) section for a list of accepted protocols. 
+            
+            When set to only `"https"`, HTTP requests are answered with an upgrade error. When set to only `"http"`, HTTPS requests are answered with an error. 
           ]],
           examples = {
             {"http", "https"},
@@ -829,7 +908,7 @@ return {
         hosts = {
           kind = "semi-optional",
           description = [[
-            A list of domain names that match this Route.
+            A list of domain names that match this Route. Note that the hosts value is case sensitive.
           ]],
           examples = { {"example.com", "foo.test"}, nil },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
@@ -2040,176 +2119,23 @@ return {
   },
 
 --------------------------------------------------------------------------------
--- Overrides for DB-less mode
+-- DB-less mode
 --------------------------------------------------------------------------------
 
-  dbless = {
-
-    intro = {
-      {
-        text = [[
-          <div class="alert alert-info.blue" role="alert">
-            This page refers to the Admin API for running Kong configured without a
-            database, managing in-memory entities via declarative config.
-            For using the Admin API for Kong with a database, please refer to the
-            <a href="/{{page.kong_version}}/admin-api">Admin API for Database Mode</a> page.
-          </div>
-
-          Kong comes with an **internal** RESTful Admin API for administration purposes.
-          In [DB-less mode][db-less], this Admin API can be used to load a new declarative
-          configuration, and for inspecting the current configuration. In DB-less mode,
-          the Admin API for each Kong node functions independently, reflecting the memory state
-          of that particular Kong node. This is the case because there is no database
-          coordination between Kong nodes.
-
-          - `8001` is the default port on which the Admin API listens.
-          - `8444` is the default port for HTTPS traffic to the Admin API.
-
-          This API provides full control over Kong, so care should be taken when setting
-          up Kong environments to avoid undue public exposure of this API.
-          See [this document][secure-admin-api] for a discussion
-          of methods to secure the Admin API.
-        ]],
-      },
-      {
-        title = [[Supported Content Types]],
-        text = [[
-          The Admin API accepts 3 content types on every endpoint:
-
-          - **application/json**
-
-          Handy for complex bodies (ex: complex plugin configuration), in that case simply send
-          a JSON representation of the data you want to send. Example:
-
-          ```json
-          {
-              "config": {
-                  "limit": 10,
-                  "period": "seconds"
-              }
-          }
-          ```
-
-
-          - **application/x-www-form-urlencoded**
-
-          Simple enough for basic request bodies, you will probably use it most of the time.
-          Note that when sending nested values, Kong expects nested objects to be referenced
-          with dotted keys. Example:
-
-          ```
-          config.limit=10&config.period=seconds
-          ```
-
-
-          - **multipart/form-data**
-
-          Similar to URL-encoded, this content type uses dotted keys to reference nested objects.
-          Here is an example of sending a Lua file to the pre-function Kong plugin:
-
-          ```
-          curl -i -X POST http://localhost:8001/services/plugin-testing/plugins \
-               -F "name=pre-function" \
-               -F "config.functions=@custom-auth.lua"
-          ```
-        ]],
-      },
+  dbless_entities_methods = {
+    -- in DB-less mode, only document GET endpoints for entities
+    ["GET"] = true,
+    ["POST"] = false,
+    ["PATCH"] = false,
+    ["PUT"] = false,
+    ["DELETE"] = false,
+    -- exceptions for the healthcheck endpoints:
+    ["/upstreams/:upstreams/targets/:targets/healthy"] = {
+      ["POST"] = true,
     },
-
-    footer = [[
-      [active]: /gateway-oss/{{page.kong_version}}/health-checks-circuit-breakers/#active-health-checks
-      [healthchecks]: /gateway-oss/{{page.kong_version}}/health-checks-circuit-breakers
-      [secure-admin-api]: /gateway-oss/{{page.kong_version}}/secure-admin-api
-      [proxy-reference]: /gateway-oss/{{page.kong_version}}/proxy
-    ]],
-
-    general = {
-      config = {
-        skip = false,
-        title = [[Declarative Configuration]],
-        description = [[
-          Loading the declarative configuration of entities into Kong
-          can be done in two ways: at start-up, through the `declarative_config`
-          property, or at run-time, through the Admin API using the `/config`
-          endpoint.
-
-          To get started using declarative configuration, you need a file
-          (in YAML or JSON format) containing entity definitions. You can
-          generate a sample declarative configuration with the command:
-
-          ```
-          kong config init
-          ```
-
-          It generates a file named `kong.yml` in the current directory,
-          containing the appropriate structure and examples.
-        ]],
-        ["/config"] = {
-          POST = {
-            title = [[Reload declarative configuration]],
-            endpoint = [[
-              <div class="endpoint post indent">/config</div>
-
-              {:.indent}
-              Attributes | Description
-              ---:| ---
-              `config`<br>**required** | The config data (in YAML or JSON format) to be loaded.
-            ]],
-
-            request_query = [[
-              Attributes | Description
-              ---:| ---
-              `check_hash`<br>*optional* | If set to 1, Kong will compare the hash of the input config data against that of the previous one. If the configuration is identical, it will not reload it and will return HTTP 304.
-            ]],
-
-            description = [[
-              This endpoint allows resetting a DB-less Kong with a new
-              declarative configuration data file. All previous contents
-              are erased from memory, and the entities specified in the
-              given file take their place.
-
-              To learn more about the file format, please read the
-              [declarative configuration][db-less] documentation.
-            ]],
-            response = [[
-              ```
-              HTTP 200 OK
-              ```
-
-              ``` json
-              {
-                  { "services": [],
-                    "routes": []
-                  }
-              }
-              ```
-
-              The response contains a list of all the entities that were parsed from the
-              input file.
-            ]]
-          }
-        },
-      },
+    ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
+      ["POST"] = true,
     },
-
-    entities = {
-      methods = {
-        -- in DB-less mode, only document GET endpoints for entities
-        ["GET"] = true,
-        ["POST"] = false,
-        ["PATCH"] = false,
-        ["PUT"] = false,
-        ["DELETE"] = false,
-        -- exceptions for the healthcheck endpoints:
-        ["/upstreams/:upstreams/targets/:targets/healthy"] = {
-          ["POST"] = true,
-        },
-        ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
-          ["POST"] = true,
-        },
-      },
-    }
-
   },
 
 --------------------------------------------------------------------------------
@@ -2220,12 +2146,8 @@ return {
     header = [[
       - title: Admin API
         url: /admin-api/
+        icon: /assets/images/icons/documentation/icn-admin-api-color.svg
         items:
-          - text: DB-less
-            url: /db-less-admin-api
-
-          - text: Declarative Configuration
-            url: /db-less-admin-api/#declarative-configuration
       ]],
   }
 

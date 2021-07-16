@@ -21,20 +21,21 @@ function usage() {
       echo
    fi
    c=1
-   step "switch"           "switch or create to the release branch"
-   step "write_changelog"  "prepare the changelog"
-   step "commit_changelog" "commit the changelog"
-   step "update_copyright" "update copyright file"
-   step "version_bump"     "bump and commit the version number"
-   step "submit"           "push and submit a release PR"
-   step "tag"              "tag and sign the release candidate"
+   step "switch"               "switch or create to the release branch"
+   step "write_changelog"      "prepare the changelog"
+   step "commit_changelog"     "commit the changelog"
+   step "update_copyright"     "update copyright file"
+   step "update_admin_api_def" "update Admin API definition"
+   step "version_bump"         "bump and commit the version number"
+   step "submit"               "push and submit a release PR"
+   step "tag"                  "tag and sign the release candidate"
    if [ "$beta" == true ]
    then
-     step "docs_pr"        "push and submit a docs.konghq.com PR for the release"
-     step "update_docker"  "update and submit a PR to Kong's docker-kong repo"
-     step "merge_docker"   "merge, tag and sign Kong's docker-kong PR"
-     step "homebrew"       "bump version and submit a PR to homebrew-kong"
-     step "pongo"          "bump version and submit a PR to kong-pongo"
+     step "docs_pr"            "push and submit a docs.konghq.com PR for the release"
+     step "update_docker"      "update and submit a PR to Kong's docker-kong repo"
+     step "merge_docker"       "merge, tag and sign Kong's docker-kong PR"
+     step "homebrew"           "bump version and submit a PR to homebrew-kong"
+     step "pongo"              "bump version and submit a PR to kong-pongo"
    fi
    exit 0
 }
@@ -70,6 +71,7 @@ rockspec="kong-$xyzversion$prerelease-0.rockspec"
 branch="release/$xyzversion"
 xyxversion="$major.$minor.0-(alpha|beta).n"
 prev_version="$xyzversion"
+base="release/$major.$minor.x"
 
 beta=false
 if [[ $version == *"beta"* ]]; then
@@ -93,9 +95,8 @@ case "$step" in
    switch)
       set -e
       git pull
-      git checkout "$branch" || true
-      git checkout -B "$branch" || true
-      git push -u origin "$branch"
+      git checkout "$base" || true
+      git checkout -B "$base" || true
 
       SUCCESS "Release branch is switched locally." \
               "You are ready to run the next step:" \
@@ -134,15 +135,23 @@ case "$step" in
 
       SUCCESS "The COPYRIGHT file is updated locally." \
               "You are ready to run the next step:" \
-              "    $0 -v $version -s version_bump"
+              "    $0 $version update_admin_api_def"
+      ;;
+   #---------------------------------------------------------------------------
+   update_admin_api_def)
+      update_admin_api_def "$version"
+
+      SUCCESS "The kong-admin-api.yml file is updated locally." \
+              "You are ready to run the next step:" \
+              "    $0 $version version_bump"
       ;;
    #---------------------------------------------------------------------------
    version_bump)
       sed -i.bak 's/major = [0-9]*/major = '$major'/' kong/meta.lua
       sed -i.bak 's/minor = [0-9]*/minor = '$minor'/' kong/meta.lua
       sed -i.bak 's/patch = [0-9]*/patch = '$patch'/' kong/meta.lua
-      sed -i.bak 's/-- suffix.*/suffix = "'$prerelease'"/' kong/meta.lua
-      sed -i.bak 's/ suffix.*/ suffix = "'$prerelease'"/' kong/meta.lua
+      sed -i.bak 's/--.*suffix.*$/suffix = "'$prerelease'"/' kong/meta.lua
+
       if ! [ -f "$rockspec" ]
       then
          old_rockspec=$(ls kong-*-0.rockspec | head -n 1)
@@ -179,8 +188,8 @@ case "$step" in
               "or Ctrl-C to cancel."
 
       set -e
-      git push --set-upstream origin "$branch"
-      hub pull-request -b master -h "$branch" -m "Release: $version" -l "pr/please review,pr/do not merge" | true
+      git push --set-upstream origin "$base"
+      hub pull-request -b master -h "$base" -m "Release: $version" -l "pr/please review,pr/do not merge" | true
 
       SUCCESS "Now get the above PR reviewed and approved. Before continueing on" \
               "    $0 -v $version -s tag"
@@ -191,7 +200,7 @@ case "$step" in
               "or Ctrl-C to cancel."
 
       set -e
-      git checkout "$branch"
+      git checkout "$base"
       git pull
       git tag -s "$version" -m "$version"
       git push origin "$version"

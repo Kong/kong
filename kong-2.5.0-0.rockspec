@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.4.1-0"
+version = "2.5.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.4.1"
+  tag = "2.5.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -29,14 +29,14 @@ dependencies = {
   "lyaml == 6.2.7",
   "luasyslog == 2.0.1",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 6.0.0",
+  "lua-resty-dns-client == 6.0.2",
   "lua-protobuf == 0.3.2",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.4.1",
+  "lua-resty-healthcheck == 1.4.2",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.7.2",
+  "lua-resty-openssl == 0.7.3",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
@@ -142,7 +142,12 @@ build = {
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
-    ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",
+    ["kong.runloop.balancer"] = "kong/runloop/balancer/init.lua",
+    ["kong.runloop.balancer.balancers"] = "kong/runloop/balancer/balancers.lua",
+    ["kong.runloop.balancer.healthcheckers"] = "kong/runloop/balancer/healthcheckers.lua",
+    ["kong.runloop.balancer.round_robin"] = "kong/runloop/balancer/round_robin.lua",
+    ["kong.runloop.balancer.targets"] = "kong/runloop/balancer/targets.lua",
+    ["kong.runloop.balancer.upstreams"] = "kong/runloop/balancer/upstreams.lua",
     ["kong.runloop.plugin_servers"] = "kong/runloop/plugin_servers/init.lua",
     ["kong.runloop.plugin_servers.process"] = "kong/runloop/plugin_servers/process.lua",
     ["kong.runloop.plugin_servers.mp_rpc"] = "kong/runloop/plugin_servers/mp_rpc.lua",
@@ -215,6 +220,14 @@ build = {
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
+
+    ["kong.hybrid"] = "kong/hybrid/init.lua",
+    ["kong.hybrid.data_plane"] = "kong/hybrid/data_plane.lua",
+    ["kong.hybrid.control_plane"] = "kong/hybrid/control_plane.lua",
+    ["kong.hybrid.message"] = "kong/hybrid/message.lua",
+    ["kong.hybrid.queue"] = "kong/hybrid/queue.lua",
+    ["kong.hybrid.rpc"] = "kong/hybrid/rpc.lua",
+
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",

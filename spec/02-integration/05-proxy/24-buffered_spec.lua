@@ -155,6 +155,18 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(md5(body), res.headers["MD5"])
       end)
 
+      it("HEAD request work the same, without a body", function()
+        local res = proxy_client:send{ method="HEAD", path="/1/status/231"}
+        local body = assert.res_status(231, res)
+        assert.equal(body, "")
+        assert.equal(md5(body), res.headers["MD5"])
+
+        local res = proxy_ssl_client:send{ method="HEAD", path="/1/status/232" }
+        local body = assert.res_status(232, res)
+        assert.equal(body, "")
+        assert.equal(md5(body), res.headers["MD5"])
+      end)
+
       it("header can be set from upstream response body and body can be modified on header_filter phase", function()
         local res = proxy_client:get("/2/status/233")
         local body = assert.res_status(233, res)
@@ -176,6 +188,18 @@ for _, strategy in helpers.each_strategy() do
 
         local res = proxy_ssl_client:get("/3/status/236")
         local body = assert.res_status(236, res)
+        assert.equal(md5(body), res.headers["MD5"])
+      end)
+
+      it("response phase works in HEAD request", function()
+        local res = proxy_client:send{ method="HEAD", path="/3/status/235" }
+        local body = assert.res_status(235, res)
+        assert.equal(body, "")
+        assert.equal(md5(body), res.headers["MD5"])
+
+        local res = proxy_ssl_client:send{ method="HEAD", path="/3/status/236" }
+        local body = assert.res_status(236, res)
+        assert.equal(body, "")
         assert.equal(md5(body), res.headers["MD5"])
       end)
 

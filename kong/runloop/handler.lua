@@ -1114,10 +1114,9 @@ return {
       local server_port = var.server_port
       ctx.host_port = HOST_PORTS[server_port] or server_port
 
-      -- special handling for proxy-authorization and te headers in case
+      -- special handling for proxy-authorization header in case
       -- the plugin(s) want to specify them (store the original)
       ctx.http_proxy_authorization = var.http_proxy_authorization
-      ctx.http_te                  = var.http_te
     end,
     after = NOOP,
   },
@@ -1350,7 +1349,7 @@ return {
         return ngx.exit(500)
       end
 
-      -- the nginx grpc module does not offer a way to overrride the
+      -- the nginx grpc module does not offer a way to override the
       -- :authority pseudo-header; use our internal API to do so
       local upstream_host = var.upstream_host
       local upstream_scheme = var.upstream_scheme
@@ -1395,9 +1394,8 @@ return {
 
       -- clear the proxy-authorization header only in case the plugin didn't
       -- specify it, assuming that the plugin didn't specify the same value.
-      local proxy_authorization = var.http_proxy_authorization
-      if proxy_authorization and
-         proxy_authorization == var.http_proxy_authorization then
+      if ctx.http_proxy_authorization and
+         ctx.http_proxy_authorization == var.http_proxy_authorization then
         clear_header("Proxy-Authorization")
       end
     end
@@ -1528,7 +1526,9 @@ return {
             balancer_data.balancer_handle, status)
         end
         -- release the handle, so the balancer can update its statistics
-        balancer_data.balancer_handle:release()
+        if balancer_data.balancer_handle.release then
+          balancer_data.balancer_handle:release()
+        end
       end
     end
   }

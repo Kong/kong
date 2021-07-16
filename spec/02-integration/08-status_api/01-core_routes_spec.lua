@@ -1,12 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local strategies = {}
-for _, strategy in helpers.each_strategy() do
-  table.insert(strategies, strategy)
-end
-table.insert(strategies, "off")
-for _, strategy in pairs(strategies) do
+
+for _, strategy in helpers.all_strategies() do
 describe("Status API - with strategy #" .. strategy, function()
   local client
 

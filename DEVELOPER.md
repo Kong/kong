@@ -1,4 +1,192 @@
 
+## Development
+
+We encourage community contributions to Kong. To make sure it is a smooth
+experience (both for you and for the Kong team), please read
+[CONTRIBUTING.md](CONTRIBUTING.md), [DEVELOPER.md](DEVELOPER.md),
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [COPYRIGHT](COPYRIGHT) before
+you start.
+
+If you are planning on developing on Kong, you'll need a development
+installation. The `master` branch holds the latest unreleased source code.
+
+You can read more about writing your own plugins in the [Plugin Development
+Guide](https://docs.konghq.com/latest/plugin-development/), or browse an
+online version of Kong's source code documentation in the [Plugin Development
+Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/).
+
+For a quick start with custom plugin development, check out [Pongo](https://github.com/Kong/kong-pongo)
+and the [plugin template](https://github.com/Kong/kong-plugin) explained in detail below.
+
+
+## Distributions
+
+Kong comes in many shapes. While this repository contains its core's source
+code, other repos are also under active development:
+
+- [Kubernetes Ingress Controller for Kong](https://github.com/Kong/kubernetes-ingress-controller):
+  Use Kong for Kubernetes Ingress.
+- [Kong Docker](https://github.com/Kong/docker-kong): A Dockerfile for
+  running Kong in Docker.
+- [Kong Packages](https://github.com/Kong/kong/releases): Pre-built packages
+  for Debian, Red Hat, and OS X distributions (shipped with each release).
+- [Kong Gojira](https://github.com/Kong/gojira): A tool for
+  testing/developing multiple versions of Kong using containers.
+- [Kong Vagrant](https://github.com/Kong/kong-vagrant): A Vagrantfile for
+  provisioning a development-ready environment for Kong.
+- [Kong Homebrew](https://github.com/Kong/homebrew-kong): Homebrew Formula
+  for Kong.
+- [Kong CloudFormation](https://github.com/Kong/kong-dist-cloudformation):
+  Kong in a 1-click deployment for AWS EC2.
+- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B06WP4TNKL): Kong AMI on
+  the AWS Marketplace.
+- [Kong on Microsoft Azure](https://github.com/Kong/kong-dist-azure): Run Kong
+  using Azure Resource Manager.
+- [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
+  Heroku in one click.
+- [Kong on IBM Cloud](https://github.com/andrew40404/installing-kong-IBM-cloud) - How to deploy Kong on IBM Cloud
+- [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
+  Instaclustr manage your Cassandra cluster.
+- [Master Builds][kong-master-builds]: Docker images for each commit in the `master` branch.
+
+You can find every supported distribution at the [official installation page](https://konghq.com/install/#kong-community).
+
+#### Docker
+
+You can use Docker / docker-compose and a mounted volume to develop Kong by
+following the instructions on [Kong/kong-build-tools](https://github.com/Kong/kong-build-tools#developing-kong).
+
+#### Kong Gojira
+
+[Gojira](https://github.com/Kong/gojira) is a CLI that uses docker-compose
+internally to make the necessary setup of containers to get all
+dependencies needed to run a particular branch of Kong locally, as well
+as easily switching across versions, configurations and dependencies. It
+has support for running Kong in Hybrid (CP/DP) mode, testing migrations,
+running a Kong cluster, among other [features](https://github.com/Kong/gojira/blob/master/doc/manual.md).
+
+#### Kong Pongo
+
+[Pongo](https://github.com/Kong/kong-pongo) is another CLI like Gojira,
+but specific for plugin development. It is docker-compose based and will
+create local test environments including all dependencies. Core features
+are running tests, integrated linter, config initialization, CI support,
+and custom dependencies.
+
+#### Kong Plugin Template
+
+The [plugin template](https://github.com/Kong/kong-plugin) provides a basic
+plugin and is considered a best-practices plugin repository. When writing
+custom plugins, we strongly suggest you start by using this repository as a
+starting point. It contains the proper file structures, configuration files,
+and CI setup to get up and running quickly. This repository seamlessly
+integrates with [Pongo](https://github.com/Kong/kong-pongo).
+
+#### Vagrant
+
+You can use a Vagrant box running Kong and Postgres that you can find at
+[Kong/kong-vagrant](https://github.com/Kong/kong-vagrant).
+
+#### Source Install
+
+Kong is mostly an OpenResty application made of Lua source files, but also
+requires some additional third-party dependencies. We recommend installing
+those by following the [source install instructions](https://docs.konghq.com/install/source/).
+
+Instead of following the second step (Install Kong), clone this repository
+and install the latest Lua sources instead of the currently released ones:
+
+```shell
+$ git clone https://github.com/Kong/kong
+$ cd kong/
+
+# you might want to switch to the development branch. See CONTRIBUTING.md
+$ git checkout master
+
+# install the Lua sources
+$ luarocks make
+```
+
+#### Running for development
+
+Check out the [development section](https://github.com/Kong/kong/blob/master/kong.conf.default#L244)
+of the default configuration file for properties to tweak to ease
+the development process for Kong.
+
+Modifying the [`lua_package_path`](https://github.com/openresty/lua-nginx-module#lua_package_path)
+and [`lua_package_cpath`](https://github.com/openresty/lua-nginx-module#lua_package_cpath)
+directives will allow Kong to find your custom plugin's source code wherever it
+might be in your system.
+
+#### Tests
+
+Install the development dependencies ([busted], [luacheck]) with:
+
+```shell
+$ make dev
+```
+
+Kong relies on three test suites using the [busted] testing library:
+
+* Unit tests
+* Integration tests, which require Postgres and Cassandra to be up and running
+* Plugins tests, which require Postgres to be running
+
+The first can simply be run after installing busted and running:
+
+```
+$ make test
+```
+
+However, the integration and plugins tests will spawn a Kong instance and
+perform their tests against it. Because these test suites perform their tests against the Kong instance, you may need to edit the `spec/kong_tests.conf`
+configuration file to make your test instance point to your Postgres/Cassandra
+servers, depending on your needs.
+
+You can run the integration tests (assuming **both** Postgres and Cassandra are
+running and configured according to `spec/kong_tests.conf`) with:
+
+```
+$ make test-integration
+```
+
+And the plugins tests with:
+
+```
+$ make test-plugins
+```
+
+Finally, all suites can be run at once by simply using:
+
+```
+$ make test-all
+```
+
+Consult the [run_tests.sh](.ci/run_tests.sh) script for a more advanced example
+usage of the test suites and the Makefile.
+
+Finally, a very useful tool in Lua development (as with many other dynamic
+languages) is performing static linting of your code. You can use [luacheck]
+\(installed with `make dev`\) for this:
+
+```
+$ make lint
+```
+
+#### Makefile
+
+When developing, you can use the `Makefile` for doing the following operations:
+
+| Name               | Description                                            |
+| ------------------:| -------------------------------------------------------|
+| `install`          | Install the Kong luarock globally                      |
+| `dev`              | Install development dependencies                       |
+| `lint`             | Lint Lua files in `kong/` and `spec/`                  |
+| `test`             | Run the unit tests suite                               |
+| `test-integration` | Run the integration tests suite                        |
+| `test-plugins`     | Run the plugins test suite                             |
+| `test-all`         | Run all unit + integration + plugins tests at once     |
+
 These are the steps we follow at Kong to set up a development environment.
 
 

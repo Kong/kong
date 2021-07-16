@@ -199,10 +199,10 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
       describe("status API", function()
-        it("shows DP status", function()
+        it("does not show DP status", function()
           helpers.wait_until(function()
             local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
-            if logs:find('DP client certificate revocation check failed: OCSP responder returns bad HTTP status code: 500', nil, true) then
+            if logs:find('data plane client certificate revocation check failed: OCSP responder returns bad HTTP status code: 500', nil, true) then
               local admin_client = helpers.admin_client()
               finally(function()
                 admin_client:close()
@@ -421,7 +421,7 @@ for _, strategy in helpers.each_strategy() do
             for _, v in pairs(json.data) do
               if v.ip == "127.0.0.1" then
                 local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
-                if logs:find('DP client certificate revocation check failed: OCSP responder returns bad HTTP status code: 500', nil, true) then
+                if logs:find('data plane client certificate revocation check failed: OCSP responder returns bad HTTP status code: 500', nil, true) then
                   return true
                 end
               end
