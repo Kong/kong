@@ -18,63 +18,99 @@ for _, strategy in helpers.each_strategy() do
       }, { "jq-filter" })
 
       do
-        local route1 = bp.routes:insert({
-          hosts = { "test1.example.com" },
-        })
-        local route2 = bp.routes:insert({
-          hosts = { "test2.example.com" },
-        })
-        local route3 = bp.routes:insert({
-          hosts = { "test3.example.com" },
-        })
+        local routes = {}
+        for i = 1, 6 do
+          table.insert(routes,
+                       bp.routes:insert({
+                         hosts = { "test" .. i .. ".example.com" }
+                       }))
+        end
+
+        local function add_plugin(route, config)
+          bp.plugins:insert({
+            route = { id = route.id },
+            name = "jq-filter",
+            config = config,
+          })
+        end
 
         -- returns the first element in the request body
-        bp.plugins:insert({
-          route     = { id = route1.id },
-          name      = "jq-filter",
-          config    = {
-            filters = {
-              {
-                context = "request",
-                target = "body",
-                program = ".[1]",
-              },
+        add_plugin(routes[1], {
+          filters = {
+            {
+              context = "request",
+              target = "body",
+              program = ".[1]",
             },
           },
         })
 
         -- returns value of "foo" in the request body as a raw string
-        bp.plugins:insert({
-          route     = { id = route2.id },
-          name      = "jq-filter",
-          config    = {
-            filters = {
-              {
-                context = "request",
-                target = "body",
-                program = ".foo",
-                jq_options = {
-                  raw_output = true,
-                }
-              },
+        add_plugin(routes[2], {
+          filters = {
+            {
+              context = "request",
+              target = "body",
+              program = ".foo",
+              jq_options = {
+                raw_output = true,
+              }
             },
           },
         })
 
         -- returns value of "foo" in the request body as a raw string
-        bp.plugins:insert({
-          route     = { id = route3.id },
-          name      = "jq-filter",
-          config    = {
-            filters = {
-              {
-                context = "request",
-                target = "body",
-                program = ".foo",
-                jq_options = {
-                  join_output = true,
-                }
-              },
+        add_plugin(routes[3], {
+          filters = {
+            {
+              context = "request",
+              target = "body",
+              program = ".foo",
+              jq_options = {
+                join_output = true,
+              }
+            },
+          },
+        })
+
+        -- returns ascii escaped value of "foo" in the request body
+        add_plugin(routes[4], {
+          filters = {
+            {
+              context = "request",
+              target = "body",
+              program = ".foo",
+              jq_options = {
+                ascii_output = true,
+              }
+            },
+          },
+        })
+
+        -- sorts keys
+        add_plugin(routes[5], {
+          filters = {
+            {
+              context = "request",
+              target = "body",
+              program = ".",
+              jq_options = {
+                sort_keys = true,
+              }
+            },
+          },
+        })
+
+        -- pretty output
+        add_plugin(routes[6], {
+          filters = {
+            {
+              context = "request",
+              target = "body",
+              program = ".",
+              jq_options = {
+                compact_output = false,
+              }
             },
           },
         })
@@ -181,6 +217,63 @@ for _, strategy in helpers.each_strategy() do
         })
         local json = assert.request(r).has.jsonbody()
         assert.same("bar", json.data)
+      end)
+
+      it("filters with ascii_output", function()
+        local r = assert(client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "test4.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            foo = "baré",
+          },
+        })
+        local json = assert.request(r).has.jsonbody()
+        assert.same("\"bar\\u00e9\"\n", json.data)
+      end)
+
+      it("filters with sorted keys", function()
+        local r = assert(client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "test5.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            foo = "bar",
+            bar = "foo",
+          },
+        })
+        local json = assert.request(r).has.jsonbody()
+        assert.same({
+          bar = "foo",
+          foo = "bar",
+        }, json.params)
+      end)
+
+      it("filters with pretty output", function()
+        local r = assert(client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "test6.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            foo = "bar",
+            bar = "foo",
+          },
+        })
+        local json = assert.request(r).has.jsonbody()
+        assert.same([[{
+  "bar": "foo",
+  "foo": "bar"
+}
+]], json.data)
       end)
     end)
   end)
