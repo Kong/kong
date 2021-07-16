@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
 
       do
         local routes = {}
-        for i = 1, 6 do
+        for i = 1, 7 do
           table.insert(routes,
                        bp.routes:insert({
                          hosts = { "test" .. i .. ".example.com" }
@@ -111,6 +111,21 @@ for _, strategy in helpers.each_strategy() do
               jq_options = {
                 compact_output = false,
               }
+            },
+          },
+        })
+
+        -- custom if_media_type
+        add_plugin(routes[7], {
+          filters = {
+            {
+              context = "request",
+              target = "body",
+              program = ".foo",
+              if_media_type = {
+                "application/json",
+                "application/x-json-custom",
+              },
             },
           },
         })
@@ -269,6 +284,34 @@ for _, strategy in helpers.each_strategy() do
   "foo": "bar"
 }
 ]], json.data)
+      end)
+
+      it("does not filter with different media type", function()
+        local r = assert(client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "test1.example.com",
+            ["Content-Type"] = "text/plain",
+          },
+          body = [[{"foo":"bar"}]],
+        })
+        local req = assert.request(r)
+        assert.same([[{"foo":"bar"}]], req.kong_request.post_data.text)
+      end)
+
+      it("filters with explicit media type", function()
+        local r = assert(client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "test7.example.com",
+            ["Content-Type"] = "application/x-json-custom",
+          },
+          body = [[{"foo":"bar"}]],
+        })
+        local req = assert.request(r)
+        assert.same("\"bar\"\n", req.kong_request.post_data.text)
       end)
     end)
   end)
