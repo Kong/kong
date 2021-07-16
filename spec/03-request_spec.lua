@@ -249,10 +249,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         local json = assert.request(r).has.jsonbody()
-        assert.same({
-          bar = "foo",
-          foo = "bar",
-        }, json.params)
+        assert.same("{\"bar\":\"foo\",\"foo\":\"bar\"}\n", json.data)
       end)
 
       it("filters with pretty output", function()
@@ -265,12 +262,10 @@ for _, strategy in helpers.each_strategy() do
           },
           body = {
             foo = "bar",
-            bar = "foo",
           },
         })
         local json = assert.request(r).has.jsonbody()
         assert.same([[{
-  "bar": "foo",
   "foo": "bar"
 }
 ]], json.data)
