@@ -1,6 +1,7 @@
-local kong = kong
-local string = string
+local ipairs = ipairs
+local str_find = string.find
 
+local kong = kong
 
 local CACHE
 
@@ -16,6 +17,18 @@ function JqFilter:init_worker()
 end
 
 
+local function is_media_type_allowed(content_type, filter_conf)
+  local media_types = filter_conf.if_media_type
+  for _, media_type in ipairs(media_types) do
+    if str_find(content_type, media_type, 1, true) ~= nil then
+      return true
+    end
+  end
+
+  return false
+end
+
+
 function JqFilter:access(conf)
   local request_body = kong.request.get_raw_body()
   if not request_body then
@@ -23,27 +36,15 @@ function JqFilter:access(conf)
   end
 
   local request_content_type = kong.request.get_header("Content-Type")
-  local content_type
 
-  local count = #conf.filters
-  for i = 1, count do
-    local mime_in = conf.filters[i].mime["in"]
-    if mime_in and string.find(request_content_type, mime_in) ~= 1 then
-      goto next
+  for _, filter in ipairs(conf.filters) do
+    if is_media_type_allowed(request_content_type, filter) then
+      request_body = CACHE(
+        filter.program,
+        request_body,
+        filter.jq_options
+      )
     end
-
-    local mime_out = conf.filters[i].mime.out
-    if mime_out then
-      content_type = mime_out
-    end
-
-    request_body = CACHE(conf.filters[i].program, request_body, conf.filters[i].opts)
-
-    ::next::
-  end
-
-  if content_type and content_type ~= request_content_type then
-    kong.service.request.set_header("Content-Type", content_type)
   end
 
   kong.service.request.set_raw_body(request_body)
