@@ -8,24 +8,33 @@
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson.safe"
+local pl_tablex = require "pl.tablex"
 local _VERSION_TABLE = require "kong.meta" ._VERSION_TABLE
-local _VERSION = require "kong.meta" ._VERSION
 local MAJOR = _VERSION_TABLE.major
+-- make minor version always larger-equal than 3 so test cases are happy
+if _VERSION_TABLE.minor < 3 then
+  _VERSION_TABLE.minor = 3
+end
 local MINOR = _VERSION_TABLE.minor
 local PATCH = _VERSION_TABLE.patch
+local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
+
+
+local KEY_AUTH_PLUGIN
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("CP/DP sync works with #" .. strategy .. " backend", function()
+  describe("CP/DP #sync works with #" .. strategy .. " backend", function()
 
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
         "routes",
         "services",
-        "clustering_data_planes",
+        "plugins",
         "upstreams",
         "targets",
         "certificates",
+        "clustering_data_planes",
       }) -- runs migrations
 
       assert(helpers.start_kong({
@@ -49,6 +58,13 @@ for _, strategy in helpers.each_strategy() do
         cluster_control_plane = "127.0.0.1:9005",
         proxy_listen = "0.0.0.0:9002",
       }))
+
+      for _, plugin in ipairs(helpers.get_plugins_list()) do
+        if plugin.name == "key-auth" then
+          KEY_AUTH_PLUGIN = plugin
+          break
+        end
+      end
     end)
 
     lazy_teardown(function()
@@ -72,12 +88,12 @@ for _, strategy in helpers.each_strategy() do
             if v.ip == "127.0.0.1" then
               assert.near(14 * 86400, v.ttl, 3)
               assert.matches("^(%d+%.%d+)%.%d+", v.version)
-              assert.equal("normal", v.sync_status)
+              assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
 
               return true
             end
           end
-        end, 5)
+        end, 10)
       end)
 
       it("shows DP status (#deprecated)", function()
@@ -223,15 +239,21 @@ for _, strategy in helpers.each_strategy() do
   describe("CP/DP version check works with #" .. strategy, function()
     -- for these tests, we do not need a real DP, but rather use the fake DP
     -- client so we can mock various values (e.g. node_version)
-    describe("checks major.minor, bugfix and suffix can be different", function()
-      local db
-
+    describe("relaxed compatibility check:", function()
       lazy_setup(function()
-        _, db = helpers.get_db_utils(strategy, {
+        local bp = helpers.get_db_utils(strategy, {
           "routes",
           "services",
+          "plugins",
+          "upstreams",
+          "targets",
+          "certificates",
           "clustering_data_planes",
         }) -- runs migrations
+
+        bp.plugins:insert {
+          name = "key-auth",
+        }
 
         assert(helpers.start_kong({
           role = "control_plane",
@@ -250,259 +272,235 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
       end)
 
-      it("CP and DP version and plugins matches", function()
-        local uuid = utils.uuid()
+      local plugins_map = {}
+      -- generate a map of current plugins
+      local plugin_list = pl_tablex.deepcopy(helpers.get_plugins_list())
+      for _, plugin in pairs(plugin_list) do
+        plugins_map[plugin.name] = plugin.version
+      end
 
-        local res = assert(helpers.clustering_client({
-          host = "127.0.0.1",
-          port = 9005,
-          cert = "spec/fixtures/kong_clustering.crt",
-          cert_key = "spec/fixtures/kong_clustering.key",
-          node_id = uuid,
-        }))
+      -- STARTS allowed cases
+      local allowed_cases = {
+        ["CP and DP version and plugins matches"] = {},
+        ["CP configured plugins list matches DP enabled plugins list"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          plugins_list = {
+            {  name = "key-auth", version = plugins_map["key-auth"] }
+          }
+        },
+        ["CP configured plugins list matches DP enabled plugins version"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          plugins_list = {
+            {  name = "key-auth", version = plugins_map["key-auth"] }
+          }
+        },
+        ["CP configured plugins list matches DP enabled plugins major version (older dp plugin)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          plugins_list = {
+            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".0.0" }
+          }
+        },
+        ["CP has configured plugin with older patch version than in DP enabled plugins"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          plugins_list = {
+            {  name = "key-auth", version = plugins_map["key-auth"]:match("(%d+.%d+)") .. ".1000" }
+          }
+        },
+        ["CP and DP minor version mismatches (older dp)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, 0, PATCH),
+        },
+        ["CP and DP patch version mismatches (older dp)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, 0),
+        },
+        ["CP and DP patch version mismatches (newer dp)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, 1000),
+        },
+        ["CP and DP suffix mismatches"] = {
+          dp_version = tostring(_VERSION_TABLE) .. "-enterprise-version",
+        },
+      }
 
-        assert.equals("reconfigure", res.type)
-        assert.is_table(res.config_table)
-
-        -- needs wait_until for C* convergence
-        helpers.wait_until(function()
-          local admin_client = helpers.admin_client()
-
-          res = assert(admin_client:get("/clustering/data-planes"))
-          local body = assert.res_status(200, res)
-
-          admin_client:close()
-          local json = cjson.decode(body)
-
-          for _, v in pairs(json.data) do
-            if v.id == uuid then
-              --- XXX EE needs VERSION to acct with meta
-              assert.equal(tostring(_VERSION), v.version)
-              assert.equal("normal", v.sync_status)
-              return true
-            end
-          end
-        end, 5)
-      end)
-
-      it("CP and DP minor version mismatches, sync is still allowed", function()
-        local uuid = utils.uuid()
-        local version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH + 1)
-
-        local res = assert(helpers.clustering_client({
-          host = "127.0.0.1",
-          port = 9005,
-          cert = "spec/fixtures/kong_clustering.crt",
-          cert_key = "spec/fixtures/kong_clustering.key",
-          node_version = version,
-          node_id = uuid,
-        }))
-
-        assert.equals("reconfigure", res.type)
-        assert.is_table(res.config_table)
-
-        -- needs wait_until for C* convergence
-        helpers.wait_until(function()
-          local admin_client = helpers.admin_client()
-
-          res = assert(admin_client:get("/clustering/data-planes"))
-          local body = assert.res_status(200, res)
-
-          admin_client:close()
-          local json = cjson.decode(body)
-
-          for _, v in pairs(json.data) do
-            if v.id == uuid then
-              assert.equal(version, v.version)
-              assert.equal("normal", v.sync_status)
-              return true
-            end
-          end
-        end, 5)
-      end)
-
-      it("CP and DP suffix mismatches, sync is still allowed", function()
-        local uuid = utils.uuid()
-        local version = tostring(_VERSION) .. "-enterprise-version"
-
-        local res = assert(helpers.clustering_client({
-          host = "127.0.0.1",
-          port = 9005,
-          cert = "spec/fixtures/kong_clustering.crt",
-          cert_key = "spec/fixtures/kong_clustering.key",
-          node_version = version,
-          node_id = uuid,
-        }))
-
-        assert.equals("reconfigure", res.type)
-        assert.is_table(res.config_table)
-
-        -- needs wait_until for c* convergence
-        helpers.wait_until(function()
-          local admin_client = helpers.admin_client()
-
-          res = assert(admin_client:get("/clustering/data-planes"))
-          local body = assert.res_status(200, res)
-
-          admin_client:close()
-          local json = cjson.decode(body)
-
-          for _, v in pairs(json.data) do
-            if v.id == uuid then
-              assert.equal(version, v.version)
-              assert.equal("normal", v.sync_status)
-              return true
-            end
-          end
-        end, 5)
-      end)
-
-      it("CP and DP minor version mismatches, sync is blocked", function()
-        local uuid = utils.uuid()
-
-        local res = assert(helpers.clustering_client({
-          host = "127.0.0.1",
-          port = 9005,
-          cert = "spec/fixtures/kong_clustering.crt",
-          cert_key = "spec/fixtures/kong_clustering.key",
-          node_version = "1.0.0",
-          node_id = uuid,
-        }))
-
-        assert.equals("PONG", res)
-
-        -- needs wait_until for c* convergence
-        helpers.wait_until(function()
-          local admin_client = helpers.admin_client()
-
-          res = assert(admin_client:get("/clustering/data-planes"))
-          local body = assert.res_status(200, res)
-
-          admin_client:close()
-          local json = cjson.decode(body)
-
-          for _, v in pairs(json.data) do
-            if v.id == uuid then
-              assert.equal("1.0.0", v.version)
-              assert.equal("kong_version_incompatible", v.sync_status)
-              return true
-            end
-          end
-        end, 5)
-      end)
-
-      it("CP and CP plugin version mismatches, sync is blocked", function()
-        local uuid = utils.uuid()
-        local plugins_list = helpers.get_plugins_list()
-        -- XXX EE
-        -- -- this tampers with the bugfix version
-        -- plugins_list[1].version = plugins_list[1].version .. "1"
-
-        -- this tampers with the minor version
-        plugins_list[1].version = string.format("%d.%d.%d",
-          tonumber(plugins_list[1].version:match("(%d+)")),
-          tonumber(plugins_list[1].version:match("%d+%.(%d+)")) + 1,
-          tonumber(plugins_list[1].version:match("%d+%.%d+%.(%d+)"))
-        )
-
-        local res = assert(helpers.clustering_client({
-          host = "127.0.0.1",
-          port = 9005,
-          cert = "spec/fixtures/kong_clustering.crt",
-          cert_key = "spec/fixtures/kong_clustering.key",
-          node_id = uuid,
-          node_plugins_list = plugins_list,
-        }))
-
-        assert.equals("PONG", res)
-
-        -- needs wait_until for c* convergence
-        helpers.wait_until(function()
-          local admin_client = helpers.admin_client()
-
-          res = assert(admin_client:get("/clustering/data-planes"))
-          local body = assert.res_status(200, res)
-
-          admin_client:close()
-          local json = cjson.decode(body)
-
-          for _, v in pairs(json.data) do
-            if v.id == uuid then
-              --- XXX EE needs VERSION to acct with meta
-              assert.equal(tostring(_VERSION), v.version)
-              assert.equal("plugin_version_incompatible", v.sync_status)
-              return true
-            end
-          end
-        end, 5)
-      end)
-
-      it("CP and DP plugin set mismatches, sync is blocked", function()
-        assert(db:truncate("clustering_data_planes"))
-        assert(db:truncate("routes"))
-        assert(db:truncate("services"))
-
-        assert(helpers.start_kong({
-          role = "data_plane",
-          database = "off",
-          prefix = "servroot2",
-          cluster_cert = "spec/fixtures/kong_clustering.crt",
-          cluster_cert_key = "spec/fixtures/kong_clustering.key",
-          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
-          cluster_control_plane = "127.0.0.1:9005",
-          proxy_listen = "0.0.0.0:9002",
-          plugins = "bundled", -- differs from CP plugins
-        }))
-
-        local admin_client = helpers.admin_client(10000)
-
-        finally(function()
-          helpers.stop_kong("servroot2")
-          admin_client:close()
-        end)
+      local pl1 = pl_tablex.deepcopy(helpers.get_plugins_list())
+      table.insert(pl1, 2, { name = "banana", version = "1.1.1" })
+      table.insert(pl1, { name = "pineapple", version = "1.1.2" })
+      allowed_cases["DP plugin set is a superset of CP"] = {
+        plugins_list = pl1
+      }
 
 
-        local res = assert(admin_client:post("/services", {
-          body = { name = "mockbin-service", url = "https://127.0.0.1:15556/request", },
-          headers = {["Content-Type"] = "application/json"}
-        }))
-        assert.res_status(201, res)
+      allowed_cases["DP plugin set is a subset of CP"] = {
+        plugins_list = { KEY_AUTH_PLUGIN }
+      }
 
-        assert(admin_client:post("/services/mockbin-service/routes", {
-          body = { paths = { "/shouldnotexist" }, },
-          headers = {["Content-Type"] = "application/json"}
-        }))
+      local pl2 = pl_tablex.deepcopy(helpers.get_plugins_list())
+      for i, _ in ipairs(pl2) do
+        local v = pl2[i].version
+        local minor = v and v:match("%d+%.(%d+)%.%d+")
+        -- find a plugin that has minor version mismatch
+        -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
+        if minor and tonumber(minor) and tonumber(minor) > 2 then
+          pl2[i].version = string.format("%d.%d.%d",
+                                         tonumber(v:match("(%d+)")),
+                                         tonumber(minor - 2),
+                                         tonumber(v:match("%d+%.%d+%.(%d+)"))
 
-        helpers.wait_until(function()
-          local proxy_client = helpers.http_client("127.0.0.1", 9002)
-          local admin_client = helpers.admin_client(10000)
+          )
+          break
+        end
+      end
+      allowed_cases["CP and DP plugin version matches to major"] = {
+        plugins_list = pl2
+      }
 
-          local res = assert(admin_client:get("/clustering/data-planes"))
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          admin_client:close()
+      local pl3 = pl_tablex.deepcopy(helpers.get_plugins_list())
+      for i, _ in ipairs(pl3) do
+        local v = pl3[i].version
+        local patch = v and v:match("%d+%.%d+%.(%d+)")
+        -- find a plugin that has patch version mismatch
+        -- we hardcode `dummy` plugin to be 9.9.9 so there must be at least one
+        if patch and tonumber(patch) and tonumber(patch) > 2 then
+          pl3[i].version = string.format("%d.%d.%d",
+                                         tonumber(v:match("(%d+)")),
+                                         tonumber(v:match("%d+%.(%d+)")),
+                                         tonumber(patch - 2)
+          )
+          break
+        end
+      end
+      allowed_cases["CP and DP plugin version matches to major.minor"] = {
+        plugins_list = pl3
+      }
 
-          for _, v in pairs(json.data) do
-            if v.ip == "127.0.0.1" then
-              assert.near(14 * 86400, v.ttl, 10)
-              --- XXX EE needs VERSION to acct with meta
-              assert.equals(tostring(_VERSION), v.version)
-              assert.equal("plugin_set_incompatible", v.sync_status)
+      for desc, harness in pairs(allowed_cases) do
+        it(desc .. ", sync is allowed", function()
+          local uuid = utils.uuid()
 
-              res = proxy_client:send({
-                method  = "GET",
-                path    = "/shouldnotexist",
-              })
+          local res = assert(helpers.clustering_client({
+            host = "127.0.0.1",
+            port = 9005,
+            cert = "spec/fixtures/kong_clustering.crt",
+            cert_key = "spec/fixtures/kong_clustering.key",
+            node_id = uuid,
+            node_version = harness.dp_version,
+            node_plugins_list = harness.plugins_list,
+          }))
 
-              local status = res and res.status
-              proxy_client:close()
-              if status == 404 then
-                return true
+          assert.equals("reconfigure", res.type)
+          assert.is_table(res.config_table)
+
+          -- needs wait_until for C* convergence
+          helpers.wait_until(function()
+            local admin_client = helpers.admin_client()
+
+            res = assert(admin_client:get("/clustering/data-planes"))
+            local body = assert.res_status(200, res)
+
+            admin_client:close()
+            local json = cjson.decode(body)
+
+            for _, v in pairs(json.data) do
+              if v.id == uuid then
+                local dp_version = harness.dp_version or tostring(_VERSION_TABLE) .. "-enterprise-edition"
+                if dp_version == v.version and CLUSTERING_SYNC_STATUS.NORMAL == v.sync_status then
+                  return true
+                end
               end
             end
+          end, 5)
+        end)
+      end
+      -- ENDS allowed cases
+
+      -- STARTS blocked cases
+      local blocked_cases = {
+        ["CP configured plugin list mismatches DP enabled plugins list"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE,
+          plugins_list = {
+            {  name="banana-plugin", version="1.0.0" }
+          }
+        },
+        ["CP has configured plugin with older major version than in DP enabled plugins"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
+          plugins_list = {
+            {  name="key-auth", version="1.0.0" }
+          }
+        },
+        ["CP has configured plugin with newer minor version than in DP enabled plugins"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
+          plugins_list = {
+            {  name = "key-auth", version = "1000.0.0" }
+          }
+        },
+        ["CP has configured plugin with older minor version than in DP enabled plugins"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
+          plugins_list = {
+            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".1000.0" }
+          }
+        },
+        ["CP and DP major version mismatches"] = {
+          dp_version = "1.0.0",
+          expected = CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE,
+          -- KONG_VERSION_INCOMPATIBLE is send during first handshake, CP closes
+          -- connection immediately if kong version mismatches.
+          -- ignore_error is needed to ignore the `closed` error
+          ignore_error = true,
+        },
+        ["CP and DP minor version mismatches (newer dp)"] = {
+          dp_version = string.format("%d.%d.%d", MAJOR, 1000, PATCH),
+          expected = CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE,
+          ignore_error = true,
+        },
+      }
+
+      for desc, harness in pairs(blocked_cases) do
+        it(desc ..", sync is blocked", function()
+          local uuid = utils.uuid()
+
+          local res, err = helpers.clustering_client({
+            host = "127.0.0.1",
+            port = 9005,
+            cert = "spec/fixtures/kong_clustering.crt",
+            cert_key = "spec/fixtures/kong_clustering.key",
+            node_id = uuid,
+            node_version = harness.dp_version,
+            node_plugins_list = harness.plugins_list,
+          })
+
+          if not res then
+            if not harness.ignore_error then
+              error(err)
+            end
+
+          else
+            assert.equals("PONG", res)
           end
-        end, 10)
-      end)
+
+          -- needs wait_until for c* convergence
+          helpers.wait_until(function()
+            local admin_client = helpers.admin_client()
+
+            res = assert(admin_client:get("/clustering/data-planes"))
+            local body = assert.res_status(200, res)
+
+            admin_client:close()
+            local json = cjson.decode(body)
+
+            for _, v in pairs(json.data) do
+              if v.id == uuid then
+                local dp_version = harness.dp_version or tostring(_VERSION_TABLE)
+                if dp_version == v.version and harness.expected == v.sync_status then
+                  return true
+                end
+              end
+            end
+          end, 5)
+        end)
+      end
+      -- ENDS blocked cases
     end)
   end)
 
@@ -511,6 +509,11 @@ for _, strategy in helpers.each_strategy() do
       helpers.get_db_utils(strategy, {
         "routes",
         "services",
+        "plugins",
+        "upstreams",
+        "targets",
+        "certificates",
+        "clustering_data_planes",
       }) -- runs migrations
 
       assert(helpers.start_kong({
