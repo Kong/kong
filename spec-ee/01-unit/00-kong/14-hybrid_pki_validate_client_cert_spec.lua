@@ -16,6 +16,7 @@ _G.kong = {
   },
 }
 
+local clustering = require "kong.clustering"
 local function create_self_signed(cn)
   local key = pkey.new({
     type = 'EC',
@@ -41,9 +42,7 @@ local function create_self_signed(cn)
 end
 
 describe("hybrid mode validate client cert", function()
-  local clustering = require "kong.clustering"
-
-  clustering.init({
+  local kong_clustering = clustering.new({
     role = "control_plane",
     -- CN is server.kong_clustering_pki.domain
     cluster_cert = "spec/fixtures/kong_clustering_server.crt",
@@ -52,13 +51,13 @@ describe("hybrid mode validate client cert", function()
 
   it("validates if client cert in the same domain of server", function()
     local cert = create_self_signed("somedp.kong_clustering_pki.domain")
-    local ok, _ = clustering._validate_client_cert(cert)
+    local ok, _ = kong_clustering:validate_client_cert(cert)
     assert.is_true(ok)
   end)
 
   it("rejects if client cert is in different domain of server", function()
     local cert = create_self_signed("somedp.not_kong_clustering_pki.domain")
-    local ok, err = clustering._validate_client_cert(cert)
+    local ok, err = kong_clustering:validate_client_cert(cert)
     assert.is_falsy(ok)
     assert.matches("expected CN as subdomain of", err)
   end)
@@ -66,7 +65,7 @@ end)
 
 describe("hybrid mode validate client cert", function()
 
-  local clustering = require "kong.clustering"
+  local kong_clustering
 
   lazy_setup(function()
     local cert, key = create_self_signed("random.domain")
@@ -77,7 +76,7 @@ describe("hybrid mode validate client cert", function()
     f:write(key)
     f:close()
 
-    clustering.init({
+    kong_clustering = clustering.new({
       role = "control_plane",
       cluster_mtls = "pki_check_cn",
       -- CN is server.kong_clustering_pki.domain
@@ -93,7 +92,7 @@ describe("hybrid mode validate client cert", function()
 
   it("rejects if client cert is a top level domain", function()
     local cert = create_self_signed("another.domain")
-    local ok, _ = clustering._validate_client_cert(cert)
+    local ok, _ = kong_clustering:validate_client_cert(cert)
     assert.is_truthy(ok)
   end)
 end)
