@@ -167,7 +167,7 @@ local function make_yaml_file(content, filename)
     assert(fd:write("\n")) -- ensure last line ends in newline
     assert(fd:close())
   else
-    assert(kong_exec("config db_export "..filename))
+    assert(kong_exec("config db_export --conf "..TEST_CONF_PATH.." "..filename))
   end
   return filename
 end
