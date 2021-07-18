@@ -210,7 +210,10 @@ local function compile_conf(kong_config, conf_template)
     _escape = ">",
     pairs = pairs,
     ipairs = ipairs,
-    tostring = tostring
+    tostring = tostring,
+    os = {
+      getenv = os.getenv,
+    }
   }
 
   do
