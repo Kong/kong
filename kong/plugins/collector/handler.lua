@@ -15,7 +15,7 @@ local queue
 
 local CollectorHandler = {
   PRIORITY = 903,
-  VERSION = "2.1.3"
+  VERSION = "2.1.4"
 }
 
 local messaging = require "kong.tools.messaging"
