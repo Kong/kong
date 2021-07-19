@@ -4,6 +4,9 @@ local ngx_ssl = require "ngx.ssl"
 
 local acme_challenge_path = [[^/\.well-known/acme-challenge/(.+)]]
 
+local hybrid_mode = kong.configuration.role == "control_plane" or
+                    kong.configuration.role == "data_plane"
+
 -- cache for dummy cert kong generated (it's a table)
 local default_cert_key
 
@@ -103,6 +106,13 @@ function LetsencryptHandler:certificate(conf)
 
   -- cert not found, get a new one and serve default cert for now
   if not certkey then
+    if hybrid_mode and conf.storage == "kong" then
+      kong.log.err("creating new certificate through proxy side with ",
+                    "\"kong\" storage in Hybrid mode is not supported; ",
+                    "consider create using Admin API or use other storages")
+      return
+    end
+
     ngx.timer.at(0, function()
       local ok, err = client.update_certificate(conf, host, nil)
       if err then
