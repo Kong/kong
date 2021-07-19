@@ -78,7 +78,7 @@ return {
           if ngx.re.match("no Route matched with those values", res.body) then
             err = check_path .. "* doesn't map to a route in Kong"
           elseif res.body ~= "Not found\n" then
-            err = "unexpected response found :" .. (res.body or "<nil>")
+            err = "unexpected response: \"" .. (res.body or "<nil>") .. "\""
             if res.status ~= 404 then
               err = err .. string.format(", unexpected status code: %d", res.status)
             end

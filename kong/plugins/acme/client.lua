@@ -117,7 +117,7 @@ local function new(conf)
       -- The delayed-push mechanism in hybrid mode may result in up to
       -- 2 times of db_update_frequency (the time push delayed) duration
       local wait = kong.configuration.db_update_frequency * 2
-      kong.log.info("Kong is running in hybrid mode, wait for ", wait,
+      kong.log.info("Kong is running in Hybrid mode, wait for ", wait,
                     " seconds for ACME challenges to propogate")
       ngx.sleep(wait)
       return true

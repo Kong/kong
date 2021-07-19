@@ -117,8 +117,13 @@ local schema = {
     { custom_entity_check = {
       field_sources = { "config.storage", },
       fn = function(entity)
-        if _G.kong and kong.configuration.database == "off" and entity == "kong" then
+        local field = entity.config.storage
+        if _G.kong and kong.configuration.database == "off" and
+            kong.configuration.role ~= "data_plane" and field == "kong" then
           return nil, "\"kong\" storage can't be used with dbless mode"
+        end
+        if _G.kong and kong.configuration.role == "control_plane" and field == "shm" then
+          return nil, "\"shm\" storage can't be used in Hybrid mode"
         end
         return true
       end
