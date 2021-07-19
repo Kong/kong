@@ -134,9 +134,43 @@ local function unsetenv(env)
   return ffi.C.unsetenv(env) == 0
 end
 
+local handler = require("busted.outputHandlers.base")()
+local current_test_element
+
+local function register_busted_hook()
+  local busted = require("busted")
+
+  handler.testStart = function(element, parent)
+    current_test_element = element
+  end
+
+  busted.subscribe({'test', 'start'}, handler.testStart)
+end
+
+local function get_test_descriptor(sanitized)
+  if current_test_element then
+    local msg = handler.getFullName(current_test_element)
+    local common_prefix = "perf test for Kong "
+    if msg:startswith(common_prefix) then
+      msg = msg:sub(#common_prefix+1)
+    end
+    if sanitized then
+      msg = msg:gsub("[:/]", "#"):gsub("[ ,]", "_"):gsub("__", "_")
+    end
+    return msg
+  end
+end
+
+local function get_test_output_filename()
+  return get_test_descriptor(true)
+end
+
 return {
   execute = execute,
   wait_output = wait_output,
   setenv = setenv,
   unsetenv = unsetenv,
+  register_busted_hook = register_busted_hook,
+  get_test_descriptor = get_test_descriptor,
+  get_test_output_filename = get_test_output_filename,
 }
