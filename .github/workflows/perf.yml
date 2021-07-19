@@ -103,8 +103,12 @@ jobs:
         PERF_TEST_DRIVER: terraform
       run: |
         for suite in ${{ steps.choose_perf.outputs.suites }}; do
-          bin/busted -o gtest spec/04-perf/$suite/ \
-            -t "${{ steps.choose_perf.outputs.tags }}"
+          # Run each test individually, ngx.pipe doesn't like to be imported twice
+          # maybe bin/busted --no-auto-insulate
+          for f in $(find "spec/04-perf/$suite/" -type f); do
+            bin/busted -o gtest "$f" \
+              -t "${{ steps.choose_perf.outputs.tags }}"
+          done
         done
         
     - name: Teardown
