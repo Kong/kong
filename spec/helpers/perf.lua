@@ -358,7 +358,9 @@ function _M.generate_flamegraph(filename, title)
     title = "Flame graph"
   end
 
-  if git.is_git_repo() then
+  -- If current test is git-based, also attach the Kong binary package
+  -- version it based on
+  if git.is_git_repo() and git.is_git_based() then
     title = title .. " (based on " .. git.get_kong_version() .. ")"
   end
 

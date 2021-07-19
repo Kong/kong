@@ -420,7 +420,7 @@ end
 
 function _M:save_error_log(path)
   return perf.execute(ssh_execute_wrap(self, self.kong_ip,
-          "cat " .. KONG_ERROR_LOG_PATH) .. " >" .. path,
+          "cat " .. KONG_ERROR_LOG_PATH) .. " >'" .. path .. "'",
           { logger = self.ssh_log.log_exec })
 end
 

@@ -338,7 +338,7 @@ function _M:generate_flamegraph()
 end
 
 function _M:save_error_log(path)
-  return perf.execute("docker logs " .. self.kong_ct_id .. " 2>" .. path,
+  return perf.execute("docker logs " .. self.kong_ct_id .. " 2>'" .. path .. "'",
                       { logger = self.log.log_exec })
 end
 
