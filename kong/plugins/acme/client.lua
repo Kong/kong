@@ -271,7 +271,7 @@ local function update_certificate(conf, host, key)
   end
   cert, key, err = order(acme_client, host, key, conf.cert_type)
   if not err then
-    if dbless then
+    if dbless or hybrid_mode then
       -- in dbless mode, we don't actively release lock
       -- since we don't implement an IPC to purge potentially negatively
       -- cached cert/key in other node, we set the cache to be same as
@@ -313,7 +313,7 @@ end
 
 -- loads existing cert and key for host from storage or Kong database
 local function load_certkey(conf, host)
-  if dbless then
+  if dbless or hybrid_mode then
     local _, st, err = new_storage_adapter(conf)
     if err then
       return nil, err
