@@ -138,15 +138,14 @@ local function new_namespace(config, init_timer)
   return ret
 end
 
-function NewRLHandler:new()
+
+function NewRLHandler:init_worker()
   event_hooks.publish("rate-limiting-advanced", "rate-limit-exceeded", {
     fields = { "consumer", "ip", "service", "rate", "limit", "window" },
     unique = { "consumer", "ip", "service" },
     description = "Run an event when a rate limit has been exceeded",
   })
-end
 
-function NewRLHandler:init_worker()
   local worker_events = kong.worker_events
   -- event handlers to update recurring sync timers
 
