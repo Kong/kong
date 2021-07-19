@@ -258,7 +258,7 @@ function _M:generate_flamegraph(title)
 end
 
 function _M:save_error_log(path)
-  return perf.execute("mv " .. KONG_ERROR_LOG_PATH .. " " .. path,
+  return perf.execute("mv " .. KONG_ERROR_LOG_PATH .. " '" .. path .. "'",
                       { logger = self.log.log_exec })
 end
 

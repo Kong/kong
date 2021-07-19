@@ -79,7 +79,15 @@ local function get_kong_version()
 end
 
 local function is_git_repo()
+  -- reload the perf module, for circular dependency issue
+  perf = require("spec.helpers.perf")
+
   return perf.execute("git status")
+end
+
+-- is this test based on git versions: e.g. have we git checkout versions?
+local function is_git_based()
+  return not not git_head
 end
 
 
@@ -88,4 +96,5 @@ return {
   git_restore = git_restore,
   get_kong_version = get_kong_version,
   is_git_repo = is_git_repo,
+  is_git_based = is_git_based,
 }
