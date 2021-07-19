@@ -164,8 +164,14 @@ function _M:teardown(full)
   return true
 end
 
-function _M:start_upstream(conf)
+function _M:start_upstreams(conf, port_count)
   conf = conf or ""
+  local listeners = {}
+  for i=1,port_count do
+    listeners[i] = ("listen %d reuseport;"):format(UPSTREAM_PORT+i-1)
+  end
+  listeners = table.concat(listeners, "\n")
+
   conf = ngx.encode_base64(([[
   worker_processes auto;
   worker_cpu_affinity auto;
@@ -185,12 +191,16 @@ function _M:start_upstream(conf)
      tcp_nodelay on;
 
      server {
-         listen %d reuseport;
+         %s
+         location =/health {
+            return 200;
+         }
          location / {
              return 200 " performancetestperformancetestperformancetestperformancetestperformancetest";
          }
+         %s
      }
-  }]]):format(UPSTREAM_PORT, conf)):gsub("\n", "")
+  }]]):format(listeners, conf)):gsub("\n", "")
 
   local ok, err = execute_batch(self, self.worker_ip, {
     "sudo id",
@@ -207,7 +217,11 @@ function _M:start_upstream(conf)
     return nil, err
   end
 
-  return "http://" .. self.worker_internal_ip .. ":" .. UPSTREAM_PORT
+  local uris = {}
+  for i=1,port_count do
+    uris[i] = "http://" .. self.worker_internal_ip .. ":" .. UPSTREAM_PORT+i-1
+  end
+  return uris
 end
 
 function _M:start_kong(version, kong_conf)

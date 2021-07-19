@@ -65,10 +65,12 @@ local function create_container(self, args, img)
   return cid
 end
 
-local function get_container_port(cid)
+local function get_container_port(cid, ct_port)
   local out, err = perf.execute(
     "docker inspect " .. 
-    "--format='{{range $p, $conf := .NetworkSettings.Ports}}{{if $conf}}{{(index $conf 0).HostPort}}{{end}}{{end}}' " .. cid)
+    "--format='{{range $p, $conf := .NetworkSettings.Ports}}" ..
+                "{{if eq $p \"" .. ct_port .. "\" }}{{(index $conf 0).HostPort}}{{end}}" ..
+              "{{end}}' " .. cid)
   if err then
     return false, "docker inspect:" .. err .. ": " .. (out or "nil")
   end
@@ -116,7 +118,7 @@ function _M:setup()
     return false, "psql is not running: " .. err
   end
 
-  local psql_port, err = get_container_port(self.psql_ct_id)
+  local psql_port, err = get_container_port(self.psql_ct_id, "5432/tcp")
   if not psql_port then
     return false, "failed to get psql port: " .. (err or "nil")
   end
@@ -135,13 +137,20 @@ function _M:setup()
   -- a different set of env vars
   package.loaded["spec.helpers"] = nil
   helpers = require("spec.helpers")
-  return helpers
+
+  return inject_kong_admin_client(self, helpers)
 end
 
-function _M:start_upstream(conf)
+function _M:start_upstreams(conf, port_count)
   if not conf then
     error("upstream conf is not defined", 2)
   end
+
+  local listeners = {}
+  for i=1,port_count do
+    listeners[i] = ("listen %d reuseport;"):format(UPSTREAM_PORT+i-1)
+  end
+  listeners = table.concat(listeners, "\n")
 
   if not self.worker_ct_id then
     local _, err = perf.execute(
@@ -153,7 +162,7 @@ function _M:start_upstream(conf)
         RUN apk update && apk add wrk
         RUN echo -e '\
         server {\
-          listen %d;\
+          %s\
           access_log off;\
           location =/health { \
             return 200; \
@@ -164,12 +173,10 @@ function _M:start_upstream(conf)
         # copy paste
         ENTRYPOINT ["/docker-entrypoint.sh"]
 
-        EXPOSE %d
-
         STOPSIGNAL SIGQUIT
 
         CMD ["nginx", "-g", "daemon off;"]
-      ]]):format(UPSTREAM_PORT, conf:gsub("\n", "\\n"), UPSTREAM_PORT)
+      ]]):format(listeners:gsub("\n", "\\n"), conf:gsub("\n", "\\n"))
       }
     )
     if err then
@@ -197,7 +204,11 @@ function _M:start_upstream(conf)
 
   self.log.info("worker is started")
 
-  return "http://" .. worker_vip .. ":" .. UPSTREAM_PORT
+  local uris = {}
+  for i=1,port_count do
+    uris[i] = "http://" .. worker_vip .. ":" .. UPSTREAM_PORT+i-1
+  end
+  return uris
 end
 
 function _M:start_kong(version, kong_conf)
@@ -243,7 +254,7 @@ function _M:start_kong(version, kong_conf)
     return false, "kong is not running: " .. err
   end
 
-  local proxy_port, err = get_container_port(self.kong_ct_id)
+  local proxy_port, err = get_container_port(self.kong_ct_id, "8000/tcp")
   if not proxy_port then
     return false, "failed to get kong port: " .. (err or "nil")
   end

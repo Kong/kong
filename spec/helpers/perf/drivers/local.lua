@@ -72,10 +72,16 @@ function _M:teardown()
   return self:stop_kong()
 end
 
-function _M:start_upstream(conf)
+function _M:start_upstreams(conf, port_count)
+  local listeners = {}
+  for i=1,port_count do
+    listeners[i] = ("listen %d reuseport;"):format(UPSTREAM_PORT+i-1)
+  end
+  listeners = table.concat(listeners, "\n")
+
   local nginx_conf_path = "/tmp/perf-test-nginx.conf"
   local nginx_prefix = "/tmp/perf-test-nginx"
-  pl_path.mkdir(nginx_prefix)
+  pl_path.mkdir(nginx_prefix .. "/logs")
 
   local f = io.open(nginx_conf_path, "w")
   f:write(([[
@@ -85,11 +91,11 @@ function _M:start_upstream(conf)
     http {
       access_log off;
       server {
-        listen %d;
+        %s
         %s
       }
     }
-  ]]):format(UPSTREAM_PORT, conf))
+  ]]):format(listeners, conf))
   f:close()
 
   local res, err = perf.execute("nginx -c " .. nginx_conf_path ..
@@ -111,7 +117,11 @@ function _M:start_upstream(conf)
 
   self.log.info("upstream started at PID: " .. pid)
 
-  return "http://localhost:" .. UPSTREAM_PORT
+  local uris = {}
+  for i=1,port_count do
+    uris[i] = "http://127.0.0.1:" .. UPSTREAM_PORT+i-1
+  end
+  return uris
 end
 
 function _M:start_kong(version, kong_conf)
