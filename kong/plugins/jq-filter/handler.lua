@@ -1,4 +1,7 @@
-local ipairs = ipairs
+local cjson = require "cjson.safe"
+local cjson_decode = cjson.decode
+
+local type, pairs, ipairs = type, pairs, ipairs
 local str_find = string.find
 
 local kong = kong
@@ -50,11 +53,19 @@ function JqFilter:access(conf)
       if filter.target == "body" then
         request_body = res
       else
-        -- headers from json
+        local headers = cjson_decode(res)
+        if type(headers) == "table" then
+          for name, value in pairs(headers or {}) do
+            if type(name) == "string" and type(value) == "string" then
+              new_headers[name] = value
+            end
+          end
+        end
       end
     end
   end
 
+  kong.service.request.set_headers(new_headers)
   kong.service.request.set_raw_body(request_body)
 end
 

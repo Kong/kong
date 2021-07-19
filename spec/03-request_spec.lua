@@ -136,7 +136,7 @@ for _, strategy in helpers.each_strategy() do
             {
               context = "request",
               target = "headers",
-              program = ".foo",
+              program = [[. | { "X-Foo": .foo, "X-Bar": .bar }]]
             },
           },
         })
@@ -339,6 +339,28 @@ for _, strategy in helpers.each_strategy() do
         })
         local json = assert.request(r).has.jsonbody()
         assert.same({ foo = "bar" }, json.params)
+      end)
+    end)
+
+    describe("headers", function()
+      it("filters with default options", function()
+        local r = assert(client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "test8.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            foo = "bar",
+            bar = "foo",
+          },
+        })
+        local foo = assert.request(r).has.header("X-Foo")
+        assert.equals(foo, "bar")
+
+        local bar = assert.request(r).has_header("X-Bar")
+        assert.equals(bar, "foo")
       end)
     end)
   end)
