@@ -31,6 +31,8 @@ if env_versions then
   versions = split(env_versions, ",")
 end
 
+local LOAD_DURATION = 180
+
 local SERVICE_COUNT = 10
 local ROUTE_PER_SERVICE = 10
 local CONSUMER_COUNT = 100
@@ -105,16 +107,16 @@ for _, version in ipairs(versions) do
     end)
 
     it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes", function()
-      perf.start_stapxx("lj-lua-stacks.sxx", "--arg time=30")
+      perf.start_stapxx("lj-lua-stacks.sxx", "-D MAXMAPENTRIES=1000000 --arg time=" .. LOAD_DURATION)
 
       perf.start_load({
         connections = 1000,
         threads = 5,
-        duration = 30,
+        duration = LOAD_DURATION,
         script = wrk_script,
       })
 
-      ngx.sleep(30)
+      ngx.sleep(LOAD_DURATION)
 
       local result = assert(perf.wait_result())
 

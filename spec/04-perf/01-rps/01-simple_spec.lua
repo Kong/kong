@@ -31,6 +31,8 @@ if env_versions then
   versions = split(env_versions, ",")
 end
 
+local LOAD_DURATION = 60
+
 local SERVICE_COUNT = 10
 local ROUTE_PER_SERVICE = 10
 local CONSUMER_COUNT = 100
@@ -88,10 +90,8 @@ describe("perf test #baseline", function()
         path = "/test",
         connections = 1000,
         threads = 5,
-        duration = 10,
+        duration = LOAD_DURATION,
       })
-
-      ngx.sleep(10)
 
       local result = assert(perf.wait_result())
 
@@ -104,6 +104,7 @@ describe("perf test #baseline", function()
 end)
 
 for _, version in ipairs(versions) do
+
   describe("perf test for Kong " .. version .. " #simple #no_plugins", function()
     local bp
     lazy_setup(function()
@@ -158,10 +159,8 @@ for _, version in ipairs(versions) do
           path = "/s1-r1",
           connections = 1000,
           threads = 5,
-          duration = 10,
+          duration = LOAD_DURATION,
         })
-
-        ngx.sleep(10)
 
         local result = assert(perf.wait_result())
 
@@ -182,11 +181,9 @@ for _, version in ipairs(versions) do
         perf.start_load({
           connections = 1000,
           threads = 5,
-          duration = 10,
+          duration = LOAD_DURATION,
           script = wrk_script,
         })
-
-        ngx.sleep(10)
 
         local result = assert(perf.wait_result())
 
@@ -275,11 +272,10 @@ for _, version in ipairs(versions) do
         perf.start_load({
           connections = 1000,
           threads = 5,
-          duration = 10,
+          duration = LOAD_DURATION,
           script = wrk_script,
         })
 
-        ngx.sleep(10)
 
         local result = assert(perf.wait_result())
 
