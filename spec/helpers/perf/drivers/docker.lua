@@ -100,6 +100,20 @@ function _M:teardown()
   return true
 end
 
+local function inject_kong_admin_client(self, helpers)
+  helpers.admin_client = function(timeout)
+    if not self.kong_ct_id then
+      error("helpers.admin_client can only be called after perf.start_kong")
+    end
+    local admin_port, err = get_container_port(self.kong_ct_id, "8001/tcp")
+    if not admin_port then
+      error("failed to get kong admin port: " .. (err or "nil"))
+    end
+    return helpers.http_client("127.0.0.1", admin_port, timeout or 60000)
+  end
+  return helpers
+end
+
 function _M:setup()
   if not self.psql_ct_id then
     local cid, err = create_container(self, "-p5432 " ..
@@ -217,6 +231,7 @@ function _M:start_kong(version, kong_conf)
   end
 
   local use_git
+  local image = "kong"
 
   if version:startswith("git:") then
     perf.git_checkout(version:sub(#("git:")+1))
@@ -224,6 +239,8 @@ function _M:start_kong(version, kong_conf)
 
     version = perf.get_kong_version()
     self.log.debug("current git hash resolves to docker version ", version)
+  elseif version:match("rc") or version:match("beta") then
+    image = "kong/kong"
   end
 
   if not self.kong_ct_id then
@@ -232,12 +249,14 @@ function _M:start_kong(version, kong_conf)
       extra_config = string.format("%s -e KONG_%s=%s", extra_config, k:upper(), v)
     end
     local cid, err = create_container(self,
-      "-p 8000 --link " .. self.psql_ct_id .. ":postgres " ..
+      "-p 8000 -p 8001 " ..
+      "--link " .. self.psql_ct_id .. ":postgres " ..
       extra_config .. " " ..
       "-e KONG_PG_HOST=postgres " ..
       "-e KONG_PROXY_ACCESS_LOG=/dev/null " ..
-      "-e KONG_PG_DATABASE=kong_tests ",
-      "kong:" .. version)
+      "-e KONG_PG_DATABASE=kong_tests " ..
+      "-e KONG_ADMIN_LISTEN=0.0.0.0:8001 ",
+      image .. ":" .. version)
     if err then
       return false, "error running docker create when creating kong container: " .. err
     end
