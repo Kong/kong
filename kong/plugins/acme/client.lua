@@ -6,6 +6,8 @@ local cjson = require "cjson"
 local ngx_ssl = require "ngx.ssl"
 
 local dbless = kong.configuration.database == "off"
+local hybrid_mode = kong.configuration.role == "control_plane" or
+                    kong.configuration.role == "data_plane"
 
 local RENEW_KEY_PREFIX = "kong_acme:renew_config:"
 local RENEW_LAST_RUN_KEY = "kong_acme:renew_last_run"
@@ -111,6 +113,15 @@ local function new(conf)
     storage_config = conf.storage_config[conf.storage],
     eab_kid = conf.eab_kid,
     eab_hmac_key = conf.eab_hmac_key,
+    challenge_start_callback = hybrid_mode and function()
+      -- The delayed-push mechanism in hybrid mode may result in up to
+      -- 2 times of db_update_frequency (the time push delayed) duration
+      local wait = kong.configuration.db_update_frequency * 2
+      kong.log.info("Kong is running in hybrid mode, wait for ", wait,
+                    " seconds for ACME challenges to propogate")
+      ngx.sleep(wait)
+      return true
+    end or nil
   })
 end
 
