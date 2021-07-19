@@ -6,6 +6,8 @@ local git = require("spec.helpers.perf.git")
 
 local my_logger = logger.new_logger("[controller]")
 
+utils.register_busted_hook()
+
 -- how many times for each "driver" operation
 local RETRY_COUNT = 3
 local DRIVER

@@ -1,5 +1,6 @@
 local perf = require("spec.helpers.perf")
 local split = require("pl.stringx").split
+local utils = require("spec.helpers.perf.utils")
 
 perf.set_log_level(ngx.DEBUG)
 --perf.set_retry_count(3)
@@ -120,11 +121,11 @@ for _, version in ipairs(versions) do
       print(("### Result for Kong %s:\n%s"):format(version, result))
 
       perf.generate_flamegraph(
-        "output/" .. version:gsub("[:/]", "#") .. "-simple.svg",
-        "Flame graph for Kong " .. version .. " #simple #no_plugins"
+        "output/" .. utils.get_test_output_filename() .. ".svg",
+        "Flame graph for Kong " .. utils.get_test_descriptor()
       )
 
-      perf.save_error_log("output/" .. version:gsub("[:/]", "#") .. "-simple.log")
+      perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
   end)
 end

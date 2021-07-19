@@ -1,5 +1,6 @@
 local perf = require("spec.helpers.perf")
 local split = require("pl.stringx").split
+local utils = require("spec.helpers.perf.utils")
 
 perf.set_log_level(ngx.DEBUG)
 --perf.set_retry_count(3)
@@ -149,6 +150,8 @@ for _, version in ipairs(versions) do
     end)
 
     it("#single_route", function()
+      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+
       local results = {}
       for i=1,3 do
         perf.start_load({
@@ -168,10 +171,12 @@ for _, version in ipairs(versions) do
 
       print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
-      perf.save_error_log("output/" .. version:gsub("[:/]", "#") .. "-single_route.log")
+      perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
 
     it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes", function()
+      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+
       local results = {}
       for i=1,3 do
         perf.start_load({
@@ -191,7 +196,7 @@ for _, version in ipairs(versions) do
 
       print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
-      perf.save_error_log("output/" .. version:gsub("[:/]", "#") .. "-multiple_routes.log")
+      perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
   end)
 
@@ -260,8 +265,11 @@ for _, version in ipairs(versions) do
       perf.teardown(os.getenv("PERF_TEST_TEARDOWN_ALL") or false)
     end)
 
-    it(SERVICE_COUNT .. " services each has  " .. ROUTE_PER_SERVICE .. " routes " ..
+    it(SERVICE_COUNT .. " services each has " .. ROUTE_PER_SERVICE .. " routes " ..
       "with key-auth, " .. CONSUMER_COUNT .. " consumers", function()
+
+      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+
       local results = {}
       for i=1,3 do
         perf.start_load({
@@ -281,7 +289,7 @@ for _, version in ipairs(versions) do
 
       print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
 
-      perf.save_error_log("output/" .. version:gsub("[:/]", "#") .. "-key_auth.log")
+      perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
   end)
 end
