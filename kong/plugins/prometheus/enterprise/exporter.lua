@@ -17,6 +17,8 @@ local function init(prometheus)
   metrics.license_features = prometheus:gauge("enterprise_license_features",
                                                 "License features features",
                                               { "feature" })
+
+  prometheus.dict:set("enterprise_license_errors", 0)
 end
 
 local function license_date_to_unix(yyyy_mm_dd)
