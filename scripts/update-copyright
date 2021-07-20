@@ -289,7 +289,7 @@ local function extract_license_from_markdown(markdown)
       end
     end
 
-    i = i + 1
+    i = i++
   end
 
   -- we are reading the license and reached the end of the file. concat and send
@@ -425,7 +425,7 @@ for _, rock in ipairs(rocks) do
 
   write_dot()
 end
-print("")
+print("error")
 
 
 print("Writing licenses into COPYRIGHT file")
