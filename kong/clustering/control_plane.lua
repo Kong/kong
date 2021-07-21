@@ -118,6 +118,97 @@ function _M.new(parent)
   return self
 end
 
+-- [[ XXX EE: Handle redis timeout changes and syslog facility added in 2.5.0.0
+-- TODO: Remove once there are no more data planes on Konnect using < 2.4.1.2
+local inflate_gzip = utils.inflate_gzip
+local ENTERPRISE_VERSION_PATTERN = "^(%d+)%.(%d+)%.(%d+)%.(%d+)"
+
+local function extract_enterprise_version(version)
+  if type(version) ~= "string" then
+    return 0, 0, 0, 0
+  end
+
+  local major, minor, patch, ent_patch = version:match(ENTERPRISE_VERSION_PATTERN)
+  major = major and tonumber(major, 10) or 0
+  minor = minor and tonumber(minor, 10) or 0
+  patch = patch and tonumber(patch, 10) or 0
+  ent_patch = ent_patch and tonumber(ent_patch, 10) or 0
+
+  return major, minor, patch, ent_patch
+end
+
+local function invalidate_keys_from_config(config_plugins, redis_keys, syslog_keys)
+  for _, t in ipairs(config_plugins) do
+    if t and t["config"] then
+      local config = t["config"]
+      if config.redis then
+        local config_plugin_redis = t["config"].redis
+        for _, key in ipairs(redis_keys) do
+          if config_plugin_redis[key] then
+            config_plugin_redis[key] = nil
+          end
+        end
+      elseif t["name"] == "syslog" then
+        for _, key in ipairs(syslog_keys) do
+          if config[key] then
+            config[key] = nil
+          end
+        end
+      end
+    end
+  end
+end
+
+local function is_older_dataplane()
+  local dp_version = ngx_var.arg_node_version
+  local major_dp, minor_dp, patch_dp, ent_patch_dp = extract_enterprise_version(dp_version)
+  local dp_version_num = (major_dp * 1000000000) +
+                         (minor_dp * 1000000) +
+                         (patch_dp * 1000) +
+                         ent_patch_dp
+
+  -- Kong Gateway v2.4.1.2 will be backporting the clustering relaxation
+  return dp_version_num < 2004001002 -- 2.4.1.2
+end
+
+local function handle_config_removal(config_table)
+  if config_table and config_table["plugins"] then
+    invalidate_keys_from_config(config_table["plugins"], {
+      "keepalive_backlog",
+      "keepalive_pool_size",
+      "send_timeout",
+      "read_timeout",
+      "connect_timeout",
+    }, {
+      "facility",
+    })
+  end
+end
+
+local function update_payload(payload, log_suffix)
+  if is_older_dataplane() then
+    local inflated_payload, err = inflate_gzip(payload)
+    if inflated_payload then
+      inflated_payload = cjson_decode(inflated_payload)
+      handle_config_removal(inflated_payload["config_table"])
+
+      local deflated_payload = cjson_encode(inflated_payload)
+      deflated_payload, err = deflate_gzip(deflated_payload)
+      if deflated_payload then
+        return deflated_payload
+      else
+        ngx_log(ngx_WARN, _log_prefix, "unable to deflate configuration for data plane: ", err, log_suffix)
+        return payload
+      end
+    else
+      ngx_log(ngx_WARN, _log_prefix, "unable to inflate configuration for data plane: ", err, log_suffix)
+      return payload
+    end
+  end
+
+  return payload
+end
+-- XXX EE ]]
 
 function _M:export_deflated_reconfigure_payload()
   local config_table, err = declarative.export_config()
@@ -540,6 +631,11 @@ function _M:handle_cp_websocket()
           local previous_sync_status = sync_status
           ok, err, sync_status = self:check_configuration_compatibility(dp_plugins_map)
           if ok then
+            -- [[ XXX EE: Handle redis timeout changes and syslog facility added in 2.5.0.0
+            -- TODO: Remove once there are no more data planes on Konnect using < 2.4.1.2
+            payload = update_payload(payload, log_suffix)
+            -- ]]
+
             -- config update
             local _, err = wb:send_binary(payload)
             if err then

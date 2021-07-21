@@ -10,7 +10,7 @@ void setBuildStatus(String message, String state) {
 }
 
 // Generate the CLI parameters for any known incompatibilities
-String known_incompatibilities(String csv) {
+def known_incompatibilities(String csv) {
   def known_incompatible = ""
   if (! csv.isEmpty()) {
     known_incompatible = '--known-incompatible ' + csv.split(',').join(' --known-incompatible ')
@@ -25,8 +25,26 @@ pipeline {
     }
   }
   options {
-      timeout(time: 45, unit: 'MINUTES')
-      disableConcurrentBuilds()
+    timeout(time: 45, unit: 'MINUTES')
+    disableConcurrentBuilds()
+  }
+  parameters {
+    string(
+      name: 'DATA_PLANE_KONG_GATEWAY_IMAGE',
+      defaultValue: 'kong/kong-gateway:2.4',
+      trim: true,
+      description: '''<p>Kong Gateway image to use for the data plane</p>
+                      <ul>
+                        <li><a href="https://hub.docker.com/r/kong/kong-gateway/tags">kong/kong-gateway</a> - Publicly available Kong Gateway images</li>
+                        <li><a href="https://hub.docker.com/repository/docker/kong/kong-gateway-internal/tags">kong/kong-gateway-internal</a> - Internal previews and nightly Kong Gateway images</li>
+                        <li><a href="https://hub.docker.com/repository/docker/kong/kong-gateway-private/tags">kong/kong-gateway-private</a> - Private Kong Gateway images (Bintray era releases)</li>
+                      </ul>
+                      <strong>Note</strong>: <b>kong/kong-gateway-internal</b> and <b>kong/kong-gateway-private</b> require 1Password credentials to login (see <i>kongcloudowner</i> for credentials)''')
+    string(
+      name: 'KNOWN_PLUGIN_INCOMPATIBILITIES',
+      defaultValue: 'file-log,http-log,loggly,prometheus,syslog,tcp-log,udp-log,zipkin',
+      trim: true,
+      description: 'Comma separated list of known incompatible plugins')
   }
   environment {
     GITHUB_TOKEN = credentials('github_bot_access_token')
@@ -38,14 +56,15 @@ pipeline {
     // Override gojira version (ensure master)
     GOJIRA_VERSION = 'master'
 
-    // Only <major>.<minor> is needed for version
-    PREVIOUS_KONG_RELEASE = '2.4'
-
     // Override PATH to include any binary installations
     PATH = "${env.PATH}:~/.local/bin"
 
-    // Known plugin incompatibilities
-    KNOWN_INCOMPATIBILITIES = "file-log,http-log,loggly,prometheus,syslog,tcp-log,udp-log,zipkin"
+    /**
+     * Parameter values can be overridden during manual builds. Ensure
+     * defaultValue is updated as needed when new next branches are created.
+     */
+    DATA_PLANE_KONG_GATEWAY_IMAGE = "${params.DATA_PLANE_KONG_GATEWAY_IMAGE}"
+    KNOWN_PLUGIN_INCOMPATIBILITIES = "${params.KNOWN_PLUGIN_INCOMPATIBILITIES}"
   }
   stages {
     stage('Login to Docker Hub') {
@@ -70,38 +89,44 @@ pipeline {
     }
     stage('Version Compatibility') {
       when {
-        not {
-          anyOf {
-            branch 'master'
-            branch 'main'
-          }
-        }
         anyOf {
-          changeset "kong/plugins/**"
-          changeset "kong-*.rockspec"
+          triggeredBy cause: "UserIdCause"
+          allOf {
+            not {
+              anyOf {
+                branch 'master'
+                branch 'main'
+              }
+            }
+            anyOf {
+              changeset "kong/plugins/**"
+              changeset "kong/enterprise_edition/redis/**"
+              changeset "kong-*.rockspec"
+            }
+          }
         }
       }
       steps {
         sh label: 'Start Kong Gateway in hybrid mode',
            script: '''gojira hybrid up \
                         -v $(realpath scripts/check-version-compatibility):/check-version-compatibility \
-                        --dataplane-image kong/kong-gateway:$PREVIOUS_KONG_RELEASE'''
+                        --dataplane-image $DATA_PLANE_KONG_GATEWAY_IMAGE'''
         sh label: 'Build Kong Gateway development environment',
            script: '''gojira hybrid run@kong-cp \
-                        --dataplane-image kong/kong-gateway:$PREVIOUS_KONG_RELEASE \
+                        --dataplane-image $DATA_PLANE_KONG_GATEWAY_IMAGE \
                           make dev'''
         sh label: 'Start Kong Gateway dataplane',
            script: '''gojira hybrid run@kong-dp \
-                        --dataplane-image kong/kong-gateway:$PREVIOUS_KONG_RELEASE \
+                        --dataplane-image $DATA_PLANE_KONG_GATEWAY_IMAGE \
                           kong start'''
         sh label: 'Execute version compatibility smoke test',
            script: '''gojira hybrid run@kong-cp \
-                        --dataplane-image kong/kong-gateway:$PREVIOUS_KONG_RELEASE \
+                        --dataplane-image $DATA_PLANE_KONG_GATEWAY_IMAGE \
                         -e GITHUB_TOKEN \
-                          /check-version-compatibility --skip-enterprise ''' + known_incompatibilities(env.KNOWN_INCOMPATIBILITIES)
+                          /check-version-compatibility --skip-enterprise ''' + known_incompatibilities(env.KNOWN_PLUGIN_INCOMPATIBILITIES)
         sh label: 'Clean gojira instances',
            script: '''gojira hybrid nuke \
-                        --dataplane-image kong/kong-gateway:$PREVIOUS_KONG_RELEASE \
+                        --dataplane-image $DATA_PLANE_KONG_GATEWAY_IMAGE \
                         -f'''
       }
     }
