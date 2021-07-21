@@ -51,7 +51,7 @@ end
 
 
 local function get_server_defs()
-  local config = kong.configuration
+  config = kong.configuration
 
   if not _servers then
     _servers = {}
