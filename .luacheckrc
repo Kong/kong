@@ -18,6 +18,10 @@ ignore = {
     "6.", -- ignore whitespace warnings
 }
 
+exclude_files = {
+    "kong-pongo/",
+}
+
 
 files["spec/**/*.lua"] = {
     std = "ngx_lua+busted",
