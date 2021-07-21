@@ -79,7 +79,6 @@ local runloop = require "kong.runloop.handler"
 local tracing = require "kong.tracing"
 local keyring = require "kong.keyring.startup"
 local stream_api = require "kong.tools.stream_api"
-local clustering = require "kong.clustering"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
@@ -549,8 +548,15 @@ function Kong.init()
   keyring.init(config)
   -- ]]
 
-  if subsystem == "http" then
-    clustering.init(config)
+  if subsystem == "http" and
+     (config.role == "data_plane" or config.role == "control_plane")
+  then
+    singletons.clustering = require("kong.clustering").new(config)
+    kong.clustering = singletons.clustering
+
+    if config.cluster_v2 then
+      kong.hybrid = require("kong.hybrid").new(config)
+    end
   end
 
   -- Load plugins as late as possible so that everything is set up
@@ -724,8 +730,8 @@ function Kong.init_worker()
     plugin_servers.start()
   end
 
-  if subsystem == "http" then
-    clustering.init_worker(kong.configuration)
+  if kong.clustering then
+    kong.clustering:init_worker()
   end
 end
 
@@ -1571,7 +1577,7 @@ function Kong.serve_cluster_listener(options)
 
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
-  return clustering.handle_cp_websocket()
+  return kong.clustering:handle_cp_websocket()
 end
 
 
@@ -1580,7 +1586,7 @@ function Kong.serve_cluster_telemetry_listener(options)
 
   kong_global.set_phase(kong, PHASES.cluster_listener)
 
-  return clustering.handle_cp_telemetry_websocket()
+  return kong.clustering:handle_cp_telemetry_websocket()
 end
 
 function Kong.stream_api()

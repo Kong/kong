@@ -2642,7 +2642,7 @@ end
 -- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
 -- are required.
 -- Other fields that can be overwritten are:
--- `node_hostname`, `node_id`, `node_version`. If absent,
+-- `node_hostname`, `node_id`, `node_version`, `node_plugins_list`. If absent,
 -- they are automatically filled.
 -- @return msg if handshake succeeded and initial message received from CP or nil, err
 local function clustering_client(opts)
@@ -2657,14 +2657,14 @@ local function clustering_client(opts)
               "&node_hostname=" .. (opts.node_hostname or kong.node.get_hostname()) ..
               "&node_version=" .. (opts.node_version or KONG_VERSION)
 
-  local opts = {
+  local conn_opts = {
     ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
     client_cert = assert(ssl.parse_pem_cert(assert(pl_file.read(opts.cert)))),
     client_priv_key = assert(ssl.parse_pem_priv_key(assert(pl_file.read(opts.cert_key)))),
     server_name = "kong_clustering",
   }
 
-  local res, err = c:connect(uri, opts)
+  local res, err = c:connect(uri, conn_opts)
   if not res then
     return nil, err
   end
@@ -2677,8 +2677,8 @@ local function clustering_client(opts)
 
   assert(c:send_ping(string.rep("0", 32)))
 
-  local data, typ
-  data, typ = c:recv_frame()
+  local data, typ, err
+  data, typ, err = c:recv_frame()
   c:close()
 
   if typ == "binary" then
@@ -2690,7 +2690,7 @@ local function clustering_client(opts)
     return "PONG"
   end
 
-  return nil, "unknown frame from CP: " .. typ
+  return nil, "unknown frame from CP: " .. (typ or err)
 end
 
 
