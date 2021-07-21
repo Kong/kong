@@ -25,8 +25,6 @@ local sort = table.sort
 local type = type
 
 -- XXX EE
-local constants = require("kong.constants")
-local declarative = require("kong.db.declarative")
 local semaphore = require("ngx.semaphore")
 local cjson = require("cjson.safe")
 local utils = require("kong.tools.utils")
