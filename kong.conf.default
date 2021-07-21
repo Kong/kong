@@ -1020,7 +1020,7 @@
 
 #pg_ssl_version = tlsv1          # When using ssl between Kong and PostgreSQL,
                                  # the version of tls to use. Accepted values are
-                                 # `tlsv1` or `tlsv1_2`
+                                 # `tlsv1`, `tlsv1_2`, or `tlsv1_3`.
 
 #pg_ssl_required = off           # When `pg_ssl` is on this determines if
                                  # TLS must be used between Kong and PostgreSQL.

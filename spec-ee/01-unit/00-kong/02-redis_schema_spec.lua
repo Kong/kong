@@ -221,4 +221,91 @@ describe("redis schema", function()
     assert.same("these sets are mutually exclusive: ('sentinel_master'," ..
       " 'sentinel_role', 'sentinel_addresses'), ('cluster_addresses')", err["@entity"][1])
   end)
+
+  it("granular timeouts derive from default timeout", function()
+    local conf = {}
+
+    conf = Redis:process_auto_fields(conf, "insert")
+    local ok, errs = Redis:validate(conf)
+
+    assert.is_nil(errs)
+    assert.truthy(ok)
+    assert.same(2000, conf.timeout)
+
+    redis_init_conf(conf)
+
+    assert.same(2000, conf.connect_timeout)
+    assert.same(2000, conf.send_timeout)
+    assert.same(2000, conf.read_timeout)
+  end)
+
+  it("accepts deprecated timeout", function()
+    local conf = {
+      timeout = 42,
+    }
+
+    conf = Redis:process_auto_fields(conf, "insert")
+    local ok, errs = Redis:validate(conf)
+
+    assert.is_nil(errs)
+    assert.truthy(ok)
+    assert.same(42, conf.timeout)
+
+    redis_init_conf(conf)
+
+    assert.same(42, conf.connect_timeout)
+    assert.same(42, conf.send_timeout)
+    assert.same(42, conf.read_timeout)
+  end)
+
+  it("accepts granular timeouts", function()
+    local conf = {
+      connect_timeout = 42,
+      send_timeout = 84,
+      read_timeout = 168,
+    }
+
+    conf = Redis:process_auto_fields(conf, "insert")
+    local ok, errs = Redis:validate(conf)
+
+    assert.is_nil(errs)
+    assert.truthy(ok)
+    assert.same(2000, conf.timeout)
+
+    redis_init_conf(conf)
+
+    assert.same(42, conf.connect_timeout)
+    assert.same(84, conf.send_timeout)
+    assert.same(168, conf.read_timeout)
+  end)
+
+  it("granular timeouts are mutually required", function()
+    local conf = {
+      connect_timeout = 42,
+      read_timeout = 168,
+    }
+
+    conf = Redis:process_auto_fields(conf, "insert")
+    local ok, errs = Redis:validate(conf)
+
+    assert.falsy(ok)
+    assert.same("all or none of these fields must be set: 'connect_timeout'," ..
+      " 'send_timeout', 'read_timeout'", errs["@entity"][1])
+  end)
+
+  it("rejects invalid keepalive_pool_size", function()
+    for _, pool_size in ipairs({ -1, 0, math.pow(2, 31) }) do
+      local ok, errs = Redis:validate({ keepalive_pool_size = pool_size })
+      assert.falsy(ok)
+      assert.same("value should be between 1 and 2147483646", errs["keepalive_pool_size"])
+    end
+  end)
+  
+  it("rejects invalid backlog", function()
+    for _, backlog in ipairs({ -1, math.pow(2, 31) }) do
+      local ok, errs = Redis:validate({ keepalive_backlog = backlog })
+      assert.falsy(ok)
+      assert.same("value should be between 0 and 2147483646", errs["keepalive_backlog"])
+    end
+  end)
 end)
