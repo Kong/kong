@@ -154,10 +154,6 @@ case "$step" in
       set -e
       git checkout "$base"
       git pull
-      git checkout master
-      git pull
-      git merge "$base"
-      git push
       git tag -s "$version" -m "$version"
       git push origin "$version"
 
@@ -165,6 +161,11 @@ case "$step" in
 
       hub release create -F release-$version.txt "$version"
       rm -f release-$version.txt
+
+      git checkout master
+      git pull
+      git merge "$base"
+      git push
 
       SUCCESS "Make sure the packages are built and available on download.konghq.com" \
               "before continuing to the following steps." \
