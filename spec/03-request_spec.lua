@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
 
       do
         local routes = {}
-        for i = 1, 8 do
+        for i = 1, 10 do
           table.insert(routes,
                        bp.routes:insert({
                          hosts = { "test" .. i .. ".example.com" }
@@ -140,6 +140,46 @@ for _, strategy in helpers.each_strategy() do
             },
           },
         })
+
+        -- multiple filters targetting headers and body
+        add_plugin(routes[9], {
+          filters = {
+            {
+              context = "request",
+              target = "headers",
+              program = [[.[0] | { "X-Foo": .foo }]]
+            },
+            {
+              context = "request",
+              target = "headers",
+              program = [[.[1] | { "X-Bar": .bar }]]
+            },
+            {
+              context = "request",
+              target = "body",
+              program = ".[0]",
+            },
+            {
+              context = "request",
+              target = "body",
+              program = ".foo",
+              jq_options = {
+                join_output = true,
+              },
+            },
+          },
+        })
+
+        -- response context
+        add_plugin(routes[10], {
+          filters = {
+            {
+              context = "response",
+              target = "body",
+              program = ".[0]",
+            },
+          },
+        })
       end
 
       assert(helpers.start_kong({
@@ -179,6 +219,20 @@ for _, strategy in helpers.each_strategy() do
         })
         local json = assert.request(r).has.jsonbody()
         assert.same({ bar = "foo" }, json.params)
+      end)
+
+      it("noop and no error on empty data", function()
+        local r = assert(client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "test1.example.com",
+            ["Content-Type"] = "text/plain",
+          },
+          body = "",
+        })
+        local req = assert.request(r)
+        assert.same("", req.kong_request.post_data.text)
       end)
 
       it("returns null when filter is out of range", function()
@@ -340,6 +394,26 @@ for _, strategy in helpers.each_strategy() do
         local json = assert.request(r).has.jsonbody()
         assert.same({ foo = "bar" }, json.params)
       end)
+
+      it("does not request when context is response", function()
+        local r = assert(client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "test10.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            { foo = "bar" },
+            { bar = "foo" },
+          },
+        })
+        local json = assert.request(r).has.jsonbody()
+        assert.same({
+          { foo = "bar" },
+          { bar = "foo" },
+        }, json.params)
+      end)
     end)
 
     describe("headers", function()
@@ -361,6 +435,31 @@ for _, strategy in helpers.each_strategy() do
 
         local bar = assert.request(r).has_header("X-Bar")
         assert.equals(bar, "foo")
+      end)
+    end)
+
+    describe("body and headers", function()
+      it("filters with multiple rules", function()
+        local r = assert(client:send {
+          method  = "POST",
+          path    = "/request",
+          headers = {
+            ["Host"] = "test9.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            { foo = "bar" },
+            { bar = "foo" },
+          },
+        })
+        local foo = assert.request(r).has.header("X-Foo")
+        assert.equals(foo, "bar")
+
+        local bar = assert.request(r).has_header("X-Bar")
+        assert.equals(bar, "foo")
+
+        local json = assert.request(r).has.jsonbody()
+        assert.same("bar", json.data)
       end)
     end)
   end)

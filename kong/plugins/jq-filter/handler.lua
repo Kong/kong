@@ -43,26 +43,34 @@ function JqFilter:access(conf)
   local request_content_type = kong.request.get_header("Content-Type")
 
   for _, filter in ipairs(conf.filters) do
-    if is_media_type_allowed(request_content_type, filter) then
-      local res = CACHE(
-        filter.program,
-        request_body,
-        filter.jq_options
-      )
+    if filter.context ~= "request" or
+      not is_media_type_allowed(request_content_type, filter) then
 
-      if filter.target == "body" then
-        request_body = res
-      else
-        local headers = cjson_decode(res)
-        if type(headers) == "table" then
-          for name, value in pairs(headers or {}) do
-            if type(name) == "string" and type(value) == "string" then
-              new_headers[name] = value
-            end
+      goto next
+    end
+
+    local res = CACHE(
+      filter.program,
+      request_body,
+      filter.jq_options
+    )
+
+    if filter.target == "body" then
+      request_body = res
+
+    elseif filter.target == "headers" then
+      local headers = cjson_decode(res)
+
+      if type(headers) == "table" then
+        for name, value in pairs(headers or {}) do
+          if type(name) == "string" and type(value) == "string" then
+            new_headers[name] = value
           end
         end
       end
     end
+
+    ::next::
   end
 
   kong.service.request.set_headers(new_headers)
