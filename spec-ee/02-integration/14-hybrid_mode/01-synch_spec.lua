@@ -53,6 +53,11 @@ for _, strategy in helpers.each_strategy() do
       helpers.get_db_utils(strategy, {
         "routes",
         "services",
+        "plugins",
+        "upstreams",
+        "targets",
+        "certificates",
+        "clustering_data_planes",
       }) -- runs migrations
 
       assert(helpers.start_kong({

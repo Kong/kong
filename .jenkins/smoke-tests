@@ -117,10 +117,12 @@ pipeline {
         sh label: 'Start Kong Gateway dataplane',
            script: '''gojira hybrid run@kong-dp \
                         --dataplane-image $DATA_PLANE_KONG_GATEWAY_IMAGE \
+                        -e KONG_LICENSE_DATA \
                           kong start'''
         sh label: 'Execute version compatibility smoke test',
            script: '''gojira hybrid run@kong-cp \
                         --dataplane-image $DATA_PLANE_KONG_GATEWAY_IMAGE \
+                        -e KONG_LICENSE_DATA \
                         -e GITHUB_TOKEN \
                           /check-version-compatibility --skip-enterprise ''' + known_incompatibilities(env.KNOWN_PLUGIN_INCOMPATIBILITIES)
         sh label: 'Clean gojira instances',
