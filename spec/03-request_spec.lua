@@ -251,22 +251,6 @@ for _, strategy in helpers.each_strategy() do
         assert.same(ngx.null, json.params)
       end)
 
-      it("returns null when filter is out of range", function()
-        local r = assert(client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"] = "test1.example.com",
-            ["Content-Type"] = "application/json",
-          },
-          body = {
-            { foo = "bar" },
-          },
-        })
-        local json = assert.request(r).has.jsonbody()
-        assert.same(ngx.null, json.params)
-      end)
-
       it("filters with raw_output", function()
         local r = assert(client:send {
           method  = "POST",
