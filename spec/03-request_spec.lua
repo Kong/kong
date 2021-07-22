@@ -19,7 +19,7 @@ for _, strategy in helpers.each_strategy() do
 
       do
         local routes = {}
-        for i = 1, 10 do
+        for i = 1, 9 do
           table.insert(routes,
                        bp.routes:insert({
                          hosts = { "test" .. i .. ".example.com" }
@@ -166,17 +166,6 @@ for _, strategy in helpers.each_strategy() do
               jq_options = {
                 join_output = true,
               },
-            },
-          },
-        })
-
-        -- response context
-        add_plugin(routes[10], {
-          filters = {
-            {
-              context = "response",
-              target = "body",
-              program = ".[0]",
             },
           },
         })
@@ -377,26 +366,6 @@ for _, strategy in helpers.each_strategy() do
         })
         local json = assert.request(r).has.jsonbody()
         assert.same({ foo = "bar" }, json.params)
-      end)
-
-      it("does not request when context is response", function()
-        local r = assert(client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"] = "test10.example.com",
-            ["Content-Type"] = "application/json",
-          },
-          body = {
-            { foo = "bar" },
-            { bar = "foo" },
-          },
-        })
-        local json = assert.request(r).has.jsonbody()
-        assert.same({
-          { foo = "bar" },
-          { bar = "foo" },
-        }, json.params)
       end)
     end)
 
