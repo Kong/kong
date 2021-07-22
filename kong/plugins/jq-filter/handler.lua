@@ -6,18 +6,13 @@ local str_find = string.find
 
 local kong = kong
 
-local CACHE
+local CACHE = require "kong.plugins.jq-filter.cache"
 
 
 local JqFilter = {
   VERSION = "0.0.1",
   PRIORITY = 811,
 }
-
-
-function JqFilter:init_worker()
-  CACHE = require "kong.plugins.jq-filter.cache"
-end
 
 
 local function is_media_type_allowed(content_type, filter_conf)
@@ -44,97 +39,126 @@ local function is_status_code_allowed(status_code, filter_conf)
 end
 
 
+--- Runs a given jq program.
+-- Programs are compiled and stored in a module level cache, since compilation
+-- can be expensive.
+local function run_program(program, data, options)
+  local jqp, err = CACHE(program)
+  if not jqp then
+    return nil, err
+  end
+
+  local output, err = jqp:filter(data, options)
+  if not output then
+    return nil, err
+  end
+
+  return output
+end
+
+
+--- Processes the filter.
+-- The `data` table is both an in and out parameter. It should have two fields,
+-- `body` and `extra_headers`. The `body` is used as the filter source in all
+-- cases, but also may be updated by the filter, in the case of filters whose
+-- target is `body`.
+--
+-- Since multiple filters may be run, this data structure is updated in place
+-- until all are completed for the phase.
+local function process_filter(data, filter)
+  local output, err = run_program(
+    filter.program,
+    data.body,
+    filter.jq_options
+  )
+
+  if not output then
+    return nil, err
+  end
+
+  if filter.target == "body" then
+    data.body = output
+
+  elseif filter.target == "headers" then
+    local headers = cjson_decode(output)
+
+    if type(headers) == "table" then
+      for name, value in pairs(headers) do
+        if type(name) == "string" and type(value) == "string" then
+          data.extra_headers[name] = value
+        end
+      end
+    end
+  end
+
+  return true
+end
+
+
+-- Runs each filter with a `context` of `request`, and updates the request
+-- headers and / or body accordingly.
 function JqFilter:access(conf)
   local request_body = kong.request.get_raw_body()
   if not request_body then
     return
   end
 
-  local new_headers = {}
+  local results = {
+    body = request_body,
+    extra_headers = {}
+  }
 
   local request_content_type = kong.request.get_header("Content-Type")
 
   for _, filter in ipairs(conf.filters) do
-    if filter.context ~= "request" or
-      not is_media_type_allowed(request_content_type, filter) then
+    if filter.context == "request" and
+      is_media_type_allowed(request_content_type, filter) then
 
-      goto next
-    end
-
-    local res = CACHE(
-      filter.program,
-      request_body,
-      filter.jq_options
-    )
-
-    if filter.target == "body" then
-      request_body = res
-
-    elseif filter.target == "headers" then
-      local headers = cjson_decode(res)
-
-      if type(headers) == "table" then
-        for name, value in pairs(headers) do
-          if type(name) == "string" and type(value) == "string" then
-            new_headers[name] = value
-          end
-        end
+      local ok, err = process_filter(results, filter)
+      if not ok then
+        kong.log.err(err)
       end
     end
-
-    ::next::
   end
 
-  kong.service.request.set_headers(new_headers)
-  kong.service.request.set_raw_body(request_body)
+  kong.service.request.set_headers(results.extra_headers)
+  kong.service.request.set_raw_body(results.body)
 end
 
 
+-- Runs each filter with a `context` of `response`, and updates the response
+-- headers and / or body accordingly.
+--
+-- Note: we call `kong.response.exit` and so this will be the last plugin to
+-- run for this phase.
 function JqFilter:response(conf)
   local response_body = kong.service.response.get_raw_body()
   if not response_body then
     return
   end
 
-  local new_headers = {}
+  local results = {
+    body = response_body,
+    extra_headers = {}
+  }
 
   local response_status = kong.response.get_status()
   local response_content_type = kong.response.get_header("Content-Type")
 
   for _, filter in ipairs(conf.filters) do
-    if filter.context ~= "response" or
-      not is_media_type_allowed(response_content_type, filter) or
-      not is_status_code_allowed(response_status, filter) then
+    if filter.context == "response" and
+      is_media_type_allowed(response_content_type, filter) and
+      is_status_code_allowed(response_status, filter) then
 
-      goto next
-    end
-
-    local res = CACHE(
-      filter.program,
-      response_body,
-      filter.jq_options
-    )
-
-    if filter.target == "body" then
-      response_body = res
-
-    elseif filter.target == "headers" then
-      local headers = cjson_decode(res)
-
-      if type(headers) == "table" then
-        for name, value in pairs(headers) do
-          if type(name) == "string" and type(value) == "string" then
-            new_headers[name] = value
-          end
-        end
+      local ok, err = process_filter(results, filter)
+      if not ok then
+        kong.log.err(err)
       end
     end
-
-    ::next::
   end
 
-  kong.response.set_headers(new_headers)
-  return kong.response.exit(response_status, response_body)
+  kong.response.set_headers(results.extra_headers)
+  return kong.response.exit(response_status, results.body)
 end
 
 
