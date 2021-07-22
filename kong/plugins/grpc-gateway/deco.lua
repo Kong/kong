@@ -247,36 +247,21 @@ local function unframe(body)
   return body:sub(pos, frame_end), body:sub(frame_end + 1)
 end
 
---[[
-  // Set value `v` to table `t` at address stored in `key_stack`,
-  // Key stack is alternative to dot-syntax. For example:
-  // `a.b.c` is equivalent to `key_stack = { a, b, c }`.
-]]
-local function patch_table( t, key_stack, v )
-  local k = table.remove( key_stack, 1 ) -- pop out first key
+local function add_to_table( t, path, v )
+  local tab = t
+  for m in re_gmatch( path , "([^.]+)(\\.)?") do
+    local key, dot = m[1], m[2]
 
-  if key_stack[1] == nil then --same as `if #key_stack == 0` but faster
-    t[k] = v
-  else 
-    if t[k] == nil then
-      t[k] = {}
+    if dot then
+      tab[key] = tab[key] or {}
+      tab = tab[key]
+    else
+      tab[key] = v
     end
 
-    patch_table( t[k], key_stack, v )
   end
+  return t
 end
-
---[[
-  // Set value `v` at `path` in table `t`
-  // Path contains value address in dot-syntax. For example:
-  // `path="a.b.c"` would lead to `t[a][b][c] = v`.
-]]
-local function add_to_table( t, path, v )
-  local key_stack = {}
-
-  for captures in re_gmatch( path , "[^%.]+") do
-    table.insert( key_stack, captures[0] )
-  end
 
   patch_table( t, key_stack, v )
 end
