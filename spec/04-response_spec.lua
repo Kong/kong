@@ -9,6 +9,8 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("jq-filter (" .. strategy .. ") response", function()
+    local client
+
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
