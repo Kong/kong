@@ -1,3 +1,9 @@
+## 1.4.3
+
+- fix(handler) event hooks registration should be in init_worker
+- Merge pull request #67 from Kong/tests/travis-docker-hub-transition
+- tests(*) travis docker hub transition
+
 ## 1.4.2
 
 - fix(*) BasePlugin inheritance removal (FT-1701)
