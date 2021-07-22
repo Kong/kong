@@ -247,23 +247,25 @@ local function unframe(body)
   return body:sub(pos, frame_end), body:sub(frame_end + 1)
 end
 
+--[[
+  // Set value `v` at `path` in table `t`
+  // Path contains value address in dot-syntax. For example:
+  // `path="a.b.c"` would lead to `t[a][b][c] = v`.
+]]
 local function add_to_table( t, path, v )
-  local tab = t
+  local tab = t -- set up pointer to table root
   for m in re_gmatch( path , "([^.]+)(\\.)?") do
     local key, dot = m[1], m[2]
 
     if dot then
-      tab[key] = tab[key] or {}
+      tab[key] = tab[key] or {} -- create empty nested table if key does not exist
       tab = tab[key]
     else
       tab[key] = v
     end
-
   end
-  return t
-end
 
-  patch_table( t, key_stack, v )
+  return t
 end
 
 function deco:upstream(body)
