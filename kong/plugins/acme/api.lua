@@ -1,4 +1,5 @@
 local client = require "kong.plugins.acme.client"
+local handler = require "kong.plugins.acme.handler"
 local http = require "resty.http"
 
 local x509 = require "resty.openssl.x509"
@@ -71,12 +72,19 @@ return {
 
       -- string "true" automatically becomes boolean true from lapis
       if self.params.test_http_challenge_flow == true then
+        local domains_matcher = handler.build_domain_matcher(conf.domains)
+        if not domains_matcher or not domains_matcher[host] then
+          return kong.response.exit(400, { message = "problem found running sanity check for " .. host ..
+                ": host is not included in plugin config.domains"})
+        end
+
         local check_path = string.format("http://%s/.well-known/acme-challenge/", host)
         local httpc = http.new()
         local res, err = httpc:request_uri(check_path .. "x")
         if not err then
-          if ngx.re.match("no Route matched with those values", res.body) then
-            err = check_path .. "* doesn't map to a route in Kong"
+          if ngx.re.match(res.body, "no Route matched with those values") then
+            err = check_path .. "* doesn't map to a Route in Kong; " ..
+                  "please refer to docs on how to create dummy Route and Service"
           elseif res.body ~= "Not found\n" then
             err = "unexpected response: \"" .. (res.body or "<nil>") .. "\""
             if res.status ~= 404 then

@@ -4,14 +4,8 @@ local ngx_ssl = require "ngx.ssl"
 
 local acme_challenge_path = [[^/\.well-known/acme-challenge/(.+)]]
 
-local hybrid_mode = kong.configuration.role == "control_plane" or
-                    kong.configuration.role == "data_plane"
-
 -- cache for dummy cert kong generated (it's a table)
 local default_cert_key
-
--- cache for domain mapping
-local domains_matcher
 
 local LetsencryptHandler = {}
 
@@ -44,7 +38,7 @@ local function build_domain_matcher(domains)
     domains_pattern = "(" .. table.concat(domains_wildcard, "|") .. ")$"
   end
 
-  domains_matcher = setmetatable(domains_plain, {
+  return setmetatable(domains_plain, {
     __index = function(_, k)
       if not domains_pattern then
         return false
@@ -53,6 +47,9 @@ local function build_domain_matcher(domains)
     end
   })
 end
+
+-- expose it for use in api.lua
+LetsencryptHandler.build_domain_matcher = build_domain_matcher
 
 function LetsencryptHandler:init_worker()
   local worker_id = ngx.worker.id()
@@ -74,7 +71,7 @@ function LetsencryptHandler:certificate(conf)
   host = string.lower(host)
 
   -- TODO: cache me
-  build_domain_matcher(conf.domains)
+  local domains_matcher = build_domain_matcher(conf.domains)
   if not domains_matcher or not domains_matcher[host] then
     kong.log.debug("ignoring because domain is not in whitelist")
     return
@@ -106,10 +103,11 @@ function LetsencryptHandler:certificate(conf)
 
   -- cert not found, get a new one and serve default cert for now
   if not certkey then
-    if hybrid_mode and conf.storage == "kong" then
+    if kong.configuration.role == "data_plane" and conf.storage == "kong" then
       kong.log.err("creating new certificate through proxy side with ",
                     "\"kong\" storage in Hybrid mode is not supported; ",
-                    "consider create using Admin API or use other storages")
+                    "consider create certificate using Admin API or ",
+                    "use other external storages")
       return
     end
 
@@ -160,7 +158,7 @@ function LetsencryptHandler:access(conf)
       return
     end
 
-    build_domain_matcher(conf.domains)
+    local domains_matcher = build_domain_matcher(conf.domains)
     if not domains_matcher or not domains_matcher[kong.request.get_host()] then
       return
     end
