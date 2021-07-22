@@ -2,19 +2,19 @@ local jq = require "resty.jq"
 local lrucache = require "resty.lrucache"
 
 
-local assert = assert
-
-
 local LRU = lrucache.new(1000)
 
 
-return function(program, body, opts)
+return function(program)
   local jqp = LRU:get(program)
   if not jqp then
-    jqp = assert(jq.new())
-    assert(jqp:compile(program))
+    jqp = jq.new()
+    local ok, err = jqp:compile(program)
+    if not ok or err then
+      return nil, err
+    end
     LRU:set(program, jqp)
   end
 
-  return assert(jqp:filter(body, opts))
+  return jqp, nil
 end
