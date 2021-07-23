@@ -49,6 +49,27 @@ describe("jq-filter API", function()
       local body = cjson.decode(assert.res_status(400, res))
       assert.same("required field missing", body.fields.config.filters)
     end)
+
+    it("accepts minimal config", function()
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/routes/test/plugins/",
+        body = {
+          name = "jq-filter",
+          config = {
+            filters = {
+              {
+                program = ".",
+              },
+            },
+          },
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(201, res)
+    end)
   end)
 end)
 
