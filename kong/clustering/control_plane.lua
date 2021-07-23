@@ -430,6 +430,19 @@ function _M:check_configuration_compatibility(dp_plugin_map)
                CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
       end
 
+      -- [[ XXX EE: Handle special case for vault-auth plugin whose plugin
+      --            version did not correspond to the actual release version
+      --            and was fixed during BasePlugin inheritance removal.
+      --
+      -- Note: These vault-auth plugins in the older dataplanes are compatible
+      if name == "vault-auth" and is_older_dataplane() and
+        dp_plugin.version == "1.0.0" then
+        ngx_log(ngx_DEBUG, _log_prefix, "data plane plugin vault-auth version ",
+          "1.0.0 was incorrectly versioned, but is compatible")
+        dp_plugin = cp_plugin
+      end
+      -- XXX EE ]]
+
       if cp_plugin.version and dp_plugin.version then
         -- CP plugin needs to match DP plugins with major version
         -- CP must have plugin with equal or newer version than that on DP
