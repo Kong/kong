@@ -12,7 +12,7 @@ description = {
 }
 
 dependencies = {
-	"lua-resty-jq ~> 0.0.1",
+	"lua-resty-jq ~> 0.0.2",
 	"lua == 5.1", -- Really "luajit >= 2.0.2"
 }
 
