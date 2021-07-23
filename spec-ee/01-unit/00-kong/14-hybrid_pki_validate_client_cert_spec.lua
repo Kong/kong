@@ -17,7 +17,6 @@ _G.kong = {
 }
 
 local clustering = require "kong.clustering"
-
 local function create_self_signed(cn)
   local key = pkey.new({
     type = 'EC',
