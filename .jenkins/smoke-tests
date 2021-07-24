@@ -1,0 +1,84 @@
+// https://stackoverflow.com/questions/43214730/how-to-set-github-commit-status-with-jenkinsfile-not-using-a-pull-request-builde
+void setBuildStatus(String message, String state) {
+  step([
+      $class: "GitHubCommitStatusSetter",
+      reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/kong/kong-ee"],
+      contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "Kong Gateway Smoke Tests"],
+      errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
+      statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
+  ]);
+}
+
+pipeline {
+  agent {
+    node {
+      label 'hybrid'
+    }
+  }
+  options {
+    timeout(time: 45, unit: 'MINUTES')
+    disableConcurrentBuilds()
+  }
+  parameters {
+    string(
+      name: 'CASSANDRA',
+      defaultValue: '2.2',
+      trim: true,
+      description: 'Apache Cassandra version to use')
+  }
+  environment {
+    GITHUB_TOKEN = credentials('github_bot_access_token')
+    KONG_LICENSE_DATA = credentials('KONG_LICENSE_DATA')
+
+    // Docker Hub credentials to increase rate-limiting
+    DOCKERHUB_KONGCLOUD_PULL = credentials('DOCKERHUB_KONGCLOUD_PULL')
+
+    // Override gojira version (ensure master)
+    GOJIRA_VERSION = 'master'
+
+    // Override PATH to include any binary installations
+    PATH = "${env.PATH}:~/.local/bin"
+  }
+  stages {
+    stage('Login to Docker Hub') {
+      steps {
+        // Login to Docker Hub (better limits on rate-limiting)
+        sh label: 'Login to Docker Hub',
+           script: '''echo $DOCKERHUB_KONGCLOUD_PULL_PSW | \
+                        docker login \
+                          -u $DOCKERHUB_KONGCLOUD_PULL_USR \
+                          --password-stdin'''
+      }
+    }
+    stage('Install Gojira Enterprise') {
+      steps {
+        sh label: 'Clone Gojira enterprise',
+           script: 'git clone https://$GITHUB_TOKEN:@github.com/Kong/gojira-enterprise /tmp/gojira'
+        sh label: 'Create ~/.local/bin directory',
+           script: 'mkdir -p ~/.local/bin'
+        sh label: 'Install Gojira enterprise',
+           script: 'ln -s $(realpath /tmp/gojira/gojira.sh) $(realpath ~/.local/bin/gojira)'
+      }
+    }
+    stage('Apache Cassandra Migrations') {
+      steps {
+        sh label: 'Start Kong Gateway instance',
+           script: 'gojira up --cassandra'
+        sh label: 'Build Kong Gateway development environment',
+           script: 'gojira run make dev'
+        sh label: 'Execute migrations',
+           script: 'gojira run kong migrations bootstrap --vv'
+        sh label: 'Clean Kong Gateway instance',
+           script: 'gojira nuke -f'
+      }
+    }
+  }
+  post {
+    success {
+      setBuildStatus("Build succeeded", "SUCCESS");
+    }
+    failure {
+      setBuildStatus("Build failed", "FAILURE");
+    }
+  }
+}
