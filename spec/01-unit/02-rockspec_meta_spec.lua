@@ -92,7 +92,8 @@ describe("rockspec/meta", function()
       for _, src in ipairs(lua_srcs) do
         local str = pl_utils.readfile(src)
 
-        for _, mod in string.gmatch(str, "require%s*([\"'])(kong%..-)%1") do
+        -- PCRE: require\s*\(?\s*(["''])(kong\.[\w_.-]+[\w_.-])(["''])
+        for _, mod in string.gmatch(str, "require%s*%(?%s*([\"'])(kong%.[%w_.-]+[%w_-])%1") do
           if not rock.build.modules[mod] then
             assert(rock.build.modules[mod] ~= nil,
                    "Invalid module require: \n"                      ..
