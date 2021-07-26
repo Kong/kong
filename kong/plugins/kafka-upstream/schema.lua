@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local typedefs = require "kong.db.schema.typedefs"
+local ngx_null = ngx.null
 
 return {
   name = "kafka-upstream",
@@ -28,6 +29,26 @@ return {
           { topic = { type = "string", required = true }, },
           { timeout = { type = "integer", default = 10000 }, },
           { keepalive = { type = "integer", default = 60000 }, },
+          { authentication = {
+              type = "record",
+              fields = {
+                { strategy = { type = "string", required = false, one_of = { "sasl" }} },
+                { mechanism = { type = "string", required = false, one_of = { "PLAIN" }} },
+                { user = { type = "string", required = false } },
+                { password = { type = "string", required = false } },
+              }
+            }
+          },
+
+          {
+            security = {
+              type = "record",
+              fields = {
+                { certificate_id = { type = "string", uuid = true, required = false } },
+                { ssl = { type = "boolean", required = false } },
+              }
+            }
+          },
 
           { forward_method = { type = "boolean", default = false } },
           { forward_uri = { type = "boolean", default = false } },
@@ -55,6 +76,21 @@ return {
                 end
                 return nil, "at least one of these attributes must be true: forward_method, forward_uri, forward_headers, forward_body"
               end
+            },
+          },
+          { custom_entity_check = {
+            field_sources = { "authentication" },
+            fn = function(entity)
+              if entity.authentication.strategy == "sasl" then
+                -- SASL PLAIN
+                if entity.authentication.mechanism == "PLAIN" and
+                    (entity.authentication.user == ngx_null or entity.authentication.password == ngx_null) then
+                  return nil, "if authentication strategy is SASL and mechanism is PLAIN you have to set user and password"
+                end
+              end
+
+              return true
+            end
             },
           },
         },

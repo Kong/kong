@@ -7,10 +7,20 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local ssl_helpers = require "spec.cert_helpers"
 
 local KAFKA_HOST = "broker"
 local KAFKA_PORT = 9092
 local BOOTSTRAP_SERVERS = { { host = KAFKA_HOST, port = KAFKA_PORT } }
+
+local KAFKA_SASL_PORT = 19093
+local BOOTSTRAP_SASL_SERVERS = { { host = KAFKA_HOST, port = KAFKA_SASL_PORT } }
+
+local KAFKA_SSL_PORT = 29093
+local BOOTSTRAP_SSL_SERVERS = { { host = KAFKA_HOST, port = KAFKA_SSL_PORT } }
+
+local KAFKA_SASL_SSL_PORT = 9093
+local BOOTSTRAP_SASL_SSL_SERVERS = { { host = KAFKA_HOST, port = KAFKA_SASL_SSL_PORT } }
 
 -- We use kafka's command-line utilities on these specs. As a result,
 -- this timeout must be higher than the time it takes to load up the Kafka
@@ -30,10 +40,23 @@ for _, strategy in helpers.each_strategy() do
           "routes",
           "services",
           "plugins",
+          "certificates",
         }, { "kafka-upstream" })
 
       local sync_route = bp.routes:insert {
         hosts = { "sync-host.test" },
+      }
+
+      local sync_sasl_route = bp.routes:insert {
+        hosts = { "sync-sasl-host.test" },
+      }
+
+      local sync_sasl_ssl_route = bp.routes:insert {
+        hosts = { "sync-sasl-ssl-host.test" },
+      }
+      
+      local sync_mtls_route = bp.routes:insert {
+        hosts = { "sync-mtls-host.test" },
       }
 
       local async_timeout_route = bp.routes:insert {
@@ -42,6 +65,66 @@ for _, strategy in helpers.each_strategy() do
 
       local async_size_route = bp.routes:insert {
         hosts = { "async-size-host.test" },
+      }
+
+      local cert = bp.certificates:insert({
+        cert = ssl_helpers.cert,
+        key = ssl_helpers.key 
+      })
+
+      bp.plugins:insert {
+        name = "kafka-upstream",
+        route = { id = sync_mtls_route.id },
+        config = {
+          bootstrap_servers = BOOTSTRAP_SSL_SERVERS,
+          producer_async = false,
+          topic = 'sync_topic',
+          security = {
+            ssl = false,
+            certificate_id = cert.id
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        name = "kafka-upstream",
+        route = { id = sync_sasl_ssl_route.id },
+        config = {
+          bootstrap_servers = BOOTSTRAP_SASL_SSL_SERVERS,
+          producer_async = false,
+          topic = 'sync_topic',
+          authentication = {
+            strategy = 'sasl',
+            mechanism = 'PLAIN',
+            user = 'admin',
+            password = 'admin-secret'
+          },
+          security = {
+            ssl = true,
+            certificate_id = cert.id
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        name = "kafka-upstream",
+        route = { id = sync_sasl_route.id },
+        config = {
+          bootstrap_servers = BOOTSTRAP_SASL_SERVERS,
+          producer_async = false,
+          topic = 'sync_topic',
+          authentication = {
+            strategy = 'sasl',
+            mechanism = 'PLAIN',
+            user = 'admin',
+            password = 'admin-secret'
+          },
+          -- TODO: This shouldn't be needed. However if not set this tries to query SSL_SASL on the kafka side if unset
+          --       Verify if this a genuine bug or just a sideeffect of the lua-rest-kafka lib not being upgraded
+          security = {
+            ssl = false
+          }
+        }
       }
 
       bp.plugins:insert {
@@ -127,7 +210,7 @@ for _, strategy in helpers.each_strategy() do
       if proxy_client then
         proxy_client:close()
       end
-      end)
+    end)
 
 
     teardown(function()
@@ -147,6 +230,55 @@ for _, strategy in helpers.each_strategy() do
         local res = proxy_client:post(uri, {
           headers = {
             host = "sync-host.test",
+            ["Content-Type"] = "application/json",
+          },
+          body = { foo = "bar" },
+        })
+        local raw_body = res:read_body()
+        local body = cjson.decode(raw_body)
+        assert.res_status(200, res)
+        assert(body.message, "message sent")
+      end)
+    end)
+
+    describe("sasl auth", function()
+      pending("authenticates with sasl credentials [no ssl]", function()
+        local uri = "/path?key1=value1&key2=value2"
+        local res = proxy_client:post(uri, {
+          headers = {
+            host = "sync-sasl-host.test",
+            ["Content-Type"] = "application/json",
+          },
+          body = { foo = "bar" },
+        })
+        local raw_body = res:read_body()
+        local body = cjson.decode(raw_body)
+        assert.res_status(200, res)
+        assert(body.message, "message sent")
+      end)
+
+      pending("authenticates with sasl credentials [ssl]", function()
+        local uri = "/path?key1=value1&key2=value2"
+        local res = proxy_client:post(uri, {
+          headers = {
+            host = "sync-sasl-ssl-host.test",
+            ["Content-Type"] = "application/json",
+          },
+          body = { foo = "bar" },
+        })
+        local raw_body = res:read_body()
+        local body = cjson.decode(raw_body)
+        assert.res_status(200, res)
+        assert(body.message, "message sent")
+      end)
+    end)
+
+    describe("mtls", function()
+      pending("authenticates with certificates", function()
+        local uri = "/path?key1=value1&key2=value2"
+        local res = proxy_client:post(uri, {
+          headers = {
+            host = "sync-sasl-host.test",
             ["Content-Type"] = "application/json",
           },
           body = { foo = "bar" },

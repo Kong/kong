@@ -5,7 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local kong = kong
 local producers = require "kong.plugins.kafka-upstream.producers"
+local cert_utils = require "kong.plugins.kafka-upstream.cert_utils"
 local cjson_encode = require("cjson").encode
 
 local ngx_encode_base64 = ngx.encode_base64
@@ -81,6 +83,18 @@ function KafkaUpstreamHandler:access(conf)
   local message, err = build_kafka_message_from_request(conf)
   if not message then
     return handle_error("could not build a Kafka message from request: " .. tostring(err))
+  end
+
+  -- fetch certificate from the store
+  if conf.security.certificate_id then
+    local cert_obj, err = cert_utils.load_certificate(conf.security.certificate_id)
+    if not cert_obj then
+      kong.log.err("failed to find certificate: ", err)
+      return kong.response.exit(500, { message = "Could not load certificate" })
+    end
+
+    conf.security.client_cert = cert_obj.cert
+    conf.security.client_priv_key = cert_obj.priv_key
   end
 
   local producer, err = producers.get_or_create(conf)
