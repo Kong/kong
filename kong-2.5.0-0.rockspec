@@ -226,6 +226,7 @@ build = {
 
     ["kong.hybrid"] = "kong/hybrid/init.lua",
     ["kong.hybrid.data_plane"] = "kong/hybrid/data_plane.lua",
+    ["kong.hybrid.event_loop"] = "kong/hybrid/event_loop.lua",
     ["kong.hybrid.control_plane"] = "kong/hybrid/control_plane.lua",
     ["kong.hybrid.message"] = "kong/hybrid/message.lua",
     ["kong.hybrid.queue"] = "kong/hybrid/queue.lua",
