@@ -2498,13 +2498,16 @@ end
 
 
 local function build_go_plugins(path)
-  for _, plugin_path in ipairs(pl_dir.getfiles(path, "*.go")) do
-    local plugin_name = pl_path.basename(plugin_path):match("(.+).go")
-
-    local ok, _, _, stderr = pl_utils.executeex(
-      string.format("cd %s; go build -buildmode plugin -o %s %s",
-      path, plugin_name .. ".so", plugin_name .. ".go")
-    )
+  if pl_path.exists(pl_path.join(path, "go.mod")) then
+    local ok, _, _, stderr = pl_utils.executeex(string.format(
+            "cd %s; go mod tidy; go mod download", path))
+    assert(ok, stderr)
+  end
+  for _, go_source in ipairs(pl_dir.getfiles(path, "*.go")) do
+    local ok, _, _, stderr = pl_utils.executeex(string.format(
+            "cd %s; go build %s",
+            path, pl_path.basename(go_source)
+    ))
     assert(ok, stderr)
   end
 end
