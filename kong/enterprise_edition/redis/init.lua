@@ -226,8 +226,7 @@ function _M.connection(conf)
     -- use lua-resty-redis-connector for sentinel and plain redis
     local rc = redis_connector.new({
       connect_timeout    = conf.connect_timeout,
-      -- send_timeout is not yet supported, and so `read_timeout` is effective
-      -- for both read and send.
+      send_timeout       = conf.send_timeout,
       read_timeout       = conf.read_timeout,
       master_name        = conf.sentinel_master,
       role               = conf.sentinel_role,
