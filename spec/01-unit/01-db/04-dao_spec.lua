@@ -57,6 +57,23 @@ local optional_cache_key_fields_schema = {
   },
 }
 
+local parent_cascade_delete_schema = {
+  name = "Foo",
+  primary_key = { "a" },
+  fields = {
+    { a = { type = "number" }, },
+  },
+}
+
+local cascade_delete_schema = {
+  name = "Bar",
+  primary_key = { "b" },
+  fields = {
+    { b = { type = "number" }, },
+    { c = { type = "foreign", reference = "Foo", on_delete = "cascade" }, },
+  },
+}
+
 local mock_db = {}
 
 
@@ -436,6 +453,52 @@ describe("DAO", function()
       local row, err = dao:update({ a = 43 }, { u = "foo", r = { f1 = 10, f2 = null } }, { nulls = true })
       assert.falsy(err)
       assert.same({ a = 42, b = null, u = "foo", r = { f1 = 10, f2 = null } }, row)
+    end)
+  end)
+
+  describe("delete", function()
+
+    lazy_setup(function()
+ 
+      local kong_global = require "kong.global"
+      _G.kong = kong_global.new()
+
+    end)
+
+    it("deletes the entity and cascades the delete notifications", function()
+      local parent_schema = assert(Schema.new(parent_cascade_delete_schema))
+      local child_schema = assert(Schema.new(cascade_delete_schema))
+
+      -- mock strategy
+      local data = { a = 42, b = nil, u = nil, r = nil }
+      local child_strategy = {
+        each_for_c = function()
+          return {}, nil
+        end,
+        page_for_c = function()
+          return {}, nil
+        end
+      }
+      local child_dao = DAO.new(mock_db, child_schema, child_strategy, errors)
+      mock_db = {
+        daos = {
+          Bar = child_dao
+        }
+      }
+
+      local parent_strategy = {
+        select = function()
+          return data
+        end,
+        delete = function(pk, _)
+          -- assert.are.same({ a = 42 }, pk)
+          return nil, nil
+        end
+      }
+      local parent_dao = DAO.new(mock_db, parent_schema, parent_strategy, errors)
+      
+      local _, err = parent_dao:delete({ a = 42 })
+      assert.falsy(err)
     end)
   end)
 
