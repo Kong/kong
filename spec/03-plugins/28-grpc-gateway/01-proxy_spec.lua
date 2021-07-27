@@ -8,6 +8,8 @@ for _, strategy in helpers.each_strategy() do
 
 
     lazy_setup(function()
+      assert(helpers.start_grpc_target())
+
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -23,7 +25,7 @@ for _, strategy in helpers.each_strategy() do
         name = "grpc",
         protocol = "grpc",
         host = "127.0.0.1",
-        port = 15002,
+        port = helpers.get_grpc_target_port(),
       })
 
       local route1 = assert(bp.routes:insert {
@@ -36,7 +38,7 @@ for _, strategy in helpers.each_strategy() do
         route = route1,
         name = "grpc-gateway",
         config = {
-          proto = "./spec/fixtures/grpc/helloworld.proto",
+          proto = "./spec/fixtures/grpc/targetservice.proto",
         },
       })
 
@@ -52,6 +54,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       helpers.stop_kong()
+      helpers.stop_grpc_target()
     end)
 
     test("main entrypoint", function()

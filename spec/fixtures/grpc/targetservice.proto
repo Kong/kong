@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package targetservice;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "./targetservice";
+
+service Bouncer {
+  rpc SayHello(HelloRequest) returns (HelloResponse) {
+    option (google.api.http) = {
+      // https://github.com/googleapis/googleapis/blob/master/google/api/http.proto
+      // HTTP | gRPC
+      // -----|-----
+      // `GET /v1/messages/123456`  | `HelloRequest(greeting: "123456")`
+      get: "/v1/messages/{greeting}"
+      additional_bindings {
+        get: "/v1/messages/legacy/{greeting=**}"
+      }
+      body: "*"
+    };
+  };
+
+  // define a gRPC method that's not implemented in the target
+  rpc UnknownMethod(HelloRequest) returns (HelloResponse) {
+    option (google.api.http) = {
+      get: "/v1/unknown/{greeting}"
+    };
+  };
+
+  rpc BounceIt (BallIn) returns (BallOut) {
+    option (google.api.http) = {
+      post: "/bounce"
+      body: "*"
+    };
+  }
+}
+
+
+message HelloRequest {
+  string greeting = 1;
+}
+
+message HelloResponse {
+  string reply = 1;
+}
+
+
+message BallIn {
+  string message = 1;
+  google.protobuf.Timestamp when = 2;
+}
+
+message BallOut {
+  string reply = 1;
+  string time_message = 2;
+  google.protobuf.Timestamp now = 3;
+}

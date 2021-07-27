@@ -10,6 +10,7 @@ local TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests
 local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
 local DNS_MOCK_LUA_PATH = "./spec/fixtures/mocks/lua-resty-dns/?.lua"
 local GO_PLUGIN_PATH = "./spec/fixtures/go"
+local GRPC_TARGET_SRC_PATH = "./spec/fixtures/grpc/target/"
 local MOCK_UPSTREAM_PROTOCOL = "http"
 local MOCK_UPSTREAM_SSL_PROTOCOL = "https"
 local MOCK_UPSTREAM_HOST = "127.0.0.1"
@@ -55,7 +56,7 @@ local ws_client = require "resty.websocket.client"
 local table_clone = require "table.clone"
 local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
-
+local resty_signal = require "resty.signal"
 
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
@@ -2498,6 +2499,75 @@ local function build_go_plugins(path)
   end
 end
 
+local function isnewer(path_a, path_b)
+  if not pl_path.exists(path_a) then
+    return true
+  end
+  if not pl_path.exists(path_b) then
+    return false
+  end
+  return assert(pl_path.getmtime(path_b)) > assert(pl_path.getmtime(path_a))
+end
+
+local function make(workdir, specs)
+  workdir = pl_path.normpath(workdir or pl_path.currentdir())
+
+  for _, spec in ipairs(specs) do
+    local targetpath = pl_path.join(workdir, spec.target)
+    for _, src in ipairs(spec.src) do
+      local srcpath = pl_path.join(workdir, src)
+      if isnewer(targetpath, srcpath) then
+        local ok, _, _, stderr = pl_utils.executeex(string.format("cd %s; %s", workdir, spec.cmd))
+        assert(ok, stderr)
+        if isnewer(targetpath, srcpath) then
+          error(string.format("couldn't make %q newer than %q", targetpath, srcpath))
+        end
+        break
+      end
+    end
+  end
+
+  return true
+end
+
+local grpc_target_proc
+local function start_grpc_target()
+  local ngx_pipe = require "ngx.pipe"
+  assert(make(GRPC_TARGET_SRC_PATH, {
+    {
+      target = "targetservice/targetservice.pb.go",
+      src    = { "../targetservice.proto" },
+      cmd    = "protoc --go_out=. --go-grpc_out=. -I ../ ../targetservice.proto",
+    },
+    {
+      target = "targetservice/targetservice_grpc.pb.go",
+      src    = { "../targetservice.proto" },
+      cmd    = "protoc --go_out=. --go-grpc_out=. -I ../ ../targetservice.proto",
+    },
+    {
+      target = "target",
+      src    = { "grpc-target.go", "targetservice/targetservice.pb.go", "targetservice/targetservice_grpc.pb.go" },
+      cmd    = "go mod tidy && go mod download all && go build",
+    },
+  }))
+  grpc_target_proc = assert(ngx_pipe.spawn({ GRPC_TARGET_SRC_PATH .. "/target" }, {
+      merge_stderr = true,
+  }))
+
+  return true
+end
+
+local function stop_grpc_target()
+  if grpc_target_proc then
+    grpc_target_proc:kill(resty_signal.signum("QUIT"))
+    grpc_target_proc = nil
+  end
+end
+
+local function get_grpc_target_port()
+  return 15010
+end
+
 
 --- Start the Kong instance to test against.
 -- The fixtures passed to this function can be 3 types:
@@ -2839,6 +2909,10 @@ end
   start_kong = start_kong,
   stop_kong = stop_kong,
   restart_kong = restart_kong,
+
+  start_grpc_target = start_grpc_target,
+  stop_grpc_target = stop_grpc_target,
+  get_grpc_target_port = get_grpc_target_port,
 
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)

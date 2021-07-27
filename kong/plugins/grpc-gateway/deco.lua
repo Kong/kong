@@ -131,6 +131,12 @@ local function get_proto_info(fname)
 
   local dir, name = pl_path.splitpath(pl_path.abspath(fname))
   local p = protoc.new()
+  p:addpath("/usr/include")
+  p:addpath("/usr/local/opt/protobuf/include/")
+
+  p:addpath("/usr/local/kong/lib/")
+  p:addpath("kong")
+
   p.include_imports = true
   p:addpath(dir)
   p:loadfile(name)
