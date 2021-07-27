@@ -542,10 +542,21 @@ local cassandra = {
     end,
 
     has_workspace_entities = function(_, connector)
+      -- Ensure the correct system keyspace, table, and table name is used
+      if connector.major_version >= 3 then
+        return connector:query(render([[
+          SELECT table_name FROM system_schema.tables
+          WHERE keyspace_name='$(KEYSPACE)'
+            AND table_name='workspace_entities';
+        ]], {
+          KEYSPACE = connector.keyspace,
+        }))
+      end
+
       return connector:query(render([[
-        SELECT table_name FROM system_schema.tables
+        SELECT columnfamily_name FROM system.schema_columnfamilies
         WHERE keyspace_name='$(KEYSPACE)'
-          AND table_name='workspace_entities';
+          AND columnfamily_name='workspace_entities';
       ]], {
         KEYSPACE = connector.keyspace,
       }))
