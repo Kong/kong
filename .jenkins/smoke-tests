@@ -21,7 +21,7 @@ def known_incompatibilities(String csv) {
 pipeline {
   agent {
     node {
-      label 'bionic'
+      label 'hybrid'
     }
   }
   options {
@@ -45,6 +45,11 @@ pipeline {
       defaultValue: 'file-log,http-log,loggly,prometheus,syslog,tcp-log,udp-log,zipkin',
       trim: true,
       description: 'Comma separated list of known incompatible plugins')
+    string(
+      name: 'CASSANDRA',
+      defaultValue: '2.2',
+      trim: true,
+      description: 'Apache Cassandra version to use')
   }
   environment {
     GITHUB_TOKEN = credentials('github_bot_access_token')
@@ -129,6 +134,18 @@ pipeline {
            script: '''gojira hybrid nuke \
                         --dataplane-image $DATA_PLANE_KONG_GATEWAY_IMAGE \
                         -f'''
+      }
+    }
+    stage('Apache Cassandra Migrations') {
+      steps {
+        sh label: 'Start Kong Gateway instance',
+           script: 'gojira up --cassandra'
+        sh label: 'Build Kong Gateway development environment',
+           script: 'gojira run make dev'
+        sh label: 'Execute migrations',
+           script: 'gojira run kong migrations bootstrap --vv'
+        sh label: 'Clean Kong Gateway instance',
+           script: 'gojira nuke -f'
       }
     }
   }
