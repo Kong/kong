@@ -5,6 +5,10 @@ local lower = string.lower
 local concat = table.concat
 local select = select
 local balancer = require("kong.runloop.balancer")
+local get_all_upstreams = balancer.get_all_upstreams
+if not balancer.get_all_upstreams then -- API changed since after Kong 2.5
+  get_all_upstreams = require("kong.runloop.balancer.upstreams").get_all_upstreams
+end
 
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 
@@ -318,7 +322,7 @@ local function metric_data()
   metrics.upstream_target_health:reset()
 
   -- upstream targets accessible?
-  local upstreams_dict = balancer.get_all_upstreams()
+  local upstreams_dict = get_all_upstreams()
   for key, upstream_id in pairs(upstreams_dict) do
     local _, upstream_name = key:match("^([^:]*):(.-)$")
     upstream_name = upstream_name and upstream_name or key
