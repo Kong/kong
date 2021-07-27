@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
       local sync_sasl_ssl_route = bp.routes:insert {
         hosts = { "sync-sasl-ssl-host.test" },
       }
-      
+
       local sync_mtls_route = bp.routes:insert {
         hosts = { "sync-mtls-host.test" },
       }
@@ -242,7 +242,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("sasl auth", function()
-      pending("authenticates with sasl credentials [no ssl]", function()
+      it("authenticates with sasl credentials [no ssl]", function()
         local uri = "/path?key1=value1&key2=value2"
         local res = proxy_client:post(uri, {
           headers = {
@@ -257,7 +257,7 @@ for _, strategy in helpers.each_strategy() do
         assert(body.message, "message sent")
       end)
 
-      pending("authenticates with sasl credentials [ssl]", function()
+      it("authenticates with sasl credentials [ssl]", function()
         local uri = "/path?key1=value1&key2=value2"
         local res = proxy_client:post(uri, {
           headers = {
@@ -274,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("mtls", function()
-      pending("authenticates with certificates", function()
+      it("authenticates with certificates", function()
         local uri = "/path?key1=value1&key2=value2"
         local res = proxy_client:post(uri, {
           headers = {
