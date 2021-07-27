@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 local proxy_client, bp
 
@@ -109,5 +110,99 @@ for _, strategy in helpers.each_strategy() do
       assert.request(res).has.no.header("rewriter")
     end)
   end)
+
+  local headers = {
+    ["Content-Type"] = "application/json"
+  }
+
+  describe("workspace_entity_counters", function()
+    local admin_client
+    
+    before_each(function()
+      bp = helpers.get_db_utils(strategy, {
+        "workspaces",
+      })
+      assert(helpers.start_kong({
+        database   = strategy,
+      }))
+      admin_client = helpers.admin_client()
+    end)
+
+    after_each(function()
+      if admin_client then admin_client:close() end
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("can delete an empty workspace", function()
+      local res = admin_client:post("/workspaces", {
+        headers = headers,
+        body    = {
+          name = "ws1",
+        },
+      })
+      assert.res_status(201, res)
+
+      res = admin_client:delete("/workspaces/ws1", {
+        headers = headers,
+      })
+      assert.res_status(204, res)
+    end)
+
+    -- Tests bug where cascade delete operations were not decrementing their workspace_entity_counters
+    it("can delete a workspace with no more entity counters", function()
+      local res = admin_client:post("/workspaces", {
+        headers = headers,
+        body    = {
+          name = "ws1",
+        },
+      })
+      assert.res_status(201, res)
+
+      res = admin_client:post("/ws1/upstreams", {
+        headers = headers,
+        body = {
+          name = "upstream1"
+        }
+      })
+      assert.res_status(201, res)
+
+      res = admin_client:post("/ws1/upstreams/upstream1/targets", {
+        headers = headers,
+        body = {
+          target = "httpbin.org:80"
+        }
+      })
+      assert.res_status(201, res)
+
+      res = admin_client:get("/workspaces/ws1/meta", {
+        headers = headers,
+      })
+      local body = assert.res_status(200, res)
+      local entity = cjson.decode(body)
+      assert.equal(1, entity.counts.upstreams)
+      assert.equal(1, entity.counts.targets)
+
+      res = admin_client:delete("/ws1/upstreams/upstream1", {
+        headers = headers,
+      })
+      assert.res_status(204, res)
+
+      res = admin_client:get("/workspaces/ws1/meta", {
+        headers = headers,
+      })
+      body = assert.res_status(200, res)
+      entity = cjson.decode(body)
+      assert.equal(0, entity.counts.upstreams)
+      assert.equal(0, entity.counts.targets)
+
+      res = admin_client:delete("/workspaces/ws1", {
+        headers = headers,
+      })
+      assert.res_status(204, res)
+    end)
+
+   
+  end)
+
 
 end
