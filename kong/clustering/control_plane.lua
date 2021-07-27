@@ -167,8 +167,14 @@ local function is_older_dataplane()
                          (patch_dp * 1000) +
                          ent_patch_dp
 
-  -- Kong Gateway v2.4.1.2 will be backporting the clustering relaxation
-  return dp_version_num < 2004001002 -- 2.4.1.2
+  --[[
+  -- Kong Gateway v2.3.3.3 and v2.4.1.2 will be backporting the clustering
+  -- relaxation
+  --]]
+  return (dp_version_num > 2003000000 --[[ 2.3.0.0 ]] and dp_version_num < 2003003003) --[[ 2.3.3.3 ]]
+         or (dp_version_num > 2004000000 --[[ 2.4.0.0 ]] and dp_version_num < 2004001002) --[[ 2.4.1.2 ]]
+         or dp_version_num <= 2003000000 --[[ 2.3.0.0; everything else that came before ]]
+
 end
 
 local function handle_config_removal(config_table)
