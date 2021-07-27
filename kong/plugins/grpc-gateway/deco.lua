@@ -133,7 +133,6 @@ local function get_proto_info(fname)
   local p = protoc.new()
   p:addpath("/usr/include")
   p:addpath("/usr/local/opt/protobuf/include/")
-
   p:addpath("/usr/local/kong/lib/")
   p:addpath("kong")
 
