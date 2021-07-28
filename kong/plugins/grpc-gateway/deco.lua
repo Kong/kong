@@ -6,6 +6,7 @@ local cjson = require "cjson"
 local protoc = require "protoc"
 local pb = require "pb"
 local pl_path = require "pl.path"
+local date = require "date"
 
 local setmetatable = setmetatable
 
@@ -78,6 +79,47 @@ local function parse_options_path(path)
   return path_regex, match_groups
 end
 
+local function safe_set_type_hook(type, dec, enc)
+  if not pcall(pb.hook, type) then
+    ngx.log(ngx.NOTICE, "no type '" .. type .. "' defined")
+    return
+  end
+
+  if not pb.hook(type) then
+    pb.hook(type, dec)
+  end
+
+  if not pb.encode_hook(type) then
+    pb.encode_hook(type, enc)
+  end
+end
+
+local function set_hooks()
+  pb.option("enable_hooks")
+  local epoch = date.epoch()
+
+  safe_set_type_hook(
+      ".google.protobuf.Timestamp",
+      function (t)
+        if type(t) ~= "table" then
+          error(string.format("expected table, got (%s)%q", type(t), tostring(t)))
+        end
+
+        return date(t.seconds):fmt("${iso}")
+      end,
+      function (t)
+        if type(t) ~= "string" then
+          error (string.format("expected time string, got (%s)%q", type(t), tostring(t)))
+        end
+
+        local ds = date(t) - epoch
+        return {
+          seconds = ds:spanseconds(),
+          nanos = ds:getticks() * 1000,
+        }
+      end)
+end
+
 -- parse, compile and load .proto file
 -- returns a table mapping valid request URLs to input/output types
 local _proto_info = {}
@@ -91,6 +133,8 @@ local function get_proto_info(fname)
   local p = protoc.new()
   p.include_imports = true
   p:addpath(dir)
+  p:loadfile(name)
+  set_hooks()
   local parsed = p:parsefile(name)
 
   info = {}
@@ -128,8 +172,6 @@ local function get_proto_info(fname)
   end
 
   _proto_info[fname] = info
-
-  p:loadfile(name)
   return info
 end
 
