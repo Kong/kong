@@ -20,6 +20,8 @@ local time = ngx.time
 -- all_strategries is not available on earlier versions spec.helpers in Kong
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
+local TEST_CONF = helpers.test_conf
+
 -- helper functions to build test objects
 local function build_request(host, path, method)
   return {
@@ -60,6 +62,22 @@ local function build_plugin_fn(strategy)
   end
 end
 
+local function find_in_file(pat, cnt, path)
+  local f = assert(io.open(path or TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log, "r"))
+  local line = f:read("*l")
+  local count = 0
+
+  while line do
+    if line:match(pat) then
+      count = count + 1
+    end
+
+    line = f:read("*l")
+  end
+
+  return cnt == -1 and count >= 1 or count == cnt
+end
+
 for _, strategy in strategies() do
   local policy = strategy == "off" and "redis" or "cluster"
   local MOCK_RATE = 3
@@ -74,7 +92,7 @@ for _, strategy in strategies() do
   local build_plugin = build_plugin_fn(policy)
 
   describe(s, function()
-    local bp, consumer1, consumer2
+    local bp, consumer1, consumer2, plugin, plugin2, plugin3, plugin4
 
     setup(function()
       helpers.kill_all()
@@ -432,6 +450,96 @@ for _, strategy in strategies() do
         },
       })
 
+      local route15 = assert(bp.routes:insert {
+        name = "test-15",
+        hosts = { "test15.com" },
+      })
+
+      plugin = assert(bp.plugins:insert {
+        name = "rate-limiting-advanced",
+        route = { id = route15.id },
+        config = {
+          strategy = policy,
+          window_size = { 10 },
+          limit = { 6 },
+          sync_rate = 1,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          }
+        }
+      })
+
+      local route16 = assert(bp.routes:insert {
+        name = "test-16",
+        hosts = { "test16.com" },
+      })
+
+      plugin2 = assert(bp.plugins:insert {
+        name = "rate-limiting-advanced",
+        route = { id = route16.id },
+        config = {
+          strategy = "redis", -- cluster not supported in hybrid mode
+          window_size = { 10 },
+          limit = { 6 },
+          sync_rate = 1,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          }
+        }
+      })
+
+      local route17 = assert(bp.routes:insert {
+        name = "test-17",
+        hosts = { "test17.com" },
+      })
+
+      plugin3 = assert(bp.plugins:insert {
+        name = "rate-limiting-advanced",
+        route = { id = route17.id },
+        config = {
+          strategy = policy,
+          window_size = { 5 },
+          namespace = "Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
+          limit = { 6 },
+          sync_rate = 2,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          }
+        }
+      })
+
+      local route18 = assert(bp.routes:insert {
+        name = "test-18",
+        hosts = { "test18.com" },
+      })
+
+      plugin4 = assert(bp.plugins:insert {
+        name = "rate-limiting-advanced",
+        route = { id = route18.id },
+        config = {
+          strategy = "redis", -- cluster not supported in hybrid mode
+          window_size = { 5 },
+          namespace = "Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu",
+          limit = { 6 },
+          sync_rate = 1,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          }
+        }
+      })
+
       assert(helpers.start_kong{
         plugins = "rate-limiting-advanced,key-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -439,10 +547,69 @@ for _, strategy in strategies() do
         db_update_propagation = strategy == "cassandra" and 1 or 0,
         declarative_config = strategy == "off" and helpers.write_declarative_config() or nil,
       })
+
+
+      assert(helpers.start_kong{
+        plugins = "rate-limiting-advanced,key-auth",
+        database = strategy ~= "off" and strategy or nil,
+        db_update_propagation = strategy == "cassandra" and 1 or 0,
+        declarative_config = strategy == "off" and helpers.write_declarative_config() or nil,
+        prefix = "node2",
+        proxy_listen = "0.0.0.0:9100",
+        admin_listen = "127.0.0.1:9101",
+        admin_gui_listen = "127.0.0.1:9109",
+      })
+
+      if strategy ~= "off" then
+        assert(helpers.start_kong({
+          plugins = "rate-limiting-advanced,key-auth",
+          role = "control_plane",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          database = strategy,
+          db_update_frequency = 0.1,
+          admin_listen = "127.0.0.1:9103",
+          cluster_listen = "127.0.0.1:9005",
+          admin_gui_listen = "127.0.0.1:9209",
+          prefix = "cp",
+        }))
+
+        assert(helpers.start_kong({
+          plugins = "rate-limiting-advanced,key-auth",
+          role = "data_plane",
+          database = "off",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          cluster_control_plane = "127.0.0.1:9005",
+          proxy_listen = "0.0.0.0:9102",
+          prefix = "dp1",
+        }))
+
+        assert(helpers.start_kong({
+          plugins = "rate-limiting-advanced,key-auth",
+          role = "data_plane",
+          database = "off",
+          cluster_cert = "spec/fixtures/kong_clustering.crt",
+          cluster_cert_key = "spec/fixtures/kong_clustering.key",
+          lua_ssl_trusted_certificate = "spec/fixtures/kong_clustering.crt",
+          cluster_control_plane = "127.0.0.1:9005",
+          proxy_listen = "0.0.0.0:9104",
+          prefix = "dp2",
+        }))
+      end
     end)
 
     teardown(function()
       helpers.stop_kong()
+      helpers.stop_kong("node2")
+
+      if strategy ~= "off" then
+        helpers.stop_kong("cp")
+        helpers.stop_kong("dp1")
+        helpers.stop_kong("dp2")
+      end
     end)
 
     local client, admin_client
@@ -511,6 +678,534 @@ for _, strategy in strategies() do
         rate = tonumber(res.headers["ratelimit-remaining"])
         assert.is_true(0 < rate and rate <= 6)
         assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+      end)
+
+      it("sync counters in all nodes after PATCH", function()
+        for i = 1, 6 do
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "test15.com",
+            }
+          })
+
+          assert.res_status(200, res)
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-10"]))
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-10"]))
+          assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+          assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+          assert.is_nil(res.headers["retry-after"])
+        end
+
+        -- Additonal request ON NODE 1, while limit is 6/window
+        local res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test15.com",
+          }
+        })
+        local body = assert.res_status(429, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+        local retry_after = tonumber(res.headers["retry-after"])
+        assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+        assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
+
+        -- Hit NODE 2 so the sync timer starts
+        local res = assert(helpers.proxy_client(nil, 9100):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test15.com",
+          }
+        })
+        assert.res_status(200, res)
+
+        -- Wait for counters to sync ON NODE 2
+        ngx.sleep(plugin.config.sync_rate + 1)
+
+        -- Additonal request ON NODE 2, while limit is 6/window
+        local res = assert(helpers.proxy_client(nil, 9100):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test15.com",
+          }
+        })
+
+        local body = assert.res_status(429, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+        local retry_after = tonumber(res.headers["retry-after"])
+        assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+        assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
+
+        -- PATCH the plugin's window_size
+        local res = assert(admin_client:send {
+          method = "PATCH",
+          path = "/plugins/" .. plugin.id,
+          body = {
+            config = {
+              window_size = { 9 },
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.same(9, body.config.window_size[1])
+
+        -- wait for the window
+        ngx.sleep(plugin.config.window_size[1] + 1)
+
+        -- Hit node 1
+        for i = 1, 6 do
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "test15.com",
+            }
+          })
+
+          assert.res_status(200, res)
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-9"]))
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-9"]))
+          assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+          assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+          assert.is_nil(res.headers["retry-after"])
+        end
+
+        -- Additonal request ON NODE 1, while limit is 6/window
+        local res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test15.com",
+          }
+        })
+        local body = assert.res_status(429, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+        local retry_after = tonumber(res.headers["retry-after"])
+        assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+        assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
+
+        -- Hit NODE 2 so the sync timer starts
+        local res = assert(helpers.proxy_client(nil, 9100):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test15.com",
+          }
+        })
+        assert.res_status(200, res)
+
+        -- Wait for counters to sync ON NODE 2
+        ngx.sleep(plugin.config.sync_rate + 1)
+
+        -- Additonal request ON NODE 2, while limit is 6/window
+        local res = assert(helpers.proxy_client(nil, 9100):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test15.com",
+          }
+        })
+
+        local body = assert.res_status(429, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+        local retry_after = tonumber(res.headers["retry-after"])
+        assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+        assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
+      end)
+
+      it("we are NOT leaking any timers after DELETE", function()
+        local res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test17.com",
+          }
+        })
+        assert.res_status(200, res)
+
+        local res = assert(helpers.proxy_client(nil, 9100):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test17.com",
+          }
+        })
+        assert.res_status(200, res)
+
+        ngx.sleep(plugin3.config.sync_rate)
+
+        assert(find_in_file("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1))
+
+        -- Check in NODE 2
+        assert(find_in_file("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "node2/logs/error.log"))
+
+        -- DELETE the plugin
+        local res = assert(helpers.admin_client():send {
+          method = "DELETE",
+          path = "/plugins/" .. plugin3.id,
+        })
+        assert.res_status(204, res)
+
+        -- Wait to check for the DELETED plugin with the datastore
+        ngx.sleep(10)
+
+        assert(find_in_file("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1))
+
+        -- Check in NODE 2
+        assert(find_in_file("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "node2/logs/error.log"))
+      end)
+
+      it("we are NOT leaking any timers after DELETE on hybrid mode", function()
+        -- DELETE the plugin
+        local res = assert(helpers.admin_client(nil, 9103):send {
+          method = "DELETE",
+          path = "/plugins/" .. plugin4.id,
+        })
+        assert.res_status(204, res)
+
+        -- Wait to check for the DELETED plugin with the CP
+        ngx.sleep(10)
+
+        -- Check in DP 1
+        assert(find_in_file("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "dp1/logs/error.log"))
+
+        -- Check in DP 2
+        assert(find_in_file("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "dp2/logs/error.log"))
+      end)
+
+      it("#flaky new plugin is created in a new route in hybrid mode", function()
+        -- POST a service in the CP
+        local res = assert(helpers.admin_client(nil, 9103):send {
+          method = "POST",
+          path = "/services/",
+          body = {
+            protocol = "http",
+            host = "127.0.0.1",
+            port = 15555,
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        -- POST a route in the CP
+        local res = assert(helpers.admin_client(nil, 9103):send {
+          method = "POST",
+          path = "/services/" .. json.id .. "/routes/",
+          body = {
+            name = "testt19",
+            hosts = { "testt19.com" },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
+
+        -- POST the plugin in the CP
+        local res = assert(helpers.admin_client(nil, 9103):send {
+          method = "POST",
+          path = "/services/" .. json.id .. "/plugins/",
+          body = {
+            name = "rate-limiting-advanced",
+            config = {
+              strategy = "redis", -- cluster not supported in hybrid mode
+              window_size = { 5 },
+              namespace = "Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
+              limit = { 6 },
+              sync_rate = 1,
+              redis = {
+                host = REDIS_HOST,
+                port = REDIS_PORT,
+                database = REDIS_DATABASE,
+                password = REDIS_PASSWORD,
+              }
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
+
+        -- Wait to check for the CREATED plugin with the CP
+        ngx.sleep(10)
+
+        local res = assert(helpers.proxy_client(nil, 9102):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "testt19.com",
+          }
+        })
+        assert.res_status(200, res)
+
+        local res = assert(helpers.proxy_client(nil, 9104):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "testt19.com",
+          }
+        })
+        assert.res_status(200, res)
+
+        ngx.sleep(1)
+
+        -- Check in DP 1
+        assert(find_in_file("start sync Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "dp1/logs/error.log"))
+
+        -- Check in DP 2
+        assert(find_in_file("start sync Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "dp2/logs/error.log"))
+      end)
+
+      it("new plugin works in a new service in traditional mode", function()
+        -- POST a service
+        local res = assert(helpers.admin_client():send {
+          method = "POST",
+          path = "/services/",
+          body = {
+            protocol = "http",
+            host = "127.0.0.1",
+            port = 15555,
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        -- POST a route
+        local res = assert(helpers.admin_client():send {
+          method = "POST",
+          path = "/services/" .. json.id .. "/routes/",
+          body = {
+            name = "testt20",
+            hosts = { "testt20.com" },
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
+
+        -- POST the plugin
+        local res = assert(helpers.admin_client():send {
+          method = "POST",
+          path = "/services/" .. json.id .. "/plugins/",
+          body = {
+            name = "rate-limiting-advanced",
+            config = {
+              strategy = policy,
+              window_size = { 5 },
+              namespace = "Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu",
+              limit = { 6 },
+              sync_rate = 1,
+              redis = {
+                host = REDIS_HOST,
+                port = REDIS_PORT,
+                database = REDIS_DATABASE,
+                password = REDIS_PASSWORD,
+              }
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
+
+        -- Wait to check for the CREATED plugin with the datastore
+        ngx.sleep(10)
+
+        local res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "testt20.com",
+          }
+        })
+        assert.res_status(200, res)
+
+        local res = assert(helpers.proxy_client(nil, 9100):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "testt20.com",
+          }
+        })
+        assert.res_status(200, res)
+
+        ngx.sleep(1)
+
+        -- Check in NODE 1
+        assert(find_in_file("start sync Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1))
+
+        -- Check in NODE 2
+        assert(find_in_file("start sync Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "node2/logs/error.log"))
+      end)
+
+
+      it("#flaky sync counters in all DP nodes after PATCH", function()
+        -- Hit DP 1
+        for i = 1, 6 do
+          local res = assert(helpers.proxy_client(nil, 9102):send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "test16.com",
+            }
+          })
+
+          assert.res_status(200, res)
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-10"]))
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-10"]))
+          assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+          assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+          assert.is_nil(res.headers["retry-after"])
+        end
+
+        -- Additonal request ON DP 1, while limit is 6/window
+        local res = assert(helpers.proxy_client(nil, 9102):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test16.com",
+          }
+        })
+        local body = assert.res_status(429, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+        local retry_after = tonumber(res.headers["retry-after"])
+        assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+        assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
+
+        -- Hit DP 2 so the sync timer starts
+        local res = assert(helpers.proxy_client(nil, 9104):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test16.com",
+          }
+        })
+        assert.res_status(200, res)
+
+        -- Wait for counters to sync ON DP 2
+        ngx.sleep(plugin2.config.sync_rate + 1)
+
+        -- Hit DP 2
+        local res = assert(helpers.proxy_client(nil, 9104):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test16.com",
+          }
+        })
+
+        local body = assert.res_status(429, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+        local retry_after = tonumber(res.headers["retry-after"])
+        assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+        assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
+
+        -- PATCH the plugin's window_size on CP
+        local res = assert(helpers.admin_client(nil, 9103):send {
+          method = "PATCH",
+          path = "/plugins/" .. plugin2.id,
+          body = {
+            config = {
+              window_size = { 9 },
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.same(9, body.config.window_size[1])
+
+        -- wait for the window
+        ngx.sleep(plugin2.config.window_size[1] + 1)
+
+        -- Hit DP 1
+        for i = 1, 6 do
+          local res = assert(helpers.proxy_client(nil, 9102):send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "test16.com",
+            }
+          })
+
+          assert.res_status(200, res)
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-9"]))
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-9"]))
+          assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+          assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+          assert.is_nil(res.headers["retry-after"])
+        end
+
+        -- Additonal request ON DP 1, while limit is 6/window
+        local res = assert(helpers.proxy_client(nil, 9102):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test16.com",
+          }
+        })
+        local body = assert.res_status(429, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+        local retry_after = tonumber(res.headers["retry-after"])
+        assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+        assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
+
+        -- Hit DP 2 so the sync timer starts
+        local res = assert(helpers.proxy_client(nil, 9104):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test16.com",
+          }
+        })
+        assert.res_status(200, res)
+
+        -- Wait for counters to sync ON DP 2
+        ngx.sleep(plugin2.config.sync_rate + 1)
+
+        -- Additonal request ON DP 2, while limit is 6/window
+        local res = assert(helpers.proxy_client(nil, 9104):send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test16.com",
+          }
+        })
+
+        local body = assert.res_status(429, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+        local retry_after = tonumber(res.headers["retry-after"])
+        assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+        assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
       end)
 
       it("resets the counter", function()

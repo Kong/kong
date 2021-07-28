@@ -10,6 +10,8 @@
 local ratelimiting = require "kong.tools.public.rate-limiting"
 local schema       = require "kong.plugins.rate-limiting-advanced.schema"
 local event_hooks  = require "kong.enterprise_edition.event_hooks"
+local concurrency  = require "kong.concurrency"
+local cjson_safe   = require "cjson.safe"
 
 
 local kong     = kong
@@ -19,6 +21,13 @@ local max      = math.max
 local rand     = math.random
 local time     = ngx.time
 local tonumber = tonumber
+
+
+-- all elements from all workspaces
+local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
+
+-- semaphore name unique to rl
+local GLOBAL_FLIP_OPS = { name = "flip-rl" }
 
 
 local NewRLHandler = {
@@ -147,12 +156,101 @@ function NewRLHandler:init_worker()
   })
 
   local worker_events = kong.worker_events
+  local cluster_events = kong.cluster_events
   -- event handlers to update recurring sync timers
+
+  worker_events.register(function()
+    if ngx.worker.exiting() then
+      kong.log.notice("declarative flip config canceled: process exiting")
+      return true
+    end
+
+    local ok, err = concurrency.with_coroutine_mutex(GLOBAL_FLIP_OPS, function()
+      local namespaces = {}
+
+      for plugin, err in kong.db.plugins:each(nil, GLOBAL_QUERY_OPTS) do
+        if err then
+          kong.log.crit("could not obtain list of plugins: ", err)
+          return nil, err
+        end
+
+        if plugin.name == "rate-limiting-advanced" then
+          namespaces[plugin.config.namespace] = true
+
+          kong.log.debug("clear and reset ", plugin.config.namespace)
+
+          -- previous config doesn't exist for this worker
+          -- create a namespace for the new config and return, similar to "rl:create"
+          if not ratelimiting.config[plugin.config.namespace] then
+            new_namespace(plugin.config, true)
+            goto continue
+          end
+
+          -- if the previous config did not have a background timer,
+          -- we need to start one
+          local start_timer = false
+          if ratelimiting.config[plugin.config.namespace].sync_rate <= 0 and
+             plugin.config.sync_rate > 0 then
+
+            start_timer = true
+          end
+
+          ratelimiting.clear_config(plugin.config.namespace)
+          new_namespace(plugin.config, start_timer)
+
+          -- recommendation have changed with FT-928
+          if plugin.config.sync_rate > 0 and plugin.config.sync_rate < 1 then
+            kong.log.warn("Config option 'sync_rate' " .. plugin.config.sync_rate .. " is between 0 and 1; a config update is recommended")
+          end
+
+          -- clear the timer if we dont need it
+          if plugin.config.sync_rate <= 0 then
+            if ratelimiting.config[plugin.config.namespace] then
+              ratelimiting.config[plugin.config.namespace].kill = true
+
+            else
+              kong.log.warn("did not find namespace ", plugin.config.namespace, " to kill")
+            end
+          end
+
+          ::continue::
+        end
+      end
+
+      for namespace in pairs(ratelimiting.config) do
+        if not namespaces[namespace] then
+          -- namespace not found on kong.db.plugins: plugin was deleted
+          ratelimiting.config[namespace].kill = true
+        end
+      end
+
+      return true
+    end)
+
+    if not ok then
+      kong.log.err("rl config flip failed: ", err)
+    end
+  end, "declarative", "flip_config")
+
 
   -- catch any plugins update and forward config data to each worker
   worker_events.register(function(data)
+    local operation = data.operation
+    local config = data.entity.config
+
+    local json, err = cjson_safe.encode({ operation, config })
+    if not json then
+      kong.log.err("could not encode worker_events register cb data: ", err)
+    end
+
+    -- => to cluster_events handler
+    local ok, err = cluster_events:broadcast("rl", json)
+    if not ok then
+      kong.log.err("failed broadcasting rl ", operation, " to cluster: ", err)
+    end
+
     if data.entity.name == "rate-limiting-advanced" then
-      worker_events.post("rl", data.operation, data.entity.config)
+      worker_events.post("rl", operation, config)
     end
   end, "crud", "plugins")
 
@@ -168,6 +266,13 @@ function NewRLHandler:init_worker()
   -- timer as it's already running in the background
   worker_events.register(function(config)
     kong.log.debug("clear and reset ", config.namespace)
+
+    -- previous config doesn't exist for this worker
+    -- create a namespace for the new config and return, similar to "rl:create"
+    if not ratelimiting.config[config.namespace] then
+      new_namespace(config, true)
+      return
+    end
 
     -- if the previous config did not have a background timer,
     -- we need to start one
@@ -209,6 +314,29 @@ function NewRLHandler:init_worker()
       kong.log.warn("did not find namespace ", config.namespace, " to kill")
     end
   end, "rl", "delete")
+
+  cluster_events:subscribe("rl", function(data)
+    if not data then
+      kong.log.err("received empty data in cluster_events subscription")
+      return
+    end
+
+    local json, err = cjson_safe.decode(data)
+
+    if not json then
+      kong.log.err("could not decode cluster_events subscribe cb data: ", err)
+      return
+    end
+
+    local operation = json[1]
+    local config = json[2]
+
+    -- => to worker_events node handler
+    local ok, err = worker_events.post("rl", operation, config)
+    if not ok then
+      kong.log.err("failed broadcasting rl ", operation, " to workers: ", err)
+    end
+  end)
 end
 
 function NewRLHandler:access(conf)
