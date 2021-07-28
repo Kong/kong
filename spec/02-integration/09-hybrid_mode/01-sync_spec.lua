@@ -24,7 +24,7 @@ local KEY_AUTH_PLUGIN
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("CP/DP sync works with #" .. strategy .. " backend", function()
+  describe("CP/DP #sync works with #" .. strategy .. " backend", function()
 
     lazy_setup(function()
       helpers.get_db_utils(strategy, {
