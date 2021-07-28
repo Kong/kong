@@ -52,6 +52,11 @@ for _, strategy in helpers.each_strategy() do
         service = bp.services:insert { name = "dd4" }
       }
 
+      local route5 = bp.routes:insert {
+        hosts   = { "datadog5.com" },
+        service = bp.services:insert { name = "dd5" }
+      }
+
       local route_grpc = assert(bp.routes:insert {
         protocols = { "grpc" },
         paths = { "/hello.HelloService/" },
@@ -130,6 +135,21 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route5.id },
+      }
+
+      helpers.setenv('KONG_DATADOG_AGENT_HOST', 'localhost')
+      helpers.setenv('KONG_DATADOG_AGENT_PORT', '9999')
+      bp.plugins:insert {
+        name     = "datadog",
+        route = { id = route5.id },
+        config   = {
+          use_env = true,
+        },
+      }
+
+      bp.plugins:insert {
         name       = "key-auth",
         route = { id = route_grpc.id },
       }
@@ -154,6 +174,9 @@ for _, strategy in helpers.each_strategy() do
       if proxy_client then
         proxy_client:close()
       end
+
+      helpers.unsetenv('KONG_DATADOG_AGENT_HOST')
+      helpers.unsetenv('KONG_DATADOG_AGENT_PORT')
 
       helpers.stop_kong()
     end)
@@ -262,6 +285,29 @@ for _, strategy in helpers.each_strategy() do
       assert.True(ok)
       assert.contains("kong.request.count:1|c|#name:dd3,status:200,T2:V2,T3:V3,T4", gauges)
       assert.contains("kong.latency:%d+|g|#name:dd3,status:200,T2:V2:V3,T4", gauges, true)
+    end)
+
+    it("logs metrics to host/port defined via environment variables", function()
+      local thread = helpers.udp_server(9999, 6)
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200?apikey=kong",
+        headers = {
+          ["Host"] = "datadog5.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      local ok, gauges = thread:join()
+      assert.True(ok)
+      assert.equal(6, #gauges)
+      assert.contains("kong.request.count:1|c|#name:dd5,status:200,consumer:bar,app:kong" , gauges)
+      assert.contains("kong.latency:%d+|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.request.size:%d+|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.response.size:%d+|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.upstream_latency:%d+|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
+      assert.contains("kong.kong_latency:%d*|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
     end)
 
     it("should not return a runtime error (regression)", function()
