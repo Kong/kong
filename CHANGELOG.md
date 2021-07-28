@@ -229,7 +229,7 @@ grpc-gateway plugin first:
   used Kong with TCP, they couldn’t use a custom log format. With this fix, `proxy_stream_access_log` and `proxy_stream_error_log`
   have been added to differentiate stream access log from the HTTP subsystem. See
   [`proxy_stream_access_log`](https://docs.konghq.com/gateway-oss/2.5.x/configuration/#proxy_stream_access_log)
-  and [`proxy_stream_error`](https://docs.konghq.com/gateway-oss/2.5.x/configuration/#proxy_stream_error) in the Configuration
+  and [`proxy_stream_error_log`](https://docs.konghq.com/gateway-oss/2.5.x/configuration/#proxy_stream_error_log) in the Configuration
   Property Reference for more information. [#7046](https://github.com/kong/kong/pull/7046)
 
 #### Migrations
@@ -246,7 +246,7 @@ grpc-gateway plugin first:
 - With this update, `kong.response.get_XXX()` functions now work in the log phase on external plugins. Before
   `kong.response.get_XXX()` functions required data from the response object, which was not accessible in the
   post-log timer used to call log handlers in external plugins. Now these functions work by accessing the required
-  data from the set saved at the start of the log phase. See [`kong.response`](https://docs.konghq.com/gateway-oss/{{page.kong_version}}/kong.response)
+  data from the set saved at the start of the log phase. See [`kong.response`](https://docs.konghq.com/gateway-oss/2.5.x/pdk/kong.response)
   in the Plugin Development Kit for more information. [#7048](https://github.com/kong/kong/pull/7048)
 - External plugins handle certain error conditions better while the Kong balancer is being refreshed. Before
   when an `instance_id` of an external plugin changed, and the plugin instance attempted to reset and retry,
