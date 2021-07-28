@@ -109,6 +109,12 @@ grpc-gateway plugin first:
   [Loading The Declarative Configuration File](https://docs.konghq.com/2.5.x/db-less-and-declarative-config/#loading-the-declarative-configuration-file)
   section of the DB-less and Declarative Configuration guide for more information.
   [#7379](https://github.com/kong/kong/pull/7379)
+- This release adds a new Performance Testing Framework used to assess the performance of the Kong Gateway (OSS) itself with bundled
+  or custom plugins, as well as plot frame graphs to debug performance bottlenecks. Built into Kong Gateway’s (OSS)
+  existing integration testing approach, the Framework makes developing performance tests easier. See the
+  [Performance Testing Framework](https://docs.konghq.com/gateway-oss/2.5.x/performance-testing-framework) documentation
+  and [implementation examples](https://github.com/Kong/kong/tree/master/spec/04-perf) for more information.
+  [#7030](https://github.com/Kong/kong/pull/7030)
 
 #### PDK
 
