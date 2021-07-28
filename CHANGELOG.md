@@ -1,3 +1,7 @@
+## 1.4.4
+
+- fix(*) sync counters in all nodes after CRUD events (hybrid/traditional) (FTI-2426)
+
 ## 1.4.3
 
 - fix(handler) event hooks registration should be in init_worker
