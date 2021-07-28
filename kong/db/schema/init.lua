@@ -2002,7 +2002,7 @@ end
 function Schema:get_constraints()
   if self.name == "workspaces" then
     -- merge explicit and implicit constraints for workspaces
-    for _, e in ipairs(_cache["workspaces"].constraints) do
+    for _, e in pairs(_cache["workspaces"].constraints) do
       local found = false
       for _, w in ipairs(_workspaceable) do
         if w == e then
