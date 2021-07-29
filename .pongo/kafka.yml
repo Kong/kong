@@ -1,7 +1,7 @@
 version: '3.5'
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:6.2.0
+    image: confluentinc/cp-zookeeper:${PONGO_KAFKA_VERSION:-6.2.0}
     hostname: zookeeper
     ports:
       - "2181:2181"
@@ -17,7 +17,7 @@ services:
       - ${PONGO_WD}/.pongo/kafka/zookeper_jaas.conf:/etc/kafka/zookeper_jaas.conf
 
   kafka:
-    image: confluentinc/cp-kafka:6.2.0
+    image: confluentinc/cp-kafka:${PONGO_KAFKA_VERSION:-6.2.0}
     hostname: broker
     depends_on:
       - zookeeper
@@ -82,7 +82,7 @@ services:
       - ${PONGO_WD}/.pongo/kafka/broker-config/kafka_server_jaas.conf:/etc/kafka/kafka_server_jaas.conf
 
   rest-proxy:
-    image: confluentinc/cp-kafka-rest:6.2.0
+    image: confluentinc/cp-kafka-rest:${PONGO_KAFKA_VERSION:-6.2.0}
     depends_on:
       - kafka
     ports:
