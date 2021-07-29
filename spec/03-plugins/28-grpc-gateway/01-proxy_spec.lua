@@ -106,5 +106,27 @@ for _, strategy in helpers.each_strategy() do
       assert.equal('12', res.headers['grpc-status'])
     end)
 
+    describe("known types transformations", function()
+
+      test("Timestamp", function()
+        local now = os.time()
+        local now_8601 = os.date("!%FT%T", now)
+        local ago_8601 = os.date("!%FT%TZ", now - 315)
+
+        local res, _ = proxy_client:post("/bounce", {
+          headers = { ["Content-Type"] = "application/json" },
+          body = { message = "hi", when = ago_8601 },
+        })
+        assert.equal(200, res.status)
+
+        local body = res:read_body()
+        assert.same({
+          now = now_8601,
+          reply = "hello hi",
+          time_message = ago_8601 .. " was 5m15s ago",
+        }, cjson.decode(body))
+      end)
+    end)
+
   end)
 end

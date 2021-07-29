@@ -31,7 +31,7 @@ func (s *server) BounceIt(ctx context.Context, in *pb.BallIn) (*pb.BallOut, erro
 	ago := time.Now().Sub(w)
 
 	reply := fmt.Sprintf("hello %s", in.GetMessage())
-	time_message := fmt.Sprintf("%v was %v ago", w, ago)
+	time_message := fmt.Sprintf("%s was %v ago", w.Format(time.RFC3339), ago.Truncate(time.Second))
 
 	return &pb.BallOut{
 		Reply:       reply,

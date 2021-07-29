@@ -17,6 +17,9 @@ service Bouncer {
       get: "/v1/messages/{greeting}"
       additional_bindings {
         get: "/v1/messages/legacy/{greeting=**}"
+        additional_bindings {
+          post: "/v1/messages/"
+        }
       }
       body: "*"
     };
