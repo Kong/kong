@@ -637,27 +637,23 @@ local function check_upsert(self, key, entity, options, name)
 end
 
 
-local function find_cascade_delete_entities(self, entity)
+local function find_cascade_delete_entities(self, entity, show_ws_id)
   local constraints = self.schema:get_constraints()
   local entries = {}
   local pk = self.schema:extract_pk_values(entity)
   for _, constraint in ipairs(constraints) do
-    if constraint.on_delete ~= "cascade" then
-      goto continue
-    end
-
-    local dao = self.db.daos[constraint.schema.name]
-    local method = "each_for_" .. constraint.field_name
-    for row, err in dao[method](dao, pk) do
-      if not row then
-        log(ERR, "[db] failed to traverse entities for cascade-delete: ", err)
-        break
+    if constraint.on_delete == "cascade" then
+      local dao = self.db.daos[constraint.schema.name]
+      local method = "each_for_" .. constraint.field_name
+      for row, err in dao[method](dao, pk, nil, show_ws_id) do
+        if not row then
+          log(ERR, "[db] failed to traverse entities for cascade-delete: ", err)
+          break
+        end
+        
+        table.insert(entries, { dao = dao, entity = row })
       end
-
-      table.insert(entries, { dao = dao, entity = row })
     end
-
-    ::continue::
   end
 
   return entries
@@ -899,7 +895,7 @@ local function generate_foreign_key_methods(schema)
           return true
         end
 
-        local cascade_entries = find_cascade_delete_entities(self, entity)
+        local cascade_entries = find_cascade_delete_entities(self, entity, show_ws_id)
 
         local ok, err_t = run_hook("dao:delete_by:pre",
                                    entity,
@@ -920,7 +916,8 @@ local function generate_foreign_key_methods(schema)
                                  entity,
                                  self.schema.name,
                                  options,
-                                 entity.ws_id)
+                                 entity.ws_id,
+                                 cascade_entries)
         if not entity then
           return nil, tostring(err_t), err_t
         end
@@ -1263,7 +1260,8 @@ function DAO:delete(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
-  local entity, err, err_t = self:select(primary_key, { show_ws_id = true })
+  local show_ws_id = { show_ws_id = true }
+  local entity, err, err_t = self:select(primary_key, show_ws_id)
   if err then
     return nil, err, err_t
   end
@@ -1280,7 +1278,7 @@ function DAO:delete(primary_key, options)
     end
   end
 
-  local cascade_entries = find_cascade_delete_entities(self, primary_key)
+  local cascade_entries = find_cascade_delete_entities(self, primary_key, show_ws_id)
 
   local ws_id = entity.ws_id
   local _
@@ -1300,7 +1298,7 @@ function DAO:delete(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
-  entity, err_t = run_hook("dao:delete:post", entity, self.schema.name, options, ws_id)
+  entity, err_t = run_hook("dao:delete:post", entity, self.schema.name, options, ws_id, cascade_entries)
   if not entity then
     return nil, tostring(err_t), err_t
   end
