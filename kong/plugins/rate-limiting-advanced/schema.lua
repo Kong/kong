@@ -51,7 +51,6 @@ return {
           }},
           { sync_rate = {
             type = "number",
-            required = true,
           }},
           { namespace = {
             type = "string",
@@ -60,7 +59,7 @@ return {
           }},
           { strategy = {
             type = "string",
-            one_of = { "cluster", "redis", },
+            one_of = { "cluster", "redis", "local" },
             default = "cluster",
             required = true,
           }},
@@ -116,6 +115,17 @@ return {
              config.redis.sentinel_addresses == ngx.null and
              config.redis.cluster_addresses == ngx.null then
             return nil, "No redis config provided"
+          end
+        end
+
+        if config.strategy == "local" then
+          if type(config.sync_rate) == "number" then
+            return nil, "sync_rate cannot be configured when using a local strategy"
+          end
+          config.sync_rate = -1
+        else
+          if type(config.sync_rate) ~= "number" then
+            return nil, "sync_rate is required if not using a local strategy"
           end
         end
 
