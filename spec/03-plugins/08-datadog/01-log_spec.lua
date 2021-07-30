@@ -138,7 +138,8 @@ for _, strategy in helpers.each_strategy() do
         name     = "datadog",
         route = { id = route5.id },
         config   = {
-          use_env = true,
+          host = ngx.null, -- plugin takes above env var value, if set to null
+          port = ngx.null, -- plugin takes above env var value, if set to null
         },
       }
 
