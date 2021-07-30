@@ -1,3 +1,7 @@
+## Unreleased
+
+- fix(schema) add a "local" strategy
+
 ## 1.4.4
 
 - fix(*) sync counters in all nodes after CRUD events (hybrid/traditional) (FTI-2426)
