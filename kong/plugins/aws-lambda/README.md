@@ -100,7 +100,7 @@ In the same request, to furthermore narrow the scope of the plugin.
 - **Using a database**, all plugins can be configured using the `http://kong:8001/plugins/` endpoint.
 - **Without a database**, all plugins can be configured via the `plugins:` entry on the declarative configuration file.
 
-A plugin which is not associated to any Service, Route or Consumer (or API, if you are using an older version of Kong) is considered "global", and will be run on every request. Read the [Plugin Reference](https://docs.konghq.com/latest/admin-api/#add-plugin) and the [Plugin Precedence](https://docs.konghq.com/latest/admin-api/#precedence)sections for more information.
+A plugin which is not associated to any Service, Route or Consumer (or API, if you are using an older version of Kong) is considered "global", and will be run on every request. Read the [Plugin Reference](https://docs.konghq.com/latest/admin-api/#add-plugin) and the [Plugin Precedence](https://docs.konghq.com/latest/admin-api/#precedence) sections for more information.
 
 ## Parameters
 
