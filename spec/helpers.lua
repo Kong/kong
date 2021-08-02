@@ -167,7 +167,7 @@ local function make_yaml_file(content, filename)
     assert(fd:write("\n")) -- ensure last line ends in newline
     assert(fd:close())
   else
-    assert(kong_exec("config db_export "..filename))
+    assert(kong_exec("config db_export --conf "..TEST_CONF_PATH.." "..filename))
   end
   return filename
 end
@@ -466,7 +466,8 @@ end
 -----------------
 -- Custom helpers
 -----------------
-local resty_http_proxy_mt = {}
+local resty_http_proxy_mt = setmetatable({}, { __index = http })
+resty_http_proxy_mt.__index = resty_http_proxy_mt
 
 local pack = function(...) return { n = select("#", ...), ... } end
 local unpack = function(t) return unpack(t, 1, t.n) end
@@ -660,16 +661,6 @@ for _, method_name in ipairs({"get", "post", "put", "patch", "delete"}) do
   end
 end
 
-function resty_http_proxy_mt:__index(k)
-  local f = rawget(resty_http_proxy_mt, k)
-  if f then
-    return f
-  end
-
-  return self.client[k]
-end
-
-
 --- Creates a http client.
 -- Instead of using this client, you'll probably want to use the pre-configured
 -- clients available as `proxy_client`, `admin_client`, etc. because these come
@@ -687,15 +678,13 @@ end
 -- @see admin_ssl_client
 local function http_client(host, port, timeout)
   timeout = timeout or 10000
-  local client = assert(http.new())
-  local _, err = client:connect(host, port)
+  local self = setmetatable(assert(http.new()), resty_http_proxy_mt)
+  local _, err = self:connect(host, port)
   if err then
     error("Could not connect to " .. host .. ":" .. port .. ": " .. err)
   end
-  client:set_timeout(timeout)
-  return setmetatable({
-    client = client
-  }, resty_http_proxy_mt)
+  self:set_timeout(timeout)
+  return self
 end
 
 

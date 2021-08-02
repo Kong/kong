@@ -19,18 +19,33 @@ local stat_types = {
 local statsd_mt = {}
 statsd_mt.__index = statsd_mt
 
+local env_datadog_agent_host = os.getenv 'KONG_DATADOG_AGENT_HOST'
+local env_datadog_agent_port = tonumber(os.getenv 'KONG_DATADOG_AGENT_PORT' or "")
 
 function statsd_mt:new(conf)
   local sock   = udp()
-  local _, err = sock:setpeername(conf.host, conf.port)
+
+  local host, port
+  if conf.use_env then
+    if not (env_datadog_agent_host and env_datadog_agent_port) then
+      return nil, "both KONG_DATADOG_AGENT_HOST and KONG_DATADOG_AGENT_PORT must be set"
+    end
+    host = env_datadog_agent_host
+    port = env_datadog_agent_port
+  else
+    host = conf.host
+    port = conf.port
+  end
+
+  local _, err = sock:setpeername(host, port)
   if err then
-    return nil, fmt("failed to connect to %s:%s: %s", conf.host,
-                    tostring(conf.port), err)
+    return nil, fmt("failed to connect to %s:%s: %s", host,
+                    tostring(port), err)
   end
 
   local statsd = {
-    host       = conf.host,
-    port       = conf.port,
+    host       = host,
+    port       = port,
     prefix     = conf.prefix,
     socket     = sock,
     stat_types = stat_types,

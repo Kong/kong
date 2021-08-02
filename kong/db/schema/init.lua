@@ -2002,7 +2002,7 @@ end
 function Schema:get_constraints()
   if self.name == "workspaces" then
     -- merge explicit and implicit constraints for workspaces
-    for _, e in ipairs(_cache["workspaces"].constraints) do
+    for _, e in pairs(_cache["workspaces"].constraints) do
       local found = false
       for _, w in ipairs(_workspaceable) do
         if w == e then
@@ -2017,7 +2017,11 @@ function Schema:get_constraints()
     return _workspaceable
   end
 
-  return _cache[self.name].constraints
+  local constraints = {}
+  for _, c in pairs(_cache[self.name].constraints) do
+    table.insert(constraints, c)
+  end
+  return constraints
 end
 
 
@@ -2148,11 +2152,14 @@ function Schema.new(definition, is_subschema)
       if not is_subschema then
         -- Store the inverse relation for implementing constraints
         local constraints = assert(_cache[field.reference]).constraints
-        table.insert(constraints, {
-          schema     = self,
-          field_name = key,
-          on_delete  = field.on_delete,
-        })
+        -- Set logic to prevent duplicates when Schema is initialized multiple times
+        if self.name then
+          constraints[self.name] = {
+            schema     = self,
+            field_name = key,
+            on_delete  = field.on_delete,
+          }
+        end
       end
     end
   end

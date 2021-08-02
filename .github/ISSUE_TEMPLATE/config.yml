@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question
+    url: https://github.com/Kong/kong/discussions
+    about: Ask (and answer) questions at the Kong discussion forum
+  - name: Security Vulnerability
+    url: https://docs.konghq.com/gateway-oss/latest/kong-security-update-process/#reporting-a-vulnerability
+    about: Send security vulnerability reports to security@konghq.com.

@@ -51,14 +51,14 @@ function update_admin_api_def() {
 function bump_homebrew() {
    curl -L -o "kong-$version.tar.gz" "https://download.konghq.com/gateway-src/kong-$version.tar.gz"
    sum=$(sha256sum "kong-$version.tar.gz" | awk '{print $1}')
-   sed -i 's/kong-[0-9.]*.tar.gz/kong-'$version'.tar.gz/' Formula/kong.rb
-   sed -i 's/sha256 ".*"/sha256 "'$sum'"/' Formula/kong.rb
+   sed -i.bak 's/KONG_VERSION = "[0-9.]*"/KONG_VERSION = "'$version'"/' Formula/kong.rb
+   sed -i.bak 's/sha256 ".*"/sha256 "'$sum'"/' Formula/kong.rb
 }
 
 #-------------------------------------------------------------------------------
 function bump_vagrant() {
-   sed -i 's/version = "[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*"/version = "'$version'"/' Vagrantfile
-   sed -i 's/`[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*`/`'$version'`/' README.md
+   sed -i.bak 's/version = "[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*"/version = "'$version'"/' Vagrantfile
+   sed -i.bak 's/`[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*`/`'$version'`/' README.md
 }
 
 #-------------------------------------------------------------------------------

@@ -172,8 +172,13 @@ end
 -- @param recreate (boolean, optional) create new balancer even if one exists
 -- @return The new balancer object, or nil+error
 function balancers_M.create_balancer(upstream, recreate)
-  if balancers_by_id[upstream.id] and not recreate then
-    return balancers_by_id[upstream.id]
+  local existing_balancer = balancers_by_id[upstream.id]
+  if existing_balancer then
+    if recreate then
+      healthcheckers.stop_healthchecker(existing_balancer)
+    else
+      return existing_balancer
+    end
   end
 
   if creating[upstream.id] then

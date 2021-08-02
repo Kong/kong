@@ -491,7 +491,6 @@ for _, consistency in ipairs({"strict", "eventual"}) do
 
     describe("healthcheck events", function()
       it("(un)subscribe_to_healthcheck_events()", function()
-        pending("tests implementation, not behaviour")
         setup_it_block(consistency)
         local my_balancer = assert(balancers.create_balancer(upstream_hc))
         local hc = assert(my_balancer.healthchecker)
@@ -510,20 +509,20 @@ for _, consistency in ipairs({"strict", "eventual"}) do
           address = {
             ip = "127.0.0.1",
             port = 1111,
-            host = {hostname = "localhost"},
+            target = {name = "localhost"},
           }}, 429)
         my_balancer.report_http_status({
           address = {
             ip = "127.0.0.1",
             port = 1111,
-            host = {hostname = "localhost"},
+            target = {name = "localhost"},
           }}, 200)
         balancer.unsubscribe_from_healthcheck_events(cb)
         my_balancer.report_http_status({
           address = {
             ip = "127.0.0.1",
             port = 1111,
-            host = {hostname = "localhost"},
+            target = {name = "localhost"},
           }}, 429)
         hc:stop()
         assert.same({
