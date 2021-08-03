@@ -57,6 +57,31 @@ describe("rate-limiting-advanced schema", function()
     assert.same({ "No header name provided" }, err["@entity"])
   end)
 
+  it("accepts a config with a path identifier", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      identifier = "path",
+      sync_rate = 10,
+      path = "/request",
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
+  it("errors with path identifier if path is missing", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 10 },
+      identifier = "path",
+      sync_rate = 10,
+    }, rate_limiting_schema)
+
+    assert.is_falsy(ok)
+    assert.same({ "No path provided" }, err["@entity"])
+  end)
+
   it("casts window_size and window_limit values to numbers", function()
     local schema = {
       window_size = { 10, 20 },

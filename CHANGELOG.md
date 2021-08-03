@@ -1,6 +1,7 @@
 ## Unreleased
 
 - fix(schema) add a "local" strategy
+- feat(*) allow request path to be used as the rl identifier
 
 ## 1.4.4
 

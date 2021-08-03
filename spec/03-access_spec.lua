@@ -540,6 +540,30 @@ for _, strategy in strategies() do
         }
       })
 
+      local route19 = assert(bp.routes:insert {
+        name = "test-19",
+        hosts = { "test19.com" },
+      })
+
+      assert(bp.plugins:insert {
+        name = "rate-limiting-advanced",
+        route = { id = route19.id },
+        config = {
+          strategy = "redis", -- cluster not supported in hybrid mode
+          identifier = "path",
+          path = "/status/200",
+          window_size = { 5 },
+          limit = { 6 },
+          sync_rate = 1,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          }
+        }
+      })
+
       assert(helpers.start_kong{
         plugins = "rate-limiting-advanced,key-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -1771,6 +1795,53 @@ for _, strategy in strategies() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.are.same(consumer1.id, json.headers["x-consumer-id"])
+        end)
+      end)
+
+      describe("set to `path`", function()
+        it("blocks after 6 requests on same path", function()
+          for i = 1, 6 do
+            local res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/status/200",
+              headers = {
+                ["Host"] = "test19.com",
+              }
+            })
+
+            assert.res_status(200, res)
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-5"]))
+            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-5"]))
+            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+          end
+
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Host"] = "test19.com",
+            }
+          })
+
+          local body = assert.res_status(429, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "API rate limit exceeded" }, json)
+
+          -- allow on a different path
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/status/201",
+            headers = {
+              ["Host"] = "test19.com",
+            }
+          })
+
+          assert.res_status(201, res)
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-5"]))
+          assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+          assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-5"]))
+          assert.are.same(5, tonumber(res.headers["ratelimit-remaining"]))
         end)
       end)
     end)

@@ -26,7 +26,7 @@ return {
         fields = {
           { identifier = {
             type = "string",
-            one_of = { "ip", "credential", "consumer", "service", "header" },
+            one_of = { "ip", "credential", "consumer", "service", "header", "path" },
             default = "consumer",
             required = true,
           }},
@@ -77,6 +77,7 @@ return {
             default = 0,
           }},
           { header_name = typedefs.header_name, },
+          { path = typedefs.path },
           { redis = redis.config_schema},
         },
       },
@@ -143,6 +144,12 @@ return {
         if config.identifier == "header" then
           if config.header_name == ngx.null then
             return nil, "No header name provided"
+          end
+        end
+
+        if config.identifier == "path" then
+          if config.path == ngx.null then
+            return nil, "No path provided"
           end
         end
 

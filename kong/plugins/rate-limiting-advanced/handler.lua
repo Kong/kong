@@ -80,6 +80,9 @@ local id_lookup = {
   header = function(conf)
     return kong.request.get_header(conf.header_name)
   end,
+  path = function(conf)
+    return kong.request.get_path() == conf.path and conf.path
+  end,
 }
 
 
