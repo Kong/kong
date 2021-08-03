@@ -120,12 +120,12 @@ return {
         end
 
         if config.strategy == "local" then
-          if type(config.sync_rate) == "number" then
+          if config.sync_rate ~= ngx.null then
             return nil, "sync_rate cannot be configured when using a local strategy"
           end
           config.sync_rate = -1
         else
-          if type(config.sync_rate) ~= "number" then
+          if config.sync_rate == ngx.null then
             return nil, "sync_rate is required if not using a local strategy"
           end
         end
