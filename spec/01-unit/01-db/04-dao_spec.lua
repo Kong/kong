@@ -466,7 +466,7 @@ describe("DAO", function()
   describe("delete", function()
 
     lazy_setup(function()
- 
+
       local kong_global = require "kong.global"
       _G.kong = kong_global.new()
 

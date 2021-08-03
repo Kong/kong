@@ -3928,6 +3928,7 @@ describe("schema", function()
     end)
   end)
 
+
   describe("get_constraints", function()
     it("returns empty constraints", function()
       local test_schema = {
@@ -3999,6 +4000,7 @@ describe("schema", function()
       }, constraints)
     end)
   end)
+
 
   describe("transform", function()
     it("transforms fields", function()
