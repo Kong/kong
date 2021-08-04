@@ -51,6 +51,18 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "sync-sasl-host.test" },
       }
 
+      local sync_sasl_scram_route = bp.routes:insert {
+        hosts = { "sync-sasl-scram-host.test" },
+      }
+
+      local sync_sasl_scram_delegation_token_route = bp.routes:insert {
+        hosts = { "sync-sasl-scram-delegation-token-host.test" },
+      }
+
+      local sync_sasl_scram_ssl_route = bp.routes:insert {
+        hosts = { "sync-sasl-scram-ssl-host.test" },
+      }
+
       local sync_sasl_ssl_route = bp.routes:insert {
         hosts = { "sync-sasl-ssl-host.test" },
       }
@@ -69,7 +81,7 @@ for _, strategy in helpers.each_strategy() do
 
       local cert = bp.certificates:insert({
         cert = ssl_helpers.cert,
-        key = ssl_helpers.key 
+        key = ssl_helpers.key
       })
 
       bp.plugins:insert {
@@ -81,6 +93,63 @@ for _, strategy in helpers.each_strategy() do
           topic = 'sync_topic',
           security = {
             ssl = false,
+            certificate_id = cert.id
+          }
+        }
+      }
+      bp.plugins:insert {
+        name = "kafka-upstream",
+        route = { id = sync_sasl_scram_route.id },
+        config = {
+          bootstrap_servers = BOOTSTRAP_SASL_SERVERS,
+          producer_async = false,
+          topic = 'sync_topic',
+          authentication = {
+            strategy = 'sasl',
+            mechanism = 'SCRAM-SHA-256',
+            user = 'client',
+            password = 'client-password'
+          },
+          security = {
+            ssl = false
+          }
+        }
+      }
+      bp.plugins:insert {
+        name = "kafka-upstream",
+        route = { id = sync_sasl_scram_delegation_token_route.id },
+        config = {
+          bootstrap_servers = BOOTSTRAP_SASL_SERVERS,
+          producer_async = false,
+          topic = 'sync_topic',
+          authentication = {
+            strategy = 'sasl',
+            mechanism = 'SCRAM-SHA-256',
+            tokenauth = true,
+            user = 'uNiZIb-gQwGhQ08c013e5g',
+            password = '4nxIhPuUQqNnVndPiGPbCj3fUBGKTUBenzauyBfv2us0nQ0DLbM79olPeLdwyUxi4tGt5mzwziTOXuZzrCMLEg==',
+          },
+          security = {
+            ssl = false
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        name = "kafka-upstream",
+        route = { id = sync_sasl_scram_ssl_route.id },
+        config = {
+          bootstrap_servers = BOOTSTRAP_SASL_SSL_SERVERS,
+          producer_async = false,
+          topic = 'sync_topic',
+          authentication = {
+            strategy = 'sasl',
+            mechanism = 'SCRAM-SHA-256',
+            user = 'client',
+            password = 'client-password'
+          },
+          security = {
+            ssl = true,
             certificate_id = cert.id
           }
         }
@@ -171,6 +240,15 @@ for _, strategy in helpers.each_strategy() do
       admin_client = helpers.admin_client()
       
     end)
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
     lazy_setup(function()
       -- Execute before tests to setup topics in kafka
       local uri = "/path?key1=value1&key2=value2"
@@ -241,7 +319,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("sasl auth", function()
+    describe("sasl auth PLAIN", function()
       it("authenticates with sasl credentials [no ssl]", function()
         local uri = "/path?key1=value1&key2=value2"
         local res = proxy_client:post(uri, {
@@ -265,6 +343,55 @@ for _, strategy in helpers.each_strategy() do
             ["Content-Type"] = "application/json",
           },
           body = { foo = "bar" },
+        })
+        local raw_body = res:read_body()
+        local body = cjson.decode(raw_body)
+        assert.res_status(200, res)
+        assert(body.message, "message sent")
+      end)
+    end)
+
+    describe("sasl auth SCRAM-SHA-256", function()
+    it("[no ssl]", function()
+        local uri = "/path?key1=value1&key2=value2"
+        local res = proxy_client:post(uri, {
+          headers = {
+            host = "sync-sasl-scram-host.test",
+            ["Content-Type"] = "application/json",
+          },
+          body = { scram = "no-ssl" },
+        })
+        local raw_body = res:read_body()
+        local body = cjson.decode(raw_body)
+        assert.res_status(200, res)
+        assert(body.message, "message sent")
+      end)
+
+    it("[ssl]", function()
+        local uri = "/path?key1=value1&key2=value2"
+        local res = proxy_client:post(uri, {
+          headers = {
+            host = "sync-sasl-scram-ssl-host.test",
+            ["Content-Type"] = "application/json",
+          },
+          body = { scram = "ssl" },
+        })
+        local raw_body = res:read_body()
+        local body = cjson.decode(raw_body)
+        assert.res_status(200, res)
+        assert(body.message, "message sent")
+      end)
+    end)
+
+    describe("sasl auth delegation tokens", function()
+      pending("[no ssl]", function()
+        local uri = "/path?key1=value1&key2=value2"
+        local res = proxy_client:post(uri, {
+          headers = {
+            host = "sync-sasl-scram-delegation-token-host.test",
+            ["Content-Type"] = "application/json",
+          },
+          body = { scram = "delegation" },
         })
         local raw_body = res:read_body()
         local body = cjson.decode(raw_body)
