@@ -28,12 +28,14 @@ return {
           },
           { topic = { type = "string", required = true }, },
           { timeout = { type = "integer", default = 10000 }, },
-          { keepalive = { type = "integer", default = 60000 }, },
+          { keepalive_timeout = { type = "integer", default = 60000 }, },
+          { keepalive = { type = "boolean", default = false }, },
           { authentication = {
               type = "record",
               fields = {
                 { strategy = { type = "string", required = false, one_of = { "sasl" }} },
-                { mechanism = { type = "string", required = false, one_of = { "PLAIN" }} },
+                { mechanism = { type = "string", required = false, one_of = { "PLAIN", "SCRAM-SHA-256" }} },
+                { tokenauth = { type = "boolean", required = false } },
                 { user = { type = "string", required = false } },
                 { password = { type = "string", required = false } },
               }
@@ -83,7 +85,7 @@ return {
             fn = function(entity)
               if entity.authentication.strategy == "sasl" then
                 -- SASL PLAIN
-                if entity.authentication.mechanism == "PLAIN" and
+                if (entity.authentication.mechanism == "PLAIN" or entity.authentication.mechanism == "SCRAM-SHA-256") and
                     (entity.authentication.user == ngx_null or entity.authentication.password == ngx_null) then
                   return nil, "if authentication strategy is SASL and mechanism is PLAIN you have to set user and password"
                 end
