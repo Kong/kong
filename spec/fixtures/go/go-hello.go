@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"github.com/Kong/go-pdk"
+	"github.com/Kong/go-pdk/server"
 )
 
 type Config struct {
@@ -15,6 +16,10 @@ type Config struct {
 
 func New() interface{} {
 	return &Config{}
+}
+
+func main() {
+	server.StartServer(New, "0.1", 1)
 }
 
 func (conf Config) Access(kong *pdk.PDK) {
@@ -53,10 +58,10 @@ func (conf Config) Log(kong *pdk.PDK) {
 }
 
 func (conf Config) Response(kong *pdk.PDK) {
-  srvr, err := kong.ServiceResponse.GetHeader("Server")
-  if err != nil {
-    kong.Log.Err(err.Error())
-  }
+	srvr, err := kong.ServiceResponse.GetHeader("Server")
+	if err != nil {
+		kong.Log.Err(err.Error())
+	}
 
-  kong.Response.SetHeader("x-hello-from-go-at-response", fmt.Sprintf("got from server '%s'", srvr))
+	kong.Response.SetHeader("x-hello-from-go-at-response", fmt.Sprintf("got from server '%s'", srvr))
 }
