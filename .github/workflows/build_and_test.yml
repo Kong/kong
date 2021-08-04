@@ -255,7 +255,7 @@ jobs:
     strategy:
       matrix:
         suite: [integration, plugins]
-        cassandra_version: [3]
+        cassandra_version: [4.0]
         split: [all, first (01-04), second (>= 05)]
         exclude:
           - suite: plugins
