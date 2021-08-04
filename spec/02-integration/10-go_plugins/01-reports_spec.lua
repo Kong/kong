@@ -56,9 +56,9 @@ for _, strategy in helpers.each_strategy() do
         dns_hostsfile = dns_hostsfile,
         plugins = "bundled,reports-api,go-hello",
         pluginserver_names = "test",
-        pluginserver_test_socket = "/tmp/go_pluginserver.sock",
-        pluginserver_test_query_cmd = "go-pluginserver -plugins-directory " .. helpers.go_plugin_path .. " -dump-all-plugins",
-        pluginserver_test_start_cmd = "go-pluginserver -plugins-directory " .. helpers.go_plugin_path .. " -kong-prefix /tmp",
+        pluginserver_test_socket = "/tmp/go-hello.socket",
+        pluginserver_test_query_cmd = "./spec/fixtures/go/go-hello -dump -kong-prefix /tmp" ,
+        pluginserver_test_start_cmd = "./spec/fixtures/go/go-hello -kong-prefix /tmp",
         anonymous_reports = true,
       }))
 
