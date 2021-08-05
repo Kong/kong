@@ -1,3 +1,10 @@
+## v2.0.1
+
+- Fix a security issue with requirements checks while `config.anonymous`
+  was also configured. This bug first appeared in plugin version `1.6.0`.
+  It was reported in `FTI-2737`.
+
+
 ## v2.0.0
 
 - Add `config.userinfo_headers_names`
