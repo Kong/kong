@@ -1,3 +1,10 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
 -- This code is reverse engineered from the original AWS sdk. Specifically:
 -- https://github.com/aws/aws-sdk-js/blob/c175cb2b89576f01c08ebf39b232584e4fa2c0e0/lib/credentials/remote_credentials.js
 
