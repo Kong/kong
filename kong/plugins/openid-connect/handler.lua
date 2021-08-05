@@ -1506,7 +1506,7 @@ function OICHandler.access(_, conf)
       end
     end
 
-    local check_required = function(name, required_name, claim_name, default, status)
+    local check_required = function(name, required_name, claim_name, default)
       local requirements = args.get_conf_arg(required_name)
       if requirements then
         log("verifying required ", name)
@@ -1556,11 +1556,7 @@ function OICHandler.access(_, conf)
         end
 
         if not access_token_values then
-          if status == 401 then
-            return response.unauthorized(name, " required but no ", name, " found")
-          end
-
-          return response.forbidden(name, " required but no ", name, " found")
+          return nil, name .. " required but no " .. name .. " found"
         end
 
         access_token_values = set.new(access_token_values)
@@ -1577,22 +1573,37 @@ function OICHandler.access(_, conf)
           log("required ", name, " were found")
 
         else
-          if status == 401 then
-            return response.unauthorized("required ", name, " were not found [ ",
-                                         concat(access_token_values, ", "), " ]")
-          end
-
-          return response.forbidden("required ", name, " were not found [ ",
-                                    concat(access_token_values, ", "), " ]")
+          return nil, "required " .. name .. " were not found [ " .. concat(access_token_values, ", ") .. " ]"
         end
       end
+
+      return true
     end
 
-    check_required("issuers", "issuers_allowed", nil, { "iss" }, 401)
-    check_required("scopes", "scopes_required", "scopes_claim", { "scope" })
-    check_required("audience", "audience_required", "audience_claim", { "aud" })
-    check_required("groups", "groups_required", "groups_claim", { "groups" })
-    check_required("roles", "roles_required", "roles_claim", { "roles" })
+    ok, err = check_required("issuers", "issuers_allowed", nil, { "iss" })
+    if not ok then
+      return response.unauthorized(err)
+    end
+
+    ok, err = check_required("scopes", "scopes_required", "scopes_claim", { "scope" })
+    if not ok then
+      return response.forbidden(err)
+    end
+
+    ok, err = check_required("audience", "audience_required", "audience_claim", { "aud" })
+    if not ok then
+      return response.forbidden(err)
+    end
+
+    ok, err = check_required("groups", "groups_required", "groups_claim", { "groups" })
+    if not ok then
+      return response.forbidden(err)
+    end
+
+    ok, err = check_required("roles", "roles_required", "roles_claim", { "roles" })
+    if not ok then
+      return response.forbidden(err)
+    end
   end
 
   local search_userinfo = args.get_conf_arg("search_user_info")
