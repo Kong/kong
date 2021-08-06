@@ -22,7 +22,8 @@ local function create(conf)
   local producer_config = {
     -- settings affecting all Kafka APIs (including Metadata API, Produce API, etc)
     socket_timeout = conf.timeout,
-    keepalive_timeout = conf.keepalive,
+    keepalive_timeout = conf.keepalive_timeout,
+    keepalive = conf.keepalive,
 
     -- settings specific to Kafka Produce API
     required_acks = conf.producer_request_acks,
@@ -51,6 +52,7 @@ local function create(conf)
       mechanism = conf.authentication.mechanism,
       user = conf.authentication.user,
       password = conf.authentication.password,
+      tokenauth = conf.authentication.tokenauth,
     }
   end
 

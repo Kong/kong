@@ -12,15 +12,36 @@ services:
       KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/zookeper_jaas.conf"
     networks:
       - ${NETWORK_NAME}
+    healthcheck:
+      test: nc -z zookeeper 2181
 
     volumes:
       - ${PONGO_WD}/.pongo/kafka/zookeper_jaas.conf:/etc/kafka/zookeper_jaas.conf
+
+  add-kafka-users:
+    image: confluentinc/cp-kafka:${PONGO_KAFKA_VERSION:-6.2.0}
+    networks:
+      - ${NETWORK_NAME}
+    command: > 
+     /bin/bash -c "
+        while ! nc -z broker 9092;
+        do
+          echo sleeping;
+          sleep 1;
+        done;
+        kafka-configs --bootstrap-server broker:9092 --alter --add-config 'SCRAM-SHA-256 =[iterations=4096,password=client-password]' --entity-type users --entity-name client;"
+    healthcheck:
+      test: nc -z broker 9092
 
   kafka:
     image: confluentinc/cp-kafka:${PONGO_KAFKA_VERSION:-6.2.0}
     hostname: broker
     depends_on:
       - zookeeper
+      - rest-proxy
+      - add-kafka-users
+    healthcheck:
+      test: nc -z broker 9092
     ports:
       - "29092:29092"
       - "19093:19093"
@@ -51,8 +72,8 @@ services:
 
       # Enable SASL SSL configuration
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
-      KAFKA_SASL_ENABLED_MECHANISMS: SASL_PLAIN,PLAIN
-      KAFKA_SASL_MECHANISMS: PLAIN
+      KAFKA_SASL_ENABLED_MECHANISMS: SASL_PLAIN,PLAIN,SCRAM-SHA-256
+      KAFKA_SASL_MECHANISMS: PLAIN,SCRAM-SHA-256
 
       KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SASL_SSL
 
@@ -64,6 +85,8 @@ services:
       KAFKA_SSL_CLIENT_AUTH: 'required'
 
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+
+      KAFKA_DELEGATION_TOKEN_MASTER_KEY: 'foo'
 
       # 'requested' for TLS
       # KAFKA_SSL_CLIENT_AUTH: requested
@@ -83,8 +106,6 @@ services:
 
   rest-proxy:
     image: confluentinc/cp-kafka-rest:${PONGO_KAFKA_VERSION:-6.2.0}
-    depends_on:
-      - kafka
     ports:
       - 8082:8082
     hostname: rest-proxy
