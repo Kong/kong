@@ -22,13 +22,16 @@ services:
     image: confluentinc/cp-kafka:${PONGO_KAFKA_VERSION:-6.2.0}
     networks:
       - ${NETWORK_NAME}
-    command: kafka-configs --bootstrap-server broker:9092 --alter --add-config 'SCRAM-SHA-256 =[iterations=4096,password=client-password]' --entity-type users --entity-name client
+    command: > 
+     /bin/bash -c "
+        while ! nc -z broker 9092;
+        do
+          echo sleeping;
+          sleep 1;
+        done;
+        kafka-configs --bootstrap-server broker:9092 --alter --add-config 'SCRAM-SHA-256 =[iterations=4096,password=client-password]' --entity-type users --entity-name client;"
     healthcheck:
-      test: ["CMD", "kafka-configs --bootstrap-server broker:9092 --alter --add-config 'SCRAM-SHA-256 =[iterations=4096,password=client-password]' --entity-type users --entity-name client"]
-      interval: 1m30s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+      test: nc -z broker 9092
 
   kafka:
     image: confluentinc/cp-kafka:${PONGO_KAFKA_VERSION:-6.2.0}
