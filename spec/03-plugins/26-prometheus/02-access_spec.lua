@@ -3,19 +3,6 @@ local helpers = require "spec.helpers"
 local TCP_SERVICE_PORT = 8189
 local TCP_PROXY_PORT = 9007
 
--- Note: remove the below hack when https://github.com/Kong/kong/pull/6952 is merged
-local stream_available, _ = pcall(require, "kong.tools.stream_api")
-
-local spec_path = debug.getinfo(1).source:match("@?(.*/)")
-
-local nginx_conf
-if stream_available then
-  nginx_conf = spec_path .. "/fixtures/prometheus/custom_nginx.template"
-else
-  nginx_conf = "./spec/fixtures/custom_nginx.template"
-end
--- Note ends
-
 describe("Plugin: prometheus (access)", function()
   local proxy_client
   local admin_client
@@ -42,7 +29,7 @@ describe("Plugin: prometheus (access)", function()
 
     local grpc_service = bp.services:insert {
       name = "mock-grpc-service",
-      url = "grpc://grpcbin:9000",
+      url = "grpc://localhost:15002",
     }
 
     bp.routes:insert {
@@ -54,7 +41,7 @@ describe("Plugin: prometheus (access)", function()
 
     local grpcs_service = bp.services:insert {
       name = "mock-grpcs-service",
-      url = "grpcs://grpcbin:9001",
+      url = "grpcs://localhost:15003",
     }
 
     bp.routes:insert {
@@ -81,10 +68,9 @@ describe("Plugin: prometheus (access)", function()
       name = "prometheus"
     }
 
-    helpers.tcp_server(TCP_SERVICE_PORT)
     assert(helpers.start_kong {
-        nginx_conf = nginx_conf,
-        plugins = "bundled, prometheus",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled",
         stream_listen = "127.0.0.1:" .. TCP_PROXY_PORT,
     })
     proxy_client = helpers.proxy_client()
@@ -94,7 +80,6 @@ describe("Plugin: prometheus (access)", function()
   end)
 
   teardown(function()
-    helpers.kill_tcp_server(TCP_SERVICE_PORT)
     if proxy_client then
       proxy_client:close()
     end
@@ -196,6 +181,8 @@ describe("Plugin: prometheus (access)", function()
   end)
 
   pending("increments the count for proxied TCP streams", function()
+    local thread = helpers.tcp_server(TCP_SERVICE_PORT, { requests = 1 })
+
     local conn = assert(ngx.socket.connect("127.0.0.1", TCP_PROXY_PORT))
 
     assert(conn:send("hi there!\n"))
@@ -214,6 +201,8 @@ describe("Plugin: prometheus (access)", function()
 
       return body:find('kong_stream_status{service="tcp-service",route="tcp-route",code="200"} 1', nil, true)
     end)
+
+    thread:join()
   end)
 
   it("does not log error if no service was matched", function()
@@ -278,9 +267,7 @@ describe("Plugin: prometheus (access)", function()
     })
     local body = assert.res_status(200, res)
     assert.matches('kong_memory_workers_lua_vms_bytes{pid="%d+",kong_subsystem="http"} %d+', body)
-    if stream_available then
-      assert.matches('kong_memory_workers_lua_vms_bytes{pid="%d+",kong_subsystem="stream"} %d+', body)
-    end
+    assert.matches('kong_memory_workers_lua_vms_bytes{pid="%d+",kong_subsystem="stream"} %d+', body)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
@@ -314,13 +301,7 @@ describe("Plugin: prometheus (access)", function()
   end)
 end)
 
-local test_f
-if stream_available then
-  test_f = describe
-else
-  test_f = pending
-end
-test_f("Plugin: prometheus (access) no stream listeners", function()
+describe("Plugin: prometheus (access) no stream listeners", function()
   local admin_client
 
   setup(function()
@@ -418,7 +399,7 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
     }
 
     assert(helpers.start_kong {
-        nginx_conf = nginx_conf,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled, prometheus",
     })
     proxy_client = helpers.proxy_client()

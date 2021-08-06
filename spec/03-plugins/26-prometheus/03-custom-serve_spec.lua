@@ -28,7 +28,7 @@ describe("Plugin: prometheus (custom server)",function()
       assert(helpers.start_kong({
         nginx_http_include = "../spec/fixtures/prometheus/metrics.conf",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        plugins = "bundled, prometheus",
+        plugins = "bundled",
       }))
 
       proxy_client = helpers.proxy_client()

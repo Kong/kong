@@ -1,18 +1,5 @@
 local helpers = require "spec.helpers"
 
--- Note: remove the below hack when https://github.com/Kong/kong/pull/6952 is merged
-local stream_available, _ = pcall(require, "kong.tools.stream_api")
-
-local spec_path = debug.getinfo(1).source:match("@?(.*/)")
-
-local nginx_conf
-if stream_available then
-  nginx_conf = spec_path .. "/fixtures/prometheus/custom_nginx.template"
-else
-  nginx_conf = "./spec/fixtures/custom_nginx.template"
-end
--- Note ends
-
 local t = pending
 local pok = pcall(require, "kong.enterprise_edition.licensing")
 if pok then
@@ -31,8 +18,8 @@ t("Plugin: prometheus (exporter) enterprise licenses", function()
     }
 
     assert(helpers.start_kong {
-        nginx_conf = nginx_conf,
-        plugins = "bundled, prometheus",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled",
     })
     admin_client = helpers.admin_client()
   end)

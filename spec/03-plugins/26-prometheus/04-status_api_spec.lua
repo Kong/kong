@@ -2,19 +2,6 @@ local helpers = require "spec.helpers"
 
 local TCP_PROXY_PORT = 9007
 
--- Note: remove the below hack when https://github.com/Kong/kong/pull/6952 is merged
-local stream_available, _ = pcall(require, "kong.tools.stream_api")
-
-local spec_path = debug.getinfo(1).source:match("@?(.*/)")
-
-local nginx_conf
-if stream_available then
-  nginx_conf = spec_path .. "/fixtures/prometheus/custom_nginx.template"
-else
-  nginx_conf = "./spec/fixtures/custom_nginx.template"
-end
--- Note ends
-
 describe("Plugin: prometheus (access via status API)", function()
   local proxy_client
   local status_client
@@ -109,7 +96,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
     local grpc_service = bp.services:insert {
       name = "mock-grpc-service",
-      url = "grpc://grpcbin:9000",
+      url = "grpc://localhost:15002",
     }
 
     bp.routes:insert {
@@ -121,7 +108,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
     local grpcs_service = bp.services:insert {
       name = "mock-grpcs-service",
-      url = "grpcs://grpcbin:9001",
+      url = "grpcs://localhost:15003",
     }
 
     bp.routes:insert {
@@ -136,8 +123,8 @@ describe("Plugin: prometheus (access via status API)", function()
     }
 
     assert(helpers.start_kong {
-        nginx_conf = nginx_conf,
-        plugins = "bundled, prometheus",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled",
         status_listen = "0.0.0.0:9500",
         stream_listen = "127.0.0.1:" .. TCP_PROXY_PORT,
     })
@@ -356,7 +343,7 @@ describe("Plugin: prometheus (access via status API)", function()
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="healthchecks_off"} 0', body, nil, true)
   end)
 
-  it("remove metrics from deleted upstreams and targets", function()
+  pending("remove metrics from deleted upstreams and targets", function()
     local admin_client = helpers.admin_client()
     admin_client:send {
       method  = "DELETE",
@@ -387,9 +374,7 @@ describe("Plugin: prometheus (access via status API)", function()
     })
     local body = assert.res_status(200, res)
     assert.matches('kong_memory_workers_lua_vms_bytes{pid="%d+",kong_subsystem="http"}', body)
-    if stream_available then
-      assert.matches('kong_memory_workers_lua_vms_bytes{pid="%d+",kong_subsystem="stream"}', body)
-    end
+    assert.matches('kong_memory_workers_lua_vms_bytes{pid="%d+",kong_subsystem="stream"}', body)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
@@ -403,10 +388,8 @@ describe("Plugin: prometheus (access via status API)", function()
     assert.matches('kong_memory_lua_shared_dict_total_bytes' ..
                    '{shared_dict="prometheus_metrics",kong_subsystem="http"} %d+', body)
     -- TODO: uncomment below once the ngx.shared iterrator in stream is fixed
-    -- if stream_available then
-    --   assert.matches('kong_memory_lua_shared_dict_total_bytes' ..
+    -- assert.matches('kong_memory_lua_shared_dict_total_bytes' ..
     --                 '{shared_dict="prometheus_metrics",kong_subsystem="stream"} %d+', body)
-    -- end
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
