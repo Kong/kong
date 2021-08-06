@@ -717,7 +717,7 @@ function _mt:schema_migrations()
     "SELECT *\n",
     "  FROM schema_meta\n",
     " WHERE key = ",  self:escape_literal("schema_meta"), ";"
-  }))
+  }), "read")
 
   if not rows then
     return nil, err
