@@ -311,7 +311,7 @@ function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
                     " is different to control plane plugin version " .. cp_plugin.version
 
         if cp_plugin.major ~= dp_plugin.major then
-          ngx_log(ngx_WARN, _log_prefix, msg, cp_plugin.version, log_suffix)
+          ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
 
         elseif cp_plugin.minor ~= dp_plugin.minor then
           ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
