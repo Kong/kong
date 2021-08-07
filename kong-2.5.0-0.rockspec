@@ -51,6 +51,7 @@ dependencies = {
   "lua-resty-template == 1.9",
   "lua-resty-passwdqc == 1.1",
   "lua-resty-ipmatcher == 0.6",
+  "lua-resty-acme ~> 0.6",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.4",
@@ -59,8 +60,6 @@ dependencies = {
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.3",
   "kong-plugin-session ~> 2.4",
-  "kong-plugin-aws-lambda ~> 3.5",
-  "kong-plugin-acme ~> 0.2",
   "kong-plugin-grpc-web ~> 0.2",
 }
 build = {
@@ -610,11 +609,27 @@ build = {
     ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
     ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",
 
+    ["kong.plugins.aws-lambda.aws-serializer"]       = "kong/plugins/aws-lambda/aws-serializer.lua",
+    ["kong.plugins.aws-lambda.handler"]              = "kong/plugins/aws-lambda/handler.lua",
+    ["kong.plugins.aws-lambda.iam-ec2-credentials"]  = "kong/plugins/aws-lambda/iam-ec2-credentials.lua",
+    ["kong.plugins.aws-lambda.iam-ecs-credentials"]  = "kong/plugins/aws-lambda/iam-ecs-credentials.lua",
+    ["kong.plugins.aws-lambda.schema"]               = "kong/plugins/aws-lambda/schema.lua",
+    ["kong.plugins.aws-lambda.v4"]                   = "kong/plugins/aws-lambda/v4.lua",
+    ["kong.plugins.aws-lambda.http.connect-better"]  = "kong/plugins/aws-lambda/http/connect-better.lua",
+    ["kong.plugins.aws-lambda.request-util"]         = "kong/plugins/aws-lambda/request-util.lua",
+
     ["kong.plugins.grpc-gateway.deco"] = "kong/plugins/grpc-gateway/deco.lua",
     ["kong.plugins.grpc-gateway.handler"] = "kong/plugins/grpc-gateway/handler.lua",
     ["kong.plugins.grpc-gateway.schema"] = "kong/plugins/grpc-gateway/schema.lua",
 
-
+    ["kong.plugins.acme.api"] = "kong/plugins/acme/api.lua",
+    ["kong.plugins.acme.client"] = "kong/plugins/acme/client.lua",
+    ["kong.plugins.acme.daos"] = "kong/plugins/acme/daos.lua",
+    ["kong.plugins.acme.handler"] = "kong/plugins/acme/handler.lua",
+    ["kong.plugins.acme.migrations.000_base_acme"] = "kong/plugins/acme/migrations/000_base_acme.lua",
+    ["kong.plugins.acme.migrations"] = "kong/plugins/acme/migrations/init.lua",
+    ["kong.plugins.acme.schema"] = "kong/plugins/acme/schema.lua",
+    ["kong.plugins.acme.storage.kong"] = "kong/plugins/acme/storage/kong.lua",
     ["kong.plugins.application-registration.handler"] = "kong/plugins/application-registration/handler.lua",
     ["kong.plugins.application-registration.schema"] = "kong/plugins/application-registration/schema.lua",
     ["kong.plugins.application-registration.api"] = "kong/plugins/application-registration/api.lua",
