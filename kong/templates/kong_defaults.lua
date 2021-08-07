@@ -308,7 +308,7 @@ keyring_vault_path =
 keyring_vault_token =
 
 
-event_hooks_enabled = off
+event_hooks_enabled = true
 
 role = traditional
 kic = off

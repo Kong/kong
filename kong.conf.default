@@ -1529,6 +1529,17 @@
                                       # header from which the Admin API will
                                       # attempt to authenticate the RBAC user.
 
+# event_hooks_enabled = on  # When enabled event hook entities represent a relationship
+                            # between an event (source and event) and an action
+                            # (handler). Similar to web hooks, event hooks can be used to
+                            # communicate Kong Gateway service events. When a particular
+                            # event happens on a service, the event hook calls a url with
+                            # information about that event. Event hook configurations
+                            # differ depending on the handler. The events that are
+                            # triggered send associated data.
+                            #
+                            # See: https://docs.konghq.com/enterprise/latest/admin-api/event-hooks/reference/
+
 #------------------------------------------------------------------------------
 # KONG MANAGER
 #------------------------------------------------------------------------------

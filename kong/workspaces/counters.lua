@@ -113,9 +113,14 @@ local function insert_hook(entity, name, _, ws_id)
 end
 
 
-local function delete_hook(entity, name, _, ws_id)
+local function delete_hook(entity, name, _, ws_id, cascade_entries)
   if ws_id then
     _M.inc_counter(ws_id, name, entity, -1)
+  end
+  for _, entry in ipairs(cascade_entries) do
+    if entry.entity.ws_id then
+      _M.inc_counter(entry.entity.ws_id, entry.dao.schema.name, entry.entity, -1)
+    end
   end
   return entity
 end

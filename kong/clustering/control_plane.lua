@@ -118,8 +118,10 @@ function _M.new(parent)
   return self
 end
 
--- [[ XXX EE: Handle redis timeout changes and syslog facility added in 2.5.0.0
--- TODO: Remove once there are no more data planes on Konnect using < 2.4.1.2
+-- [[ XXX EE:
+--   - Handle redis timeout changes and syslog fields added in 2.5.0.0
+--   - Handle log, prometheus, and zipkin fields added in 2.4.1.0
+local gsub = string.gsub
 local inflate_gzip = utils.inflate_gzip
 local ENTERPRISE_VERSION_PATTERN = "^(%d+)%.(%d+)%.(%d+)%.(%d+)"
 
@@ -137,20 +139,26 @@ local function extract_enterprise_version(version)
   return major, minor, patch, ent_patch
 end
 
-local function invalidate_keys_from_config(config_plugins, redis_keys, syslog_keys)
+local function invalidate_keys_from_config(config_plugins, keys)
   for _, t in ipairs(config_plugins) do
     if t and t["config"] then
       local config = t["config"]
+      local name = gsub(t["name"], "-", "_")
+
+      -- Handle Redis configurations (regardless of plugin)
       if config.redis then
         local config_plugin_redis = t["config"].redis
-        for _, key in ipairs(redis_keys) do
-          if config_plugin_redis[key] then
+        for _, key in ipairs(keys["redis"]) do
+          if config_plugin_redis[key] ~= nil then
             config_plugin_redis[key] = nil
           end
         end
-      elseif t["name"] == "syslog" then
-        for _, key in ipairs(syslog_keys) do
-          if config[key] then
+      end
+
+      -- Handle fields in specific plugins
+      if keys[name] ~= nil then
+        for _, key in ipairs(keys[name]) do
+          if config[key] ~= nil then
             config[key] = nil
           end
         end
@@ -159,13 +167,17 @@ local function invalidate_keys_from_config(config_plugins, redis_keys, syslog_ke
   end
 end
 
-local function is_older_dataplane()
+local function dp_version_num()
   local dp_version = ngx_var.arg_node_version
   local major_dp, minor_dp, patch_dp, ent_patch_dp = extract_enterprise_version(dp_version)
-  local dp_version_num = (major_dp * 1000000000) +
-                         (minor_dp * 1000000) +
-                         (patch_dp * 1000) +
-                         ent_patch_dp
+  return (major_dp * 1000000000) +
+         (minor_dp * 1000000) +
+         (patch_dp * 1000) +
+         ent_patch_dp
+end
+
+local function is_older_dataplane()
+  local dp_version_num = dp_version_num()
 
   --[[
   -- Kong Gateway v2.3.3.3 and v2.4.1.2 will be backporting the clustering
@@ -178,16 +190,63 @@ local function is_older_dataplane()
 end
 
 local function handle_config_removal(config_table)
-  if config_table and config_table["plugins"] then
-    invalidate_keys_from_config(config_table["plugins"], {
+  local fields_2003003003 = {
+    file_log = {
+      "custom_fields_by_lua",
+    },
+    http_log = {
+      "custom_fields_by_lua",
+    },
+    loggly = {
+      "custom_fields_by_lua",
+    },
+    prometheus = {
+      "per_consumer",
+    },
+    syslog = {
+      "custom_fields_by_lua",
+    },
+    tcp_log = {
+      "custom_fields_by_lua",
+    },
+    udp_log = {
+      "custom_fields_by_lua",
+    },
+    zipkin = {
+      "tags_header",
+    }
+  }
+
+  local fields_2004001002 = {
+    redis = {
+      "connect_timeout",
       "keepalive_backlog",
       "keepalive_pool_size",
-      "send_timeout",
       "read_timeout",
-      "connect_timeout",
-    }, {
+      "send_timeout",
+    },
+    syslog = {
       "facility",
-    })
+    },
+  }
+
+  if config_table and config_table["plugins"] then
+    -- Merge dataplane unknown fields; if needed based on DP version
+    local unknown_fields = fields_2004001002
+    if dp_version_num() < 2003003003 then
+      for k, v in pairs(fields_2003003003) do
+        if unknown_fields[k] then
+          for _, cv in ipairs(v) do
+            table.insert(unknown_fields[k], cv)
+          end
+        else
+          unknown_fields[k] = v
+        end
+      end
+    end
+
+
+    invalidate_keys_from_config(config_table["plugins"], unknown_fields)
   end
 end
 
@@ -369,6 +428,19 @@ function _M:check_configuration_compatibility(dp_plugin_map)
         return nil, "configured " .. name .. " plugin is missing from data plane",
                CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
       end
+
+      -- [[ XXX EE: Handle special case for vault-auth plugin whose plugin
+      --            version did not correspond to the actual release version
+      --            and was fixed during BasePlugin inheritance removal.
+      --
+      -- Note: These vault-auth plugins in the older dataplanes are compatible
+      if name == "vault-auth" and is_older_dataplane() and
+        dp_plugin.version == "1.0.0" then
+        ngx_log(ngx_DEBUG, _log_prefix, "data plane plugin vault-auth version ",
+          "1.0.0 was incorrectly versioned, but is compatible")
+        dp_plugin = cp_plugin
+      end
+      -- XXX EE ]]
 
       if cp_plugin.version and dp_plugin.version then
         -- CP plugin needs to match DP plugins with major version
@@ -637,10 +709,11 @@ function _M:handle_cp_websocket()
           local previous_sync_status = sync_status
           ok, err, sync_status = self:check_configuration_compatibility(dp_plugins_map)
           if ok then
-            -- [[ XXX EE: Handle redis timeout changes and syslog facility added in 2.5.0.0
-            -- TODO: Remove once there are no more data planes on Konnect using < 2.4.1.2
+            -- [[ XXX EE:
+            --   - Handle redis timeout changes and syslog fields added in 2.5.0.0
+            --   - Handle log, prometheus, and zipkin fields added in 2.4.1.0
             payload = update_payload(payload, log_suffix)
-            -- ]]
+            -- XXX EE ]]
 
             -- config update
             local _, err = wb:send_binary(payload)
