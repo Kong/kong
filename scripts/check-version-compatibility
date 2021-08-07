@@ -28,6 +28,7 @@ ENABLE_ACL=(
 ENABLE_ACME=(
   --data "name=acme"
   --data "config.account_email=example@example.com"
+  --data "config.storage=kong"
 )
 
 ENABLE_AWS_LAMBDA=(
