@@ -25,12 +25,12 @@ local plugins = {
   "bot-detection",
   "aws-lambda",
   "request-termination",
+  "prometheus",
   -- external plugins
   "azure-functions",
   "zipkin",
   "pre-function",
   "post-function",
-  "prometheus",
   "proxy-cache",
   "session",
   "acme",
