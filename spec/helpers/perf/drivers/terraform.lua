@@ -9,11 +9,13 @@ local perf = require("spec.helpers.perf")
 local pl_path = require("pl.path")
 local cjson = require("cjson")
 local tools = require("kong.tools.utils")
+math.randomseed(os.time())
 
 local _M = {}
 local mt = {__index = _M}
 
 local UPSTREAM_PORT = 8088
+local KONG_ADMIN_PORT
 local PG_PASSWORD = tools.random_string()
 local KONG_ERROR_LOG_PATH = "/tmp/error.log"
 
@@ -142,6 +144,9 @@ function _M:setup(opts)
     package.loaded["spec.helpers"] = nil
     local pok, pret = pcall(require, "spec.helpers")
     if pok then
+      pret.admin_client = function(timeout)
+        return pret.http_client(self.kong_ip, KONG_ADMIN_PORT, timeout or 60000)
+      end
       return pret
     end
     self.log.warn("unable to load spec.helpers: " .. (pret or "nil") .. ", try " .. i)
@@ -171,8 +176,14 @@ function _M:teardown(full)
   return true
 end
 
-function _M:start_upstream(conf)
+function _M:start_upstreams(conf, port_count)
   conf = conf or ""
+  local listeners = {}
+  for i=1,port_count do
+    listeners[i] = ("listen %d reuseport;"):format(UPSTREAM_PORT+i-1)
+  end
+  listeners = table.concat(listeners, "\n")
+
   conf = ngx.encode_base64(([[
   worker_processes auto;
   worker_cpu_affinity auto;
@@ -192,12 +203,16 @@ function _M:start_upstream(conf)
      tcp_nodelay on;
 
      server {
-         listen %d reuseport;
+         %s
+         location =/health {
+            return 200;
+         }
          location / {
              return 200 " performancetestperformancetestperformancetestperformancetestperformancetest";
          }
+         %s
      }
-  }]]):format(UPSTREAM_PORT, conf)):gsub("\n", "")
+  }]]):format(listeners, conf)):gsub("\n", "")
 
   local ok, err = execute_batch(self, self.worker_ip, {
     "sudo id",
@@ -214,7 +229,11 @@ function _M:start_upstream(conf)
     return nil, err
   end
 
-  return "http://" .. self.worker_internal_ip .. ":" .. UPSTREAM_PORT
+  local uris = {}
+  for i=1,port_count do
+    uris[i] = "http://" .. self.worker_internal_ip .. ":" .. UPSTREAM_PORT+i-1
+  end
+  return uris
 end
 
 function _M:start_kong(version, kong_conf)
@@ -225,6 +244,9 @@ function _M:start_kong(version, kong_conf)
   kong_conf['proxy_access_log'] = "/dev/null"
   kong_conf['proxy_error_log'] = KONG_ERROR_LOG_PATH
   kong_conf['admin_error_log'] = KONG_ERROR_LOG_PATH
+
+  KONG_ADMIN_PORT = math.floor(math.random()*50000+10240)
+  kong_conf['admin_listen'] = "0.0.0.0:" .. KONG_ADMIN_PORT
 
   local kong_conf_blob = ""
   for k, v in pairs(kong_conf) do
@@ -244,7 +266,13 @@ function _M:start_kong(version, kong_conf)
 
   local download_path
   if version:sub(1, 1) == "2" then
-    download_path = "gateway-2.x-ubuntu-focal"
+    if version:match("rc") or version:match("beta") then
+      download_path = "https://download-stage.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong/kong_" ..
+                      version .. "_amd64.deb"
+    else
+      download_path = "https://download.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong/kong_" ..
+                      version .. "_amd64.deb"
+    end
   else
     error("Unknown download location for Kong version " .. version)
   end
@@ -252,11 +280,17 @@ function _M:start_kong(version, kong_conf)
   local ok, err = execute_batch(self, self.kong_ip, {
     "echo > " .. KONG_ERROR_LOG_PATH,
     "sudo id",
+    -- set cpu scheduler to performance, it should lock cpufreq to static freq
     "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
-    "dpkg -l kong && (sudo kong stop; sudo dpkg -r kong) || true", -- stop and remove kong if installed
+    -- increase outgoing port range to avoid 99: Cannot assign requested address
+    "sysctl net.ipv4.ip_local_port_range='10240 65535'",
+    -- stop and remove kong if installed
+    "dpkg -l kong && (sudo kong stop; sudo dpkg -r kong) || true",
+    -- have to do the pkill sometimes, because kong stop allow the process to linger for a while
+    "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
+    -- remove all lua files, not only those installed by package
     "rm -rf /usr/local/share/lua/5.1/kong",
-    "wget -nv https://download.konghq.com/" .. download_path .. "/pool/all/k/kong/kong_" ..
-              version .. "_amd64.deb -O kong-" .. version .. ".deb",
+    "wget -nv " .. download_path .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     "echo " .. kong_conf_blob .. " | sudo base64 -d > /etc/kong/kong.conf",
     "sudo kong check",
@@ -393,7 +427,7 @@ end
 
 function _M:save_error_log(path)
   return perf.execute(ssh_execute_wrap(self, self.kong_ip,
-          "cat " .. KONG_ERROR_LOG_PATH) .. " >" .. path,
+          "cat " .. KONG_ERROR_LOG_PATH) .. " >'" .. path .. "'",
           { logger = self.ssh_log.log_exec })
 end
 

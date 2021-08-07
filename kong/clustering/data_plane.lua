@@ -274,9 +274,10 @@ function _M:communicate(premature)
   --                 and is also responsible for handling timeout detection
 
   local ping_immediately
+  local config_exit
 
   local config_thread = ngx.thread.spawn(function()
-    while not exiting() do
+    while not exiting() and not config_exit do
       local ok, err = config_semaphore:wait(1)
       if ok then
         local config_table = self.next_config
@@ -385,9 +386,19 @@ function _M:communicate(premature)
 
   ngx.thread.kill(read_thread)
   ngx.thread.kill(write_thread)
-  ngx.thread.kill(config_thread)
-
   c:close()
+
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
+
+  elseif perr then
+    ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
+  end
+
+  -- the config thread might be holding a lock if it's in the middle of an
+  -- update, so we need to give it a chance to terminate gracefully
+  config_exit = true
+  ok, err, perr = ngx.thread.wait(config_thread)
 
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)

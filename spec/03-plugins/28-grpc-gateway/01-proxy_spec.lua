@@ -15,6 +15,8 @@ for _, strategy in helpers.each_strategy() do
 
 
     lazy_setup(function()
+      assert(helpers.start_grpc_target())
+
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services",
@@ -30,7 +32,7 @@ for _, strategy in helpers.each_strategy() do
         name = "grpc",
         protocol = "grpc",
         host = "127.0.0.1",
-        port = 15002,
+        port = helpers.get_grpc_target_port(),
       })
 
       local route1 = assert(bp.routes:insert {
@@ -43,7 +45,7 @@ for _, strategy in helpers.each_strategy() do
         route = route1,
         name = "grpc-gateway",
         config = {
-          proto = "./spec/fixtures/grpc/helloworld.proto",
+          proto = "./spec/fixtures/grpc/targetservice.proto",
         },
       })
 
@@ -59,6 +61,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       helpers.stop_kong()
+      helpers.stop_grpc_target()
     end)
 
     test("main entrypoint", function()
@@ -108,6 +111,28 @@ for _, strategy in helpers.each_strategy() do
       -- grpc-status: 12: UNIMPLEMENTED are mapped to http code 500
       assert.equal(500, res.status)
       assert.equal('12', res.headers['grpc-status'])
+    end)
+
+    describe("known types transformations", function()
+
+      test("Timestamp", function()
+        local now = os.time()
+        local now_8601 = os.date("!%FT%T", now)
+        local ago_8601 = os.date("!%FT%TZ", now - 315)
+
+        local res, _ = proxy_client:post("/bounce", {
+          headers = { ["Content-Type"] = "application/json" },
+          body = { message = "hi", when = ago_8601 },
+        })
+        assert.equal(200, res.status)
+
+        local body = res:read_body()
+        assert.same({
+          now = now_8601,
+          reply = "hello hi",
+          time_message = ago_8601 .. " was 5m15s ago",
+        }, cjson.decode(body))
+      end)
     end)
 
   end)
