@@ -42,7 +42,7 @@ pipeline {
                       <strong>Note</strong>: <b>kong/kong-gateway-internal</b> and <b>kong/kong-gateway-private</b> require 1Password credentials to login (see <i>kongcloudowner</i> for credentials)''')
     string(
       name: 'KNOWN_PLUGIN_INCOMPATIBILITIES',
-      defaultValue: 'file-log,http-log,loggly,prometheus,syslog,tcp-log,udp-log,zipkin',
+      defaultValue: 'mocking,opa',
       trim: true,
       description: 'Comma separated list of known incompatible plugins')
     string(
