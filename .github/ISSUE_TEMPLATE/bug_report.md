@@ -20,13 +20,6 @@ https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#where-to-seek-for-help
 - Kong version (`$ kong version`)
 - A concise summary of the bug.
 
-### Steps To Reproduce
-
-1.
-2.
-3.
-4.
-
 ### Additional Details & Logs
 - Kong debug-level startup logs (`$ kong start --vv`)
 - Kong error logs (`<KONG_PREFIX>/logs/error.log`)
