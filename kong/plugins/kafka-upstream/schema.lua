@@ -28,8 +28,8 @@ return {
           },
           { topic = { type = "string", required = true }, },
           { timeout = { type = "integer", default = 10000 }, },
-          { keepalive_timeout = { type = "integer", default = 60000 }, },
-          { keepalive = { type = "boolean", default = false }, },
+          { keepalive = { type = "integer", default = 60000 }, },
+          { keepalive_enabled = { type = "boolean", default = false }, },
           { authentication = {
               type = "record",
               fields = {
