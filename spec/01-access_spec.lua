@@ -30,7 +30,7 @@ local FLUSH_TIMEOUT_MS = 8000 -- milliseconds
 
 local FLUSH_BUFFER_SIZE = 3
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.all_strategies() do
   describe("Plugin: kafka-upstream (access) [#" .. strategy .. "]", function()
     local proxy_client
     local admin_client
