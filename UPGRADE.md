@@ -778,7 +778,7 @@ index 5c6c1db03..6b4b4a818 100644
 ->-- proxy_buffer_size 128k;    # disabled until benchmarked
 ->-- proxy_buffers 4 256k;      # disabled until benchmarked
 ->-- proxy_busy_buffers_size 256k; # disabled until benchmarked
-->-- reset_timedout_connection on; # disabled until benchmarked
+->-- reset_timeout_connection on; # disabled until benchmarked
 -> end
 -
 -client_max_body_size ${{CLIENT_MAX_BODY_SIZE}};
