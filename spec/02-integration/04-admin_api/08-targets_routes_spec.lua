@@ -749,6 +749,7 @@ describe("Admin API #" .. strategy, function()
     describe("GET", function()
       local target
       local upstream
+      local target_0
 
       before_each(function()
         upstream = bp.upstreams:insert {}
@@ -764,6 +765,12 @@ describe("Admin API #" .. strategy, function()
           weight = 10,
           upstream = { id = upstream.id },
         }
+
+        target_0 = bp.targets:insert {
+          target = "api-3:80",
+          weight = 0,
+          upstream = { id = upstream.id },
+        }
       end)
 
       it("returns target entity", function()
@@ -772,6 +779,14 @@ describe("Admin API #" .. strategy, function()
         local json = assert.response(res).has.jsonbody()
         json.tags = nil
         assert.same(target, json)
+      end)
+
+      it("returns target entity when the target weight is 0", function()
+        local res = client:get("/upstreams/" .. upstream.name .. "/targets/" .. target_0.target)
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        json.tags = nil
+        assert.same(target_0, json)
       end)
     end)
 
