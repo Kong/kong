@@ -36,6 +36,7 @@ end
 
 
 function KafkaLogHandler:log(conf, other)
+  kong.log.notice("Creating timer")
   local message = basic_serializer.serialize(ngx)
   local ok, err = ngx.timer.at(0, timer_log, conf, message)
   if not ok then
