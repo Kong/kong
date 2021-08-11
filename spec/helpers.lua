@@ -2087,10 +2087,14 @@ do
   dns_mock.__index = dns_mock
   dns_mock.__tostring = function(self)
     -- fill array to prevent json encoding errors
+    local out = {
+      should_fail = self.should_fail,
+      records = {}
+    }
     for i = 1, 33 do
-      self[i] = self[i] or {}
+      out.records[i] = self[i] or {}
     end
-    local json = assert(cjson.encode(self))
+    local json = assert(cjson.encode(out))
     return json
   end
 
