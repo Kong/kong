@@ -1,0 +1,4 @@
+--no-cassandra
+--postgres
+--redis
+--keycloak
