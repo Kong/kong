@@ -190,11 +190,16 @@ local function parse_jwt_response(oic, body, headers, ignore_signature, hint)
     local err
     token, err = json.decode(body)
     if not token then
-      if err then
-        return nil, "unable to decode json response (" .. err .. ")"
-      end
+      if type(body) == "table" then
+        token = body -- backward compatibility with older version of Kong OpenID Connect library
 
-      return nil, "unable to decode json response"
+      else
+        if err then
+          return nil, "unable to decode json response (" .. err .. ")"
+        end
+
+        return nil, "unable to decode json response"
+      end
     end
 
     if type(token) ~= "table" then
