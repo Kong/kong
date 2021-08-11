@@ -51,6 +51,8 @@ transformations, and more through plugins.
 
 By providing functionality for proxying, routing, load balancing, health checking, authentication (and [more](#features)), Kong serves as the central layer for orchestrating microservices or conventional API traffic with ease.
 
+Kong runs natively on Kubernetes thanks to its official [Kubernetes Ingress Controller](https://github.com/Kong/kubernetes-ingress-controller).
+
 ---
 
 - **Cloud-Native**: Platform agnostic, Kong can run on any platform - from bare

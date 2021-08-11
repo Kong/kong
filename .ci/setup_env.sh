@@ -79,6 +79,20 @@ popd
 export GO_PLUGINSERVER_DOWNLOAD
 export PATH=$GO_PLUGINSERVER_DOWNLOAD:$PATH
 
+# XXX EE:
+# Gather license
+KONG_LICENSE_URL="https://download.konghq.com/internal/kong-gateway/license.json"
+KONG_LICENSE_DATA=$(curl -s -L -u"$PULP_USERNAME:$PULP_PASSWORD" $KONG_LICENSE_URL)
+export KONG_LICENSE_DATA
+if [[ ! $KONG_LICENSE_DATA == *"signature"* || ! $KONG_LICENSE_DATA == *"payload"* ]]; then
+  # the check above is a bit lame, but the best we can do without requiring
+  # yet more additional dependenies like jq or similar.
+  yellow "failed to download the Kong Enterprise license file!
+    $KONG_LICENSE_DATA"
+fi
+export KONG_TEST_LICENSE_DATA=$KONG_LICENSE_DATA
+# XXX EE
+
 #--------
 # Install
 #--------

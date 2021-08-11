@@ -14,6 +14,8 @@ describe("Admin API - Kong routes", function()
 
     setup(function()
       helpers.get_db_utils()
+      helpers.unsetenv("KONG_LICENSE_DATA")
+      helpers.unsetenv("KONG_TEST_LICENSE_DATA")
       assert(helpers.start_kong({
         license_path = "spec-ee/fixtures/mock_license.json",
       }))

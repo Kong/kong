@@ -72,10 +72,12 @@ local function create_container(self, args, img)
   return cid
 end
 
-local function get_container_port(cid)
+local function get_container_port(cid, ct_port)
   local out, err = perf.execute(
     "docker inspect " .. 
-    "--format='{{range $p, $conf := .NetworkSettings.Ports}}{{if $conf}}{{(index $conf 0).HostPort}}{{end}}{{end}}' " .. cid)
+    "--format='{{range $p, $conf := .NetworkSettings.Ports}}" ..
+                "{{if eq $p \"" .. ct_port .. "\" }}{{(index $conf 0).HostPort}}{{end}}" ..
+              "{{end}}' " .. cid)
   if err then
     return false, "docker inspect:" .. err .. ": " .. (out or "nil")
   end
@@ -105,6 +107,20 @@ function _M:teardown()
   return true
 end
 
+local function inject_kong_admin_client(self, helpers)
+  helpers.admin_client = function(timeout)
+    if not self.kong_ct_id then
+      error("helpers.admin_client can only be called after perf.start_kong")
+    end
+    local admin_port, err = get_container_port(self.kong_ct_id, "8001/tcp")
+    if not admin_port then
+      error("failed to get kong admin port: " .. (err or "nil"))
+    end
+    return helpers.http_client("127.0.0.1", admin_port, timeout or 60000)
+  end
+  return helpers
+end
+
 function _M:setup()
   if not self.psql_ct_id then
     local cid, err = create_container(self, "-p5432 " ..
@@ -123,7 +139,7 @@ function _M:setup()
     return false, "psql is not running: " .. err
   end
 
-  local psql_port, err = get_container_port(self.psql_ct_id)
+  local psql_port, err = get_container_port(self.psql_ct_id, "5432/tcp")
   if not psql_port then
     return false, "failed to get psql port: " .. (err or "nil")
   end
@@ -142,13 +158,20 @@ function _M:setup()
   -- a different set of env vars
   package.loaded["spec.helpers"] = nil
   helpers = require("spec.helpers")
-  return helpers
+
+  return inject_kong_admin_client(self, helpers)
 end
 
-function _M:start_upstream(conf)
+function _M:start_upstreams(conf, port_count)
   if not conf then
     error("upstream conf is not defined", 2)
   end
+
+  local listeners = {}
+  for i=1,port_count do
+    listeners[i] = ("listen %d reuseport;"):format(UPSTREAM_PORT+i-1)
+  end
+  listeners = table.concat(listeners, "\n")
 
   if not self.worker_ct_id then
     local _, err = perf.execute(
@@ -160,7 +183,7 @@ function _M:start_upstream(conf)
         RUN apk update && apk add wrk
         RUN echo -e '\
         server {\
-          listen %d;\
+          %s\
           access_log off;\
           location =/health { \
             return 200; \
@@ -171,12 +194,10 @@ function _M:start_upstream(conf)
         # copy paste
         ENTRYPOINT ["/docker-entrypoint.sh"]
 
-        EXPOSE %d
-
         STOPSIGNAL SIGQUIT
 
         CMD ["nginx", "-g", "daemon off;"]
-      ]]):format(UPSTREAM_PORT, conf:gsub("\n", "\\n"), UPSTREAM_PORT)
+      ]]):format(listeners:gsub("\n", "\\n"), conf:gsub("\n", "\\n"))
       }
     )
     if err then
@@ -204,7 +225,11 @@ function _M:start_upstream(conf)
 
   self.log.info("worker is started")
 
-  return "http://" .. worker_vip .. ":" .. UPSTREAM_PORT
+  local uris = {}
+  for i=1,port_count do
+    uris[i] = "http://" .. worker_vip .. ":" .. UPSTREAM_PORT+i-1
+  end
+  return uris
 end
 
 function _M:start_kong(version, kong_conf)
@@ -213,6 +238,7 @@ function _M:start_kong(version, kong_conf)
   end
 
   local use_git
+  local image = "kong"
 
   if version:startswith("git:") then
     perf.git_checkout(version:sub(#("git:")+1))
@@ -220,6 +246,8 @@ function _M:start_kong(version, kong_conf)
 
     version = perf.get_kong_version()
     self.log.debug("current git hash resolves to docker version ", version)
+  elseif version:match("rc") or version:match("beta") then
+    image = "kong/kong"
   end
 
   if not self.kong_ct_id then
@@ -228,12 +256,14 @@ function _M:start_kong(version, kong_conf)
       extra_config = string.format("%s -e KONG_%s=%s", extra_config, k:upper(), v)
     end
     local cid, err = create_container(self,
-      "-p 8000 --link " .. self.psql_ct_id .. ":postgres " ..
+      "-p 8000 -p 8001 " ..
+      "--link " .. self.psql_ct_id .. ":postgres " ..
       extra_config .. " " ..
       "-e KONG_PG_HOST=postgres " ..
       "-e KONG_PROXY_ACCESS_LOG=/dev/null " ..
-      "-e KONG_PG_DATABASE=kong_tests ",
-      "kong:" .. version)
+      "-e KONG_PG_DATABASE=kong_tests " ..
+      "-e KONG_ADMIN_LISTEN=0.0.0.0:8001 ",
+      image .. ":" .. version)
     if err then
       return false, "error running docker create when creating kong container: " .. err
     end
@@ -250,7 +280,7 @@ function _M:start_kong(version, kong_conf)
     return false, "kong is not running: " .. err
   end
 
-  local proxy_port, err = get_container_port(self.kong_ct_id)
+  local proxy_port, err = get_container_port(self.kong_ct_id, "8000/tcp")
   if not proxy_port then
     return false, "failed to get kong port: " .. (err or "nil")
   end
@@ -315,7 +345,7 @@ function _M:generate_flamegraph()
 end
 
 function _M:save_error_log(path)
-  return perf.execute("docker logs " .. self.kong_ct_id .. " 2>" .. path,
+  return perf.execute("docker logs " .. self.kong_ct_id .. " 2>'" .. path .. "'",
                       { logger = self.log.log_exec })
 end
 
