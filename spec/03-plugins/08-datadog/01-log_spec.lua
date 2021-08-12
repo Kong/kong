@@ -138,7 +138,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "datadog",
         route = { id = route5.id },
         config   = {
-          use_env = true,
+          env_prefix = "KONG_DATADOG_AGENT",
         },
       }
 

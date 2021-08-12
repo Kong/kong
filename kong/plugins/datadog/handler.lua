@@ -98,6 +98,18 @@ function DatadogHandler:log(conf)
     return
   end
 
+  if conf.env_prefix then
+    local env_host = os.getenv(conf.env_prefix .. '_HOST')
+    local env_port = tonumber(os.getenv(conf.env_prefix .. '_PORT'))
+    if not env_host or not env_port then
+      kong.log.err("both " .. conf.env_prefix .. "_HOST and " .. conf.env_prefix .. "_PORT must be set ",
+                   "when config.env_prefix is configured")
+      return
+    end
+    conf.host = env_host
+    conf.port = env_port
+  end
+
   local message = kong.log.serialize()
   local ok, err = timer_at(0, log, conf, message)
   if not ok then
