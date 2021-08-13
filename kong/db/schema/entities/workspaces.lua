@@ -9,7 +9,7 @@ local lpeg     = require "lpeg"
 local Schema   = require "kong.db.schema"
 local lp_email = require "lpeg_patterns.email"
 local typedefs = require "kong.db.schema.typedefs"
-
+local constants = require "kong.constants"
 
 local is_regex = Schema.validators.is_regex
 local EOF = lpeg.P(-1)
@@ -113,7 +113,7 @@ return {
 
   fields = {
     { id          = typedefs.uuid },
-    { name        = typedefs.utf8_name { required = true } },
+    { name        = typedefs.utf8_name { required = true, not_one_of = { table.unpack(constants.CORE_ENTITIES) }, } },
     { comment     = { type = "string" } },
     { created_at  = typedefs.auto_timestamp_s },
     { meta        = config_meta },

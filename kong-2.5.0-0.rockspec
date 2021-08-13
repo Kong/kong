@@ -50,7 +50,7 @@ dependencies = {
   "lua-resty-counter == 0.2.1",
   "lua-resty-template == 1.9",
   "lua-resty-passwdqc == 1.1",
-  "lua-resty-ipmatcher == 0.6",
+  "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.7.1",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
@@ -414,6 +414,7 @@ build = {
 
     ["kong.hybrid"] = "kong/hybrid/init.lua",
     ["kong.hybrid.data_plane"] = "kong/hybrid/data_plane.lua",
+    ["kong.hybrid.event_loop"] = "kong/hybrid/event_loop.lua",
     ["kong.hybrid.control_plane"] = "kong/hybrid/control_plane.lua",
     ["kong.hybrid.message"] = "kong/hybrid/message.lua",
     ["kong.hybrid.queue"] = "kong/hybrid/queue.lua",
