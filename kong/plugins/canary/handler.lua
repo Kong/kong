@@ -37,6 +37,11 @@ hashing = {
     -- return hash, or fall back on IP based hash if no credential
     return identifier and crc32(identifier) or hashing.ip(conf.steps)
   end,
+  header = function(conf)
+    local identifier = kong.request.get_header(conf.hash_header)
+    -- return hash, or fall back on IP based hash if no credential
+    return identifier and crc32(identifier) or hashing.ip(conf.steps)
+  end,
   ip = function(conf)
     -- remote IP
     local identifier = ngx.var.remote_addr
