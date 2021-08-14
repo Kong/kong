@@ -3,6 +3,7 @@ setmetatable(_G, nil)
 
 local cjson = require "cjson"
 local http = require "resty.http"
+local shell = require "resty.shell"
 
 local USAGE = [[
   Usage:
@@ -11,11 +12,9 @@ local USAGE = [[
 
   Example:
 
-  scripts/changelog-helper.lua 2.4.1 master $GITHUB_TOKEN
+  scripts/changelog-helper.lua 2.5.0 master $GITHUB_TOKEN
 
   For the Github token, visit https://github.com/settings/tokens . It only needs "public_repo" and "read:org" scopes.
-
-  ** NOTE: Github limits the number of commits to compare to 250. If the diff is bigger, you will get an error, and will have to do the changelog manually **
 ]]
 
 
@@ -26,7 +25,32 @@ local KNOWN_KONGERS = { -- include kong alumni here
 
 local fmt = string.format
 
-local new_github_api = function(github_token)
+
+-- used for pagination in github pages. Ref: https://www.rfc-editor.org/rfc/rfc5988.txt
+-- inspired by https://gist.github.com/niallo/3109252
+local function parse_rfc5988_link_header(link)
+  local parsed = {}
+  for part in link:gmatch("[^,]+") do -- split by ,
+    local url, rel = part:match('%s*<?([^>]*)>%s*;%s*rel%s*=%s*"?([^"]+)"?')
+    if url then
+      parsed[rel] = url
+    end
+  end
+  return parsed
+end
+
+
+local function datetime_to_epoch(d)
+  local yyyy,MM,dd,hh,mm,ss = string.match(d, "^(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)Z$")
+  if not yyyy then
+    error("Could not parse date: " .. tostring(date))
+  end
+  yyyy,MM,dd,hh,mm,ss = tonumber(yyyy), tonumber(MM), tonumber(dd), tonumber(hh), tonumber(mm), tonumber(ss)
+  return os.time({year = yyyy, month = MM, day = dd, hour = hh, min = mm, sec = ss})
+end
+
+
+local function new_github_api(github_token)
   local get
   get = function(path)
     local httpc = assert(http.new())
@@ -59,21 +83,59 @@ local new_github_api = function(github_token)
     return body, res.status, res.headers
   end
 
-  return { get = get }
+  -- usage:
+  -- for item in api.iterate_paged("/some/paginated/api/result") do ... end
+  local iterate_paged = function(path)
+    local page, _, headers = get(path)
+    local page_len = #page
+    local index = 0
+
+    return function()
+      index = index + 1
+      if index <= page_len then
+        return page[index]
+      end
+      -- index > page_len
+      if headers.Link then
+        local parsed = parse_rfc5988_link_header(headers.Link)
+        if parsed.next then
+          page, _, headers = get(parsed.next)
+          page_len = #page
+          index = 1
+          return page[index]
+        end
+      end
+      -- else return nil
+    end
+  end
+
+  return { get = get, iterate_paged = iterate_paged }
 end
 
+local function shell_run(cmd)
+  local ok, stdout, stderr = shell.run(cmd)
+  if not ok then
+    error(stderr)
+  end
+  return (stdout:gsub("%W","")) -- remove non-alphanumerics (like newline)
+end
 
 local function get_comparison_commits(api, from_ref, to_ref)
   print("\n\nGetting comparison commits")
-  local compare_res = api.get(fmt("/repos/kong/kong/compare/%s...%s", from_ref, to_ref))
 
-  --[[
-  if #compare_res.commits >= 250 then
-    error("250 commits or more found on compare. Github only shows 250 on its compare query, so the comparison likely is missing data. Aborting in order to not produce incomplete results")
+  assert(shell_run("git fetch origin"))
+  local latest_common_ancestor = shell_run(fmt("git merge-base %s %s", from_ref, to_ref))
+  local latest_ancestor_epoch = tonumber(shell_run("git show -s --format=%ct " .. latest_common_ancestor))
+  local latest_ancestor_iso8601 = os.date("!%Y-%m-%dT%TZ", latest_ancestor_epoch)
+
+  local commits = {}
+  for commit in api.iterate_paged(fmt("/repos/kong/kong/commits?since=%s", latest_ancestor_iso8601)) do
+    if datetime_to_epoch(commit.commit.author.date) > latest_ancestor_epoch then
+      commits[#commits + 1] = commit
+    end
   end
-  ]]
 
-  return compare_res.commits
+  return commits
 end
 
 
