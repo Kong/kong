@@ -764,6 +764,9 @@ function consumers.load(subject, anonymous, consumer_by, ttl, by_username_ignore
     if field_name == "id" then
       key = kong.db.consumers:cache_key(subject)
 
+    elseif field_name == "username" and by_username_ignore_case then
+      key = kong.db.consumers:cache_key(field_name, subject .. "/i")
+
     else
       key = kong.db.consumers:cache_key(field_name, subject)
     end
