@@ -5,10 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local jq_filter_schema = require "kong.plugins.jq-filter.schema"
+local jq_filter_schema = require "kong.plugins.jq.schema"
 local validate = require("spec.helpers").validate_plugin_config_schema
 
-describe("jq-filter schema", function()
+describe("jq schema", function()
   it("rejects empty config", function()
     local ok, err = validate({}, jq_filter_schema)
     assert.is_falsy(ok)

@@ -8,11 +8,11 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("jq-filter API", function()
+describe("jq API", function()
   local admin_client, bp
 
   setup(function()
-    bp = helpers.get_db_utils(nil, nil, { "jq-filter" })
+    bp = helpers.get_db_utils(nil, nil, { "jq" })
 
     assert(bp.routes:insert {
       name  = "test",
@@ -20,7 +20,7 @@ describe("jq-filter API", function()
     })
 
     assert(helpers.start_kong({
-      plugins = "jq-filter",
+      plugins = "jq",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     admin_client = helpers.admin_client()
@@ -39,7 +39,7 @@ describe("jq-filter API", function()
         method = "POST",
         path = "/routes/test/plugins/",
         body = {
-          name = "jq-filter",
+          name = "jq",
           config = {},
         },
         headers = {
@@ -55,7 +55,7 @@ describe("jq-filter API", function()
         method = "POST",
         path = "/routes/test/plugins/",
         body = {
-          name = "jq-filter",
+          name = "jq",
           config = {
             filters = {
               {

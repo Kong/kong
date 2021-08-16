@@ -8,7 +8,7 @@ source = {
 
 supported_platforms = {"linux", "macosx"}
 description = {
-  summary = "Kong Enterprise jq filter"
+  summary = "Kong Enterprise jq plugin"
 }
 
 dependencies = {
@@ -19,9 +19,9 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
-    ["kong.plugins.jq-filter.cache"] = "kong/plugins/jq-filter/cache.lua",
-    ["kong.plugins.jq-filter.handler"] = "kong/plugins/jq-filter/handler.lua",
-    ["kong.plugins.jq-filter.schema"] = "kong/plugins/jq-filter/schema.lua",
-    ["kong.plugins.jq-filter.typedefs"] = "kong/plugins/jq-filter/typedefs.lua",
+    ["kong.plugins.jq.cache"] = "kong/plugins/jq/cache.lua",
+    ["kong.plugins.jq.handler"] = "kong/plugins/jq/handler.lua",
+    ["kong.plugins.jq.schema"] = "kong/plugins/jq/schema.lua",
+    ["kong.plugins.jq.typedefs"] = "kong/plugins/jq/typedefs.lua",
   }
 }

@@ -1,7 +1,7 @@
-local typedefs = require "kong.plugins.jq-filter.typedefs"
+local typedefs = require "kong.plugins.jq.typedefs"
 
 return {
-  name = "jq-filter",
+  name = "jq",
   fields = {
     typedefs.protocols,
     {

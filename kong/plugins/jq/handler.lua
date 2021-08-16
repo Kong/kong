@@ -6,10 +6,10 @@ local str_find = string.find
 
 local kong = kong
 
-local CACHE = require "kong.plugins.jq-filter.cache"
+local CACHE = require "kong.plugins.jq.cache"
 
 
-local JqFilter = {
+local Jq = {
   VERSION = "0.0.1",
   PRIORITY = 811,
 }
@@ -97,7 +97,7 @@ end
 
 -- Runs each filter with a `context` of `request`, and updates the request
 -- headers and / or body accordingly.
-function JqFilter:access(conf)
+function Jq:access(conf)
   local request_body = kong.request.get_raw_body()
   if not request_body then
     return
@@ -131,7 +131,7 @@ end
 --
 -- Note: we call `kong.response.exit` and so this will be the last plugin to
 -- run for this phase.
-function JqFilter:response(conf)
+function Jq:response(conf)
   local response_body = kong.service.response.get_raw_body()
   if not response_body then
     return
@@ -162,4 +162,4 @@ function JqFilter:response(conf)
 end
 
 
-return JqFilter
+return Jq

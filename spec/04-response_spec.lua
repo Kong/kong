@@ -8,14 +8,14 @@
 local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
-  describe("jq-filter (" .. strategy .. ") response", function()
+  describe("jq (" .. strategy .. ") response", function()
     local client
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
         "services", "plugins",
-      }, { "jq-filter" })
+      }, { "jq" })
 
       do
         local routes = {}
@@ -29,7 +29,7 @@ for _, strategy in helpers.each_strategy() do
         local function add_plugin(route, config)
           bp.plugins:insert({
             route = { id = route.id },
-            name = "jq-filter",
+            name = "jq",
             config = config,
           })
         end
@@ -180,7 +180,7 @@ for _, strategy in helpers.each_strategy() do
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        plugins = "jq-filter"
+        plugins = "jq"
       }))
     end)
 
