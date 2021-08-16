@@ -34,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
           })
         end
 
-        -- returns the first element in the request body
+        -- returns the second element in the request body
         add_plugin(routes[1], {
           filters = {
             {
