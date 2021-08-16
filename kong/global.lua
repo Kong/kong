@@ -117,6 +117,25 @@ function _GLOBAL.get_phase(self)
   return kctx.core.phase
 end
 
+-- do
+--   local var = ngx.var
+--   local mt = {
+--     __index = function(_, k)
+--       return kong.req_headers_truncated and var["http_" .. k] or nil
+--     end
+--   }
+
+--   function _GLOBAL.init_req_headers(self, ctx)
+--     -- TODO: configurable
+--     local headers, err = ngx.req.get_headers(10)
+--     if err == "truncated" then
+--       self.req_headers_truncated = true
+--     end
+
+--     ctx.req_headers = setmetatable(headers, mt)
+--   end
+-- end
+
 
 do
   local log_facilities = setmetatable({}, { __index = "k" })

@@ -1118,7 +1118,7 @@ return {
 
       -- special handling for proxy-authorization and te headers in case
       -- the plugin(s) want to specify them (store the original)
-      ctx.http_proxy_authorization = req_headers['proxy-authorization']
+      ctx.http_proxy_authorization = ngx.var.http_proxy_authorization
     end,
     after = NOOP,
   },
