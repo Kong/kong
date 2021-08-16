@@ -47,10 +47,10 @@ end
 -- load and cache the mock-records
 local get_mock_records
 do
-  local mock_records
+  local mock_file
   get_mock_records = function()
-    if mock_records then
-      return mock_records
+    if mock_file then
+      return mock_file.records, mock_file.should_fail
     end
 
     local is_file = require("pl.path").isfile
@@ -63,11 +63,11 @@ do
 
     local filename = prefix .. "/" .. MOCK_RECORD_FILENAME
 
-    mock_records = {}
+    mock_file = {}
     if not is_file(filename) then
       -- no mock records set up, return empty default
       ngx.log(ngx.DEBUG, LOG_PREFIX, "bypassing mock, no mock records found")
-      return mock_records
+      return mock_file
     end
 
     -- there is a file with mock records available, go load it
@@ -75,9 +75,8 @@ do
     local json_file = assert(f:read("*a"))
     f:close()
 
-    mock_records = assert(cjson.decode(json_file))
-
-    return mock_records
+    mock_file = assert(cjson.decode(json_file))
+    return mock_file.records, mock_file.should_fail
   end
 end
 
@@ -85,21 +84,30 @@ end
 -- patch the actual query method
 local old_query = resolver.query
 resolver.query = function(self, name, options, tries)
-  local mock_records = get_mock_records()
+  local mock_records, should_fail = get_mock_records()
   local qtype = (options or {}).qtype or resolver.TYPE_A
 
   local answer = (mock_records[qtype] or {})[name]
   if answer then
     -- we actually have a mock answer, return it
     ngx.log(ngx.DEBUG, LOG_PREFIX, "serving '", name, "' from mocks")
-    ngx.timer.at(0.05, function() ngx.log(ngx.INFO, "tick") end) -- FIXME: remove after OpenResty semaphore bug is fixed
     return answer, nil, tries
   end
 
-  -- no mock, so invoke original resolver
-  local a, b, c = old_query(self, name, options, tries)
-  ngx.timer.at(0.05, function() ngx.log(ngx.INFO, "tick") end) -- FIXME: remove after OpenResty semaphore bug is fixed
-  return a, b, c
+  if not should_fail then
+    -- no mock, so invoke original resolver
+    local a, b, c = old_query(self, name, options, tries)
+    return a, b, c
+  end
+end
+
+do
+  local semaphore = require "ngx.semaphore"
+  local old_post = semaphore.post
+  function semaphore.post(self, n)
+    old_post(self, n)
+    ngx.sleep(0)
+  end
 end
 
 
