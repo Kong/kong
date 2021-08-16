@@ -7,7 +7,7 @@
 
 local helpers = require "spec.helpers"
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.all_strategies() do
   describe("jq (" .. strategy .. ") response", function()
     local client
 
