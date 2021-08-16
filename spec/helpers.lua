@@ -2980,11 +2980,17 @@ end
 
     return code
   end,
-
   -- returns the plugins and version list that is used by Hybrid mode tests
   get_plugins_list = function()
     assert(PLUGINS_LIST, "plugin list has not been initialized yet, " ..
                          "you must call get_db_utils first")
     return table_clone(PLUGINS_LIST)
+  end,
+  get_available_port = function()
+    local socket = require("socket")
+    local server = assert(socket.bind("*", 0))
+    local _, port = server:getsockname()
+    server:close()
+    return tonumber(port)
   end,
 }
