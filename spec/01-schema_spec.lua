@@ -5,12 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local jq_filter_schema = require "kong.plugins.jq.schema"
+local jq_schema = require "kong.plugins.jq.schema"
 local validate = require("spec.helpers").validate_plugin_config_schema
 
 describe("jq schema", function()
   it("rejects empty config", function()
-    local ok, err = validate({}, jq_filter_schema)
+    local ok, err = validate({}, jq_schema)
     assert.is_falsy(ok)
     assert.same("required field missing", err.config.filters)
   end)
@@ -20,7 +20,7 @@ describe("jq schema", function()
       filters = {
         { program = "." }
       }
-    }, jq_filter_schema)
+    }, jq_schema)
     assert.is_nil(err)
     assert.is_truthy(res)
 
@@ -37,7 +37,7 @@ describe("jq schema", function()
           program = ".",
         },
       }
-    }, jq_filter_schema)
+    }, jq_schema)
     assert.same("expected one of: request, response", err.config.filters[1].context)
     assert.is_falsy(res)
   end)
@@ -50,7 +50,7 @@ describe("jq schema", function()
           program = ".",
         },
       }
-    }, jq_filter_schema)
+    }, jq_schema)
     assert.is_nil(err)
     assert.is_truthy(res)
 
@@ -65,7 +65,7 @@ describe("jq schema", function()
           target = "foo",
         },
       }
-    }, jq_filter_schema)
+    }, jq_schema)
     assert.same("expected one of: body, headers", err.config.filters[1].target)
     assert.is_falsy(res)
   end)
@@ -78,7 +78,7 @@ describe("jq schema", function()
           target = "headers",
         },
       }
-    }, jq_filter_schema)
+    }, jq_schema)
     assert.is_nil(err)
     assert.is_truthy(res)
 
@@ -95,7 +95,7 @@ describe("jq schema", function()
           },
         },
       }
-    }, jq_filter_schema)
+    }, jq_schema)
     assert.same("unknown field", err.config.filters[1].jq_options.foo)
     assert.is_falsy(res)
   end)
@@ -114,7 +114,7 @@ describe("jq schema", function()
           },
         },
       }
-    }, jq_filter_schema)
+    }, jq_schema)
     assert.is_nil(err)
     assert.is_truthy(res)
 
@@ -138,7 +138,7 @@ describe("jq schema", function()
           },
         },
       }
-    }, jq_filter_schema)
+    }, jq_schema)
     assert.same("expected a string", err.config.filters[1].if_media_type[3])
     assert.is_falsy(res)
   end)
@@ -154,7 +154,7 @@ describe("jq schema", function()
           },
         },
       }
-    }, jq_filter_schema)
+    }, jq_schema)
     assert.is_nil(err)
     assert.is_truthy(res)
   end)
@@ -172,7 +172,7 @@ describe("jq schema", function()
           },
         },
       }
-    }, jq_filter_schema)
+    }, jq_schema)
     assert.same("value should be between 100 and 599",
       err.config.filters[1].if_status_code[3])
     assert.is_falsy(res)
@@ -190,7 +190,7 @@ describe("jq schema", function()
           },
         },
       }
-    }, jq_filter_schema)
+    }, jq_schema)
     assert.is_nil(err)
     assert.is_truthy(res)
   end)
