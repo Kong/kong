@@ -44,5 +44,21 @@ function Consumers:page_by_type(_, size, offset, options)
   return rows, nil, nil, next_offset
 end
 
+function Consumers:select_by_username_ignore_case(subject)
+  local consumers, err = kong.db.connector:query(table.concat({
+    "SELECT * FROM consumers WHERE LOWER(username) = LOWER(",
+    kong.db.connector:escape_literal(subject),
+    ") LIMIT 1",
+  }, ""))
+
+  if err then
+    return nil, err
+  end
+
+  local case_insensitive_match = consumers[1]
+
+  return case_insensitive_match, nil
+end
+
 
 return Consumers
