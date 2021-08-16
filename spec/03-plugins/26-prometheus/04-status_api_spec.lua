@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 
-local TCP_PROXY_PORT = 9007
+local tcp_proxy_port = helpers.get_available_port()
+local tcp_status_port = helpers.get_available_port()
 
 describe("Plugin: prometheus (access via status API)", function()
   local proxy_client
@@ -125,25 +126,31 @@ describe("Plugin: prometheus (access via status API)", function()
     assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled",
-        status_listen = "0.0.0.0:9500",
-        stream_listen = "127.0.0.1:" .. TCP_PROXY_PORT,
+        status_listen = "0.0.0.0:" .. tcp_status_port,
+        stream_listen = "127.0.0.1:" .. tcp_proxy_port,
     })
-    proxy_client = helpers.proxy_client()
-    status_client = helpers.http_client("127.0.0.1", 9500, 20000)
     proxy_client_grpc = helpers.proxy_client_grpc()
     proxy_client_grpcs = helpers.proxy_client_grpcs()
 
     require("socket").sleep(1) -- wait 1 second until healthchecks run
   end)
 
-  teardown(function()
-    if proxy_client then
-      proxy_client:close()
-    end
+
+  before_each(function()
+    status_client = helpers.http_client("127.0.0.1", tcp_status_port, 20000)
+    proxy_client = helpers.proxy_client()
+  end)
+
+  after_each(function()
     if status_client then
       status_client:close()
     end
+    if proxy_client then
+      proxy_client:close()
+    end
+  end)
 
+  teardown(function()
     helpers.stop_kong()
   end)
 
@@ -343,16 +350,12 @@ describe("Plugin: prometheus (access via status API)", function()
     assert.matches('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80",address="",state="healthchecks_off"} 0', body, nil, true)
   end)
 
-  pending("remove metrics from deleted upstreams and targets", function()
+  it("remove metrics from deleted upstreams", function()
     local admin_client = helpers.admin_client()
-    admin_client:send {
+    assert(admin_client:send {
       method  = "DELETE",
       path    = "/upstreams/mock-upstream-healthchecksoff",
-    }
-    admin_client:send {
-      method  = "DELETE",
-      path    = "/upstreams/mock-upstream/targets/some-random-dns:80",
-    }
+    })
     admin_client:close()
 
     local body
@@ -363,8 +366,26 @@ describe("Plugin: prometheus (access via status API)", function()
       })
       body = assert.res_status(200, res)
       return not body:find('kong_upstream_target_health{upstream="mock-upstream-healthchecksoff"', nil, true)
-    end)
-    assert.not_match('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80"', body, nil, true)
+    end, 15)
+  end)
+
+  it("remove metrics from deleted targets", function()
+    local admin_client = helpers.admin_client()
+    assert(admin_client:send {
+      method  = "DELETE",
+      path    = "/upstreams/mock-upstream/targets/some-random-dns:80",
+    })
+    admin_client:close()
+
+    local body
+    helpers.wait_until(function()
+      local res = assert(status_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      body = assert.res_status(200, res)
+      return not body:find('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80"', nil, true)
+    end, 15)
   end)
 
   it("exposes Lua worker VM stats", function()
