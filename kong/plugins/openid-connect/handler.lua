@@ -1630,6 +1630,7 @@ function OICHandler.access(_, conf)
   end
 
   local search_userinfo = args.get_conf_arg("search_user_info")
+  local by_username_ignore_case = args.get_conf_arg("by_username_ignore_case")
 
   -- consumer mapping
   if not consumer then
@@ -1642,7 +1643,8 @@ function OICHandler.access(_, conf)
       if not consumer then
         if type(introspection_data) == "table" then
           log("trying to find consumer using introspection response")
-          consumer, err = consumers.find({ payload = introspection_data }, consumer_claim, false, consumer_by, ttl)
+          consumer, err = consumers.find(
+            { payload = introspection_data }, consumer_claim, false, consumer_by, ttl, by_username_ignore_case)
           if consumer then
             log("consumer was found with introspection results")
           elseif err then
@@ -1665,7 +1667,8 @@ function OICHandler.access(_, conf)
         if type(tokens_decoded) == "table" then
           if type(tokens_decoded.id_token) == "table" then
             log("trying to find consumer using id token")
-            consumer, err = consumers.find(tokens_decoded.id_token, consumer_claim, false, consumer_by, ttl)
+            consumer, err = consumers.find(
+              tokens_decoded.id_token, consumer_claim, false, consumer_by, ttl, by_username_ignore_case)
             if consumer then
               log("consumer was found with id token")
             elseif err then
@@ -1677,7 +1680,8 @@ function OICHandler.access(_, conf)
 
           if not consumer and type(tokens_decoded.access_token) == "table" then
             log("trying to find consumer using access token")
-            consumer, err = consumers.find(tokens_decoded.access_token, consumer_claim, false, consumer_by, ttl)
+            consumer, err = consumers.find(
+              tokens_decoded.access_token, consumer_claim, false, consumer_by, ttl, by_username_ignore_case)
             if consumer then
               log("consumer was found with access token")
             elseif err then
@@ -1705,7 +1709,8 @@ function OICHandler.access(_, conf)
 
         if type(userinfo_data) == "table" then
           log("trying to find consumer using user info")
-          consumer, err = consumers.find({ payload = userinfo_data }, consumer_claim, false, consumer_by, ttl)
+          consumer, err = consumers.find(
+            { payload = userinfo_data }, consumer_claim, false, consumer_by, ttl, by_username_ignore_case)
           if consumer then
             log("consumer was found with user info")
           elseif err then

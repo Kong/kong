@@ -706,7 +706,7 @@ end
 
 local consumers = {}
 
-local function consumers_load(subject, key)
+local function consumers_load(subject, key, by_username_ignore_case)
   if not subject or subject == "" then
     return nil, "unable to load consumer by a missing subject"
   end
@@ -722,6 +722,9 @@ local function consumers_load(subject, key)
 
   elseif key == "username" then
     result, err = kong.db.consumers:select_by_username(subject)
+    if not result and by_username_ignore_case then
+      result, err = kong.db.consumers:select_by_username_ignore_case(subject)
+    end
   elseif key == "custom_id" then
     result, err = kong.db.consumers:select_by_custom_id(subject)
   else
@@ -742,7 +745,7 @@ local function consumers_load(subject, key)
 end
 
 
-function consumers.load(subject, anonymous, consumer_by, ttl)
+function consumers.load(subject, anonymous, consumer_by, ttl, by_username_ignore_case)
   local field_names
   if anonymous then
     field_names = { "id" }
@@ -766,7 +769,7 @@ function consumers.load(subject, anonymous, consumer_by, ttl)
     end
 
     local consumer
-    consumer, err = cache_get(key, ttl, consumers_load, subject, field_name)
+    consumer, err = cache_get(key, ttl, consumers_load, subject, field_name, by_username_ignore_case)
     if consumer then
       return consumer
     end
