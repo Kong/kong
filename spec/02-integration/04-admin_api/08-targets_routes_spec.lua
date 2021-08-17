@@ -30,9 +30,10 @@ describe("Admin API #" .. strategy, function()
 
   lazy_setup(function()
     local fixtures = {
-      dns_mock = helpers.dns_mock.new()
+      dns_mock = helpers.dns_mock.new({
+        mocks_only = true,      -- don't fallback to "real" DNS
+      })
     }
-    fixtures.dns_mock.should_fail = true  -- don't fallback to "real" DNS
     fixtures.dns_mock:A {
       name = "custom_localhost",
       address = "127.0.0.1",
