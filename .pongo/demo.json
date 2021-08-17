@@ -563,7 +563,7 @@
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
     "secret" : "38beb963-2786-42b8-8e14-a5f391b4ba93",
-    "redirectUris" : [ "https://kong:8443/*", "http://kong:8000/*" ],
+    "redirectUris" : [ "https://kong:8443/*", "http://kong:8000/*", "http://kong:9000/*", "https://kong:9443/*" ],
     "webOrigins" : [ ],
     "notBefore" : 0,
     "bearerOnly" : false,
