@@ -102,6 +102,8 @@ for _, strategy in helpers.all_strategies() do
   end)
 
   describe("db.consumers #" .. strategy, function()
+    local bp, db
+
     lazy_setup(function()
       bp, db = helpers.get_db_utils(strategy, {
         "consumers",
