@@ -1328,6 +1328,18 @@ return {
       -- `set_host_header` because it would never be empty after the first -- balancer try
       if var.upstream_host ~= nil and var.upstream_host ~= "" then
         balancer_data.preserve_host = true
+
+        -- the nginx grpc module does not offer a way to override the
+        -- :authority pseudo-header; use our internal API to do so
+        -- this call applies to routes with preserve_host=true; for
+        -- preserve_host=false, the header is set in `set_host_header`,
+        -- so that it also applies to balancer retries
+        if var.upstream_scheme == "grpc" or var.upstream_scheme == "grpcs" then
+          local ok, err = kong.service.request.set_header(":authority", var.upstream_host)
+          if not ok then
+            log(ERR, "failed to set :authority header: ", err)
+          end
+        end
       end
 
       local ok, err, errcode = balancer_execute(ctx)
@@ -1343,18 +1355,6 @@ return {
         ngx.log(ngx.ERR, "failed to set balancer Host header: ", err)
 
         return ngx.exit(500)
-      end
-
-      -- the nginx grpc module does not offer a way to override the
-      -- :authority pseudo-header; use our internal API to do so
-      local upstream_host = var.upstream_host
-      local upstream_scheme = var.upstream_scheme
-
-      if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
-        ok, err = kong.service.request.set_header(":authority", upstream_host)
-        if not ok then
-          log(ERR, "failed to set :authority header: ", err)
-        end
       end
 
       -- clear hop-by-hop request headers:

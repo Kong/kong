@@ -29,6 +29,7 @@ local PHASES = phase_checker.phases
 
 local access_and_rewrite = phase_checker.new(PHASES.rewrite, PHASES.access)
 local preread_and_balancer = phase_checker.new(PHASES.preread, PHASES.balancer)
+local access_rewrite_balancer = phase_checker.new(PHASES.rewrite, PHASES.access, PHASES.balancer)
 
 
 ---
@@ -280,14 +281,14 @@ local function new(self)
   -- will also set the SNI of the request to the Service.
   --
   -- @function kong.service.request.set_header
-  -- @phases `rewrite`, `access`
+  -- @phases `rewrite`, `access`, `balancer`
   -- @tparam string header The header name. Example: "X-Foo"
   -- @tparam string|boolean|number value The header value. Example: "hello world"
   -- @return Nothing; throws an error on invalid inputs.
   -- @usage
   -- kong.service.request.set_header("X-Foo", "value")
   request.set_header = function(header, value)
-    check_phase(access_and_rewrite)
+    check_phase(access_rewrite_balancer)
 
     validate_header(header, value)
 
