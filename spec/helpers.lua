@@ -2058,7 +2058,7 @@ end
 -- @usage
 -- -- Create a new DNS mock and add some DNS records
 -- local fixtures = {
---   dns_mock = helpers.dns_mock.new()
+--   dns_mock = helpers.dns_mock.new { mocks_only = true }
 -- }
 --
 -- fixtures.dns_mock:SRV {
@@ -2088,7 +2088,7 @@ do
   dns_mock.__tostring = function(self)
     -- fill array to prevent json encoding errors
     local out = {
-      should_fail = self.should_fail,
+      mocks_only = self.mocks_only,
       records = {}
     }
     for i = 1, 33 do
@@ -2103,10 +2103,17 @@ do
 
 
   --- Creates a new DNS mock.
+  -- The options table supports the following fields:
+  --
+  -- - `mocks_only`: boolean, if set to `true` then only mock records will be
+  --   returned. If `falsy` it will fall through to an actual DNS lookup.
   -- @function dns_mock.new
+  -- @param options table with mock options
   -- @return dns_mock object
-  function dns_mock.new()
-    return setmetatable({}, dns_mock)
+  -- @usage
+  -- local mock = helpers.dns_mock.new { mocks_only = true }
+  function dns_mock.new(options)
+    return setmetatable(options or {}, dns_mock)
   end
 
 

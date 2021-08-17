@@ -50,7 +50,7 @@ do
   local mock_file
   get_mock_records = function()
     if mock_file then
-      return mock_file.records, mock_file.should_fail
+      return mock_file.records, mock_file.mocks_only
     end
 
     local is_file = require("pl.path").isfile
@@ -76,7 +76,7 @@ do
     f:close()
 
     mock_file = assert(cjson.decode(json_file))
-    return mock_file.records, mock_file.should_fail
+    return mock_file.records, mock_file.mocks_only
   end
 end
 
@@ -84,7 +84,7 @@ end
 -- patch the actual query method
 local old_query = resolver.query
 resolver.query = function(self, name, options, tries)
-  local mock_records, should_fail = get_mock_records()
+  local mock_records, mocks_only = get_mock_records()
   local qtype = (options or {}).qtype or resolver.TYPE_A
 
   local answer = (mock_records[qtype] or {})[name]
@@ -94,7 +94,7 @@ resolver.query = function(self, name, options, tries)
     return answer, nil, tries
   end
 
-  if not should_fail then
+  if not mocks_only then
     -- no mock, so invoke original resolver
     local a, b, c = old_query(self, name, options, tries)
     return a, b, c
