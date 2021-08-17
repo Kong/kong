@@ -16,6 +16,10 @@ local Jq = {
 
 
 local function is_media_type_allowed(content_type, filter_conf)
+  if type(content_type) ~= "string" then
+    return false
+  end
+
   local media_types = filter_conf.if_media_type
   for _, media_type in ipairs(media_types) do
     if str_find(content_type, media_type, 1, true) ~= nil then
