@@ -39,6 +39,7 @@ describe("Admin API #" .. strategy, function()
     local fixtures = {
       dns_mock = helpers.dns_mock.new()
     }
+    fixtures.dns_mock.should_fail = true  -- don't fallback to "real" DNS
     fixtures.dns_mock:A {
       name = "custom_localhost",
       address = "127.0.0.1",
