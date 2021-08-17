@@ -6,7 +6,6 @@ return {
   },
   context = {
     context = {
-      required = true,
       type = "string",
       default = "response",
       one_of = {
@@ -23,7 +22,6 @@ return {
   },
   target = {
     target = {
-      required = true,
       type = "string",
       default = "body",
       one_of = {
@@ -40,35 +38,30 @@ return {
       fields = {
         {
           compact_output = {
-            required = true,
             type = "boolean",
             default = true,
           },
         },
         {
           raw_output = {
-            required = true,
             type = "boolean",
             default = false,
           },
         },
         {
           join_output = {
-            required = true,
             type = "boolean",
             default = false,
           },
         },
         {
           ascii_output = {
-            required = true,
             type = "boolean",
             default = false,
           },
         },
         {
           sort_keys = {
-            required = true,
             type = "boolean",
             default = false,
           },
