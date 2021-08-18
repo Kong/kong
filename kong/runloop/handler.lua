@@ -1113,10 +1113,6 @@ return {
     before = function(ctx)
       local server_port = var.server_port
       ctx.host_port = HOST_PORTS[server_port] or server_port
-
-      -- special handling for proxy-authorization header in case
-      -- the plugin(s) want to specify them (store the original)
-      ctx.http_proxy_authorization = var.http_proxy_authorization
     end,
     after = NOOP,
   },
@@ -1364,14 +1360,14 @@ return {
       -- clear hop-by-hop request headers:
       for _, header_name in csv(var.http_connection) do
         -- some of these are already handled by the proxy module,
-        -- proxy-authorization and upgrade being an exception that
-        -- is handled below with special semantics.
+        -- upgrade being an exception that is handled below with
+        -- special semantics.
         if header_name == "upgrade" then
           if var.upstream_connection == "keep-alive" then
             clear_header(header_name)
           end
 
-        elseif header_name ~= "proxy-authorization" then
+        else
           clear_header(header_name)
         end
       end
@@ -1390,13 +1386,6 @@ return {
 
       if var.http_proxy_connection then
         clear_header("Proxy-Connection")
-      end
-
-      -- clear the proxy-authorization header only in case the plugin didn't
-      -- specify it, assuming that the plugin didn't specify the same value.
-      if ctx.http_proxy_authorization and
-         ctx.http_proxy_authorization == var.http_proxy_authorization then
-        clear_header("Proxy-Authorization")
       end
     end
   },
@@ -1420,10 +1409,6 @@ return {
       local upgrade = var.upstream_http_upgrade
       if upgrade and lower(upgrade) ~= lower(var.upstream_upgrade) then
         header["Upgrade"] = nil
-      end
-
-      if var.upstream_http_proxy_authenticate then
-        header["Proxy-Authenticate"] = nil
       end
 
       -- remove trailer response header when client didn't ask for them

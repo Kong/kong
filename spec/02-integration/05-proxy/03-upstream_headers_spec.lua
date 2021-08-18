@@ -131,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
           ["Proxy"]               = "Remove-Me", -- See: https://httpoxy.org/
           ["Proxy-Connection"]    = "close",
           -- This is a response header, so we don't remove it, should we?
-          --["Proxy-Authenticate"]  = "Basic",
+          ["Proxy-Authenticate"]  = "Basic",
           ["Proxy-Authorization"] = "Basic YWxhZGRpbjpvcGVuc2VzYW1l",
           ["TE"]                  = "trailers, deflate;q=0.5",
           --["Transfer-Encoding"]   = "identity", -- Removed with OpenResty 1.19.3.1 as Nginx errors with:
@@ -149,11 +149,11 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(headers["keep-alive"])
         assert.is_nil(headers["proxy"])
         assert.is_nil(headers["proxy-connection"])
-        assert.is_nil(headers["proxy-authenticate"])
-        assert.is_nil(headers["proxy-authorization"])
         assert.is_nil(headers["upgrade"])
         assert.is_nil(headers["x-boo"])
         assert.is_nil(headers["x-bar"])
+        assert.equal("Basic", headers["proxy-authenticate"])
+        assert.equal("Basic YWxhZGRpbjpvcGVuc2VzYW1l", headers["proxy-authorization"])
         assert.equal("trailers", headers["te"]) -- trailers are kept
         assert.equal("Keep-Me", headers["x-foo-bar"])
         assert.equal("Keep-Me", headers["close"])
@@ -177,7 +177,7 @@ for _, strategy in helpers.each_strategy() do
         --assert.is_nil(headers["proxy"])
         -- This is a request header, so we don't remove it, should we?
         --assert.is_nil(headers["proxy-connection"])
-        assert.is_nil(headers["proxy-authenticate"])
+        --assert.is_nil(headers["proxy-authenticate"])
         -- This is a request header, so we don't remove it, should we?
         --assert.is_nil(headers["proxy-authorization"])
         -- This is a request header, so we don't remove it, should we?
@@ -233,12 +233,12 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("Basic ZGVtbzp0ZXN0", headers["proxy-authorization"])
       end)
 
-      it("removes proxy-authorization header if plugin specifies same value as in requests", function()
+      it("keeps proxy-authorization header if plugin specifies same value as in requests", function()
         local headers = request_headers({
           ["Proxy-Authorization"] = "Basic ZGVtbzp0ZXN0",
         }, "/proxy-authorization")
 
-        assert.is_nil(headers["proxy-authorization"])
+        assert.equal("Basic ZGVtbzp0ZXN0", headers["proxy-authorization"])
       end)
     end)
 
