@@ -61,6 +61,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "ip-restriction11.com" },
       }
 
+      local route12 = bp.routes:insert {
+        hosts = { "ip-restriction12.com" },
+      }
+
       local grpc_service = bp.services:insert {
           name = "grpc1",
           url = "grpc://localhost:15002",
@@ -178,6 +182,16 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
+      bp.plugins:insert {
+        name     = "ip-restriction",
+        route = { id = route12.id },
+        config   = {
+          deny = { "127.0.0.1", "127.0.0.2" },
+          status = 401,
+          message = "Forbidden"
+        },
+      }
+
       assert(db.plugins:insert {
         name     = "ip-restriction",
         route = { id = route_grpc_deny.id },
@@ -235,6 +249,19 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(403, res)
         local json = cjson.decode(body)
         assert.same({ message = "Your IP address is not allowed" }, json)
+      end)
+
+      it("blocks a request when the IP is denied with status/message", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = {
+            ["Host"] = "ip-restriction12.com"
+          }
+        })
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Forbidden" }, json)
       end)
 
       it("blocks a request when the IP is denied #grpc", function()
