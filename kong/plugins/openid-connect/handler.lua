@@ -308,7 +308,14 @@ function OICHandler.access(_, conf)
                   end
 
                 else
-                  log("unable to revoke refresh token, because revocation endpoint was not specified")
+                  ok, err = oic.token:revoke(session_data.tokens.refresh_token, "refresh_token", {
+                    revocation_endpoint_auth_method = revocation_endpoint_auth_method,
+                  })
+                  -- call revoke here but without the user-defined recovation_endpoint
+                  -- if fails, log that
+                  if not ok and err then
+                    log("unable to revoke refresh token: ", err)
+                  end
                 end
               end
 
@@ -324,7 +331,14 @@ function OICHandler.access(_, conf)
                   end
 
                 else
-                  log("unable to revoke access token, because revocation endpoint was not specified")
+                  ok, err = oic.token:revoke(session_data.tokens.refresh_token, "refresh_token", {
+                    revocation_endpoint_auth_method = revocation_endpoint_auth_method,
+                  })
+                  -- call revoke here but without the user-defined recovation_endpoint
+                  -- if fails, log that
+                  if not ok and err then
+                    log("unable to revoke refresh token: ", err)
+                  end
                 end
               end
             end
