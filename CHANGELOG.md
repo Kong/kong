@@ -66,6 +66,10 @@
 
 ### Plugins
 
+- **IP-Restriction**: response status and message can now be customized
+  through configurations `status` and `message`.
+  [#7728](https://github.com/Kong/kong/pull/7728)
+  Thanks [timmkelley](https://github.com/timmkelley) for the patch!
 - **Datadog**: add support for the `distribution` metric type.
   [#6231](https://github.com/Kong/kong/pull/6231)
   Thanks [onematchfox](https://github.com/onematchfox) for the patch!
