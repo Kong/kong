@@ -21,6 +21,44 @@ RequestTerminationHandler.VERSION = "2.0.1"
 function RequestTerminationHandler:access(conf)
   local status  = conf.status_code
   local content = conf.body
+  local req_headers, req_query
+
+  if conf.trigger or conf.echo then
+    req_headers = kong.request.get_headers()
+    req_query = kong.request.get_query()
+
+    if conf.trigger
+       and not req_headers[conf.trigger]
+       and not req_query[conf.trigger] then
+      return -- trigger set but not found, nothing to do
+    end
+  end
+
+  if conf.echo then
+    content = {
+      message = conf.message or DEFAULT_RESPONSE[status],
+      kong = {
+        node_id = kong.node.get_id(),
+        worker_pid = ngx.worker.pid(),
+        hostname = kong.node.get_hostname(),
+      },
+      request = {
+        scheme = kong.request.get_scheme(),
+        host = kong.request.get_host(),
+        port = kong.request.get_port(),
+        headers = req_headers,
+        query = req_query,
+        body = kong.request.get_body(),
+        raw_body = kong.request.get_raw_body(),
+        method = kong.request.get_method(),
+        path = kong.request.get_path(),
+      },
+      matched_route = kong.router.get_route(),
+      matched_service = kong.router.get_service(),
+    }
+
+    return kong.response.exit(status, content)
+  end
 
   if content then
     local headers = {

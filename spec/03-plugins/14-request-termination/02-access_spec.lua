@@ -50,6 +50,14 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "api8.request-termination.com" },
       })
 
+      local route9 = bp.routes:insert({
+        hosts = { "api9.request-termination.com" },
+      })
+
+      local route10 = bp.routes:insert({
+        hosts = { "api10.request-termination.com" },
+      })
+
       bp.plugins:insert {
         name   = "request-termination",
         route  = { id = route1.id },
@@ -114,6 +122,25 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
+      bp.plugins:insert {
+        name   = "request-termination",
+        route  = { id = route9.id },
+        config = {
+          echo = true,
+          status_code = 404
+        },
+      }
+
+      bp.plugins:insert {
+        name   = "request-termination",
+        route  = { id = route10.id },
+        config = {
+          echo = true,
+          trigger = "gimme-an-echo",
+          status_code = 404
+        },
+      }
+
       local route_grpc_1 = assert(bp.routes:insert {
         protocols = { "grpc" },
         paths = { "/hello.HelloService/" },
@@ -135,18 +162,24 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+    end)
 
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
     end)
 
-    lazy_teardown(function()
-      if proxy_client and admin_client then
+    after_each(function()
+      if proxy_client then
         proxy_client:close()
+      end
+      if admin_client then
         admin_client:close()
       end
-
-      helpers.stop_kong()
     end)
 
     describe("status code and message", function()
@@ -277,6 +310,119 @@ for _, strategy in helpers.each_strategy() do
       })
 
       assert.equal(server_tokens, res.headers["Server"])
+    end)
+
+    describe("echo & trigger", function()
+      it("echos a request if no trigger is set", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+          },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api9.request-termination.com"
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(404)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("api9.request-termination.com", json.matched_route.hosts[1])
+        json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
+        assert.same({
+          headers = {
+            ["content-length"] = '9',
+            host = 'api9.request-termination.com',
+          },
+          host = 'api9.request-termination.com',
+          method = 'GET',
+          path = '/status/200',
+          port = helpers.get_proxy_port(),
+          query = {
+            hello = 'there',
+          },
+          raw_body = 'cool body',
+          scheme = 'http',
+        }, json.request)
+      end)
+      it("doesn't echo a request if the trigger is set but not specified", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api10.request-termination.com"
+          }
+        })
+        assert.response(res).has.status(200)
+      end)
+      it("echos a request if the trigger is specified as a header", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+          },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api10.request-termination.com",
+            ["Gimme-An-Echo"] = "anything will do"
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(404)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("api10.request-termination.com", json.matched_route.hosts[1])
+        json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
+        assert.same({
+          headers = {
+            ["content-length"] = '9',
+            ["gimme-an-echo"] = 'anything will do',
+            host = 'api10.request-termination.com',
+          },
+          host = 'api10.request-termination.com',
+          method = 'GET',
+          path = '/status/200',
+          port = helpers.get_proxy_port(),
+          query = {
+            hello = 'there',
+          },
+          raw_body = 'cool body',
+          scheme = 'http',
+        }, json.request)
+      end)
+      it("echos a request if the trigger is specified as a query parameter", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+            ["gimme-an-echo"] = "anything will do"
+            },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api10.request-termination.com",
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(404)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("api10.request-termination.com", json.matched_route.hosts[1])
+        json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
+        assert.same({
+          headers = {
+            ["content-length"] = '9',
+            host = 'api10.request-termination.com',
+          },
+          host = 'api10.request-termination.com',
+          method = 'GET',
+          path = '/status/200',
+          port = helpers.get_proxy_port(),
+          query = {
+            hello = 'there',
+            ["gimme-an-echo"] = 'anything will do',
+          },
+          raw_body = 'cool body',
+          scheme = 'http',
+        }, json.request)
+      end)
     end)
   end)
 end
