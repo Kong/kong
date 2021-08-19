@@ -45,7 +45,6 @@ dependencies = {
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.4",
   "kong-plugin-serverless-functions ~> 2.1",
-  "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.3",
   "kong-plugin-grpc-web ~> 0.2",
 }
@@ -439,5 +438,12 @@ build = {
     ["kong.plugins.session.migrations.000_base_session"] = "kong/plugins/session/migrations/000_base_session.lua",
     ["kong.plugins.session.migrations.001_add_ttl_index"] = "kong/plugins/session/migrations/001_add_ttl_index.lua",
     ["kong.plugins.session.migrations"] = "kong/plugins/session/migrations/init.lua",
+
+    ["kong.plugins.proxy-cache.handler"]              = "kong/plugins/proxy-cache/handler.lua",
+    ["kong.plugins.proxy-cache.cache_key"]            = "kong/plugins/proxy-cache/cache_key.lua",
+    ["kong.plugins.proxy-cache.schema"]               = "kong/plugins/proxy-cache/schema.lua",
+    ["kong.plugins.proxy-cache.api"]                  = "kong/plugins/proxy-cache/api.lua",
+    ["kong.plugins.proxy-cache.strategies"]           = "kong/plugins/proxy-cache/strategies/init.lua",
+    ["kong.plugins.proxy-cache.strategies.memory"]    = "kong/plugins/proxy-cache/strategies/memory.lua",
   }
 }
