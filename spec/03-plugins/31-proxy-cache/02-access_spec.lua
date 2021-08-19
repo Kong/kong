@@ -243,7 +243,7 @@ do
       })
 
       assert(helpers.start_kong({
-        plugins = "bundled,proxy-cache",
+        plugins = "bundled",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
@@ -710,7 +710,7 @@ do
         assert.same("Refresh", res.headers["X-Cache-Status"])
       end)
 
-      it("#o only-if-cached", function()
+      it("only-if-cached", function()
         local res = assert(client:send {
           method = "GET",
           path   = "/get?not=here",
@@ -839,7 +839,7 @@ do
       assert.not_same(cache_key1, cache_key2)
     end)
 
-    it("#o differentiates caches between instances", function()
+    it("differentiates caches between instances", function()
       local res = assert(client:send {
         method = "GET",
         path = "/get",
