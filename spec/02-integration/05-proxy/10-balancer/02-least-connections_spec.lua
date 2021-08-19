@@ -10,17 +10,9 @@ local helpers = require "spec.helpers"
 
 local https_server = helpers.https_server
 
-local function get_available_port()
-  local socket = require("socket")
-  local server = assert(socket.bind("*", 0))
-  local _, port = server:getsockname()
-  server:close()
-  return port
-end
 
-
-local test_port1 = get_available_port()
-local test_port2 = get_available_port()
+local test_port1 = helpers.get_available_port()
+local test_port2 = helpers.get_available_port()
 
 
 -- create two servers, one double the delay of the other

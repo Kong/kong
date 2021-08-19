@@ -7,8 +7,8 @@
 
 local helpers = require "spec.helpers"
 
-local TCP_SERVICE_PORT = 8189
-local TCP_PROXY_PORT = 9007
+local tcp_service_port = helpers.get_available_port()
+local tcp_proxy_port = helpers.get_available_port()
 
 describe("Plugin: prometheus (access)", function()
   local proxy_client
@@ -60,14 +60,14 @@ describe("Plugin: prometheus (access)", function()
 
     local tcp_service = bp.services:insert {
       name = "tcp-service",
-      url = "tcp://127.0.0.1:" .. TCP_SERVICE_PORT,
+      url = "tcp://127.0.0.1:" .. tcp_service_port,
     }
 
     bp.routes:insert {
       protocols = { "tcp" },
       name = "tcp-route",
       service = tcp_service,
-      destinations = { { port = TCP_PROXY_PORT } },
+      destinations = { { port = tcp_proxy_port } },
     }
 
     bp.plugins:insert {
@@ -78,7 +78,7 @@ describe("Plugin: prometheus (access)", function()
     assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled",
-        stream_listen = "127.0.0.1:" .. TCP_PROXY_PORT,
+        stream_listen = "127.0.0.1:" .. tcp_proxy_port,
     })
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
@@ -187,10 +187,10 @@ describe("Plugin: prometheus (access)", function()
     end)
   end)
 
-  pending("increments the count for proxied TCP streams", function()
-    local thread = helpers.tcp_server(TCP_SERVICE_PORT, { requests = 1 })
+  it("increments the count for proxied TCP streams", function()
+    local thread = helpers.tcp_server(tcp_service_port, { requests = 1 })
 
-    local conn = assert(ngx.socket.connect("127.0.0.1", TCP_PROXY_PORT))
+    local conn = assert(ngx.socket.connect("127.0.0.1", tcp_proxy_port))
 
     assert(conn:send("hi there!\n"))
     local gotback = assert(conn:receive("*a"))
