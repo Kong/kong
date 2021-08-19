@@ -147,11 +147,11 @@ for _, strategy in helpers.each_strategy() do
 
       it("header can be set from upstream response body on header_filter phase", function()
         local res = proxy_client:get("/1/status/231")
-        local body = assert.res_status(231, res)
+        local body = assert.res_status(231, res) .. "\n"
         assert.equal(md5(body), res.headers["MD5"])
 
         local res = proxy_ssl_client:get("/1/status/232")
-        local body = assert.res_status(232, res)
+        local body = assert.res_status(232, res) .. "\n"
         assert.equal(md5(body), res.headers["MD5"])
       end)
 
@@ -183,11 +183,11 @@ for _, strategy in helpers.each_strategy() do
 
       it("header can be set from upstream response body on response phase", function()
         local res = proxy_client:get("/3/status/235")
-        local body = assert.res_status(235, res)
+        local body = assert.res_status(235, res) .. "\n"
         assert.equal(md5(body), res.headers["MD5"])
 
         local res = proxy_ssl_client:get("/3/status/236")
-        local body = assert.res_status(236, res)
+        local body = assert.res_status(236, res) .. "\n"
         assert.equal(md5(body), res.headers["MD5"])
       end)
 
