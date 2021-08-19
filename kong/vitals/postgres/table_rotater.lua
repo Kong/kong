@@ -240,7 +240,7 @@ end
 -- acquire a lock for rotating the table in the database
 function _M:rotater_lock()
   local ok, err = self.list_cache:safe_add(TABLE_ROTATER_LOCK_KEY, true,
-    (self.rotation_interval / 2) - 0.01)
+                                           (self.rotation_interval / 2) - 0.01)
   if not ok then
     if err ~= "exists" then
       log(ERR, _log_prefix, "failed to acquire table rotater lock: ", err)
