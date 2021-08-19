@@ -1,6 +1,8 @@
 local cjson = require "cjson.safe"
 local cjson_decode = cjson.decode
 
+local inflate_gzip = require("kong.tools.utils").inflate_gzip
+
 local type, pairs, ipairs = type, pairs, ipairs
 local str_find = string.find
 
@@ -107,6 +109,10 @@ function Jq:access(conf)
     return
   end
 
+  if kong.request.get_header("Content-Encoding") == "gzip" then
+    request_body = inflate_gzip(request_body)
+  end
+
   local results = {
     body = request_body,
     extra_headers = {}
@@ -139,6 +145,11 @@ function Jq:response(conf)
   local response_body = kong.service.response.get_raw_body()
   if not response_body then
     return
+  end
+
+  if kong.response.get_header("Content-Encoding") == "gzip" then
+    response_body = inflate_gzip(response_body)
+    kong.response.clear_header("Content-Encoding")
   end
 
   local results = {
