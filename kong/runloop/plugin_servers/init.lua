@@ -265,6 +265,7 @@ local plugin_servers = {}
 local loaded_plugins = {}
 
 local function get_plugin(plugin_name)
+  kong = kong or _G.kong    -- some CLI cmds set the global after loading the module.
   if not loaded_plugins[plugin_name] then
     local plugin = get_plugin_info(plugin_name)
     loaded_plugins[plugin_name] = build_phases(plugin)

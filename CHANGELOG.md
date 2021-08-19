@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.6.0](#260)
 - [2.5.0](#250)
 - [2.4.1](#241)
 - [2.4.0](#240)
@@ -57,6 +58,16 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.6.0]
+
+> Release date: TBA
+
+### Dependencies
+
+- Bumped `openresty` from 1.19.3.2 to [1.19.9.1](https://openresty.org/en/changelog-1019009.html)
+  [#7430](https://github.com/Kong/kong/pull/7727)
 
 ## [2.5.0]
 

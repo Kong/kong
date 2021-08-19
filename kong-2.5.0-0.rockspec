@@ -52,13 +52,13 @@ dependencies = {
   "lua-resty-passwdqc == 1.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.7.1",
+  "lua-resty-session == 3.8",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.4",
   "kong-plugin-serverless-functions ~> 2.1",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.3",
-  "kong-plugin-session ~> 2.4",
   "kong-plugin-grpc-web ~> 0.2",
 }
 build = {
@@ -639,6 +639,17 @@ build = {
     ["kong.plugins.prometheus.prometheus"] = "kong/plugins/prometheus/prometheus.lua",
     ["kong.plugins.prometheus.serve"] = "kong/plugins/prometheus/serve.lua",
     ["kong.plugins.prometheus.schema"] = "kong/plugins/prometheus/schema.lua",
+
+    ["kong.plugins.session.handler"] = "kong/plugins/session/handler.lua",
+    ["kong.plugins.session.schema"] = "kong/plugins/session/schema.lua",
+    ["kong.plugins.session.access"] = "kong/plugins/session/access.lua",
+    ["kong.plugins.session.header_filter"] = "kong/plugins/session/header_filter.lua",
+    ["kong.plugins.session.session"] = "kong/plugins/session/session.lua",
+    ["kong.plugins.session.daos"] = "kong/plugins/session/daos.lua",
+    ["kong.plugins.session.storage.kong"] = "kong/plugins/session/storage/kong.lua",
+    ["kong.plugins.session.migrations.000_base_session"] = "kong/plugins/session/migrations/000_base_session.lua",
+    ["kong.plugins.session.migrations.001_add_ttl_index"] = "kong/plugins/session/migrations/001_add_ttl_index.lua",
+    ["kong.plugins.session.migrations"] = "kong/plugins/session/migrations/init.lua",
 
     -- XXX EE:
     ["kong.plugins.application-registration.handler"] = "kong/plugins/application-registration/handler.lua",
