@@ -99,11 +99,14 @@ resolver.query = function(self, name, options, tries)
   if answer then
     -- we actually have a mock answer, return it
     ngx.log(ngx.DEBUG, LOG_PREFIX, "serving '", name, "' from mocks")
+    ngx.timer.at(0.05, function() ngx.log(ngx.INFO, "tick") end) -- FIXME: remove after OpenResty semaphore bug is fixed
     return answer, nil, tries
   end
 
   -- no mock, so invoke original resolver
-  return old_query(self, name, options, tries)
+  local a, b, c = old_query(self, name, options, tries)
+  ngx.timer.at(0.05, function() ngx.log(ngx.INFO, "tick") end) -- FIXME: remove after OpenResty semaphore bug is fixed
+  return a, b, c
 end
 
 
