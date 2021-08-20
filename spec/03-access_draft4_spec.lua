@@ -8,6 +8,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 local test_plugin_id
 local function add_plugin(admin_client, config, expected_status)
@@ -30,13 +31,14 @@ local function add_plugin(admin_client, config, expected_status)
   return json
 end
 
-for _, strategy in helpers.each_strategy()do
+for _, strategy in strategies() do
   local proxy_client
   local admin_client
+  local db_strategy = strategy ~= "off" and strategy or nil
 
   describe("Plugin: request-validator (access) [#" .. strategy .. "]", function()
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, nil, { "request-validator" })
+      local bp = helpers.get_db_utils(db_strategy, nil, { "request-validator" })
 
       bp.routes:insert {
         paths = {"/"}
@@ -44,7 +46,7 @@ for _, strategy in helpers.each_strategy()do
 
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        database = strategy,
+        database = db_strategy,
         plugins = "request-validator",
       }))
 
