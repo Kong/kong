@@ -10,6 +10,8 @@ local math_fmod = math.fmod
 local crc32 = ngx.crc32_short
 local uuid = require("kong.tools.utils").uuid
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
 -- mocked upstream host
 local function http_server(timeout, count, port, unhealthy, ...)
   local threads = require "llthreads2.ex"
@@ -139,13 +141,14 @@ local function generate_consumers(admin_client, list, modulo)
 end
 
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in strategies() do
   describe("Plugin: canary (access) [#" .. strategy .. "]", function()
     local proxy_client, admin_client
     local route1, route2, route3, route4
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(db_strategy)
 
       route1 = bp.routes:insert({
         hosts = { "canary1.com" },
@@ -184,7 +187,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        database = strategy,
+        database = db_strategy,
         plugins = "canary,key-auth,acl",
       }))
       proxy_client = helpers.proxy_client()
