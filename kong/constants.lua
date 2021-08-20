@@ -35,18 +35,18 @@ local plugins = {
   "bot-detection",
   "aws-lambda",
   "request-termination",
+  "prometheus",
+  "proxy-cache",
+  "session",
+  "acme",
+  "grpc-gateway",
   "application-registration",
   -- external plugins
   "azure-functions",
   "zipkin",
   "pre-function",
   "post-function",
-  "prometheus",
-  "proxy-cache",
-  "session",
-  "acme",
   "grpc-web",
-  "grpc-gateway",
 }
 
 -- XXX EE
