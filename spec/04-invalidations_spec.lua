@@ -7,11 +7,12 @@
 
 local helpers      = require "spec.helpers"
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 local POLL_INTERVAL = 0.3
 
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in strategies() do
 describe("proxy-cache-advanced invalidations via: " .. strategy, function()
 
   local client_1
@@ -24,8 +25,10 @@ describe("proxy-cache-advanced invalidations via: " .. strategy, function()
   local plugin2
   local bp
 
+  local db_strategy = strategy ~= "off" and strategy or nil
+
   setup(function()
-    bp = helpers.get_db_utils(strategy, nil, {"proxy-cache-advanced"})
+    bp = helpers.get_db_utils(db_strategy, nil, {"proxy-cache-advanced"})
 
     route1 = assert(bp.routes:insert {
       hosts = { "route-1.com" },
@@ -64,7 +67,7 @@ describe("proxy-cache-advanced invalidations via: " .. strategy, function()
     assert(helpers.start_kong {
       log_level             = "debug",
       prefix                = "servroot1",
-      database              = strategy,
+      database              = db_strategy,
       proxy_listen          = "0.0.0.0:8000",
       proxy_listen_ssl      = "0.0.0.0:8443",
       admin_listen          = "0.0.0.0:8001",
@@ -80,7 +83,7 @@ describe("proxy-cache-advanced invalidations via: " .. strategy, function()
     assert(helpers.start_kong {
       log_level             = "debug",
       prefix                = "servroot2",
-      database              = strategy,
+      database              = db_strategy,
       proxy_listen          = "0.0.0.0:9000",
       proxy_listen_ssl      = "0.0.0.0:9443",
       admin_listen          = "0.0.0.0:9001",
