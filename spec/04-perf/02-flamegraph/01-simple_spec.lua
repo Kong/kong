@@ -110,7 +110,7 @@ for _, version in ipairs(versions) do
       perf.start_stapxx("lj-lua-stacks.sxx", "-D MAXMAPENTRIES=1000000 --arg time=" .. LOAD_DURATION)
 
       perf.start_load({
-        connections = 1000,
+        connections = 100,
         threads = 5,
         duration = LOAD_DURATION,
         script = wrk_script,
