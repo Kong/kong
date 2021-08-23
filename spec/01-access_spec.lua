@@ -89,14 +89,16 @@ local fixtures = {
   },
 }
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-for _ , strategy in helpers.each_strategy() do
+for _ , strategy in strategies() do
 
   describe("Plugin: oauth2-introspection (access) #" .. strategy, function()
     local client , admin_client, introspect_client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, nil, {"oauth2-introspection"})
+      local bp = helpers.get_db_utils(db_strategy, nil, {"oauth2-introspection"})
 
       local route1 = bp.routes:insert {
         name = "route-1",
@@ -241,7 +243,7 @@ for _ , strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong({
-        database = strategy,
+        database = db_strategy,
         plugins = "bundled,oauth2-introspection",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }, nil, nil, fixtures))
@@ -618,8 +620,10 @@ for _ , strategy in helpers.each_strategy() do
 
   describe("Plugin: oauth2-introspection (hooks) #" .. strategy, function()
     local client , admin_client
+    local db_strategy = strategy ~= "off" and strategy or nil
+
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, nil, {"oauth2-introspection"})
+      local bp = helpers.get_db_utils(db_strategy, nil, {"oauth2-introspection"})
 
       local route1 = bp.routes:insert {
         name = "route-1",
@@ -640,7 +644,7 @@ for _ , strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong({
-        database = strategy,
+        database = db_strategy,
         plugins = "bundled,oauth2-introspection",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }, nil, nil, fixtures))
@@ -702,11 +706,11 @@ for _ , strategy in helpers.each_strategy() do
 
 
   describe("Plugin: oauth2-introspection (multiple-auth) #" .. strategy, function()
-
     local client , user1 , user2 , anonymous , admin_client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, nil, {--"introspection-endpoint",
+      local bp = helpers.get_db_utils(db_strategy, nil, {--"introspection-endpoint",
                                                       "oauth2-introspection"})
 
       local route1 = bp.routes:insert {
@@ -765,7 +769,7 @@ for _ , strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong({
-        database = strategy,
+        database = db_strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled,oauth2-introspection",
       }, nil, nil, fixtures))
