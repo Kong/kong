@@ -10,6 +10,7 @@ local pl_file = require "pl.file"
 local cjson   = require "cjson"
 local utils   = require "kong.tools.utils"
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 local UDP_PORT = 35001
 
@@ -125,16 +126,17 @@ local mtls_fixtures = { http_mock = {
   ]], }
 }
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in strategies() do
   describe("Plugin: mtls-auth (access) [#" .. strategy .. "]", function()
     local proxy_client, admin_client, proxy_ssl_client, mtls_client
     local bp, db
     local anonymous_user, consumer, customized_consumer, service, route
     local plugin
     local ca_cert, other_ca_cert
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(db_strategy, {
         "routes",
         "services",
         "plugins",
@@ -191,7 +193,7 @@ for _, strategy in helpers.each_strategy() do
 
 
       assert(helpers.start_kong({
-        database   = strategy,
+        database   = db_strategy,
         plugins = "bundled,mtls-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }, nil, nil, mtls_fixtures))
@@ -657,9 +659,10 @@ for _, strategy in helpers.each_strategy() do
     local bp, db
     local service
     local ca_cert
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(db_strategy, {
         "routes",
         "services",
         "plugins",
@@ -718,7 +721,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       assert(helpers.start_kong({
-        database   = strategy,
+        database   = db_strategy,
         plugins = "bundled,mtls-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }, nil, nil, mtls_fixtures))
@@ -872,9 +875,10 @@ for _, strategy in helpers.each_strategy() do
     local bp, db
     local service, workspace, consumer
     local ca_cert
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(db_strategy, {
         "routes",
         "services",
         "plugins",
@@ -931,7 +935,7 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       assert(helpers.start_kong({
-        database   = strategy,
+        database   = db_strategy,
         plugins = "bundled,mtls-auth",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }, nil, nil, mtls_fixtures))
