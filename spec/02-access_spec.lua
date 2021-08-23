@@ -8,12 +8,15 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
-for _, strategy in helpers.each_strategy() do
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
 describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", function()
   local client
+  local db_strategy = strategy ~= "off" and strategy or nil
 
   lazy_setup(function()
-    local bp = helpers.get_db_utils(strategy, {
+    local bp = helpers.get_db_utils(db_strategy, {
       "routes",
       "services",
       "plugins",
@@ -458,7 +461,7 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
     }
 
     assert(helpers.start_kong({
-      database = strategy,
+      database = db_strategy,
       plugins = "bundled, request-transformer-advanced",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
@@ -1809,8 +1812,6 @@ describe("Plugin: request-transformer-advanced(access) [#" .. strategy .. "]", f
       })
       assert.response(r).has.status(200)
       assert.response(r).has.jsonbody()
-      print(require'inspect'(r))
-      print(require'inspect'(assert.request(r)))
       local hval = assert.request(r).has.header("X-Added")
       assert.same({"a1", "a2", "a3"}, hval)
     end)
