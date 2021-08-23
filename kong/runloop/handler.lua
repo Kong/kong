@@ -1164,11 +1164,11 @@ return {
 
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
-        forwarded_proto  = var.http_x_forwarded_proto  or scheme
-        forwarded_host   = var.http_x_forwarded_host   or host
-        forwarded_port   = var.http_x_forwarded_port   or port
-        forwarded_path   = var.http_x_forwarded_path
-        forwarded_prefix = var.http_x_forwarded_prefix
+        forwarded_proto  = header['x-forwarded-proto']  or scheme
+        forwarded_host   = header['x-forwarded-host']   or host
+        forwarded_port   = header['x-forwarded-port']   or port
+        forwarded_path   = header['x-forwarded-path']
+        forwarded_prefix = header['x-forwarded-prefix']
 
       else
         forwarded_proto  = scheme
@@ -1255,7 +1255,7 @@ return {
       var.upstream_host   = match_t.upstream_host
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
-      local upgrade = var.http_upgrade
+      local upgrade = header['upgrade']
       if upgrade and lower(upgrade) == "websocket" then
         var.upstream_connection = "keep-alive, Upgrade"
         var.upstream_upgrade    = "websocket"
@@ -1265,7 +1265,7 @@ return {
       end
 
       -- X-Forwarded-* Headers
-      local http_x_forwarded_for = var.http_x_forwarded_for
+      local http_x_forwarded_for = header['x-forwarded-for']
       if http_x_forwarded_for then
         var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
                                        realip_remote_addr
@@ -1358,33 +1358,37 @@ return {
       end
 
       -- clear hop-by-hop request headers:
-      for _, header_name in csv(var.http_connection) do
-        -- some of these are already handled by the proxy module,
-        -- upgrade being an exception that is handled below with
-        -- special semantics.
-        if header_name == "upgrade" then
-          if var.upstream_connection == "keep-alive" then
+      if header['connection'] then
+        for _, header_name in csv(header['connection']) do
+          -- some of these are already handled by the proxy module,
+          -- upgrade being an exception that is handled below with
+          -- special semantics.
+          if header_name == "upgrade" then
+            if var.upstream_connection == "keep-alive" then
+              clear_header(header_name)
+            end
+
+          else
             clear_header(header_name)
           end
-
-        else
-          clear_header(header_name)
         end
       end
 
       -- add te header only when client requests trailers (proxy removes it)
-      for _, header_name in csv(var.http_te) do
-        if header_name == "trailers" then
-          var.upstream_te = "trailers"
-          break
+      if header['te'] then
+        for _, header_name in csv(header['te']) do
+          if header_name == "trailers" then
+            var.upstream_te = "trailers"
+            break
+          end
         end
       end
 
-      if var.http_proxy then
+      if header['proxy'] then
         clear_header("Proxy")
       end
 
-      if var.http_proxy_connection then
+      if header['proxy-connection'] then
         clear_header("Proxy-Connection")
       end
     end

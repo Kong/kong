@@ -2243,17 +2243,9 @@ describe("Router", function()
       local _ngx
       _ngx = {
         re = ngx.re,
-        var = setmetatable({
+        var = {
           request_uri = request_uri,
-          http_kong_debug = headers.kong_debug
-        }, {
-          __index = function(_, key)
-            if key == "http_host" then
-              spy_stub.nop()
-              return headers.host
-            end
-          end
-        }),
+        },
         req = {
           get_method = function()
             return method
@@ -2261,7 +2253,17 @@ describe("Router", function()
           get_headers = function()
             return setmetatable(headers, headers_mt)
           end
-        }
+        },
+        header = setmetatable({
+          kong_debug = headers.kong_debug
+        }, {
+          __index = function(_, key)
+            if key == "host" then
+              spy_stub.nop()
+              return headers.host
+            end
+          end
+        }),
       }
 
       return _ngx

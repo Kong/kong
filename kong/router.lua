@@ -1771,7 +1771,7 @@ function _M.new(routes)
               -- preserve_host header logic
 
               if matched_route.preserve_host then
-                upstream_host = raw_req_host or var.http_host
+                upstream_host = raw_req_host or header['host']
               end
             end
 
@@ -1822,7 +1822,7 @@ function _M.new(routes)
     function self.exec()
       local req_method = get_method()
       local req_uri = var.request_uri
-      local req_host = var.http_host or ""
+      local req_host = header['host'] or ""
       local req_scheme = var.scheme
       local sni = var.ssl_server_name
 
@@ -1858,7 +1858,7 @@ function _M.new(routes)
 
       -- debug HTTP request header logic
 
-      if var.http_kong_debug then
+      if header['kong-debug'] then
         if match_t.route then
           if match_t.route.id then
             header["Kong-Route-Id"] = match_t.route.id
