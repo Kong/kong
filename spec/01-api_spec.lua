@@ -9,8 +9,10 @@ local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-for _, strategy in helpers.each_strategy() do
+
+for _, strategy in strategies() do
   describe("Plugin: mtls-auth (API) [#" .. strategy .. "]", function()
     local consumer
     local admin_client
@@ -19,9 +21,10 @@ for _, strategy in helpers.each_strategy() do
     local route1
     local route2
     local ca
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
+      bp, db = helpers.get_db_utils(db_strategy, {
         "routes",
         "services",
         "plugins",
@@ -46,7 +49,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         plugins = "bundled,mtls-auth",
-        database = strategy,
+        database = db_strategy,
       }))
 
       admin_client = helpers.admin_client()
