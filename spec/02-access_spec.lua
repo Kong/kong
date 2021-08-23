@@ -6,13 +6,16 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local strategies = require("kong.plugins.graphql-proxy-cache-advanced.strategies")
+local plugin_strategies = require("kong.plugins.graphql-proxy-cache-advanced.strategies")
 local cjson   = require "cjson"
 
 local TIMEOUT = 10 -- default timeout for non-memory strategies
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
 for _, policy in ipairs({"memory"}) do
-  describe("graphql-proxy-cache-advanced access with policy: #" .. policy, function()
+  describe("graphql-proxy-cache-advanced access with strategy #" .. strategy .. " and policy #" .. policy, function()
     local client, admin_client
     local policy_config
 
@@ -22,7 +25,7 @@ for _, policy in ipairs({"memory"}) do
       }
     end
 
-    local strategy = strategies({
+    local plugin_strategy = plugin_strategies({
       strategy_name = policy,
       strategy_opts = policy_config,
     })
@@ -67,10 +70,11 @@ for _, policy in ipairs({"memory"}) do
       end)
     end
 
-    setup(function()
+    local db_strategy = strategy ~= "off" and strategy or nil
 
-      local bp = helpers.get_db_utils(nil, nil, {"graphql-proxy-cache-advanced"})
-      strategy:flush(true)
+    setup(function()
+      local bp = helpers.get_db_utils(db_strategy, nil, {"graphql-proxy-cache-advanced"})
+      plugin_strategy:flush(true)
 
       local route1 = assert(bp.routes:insert {
         hosts = { "route-1.com" },
@@ -154,6 +158,7 @@ for _, policy in ipairs({"memory"}) do
       })
 
       assert(helpers.start_kong({
+        database = db_strategy,
         plugins = "bundled,graphql-proxy-cache-advanced",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
@@ -425,4 +430,5 @@ for _, policy in ipairs({"memory"}) do
       assert.same("Miss", res.headers["X-Cache-Status"])
     end)
   end)
+end
 end
