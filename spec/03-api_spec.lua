@@ -8,17 +8,20 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-for _, strategy in helpers.each_strategy() do
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
   describe("Plugin: response-transformer (API) [#" .. strategy .. "]", function()
     local admin_client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {
+      helpers.get_db_utils(db_strategy, {
         "plugins"
       })
 
       assert(helpers.start_kong({
-        database   = strategy,
+        database   = db_strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
 
