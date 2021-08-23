@@ -9,6 +9,7 @@ local helpers = require "spec.helpers"
 local feature_flags = require "kong.enterprise_edition.feature_flags"
 local VALUES = feature_flags.VALUES
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 local function create_big_data(size)
   return {
@@ -19,12 +20,13 @@ local function create_big_data(size)
 end
 
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in strategies() do
   describe("Plugin: #"..strategy.." response-transformer-advanced with feature_flag response_transformation_limit_body_size on", function()
     local proxy_client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(db_strategy)
 
       local route = bp.routes:insert({
         hosts   = { "response.com" },
@@ -44,7 +46,7 @@ for _, strategy in helpers.each_strategy() do
       os.remove(helpers.test_conf.nginx_err_logs)
 
       assert(helpers.start_kong({
-        database          = strategy,
+        database          = db_strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
         feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body.conf",
         plugins           = "bundled, response-transformer-advanced",
@@ -106,9 +108,10 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Plugin: #"..strategy.." response-transformer-advanced with feature_flag response_transformation_limit_body_size on, no content-length in response", function()
     local proxy_client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(db_strategy)
 
       local route = bp.routes:insert({
         hosts   = { "response.com" },
@@ -128,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
       os.remove(helpers.test_conf.nginx_err_logs)
 
       assert(helpers.start_kong({
-        database          = strategy,
+        database          = db_strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
         feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body_chunked.conf",
         plugins           = "bundled, response-transformer-advanced",
@@ -164,9 +167,10 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Plugin: #"..strategy.." response-transformer-advanced with feature_flag response_transformation_limit_body_size on", function()
     local proxy_client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(db_strategy)
 
       local route = bp.routes:insert({
         hosts   = { "response.com" },
@@ -186,7 +190,7 @@ for _, strategy in helpers.each_strategy() do
       os.remove(helpers.test_conf.nginx_err_logs)
 
       assert(helpers.start_kong({
-        database          = strategy,
+        database          = db_strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
         feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body-body_size_not_defined.conf",
         plugins           = "bundled, response-transformer-advanced",
@@ -225,9 +229,10 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Plugin: #"..strategy.." response-transformer-advanced with feature_flag response_transformation_limit_body_size on", function()
     local proxy_client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(db_strategy)
 
       local route = bp.routes:insert({
         hosts   = { "response.com" },
@@ -247,7 +252,7 @@ for _, strategy in helpers.each_strategy() do
       os.remove(helpers.test_conf.nginx_err_logs)
 
       assert(helpers.start_kong({
-        database          = strategy,
+        database          = db_strategy,
         nginx_conf        = "spec/fixtures/custom_nginx.template",
         feature_conf_path = "spec-ee/fixtures/response_transformer/feature_response_transformer_limit_body-body_size_invalid.conf",
         plugins           = "bundled, response-transformer-advanced",

@@ -7,6 +7,7 @@
 
 local helpers = require "spec.helpers"
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 local function create_big_data(size)
   return {
@@ -17,12 +18,13 @@ local function create_big_data(size)
 end
 
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in strategies() do
   describe("Plugin: response-transformer-advanced [#" .. strategy .. "]", function()
     local proxy_client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(db_strategy)
 
       local route = bp.routes:insert({
         hosts   = { "response.com" },
@@ -43,7 +45,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong({
-        database   = strategy,
+        database   = db_strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins    = "bundled, response-transformer-advanced",
       }))
