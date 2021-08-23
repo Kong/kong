@@ -499,15 +499,16 @@ local function generate_ids(input, known_entities, parent_entity)
     end
 
     local schema = all_schemas[entity]
-    for _, item in ipairs(input[entity]) do
+    for i, item in ipairs(input[entity]) do
       local pk_name, key = get_key_for_uuid_gen(entity, item, schema,
                                                 parent_fk, child_key)
       if key then
+        item = utils.deep_copy(item, false)
         item[pk_name] = generate_uuid(schema.name, key)
+        input[entity][i] = item
       end
 
       generate_ids(item, known_entities, entity)
-
     end
 
     ::continue::
@@ -719,7 +720,6 @@ end
 
 
 function DeclarativeConfig.load(plugin_set, include_foreign)
-
   all_schemas = {}
   local schemas_array = {}
   for _, entity in ipairs(constants.CORE_ENTITIES) do
