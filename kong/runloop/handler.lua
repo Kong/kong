@@ -11,6 +11,7 @@ local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local declarative  = require "kong.db.declarative"
+local workspaces   = require "kong.workspaces"
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 
 
@@ -253,6 +254,12 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
   worker_events.register(function(data)
     local operation = data.operation
     local upstream = data.entity
+    local ws_id = workspaces.get_workspace_id()
+    if not data.entity.ws_id then
+      log(DEBUG, "Event crud ", operation, " for upstream ", upstream.id,
+          " received without ws_id, adding.")
+      data.entity.ws_id = ws_id
+    end
     -- => to worker_events node handler
     local ok, err = worker_events.post("balancer", "upstreams", {
         operation = data.operation,
@@ -263,7 +270,7 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
         operation, " to workers: ", err)
     end
     -- => to cluster_events handler
-    local key = fmt("%s:%s:%s", operation, upstream.id, upstream.name)
+    local key = fmt("%s:%s:%s:%s", operation, ws_id, upstream.id, upstream.name)
     local ok, err = cluster_events:broadcast("balancer:upstreams", key)
     if not ok then
       log(ERR, "failed broadcasting upstream ", operation, " to cluster: ", err)
@@ -276,6 +283,12 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
     local operation = data.operation
     local upstream = data.entity
 
+    if not data.entity.ws_id then
+      log(CRIT, "Operation ", operation, " for upstream ", data.entity.id,
+          " received without workspace, discarding.")
+      return
+    end
+
     singletons.core_cache:invalidate_local("balancer:upstreams")
     singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
 
@@ -285,10 +298,11 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
 
 
   cluster_events:subscribe("balancer:upstreams", function(data)
-    local operation, id, name = unpack(utils.split(data, ":"))
+    local operation, ws_id, id, name = unpack(utils.split(data, ":"))
     local entity = {
       id = id,
       name = name,
+      ws_id = ws_id,
     }
     -- => to worker_events node handler
     local ok, err = worker_events.post("balancer", "upstreams", {
