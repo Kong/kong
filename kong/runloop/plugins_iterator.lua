@@ -15,7 +15,6 @@ local assert       = assert
 local tostring     = tostring
 
 
-local EMPTY_T      = {}
 local TTL_ZERO     = { ttl = 0 }
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
@@ -273,19 +272,39 @@ local function get_next_no_ctx(self)
 end
 
 local function get_next_with_ctx(self)
-  local phases = self.phases
+  local phases, map = self.phases, self.map
   local cfg
   local i = self.i + 1
   local plugin = self.loaded[i]
 
   while plugin do
     local name = plugin.name
-    if phases[name] then
-      cfg = self.ctx.plugins[name]
-      if cfg then
-        break
+
+    if map[name] then
+      local ctx = self.ctx
+      local plugins = ctx.plugins
+
+      if self.configure then
+        local combos = self.combos[name]
+        if combos then
+          cfg = load_configuration_through_combos(ctx, combos, plugin)
+          if cfg then
+            plugins[name] = cfg
+            if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
+              ctx.buffered_proxying = true
+            end
+          end
+        end
+      end
+
+      if phases[name] then
+        cfg = plugins[name]
+        if cfg then
+          break
+        end
       end
     end
+
     i = i + 1
     plugin = self.loaded[i]
   end
@@ -322,29 +341,12 @@ local function iterate(self, phase, ctx)
     return zero_iter
   end
 
-  local configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase]
-  if ctx and configure then
-    -- load configurations
-    local plugins = ctx.plugins
-    local ws_combos = ws.combos
-    for _, plugin in ipairs(self.loaded) do
-      local name = plugin.name
-      local combos = ws_combos[name]
-      if combos and not plugins[name] then
-        local cfg = load_configuration_through_combos(ctx, combos, plugin)
-        if cfg then
-          plugins[name] = cfg
-          if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
-            ctx.buffered_proxying = true
-          end
-        end
-      end
-    end
-  end
-
   local iteration = {
+    configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase],
     loaded = self.loaded,
     phases = ws.phases[phase] or {},
+    combos = ws.combos,
+    map = ws.map,
     ctx = ctx,
     i = 0,
   }
