@@ -13,7 +13,6 @@ local lower   = string.lower
 local fmt     = string.format
 local md5     = ngx.md5
 
-
 local function cache_key(conf, username, password)
   local prefix = md5(fmt("%s:%u:%s:%s:%u",
     lower(conf.ldap_host),
@@ -35,14 +34,18 @@ local ldap_strategies = {
   start_tls = { name = "starttls", port = 389, start_tls = true, ldaps = false }
 }
 
-for _, strategy in helpers.each_strategy() do
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
   describe("Plugin: ldap-auth-advanced (access) [#" .. strategy .. "]", function()
     local proxy_client
     local admin_client
     local plugin
 
+    local db_strategy = strategy ~= "off" and strategy or nil
+
     setup(function()
-      local bp = helpers.get_db_utils(strategy, nil, { "ldap-auth-advanced" })
+      local bp = helpers.get_db_utils(db_strategy, nil, { "ldap-auth-advanced" })
 
       local route = bp.routes:insert {
         hosts = { "ldap.com" }
@@ -66,7 +69,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         plugins    = "ldap-auth-advanced",
-        database   = strategy,
+        database   = db_strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
@@ -155,8 +158,10 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         local route2
         local plugin2
 
+        local db_strategy = strategy ~= "off" and strategy or nil
+
         setup(function()
-          local bp = helpers.get_db_utils(strategy, nil, { "ldap-auth-advanced" })
+          local bp = helpers.get_db_utils(db_strategy, nil, { "ldap-auth-advanced" })
 
           local route1 = bp.routes:insert {
             hosts = { "ldap.com" },
@@ -322,7 +327,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
 
           assert(helpers.start_kong({
             plugins = "ldap-auth-advanced",
-            database   = strategy,
+            database   = db_strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
         end)
@@ -710,8 +715,10 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         local user
         local anonymous
 
+        local db_strategy = strategy ~= "off" and strategy or nil
+
         setup(function()
-          local bp = helpers.get_db_utils(strategy, nil, { "ldap-auth-advanced" })
+          local bp = helpers.get_db_utils(db_strategy, nil, { "ldap-auth-advanced" })
 
           local service1 = bp.services:insert({
             path = "/request"
@@ -788,7 +795,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
 
           assert(helpers.start_kong({
             plugins = "ldap-auth-advanced,key-auth",
-            database   = strategy,
+            database   = db_strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
 
@@ -934,9 +941,11 @@ for _, ldap_strategy in pairs(ldap_strategies) do
         local consumer_with_username, consumer2_with_username
         local anonymous_consumer
 
+        local db_strategy = strategy ~= "off" and strategy or nil
+
         setup(function()
           local _
-          bp, dao, _ = helpers.get_db_utils(strategy, nil, { "ldap-auth-advanced" })
+          bp, dao, _ = helpers.get_db_utils(db_strategy, nil, { "ldap-auth-advanced" })
 
           routes = {
             bp.routes:insert {
@@ -1100,7 +1109,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
 
           assert(helpers.start_kong({
             plugins = "ldap-auth-advanced",
-            database   = strategy,
+            database   = db_strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
         end)
