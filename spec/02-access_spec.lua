@@ -12,13 +12,15 @@ local meta    = require "kong.meta"
 
 
 local server_header = meta._NAME .. "/" .. meta._VERSION
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in strategies() do
   describe("forward-proxy access (#" .. strategy .. ")", function()
     local client, bp, db
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     setup(function()
-      bp, db = helpers.get_db_utils(strategy, nil, {"forward-proxy"})
+      bp, db = helpers.get_db_utils(db_strategy, nil, {"forward-proxy"})
 
       local service = db.services:insert {
         name = "service-1",
@@ -84,7 +86,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong({
-        database = strategy,
+        database = db_strategy,
         plugins = "forward-proxy",
         nginx_conf     = "spec/fixtures/custom_nginx.template",
       }))
@@ -232,7 +234,7 @@ for _, strategy in helpers.each_strategy() do
           helpers.stop_kong(nil, true, true)
 
           assert(helpers.start_kong({
-            database = strategy,
+            database = db_strategy,
             plugins = "forward-proxy",
             nginx_conf = "spec/fixtures/custom_nginx.template",
             trusted_ips = "",
@@ -248,7 +250,7 @@ for _, strategy in helpers.each_strategy() do
           helpers.stop_kong(nil, true, true)
 
           assert(helpers.start_kong({
-            database = strategy,
+            database = db_strategy,
             plugins = "forward-proxy",
             nginx_conf     = "spec/fixtures/custom_nginx.template",
           }))
@@ -306,7 +308,7 @@ for _, strategy in helpers.each_strategy() do
           helpers.stop_kong(nil, true, true)
 
           assert(helpers.start_kong({
-            database = strategy,
+            database = db_strategy,
             plugins = "forward-proxy",
             nginx_conf = "spec/fixtures/custom_nginx.template",
             trusted_ips = "127.0.0.1,::1",
@@ -322,7 +324,7 @@ for _, strategy in helpers.each_strategy() do
           helpers.stop_kong(nil, true, true)
 
           assert(helpers.start_kong({
-            database = strategy,
+            database = db_strategy,
             plugins = "forward-proxy",
             nginx_conf     = "spec/fixtures/custom_nginx.template",
           }))
