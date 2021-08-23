@@ -81,12 +81,16 @@ describe("validate_groups", function()
   end)
 end)
 
-for _, strategy in helpers.each_strategy() do
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
   describe("Plugin: ldap-auth-advanced (groups) [#" .. strategy .. "]", function()
     local proxy_client, admin_client, bp, plugin
 
+    local db_strategy = strategy ~= "off" and strategy or nil
+
     setup(function()
-      bp = helpers.get_db_utils(strategy, nil, { "ldap-auth-advanced" })
+      bp = helpers.get_db_utils(db_strategy, nil, { "ldap-auth-advanced" })
 
       local route = bp.routes:insert {
         hosts = { "ldap.com" }
@@ -100,7 +104,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         plugins = "ldap-auth-advanced",
-        database   = strategy,
+        database   = db_strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)

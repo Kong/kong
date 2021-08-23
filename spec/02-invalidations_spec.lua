@@ -18,17 +18,21 @@ local ldap_strategies = {
   start_tls = { name = "starttls", port = 389, start_tls = true, ldaps = false }
 }
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
 for _, ldap_strategy in pairs(ldap_strategies) do
   describe("Connection strategy [" .. ldap_strategy.name .. "]", function()
-    for _, strategy in helpers.each_strategy() do
+    for _, strategy in strategies() do
       describe("Plugin: ldap-auth-advanced (invalidation) [#" .. strategy .. "]", function()
         local admin_client
         local proxy_client
         local plugin
 
+        local db_strategy = strategy ~= "off" and strategy or nil
+
         setup(function()
           local bp
-          bp = helpers.get_db_utils(strategy, nil, { "ldap-auth-advanced" })
+          bp = helpers.get_db_utils(db_strategy, nil, { "ldap-auth-advanced" })
 
           local route = bp.routes:insert {
             hosts = { "ldapauth.com" },
@@ -50,7 +54,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
 
           assert(helpers.start_kong({
             plugins = "ldap-auth-advanced",
-            database       = strategy,
+            database       = db_strategy,
             nginx_conf     = "spec/fixtures/custom_nginx.template",
           }))
         end)
