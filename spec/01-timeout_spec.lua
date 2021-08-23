@@ -6,15 +6,16 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-
-for _, strategy in helpers.each_strategy() do
-  describe("Plugin upstream-timeout:", function()
+for _, strategy in strategies() do
+  describe("Plugin upstream-timeout (#" .. strategy .. ")", function()
     local admin_client
     local proxy_client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
+      local bp = helpers.get_db_utils(db_strategy, {
         "services",
         "routes",
         "plugins"
@@ -64,7 +65,7 @@ for _, strategy in helpers.each_strategy() do
       })
 
       assert(helpers.start_kong({
-        database = strategy,
+        database = db_strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled, upstream-timeout"
       }))

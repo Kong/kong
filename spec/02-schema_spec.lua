@@ -7,20 +7,22 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 local PLUGIN_NAME = "upstream-timeout"
 
-for _, strategy in helpers.each_strategy() do
-  describe("Plugin API config validator:", function()
+for _, strategy in strategies() do
+  describe("Plugin API config validator (#" .. strategy .. ")", function()
     local admin_client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {
+      helpers.get_db_utils(db_strategy, {
         "plugins"
       })
 
       assert(helpers.start_kong {
-        database = strategy,
+        database = db_strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
         plugins = "bundled, upstream-timeout"
       })
