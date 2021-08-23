@@ -32,6 +32,7 @@ if env_versions then
 end
 
 local LOAD_DURATION = 60
+local NUM_LOADS = 3
 
 local function print_and_save(s, path)
   os.execute("mkdir -p output")
@@ -44,134 +45,139 @@ end
 
 
 for _, version in ipairs(versions) do
-  local termination_message = "performancetestperformancetestperformancetestperformancetest"
+  for _, add_irrelevant in ipairs{false, true} do
+    local termination_message = "performancetestperformancetestperformancetestperformancetest"
 
-  describe("perf test for Kong " .. version .. " #plugin_iterator", function()
-    local bp, another_service, another_route
-    lazy_setup(function()
-      local helpers = perf.setup()
+    describe("perf test for Kong " .. version .. " #plugin_iterator", function()
+      local bp, another_service, another_route
+      lazy_setup(function()
+        local helpers = perf.setup()
 
-      bp = helpers.get_db_utils("postgres", {
-        "routes",
-        "services",
-        "plugins",
-      })
+        bp = helpers.get_db_utils("postgres", {
+          "routes",
+          "services",
+          "plugins",
+        })
 
-      local upstream_uri = perf.start_upstream([[
+        local upstream_uri = perf.start_upstream([[
         location = /test {
           return 200;
         }
       ]])
 
-      local service = bp.services:insert {
-        url = upstream_uri .. "/test",
-      }
-
-      bp.plugins:insert {
-        name = "request-termination",
-        config = {
-          status_code = 200,
-          message = termination_message,
+        local service = bp.services:insert {
+          url = upstream_uri .. "/test",
         }
-      }
 
-      bp.routes:insert {
-        paths = { "/test" },
-        service = service,
-        strip_path = true,
-      }
+        bp.plugins:insert {
+          name = "request-termination",
+          config = {
+            status_code = 200,
+            message = termination_message,
+          }
+        }
 
-      another_service = bp.services:insert {
-        url = upstream_uri .. "/another",
-      }
+        bp.routes:insert {
+          paths = { "/test" },
+          service = service,
+          strip_path = true,
+        }
 
-      another_route = bp.routes:insert {
-        paths = { "/another" },
-        service = another_service,
-        strip_path = true,
-      }
+        another_service = bp.services:insert {
+          url = upstream_uri .. "/another",
+        }
 
-    end)
+        another_route = bp.routes:insert {
+          paths = { "/another" },
+          service = another_service,
+          strip_path = true,
+        }
 
-    before_each(function()
-      perf.start_kong(version, {
-        --kong configs
-      })
-    end)
+        if add_irrelevant then
+          -- those plugins doesn't run on current path, but does they affect plugin iterator?
+          bp.plugins:insert {
+            name = "request-termination",
+            service = another_service,
+            config = {
+              status_code = 200,
+              message = termination_message,
+            }
+          }
 
-    after_each(function()
-      perf.stop_kong()
-    end)
+          bp.plugins:insert {
+            name = "request-termination",
+            route = another_route,
+            config = {
+              status_code = 200,
+              message = termination_message,
+            }
+          }
+        end
 
-    lazy_teardown(function()
-      perf.teardown(os.getenv("PERF_TEST_TEARDOWN_ALL") or false)
-    end)
+      end)
 
-    it("#global_only", function()
-      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
-
-      local results = {}
-      for i=1,3 do
-        perf.start_load({
-          path = "/test",
-          connections = 1000,
-          threads = 5,
-          duration = LOAD_DURATION,
+      before_each(function()
+        perf.start_kong(version, {
+          --kong configs
+          log_level = "warn",
         })
+      end)
 
-        local result = assert(perf.wait_result())
+      after_each(function()
+        perf.stop_kong()
+      end)
 
-        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
-        results[i] = result
-      end
+      lazy_teardown(function()
+        perf.teardown(os.getenv("PERF_TEST_TEARDOWN_ALL") or false)
+      end)
 
-      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      it(add_irrelevant and "#global_and_irrelevant" or "#global_only", function()
+        print_and_save("### Test Suite: " .. utils.get_test_descriptor())
 
-      perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
+        local results = {}
+        for i = 1, NUM_LOADS do
+          perf.start_load({
+            path = "/test",
+            connections = 100,
+            threads = 5,
+            duration = LOAD_DURATION,
+          })
+
+          local result = assert(perf.wait_result())
+
+          print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+          results[i] = result
+        end
+
+        print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+
+        perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
+      end)
+
+      --it("#global_and_irrelevant", function()
+      --  print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+      --
+      --  local results = {}
+      --  for i=1,1 do
+      --    perf.start_load({
+      --      path = "/test",
+      --      connections = 100,
+      --      threads = 5,
+      --      duration = LOAD_DURATION,
+      --    })
+      --
+      --    local result = assert(perf.wait_result())
+      --
+      --    print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+      --    results[i] = result
+      --  end
+      --
+      --  print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+      --
+      --  perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
+      --end)
+
     end)
-
-    it("#global_and_irrelevant", function()
-      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
-
-      -- those plugins doesn't run on current path, but does they affect plugin iterrator?
-      bp.plugins:insert {
-        name = "request-termination",
-        service = another_service,
-        config = {
-          status_code = 200,
-          message = termination_message,
-        }
-      }
-
-      bp.plugins:insert {
-        name = "request-termination",
-        route = another_route,
-        config = {
-          status_code = 200,
-          message = termination_message,
-        }
-      }
-
-      local results = {}
-      for i=1,3 do
-        perf.start_load({
-          path = "/test",
-          connections = 1000,
-          threads = 5,
-          duration = LOAD_DURATION,
-        })
-
-        local result = assert(perf.wait_result())
-
-        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
-        results[i] = result
-      end
-
-      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
-
-      perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
-    end)
-
-  end)
+  end
 
 end

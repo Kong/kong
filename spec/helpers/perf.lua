@@ -55,7 +55,7 @@ local function use_driver(name, opts)
   end
 
   check_driver_sanity(mod)
-  
+
   DRIVER = mod.new(opts)
 end
 
@@ -233,7 +233,7 @@ end
 -- @return string the test report text
 function _M.wait_result(opts)
   if not load_thread then
-    error("load haven't been started or already collected, " .. 
+    error("load haven't been started or already collected, " ..
           "start it using start_load() first", 2)
   end
 
@@ -353,7 +353,7 @@ function _M.generate_flamegraph(filename, title)
   if string.sub(filename, #filename-3, #filename):lower() ~= ".svg" then
     filename = filename .. ".svg"
   end
-  
+
   if not title then
     title = "Flame graph"
   end

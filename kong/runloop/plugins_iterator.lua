@@ -258,50 +258,40 @@ local function load_configuration_through_combos(ctx, combos, plugin)
 end
 
 
-local function get_next(self)
-  local i = self.i + 1
+local function get_next_no_ctx(self)
+  local phases = self.phases
 
+  local i = self.i + 1
   local plugin = self.loaded[i]
-  if not plugin then
-    return nil
+  while plugin and not phases[plugin.name] do
+    i = i + 1
+    plugin = self.loaded[i]
   end
 
   self.i = i
+  return plugin
+end
 
-  local name = plugin.name
-  if not self.ctx then
-    if self.phases[name] then
-      return plugin
-    end
+local function get_next_with_ctx(self)
+  local phases = self.phases
+  local cfg
+  local i = self.i + 1
+  local plugin = self.loaded[i]
 
-    return get_next(self)
-  end
-
-  if not self.map[name] then
-    return get_next(self)
-  end
-
-  local ctx = self.ctx
-  local plugins = ctx.plugins
-
-  if self.configure then
-    local combos = self.combos[name]
-    if combos then
-      local cfg = load_configuration_through_combos(ctx, combos, plugin)
+  while plugin do
+    local name = plugin.name
+    if phases[name] then
+      cfg = self.ctx.plugins[name]
       if cfg then
-        plugins[name] = cfg
-        if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
-          ctx.buffered_proxying = true
-        end
+        break
       end
     end
+    i = i + 1
+    plugin = self.loaded[i]
   end
 
-  if self.phases[name] and plugins[name] then
-    return plugin, plugins[name]
-  end
-
-  return get_next(self) -- Load next plugin
+  self.i = i
+  return plugin, cfg
 end
 
 local function zero_iter()
@@ -332,17 +322,38 @@ local function iterate(self, phase, ctx)
     return zero_iter
   end
 
+  local configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase]
+  if ctx and configure then
+    -- load configurations
+    local plugins = ctx.plugins
+    local ws_combos = ws.combos
+    for _, plugin in ipairs(self.loaded) do
+      local name = plugin.name
+      local combos = ws_combos[name]
+      if combos and not plugins[name] then
+        local cfg = load_configuration_through_combos(ctx, combos, plugin)
+        if cfg then
+          plugins[name] = cfg
+          if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
+            ctx.buffered_proxying = true
+          end
+        end
+      end
+    end
+  end
+
   local iteration = {
-    configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase],
     loaded = self.loaded,
-    phases = ws.phases[phase] or EMPTY_T,
-    combos = ws.combos,
-    map = ws.map,
+    phases = ws.phases[phase] or {},
     ctx = ctx,
     i = 0,
   }
 
-  return get_next, iteration
+  if ctx then
+    return get_next_with_ctx, iteration
+  end
+
+  return get_next_no_ctx, iteration
 end
 
 
