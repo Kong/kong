@@ -78,12 +78,15 @@ local function http_server(timeout, count, port, ...)
   return server
 end
 
-for _, strategy in helpers.each_strategy() do
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
   describe("Plugin: route-by-header (access) [#" .. strategy .. "]", function()
     local proxy_client, admin_client, target_foo, target_bar, plugin2
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(db_strategy)
 
       local upstream_foo = bp.upstreams:insert({
         name = "foo.domain.com"
@@ -155,7 +158,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
-        database = strategy,
+        database = db_strategy,
         plugins = "bundled,route-by-header",
       }))
 
