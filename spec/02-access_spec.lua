@@ -8,12 +8,15 @@
 local plugin_name = "route-transformer-advanced"
 local helpers = require "spec.helpers"
 
-for _, strategy in helpers.each_strategy() do
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
   describe(plugin_name .. " [#" .. strategy .. "]", function()
     local client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      local bp = helpers.get_db_utils(strategy, {
+      local bp = helpers.get_db_utils(db_strategy, {
         "routes",
         "services",
         "plugins",
@@ -95,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
 
 
       assert(helpers.start_kong({
-        database = strategy,
+        database = db_strategy,
         plugins = "bundled, " .. plugin_name,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
