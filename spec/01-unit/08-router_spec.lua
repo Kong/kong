@@ -3532,3 +3532,53 @@ describe("Router", function()
     end)
   end)
 end)
+
+describe("[both regex and prefix with regex_priority]", function()
+  local use_case = {
+    -- regex  
+    {
+      service = service,
+      route   = {
+        paths = {
+          "/.*"
+        },
+        hosts = {
+          "domain-1.org",
+        },
+      },
+    },
+    -- prefix
+    {
+      service = service,
+      route   = {
+        paths = {
+          "/"
+        },
+        hosts = {
+          "domain-2.org",
+        },
+        regex_priority = 5
+      },
+    },
+    {
+      service = service,
+      route   = {
+        paths = {
+          "/v1"
+        },
+        hosts = {
+          "domain-2.org",
+        },
+      },
+    },
+  }
+
+  local router = assert(Router.new(use_case))
+
+  it("[prefix matching ignore regex_priority]", function()
+    local match_t = router.select("GET", "/v1", "domain-2.org")
+    assert.truthy(match_t)
+    assert.same(use_case[3].route, match_t.route)
+  end)
+
+end)

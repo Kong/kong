@@ -748,12 +748,15 @@ local function sort_routes(r1, r2)
     end
   end
 
-  do
-    local rp1 = r1.route.regex_priority or 0
-    local rp2 = r2.route.regex_priority or 0
+  -- only regex path use regex_priority 
+  if band(r1.submatch_weight,MATCH_SUBRULES.HAS_REGEX_URI) ~= 0 then
+    do
+      local rp1 = r1.route.regex_priority or 0
+      local rp2 = r2.route.regex_priority or 0
 
-    if rp1 ~= rp2 then
-      return rp1 > rp2
+      if rp1 ~= rp2 then
+        return rp1 > rp2
+      end
     end
   end
 
