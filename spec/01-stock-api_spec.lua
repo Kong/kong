@@ -39,12 +39,15 @@ local function find_key(tbl, key)
   return nil
 end
 
-for _, strategy in helpers.each_strategy() do
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
       lazy_setup(function()
-        local bp, db = helpers.get_db_utils(strategy, {
+        local bp, db = helpers.get_db_utils(db_strategy, {
           "routes",
           "services",
           "files",
@@ -52,15 +55,15 @@ for _, strategy in helpers.each_strategy() do
 
         assert(db.files:insert {
           path = "specs/stock.json",
-          contents = read_fixture("stock.json"),  
+          contents = read_fixture("stock.json"),
         })
-        
+
         local service1 = bp.services:insert{
           protocol = "http",
           port     = 80,
           host     = "mocking.com",
         }
-        
+
       local route1 = db.routes:insert({
         hosts = { "mocking.com" },
         service    = service1,
@@ -80,7 +83,7 @@ for _, strategy in helpers.each_strategy() do
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
-        database   = strategy,
+        database   = db_strategy,
         -- use the custom test template to create a local mock server
         nginx_conf = "spec/fixtures/custom_nginx.template",
         -- make sure our plugin gets loaded
@@ -138,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
         local body = cjson.decode(assert.res_status(200, r))
         -- Compare meta data values against values from spec
         assert.equal("closing_stock_price_v1",find_key(body,"api_name"))
-        
+
         -- Compare result data values against values from spec
         assert.equal(275.03, find_key(body.result_data,"adj_close"))
         assert.equal(100.03, find_key(body.result_data,"close"))
@@ -162,7 +165,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("true", header_value)
       end)
     end)
-    
+
     describe("Stock API Specification tests", function()
       it("/random_path Random path", function()
         local r = assert(client:send {

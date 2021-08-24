@@ -40,12 +40,15 @@ local function find_key(tbl, key)
   return nil
 end
 
-for _, strategy in helpers.each_strategy() do
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+for _, strategy in strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
       lazy_setup(function()
-        local bp, db = helpers.get_db_utils(strategy, {
+        local bp, db = helpers.get_db_utils(db_strategy, {
           "routes",
           "services",
           "files",
@@ -53,15 +56,15 @@ for _, strategy in helpers.each_strategy() do
 
         assert(db.files:insert {
           path = "specs/multipleexamples.json",
-          contents = read_fixture("multipleexamples.json"),  
+          contents = read_fixture("multipleexamples.json"),
         })
-        
+
         local service1 = bp.services:insert{
           protocol = "http",
           port     = 80,
           host     = "mocking.com",
         }
-        
+
       local route1 = db.routes:insert({
         hosts = { "mocking.com" },
         service    = service1,
@@ -81,7 +84,7 @@ for _, strategy in helpers.each_strategy() do
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
-        database   = strategy,
+        database   = db_strategy,
         -- use the custom test template to create a local mock server
         nginx_conf = "spec/fixtures/custom_nginx.template",
         -- make sure our plugin gets loaded
@@ -105,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
       it("Check for examples(Multiple Examples) extraction", function()
         local r = assert(client:send {
           method = "GET",
-          path = "/pet/findByStatus/MultipleExamples",  
+          path = "/pet/findByStatus/MultipleExamples",
           headers = {
             host = "mocking.com"
           }
@@ -123,21 +126,21 @@ for _, strategy in helpers.each_strategy() do
       it("Check for X-Kong-Mocking-Plugin header", function()
         local r = assert(client:send {
           method = "GET",
-          path = "/pet/findByStatus/MultipleExamples",  
+          path = "/pet/findByStatus/MultipleExamples",
           headers = {
             host = "mocking.com"
           }
         })
         -- validate that the request succeeded, response status 200
-        
+
         local body = assert.res_status(200, r)
-        
+
         local header_value = assert.response(r).has.header("X-Kong-Mocking-Plugin")
-        
+
         assert.equal("true", header_value)
       end)
     end)
-    
+
     describe("multipleexamples API Specification tests", function()
       it("Check for 404 with Random path", function()
         local r = assert(client:send {
@@ -154,7 +157,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same("Path does not exist in API Specification", json.message)
       end)
     end)
-    
+
 
     describe("multipleexamples API Specification tests", function()
       it("Check for example(Single Example) extraction", function()
@@ -167,13 +170,13 @@ for _, strategy in helpers.each_strategy() do
         })
          -- validate that the request succeeded, response status 200
          local body = cjson.decode(assert.res_status(200, r))
-         -- Compare field values against spec  
+         -- Compare field values against spec
          assert.equal("fluffy",find_key(body,"nickname"))
          assert.equal("available",find_key(body,"status"))
       end)
     end)
 
-    
+
     describe("multipleexamples API Specification tests", function()
       it("Check multiple example filter logic - Positive filter", function()
         local r = assert(client:send {
@@ -183,7 +186,7 @@ for _, strategy in helpers.each_strategy() do
             host = "mocking.com"
           }
         })
-        
+
         local body = cjson.decode(assert.res_status(200, r))
          assert.equal("fluffy",find_key(body,"nickname"))
          assert.equal("cat",find_key(body,"name"))
@@ -200,12 +203,12 @@ for _, strategy in helpers.each_strategy() do
             host = "mocking.com"
           }
         })
-       
+
         local body = assert.res_status(404, r)
         local json = cjson.decode(body)
         -- Check for error message
         assert.same("No examples exist in API specification for this resource with Accept Header (application/json)", json.message)
-        
+
       end)
     end)
 
@@ -213,7 +216,7 @@ for _, strategy in helpers.each_strategy() do
       it("Check for examples(Multiple Examples) with Multiple Search Parameters", function()
         local r = assert(client:send {
           method = "GET",
-          path = "/pet/findByStatus/MultipleExamples?name=dog&name=cat",  
+          path = "/pet/findByStatus/MultipleExamples?name=dog&name=cat",
           headers = {
             host = "mocking.com"
           }
