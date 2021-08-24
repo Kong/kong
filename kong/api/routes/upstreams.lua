@@ -49,7 +49,7 @@ end
 
 
 local function select_target_cb(self, db, upstream, target)
-  if target and target.weight ~= 0 then
+  if target then
     return kong.response.exit(200, target)
   end
 
@@ -243,4 +243,3 @@ return {
     end,
   },
 }
-
