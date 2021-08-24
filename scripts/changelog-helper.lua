@@ -43,7 +43,7 @@ end
 local function datetime_to_epoch(d)
   local yyyy,MM,dd,hh,mm,ss = string.match(d, "^(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)Z$")
   if not yyyy then
-    error("Could not parse date: " .. tostring(date))
+    error("Could not parse date: " .. tostring(d))
   end
   yyyy,MM,dd,hh,mm,ss = tonumber(yyyy), tonumber(MM), tonumber(dd), tonumber(hh), tonumber(mm), tonumber(ss)
   return os.time({year = yyyy, month = MM, day = dd, hour = hh, min = mm, sec = ss})
@@ -479,4 +479,3 @@ local categorized_prs = categorize_prs(prs)
 local non_kongers_hash = get_non_konger_authors(api, commits)
 
 print_report(categorized_prs, non_pr_commits, non_kongers_hash, to_ref)
-
