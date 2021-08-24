@@ -79,6 +79,7 @@ local field_schema = {
   { immutable = { type = "boolean" }, },
   { err = { type = "string" } },
   { encrypted = { type = "boolean" }, },
+  { prefix_ws = { type = "boolean" }, },
 }
 
 for _, field in ipairs(validators) do

@@ -332,6 +332,8 @@ local function serialize_arg(field, arg, ws_id)
   elseif field.type == "string" then
     if field.unique and ws_id and not field.unique_across_ws then
       arg = ws_id .. ":" .. arg
+    elseif field.prefix_ws then
+      arg = ws_id .. ":" .. arg
     end
 
     serialized_arg = cassandra.text(arg)
@@ -890,6 +892,10 @@ function _mt:insert(entity, options)
     end
   end
 
+  if schema.fields.username_lower and type(entity.username) == 'string' then
+    entity.username_lower = entity.username:lower()
+  end
+
   local cql, err
   if ttl then
     cql, err = get_query(self, mode .. "_ttl")
@@ -1410,6 +1416,10 @@ do
         mode = 'upsert'
         batch_mode = true
       end
+    end
+
+    if schema.fields.username_lower and type(entity.username) == 'string' then
+      entity.username_lower = entity.username:lower()
     end
 
 
