@@ -229,12 +229,12 @@ return {
   },
 
   footer = [[
-    [clustering]: /{{page.kong_version}}/clustering
-    [cli]: /{{page.kong_version}}/cli
-    [active]: /{{page.kong_version}}/health-checks-circuit-breakers/#active-health-checks
-    [healthchecks]: /{{page.kong_version}}/health-checks-circuit-breakers
-    [secure-admin-api]: /{{page.kong_version}}/secure-admin-api
-    [proxy-reference]: /{{page.kong_version}}/proxy
+    [clustering]: /gateway-oss/{{page.kong_version}}/clustering
+    [cli]: /gateway-oss/{{page.kong_version}}/cli
+    [active]: /gateway-oss/{{page.kong_version}}/health-checks-circuit-breakers/#active-health-checks
+    [healthchecks]: /gateway-oss/{{page.kong_version}}/health-checks-circuit-breakers
+    [secure-admin-api]: /gateway-oss/{{page.kong_version}}/secure-admin-api
+    [proxy-reference]: /gateway-oss/{{page.kong_version}}/proxy
   ]],
 
   general = {
@@ -888,9 +888,9 @@ return {
         },
         protocols = {
           description = [[
-            An array of the protocols this Route should allow. See the [Route Object](#route-object) section for a list of accepted protocols. 
-            
-            When set to only `"https"`, HTTP requests are answered with an upgrade error. When set to only `"http"`, HTTPS requests are answered with an error. 
+            An array of the protocols this Route should allow. See the [Route Object](#route-object) section for a list of accepted protocols.
+
+            When set to only `"https"`, HTTP requests are answered with an upgrade error. When set to only `"http"`, HTTPS requests are answered with an error.
           ]],
           examples = {
             {"http", "https"},
