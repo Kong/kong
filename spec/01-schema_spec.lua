@@ -9,189 +9,112 @@ local jq_schema = require "kong.plugins.jq.schema"
 local validate = require("spec.helpers").validate_plugin_config_schema
 
 describe("jq schema", function()
-  it("rejects empty config", function()
-    local ok, err = validate({}, jq_schema)
-    assert.is_falsy(ok)
-    assert.same("required field missing", err.config.filters)
+  it("rejects an empty config", function()
+    local res, err = validate({}, jq_schema)
+    assert.same("at least one of these fields must be non-empty: 'request_jq_program', 'response_jq_program'", err.config["@entity"][1])
+    assert.is_falsy(res)
   end)
 
   it("accepts a minimal config", function()
     local res, err = validate({
-      filters = {
-        { program = "." }
-      }
+      request_jq_program = ".[0]",
     }, jq_schema)
     assert.is_nil(err)
     assert.is_truthy(res)
 
-    assert.same("body", res.config.filters[1].target)
-    assert.same({}, res.config.filters[1].jq_options)
-    assert.same({ "application/json" }, res.config.filters[1].if_media_type)
+    assert.same(".[0]", res.config.request_jq_program)
+    assert.same({}, res.config.request_jq_program_options)
+    assert.same({ "application/json" }, res.config.request_if_media_type)
+
+    assert.same(ngx.null, res.config.response_jq_program)
+    assert.same({}, res.config.response_jq_program_options)
+    assert.same({ "application/json" }, res.config.response_if_media_type)
+    assert.same({ 200 }, res.config.response_if_status_code)
   end)
 
-  it("rejects a config with bad context", function()
+  it("accepts a complete config", function()
     local res, err = validate({
-      filters = {
-        {
-          context = "foo",
-          program = ".",
-        },
-      }
-    }, jq_schema)
-    assert.same("expected one of: request, response", err.config.filters[1].context)
-    assert.is_falsy(res)
-  end)
+      request_jq_program = ".[0]",
+      request_jq_program_options = {
+        compact_output = false,
+        raw_output = true,
+        join_output = true,
+        ascii_output = true,
+        sort_keys = true,
+      },
+      request_if_media_type = { "text/plain" },
 
-  it("accepts a config with request context", function()
-    local res, err = validate({
-      filters = {
-        {
-          context = "request",
-          program = ".",
-        },
-      }
+      response_jq_program = ".[1]",
+      response_jq_program_options = {
+        compact_output = false,
+        raw_output = true,
+        join_output = true,
+        ascii_output = false,
+        sort_keys = true,
+      },
+      response_if_media_type = { "text/plain", "application/json" },
+      response_if_status_code = { 200, 404 },
     }, jq_schema)
+
     assert.is_nil(err)
     assert.is_truthy(res)
 
-    assert.same("request", res.config.filters[1].context)
-  end)
+    assert.same(".[0]", res.config.request_jq_program)
+    assert.same({
+        compact_output = false,
+        raw_output = true,
+        join_output = true,
+        ascii_output = true,
+        sort_keys = true,
+    }, res.config.request_jq_program_options)
+    assert.same({ "text/plain" }, res.config.request_if_media_type)
 
-  it("rejects a config with bad target", function()
-    local res, err = validate({
-      filters = {
-        {
-          program = ".",
-          target = "foo",
-        },
-      }
-    }, jq_schema)
-    assert.same("expected one of: body, headers", err.config.filters[1].target)
-    assert.is_falsy(res)
-  end)
-
-  it("accepts a config with target headers", function()
-    local res, err = validate({
-      filters = {
-        {
-          program = ".",
-          target = "headers",
-        },
-      }
-    }, jq_schema)
-    assert.is_nil(err)
-    assert.is_truthy(res)
-
-    assert.same("headers", res.config.filters[1].target)
+    assert.same(".[1]", res.config.response_jq_program)
+    assert.same({
+      compact_output = false,
+      raw_output = true,
+      join_output = true,
+      ascii_output = false,
+      sort_keys = true,
+    }, res.config.response_jq_program_options)
+    assert.same({ "text/plain", "application/json" }, res.config.response_if_media_type)
+    assert.same({ 200, 404 }, res.config.response_if_status_code)
   end)
 
   it("rejects a config with bad jq_options", function()
     local res, err = validate({
-      filters = {
-        {
-          program = ".",
-          jq_options = {
-            foo = true,
-          },
-        },
-      }
+      request_jq_program_options = {
+        foo = true,
+      },
     }, jq_schema)
-    assert.same("unknown field", err.config.filters[1].jq_options.foo)
+    assert.same("unknown field", err.config.request_jq_program_options.foo)
     assert.is_falsy(res)
-  end)
-
-  it("accepts a config with full jq_options", function()
-    local res, err = validate({
-      filters = {
-        {
-          program = ".",
-          jq_options = {
-            compact_output = false,
-            raw_output = true,
-            join_output = true,
-            ascii_output = true,
-            sort_keys = true,
-          },
-        },
-      }
-    }, jq_schema)
-    assert.is_nil(err)
-    assert.is_truthy(res)
-
-    assert.is_falsy(res.config.filters[1].jq_options.compact_output)
-    assert.is_truthy(res.config.filters[1].jq_options.raw_output)
-    assert.is_truthy(res.config.filters[1].jq_options.join_output)
-    assert.is_truthy(res.config.filters[1].jq_options.ascii_output)
-    assert.is_truthy(res.config.filters[1].jq_options.sort_keys)
   end)
 
   it("rejects a config with bad media types", function()
     local res, err = validate({
-      filters = {
-        {
-          program = ".",
-          if_media_type = {
-            "application/json",
-            "text/json",
-            3,
-            "foo",
-          },
-        },
-      }
+      request_if_media_type = {
+        "application/json",
+        "text/json",
+        3,
+        "foo",
+      },
     }, jq_schema)
-    assert.same("expected a string", err.config.filters[1].if_media_type[3])
+    assert.same("expected a string", err.config.request_if_media_type[3])
     assert.is_falsy(res)
-  end)
-
-  it("accepts a config with explicit media types", function()
-    local res, err = validate({
-      filters = {
-        {
-          program = ".",
-          if_media_type = {
-            "application/json",
-            "text/json",
-          },
-        },
-      }
-    }, jq_schema)
-    assert.is_nil(err)
-    assert.is_truthy(res)
   end)
 
   it("rejects a config with bad status codes", function()
     local res, err = validate({
-      filters = {
-        {
-          program = ".",
-          if_status_code = {
-            -1,
-            25,
-            750,
-            "foo",
-          },
-        },
-      }
+      response_if_status_code = {
+        -1,
+        25,
+        750,
+        "foo",
+      },
     }, jq_schema)
     assert.same("value should be between 100 and 599",
-      err.config.filters[1].if_status_code[3])
+      err.config.response_if_status_code[3])
     assert.is_falsy(res)
-  end)
-
-  it("accepts a config with valid status codes", function()
-    local res, err = validate({
-      filters = {
-        {
-          program = ".",
-          if_status_code = {
-            200,
-            201,
-            404,
-          },
-        },
-      }
-    }, jq_schema)
-    assert.is_nil(err)
-    assert.is_truthy(res)
   end)
 end)

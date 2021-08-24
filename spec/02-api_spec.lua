@@ -47,7 +47,7 @@ describe("jq API", function()
         }
       })
       local body = cjson.decode(assert.res_status(400, res))
-      assert.same("required field missing", body.fields.config.filters)
+      assert.same("at least one of these fields must be non-empty: 'request_jq_program', 'response_jq_program'", body.fields.config["@entity"][1])
     end)
 
     it("accepts minimal config", function()
@@ -57,11 +57,7 @@ describe("jq API", function()
         body = {
           name = "jq",
           config = {
-            filters = {
-              {
-                program = ".",
-              },
-            },
+            request_jq_program = ".[0]",
           },
         },
         headers = {
