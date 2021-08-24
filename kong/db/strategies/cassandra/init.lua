@@ -892,10 +892,6 @@ function _mt:insert(entity, options)
     end
   end
 
-  if schema.fields.username_lower and type(entity.username) == 'string' then
-    entity.username_lower = entity.username:lower()
-  end
-
   local cql, err
   if ttl then
     cql, err = get_query(self, mode .. "_ttl")
