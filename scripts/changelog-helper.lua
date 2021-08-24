@@ -146,11 +146,11 @@ local function get_prs_from_comparison_commits(api, commits)
 
   print("\n\nGetting PRs associated to commits in main comparison")
   local prs_res, pr
-  for i, commit in ipairs(commits) do
+  for _, commit in ipairs(commits) do
     pr = pr_by_commit_sha[commit.sha]
     if not pr then
       prs_res = api.get(fmt("/repos/kong/kong/commits/%s/pulls", commit.sha))
-      -- FIXME find a more appropiate pr from the list in pr_res. Perhaps using to_ref ?
+      -- FIXME find a more appropriate pr from the list in pr_res. Perhaps using to_ref ?
       if type(prs_res[1]) == "table" then
         pr = prs_res[1]
       else
@@ -185,7 +185,7 @@ end
 local function get_non_konger_authors(api, commits)
   print("\n\nFinding non-konger authors")
   local author_logins_hash = {}
-  for i, commit in ipairs(commits) do
+  for _, commit in ipairs(commits) do
     if type(commit.author) == "table" then -- can be null
       author_logins_hash[commit.author.login] = true
     end
@@ -316,11 +316,10 @@ local function print_report(categorized_prs, non_pr_commits, non_kongers_hash, t
 
   print("=================================================")
 
-  local pr
   -- Dependencies
   local first_dep = true
-  for _,pr_number in ipairs(pr_numbers) do
-    pr = categorized_prs[pr_number]
+  for _, pr_number in ipairs(pr_numbers) do
+    local pr = categorized_prs[pr_number]
 
     if pr.typ == "chore" and (pr.scope == "deps" or pr.scope == "rockspec") then
       if first_dep then
@@ -350,8 +349,8 @@ local function print_report(categorized_prs, non_pr_commits, non_kongers_hash, t
   local feats = {}
   local fixes = {}
   local unknown = {}
-  for _,pr_number in ipairs(pr_numbers) do
-    pr = categorized_prs[pr_number]
+  for _, pr_number in ipairs(pr_numbers) do
+    local pr = categorized_prs[pr_number]
     if pr.typ == "feat" then
       feats[#feats + 1] = pr
     elseif pr.typ == "fix" then
@@ -371,7 +370,7 @@ local function print_report(categorized_prs, non_pr_commits, non_kongers_hash, t
   table.sort(fixes, sort_by_scope)
   table.sort(unknown, sort_by_scope)
 
-  for i,pr in ipairs(feats) do
+  for i, pr in ipairs(feats) do
     if i == 1 then
       print([[
 
@@ -386,7 +385,7 @@ Note: Categorize the additions below into one of these categories (add categorie
     print(render_pr_li_markdown(pr, non_kongers_hash))
   end
 
-  for i,pr in ipairs(fixes) do
+  for i, pr in ipairs(fixes) do
     if i == 1 then
       print([[
 
@@ -402,7 +401,7 @@ Note: Categorize the fixes below into one of these categories (add categories if
   end
 
 
-  for i,pr in ipairs(unknown) do
+  for i, pr in ipairs(unknown) do
     if i == 1 then
       print([[
 
@@ -422,7 +421,7 @@ Remove this whole section afterwards.
   Commits:]],
   pr.title, pr.number, pr.url, render_pr_li_thank_you(pr.authors, non_kongers_hash), pr.typ, pr.scope))
 
-    for j, commit in ipairs(pr.commits) do
+    for _, commit in ipairs(pr.commits) do
       print(fmt([[
   - %s]], get_first_line(commit)))
     end
