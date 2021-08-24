@@ -63,7 +63,34 @@ Content-Type: application/json; charset=utf-8
 
 
 
-=== TEST 3: service.response.error() may ignore accept header
+=== TEST 3: service.response.error() fallbacks to json with unknown mime type, fix #7746
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+            return pdk.response.error(400)
+        }
+    }
+
+--- request
+GET /t
+--- more_headers
+Accept: json
+--- error_code: 400
+--- response_headers_like
+Content-Type: application/json; charset=utf-8
+--- response_body chop
+{
+  "message":"Bad request"
+}
+--- no_error_log
+[error]
+
+
+
+=== TEST 4: service.response.error() may ignore accept header
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -95,7 +122,7 @@ Content-Type: application/xml
 
 
 
-=== TEST 4: service.response.error() respects accept header priorities
+=== TEST 5: service.response.error() respects accept header priorities
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -130,7 +157,7 @@ Content-Type: text/html; charset=utf-8
 
 
 
-=== TEST 5: service.response.error() has higher priority than handle_errors
+=== TEST 6: service.response.error() has higher priority than handle_errors
 --- http_config eval: $t::Util::HttpConfig
 --- config
     error_page 500 502 /error_handler;
@@ -165,7 +192,7 @@ Content-Type: application/json; charset=utf-8
 
 
 
-=== TEST 6: service.response.error() formats default template
+=== TEST 7: service.response.error() formats default template
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -192,7 +219,7 @@ Content-Type: application/json; charset=utf-8
 
 
 
-=== TEST 7: service.response.error() overrides default message
+=== TEST 8: service.response.error() overrides default message
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -219,7 +246,7 @@ Content-Type: application/json; charset=utf-8
 
 
 
-=== TEST 8: service.response.error() overrides default message with a table entry
+=== TEST 9: service.response.error() overrides default message with a table entry
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -247,7 +274,7 @@ Content-Type: application/xml; charset=utf-8
 
 
 
-=== TEST 9: service.response.error() use accept header "*" mime sub-type
+=== TEST 10: service.response.error() use accept header "*" mime sub-type
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -272,7 +299,7 @@ Gone
 
 
 
-=== TEST 10: response.error() maps http 400 to grpc InvalidArgument
+=== TEST 11: response.error() maps http 400 to grpc InvalidArgument
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -298,7 +325,7 @@ grpc-message: InvalidArgument
 
 
 
-=== TEST 11: response.error() maps http 401 to grpc Unauthenticated
+=== TEST 12: response.error() maps http 401 to grpc Unauthenticated
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -324,7 +351,7 @@ grpc-message: Unauthenticated
 
 
 
-=== TEST 12: response.error() maps http 403 to grpc PermissionDenied
+=== TEST 13: response.error() maps http 403 to grpc PermissionDenied
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -350,7 +377,7 @@ grpc-message: PermissionDenied
 
 
 
-=== TEST 13: response.error() maps http 429 to grpc ResourceExhausted
+=== TEST 14: response.error() maps http 429 to grpc ResourceExhausted
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {

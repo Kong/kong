@@ -898,12 +898,11 @@ local function new(self, major_version)
           end
         end
 
-        if quality > max_quality then
+        if name and quality > max_quality then
           type = utils.get_mime_type(name)
           max_quality = quality
         end
       end
-
     end
 
     return type
