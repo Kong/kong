@@ -36,6 +36,8 @@ return {
         -- Do nothing, accept existing state
       END;
       $$;
+
+      UPDATE consumers SET username_lower=LOWER(username);
     ]]
   },
   cassandra = {
