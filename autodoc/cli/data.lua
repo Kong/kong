@@ -40,7 +40,7 @@ data.command_intro = {
 
 data.footer = [[
 
-[configuration-reference]: /{{page.kong_version}}/configuration
+[configuration-reference]: /gateway-oss/{{page.kong_version}}/configuration
 ]]
 
 return data
