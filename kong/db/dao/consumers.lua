@@ -5,12 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local workspaces   = require "kong.workspaces"
-local cassandra    = require "cassandra"
-local split        = require "kong.tools.utils".split
-
-local fmt = string.format
-
 local Consumers = {}
 
 
@@ -75,44 +69,7 @@ function Consumers:upsert(primary_key, entity, options)
 end
 
 function Consumers:select_by_username_ignore_case(username)
-  local function postgres_query()
-    local ws_id = workspaces.get_workspace_id()
-    local qs = fmt(
-      "SELECT * FROM consumers WHERE LOWER(username) = LOWER(%s) AND ws_id = %s;",
-      kong.db.connector:escape_literal(username),
-      kong.db.connector:escape_literal(ws_id))
-
-    return kong.db.connector:query(qs)
-  end
-
-  local function cassandra_query()
-    local ws_id = workspaces.get_workspace_id()
-    local escaped_value = cassandra.text(fmt("%s:%s", ws_id, username:lower())).val
-    local qs = fmt(
-      "SELECT * FROM consumers WHERE username_lower = '%s';",
-      escaped_value)
-
-    local consumers, err = kong.db.connector:query(qs)
-
-    for i,v in pairs(consumers) do
-      if type(i) == "number" then
-        consumers[i].username = split(consumers[i].username, ":")[2]
-        consumers[i].username_lower = split(consumers[i].username_lower, ":")[2]
-      end
-    end
-
-    return consumers, err
-  end
-
-  local consumers, err
-  if kong.db.strategy == "postgres" then
-    consumers, err = postgres_query()
-  elseif kong.db.strategy == "cassandra" then
-    consumers, err = cassandra_query()
-  else
-    -- other strategies not supported
-    return nil, nil
-  end
+  local consumers, err = self.strategy:select_by_username_ignore_case(username)
 
   if err then
     return nil, err

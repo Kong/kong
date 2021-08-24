@@ -330,9 +330,8 @@ local function serialize_arg(field, arg, ws_id)
     serialized_arg = cassandra.boolean(arg)
 
   elseif field.type == "string" then
-    if field.unique and ws_id and not field.unique_across_ws then
-      arg = ws_id .. ":" .. arg
-    elseif field.prefix_ws then
+    if (field.unique and ws_id and not field.unique_across_ws)
+      or field.prefix_ws then
       arg = ws_id .. ":" .. arg
     end
 
@@ -723,7 +722,7 @@ function _mt:deserialize_row(row)
     elseif field.timestamp and row[field_name] ~= nil then
       row[field_name] = row[field_name] / 1000
 
-    elseif field.type == "string" and ws_unique and row[field_name] ~= nil then
+    elseif field.type == "string" and (ws_unique or field.prefix_ws) and row[field_name] ~= nil then
       local value = row[field_name]
       -- for regular 'unique' values (that are *not* 'unique_across_ws')
       -- value is of the form "<uuid>:<value>" in the DB: strip the "<uuid>:"
