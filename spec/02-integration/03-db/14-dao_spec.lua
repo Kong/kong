@@ -100,33 +100,5 @@ for _, strategy in helpers.all_strategies() do
       assert.same(plugin, read_plugin)
     end)
   end)
-
-  describe("db.consumers #" .. strategy, function()
-    local bp, db
-
-    lazy_setup(function()
-      bp, db = helpers.get_db_utils(strategy, {
-        "consumers",
-      })
-      _G.kong.db = db
-
-      assert(bp.consumers:insert {
-        username = "gruceo@kong.com",
-        custom_id = "12345",
-      })
-    end)
-
-    lazy_teardown(function()
-      db.consumers:truncate()
-    end)
-
-    it("consumers:select_by_username_ignore_case() ignores username case", function() 
-      local consumer, err = kong.db.consumers:select_by_username_ignore_case("GRUceo@kong.com")
-      assert.is_nil(err)
-      assert(consumer)
-      assert.same("gruceo@kong.com", consumer.username)
-      assert.same("12345", consumer.custom_id)
-    end)
-  end)
 end
 
