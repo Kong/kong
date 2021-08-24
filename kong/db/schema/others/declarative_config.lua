@@ -16,6 +16,7 @@ local ipairs = ipairs
 local insert = table.insert
 local concat = table.concat
 local tostring = tostring
+local cjson_encode = require("cjson.safe").encode
 
 local DeclarativeConfig = {}
 
@@ -357,7 +358,9 @@ local function validate_references(self, input)
         if not found then
           errors[a] = errors[a] or {}
           errors[a][k.at] = errors[a][k.at] or {}
-          local msg = "invalid reference '" .. k.key .. ": " .. k.value ..
+          local msg = "invalid reference '" .. k.key .. ": " ..
+                      (type(k.value) == "string"
+                      and k.value or cjson_encode(k.value)) ..
                       "' (no such entry in '" .. b .. "')"
           insert(errors[a][k.at], msg)
         end
