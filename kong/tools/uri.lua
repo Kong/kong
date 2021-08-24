@@ -16,6 +16,7 @@ local string_byte = string.byte
 local string_format = string.format
 local tonumber = tonumber
 local table_concat = table.concat
+local ngx_re_find = ngx.re.find
 local ngx_re_gsub = ngx.re.gsub
 
 
@@ -40,6 +41,9 @@ local RESERVED_CHARACTERS = {
   [0x5B] = true, -- [
   [0x5D] = true, -- ]
 }
+
+local ESCAPE_PATTERN = "[^!#$&'()*+,/:;=?@[\\]A-Z\\d-_.~%]"
+
 local TMP_OUTPUT = require("table.new")(16, 0)
 local DOT = string_byte(".")
 local SLASH = string_byte("/")
@@ -152,7 +156,11 @@ end
 
 
 function _M.escape(uri)
-  return ngx_re_gsub(uri, "[^!#$&'()*+,/:;=?@[\\]A-Z\\d-_.~%]", escape, "joi")
+  if ngx_re_find(uri, ESCAPE_PATTERN, "joi") then
+    return ngx_re_gsub(uri, ESCAPE_PATTERN, escape, "joi")
+  end
+
+  return uri
 end
 
 
