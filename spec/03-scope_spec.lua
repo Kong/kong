@@ -7,17 +7,19 @@
 
 local helpers = require "spec.helpers"
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
 local PLUGIN_NAME    = require("kong.plugins.exit-transformer").PLUGIN_NAME
 
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in strategies() do
   describe(PLUGIN_NAME .. ": (scope) [#" .. strategy .. "]", function()
     local client, admin_client
-
     local bp, gplugin
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      bp = helpers.get_db_utils(strategy, nil, { PLUGIN_NAME })
+      bp = helpers.get_db_utils(db_strategy, nil, { PLUGIN_NAME })
 
       local function_str_body_hello_world = [[
         return function (status, body, headers)
@@ -65,7 +67,7 @@ for _, strategy in helpers.each_strategy() do
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
-        database   = strategy,
+        database   = db_strategy,
         -- use the custom test template to create a local mock server
         nginx_conf = "spec/fixtures/custom_nginx.template",
         -- set the config item to make sure our plugin gets loaded
