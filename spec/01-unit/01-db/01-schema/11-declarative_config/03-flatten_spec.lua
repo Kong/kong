@@ -2127,5 +2127,27 @@ describe("declarative config: flatten", function()
       local _, err = DeclarativeConfig:flatten(config)
       assert.equal(nil, err)
     end)
+
+    it("fixes #7696 - incorrect foreign reference type produce useful error message", function()
+      local config = assert(lyaml.load([[
+        _format_version: "2.1"
+
+        services:
+        - name: my-service-1
+          url: http://localhost:8001/status
+          routes:
+          - name: my-route-1
+            service:
+              id: "769bdf51-16df-5476-9830-ef26800b5448"
+            paths:
+            - /status
+      ]]))
+      local _, err = DeclarativeConfig:flatten(config)
+      assert.same({
+        routes = {
+          ["my-route-1"] = { "invalid reference 'service: {\"id\":\"769bdf51-16df-5476-9830-ef26800b5448\"}' (no such entry in 'services')" }
+        }
+      }, err)
+    end)
   end)
 end)
