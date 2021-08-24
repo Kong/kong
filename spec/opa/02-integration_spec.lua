@@ -1,17 +1,19 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 local PLUGIN_NAME = "opa"
 
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
+    local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
 
-      local bp = helpers.get_db_utils(strategy, nil, { PLUGIN_NAME })
+      local bp = helpers.get_db_utils(db_strategy, nil, { PLUGIN_NAME })
 
       local route
 
@@ -109,7 +111,7 @@ for _, strategy in helpers.each_strategy() do
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
-        database   = strategy,
+        database   = db_strategy,
         -- use the custom test template to create a local mock server
         nginx_conf = "spec/fixtures/custom_nginx.template",
         -- make sure our plugin gets loaded
