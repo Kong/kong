@@ -50,6 +50,30 @@ function Consumers:page_by_type(_, size, offset, options)
   return rows, nil, nil, next_offset
 end
 
+function Consumers:insert(entity, options)
+  if type(entity.username) == 'string' then
+    entity.username_lower = entity.username:lower()
+  end
+
+  return self.super.insert(self, entity, options)
+end
+
+function Consumers:update(primary_key, entity, options)
+  if type(entity.username) == 'string' then
+    entity.username_lower = entity.username:lower()
+  end
+
+  return self.super.update(self, primary_key, entity, options)
+end
+
+function Consumers:upsert(primary_key, entity, options)
+  if type(entity.username) == 'string' then
+    entity.username_lower = entity.username:lower()
+  end
+
+  return self.super.upsert(self, primary_key, entity, options)
+end
+
 function Consumers:select_by_username_ignore_case(username)
   local function postgres_query()
     local ws_id = workspaces.get_workspace_id()
