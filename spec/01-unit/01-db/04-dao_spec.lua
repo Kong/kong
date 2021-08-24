@@ -503,7 +503,7 @@ describe("DAO", function()
         end
       }
       local parent_dao = DAO.new(mock_db, parent_schema, parent_strategy, errors)
-      
+
       local _, err = parent_dao:delete({ a = 42 })
       assert.falsy(err)
     end)
