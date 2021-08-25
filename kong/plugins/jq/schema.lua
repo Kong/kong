@@ -20,7 +20,7 @@ return {
         entity_checks = {
           { at_least_one_of = {
             "request_jq_program",
-            "response_jq_program"
+            "response_jq_program",
           } },
         },
       },
