@@ -158,8 +158,8 @@ return {
         end
 
         -- a decimal between 0 and 1 messes with internal time calculations
-        if config.sync_rate > 0 and config.sync_rate < 1 then
-          return nil, "Config option 'sync_rate' must not be a decimal between 0 and 1"
+        if config.sync_rate > 0 and config.sync_rate < 0.02 then
+          return nil, "Config option 'sync_rate' must not be a decimal between 0 and 0.02"
         end
 
         return true
