@@ -1413,10 +1413,6 @@ do
       end
     end
 
-    if schema.fields.username_lower and type(entity.username) == 'string' then
-      entity.username_lower = entity.username:lower()
-    end
-
 
     local query_name
     if ttl then
