@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+_G._TEST = true
 local table_rotater = require "kong.vitals.postgres.table_rotater"
 local helpers       = require "spec.helpers"
 local ngx_time      = ngx.time
@@ -24,6 +25,10 @@ local function drop_vitals_seconds_tables(db)
   end
 end
 
+local function delete_table_rotater_lock()
+  ngx.shared.kong_vitals_lists:delete("vitals:table_rotater_lock")
+end
+
 for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("Postgres table_rotater using a 'public' schema", function()
     local rotater
@@ -39,6 +44,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
       local opts = {
         connector         = db,
         rotation_interval = 3600,
+        list_cache        = ngx.shared.kong_vitals_lists,
       }
 
       rotater = table_rotater.new(opts)
@@ -48,6 +54,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
     before_each(function()
       drop_vitals_seconds_tables(db)
       snapshot = assert:snapshot()
+      delete_table_rotater_lock()
     end)
 
 
@@ -81,6 +88,28 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         stub(db, "query").returns(nil, "typname, typnamespace=already exists with value")
 
         assert(rotater:init())
+      end)
+
+      it("at startup, it sends only one DDL schema query", function()
+        local create_next_table_stub = spy.on(rotater, "create_next_table")
+        -- simulate the initialization of 5 workers
+        for i=0, 5 do
+          assert(rotater:init())
+        end
+        assert.spy(create_next_table_stub).was_called(1)
+      end)
+
+      it("at rotation interval, it sends only one DDL schema query", function()
+        for i=0, 5 do
+          assert(rotater:init())
+        end
+
+        delete_table_rotater_lock()
+        local create_next_table_stub = spy.on(rotater, "create_next_table")
+        for i=0, 5 do
+          table_rotater._rotation_handler(false, rotater)
+        end
+        assert.spy(create_next_table_stub).was_called(1)
       end)
     end)
 
@@ -213,6 +242,7 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         local opts = {
           connector         = db,
           rotation_interval = 3600,
+          list_cache        = ngx.shared.kong_vitals_lists,
         }
 
         local rotater = table_rotater.new(opts)
