@@ -284,15 +284,13 @@ local function get_next_with_ctx(self)
       local ctx = self.ctx
       local plugins = ctx.plugins
 
-      if self.configure then
-        local combos = self.combos[name]
-        if combos then
-          cfg = load_configuration_through_combos(ctx, combos, plugin)
-          if cfg then
-            plugins[name] = cfg
-            if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
-              ctx.buffered_proxying = true
-            end
+      local combos = self.combos[name]
+      if combos then
+        cfg = load_configuration_through_combos(ctx, combos, plugin)
+        if cfg then
+          plugins[name] = cfg
+          if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
+            ctx.buffered_proxying = true
           end
         end
       end
@@ -311,6 +309,34 @@ local function get_next_with_ctx(self)
 
   self.i = i
   return plugin, cfg
+end
+
+local function get_next_with_plugins(self)
+  local phases, map = self.phases, self.map
+  --local cfg
+  local i = self.i + 1
+  local plugin = self.loaded[i]
+
+  while plugin do
+    local name = plugin.name
+
+    if map[name] and phases[name] then
+      self.i = i
+      return plugin, self.plugins[name]
+        --cfg = plugins[name]
+        --if cfg then
+        --  break
+        --end
+    end
+
+    i = i + 1
+    plugin = self.loaded[i]
+  end
+
+  --if plugin then
+  --  self.i = i
+  --  return plugin, self.plugins[plugin.name]
+  --end
 end
 
 local function zero_iter()
@@ -341,21 +367,32 @@ local function iterate(self, phase, ctx)
     return zero_iter
   end
 
-  local iteration = {
-    configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase],
-    loaded = self.loaded,
-    phases = ws.phases[phase] or {},
-    combos = ws.combos,
-    map = ws.map,
-    ctx = ctx,
-    i = 0,
-  }
-
   if ctx then
-    return get_next_with_ctx, iteration
+    if MUST_LOAD_CONFIGURATION_IN_PHASES[phase] then
+      return get_next_with_ctx, {
+        loaded = self.loaded,
+        phases = ws.phases[phase] or {},
+        combos = ws.combos,
+        map = ws.map,
+        ctx = ctx,
+        i = 0,
+      }
+    end
+
+    return get_next_with_plugins, {
+      loaded = self.loaded,
+      phases = ws.phases[phase] or {},
+      map = ws.map,
+      plugins = ctx.plugins,
+      i = 0,
+    }
   end
 
-  return get_next_no_ctx, iteration
+  return get_next_no_ctx, {
+    loaded = self.loaded,
+    phases = ws.phases[phase] or {},
+    i = 0,
+  }
 end
 
 
