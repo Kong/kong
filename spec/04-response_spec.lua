@@ -19,7 +19,7 @@ for _, strategy in helpers.all_strategies() do
 
       do
         local routes = {}
-        for i = 1, 11 do
+        for i = 1, 10 do
           table.insert(routes,
                        bp.routes:insert({
                          hosts = { "test" .. i .. ".example.com" }
@@ -35,145 +35,65 @@ for _, strategy in helpers.all_strategies() do
         end
 
         add_plugin(routes[1], {
-          filters = {
-            {
-              context = "response",
-              target = "body",
-              program = ".uri_args",
-            },
-          },
+          response_jq_program = ".uri_args",
         })
 
         -- program matching nothing
         add_plugin(routes[2], {
-          filters = {
-            {
-              context = "response",
-              target = "body",
-              program = ".foo.bar",
-            },
-          },
+          response_jq_program = ".foo.bar",
         })
 
         add_plugin(routes[3], {
-          filters = {
-            {
-              context = "response",
-              target = "body",
-              program = ".uri_args.foo",
-              jq_options = {
-                raw_output = true,
-              },
-            },
+          response_jq_program = ".uri_args.foo",
+          response_jq_program_options = {
+            raw_output = true,
           },
         })
 
         add_plugin(routes[4], {
-          filters = {
-            {
-              context = "response",
-              target = "body",
-              program = ".uri_args.foo",
-              jq_options = {
-                join_output = true,
-              },
-            },
+          response_jq_program = ".uri_args.foo",
+          response_jq_program_options = {
+            join_output = true,
           },
         })
 
         add_plugin(routes[5], {
-          filters = {
-            {
-              context = "response",
-              target = "body",
-              program = ".uri_args.foo",
-              jq_options = {
-                ascii_output = true,
-              }
-            },
-          },
+          response_jq_program = ".uri_args.foo",
+          response_jq_program_options = {
+            ascii_output = true,
+          }
         })
 
         add_plugin(routes[6], {
-          filters = {
-            {
-              context = "response",
-              target = "body",
-              program = ".uri_args",
-              jq_options = {
-                sort_keys = true,
-              }
-            },
-          },
+          response_jq_program = ".uri_args",
+          response_jq_program_options = {
+            sort_keys = true,
+          }
         })
 
         add_plugin(routes[7], {
-          filters = {
-            {
-              context = "response",
-              target = "body",
-              program = ".uri_args",
-              jq_options = {
-                compact_output = false,
-              }
-            },
-          },
+          response_jq_program = ".uri_args",
+          response_jq_program_options = {
+            compact_output = false,
+          }
         })
 
         add_plugin(routes[8], {
-          filters = {
-            {
-              context = "response",
-              target = "body",
-              program = ".uri_args",
-              if_media_type = {
-                "text/plain",
-              },
-            },
+          response_jq_program = ".uri_args",
+          response_if_media_type = {
+            "text/plain",
           },
         })
 
         add_plugin(routes[9], {
-          filters = {
-            {
-              context = "response",
-              target = "headers",
-              program = [[.uri_args | { "X-Foo": .foo, "X-Bar": .bar }]],
-            },
-          },
+          response_jq_program = [[.uri_args | { "X-Foo": .foo, "X-Bar": .bar }]],
         })
 
         add_plugin(routes[10], {
-          filters = {
-            {
-              context = "response",
-              target = "headers",
-              program = [[.uri_args | { "X-Foo": .foo }]],
-            },
-            {
-              context = "response",
-              target = "headers",
-              program = [[.uri_args | { "X-Bar": .bar }]],
-            },
-            {
-              context = "response",
-              target = "body",
-              program = ".uri_args",
-            },
-          },
-        })
-
-        add_plugin(routes[11], {
-          filters = {
-            {
-              context = "response",
-              target = "body",
-              program = ".uri_args",
-              if_status_code = {
-                201,
-              }
-            },
-          },
+          response_jq_program = ".headers",
+          response_if_status_code = {
+            201,
+          }
         })
       end
 
@@ -300,52 +220,13 @@ for _, strategy in helpers.all_strategies() do
           method  = "GET",
           path    = "/request?foo=bar",
           headers = {
-            ["Host"] = "test11.example.com",
+            ["Host"] = "test10.example.com",
           },
         })
 
         local json = assert.response(r).has.jsonbody()
         -- json is unfiltered, entire response object
         assert.same("bar", json.uri_args.foo)
-      end)
-    end)
-
-    describe("headers", function()
-      it("filters with default options", function()
-        local r = assert(client:send {
-          method  = "GET",
-          path    = "/request?foo=bar&bar=foo",
-          headers = {
-            ["Host"] = "test9.example.com",
-          },
-        })
-
-        local foo = assert.response(r).has.header("X-Foo")
-        assert.equals(foo, "bar")
-
-        local bar = assert.response(r).has_header("X-Bar")
-        assert.equals(bar, "foo")
-      end)
-
-      it("multiple filters", function()
-        local r = assert(client:send {
-          method  = "GET",
-          path    = "/request?foo=bar&bar=foo",
-          headers = {
-            ["Host"] = "test10.example.com",
-          },
-        })
-        local foo = assert.response(r).has.header("X-Foo")
-        assert.equals(foo, "bar")
-
-        local bar = assert.response(r).has_header("X-Bar")
-        assert.equals(bar, "foo")
-
-        local json = assert.response(r).has.jsonbody()
-        assert.same({
-          foo = "bar",
-          bar = "foo"
-        }, json)
       end)
     end)
   end)

@@ -29,13 +29,7 @@ for _, strategy in helpers.all_strategies() do
           route = { id = route.id },
           name = "jq",
           config = {
-            filters = {
-              {
-                context = "response",
-                target = "body",
-                program = ".[0]",
-              },
-            },
+            response_jq_program = ".[0]",
           },
         })
       end
@@ -49,13 +43,7 @@ for _, strategy in helpers.all_strategies() do
           route = { id = route.id },
           name = "jq",
           config = {
-            filters = {
-              {
-                context = "request",
-                target = "body",
-                program = ".[0]",
-              },
-            },
+            request_jq_program = ".[0]",
           },
         })
       end
