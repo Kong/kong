@@ -298,7 +298,8 @@ local function get_next_with_ctx(self)
       if phases[name] then
         cfg = plugins[name]
         if cfg then
-          break
+          self.i = i
+          return plugin, cfg
         end
       end
     end
@@ -306,41 +307,47 @@ local function get_next_with_ctx(self)
     i = i + 1
     plugin = self.loaded[i]
   end
-
-  self.i = i
-  return plugin, cfg
-end
-
-local function get_next_with_plugins(self)
-  local phases, map = self.phases, self.map
-  --local cfg
-  local i = self.i + 1
-  local plugin = self.loaded[i]
-
-  while plugin do
-    local name = plugin.name
-
-    if map[name] and phases[name] then
-      self.i = i
-      return plugin, self.plugins[name]
-        --cfg = plugins[name]
-        --if cfg then
-        --  break
-        --end
-    end
-
-    i = i + 1
-    plugin = self.loaded[i]
-  end
-
-  --if plugin then
-  --  self.i = i
-  --  return plugin, self.plugins[plugin.name]
-  --end
 end
 
 local function zero_iter()
   return nil
+end
+
+local function get_configured_plugins_by_phase(ws, loaded, ctx, phase)
+  local cfg_by_phase = ctx.configured_plugins_by_phase
+  if not cfg_by_phase then
+    cfg_by_phase = {}
+    ctx.configured_plugins_by_phase = cfg_by_phase
+  end
+
+  local cfg_plugins = cfg_by_phase[phase]
+  if cfg_plugins then
+    return cfg_plugins
+  end
+
+  cfg_plugins = {}
+  cfg_by_phase[phase] = cfg_plugins
+
+  local phases = ws.phases[phase]
+  local plugins = ctx.plugins
+  local i = 1
+  for _, plugin in ipairs(loaded) do
+    local name = plugin.name
+    if phases[name] and plugins[name] and ws.map[name] then
+      cfg_plugins[i] = plugin
+      cfg_plugins[i+1] = plugins[name]
+      i = i + 2
+    end
+  end
+
+  return cfg_plugins
+end
+
+local function get_next_configured_plugin(self)
+  local i = self.i
+  self.i = i + 2
+  local cfg_plugins = self.cfg_plugins
+  return cfg_plugins[i], cfg_plugins[i+1]
 end
 
 
@@ -379,13 +386,18 @@ local function iterate(self, phase, ctx)
       }
     end
 
-    return get_next_with_plugins, {
-      loaded = self.loaded,
-      phases = ws.phases[phase] or {},
-      map = ws.map,
-      plugins = ctx.plugins,
-      i = 0,
+    return get_next_configured_plugin, {
+      cfg_plugins = get_configured_plugins_by_phase(ws, self.loaded, ctx, phase),
+      i = 1,
     }
+
+    --return get_next_with_plugins, {
+    --  loaded = self.loaded,
+    --  phases = ws.phases[phase] or {},
+    --  map = ws.map,
+    --  plugins = ctx.plugins,
+    --  i = 0,
+    --}
   end
 
   return get_next_no_ctx, {
