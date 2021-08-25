@@ -123,6 +123,12 @@ for _, strategy in helpers.each_strategy() do
         service     = null,
       }
 
+      local route19 = bp.routes:insert {
+        hosts       = { "lambda19.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
@@ -371,10 +377,24 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route19.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          function_name        = "functionWithMultiValueHeadersResponse",
+          is_proxy_integration = true,
+        }
+      }
+
       fixtures.dns_mock:A({
         name = "lambda18.test",
         address = helpers.mock_upstream_host,
       })
+
+      helpers.setenv("AWS_REGION", "us-east-1")
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -395,6 +415,7 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       helpers.stop_kong()
+      helpers.unsetenv("AWS_REGION", "us-east-1")
     end)
 
     it("invokes a Lambda function with GET", function()
@@ -961,6 +982,19 @@ for _, strategy in helpers.each_strategy() do
           path    = "/get?key1=some_value1",
           headers = {
             ["Host"] = "lambda18.test"
+          }
+        }))
+        assert.res_status(200, res)
+        assert.is_string(res.headers.age)
+        assert.is_array(res.headers["Access-Control-Allow-Origin"])
+      end)
+
+      it("use ENV value when no region nor host is set", function()
+        local res = assert(proxy_client:send({
+          method  = "GET",
+          path    = "/get?key1=some_value1",
+          headers = {
+            ["Host"] = "lambda19.test"
           }
         }))
         assert.res_status(200, res)
