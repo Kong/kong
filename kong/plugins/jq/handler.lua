@@ -1,10 +1,8 @@
-local cjson = require "cjson.safe"
-local cjson_decode = cjson.decode
-
 local inflate_gzip = require("kong.tools.utils").inflate_gzip
 
-local type, pairs, ipairs = type, pairs, ipairs
+local type, ipairs = type, ipairs
 local str_find = string.find
+local tbl_insert, tbl_concat = table.insert, table.concat
 
 local kong = kong
 
@@ -17,13 +15,12 @@ local Jq = {
 }
 
 
-local function is_media_type_allowed(content_type, filter_conf)
+local function is_media_type_allowed(content_type, allowed_media_types)
   if type(content_type) ~= "string" then
     return false
   end
 
-  local media_types = filter_conf.if_media_type
-  for _, media_type in ipairs(media_types) do
+  for _, media_type in ipairs(allowed_media_types) do
     if str_find(content_type, media_type, 1, true) ~= nil then
       return true
     end
@@ -33,9 +30,8 @@ local function is_media_type_allowed(content_type, filter_conf)
 end
 
 
-local function is_status_code_allowed(status_code, filter_conf)
-  local status_codes = filter_conf.if_status_code
-  for _, code in ipairs(status_codes) do
+local function is_status_code_allowed(status_code, allowed_status_codes)
+  for _, code in ipairs(allowed_status_codes) do
     if status_code == code then
       return true
     end
@@ -63,117 +59,101 @@ local function run_program(program, data, options)
 end
 
 
---- Processes the filter.
--- The `data` table is both an in and out parameter. It should have two fields,
--- `body` and `extra_headers`. The `body` is used as the filter source in all
--- cases, but also may be updated by the filter, in the case of filters whose
--- target is `body`.
---
--- Since multiple filters may be run, this data structure is updated in place
--- until all are completed for the phase.
-local function process_filter(data, filter)
-  local output, err = run_program(
-    filter.program,
-    data.body,
-    filter.jq_options
-  )
-
-  if not output then
-    return nil, err
-  end
-
-  if filter.target == "body" then
-    data.body = output
-
-  elseif filter.target == "headers" then
-    local headers = cjson_decode(output)
-
-    if type(headers) == "table" then
-      for name, value in pairs(headers) do
-        if type(name) == "string" and type(value) == "string" then
-          data.extra_headers[name] = value
-        end
-      end
-    end
-  end
-
-  return true
-end
-
-
--- Runs each filter with a `context` of `request`, and updates the request
--- headers and / or body accordingly.
 function Jq:access(conf)
-  local request_body = kong.request.get_raw_body()
-  if not request_body then
-    return
-  end
+  if type(conf.request_jq_program) == "string" and
+    is_media_type_allowed(kong.request.get_header("Content-Type"),
+                          conf.request_if_media_type) then
 
-  if kong.request.get_header("Content-Encoding") == "gzip" then
-    request_body = inflate_gzip(request_body)
-  end
+    local request_body = kong.request.get_raw_body()
+    if not request_body then
+      return
+    end
 
-  local results = {
-    body = request_body,
-    extra_headers = {}
-  }
+    if kong.request.get_header("Content-Encoding") == "gzip" then
+      request_body = inflate_gzip(request_body)
+    end
 
-  local request_content_type = kong.request.get_header("Content-Type")
+    local jq_output, err = run_program(
+      conf.request_jq_program,
+      request_body,
+      conf.request_jq_program_options
+    )
 
-  for _, filter in ipairs(conf.filters) do
-    if filter.context == "request" and
-      is_media_type_allowed(request_content_type, filter) then
-
-      local ok, err = process_filter(results, filter)
-      if not ok then
-        kong.log.err(err)
-      end
+    if not jq_output then
+      kong.log.err(err)
+    else
+      kong.service.request.set_raw_body(jq_output)
     end
   end
-
-  kong.service.request.set_headers(results.extra_headers)
-  kong.service.request.set_raw_body(results.body)
 end
 
 
--- Runs each filter with a `context` of `response`, and updates the response
--- headers and / or body accordingly.
+--- Process the response headers.
 --
--- Note: we call `kong.response.exit` and so this will be the last plugin to
--- run for this phase.
-function Jq:response(conf)
-  local response_body = kong.service.response.get_raw_body()
-  if not response_body then
-    return
-  end
+-- Drops Content-Length and Content-Encoding (in the case of gzipped
+-- responses) if we think the program is going to change the output.
+--
+-- Nginx should send with chunked transfer encoding instead.
+function Jq:header_filter(conf)
+  if type(conf.response_jq_program) == "string" and
+    is_media_type_allowed(kong.response.get_header("Content-Type"),
+                          conf.response_if_media_type) and
+    is_status_code_allowed(kong.response.get_status(),
+                           conf.response_if_status_code) then
 
-  if kong.response.get_header("Content-Encoding") == "gzip" then
-    response_body = inflate_gzip(response_body)
-    kong.response.clear_header("Content-Encoding")
-  end
+    kong.response.clear_header("Content-Length")
 
-  local results = {
-    body = response_body,
-    extra_headers = {}
-  }
-
-  local response_status = kong.response.get_status()
-  local response_content_type = kong.response.get_header("Content-Type")
-
-  for _, filter in ipairs(conf.filters) do
-    if filter.context == "response" and
-      is_media_type_allowed(response_content_type, filter) and
-      is_status_code_allowed(response_status, filter) then
-
-      local ok, err = process_filter(results, filter)
-      if not ok then
-        kong.log.err(err)
-      end
+    if kong.response.get_header("Content-Encoding") == "gzip" then
+      ngx.ctx.jq_should_gzip_inflate = true
+      kong.response.clear_header("Content-Encoding")
     end
   end
+end
 
-  kong.response.set_headers(results.extra_headers)
-  return kong.response.exit(response_status, results.body)
+
+--- Processes the response body program.
+--
+-- Note: we buffer the entire response in order to feed valid JSON to jq.
+function Jq:body_filter(conf)
+  local ctx = ngx.ctx
+
+  ctx.jq_buffered_body_chunks = ctx.jq_buffered_body_chunks or {}
+
+  if type(conf.response_jq_program) == "string" and
+    is_media_type_allowed(kong.response.get_header("Content-Type"),
+                          conf.response_if_media_type) and
+    is_status_code_allowed(kong.response.get_status(),
+                           conf.response_if_status_code) then
+
+    local chunk, eof = ngx.arg[1], ngx.arg[2]
+
+    -- buffer until eof
+    if not eof then
+      tbl_insert(ctx.jq_buffered_body_chunks, chunk)
+      ngx.arg[1] = nil
+      return
+    end
+
+    -- done buffering, let's do this
+    local response_body = tbl_concat(ctx.jq_buffered_body_chunks)
+
+    if ctx.jq_should_gzip_inflate then
+      response_body = inflate_gzip(response_body)
+    end
+
+    local jq_output, err = run_program(
+      conf.response_jq_program,
+      response_body,
+      conf.response_jq_program_options
+    )
+
+    if not jq_output then
+      kong.log.err(err)
+      ngx.arg[1] = response_body -- restore original body
+    else
+      ngx.arg[1] = jq_output
+    end
+  end
 end
 
 
