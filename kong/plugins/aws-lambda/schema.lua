@@ -40,7 +40,7 @@ return {
         { aws_region = typedefs.host },
         { function_name = {
           type = "string",
-          required = true,
+          required = false,
         } },
         { qualifier = {
           type = "string",
@@ -106,6 +106,6 @@ return {
   entity_checks = {
     { mutually_required = { "config.aws_key", "config.aws_secret" } },
     { mutually_required = { "config.proxy_scheme", "config.proxy_url" } },
-    { only_one_of = { "config.aws_region", "config.host" } },
+    { mutually_exclusive = { "config.aws_region", "config.host" } },
   }
 }
