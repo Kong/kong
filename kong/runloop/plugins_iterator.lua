@@ -258,13 +258,16 @@ end
 
 
 local function get_next_no_ctx(loaded, phases)
-  local i = 0
+  local i = 1
   return function()
-    i = i + 1
     local plugin = loaded[i]
     while plugin and (phases == nil or not phases[plugin.name]) do
       i = i + 1
       plugin = loaded[i]
+    end
+
+    if plugin then
+      i = i + 1
     end
 
     return plugin
@@ -272,12 +275,10 @@ local function get_next_no_ctx(loaded, phases)
 end
 
 local function get_next_with_ctx(ctx, loaded, phases, combos, map, configure)
-  local i = 0
+  local i = 1
   return function()
     local cfg
-    i = i + 1
     local plugin = loaded[i]
-
     while plugin do
       local name = plugin.name
       if map[name] then
@@ -306,6 +307,10 @@ local function get_next_with_ctx(ctx, loaded, phases, combos, map, configure)
 
       i = i + 1
       plugin = loaded[i]
+    end
+
+    if plugin then
+      i = i + 1
     end
 
     return plugin, cfg
