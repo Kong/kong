@@ -1321,6 +1321,7 @@ describe("declarative config: flatten", function()
             {
               id = 'UUID',
               username = 'consumer',
+              username_lower = null,
               custom_id = null,
               created_at = 1234567890,
               tags = null,
@@ -1346,6 +1347,7 @@ describe("declarative config: flatten", function()
             {
               id = 'UUID',
               username = 'consumer',
+              username_lower = null,
               custom_id = null,
               created_at = 1234567890,
               tags = null,
@@ -1386,6 +1388,7 @@ describe("declarative config: flatten", function()
             {
               id = 'UUID',
               username = 'consumer',
+              username_lower = null,
               custom_id = null,
               created_at = 1234567890,
               tags = null,
@@ -1455,6 +1458,7 @@ describe("declarative config: flatten", function()
             {
               id = 'UUID',
               username = 'consumer',
+              username_lower = null,
               custom_id = null,
               created_at = 1234567890,
               tags = null,
@@ -1524,6 +1528,7 @@ describe("declarative config: flatten", function()
             {
               id = 'UUID',
               username = 'consumer',
+              username_lower = null,
               custom_id = null,
               created_at = 1234567890,
               tags = null,
@@ -1593,6 +1598,7 @@ describe("declarative config: flatten", function()
             {
               id = 'UUID',
               username = 'consumer',
+              username_lower = null,
               custom_id = null,
               created_at = 1234567890,
               tags = null,
@@ -1764,6 +1770,7 @@ describe("declarative config: flatten", function()
                 tags = null,
                 type = 0,
                 username = "foo",
+                username_lower = null,
                 ws_id = null,
               } },
             jwt_secrets = { {
@@ -1949,6 +1956,7 @@ describe("declarative config: flatten", function()
                 id = "UUID",
                 tags = null,
                 username = "bob",
+                username_lower = null,
                 type = 0,
                 ws_id = null,
               } }
@@ -1977,6 +1985,7 @@ describe("declarative config: flatten", function()
                 id = "UUID",
                 tags = null,
                 username = "bob",
+                username_lower = null,
                 type = 0,
                 ws_id = null,
               } },
