@@ -36,137 +36,55 @@ for _, strategy in helpers.all_strategies() do
 
         -- returns the second element in the request body
         add_plugin(routes[1], {
-          filters = {
-            {
-              context = "request",
-              target = "body",
-              program = ".[1]",
-            },
-          },
+          request_jq_program = ".[1]",
         })
 
         -- returns value of "foo" in the request body as a raw string
         add_plugin(routes[2], {
-          filters = {
-            {
-              context = "request",
-              target = "body",
-              program = ".foo",
-              jq_options = {
-                raw_output = true,
-              }
-            },
-          },
+          request_jq_program = ".foo",
+          request_jq_program_options = {
+            raw_output = true,
+          }
         })
 
         -- returns value of "foo" in the request body as a raw string
         add_plugin(routes[3], {
-          filters = {
-            {
-              context = "request",
-              target = "body",
-              program = ".foo",
-              jq_options = {
-                join_output = true,
-              }
-            },
-          },
+          request_jq_program = ".foo",
+          request_jq_program_options = {
+            join_output = true,
+          }
         })
 
         -- returns ascii escaped value of "foo" in the request body
         add_plugin(routes[4], {
-          filters = {
-            {
-              context = "request",
-              target = "body",
-              program = ".foo",
-              jq_options = {
-                ascii_output = true,
-              }
-            },
-          },
+          request_jq_program = ".foo",
+          request_jq_program_options = {
+            ascii_output = true,
+          }
         })
 
         -- sorts keys
         add_plugin(routes[5], {
-          filters = {
-            {
-              context = "request",
-              target = "body",
-              program = ".",
-              jq_options = {
-                sort_keys = true,
-              }
-            },
-          },
+          request_jq_program = ".",
+          request_jq_program_options = {
+            sort_keys = true,
+          }
         })
 
         -- pretty output
         add_plugin(routes[6], {
-          filters = {
-            {
-              context = "request",
-              target = "body",
-              program = ".",
-              jq_options = {
-                compact_output = false,
-              }
-            },
-          },
+          request_jq_program = ".",
+          request_jq_program_options = {
+            compact_output = false,
+          }
         })
 
         -- custom if_media_type
         add_plugin(routes[7], {
-          filters = {
-            {
-              context = "request",
-              target = "body",
-              program = ".foo",
-              if_media_type = {
-                "application/json",
-                "application/x-json-custom",
-              },
-            },
-          },
-        })
-
-        -- target headers
-        add_plugin(routes[8], {
-          filters = {
-            {
-              context = "request",
-              target = "headers",
-              program = [[. | { "X-Foo": .foo, "X-Bar": .bar }]]
-            },
-          },
-        })
-
-        -- multiple filters targetting headers and body
-        add_plugin(routes[9], {
-          filters = {
-            {
-              context = "request",
-              target = "headers",
-              program = [[.[0] | { "X-Foo": .foo }]]
-            },
-            {
-              context = "request",
-              target = "headers",
-              program = [[.[1] | { "X-Bar": .bar }]]
-            },
-            {
-              context = "request",
-              target = "body",
-              program = ".[0]",
-            },
-            {
-              context = "request",
-              target = "body",
-              program = ".foo",
-              jq_options = {
-                join_output = true,
-              },
-            },
+          request_jq_program = ".foo",
+          request_if_media_type = {
+            "application/json",
+            "application/x-json-custom",
           },
         })
       end
@@ -350,69 +268,6 @@ for _, strategy in helpers.all_strategies() do
         })
         local req = assert.request(r)
         assert.same("\"bar\"\n", req.kong_request.post_data.text)
-      end)
-
-      it("does not filter when target is headers", function()
-        local r = assert(client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"] = "test8.example.com",
-            ["Content-Type"] = "application/json",
-          },
-          body = {
-            foo = "bar",
-          },
-        })
-        local json = assert.request(r).has.jsonbody()
-        assert.same({ foo = "bar" }, json.params)
-      end)
-    end)
-
-    describe("headers", function()
-      it("filters with default options", function()
-        local r = assert(client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"] = "test8.example.com",
-            ["Content-Type"] = "application/json",
-          },
-          body = {
-            foo = "bar",
-            bar = "foo",
-          },
-        })
-        local foo = assert.request(r).has.header("X-Foo")
-        assert.equals(foo, "bar")
-
-        local bar = assert.request(r).has_header("X-Bar")
-        assert.equals(bar, "foo")
-      end)
-    end)
-
-    describe("body and headers", function()
-      it("filters with multiple rules", function()
-        local r = assert(client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            ["Host"] = "test9.example.com",
-            ["Content-Type"] = "application/json",
-          },
-          body = {
-            { foo = "bar" },
-            { bar = "foo" },
-          },
-        })
-        local foo = assert.request(r).has.header("X-Foo")
-        assert.equals(foo, "bar")
-
-        local bar = assert.request(r).has_header("X-Bar")
-        assert.equals(bar, "foo")
-
-        local json = assert.request(r).has.jsonbody()
-        assert.same("bar", json.data)
       end)
     end)
   end)
