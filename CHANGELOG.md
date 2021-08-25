@@ -71,6 +71,13 @@
 - Bumped `openssl` from `1.1.1k` to `1.1.1l`
   [7767](https://github.com/Kong/kong/pull/7767)
 
+### Additions
+
+#### Core
+
+- Schema improvements:
+  - New entity validator: `mutually_exclusive`.
+
 ## [2.5.0]
 
 > Release date: 2021-07-13
