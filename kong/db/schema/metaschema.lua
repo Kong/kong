@@ -206,6 +206,7 @@ local entity_checkers = {
     }
   },
   { mutually_required = { type = "array", elements = { type = "string" } } },
+  { mutually_exclusive = { type = "array", elements = { type = "string" } } },
   { mutually_exclusive_sets = {
       type = "record",
       fields = {

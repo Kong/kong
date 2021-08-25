@@ -97,6 +97,7 @@ local validation_errors = {
   ONLY_ONE_OF               = "only one of these fields must be non-empty: %s",
   DISTINCT                  = "values of these fields must be distinct: %s",
   MUTUALLY_REQUIRED         = "all or none of these fields must be set: %s",
+  MUTUALLY_EXCLUSIVE        = "only one or none of these fields must be set: %s",
   MUTUALLY_EXCLUSIVE_SETS   = "these sets are mutually exclusive: %s",
   -- schema error
   SCHEMA_NO_DEFINITION      = "expected a definition table",
@@ -507,6 +508,23 @@ local function mutually_required(entity, field_names)
 end
 
 
+local function mutually_exclusive(entity, field_names)
+  local nonempty = {}
+
+  for _, name in ipairs(field_names) do
+    if is_nonempty(get_field(entity, name)) then
+      insert(nonempty, name)
+    end
+  end
+
+  if #nonempty == 0 or #nonempty == 1 then
+    return true
+  end
+
+  return nil, quoted_list(field_names)
+end
+
+
 --- Entity checkers are cross-field validation rules.
 -- An entity checker is implemented as an entry in this table,
 -- containing a mandatory field `fn`, the checker function,
@@ -732,6 +750,11 @@ Schema.entity_checkers = {
   mutually_required = {
     run_with_missing_fields = true,
     fn = mutually_required,
+  },
+
+  mutually_exclusive = {
+    run_with_missing_fields = true,
+    fn = mutually_exclusive,
   },
 
   mutually_exclusive_sets = {
