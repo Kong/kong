@@ -257,24 +257,7 @@ local function load_configuration_through_combos(ctx, combos, plugin)
 end
 
 
-local function get_next_no_ctx(loaded, phases)
-  local i = 1
-  return function()
-    local plugin = loaded[i]
-    while plugin and (phases == nil or not phases[plugin.name]) do
-      i = i + 1
-      plugin = loaded[i]
-    end
-
-    if plugin then
-      i = i + 1
-    end
-
-    return plugin
-  end
-end
-
-local function get_next_with_ctx(ctx, loaded, phases, combos, map, configure)
+local function get_next_with_ctx(ctx, loaded, phases, combos, map)
   local i = 1
   return function()
     local cfg
@@ -284,15 +267,13 @@ local function get_next_with_ctx(ctx, loaded, phases, combos, map, configure)
       if map[name] then
         local plugins = ctx.plugins
 
-        if configure then
-          local cmbs = combos[name]
-          if cmbs then
-            cfg = load_configuration_through_combos(ctx, cmbs, plugin)
-            if cfg then
-              plugins[name] = cfg
-              if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
-                ctx.buffered_proxying = true
-              end
+        local cmbs = combos[name]
+        if cmbs then
+          cfg = load_configuration_through_combos(ctx, cmbs, plugin)
+          if cfg then
+            plugins[name] = cfg
+            if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
+              ctx.buffered_proxying = true
             end
           end
         end
@@ -316,6 +297,54 @@ local function get_next_with_ctx(ctx, loaded, phases, combos, map, configure)
     return plugin, cfg
   end
 end
+
+
+local function get_next_with_plugins(plugins, loaded, phases, map)
+  local i = 1
+  return function()
+    local cfg
+    local plugin = loaded[i]
+    while plugin do
+      local name = plugin.name
+      if map[name] then
+        if phases and phases[name] then
+          cfg = plugins[name]
+          if cfg then
+            break
+          end
+        end
+      end
+
+      i = i + 1
+      plugin = loaded[i]
+    end
+
+    if plugin then
+      i = i + 1
+    end
+
+    return plugin, cfg
+  end
+end
+
+
+local function get_next(loaded, phases)
+  local i = 1
+  return function()
+    local plugin = loaded[i]
+    while plugin and (phases == nil or not phases[plugin.name]) do
+      i = i + 1
+      plugin = loaded[i]
+    end
+
+    if plugin then
+      i = i + 1
+    end
+
+    return plugin
+  end
+end
+
 
 local function zero_iter()
   return nil
@@ -346,16 +375,23 @@ local function iterate(self, phase, ctx)
   end
 
   if ctx then
-    return get_next_with_ctx(
-      ctx,
+    if MUST_LOAD_CONFIGURATION_IN_PHASES[phase] then
+      return get_next_with_ctx(
+        ctx,
+        self.loaded,
+        ws.phases[phase],
+        ws.combos,
+        ws.map)
+    end
+
+    return get_next_with_plugins(
+      ctx.plugins,
       self.loaded,
       ws.phases[phase],
-      ws.combos,
-      ws.map,
-      MUST_LOAD_CONFIGURATION_IN_PHASES[phase])
+      ws.map)
   end
 
-  return get_next_no_ctx(
+  return get_next(
     self.loaded,
     ws.phases[phase]
   )
