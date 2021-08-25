@@ -347,6 +347,15 @@ local function set_host_header(balancer_data)
   end
 
   if upstream_host ~= orig_upstream_host then
+    -- the nginx grpc module does not offer a way to override the
+    -- :authority pseudo-header; use our internal API to do so
+    if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
+      local ok, err = kong.service.request.set_header(":authority", upstream_host)
+      if not ok then
+        log(ERR, "failed to set :authority header: ", err)
+      end
+    end
+
     var.upstream_host = upstream_host
 
     if phase == "balancer" then
