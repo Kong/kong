@@ -27,6 +27,7 @@ local null          = ngx.null
 local time          = ngx.time
 local sub           = string.sub
 local find          = string.find
+local fmt           = string.format
 local tonumber      = tonumber
 local tostring      = tostring
 local kong          = kong
@@ -703,6 +704,16 @@ function issuers.load(issuer, opts)
   return cache_get(key, nil, issuers_init, issuer, opts)
 end
 
+local function log_multiple_matches(subject, matches)
+  local match_info = {}
+
+  for _, match in pairs(matches) do
+    table.insert(match_info, fmt("%s (id: %s)", match.username, match.id))
+  end
+  log.notice(fmt("multiple consumers match '%s' by username case-insensitively: %s",
+                 subject,
+                 table.concat(match_info, ", ")))
+end
 
 local consumers = {}
 
@@ -724,6 +735,11 @@ local function consumers_load(subject, key, by_username_ignore_case)
     result, err = kong.db.consumers:select_by_username(subject)
     if not result and by_username_ignore_case then
       result, err = kong.db.consumers:select_by_username_ignore_case(subject)
+      if #result > 1 then
+        log_multiple_matches(subject, result)
+      end
+
+      result = result[1]
     end
   elseif key == "custom_id" then
     result, err = kong.db.consumers:select_by_custom_id(subject)
