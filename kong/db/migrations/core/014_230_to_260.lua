@@ -13,12 +13,14 @@ local function cassandra_copy_usernames_to_lower(coordinator)
     end
 
     for _, row in ipairs(rows) do
-      local _, err = coordinator:execute("UPDATE consumers SET username_lower = ? WHERE id = ?", {
-        cassandra.text(row.username:lower()),
-        cassandra.uuid(row.id),
-      })
-      if err then
-        return nil, err
+      if type(row.username) == 'string' then
+        local _, err = coordinator:execute("UPDATE consumers SET username_lower = ? WHERE id = ?", {
+          cassandra.text(row.username:lower()),
+          cassandra.uuid(row.id),
+        })
+        if err then
+          return nil, err
+        end
       end
     end
   end
