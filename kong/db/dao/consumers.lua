@@ -7,6 +7,11 @@
 
 
 local invalidate_consumer_cache = function(self, entity, options)
+  -- skip next lines in some tests where kong.cache is not available
+  if not kong.cache then
+    return
+  end
+
   local fields = { "custom_id", "username", "username_lower" }
   for _, field in ipairs(fields) do
     if entity[field] then
