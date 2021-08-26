@@ -326,7 +326,7 @@ local function new(self)
       end
     end
 
-    return ngx.var.upstream_x_forwarded_prefix
+    return ngx.ctx.upstream_x_forwarded_prefix
   end
 
 
