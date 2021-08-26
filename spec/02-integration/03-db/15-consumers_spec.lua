@@ -52,6 +52,22 @@ for _, strategy in helpers.all_strategies() do
       assert(consumer.username_lower == "kingdom@kong.com")
     end)
 
+    it("consumers:update_by_username() sets username_lower", function()
+      assert(bp.consumers:insert {
+        username = "ANOTHER@kong.com",
+      })
+      local consumer, err
+      consumer, err = kong.db.consumers:select_by_username("ANOTHER@kong.com")
+      assert.is_nil(err)
+      assert(consumer.username == "ANOTHER@kong.com")
+      assert(consumer.username_lower == "another@kong.com")
+      assert(kong.db.consumers:update_by_username("ANOTHER@kong.com", { username = "YANOTHER@kong.com" }))
+      consumer, err = kong.db.consumers:select({ id = consumer.id })
+      assert.is_nil(err)
+      assert(consumer.username == "YANOTHER@kong.com")
+      assert(consumer.username_lower == "yanother@kong.com")
+    end)
+
     it("consumers:upsert() sets username_lower", function()
       assert(bp.consumers:upsert({ id = "4e8d95d4-40f2-4818-adcb-30e00c349618"}, {
         username = "Absurd@kong.com"
