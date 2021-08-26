@@ -133,7 +133,7 @@ function Consumers:select_by_username_ignore_case(username)
     return a.created_at < b.created_at
   end)
 
-  return consumers, nil
+  return self:rows_to_entities(consumers), nil
 end
 
 
