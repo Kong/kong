@@ -22,10 +22,8 @@ function Consumers:select_by_username_ignore_case(username)
 
   local consumers, err = kong.db.connector:query(qs)
 
-  for i,v in pairs(consumers) do
-    if type(i) == "number" then
-      consumers[i] = self:deserialize_row(consumers[i])
-    end
+  for i, consumer in ipairs(consumers) do
+    consumers[i] = self:deserialize_row(consumer)
   end
 
   return consumers, err
