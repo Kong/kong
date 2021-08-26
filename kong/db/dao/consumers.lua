@@ -5,6 +5,22 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+
+local invalidate_consumer_cache = function(self, entity, options)
+  local fields = { "custom_id", "username", "username_lower" }
+  for _, field in ipairs(fields) do
+    if entity[field] then
+      local cache_key = self:cache_key(field, entity[field])
+      if options and options.no_broadcast_crud_event then
+        kong.cache:invalidate_local(cache_key)
+      else
+        kong.cache:invalidate(cache_key)
+      end
+    end
+  end
+end
+
+
 local Consumers = {}
 
 
@@ -44,6 +60,15 @@ function Consumers:page_by_type(_, size, offset, options)
   return rows, nil, nil, next_offset
 end
 
+function Consumers:delete(primary_key, options)
+  local consumer = self:select(primary_key)
+  if consumer then
+    invalidate_consumer_cache(self, consumer, options)
+  end
+
+  return self.super.delete(self, primary_key, options)
+end
+
 function Consumers:insert(entity, options)
   if type(entity.username) == 'string' then
     entity.username_lower = entity.username:lower()
@@ -57,12 +82,22 @@ function Consumers:update(primary_key, entity, options)
     entity.username_lower = entity.username:lower()
   end
 
+  local old_consumer = self:select(primary_key)
+  if old_consumer then
+    invalidate_consumer_cache(self, old_consumer, options)
+  end
+
   return self.super.update(self, primary_key, entity, options)
 end
 
 function Consumers:upsert(primary_key, entity, options)
   if type(entity.username) == 'string' then
     entity.username_lower = entity.username:lower()
+  end
+
+  local old_consumer = self:select(primary_key)
+  if old_consumer then
+    invalidate_consumer_cache(self, old_consumer, options)
   end
 
   return self.super.upsert(self, primary_key, entity, options)
