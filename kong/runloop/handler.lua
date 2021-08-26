@@ -86,27 +86,27 @@ local _register_balancer_events
 
 local update_lua_mem
 do
-  local pid = ngx.worker.pid
-  local kong_shm = ngx.shared.kong
-
-  local LUA_MEM_SAMPLE_RATE = 10 -- seconds
-  local last = ngx.time()
-
-  local collectgarbage = collectgarbage
+  --local pid = ngx.worker.pid
+  --local kong_shm = ngx.shared.kong
+  --
+  --local LUA_MEM_SAMPLE_RATE = 10 -- seconds
+  --local last = ngx.time()
+  --
+  --local collectgarbage = collectgarbage
 
   update_lua_mem = function(force)
-    local time = ngx.time()
-
-    if force or time - last >= LUA_MEM_SAMPLE_RATE then
-      local count = collectgarbage("count")
-
-      local ok, err = kong_shm:safe_set("kong:mem:" .. pid(), count)
-      if not ok then
-        log(ERR, "could not record Lua VM allocated memory: ", err)
-      end
-
-      last = ngx.time()
-    end
+    --local time = ngx.time()
+    --
+    --if force or time - last >= LUA_MEM_SAMPLE_RATE then
+    --  local count = collectgarbage("count")
+    --
+    --  local ok, err = kong_shm:safe_set("kong:mem:" .. pid(), count)
+    --  if not ok then
+    --    log(ERR, "could not record Lua VM allocated memory: ", err)
+    --  end
+    --
+    --  last = ngx.time()
+    --end
   end
 end
 

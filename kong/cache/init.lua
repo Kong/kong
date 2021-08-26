@@ -1,5 +1,5 @@
 local resty_mlcache = require "resty.mlcache"
-local marshall = require "kong.cache.marshall"
+--local marshall = require "kong.cache.marshall"
 
 
 local type    = type
@@ -133,6 +133,7 @@ function _M.new(opts)
     mlcaches       = mlcaches,
     shm_names      = shm_names,
     page           = page,
+    cache          = { {}, {}, }
   }
 
   local ok, err = self.cluster_events:subscribe("invalidations", function(key)
@@ -165,12 +166,19 @@ function _M:get(key, opts, cb, ...)
   end
 
   local page = self:get_page((opts or {}).shadow)
-  local v, err = self.mlcaches[page]:get(key, opts, cb, ...)
+  local value = self.cache[page][key]
+  if value then
+    return value
+  end
+
+  local err
+  value, err = cb(...)
   if err then
     return nil, "failed to get from node cache: " .. err
   end
 
-  return v
+  self.cache[page][key] = value
+  return value
 end
 
 
@@ -194,15 +202,9 @@ end
 
 
 function _M:safe_set(key, value, shadow)
-  local str_marshalled, err = marshall(value, self.mlcache.ttl,
-                                       self.mlcache.neg_ttl)
-  if err then
-    return nil, err
-  end
-
   local page = self:get_page(shadow)
-  local shm_name = self.shm_names[page]
-  return ngx.shared[shm_name]:safe_set(shm_name .. key, str_marshalled)
+  self.cache[page][key] = value
+  return true
 end
 
 
@@ -212,12 +214,12 @@ function _M:probe(key, shadow)
   end
 
   local page = self:get_page(shadow)
-  local ttl, err, v = self.mlcaches[page]:peek(key)
-  if err then
-    return nil, "failed to probe from node cache: " .. err
+  local value = self.cache[page][key]
+  if not value then
+    return nil, "failed to probe from node cache: key not found"
   end
 
-  return ttl, nil, v
+  return 1000, nil, value
 end
 
 
@@ -229,10 +231,7 @@ function _M:invalidate_local(key, shadow)
   log(DEBUG, "invalidating (local): '", key, "'")
 
   local page = self:get_page(shadow)
-  local ok, err = self.mlcaches[page]:delete(key)
-  if not ok then
-    log(ERR, "failed to delete entity from node cache: ", err)
-  end
+  self.cache[page][key] = nil
 end
 
 
@@ -258,12 +257,7 @@ end
 
 function _M:purge(shadow)
   log(NOTICE, "purging (local) cache")
-
-  local page = self:get_page(shadow)
-  local ok, err = self.mlcaches[page]:purge(true)
-  if not ok then
-    log(ERR, "failed to purge cache: ", err)
-  end
+  self.cache = {}
 end
 
 
