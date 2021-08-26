@@ -95,6 +95,19 @@ function Consumers:update(primary_key, entity, options)
   return self.super.update(self, primary_key, entity, options)
 end
 
+function Consumers:update_by_username(username, entity, options)
+  if type(entity.username) == 'string' then
+    entity.username_lower = entity.username:lower()
+  end
+
+  local old_consumer = self:select_by_username(username)
+  if old_consumer then
+    invalidate_consumer_cache(self, old_consumer, options)
+  end
+
+  return self.super.update_by_username(self, username, entity, options)
+end
+
 function Consumers:upsert(primary_key, entity, options)
   if type(entity.username) == 'string' then
     entity.username_lower = entity.username:lower()
