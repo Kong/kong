@@ -12,6 +12,7 @@ return {
   generate_admin_api = false,
 
   primary_key = { "id" },
+  db_export = false,
 
   fields = {
     { id = typedefs.uuid, },
