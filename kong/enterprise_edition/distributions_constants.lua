@@ -50,6 +50,10 @@ local constants = {
     },
   },
 
+  plugins = {
+    "proxy-cache-advanced"
+  },
+
   release = false,
 }
 
