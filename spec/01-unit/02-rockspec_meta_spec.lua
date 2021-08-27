@@ -27,6 +27,21 @@ describe("rockspec/meta", function()
     setfenv(f, rock)
 
     f()
+
+    -- XXX EE: Exclude enterprise plugins when testing Kong Core
+    for i, file in pairs(lua_srcs) do
+      if file:match("plugins/enterprise_edition") then
+        lua_srcs[i] = nil
+      end
+    end
+
+    for mod_name, mod_path in pairs(rock.build.modules) do
+      if mod_path:match("plugins/enterprise_edition") then
+        rock.build.modules[mod_name] = nil
+      end
+    end
+    -- EE
+
   end)
 
   describe("meta", function()
