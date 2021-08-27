@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Feature Request
+    url: https://github.com/Kong/kong/discussions/categories/ideas
+    about: Propose your cool ideas and feature requests at the Kong discussion forum
   - name: Question
-    url: https://github.com/Kong/kong/discussions
+    url: https://github.com/Kong/kong/discussions/categories/help
     about: Ask (and answer) questions at the Kong discussion forum
-  - name: Security Vulnerability
-    url: https://docs.konghq.com/gateway-oss/latest/kong-security-update-process/#reporting-a-vulnerability
-    about: Send security vulnerability reports to security@konghq.com.
