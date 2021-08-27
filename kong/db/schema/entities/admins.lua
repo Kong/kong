@@ -20,6 +20,7 @@ return {
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
     { username       = { type = "string", unique = true, required = true }, },
+    { username_lower = { type = "string" }, },
     { custom_id      = { type = "string", unique = true }, },
     { email          = ee_typedefs.email { unique = true } },
     { status         = ee_typedefs.admin_status { required = true } },
