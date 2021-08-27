@@ -15,7 +15,7 @@ local RequestTerminationHandler = {}
 
 
 RequestTerminationHandler.PRIORITY = 2
-RequestTerminationHandler.VERSION = "2.0.1"
+RequestTerminationHandler.VERSION = "2.1.0"
 
 
 function RequestTerminationHandler:access(conf)
