@@ -115,15 +115,14 @@ end
 --
 -- Note: we buffer the entire response in order to feed valid JSON to jq.
 function Jq:body_filter(conf)
-  local ctx = ngx.ctx
-
-  ctx.jq_buffered_body_chunks = ctx.jq_buffered_body_chunks or {}
-
   if type(conf.response_jq_program) == "string" and
     is_media_type_allowed(kong.response.get_header("Content-Type"),
                           conf.response_if_media_type) and
     is_status_code_allowed(kong.response.get_status(),
                            conf.response_if_status_code) then
+
+    local ctx = ngx.ctx
+    ctx.jq_buffered_body_chunks = ctx.jq_buffered_body_chunks or {}
 
     local chunk, eof = ngx.arg[1], ngx.arg[2]
 
