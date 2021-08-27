@@ -81,6 +81,14 @@ describe("jq schema", function()
     assert.same({ 200, 404 }, res.config.response_if_status_code)
   end)
 
+  it("rejects a config with bad jq_program", function()
+    local res, err = validate({
+      request_jq_program = "FOO",
+    }, jq_schema)
+    assert.same("compilation failed: invalid jq program", err.config.request_jq_program)
+    assert.is_falsy(res)
+  end)
+
   it("rejects a config with bad jq_options", function()
     local res, err = validate({
       request_jq_program_options = {

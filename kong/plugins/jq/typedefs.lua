@@ -1,12 +1,17 @@
 local typedefs = require "kong.db.schema.typedefs"
+local jq = require "resty.jq"
 
 return {
   protocols = {
     protocols = typedefs.protocols_http
   },
-  program = {
+  jq_program = {
     required = false,
     type = "string",
+    custom_validator = function(jq_program)
+      local jqp = jq.new()
+      return jqp:compile(jq_program)
+    end,
   },
   jq_options = {
     required = false,
