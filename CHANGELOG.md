@@ -68,6 +68,8 @@
 
 - Bumped `openresty` from 1.19.3.2 to [1.19.9.1](https://openresty.org/en/changelog-1019009.html)
   [#7430](https://github.com/Kong/kong/pull/7727)
+- Bumped `openssl` from `1.1.1k` to `1.1.1l`
+  [7767](https://github.com/Kong/kong/pull/7767)
 
 ## [2.5.0]
 
