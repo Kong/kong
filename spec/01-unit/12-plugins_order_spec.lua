@@ -5,12 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-require "spec.helpers" -- initializes 'kong' global for plugins
+local helpers = require "spec.helpers" -- initializes 'kong' global for plugins
 local conf_loader = require "kong.conf_loader"
 
-
 local fmt = string.format
-
 
 describe("Plugins", function()
   local plugins
@@ -27,11 +25,13 @@ describe("Plugins", function()
     plugins = {}
 
     for plugin in pairs(conf.loaded_plugins) do
-      local handler = require("kong.plugins." .. plugin .. ".handler")
-      table.insert(plugins, {
-        name    = plugin,
-        handler = handler
-      })
+      if not helpers.is_enterprise_plugin(plugin) then
+        local handler = require("kong.plugins." .. plugin .. ".handler")
+        table.insert(plugins, {
+          name    = plugin,
+          handler = handler
+        })
+      end
     end
   end)
 

@@ -71,6 +71,10 @@ local https_server = require "spec.fixtures.https_server"
 local stress_generator = require "spec.fixtures.stress_generator"
 local resty_signal = require "resty.signal"
 
+-- XXX EE
+local dist_constants = require "kong.enterprise_edition.distributions_constants"
+-- EE
+
 ffi.cdef [[
   int setenv(const char *name, const char *value, int overwrite);
   int unsetenv(const char *name);
@@ -3025,4 +3029,15 @@ end
     server:close()
     return tonumber(port)
   end,
+
+  -- XXX EE
+  is_enterprise_plugin = function(plugin_name)
+    for _, ee_plugin_name in pairs(dist_constants.plugins) do
+      if ee_plugin_name == plugin_name then
+        return true
+      end
+    end
+    return false
+  end,
+  -- EE
 }
