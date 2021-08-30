@@ -1,8 +1,8 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
-local GRPCBIN_HOST = "grpcbin"
-local GRPCBIN_PORT = 9000
+local GRPCBIN_HOST = "127.0.0.1"
+local GRPCBIN_PORT = 15002
 
 -- returns nth byte (0: LSB, 3: MSB if 32-bit)
 local function nbyt(x, n)
