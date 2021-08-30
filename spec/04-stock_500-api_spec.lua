@@ -64,7 +64,7 @@ for _, strategy in strategies() do
           host     = "mocking.com",
         }
 
-      local route1 = db.routes:insert({
+      db.routes:insert({
         hosts = { "mocking.com" },
         service    = service1,
 

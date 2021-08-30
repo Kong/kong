@@ -65,7 +65,7 @@ for _, strategy in strategies() do
           host     = "mocking.com",
         }
 
-      local route1 = db.routes:insert({
+      db.routes:insert({
         hosts = { "mocking.com" },
         service    = service1,
 
@@ -133,7 +133,7 @@ for _, strategy in strategies() do
         })
         -- validate that the request succeeded, response status 200
 
-        local body = assert.res_status(200, r)
+        assert.res_status(200, r)
 
         local header_value = assert.response(r).has.header("X-Kong-Mocking-Plugin")
 

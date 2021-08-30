@@ -12,7 +12,6 @@ local plugin = {
 
 local kong = kong
 -- spec version
-local isV3 = false
 local isV2 = false
 
 local function find_key(tbl, key)
@@ -34,13 +33,6 @@ local function find_key(tbl, key)
   return nil
 end
 
-local function table_length(ltbl)
-  local len = 0
-  for _,_ in pairs(ltbl) do
-    len = len +1
-  end
-  return len
-end
 -- Tokenize the string with '&' and return a table holding all the query params
 local function extractParameters(looppath)
   local tempindex
@@ -50,12 +42,12 @@ local function extractParameters(looppath)
   do
       tempindex =string.find( looppath,'&')
       --only one query param, Break the iteration and insert value in table
-      if tempindex == string.len(looppath) then
+      if tempindex == #looppath then
           break
       end
       --Extract and insert the sub string using index of '&'
       table.insert( stringtable, string.sub(looppath, 1,tempindex-1 ))
-      looppath = string.sub(looppath,tempindex+1,string.len( looppath ))
+      looppath = string.sub(looppath,tempindex+1,#looppath)
   end
   table.insert(stringtable,looppath)
   --kong.log.inspect('paramtable',stringtable)
@@ -85,14 +77,13 @@ local function filterexamples(example, qparameters)
   else
     for _,dv in pairs(params) do
       skey = string.sub( dv,1,string.find( dv,'=' )-1 )
-      sval = string.sub(dv,string.find( dv,'=' )+1,string.len( dv ))
+      sval = string.sub(dv,string.find( dv,'=' )+1,#dv)
       --kong.log.inspect('skey.....sval'..skey..'.....'..sval)
       -- Query parameters might be supplied with fields not present in examples i.e value could be nil
       -- In a real world api design, A query parameter might only be used in api business logic and might not be returned in response
 
       value = find_key(example,skey)
       --kong.log.inspect('value....'..value)
-      local paramkeys={}
 
       if value == nil and qparameters then
         if #qparameters > 1 then
@@ -235,11 +226,9 @@ local function load_spec(spec_str)
 
   -- check spec version
   if result.openapi then
-    isV3 = true
     isV2 = false
   else
     isV2 = true
-    isV3 = false
   end
 
   return result
@@ -284,7 +273,7 @@ function plugin:access(conf)
   if accept == "*/*" then accept = "application/json" end
   local method = kong.request.get_method()
 
-  local contents = ""
+  local contents
   if conf.api_specification == nil or conf.api_specification == '' then
     if kong.db == nil then
       return kong.response.exit(404, { message = "API Specification file api_specification_filename defined which is not supported in dbless mode - not supported. Use api_specification instead" })
