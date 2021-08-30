@@ -235,6 +235,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2211"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2211.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300_1"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300_1.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.011_2300_to_2600"] = "kong/enterprise_edition/db/migrations/enterprise/011_2300_to_2600.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
@@ -414,6 +415,7 @@ build = {
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
+    ["kong.db.migrations.operations.230_to_260"] = "kong/db/migrations/operations/230_to_260.lua",
 
     ["kong.hybrid"] = "kong/hybrid/init.lua",
     ["kong.hybrid.data_plane"] = "kong/hybrid/data_plane.lua",

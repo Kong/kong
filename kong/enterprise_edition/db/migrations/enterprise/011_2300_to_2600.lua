@@ -13,25 +13,26 @@ return {
     up = [[
       DO $$
       BEGIN
-        ALTER TABLE IF EXISTS ONLY "consumers" ADD "username_lower" TEXT;
+        ALTER TABLE IF EXISTS ONLY "admins" ADD "username_lower" TEXT;
       EXCEPTION WHEN DUPLICATE_COLUMN THEN
         -- Do nothing, accept existing state
       END;
       $$;
 
-      UPDATE consumers SET username_lower=LOWER(username);
-    ]]
+      UPDATE admins SET username_lower=LOWER(username);
+    ]],
   },
+
   cassandra = {
     up = [[
-      ALTER TABLE consumers ADD username_lower TEXT;
+      ALTER TABLE admins ADD username_lower TEXT;
 
-      CREATE INDEX IF NOT EXISTS consumers_username_lower_idx ON consumers(username_lower);
+      CREATE INDEX IF NOT EXISTS admins_username_lower_idx ON admins(username_lower);
     ]],
     teardown = function(connector)
       local coordinator = assert(connector:get_stored_connection())
 
-      return operations_230_260.cassandra_copy_usernames_to_lower(coordinator, "consumers")
+      return operations_230_260.cassandra_copy_usernames_to_lower(coordinator, "admins")
     end,
-  }
+  },
 }
