@@ -3,11 +3,11 @@
 ![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/Kong/kong?style=flat-square) ![Docker Pulls](https://img.shields.io/docker/pulls/_/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![Version](https://img.shields.io/github/v/release/Kong/kong?color=green&label=Version&style=flat-square)  ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)
 
 
-**Kong** or **Kong API Gateway** is a cloud-native, platform-agnostic, scalable API Gateway distinguished for its high performance and extensibility via plugins.
+**Kong** or **Kong API Gateway** is a cloud-native, platform-agnostic and a scalable API Gateway distinguished for its high performance and extensibility via plugins.
 
-By providing functionality for proxying, routing, load balancing, health checking, authentication (and [more](#features)), Kong serves as the central layer for orchestrating microservices or conventional API traffic with ease.
+By providing functionality for proxying, routing, load balancing, health checking and authentication (and [more](#features)), Kong serves as the central layer for orchestrating microservices or conventional API traffic with ease.
 
-Kong runs natively on Kubernetes thanks to its official [Kubernetes Ingress Controller](https://github.com/Kong/kubernetes-ingress-controller).
+Kong runs natively on Kubernetes . Thanks to its official [Kubernetes Ingress Controller](https://github.com/Kong/kubernetes-ingress-controller).
 
 ---
 
@@ -15,51 +15,51 @@ Kong runs natively on Kubernetes thanks to its official [Kubernetes Ingress Cont
 
 ---
 
-## Getting Started
+## Getting Started :-
 
-Let’s test drive Kong by adding authentication to an API in under 5 minutes.
+Let’s take a test drive of Kong by adding authentication to an API in under 5 minutes.
 
-We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/install/docker/) procedure if you’d prefer to run the Kong API Gateway in DB-less mode. 
+We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/install/docker/) a procedure if you would prefer to run the Kong API Gateway in DB-less mode. 
 
 Whether you’re running in the cloud, on bare metal or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
 
-1) To start, clone the Docker repository and navigate to the compose folder.
+1) To start, firstly clone the Docker repository and navigate to the compose folder.
 ```cmd
   $ git clone https://github.com/Kong/docker-kong
   $ cd compose/
 ```
 
-1) Start the Gateway stack using:
+2) Start the Gateway stack using:
 ```cmd
   $ docker-compose up
 ```
 
 The Gateway will be available on the following ports on localhost:
 
-`:8000` on which Kong listens for incoming HTTP traffic from your clients, and forwards it to your upstream services.
+`:8000` on which Kong listens for incoming HTTP traffic from your clients  and forwards it to your upstream services.
 `:8001` on which the Admin API used to configure Kong listens.
 
 Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
-) to tour the Gateway features
+) to take a tour of the Gateway features
 
 ## Features
 
-By centralizing common API functionality across all your organization's services, the Kong API Gateway creates more freedom for engineering teams to focus on the challenges that matter most. 
+By centralizing common API functionality across all your organization's services, the Kong API Gateway creates more freedom for engineering teams to focus on the challenges that matters the most. 
 
 The top Kong features include:
-- Advanced routing, load balancing, health checking - all configurable via an admin API or declarative configuration.
-- Authentication and Authorization for APIs using methods like JWT, basic auth, ACLs and more.
+- Advanced routing, load balancing and health checking - all configurable via an admin API or declarative configuration.
+- Authentication and Authorization for APIs using methods like JWT, basic authentications, ACLs and many more.
 - Proxy, SSL/TLS termination, and connectivity support for L4 or L7 traffic.
 - Plugins for enforcing traffic controls, req/res transformations, logging, monitoring and including a plugin developer hub.
 - Sophisticated deployment models like Declarative Databaseless Deployment and Hybrid Deployment (control plane/data plane separation) without any vendor lock-in.
-- Native ingress controller support for serving Kubernetes.
+- Native ingress controller support for serving the Kubernetes.
 
 [![][kong-benefits]][kong-url]
 
 ### Plugin Hub
-Plugins provide advanced functionality that extends the use of the Gateway. Many of the Kong Inc. and community-developed plugins like AWS Lambda, Correlation ID, and Response Transformer are showcased at the [Plugin Hub](https://docs.konghq.com/hub/). 
+Plugins provides advanced functionality that extends the use of the Gateway. Many of the Kong Inc. and community-developed plugins like AWS Lambda, Correlation ID, and Response Transformer are showcased at the [Plugin Hub](https://docs.konghq.com/hub/). 
 
-Contribute to the Plugin Hub and ensure your next innovative idea is published and available to the broader community!
+Contribute to the Plugin Hub and ensure that your next innovative idea is published and it is available to the broader community!
 
 ## Contributing
 
@@ -68,7 +68,7 @@ We ❤️  pull requests, and we’re continually working hard to make it as eas
 - [DEVELOPER](DEVELOPER.md)
 - [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) and [COPYRIGHT](COPYRIGHT)
 
-Use the [Plugin Development Guide](https://docs.konghq.com/latest/plugin-development/) for building new and creative plugins, or browse the online version of Kong's source code documentation in the [Plugin Development Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/). Developers can build plugins in [Lua](https://docs.konghq.com/gateway-oss/latest/plugin-development/), [Go](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-go-plugins) or [JavaScript](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-javascript-plugins).
+Use the [Plugin Development Guide](https://docs.konghq.com/latest/plugin-development/) to create new and creative plugins, or browse the online version of Kong's source code documentation in the [Plugin Development Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/). Developers can build plugins in [Lua](https://docs.konghq.com/gateway-oss/latest/plugin-development/), [Go](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-go-plugins) or [JavaScript](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-javascript-plugins).
 
 ## Releases
 
@@ -79,12 +79,12 @@ Please see the [Changelog](CHANGELOG.md) for more details about a given release.
 - Join the Kong discussions at the Kong Nation forum: [https://discuss.konghq.com/](https://discuss.konghq.com/)
 - Follow us on Twitter: [https://twitter.com/thekonginc](https://twitter.com/thekonginc)
 - Check out the docs: [https://docs.konghq.com/](https://docs.konghq.com/)
-- Keep updated on YouTube by subscribing: [https://www.youtube.com/c/KongInc/videos](https://www.youtube.com/c/KongInc/videos)
+- Keep yourself updated on YouTube by subscribing: [https://www.youtube.com/c/KongInc/videos](https://www.youtube.com/c/KongInc/videos)
 - Read up on the latest happenings at our blog: [https://konghq.com/blog/](https://konghq.com/blog/)
-- Visit our homepage to learn more: [https://konghq.com/](https://konghq.com/)
+- Visit our homepage to learn more cool stuffs: [https://konghq.com/](https://konghq.com/)
 
-## Konnect
-Kong Inc. offers commercial subscriptions that enhance the Kong API Gateway in a variety of ways. Customers of Kong's [Konnect](https://konghq.com/kong-konnect/) subscription take advantage of additional gateway functionality, commercial support, and access to Kong's managed (SaaS) control plane platform. The Konnect platform features include real-time analytics, a service catalog, developer portals, and so much more! [Get started](https://konghq.com/get-started/) with Konnect.
+## konnect
+Kong Inc. offers commercial subscriptions that enhance the Kong API Gateway in a variety of ways. Customers of Kong's [Konnect](https://konghq.com/kong-konnect/) subscription take advantage of additional gateway functionality, commercial support, and access to Kong's managed (SaaS) control plane platform. The Konnect platform features includes the real-time analytics, a service catalog, developer portals, and so much more! [Get started](https://konghq.com/get-started/) with Konnect.
 
 ## License
 
