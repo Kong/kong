@@ -89,7 +89,9 @@ function _M.validate_admin(ignore_case)
 
   -- find an admin case-insensitively if specified
   if not admin and ignore_case then
-    local admins, err = kong.db.admins:select_by_username_ignore_case(user_name)
+    local admins
+
+    admins, err = kong.db.admins:select_by_username_ignore_case(user_name)
 
     if err then
       log(DEBUG, _log_prefix, "Admin not found with user_name=" .. user_name)
@@ -106,7 +108,7 @@ function _M.validate_admin(ignore_case)
       log(NOTICE, _log_prefix, fmt("Multiple Admins match '%s' case-insensitively: %s", user_name, table.concat(match_info, ", ")))
     end
 
-    admin = admins[1]
+    admin, err = kong.db.admins:select({ id = admins[1].id }, {skip_rbac = true})
   end
 
   if not admin then
