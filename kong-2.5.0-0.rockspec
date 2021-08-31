@@ -46,7 +46,6 @@ dependencies = {
   "kong-plugin-zipkin ~> 1.4",
   "kong-plugin-serverless-functions ~> 2.1",
   "kong-plugin-request-transformer ~> 1.3",
-  "kong-plugin-grpc-web ~> 0.2",
 }
 build = {
   type = "builtin",
@@ -445,5 +444,9 @@ build = {
     ["kong.plugins.proxy-cache.api"]                  = "kong/plugins/proxy-cache/api.lua",
     ["kong.plugins.proxy-cache.strategies"]           = "kong/plugins/proxy-cache/strategies/init.lua",
     ["kong.plugins.proxy-cache.strategies.memory"]    = "kong/plugins/proxy-cache/strategies/memory.lua",
+
+    ["kong.plugins.grpc-web.deco"] = "kong/plugins/grpc-web/deco.lua",
+    ["kong.plugins.grpc-web.handler"] = "kong/plugins/grpc-web/handler.lua",
+    ["kong.plugins.grpc-web.schema"] = "kong/plugins/grpc-web/schema.lua",
   }
 }
