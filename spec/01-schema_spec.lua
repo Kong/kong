@@ -228,15 +228,15 @@ describe("rate-limiting-advanced schema", function()
     assert.same({ "Non-negative retry_after_jitter_max value is expected" }, err["@entity"])
   end)
 
-  it("rejects sync_rate values between 0 and 1", function()
+  it("rejects sync_rate values between 0 and 0.02", function()
     local ok, err = v({
       window_size = { 60 },
       limit = { 10 },
-      sync_rate = 0.1,
+      sync_rate = 0.01,
     }, rate_limiting_schema)
 
     assert.is_falsy(ok)
-    assert.same({ "Config option 'sync_rate' must not be a decimal between 0 and 1" }, err["@entity"])
+    assert.same({ "Config option 'sync_rate' must not be a decimal between 0 and 0.02" }, err["@entity"])
   end)
 
   it("transparently sorts the limit/window_size pairs", function()
