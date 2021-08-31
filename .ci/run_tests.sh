@@ -55,21 +55,28 @@ install_custom_plugin() {
   rm -rf ${tmpdir}/kong-distributions ${tmpdir}/$plugin_repo_name
 }
 
-export BUSTED_ARGS=${BUSTED_ARGS:-"-o htest -v --exclude-tags=flaky,ipv6,squid,ce"}
-spec_ee_lua_path="$(__repo_root_path)/spec-ee/fixtures/custom_plugins/?.lua;$(__repo_root_path)/spec-ee/fixtures/custom_plugins/?/init.lua"
-export LUA_PATH="$LUA_PATH;$spec_ee_lua_path"
-
-if [ "$KONG_TEST_DATABASE" == "postgres" ]; then
-    export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra,off"
-
-    psql -v ON_ERROR_STOP=1 -h localhost --username "$KONG_TEST_PG_USER" <<-EOSQL
+create_postgresql_user() {
+  psql -v ON_ERROR_STOP=1 -h localhost --username "$KONG_TEST_PG_USER" <<-EOSQL
         CREATE user ${KONG_TEST_PG_USER}_ro;
         GRANT CONNECT ON DATABASE $KONG_TEST_PG_DATABASE TO ${KONG_TEST_PG_USER}_ro;
         \c $KONG_TEST_PG_DATABASE;
         GRANT USAGE ON SCHEMA public TO ${KONG_TEST_PG_USER}_ro;
         ALTER DEFAULT PRIVILEGES FOR ROLE $KONG_TEST_PG_USER IN SCHEMA public GRANT SELECT ON TABLES TO ${KONG_TEST_PG_USER}_ro;
 EOSQL
+}
 
+
+export BUSTED_ARGS=${BUSTED_ARGS:-"-o htest -v --exclude-tags=flaky,ipv6,squid,ce"}
+spec_ee_lua_path="$(__repo_root_path)/spec-ee/fixtures/custom_plugins/?.lua;$(__repo_root_path)/spec-ee/fixtures/custom_plugins/?/init.lua"
+export LUA_PATH="$LUA_PATH;$spec_ee_lua_path"
+
+if [ "$KONG_TEST_DATABASE" == "" ]; then
+    export KONG_TEST_CASSANDRA_KEYSPACE=kong_tests
+    export TEST_CMD="bin/busted $BUSTED_ARGS"
+    create_postgresql_user
+elif [ "$KONG_TEST_DATABASE" == "postgres" ]; then
+    export TEST_CMD="bin/busted $BUSTED_ARGS,cassandra,off"
+    create_postgresql_user
 elif [ "$KONG_TEST_DATABASE" == "cassandra" ]; then
     export KONG_TEST_CASSANDRA_KEYSPACE=kong_tests
     export KONG_TEST_DB_UPDATE_PROPAGATION=1
@@ -170,7 +177,6 @@ elif [ "$TEST_SUITE" == "unit-ee" ]; then
     make test-ee
 elif [ "$TEST_SUITE" == "integration-ee" ]; then
     cd .ci/ad-server && make build-ad-server && make clone-plugin && cd ../..
-    install_custom_plugin kong-plugin-enterprise-proxy-cache
     make test-integration-ee
 elif [ "$TEST_SUITE" == "plugins-ee" ]; then
     make test-plugins-ee
