@@ -1,4 +1,4 @@
-## Unreleased
+## 0.2.2
 
 - fix(*) handle special chars in path matching
 
