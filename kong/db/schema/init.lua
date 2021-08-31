@@ -94,6 +94,7 @@ local validation_errors = {
   CONDITIONAL               = "failed conditional validation given value of field '%s'",
   AT_LEAST_ONE_OF           = "at least one of these fields must be non-empty: %s",
   CONDITIONAL_AT_LEAST_ONE_OF = "at least one of these fields must be non-empty: %s",
+  MAX_ONE_OF                = "maximun one of these fields must be non-empty: %s",
   ONLY_ONE_OF               = "only one of these fields must be non-empty: %s",
   DISTINCT                  = "values of these fields must be distinct: %s",
   MUTUALLY_REQUIRED         = "all or none of these fields must be set: %s",
@@ -639,6 +640,24 @@ Schema.entity_checkers = {
       return nil, list, then_err
     end,
   },
+  max_one_of = {
+    run_with_missing_fields = false,
+    run_with_invalid_fields = true,
+    fn = function(entity, field_names)
+      local found = 0
+      for _, name in ipairs(field_names) do
+        if is_nonempty(get_field(entity, name)) then
+          found = found + 1
+        end
+      end
+
+      if found <= 1 then
+        return true
+      end
+      return nil, quoted_list(field_names)
+    end,
+  },
+
 
   only_one_of = {
     run_with_missing_fields = false,

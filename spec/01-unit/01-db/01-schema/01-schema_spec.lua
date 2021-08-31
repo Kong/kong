@@ -1749,7 +1749,27 @@ describe("schema", function()
         }
       })
       assert.falsy(Test:validate_update({ a = 12 }))
+      assert.falsy(Test:validate_update({ a = ngx.null, b = ngx.null }))
       assert.truthy(Test:validate_update({ a = 12, b = ngx.null }))
+    end)
+
+    it("test max_one_of", function()
+      local Test = Schema.new({
+        fields = {
+          { a = { type = "number" } },
+          { b = { type = "number" } },
+          { c = { type = "number" } },
+          { d = { type = "number" } },
+        },
+        entity_checks = {
+          { max_one_of = { "a", "b", "c" } },
+        }
+      })
+      assert.falsy(Test:validate_update({ a = 12, b = 42 }))
+      assert.falsy(Test:validate_update({ a = 12, b = ngx.null }))
+      assert.truthy(Test:validate_update({ a = 12, b = ngx.null, c = ngx.null }))
+      assert.truthy(Test:validate_update({ a = ngx.null, b = ngx.null, c = ngx.null }))
+      assert.truthy(Test:validate_update({ a = ngx.null, b = ngx.null, c = ngx.null, d = 12 }))
     end)
 
     it("test conditional checks", function()
