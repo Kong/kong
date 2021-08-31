@@ -80,7 +80,6 @@ return {
         type = "record",
         default = { metrics = DEFAULT_METRICS },
         fields = {
-          { use_env = { type = "boolean", default = false } },
           { host = typedefs.host({ default = "localhost" }), },
           { port = typedefs.port({ default = 8125 }), },
           { prefix = { type = "string", default = "kong" }, },
@@ -105,15 +104,8 @@ return {
                     then_match = { required = true },
           }, }, }, }, }, },
         },
-        entity_checks = {
-          { conditional = {
-            if_field = "use_env", if_match = {eq = false},
-            then_field = "host", then_match = { required = true },
-          }, },
-          { conditional = {
-            if_field = "use_env", if_match = {eq = false},
-            then_field = "port", then_match = { required = true },
-          }, },
-  }, }, }, },
+      },
+    },
+  },
 }
 
