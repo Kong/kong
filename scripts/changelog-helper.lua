@@ -416,7 +416,7 @@ Remove this whole section afterwards.
 
     print(fmt([[
 - %s
-  [#%d](%s)%s.
+  [#%d](%s)%s
   Categorization: %s(%s)
   Commits:]],
   pr.title, pr.number, pr.url, render_pr_li_thank_you(pr.authors, non_kongers_hash), pr.typ, pr.scope))
