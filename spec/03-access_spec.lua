@@ -82,11 +82,10 @@ for _, strategy in strategies() do
   local policy = strategy == "off" and "redis" or "cluster"
   local MOCK_RATE = 3
 
-  local s = "rate-limiting-advanced (access) with policy: " .. policy
+  local s = "rate-limiting-advanced, policy '" .. policy .."' [#"..strategy.."]"
   if policy == "redis" then
-    s = "#flaky " .. s
+    s = s .. " #flaky"
   end
-  s = s .. " using database strategy " .. strategy
 
   -- helper function to build plugin config
   local build_plugin = build_plugin_fn(policy)
