@@ -30,12 +30,12 @@ local plugins = {
   "session",
   "acme",
   "grpc-gateway",
+  "grpc-web",
+  "pre-function",
+  "post-function",
   -- external plugins
   "azure-functions",
   "zipkin",
-  "pre-function",
-  "post-function",
-  "grpc-web",
 }
 
 local plugin_map = {}
