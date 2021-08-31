@@ -20,8 +20,6 @@ local time = ngx.time
 -- all_strategries is not available on earlier versions spec.helpers in Kong
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-local TEST_CONF = helpers.test_conf
-
 -- helper functions to build test objects
 local function build_request(host, path, method)
   return {
@@ -62,22 +60,6 @@ local function build_plugin_fn(strategy)
   end
 end
 
-local function find_in_file(pat, cnt, path)
-  local f = assert(io.open(path or TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log, "r"))
-  local line = f:read("*l")
-  local count = 0
-
-  while line do
-    if line:match(pat) then
-      count = count + 1
-    end
-
-    line = f:read("*l")
-  end
-
-  return cnt == -1 and count >= 1 or count == cnt
-end
-
 for _, strategy in strategies() do
   local policy = strategy == "off" and "redis" or "cluster"
   local MOCK_RATE = 3
@@ -93,7 +75,7 @@ for _, strategy in strategies() do
   describe(s, function()
     local bp, consumer1, consumer2, plugin, plugin2, plugin3, plugin4
 
-    setup(function()
+    lazy_setup(function()
       helpers.kill_all()
       redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, REDIS_PASSWORD)
 
@@ -624,7 +606,7 @@ for _, strategy in strategies() do
       end
     end)
 
-    teardown(function()
+    lazy_teardown(function()
       helpers.stop_kong()
       helpers.stop_kong("node2")
 
@@ -850,6 +832,9 @@ for _, strategy in strategies() do
       end)
 
       it("we are NOT leaking any timers after DELETE", function()
+        helpers.clean_logfile()
+        helpers.clean_logfile("node2/logs/error.log")
+
         local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/get",
@@ -868,12 +853,10 @@ for _, strategy in strategies() do
         })
         assert.res_status(200, res)
 
-        ngx.sleep(plugin3.config.sync_rate)
-
-        assert(find_in_file("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1))
+        assert.logfile().has.line("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
 
         -- Check in NODE 2
-        assert(find_in_file("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "node2/logs/error.log"))
+        assert.logfile("node2/logs/error.log").has.line("start sync Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
 
         -- DELETE the plugin
         local res = assert(helpers.admin_client():send {
@@ -882,16 +865,16 @@ for _, strategy in strategies() do
         })
         assert.res_status(204, res)
 
-        -- Wait to check for the DELETED plugin with the datastore
-        ngx.sleep(10)
-
-        assert(find_in_file("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1))
+        assert.logfile().has.line("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
 
         -- Check in NODE 2
-        assert(find_in_file("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "node2/logs/error.log"))
-      end)
+        assert.logfile("node2/logs/error.log").has.line("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
+        end)
 
       it("we are NOT leaking any timers after DELETE on hybrid mode", function()
+        helpers.clean_logfile("dp1/logs/error.log")
+        helpers.clean_logfile("dp2/logs/error.log")
+
         -- DELETE the plugin
         local res = assert(helpers.admin_client(nil, 9103):send {
           method = "DELETE",
@@ -899,17 +882,16 @@ for _, strategy in strategies() do
         })
         assert.res_status(204, res)
 
-        -- Wait to check for the DELETED plugin with the CP
-        ngx.sleep(10)
-
         -- Check in DP 1
-        assert(find_in_file("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "dp1/logs/error.log"))
+        assert.logfile("dp1/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
 
         -- Check in DP 2
-        assert(find_in_file("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "dp2/logs/error.log"))
+        assert.logfile("dp2/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
       end)
 
       it("#flaky new plugin is created in a new route in hybrid mode", function()
+        helpers.clean_logfile("dp1/logs/error.log")
+        helpers.clean_logfile("dp2/logs/error.log")
         -- POST a service in the CP
         local res = assert(helpers.admin_client(nil, 9103):send {
           method = "POST",
@@ -987,16 +969,17 @@ for _, strategy in strategies() do
         })
         assert.res_status(200, res)
 
-        ngx.sleep(1)
-
         -- Check in DP 1
-        assert(find_in_file("start sync Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "dp1/logs/error.log"))
+        assert.logfile("dp1/logs/error.log").has.line("start sync Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
 
         -- Check in DP 2
-        assert(find_in_file("start sync Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "dp2/logs/error.log"))
+        assert.logfile("dp2/logs/error.log").has.line("start sync Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
       end)
 
       it("new plugin works in a new service in traditional mode", function()
+        helpers.clean_logfile()
+        helpers.clean_logfile("node2/logs/error.log")
+
         -- POST a service
         local res = assert(helpers.admin_client():send {
           method = "POST",
@@ -1074,13 +1057,11 @@ for _, strategy in strategies() do
         })
         assert.res_status(200, res)
 
-        ngx.sleep(1)
-
         -- Check in NODE 1
-        assert(find_in_file("start sync Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1))
+        assert.logfile().has.line("start sync Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
 
         -- Check in NODE 2
-        assert(find_in_file("start sync Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", -1, "node2/logs/error.log"))
+        assert.logfile("node2/logs/error.log").has.line("start sync Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
       end)
 
 

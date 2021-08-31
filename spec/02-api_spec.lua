@@ -11,7 +11,7 @@ local cjson = require "cjson"
 describe("rate-limiting-advanced API", function()
   local admin_client, bp
 
-  setup(function()
+  lazy_setup(function()
     bp = helpers.get_db_utils(nil, nil, {"rate-limiting-advanced"})
 
     assert(bp.routes:insert {
@@ -26,7 +26,7 @@ describe("rate-limiting-advanced API", function()
     admin_client = helpers.admin_client()
   end)
 
-  teardown(function()
+  lazy_teardown(function()
     if admin_client then
       admin_client:close()
     end
@@ -103,7 +103,7 @@ describe("rate-limiting-advanced API", function()
   describe("PATCH", function()
     local plugin_id
 
-    setup(function()
+    lazy_setup(function()
       local res = assert(admin_client:send {
         method = "POST",
         path = "/routes/test/plugins/",
