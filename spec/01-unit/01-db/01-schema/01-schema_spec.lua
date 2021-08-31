@@ -1749,6 +1749,7 @@ describe("schema", function()
         }
       })
       assert.falsy(Test:validate_update({ a = 12 }))
+      assert.falsy(Test:validate_update({ a = ngx.null, b = ngx.null }))
       assert.truthy(Test:validate_update({ a = 12, b = ngx.null }))
     end)
 
@@ -1847,6 +1848,13 @@ describe("schema", function()
 
       ok, err = Test:validate_update({
         a2 = "foo"
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate_update({
+        a1 = "foo",
+        a2 = "foo",
       })
       assert.truthy(ok)
       assert.falsy(err)

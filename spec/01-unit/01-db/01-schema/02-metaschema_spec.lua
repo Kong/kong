@@ -937,7 +937,7 @@ describe("metasubschema", function()
     }
     local ok, err = MetaSchema.MetaSubSchema:validate(s)
     assert.falsy(ok)
-    assert.match("only one of these fields must be non-empty",
+    assert.match("exactly one of these fields must be non-empty",
                  err.entity_checks[1]["@entity"][1], 1, true)
   end)
 
