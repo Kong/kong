@@ -1,7 +1,8 @@
 ## Unreleased
 
-- fix(schema) add a "local" strategy
-- feat(*) allow request path to be used as the rl identifier
+- fix(sync_delay) relax limit from 0-1 to 0-0.02 [FTI-2777](https://konghq.atlassian.net/browse/FTI-2777)
+- feat(*) allow request path to be used as the rl identifier [FT-1502](https://konghq.atlassian.net/browse/FT-1502)
+- fix(schema) add a "local" strategy [FT-1859](https://konghq.atlassian.net/browse/FT-1859)
 
 ## 1.4.4
 
@@ -99,7 +100,8 @@
 ## 0.31.4
 
 ### Changed
- - Internal improvements
+
+- Internal improvements
 
 ## 0.31.3
 
@@ -107,7 +109,7 @@
 
 - Fix issue preventing the plugin to load configuration and create sync timers
 - Fix issue preventing the plugin to correctly propagate configuration changes
-among Kong Nginx workers
+  among Kong Nginx workers
 
 ## 0.31.2
 
