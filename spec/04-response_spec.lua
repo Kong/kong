@@ -19,7 +19,7 @@ for _, strategy in helpers.all_strategies() do
 
       do
         local routes = {}
-        for i = 1, 10 do
+        for i = 1, 11 do
           table.insert(routes,
                        bp.routes:insert({
                          hosts = { "test" .. i .. ".example.com" }
@@ -94,6 +94,9 @@ for _, strategy in helpers.all_strategies() do
           response_if_status_code = {
             201,
           }
+        })
+        add_plugin(routes[11], {
+          response_jq_program = ".post_data.params.large_string",
         })
       end
 
@@ -227,6 +230,22 @@ for _, strategy in helpers.all_strategies() do
         local json = assert.response(r).has.jsonbody()
         -- json is unfiltered, entire response object
         assert.same("bar", json.uri_args.foo)
+      end)
+
+      it("filters with large body spanning buffers", function()
+        local r = assert(client:send {
+          method  = "GET",
+          path    = "/request?foo=bar",
+          headers = {
+            ["Host"] = "test11.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            large_string = string.rep("*", 1024 * 1024),
+          },
+        })
+        local json = assert.response(r).has.jsonbody()
+        assert.same(1024 * 1024, #json)
       end)
     end)
   end)
