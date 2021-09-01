@@ -270,7 +270,7 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
         operation, " to workers: ", err)
     end
     -- => to cluster_events handler
-    local key = fmt("%s:%s:%s:%s", operation, ws_id, upstream.id, upstream.name)
+    local key = fmt("%s:%s:%s:%s", operation, data.entity.ws_id, upstream.id, upstream.name)
     local ok, err = cluster_events:broadcast("balancer:upstreams", key)
     if not ok then
       log(ERR, "failed broadcasting upstream ", operation, " to cluster: ", err)
