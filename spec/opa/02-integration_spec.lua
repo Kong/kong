@@ -108,6 +108,19 @@ for _, strategy in strategies() do
         },
       }
 
+      route = bp.routes:insert({
+        hosts = { "test8.example.com" },
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = route.id },
+        config = {
+          opa_path = "/v1/data/example/allow3",
+          opa_host = "opa",
+          opa_port = 8181,
+        },
+      }
+
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
@@ -152,6 +165,15 @@ for _, strategy in strategies() do
 
         assert.same("yolo",json.headers["header-from-opa"])
       end)
+      it("when correct header and path are set", function()
+        local r = client:get("/request", {
+          headers = {
+            host = "test8.example.com",
+            ["my-secret-header"] = "open-sesame",
+          }
+        })
+        assert.response(r).has.status(200)
+      end)
     end)
 
 
@@ -172,6 +194,15 @@ for _, strategy in strategies() do
         })
 
         assert.same("yolo-bye",r.headers["header-from-opa"])
+      end)
+      it("when path is not as need in policy", function()
+        local r = client:get("/request-wrong", {
+          headers = {
+            host = "test8.example.com",
+            ["my-secret-header"] = "open-sesame",
+          }
+        })
+        assert.response(r).has.status(403)
       end)
     end)
 
