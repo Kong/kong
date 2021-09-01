@@ -68,6 +68,21 @@
 
 - Bumped `openresty` from 1.19.3.2 to [1.19.9.1](https://openresty.org/en/changelog-1019009.html)
   [#7430](https://github.com/Kong/kong/pull/7727)
+- Bumped `openssl` from `1.1.1k` to `1.1.1l`
+  [7767](https://github.com/Kong/kong/pull/7767)
+
+### Additions
+
+#### Core
+
+- Schema improvements:
+  - New entity validator: `mutually_exclusive`.
+
+#### Plugins
+
+- **aws-lambda**: The plugin will now try to detect the AWS region by using `AWS_REGION` and
+  `AWS_DEFAULT_REGION` environment variables (when not specified with the plugin configuration).
+  [#7765](https://github.com/Kong/kong/pull/7765)
 
 ## [2.5.0]
 

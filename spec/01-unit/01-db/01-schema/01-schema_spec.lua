@@ -1822,6 +1822,7 @@ describe("schema", function()
         }
       })
       assert.falsy(Test:validate_update({ a = 12 }))
+      assert.falsy(Test:validate_update({ a = ngx.null, b = ngx.null }))
       assert.truthy(Test:validate_update({ a = 12, b = ngx.null }))
     end)
 
@@ -1897,6 +1898,45 @@ describe("schema", function()
       assert.truthy(ok)
       assert.falsy(err)
     end)
+
+    it("test mutually exclusive checks", function()
+      local Test = Schema.new({
+        fields = {
+          { a1 = { type = "string" } },
+          { a2 = { type = "string" } },
+          { a3 = { type = "string" } },
+        },
+        entity_checks = {
+          { mutually_exclusive = { "a2" } },
+          { mutually_exclusive = { "a1", "a3" } },
+        }
+      })
+
+      local ok, err = Test:validate_update({
+        a1 = "foo",
+        a3 = "foo",
+      })
+      assert.is_falsy(ok)
+      assert.match("only one or none of these fields must be set: 'a1', 'a3'", err["@entity"][1])
+
+      ok, err = Test:validate_update({
+        a2 = "foo"
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate_update({
+        a1 = "foo",
+        a2 = "foo",
+      })
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      ok, err = Test:validate_update({})
+      assert.truthy(ok)
+      assert.falsy(err)
+    end)
+
 
     it("test mutually required checks specified by transformations", function()
       local Test = Schema.new({

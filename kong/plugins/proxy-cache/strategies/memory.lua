@@ -79,7 +79,7 @@ function _M:fetch(key)
 
   -- decode object from JSON to table
   local req_obj = cjson.decode(req_json)
-  if not req_json then
+  if not req_obj then
     return nil, "could not decode request object"
   end
 
@@ -118,7 +118,7 @@ function _M:touch(key, req_ttl, timestamp)
 
   -- decode object from JSON to table
   local req_obj = cjson.decode(req_json)
-  if not req_json then
+  if not req_obj then
     return nil, "could not decode request object"
   end
 
