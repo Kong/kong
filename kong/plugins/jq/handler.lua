@@ -111,7 +111,7 @@ function Jq:header_filter(conf)
     kong.response.clear_header("Content-Length")
 
     if kong.response.get_header("Content-Encoding") == "gzip" then
-      ngx.ctx.jq_should_gzip_inflate = true
+      kong.ctx.plugin.should_inflate_gzip = true
       kong.response.clear_header("Content-Encoding")
     end
   end
@@ -128,22 +128,22 @@ function Jq:body_filter(conf)
     is_status_code_allowed(kong.response.get_status(),
                            conf.response_if_status_code) then
 
-    local ctx = ngx.ctx
-    ctx.jq_buffered_body_chunks = ctx.jq_buffered_body_chunks or {}
+    local ctx = kong.ctx.plugin
+    ctx.buffered_body_chunks = ctx.buffered_body_chunks or {}
 
     local chunk, eof = ngx.arg[1], ngx.arg[2]
 
     -- buffer until eof
     if not eof then
-      tbl_insert(ctx.jq_buffered_body_chunks, chunk)
+      tbl_insert(ctx.buffered_body_chunks, chunk)
       ngx.arg[1] = nil
       return
     end
 
     -- done buffering, let's do this
-    local response_body = tbl_concat(ctx.jq_buffered_body_chunks)
+    local response_body = tbl_concat(ctx.buffered_body_chunks)
 
-    if ctx.jq_should_gzip_inflate then
+    if ctx.should_inflate_gzip then
       response_body = inflate_gzip(response_body)
     end
 
