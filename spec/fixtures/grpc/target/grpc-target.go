@@ -28,7 +28,8 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 
 func (s *server) BounceIt(ctx context.Context, in *pb.BallIn) (*pb.BallOut, error) {
 	w := in.GetWhen().AsTime()
-	ago := time.Now().Sub(w)
+	now := in.GetNow().AsTime()
+	ago := now.Sub(w)
 
 	reply := fmt.Sprintf("hello %s", in.GetMessage())
 	time_message := fmt.Sprintf("%s was %v ago", w.Format(time.RFC3339), ago.Truncate(time.Second))
@@ -36,8 +37,14 @@ func (s *server) BounceIt(ctx context.Context, in *pb.BallIn) (*pb.BallOut, erro
 	return &pb.BallOut{
 		Reply:       reply,
 		TimeMessage: time_message,
-		Now:         timestamppb.New(time.Now()),
+		Now:         timestamppb.New(now),
 	}, nil
+}
+
+func (s *server) GrowTail(ctx context.Context, in *pb.Body) (*pb.Body, error) {
+	in.Tail.Count += 1
+
+	return in, nil
 }
 
 func main() {
