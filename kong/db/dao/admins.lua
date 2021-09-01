@@ -45,10 +45,6 @@ function _Admins:insert(admin, options)
   -- ngx.null, not nil. See kong.db.schema.init:1588.
   admin.username = admin.username or ngx.null
 
-  if type(admin.username) == 'string' then
-    admin.username_lower = admin.username:lower()
-  end
-
   local ok, errors = self.schema:validate(admin, false)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
@@ -81,12 +77,17 @@ function _Admins:insert(admin, options)
     return nil, err
   end
 
+  if type(admin.username) == 'string' then
+    admin.username_lower = admin.username:lower()
+  end
+
   local admin_for_db = {
     consumer = { id = consumer.id },
     rbac_user = { id = rbac_user.id },
     email = admin.email,
     status = admin.status or enums.CONSUMERS.STATUS.INVITED,
     username = admin.username,
+    username_lower = admin.username_lower,
     custom_id = admin.custom_id,
     rbac_token_enabled = admin.rbac_token_enabled,
   }
