@@ -13,18 +13,18 @@ local Admins = {}
 
 
 function Admins:select_by_username_ignore_case(username)
-  local escaped_value = cassandra.text(fmt("%s", username:lower())).val
+  local escaped_value = cassandra.text(username:lower()).val
   local qs = fmt(
     "SELECT * FROM admins WHERE username_lower = '%s';",
     escaped_value)
 
-  local consumers, err = kong.db.connector:query(qs)
+  local admins, err = kong.db.connector:query(qs)
 
-  for i, consumer in ipairs(consumers) do
-    consumers[i] = self:deserialize_row(consumer)
+  for i, admin in ipairs(admins) do
+    admins[i] = self:deserialize_row(admin)
   end
 
-  return consumers, err
+  return admins, err
 end
 
 return Admins
