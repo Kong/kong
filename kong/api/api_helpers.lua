@@ -374,6 +374,10 @@ function _M.attach_routes(app, routes)
       methods[method_name] = parse_params(wrapped_handler)
     end
 
+    if not methods["HEAD"] and methods["GET"] then
+      methods["HEAD"] = methods["GET"]
+    end
+
     app:match(route_path, route_path, app_helpers.respond_to(methods))
 
     assert(hooks.run_hook("api:helpers:attach_routes",
@@ -400,6 +404,10 @@ function _M.attach_new_db_routes(app, routes)
       end
 
       methods[method_name] = parse_params(wrapped_handler)
+    end
+
+    if not methods["HEAD"] and methods["GET"] then
+      methods["HEAD"] = methods["GET"]
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
