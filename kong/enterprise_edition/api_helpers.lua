@@ -42,6 +42,32 @@ local auth_whitelisted_uris = {
 }
 
 
+local function find_admin_ignore_case(user_name)
+  local admins, err = kong.db.admins:select_by_username_ignore_case(user_name)
+
+  if err then
+    log(DEBUG, _log_prefix, "Admin not found with user_name=" .. user_name)
+    return nil, err
+  end
+
+  if #admins > 1 then
+    local match_info = {}
+
+    for _, match in pairs(admins) do
+      table.insert(match_info, fmt("%s (id: %s)", match.username, match.id))
+    end
+
+    log(NOTICE, _log_prefix, fmt("Multiple Admins match '%s' case-insensitively: %s", user_name, table.concat(match_info, ", ")))
+  end
+
+  local admin = admins[1]
+  if admin then
+    admin, err = kong.db.admins:select({ id = admin.id }, {skip_rbac = true})
+  end
+
+  return admin, err
+end
+
 function _M.get_consumer_status(consumer)
   local status
 
@@ -89,26 +115,7 @@ function _M.validate_admin(ignore_case)
 
   -- find an admin case-insensitively if specified
   if not admin and ignore_case then
-    local admins
-
-    admins, err = kong.db.admins:select_by_username_ignore_case(user_name)
-
-    if err then
-      log(DEBUG, _log_prefix, "Admin not found with user_name=" .. user_name)
-      return nil, err
-    end
-
-    if #admins > 1 then
-      local match_info = {}
-
-      for _, match in pairs(admins) do
-        table.insert(match_info, fmt("%s (id: %s)", match.username, match.id))
-      end
-
-      log(NOTICE, _log_prefix, fmt("Multiple Admins match '%s' case-insensitively: %s", user_name, table.concat(match_info, ", ")))
-    end
-
-    admin, err = kong.db.admins:select({ id = admins[1].id }, {skip_rbac = true})
+    admin, err = find_admin_ignore_case(user_name)
   end
 
   if not admin then
