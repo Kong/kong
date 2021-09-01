@@ -122,6 +122,14 @@ end
 --
 -- Note: we buffer the entire response in order to feed valid JSON to jq.
 function Jq:body_filter(conf)
+  local chunk, eof = ngx.arg[1], ngx.arg[2]
+
+  -- Other plugins may also be buffering, which means we may expect nil buffers
+  -- and then a large complete buffer at the end.
+  if not eof and (not chunk or chunk == "") then
+    return
+  end
+
   if type(conf.response_jq_program) == "string" and
     is_media_type_allowed(kong.response.get_header("Content-Type"),
                           conf.response_if_media_type) and
@@ -131,11 +139,10 @@ function Jq:body_filter(conf)
     local ctx = kong.ctx.plugin
     ctx.buffered_body_chunks = ctx.buffered_body_chunks or {}
 
-    local chunk, eof = ngx.arg[1], ngx.arg[2]
+    tbl_insert(ctx.buffered_body_chunks, chunk)
 
     -- buffer until eof
     if not eof then
-      tbl_insert(ctx.buffered_body_chunks, chunk)
       ngx.arg[1] = nil
       return
     end
