@@ -222,9 +222,7 @@ function AWSLambdaHandler:access(conf)
     )
 
     if not iam_role_credentials then
-      return kong.response.exit(500, {
-        message = "An unexpected error occurred"
-      })
+      return kong.response.error(500)
     end
 
     opts.access_key = iam_role_credentials.access_key
@@ -239,8 +237,7 @@ function AWSLambdaHandler:access(conf)
   local request
   request, err = aws_v4(opts)
   if err then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   -- Trigger request
@@ -260,8 +257,7 @@ function AWSLambdaHandler:access(conf)
     }
   }
   if not ok then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   local res, err = client:request {
@@ -271,8 +267,7 @@ function AWSLambdaHandler:access(conf)
     headers = request.headers
   }
   if not res then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   local content = res:read_body()
@@ -292,8 +287,7 @@ function AWSLambdaHandler:access(conf)
 
   ok, err = client:set_keepalive(conf.keepalive)
   if not ok then
-    kong.log.err(err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
+    return error(err)
   end
 
   local status
@@ -333,6 +327,6 @@ function AWSLambdaHandler:access(conf)
 end
 
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = "3.6.0"
+AWSLambdaHandler.VERSION = "3.6.1"
 
 return AWSLambdaHandler
