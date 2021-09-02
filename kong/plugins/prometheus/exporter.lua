@@ -60,7 +60,7 @@ local function init()
                                           "Health status of targets of upstream. " ..
                                           "States = healthchecks_off|healthy|unhealthy|dns_error, " ..
                                           "value is 1 when state is populated.",
-                                          {"upstream", "target", "address", "state"})
+                                          {"upstream", "target", "address", "state", "subsystem"})
 
   local memory_stats = {}
   memory_stats.worker_vms = prometheus:gauge("memory_workers_lua_vms_bytes",
@@ -140,10 +140,10 @@ end
 local labels_table = {0, 0, 0}
 local labels_table4 = {0, 0, 0, 0}
 local upstream_target_addr_health_table = {
-  { value = 0, labels = { 0, 0, 0, "healthchecks_off" } },
-  { value = 0, labels = { 0, 0, 0, "healthy" } },
-  { value = 0, labels = { 0, 0, 0, "unhealthy" } },
-  { value = 0, labels = { 0, 0, 0, "dns_error" } },
+  { value = 0, labels = { 0, 0, 0, "healthchecks_off", ngx.config.subsystem } },
+  { value = 0, labels = { 0, 0, 0, "healthy", ngx.config.subsystem } },
+  { value = 0, labels = { 0, 0, 0, "unhealthy", ngx.config.subsystem } },
+  { value = 0, labels = { 0, 0, 0, "dns_error", ngx.config.subsystem } },
 }
 
 local function set_healthiness_metrics(table, upstream, target, address, status, metrics_bucket)
