@@ -12,17 +12,12 @@ describe("[AWS Lambda] iam-ec2", function()
     http.new = function()
       return {
         set_timeout = function() end,
-        connect = function()
-          return true
-        end,
-        request = function()
+        request_uri = function()
+          local body = http_responses[1]
+          table.remove(http_responses, 1)
           return {
             status = 200,
-            read_body = function()
-              local body = http_responses[1]
-              table.remove(http_responses, 1)
-              return body
-            end,
+            body = body,
           }
         end,
       }
