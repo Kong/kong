@@ -79,6 +79,8 @@ function Consumers:insert(entity, options)
     entity.username_lower = entity.username:lower()
   end
 
+  invalidate_consumer_cache(self, entity, options)
+
   return self.super.insert(self, entity, options)
 end
 
