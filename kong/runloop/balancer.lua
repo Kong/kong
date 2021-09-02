@@ -515,7 +515,7 @@ do
     local balancer, err = create_balancer_exclusive(upstream)
 
     creating[upstream.id] = nil
-    local ws_id = workspaces.get_workspace_id()
+    local ws_id = upstream.ws_id or workspaces.get_workspace_id()
     upstream_by_name[ws_id .. ":" .. upstream.name] = upstream
 
     return balancer, err
@@ -676,7 +676,7 @@ end
 local function do_upstream_event(operation, upstream_data)
   local upstream_id = upstream_data.id
   local upstream_name = upstream_data.name
-  local ws_id = workspaces.get_workspace_id()
+  local ws_id = upstream_data.ws_id or workspaces.get_workspace_id()
   local by_name_key = ws_id .. ":" .. upstream_name
 
   if operation == "create" then
@@ -864,7 +864,7 @@ local function update_balancer_state(premature)
 
   while upstream_events_queue[1] do
     local v = upstream_events_queue[1]
-    local _, err = do_upstream_event(v.operation, v.upstream_data, v.workspaces)
+    local _, err = do_upstream_event(v.operation, v.upstream_data)
     if err then
       log(CRIT, "failed handling upstream event: ", err)
       return
