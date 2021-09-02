@@ -148,7 +148,7 @@ function upstreams_M.get_upstream_by_name(upstream_name)
 end
 
 function upstreams_M.setUpstream_by_name(upstream)
-  local ws_id = workspaces.get_workspace_id()
+  local ws_id = upstream.ws_id or workspaces.get_workspace_id()
   upstream_by_name[ws_id .. ":" .. upstream.name] = upstream
 end
 
@@ -162,7 +162,7 @@ local upstream_events_queue = {}
 local function do_upstream_event(operation, upstream_data)
   local upstream_id = upstream_data.id
   local upstream_name = upstream_data.name
-  local ws_id = workspaces.get_workspace_id()
+  local ws_id = upstream_data.ws_id or workspaces.get_workspace_id()
   local by_name_key = ws_id .. ":" .. upstream_name
 
   if operation == "create" then
@@ -231,7 +231,7 @@ function upstreams_M.update_balancer_state(premature)
 
   while upstream_events_queue[1] do
     local event  = upstream_events_queue[1]
-    local _, err = do_upstream_event(event.operation, event.upstream_data, event.workspaces)
+    local _, err = do_upstream_event(event.operation, event.upstream_data)
     if err then
       log(CRIT, "failed handling upstream event: ", err)
       return
