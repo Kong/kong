@@ -22,6 +22,7 @@ type BouncerClient interface {
 	// define a gRPC method that's not implemented in the target
 	UnknownMethod(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloResponse, error)
 	BounceIt(ctx context.Context, in *BallIn, opts ...grpc.CallOption) (*BallOut, error)
+	GrowTail(ctx context.Context, in *Body, opts ...grpc.CallOption) (*Body, error)
 }
 
 type bouncerClient struct {
@@ -59,6 +60,15 @@ func (c *bouncerClient) BounceIt(ctx context.Context, in *BallIn, opts ...grpc.C
 	return out, nil
 }
 
+func (c *bouncerClient) GrowTail(ctx context.Context, in *Body, opts ...grpc.CallOption) (*Body, error) {
+	out := new(Body)
+	err := c.cc.Invoke(ctx, "/targetservice.Bouncer/GrowTail", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BouncerServer is the server API for Bouncer service.
 // All implementations must embed UnimplementedBouncerServer
 // for forward compatibility
@@ -67,6 +77,7 @@ type BouncerServer interface {
 	// define a gRPC method that's not implemented in the target
 	UnknownMethod(context.Context, *HelloRequest) (*HelloResponse, error)
 	BounceIt(context.Context, *BallIn) (*BallOut, error)
+	GrowTail(context.Context, *Body) (*Body, error)
 	mustEmbedUnimplementedBouncerServer()
 }
 
@@ -82,6 +93,9 @@ func (UnimplementedBouncerServer) UnknownMethod(context.Context, *HelloRequest) 
 }
 func (UnimplementedBouncerServer) BounceIt(context.Context, *BallIn) (*BallOut, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BounceIt not implemented")
+}
+func (UnimplementedBouncerServer) GrowTail(context.Context, *Body) (*Body, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GrowTail not implemented")
 }
 func (UnimplementedBouncerServer) mustEmbedUnimplementedBouncerServer() {}
 
@@ -150,6 +164,24 @@ func _Bouncer_BounceIt_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Bouncer_GrowTail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Body)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BouncerServer).GrowTail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/targetservice.Bouncer/GrowTail",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BouncerServer).GrowTail(ctx, req.(*Body))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Bouncer_ServiceDesc is the grpc.ServiceDesc for Bouncer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -168,6 +200,10 @@ var Bouncer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BounceIt",
 			Handler:    _Bouncer_BounceIt_Handler,
+		},
+		{
+			MethodName: "GrowTail",
+			Handler:    _Bouncer_GrowTail_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
