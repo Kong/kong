@@ -663,7 +663,7 @@ do
           path = "/cache/2",
           headers = {
             host = "route-7.com",
-            ["Cache-Control"] = "min-fresh=30"
+            ["Cache-Control"] = "min-fresh=30",
           }
         })
 
@@ -677,7 +677,7 @@ do
           path = "/cache/10",
           headers = {
             host = "route-7.com",
-            ["Cache-Control"] = "max-age=2"
+            ["Cache-Control"] = "max-age=2",
           }
         })
 
@@ -695,7 +695,7 @@ do
           path = "/cache/10",
           headers = {
             host = "route-7.com",
-            ["Cache-Control"] = "max-age=2"
+            ["Cache-Control"] = "max-age=2",
           }
         })
 
@@ -719,7 +719,7 @@ do
           path = "/cache/10",
           headers = {
             host = "route-7.com",
-            ["Cache-Control"] = "max-age=2"
+            ["Cache-Control"] = "max-age=2",
           }
         })
 
@@ -1038,7 +1038,7 @@ do
         path = "/get",
         headers = {
           host = "route-11.com",
-          foo = "bar"
+          foo = "bar",
         }
       })
       assert.res_status(200, res)
@@ -1055,7 +1055,7 @@ do
         path = "/get",
         headers = {
           host = "route-11.com",
-          foo = "bar"
+          foo = "bar",
         }
       })
       assert.res_status(200, res)
@@ -1066,7 +1066,7 @@ do
         path = "/get",
         headers = {
           host = "route-11.com",
-          foo = "baz"
+          foo = "baz",
         }
       })
       assert.res_status(200, res)
