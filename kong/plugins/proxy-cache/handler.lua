@@ -52,6 +52,11 @@ local function overwritable_header(header)
      and not ngx_re_match(n_header, "ratelimit-remaining")
 end
 
+local function set_header(header, value)
+  if ngx.var.http_kong_debug then
+    kong.response.set_header(header, value)
+  end
+end
 
 local function parse_directive_header(h)
   if not h then
@@ -203,8 +208,7 @@ local function signal_cache_req(ctx, cache_key, cache_status)
   ctx.proxy_cache = {
     cache_key = cache_key,
   }
-
-  kong.response.set_header("X-Cache-Status", cache_status or "Miss")
+  set_header("X-Cache-Status", cache_status or "Miss")
 end
 
 
@@ -260,7 +264,7 @@ function ProxyCacheHandler:access(conf)
 
   -- if we know this request isnt cacheable, bail out
   if not cacheable_request(conf, cc) then
-    kong.response.set_header("X-Cache-Status", "Bypass")
+    set_header("X-Cache-Status", "Bypass")
     return
   end
 
@@ -275,7 +279,7 @@ function ProxyCacheHandler:access(conf)
                                               kong.request.get_headers(),
                                               conf)
 
-  kong.response.set_header("X-Cache-Key", cache_key)
+  set_header("X-Cache-Key", cache_key)
 
   -- try to fetch the cached object from the computed cache key
   local strategy = require(STRATEGY_PATH)({
@@ -356,8 +360,15 @@ function ProxyCacheHandler:access(conf)
     end
   end
 
-  res.headers["Age"] = floor(time() - res.timestamp)
-  res.headers["X-Cache-Status"] = "Hit"
+
+  if ngx.var.http_kong_debug then
+    res.headers["Age"] = floor(time() - res.timestamp)
+    res.headers["X-Cache-Status"] = "Hit"
+  else
+    res.headers["Age"] = nil
+    res.headers["X-Cache-Status"] = nil
+    res.headers["X-Cache-Key"] = nil
+  end
 
   return kong.response.exit(res.status, res.body, res.headers)
 end
@@ -381,7 +392,7 @@ function ProxyCacheHandler:header_filter(conf)
     proxy_cache.res_ttl = conf.cache_control and resource_ttl(cc) or conf.cache_ttl
 
   else
-    kong.response.set_header("X-Cache-Status", "Bypass")
+    set_header("X-Cache-Status", "Bypass")
     ctx.proxy_cache = nil
   end
 

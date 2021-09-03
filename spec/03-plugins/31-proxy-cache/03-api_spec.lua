@@ -206,6 +206,7 @@ describe("Plugin: proxy-cache", function()
         local res = assert(proxy_client:get("/get", {
           headers = {
             host = "route-1.com",
+            ["kong-debug"] = 1,
           }
         }))
 
@@ -221,6 +222,7 @@ describe("Plugin: proxy-cache", function()
         res = assert(proxy_client:get("/get", {
           headers = {
             host = "route-1.com",
+            ["kong-debug"] = 1,
           }
         }))
 
@@ -236,6 +238,7 @@ describe("Plugin: proxy-cache", function()
         local res = assert(proxy_client:get("/get", {
           headers = {
             host = "route-1.com",
+            ["kong-debug"] = 1,
           }
         }))
 
@@ -249,6 +252,7 @@ describe("Plugin: proxy-cache", function()
         local res = assert(proxy_client:get("/get", {
           headers = {
             host = "route-1.com",
+            ["kong-debug"] = 1,
           }
         }))
 
@@ -260,6 +264,7 @@ describe("Plugin: proxy-cache", function()
         local res = assert(proxy_client:get("/get", {
           headers = {
             host = "route-1.com",
+            ["kong-debug"] = 1,
           }
         }))
         assert.res_status(200, res)
@@ -269,6 +274,7 @@ describe("Plugin: proxy-cache", function()
         local res = assert(proxy_client:get("/get", {
           headers = {
             host = "route-2.com",
+            ["kong-debug"] = 1,
           }
         }))
 
@@ -284,6 +290,7 @@ describe("Plugin: proxy-cache", function()
         res = assert(proxy_client:get("/get", {
           headers = {
             host = "route-2.com",
+            ["kong-debug"] = 1,
           }
         }))
 
