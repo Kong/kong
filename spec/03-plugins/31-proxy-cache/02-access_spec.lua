@@ -344,13 +344,11 @@ do
     end)
 
     it("caches a simple request", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      local res = assert(client:get("/get", {
         headers = {
           host = "route-1.com",
         }
-      })
+      }))
 
       local body1 = assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -365,13 +363,11 @@ do
       --  return strategy:fetch(cache_key1) ~= nil
       --end, TIMEOUT)
 
-      local res = client:send {
-        method = "GET",
-        path = "/get",
+      local res = client:get("/get", {
         headers = {
           host = "route-1.com",
         }
-      }
+      })
 
       local body2 = assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
@@ -386,13 +382,12 @@ do
     end)
 
     it("respects cache ttl", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      local res = assert(client:get("/get", {
         headers = {
           host = "route-6.com",
         }
       })
+      )
 
       --local cache_key2 = res.headers["X-Cache-Key"]
       assert.res_status(200, res)
@@ -403,13 +398,11 @@ do
       --  return strategy:fetch(cache_key2) ~= nil
       --end, TIMEOUT)
 
-      res = client:send {
-        method = "GET",
-        path = "/get",
+      res = client:get("/get", {
         headers = {
           host = "route-6.com",
         }
-      }
+      })
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
@@ -427,13 +420,11 @@ do
       --end, TIMEOUT)
 
       -- and go through the cycle again
-      res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      res = assert(client:get("/get", {
         headers = {
           host = "route-6.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -444,25 +435,21 @@ do
       --  return strategy:fetch(cache_key) ~= nil
       --end, TIMEOUT)
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      res = assert(client:get("/get", {
         headers = {
           host = "route-6.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
 
       -- examine the behavior of keeping cache in memory for longer than ttl
-      res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      res = assert(client:get("/get", {
         headers = {
           host = "route-9.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -473,13 +460,11 @@ do
       --  return strategy:fetch(cache_key) ~= nil
       --end, TIMEOUT)
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      res = assert(client:get("/get", {
         headers = {
           host = "route-9.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
@@ -498,37 +483,31 @@ do
       --end, TIMEOUT)
 
       -- and go through the cycle again
-      res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      res = assert(client:get("/get", {
         headers = {
           host = "route-9.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Refresh", res.headers["X-Cache-Status"])
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      res = assert(client:get("/get", {
         headers = {
           host = "route-9.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
     end)
 
     it("respects cache ttl via cache control", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/cache/2",
+      local res = assert(client:get("/cache/2", {
         headers = {
           host = "route-7.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -539,13 +518,11 @@ do
       --  return strategy:fetch(cache_key) ~= nil
       --end, TIMEOUT)
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/cache/2",
+      res = assert(client:get("/cache/2", {
         headers = {
           host = "route-7.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
@@ -561,13 +538,11 @@ do
       --end, TIMEOUT)
 
       -- and go through the cycle again
-      res = assert(client:send {
-        method = "GET",
-        path = "/cache/2",
+      res = assert(client:get("/cache/2", {
         headers = {
           host = "route-7.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -577,36 +552,30 @@ do
       --  return strategy:fetch(cache_key) ~= nil
       --end, TIMEOUT)
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/cache/2",
+      res = assert(client:get("/cache/2", {
         headers = {
           host = "route-7.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
 
       -- assert that max-age=0 never results in caching
-      res = assert(client:send {
-        method = "GET",
-        path = "/cache/0",
+      res = assert(client:get("/cache/0", {
         headers = {
           host = "route-7.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Bypass", res.headers["X-Cache-Status"])
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/cache/0",
+      res = assert(client:get("/cache/0", {
         headers = {
           host = "route-7.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Bypass", res.headers["X-Cache-Status"])
@@ -615,26 +584,22 @@ do
     it("public not present in Cache-Control, but max-age is", function()
       -- httpbin's /cache endpoint always sets "Cache-Control: public"
       -- necessary to set it manually using /response-headers instead
-      local res = assert(client:send {
-        method = "GET",
-        path = "/response-headers?Cache-Control=max-age%3D604800",
+      local res = assert(client:get("/response-headers?Cache-Control=max-age%3D604800", {
         headers = {
           host = "route-7.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
     end)
 
     it("Cache-Control contains s-maxage only", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/response-headers?Cache-Control=s-maxage%3D604800",
+      local res = assert(client:get("/response-headers?Cache-Control=s-maxage%3D604800", {
         headers = {
           host = "route-7.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -642,14 +607,12 @@ do
 
     it("Expires present, Cache-Control absent", function()
       local httpdate = ngx.escape_uri(os.date("!%a, %d %b %Y %X %Z", os.time()+5000))
-      local res = assert(client:send {
-        method = "GET",
-        path = "/response-headers",
+      local res = assert(client:get("/response-headers", {
         query = "Expires=" .. httpdate,
         headers = {
           host = "route-7.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -658,28 +621,24 @@ do
     describe("respects cache-control", function()
       it("min-fresh", function()
         -- bypass via unsatisfied min-fresh
-        local res = assert(client:send {
-          method = "GET",
-          path = "/cache/2",
+        local res = assert(client:get("/cache/2", {
           headers = {
             host = "route-7.com",
             ["Cache-Control"] = "min-fresh=30",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Refresh", res.headers["X-Cache-Status"])
       end)
 
       it("max-age", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/cache/10",
+        local res = assert(client:get("/cache/10", {
           headers = {
             host = "route-7.com",
             ["Cache-Control"] = "max-age=2",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
@@ -690,14 +649,12 @@ do
         --  return strategy:fetch(cache_key) ~= nil
         --end, TIMEOUT)
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/cache/10",
+        res = assert(client:get("/cache/10", {
           headers = {
             host = "route-7.com",
             ["Cache-Control"] = "max-age=2",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
@@ -714,27 +671,23 @@ do
         --  return ngx.time() - obj.timestamp > 2
         --end, TIMEOUT)
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/cache/10",
+        res = assert(client:get("/cache/10", {
           headers = {
             host = "route-7.com",
             ["Cache-Control"] = "max-age=2",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Refresh", res.headers["X-Cache-Status"])
       end)
 
       it("max-stale", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/cache/2",
+        local res = assert(client:get("/cache/2", {
           headers = {
             host = "route-8.com",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
@@ -745,13 +698,11 @@ do
         --  return strategy:fetch(cache_key) ~= nil
         --end, TIMEOUT)
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/cache/2",
+        res = assert(client:get("/cache/2", {
           headers = {
             host = "route-8.com",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
@@ -767,41 +718,35 @@ do
         --  return ngx.time() - obj.timestamp - obj.ttl > 2
         --end, TIMEOUT)
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/cache/2",
+        res = assert(client:get("/cache/2", {
           headers = {
             host = "route-8.com",
             ["Cache-Control"] = "max-stale=1",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Refresh", res.headers["X-Cache-Status"])
       end)
 
       it("only-if-cached", function()
-        local res = assert(client:send {
-          method = "GET",
-          path   = "/get?not=here",
+        local res = assert(client:get("/get?not=here", {
           headers = {
             host = "route-8.com",
             ["Cache-Control"] = "only-if-cached",
           }
-        })
+        }))
 
         assert.res_status(504, res)
       end)
     end)
 
     it("caches a streaming request", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/stream/3",
+      local res = assert(client:get("/stream/3", {
         headers = {
           host = "route-1.com",
         }
-      })
+      }))
 
       local body1 = assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -813,13 +758,11 @@ do
       --  return strategy:fetch(cache_key) ~= nil
       --end, TIMEOUT)
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/stream/3",
+      res = assert(client:get("/stream/3", {
         headers = {
           host = "route-1.com",
         }
-      })
+      }))
 
       local body2 = assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
@@ -827,25 +770,21 @@ do
     end)
 
     it("uses a separate cache key for the same consumer between routes", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      local res = assert(client:get("/get", {
         headers = {
           host = "route-13.com",
           apikey = "bob",
         }
-      })
+      }))
       assert.res_status(200, res)
       local cache_key1 = res.headers["X-Cache-Key"]
 
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      local res = assert(client:get("/get", {
         headers = {
           host = "route-14.com",
           apikey = "bob",
         }
-      })
+      }))
       assert.res_status(200, res)
       local cache_key2 = res.headers["X-Cache-Key"]
 
@@ -853,25 +792,21 @@ do
     end)
 
     it("uses a separate cache key for the same consumer between routes/services", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      local res = assert(client:get("/get", {
         headers = {
           host = "route-15.com",
           apikey = "bob",
         }
-      })
+      }))
       assert.res_status(200, res)
       local cache_key1 = res.headers["X-Cache-Key"]
 
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      local res = assert(client:get("/get", {
         headers = {
           host = "route-16.com",
           apikey = "bob",
         }
-      })
+      }))
       assert.res_status(200, res)
       local cache_key2 = res.headers["X-Cache-Key"]
 
@@ -879,13 +814,11 @@ do
     end)
 
     it("uses an separate cache key between routes-specific and a global plugin", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      local res = assert(client:get("/get", {
         headers = {
           host = "route-3.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -894,13 +827,11 @@ do
       assert.matches("^[%w%d]+$", cache_key1)
       assert.equals(64, #cache_key1)
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      res = assert(client:get("/get", {
         headers = {
           host = "route-4.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
 
@@ -910,13 +841,11 @@ do
     end)
 
     it("differentiates caches between instances", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      local res = assert(client:get("/get", {
         headers = {
           host = "route-2.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -930,13 +859,11 @@ do
       --  return strategy:fetch(cache_key1) ~= nil
       --end, TIMEOUT)
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      res = assert(client:get("/get", {
         headers = {
           host = "route-2.com",
         }
-      })
+      }))
 
       local cache_key2 = res.headers["X-Cache-Key"]
       assert.res_status(200, res)
@@ -945,69 +872,57 @@ do
     end)
 
     it("uses request params as part of the cache key", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get?a=b&b=c",
+      local res = assert(client:get("/get?a=b&b=c", {
         headers = {
           host = "route-1.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get?a=c",
+      res = assert(client:get("/get?a=c", {
         headers = {
           host = "route-1.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
 
       assert.same("Miss", res.headers["X-Cache-Status"])
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get?b=c&a=b",
+      res = assert(client:get("/get?b=c&a=b", {
         headers = {
           host = "route-1.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get?a&b",
+      res = assert(client:get("/get?a&b", {
         headers = {
           host = "route-1.com",
         }
-      })
+      }))
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get?a&b",
+      res = assert(client:get("/get?a&b", {
         headers = {
           host = "route-1.com",
         }
-      })
+      }))
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
     end)
 
     it("can focus only in a subset of the query arguments", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get?foo=b&b=c",
+      local res = assert(client:get("/get?foo=b&b=c", {
         headers = {
           host = "route-12.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -1019,13 +934,11 @@ do
       --  return strategy:fetch(cache_key) ~= nil
       --end, TIMEOUT)
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get?b=d&foo=b",
+      res = assert(client:get("/get?b=d&foo=b", {
         headers = {
           host = "route-12.com",
         }
-      })
+      }))
 
       assert.res_status(200, res)
 
@@ -1033,14 +946,12 @@ do
     end)
 
     it("uses headers if instructed to do so", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      local res = assert(client:get("/get", {
         headers = {
           host = "route-11.com",
           foo = "bar",
         }
-      })
+      }))
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
       --local cache_key = res.headers["X-Cache-Key"]
@@ -1050,88 +961,74 @@ do
       --  return strategy:fetch(cache_key) ~= nil
       --end, TIMEOUT)
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      res = assert(client:get("/get", {
         headers = {
           host = "route-11.com",
           foo = "bar",
         }
-      })
+      }))
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/get",
+      res = assert(client:get("/get", {
         headers = {
           host = "route-11.com",
           foo = "baz",
         }
-      })
+      }))
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
     end)
 
     describe("handles authenticated routes", function()
       it("by ignoring cache if the request is unauthenticated", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/get",
+        local res = assert(client:get("/get", {
           headers = {
             host = "route-5.com",
           }
-        })
+        }))
 
         assert.res_status(401, res)
         assert.is_nil(res.headers["X-Cache-Status"])
       end)
 
       it("by maintaining a separate cache per consumer", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/get",
+        local res = assert(client:get("/get", {
           headers = {
             host = "route-5.com",
             apikey = "bob",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/get",
+        res = assert(client:get("/get", {
           headers = {
             host = "route-5.com",
             apikey = "bob",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
 
-        local res = assert(client:send {
-          method = "GET",
-          path = "/get",
+        local res = assert(client:get("/get", {
           headers = {
             host = "route-5.com",
             apikey = "alice",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/get",
+        res = assert(client:get("/get", {
           headers = {
             host = "route-5.com",
             apikey = "alice",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
@@ -1141,9 +1038,7 @@ do
 
     describe("bypasses cache for uncacheable requests: ", function()
       it("request method", function()
-        local res = assert(client:send {
-          method = "POST",
-          path = "/post",
+        local res = assert(client:post("/post", {
           headers = {
             host = "route-1.com",
             ["Content-Type"] = "application/json",
@@ -1151,7 +1046,7 @@ do
           {
             foo = "bar",
           },
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Bypass", res.headers["X-Cache-Status"])
@@ -1160,26 +1055,22 @@ do
 
     describe("bypasses cache for uncacheable responses:", function()
       it("response status", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/418",
+        local res = assert(client:get("/status/418", {
           headers = {
             host = "route-1.com",
           },
-        })
+        }))
 
         assert.res_status(418, res)
         assert.same("Bypass", res.headers["X-Cache-Status"])
       end)
 
       it("response content type", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/xml",
+        local res = assert(client:get("/xml", {
           headers = {
             host = "route-1.com",
           },
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Bypass", res.headers["X-Cache-Status"])
@@ -1188,9 +1079,7 @@ do
 
     describe("caches non-default", function()
       it("request methods", function()
-        local res = assert(client:send {
-          method = "POST",
-          path = "/post",
+        local res = assert(client:post("/post", {
           headers = {
             host = "route-10.com",
             ["Content-Type"] = "application/json",
@@ -1198,7 +1087,7 @@ do
           {
             foo = "bar",
           },
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
@@ -1209,9 +1098,7 @@ do
         --  return strategy:fetch(cache_key) ~= nil
         --end, TIMEOUT)
 
-        res = assert(client:send {
-          method = "POST",
-          path = "/post",
+        res = assert(client:post("/post", {
           headers = {
             host = "route-10.com",
             ["Content-Type"] = "application/json",
@@ -1219,31 +1106,27 @@ do
           {
             foo = "bar",
           },
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
       end)
 
       it("response status", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/417",
+        local res = assert(client:get("/status/417", {
           headers = {
             host = "route-10.com",
           },
-        })
+        }))
 
         assert.res_status(417, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/status/417",
+        res = assert(client:get("/status/417", {
           headers = {
             host = "route-10.com",
           },
-        })
+        }))
 
         assert.res_status(417, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
@@ -1253,25 +1136,21 @@ do
 
     describe("displays Kong core headers:", function()
       it("X-Kong-Proxy-Latency", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/get?show-me=proxy-latency",
+        local res = assert(client:get("/get?show-me=proxy-latency", {
           headers = {
             host = "route-1.com",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Proxy-Latency"])
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/get?show-me=proxy-latency",
+        res = assert(client:get("/get?show-me=proxy-latency", {
           headers = {
             host = "route-1.com",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
@@ -1279,13 +1158,11 @@ do
       end)
 
       it("X-Kong-Upstream-Latency", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/get?show-me=upstream-latency",
+        local res = assert(client:get("/get?show-me=upstream-latency", {
           headers = {
             host = "route-1.com",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
@@ -1297,13 +1174,11 @@ do
         --  return strategy:fetch(cache_key) ~= nil
         --end, TIMEOUT)
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/get?show-me=upstream-latency",
+        res = assert(client:get("/get?show-me=upstream-latency", {
           headers = {
             host = "route-1.com",
           }
-        })
+        }))
 
         assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
