@@ -115,6 +115,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       local res_1 = assert(client_1:get("/get", {
         headers = {
           Host = "route-1.com",
+          ["kong-debug"] = 1,
         },
       }))
 
@@ -125,6 +126,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       local res_2 = assert(client_2:get("/get", {
         headers = {
           host = "route-1.com",
+          ["kong-debug"] = 1,
         },
       }))
 
@@ -135,6 +137,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       res_1 = assert(client_1:get("/get", {
         headers = {
           host = "route-2.com",
+          ["kong-debug"] = 1,
         },
       }))
 
@@ -146,6 +149,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       res_2 = assert(client_2:get("/get", {
         headers = {
           host = "route-2.com",
+          ["kong-debug"] = 1,
         },
       }))
 
@@ -157,6 +161,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       local res_1 = assert(client_1:get("/get", {
         headers = {
           host = "route-1.com",
+          ["kong-debug"] = 1,
         },
       }))
 
@@ -166,6 +171,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       local res_2 = assert(client_2:get("/get", {
         headers = {
           host = "route-1.com",
+          ["kong-debug"] = 1,
         },
       }))
 
@@ -189,6 +195,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       res_1 = assert(client_1:get("/get", {
         headers = {
           Host = "route-1.com",
+          ["kong-debug"] = 1,
         },
       }))
 
@@ -198,6 +205,7 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       res_2 = assert(client_2:get("/get", {
         headers = {
           host = "route-1.com",
+          ["kong-debug"] = 1,
         },
       }))
 
