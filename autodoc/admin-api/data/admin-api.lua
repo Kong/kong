@@ -1296,6 +1296,29 @@ return {
           ]],
           example = "-----BEGIN EC PRIVATE KEY-----..."
         },
+        tls_verify = {
+          description = [[
+            Whether to enable verification of server TLS certificate.
+            If set to `null`, then the Nginx default is respected.
+          ]],
+          example = true,
+        },
+        tls_verify_depth = {
+          description = [[
+            Maximum depth of chain while verifying server's TLS certificate.
+            If set to `null`, then the Nginx default is respected.
+          ]],
+        },
+        ca_certificates = {
+          description = [[
+            Array of `CA Certificate` object UUIDs that are used to bundle
+            certificates will be sent to clients.
+          ]],
+          example = {
+            "4e3ad2e4-0bc4-4638-8e34-c84a417ba39b",
+            "51e77dc2-8f3e-4afa-9d0e-0e3bbbcfd515",
+          }
+        },
         tags = {
           description = [[
             An optional set of strings associated with the Certificate for grouping and filtering.

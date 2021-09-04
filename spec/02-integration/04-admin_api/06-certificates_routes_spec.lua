@@ -93,6 +93,7 @@ describe("Admin API: #" .. strategy, function()
     bp, db = helpers.get_db_utils(strategy, {
       "certificates",
       "snis",
+      "ca_certificates"
     })
 
     assert(helpers.start_kong({
@@ -103,6 +104,30 @@ describe("Admin API: #" .. strategy, function()
   lazy_teardown(function()
     helpers.stop_kong()
   end)
+
+  local function add_certificate_with_ca()
+    local n1 = get_name()
+    local n2 = get_name()
+    local names = { n1, n2 }
+
+    local ca_certificate = bp.ca_certificates:insert()
+
+    local res    = client:post("/certificates", {
+      body       = {
+        cert                = ssl_fixtures.cert,
+        key                 = ssl_fixtures.key,
+        snis                = names,
+        tls_verify          = true,
+        ca_certificates     = { ca_certificate.id },
+        tls_verify_depth    = 1,
+      },
+      headers = { ["Content-Type"] = "application/json" },
+    })
+
+    local body = assert.res_status(201, res)
+    local certificate = cjson.decode(body)
+    return certificate, names, { ca_certificate.id }
+  end
 
   describe("/certificates", function()
 
@@ -296,6 +321,20 @@ describe("Admin API: #" .. strategy, function()
         assert.is_string(json1.key)
         assert.is_string(json1.cert_alt)
         assert.is_string(json1.key_alt)
+        assert.same(names, json1.snis)
+      end)
+
+      it("retrieves a certificate by id with CA cetificates", function()
+        local certificate, names, ca_certificates = add_certificate_with_ca()
+        local res1  = client:get("/certificates/" .. certificate.id)
+        local body1 = assert.res_status(200, res1)
+        local json1 = cjson.decode(body1)
+
+        assert.is_string(json1.cert)
+        assert.is_string(json1.key)
+        assert.is_true(json1.tls_verify)
+        assert.is_table(json1.ca_certificates, ca_certificates)
+        assert.is_equal(json1.tls_verify_depth, 1)
         assert.same(names, json1.snis)
       end)
 

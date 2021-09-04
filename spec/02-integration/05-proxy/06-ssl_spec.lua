@@ -633,4 +633,61 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
+
+  describe("TLS with CA [#" .. strategy .. "]", function()
+
+    lazy_setup(function()
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "certificates",
+        "snis",
+        "ca_certificates",
+      })
+
+      local service = bp.services:insert {
+        name = "default-cert",
+      }
+
+      bp.routes:insert {
+        protocols = { "https" },
+        hosts     = { "example.com" },
+        service   = service,
+      }
+
+      local ca_certificate = bp.ca_certificates:insert()
+
+      local cert = bp.certificates:insert {
+        cert             = ssl_fixtures.cert,
+        key              = ssl_fixtures.key,
+        tls_verify       = true,
+        tls_verify_depth = 1,
+        ca_certificates  = { ca_certificate.id },
+      }
+
+      bp.snis:insert {
+        name = "*",
+        certificate = cert,
+      }
+
+      assert(helpers.start_kong {
+        database    = strategy,
+        nginx_conf  = "spec/fixtures/custom_nginx.template",
+      })
+
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong()
+    end)
+
+    describe("handshake", function()
+      it("sets the default certificate of '*' SNI", function()
+        local cert = get_cert("example.com")
+        assert.cn("ssl-example.com", cert)
+        local ca = string.match(cert ,"Acceptable client certificate CA names\n*([^\n]+)")
+        assert.equal(ca, "C = US, ST = California, O = Kong Testing, CN = Kong Testing Root CA")
+      end)
+    end)
+  end)
 end

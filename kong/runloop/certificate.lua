@@ -28,6 +28,7 @@ local tb_sort   = table.sort
 local tostring = tostring
 local ipairs = ipairs
 local ngx_md5 = ngx.md5
+local verify_client = ngx_ssl.verify_client
 
 
 local default_cert_and_key
@@ -74,6 +75,9 @@ local function parse_key_and_cert(row)
     key = key,
     cert_alt = cert_alt,
     key_alt = key_alt,
+    tls_verify = row.tls_verify,
+    tls_verify_depth = row.tls_verify_depth,
+    ca_certificates = row.ca_certificates,
   }
 end
 
@@ -158,6 +162,29 @@ local function fetch_certificate(pk, sni_name)
 end
 
 
+local function fetch_ca_certificates(ca_ids)
+  local cas = new_tab(#ca_ids, 0)
+  local key = new_tab(1, 0)
+
+  for i, ca_id in ipairs(ca_ids) do
+    key.id = ca_id
+
+    local obj, err = kong.db.ca_certificates:select(key)
+    if not obj then
+      if err then
+        return nil, err
+      end
+
+      return nil, "CA Certificate '" .. tostring(ca_id) .. "' does not exist"
+    end
+
+    cas[i] = obj
+  end
+
+  return cas
+end
+
+
 local get_certificate_opts = {
   l1_serializer = parse_key_and_cert,
 }
@@ -183,6 +210,21 @@ local get_ca_store_opts = {
     end
 
     return trust_store
+  end,
+}
+
+local get_bundle_cas_opts = {
+  l1_serializer = function(cas)
+    local ca_bundle = ""
+    for _, ca in ipairs(cas) do
+      ca_bundle = ca_bundle .. ca.cert
+    end
+    local ca_certs, err = parse_pem_cert(ca_bundle)
+    if not ca_certs then
+      return nil, "could not parse CA certificates: " .. err
+    end
+
+    return ca_certs
   end,
 }
 
@@ -244,6 +286,19 @@ local function find_certificate(sni)
 end
 
 
+local function bundle_cas_cache_key(ca_ids)
+  tb_sort(ca_ids)
+  return "bundle_cas:" .. ngx_md5(tb_concat(ca_ids, ':'))
+end
+
+
+local function get_bundle_ca_certs(ca_ids)
+  return kong.core_cache:get(bundle_cas_cache_key(ca_ids),
+                         get_bundle_cas_opts, fetch_ca_certificates,
+                         ca_ids)
+end
+
+
 local function execute()
   local sn, err = server_name()
   if err then
@@ -295,35 +350,26 @@ local function execute()
       return ngx.exit(ngx.ERROR)
     end
   end
+
+  if cert_and_key.tls_verify then
+    local cas, err = get_bundle_ca_certs(cert_and_key.ca_certificates)
+    if not cas then
+      log(ERR, "unable to get server TLS CA certs, err: ", err)
+      return ngx.exit(ngx.ERROR)
+    end
+
+    ok, err = verify_client(cas, cert_and_key.tls_verify_depth)
+    if not ok then
+      log(ERR, "could not set server TLS CA: ", err)
+      return ngx.exit(ngx.ERROR)
+    end
+  end
 end
 
 
 local function ca_ids_cache_key(ca_ids)
   tb_sort(ca_ids)
   return "ca_stores:" .. ngx_md5(tb_concat(ca_ids, ':'))
-end
-
-
-local function fetch_ca_certificates(ca_ids)
-  local cas = new_tab(#ca_ids, 0)
-  local key = new_tab(1, 0)
-
-  for i, ca_id in ipairs(ca_ids) do
-    key.id = ca_id
-
-    local obj, err = kong.db.ca_certificates:select(key)
-    if not obj then
-      if err then
-        return nil, err
-      end
-
-      return nil, "CA Certificate '" .. tostring(ca_id) .. "' does not exist"
-    end
-
-    cas[i] = obj
-  end
-
-  return cas
 end
 
 

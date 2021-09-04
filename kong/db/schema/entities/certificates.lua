@@ -20,6 +20,9 @@ return {
     { cert_alt       = typedefs.certificate { required = false }, },
     { key_alt        = typedefs.key         { required = false }, },
     { tags           = typedefs.tags },
+    { tls_verify         = { type = "boolean", }, },
+    { tls_verify_depth   = { type = "integer", default = nil, between = { 0, 64 }, }, },
+    { ca_certificates    = { type = "array", elements = { type = "string", uuid = true, }, }, },
   },
 
   entity_checks = {
