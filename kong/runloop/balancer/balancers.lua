@@ -1,7 +1,7 @@
 
 
 local upstreams = require "kong.runloop.balancer.upstreams"
-local targets = require "kong.runloop.balancer.targets"
+local targets
 local healthcheckers
 local dns_utils = require "resty.dns.utils"
 
@@ -49,6 +49,7 @@ balancers_M.errors = setmetatable({
 
 
 function balancers_M.init()
+  targets = require "kong.runloop.balancer.targets"
   healthcheckers = require "kong.runloop.balancer.healthcheckers"
 end
 
@@ -546,6 +547,10 @@ end
 
 
 function balancer_mt:getPeer(...)
+  if not self.healthy then
+    return nil, "Balancer is unhealthy"
+  end
+
   if not self.algorithm or not self.algorithm.afterHostUpdate then
     return
   end

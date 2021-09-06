@@ -41,10 +41,11 @@ local resolve_timer_callback
 local queryDns
 
 function targets_M.init()
-  require("kong.tools.dns")(kong.configuration)    -- configure DNS client
+  dns_client = require("kong.tools.dns")(kong.configuration)    -- configure DNS client
   balancers = require "kong.runloop.balancer.balancers"
   ngx.timer.every(1, resolve_timer_callback)
 end
+
 
 local _rtype_to_name
 function targets_M.get_dns_name_from_record_type(rtype)
