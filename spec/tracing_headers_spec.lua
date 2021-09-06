@@ -47,6 +47,13 @@ describe("tracing_headers.parse", function()
       warn:revert()
     end)
 
+    it("does not parse headers with ignore type", function()
+      local b3 = fmt("%s-%s-%s-%s", trace_id, span_id, "1", parent_id)
+      local t = { parse({ tracestate = "b3=" .. b3 }, "ignore") }
+      assert.spy(warn).not_called()
+      assert.same({}, t)
+    end)
+
     it("1-char", function()
       local t  = { parse({ b3 = "1" }) }
       assert.same({ "b3-single", nil, nil, nil, true }, t)

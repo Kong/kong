@@ -114,7 +114,8 @@ if subsystem == "http" then
     local req_headers = req.get_headers()
 
     local header_type, trace_id, span_id, parent_id, should_sample, baggage =
-      tracing_headers.parse(req_headers)
+      tracing_headers.parse(req_headers, conf.header_type)
+
     local method = req.get_method()
 
     if should_sample == nil then

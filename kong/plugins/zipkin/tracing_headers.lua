@@ -364,7 +364,11 @@ local function find_header_type(headers)
 end
 
 
-local function parse(headers)
+local function parse(headers, conf_header_type)
+  if conf_header_type == "ignore" then
+    return nil
+  end
+
   -- Check for B3 headers first
   local header_type, composed_header = find_header_type(headers)
   local trace_id, span_id, parent_id, should_sample
@@ -401,7 +405,10 @@ end
 local function set(conf_header_type, found_header_type, proxy_span, conf_default_header_type)
   local set_header = kong.service.request.set_header
 
+  -- If conf_header_type is set to `preserve`, found_header_type is used over default_header_type;
+  -- if conf_header_type is set to `ignore`, found_header_type is not set, thus default_header_type is used.
   if conf_header_type ~= "preserve" and
+     conf_header_type ~= "ignore" and
      found_header_type ~= nil and
      conf_header_type ~= found_header_type
   then
