@@ -305,7 +305,7 @@ for _, strategy in helpers.each_strategy() do
         assert.True(ok)
         assert.contains("kong.statsd1.request.count:1|c", metrics)
         assert.contains("kong.statsd1.latency:%d+|ms", metrics, true)
-        assert.contains("kong.statsd1.request.size:110|ms", metrics)
+        assert.contains("kong.statsd1.request.size:112|ms", metrics)
         assert.contains("kong.statsd1.request.status.200:1|c", metrics)
         assert.contains("kong.statsd1.request.status.total:1|c", metrics)
         assert.contains("kong.statsd1.response.size:%d+|ms", metrics, true)
