@@ -5,6 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local kong = kong
+local cert_utils = require "kong.plugins.kafka-log.cert_utils"
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local producers = require "kong.plugins.kafka-log.producers"
 local cjson_encode = require("cjson").encode
@@ -19,6 +21,18 @@ KafkaLogHandler.VERSION = "0.1.1"
 local function timer_log(premature, conf, message)
   if premature then
     return
+  end
+
+  -- fetch certificate from the store
+  if conf.security.certificate_id then
+    local cert_obj, err = cert_utils.load_certificate(conf.security.certificate_id)
+    if not cert_obj then
+      kong.log.err("failed to find certificate: ", err)
+      return kong.response.exit(500, { message = "Could not load certificate" })
+    end
+
+    conf.security.client_cert = cert_obj.cert
+    conf.security.client_priv_key = cert_obj.priv_key
   end
 
   local producer, err = producers.get_or_create(conf)
