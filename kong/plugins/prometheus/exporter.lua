@@ -3,6 +3,7 @@ local ngx = ngx
 local find = string.find
 local lower = string.lower
 local concat = table.concat
+local sort = table.sort
 local select = select
 local balancer = require("kong.runloop.balancer")
 local get_all_upstreams = balancer.get_all_upstreams
@@ -82,25 +83,25 @@ local function init()
   if kong_subsystem == "http" then
     metrics.status = prometheus:counter("http_status",
                                         "HTTP status codes per service/route in Kong",
-                                        {"service", "route", "code"})
+                                        {"service", "route", "code", "service_tags", "route_tags"})
   else
     metrics.status = prometheus:counter("stream_status",
                                         "Stream status codes per service/route in Kong",
-                                        {"service", "route", "code"})
+                                        {"service", "route", "code", "service_tags", "route_tags"})
   end
   metrics.latency = prometheus:histogram("latency",
                                          "Latency added by Kong, total " ..
                                          "request time and upstream latency " ..
                                          "for each service/route in Kong",
-                                         {"service", "route", "type"},
+                                         {"service", "route", "type", "service_tags", "route_tags"},
                                          DEFAULT_BUCKETS) -- TODO make this configurable
   metrics.bandwidth = prometheus:counter("bandwidth",
                                          "Total bandwidth in bytes " ..
                                          "consumed per service/route in Kong",
-                                         {"service", "route", "type"})
+                                         {"service", "route", "type", "service_tags", "route_tags"})
   metrics.consumer_status = prometheus:counter("http_consumer_status",
                                           "HTTP status codes for customer per service/route in Kong",
-                                          {"service", "route", "code", "consumer"})
+                                          {"service", "route", "code", "consumer", "service_tags", "route_tags"})
 
 
   -- Hybrid mode status
@@ -144,8 +145,8 @@ end
 
 -- Since in the prometheus library we create a new table for each diverged label
 -- so putting the "more dynamic" label at the end will save us some memory
-local labels_table = {0, 0, 0}
-local labels_table4 = {0, 0, 0, 0}
+local labels_table = {0, 0, 0, '', ''}
+local labels_table6 = {0, 0, 0, 0, 0, 0}
 local upstream_target_addr_health_table = {
   { value = 0, labels = { 0, 0, 0, "healthchecks_off", ngx.config.subsystem } },
   { value = 0, labels = { 0, 0, 0, "healthy", ngx.config.subsystem } },
@@ -191,6 +192,12 @@ if kong_subsystem == "http" then
     labels_table[1] = service_name
     labels_table[2] = route_name
     labels_table[3] = message.response.status
+    if message.service.tags then
+      labels_table[4] = concat(sort(message.service.tags), ",")
+    end
+    if message.route.tags then
+      labels_table[5] = concat(sort(message.route.tags), ",")
+    end
     metrics.status:inc(1, labels_table)
 
     local request_size = tonumber(message.request.size)
@@ -224,11 +231,13 @@ if kong_subsystem == "http" then
     end
 
     if serialized.consumer ~= nil then
-      labels_table4[1] = labels_table[1]
-      labels_table4[2] = labels_table[2]
-      labels_table4[3] = message.response.status
-      labels_table4[4] = serialized.consumer
-      metrics.consumer_status:inc(1, labels_table4)
+      labels_table6[1] = labels_table[1]
+      labels_table6[2] = labels_table[2]
+      labels_table6[3] = message.response.status
+      labels_table6[4] = serialized.consumer
+      labels_table6[5] = labels_table[4]
+      labels_table6[6] = labels_table[5]
+      metrics.consumer_status:inc(1, labels_table6)
     end
   end
 
@@ -257,6 +266,12 @@ else
     labels_table[1] = service_name
     labels_table[2] = route_name
     labels_table[3] = message.session.status
+    if message.service.tags then
+      labels_table[4] = concat(sort(message.service.tags), ",")
+    end
+    if message.route.tags then
+      labels_table[5] = concat(sort(message.route.tags), ",")
+    end
     metrics.status:inc(1, labels_table)
 
     local ingress_size = tonumber(message.session.received)

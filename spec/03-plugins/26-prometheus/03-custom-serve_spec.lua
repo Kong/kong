@@ -57,7 +57,7 @@ describe("Plugin: prometheus (custom server)",function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
-      assert.matches('kong_http_status{service="mock-service",route="http-route",code="200"} 1', body, nil, true)
+      assert.matches('kong_http_status{service="mock-service",route="http-route",code="200",service_tags="",route_tags=""} 1', body, nil, true)
     end)
     it("custom port returns 404 for anything other than /metrics", function()
       local client = helpers.http_client("127.0.0.1", 9542)

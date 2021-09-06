@@ -14,6 +14,8 @@ return {
         type = "record",
         fields = {
           { per_consumer = { type = "boolean", default = false }, },
+          { expose_services_tags = { type = "boolean", default = false }, },
+          { expose_routes_tags = { type = "boolean", default = false }, },
         },
         custom_validator = validate_shared_dict,
     }, },

@@ -170,7 +170,7 @@ describe("Plugin: prometheus (access via status API)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
-      return body:find('kong_http_status{service="mock-service",route="http-route",code="200"} 1', nil, true)
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="200",service_tags="",route_tags=""} 1', nil, true)
     end)
 
     res = assert(proxy_client:send {
@@ -188,7 +188,7 @@ describe("Plugin: prometheus (access via status API)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
-      return body:find('kong_http_status{service="mock-service",route="http-route",code="400"} 1', nil, true)
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="400",service_tags="",route_tags=""} 1', nil, true)
     end)
   end)
 
@@ -211,7 +211,7 @@ describe("Plugin: prometheus (access via status API)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
-      return body:find('kong_http_status{service="mock-grpc-service",route="grpc-route",code="200"} 1', nil, true)
+      return body:find('kong_http_status{service="mock-grpc-service",route="grpc-route",code="200",service_tags="",route_tags=""} 1', nil, true)
     end)
 
     ok, resp = proxy_client_grpcs({
@@ -232,7 +232,7 @@ describe("Plugin: prometheus (access via status API)", function()
         path    = "/metrics",
       })
       local body = assert.res_status(200, res)
-      return body:find('kong_http_status{service="mock-grpcs-service",route="grpcs-route",code="200"} 1', nil, true)
+      return body:find('kong_http_status{service="mock-grpcs-service",route="grpcs-route",code="200",service_tags="",route_tags=""} 1', nil, true)
     end)
   end)
 

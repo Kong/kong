@@ -22,6 +22,12 @@ function PrometheusHandler.log(self, conf)
   if conf.per_consumer and message.consumer ~= nil then
     serialized.consumer = message.consumer.username
   end
+  if not conf.expose_services_tags and message.service ~= nil then
+    message.service.tags = nil
+  end
+  if not conf.expose_routes_tags and message.route ~= nil then
+    message.route.tags = nil
+  end
 
   prometheus.log(message, serialized)
 end

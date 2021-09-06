@@ -108,7 +108,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('kong_http_status{service="mock-service",route="http-route",code="200"} 1', nil, true)
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="200",service_tags="",route_tags=""} 1', nil, true)
     end)
 
     res = assert(proxy_client:send {
@@ -128,7 +128,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('kong_http_status{service="mock-service",route="http-route",code="400"} 1', nil, true)
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="400",service_tags="",route_tags=""} 1', nil, true)
     end)
   end)
 
@@ -153,7 +153,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('kong_http_status{service="mock-grpc-service",route="grpc-route",code="200"} 1', nil, true)
+      return body:find('kong_http_status{service="mock-grpc-service",route="grpc-route",code="200",service_tags="",route_tags=""} 1', nil, true)
     end)
 
     ok, resp = proxy_client_grpcs({
@@ -176,7 +176,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('kong_http_status{service="mock-grpcs-service",route="grpcs-route",code="200"} 1', nil, true)
+      return body:find('kong_http_status{service="mock-grpcs-service",route="grpcs-route",code="200",service_tags="",route_tags=""} 1', nil, true)
     end)
   end)
 
@@ -199,7 +199,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('kong_stream_status{service="tcp-service",route="tcp-route",code="200"} 1', nil, true)
+      return body:find('kong_stream_status{service="tcp-service",route="tcp-route",code="200",service_tags="",route_tags=""} 1', nil, true)
     end)
 
     thread:join()
@@ -354,6 +354,645 @@ describe("Plugin: prometheus (access) no stream listeners", function()
   end)
 end)
 
+describe("Plugin: prometheus (access) exposing tags", function()
+  local proxy_client
+  local admin_client
+  local proxy_client_grpc
+  local proxy_client_grpcs
+
+  setup(function()
+    local bp = helpers.get_db_utils()
+
+    local service = bp.services:insert {
+      name = "mock-service",
+      host = helpers.mock_upstream_host,
+      port = helpers.mock_upstream_port,
+      protocol = helpers.mock_upstream_protocol,
+      tags = {"service-http-tag1", "service-http-tag3", "service-http-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "http" },
+      name = "http-route",
+      paths = { "/" },
+      methods = { "GET" },
+      service = service,
+      tags = {"route-http-tag1", "route-http-tag3", "route-http-tag2"},
+    }
+
+    local grpc_service = bp.services:insert {
+      name = "mock-grpc-service",
+      url = "grpc://grpcbin:9000",
+      tags = {"service-grpc-tag1", "service-grpc-tag3", "service-grpc-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "grpc" },
+      name = "grpc-route",
+      hosts = { "grpc" },
+      service = grpc_service,
+      tags = {"route-grpc-tag1", "route-grpc-tag3", "route-grpc-tag2"},
+    }
+
+    local grpcs_service = bp.services:insert {
+      name = "mock-grpcs-service",
+      url = "grpcs://grpcbin:9001",
+      tags = {"service-grpcs-tag1", "service-grpcs-tag3", "service-grpcs-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "grpcs" },
+      name = "grpcs-route",
+      hosts = { "grpcs" },
+      service = grpcs_service,
+      tags = {"route-grpcs-tag1", "route-grpcs-tag3", "route-grpcs-tag2"},
+    }
+
+    local tcp_service = bp.services:insert {
+      name = "tcp-service",
+      url = "tcp://127.0.0.1:" .. tcp_service_port,
+      tags = {"service-tcp-tag1", "service-tcp-tag3", "service-tcp-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "tcp" },
+      name = "tcp-route",
+      service = tcp_service,
+      destinations = { { port = tcp_proxy_port } },
+      tags = {"route-tcp-tag1", "route-tcp-tag3", "route-tcp-tag2"},
+    }
+
+    bp.plugins:insert {
+      protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
+      name = "prometheus",
+      config = {
+        expose_services_tags = true,
+        expose_routes_tags = true,
+      },
+    }
+
+    helpers.tcp_server(tcp_service_port)
+    assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled, prometheus",
+        stream_listen = "127.0.0.1:" .. tcp_proxy_port,
+    })
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
+    proxy_client_grpc = helpers.proxy_client_grpc()
+    proxy_client_grpcs = helpers.proxy_client_grpcs()
+  end)
+
+  teardown(function()
+    helpers.kill_tcp_server(tcp_service_port)
+    if proxy_client then
+      proxy_client:close()
+    end
+    if admin_client then
+      admin_client:close()
+    end
+
+    helpers.stop_kong()
+  end)
+
+  it("increments the count for proxied requests", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+      }
+    })
+    assert.res_status(200, res)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="200",service_tags="service-http-tag1,service-http-tag2,service-http-tag3",route_tags="route-http-tag1,route-http-tag2,route-http-tag3"} 1', nil, true)
+    end)
+
+    res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/400",
+      headers = {
+        host = helpers.mock_upstream_host,
+      }
+    })
+    assert.res_status(400, res)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="400",service_tags="service-http-tag1,service-http-tag2,service-http-tag3",route_tags="route-http-tag1,route-http-tag2,route-http-tag3"} 1', nil, true)
+    end)
+  end)
+
+  it("increments the count for proxied grpc requests", function()
+    local ok, resp = proxy_client_grpc({
+      service = "hello.HelloService.SayHello",
+      body = {
+        greeting = "world!"
+      },
+      opts = {
+        ["-authority"] = "grpc",
+      }
+    })
+    assert(ok, resp)
+    assert.truthy(resp)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-grpc-service",route="grpc-route",code="200",service_tags="service-grpc-tag1,service-grpc-tag2,service-grpc-tag3",route_tags="route-grpc-tag1,route-grpc-tag2,route-grpc-tag3"} 1', nil, true)
+    end)
+
+    ok, resp = proxy_client_grpcs({
+      service = "hello.HelloService.SayHello",
+      body = {
+        greeting = "world!"
+      },
+      opts = {
+        ["-authority"] = "grpcs",
+      }
+    })
+    assert(ok, resp)
+    assert.truthy(resp)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-grpcs-service",route="grpcs-route",code="200",service_tags="service-grpcs-tag1,service-grpcs-tag2,service-grpcs-tag3",route_tags="route-grpcs-tag1,route-grpcs-tag2,route-grpcs-tag3"} 1', nil, true)
+    end)
+  end)
+
+  pending("increments the count for proxied TCP streams", function()
+    local conn = assert(ngx.socket.connect("127.0.0.1", tcp_proxy_port))
+
+    assert(conn:send("hi there!\n"))
+    local gotback = assert(conn:receive("*a"))
+    assert.equal("hi there!\n", gotback)
+
+    conn:close()
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_stream_status{service="tcp-service",route="tcp-route",code="200",service_tags="service-tcp-tag1,service-tcp-tag2,service-tcp-tag3",route_tags="route-tcp-tag1,route-tcp-tag2,route-tcp-tag3"} 1', nil, true)
+    end)
+  end)
+end)
+
+describe("Plugin: prometheus (access) exposing only route tags", function()
+  local proxy_client
+  local admin_client
+  local proxy_client_grpc
+  local proxy_client_grpcs
+
+  setup(function()
+    local bp = helpers.get_db_utils()
+
+    local service = bp.services:insert {
+      name = "mock-service",
+      host = helpers.mock_upstream_host,
+      port = helpers.mock_upstream_port,
+      protocol = helpers.mock_upstream_protocol,
+      tags = {"service-http-tag1", "service-http-tag3", "service-http-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "http" },
+      name = "http-route",
+      paths = { "/" },
+      methods = { "GET" },
+      service = service,
+      tags = {"route-http-tag1", "route-http-tag3", "route-http-tag2"},
+    }
+
+    local grpc_service = bp.services:insert {
+      name = "mock-grpc-service",
+      url = "grpc://grpcbin:9000",
+      tags = {"service-grpc-tag1", "service-grpc-tag3", "service-grpc-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "grpc" },
+      name = "grpc-route",
+      hosts = { "grpc" },
+      service = grpc_service,
+      tags = {"route-grpc-tag1", "route-grpc-tag3", "route-grpc-tag2"},
+    }
+
+    local grpcs_service = bp.services:insert {
+      name = "mock-grpcs-service",
+      url = "grpcs://grpcbin:9001",
+      tags = {"service-grpcs-tag1", "service-grpcs-tag3", "service-grpcs-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "grpcs" },
+      name = "grpcs-route",
+      hosts = { "grpcs" },
+      service = grpcs_service,
+      tags = {"route-grpcs-tag1", "route-grpcs-tag3", "route-grpcs-tag2"},
+    }
+
+    local tcp_service = bp.services:insert {
+      name = "tcp-service",
+      url = "tcp://127.0.0.1:" .. tcp_service_port,
+      tags = {"service-tcp-tag1", "service-tcp-tag3", "service-tcp-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "tcp" },
+      name = "tcp-route",
+      service = tcp_service,
+      destinations = { { port = tcp_proxy_port } },
+      tags = {"route-tcp-tag1", "route-tcp-tag3", "route-tcp-tag2"},
+    }
+
+    bp.plugins:insert {
+      protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
+      name = "prometheus",
+      config = {
+        expose_services_tags = false,
+        expose_routes_tags = true,
+      },
+    }
+
+    helpers.tcp_server(tcp_service_port)
+    assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled, prometheus",
+        stream_listen = "127.0.0.1:" .. tcp_proxy_port,
+    })
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
+    proxy_client_grpc = helpers.proxy_client_grpc()
+    proxy_client_grpcs = helpers.proxy_client_grpcs()
+  end)
+
+  teardown(function()
+    helpers.kill_tcp_server(tcp_service_port)
+    if proxy_client then
+      proxy_client:close()
+    end
+    if admin_client then
+      admin_client:close()
+    end
+
+    helpers.stop_kong()
+  end)
+
+  it("increments the count for proxied requests", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+      }
+    })
+    assert.res_status(200, res)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="200",service_tags="",route_tags="route-http-tag1,route-http-tag2,route-http-tag3"} 1', nil, true)
+    end)
+
+    res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/400",
+      headers = {
+        host = helpers.mock_upstream_host,
+      }
+    })
+    assert.res_status(400, res)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="400",service_tags="",route_tags="route-http-tag1,route-http-tag2,route-http-tag3"} 1', nil, true)
+    end)
+  end)
+
+  it("increments the count for proxied grpc requests", function()
+    local ok, resp = proxy_client_grpc({
+      service = "hello.HelloService.SayHello",
+      body = {
+        greeting = "world!"
+      },
+      opts = {
+        ["-authority"] = "grpc",
+      }
+    })
+    assert(ok, resp)
+    assert.truthy(resp)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-grpc-service",route="grpc-route",code="200",service_tags="",route_tags="route-grpc-tag1,route-grpc-tag2,route-grpc-tag3"} 1', nil, true)
+    end)
+
+    ok, resp = proxy_client_grpcs({
+      service = "hello.HelloService.SayHello",
+      body = {
+        greeting = "world!"
+      },
+      opts = {
+        ["-authority"] = "grpcs",
+      }
+    })
+    assert(ok, resp)
+    assert.truthy(resp)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-grpcs-service",route="grpcs-route",code="200",service_tags="",route_tags="route-grpcs-tag1,route-grpcs-tag2,route-grpcs-tag3"} 1', nil, true)
+    end)
+  end)
+
+  pending("increments the count for proxied TCP streams", function()
+    local conn = assert(ngx.socket.connect("127.0.0.1", tcp_proxy_port))
+
+    assert(conn:send("hi there!\n"))
+    local gotback = assert(conn:receive("*a"))
+    assert.equal("hi there!\n", gotback)
+
+    conn:close()
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_stream_status{service="tcp-service",route="tcp-route",code="200",service_tags="",route_tags="route-tcp-tag1,route-tcp-tag2,route-tcp-tag3"} 1', nil, true)
+    end)
+  end)
+end)
+
+describe("Plugin: prometheus (access) exposing only service tags", function()
+  local proxy_client
+  local admin_client
+  local proxy_client_grpc
+  local proxy_client_grpcs
+
+  setup(function()
+    local bp = helpers.get_db_utils()
+
+    local service = bp.services:insert {
+      name = "mock-service",
+      host = helpers.mock_upstream_host,
+      port = helpers.mock_upstream_port,
+      protocol = helpers.mock_upstream_protocol,
+      tags = {"service-http-tag1", "service-http-tag3", "service-http-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "http" },
+      name = "http-route",
+      paths = { "/" },
+      methods = { "GET" },
+      service = service,
+      tags = {"route-http-tag1", "route-http-tag3", "route-http-tag2"},
+    }
+
+    local grpc_service = bp.services:insert {
+      name = "mock-grpc-service",
+      url = "grpc://grpcbin:9000",
+      tags = {"service-grpc-tag1", "service-grpc-tag3", "service-grpc-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "grpc" },
+      name = "grpc-route",
+      hosts = { "grpc" },
+      service = grpc_service,
+      tags = {"route-grpc-tag1", "route-grpc-tag3", "route-grpc-tag2"},
+    }
+
+    local grpcs_service = bp.services:insert {
+      name = "mock-grpcs-service",
+      url = "grpcs://grpcbin:9001",
+      tags = {"service-grpcs-tag1", "service-grpcs-tag3", "service-grpcs-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "grpcs" },
+      name = "grpcs-route",
+      hosts = { "grpcs" },
+      service = grpcs_service,
+      tags = {"route-grpcs-tag1", "route-grpcs-tag3", "route-grpcs-tag2"},
+    }
+
+    local tcp_service = bp.services:insert {
+      name = "tcp-service",
+      url = "tcp://127.0.0.1:" .. tcp_service_port,
+      tags = {"service-tcp-tag1", "service-tcp-tag3", "service-tcp-tag2"},
+    }
+
+    bp.routes:insert {
+      protocols = { "tcp" },
+      name = "tcp-route",
+      service = tcp_service,
+      destinations = { { port = tcp_proxy_port } },
+      tags = {"route-tcp-tag1", "route-tcp-tag3", "route-tcp-tag2"},
+    }
+
+    bp.plugins:insert {
+      protocols = { "http", "https", "grpc", "grpcs", "tcp", "tls" },
+      name = "prometheus",
+      config = {
+        expose_services_tags = true,
+        expose_routes_tags = false,
+      },
+    }
+
+    helpers.tcp_server(tcp_service_port)
+    assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        plugins = "bundled, prometheus",
+        stream_listen = "127.0.0.1:" .. tcp_proxy_port,
+    })
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
+    proxy_client_grpc = helpers.proxy_client_grpc()
+    proxy_client_grpcs = helpers.proxy_client_grpcs()
+  end)
+
+  teardown(function()
+    helpers.kill_tcp_server(tcp_service_port)
+    if proxy_client then
+      proxy_client:close()
+    end
+    if admin_client then
+      admin_client:close()
+    end
+
+    helpers.stop_kong()
+  end)
+
+  it("increments the count for proxied requests", function()
+    local res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/200",
+      headers = {
+        host = helpers.mock_upstream_host,
+      }
+    })
+    assert.res_status(200, res)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="200",service_tags="service-http-tag1,service-http-tag2,service-http-tag3",route_tags=""} 1', nil, true)
+    end)
+
+    res = assert(proxy_client:send {
+      method  = "GET",
+      path    = "/status/400",
+      headers = {
+        host = helpers.mock_upstream_host,
+      }
+    })
+    assert.res_status(400, res)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="400",service_tags="service-http-tag1,service-http-tag2,service-http-tag3",route_tags=""} 1', nil, true)
+    end)
+  end)
+
+  it("increments the count for proxied grpc requests", function()
+    local ok, resp = proxy_client_grpc({
+      service = "hello.HelloService.SayHello",
+      body = {
+        greeting = "world!"
+      },
+      opts = {
+        ["-authority"] = "grpc",
+      }
+    })
+    assert(ok, resp)
+    assert.truthy(resp)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-grpc-service",route="grpc-route",code="200",service_tags="service-grpc-tag1,service-grpc-tag2,service-grpc-tag3",route_tags=""} 1', nil, true)
+    end)
+
+    ok, resp = proxy_client_grpcs({
+      service = "hello.HelloService.SayHello",
+      body = {
+        greeting = "world!"
+      },
+      opts = {
+        ["-authority"] = "grpcs",
+      }
+    })
+    assert(ok, resp)
+    assert.truthy(resp)
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_http_status{service="mock-grpcs-service",route="grpcs-route",code="200",service_tags="service-grpcs-tag1,service-grpcs-tag2,service-grpcs-tag3",route_tags=""} 1', nil, true)
+    end)
+  end)
+
+  pending("increments the count for proxied TCP streams", function()
+    local conn = assert(ngx.socket.connect("127.0.0.1", tcp_proxy_port))
+
+    assert(conn:send("hi there!\n"))
+    local gotback = assert(conn:receive("*a"))
+    assert.equal("hi there!\n", gotback)
+
+    conn:close()
+
+    helpers.wait_until(function()
+      local res = assert(admin_client:send {
+        method  = "GET",
+        path    = "/metrics",
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
+
+      return body:find('kong_stream_status{service="tcp-service",route="tcp-route",code="200",service_tags="service-tcp-tag1,service-tcp-tag2,service-tcp-tag3",route_tags=""} 1', nil, true)
+    end)
+  end)
+end)
+
 describe("Plugin: prometheus (access) per-consumer metrics", function()
   local proxy_client
   local admin_client
@@ -436,7 +1075,7 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('kong_http_consumer_status{service="mock-service",route="http-route",code="200",consumer="alice"} 1', nil, true)
+      return body:find('kong_http_consumer_status{service="mock-service",route="http-route",code="200",consumer="alice",service_tags="",route_tags=""} 1', nil, true)
     end)
 
     res = assert(proxy_client:send {
@@ -457,7 +1096,7 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
 
-      return body:find('kong_http_consumer_status{service="mock-service",route="http-route",code="400",consumer="alice"} 1', nil, true)
+      return body:find('kong_http_consumer_status{service="mock-service",route="http-route",code="400",consumer="alice",service_tags="",route_tags=""} 1', nil, true)
     end)
   end)
 
@@ -478,11 +1117,11 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
         path    = "/metrics",
       })
       body = assert.res_status(200, res)
-      return body:find('kong_http_status{service="mock-service",route="http-route",code="200"} 1', nil, true)
+      return body:find('kong_http_status{service="mock-service",route="http-route",code="200",service_tags="",route_tags=""} 1', nil, true)
     end)
 
-    assert.not_match('kong_http_consumer_status{service="mock-service",route="http-route",code="401",consumer="alice"} 1', body, nil, true)
-    assert.matches('kong_http_status{service="mock-service",route="http-route",code="401"} 1', body, nil, true)
+    assert.not_match('kong_http_consumer_status{service="mock-service",route="http-route",code="401",consumer="alice",service_tags="",route_tags=""} 1', body, nil, true)
+    assert.matches('kong_http_status{service="mock-service",route="http-route",code="401",service_tags="",route_tags=""} 1', body, nil, true)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
