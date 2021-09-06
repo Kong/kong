@@ -1,4 +1,4 @@
---no-cassandra
+--cassandra
 --postgres
 --redis
 --keycloak

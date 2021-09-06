@@ -40,7 +40,7 @@ local KONG_CLIENT_ID = "kong-client-secret"
 local KONG_CLIENT_SECRET = "38beb963-2786-42b8-8e14-a5f391b4ba93"
 
 
-for _, strategy in ipairs({"postgres", "off"}) do
+for _, strategy in helpers.all_strategies() do
 
   describe(PLUGIN_NAME .. ": (keycloak) with strategy: " .. strategy .. " -> ", function()
 
@@ -330,7 +330,7 @@ for _, strategy in ipairs({"postgres", "off"}) do
         }
 
         assert(helpers.start_kong({
-          database   = "postgres",
+          database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
           plugins    = "bundled," .. PLUGIN_NAME,
         }))
@@ -971,66 +971,71 @@ for _, strategy in ipairs({"postgres", "off"}) do
         end)
       end)
 
+      if strategy ~= "off" then
+        -- disable off strategy for oauth2 tokens, they do not support db-less mode
 
 
-      describe("kong oauth2", function()
 
-        local token
-        local invalid_token
+        describe("kong oauth2", function()
 
-        lazy_setup(function()
-          local client = helpers.proxy_ssl_client()
-          local res = client:post("/auth/oauth2/token", {
-            headers = {
-              ["Content-Type"] = "application/x-www-form-urlencoded",
-            },
-            body = {
-              client_id     = "client",
-              client_secret = "secret",
-              grant_type    = "client_credentials",
-            },
-          })
-          assert.response(res).has.status(200)
-          local json = assert.response(res).has.jsonbody()
+          local token
+          local invalid_token
 
-          token = json.access_token
 
-          if sub(token, -4) == "7oig" then
-            invalid_token = sub(token, 1, -5) .. "cYe8"
-          else
-            invalid_token = sub(token, 1, -5) .. "7oig"
-          end
+          lazy_setup(function()
+            local client = helpers.proxy_ssl_client()
+            local res = client:post("/auth/oauth2/token", {
+              headers = {
+                ["Content-Type"] = "application/x-www-form-urlencoded",
+              },
+              body = {
+                client_id     = "client",
+                client_secret = "secret",
+                grant_type    = "client_credentials",
+              },
+            })
+            assert.response(res).has.status(200)
+            local json = assert.response(res).has.jsonbody()
 
-          client:close()
+            token = json.access_token
+
+            if sub(token, -4) == "7oig" then
+              invalid_token = sub(token, 1, -5) .. "cYe8"
+            else
+              invalid_token = sub(token, 1, -5) .. "7oig"
+            end
+
+            client:close()
+          end)
+
+
+          it("is not allowed with invalid token", function()
+            local res = proxy_client:get("/kong-oauth2", {
+              headers = {
+                Authorization = "Bearer " .. invalid_token,
+              },
+            })
+
+            assert.response(res).has.status(401)
+            local json = assert.response(res).has.jsonbody()
+            assert.same("Unauthorized", json.message)
+          end)
+
+
+          it("is allowed with valid token", function()
+            local res = proxy_client:get("/kong-oauth2", {
+              headers = {
+                Authorization = "Bearer " .. token,
+              },
+            })
+
+            assert.response(res).has.status(200)
+            local json = assert.response(res).has.jsonbody()
+            assert.is_not_nil(json.headers.authorization)
+            assert.equal(token, sub(json.headers.authorization, 8))
+          end)
         end)
-
-
-        it("is not allowed with invalid token", function()
-          local res = proxy_client:get("/kong-oauth2", {
-            headers = {
-              Authorization = "Bearer " .. invalid_token,
-            },
-          })
-
-          assert.response(res).has.status(401)
-          local json = assert.response(res).has.jsonbody()
-          assert.same("Unauthorized", json.message)
-        end)
-
-
-        it("is allowed with valid token", function()
-          local res = proxy_client:get("/kong-oauth2", {
-            headers = {
-              Authorization = "Bearer " .. token,
-            },
-          })
-
-          assert.response(res).has.status(200)
-          local json = assert.response(res).has.jsonbody()
-          assert.is_not_nil(json.headers.authorization)
-          assert.equal(token, sub(json.headers.authorization, 8))
-        end)
-      end)
+      end
 
 
 
@@ -1504,7 +1509,7 @@ for _, strategy in ipairs({"postgres", "off"}) do
         }
 
         assert(helpers.start_kong({
-          database   = "postgres",
+          database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
           plugins    = "bundled," .. PLUGIN_NAME,
         }))
@@ -1741,7 +1746,7 @@ for _, strategy in ipairs({"postgres", "off"}) do
         }
 
         assert(helpers.start_kong({
-          database   = "postgres",
+          database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
           plugins    = "bundled," .. PLUGIN_NAME,
         }))
@@ -1834,7 +1839,7 @@ for _, strategy in ipairs({"postgres", "off"}) do
         }
 
         assert(helpers.start_kong({
-          database   = "postgres",
+          database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
           plugins    = "bundled," .. PLUGIN_NAME,
         }))
@@ -1994,7 +1999,7 @@ for _, strategy in ipairs({"postgres", "off"}) do
         }
 
         assert(helpers.start_kong({
-          database   = "postgres",
+          database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
           plugins    = "bundled," .. PLUGIN_NAME,
         }))
@@ -2098,7 +2103,7 @@ for _, strategy in ipairs({"postgres", "off"}) do
         },
         }
         assert(helpers.start_kong({
-          database   = "postgres",
+          database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
           plugins    = "bundled," .. PLUGIN_NAME,
         }))
