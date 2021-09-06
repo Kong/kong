@@ -662,6 +662,50 @@ for _, method_name in ipairs({"get", "post", "put", "patch", "delete"}) do
   end
 end
 
+
+--- Creates a http client from options.
+-- Instead of using this client, you'll probably want to use the pre-configured
+-- clients available as `proxy_client`, `admin_client`, etc. because these come
+-- pre-configured and connected to the underlying Kong test instance.
+--
+-- @function http_client_opts
+-- @param options connection and other options
+-- @return http client
+-- @see http_client:send
+-- @see proxy_client
+-- @see proxy_ssl_client
+-- @see admin_client
+-- @see admin_ssl_client
+local function http_client_opts(options)
+  if not options.scheme then
+    options = utils.deep_copy(options)
+    options.scheme = "http"
+    if options.port == 443 then
+      options.scheme = "https"
+    else
+      options.scheme = "http"
+    end
+  end
+
+  local self = setmetatable(assert(http.new()), resty_http_proxy_mt)
+  local _, err = self:connect(options)
+  if err then
+    error("Could not connect to " .. options.host or "unknown" .. ":" .. options.port or "unknown" .. ": " .. err)
+  end
+
+  if options.connect_timeout and
+     options.send_timeout    and
+     options.read_timeout
+  then
+    self:set_timeouts(options.connect_timeout, options.send_timeout, options.read_timeout)
+  else
+    self:set_timeout(options.timeout or 10000)
+  end
+
+  return self
+end
+
+
 --- Creates a http client.
 -- Instead of using this client, you'll probably want to use the pre-configured
 -- clients available as `proxy_client`, `admin_client`, etc. because these come
@@ -678,14 +722,15 @@ end
 -- @see admin_client
 -- @see admin_ssl_client
 local function http_client(host, port, timeout)
-  timeout = timeout or 10000
-  local self = setmetatable(assert(http.new()), resty_http_proxy_mt)
-  local _, err = self:connect(host, port)
-  if err then
-    error("Could not connect to " .. host .. ":" .. port .. ": " .. err)
+  if type(host) == "table" then
+    return http_client_opts(host)
   end
-  self:set_timeout(timeout)
-  return self
+
+  return http_client_opts({
+    host = host,
+    port = port,
+    timeout = timeout,
+  })
 end
 
 
@@ -728,7 +773,12 @@ local function proxy_client(timeout, forced_port)
   local proxy_ip = get_proxy_ip(false)
   local proxy_port = get_proxy_port(false)
   assert(proxy_ip, "No http-proxy found in the configuration")
-  return http_client(proxy_ip, forced_port or proxy_port, timeout or 60000)
+  return http_client_opts({
+    scheme = "http",
+    host = proxy_ip,
+    port = forced_port or proxy_port,
+    timeout = timeout or 60000,
+  })
 end
 
 
@@ -740,9 +790,15 @@ local function proxy_ssl_client(timeout, sni)
   local proxy_ip = get_proxy_ip(true, true)
   local proxy_port = get_proxy_port(true, true)
   assert(proxy_ip, "No https-proxy found in the configuration")
-  local client = http_client(proxy_ip, proxy_port, timeout or 60000)
-  assert(client:ssl_handshake(nil, sni, false)) -- explicit no-verify
-  return client
+  local client = http_client_opts({
+    scheme = "https",
+    host = proxy_ip,
+    port = proxy_port,
+    timeout = timeout or 60000,
+    ssl_verify = false,
+    ssl_server_name = sni,
+  })
+    return client
 end
 
 
@@ -760,7 +816,12 @@ local function admin_client(timeout, forced_port)
     end
   end
   assert(admin_ip, "No http-admin found in the configuration")
-  return http_client(admin_ip, forced_port or admin_port, timeout or 60000)
+  return http_client_opts({
+    scheme = "http",
+    host = admin_ip,
+    port = forced_port or admin_port,
+    timeout = timeout or 60000
+  })
 end
 
 --- returns a pre-configured `http_client` for the Kong admin SSL port.
@@ -775,8 +836,12 @@ local function admin_ssl_client(timeout)
     end
   end
   assert(admin_ip, "No https-admin found in the configuration")
-  local client = http_client(admin_ip, admin_port, timeout or 60000)
-  assert(client:ssl_handshake())
+  local client = http_client_opts({
+    scheme = "https",
+    host = admin_ip,
+    port = admin_port,
+    timeout = timeout or 60000,
+  })
   return client
 end
 
