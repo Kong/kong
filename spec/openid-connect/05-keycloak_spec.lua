@@ -40,10 +40,10 @@ local KONG_CLIENT_ID = "kong-client-secret"
 local KONG_CLIENT_SECRET = "38beb963-2786-42b8-8e14-a5f391b4ba93"
 
 
-for _, strategy in ipairs({"postgres"}) do
-  -- TODO: add dbless tests
+for _, strategy in ipairs({"postgres", "off"}) do
 
   describe(PLUGIN_NAME .. ": (keycloak) with strategy: " .. strategy .. " -> ", function()
+
     it("can access openid connect discovery endpoint on demo realm with http", function()
       local client = helpers.http_client(KEYCLOAK_HOST, KEYCLOAK_PORT)
       local res = client:get(REALM_PATH .. DISCOVERY_PATH)
@@ -51,6 +51,7 @@ for _, strategy in ipairs({"postgres"}) do
       local json = assert.response(res).has.jsonbody()
       assert.equal(ISSUER_URL, json.issuer)
     end)
+
 
     it("can access openid connect discovery endpoint on demo realm with https", function()
       local client = helpers.http_client(KEYCLOAK_HOST, KEYCLOAK_SSL_PORT)
@@ -61,10 +62,11 @@ for _, strategy in ipairs({"postgres"}) do
       assert.equal(ISSUER_SSL_URL, json.issuer)
     end)
 
-    describe("authentication", function()
-      local proxy_client
-      local http_client
 
+
+    describe("authentication", function()
+
+      local proxy_client
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
           "routes",
@@ -239,7 +241,6 @@ for _, strategy in ipairs({"postgres"}) do
           paths   = { "/kong-oauth2" },
         }
 
-
         bp.plugins:insert {
           route   = kong_oauth2,
           name    = PLUGIN_NAME,
@@ -341,7 +342,6 @@ for _, strategy in ipairs({"postgres"}) do
 
       before_each(function()
         proxy_client = helpers.proxy_client()
-        http_client = helpers.http_client
       end)
 
       after_each(function()
@@ -350,8 +350,11 @@ for _, strategy in ipairs({"postgres"}) do
         end
       end)
 
-      describe("authorization code flow", function()
-        it("initial request, expect redirect to login", function()
+
+
+      describe("authorization code flow #only", function()
+
+        it("initial request, expect redirect to login page", function()
           local res = proxy_client:get("/code-flow", {
             headers = {
               ["Host"] = "kong"
@@ -366,7 +369,7 @@ for _, strategy in ipairs({"postgres"}) do
           local rres = http:request_uri(redirect, {
             headers = {
               -- impersonate as browser
-              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
+              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
               ["Host"] = "keycloak:8080",
             }
           })
@@ -393,7 +396,7 @@ for _, strategy in ipairs({"postgres"}) do
             body = form_data,
             headers = {
               -- impersonate as browser
-              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
+              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
               ["Host"] = "keycloak:8080",
               -- due to form_data
               ["Content-Type"] = "application/x-www-form-urlencoded",
@@ -403,20 +406,21 @@ for _, strategy in ipairs({"postgres"}) do
           assert.is_same(loginres.status, 302)
           -- after sending login data to the login action page, expect a redirect
           local upstream_url = loginres.headers["Location"]
-          local ures = http:request_uri(upstream_url, {
+          local ures, err = http:request_uri(upstream_url, {
             headers = {
               -- authenticate using the cookie from the initial request
               Cookie = auth_cookie_cleaned
             }
           })
+          assert.is_nil(err)
           assert.is_same(ures.status, 302)
           local client_session
           local client_session_header_table = {}
           -- extract session cookies
-          local cookies = ures.headers["Set-Cookie"]
+          local ucookies = ures.headers["Set-Cookie"]
           -- extract final redirect
           local final_url = ures.headers["Location"]
-          for i, cookie in ipairs(cookies) do
+          for i, cookie in ipairs(ucookies) do
             client_session = sub(cookie, 0, find(cookie, ";") -1)
             client_session_header_table[i] = client_session
           end
@@ -445,7 +449,7 @@ for _, strategy in ipairs({"postgres"}) do
           local rres = http:request_uri(redirect, {
             headers = {
               -- impersonate as browser
-              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
+              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
               ["Host"] = "keycloak:8080",
             }
           })
@@ -472,7 +476,7 @@ for _, strategy in ipairs({"postgres"}) do
             body = form_data,
             headers = {
               -- impersonate as browser
-              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
+              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
               ["Host"] = "keycloak:8080",
               -- due to form_data
               ["Content-Type"] = "application/x-www-form-urlencoded",
@@ -491,6 +495,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.response(final_res).has.status(302)
         end)
 
+
         it("is not allowed with invalid session-cookie", function()
           local res = proxy_client:get("/code-flow", {
             headers = {
@@ -506,7 +511,7 @@ for _, strategy in ipairs({"postgres"}) do
           local rres = http:request_uri(redirect, {
             headers = {
               -- impersonate as browser
-              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
+              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
               ["Host"] = "keycloak:8080",
             }
           })
@@ -533,7 +538,7 @@ for _, strategy in ipairs({"postgres"}) do
             body = form_data,
             headers = {
               -- impersonate as browser
-              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
+              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
               ["Host"] = "keycloak:8080",
               -- due to form_data
               ["Content-Type"] = "application/x-www-form-urlencoded",
@@ -553,10 +558,10 @@ for _, strategy in ipairs({"postgres"}) do
           local client_session
           local client_session_header_table = {}
           -- extract session cookies
-          local cookies = ures.headers["Set-Cookie"]
+          local ucookies = ures.headers["Set-Cookie"]
           -- extract final redirect
           local final_url = ures.headers["Location"]
-          for i, cookie in ipairs(cookies) do
+          for i, cookie in ipairs(ucookies) do
             client_session = sub(cookie, 0, find(cookie, ";") -1)
             -- making session cookie invalid
             client_session = client_session .. "invalid"
@@ -572,7 +577,10 @@ for _, strategy in ipairs({"postgres"}) do
         end)
       end)
 
+
+
       describe("password grant", function()
+
         it("is not allowed with invalid credentials", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -584,6 +592,7 @@ for _, strategy in ipairs({"postgres"}) do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
+
 
         it("is not allowed with valid client credentials when grant type is given", function()
           local res = proxy_client:get("/", {
@@ -598,6 +607,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.same("Unauthorized", json.message)
         end)
 
+
         it("is allowed with valid credentials", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -612,7 +622,10 @@ for _, strategy in ipairs({"postgres"}) do
         end)
       end)
 
+
+
       describe("client credentials grant", function()
+
         it("is not allowed with invalid credentials", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -624,6 +637,7 @@ for _, strategy in ipairs({"postgres"}) do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
+
 
         it("is not allowed with valid password credentials when grant type is given", function()
           local res = proxy_client:get("/", {
@@ -638,6 +652,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.same("Unauthorized", json.message)
         end)
 
+
         it("is allowed with valid credentials", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -651,6 +666,8 @@ for _, strategy in ipairs({"postgres"}) do
           assert.equal("Bearer", sub(json.headers.authorization, 1, 6))
         end)
       end)
+
+
 
       describe("jwt access token", function()
         local user_token
@@ -690,6 +707,7 @@ for _, strategy in ipairs({"postgres"}) do
           client:close()
         end)
 
+
         it("is not allowed with invalid token", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -701,6 +719,7 @@ for _, strategy in ipairs({"postgres"}) do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
+
 
         it("is allowed with valid user token", function()
           local res = proxy_client:get("/", {
@@ -714,6 +733,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.is_not_nil(json.headers.authorization)
           assert.equal(user_token, sub(json.headers.authorization, 8))
         end)
+
 
         it("is allowed with valid client token", function()
           local res = proxy_client:get("/", {
@@ -730,6 +750,7 @@ for _, strategy in ipairs({"postgres"}) do
       end)
 
       describe("refresh token", function()
+
         local user_token
         local invalid_token
 
@@ -754,6 +775,7 @@ for _, strategy in ipairs({"postgres"}) do
           client:close()
         end)
 
+
         it("is not allowed with invalid token", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -765,6 +787,7 @@ for _, strategy in ipairs({"postgres"}) do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
+
 
         it("is allowed with valid user token", function()
           local res = proxy_client:get("/", {
@@ -780,10 +803,12 @@ for _, strategy in ipairs({"postgres"}) do
           assert.is_not_nil(json.headers.refresh_token)
           assert.not_equal(user_token, json.headers.refresh_token)
         end)
-
       end)
+
+
 
       describe("introspection", function()
+
         local user_token
         local client_token
         local invalid_token
@@ -821,6 +846,7 @@ for _, strategy in ipairs({"postgres"}) do
           client:close()
         end)
 
+
         it("is not allowed with invalid token", function()
           local res = proxy_client:get("/introspection", {
             headers = {
@@ -832,6 +858,7 @@ for _, strategy in ipairs({"postgres"}) do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
+
 
         it("is allowed with valid user token", function()
           local res = proxy_client:get("/introspection", {
@@ -846,6 +873,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.equal(user_token, sub(json.headers.authorization, 8))
         end)
 
+
         it("is allowed with valid client token", function()
           local res = proxy_client:get("/introspection", {
             headers = {
@@ -859,8 +887,11 @@ for _, strategy in ipairs({"postgres"}) do
           assert.equal(client_token, sub(json.headers.authorization, 8))
         end)
       end)
+
+
 
       describe("userinfo", function()
+
         local user_token
         local client_token
         local invalid_token
@@ -898,6 +929,7 @@ for _, strategy in ipairs({"postgres"}) do
           client:close()
         end)
 
+
         it("is not allowed with invalid token", function()
           local res = proxy_client:get("/userinfo", {
             headers = {
@@ -909,6 +941,7 @@ for _, strategy in ipairs({"postgres"}) do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
+
 
         it("is allowed with valid user token", function()
           local res = proxy_client:get("/userinfo", {
@@ -922,6 +955,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.is_not_nil(json.headers.authorization)
           assert.equal(user_token, sub(json.headers.authorization, 8))
         end)
+
 
         it("is allowed with valid client token", function()
           local res = proxy_client:get("/userinfo", {
@@ -937,7 +971,10 @@ for _, strategy in ipairs({"postgres"}) do
         end)
       end)
 
+
+
       describe("kong oauth2", function()
+
         local token
         local invalid_token
 
@@ -967,6 +1004,7 @@ for _, strategy in ipairs({"postgres"}) do
           client:close()
         end)
 
+
         it("is not allowed with invalid token", function()
           local res = proxy_client:get("/kong-oauth2", {
             headers = {
@@ -978,6 +1016,7 @@ for _, strategy in ipairs({"postgres"}) do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
+
 
         it("is allowed with valid token", function()
           local res = proxy_client:get("/kong-oauth2", {
@@ -993,7 +1032,10 @@ for _, strategy in ipairs({"postgres"}) do
         end)
       end)
 
+
+
       describe("session", function()
+
         local user_session
         local client_session
         local compressed_client_session
@@ -1104,6 +1146,7 @@ for _, strategy in ipairs({"postgres"}) do
           client:close()
         end)
 
+
         it("is not allowed with invalid session", function()
           local res = proxy_client:get("/session", {
             headers = {
@@ -1115,6 +1158,7 @@ for _, strategy in ipairs({"postgres"}) do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
+
 
         it("is allowed with valid user session", function()
           local res = proxy_client:get("/session", {
@@ -1129,6 +1173,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.equal(user_token, sub(json.headers.authorization, 8))
         end)
 
+
         it("is allowed with valid client session [redis]", function()
           local res = proxy_client:get("/redis-session", {
             headers = {
@@ -1142,6 +1187,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.equal(redis_client_token, sub(json.headers.authorization, 8))
         end)
 
+
         it("is allowed with valid client session", function()
           local res = proxy_client:get("/session", {
             headers = {
@@ -1154,6 +1200,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.is_not_nil(json.headers.authorization)
           assert.equal(client_token, sub(json.headers.authorization, 8))
         end)
+
 
         it("is allowed with valid client session [compressed]", function()
           local res = proxy_client:get("/session_compressed", {
@@ -1169,7 +1216,10 @@ for _, strategy in ipairs({"postgres"}) do
       end)
     end)
 
+
+
     describe("authorization", function()
+
       local proxy_client
 
       lazy_setup(function()
@@ -1474,6 +1524,8 @@ for _, strategy in ipairs({"postgres"}) do
         end
       end)
 
+
+
       describe("[claim based]",function ()
 
         it("prohibits access due to mismatching scope claims", function()
@@ -1487,6 +1539,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.same("Forbidden", json.message)
         end)
 
+
         it("grants access for matching scope claims", function()
           local res = proxy_client:get("/scopes", {
             headers = {
@@ -1495,6 +1548,7 @@ for _, strategy in ipairs({"postgres"}) do
           })
           assert.response(res).has.status(200)
         end)
+
 
         it("prohibits access for partially matching [AND]scope claims", function()
           local res = proxy_client:get("/and_scopes", {
@@ -1507,6 +1561,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.same("Forbidden", json.message)
         end)
 
+
         it("grants access for partially matching [OR]sope claims", function()
           local res = proxy_client:get("/or_scopes", {
             headers = {
@@ -1516,6 +1571,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.response(res).has.status(200)
           assert.response(res).has.jsonbody()
         end)
+
 
         it("prohibits access due to mismatching audience claims", function()
           local res = proxy_client:get("/falseaudience", {
@@ -1528,6 +1584,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.same("Forbidden", json.message)
         end)
 
+
         it("grants access for matching audience claims", function()
           local res = proxy_client:get("/audience", {
             headers = {
@@ -1538,6 +1595,8 @@ for _, strategy in ipairs({"postgres"}) do
           assert.response(res).has.jsonbody()
         end)
       end)
+
+
       describe("[ACL plugin]",function ()
 
         it("grants access for valid <allow> fields", function ()
@@ -1552,6 +1611,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.equal(h1, "openid, email, profile")
         end)
 
+
         it("prohibits access for invalid <allow> fields", function ()
           local res = proxy_client:get("/acltest_fails", {
             headers = {
@@ -1562,6 +1622,7 @@ for _, strategy in ipairs({"postgres"}) do
           local json = assert.response(res).has.jsonbody()
           assert.same("You cannot consume this service", json.message)
         end)
+
 
         it("prohibits access for matching <deny> fields", function ()
           local res = proxy_client:get("/acltest_denies", {
@@ -1575,7 +1636,10 @@ for _, strategy in ipairs({"postgres"}) do
         end)
       end)
 
+
+
       describe("[by existing Consumer]",function ()
+
         it("grants access for existing consumer", function ()
           local res = proxy_client:get("/consumer", {
             headers = {
@@ -1590,6 +1654,7 @@ for _, strategy in ipairs({"postgres"}) do
           assert.equals("john", h2)
         end)
 
+
         it("prohibits access for non-existant consumer-claim mapping", function ()
           local res = proxy_client:get("/noconsumer", {
             headers = {
@@ -1603,7 +1668,10 @@ for _, strategy in ipairs({"postgres"}) do
       end)
     end)
 
+
+
     describe("headers", function()
+
       local proxy_client
 
       lazy_setup(function()
@@ -1693,6 +1761,7 @@ for _, strategy in ipairs({"postgres"}) do
         end
       end)
 
+
       it("annotates the upstream response with headers", function ()
           local res = proxy_client:get("/headertest", {
             headers = {
@@ -1702,8 +1771,8 @@ for _, strategy in ipairs({"postgres"}) do
           assert.response(res).has.status(200)
           assert.response(res).has.jsonbody()
           assert.request(res).has.header("authenticated_user")
-
       end)
+
 
       it("doesn't annotate the upstream response with headers for non-existant claims", function ()
           local res = proxy_client:get("/headertestbad", {
@@ -1714,11 +1783,13 @@ for _, strategy in ipairs({"postgres"}) do
           assert.response(res).has.status(200)
           assert.response(res).has.jsonbody()
           assert.request(res).has.no.header("authenticated_user")
-
       end)
     end)
 
+
+
     describe("logout", function()
+
       local proxy_client
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
@@ -1783,7 +1854,10 @@ for _, strategy in ipairs({"postgres"}) do
         end
       end)
 
+
+
       describe("from session | ", function ()
+
         local user_session
         local user_session_header_table = {}
         local user_token
@@ -1811,6 +1885,7 @@ for _, strategy in ipairs({"postgres"}) do
 
           user_token = sub(json.headers.authorization, 8, -1)
         end)
+
 
         it("validate logout", function ()
           local res = proxy_client:get("/", {
@@ -1848,8 +1923,9 @@ for _, strategy in ipairs({"postgres"}) do
           assert.response(rres).has.status(200)
         end)
       end)
-
     end)
+
+
 
     describe("debug", function()
       local proxy_client
@@ -1938,6 +2014,7 @@ for _, strategy in ipairs({"postgres"}) do
         end
       end)
 
+
       it("adds extra information to the error messages", function ()
         local res = proxy_client:get("/debug", {
           headers = {
@@ -1947,11 +2024,13 @@ for _, strategy in ipairs({"postgres"}) do
         assert.response(res).has.status(403)
         local json = assert.response(res).has.jsonbody()
         assert.matches("Forbidden *", json.message)
-
       end)
     end)
 
+
+
     describe("FTI-2737", function()
+
       local proxy_client
 
       lazy_setup(function()
@@ -2039,6 +2118,7 @@ for _, strategy in ipairs({"postgres"}) do
         end
       end)
 
+
       it("scopes do not match. expect to set anonymous header", function ()
         local res = proxy_client:get("/anon", {
           headers = {
@@ -2051,6 +2131,8 @@ for _, strategy in ipairs({"postgres"}) do
         local h2 = assert.request(res).has.header("x-consumer-username")
         assert.equal(h2, "anonymous")
       end)
+
+
       it("scopes match. expect to authenticate", function ()
         local res = proxy_client:get("/non-anon", {
           headers = {
