@@ -26,6 +26,9 @@ Version is strictly based on [SemVer](https://semver.org/)
 - upload to luarocks; `luarocks upload kong-plugin-azure-functions-x.y.z-1.rockspec --api-key=abc...`
 - test rockspec; `luarocks install kong-plugin-azure-functions`
 
+### 1.0.1 07-Sep-2021
+- `lua-resty-http` `0.16.1` usage bump (does not use the deprecated functions anymore)
+
 ### 1.0.0 19-Nov-2020
 - Fix: pass incoming headers, issue [#15](https://github.com/Kong/kong-plugin-azure-functions/issues/15)
 
