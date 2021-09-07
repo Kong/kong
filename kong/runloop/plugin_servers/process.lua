@@ -196,6 +196,7 @@ end
 
 function proc_mgmt.get_plugin_info(plugin_name)
   if not _plugin_infos then
+    kong = kong or _G.kong    -- some CLI cmds set the global after loading the module.
     _plugin_infos = {}
 
     for _, server_def in ipairs(get_server_defs()) do
