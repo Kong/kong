@@ -51,7 +51,8 @@ local constants = {
   },
 
   plugins = {
-    "proxy-cache-advanced"
+    "proxy-cache-advanced",
+    "oauth2-introspection",
   },
 
   release = false,

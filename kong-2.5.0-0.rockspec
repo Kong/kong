@@ -682,5 +682,8 @@ build = {
     ["kong.plugins.proxy-cache-advanced.strategies.redis"]                    = "kong/plugins/enterprise_edition/proxy-cache-advanced/strategies/redis.lua",
     ["kong.plugins.proxy-cache-advanced.migrations"]                          = "kong/plugins/enterprise_edition/proxy-cache-advanced/migrations/init.lua",
     ["kong.plugins.proxy-cache-advanced.migrations.001_035_to_050"]           = "kong/plugins/enterprise_edition/proxy-cache-advanced/migrations/001_035_to_050.lua",
+
+    ["kong.plugins.oauth2-introspection.handler"] = "kong/plugins/enterprise_edition/oauth2-introspection/handler.lua",
+    ["kong.plugins.oauth2-introspection.schema"] = "kong/plugins/enterprise_edition/oauth2-introspection/schema.lua",
   }
 }
