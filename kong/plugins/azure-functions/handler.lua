@@ -4,6 +4,7 @@ local http          = require "resty.http"
 
 
 local kong          = kong
+local fmt           = string.format
 local var           = ngx.var
 local pairs         = pairs
 local server_header = meta._SERVER_TOKENS
@@ -22,7 +23,7 @@ end
 
 local azure = {
   PRIORITY = 749,
-  VERSION  = "1.0.0",
+  VERSION  = "1.0.1",
 }
 
 
@@ -47,27 +48,10 @@ function azure:access(config)
   end
   config = conf
 
-  local client = http.new()
   local request_method = kong.request.get_method()
   local request_body = kong.request.get_raw_body()
   local request_headers = kong.request.get_headers()
   local request_args = kong.request.get_query()
-
-  client:set_timeout(config.timeout)
-
-  local ok, err = client:connect(config.host, config.port)
-  if not ok then
-    kong.log.err("could not connect to Azure service: ", err)
-    return kong.response.exit(500, { message = "An unexpected error ocurred" })
-  end
-
-  if config.https then
-    local ok2, err2 = client:ssl_handshake(false, config.host, config.https_verify)
-    if not ok2 then
-      kong.log.err("could not perform SSL handshake : ", err2)
-      return kong.response.exit(500, { message = "An unexpected error ocurred" })
-    end
-  end
 
   local upstream_uri = var.upstream_uri
   local path = conf.path
@@ -93,14 +77,22 @@ function azure:access(config)
   request_headers["x-functions-key"] = config.apikey
   request_headers["x-functions-clientid"] = config.clientid
 
-  local res
-  res, err = client:request {
-    method  = request_method,
-    path    = path,
-    body    = request_body,
-    query   = request_args,
+
+  local scheme = config.https and "https" or "http"
+  local uri = conf.port and fmt("%s://%s:%d", scheme, conf.host, conf.port)
+                         or fmt("%s://%s", scheme, conf.host)
+
+  local client = http.new()
+  client:set_timeout(config.timeout)
+  local res, err = client:request_uri(uri, {
+    method = request_method,
+    path = path,
+    body = request_body,
+    query = request_args,
     headers = request_headers,
-  }
+    ssl_verify = config.https_verify,
+    keepalive_timeout = conf.keepalive,
+  })
 
   if not res then
     kong.log.err(err)
@@ -109,7 +101,7 @@ function azure:access(config)
 
   local response_headers = res.headers
   local response_status = res.status
-  local response_content = res:read_body()
+  local response_content = res.body
 
   if var.http2 then
     response_headers["Connection"] = nil
@@ -117,11 +109,6 @@ function azure:access(config)
     response_headers["Proxy-Connection"] = nil
     response_headers["Upgrade"] = nil
     response_headers["Transfer-Encoding"] = nil
-  end
-
-  ok, err = client:set_keepalive(config.keepalive)
-  if not ok then
-    kong.log.err("could not keepalive connection: ", err)
   end
 
   return send(response_status, response_content, response_headers)
