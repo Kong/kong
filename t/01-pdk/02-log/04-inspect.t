@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use t::Util;
 
-plan tests => repeat_each() * (blocks() * 4 + 6);
+plan tests => repeat_each() * (blocks() * 4 + 5);
 
 run_tests();
 
@@ -50,7 +50,7 @@ hello = "world"
 GET /t
 --- no_response_body
 --- error_log eval
-qr/\[kong\] content_by_lua\(nginx\.conf:\d+\):my_func:6 \{/
+qr/\[kong\] content_by_lua\(nginx\.conf:\d+\):my_func:6 \[core\]/
 --- no_error_log
 [error]
 [crit]
@@ -133,7 +133,7 @@ hidden
 
 
 
-=== TEST 6: log.inspect() custom facility does not log namespace
+=== TEST 6: log.inspect() custom facility does logs namespace
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
@@ -151,8 +151,8 @@ GET /t
 --- no_response_body
 --- error_log
 hello
---- no_error_log
 my_namespace
+--- no_error_log
 [error]
 
 
@@ -175,8 +175,8 @@ GET /t
 --- no_response_body
 --- error_log
 "hello" "world"
---- no_error_log
 my_namespace
+--- no_error_log
 [error]
 
 
@@ -206,7 +206,6 @@ GET /t
 |}
 +------------------------------
 --- no_error_log
-my_namespace
 [error]
 
 

@@ -330,33 +330,32 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
       local fullmsg_len = #fullmsg
       local WRAP = 120
 
-      if fullmsg:find("\n", 1, true) or fullmsg_len > WRAP then
-        local i = 1
+      local i = fullmsg:find("\n") + 1
+      local header = fullmsg:sub(1, i - 2) .. ("-"):rep(WRAP - i + 3) .. "+"
 
-        errlog.raw_log(lvl_const, "+" .. ("-"):rep(WRAP) .. "+")
+      errlog.raw_log(lvl_const, header)
 
-        while i <= fullmsg_len do
-          local part = string.sub(fullmsg, i, i + WRAP - 1)
-          local nl = part:match("()\n")
+      while i <= fullmsg_len do
+        local part = string.sub(fullmsg, i, i + WRAP - 1)
+        local nl = part:match("()\n")
 
-          if nl then
-            part = string.sub(fullmsg, i, i + nl - 2)
-            i = i + nl
+        if nl then
+          part = string.sub(fullmsg, i, i + nl - 2)
+          i = i + nl
 
-          else
-            i = i + WRAP
-          end
-
-          part = part .. (" "):rep(WRAP - #part)
-          errlog.raw_log(lvl_const, "|" .. part .. "|")
-
-          if i > fullmsg_len then
-            errlog.raw_log(lvl_const, "+" .. ("-"):rep(WRAP) .. "+")
-          end
+        else
+          i = i + WRAP
         end
 
-        return
+        part = part .. (" "):rep(WRAP - #part)
+        errlog.raw_log(lvl_const, "|" .. part .. "|")
+
+        if i > fullmsg_len then
+          errlog.raw_log(lvl_const, "+" .. ("-"):rep(WRAP) .. "+")
+        end
       end
+
+      return
     end
 
     errlog.raw_log(lvl_const, fullmsg)
@@ -412,8 +411,6 @@ end
 local new_inspect
 
 do
-  local _INSPECT_FORMAT = _PREFIX .. "%file_src:%func_name:%line_src %message"
-  local inspect_buf = assert(parse_modifiers(_INSPECT_FORMAT))
   local function nop() end
 
 
@@ -424,7 +421,10 @@ do
   }
 
 
-  new_inspect = function(format)
+  new_inspect = function(namespace)
+    local _INSPECT_FORMAT = _PREFIX .. "%file_src:%func_name:%line_src ["..namespace.."]\n%message"
+    local inspect_buf = assert(parse_modifiers(_INSPECT_FORMAT))
+
     local self = {}
 
 
@@ -438,7 +438,7 @@ do
     -- @usage
     -- kong.log.inspect.on()
     function self.on()
-      self.print = gen_log_func(_LEVELS.notice, inspect_buf, inspect, 3, " ")
+      self.print = gen_log_func(_LEVELS.debug, inspect_buf, inspect, 3, " ")
     end
 
 
@@ -853,7 +853,7 @@ local function new_log(namespace, format)
 
   self.set_format(format)
 
-  self.inspect = new_inspect(format)
+  self.inspect = new_inspect(namespace)
 
   self.set_serialize_value = set_serialize_value
   self.serialize = serialize
