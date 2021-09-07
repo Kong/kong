@@ -81,22 +81,32 @@ it strictly contains bugfixes. There are no new features or breaking changes.
 
 ##### Core
 
-- Remove duplicate schemas from constraint list and correctly manage cascade_delete [#7560](https://github.com/Kong/kong/pull/7560)
-- Correct workspace reference on balancer events [#7778](https://github.com/Kong/kong/pull/7778)
+- You can now successfully delete workspaces after deleting all entities associated with that workspace.
+  Previously, Kong Gateway was not correctly cleaning up parent-child relationships. For example, creating
+  an Admin also creates a Consumer and RBAC user. When deleting the Admin, the Consumer and RBAC user are
+  also deleted, but accessing the `/workspaces/workspace_name/meta` endpoint would show counts for Consumers
+  and RBAC users, which prevented the workspace from being deleted. Now deleting entities correctly updates
+  the counts, allowing an empty workspace to be deleted. [#7560](https://github.com/Kong/kong/pull/7560)
+- When an upstream event is received from the DAO, `handler.lua` now gets the workspace ID from the request
+  and adds it to the upstream entity that will be used in the worker and cluster events. Before this change,
+  when posting balancer CRUD events, the workspace ID was lost and the balancer used the default
+  workspace ID as a fallback. [#7778](https://github.com/Kong/kong/pull/7778)
 
 ##### CLI
 
-- Fixed regression where Go plugins would prevent CLI commands like `kong config parse` or `kong config db_import` [#7589](https://github.com/Kong/kong/pull/7589)
+- Fixes regression that included an issue where Go plugins prevented CLI commands like `kong config parse`
+  or `kong config db_import` from working as expected. [#7589](https://github.com/Kong/kong/pull/7589)
 
 ##### CI / Process
 
-- Improve tests reliability ([#7578](https://github.com/Kong/kong/pull/7578), [#7704](https://github.com/Kong/kong/pull/7704))
-- Added Github Issues template forms [#7774](https://github.com/Kong/kong/pull/7774)
-- Moved "Feature Request" link from Github Issues to Discussions [#7777](https://github.com/Kong/kong/pull/7777)
+- Improves tests reliability. ([#7578](https://github.com/Kong/kong/pull/7578) [#7704](https://github.com/Kong/kong/pull/7704))
+- Adds Github Issues template forms. [#7774](https://github.com/Kong/kong/pull/7774)
+- Moves "Feature Request" link from Github Issues to Discussions. [#7777](https://github.com/Kong/kong/pull/7777)
 
 ##### Admin API
 
-- Do not allow reserved names on workspaces [#7380](https://github.com/Kong/kong/pull/7380)
+- Kong Gateway now validates workspace names, preventing the use of reserved names on workspaces.
+  [#7380](https://github.com/Kong/kong/pull/7380)
 
 
 [Back to TOC](#table-of-contents)
