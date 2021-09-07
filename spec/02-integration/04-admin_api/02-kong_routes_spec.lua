@@ -55,6 +55,10 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       res2.headers["Date"] = nil
       res1.headers["X-Kong-Admin-Latency"] = nil
       res2.headers["X-Kong-Admin-Latency"] = nil
+      -- XXX EE
+      res1.headers["X-Kong-Admin-Request-ID"] = nil
+      res2.headers["X-Kong-Admin-Request-ID"] = nil
+      -- EE
 
       assert.same(res1.headers, res2.headers)
     end)
@@ -464,6 +468,12 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
   end)
 
   describe("/non-existing", function()
+    setup(function()
+      client = helpers.admin_client(10000)
+    end)
+    teardown(function()
+      if client then client:close() end
+    end)
     it("returns 404 with HEAD", function()
       local res = assert(client:send {
         method = "HEAD",
