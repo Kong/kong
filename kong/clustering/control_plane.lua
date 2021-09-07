@@ -562,7 +562,7 @@ function _M:handle_cp_websocket()
   end
 
   local dp_plugins_map = plugins_list_to_map(data.plugins)
-  local config_hash = "00000000000000000000000000000000" -- initial hash
+  local config_hash = string.rep("0", 32) -- initial hash
   local last_seen = ngx_time()
   local sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
   local purge_delay = self.conf.cluster_data_plane_purge_delay
