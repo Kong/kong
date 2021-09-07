@@ -20,6 +20,8 @@ function usage() {
       echo
    fi
    c=1
+   step "all_clear"            "ensure all PRs marked on the release milestone are 100% merged"
+   step "dependencies"         "ensure all kong dependencies are bumped in the rockspec"
    step "create"               "create the branch"
    step "write_changelog"      "prepare the changelog"
    step "commit_changelog"     "commit the changelog"
@@ -96,6 +98,43 @@ fi
 EDITOR="${EDITOR-$VISUAL}"
 
 case "$step" in
+   #---------------------------------------------------------------------------
+   all_clear)
+      if which firefox > /dev/null 2>&1
+      then
+        browser=firefox
+      elif which xdg-open > /dev/null 2>&1
+      then
+        browser=xdg-open
+      elif which open > /dev/null 2>&1
+      then
+          browser=open
+      fi
+
+      echo "Visit the milestones page (https://github.com/Kong/kong/milestone) and ensure PRs are merged. Press 'y' to open it or Ctrl-C to quit"
+      read
+      if [ "$REPLY" = "y" ]
+      then
+        $browser https://github.com/Kong/kong/milestones
+      fi
+
+      CONFIRM "If everything looks all right, press Enter to continue"
+      SUCCESS "All PRs are merged. Proceeding!"
+      ;;
+
+   #---------------------------------------------------------------------------
+   dependencies)
+      echo "Ensure Kong dependencies in the rockspec are bumped to their latest patch version. Press 'y' to open Kong's rockspec or Ctrl+C to quit"
+      read
+      if [ "$REPLY" = "y" ]
+      then
+        $EDITOR *.rockspec
+      fi
+
+      CONFIRM "If everything looks all right, press Enter to continue"
+      SUCCESS "All dependencies are bumped. Proceeding!"
+      ;;
+
    #---------------------------------------------------------------------------
    create)
       if [ $(git status --untracked-files=no --porcelain | wc -l) != "0" ]

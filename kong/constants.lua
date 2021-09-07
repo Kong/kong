@@ -40,13 +40,14 @@ local plugins = {
   "session",
   "acme",
   "grpc-gateway",
-  "application-registration",
+  "grpc-web",
+  "pre-function",
+  "post-function",
   -- external plugins
   "azure-functions",
   "zipkin",
-  "pre-function",
-  "post-function",
-  "grpc-web",
+  -- XXX EE
+  "application-registration",
 }
 
 -- XXX EE

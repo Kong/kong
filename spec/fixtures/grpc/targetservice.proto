@@ -38,6 +38,12 @@ service Bouncer {
       body: "*"
     };
   }
+
+  rpc GrowTail(Body) returns (Body) {
+    option (google.api.http) = {
+      get: "/v1/grow/tail"
+    };
+  }
 }
 
 
@@ -53,10 +59,23 @@ message HelloResponse {
 message BallIn {
   string message = 1;
   google.protobuf.Timestamp when = 2;
+  google.protobuf.Timestamp now = 3;
 }
 
 message BallOut {
   string reply = 1;
   string time_message = 2;
   google.protobuf.Timestamp now = 3;
+}
+
+message Limb {
+  int32 count = 1;
+  string endings = 2;
+}
+
+message Body {
+  string name = 1;
+  Limb hands = 2;
+  Limb legs = 3;
+  Limb tail = 4;
 }

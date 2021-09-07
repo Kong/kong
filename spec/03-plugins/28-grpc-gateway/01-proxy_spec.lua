@@ -122,7 +122,7 @@ for _, strategy in helpers.each_strategy() do
 
         local res, _ = proxy_client:post("/bounce", {
           headers = { ["Content-Type"] = "application/json" },
-          body = { message = "hi", when = ago_8601 },
+          body = { message = "hi", when = ago_8601, now = now_8601 },
         })
         assert.equal(200, res.status)
 
@@ -133,6 +133,25 @@ for _, strategy in helpers.each_strategy() do
           time_message = ago_8601 .. " was 5m15s ago",
         }, cjson.decode(body))
       end)
+    end)
+
+    test("structured URI args", function()
+      local res, _ = proxy_client:get("/v1/grow/tail", {
+        query = {
+          name = "lizard",
+          hands = { count = 0, endings = "fingers" },
+          legs = { count = 4, endings = "toes" },
+          tail = {count = 0, endings = "tip" },
+        }
+      })
+      assert.equal(200, res.status)
+      local body = assert(res:read_body())
+      assert.same({
+        name = "lizard",
+        hands = { count = 0, endings = "fingers" },
+        legs = { count = 4, endings = "toes" },
+        tail = {count = 1, endings = "tip" },
+      }, cjson.decode(body))
     end)
 
   end)

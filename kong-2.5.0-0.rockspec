@@ -56,7 +56,6 @@ dependencies = {
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.4",
-  "kong-plugin-serverless-functions ~> 2.1",
   "kong-plugin-request-transformer ~> 1.3",
 }
 build = {
@@ -660,6 +659,15 @@ build = {
     ["kong.plugins.grpc-web.handler"] = "kong/plugins/grpc-web/handler.lua",
     ["kong.plugins.grpc-web.schema"] = "kong/plugins/grpc-web/schema.lua",
     
+    ["kong.plugins.pre-function._handler"] = "kong/plugins/pre-function/_handler.lua",
+    ["kong.plugins.pre-function._schema"] = "kong/plugins/pre-function/_schema.lua",
+
+    ["kong.plugins.pre-function.handler"] = "kong/plugins/pre-function/handler.lua",
+    ["kong.plugins.pre-function.schema"] = "kong/plugins/pre-function/schema.lua",
+
+    ["kong.plugins.post-function.handler"] = "kong/plugins/post-function/handler.lua",
+    ["kong.plugins.post-function.schema"] = "kong/plugins/post-function/schema.lua",
+
     -- XXX EE:
     ["kong.plugins.application-registration.handler"] = "kong/plugins/application-registration/handler.lua",
     ["kong.plugins.application-registration.schema"] = "kong/plugins/application-registration/schema.lua",
