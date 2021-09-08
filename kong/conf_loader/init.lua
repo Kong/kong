@@ -975,7 +975,7 @@ local function check_and_infer(conf, opts)
       end
       if name:upper() == "AAAA" then
         log.warn("the 'dns_order' configuration property specifies the " ..
-                 "unsupported IPv6 entry 'AAAA'")
+                 "experimental IPv6 entry 'AAAA'")
 
       end
     end
