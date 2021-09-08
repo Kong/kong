@@ -685,5 +685,8 @@ build = {
 
     ["kong.plugins.oauth2-introspection.handler"] = "kong/plugins/enterprise_edition/oauth2-introspection/handler.lua",
     ["kong.plugins.oauth2-introspection.schema"] = "kong/plugins/enterprise_edition/oauth2-introspection/schema.lua",
+
+    ["kong.plugins.forward-proxy.handler"] = "kong/plugins/enterprise_edition/forward-proxy/handler.lua",
+    ["kong.plugins.forward-proxy.schema"]  = "kong/plugins/enterprise_edition/forward-proxy/schema.lua",
   }
 }

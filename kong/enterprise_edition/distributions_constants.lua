@@ -53,6 +53,7 @@ local constants = {
   plugins = {
     "proxy-cache-advanced",
     "oauth2-introspection",
+    "forward-proxy",
   },
 
   release = false,
