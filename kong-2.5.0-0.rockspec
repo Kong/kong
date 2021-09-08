@@ -694,5 +694,14 @@ build = {
     ["kong.plugins.canary.groups"]  = "kong/plugins/enterprise_edition/canary/groups.lua",
     ["kong.plugins.canary.migrations"] = "kong/plugins/enterprise_edition/canary/migrations/init.lua",
     ["kong.plugins.canary.migrations.001_200_to_210"] = "kong/plugins/enterprise_edition/canary/migrations/001_200_to_210.lua",
+
+    ["kong.plugins.request-transformer-advanced.migrations.cassandra"] = "kong/plugins/enterprise_edition/request-transformer-advanced/migrations/cassandra.lua",
+    ["kong.plugins.request-transformer-advanced.migrations.postgres"] = "kong/plugins/enterprise_edition/request-transformer-advanced/migrations/postgres.lua",
+    ["kong.plugins.request-transformer-advanced.migrations.common"] = "kong/plugins/enterprise_edition/request-transformer-advanced/migrations/common.lua",
+    ["kong.plugins.request-transformer-advanced.migrations.enterprise"] = "kong/plugins/enterprise_edition/request-transformer-advanced/migrations/enterprise/init.lua",
+    ["kong.plugins.request-transformer-advanced.migrations.enterprise.001_1500_to_2100"] = "kong/plugins/enterprise_edition/request-transformer-advanced/migrations/enterprise/001_1500_to_2100.lua",
+    ["kong.plugins.request-transformer-advanced.handler"] = "kong/plugins/enterprise_edition/request-transformer-advanced/handler.lua",
+    ["kong.plugins.request-transformer-advanced.access"] = "kong/plugins/enterprise_edition/request-transformer-advanced/access.lua",
+    ["kong.plugins.request-transformer-advanced.schema"] = "kong/plugins/enterprise_edition/request-transformer-advanced/schema.lua",
   }
 }
