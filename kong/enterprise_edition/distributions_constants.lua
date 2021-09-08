@@ -54,6 +54,7 @@ local constants = {
     "proxy-cache-advanced",
     "oauth2-introspection",
     "forward-proxy",
+    "canary",
   },
 
   release = false,
