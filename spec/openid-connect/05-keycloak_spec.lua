@@ -7,6 +7,7 @@
 
 
 local helpers = require "spec.helpers"
+local cjson = require "cjson.safe"
 
 
 local encode_base64 = ngx.encode_base64
@@ -35,15 +36,12 @@ local INVALID_CREDENTIALS = "Basic " .. encode_base64(INVALID_ID .. ":" .. INVAL
 local PASSWORD_CREDENTIALS = "Basic " .. encode_base64(USERNAME .. ":" .. PASSWORD)
 local CLIENT_CREDENTIALS = "Basic " .. encode_base64(CLIENT_ID .. ":" .. CLIENT_SECRET)
 
-
 local KONG_CLIENT_ID = "kong-client-secret"
 local KONG_CLIENT_SECRET = "38beb963-2786-42b8-8e14-a5f391b4ba93"
 
 
 for _, strategy in helpers.all_strategies() do
-
   describe(PLUGIN_NAME .. ": (keycloak) with strategy: " .. strategy .. " -> ", function()
-
     it("can access openid connect discovery endpoint on demo realm with http", function()
       local client = helpers.http_client(KEYCLOAK_HOST, KEYCLOAK_PORT)
       local res = client:get(REALM_PATH .. DISCOVERY_PATH)
@@ -51,7 +49,6 @@ for _, strategy in helpers.all_strategies() do
       local json = assert.response(res).has.jsonbody()
       assert.equal(ISSUER_URL, json.issuer)
     end)
-
 
     it("can access openid connect discovery endpoint on demo realm with https", function()
       local client = helpers.http_client(KEYCLOAK_HOST, KEYCLOAK_SSL_PORT)
@@ -62,10 +59,7 @@ for _, strategy in helpers.all_strategies() do
       assert.equal(ISSUER_SSL_URL, json.issuer)
     end)
 
-
-
     describe("authentication", function()
-
       local proxy_client
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
@@ -350,10 +344,7 @@ for _, strategy in helpers.all_strategies() do
         end
       end)
 
-
-
       describe("authorization code flow #only", function()
-
         it("initial request, expect redirect to login page", function()
           local res = proxy_client:get("/code-flow", {
             headers = {
@@ -362,18 +353,20 @@ for _, strategy in helpers.all_strategies() do
           })
           assert.response(res).has.status(302)
           local redirect = res.headers["Location"]
-          -- get authorazation=...; cookie
+          -- get authorization=...; cookie
           local auth_cookie = res.headers["Set-Cookie"]
           local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") -1)
           local http = require "resty.http".new()
-          local rres = http:request_uri(redirect, {
+          local rres, err = http:request_uri(redirect, {
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
               ["Host"] = "keycloak:8080",
             }
           })
-          assert(rres.status, 302)
+          assert.is_nil(err)
+          assert.equal(200, rres.status)
+
           local cookies = rres.headers["Set-Cookie"]
           local user_session
           local user_session_header_table = {}
@@ -402,18 +395,23 @@ for _, strategy in helpers.all_strategies() do
               ["Content-Type"] = "application/x-www-form-urlencoded",
               Cookie = user_session_header_table,
           }}
-          local loginres = http:request_uri(login_button_url, opts)
-          assert.is_same(loginres.status, 302)
+          local loginres
+          loginres, err = http:request_uri(login_button_url, opts)
+          assert.is_nil(err)
+          assert.equal(302, loginres.status)
+
           -- after sending login data to the login action page, expect a redirect
           local upstream_url = loginres.headers["Location"]
-          local ures, err = http:request_uri(upstream_url, {
+          local ures
+          ures, err = http:request_uri(upstream_url, {
             headers = {
               -- authenticate using the cookie from the initial request
               Cookie = auth_cookie_cleaned
             }
           })
           assert.is_nil(err)
-          assert.is_same(ures.status, 302)
+          assert.equal(302, ures.status)
+
           local client_session
           local client_session_header_table = {}
           -- extract session cookies
@@ -424,15 +422,20 @@ for _, strategy in helpers.all_strategies() do
             client_session = sub(cookie, 0, find(cookie, ";") -1)
             client_session_header_table[i] = client_session
           end
-          local ures_final = http:request_uri(final_url, {
+          local ures_final
+          ures_final, err = http:request_uri(final_url, {
             headers = {
               -- send session cookie
               Cookie = client_session_header_table
             }
           })
-          assert.is_same(ures_final.status, 200)
-        end)
+          assert.is_nil(err)
+          assert.equal(200, ures_final.status)
 
+          local json = assert(cjson.decode(ures_final.body))
+          assert.is_not_nil(json.headers.authorization)
+          assert.equal("Bearer", sub(json.headers.authorization, 1, 6))
+        end)
 
         it("post wrong login credentials", function()
           local res = proxy_client:get("/code-flow", {
@@ -441,19 +444,22 @@ for _, strategy in helpers.all_strategies() do
             }
           })
           assert.response(res).has.status(302)
+
           local redirect = res.headers["Location"]
-          -- get authorazation=...; cookie
+          -- get authorization=...; cookie
           local auth_cookie = res.headers["Set-Cookie"]
           local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") -1)
           local http = require "resty.http".new()
-          local rres = http:request_uri(redirect, {
+          local rres, err = http:request_uri(redirect, {
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
               ["Host"] = "keycloak:8080",
             }
           })
-          assert.is_same(rres.status, 200)
+          assert.is_nil(err)
+          assert.equal(200, rres.status)
+
           local cookies = rres.headers["Set-Cookie"]
           local user_session
           local user_session_header_table = {}
@@ -482,10 +488,13 @@ for _, strategy in helpers.all_strategies() do
               ["Content-Type"] = "application/x-www-form-urlencoded",
               Cookie = user_session_header_table,
           }}
-          local loginres = http:request_uri(login_button_url, opts)
+          local loginres
+          loginres, err = http:request_uri(login_button_url, opts)
           local idx = find(loginres.body, "Invalid username or password", 0, true)
           assert.is_number(idx)
-          assert.is_same(loginres.status, 200)
+          assert.is_nil(err)
+          assert.equal(200, loginres.status)
+
           -- verify that access isn't granted
           local final_res = proxy_client:get("/code-flow", {
             headers = {
@@ -495,7 +504,6 @@ for _, strategy in helpers.all_strategies() do
           assert.response(final_res).has.status(302)
         end)
 
-
         it("is not allowed with invalid session-cookie", function()
           local res = proxy_client:get("/code-flow", {
             headers = {
@@ -504,18 +512,20 @@ for _, strategy in helpers.all_strategies() do
           })
           assert.response(res).has.status(302)
           local redirect = res.headers["Location"]
-          -- get authorazation=...; cookie
+          -- get authorization=...; cookie
           local auth_cookie = res.headers["Set-Cookie"]
           local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") -1)
           local http = require "resty.http".new()
-          local rres = http:request_uri(redirect, {
+          local rres, err = http:request_uri(redirect, {
             headers = {
               -- impersonate as browser
               ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
               ["Host"] = "keycloak:8080",
             }
           })
-          assert.is_same(rres.status, 200)
+          assert.is_nil(err)
+          assert.equal(200, rres.status)
+
           local cookies = rres.headers["Set-Cookie"]
           local user_session
           local user_session_header_table = {}
@@ -544,17 +554,23 @@ for _, strategy in helpers.all_strategies() do
               ["Content-Type"] = "application/x-www-form-urlencoded",
               Cookie = user_session_header_table,
           }}
-          local loginres = http:request_uri(login_button_url, opts)
-          assert.is_same(loginres.status, 302)
+          local loginres
+          loginres, err = http:request_uri(login_button_url, opts)
+          assert.is_nil(err)
+          assert.equal(302, loginres.status)
+
           -- after sending login data to the login action page, expect a redirect
           local upstream_url = loginres.headers["Location"]
-          local ures = http:request_uri(upstream_url, {
+          local ures
+          ures, err = http:request_uri(upstream_url, {
             headers = {
               -- authenticate using the cookie from the initial request
               Cookie = auth_cookie_cleaned
             }
           })
-          assert.is_same(ures.status, 302)
+          assert.is_nil(err)
+          assert.equal(302, ures.status)
+
           local client_session
           local client_session_header_table = {}
           -- extract session cookies
@@ -567,20 +583,20 @@ for _, strategy in helpers.all_strategies() do
             client_session = client_session .. "invalid"
             client_session_header_table[i] = client_session
           end
-          local ures_final = http:request_uri(final_url, {
+          local ures_final
+          ures_final, err = http:request_uri(final_url, {
             headers = {
               -- send session cookie
               Cookie = client_session_header_table
             }
           })
-          assert.is_same(ures_final.status, 302)
+
+          assert.is_nil(err)
+          assert.equal(302, ures_final.status)
         end)
       end)
 
-
-
       describe("password grant", function()
-
         it("is not allowed with invalid credentials", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -592,7 +608,6 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
-
 
         it("is not allowed with valid client credentials when grant type is given", function()
           local res = proxy_client:get("/", {
@@ -607,7 +622,6 @@ for _, strategy in helpers.all_strategies() do
           assert.same("Unauthorized", json.message)
         end)
 
-
         it("is allowed with valid credentials", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -622,10 +636,7 @@ for _, strategy in helpers.all_strategies() do
         end)
       end)
 
-
-
       describe("client credentials grant", function()
-
         it("is not allowed with invalid credentials", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -637,7 +648,6 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
-
 
         it("is not allowed with valid password credentials when grant type is given", function()
           local res = proxy_client:get("/", {
@@ -652,7 +662,6 @@ for _, strategy in helpers.all_strategies() do
           assert.same("Unauthorized", json.message)
         end)
 
-
         it("is allowed with valid credentials", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -666,8 +675,6 @@ for _, strategy in helpers.all_strategies() do
           assert.equal("Bearer", sub(json.headers.authorization, 1, 6))
         end)
       end)
-
-
 
       describe("jwt access token", function()
         local user_token
@@ -707,7 +714,6 @@ for _, strategy in helpers.all_strategies() do
           client:close()
         end)
 
-
         it("is not allowed with invalid token", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -719,7 +725,6 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
-
 
         it("is allowed with valid user token", function()
           local res = proxy_client:get("/", {
@@ -733,7 +738,6 @@ for _, strategy in helpers.all_strategies() do
           assert.is_not_nil(json.headers.authorization)
           assert.equal(user_token, sub(json.headers.authorization, 8))
         end)
-
 
         it("is allowed with valid client token", function()
           local res = proxy_client:get("/", {
@@ -750,7 +754,6 @@ for _, strategy in helpers.all_strategies() do
       end)
 
       describe("refresh token", function()
-
         local user_token
         local invalid_token
 
@@ -775,7 +778,6 @@ for _, strategy in helpers.all_strategies() do
           client:close()
         end)
 
-
         it("is not allowed with invalid token", function()
           local res = proxy_client:get("/", {
             headers = {
@@ -787,7 +789,6 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
-
 
         it("is allowed with valid user token", function()
           local res = proxy_client:get("/", {
@@ -805,10 +806,7 @@ for _, strategy in helpers.all_strategies() do
         end)
       end)
 
-
-
       describe("introspection", function()
-
         local user_token
         local client_token
         local invalid_token
@@ -846,7 +844,6 @@ for _, strategy in helpers.all_strategies() do
           client:close()
         end)
 
-
         it("is not allowed with invalid token", function()
           local res = proxy_client:get("/introspection", {
             headers = {
@@ -858,7 +855,6 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
-
 
         it("is allowed with valid user token", function()
           local res = proxy_client:get("/introspection", {
@@ -872,7 +868,6 @@ for _, strategy in helpers.all_strategies() do
           assert.is_not_nil(json.headers.authorization)
           assert.equal(user_token, sub(json.headers.authorization, 8))
         end)
-
 
         it("is allowed with valid client token", function()
           local res = proxy_client:get("/introspection", {
@@ -888,10 +883,7 @@ for _, strategy in helpers.all_strategies() do
         end)
       end)
 
-
-
       describe("userinfo", function()
-
         local user_token
         local client_token
         local invalid_token
@@ -929,7 +921,6 @@ for _, strategy in helpers.all_strategies() do
           client:close()
         end)
 
-
         it("is not allowed with invalid token", function()
           local res = proxy_client:get("/userinfo", {
             headers = {
@@ -941,7 +932,6 @@ for _, strategy in helpers.all_strategies() do
           local json = assert.response(res).has.jsonbody()
           assert.same("Unauthorized", json.message)
         end)
-
 
         it("is allowed with valid user token", function()
           local res = proxy_client:get("/userinfo", {
@@ -955,7 +945,6 @@ for _, strategy in helpers.all_strategies() do
           assert.is_not_nil(json.headers.authorization)
           assert.equal(user_token, sub(json.headers.authorization, 8))
         end)
-
 
         it("is allowed with valid client token", function()
           local res = proxy_client:get("/userinfo", {
@@ -973,14 +962,9 @@ for _, strategy in helpers.all_strategies() do
 
       if strategy ~= "off" then
         -- disable off strategy for oauth2 tokens, they do not support db-less mode
-
-
-
         describe("kong oauth2", function()
-
           local token
           local invalid_token
-
 
           lazy_setup(function()
             local client = helpers.proxy_ssl_client()
@@ -1007,7 +991,6 @@ for _, strategy in helpers.all_strategies() do
 
             client:close()
           end)
-
 
           it("is not allowed with invalid token", function()
             local res = proxy_client:get("/kong-oauth2", {
@@ -1037,10 +1020,7 @@ for _, strategy in helpers.all_strategies() do
         end)
       end
 
-
-
       describe("session", function()
-
         local user_session
         local client_session
         local compressed_client_session
@@ -1090,21 +1070,20 @@ for _, strategy in helpers.all_strategies() do
             },
           })
           assert.response(res).has.status(200)
-          local ccookies = res.headers["Set-Cookie"]
-          local cjson = assert.response(res).has.jsonbody()
-          if type(ccookies) == "table" then
+          local cookiesc = res.headers["Set-Cookie"]
+          local jsonc = assert.response(res).has.jsonbody()
+          if type(cookiesc) == "table" then
             -- multiple cookies can be expected
-            for i, cookie in ipairs(ccookies) do
+            for i, cookie in ipairs(cookiesc) do
               client_session = sub(cookie, 0, find(cookie, ";") -1)
               client_session_header_table[i] = client_session
             end
           else
-            client_session = sub(ccookies, 0, find(ccookies, ";") -1)
+            client_session = sub(cookiesc, 0, find(cookiesc, ";") -1)
             client_session_header_table[1] = client_session
           end
 
-          client_token = sub(cjson.headers.authorization, 8, -1)
-
+          client_token = sub(jsonc.headers.authorization, 8, -1)
 
           res = client:get("/compressed-session", {
             headers = {
@@ -1150,7 +1129,6 @@ for _, strategy in helpers.all_strategies() do
 
           client:close()
         end)
-
 
         it("is not allowed with invalid session", function()
           local res = proxy_client:get("/session", {
@@ -1221,12 +1199,8 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
 
-
-
     describe("authorization", function()
-
       local proxy_client
-
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
           "routes",
@@ -1393,7 +1367,6 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
-
         local testservice = bp.services:insert {
           name = 'testservice',
           path = "/anything",
@@ -1412,7 +1385,6 @@ for _, strategy in helpers.all_strategies() do
           paths   = { "/acltest_denies" },
           service = testservice
         }
-
 
         bp.plugins:insert {
           service = testservice,
@@ -1483,7 +1455,7 @@ for _, strategy in helpers.all_strategies() do
           username = "john"
         }
 
-      local no_consumer_route = bp.routes:insert {
+        local no_consumer_route = bp.routes:insert {
           paths   = { "/noconsumer" },
         }
 
@@ -1529,10 +1501,7 @@ for _, strategy in helpers.all_strategies() do
         end
       end)
 
-
-
       describe("[claim based]",function ()
-
         it("prohibits access due to mismatching scope claims", function()
           local res = proxy_client:get("/badscopes", {
             headers = {
@@ -1544,7 +1513,6 @@ for _, strategy in helpers.all_strategies() do
           assert.same("Forbidden", json.message)
         end)
 
-
         it("grants access for matching scope claims", function()
           local res = proxy_client:get("/scopes", {
             headers = {
@@ -1553,7 +1521,6 @@ for _, strategy in helpers.all_strategies() do
           })
           assert.response(res).has.status(200)
         end)
-
 
         it("prohibits access for partially matching [AND]scope claims", function()
           local res = proxy_client:get("/and_scopes", {
@@ -1566,7 +1533,6 @@ for _, strategy in helpers.all_strategies() do
           assert.same("Forbidden", json.message)
         end)
 
-
         it("grants access for partially matching [OR]sope claims", function()
           local res = proxy_client:get("/or_scopes", {
             headers = {
@@ -1576,7 +1542,6 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(200)
           assert.response(res).has.jsonbody()
         end)
-
 
         it("prohibits access due to mismatching audience claims", function()
           local res = proxy_client:get("/falseaudience", {
@@ -1589,7 +1554,6 @@ for _, strategy in helpers.all_strategies() do
           assert.same("Forbidden", json.message)
         end)
 
-
         it("grants access for matching audience claims", function()
           local res = proxy_client:get("/audience", {
             headers = {
@@ -1601,9 +1565,7 @@ for _, strategy in helpers.all_strategies() do
         end)
       end)
 
-
       describe("[ACL plugin]",function ()
-
         it("grants access for valid <allow> fields", function ()
           local res = proxy_client:get("/acltest", {
             headers = {
@@ -1641,10 +1603,7 @@ for _, strategy in helpers.all_strategies() do
         end)
       end)
 
-
-
       describe("[by existing Consumer]",function ()
-
         it("grants access for existing consumer", function ()
           local res = proxy_client:get("/consumer", {
             headers = {
@@ -1673,12 +1632,8 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
 
-
-
     describe("headers", function()
-
       local proxy_client
-
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
           "routes",
@@ -1766,7 +1721,6 @@ for _, strategy in helpers.all_strategies() do
         end
       end)
 
-
       it("annotates the upstream response with headers", function ()
           local res = proxy_client:get("/headertest", {
             headers = {
@@ -1777,7 +1731,6 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.jsonbody()
           assert.request(res).has.header("authenticated_user")
       end)
-
 
       it("doesn't annotate the upstream response with headers for non-existant claims", function ()
           local res = proxy_client:get("/headertestbad", {
@@ -1791,10 +1744,7 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
 
-
-
     describe("logout", function()
-
       local proxy_client
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
@@ -1835,7 +1785,7 @@ for _, strategy in helpers.all_strategies() do
             -- revocation_endpoint = ISSUER_URL .. "/protocol/openid-connect/revoke",
             logout_revoke = true,
             display_errors = true
-        },
+          },
         }
 
         assert(helpers.start_kong({
@@ -1859,9 +1809,7 @@ for _, strategy in helpers.all_strategies() do
         end
       end)
 
-
-
-      describe("from session | ", function ()
+      describe("from session |", function ()
 
         local user_session
         local user_session_header_table = {}
@@ -1890,7 +1838,6 @@ for _, strategy in helpers.all_strategies() do
 
           user_token = sub(json.headers.authorization, 8, -1)
         end)
-
 
         it("validate logout", function ()
           local res = proxy_client:get("/", {
@@ -1930,11 +1877,8 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
 
-
-
     describe("debug", function()
       local proxy_client
-
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
           "routes",
@@ -2019,7 +1963,6 @@ for _, strategy in helpers.all_strategies() do
         end
       end)
 
-
       it("adds extra information to the error messages", function ()
         local res = proxy_client:get("/debug", {
           headers = {
@@ -2032,12 +1975,8 @@ for _, strategy in helpers.all_strategies() do
       end)
     end)
 
-
-
     describe("FTI-2737", function()
-
       local proxy_client
-
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
           "routes",
@@ -2080,7 +2019,7 @@ for _, strategy in helpers.all_strategies() do
             scopes_required = {
               "non-existant-scopes"
             }
-        },
+          },
         }
         bp.plugins:insert {
           route   = route,
@@ -2100,7 +2039,7 @@ for _, strategy in helpers.all_strategies() do
             scopes_required = {
               "profile"
             }
-        },
+          },
         }
         assert(helpers.start_kong({
           database   = strategy,
@@ -2123,7 +2062,6 @@ for _, strategy in helpers.all_strategies() do
         end
       end)
 
-
       it("scopes do not match. expect to set anonymous header", function ()
         local res = proxy_client:get("/anon", {
           headers = {
@@ -2136,7 +2074,6 @@ for _, strategy in helpers.all_strategies() do
         local h2 = assert.request(res).has.header("x-consumer-username")
         assert.equal(h2, "anonymous")
       end)
-
 
       it("scopes match. expect to authenticate", function ()
         local res = proxy_client:get("/non-anon", {
