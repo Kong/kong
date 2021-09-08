@@ -565,8 +565,14 @@ for _, strategy in helpers.each_strategy() do
         stream_listen = "127.0.0.1:9020 ssl"
       })
 
-    https_client = helpers.http_client("127.0.0.1", 9020, 60000)
-    assert(https_client:ssl_handshake(nil, "example.com", false)) -- explicit no-verify
+    https_client = helpers.http_client({
+      scheme = "https",
+      host = "127.0.0.1",
+      port = 9020,
+      timeout = 60000,
+      ssl_verify = false,
+      ssl_server_name = "example.com",
+    })
     end)
 
     lazy_teardown(function()

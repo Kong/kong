@@ -774,7 +774,7 @@ for _, strategy in helpers.each_strategy() do
 
       helpers.wait_until(function()
         local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
-        local _, count = logs:gsub([[handler.lua:%d+ %[aws%-lambda%].+lambda%.ab%-cdef%-1%.amazonaws%.com.+name error"]], "")
+        local _, count = logs:gsub([[%[aws%-lambda%].+lambda%.ab%-cdef%-1%.amazonaws%.com.+name error"]], "")
         return count >= 1
       end, 10)
     end)

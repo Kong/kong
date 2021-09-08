@@ -61,16 +61,16 @@ end
 
 
 local function direct_request(host, port, path, protocol, host_header)
-  local pok, client = pcall(helpers.http_client, host, port)
+  local pok, client = pcall(helpers.http_client, {
+    host = host,
+    port = port,
+    scheme = protocol,
+  })
   if not pok then
     return nil, "pcall: " .. client .. " : " .. host ..":"..port
   end
   if not client then
     return nil, "client"
-  end
-
-  if protocol == "https" then
-    assert(client:ssl_handshake())
   end
 
   local res, err = client:send {
@@ -113,12 +113,20 @@ local function client_requests(n, host_or_headers, proxy_host, proxy_port, proto
   local oks, fails = 0, 0
   local last_status
   for _ = 1, n do
-    local client = (proxy_host and proxy_port)
-                   and helpers.http_client(proxy_host, proxy_port)
-                   or  helpers.proxy_client()
+    local client
+    if proxy_host and proxy_port then
+      client = helpers.http_client({
+        host = proxy_host,
+        port = proxy_port,
+        scheme = protocol,
+      })
 
-    if protocol == "https" then
-      assert(client:ssl_handshake())
+    else
+      if protocol == "https" then
+        client = helpers.proxy_ssl_client()
+      else
+        client = helpers.proxy_client()
+      end
     end
 
     local res = client:send {
