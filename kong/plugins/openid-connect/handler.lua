@@ -68,6 +68,37 @@ local function rediscover_keys(issuer, options)
 end
 
 
+local function get_authorization_args(args)
+  local extra_args  = args.get_conf_args("authorization_query_args_names",
+                                         "authorization_query_args_values")
+  local client_args = args.get_conf_arg("authorization_query_args_client")
+  if client_args then
+    for _, client_arg_name in ipairs(client_args) do
+      local extra_arg = args.get_uri_arg(client_arg_name)
+      if extra_arg then
+        if not extra_args then
+          extra_args = {}
+        end
+
+        extra_args[client_arg_name] = extra_arg
+
+      else
+        extra_arg = args.get_post_arg(client_arg_name)
+        if extra_arg then
+          if not extra_args then
+            extra_args = {}
+          end
+
+          extra_args[client_arg_name] = extra_arg
+        end
+      end
+    end
+  end
+
+  return extra_args
+end
+
+
 function OICHandler.init_worker()
   clients.init_worker()
   cache.init_worker()
@@ -794,6 +825,8 @@ function OICHandler.access(_, conf)
                   log(err)
                 end
 
+                authorization_data.args = get_authorization_args(args)
+
                 log("creating authorization code flow request with previous parameters")
                 token_endpoint_args, err = oic.authorization:request {
                   args          = authorization_data.args,
@@ -862,31 +895,7 @@ function OICHandler.access(_, conf)
 
             headers.no_cache()
 
-            local extra_args  = args.get_conf_args("authorization_query_args_names",
-                                                   "authorization_query_args_values")
-            local client_args = args.get_conf_arg("authorization_query_args_client")
-            if client_args then
-              for _, client_arg_name in ipairs(client_args) do
-                local extra_arg = args.get_uri_arg(client_arg_name)
-                if extra_arg then
-                  if not extra_args then
-                    extra_args = {}
-                  end
-
-                  extra_args[client_arg_name] = extra_arg
-
-                else
-                  extra_arg = args.get_post_arg(client_arg_name)
-                  if extra_arg then
-                    if not extra_args then
-                      extra_args = {}
-                    end
-
-                    extra_args[client_arg_name] = extra_arg
-                  end
-                end
-              end
-            end
+            local extra_args = get_authorization_args(args)
 
             token_endpoint_args, err = oic.authorization:request {
               args = extra_args,
