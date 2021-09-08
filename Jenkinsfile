@@ -40,7 +40,7 @@ pipeline {
                 RELEASE_DOCKER_ONLY="true"
                 PACKAGE_TYPE="apk"
                 RESTY_IMAGE_BASE="alpine"
-                RESTY_IMAGE_TAG="3.13"
+                RESTY_IMAGE_TAG="latest"
             }
             steps {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -92,7 +92,7 @@ pipeline {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
                         sh 'PACKAGE_TYPE=src RESTY_IMAGE_BASE=src make release'
-                        sh 'PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3 CACHE=false DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` make release'
+                        sh 'PACKAGE_TYPE=apk RESTY_IMAGE_BASE=alpine RESTY_IMAGE_TAG=3.14 CACHE=false DOCKER_MACHINE_ARM64_NAME="kong-"`cat /proc/sys/kernel/random/uuid` make release'
 
                     }
                 }
