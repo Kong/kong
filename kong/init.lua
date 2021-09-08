@@ -539,6 +539,8 @@ function Kong.init()
   end
 
   db:close()
+
+  require("resty.kong.var").patch_metatable()
 end
 
 
