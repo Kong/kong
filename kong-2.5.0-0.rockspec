@@ -687,5 +687,11 @@ build = {
 
     ["kong.plugins.forward-proxy.handler"] = "kong/plugins/enterprise_edition/forward-proxy/handler.lua",
     ["kong.plugins.forward-proxy.schema"]  = "kong/plugins/enterprise_edition/forward-proxy/schema.lua",
+
+    ["kong.plugins.canary.handler"] = "kong/plugins/enterprise_edition/canary/handler.lua",
+    ["kong.plugins.canary.schema"]  = "kong/plugins/enterprise_edition/canary/schema.lua",
+    ["kong.plugins.canary.groups"]  = "kong/plugins/enterprise_edition/canary/groups.lua",
+    ["kong.plugins.canary.migrations"] = "kong/plugins/enterprise_edition/canary/migrations/init.lua",
+    ["kong.plugins.canary.migrations.001_200_to_210"] = "kong/plugins/enterprise_edition/canary/migrations/001_200_to_210.lua",
   }
 }
