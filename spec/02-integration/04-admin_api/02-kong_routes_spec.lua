@@ -397,6 +397,13 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
   end)
 
   describe("/schemas/:entity", function()
+    setup(function()
+      client = helpers.admin_client(10000)
+    end)
+    teardown(function()
+      if client then client:close() end
+    end)
+
     it("returns schema of all plugins", function()
       for plugin, _ in pairs(helpers.test_conf.loaded_plugins) do
         local res = assert(client:send {
