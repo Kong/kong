@@ -55,6 +55,7 @@ local constants = {
     "oauth2-introspection",
     "forward-proxy",
     "canary",
+    "request-transformer-advanced",
   },
 
   release = false,
