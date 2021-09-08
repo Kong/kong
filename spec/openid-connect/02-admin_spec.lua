@@ -48,23 +48,23 @@ describe(JWKS_URI, function()
 
     local algs = {}
 
-    for i, jwk in ipairs(json.keys) do
-      algs[i] = jwk.alg
+    for _, jwk in ipairs(json.keys) do
+      algs[jwk.alg] = true
     end
 
     assert.same({
-      "HS256",
-      "HS384",
-      "HS512",
-      "RS256",
-      "RS512",
-      "PS256",
-      "PS384",
-      "PS512",
-      "ES256",
-      "ES384",
-      "ES512",
-      "EdDSA",
+      HS256 = true,
+      HS384 = true,
+      HS512 = true,
+      RS256 = true,
+      RS512 = true,
+      PS256 = true,
+      PS384 = true,
+      PS512 = true,
+      ES256 = true,
+      ES384 = true,
+      ES512 = true,
+      EdDSA = true,
     }, algs)
   end)
 
