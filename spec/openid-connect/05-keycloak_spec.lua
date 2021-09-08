@@ -41,7 +41,7 @@ local KONG_CLIENT_SECRET = "38beb963-2786-42b8-8e14-a5f391b4ba93"
 
 
 for _, strategy in helpers.all_strategies() do
-  describe(PLUGIN_NAME .. ": (keycloak) with strategy: " .. strategy .. " -> ", function()
+  describe(PLUGIN_NAME .. ": (keycloak) with strategy: " .. strategy .. " ->", function()
     it("can access openid connect discovery endpoint on demo realm with http", function()
       local client = helpers.http_client(KEYCLOAK_HOST, KEYCLOAK_PORT)
       local res = client:get(REALM_PATH .. DISCOVERY_PATH)
@@ -344,7 +344,7 @@ for _, strategy in helpers.all_strategies() do
         end
       end)
 
-      describe("authorization code flow #only", function()
+      describe("authorization code flow", function()
         it("initial request, expect redirect to login page", function()
           local res = proxy_client:get("/code-flow", {
             headers = {
@@ -2084,6 +2084,146 @@ for _, strategy in helpers.all_strategies() do
         assert.response(res).has.status(200)
         assert.request(res).has.no.header("x-anonymous-consumer")
         assert.request(res).has.no.header("x-consumer-username")
+      end)
+    end)
+
+    describe("FTI-2774", function()
+      local proxy_client
+      lazy_setup(function()
+        local bp = helpers.get_db_utils(strategy, {
+          "routes",
+          "services",
+          "plugins",
+        }, {
+          PLUGIN_NAME
+        })
+
+        local service = bp.services:insert {
+          name = PLUGIN_NAME,
+          path = "/anything"
+        }
+        local route = bp.routes:insert {
+          service = service,
+          paths   = { "/" },
+        }
+
+        bp.plugins:insert {
+          route   = route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            auth_methods = {
+              "authorization_code",
+            },
+            authorization_query_args_client = {
+              "test-query",
+            }
+          },
+        }
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+          plugins    = "bundled," .. PLUGIN_NAME,
+        }))
+      end)
+
+      lazy_teardown(function()
+        helpers.stop_kong()
+      end)
+
+      before_each(function()
+        proxy_client = helpers.proxy_client()
+      end)
+
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+      end)
+
+      it("authorization query args from the client are always passed to authorization endpoint", function ()
+          local res = proxy_client:get("/", {
+            headers = {
+              ["Host"] = "kong",
+            }
+          })
+          assert.response(res).has.status(302)
+          local location1 = res.headers["Location"]
+
+          local auth_cookie = res.headers["Set-Cookie"]
+          local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") -1)
+
+          res = proxy_client:get("/", {
+            headers = {
+              ["Host"] = "kong",
+              Cookie = auth_cookie_cleaned
+            }
+          })
+
+          assert.response(res).has.status(302)
+          local location2 = res.headers["Location"]
+
+          assert.equal(location1, location2)
+
+          res = proxy_client:get("/", {
+            query = {
+              ["test-query"] = "test",
+            },
+            headers = {
+              ["Host"] = "kong",
+              Cookie = auth_cookie_cleaned,
+            }
+          })
+          assert.response(res).has.status(302)
+          local location3 = res.headers["Location"]
+
+          local auth_cookie2 = res.headers["Set-Cookie"]
+          local auth_cookie_cleaned2 = sub(auth_cookie2, 0, find(auth_cookie2, ";") -1)
+
+          assert.not_equal(location1, location3)
+
+          local query = sub(location3, find(location3, "?", 1, true) + 1)
+          local args = ngx.decode_args(query)
+
+          assert.equal("test", args["test-query"])
+
+          res = proxy_client:get("/", {
+            headers = {
+              ["Host"] = "kong",
+              Cookie = auth_cookie_cleaned2,
+            }
+          })
+
+          local location4 = res.headers["Location"]
+          assert.equal(location4, location1)
+
+          res = proxy_client:get("/", {
+            query = {
+              ["test-query"] = "test2",
+            },
+            headers = {
+              ["Host"] = "kong",
+              Cookie = auth_cookie_cleaned2,
+            }
+          })
+
+          local location5 = res.headers["Location"]
+          assert.not_equal(location5, location1)
+          assert.not_equal(location5, location2)
+          assert.not_equal(location5, location3)
+          assert.not_equal(location5, location4)
+
+          local query2 = sub(location5, find(location5, "?", 1, true) + 1)
+          local args2 = ngx.decode_args(query2)
+
+          assert.equal("test2", args2["test-query"])
       end)
     end)
   end)
