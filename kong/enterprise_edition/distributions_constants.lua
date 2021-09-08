@@ -56,6 +56,7 @@ local constants = {
     "forward-proxy",
     "canary",
     "request-transformer-advanced",
+    "response-transformer-advanced",
   },
 
   release = false,
