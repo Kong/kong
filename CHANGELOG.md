@@ -70,6 +70,7 @@
   [#7430](https://github.com/Kong/kong/pull/7727)
 - Bumped `openssl` from `1.1.1k` to `1.1.1l`
   [7767](https://github.com/Kong/kong/pull/7767)
+- Bumped `lua-resty-http` from 0.15 to 0.16.1 [#7797](https://github.com/kong/kong/pull/7797)
 
 ### Additions
 

@@ -787,4 +787,3 @@ describe("key-auth plugin invalidation on dbless reload #off", function()
 
   end)
 end)
-
