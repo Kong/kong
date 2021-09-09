@@ -1,8 +1,6 @@
 package = "kong-plugin-enterprise-route-by-header"
 version = "0.3.2-0"
 
-local pluginName = package:match("^kong%-plugin%-enterprise%-(.+)$")
-
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "http://github.com/Kong/kong-plugin-enterprise-route-by-header.git",
@@ -20,7 +18,7 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
-    ["kong.plugins."..pluginName..".handler"] = "kong/plugins/"..pluginName.."/handler.lua",
-    ["kong.plugins."..pluginName..".schema"] = "kong/plugins/"..pluginName.."/schema.lua",
+    ["kong.plugins.route-by-header.handler"] = "kong/plugins/enterprise_edition/route-by-header/handler.lua",
+    ["kong.plugins.route-by-header.schema"] = "kong/plugins/enterprise_edition/route-by-header/schema.lua",
   }
 }
