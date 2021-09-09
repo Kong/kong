@@ -58,6 +58,7 @@ local constants = {
     "request-transformer-advanced",
     "response-transformer-advanced",
     "statsd-advanced",
+    "route-by-header",
   },
 
   release = false,
