@@ -712,5 +712,10 @@ build = {
     ["kong.plugins.response-transformer-advanced.feature_flags.limit_body"] = "kong/plugins/enterprise_edition/response-transformer-advanced/feature_flags/limit_body.lua",
     ["kong.plugins.response-transformer-advanced.transform_utils"] = "kong/plugins/enterprise_edition/response-transformer-advanced/transform_utils.lua",
     ["kong.plugins.response-transformer-advanced.constants"] = "kong/plugins/enterprise_edition/response-transformer-advanced/constants.lua",
+
+    ["kong.plugins.statsd-advanced.handler"] = "kong/plugins/enterprise_edition/statsd-advanced/handler.lua",
+    ["kong.plugins.statsd-advanced.schema"]  = "kong/plugins/enterprise_edition/statsd-advanced/schema.lua",
+    ["kong.plugins.statsd-advanced.log_helper"]  = "kong/plugins/enterprise_edition/statsd-advanced/log_helper.lua",
+    ["kong.plugins.statsd-advanced.constants"]  = "kong/plugins/enterprise_edition/statsd-advanced/constants.lua",
   }
 }
