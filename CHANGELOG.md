@@ -1,3 +1,13 @@
+## v2.0.2
+
+- Fix a bug where the revocation endpoint was required to be specified
+  with `config.revocation_endpoint` for it to work, even when the discovery
+  document already had it.
+- Fix that authorization query args from the client are always passed to
+  authorization endpoint (FTI-2774)
+- Add an integration test suite
+
+
 ## v2.0.1
 
 - Fix a security issue with requirements checks while `config.anonymous`
