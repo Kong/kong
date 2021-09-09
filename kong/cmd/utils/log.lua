@@ -83,7 +83,7 @@ function _M.log(lvl, ...)
   end
 end
 
-return setmetatable(_M, {
+setmetatable(_M, {
   __call = function(_, ...)
     return _M.log(_LEVELS.info, ...)
   end,
@@ -96,3 +96,26 @@ return setmetatable(_M, {
     return rawget(t, key)
   end
 })
+
+do
+  local pl_utils = require "pl.utils"
+
+  pl_utils.set_deprecation_func(function(msg, trace)
+    if trace then
+      _M.log(ngx.WARN, msg, " ", trace)
+    else
+      _M.log(ngx.WARN, msg)
+    end
+  end)
+
+  _M.deprecatiton = function(message, version_removed, deprecated_after)
+    pl_utils.raise_deprecation({
+      message = message,
+      version_removed = version_removed,
+      deprecated_after = deprecated_after,
+      no_trace = true,
+    })
+  end
+end
+
+return _M

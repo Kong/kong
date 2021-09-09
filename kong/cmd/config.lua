@@ -106,7 +106,7 @@ local function execute(args)
     filename = pl_path.abspath(filename)
 
     if pl_path.extension(filename) == ".lua" then
-      log.warn("db_import of .lua files is deprecated; please convert your file into .yaml or .json")
+      log.deprecatiton("db_import of .lua files is deprecated; please convert your file into .yaml or .json")
     end
 
     local entities, err, _, meta = dc:parse_file(filename, accepted_formats)

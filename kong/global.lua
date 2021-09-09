@@ -23,6 +23,37 @@ local LOCK_OPTS = {
 }
 
 
+local deprecate do
+  local pl_utils = require "pl.utils"
+
+  pl_utils.set_deprecation_func(function(msg, trace)
+    if kong and kong.log then
+      if trace then
+        kong.log.warn(msg, " ", trace)
+      else
+        kong.log.warn(msg)
+      end
+
+    else
+      if trace then
+        ngx.log(ngx.WARN, msg, " ", trace)
+      else
+        ngx.log(ngx.WARN, msg)
+      end
+    end
+  end)
+
+  deprecate = function(message, version_removed, deprecated_after)
+    pl_utils.raise_deprecation({
+      message = message,
+      version_removed = version_removed,
+      deprecated_after = deprecated_after,
+      no_trace = true,
+    })
+  end
+end
+
+
 -- Runloop interface
 
 
@@ -40,6 +71,7 @@ function _GLOBAL.new()
     pdk_version = nil,
 
     configuration = nil,
+    deprecate = deprecate,
   }
 end
 

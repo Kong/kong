@@ -5,7 +5,6 @@ local endpoints = require "kong.api.endpoints"
 local arguments = require "kong.api.arguments"
 local singletons = require "kong.singletons"
 local api_helpers = require "kong.api.api_helpers"
-local raise_deprecation = require("pl.utils").raise_deprecation
 
 
 local ngx = ngx
@@ -124,13 +123,8 @@ return {
 
   ["/plugins/schema/:name"] = {
     GET = function(self, db)
-      raise_deprecation {
-        message = "/plugins/schema/:name endpoint is deprecated, please " ..
-                  "use /schemas/plugins/:name instead",
-        version_removed = "3.0.0",
-        deprecated_after = "1.2.0",
-        no_trace = true,
-      }
+      kong.deprecate("/plugins/schema/:name endpoint is deprecated, please " ..
+                     "use /schemas/plugins/:name instead", "3.0.0", "1.2.0")
       local subschema = db.plugins.schema.subschemas[self.params.name]
       if not subschema then
         return kong.response.exit(404, { message = "No plugin named '" .. self.params.name .. "'" })
