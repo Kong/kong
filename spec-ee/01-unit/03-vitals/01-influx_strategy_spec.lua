@@ -5,6 +5,23 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+_G._TEST = true
+describe("timestamp generated", function()
+  local strategy = require "kong.vitals.influxdb.strategy"
+  local socket = require "socket"
+  it("generates a full microsecond precision unix timestamp", function()
+    -- Roll the time dice a bunch of times generate a bunch of timestamps.
+    -- the origin of the was leading 0s in tv_usec causing us timestamps to
+    -- drop a digit due to string concatination instead of arithmetic
+    for i = 0, 10, 1
+      do
+        local timestring = strategy.gettimeofday()
+        assert.are.same(#timestring, 16)
+        socket.sleep(0.1)
+      end
+  end)
+end)
+
 describe("authorization_headers", function()
   local strategy = require "kong.vitals.influxdb.strategy"
 

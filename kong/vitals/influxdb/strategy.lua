@@ -57,8 +57,8 @@ local gettimeofday_struct = ffi.new("timeval")
 
 local function gettimeofday()
     ffi.C.gettimeofday(gettimeofday_struct, nil)
-    return tostring(tonumber(gettimeofday_struct.tv_sec)) ..
-      tostring(tonumber(gettimeofday_struct.tv_usec))
+    return string.format("%.f", tonumber(gettimeofday_struct.tv_sec) * 1000000 +
+      tonumber(gettimeofday_struct.tv_usec))
 end
 
 
@@ -811,6 +811,10 @@ function _M:log()
 
     ngx.timer.at(0, flush, self, m)
   end
+end
+
+if _G._TEST then
+  _M.gettimeofday = gettimeofday
 end
 
 return _M
