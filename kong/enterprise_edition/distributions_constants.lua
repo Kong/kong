@@ -57,6 +57,7 @@ local constants = {
     "canary",
     "request-transformer-advanced",
     "response-transformer-advanced",
+    "statsd-advanced",
   },
 
   release = false,
