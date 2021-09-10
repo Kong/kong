@@ -163,25 +163,29 @@ local function cacheable_response(conf, cc)
   end
 
   do
-    local content_type = ngx.var.sent_http_content_type
+    local status = kong.response.get_status()
+    -- conform to RFC since 204/304 do not have Content-Type header
+    if status ~= 204 and status ~= 304 then
+      local content_type = ngx.var.sent_http_content_type
 
-    -- bail if we cannot examine this content type
-    if not content_type or type(content_type) == "table" or
-       content_type == "" then
+      -- bail if we cannot examine this content type
+      if not content_type or type(content_type) == "table" or
+        content_type == "" then
 
-      return false
-    end
-
-    local content_match = false
-    for i = 1, #conf.content_type do
-      if conf.content_type[i] == content_type then
-        content_match = true
-        break
+        return false
       end
-    end
 
-    if not content_match then
-      return false
+      local content_match = false
+      for i = 1, #conf.content_type do
+        if conf.content_type[i] == content_type then
+          content_match = true
+          break
+        end
+      end
+
+      if not content_match then
+        return false
+      end
     end
   end
 

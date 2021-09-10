@@ -210,7 +210,7 @@ do
         config = {
           strategy = policy,
           content_type = { "text/html; charset=utf-8", "application/json" },
-          response_code = { 200, 417 },
+          response_code = { 200, 204, 304, 417 },
           request_method = { "GET", "HEAD", "POST" },
           [policy] = policy_config,
         },
@@ -1179,6 +1179,53 @@ do
         assert.same("Hit", res.headers["X-Cache-Status"])
       end)
 
+     it("response status with 304 empty Content-Type", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/304",
+          headers = {
+            host = "route-10.com",
+          },
+        })
+
+        assert.res_status(304, res)
+        assert.same("Miss", res.headers["X-Cache-Status"])
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/status/304",
+          headers = {
+            host = "route-10.com",
+          },
+        })
+
+        assert.res_status(304, res)
+        assert.same("Hit", res.headers["X-Cache-Status"])
+      end)
+
+      it("response status with 204 empty Content-Type", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/204",
+          headers = {
+            host = "route-10.com",
+          },
+        })
+
+        assert.res_status(204, res)
+        assert.same("Miss", res.headers["X-Cache-Status"])
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/status/204",
+          headers = {
+            host = "route-10.com",
+          },
+        })
+
+        assert.res_status(204, res)
+        assert.same("Hit", res.headers["X-Cache-Status"])
+      end)
     end)
 
     describe("displays Kong core headers:", function()
