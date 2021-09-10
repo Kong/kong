@@ -32,9 +32,12 @@ local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
 local table_concat = table.concat
+local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
+local inflate_gzip = utils.inflate_gzip
 
 
+local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
 local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
@@ -105,13 +108,158 @@ function _M.new(parent)
     clients = setmetatable({}, { __mode = "k", })
   }
 
-  return setmetatable(self, {
+  setmetatable(self, {
     __index = function(tab, key)
       return _M[key] or parent[key]
     end,
   })
+
+  self.plugins_map = {}
+
+  return self
 end
 
+
+local function invalidate_keys_from_config(config_plugins, keys)
+  if not config_plugins then
+    return
+  end
+
+  for _, t in ipairs(config_plugins) do
+    if t and t["config"] then
+      local config = t["config"]
+      local name = gsub(t["name"], "-", "_")
+
+      -- Handle Redis configurations (regardless of plugin)
+      if config.redis then
+        local config_plugin_redis = t["config"].redis
+        for _, key in ipairs(keys["redis"]) do
+          if config_plugin_redis[key] ~= nil then
+            config_plugin_redis[key] = nil
+          end
+        end
+      end
+
+      -- Handle fields in specific plugins
+      if keys[name] ~= nil then
+        for _, key in ipairs(keys[name]) do
+          if config[key] ~= nil then
+            config[key] = nil
+          end
+        end
+      end
+    end
+  end
+end
+
+local function dp_version_num(dp_version)
+  local base = 1000000000
+  local version_num = 0
+  for _, v in ipairs(utils.split(dp_version, ".", 4)) do
+    v = v:match("^(%d+)")
+    version_num = version_num + base * tonumber(v, 10) or 0
+    base = base / 1000
+  end
+
+  return version_num
+end
+-- for test
+_M._dp_version_num = dp_version_num
+
+local removal_fields = {
+  [2003003003] = {
+    file_log = {
+      "custom_fields_by_lua",
+    },
+    http_log = {
+      "custom_fields_by_lua",
+    },
+    loggly = {
+      "custom_fields_by_lua",
+    },
+    prometheus = {
+      "per_consumer",
+    },
+    syslog = {
+      "custom_fields_by_lua",
+    },
+    tcp_log = {
+      "custom_fields_by_lua",
+    },
+    udp_log = {
+      "custom_fields_by_lua",
+    },
+    zipkin = {
+      "tags_header",
+    },
+  },
+
+  [2004001002] = {
+    redis = {
+      "connect_timeout",
+      "keepalive_backlog",
+      "keepalive_pool_size",
+      "read_timeout",
+      "send_timeout",
+    },
+    syslog = {
+      "facility",
+    },
+  }
+}
+
+local function get_removed_fields(dp_version_number)
+  local unknown_fields = {}
+  local has_fields
+
+  -- Merge dataplane unknown fields; if needed based on DP version
+  for v, list in pairs(removal_fields) do
+    if dp_version_number < v then
+      has_fields = true
+      for plugin, fields in pairs(list) do
+        if not unknown_fields[plugin] then
+          unknown_fields[plugin] = {}
+        end
+        for _, k in ipairs(fields) do
+          table.insert(unknown_fields[plugin], k)
+        end
+      end
+    end
+  end
+
+  return has_fields and unknown_fields or nil
+end
+-- for test
+_M._get_removed_fields = get_removed_fields
+
+local function update_compatible_payload(payload, dp_version, log_suffix)
+  local fields = get_removed_fields(dp_version_num(dp_version))
+  if fields then
+    local inflated_payload, err = inflate_gzip(payload)
+    if inflated_payload then
+      inflated_payload = cjson_decode(inflated_payload)
+      local config_table = inflated_payload["config_table"]
+
+      invalidate_keys_from_config(config_table["plugins"], fields)
+
+      local deflated_payload = cjson_encode(inflated_payload)
+      deflated_payload, err = deflate_gzip(deflated_payload)
+      if deflated_payload then
+        return deflated_payload
+      else
+        ngx_log(ngx_WARN, _log_prefix, "unable to deflate configuration for data plane: ", err, log_suffix)
+        return payload
+      end
+    else
+      ngx_log(ngx_WARN, _log_prefix, "unable to inflate configuration for data plane: ", err, log_suffix)
+      return payload
+    end
+  end
+
+  return payload
+end
+-- for test
+_M._update_compatible_payload = update_compatible_payload
 
 function _M:export_deflated_reconfigure_payload()
   local config_table, err = declarative.export_config()
@@ -119,12 +267,19 @@ function _M:export_deflated_reconfigure_payload()
     return nil, err
   end
 
+  -- update plugins map
   self.plugins_configured = {}
   if config_table.plugins then
     for _, plugin in pairs(config_table.plugins) do
       self.plugins_configured[plugin.name] = true
     end
   end
+
+
+  -- store serialized plugins map for troubleshooting purposes
+  local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
+  kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
+  ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
   local config_hash = self:calculate_config_hash(config_table)
 
@@ -631,6 +786,8 @@ function _M:handle_cp_websocket()
           local previous_sync_status = sync_status
           ok, err, sync_status = self:check_configuration_compatibility(dp_plugins_map)
           if ok then
+            payload = update_compatible_payload(payload, dp_version, log_suffix)
+
             -- config update
             local _, err = wb:send_binary(payload)
             if err then
