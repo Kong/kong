@@ -10,6 +10,12 @@ allow2 = response {
   }
 }
 
+default allow3 = false
+allow3 {
+  input.request.http.headers["my-secret-header"] == "open-sesame"
+  input.request.http.path == "/request"
+}
+
 deny1 = false
 deny2 = response {
   response := {

@@ -35,6 +35,7 @@ local function build_opa_input(plugin_conf)
         scheme = nvar.scheme,
         host = nvar.host,
         port = nctx.host_port or nvar.server_port,
+        path = kong.request.get_path(),
         headers = kong.request.get_headers(),
         querystring = kong.request.get_query(),
         tls = request_tls,
