@@ -8,15 +8,30 @@ local Errors = require "kong.db.errors"
 local singletons = require "kong.singletons"
 local hooks = require "kong.hooks"
 
-local ngx      = ngx
-local sub      = string.sub
-local find     = string.find
-local type     = type
-local pairs    = pairs
-local ipairs   = ipairs
+
+local ngx = ngx
+local sub = string.sub
+local find = string.find
+local type = type
+local pairs = pairs
+local ipairs = ipairs
+
 
 local _M = {}
 local NO_ARRAY_INDEX_MARK = {}
+
+
+local HTTP_METHODS = {
+  ["GET"] = true,
+  ["HEAD"] = true,
+  ["POST"] = true,
+  ["PUT"] = true,
+  ["DELETE"] = true,
+  ["CONNECT"] = true,
+  ["OPTIONS"] = true,
+  ["TRACE"] = true,
+  ["PATCH"] = true,
+}
 
 -- Parses a form value, handling multipart/data values
 -- @param `v` The value object
@@ -357,6 +372,17 @@ local function on_error(self)
 end
 
 
+local function options_method(methods)
+  return function()
+    kong.response.exit(204, nil, {
+      ["Allow"] = methods,
+      ["Access-Control-Allow-Methods"] = methods,
+      ["Access-Control-Allow-Headers"] = "Content-Type"
+    })
+  end
+end
+
+
 local handler_helpers = {
   yield_error = app_helpers.yield_error
 }
@@ -366,16 +392,33 @@ function _M.attach_routes(app, routes)
   for route_path, methods in pairs(routes) do
     methods.on_error = methods.on_error or on_error
 
+    local http_methods_array = {}
+    local http_methods_count = 0
+
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
         return method_handler(self, {}, handler_helpers)
       end
 
       methods[method_name] = parse_params(wrapped_handler)
+
+      if HTTP_METHODS[method_name] then
+        http_methods_count = http_methods_count + 1
+        http_methods_array[http_methods_count] = method_name
+      end
     end
 
     if not methods["HEAD"] and methods["GET"] then
       methods["HEAD"] = methods["GET"]
+      http_methods_count = http_methods_count + 1
+      http_methods_array[http_methods_count] = "HEAD"
+    end
+
+    if not methods["OPTIONS"] then
+      http_methods_count = http_methods_count + 1
+      http_methods_array[http_methods_count] = "OPTIONS"
+      table.sort(http_methods_array)
+      methods["OPTIONS"] = options_method(table.concat(http_methods_array, ", ", 1, http_methods_count))
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
@@ -393,6 +436,9 @@ function _M.attach_new_db_routes(app, routes)
 
     methods.on_error = methods.on_error or new_db_on_error
 
+    local http_methods_array = {}
+    local http_methods_count = 0
+
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
         self.args = arguments.load({
@@ -404,10 +450,24 @@ function _M.attach_new_db_routes(app, routes)
       end
 
       methods[method_name] = parse_params(wrapped_handler)
+
+      if HTTP_METHODS[method_name] then
+        http_methods_count = http_methods_count + 1
+        http_methods_array[http_methods_count] = method_name
+      end
     end
 
     if not methods["HEAD"] and methods["GET"] then
       methods["HEAD"] = methods["GET"]
+      http_methods_count = http_methods_count + 1
+      http_methods_array[http_methods_count] = "HEAD"
+    end
+
+    if not methods["OPTIONS"] then
+      http_methods_count = http_methods_count + 1
+      http_methods_array[http_methods_count] = "OPTIONS"
+      table.sort(http_methods_array)
+      methods["OPTIONS"] = options_method(table.concat(http_methods_array, ", ", 1, http_methods_count))
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))

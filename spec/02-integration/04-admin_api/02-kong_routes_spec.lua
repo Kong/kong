@@ -52,6 +52,21 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.same(res1.headers, res2.headers)
     end)
 
+    it("returns allow and CORS headers with OPTIONS method", function()
+      local res = assert(client:send {
+        method = "OPTIONS",
+        path = "/"
+      })
+
+      local body = assert.res_status(204, res)
+      assert.equal("", body)
+      assert.equal("GET, HEAD, OPTIONS", res.headers["Allow"])
+      assert.equal("GET, HEAD, OPTIONS", res.headers["Access-Control-Allow-Methods"])
+      assert.equal("Content-Type", res.headers["Access-Control-Allow-Headers"])
+      assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+      assert.not_nil(res.headers["X-Kong-Admin-Latency"])
+    end)
+
     it("returns Kong's version number and tagline", function()
       local res = assert(client:send {
         method = "GET",
@@ -457,6 +472,15 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       })
       local body = assert.res_status(404, res)
       assert.equal("", body)
+    end)
+    it("returns 404 with OPTIONS", function()
+      local res = assert(client:send {
+        method = "OPTIONS",
+        path = "/non-existing"
+      })
+      local body = assert.res_status(404, res)
+      local json = cjson.decode(body)
+      assert.equal("Not found", json.message)
     end)
     it("returns 404 with GET", function()
       local res = assert(client:send {
