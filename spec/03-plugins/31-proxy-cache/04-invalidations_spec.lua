@@ -1,8 +1,17 @@
-local helpers      = require "spec.helpers"
+local helpers = require "spec.helpers"
+
 
 
 local POLL_INTERVAL = 0.3
 
+local function get(client, host)
+  return assert(client:get("/get", {
+    headers = {
+      Host = host,
+      ["kong-debug"] = 1,
+    },
+  }))
+end
 
 for _, strategy in helpers.each_strategy() do
 describe("proxy-cache invalidations via: " .. strategy, function()
@@ -112,68 +121,38 @@ describe("proxy-cache invalidations via: " .. strategy, function()
 
     setup(function()
       -- prime cache entries on both instances
-      local res_1 = assert(client_1:get("/get", {
-        headers = {
-          Host = "route-1.com",
-          ["kong-debug"] = 1,
-        },
-      }))
+      local res_1 = get(client_1, "route-1.com")
 
       assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
       cache_key = res_1.headers["X-Cache-Key"]
 
-      local res_2 = assert(client_2:get("/get", {
-        headers = {
-          host = "route-1.com",
-          ["kong-debug"] = 1,
-        },
-      }))
+      local res_2 = get(client_2, "route-1.com")
 
       assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])
       assert.same(cache_key, res_2.headers["X-Cache-Key"])
 
-      res_1 = assert(client_1:get("/get", {
-        headers = {
-          host = "route-2.com",
-          ["kong-debug"] = 1,
-        },
-      }))
+      res_1 = get(client_1, "route-2.com")
 
       assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
       cache_key2 = res_1.headers["X-Cache-Key"]
       assert.not_same(cache_key, cache_key2)
 
-      res_2 = assert(client_2:get("/get", {
-        headers = {
-          host = "route-2.com",
-          ["kong-debug"] = 1,
-        },
-      }))
+      local res_2 = get(client_2, "route-2.com")
 
       assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])
     end)
 
     it("propagates purges via cluster events mechanism", function()
-      local res_1 = assert(client_1:get("/get", {
-        headers = {
-          host = "route-1.com",
-          ["kong-debug"] = 1,
-        },
-      }))
+      local res_1 = get(client_1, "route-1.com")
 
       assert.res_status(200, res_1)
       assert.same("Hit", res_1.headers["X-Cache-Status"])
 
-      local res_2 = assert(client_2:get("/get", {
-        headers = {
-          host = "route-1.com",
-          ["kong-debug"] = 1,
-        },
-      }))
+      local res_2 = get(client_2, "route-1.com")
 
       assert.res_status(200, res_2)
       assert.same("Hit", res_2.headers["X-Cache-Status"])
@@ -192,22 +171,12 @@ describe("proxy-cache invalidations via: " .. strategy, function()
       end, 10)
 
       -- refresh and purge with our second endpoint
-      res_1 = assert(client_1:get("/get", {
-        headers = {
-          Host = "route-1.com",
-          ["kong-debug"] = 1,
-        },
-      }))
+      res_1 = get(client_1, "route-1.com")
 
       assert.res_status(200, res_1)
       assert.same("Miss", res_1.headers["X-Cache-Status"])
 
-      res_2 = assert(client_2:get("/get", {
-        headers = {
-          host = "route-1.com",
-          ["kong-debug"] = 1,
-        },
-      }))
+      res_2 = get(client_2, "route-1.com")
 
       assert.res_status(200, res_2)
       assert.same("Miss", res_2.headers["X-Cache-Status"])

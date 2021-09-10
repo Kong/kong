@@ -1,6 +1,14 @@
 local helpers = require "spec.helpers"
 local strategies = require("kong.plugins.proxy-cache.strategies")
 
+local function get(client, host)
+  return assert(client:get("/get", {
+    headers = {
+      host = host,
+      ["kong-debug"] = 1,
+    },
+  }))
+end
 
 --local TIMEOUT = 10 -- default timeout for non-memory strategies
 
@@ -344,12 +352,7 @@ do
     end)
 
     it("caches a simple request", function()
-      local res = assert(client:get("/get", {
-        headers = {
-          host = "route-1.com",
-          ["kong-debug"] = 1,
-        }
-      }))
+      local res = assert(get(client, "route-1.com"))
 
       local body1 = assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -364,12 +367,7 @@ do
       --  return strategy:fetch(cache_key1) ~= nil
       --end, TIMEOUT)
 
-      local res = client:get("/get", {
-        headers = {
-          host = "route-1.com",
-          ["kong-debug"] = 1,
-        }
-      })
+      local res = assert(get(client, "route-1.com"))
 
       local body2 = assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
@@ -382,15 +380,26 @@ do
       -- examine this cache key against another plugin's cache key for the same req
       --cache_key = cache_key1
     end)
+    it("No X-Cache* headers on the reponse without debug header in the query", function()
+      local res =  assert(client:get("/get", {
+        headers = { Host ="route-1.com", },
+      }))
+
+      assert.res_status(200, res)
+      assert.is_nil(res.headers["X-Cache-Status"])
+      res =  assert(client:get("/get", {
+        headers = { Host ="route-1.com", },
+      }))
+      assert.res_status(200, res)
+      assert.is_nil(res.headers["X-Cache-Status"])
+      assert.is_nil(res.headers["X-Cache-Key"])
+      res = assert(get(client, "route-1.com"))
+      assert.same("Hit", res.headers["X-Cache-Status"])
+    end)
+
 
     it("respects cache ttl", function()
-      local res = assert(client:get("/get", {
-        headers = {
-          host = "route-6.com",
-          ["kong-debug"] = 1,
-        }
-      })
-      )
+      local res = assert(get(client, "route-6.com"))
 
       --local cache_key2 = res.headers["X-Cache-Key"]
       assert.res_status(200, res)
@@ -401,12 +410,7 @@ do
       --  return strategy:fetch(cache_key2) ~= nil
       --end, TIMEOUT)
 
-      res = client:get("/get", {
-        headers = {
-          host = "route-6.com",
-          ["kong-debug"] = 1,
-        }
-      })
+      res = assert(get(client, "route-6.com"))
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
@@ -424,12 +428,7 @@ do
       --end, TIMEOUT)
 
       -- and go through the cycle again
-      res = assert(client:get("/get", {
-        headers = {
-          host = "route-6.com",
-          ["kong-debug"] = 1,
-        }
-      }))
+      res = assert(get(client, "route-6.com"))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -440,23 +439,13 @@ do
       --  return strategy:fetch(cache_key) ~= nil
       --end, TIMEOUT)
 
-      res = assert(client:get("/get", {
-        headers = {
-          host = "route-6.com",
-          ["kong-debug"] = 1,
-        }
-      }))
+      res = assert(get(client, "route-6.com"))
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
 
       -- examine the behavior of keeping cache in memory for longer than ttl
-      res = assert(client:get("/get", {
-        headers = {
-          host = "route-9.com",
-          ["kong-debug"] = 1,
-        }
-      }))
+      res = assert(get(client, "route-9.com"))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -467,12 +456,7 @@ do
       --  return strategy:fetch(cache_key) ~= nil
       --end, TIMEOUT)
 
-      res = assert(client:get("/get", {
-        headers = {
-          host = "route-9.com",
-          ["kong-debug"] = 1,
-        }
-      }))
+      res = assert(get(client, "route-9.com"))
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
@@ -491,22 +475,12 @@ do
       --end, TIMEOUT)
 
       -- and go through the cycle again
-      res = assert(client:get("/get", {
-        headers = {
-          host = "route-9.com",
-          ["kong-debug"] = 1,
-        }
-      }))
+      res = assert(get(client, "route-9.com"))
 
       assert.res_status(200, res)
       assert.same("Refresh", res.headers["X-Cache-Status"])
 
-      res = assert(client:get("/get", {
-        headers = {
-          host = "route-9.com",
-          ["kong-debug"] = 1,
-        }
-      }))
+      res = assert(get(client, "route-9.com"))
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
@@ -847,12 +821,7 @@ do
     end)
 
     it("uses an separate cache key between routes-specific and a global plugin", function()
-      local res = assert(client:get("/get", {
-        headers = {
-          host = "route-3.com",
-          ["kong-debug"] = 1,
-        }
-      }))
+      local res = assert(get(client, "route-3.com"))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -861,12 +830,7 @@ do
       assert.matches("^[%w%d]+$", cache_key1)
       assert.equals(64, #cache_key1)
 
-      res = assert(client:get("/get", {
-        headers = {
-          host = "route-4.com",
-          ["kong-debug"] = 1,
-        }
-      }))
+      res = assert(get(client, "route-4.com"))
 
       assert.res_status(200, res)
 
@@ -876,12 +840,7 @@ do
     end)
 
     it("differentiates caches between instances", function()
-      local res = assert(client:get("/get", {
-        headers = {
-          host = "route-2.com",
-          ["kong-debug"] = 1,
-        }
-      }))
+      local res = assert(get(client, "route-2.com"))
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
@@ -895,12 +854,7 @@ do
       --  return strategy:fetch(cache_key1) ~= nil
       --end, TIMEOUT)
 
-      res = assert(client:get("/get", {
-        headers = {
-          host = "route-2.com",
-          ["kong-debug"] = 1,
-        }
-      }))
+      res = assert(get(client, "route-2.com"))
 
       local cache_key2 = res.headers["X-Cache-Key"]
       assert.res_status(200, res)
@@ -1029,12 +983,7 @@ do
 
     describe("handles authenticated routes", function()
       it("by ignoring cache if the request is unauthenticated", function()
-        local res = assert(client:get("/get", {
-          headers = {
-            host = "route-5.com",
-            ["kong-debug"] = 1,
-          }
-        }))
+        local res = assert(get(client, "route-5.com"))
 
         assert.res_status(401, res)
         assert.is_nil(res.headers["X-Cache-Status"])
