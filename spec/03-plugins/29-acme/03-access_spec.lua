@@ -104,9 +104,8 @@ for _, strategy in helpers.each_strategy() do
       })
 
       -- key-auth should not run
-      assert.response(res).has.status(200)
-      local body = res:read_body()
-      assert.equal("isme\n", body)
+      local body = assert.response(res).has.status(200)
+      assert.equal("isme", body)
 
       res = assert( proxy_client:send {
         method  = "GET",
