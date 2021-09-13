@@ -4,7 +4,7 @@ use Test::Nginx::Socket::Lua;
 use Test::Nginx::Socket::Lua::Stream;
 use t::Util;
 
-plan tests => repeat_each() * (blocks() * 4) + 9;
+plan tests => repeat_each() * (blocks() * 4) + 10;
 
 run_tests();
 
@@ -483,9 +483,10 @@ Content-Length: 0
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
+            ngx.header["Content-Lenght"] = 100
+
             pdk.response.exit(200, nil, {
                 ["Content-Type"] = "text/plain",
-                ["Content-Length"] = "100"
             })
         }
     }
@@ -502,7 +503,7 @@ Content-Length: 0
 
 
 
-=== TEST 19: response.exit() sets content-length header with text body
+=== TEST 19: response.exit() does not override content-length header when given
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -511,9 +512,38 @@ Content-Length: 0
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            pdk.response.exit(200, "a", {
+            pdk.response.exit(200, nil, {
                 ["Content-Type"] = "text/plain",
                 ["Content-Length"] = "100"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Content-Type: text/plain
+Content-Length: 100
+--- response_body chop
+
+--- no_error_log
+[error]
+
+
+
+=== TEST 20: response.exit() sets content-length header with text body
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            ngx.header["Content-Length"] = "100"
+
+            pdk.response.exit(200, "a", {
+                ["Content-Type"] = "text/plain",
             })
         }
     }
@@ -530,7 +560,7 @@ a
 
 
 
-=== TEST 20: response.exit() sets content-length header with table body
+=== TEST 21: response.exit() sets content-length header with table body
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -539,9 +569,10 @@ a
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
+            ngx.header["Content-Length"] = "100"
+
             pdk.response.exit(200, { message = "hello" }, {
                 ["Content-Type"] = "application/jwk+json; charset=utf-8",
-                ["Content-Length"] = "100"
             })
         }
     }
@@ -558,7 +589,7 @@ Content-Length: 19
 
 
 
-=== TEST 21: response.exit() does not send body with gRPC
+=== TEST 22: response.exit() does not send body with gRPC
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -585,7 +616,7 @@ grpc-message: hello
 
 
 
-=== TEST 22: response.exit() sends body with gRPC when asked (explicit)
+=== TEST 23: response.exit() sends body with gRPC when asked (explicit)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -613,7 +644,7 @@ hello
 
 
 
-=== TEST 23: response.exit() sends body with gRPC when asked (implicit)
+=== TEST 24: response.exit() sends body with gRPC when asked (implicit)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -640,7 +671,7 @@ hello
 
 
 
-=== TEST 24: response.exit() body replaces grpc-message
+=== TEST 25: response.exit() body replaces grpc-message
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -671,7 +702,7 @@ grpc-message: OK
 
 
 
-=== TEST 25: response.exit() body does not replace grpc-message with content-type specified (explicit)
+=== TEST 26: response.exit() body does not replace grpc-message with content-type specified (explicit)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -700,7 +731,7 @@ OK
 
 
 
-=== TEST 26: response.exit() body does not replace grpc-message with content-type specified (implicit)
+=== TEST 27: response.exit() body does not replace grpc-message with content-type specified (implicit)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -729,7 +760,7 @@ OK
 
 
 
-=== TEST 27: response.exit() nil body does not replace grpc-message with default message
+=== TEST 28: response.exit() nil body does not replace grpc-message with default message
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -757,7 +788,7 @@ grpc-message: SHOW ME
 
 
 
-=== TEST 28: response.exit() sends default grpc-message (200)
+=== TEST 29: response.exit() sends default grpc-message (200)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -786,7 +817,7 @@ grpc-message: OK
 
 
 
-=== TEST 29: response.exit() sends default grpc-message (403)
+=== TEST 30: response.exit() sends default grpc-message (403)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -815,7 +846,7 @@ grpc-message: PermissionDenied
 
 
 
-=== TEST 30: response.exit() sends default grpc-message when specifying content-type (explicit)
+=== TEST 31: response.exit() sends default grpc-message when specifying content-type (explicit)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -842,7 +873,7 @@ grpc-message: Unauthenticated
 
 
 
-=== TEST 31: response.exit() sends default grpc-message when specifying content-type (implicit)
+=== TEST 32: response.exit() sends default grpc-message when specifying content-type (implicit)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -868,7 +899,7 @@ grpc-message: Unauthenticated
 
 
 
-=== TEST 32: response.exit() errors with grpc using table body with content-type specified (explicit)
+=== TEST 33: response.exit() errors with grpc using table body with content-type specified (explicit)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -889,7 +920,7 @@ GET /t
 
 
 
-=== TEST 33: response.exit() errors with grpc using table body with content-type specified (implicit)
+=== TEST 34: response.exit() errors with grpc using table body with content-type specified (implicit)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -909,7 +940,7 @@ GET /t
 
 
 
-=== TEST 34: response.exit() errors with grpc using special table body with content-type specified (explicit)
+=== TEST 35: response.exit() errors with grpc using special table body with content-type specified (explicit)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -930,7 +961,7 @@ GET /t
 
 
 
-=== TEST 35: response.exit() errors with grpc using special table body with content-type specified (implicit)
+=== TEST 36: response.exit() errors with grpc using special table body with content-type specified (implicit)
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -950,7 +981,7 @@ GET /t
 
 
 
-=== TEST 36: response.exit() logs warning with grpc using table body without content-type specified
+=== TEST 37: response.exit() logs warning with grpc using table body without content-type specified
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -978,7 +1009,7 @@ grpc-message: Unauthenticated
 
 
 
-=== TEST 37: response.exit() does not log warning with grpc using special table body without content-type specified
+=== TEST 38: response.exit() does not log warning with grpc using special table body without content-type specified
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -1007,7 +1038,7 @@ grpc-message: Hello
 
 
 
-=== TEST 38: response.exit() works under stream subsystem in preread
+=== TEST 39: response.exit() works under stream subsystem in preread
 --- stream_server_config
     preread_by_lua_block {
         local PDK = require "kong.pdk"
@@ -1026,7 +1057,7 @@ finalize stream session: 200
 
 
 
-=== TEST 39: response.exit() rejects invalid status code
+=== TEST 40: response.exit() rejects invalid status code
 --- stream_server_config
     preread_by_lua_block {
         local PDK = require "kong.pdk"
@@ -1044,7 +1075,7 @@ unacceptable code, only 200, 400, 403, 500, 502 and 503 are accepted
 
 
 
-=== TEST 40: response.exit() logs 5xx error instead of returning it to the client
+=== TEST 41: response.exit() logs 5xx error instead of returning it to the client
 --- stream_server_config
     preread_by_lua_block {
         local PDK = require "kong.pdk"
@@ -1061,7 +1092,7 @@ unable to proxy stream connection, status: 500, err: error message
 
 
 
-=== TEST 41: response.exit() logs 4xx error instead of returning it to the client
+=== TEST 42: response.exit() logs 4xx error instead of returning it to the client
 --- stream_server_config
     preread_by_lua_block {
         local PDK = require "kong.pdk"
@@ -1078,7 +1109,7 @@ unable to proxy stream connection, status: 400, err: error message
 
 
 
-=== TEST 42: response.exit() accepts tables as response body
+=== TEST 43: response.exit() accepts tables as response body
 --- stream_server_config
     preread_by_lua_block {
         local PDK = require "kong.pdk"

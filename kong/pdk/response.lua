@@ -550,14 +550,19 @@ local function new(self, major_version)
     ngx.status = status
 
     local has_content_type
+    local has_content_length
     if headers ~= nil then
       for name, value in pairs(headers) do
         ngx.header[name] = normalize_multi_header(value)
-        if not has_content_type then
+        if not has_content_type or not has_content_length then
           local lower_name = lower(name)
-          if lower_name == "content-type" or
-             lower_name == "content_type" then
+          if lower_name == "content-type"
+          or lower_name == "content_type"
+          then
             has_content_type = true
+          elseif lower_name == "content-length"
+              or lower_name == "content_length" then
+            has_content_length = true
           end
         end
       end
@@ -623,7 +628,9 @@ local function new(self, major_version)
         ngx.header[CONTENT_TYPE_NAME] = CONTENT_TYPE_JSON
       end
 
-      ngx.header[CONTENT_LENGTH_NAME] = #json
+      if not has_content_length then
+        ngx.header[CONTENT_LENGTH_NAME] = #json
+      end
 
       if is_header_filter_phase then
         ngx.ctx.response_body = json
@@ -645,7 +652,10 @@ local function new(self, major_version)
         end
 
       else
-        ngx.header[CONTENT_LENGTH_NAME] = #body
+        if not has_content_length then
+          ngx.header[CONTENT_LENGTH_NAME] = #body
+        end
+
         if grpc_status and not ngx.header[GRPC_MESSAGE_NAME] then
           ngx.header[GRPC_MESSAGE_NAME] = GRPC_MESSAGES[grpc_status]
         end
@@ -659,7 +669,10 @@ local function new(self, major_version)
       end
 
     else
-      ngx.header[CONTENT_LENGTH_NAME] = 0
+      if not has_content_length then
+        ngx.header[CONTENT_LENGTH_NAME] = 0
+      end
+
       if grpc_status and not ngx.header[GRPC_MESSAGE_NAME] then
         ngx.header[GRPC_MESSAGE_NAME] = GRPC_MESSAGES[grpc_status]
       end
