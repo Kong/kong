@@ -21,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
       }, { "acme", })
 
       assert(bp.routes:insert {
-        hosts = { do_domain, skip_domain },
+        paths = { "/" },
       })
 
       assert(bp.plugins:insert {
@@ -30,7 +30,7 @@ for _, strategy in helpers.each_strategy() do
           account_email = "test@test.com",
           api_uri = "https://api.acme.org",
           storage = "kong",
-          domains = { do_domain },
+          domains = { do_domain, "*.subdomain." .. do_domain },
         },
       })
 
@@ -91,6 +91,28 @@ for _, strategy in helpers.each_strategy() do
         path    = "/.well-known/acme-challenge/yay",
         headers =  { host = skip_domain }
       })
+      -- key-auth should take over
+      assert.response(res).has.status(401)
+
+    end)
+
+    it("dots in wildcard in domain is escaped correctly", function()
+      local res = assert( proxy_client:send {
+        method  = "GET",
+        path    = "/.well-known/acme-challenge/" .. dummy_id,
+        headers =  { host = "a.subdomain." .. do_domain }
+      })
+
+      -- key-auth should not run
+      local body = assert.response(res).has.status(200)
+      assert.equal("isme", body)
+
+      res = assert( proxy_client:send {
+        method  = "GET",
+        path    = "/.well-known/acme-challenge/" .. dummy_id,
+        headers =  { host = "asdsubdomain." .. do_domain }
+      })
+
       -- key-auth should take over
       assert.response(res).has.status(401)
 
