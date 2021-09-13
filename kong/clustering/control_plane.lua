@@ -126,13 +126,13 @@ local function invalidate_keys_from_config(config_plugins, keys)
   end
 
   for _, t in ipairs(config_plugins) do
-    if t and t["config"] then
-      local config = t["config"]
+    local config = t and t["config"]
+    if config then
       local name = gsub(t["name"], "-", "_")
 
       -- Handle Redis configurations (regardless of plugin)
       if config.redis then
-        local config_plugin_redis = t["config"].redis
+        local config_plugin_redis = config.redis
         for _, key in ipairs(keys["redis"]) do
           if config_plugin_redis[key] ~= nil then
             config_plugin_redis[key] = nil
