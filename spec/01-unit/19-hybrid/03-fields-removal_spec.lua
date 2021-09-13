@@ -1,9 +1,7 @@
 _G.kong = {}
 
 local cp = require("kong.clustering.control_plane")
-local cjson_encode = require("cjson").encode
 local cjson_decode = require("cjson").decode
-local deflate_gzip = require("kong.tools.utils").deflate_gzip
 local inflate_gzip = require("kong.tools.utils").inflate_gzip
 
 describe("kong.clustering.control_plane", function()
@@ -96,11 +94,16 @@ describe("kong.clustering.control_plane", function()
   end)
 
   it("removing unknonwn fields", function()
-    local test_with = function(payload, ...)
-      return cjson_decode(inflate_gzip(
-        cp._update_compatible_payload(
-          deflate_gzip(cjson_encode(payload)), ...
-        )))
+    local test_with = function(payload, dp_version)
+      local has_update, deflated_payload, err = cp._update_compatible_payload(
+        payload, dp_version
+      )
+      assert(err == nil)
+      if has_update then
+        return cjson_decode(inflate_gzip(deflated_payload))
+      end
+
+      return payload
     end
 
     assert.same({config_table = {}}, test_with({config_table = {}}, "2.3.0"))

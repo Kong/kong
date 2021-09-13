@@ -34,7 +34,6 @@ local table_remove = table.remove
 local table_concat = table.concat
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
-local inflate_gzip = utils.inflate_gzip
 
 
 local kong_dict = ngx.shared.kong
@@ -55,7 +54,10 @@ local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
+local PONG_TYPE = "PONG"
+local RECONFIGURE_TYPE = "RECONFIGURE"
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
+local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local _log_prefix = "[clustering] "
 
 
@@ -105,25 +107,24 @@ end
 
 function _M.new(parent)
   local self = {
-    clients = setmetatable({}, { __mode = "k", })
+    clients = setmetatable({}, { __mode = "k", }),
+    plugins_map = {},
   }
 
-  setmetatable(self, {
+  return setmetatable(self, {
     __index = function(tab, key)
       return _M[key] or parent[key]
     end,
   })
-
-  self.plugins_map = {}
-
-  return self
 end
 
 
 local function invalidate_keys_from_config(config_plugins, keys)
   if not config_plugins then
-    return
+    return false
   end
+
+  local has_update
 
   for _, t in ipairs(config_plugins) do
     local config = t and t["config"]
@@ -136,6 +137,7 @@ local function invalidate_keys_from_config(config_plugins, keys)
         for _, key in ipairs(keys["redis"]) do
           if config_plugin_redis[key] ~= nil then
             config_plugin_redis[key] = nil
+            has_update = true
           end
         end
       end
@@ -145,11 +147,14 @@ local function invalidate_keys_from_config(config_plugins, keys)
         for _, key in ipairs(keys[name]) do
           if config[key] ~= nil then
             config[key] = nil
+            has_update = true
           end
         end
       end
     end
   end
+
+  return has_update
 end
 
 local function dp_version_num(dp_version)
@@ -166,54 +171,12 @@ end
 -- for test
 _M._dp_version_num = dp_version_num
 
-local removal_fields = {
-  [2003003003] = {
-    file_log = {
-      "custom_fields_by_lua",
-    },
-    http_log = {
-      "custom_fields_by_lua",
-    },
-    loggly = {
-      "custom_fields_by_lua",
-    },
-    prometheus = {
-      "per_consumer",
-    },
-    syslog = {
-      "custom_fields_by_lua",
-    },
-    tcp_log = {
-      "custom_fields_by_lua",
-    },
-    udp_log = {
-      "custom_fields_by_lua",
-    },
-    zipkin = {
-      "tags_header",
-    },
-  },
-
-  [2004001002] = {
-    redis = {
-      "connect_timeout",
-      "keepalive_backlog",
-      "keepalive_pool_size",
-      "read_timeout",
-      "send_timeout",
-    },
-    syslog = {
-      "facility",
-    },
-  }
-}
-
 local function get_removed_fields(dp_version_number)
   local unknown_fields = {}
   local has_fields
 
   -- Merge dataplane unknown fields; if needed based on DP version
-  for v, list in pairs(removal_fields) do
+  for v, list in pairs(REMOVED_FIELDS) do
     if dp_version_number < v then
       has_fields = true
       for plugin, fields in pairs(list) do
@@ -232,31 +195,26 @@ end
 -- for test
 _M._get_removed_fields = get_removed_fields
 
+-- returns has_update, modified_deflated_payload, err
 local function update_compatible_payload(payload, dp_version, log_suffix)
   local fields = get_removed_fields(dp_version_num(dp_version))
+
   if fields then
-    local inflated_payload, err = inflate_gzip(payload)
-    if inflated_payload then
-      inflated_payload = cjson_decode(inflated_payload)
-      local config_table = inflated_payload["config_table"]
+    payload = utils.deep_copy(payload, false)
+    local config_table = payload["config_table"]
+    local has_update = invalidate_keys_from_config(config_table["plugins"], fields)
 
-      invalidate_keys_from_config(config_table["plugins"], fields)
-
-      local deflated_payload = cjson_encode(inflated_payload)
-      deflated_payload, err = deflate_gzip(deflated_payload)
+    if has_update then
+      local deflated_payload, err = deflate_gzip(cjson_encode(payload))
       if deflated_payload then
-        return deflated_payload
+        return true, deflated_payload
       else
-        ngx_log(ngx_WARN, _log_prefix, "unable to deflate configuration for data plane: ", err, log_suffix)
-        return payload
+        return true, nil, err
       end
-    else
-      ngx_log(ngx_WARN, _log_prefix, "unable to inflate configuration for data plane: ", err, log_suffix)
-      return payload
     end
   end
 
-  return payload
+  return false, nil, nil
 end
 -- for test
 _M._update_compatible_payload = update_compatible_payload
@@ -283,17 +241,19 @@ function _M:export_deflated_reconfigure_payload()
 
   local config_hash = self:calculate_config_hash(config_table)
 
-  local payload, err = cjson_encode({
+  local payload = {
     type = "reconfigure",
     timestamp = ngx_now(),
     config_table = config_table,
     config_hash = config_hash,
-  })
+  }
+
   if not payload then
     return nil, err
   end
+  self.reconfigure_payload = payload
 
-  payload, err = deflate_gzip(payload)
+  payload, err = deflate_gzip(cjson_encode(payload))
   if not payload then
     return nil, err
   end
@@ -314,7 +274,7 @@ function _M:push_config()
 
   local n = 0
   for _, queue in pairs(self.clients) do
-    table_insert(queue, payload)
+    table_insert(queue, RECONFIGURE_TYPE)
     queue.post()
     n = n + 1
   end
@@ -751,7 +711,7 @@ function _M:handle_cp_websocket()
         update_sync_status()
 
         -- queue PONG to avoid races
-        table_insert(queue, "PONG")
+        table_insert(queue, PONG_TYPE)
         queue.post()
       end
     end
@@ -769,7 +729,7 @@ function _M:handle_cp_websocket()
           return nil, "config queue can not be empty after semaphore returns"
         end
 
-        if payload == "PONG" then
+        if payload == PONG_TYPE then
           local _, err = wb:send_pong()
           if err then
             if not is_timeout(err) then
@@ -782,14 +742,21 @@ function _M:handle_cp_websocket()
             ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
           end
 
-        else
+        else -- is reconfigure
           local previous_sync_status = sync_status
           ok, err, sync_status = self:check_configuration_compatibility(dp_plugins_map)
           if ok then
-            payload = update_compatible_payload(payload, dp_version, log_suffix)
+            local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version)
+            if not has_update then -- no modification, use the cached payload
+              deflated_payload = self.deflated_reconfigure_payload
+            elseif err then
+              ngx_log(ngx_WARN, "unable to update compatible payload: ", err, ", the unmodified config ",
+                      "is returned", log_suffix)
+              deflated_payload = self.deflated_reconfigure_payload
+            end
 
             -- config update
-            local _, err = wb:send_binary(payload)
+            local _, err = wb:send_binary(deflated_payload)
             if err then
               if not is_timeout(err) then
                 return nil, "unable to send updated configuration to data plane: " .. err
@@ -891,6 +858,7 @@ function _M:init_worker()
   self.plugins_map = plugins_list_to_map(self.plugins_list)
 
   self.deflated_reconfigure_payload = nil
+  self.reconfigure_payload = nil
   self.plugins_configured = {}
   self.plugin_versions = {}
 
