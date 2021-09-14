@@ -55,6 +55,34 @@ init_worker_by_lua_block {
 }
 
 > if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
+# Load variable indexes
+lua_kong_load_var_index $ctx_ref;
+lua_kong_load_var_index $host;
+lua_kong_load_var_index $http_connection;
+lua_kong_load_var_index $http_host;
+lua_kong_load_var_index $http_kong_debug;
+lua_kong_load_var_index $http_proxy;
+lua_kong_load_var_index $http_proxy_connection;
+lua_kong_load_var_index $http_te;
+lua_kong_load_var_index $http_upgrade;
+lua_kong_load_var_index $http_x_forwarded_for;
+lua_kong_load_var_index $https;
+lua_kong_load_var_index $is_args;
+lua_kong_load_var_index $kong_proxy_mode;
+lua_kong_load_var_index $realip_remote_addr;
+lua_kong_load_var_index $remote_addr;
+lua_kong_load_var_index $request_uri;
+lua_kong_load_var_index $scheme;
+lua_kong_load_var_index $server_port;
+lua_kong_load_var_index $ssl_server_name;
+lua_kong_load_var_index $upstream_connection;
+lua_kong_load_var_index $upstream_host;
+lua_kong_load_var_index $upstream_http_connection;
+lua_kong_load_var_index $upstream_http_trailer;
+lua_kong_load_var_index $upstream_http_upgrade;
+lua_kong_load_var_index $upstream_scheme;
+lua_kong_load_var_index $upstream_uri;
+
 upstream kong_upstream {
     server 0.0.0.1;
 
