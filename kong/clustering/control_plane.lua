@@ -32,9 +32,11 @@ local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
 local table_concat = table.concat
+local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
 
 
+local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
 local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
@@ -52,7 +54,10 @@ local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
+local PONG_TYPE = "PONG"
+local RECONFIGURE_TYPE = "RECONFIGURE"
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
+local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local _log_prefix = "[clustering] "
 
 
@@ -102,7 +107,8 @@ end
 
 function _M.new(parent)
   local self = {
-    clients = setmetatable({}, { __mode = "k", })
+    clients = setmetatable({}, { __mode = "k", }),
+    plugins_map = {},
   }
 
   return setmetatable(self, {
@@ -113,12 +119,113 @@ function _M.new(parent)
 end
 
 
+local function invalidate_keys_from_config(config_plugins, keys)
+  if not config_plugins then
+    return false
+  end
+
+  local has_update
+
+  for _, t in ipairs(config_plugins) do
+    local config = t and t["config"]
+    if config then
+      local name = gsub(t["name"], "-", "_")
+
+      -- Handle Redis configurations (regardless of plugin)
+      if config.redis then
+        local config_plugin_redis = config.redis
+        for _, key in ipairs(keys["redis"]) do
+          if config_plugin_redis[key] ~= nil then
+            config_plugin_redis[key] = nil
+            has_update = true
+          end
+        end
+      end
+
+      -- Handle fields in specific plugins
+      if keys[name] ~= nil then
+        for _, key in ipairs(keys[name]) do
+          if config[key] ~= nil then
+            config[key] = nil
+            has_update = true
+          end
+        end
+      end
+    end
+  end
+
+  return has_update
+end
+
+local function dp_version_num(dp_version)
+  local base = 1000000000
+  local version_num = 0
+  for _, v in ipairs(utils.split(dp_version, ".", 4)) do
+    v = v:match("^(%d+)")
+    version_num = version_num + base * tonumber(v, 10) or 0
+    base = base / 1000
+  end
+
+  return version_num
+end
+-- for test
+_M._dp_version_num = dp_version_num
+
+local function get_removed_fields(dp_version_number)
+  local unknown_fields = {}
+  local has_fields
+
+  -- Merge dataplane unknown fields; if needed based on DP version
+  for v, list in pairs(REMOVED_FIELDS) do
+    if dp_version_number < v then
+      has_fields = true
+      for plugin, fields in pairs(list) do
+        if not unknown_fields[plugin] then
+          unknown_fields[plugin] = {}
+        end
+        for _, k in ipairs(fields) do
+          table.insert(unknown_fields[plugin], k)
+        end
+      end
+    end
+  end
+
+  return has_fields and unknown_fields or nil
+end
+-- for test
+_M._get_removed_fields = get_removed_fields
+
+-- returns has_update, modified_deflated_payload, err
+local function update_compatible_payload(payload, dp_version, log_suffix)
+  local fields = get_removed_fields(dp_version_num(dp_version))
+
+  if fields then
+    payload = utils.deep_copy(payload, false)
+    local config_table = payload["config_table"]
+    local has_update = invalidate_keys_from_config(config_table["plugins"], fields)
+
+    if has_update then
+      local deflated_payload, err = deflate_gzip(cjson_encode(payload))
+      if deflated_payload then
+        return true, deflated_payload
+      else
+        return true, nil, err
+      end
+    end
+  end
+
+  return false, nil, nil
+end
+-- for test
+_M._update_compatible_payload = update_compatible_payload
+
 function _M:export_deflated_reconfigure_payload()
   local config_table, err = declarative.export_config()
   if not config_table then
     return nil, err
   end
 
+  -- update plugins map
   self.plugins_configured = {}
   if config_table.plugins then
     for _, plugin in pairs(config_table.plugins) do
@@ -126,19 +233,27 @@ function _M:export_deflated_reconfigure_payload()
     end
   end
 
+
+  -- store serialized plugins map for troubleshooting purposes
+  local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
+  kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
+  ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
+
   local config_hash = self:calculate_config_hash(config_table)
 
-  local payload, err = cjson_encode({
+  local payload = {
     type = "reconfigure",
     timestamp = ngx_now(),
     config_table = config_table,
     config_hash = config_hash,
-  })
+  }
+
   if not payload then
     return nil, err
   end
+  self.reconfigure_payload = payload
 
-  payload, err = deflate_gzip(payload)
+  payload, err = deflate_gzip(cjson_encode(payload))
   if not payload then
     return nil, err
   end
@@ -159,7 +274,7 @@ function _M:push_config()
 
   local n = 0
   for _, queue in pairs(self.clients) do
-    table_insert(queue, payload)
+    table_insert(queue, RECONFIGURE_TYPE)
     queue.post()
     n = n + 1
   end
@@ -596,7 +711,7 @@ function _M:handle_cp_websocket()
         update_sync_status()
 
         -- queue PONG to avoid races
-        table_insert(queue, "PONG")
+        table_insert(queue, PONG_TYPE)
         queue.post()
       end
     end
@@ -614,7 +729,7 @@ function _M:handle_cp_websocket()
           return nil, "config queue can not be empty after semaphore returns"
         end
 
-        if payload == "PONG" then
+        if payload == PONG_TYPE then
           local _, err = wb:send_pong()
           if err then
             if not is_timeout(err) then
@@ -627,12 +742,21 @@ function _M:handle_cp_websocket()
             ngx_log(ngx_DEBUG, _log_prefix, "sent pong frame to data plane", log_suffix)
           end
 
-        else
+        else -- is reconfigure
           local previous_sync_status = sync_status
           ok, err, sync_status = self:check_configuration_compatibility(dp_plugins_map)
           if ok then
+            local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version)
+            if not has_update then -- no modification, use the cached payload
+              deflated_payload = self.deflated_reconfigure_payload
+            elseif err then
+              ngx_log(ngx_WARN, "unable to update compatible payload: ", err, ", the unmodified config ",
+                      "is returned", log_suffix)
+              deflated_payload = self.deflated_reconfigure_payload
+            end
+
             -- config update
-            local _, err = wb:send_binary(payload)
+            local _, err = wb:send_binary(deflated_payload)
             if err then
               if not is_timeout(err) then
                 return nil, "unable to send updated configuration to data plane: " .. err
@@ -734,6 +858,7 @@ function _M:init_worker()
   self.plugins_map = plugins_list_to_map(self.plugins_list)
 
   self.deflated_reconfigure_payload = nil
+  self.reconfigure_payload = nil
   self.plugins_configured = {}
   self.plugin_versions = {}
 
