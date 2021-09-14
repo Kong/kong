@@ -77,6 +77,12 @@ do
       local route16 = assert(bp.routes:insert({
         hosts = { "route-16.com" },
       }))
+      local route17 = assert(bp.routes:insert({
+        hosts = { "route-17.com" },
+      }))
+      local route18 = assert(bp.routes:insert({
+        hosts = { "route-18.com" },
+      }))
 
       local consumer1 = assert(bp.consumers:insert {
         username = "bob",
@@ -241,6 +247,29 @@ do
           vary_query_params = {"foo"}
         },
       })
+
+     assert(bp.plugins:insert {
+       name = "proxy-cache",
+       route = { id = route17.id },
+       config = {
+         strategy = policy,
+         content_type = { "text/plain", "application/json" },
+         [policy] = policy_config,
+         cache_control = true,
+       },
+     })
+
+      assert(bp.plugins:insert {
+        name = "proxy-cache",
+        route = { id = route18.id },
+        config = {
+          strategy = policy,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,
+          cache_control = true,
+        },
+      })
+
 
       assert(helpers.start_kong({
         plugins = "bundled",
@@ -601,6 +630,62 @@ do
         assert.same("Refresh", res.headers["X-Cache-Status"])
       end)
 
+      it("s-maxage", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/cache/10",
+          headers = {
+            host = "route-17.com",
+            ["Cache-Control"] = "s-maxage=2"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.same("Miss", res.headers["X-Cache-Status"])
+        --local cache_key = res.headers["X-Cache-Key"]
+
+        -- wait until the underlying strategy converges
+        --strategy_wait_until(policy, function()
+        --  return strategy:fetch(cache_key) ~= nil
+        --end, TIMEOUT)
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/cache/10",
+          headers = {
+            host = "route-17.com",
+            ["Cache-Control"] = "s-maxage=2"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.same("Hit", res.headers["X-Cache-Status"])
+        --local cache_key = res.headers["X-Cache-Key"]
+
+        -- if strategy is local, it's enough to simply use a sleep
+        if strategies.LOCAL_DATA_STRATEGIES[policy] then
+          ngx.sleep(3)
+        end
+
+        -- wait until max-age
+        --strategy_wait_until(policy, function()
+        --  local obj = strategy:fetch(cache_key)
+        --  return ngx.time() - obj.timestamp > 2
+        --end, TIMEOUT)
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/cache/10",
+          headers = {
+            host = "route-17.com",
+            ["Cache-Control"] = "s-maxage=2"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.same("Refresh", res.headers["X-Cache-Status"])
+      end)
+
       it("max-age", function()
         local res = assert(client:send {
           method = "GET",
@@ -721,6 +806,84 @@ do
         })
 
         assert.res_status(504, res)
+      end)
+
+      it("stale-while-revalidate", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/cache/18",
+          headers = {
+            host = "route-18.com",
+            ["Cache-Control"] = "s-maxage=2, stale-while-revalidate=2"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.same("Miss", res.headers["X-Cache-Status"])
+        --local cache_key = res.headers["X-Cache-Key"]
+
+        -- wait until the underlying strategy converges
+        --strategy_wait_until(policy, function()
+        --  return strategy:fetch(cache_key) ~= nil
+        --end, TIMEOUT)
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/cache/18",
+          headers = {
+            host = "route-18.com",
+            ["Cache-Control"] = "s-maxage=2, stale-while-revalidate=2"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.same("Hit", res.headers["X-Cache-Status"])
+        --local cache_key = res.headers["X-Cache-Key"]
+
+        -- if strategy is local, it's enough to simply use a sleep
+        if strategies.LOCAL_DATA_STRATEGIES[policy] then
+          ngx.sleep(3)
+        end
+
+        -- wait until max-age
+        --strategy_wait_until(policy, function()
+        --  local obj = strategy:fetch(cache_key)
+        --  return ngx.time() - obj.timestamp > 2
+        --end, TIMEOUT)
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/cache/18",
+          headers = {
+            host = "route-18.com",
+            ["Cache-Control"] = "s-maxage=2, stale-while-revalidate=2"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.same("Refresh", res.headers["X-Cache-Status"])
+
+        local cache_key = res.headers["X-Cache-Key"]
+        local res, err = strategy:fetch(cache_key)
+        if err then
+          kong.log.err(err)
+          return
+        end
+
+        res.revalidating = true
+        strategy:store(cache_key, res, res.ttl)
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/cache/18",
+          headers = {
+            host = "route-18.com",
+            ["Cache-Control"] = "s-maxage=2, stale-while-revalidate=2"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.same("BackgroundRefresh", res.headers["X-Cache-Status"])
       end)
     end)
 

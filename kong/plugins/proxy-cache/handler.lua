@@ -311,25 +311,43 @@ function ProxyCacheHandler:access(conf)
     return signal_cache_req(ctx, cache_key, "Bypass")
   end
 
+  local ttl = time() - res.timestamp
   -- figure out if the client will accept our cache value
   if conf.cache_control then
-    if cc["max-age"] and time() - res.timestamp > cc["max-age"] then
+    if cc["stale-while-revalidate"] and ttl > res.ttl and ttl - res.ttl <= cc["stale-while-revalidate"] then
+      if res["revalidating"] then
+        signal_cache_req(ctx, cache_key, "Refresh")
+        return kong.response.exit(res.status, res.body, res.headers)
+      end
+
+      res.revalidating = true
+
+      local ok, err = strategy:store(cache_key, res, cc["stale-while-revalidate"])
+      if not ok then
+        kong.log(err)
+      end
+
+      return signal_cache_req(ctx, cache_key, "BackgroundRefresh")
+    end
+
+    if cc["s-maxage"] and ttl > cc["s-maxage"] then
+      return signal_cache_req(ctx, cache_key, "Refresh")
+    end
+    if cc["max-age"] and ttl > cc["max-age"] then
       return signal_cache_req(ctx, cache_key, "Refresh")
     end
 
-    if cc["max-stale"] and time() - res.timestamp - res.ttl > cc["max-stale"]
-    then
+    if cc["max-stale"] and ttl - res.ttl > cc["max-stale"] then
       return signal_cache_req(ctx, cache_key, "Refresh")
     end
 
-    if cc["min-fresh"] and res.ttl - (time() - res.timestamp) < cc["min-fresh"]
-    then
+    if cc["min-fresh"] and res.ttl - ttl < cc["min-fresh"] then
       return signal_cache_req(ctx, cache_key, "Refresh")
     end
 
   else
     -- don't serve stale data; res may be stored for up to `conf.storage_ttl` secs
-    if time() - res.timestamp > conf.cache_ttl then
+    if ttl > conf.cache_ttl then
       return signal_cache_req(ctx, cache_key, "Refresh")
     end
   end
@@ -413,6 +431,7 @@ function ProxyCacheHandler:body_filter(conf)
       body      = proxy_cache.res_body,
       body_len  = #proxy_cache.res_body,
       timestamp = time(),
+      revalidating = false,
       ttl       = proxy_cache.res_ttl,
       version   = CACHE_VERSION,
       req_body  = ctx.req_body,
