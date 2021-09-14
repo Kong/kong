@@ -1387,17 +1387,6 @@ local function serve_content(module, options)
 
   header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
 
-  if ngx.req.get_method() == "OPTIONS" then
-    header["Access-Control-Allow-Methods"] = "GET, HEAD, PUT, PATCH, POST, DELETE"
-    header["Access-Control-Allow-Headers"] = "Content-Type"
-
-    ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
-    ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
-    ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_PROCESSING_START
-
-    return ngx.exit(204)
-  end
-
   lapis.serve(module)
 
   ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
