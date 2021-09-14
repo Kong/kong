@@ -1,4 +1,5 @@
 require("kong.globalpatches")({cli = true})
+require "kong.deprecation"
 
 math.randomseed() -- Generate PRNG seed
 

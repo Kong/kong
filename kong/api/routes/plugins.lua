@@ -123,8 +123,8 @@ return {
 
   ["/plugins/schema/:name"] = {
     GET = function(self, db)
-      kong.deprecate("/plugins/schema/:name endpoint is deprecated, please " ..
-                     "use /schemas/plugins/:name instead", "3.0.0", "1.2.0")
+      kong.log.deprecation("/plugins/schema/:name endpoint is deprecated, please " ..
+                           "use /schemas/plugins/:name instead", "3.0.0", "1.2.0")
       local subschema = db.plugins.schema.subschemas[self.params.name]
       if not subschema then
         return kong.response.exit(404, { message = "No plugin named '" .. self.params.name .. "'" })

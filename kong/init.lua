@@ -31,6 +31,8 @@ assert(package.loaded["resty.core"], "lua-resty-core must be loaded; make " ..
                                      "sure 'lua_load_resty_core' is not "..
                                      "disabled.")
 
+require "kong.deprecation"
+
 
 local constants = require "kong.constants"
 do

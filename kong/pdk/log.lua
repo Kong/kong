@@ -853,6 +853,7 @@ local function new_log(namespace, format)
 
   self.set_format(format)
 
+  self.deprecation = require "kong.deprecation"
   self.inspect = new_inspect(format)
 
   self.set_serialize_value = set_serialize_value
