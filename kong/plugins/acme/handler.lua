@@ -33,7 +33,8 @@ local function build_domain_matcher(domains)
 
   for _, d in ipairs(domains) do
     if string.sub(d, 1, 1) == "*" then
-      table.insert(domains_wildcard, string.sub(d, 2))
+      d = string.gsub(string.sub(d, 2), "%.", "\\.")
+      table.insert(domains_wildcard, d)
       domains_wildcard_count = domains_wildcard_count + 1
     else
       domains_plain[d] = true
