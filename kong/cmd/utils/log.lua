@@ -1,3 +1,5 @@
+local pl_utils = require "pl.utils"
+
 local _LEVELS = {
   debug = 1,
   verbose = 2,
@@ -83,7 +85,15 @@ function _M.log(lvl, ...)
   end
 end
 
-_M.deprecation = require "kong.deprecation"
+_M.deprecation = function(message, version_removed, deprecated_after, trace)
+  -- Note: this function should be kept inline with PDK function kong.log.deprecation
+  pl_utils.raise_deprecation({
+    message = message,
+    version_removed = version_removed,
+    deprecated_after = deprecated_after,
+    no_trace = not trace,
+  })
+end
 
 return setmetatable(_M, {
   __call = function(_, ...)

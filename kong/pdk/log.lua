@@ -16,6 +16,7 @@ local inspect = require "inspect"
 local ngx_ssl = require "ngx.ssl"
 local phase_checker = require "kong.pdk.private.phases"
 local utils = require "kong.tools.utils"
+local pl_utils = require "pl.utils"
 
 
 local sub = string.sub
@@ -853,7 +854,17 @@ local function new_log(namespace, format)
 
   self.set_format(format)
 
-  self.deprecation = require "kong.deprecation"
+  --- This needs documentation.
+  self.deprecation = function(message, version_removed, deprecated_after, trace)
+    -- Note: this function should be kept inline with cmd.utils.log.deprecation
+    pl_utils.raise_deprecation({
+      message = message,
+      version_removed = version_removed,
+      deprecated_after = deprecated_after,
+      no_trace = not trace,
+    })
+  end
+
   self.inspect = new_inspect(format)
 
   self.set_serialize_value = set_serialize_value

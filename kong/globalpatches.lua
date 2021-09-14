@@ -419,4 +419,43 @@ return function(options)
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
     toip = require("resty.dns.client").toip  -- this will load utils and penlight modules for example
   end
+
+
+
+  do -- set application global deprecation function
+
+    local pl_utils = require "pl.utils"
+
+    if options.cli then
+      -- implement using lualogging
+      pl_utils.set_deprecation_func(function(msg, trace)
+        local log = require "kong.cmd.utils.log"
+        if trace then
+          log.warn(msg, " ", trace)
+        else
+          log.warn(msg)
+        end
+      end)
+
+    else
+      -- implement using ngx or Kong logging
+      pl_utils.set_deprecation_func(function(msg, trace)
+        if kong and kong.log then
+          if trace then
+            kong.log.warn(msg, " ", trace)
+          else
+            kong.log.warn(msg)
+          end
+
+        else
+          if trace then
+            ngx.log(ngx.WARN, msg, " ", trace)
+          else
+            ngx.log(ngx.WARN, msg)
+          end
+        end
+      end)
+    end
+
+  end
 end
