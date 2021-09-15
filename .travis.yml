@@ -1,4 +1,4 @@
-dist: bionic
+dist: focal
 jobs:
   include:
   - name: Kong CE 2.0.x
