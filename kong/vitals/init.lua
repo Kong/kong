@@ -15,6 +15,7 @@ local utils      = require "kong.tools.utils"
 local pg_strat   = require "kong.vitals.postgres.strategy"
 local feature_flags = require "kong.enterprise_edition.feature_flags"
 local vitals_utils = require "kong.vitals.utils"
+local license_helpers = require "kong.enterprise_edition.license_helpers"
 
 local timer_at   = ngx.timer.at
 local time       = ngx.time
@@ -351,6 +352,11 @@ end
 
 function _M:init()
   if not kong.configuration.vitals then
+    local lic = license_helpers.read_license_info()
+    if license_helpers.get_type(lic) == "free" then
+      log(DEBUG, _log_prefix, "running in 'free' mode; vitals cannot be enabled")
+      return self:init_failed("free mode; vitals not enabled")
+    end
     return self:init_failed("vitals not enabled")
   end
 
