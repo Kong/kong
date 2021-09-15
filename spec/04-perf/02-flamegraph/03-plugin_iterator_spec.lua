@@ -111,7 +111,7 @@ for _, version in ipairs(versions) do
 
       perf.start_load({
         path = "/test",
-        connections = 1000,
+        connections = 100,
         threads = 5,
         duration = LOAD_DURATION,
       })
@@ -154,7 +154,7 @@ for _, version in ipairs(versions) do
 
       perf.start_load({
         path = "/test",
-        connections = 1000,
+        connections = 100,
         threads = 5,
         duration = LOAD_DURATION,
       })
