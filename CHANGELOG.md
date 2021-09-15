@@ -61,7 +61,6 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-<<<<<<< HEAD
 ## [2.6.0]
 
 > Release date: TBA
@@ -86,7 +85,7 @@
 - **aws-lambda**: The plugin will now try to detect the AWS region by using `AWS_REGION` and
   `AWS_DEFAULT_REGION` environment variables (when not specified with the plugin configuration).
   [#7765](https://github.com/Kong/kong/pull/7765)
-=======
+
 ## [2.5.1]
 
 > Release date: 2021/09/07
@@ -137,7 +136,6 @@ it strictly contains bugfixes. There are no new features or breaking changes.
 
 
 [Back to TOC](#table-of-contents)
->>>>>>> kong-ee/next/2.5.x.x
 
 ## [2.5.0]
 
