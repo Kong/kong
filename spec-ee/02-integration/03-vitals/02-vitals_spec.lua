@@ -840,6 +840,20 @@ for _, strategy in helpers.each_strategy() do
 
         assert.spy(s_strategy).was_called(1)
       end)
+      it("doesn't initialize strategy when license is free and returns message", function()
+        kong.configuration.vitals = false
+        helpers.unsetenv("KONG_LICENSE_DATA")
+
+        local vitals = kong_vitals.new { db = db }
+        vitals:reset_counters()
+
+        local s_strategy = spy.on(vitals.strategy, "init")
+        local expected = "free mode; vitals not enabled"
+        local res = vitals:init()
+
+        assert.spy(s_strategy).was_called(0)
+        assert.same(expected, res)
+      end)
     end)
 
     describe("get_consumer_stats() validations", function()
