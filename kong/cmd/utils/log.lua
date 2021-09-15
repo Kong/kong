@@ -83,6 +83,8 @@ function _M.log(lvl, ...)
   end
 end
 
+_M.deprecation = require "kong.deprecation"
+
 return setmetatable(_M, {
   __call = function(_, ...)
     return _M.log(_LEVELS.info, ...)
