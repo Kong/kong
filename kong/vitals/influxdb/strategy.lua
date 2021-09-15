@@ -105,16 +105,21 @@ local mt = {
 }
 
 
+local function get_flush_params(msg)
+  local user = kong.configuration.vitals_tsdb_user
+  local password = kong.configuration.vitals_tsdb_password
+  local headers = _M.authorization_headers(user, password)
+
+  return { headers = headers, method = "POST", body = msg }
+end
+
+
 local function flush(_, self, msg)
+  local url = "http://" .. self.host .. ":" .. self.port .. "/write?db=kong&precision=u"
+  local params = get_flush_params(msg)
   local httpc = http.new()
 
-  local res, err = httpc:request_uri("http://" .. self.host .. ":" ..
-    self.port .. "/write?db=kong&precision=u",
-    {
-      method = "POST",
-      body = msg,
-    }
-  )
+  local res, err = httpc:request_uri(url, params)
 
   if err then
     error(err)
@@ -814,6 +819,7 @@ function _M:log()
 end
 
 if _G._TEST then
+  _M.get_flush_params = get_flush_params
   _M.gettimeofday = gettimeofday
 end
 

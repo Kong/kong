@@ -39,6 +39,52 @@ describe("authorization_headers", function()
   end)
 end)
 
+describe("get_flush_params", function()
+  local helpers = require "spec.helpers"
+  local strategy = require "kong.vitals.influxdb.strategy"
+  local vitals = require "kong.vitals"
+
+  describe("given user and password", function()
+    it("auth will be added to flush request parameters", function()
+      local db = select(2, helpers.get_db_utils())
+      kong.configuration = {
+        vitals = true,
+        vitals_strategy = "influxdb",
+        vitals_tsdb_address = "1.2.3.4",
+        vitals_tsdb_user = "kong_user",
+        vitals_tsdb_password = "kong_password"
+      }
+      vitals.new({db = db})
+      local expected = {
+        body="test message",
+        method="POST",
+        headers={
+          Authorization = "Basic a29uZ191c2VyOmtvbmdfcGFzc3dvcmQ="
+        }
+      }
+      assert.are.same(expected, strategy.get_flush_params("test message"))
+    end)
+  end)
+
+  describe("given no user and password", function()
+    it("no auth will be added to flush request parameters", function()
+      local db = select(2, helpers.get_db_utils())
+      kong.configuration = {
+        vitals = true,
+        vitals_strategy = "influxdb",
+        vitals_tsdb_address = "1.2.3.4"
+      }
+      vitals.new({db = db})
+      local expected = {
+        body="test message",
+        method="POST",
+        headers={}
+      }
+      assert.are.same(expected, strategy.get_flush_params("test message"))
+    end)
+  end)
+end)
+
 describe("prepend_protocol", function()
   local strategy = require "kong.vitals.influxdb.strategy"
 
