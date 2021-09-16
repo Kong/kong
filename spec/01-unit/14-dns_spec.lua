@@ -75,7 +75,7 @@ describe("DNS", function()
     singletons.origins = {}
 
     resolver = require "resty.dns.resolver"
-    client = require "resty.dns.client"
+    client = require "kong.resty.dns.client"
   end)
 
   lazy_teardown(function()

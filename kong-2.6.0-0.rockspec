@@ -29,7 +29,10 @@ dependencies = {
   "lyaml == 6.2.7",
   "luasyslog == 2.0.1",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 6.0.2",
+  "lrandom",
+  "lua-resty-timer ~> 1",
+  "binaryheap >= 0.4",
+  "luaxxhash >= 1.0",
   "lua-protobuf == 0.3.3",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-healthcheck == 1.4.2",
@@ -84,6 +87,8 @@ build = {
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
     ["kong.templates.kong_yml"] = "kong/templates/kong_yml.lua",
 
+    ["kong.resty.dns.client"] = "kong/resty/dns/client.lua",
+    ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
     ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 

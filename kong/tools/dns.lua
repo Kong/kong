@@ -6,7 +6,7 @@ local dns_client
 -- @return the initialized `resty.dns.client` module, or an error
 local setup_client = function(conf)
   if not dns_client then
-    dns_client = require "resty.dns.client"
+    dns_client = require "kong.resty.dns.client"
   end
 
   conf = conf or {}

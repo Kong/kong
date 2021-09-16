@@ -7,7 +7,7 @@ assert:set_parameter("TableFormatLevel", 5) -- when displaying tables, set a big
 local client
 local targets, balancers
 
-local dns_utils = require "resty.dns.utils"
+local dns_utils = require "kong.resty.dns.utils"
 local mocker = require "spec.fixtures.mocker"
 local utils = require "kong.tools.utils"
 
@@ -241,10 +241,10 @@ describe("[round robin balancer]", function()
   local snapshot
 
   setup(function()
-    _G.package.loaded["resty.dns.client"] = nil -- make sure module is reloaded
+    _G.package.loaded["kong.resty.dns.client"] = nil -- make sure module is reloaded
     _G.package.loaded["kong.runloop.balancer.targets"] = nil -- make sure module is reloaded
 
-    client = require "resty.dns.client"
+    client = require "kong.resty.dns.client"
     targets = require "kong.runloop.balancer.targets"
     balancers = require "kong.runloop.balancer.balancers"
     local healthcheckers = require "kong.runloop.balancer.healthcheckers"
