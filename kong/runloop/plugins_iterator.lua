@@ -362,18 +362,17 @@ local PluginsIterator = {}
 -- @param[type=table] ctx Nginx context table
 -- @treturn function iterator
 local function iterate(self, phase, ctx)
-  -- no ctx, we are in init_worker phase
-  if ctx and not ctx.plugins then
-    ctx.plugins = {}
-  end
   local ws_id = workspaces.get_workspace_id(ctx) or kong.default_workspace
-
   local ws = self.ws[ws_id]
   if not ws then
     return zero_iter
   end
 
   if ctx then
+    if not ctx.plugins then
+      ctx.plugins = {}
+    end
+
     if MUST_LOAD_CONFIGURATION_IN_PHASES[phase] then
       return get_next_with_ctx, {
         loaded = self.loaded,
