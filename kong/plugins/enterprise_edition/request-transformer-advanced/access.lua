@@ -21,6 +21,7 @@ local set_headers = kong.service.request.set_headers
 local set_method = kong.service.request.set_method
 local get_raw_body = kong.request.get_raw_body
 local set_raw_body = kong.service.request.set_raw_body
+local set_path = kong.service.request.set_path
 local encode_args = ngx.encode_args
 local ngx_decode_args = ngx.decode_args
 local type = type
@@ -594,7 +595,7 @@ local function transform_uri(conf)
       "` rendered to `", res, "`")
 
     if res then
-      ngx.var.upstream_uri = res
+      set_path(res)
     end
   end
 end
