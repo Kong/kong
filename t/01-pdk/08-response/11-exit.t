@@ -2,7 +2,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use Test::Nginx::Socket::Lua::Stream;
-use t::Util;
+do "./t/Util.pm";
 
 plan tests => repeat_each() * (blocks() * 4) + 10;
 
