@@ -31,6 +31,7 @@ local ngx          = ngx
 local var          = ngx.var
 local log          = ngx.log
 local exit         = ngx.exit
+local exec         = ngx.exec
 local null         = ngx.null
 local header       = ngx.header
 local timer_at     = ngx.timer.at
@@ -1309,20 +1310,20 @@ return {
       -- to `grpc_pass`. After redirection, this function will return early
       if service and var.kong_proxy_mode == "http" then
         if service.protocol == "grpc" or service.protocol == "grpcs" then
-          return ngx.exec("@grpc")
+          return exec("@grpc")
         end
 
         if protocol_version == 1.1 then
           if route.request_buffering == false then
             if route.response_buffering == false then
-              return ngx.exec("@unbuffered")
+              return exec("@unbuffered")
             end
 
-            return ngx.exec("@unbuffered_request")
+            return exec("@unbuffered_request")
           end
 
           if route.response_buffering == false then
-            return ngx.exec("@unbuffered_response")
+            return exec("@unbuffered_response")
           end
         end
       end
@@ -1378,9 +1379,8 @@ return {
 
       local ok, err = balancer.set_host_header(balancer_data, upstream_scheme, upstream_host)
       if not ok then
-        ngx.log(ngx.ERR, "failed to set balancer Host header: ", err)
-
-        return ngx.exit(500)
+        log(ERR, "failed to set balancer Host header: ", err)
+        return exit(500)
       end
 
       -- clear hop-by-hop request headers:
