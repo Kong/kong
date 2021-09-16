@@ -1,4 +1,4 @@
-dist: bionic
+dist: focal
 
 jobs:
   include:
