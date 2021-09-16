@@ -37,6 +37,7 @@ local timer_at     = ngx.timer.at
 local timer_every  = ngx.timer.every
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
+local http_version = ngx.req.http_version
 local unpack       = unpack
 local escape       = require("kong.tools.uri").escape
 
@@ -1160,7 +1161,6 @@ return {
 
       ctx.workspace = match_t.route and match_t.route.ws_id
 
-      local http_version   = ngx.req.http_version()
       local host           = var.host
       local port           = tonumber(ctx.host_port, 10)
                           or tonumber(var.server_port, 10)
@@ -1234,13 +1234,13 @@ return {
         end
       end
 
+      local protocol_version = http_version()
       if protocols.grpc or protocols.grpcs then
         -- perf: branch usually not taken, don't cache var outside
         local content_type = var.content_type
 
         if content_type and sub(content_type, 1, #"application/grpc") == "application/grpc" then
-          http_version = ngx.req.http_version()
-          if http_version ~= 2 then
+          if protocol_version ~= 2 then
             -- mismatch: non-http/2 request matched grpc route
             return kong.response.exit(426, { message = "Please use HTTP2 protocol" }, {
               ["connection"] = "Upgrade",
@@ -1312,7 +1312,7 @@ return {
           return ngx.exec("@grpc")
         end
 
-        if http_version == 1.1 then
+        if protocol_version == 1.1 then
           if route.request_buffering == false then
             if route.response_buffering == false then
               return ngx.exec("@unbuffered")
