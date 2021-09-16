@@ -11,7 +11,7 @@ local targets = require "kong.runloop.balancer.targets"
 
 
 -- due to startup/require order, cannot use the ones from 'kong' here
-local dns_client = require "resty.dns.client"
+local dns_client = require "kong.resty.dns.client"
 
 
 local toip = dns_client.toip

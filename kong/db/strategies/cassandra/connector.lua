@@ -36,7 +36,7 @@ function CassandraConnector.new(kong_config)
 
     package.loaded["socket"] = nil
     package.loaded["kong.tools.dns"] = nil
-    package.loaded["resty.dns.client"] = nil
+    package.loaded["kong.resty.dns.client"] = nil
     package.loaded["resty.dns.resolver"] = nil
 
     ngx.socket.tcp = function(...) -- luacheck: ignore
@@ -120,7 +120,7 @@ function CassandraConnector.new(kong_config)
     kong_config.dns_no_sync = dns_no_sync_old
 
     package.loaded["resty.dns.resolver"] = nil
-    package.loaded["resty.dns.client"] = nil
+    package.loaded["kong.resty.dns.client"] = nil
     package.loaded["kong.tools.dns"] = nil
     package.loaded["socket"] = nil
 

@@ -8,10 +8,10 @@
 
 local singletons = require "kong.singletons"
 
-local dns_client = require "resty.dns.client"
+local dns_client = require "kong.resty.dns.client"
 local upstreams = require "kong.runloop.balancer.upstreams"
 local balancers = require "kong.runloop.balancer.balancers"
-local dns_utils = require "resty.dns.utils"
+local dns_utils = require "kong.resty.dns.utils"
 
 local ngx = ngx
 local null = ngx.null

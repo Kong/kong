@@ -338,7 +338,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
     end)
 
     describe("create_balancer()", function()
-      local dns_client = require("resty.dns.client")
+      local dns_client = require("kong.resty.dns.client")
       dns_client.init()
 
       it("creates a balancer with a healthchecker", function()
@@ -368,7 +368,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
     end)
 
     describe("get_balancer()", function()
-      local dns_client = require("resty.dns.client")
+      local dns_client = require("kong.resty.dns.client")
       dns_client.init()
 
       it("balancer and healthchecker match; remove and re-add", function()
