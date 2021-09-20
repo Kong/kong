@@ -31,7 +31,7 @@ pipeline {
   parameters {
     string(
       name: 'DATA_PLANE_KONG_GATEWAY_IMAGE',
-      defaultValue: 'kong/kong-gateway:2.4',
+      defaultValue: 'kong/kong-gateway:2.5',
       trim: true,
       description: '''<p>Kong Gateway image to use for the data plane</p>
                       <ul>
@@ -42,7 +42,7 @@ pipeline {
                       <strong>Note</strong>: <b>kong/kong-gateway-internal</b> and <b>kong/kong-gateway-private</b> require 1Password credentials to login (see <i>kongcloudowner</i> for credentials)''')
     string(
       name: 'KNOWN_PLUGIN_INCOMPATIBILITIES',
-      defaultValue: 'mocking,opa',
+      defaultValue: 'jq',
       trim: true,
       description: 'Comma separated list of known incompatible plugins')
     string(

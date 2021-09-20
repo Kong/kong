@@ -226,6 +226,11 @@ ENABLE_GRAPHQL_RATE_LIMITING_ADVANCED=(
   --data "config.sync_rate=-1"
 )
 
+ENABLE_JQ=(
+  --data "name=jq"
+  --data "config.request_jq_program=.[0]"
+)
+
 ENABLE_JWT_SIGNER=(
   --data "name=jwt-signer"
 )
@@ -337,6 +342,13 @@ function use_local_path {
   return 1
 }
 
+function dependency_version() {
+  grep "^\s*${1}=" /kong/.requirements |
+    head -1 |
+    sed -e 's/.*=//' |
+    tr -d '\n'
+}
+
 function kong_version() {
   local version
   version="$(kong version 2>/dev/null)"
@@ -359,21 +371,23 @@ function kong_version() {
       # Determine where to get the versions for Kong Gateway plugins
       if [[ -f /kong/.requirements ]]; then
         KONG_TYPE=enterprise-source
-        KONG_DISTRIBUTIONS_VERSION="$(grep KONG_DISTRIBUTIONS_VERSION /kong/.requirements)"
-        KONG_DISTRIBUTIONS_VERSION="${KONG_DISTRIBUTIONS_VERSION#*=}"
-        GMP_VERSION="$(grep KONG_GMP_VERSION /kong/.requirements)"
-        GMP_VERSION="${GMP_VERSION#*=}"
+        KONG_DISTRIBUTIONS_VERSION="$(dependency_version KONG_DISTRIBUTIONS_VERSION)"
+        GMP_VERSION="$(dependency_version KONG_GMP_VERSION)"
         GMP_URL="https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}.tar.bz2"
         GMP_DIRECTORY="$(basename "$GMP_URL" .tar.bz2)"
         GMP_FILENAME="$(basename "$GMP_URL")"
-        NETTLE_VERSION="$(grep KONG_DEP_NETTLE_VERSION /kong/.requirements)"
-        NETTLE_VERSION="${NETTLE_VERSION#*=}"
+        NETTLE_VERSION="$(dependency_version KONG_DEP_NETTLE_VERSION)"
         NETTLE_URL="https://ftp.gnu.org/gnu/nettle/nettle-${NETTLE_VERSION}.tar.gz"
         NETTLE_DIRECTORY="$(basename "$NETTLE_URL" .tar.gz)"
         NETTLE_FILENAME="$(basename "$NETTLE_URL")"
+        JQ_VERSION="$(dependency_version KONG_DEP_LIBJQ_VERSION)"
+        JQ_URL="https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/jq-${JQ_VERSION}.tar.gz"
+        JQ_DIRECTORY="$(basename "$JQ_URL" .tar.gz)"
+        JQ_FILENAME="$(basename "$JQ_URL")"
         export KONG_DISTRIBUTIONS_VERSION \
           GMP_VERSION GMP_URL GMP_DIRECTORY GMP_FILENAME \
-          NETTLE_VERSION NETTLE_URL NETTLE_DIRECTORY NETTLE_FILENAME
+          NETTLE_VERSION NETTLE_URL NETTLE_DIRECTORY NETTLE_FILENAME \
+          JQ_VERSION JQ_URL JQ_DIRECTORY JQ_FILENAME
       fi
     fi
   else
@@ -575,7 +589,21 @@ function install_requirements() {
       )
     fi
 
-    rm -rf "/tmp/$GMP_DIRECTORY" "/tmp/$GMP_FILENAME" "/tmp/$NETTLE_DIRECTORY" "/tmp/$NETTLE_FILENAME"
+    # Build and install libjq
+    if [[ ! -f "/build/usr/local/kong/lib/libjq.so" ]]; then
+      curl -sL "$JQ_URL" -o "/tmp/$JQ_FILENAME"
+      tar xzf "/tmp/$JQ_FILENAME" -C /tmp
+      (
+        cd "/tmp/$JQ_DIRECTORY" || return
+        ./configure --prefix=/build/usr/local/kong
+        make install
+      )
+    fi
+
+    # Cleanup of dependencies
+    rm -rf "/tmp/$GMP_DIRECTORY" "/tmp/$GMP_FILENAME" \
+           "/tmp/$NETTLE_DIRECTORY" "/tmp/$NETTLE_FILENAME" \
+           "/tmp/$JQ_DIRECTORY" "/tmp/$JQ_FILENAME"
   fi
 }
 
