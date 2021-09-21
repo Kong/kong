@@ -174,6 +174,30 @@ qq{
                 body_filter   = false,
                 log           = false,
                 admin_api     = true,
+            }, {
+                method        = "get_raw_body",
+                args          = { },
+                init_worker   = false,
+                certificate   = false,
+                rewrite       = false,
+                access        = false,
+                header_filter = false,
+                response      = false,
+                body_filter   = true,
+                log           = false,
+                admin_api     = false,
+            }, {
+                method        = "set_raw_body",
+                args          = { "lorem, ipsum" },
+                init_worker   = false,
+                certificate   = false,
+                rewrite       = false,
+                access        = false,
+                header_filter = false,
+                response      = false,
+                body_filter   = true,
+                log           = false,
+                admin_api     = false,
             }
         }
 
