@@ -14,13 +14,13 @@ local acme_challenge_path = [[^/\.well-known/acme-challenge/(.+)]]
 -- cache for dummy cert kong generated (it's a table)
 local default_cert_key
 
-local LetsencryptHandler = {}
+local ACMEHandler = {}
 
 -- this has to be higher than auth plugins,
 -- otherwise acme-challenges endpoints may be blocked by auth plugins
 -- causing validation failures
-LetsencryptHandler.PRIORITY = 1007
-LetsencryptHandler.VERSION = "0.2.14"
+ACMEHandler.PRIORITY = 1007
+ACMEHandler.VERSION = "0.3.0"
 
 local function build_domain_matcher(domains)
   local domains_plain = {}
@@ -57,15 +57,15 @@ local function build_domain_matcher(domains)
 end
 
 -- expose it for use in api.lua
-LetsencryptHandler.build_domain_matcher = build_domain_matcher
+ACMEHandler.build_domain_matcher = build_domain_matcher
 
-function LetsencryptHandler:init_worker()
+function ACMEHandler:init_worker()
   local worker_id = ngx.worker.id()
   kong.log.info("acme renew timer started on worker ", worker_id)
   ngx.timer.every(86400, client.renew_certificate)
 end
 
-function LetsencryptHandler:certificate(conf)
+function ACMEHandler:certificate(conf)
   -- we can't check for Host header in this phase
   local host, err = ngx_ssl.server_name()
   if err then
@@ -155,7 +155,7 @@ function LetsencryptHandler:certificate(conf)
 end
 
 -- access phase is to terminate the http-01 challenge request if necessary
-function LetsencryptHandler:access(conf)
+function ACMEHandler:access(conf)
 
   local protocol = kong.client.get_protocol()
 
@@ -199,4 +199,4 @@ function LetsencryptHandler:access(conf)
 end
 
 
-return LetsencryptHandler
+return ACMEHandler

@@ -95,7 +95,7 @@ describe("perf test #baseline", function()
       perf.start_load({
         uri = upstream_uri,
         path = "/test",
-        connections = 1000,
+        connections = 100,
         threads = 5,
         duration = LOAD_DURATION,
       })
@@ -164,7 +164,7 @@ for _, version in ipairs(versions) do
       for i=1,3 do
         perf.start_load({
           path = "/s1-r1",
-          connections = 1000,
+          connections = 100,
           threads = 5,
           duration = LOAD_DURATION,
         })
@@ -186,7 +186,7 @@ for _, version in ipairs(versions) do
       local results = {}
       for i=1,3 do
         perf.start_load({
-          connections = 1000,
+          connections = 100,
           threads = 5,
           duration = LOAD_DURATION,
           script = wrk_script,
@@ -277,7 +277,7 @@ for _, version in ipairs(versions) do
       local results = {}
       for i=1,3 do
         perf.start_load({
-          connections = 1000,
+          connections = 100,
           threads = 5,
           duration = LOAD_DURATION,
           script = wrk_script,
