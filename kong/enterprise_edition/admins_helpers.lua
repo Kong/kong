@@ -13,6 +13,7 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local rbac = require "kong.rbac"
 local auth_helpers = require "kong.enterprise_edition.auth_helpers"
+local Errors = require "kong.db.errors"
 
 
 local emails = singletons.admin_emails
@@ -250,6 +251,16 @@ function _M.create(params, opts)
     return {
       code = 400,
       body = err_t,
+    }
+  end
+
+  -- unique violation error from conflicting consumer when openid-connect + by_username_ignore_case
+  if err and err.code == Errors.codes.UNIQUE_VIOLATION then
+    return {
+      code = 409,
+      body = {
+        message = "user already exists with same username, email, or custom_id"
+      },
     }
   end
 

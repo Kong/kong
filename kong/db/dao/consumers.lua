@@ -5,6 +5,14 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local cjson            = require "cjson.safe"
+local singletons       = require "kong.singletons"
+local constants        = require "kong.constants"
+local workspaces       = require "kong.workspaces"
+local workspace_config = require "kong.portal.workspace_config"
+
+
+local ws_constants     = constants.WORKSPACE_CONFIG
 
 local invalidate_consumer_cache = function(self, entity, options)
   -- skip next lines in some tests where kong.cache is not available
@@ -25,6 +33,42 @@ local invalidate_consumer_cache = function(self, entity, options)
   end
 end
 
+local check_username_lower_unique = function(self, entity, options)
+  local workspace = workspaces.get_workspace()
+
+  local admin_auth_type, admin_auth_conf, portal_auth_type, portal_auth_conf
+
+  admin_auth_type = singletons.configuration.admin_gui_auth
+  admin_auth_conf = singletons.configuration.admin_gui_auth_conf
+  portal_auth_type = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
+  portal_auth_conf = workspace_config.retrieve(ws_constants.PORTAL_AUTH_CONF, workspace)
+
+  if type(portal_auth_conf) == 'string' then
+    local err
+    portal_auth_conf, err = cjson.decode(portal_auth_conf)
+    if err then
+      return err
+    end
+  end
+
+  if (portal_auth_type ~= "openid-connect" or not portal_auth_conf or not portal_auth_conf.by_username_ignore_case)
+    and (admin_auth_type ~= "openid-connect" or not admin_auth_conf or not admin_auth_conf.by_username_ignore_case)
+  then
+    return nil
+  end
+
+  local consumers, err = self.strategy:select_by_username_ignore_case(entity.username)
+
+  if #consumers > 0 then
+    return self.errors:unique_violation({ username_lower = entity.username_lower })
+  end
+
+  if err then
+    return err
+  end
+
+  return nil
+end
 
 local Consumers = {}
 
@@ -79,6 +123,11 @@ function Consumers:insert(entity, options)
     entity.username_lower = entity.username:lower()
   end
 
+  local err = check_username_lower_unique(self, entity, options)
+  if err then
+    return nil, err
+  end
+
   invalidate_consumer_cache(self, entity, options)
 
   return self.super.insert(self, entity, options)
@@ -87,6 +136,11 @@ end
 function Consumers:update(primary_key, entity, options)
   if type(entity.username) == 'string' then
     entity.username_lower = entity.username:lower()
+  end
+
+  local err = check_username_lower_unique(self, entity, options)
+  if err then
+    return nil, err
   end
 
   local old_consumer = self:select(primary_key)
@@ -102,6 +156,11 @@ function Consumers:update_by_username(username, entity, options)
     entity.username_lower = entity.username:lower()
   end
 
+  local err = check_username_lower_unique(self, entity, options)
+  if err then
+    return nil, err
+  end
+
   local old_consumer = self:select_by_username(username)
   if old_consumer then
     invalidate_consumer_cache(self, old_consumer, options)
@@ -113,6 +172,11 @@ end
 function Consumers:upsert(primary_key, entity, options)
   if type(entity.username) == 'string' then
     entity.username_lower = entity.username:lower()
+  end
+
+  local err = check_username_lower_unique(self, entity, options)
+  if err then
+    return nil, err
   end
 
   local old_consumer = self:select(primary_key)
