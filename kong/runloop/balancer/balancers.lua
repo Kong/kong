@@ -386,6 +386,11 @@ function balancer_mt:addAddress(target, entry)
   target.totalWeight = target.totalWeight + weight
   self.totalWeight = self.totalWeight + weight
   self:updateStatus()
+
+  if self.callback then
+    self:callback("added", addr, addr.ip, addr.port, addr.target.name, addr.hostHeader)
+  end
+
   if self.algorithm and self.algorithm.afterHostUpdate then
     self.algorithm:afterHostUpdate()
   end
