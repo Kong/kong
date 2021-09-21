@@ -304,6 +304,9 @@ function balancer_mt:setAddressStatus(address, available)
   address.target.unavailableWeight = address.target.unavailableWeight + delta
   self.unavailableWeight = self.unavailableWeight + delta
   self:updateStatus()
+  if self.algorithm and self.algorithm.afterHostUpdate then
+    self.algorithm:afterHostUpdate()
+  end
   return true
 end
 
@@ -383,6 +386,9 @@ function balancer_mt:addAddress(target, entry)
   target.totalWeight = target.totalWeight + weight
   self.totalWeight = self.totalWeight + weight
   self:updateStatus()
+  if self.algorithm and self.algorithm.afterHostUpdate then
+    self.algorithm:afterHostUpdate()
+  end
 
   return true
 end
@@ -408,6 +414,9 @@ function balancer_mt:changeWeight(target, entry, newWeight)
 
       addr.weight = newWeight
       self:updateStatus()
+      if self.algorithm and self.algorithm.afterHostUpdate then
+        self.algorithm:afterHostUpdate()
+      end
       return addr
     end
   end

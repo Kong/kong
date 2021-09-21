@@ -1,8 +1,13 @@
 
+local dns_utils = require "resty.dns.utils"
+local mocker = require "spec.fixtures.mocker"
+local utils = require "kong.tools.utils"
 
-local client, lcb
+local ws_id = utils.uuid()
 
-local helpers = require "spec.test_helpers"
+local client, balancers, targets
+
+local helpers = require "spec.helpers.dns"
 --local gettime = helpers.gettime
 --local sleep = helpers.sleep
 local dnsSRV = function(...) return helpers.dnsSRV(client, ...) end
@@ -12,55 +17,139 @@ local dnsA = function(...) return helpers.dnsA(client, ...) end
 local t_insert = table.insert
 
 
-local validate_lcb
-do
-  -- format string to fixed length for table-like display
-  local function size(str, l)
-    local isnum = type(str) == "number"
-    str = tostring(str)
-    str = str:sub(1, l)
-    if isnum then
-      str = string.rep(" ", l - #str) .. str
-    else
-      str = str .. string.rep(" ", l - #str)
-    end
-    return str
+local unset_register = {}
+local function setup_block(consistency)
+  local cache_table = {}
+
+  local function mock_cache()
+    return {
+      safe_set = function(self, k, v)
+        cache_table[k] = v
+        return true
+      end,
+      get = function(self, k, _, fn, arg)
+        if cache_table[k] == nil then
+          cache_table[k] = fn(arg)
+        end
+        return cache_table[k]
+      end,
+    }
   end
 
-  function validate_lcb(b, debug)
-    local available, unavailable = 0, 0
-    if debug then
-      print("host.hostname   addr.ip        weight count   sort-order")
+  local function register_unsettter(f)
+    table.insert(unset_register, f)
+  end
+
+  mocker.setup(register_unsettter, {
+    kong = {
+      configuration = {
+        worker_consistency = consistency,
+        worker_state_update_frequency = 0.1,
+      },
+      core_cache = mock_cache(cache_table),
+    },
+    ngx = {
+      ctx = {
+        workspace = ws_id,
+      }
+    }
+  })
+end
+
+local function unsetup_block()
+  for _, f in ipairs(unset_register) do
+    f()
+  end
+end
+
+
+local upstream_index = 0
+local function new_balancer(targets_list)
+  upstream_index = upstream_index + 1
+  local upname="upstream_" .. upstream_index
+  local hc_defaults = {
+    active = {
+      timeout = 1,
+      concurrency = 10,
+      http_path = "/",
+      healthy = {
+        interval = 0,  -- 0 = probing disabled by default
+        http_statuses = { 200, 302 },
+        successes = 0, -- 0 = disabled by default
+      },
+      unhealthy = {
+        interval = 0, -- 0 = probing disabled by default
+        http_statuses = { 429, 404,
+                          500, 501, 502, 503, 504, 505 },
+        tcp_failures = 0,  -- 0 = disabled by default
+        timeouts = 0,      -- 0 = disabled by default
+        http_failures = 0, -- 0 = disabled by default
+      },
+    },
+    passive = {
+      healthy = {
+        http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
+                          300, 301, 302, 303, 304, 305, 306, 307, 308 },
+        successes = 0,
+      },
+      unhealthy = {
+        http_statuses = { 429, 500, 503 },
+        tcp_failures = 0,  -- 0 = circuit-breaker disabled by default
+        timeouts = 0,      -- 0 = circuit-breaker disabled by default
+        http_failures = 0, -- 0 = circuit-breaker disabled by default
+      },
+    },
+  }
+  local my_upstream = { id=upname, name=upname, ws_id=ws_id, slots=10, healthchecks=hc_defaults, algorithm="least-connections" }
+  local b = (balancers.create_balancer(my_upstream, true))
+
+  for _, target in ipairs(targets_list) do
+    local name, port, weight = target, nil, nil
+    if type(target) == "table" then
+      name = target.name or target[1]
+      port = target.port or target[2]
+      weight = target.weight or target[3]
     end
-    for i, addr in ipairs(b.addresses) do
-      local display = {}
-      t_insert(display, size(addr.host.hostname, 15))
-      t_insert(display, size(addr.ip, 15))
-      t_insert(display, size(addr.weight, 5))
-      t_insert(display, size(addr.connectionCount, 5))
-      if b.binaryHeap:valueByPayload(addr) then
-        t_insert(display, size(("%.10f"):format(b.binaryHeap:valueByPayload(addr)), 14))
-      else
-        t_insert(display, size(b.binaryHeap:valueByPayload(addr), 14))
-      end
-      if b.binaryHeap:valueByPayload(addr) then
+
+    table.insert(b.targets, {
+      upstream = name or upname,
+      balancer = b,
+      name = name,
+      nameType = dns_utils.hostnameType(name),
+      addresses = {},
+      port = port or 8000,
+      weight = weight or 100,
+      totalWeight = 0,
+      unavailableWeight = 0,
+    })
+  end
+
+  targets.resolve_targets(b.targets)
+  return b
+end
+
+local function validate_lcb(b, debug)
+  local available, unavailable = 0, 0
+  local bheap = b.algorithm.binaryHeap
+  local num_addresses = 0
+  for _, target in ipairs(b.targets) do
+    for _, addr in ipairs(target.addresses) do
+      if bheap:valueByPayload(addr) then
         -- it's in the heap
         assert(not addr.disabled, "should be enabled when in the heap")
         assert(addr.available, "should be available when in the heap")
         available = available + 1
-        assert(b.binaryHeap:valueByPayload(addr) == (addr.connectionCount+1)/addr.weight)
+        assert(bheap:valueByPayload(addr) == (addr.connectionCount+1)/addr.weight)
       else
         assert(not addr.disabled, "should be enabled when not in the heap")
         assert(not addr.available, "should not be available when not in the heap")
         unavailable = unavailable + 1
       end
-      if debug then
-        print(table.concat(display, " "))
-      end
+      num_addresses = num_addresses + 1
     end
-    assert(available + unavailable == #b.addresses, "mismatch in counts")
-    return b
   end
+  assert(available + unavailable == num_addresses, "mismatch in counts")
+  return b
 end
 
 
@@ -70,12 +159,62 @@ describe("[least-connections]", function()
 
   setup(function()
     _G.package.loaded["resty.dns.client"] = nil -- make sure module is reloaded
-    lcb = require "resty.dns.balancer.least_connections"
+    _G.package.loaded["kong.runloop.balancer.targets"] = nil -- make sure module is reloaded
+
     client = require "resty.dns.client"
+    targets = require "kong.runloop.balancer.targets"
+    balancers = require "kong.runloop.balancer.balancers"
+    local healthcheckers = require "kong.runloop.balancer.healthcheckers"
+    healthcheckers.init()
+    balancers.init()
+
+    local singletons = require "kong.singletons"
+    singletons.worker_events = require "resty.worker.events"
+    singletons.worker_events.configure({
+      shm = "kong_process_events", -- defined by "lua_shared_dict"
+      timeout = 5,            -- life time of event data in shm
+      interval = 1,           -- poll interval (seconds)
+
+      wait_interval = 0.010,  -- wait before retry fetching event data
+      wait_max = 0.5,         -- max wait time before discarding event
+    })
+
+    local function empty_each()
+      return function() end
+    end
+
+    singletons.db = {
+      targets = {
+        each = empty_each,
+        select_by_upstream_raw = function()
+          return {}
+        end
+      },
+      upstreams = {
+        each = empty_each,
+        select = function() end,
+      },
+    }
+
+    singletons.core_cache = {
+      _cache = {},
+      get = function(self, key, _, loader, arg)
+        local v = self._cache[key]
+        if v == nil then
+          v = loader(arg)
+          self._cache[key] = v
+        end
+        return v
+      end,
+      invalidate_local = function(self, key)
+        self._cache[key] = nil
+      end
+    }
   end)
 
 
   before_each(function()
+    setup_block()
     assert(client.init {
       hosts = {},
       resolvConf = {
@@ -88,6 +227,7 @@ describe("[least-connections]", function()
 
   after_each(function()
     snapshot:revert()  -- undo any spying/stubbing etc.
+    unsetup_block()
     collectgarbage()
     collectgarbage()
   end)
@@ -106,17 +246,14 @@ describe("[least-connections]", function()
       dnsA({
         { name = "getkong.org", address = "1.2.3.4" },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = {
-          "konghq.com",                                      -- name only, as string
-          { name = "github.com" },                           -- name only, as table
-          { name = "getkong.org", port = 80, weight = 25 },  -- fully specified, as table
-        },
+      local b = validate_lcb(new_balancer({
+        "konghq.com",                                      -- name only, as string
+        { name = "github.com" },                           -- name only, as table
+        { name = "getkong.org", port = 80, weight = 25 },  -- fully specified, as table
       }))
-      assert.equal("konghq.com", b.addresses[1].host.hostname)
-      assert.equal("github.com", b.addresses[2].host.hostname)
-      assert.equal("getkong.org", b.addresses[3].host.hostname)
+      assert.equal("konghq.com", b.targets[1].name)
+      assert.equal("github.com", b.targets[2].name)
+      assert.equal("getkong.org", b.targets[3].name)
     end)
   end)
 
@@ -128,10 +265,7 @@ describe("[least-connections]", function()
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = { "konghq.com" },
-      }))
+      local b = validate_lcb(new_balancer({ "konghq.com" }))
 
       local counts = {}
       local handles = {}
@@ -144,9 +278,9 @@ describe("[least-connections]", function()
       validate_lcb(b)
 
       assert.same({
-          ["20.20.20.20"] = 20,
-          ["50.50.50.50"] = 50
-        }, counts)
+        ["20.20.20.20"] = 20,
+        ["50.50.50.50"] = 50
+      }, counts)
     end)
 
 
@@ -155,10 +289,7 @@ describe("[least-connections]", function()
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = { "konghq.com" },
-      }))
+      local b = validate_lcb(new_balancer({ "konghq.com" }))
 
       local handles = {}
       local ip, _, handle
@@ -188,17 +319,14 @@ describe("[least-connections]", function()
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = { "konghq.com" },
-      }))
+      local b = validate_lcb(new_balancer({ "konghq.com" }))
 
       -- mark one as unavailable
-      b:setAddressStatus(false, "50.50.50.50", 80, "konghq.com")
+      b:setAddressStatus(b:findAddress("50.50.50.50", 80, "konghq.com"), false)
       local counts = {}
       local handles = {}
       for i = 1,70 do
-        local ip, _, _, handle = b:getPeer()
+        local ip, _, _, handle = assert(b:getPeer())
         counts[ip] = (counts[ip] or 0) + 1
         t_insert(handles, handle)  -- don't let them get GC'ed
       end
@@ -206,9 +334,9 @@ describe("[least-connections]", function()
       validate_lcb(b)
 
       assert.same({
-          ["20.20.20.20"] = 70,
-          ["50.50.50.50"] = nil,
-        }, counts)
+        ["20.20.20.20"] = 70,
+        ["50.50.50.50"] = nil,
+      }, counts)
     end)
 
 
@@ -217,13 +345,10 @@ describe("[least-connections]", function()
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = { "konghq.com" },
-      }))
+      local b = validate_lcb(new_balancer({ "konghq.com" }))
 
       -- mark one as unavailable
-      b:setAddressStatus(false, "20.20.20.20", 80, "konghq.com")
+      b:setAddressStatus(b:findAddress("20.20.20.20", 80, "konghq.com"), false)
       local counts = {}
       local handles = {}
       for i = 1,70 do
@@ -235,12 +360,12 @@ describe("[least-connections]", function()
       validate_lcb(b)
 
       assert.same({
-          ["20.20.20.20"] = nil,
-          ["50.50.50.50"] = 70,
-        }, counts)
+        ["20.20.20.20"] = nil,
+        ["50.50.50.50"] = 70,
+      }, counts)
 
       -- let's do another 70, after resetting
-      b:setAddressStatus(true, "20.20.20.20", 80, "konghq.com")
+      b:setAddressStatus(b:findAddress("20.20.20.20", 80, "konghq.com"), true)
       for i = 1,70 do
         local ip, _, _, handle = b:getPeer()
         counts[ip] = (counts[ip] or 0) + 1
@@ -250,9 +375,9 @@ describe("[least-connections]", function()
       validate_lcb(b)
 
       assert.same({
-          ["20.20.20.20"] = 40,
-          ["50.50.50.50"] = 100,
-        }, counts)
+        ["20.20.20.20"] = 40,
+        ["50.50.50.50"] = 100,
+      }, counts)
     end)
 
 
@@ -267,10 +392,7 @@ describe("[least-connections]", function()
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
         { name = "konghq.com", target = "70.70.70.70", port = 80, weight = 70 },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = { "konghq.com" },
-      }))
+      local b = validate_lcb(new_balancer({ "konghq.com" }))
 
       local tried = {}
       local ip, _, handle
@@ -293,10 +415,10 @@ describe("[least-connections]", function()
       validate_lcb(b)
 
       assert.same({
-          ["20.20.20.20"] = 1,
-          ["50.50.50.50"] = 1,
-          ["70.70.70.70"] = 1,
-        }, tried)
+        ["20.20.20.20"] = 1,
+        ["50.50.50.50"] = 1,
+        ["70.70.70.70"] = 1,
+      }, tried)
     end)
 
 
@@ -306,10 +428,7 @@ describe("[least-connections]", function()
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
         { name = "konghq.com", target = "70.70.70.70", port = 80, weight = 70 },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = { "konghq.com" },
-      }))
+      local b = validate_lcb(new_balancer({ "konghq.com" }))
 
       local tried = {}
       local ip, _, handle
@@ -321,10 +440,10 @@ describe("[least-connections]", function()
       end
 
       assert.same({
-          ["20.20.20.20"] = 2,
-          ["50.50.50.50"] = 2,
-          ["70.70.70.70"] = 2,
-        }, tried)
+        ["20.20.20.20"] = 2,
+        ["50.50.50.50"] = 2,
+        ["70.70.70.70"] = 2,
+      }, tried)
     end)
 
 
@@ -333,10 +452,7 @@ describe("[least-connections]", function()
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
         { name = "konghq.com", target = "50.50.50.50", port = 80, weight = 50 },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = { "konghq.com" },
-      }))
+      local b = validate_lcb(new_balancer({ "konghq.com" }))
 
       local counts = {}
       local handle -- define outside loop, so it gets reused and released
@@ -349,8 +465,10 @@ describe("[least-connections]", function()
       validate_lcb(b)
 
       local ccount = 0
-      for i, addr in ipairs(b.addresses) do
-        ccount = ccount + addr.connectionCount
+      for _, target in ipairs(b.targets) do
+        for _, addr in ipairs(target.addresses) do
+          ccount = ccount + addr.connectionCount
+        end
       end
       assert.equal(1, ccount)
     end)
@@ -364,17 +482,14 @@ describe("[least-connections]", function()
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = { "konghq.com" },
-      }))
+      local b = validate_lcb(new_balancer({ "konghq.com" }))
 
       local ip, _, _, handle = b:getPeer()
       assert.equal("20.20.20.20", ip)
-      assert.equal(1, b.addresses[1].connectionCount)
+      assert.equal(1, b.targets[1].addresses[1].connectionCount)
 
       handle:release()
-      assert.equal(0, b.addresses[1].connectionCount)
+      assert.equal(0, b.targets[1].addresses[1].connectionCount)
     end)
 
 
@@ -382,18 +497,15 @@ describe("[least-connections]", function()
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = { "konghq.com" },
-      }))
+      local b = validate_lcb(new_balancer({ "konghq.com" }))
 
       local ip, _, _, handle = b:getPeer()
       assert.equal("20.20.20.20", ip)
-      assert.equal(1, b.addresses[1].connectionCount)
+      assert.equal(1, b.targets[1].addresses[1].connectionCount)
 
       -- remove the host and its addresses
-      b:removeHost("konghq.com")
-      assert.equal(0, #b.addresses)
+      table.remove(b.targets)
+      assert.equal(0, #b.targets)
 
       local addr = handle.address
       handle:release()
@@ -406,19 +518,18 @@ describe("[least-connections]", function()
   describe("garbage collection:", function()
 
     it("releases a connection when a handle is collected", function()
+      pending("no longer tied to garbage collection")
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = { "konghq.com" },
-      }))
+      local b = validate_lcb(new_balancer({ "konghq.com" }))
 
       local ip, _, _, handle = b:getPeer()
       assert.equal("20.20.20.20", ip)
-      assert.equal(1, b.addresses[1].connectionCount)
+      assert.equal(1, b.targets[1].addresses[1].connectionCount)
 
       local addr = handle.address
+      --handle:release()
       handle = nil  --luacheck: ignore
       collectgarbage()
       collectgarbage()
@@ -428,23 +539,22 @@ describe("[least-connections]", function()
 
 
     it("releases connection of already disabled/removed address", function()
+      pending("no longer tied to garbage collection")
       dnsSRV({
         { name = "konghq.com", target = "20.20.20.20", port = 80, weight = 20 },
       })
-      local b = validate_lcb(lcb.new({
-        dns = client,
-        hosts = { "konghq.com" },
-      }))
+      local b = validate_lcb(new_balancer({ "konghq.com" }))
 
       local ip, _, _, handle = b:getPeer()
       assert.equal("20.20.20.20", ip)
-      assert.equal(1, b.addresses[1].connectionCount)
+      assert.equal(1, b.targets[1].addresses[1].connectionCount)
 
       -- remove the host and its addresses
-      b:removeHost("konghq.com")
-      assert.equal(0, #b.addresses)
+      table.remove(b.targets)
+      assert.equal(0, #b.targets)
 
       local addr = handle.address
+      --handle:release()
       handle = nil  --luacheck: ignore
       collectgarbage()
       collectgarbage()
