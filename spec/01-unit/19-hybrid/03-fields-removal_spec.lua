@@ -64,6 +64,35 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      openid_connect = {
+        "disable_session",
+        "downstream_introspection_jwt_header",
+        "downstream_user_info_jwt_header",
+        "introspection_accept",
+        "introspection_check_active",
+        "upstream_introspection_jwt_header",
+        "upstream_user_info_jwt_header",
+        "userinfo_accept",
+        "userinfo_headers_client",
+        "userinfo_headers_names",
+        "userinfo_headers_values",
+        "userinfo_query_args_client",
+        "userinfo_query_args_names",
+        "userinfo_query_args_values",
+        auth_methods = {
+          "userinfo",
+        },
+        ignore_signature = {
+          "introspection",
+          "userinfo",
+        },
+        login_methods = {
+          "userinfo",
+        },
+        token_headers_grants = {
+          "refresh_token",
+        },
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -85,6 +114,35 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+      },
+      openid_connect = {
+        "disable_session",
+        "downstream_introspection_jwt_header",
+        "downstream_user_info_jwt_header",
+        "introspection_accept",
+        "introspection_check_active",
+        "upstream_introspection_jwt_header",
+        "upstream_user_info_jwt_header",
+        "userinfo_accept",
+        "userinfo_headers_client",
+        "userinfo_headers_names",
+        "userinfo_headers_values",
+        "userinfo_query_args_client",
+        "userinfo_query_args_names",
+        "userinfo_query_args_values",
+        auth_methods = {
+          "userinfo",
+        },
+        ignore_signature = {
+          "introspection",
+          "userinfo",
+        },
+        login_methods = {
+          "userinfo",
+        },
+        token_headers_grants = {
+          "refresh_token",
+        },
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -108,6 +166,35 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      openid_connect = {
+        "disable_session",
+        "downstream_introspection_jwt_header",
+        "downstream_user_info_jwt_header",
+        "introspection_accept",
+        "introspection_check_active",
+        "upstream_introspection_jwt_header",
+        "upstream_user_info_jwt_header",
+        "userinfo_accept",
+        "userinfo_headers_client",
+        "userinfo_headers_names",
+        "userinfo_headers_values",
+        "userinfo_query_args_client",
+        "userinfo_query_args_names",
+        "userinfo_query_args_values",
+        auth_methods = {
+          "userinfo",
+        },
+        ignore_signature = {
+          "introspection",
+          "userinfo",
+        },
+        login_methods = {
+          "userinfo",
+        },
+        token_headers_grants = {
+          "refresh_token",
+        },
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -130,6 +217,35 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      openid_connect = {
+        "disable_session",
+        "downstream_introspection_jwt_header",
+        "downstream_user_info_jwt_header",
+        "introspection_accept",
+        "introspection_check_active",
+        "upstream_introspection_jwt_header",
+        "upstream_user_info_jwt_header",
+        "userinfo_accept",
+        "userinfo_headers_client",
+        "userinfo_headers_names",
+        "userinfo_headers_values",
+        "userinfo_query_args_client",
+        "userinfo_query_args_names",
+        "userinfo_query_args_values",
+        auth_methods = {
+          "userinfo",
+        },
+        ignore_signature = {
+          "introspection",
+          "userinfo",
+        },
+        login_methods = {
+          "userinfo",
+        },
+        token_headers_grants = {
+          "refresh_token",
+        },
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -141,6 +257,35 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+      },
+      openid_connect = {
+        "disable_session",
+        "downstream_introspection_jwt_header",
+        "downstream_user_info_jwt_header",
+        "introspection_accept",
+        "introspection_check_active",
+        "upstream_introspection_jwt_header",
+        "upstream_user_info_jwt_header",
+        "userinfo_accept",
+        "userinfo_headers_client",
+        "userinfo_headers_names",
+        "userinfo_headers_values",
+        "userinfo_query_args_client",
+        "userinfo_query_args_names",
+        "userinfo_query_args_values",
+        auth_methods = {
+          "userinfo",
+        },
+        ignore_signature = {
+          "introspection",
+          "userinfo",
+        },
+        login_methods = {
+          "userinfo",
+        },
+        token_headers_grants = {
+          "refresh_token",
+        },
       },
     }, cp._get_removed_fields(2004001002))
 
@@ -154,6 +299,35 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      openid_connect = {
+        "disable_session",
+        "downstream_introspection_jwt_header",
+        "downstream_user_info_jwt_header",
+        "introspection_accept",
+        "introspection_check_active",
+        "upstream_introspection_jwt_header",
+        "upstream_user_info_jwt_header",
+        "userinfo_accept",
+        "userinfo_headers_client",
+        "userinfo_headers_names",
+        "userinfo_headers_values",
+        "userinfo_query_args_client",
+        "userinfo_query_args_names",
+        "userinfo_query_args_values",
+        auth_methods = {
+          "userinfo",
+        },
+        ignore_signature = {
+          "introspection",
+          "userinfo",
+        },
+        login_methods = {
+          "userinfo",
+        },
+        token_headers_grants = {
+          "refresh_token",
+        },
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same(nil, cp._get_removed_fields(2006000000))
@@ -162,7 +336,7 @@ describe("kong.clustering.control_plane", function()
   it("removing unknown fields", function()
     local test_with = function(payload, dp_version)
       local has_update, deflated_payload, err = cp._update_compatible_payload(
-        payload, dp_version
+        payload, dp_version, ""
       )
       assert(err == nil)
       if has_update then
@@ -197,6 +371,17 @@ describe("kong.clustering.control_plane", function()
             custom_fields_by_lua = true,
             facility = "user",
           }
+        }, {
+          name = "redis-advanced",
+          config = {
+            redis = {
+              "connect_timeout",
+              "keepalive_backlog",
+              "keepalive_pool_size",
+              "read_timeout",
+              "send_timeout",
+            },
+          }
         } }
       }
     }
@@ -211,6 +396,17 @@ describe("kong.clustering.control_plane", function()
         -- custom_fields_by_lua = true, -- this is removed
         -- facility = "user", -- this is removed
       }
+    }, {
+      name = "redis-advanced",
+      config = {
+        redis = {
+          "connect_timeout",
+          "keepalive_backlog",
+          "keepalive_pool_size",
+          "read_timeout",
+          "send_timeout",
+        },
+      }
     } }, test_with(payload, "2.3.0").config_table.plugins)
 
     assert.same({ {
@@ -224,9 +420,136 @@ describe("kong.clustering.control_plane", function()
         custom_fields_by_lua = true,
         -- facility = "user", -- this is removed
       }
+    }, {
+      name = "redis-advanced",
+      config = {
+        redis = {
+          "connect_timeout",
+          "keepalive_backlog",
+          "keepalive_pool_size",
+          "read_timeout",
+          "send_timeout",
+        },
+      }
     } }, test_with(payload, "2.4.0").config_table.plugins)
 
     -- nothing should be removed
     assert.same(payload.config_table.plugins, test_with(payload, "2.5.0").config_table.plugins)
+  end)
+
+  it("removing unknown field elements", function()
+    local test_with = function(payload, dp_version)
+      local has_update, deflated_payload, err = cp._update_compatible_payload(
+        payload, dp_version, ""
+      )
+      assert(err == nil)
+      if has_update then
+        return cjson_decode(inflate_gzip(deflated_payload))
+      end
+
+      return payload
+    end
+
+    local payload = {
+      config_table ={
+        plugins = { {
+          name = "openid-connect",
+          config = {
+            auth_methods = {
+              "password",
+              "client_credentials",
+              "authorization_code",
+              "bearer",
+              "introspection",
+              "userinfo",
+              "kong_oauth2",
+              "refresh_token",
+              "session",
+            },
+            ignore_signature = {
+              "password",
+              "client_credentials",
+              "authorization_code",
+              "refresh_token",
+              "session",
+              "introspection",
+              "userinfo",
+            },
+          },
+        }, {
+          name = "syslog",
+          config = {
+            custom_fields_by_lua = true,
+            facility = "user",
+          }
+        } }
+      }
+    }
+    assert.same({ {
+      name = "openid-connect",
+      config = {
+        auth_methods = {
+          "password",
+          "client_credentials",
+          "authorization_code",
+          "bearer",
+          "introspection",
+          -- "userinfo", -- this element is removed
+          "kong_oauth2",
+          "refresh_token",
+          "session",
+        },
+        ignore_signature = {
+          "password",
+          "client_credentials",
+          "authorization_code",
+          "refresh_token",
+          "session",
+          -- "introspection", -- this element is removed
+          -- "userinfo", -- this element is removed
+        },
+      },
+    }, {
+      name = "syslog",
+      config = {
+        -- custom_fields_by_lua = true, -- this is removed
+        -- facility = "user", -- this is removed
+      }
+    } }, test_with(payload, "2.3.0").config_table.plugins)
+
+    assert.same({ {
+      name = "openid-connect",
+      config = {
+        auth_methods = {
+          "password",
+          "client_credentials",
+          "authorization_code",
+          "bearer",
+          "introspection",
+          -- "userinfo", -- this element is removed
+          "kong_oauth2",
+          "refresh_token",
+          "session",
+        },
+        ignore_signature = {
+          "password",
+          "client_credentials",
+          "authorization_code",
+          "refresh_token",
+          "session",
+          -- "introspection", -- this element is removed
+          -- "userinfo", -- this element is removed
+        },
+      },
+    }, {
+      name = "syslog",
+      config = {
+        custom_fields_by_lua = true,
+        facility = "user",
+      }
+    } }, test_with(payload, "2.5.0").config_table.plugins)
+
+    -- nothing should be removed
+    assert.same(payload.config_table.plugins, test_with(payload, "2.6.0").config_table.plugins)
   end)
 end)

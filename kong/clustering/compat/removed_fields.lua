@@ -35,6 +35,12 @@ return {
   },
 
   [2004001002] = {
+    -- OSS plugins
+    syslog = {
+      "facility",
+    },
+
+    -- Enterprise plugins
     redis = {
       "connect_timeout",
       "keepalive_backlog",
@@ -42,13 +48,11 @@ return {
       "read_timeout",
       "send_timeout",
     },
-    syslog = {
-      "facility",
-    },
   },
 
   -- Any dataplane older than 2.6.0
   [2005999999] = {
+    -- OSS plugins
     aws_lambda = {
       "base64_encode_body",
     },
@@ -58,5 +62,38 @@ return {
     request_termination = {
       "echo",
     },
-  }
+
+    -- Enterprise plugins
+    openid_connect = {
+      "disable_session",
+      "downstream_introspection_jwt_header",
+      "downstream_user_info_jwt_header",
+      "introspection_accept",
+      "introspection_check_active",
+      "upstream_introspection_jwt_header",
+      "upstream_user_info_jwt_header",
+      "userinfo_accept",
+      "userinfo_headers_client",
+      "userinfo_headers_names",
+      "userinfo_headers_values",
+      "userinfo_query_args_client",
+      "userinfo_query_args_names",
+      "userinfo_query_args_values",
+
+      -- Remove elements from fields
+      auth_methods = {
+        "userinfo",
+      },
+      ignore_signature = {
+        "introspection",
+        "userinfo",
+      },
+      login_methods = {
+        "userinfo",
+      },
+      token_headers_grants = {
+        "refresh_token",
+      },
+    },
+  },
 }

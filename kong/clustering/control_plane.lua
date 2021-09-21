@@ -120,7 +120,23 @@ function _M.new(parent)
 end
 
 
-local function invalidate_keys_from_config(config_plugins, keys)
+-- [[ XXX EE: TODO: Backport find_field_element function to OSS
+local function find_field_element(table, field_element)
+  if type(table) == "table" then
+    for i, v in pairs(table) do
+      if v == field_element then
+        return i
+      end
+    end
+  end
+
+  return nil
+end
+
+
+-- [[ XXX EE: TODO: Backport function rename, logging, and element removal to OSS
+--                  invalidate_keys_from_config => invalidate_items_from_config
+local function invalidate_items_from_config(config_plugins, keys, log_suffix)
   if not config_plugins then
     return false
   end
@@ -133,10 +149,12 @@ local function invalidate_keys_from_config(config_plugins, keys)
       local name = gsub(t["name"], "-", "_")
 
       -- Handle Redis configurations (regardless of plugin)
-      if config.redis then
+      if config.redis and keys["redis"] then
         local config_plugin_redis = config.redis
         for _, key in ipairs(keys["redis"]) do
           if config_plugin_redis[key] ~= nil then
+            ngx_log(ngx_WARN, _log_prefix, name, " plugin contains redis configuration '", key,
+              "' which is incompatible with dataplane and will be ignored", log_suffix)
             config_plugin_redis[key] = nil
             has_update = true
           end
@@ -145,10 +163,27 @@ local function invalidate_keys_from_config(config_plugins, keys)
 
       -- Handle fields in specific plugins
       if keys[name] ~= nil then
-        for _, key in ipairs(keys[name]) do
-          if config[key] ~= nil then
-            config[key] = nil
-            has_update = true
+        for key, field in pairs(keys[name]) do
+          if type(field) == "table" then
+            if config[key] ~= nil then
+              for _, field_element in pairs(keys[name][key]) do
+                local index = find_field_element(config[key], field_element)
+                if index ~= nil then
+                  ngx_log(ngx_WARN, _log_prefix, name, " plugin contains configuration '", key,
+                    "' element '", field_element, "' which is incompatible with dataplane and will",
+                    " be ignored", log_suffix)
+                  table_remove(config[key], index)
+                  has_update = true
+                end
+              end
+            end
+          else
+            if config[field] ~= nil then
+              ngx_log(ngx_WARN, _log_prefix, name, " plugin contains configuration '", field,
+                "' which is incompatible with dataplane and will be ignored", log_suffix)
+              config[field] = nil
+              has_update = true
+            end
           end
         end
       end
@@ -172,26 +207,37 @@ end
 -- for test
 _M._dp_version_num = dp_version_num
 
+-- [[ XXX EE: TODO: Backport function changes and descriptive variable name change to OSS
 local function get_removed_fields(dp_version_number)
-  local unknown_fields = {}
+  local unknown_fields_and_elements = {}
   local has_fields
 
-  -- Merge dataplane unknown fields; if needed based on DP version
+  -- Merge dataplane unknown fields and field elements; if needed based on DP version
   for v, list in pairs(REMOVED_FIELDS) do
     if dp_version_number < v then
       has_fields = true
       for plugin, fields in pairs(list) do
-        if not unknown_fields[plugin] then
-          unknown_fields[plugin] = {}
+        if not unknown_fields_and_elements[plugin] then
+          unknown_fields_and_elements[plugin] = {}
         end
-        for _, k in ipairs(fields) do
-          table.insert(unknown_fields[plugin], k)
+        for k, f in pairs(fields) do
+          if type(f) == "table" then
+            if not unknown_fields_and_elements[plugin][k] then
+              unknown_fields_and_elements[plugin][k] = {}
+            end
+
+            for _, e in pairs(f) do
+              table.insert(unknown_fields_and_elements[plugin][k], e)
+            end
+          else
+            table.insert(unknown_fields_and_elements[plugin], f)
+          end
         end
       end
     end
   end
 
-  return has_fields and unknown_fields or nil
+  return has_fields and unknown_fields_and_elements or nil
 end
 -- for test
 _M._get_removed_fields = get_removed_fields
@@ -203,7 +249,7 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
   if fields then
     payload = utils.deep_copy(payload, false)
     local config_table = payload["config_table"]
-    local has_update = invalidate_keys_from_config(config_table["plugins"], fields)
+    local has_update = invalidate_items_from_config(config_table["plugins"], fields, log_suffix)
 
     if has_update then
       local deflated_payload, err = deflate_gzip(cjson_encode(payload))
@@ -380,10 +426,8 @@ function _M:check_configuration_compatibility(dp_plugin_map, dp_version)
       --            version did not correspond to the actual release version
       --            and was fixed during BasePlugin inheritance removal.
       --
-      -- Note: These vault-auth plugins in the older dataplanes are compatible
-      local function is_older_dataplane(dp_version)
-        local dp_version_num = dp_version_num(dp_version)
-
+      -- Note: These vault-auth plugins in the legacy dataplanes are compatible
+      local function is_legacy_dataplane(dp_version_num)
         --[[
         -- Kong Gateway v2.3.3.3 and v2.4.1.2 will be backporting the clustering
         -- relaxation
@@ -394,10 +438,17 @@ function _M:check_configuration_compatibility(dp_plugin_map, dp_version)
 
       end
 
-      if name == "vault-auth" and is_older_dataplane(dp_version) and
+      local dp_version_num = dp_version_num(dp_version)
+      if name == "vault-auth" and is_legacy_dataplane(dp_version_num) and
         dp_plugin.version == "1.0.0" then
         ngx_log(ngx_DEBUG, _log_prefix, "data plane plugin vault-auth version ",
           "1.0.0 was incorrectly versioned, but is compatible")
+        dp_plugin = cp_plugin
+      elseif name == "openid-connect" and dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
+        ngx_log(ngx_WARN, _log_prefix, "data plane plugin openid-connect version ",
+          dp_plugin.version, " is partially compatible with version ", cp_plugin.version,
+          "; it is strongly recommended to upgrade your data plane version ", dp_version,
+          " to version ", KONG_VERSION)
         dp_plugin = cp_plugin
       end
       -- XXX EE ]]
@@ -570,7 +621,7 @@ function _M:handle_cp_websocket()
 
   if self.deflated_reconfigure_payload then
     -- initial configuration compatibility for sync status variable
-    _, _, sync_status = self:check_configuration_compatibility(dp_plugins_map)
+    _, _, sync_status = self:check_configuration_compatibility(dp_plugins_map, dp_version)
 
     table_insert(queue, self.deflated_reconfigure_payload)
     queue.post()
@@ -669,7 +720,7 @@ function _M:handle_cp_websocket()
           local previous_sync_status = sync_status
           ok, err, sync_status = self:check_configuration_compatibility(dp_plugins_map, dp_version)
           if ok then
-            local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version)
+            local has_update, deflated_payload, err = update_compatible_payload(self.reconfigure_payload, dp_version, log_suffix)
             if not has_update then -- no modification, use the cached payload
               deflated_payload = self.deflated_reconfigure_payload
             elseif err then
