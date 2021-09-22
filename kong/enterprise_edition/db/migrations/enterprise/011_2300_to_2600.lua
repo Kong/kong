@@ -21,6 +21,9 @@ return {
 
       UPDATE admins SET username_lower=LOWER(username);
     ]],
+    teardown = function(connector)
+      operations_230_260.output_duplicate_username_lower_report(connector, "postgres")
+    end,
   },
 
   cassandra = {
@@ -32,7 +35,16 @@ return {
     teardown = function(connector)
       local coordinator = assert(connector:get_stored_connection())
 
-      return operations_230_260.cassandra_copy_usernames_to_lower(coordinator, "admins")
+      local _, err  = operations_230_260.cassandra_copy_usernames_to_lower(coordinator, "admins")
+      if err then
+        return nil, err
+      end
+
+      local success
+
+      success, err = operations_230_260.output_duplicate_username_lower_report(coordinator, "cassandra")
+
+      return success, err
     end,
   },
 }
