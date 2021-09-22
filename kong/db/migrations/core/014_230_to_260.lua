@@ -22,9 +22,7 @@ return {
       UPDATE consumers SET username_lower=LOWER(username);
     ]],
     teardown = function(connector)
-      local coordinator = assert(connector:get_stored_connection())
-
-      operations_230_260.output_duplicate_username_lower_report(coordinator, "postgres")
+      operations_230_260.output_duplicate_username_lower_report(connector, "postgres")
     end,
   },
   cassandra = {
