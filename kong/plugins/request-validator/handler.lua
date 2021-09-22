@@ -24,7 +24,6 @@ local req_get_uri_args = ngx.req.get_uri_args
 local ipairs = ipairs
 local setmetatable = setmetatable
 local ngx_null = ngx.null
-local type = type
 local string_find = string.find
 local ngx_re_match = ngx.re.match
 local fmt = string.format
@@ -211,11 +210,6 @@ local function validate_style_deepobject(location, parameter)
     return false
   end
 
-  -- temporary, deserializer should return correct table
-  if parameter.decoded_schema.type == "array" and type(result) == "table" then
-    setmetatable(result, cjson.array_mt)
-  end
-
   return validator(result)
 end
 
@@ -236,11 +230,6 @@ local function validate_data(location, parameter)
           parameter.explode, parameter.value)
   if err or not result then
     return false
-  end
-
-  -- temporary, deserializer should return correct table
-  if parameter.decoded_schema.type == "array" and type(result) == "table" then
-    setmetatable(result, cjson.array_mt)
   end
 
   local ok, err = validator(result)
