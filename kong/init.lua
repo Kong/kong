@@ -1514,7 +1514,7 @@ local function serve_content(module, options)
         "GET, HEAD, PATCH, POST, PUT, DELETE"
       header["Access-Control-Allow-Headers"] = options.acah or "Content-Type"
 
-      ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
+      ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_updated_now_ms()
       ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
       ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_PROCESSING_START
 
