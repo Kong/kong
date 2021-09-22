@@ -313,7 +313,7 @@ local function execute_cache_warmup(kong_config)
 end
 
 
-local function get_now_ms()
+local function get_updated_now_ms()
   update_time()
   return now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
@@ -539,6 +539,8 @@ function Kong.init()
   end
 
   db:close()
+
+  require("resty.kong.var").patch_metatable()
 end
 
 
@@ -698,7 +700,7 @@ function Kong.preread()
   end
 
   if not ctx.KONG_PREREAD_START then
-    ctx.KONG_PREREAD_START = get_now_ms()
+    ctx.KONG_PREREAD_START = now() * 1000
   end
 
   kong_global.set_phase(kong, PHASES.preread)
@@ -711,7 +713,7 @@ function Kong.preread()
   execute_plugins_iterator(plugins_iterator, "preread", ctx)
 
   if not ctx.service then
-    ctx.KONG_PREREAD_ENDED_AT = get_now_ms()
+    ctx.KONG_PREREAD_ENDED_AT = get_updated_now_ms()
     ctx.KONG_PREREAD_TIME = ctx.KONG_PREREAD_ENDED_AT - ctx.KONG_PREREAD_START
     ctx.KONG_RESPONSE_LATENCY = ctx.KONG_PREREAD_ENDED_AT - ctx.KONG_PROCESSING_START
 
@@ -721,7 +723,7 @@ function Kong.preread()
 
   runloop.preread.after(ctx)
 
-  ctx.KONG_PREREAD_ENDED_AT = get_now_ms()
+  ctx.KONG_PREREAD_ENDED_AT = get_updated_now_ms()
   ctx.KONG_PREREAD_TIME = ctx.KONG_PREREAD_ENDED_AT - ctx.KONG_PREREAD_START
 
   -- we intent to proxy, though balancer may fail on that
@@ -736,7 +738,7 @@ function Kong.rewrite()
     local ctx = ngx.ctx           -- after an internal redirect. Restore (and restash)
     kong_resty_ctx.stash_ref(ctx) -- context to avoid re-executing phases
 
-    ctx.KONG_REWRITE_ENDED_AT = get_now_ms()
+    ctx.KONG_REWRITE_ENDED_AT = now() * 1000
     ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
 
     return
@@ -748,7 +750,7 @@ function Kong.rewrite()
   end
 
   if not ctx.KONG_REWRITE_START then
-    ctx.KONG_REWRITE_START = get_now_ms()
+    ctx.KONG_REWRITE_START = now() * 1000
   end
 
   kong_global.set_phase(kong, PHASES.rewrite)
@@ -777,7 +779,7 @@ function Kong.rewrite()
 
   runloop.rewrite.after(ctx)
 
-  ctx.KONG_REWRITE_ENDED_AT = get_now_ms()
+  ctx.KONG_REWRITE_ENDED_AT = get_updated_now_ms()
   ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
 end
 
@@ -785,7 +787,7 @@ end
 function Kong.access()
   local ctx = ngx.ctx
   if not ctx.KONG_ACCESS_START then
-    ctx.KONG_ACCESS_START = get_now_ms()
+    ctx.KONG_ACCESS_START = now() * 1000
 
     if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
       ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_ACCESS_START
@@ -802,7 +804,7 @@ function Kong.access()
   execute_plugins_iterator(plugins_iterator, "access", ctx)
 
   if ctx.delayed_response then
-    ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
+    ctx.KONG_ACCESS_ENDED_AT = get_updated_now_ms()
     ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
     ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_PROCESSING_START
 
@@ -812,7 +814,7 @@ function Kong.access()
   ctx.delay_response = nil
 
   if not ctx.service then
-    ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
+    ctx.KONG_ACCESS_ENDED_AT = get_updated_now_ms()
     ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
     ctx.KONG_RESPONSE_LATENCY = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_PROCESSING_START
 
@@ -823,7 +825,7 @@ function Kong.access()
 
   runloop.access.after(ctx)
 
-  ctx.KONG_ACCESS_ENDED_AT = get_now_ms()
+  ctx.KONG_ACCESS_ENDED_AT = get_updated_now_ms()
   ctx.KONG_ACCESS_TIME = ctx.KONG_ACCESS_ENDED_AT - ctx.KONG_ACCESS_START
 
   -- we intent to proxy, though balancer may fail on that
@@ -850,7 +852,7 @@ end
 
 function Kong.balancer()
   -- This may be called multiple times, and no yielding here!
-  local now_ms = get_now_ms()
+  local now_ms = now() * 1000
 
   local ctx = ngx.ctx
   if not ctx.KONG_BALANCER_START then
@@ -919,14 +921,14 @@ function Kong.balancer()
       ngx_log(ngx_ERR, "failed to retry the dns/balancer resolver for ",
               tostring(balancer_data.host), "' with: ", tostring(err))
 
-      ctx.KONG_BALANCER_ENDED_AT = get_now_ms()
+      ctx.KONG_BALANCER_ENDED_AT = get_updated_now_ms()
       ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_BALANCER_START
       ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
       return ngx.exit(errcode)
     end
 
-    ok, err = balancer.set_host_header(balancer_data)
+    ok, err = balancer.set_host_header(balancer_data, var.upstream_scheme, var.upstream_host, true)
     if not ok then
       ngx_log(ngx_ERR, "failed to set balancer Host header: ", err)
 
@@ -976,7 +978,7 @@ function Kong.balancer()
             tostring(balancer_data.ip), " port: ", tostring(balancer_data.port),
             "): ", tostring(err))
 
-    ctx.KONG_BALANCER_ENDED_AT = get_now_ms()
+    ctx.KONG_BALANCER_ENDED_AT = get_updated_now_ms()
     ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_BALANCER_START
     ctx.KONG_PROXY_LATENCY = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_PROCESSING_START
 
@@ -1004,7 +1006,7 @@ function Kong.balancer()
   end
 
   -- record overall latency
-  ctx.KONG_BALANCER_ENDED_AT = get_now_ms()
+  ctx.KONG_BALANCER_ENDED_AT = get_updated_now_ms()
   ctx.KONG_BALANCER_TIME = ctx.KONG_BALANCER_ENDED_AT - ctx.KONG_BALANCER_START
 
   -- record try-latency
@@ -1070,7 +1072,7 @@ do
 
     -- fake response phase (this runs after the balancer)
     if not ctx.KONG_RESPONSE_START then
-      ctx.KONG_RESPONSE_START = get_now_ms()
+      ctx.KONG_RESPONSE_START = now() * 1000
 
       if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
         ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_RESPONSE_START
@@ -1095,7 +1097,7 @@ do
     execute_plugins_iterator(plugins_iterator, "response", ctx)
     runloop.response.after(ctx)
 
-    ctx.KONG_RESPONSE_ENDED_AT = get_now_ms()
+    ctx.KONG_RESPONSE_ENDED_AT = get_updated_now_ms()
     ctx.KONG_RESPONSE_TIME = ctx.KONG_RESPONSE_ENDED_AT - ctx.KONG_RESPONSE_START
 
     -- buffered response
@@ -1117,7 +1119,7 @@ function Kong.header_filter()
   end
 
   if not ctx.KONG_HEADER_FILTER_START then
-    ctx.KONG_HEADER_FILTER_START = get_now_ms()
+    ctx.KONG_HEADER_FILTER_START = now() * 1000
 
     if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
       ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_BALANCER_START or
@@ -1173,7 +1175,7 @@ function Kong.header_filter()
   execute_plugins_iterator(plugins_iterator, "header_filter", ctx)
   runloop.header_filter.after(ctx)
 
-  ctx.KONG_HEADER_FILTER_ENDED_AT = get_now_ms()
+  ctx.KONG_HEADER_FILTER_ENDED_AT = get_updated_now_ms()
   ctx.KONG_HEADER_FILTER_TIME = ctx.KONG_HEADER_FILTER_ENDED_AT - ctx.KONG_HEADER_FILTER_START
 end
 
@@ -1181,7 +1183,7 @@ end
 function Kong.body_filter()
   local ctx = ngx.ctx
   if not ctx.KONG_BODY_FILTER_START then
-    ctx.KONG_BODY_FILTER_START = get_now_ms()
+    ctx.KONG_BODY_FILTER_START = now() * 1000
 
     if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
       ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_ACCESS_START or
@@ -1238,7 +1240,7 @@ function Kong.body_filter()
     return
   end
 
-  ctx.KONG_BODY_FILTER_ENDED_AT = get_now_ms()
+  ctx.KONG_BODY_FILTER_ENDED_AT = get_updated_now_ms()
   ctx.KONG_BODY_FILTER_TIME = ctx.KONG_BODY_FILTER_ENDED_AT - ctx.KONG_BODY_FILTER_START
 
   if ctx.KONG_PROXIED then
@@ -1257,7 +1259,7 @@ end
 function Kong.log()
   local ctx = ngx.ctx
   if not ctx.KONG_LOG_START then
-    ctx.KONG_LOG_START = get_now_ms()
+    ctx.KONG_LOG_START = now() * 1000
     if subsystem == "stream" then
       if not ctx.KONG_PROCESSING_START then
         ctx.KONG_PROCESSING_START = start_time() * 1000
@@ -1378,7 +1380,7 @@ local function serve_content(module, options)
 
   local ctx = ngx.ctx
   ctx.KONG_PROCESSING_START = start_time() * 1000
-  ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or get_now_ms()
+  ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or now() * 1000
 
 
   log_init_worker_errors(ctx)
@@ -1387,20 +1389,9 @@ local function serve_content(module, options)
 
   header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
 
-  if ngx.req.get_method() == "OPTIONS" then
-    header["Access-Control-Allow-Methods"] = "GET, HEAD, PUT, PATCH, POST, DELETE"
-    header["Access-Control-Allow-Headers"] = "Content-Type"
-
-    ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
-    ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
-    ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_PROCESSING_START
-
-    return ngx.exit(204)
-  end
-
   lapis.serve(module)
 
-  ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_now_ms()
+  ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_updated_now_ms()
   ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
   ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_PROCESSING_START
 end
@@ -1430,7 +1421,7 @@ function Kong.admin_header_filter()
   end
 
   if not ctx.KONG_ADMIN_HEADER_FILTER_START then
-    ctx.KONG_ADMIN_HEADER_FILTER_START = get_now_ms()
+    ctx.KONG_ADMIN_HEADER_FILTER_START = now() * 1000
 
     if ctx.KONG_ADMIN_CONTENT_START and not ctx.KONG_ADMIN_CONTENT_ENDED_AT then
       ctx.KONG_ADMIN_CONTENT_ENDED_AT = ctx.KONG_ADMIN_HEADER_FILTER_START

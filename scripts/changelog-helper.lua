@@ -130,9 +130,13 @@ local function get_comparison_commits(api, from_ref, to_ref)
 
   local commits = {}
   for commit in api.iterate_paged(fmt("/repos/kong/kong/commits?since=%s", latest_ancestor_iso8601)) do
-    if datetime_to_epoch(commit.commit.author.date) > latest_ancestor_epoch then
+    if datetime_to_epoch(commit.commit.committer.date) > latest_ancestor_epoch then
       commits[#commits + 1] = commit
+      --print("sha: ", commit.sha, ", date: ", commit.commit.committer.date, ", epoch: ", datetime_to_epoch(commit.commit.committer.date))
+    --else
+      --print("REJECTED sha: ", commit.sha, ", date: ", commit.commit.committer.date, ", epoch: ", datetime_to_epoch(commit.commit.committer.date), " > ", latest_ancestor_epoch)
     end
+
   end
 
   return commits

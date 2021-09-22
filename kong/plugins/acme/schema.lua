@@ -41,6 +41,11 @@ local VAULT_STORAGE_SCHEMA = {
   { token = { type = "string", }, },
   { tls_verify = { type = "boolean", default = true, }, },
   { tls_server_name = { type = "string" }, },
+  -- TODO: add default = "token", one_of = { "token", "kubernetes" } in 2.8 or 3.0
+  { auth_method = { type = "string" } },
+  { auth_path =  { type = "string" }, },
+  { auth_role =  { type = "string" }, },
+  { jwt_path =  { type = "string" }, },
 }
 
 local schema = {
@@ -101,6 +106,9 @@ local schema = {
             { consul = { type = "record", fields = CONSUL_STORAGE_SCHEMA, } },
             { vault = { type = "record", fields = VAULT_STORAGE_SCHEMA, } },
           },
+        }, },
+        { preferred_chain = {
+          type = "string",
         }, },
       },
     }, },

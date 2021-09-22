@@ -121,7 +121,8 @@ local function new(conf)
                     " seconds for ACME challenges to propogate")
       ngx.sleep(wait)
       return true
-    end or nil
+    end or nil,
+    preferred_chain = conf.preferred_chain,
   })
 end
 

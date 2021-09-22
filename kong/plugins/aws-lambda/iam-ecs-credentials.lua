@@ -9,6 +9,7 @@ local function makeset(t)
   return t
 end
 
+
 local kong = kong
 local ENV_RELATIVE_URI = os.getenv 'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI'
 local ENV_FULL_URI = os.getenv 'AWS_CONTAINER_CREDENTIALS_FULL_URI'
@@ -18,19 +19,27 @@ local FULL_URI_ALLOWED_HOSTNAMES = makeset { "localhost", "127.0.0.1" }
 local RELATIVE_URI_HOST = '169.254.170.2'
 local DEFAULT_SERVICE_REQUEST_TIMEOUT = 5000
 
+
 local url = require "socket.url"
 local http = require "resty.http"
 local json = require "cjson"
 local parse_date = require "luatz".parse.rfc_3339
 local ngx_now = ngx.now
+local concat = table.concat
+local tostring = tostring
 
-local ECSFullUri
+local HTTP_OPTS = {
+  ssl_verify = false,
+}
+
+
+local ECS_URI
 do
   if not (ENV_RELATIVE_URI or ENV_FULL_URI) then
     -- No variables found, so we're not running on ECS containers
     kong.log.debug("No ECS environment variables found for IAM")
-  else
 
+  else
     -- construct the URL
     local function getECSFullUri()
       if ENV_RELATIVE_URI then
@@ -41,14 +50,14 @@ do
 
         if not FULL_URI_ALLOWED_PROTOCOLS[parsed_url.scheme] then
           return nil, 'Unsupported protocol: AWS.RemoteCredentials supports '
-                 .. table.concat(FULL_URI_ALLOWED_PROTOCOLS, ',') .. ' only; '
+                 .. concat(FULL_URI_ALLOWED_PROTOCOLS, ',') .. ' only; '
                  .. parsed_url.scheme .. ' requested.'
         end
 
         if (not FULL_URI_UNRESTRICTED_PROTOCOLS[parsed_url.scheme]) and
            (not FULL_URI_ALLOWED_HOSTNAMES[parsed_url.hostname]) then
              return nil, 'Unsupported hostname: AWS.RemoteCredentials only supports '
-                    .. table.concat(FULL_URI_ALLOWED_HOSTNAMES, ',') .. ' for '
+                    .. concat(FULL_URI_ALLOWED_HOSTNAMES, ',') .. ' for '
                     .. parsed_url.scheme .. '; ' .. parsed_url.scheme .. '://'
                     .. parsed_url.host .. ' requested.'
         end
@@ -62,45 +71,29 @@ do
     end
 
     local err
-    ECSFullUri, err = getECSFullUri()
-    if not ECSFullUri then
+    ECS_URI, err = getECSFullUri()
+    if err then
       kong.log.err("Failed to construct IAM url: ", err)
-    else
-      -- parse it and set a default port if omitted
-      ECSFullUri = url.parse(ECSFullUri)
-      ECSFullUri.port = ECSFullUri.port or
-                        ({ http = 80, https = 443 })[ECSFullUri.scheme]
     end
   end
 end
 
 
 local function fetchCredentials()
-
   local client = http.new()
   client:set_timeout(DEFAULT_SERVICE_REQUEST_TIMEOUT)
 
-  local ok, err = client:connect(ECSFullUri.host, ECSFullUri.port)
-
-  if not ok then
-    return nil, "Could not connect to metadata service: " .. tostring(err)
-  end
-
-  local response, err = client:request {
-    method = "GET",
-    path   = ECSFullUri.path,
-  }
-
+  local response, err = client:request_uri(ECS_URI, HTTP_OPTS)
   if not response then
     return nil, "Failed to request IAM credentials request returned error: " .. tostring(err)
   end
 
   if response.status ~= 200 then
     return nil, "Unable to request IAM credentials request returned status code " ..
-                response.status .. " " .. tostring(response:read_body())
+                response.status .. " " .. tostring(response.body)
   end
 
-  local credentials = json.decode(response:read_body())
+  local credentials = json.decode(response.body)
 
   kong.log.debug("Received temporary IAM credential from ECS metadata " ..
                       "service with session token: ", credentials.Token)
@@ -124,6 +117,6 @@ local function fetchCredentialsLogged()
 end
 
 return {
-  configured = not not ECSFullUri, -- force to boolean
+  configured = not not ECS_URI, -- force to boolean
   fetchCredentials = fetchCredentialsLogged,
 }

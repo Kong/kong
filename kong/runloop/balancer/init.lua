@@ -26,7 +26,6 @@ local table_concat = table.concat
 local timer_at = ngx.timer.at
 local run_hook = hooks.run_hook
 local var = ngx.var
-local get_phase = ngx.get_phase
 
 
 local CRIT = ngx.CRIT
@@ -325,40 +324,35 @@ local function post_health(upstream, hostname, ip, port, is_healthy)
 end
 
 
-local function set_host_header(balancer_data)
+local function set_host_header(balancer_data, upstream_scheme, upstream_host, is_balancer_phase)
   if balancer_data.preserve_host then
     return true
   end
 
   -- set the upstream host header if not `preserve_host`
-  local upstream_host = var.upstream_host
-  local orig_upstream_host = upstream_host
-  local phase = get_phase()
+  local new_upstream_host = balancer_data.hostname
 
-  upstream_host = balancer_data.hostname
-
-  local upstream_scheme = var.upstream_scheme
-  if  upstream_scheme == "http"  and balancer_data.port ~= 80 or
-      upstream_scheme == "https" and balancer_data.port ~= 443 or
-      upstream_scheme == "grpc"  and balancer_data.port ~= 80 or
-      upstream_scheme == "grpcs" and balancer_data.port ~= 443
+  local port = balancer_data.port
+  if (port ~= 80  and port ~= 443)
+  or (port == 80  and upstream_scheme ~= "http"  and upstream_scheme ~= "grpc")
+  or (port == 443 and upstream_scheme ~= "https" and upstream_scheme ~= "grpcs")
   then
-    upstream_host = upstream_host .. ":" .. balancer_data.port
+    new_upstream_host = new_upstream_host .. ":" .. port
   end
 
-  if upstream_host ~= orig_upstream_host then
+  if new_upstream_host ~= upstream_host then
     -- the nginx grpc module does not offer a way to override the
     -- :authority pseudo-header; use our internal API to do so
     if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
-      local ok, err = kong.service.request.set_header(":authority", upstream_host)
+      local ok, err = kong.service.request.set_header(":authority", new_upstream_host)
       if not ok then
         log(ERR, "failed to set :authority header: ", err)
       end
     end
 
-    var.upstream_host = upstream_host
+    var.upstream_host = new_upstream_host
 
-    if phase == "balancer" then
+    if is_balancer_phase then
       return recreate_request()
     end
   end

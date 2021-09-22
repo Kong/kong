@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.5.0-0"
+version = "2.5.1-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.5.0"
+  tag = "2.5.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -16,7 +16,7 @@ dependencies = {
   "luasec == 1.0.2",
   "luasocket == 3.0-rc1",
   "penlight == 1.11.0",
-  "lua-resty-http == 0.15",
+  "lua-resty-http == 0.16.1",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
   "multipart == 0.5.9",
@@ -60,6 +60,7 @@ build = {
     ["kong.constants"] = "kong/constants.lua",
     ["kong.singletons"] = "kong/singletons.lua",
     ["kong.concurrency"] = "kong/concurrency.lua",
+    ["kong.deprecation"] = "kong/deprecation.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
     ["kong.hooks"] = "kong/hooks.lua",
@@ -70,6 +71,7 @@ build = {
     ["kong.clustering"] = "kong/clustering/init.lua",
     ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
     ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
+    ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
@@ -402,7 +404,6 @@ build = {
     ["kong.plugins.aws-lambda.iam-ecs-credentials"]  = "kong/plugins/aws-lambda/iam-ecs-credentials.lua",
     ["kong.plugins.aws-lambda.schema"]               = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.v4"]                   = "kong/plugins/aws-lambda/v4.lua",
-    ["kong.plugins.aws-lambda.http.connect-better"]  = "kong/plugins/aws-lambda/http/connect-better.lua",
     ["kong.plugins.aws-lambda.request-util"]         = "kong/plugins/aws-lambda/request-util.lua",
 
     ["kong.plugins.grpc-gateway.deco"] = "kong/plugins/grpc-gateway/deco.lua",

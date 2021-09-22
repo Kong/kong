@@ -2,7 +2,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use Test::Nginx::Socket::Lua::Stream;
-use t::Util;
+do "./t/Util.pm";
 
 $ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
 $ENV{TEST_NGINX_NXSOCK}   ||= html_dir();

@@ -2,6 +2,7 @@
 
 
 - [2.6.0](#260)
+- [2.5.1](#251)
 - [2.5.0](#250)
 - [2.4.1](#241)
 - [2.4.0](#240)
@@ -59,7 +60,6 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-
 ## [2.6.0]
 
 > Release date: TBA
@@ -70,6 +70,7 @@
   [#7430](https://github.com/Kong/kong/pull/7727)
 - Bumped `openssl` from `1.1.1k` to `1.1.1l`
   [7767](https://github.com/Kong/kong/pull/7767)
+- Bumped `lua-resty-http` from 0.15 to 0.16.1 [#7797](https://github.com/kong/kong/pull/7797)
 
 ### Additions
 
@@ -83,6 +84,55 @@
 - **aws-lambda**: The plugin will now try to detect the AWS region by using `AWS_REGION` and
   `AWS_DEFAULT_REGION` environment variables (when not specified with the plugin configuration).
   [#7765](https://github.com/Kong/kong/pull/7765)
+
+## [2.5.1]
+
+> Release date: 2021/09/07
+
+This is the first patch release in the 2.5 series. Being a patch release,
+it strictly contains bugfixes. There are no new features or breaking changes.
+
+### Dependencies
+
+- Bumped `grpcurl` from 1.8.1 to 1.8.2 [#7659](https://github.com/Kong/kong/pull/7659)
+- Bumped `lua-resty-openssl` from 0.7.3 to 0.7.4 [#7657](https://github.com/Kong/kong/pull/7657)
+- Bumped `penlight` from 1.10.0 to 1.11.0 [#7736](https://github.com/Kong/kong/pull/7736)
+- Bumped `luasec` from 1.0.1 to 1.0.2 [#7750](https://github.com/Kong/kong/pull/7750)
+- Bumped `OpenSSL` from 1.1.1k to 1.1.1l [#7767](https://github.com/Kong/kong/pull/7767)
+
+### Fixes
+
+##### Core
+
+- You can now successfully delete workspaces after deleting all entities associated with that workspace.
+  Previously, Kong Gateway was not correctly cleaning up parent-child relationships. For example, creating
+  an Admin also creates a Consumer and RBAC user. When deleting the Admin, the Consumer and RBAC user are
+  also deleted, but accessing the `/workspaces/workspace_name/meta` endpoint would show counts for Consumers
+  and RBAC users, which prevented the workspace from being deleted. Now deleting entities correctly updates
+  the counts, allowing an empty workspace to be deleted. [#7560](https://github.com/Kong/kong/pull/7560)
+- When an upstream event is received from the DAO, `handler.lua` now gets the workspace ID from the request
+  and adds it to the upstream entity that will be used in the worker and cluster events. Before this change,
+  when posting balancer CRUD events, the workspace ID was lost and the balancer used the default
+  workspace ID as a fallback. [#7778](https://github.com/Kong/kong/pull/7778)
+
+##### CLI
+
+- Fixes regression that included an issue where Go plugins prevented CLI commands like `kong config parse`
+  or `kong config db_import` from working as expected. [#7589](https://github.com/Kong/kong/pull/7589)
+
+##### CI / Process
+
+- Improves tests reliability. ([#7578](https://github.com/Kong/kong/pull/7578) [#7704](https://github.com/Kong/kong/pull/7704))
+- Adds Github Issues template forms. [#7774](https://github.com/Kong/kong/pull/7774)
+- Moves "Feature Request" link from Github Issues to Discussions. [#7777](https://github.com/Kong/kong/pull/7777)
+
+##### Admin API
+
+- Kong Gateway now validates workspace names, preventing the use of reserved names on workspaces.
+  [#7380](https://github.com/Kong/kong/pull/7380)
+
+
+[Back to TOC](#table-of-contents)
 
 ## [2.5.0]
 
@@ -303,7 +353,7 @@ grpc-gateway plugin first:
 > Released 2021/05/11
 
 This is a patch release in the 2.4 series. Being a patch release, it
-strictly contains bugfixes. The are no new features or breaking changes.
+strictly contains bugfixes. There are no new features or breaking changes.
 
 ### Distribution
 
@@ -6351,6 +6401,8 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
+[2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Kong/kong/compare/2.4.1...2.5.0
 [2.4.1]: https://github.com/Kong/kong/compare/2.4.0...2.4.1
 [2.4.0]: https://github.com/Kong/kong/compare/2.3.3...2.4.0
