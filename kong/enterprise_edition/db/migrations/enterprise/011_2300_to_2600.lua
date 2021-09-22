@@ -25,7 +25,7 @@ return {
 
   cassandra = {
     up = [[
-      ALTER TABLE admins ADD username_lower TEXT;
+      ALTER TABLE admins ADD username_lower text;
 
       CREATE INDEX IF NOT EXISTS admins_username_lower_idx ON admins(username_lower);
     ]],

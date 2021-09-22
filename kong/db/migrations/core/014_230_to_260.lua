@@ -20,18 +20,32 @@ return {
       $$;
 
       UPDATE consumers SET username_lower=LOWER(username);
-    ]]
+    ]],
+    teardown = function(connector)
+      local coordinator = assert(connector:get_stored_connection())
+
+      operations_230_260.output_duplicate_username_lower_report(coordinator, "postgres")
+    end,
   },
   cassandra = {
     up = [[
-      ALTER TABLE consumers ADD username_lower TEXT;
+      ALTER TABLE consumers ADD username_lower text;
 
       CREATE INDEX IF NOT EXISTS consumers_username_lower_idx ON consumers(username_lower);
     ]],
     teardown = function(connector)
       local coordinator = assert(connector:get_stored_connection())
 
-      return operations_230_260.cassandra_copy_usernames_to_lower(coordinator, "consumers")
+      local _, err  = operations_230_260.cassandra_copy_usernames_to_lower(coordinator, "consumers")
+      if err then
+        return nil, err
+      end
+
+      local success
+
+      success, err = operations_230_260.output_duplicate_username_lower_report(coordinator, "cassandra")
+
+      return success, err
     end,
   }
 }
