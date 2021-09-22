@@ -18,6 +18,9 @@ local CRYPTO_MARKER = "$ke$1$"
 local SEPARATOR = "-"
 
 
+local get_phase = ngx.get_phase
+
+
 local cipher = require "openssl.cipher"
 local to_hex = require("resty.string").to_hex
 local function from_hex(s)
@@ -109,6 +112,12 @@ function _M.decrypt(c)
   end
 
   if not c then
+    return c
+  end
+
+  local phase = get_phase()
+
+  if phase == "init" or phase == "init_worker" then
     return c
   end
 
