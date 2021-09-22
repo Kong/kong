@@ -38,8 +38,10 @@ local check_username_lower_unique = function(self, entity, options)
 
   local admin_auth_type, admin_auth_conf, portal_auth_type, portal_auth_conf
 
-  admin_auth_type = singletons.configuration.admin_gui_auth
-  admin_auth_conf = singletons.configuration.admin_gui_auth_conf
+  if singletons.configuration then
+    admin_auth_type = singletons.configuration.admin_gui_auth
+    admin_auth_conf = singletons.configuration.admin_gui_auth_conf
+  end
   portal_auth_type = workspace_config.retrieve(ws_constants.PORTAL_AUTH, workspace)
   portal_auth_conf = workspace_config.retrieve(ws_constants.PORTAL_AUTH_CONF, workspace)
 
