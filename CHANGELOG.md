@@ -17,6 +17,8 @@ For steps 2 - 6 above [this script](https://github.com/Kong/kong-ee/blob/master/
 - fix(verbose) add more verbosity to error messages. When parameters fail to
   validate, and verbose errors are requested, a copy of the deserialized value
   is included in the response.
+- fix(verbose) when parameters are required, the code path would not add an
+  explanation to the error.
 
 ## 1.1.5
 

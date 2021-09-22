@@ -188,7 +188,7 @@ local function validate_required(location, parameter)
 
   local value = template_environment[location][parameter.name]
   if parameter.required and value == nil then
-    return false
+    return false, "required parameter missing"
   end
 
   parameter.value = value
@@ -207,7 +207,7 @@ local function validate_style_deepobject(location, parameter)
   end
 
   if err or not result then
-    return false
+    return false, err
   end
 
   return validator(result)
@@ -229,7 +229,7 @@ local function validate_data(location, parameter)
   local result, err =  deserialize(parameter.style, parameter.decoded_schema.type,
           parameter.explode, parameter.value)
   if err or not result then
-    return false
+    return false, err
   end
 
   local ok, err = validator(result)
@@ -238,11 +238,12 @@ end
 
 
 local function validate_parameters(location, parameter)
-  if not validate_required(location, parameter) then
-    return false
+  local ok, err, data = validate_required(location, parameter)
+  if not ok then
+    return false, err, data
   end
 
-  local ok, err, data = validate_data(location, parameter)
+  ok, err, data = validate_data(location, parameter)
   if not ok then
     return false, err, data
   end

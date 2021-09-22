@@ -447,7 +447,7 @@ for _, strategy in strategies() do
       end)
 
 
-      it("verbose response for parameter schema validation", function()
+      it("verbose response for parameter schema validation, required and provided", function()
         local body_schema = [[
             {
               "properties": {
@@ -489,6 +489,50 @@ for _, strategy in strategies() do
           data = { "a", "b", "c" }
         }, json)
       end)
+
+
+      it("verbose response for parameter schema validation, required but not provided", function()
+        local body_schema = [[
+            {
+              "properties": {
+                "f1": {
+                  "type": "string"
+                }
+               }
+            }
+        ]]
+
+        local param_schema = {
+          {
+            name = "x-kong-name",
+            ["in"] = "header",
+            required = true,
+            schema = '{"type": "array", "items": {"type": "integer"}}',
+            style = "simple",
+            explode = false,
+          }
+        }
+
+        add_plugin(admin_client, {body_schema = body_schema, parameter_schema = param_schema, verbose_response = true }, 201)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Content-Type"] = "application/json",
+            --["x-kong-name"] = "a,b,c",         -- do not provide the required header
+          },
+          body = {
+            f1 = "abc"
+          }
+        })
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody()
+        assert.same({
+          message = "header 'x-kong-name' validation failed, [error] required parameter missing"
+        }, json)
+      end)
+
 
       it("parameter type[object] validation for multi/single header with a object(delim: =) value #explode -> true", function()
         local param_schema = {
