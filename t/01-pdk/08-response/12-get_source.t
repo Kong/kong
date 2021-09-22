@@ -1,6 +1,6 @@
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
-use t::Util;
+do "./t/Util.pm";
 
 plan tests => repeat_each() * (blocks() * 3) - 3;
 
