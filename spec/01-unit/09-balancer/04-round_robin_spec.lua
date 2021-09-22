@@ -156,9 +156,12 @@ local function new_balancer(opts)
     wheelSize = opts.wheelSize,
     requeryInterval = opts.requery,
     ttl0Interval = opts.ttl0,
-    callback = opts.callback,   -- or maybe use b:setCallbac()?
   } do
     b[k] = v
+  end
+
+  if opts.callback then
+    b:setCallback(opts.callback)
   end
 
   for _, target in ipairs(opts.hosts or {}) do
@@ -876,7 +879,7 @@ describe("[round robin balancer]", function()
       assert.equal(1, count_remove)
     end)
     it("for 1 level dns", function()
-      pending("------ todo ------") -- TODO:
+      pending("two identical addresses for the same target.  one or two adds?")
       local count_add = 0
       local count_remove = 0
       local b
@@ -968,7 +971,6 @@ describe("[round robin balancer]", function()
 
   describe("wheel manipulation", function()
     it("wheel updates are atomic", function()
-      pending("too scary, leave for later")
       -- testcase for issue #49, see:
       -- https://github.test/Kong/lua-resty-dns-client/issues/49
       local order_of_events = {}
