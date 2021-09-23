@@ -31,7 +31,7 @@ if env_versions then
   versions = split(env_versions, ",")
 end
 
-local LOAD_DURATION = 60
+local LOAD_DURATION = 30
 
 local function print_and_save(s, path)
   os.execute("mkdir -p output")
