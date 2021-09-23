@@ -275,33 +275,6 @@ describe("[consistent_hashing]", function()
     collectgarbage()
   end)
 
-  it("ringbalancer with a running timer gets GC'ed", function()
-    pending("balancers are tied to the config entities")
-    local b = new_balancer({
-      dns = client,
-      wheelSize = 15,
-      requery = 0.1,
-    })
-    assert(add_target(b, "this.will.not.be.found", 80, 10))
-
-    local tracker = setmetatable({ b }, {__mode = "v"})
-    local t = 0
-    while t<10 do
-      if t>0.5 then -- let the timer do its work, only dismiss after 0.5 seconds
-        -- luacheck: push no unused
-        b = nil -- mark it for GC
-        -- luacheck: pop
-      end
-      sleep(0.1)
-      collectgarbage()
-      if not next(tracker) then
-        break
-      end
-      t = t + 0.1
-    end
-    assert(t < 10, "timeout while waiting for balancer to be GC'ed")
-  end)
-
   describe("getting targets", function()
     it("gets an IP address and port number; consistent hashing", function()
       dnsA({

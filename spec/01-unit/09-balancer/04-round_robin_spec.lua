@@ -340,57 +340,6 @@ describe("[round robin balancer]", function()
     end)
 
     describe("create", function()
-      it("fails without proper options", function()
-        pending("tests helper func")
-        assert.has.error(
-          function() new_balancer() end,
-          "Expected an options table, but got: nil"
-        )
-        assert.has.error(
-          function() new_balancer("should be a table") end,
-          "Expected an options table, but got: string"
-        )
-      end)
-      it("fails without proper 'dns' option", function()
-        pending("tests helper func")
-        assert.has.error(
-          function() new_balancer{ hosts = {"mashape.test"} } end,
-          "expected option `dns` to be a configured dns client"
-        )
-      end)
-      it("fails with a bad 'requery' option", function()
-        pending("tests helper func")
-        assert.has.error(
-          function() new_balancer{
-            hosts = {"mashape.test"},
-            dns = client,
-            requery = -5,
-          } end,
-          "expected 'requery' parameter to be > 0"
-        )
-      end)
-      it("fails with a bad 'ttl0' option", function()
-        pending("tests helper func")
-        assert.has.error(
-          function() new_balancer{
-            hosts = {"mashape.test"},
-            dns = client,
-            ttl0 = -5,
-          } end,
-          "expected 'ttl0' parameter to be > 0"
-        )
-      end)
-      it("fails with a bad callback", function()
-        pending("tests helper func")
-        assert.has.error(
-          function() new_balancer{
-            dns = client,
-            hosts = {"mashape.test"},
-            callback = "not a function",
-          } end,
-          "expected 'callback' to be a function or nil, but got: string"
-        )
-      end)
       it("succeeds with proper options", function()
         dnsA({
           { name = "mashape.test", address = "1.2.3.4" },
@@ -436,40 +385,6 @@ describe("[round robin balancer]", function()
     end)
 
     describe("adding hosts", function()
-      it("fails if hostname is not a string", function()
-        pending("tests helper func")
-        -- throws an error
-        local b = check_balancer(new_balancer{
-          dns = client,
-          wheelSize = 15,
-        })
-        local not_a_string = 10
-        assert.has.error(
-          function()
-            add_target(b, not_a_string)
-          end,
-          "expected a hostname (string), got "..tostring(not_a_string)
-        )
-        check_balancer(b)
-      end)
-      it("fails if weight is not a positive integer value", function()
-        pending("tests helper func")
-        -- throws an error
-        local b = check_balancer(new_balancer {
-          dns = client,
-          wheelSize = 15,
-        })
-        local bad_weights = { -1, 0 ,0.5, 1.5, 100.4 }
-        for _, weight in ipairs(bad_weights) do
-          assert.has.error(
-            function()
-              add_target(b, "just_a_name", nil, weight)
-            end,
-            "Expected 'weight' to be an integer >= 1; got "..tostring(weight)
-          )
-        end
-        check_balancer(b)
-      end)
       it("accepts a hostname that does not resolve", function()
         -- weight should be 0, with no addresses
         local b = check_balancer(new_balancer {
@@ -530,37 +445,6 @@ describe("[round robin balancer]", function()
       end)
     end)
 
-    describe("removing hosts", function()
-      it("hostname must be a string", function()
-        pending("we don't remove targets from balancers")
-        -- throws an error
-        local b = check_balancer(new_balancer {
-          dns = client,
-          wheelSize = 15,
-        })
-        local not_a_string = 10
-        assert.has.error(
-          function()
-            b:removeHost(not_a_string)
-          end,
-          "expected a hostname (string), got "..tostring(not_a_string)
-        )
-        check_balancer(b)
-      end)
-      it("does not throw an error if it doesn't exist", function()
-        pending("we don't remove targets from balancers")
-        -- throws an error
-        local b = check_balancer(new_balancer {
-          dns = client,
-          wheelSize = 15,
-        })
-        local ok, err = b:removeHost("not in there")
-        assert.equal(b, ok)
-        assert.is_nil(err)
-        check_balancer(b)
-      end)
-    end)
-
     describe("setting status", function()
       it("valid target is accepted", function()
         local b = check_balancer(new_balancer { dns = client })
@@ -588,18 +472,6 @@ describe("[round robin balancer]", function()
         assert.is_true(ok)
         assert.is_nil(err)
       end)
-      it("valid handle accepted", function()
-        pending("removed feature")
-        local b = check_balancer(new_balancer { dns = client })
-        dnsA({
-          { name = "kong.inc", address = "4.3.2.1" },
-        })
-        add_target(b, "kong.inc", 80, 10)
-        local _, _, _, handle = b:getPeer()
-        local ok, err = b:setAddressStatus(handle, false)
-        assert.is_true(ok)
-        assert.is_nil(err)
-      end)
       it("invalid target returns an error", function()
         local b = check_balancer(new_balancer { dns = client })
         dnsA({
@@ -617,24 +489,6 @@ describe("[round robin balancer]", function()
         assert.is_nil(ok)
         --assert.equals("no peer found by name 'kong.inc' and address 1.1.1.1:80", err)
         assert.is_string(err)
-      end)
-      it("SRV target with A record targets returns a descriptive error", function()
-        pending("removed feature")
-        local b = check_balancer(new_balancer { dns = client })
-        dnsA({
-          { name = "mashape1.test", address = "12.34.56.1" },
-        })
-        dnsA({
-          { name = "mashape2.test", address = "12.34.56.2" },
-        })
-        dnsSRV({
-          { name = "mashape.test", target = "mashape1.test", port = 8001, weight = 5 },
-          { name = "mashape.test", target = "mashape2.test", port = 8002, weight = 5 },
-        })
-        add_target(b, "mashape.test", 80, 10)
-        local ok, err = b:setAddressStatus(false, "mashape1.test", 80, "mashape.test")
-        assert.is_nil(ok)
-        assert.equals("no peer found by name 'mashape.test' and address mashape1.test:80", err)
       end)
       it("SRV target with A record targets can be changed with a handle", function()
         local b = check_balancer(new_balancer { dns = client })
@@ -709,32 +563,6 @@ describe("[round robin balancer]", function()
       end)
     end)
 
-  end)
-  it("ringbalancer with a running timer gets GC'ed", function()
-    pending("balancers are tied to the config entities")
-    local b = check_balancer(new_balancer {
-      dns = client,
-      wheelSize = 15,
-      requery = 0.1,
-    })
-    assert(add_target(b, "this.will.not.be.found", 80, 10))
-
-    local tracker = setmetatable({ b }, {__mode = "v"})
-    local t = 0
-    while t<10 do
-      if t>0.5 then -- let the timer do its work, only dismiss after 0.5 seconds
-        -- luacheck: push no unused
-        b = nil -- mark it for GC
-        -- luacheck: pop
-      end
-      sleep(0.1)
-      collectgarbage()
-      if not next(tracker) then
-        break
-      end
-      t = t + 0.1
-    end
-    assert(t < 10, "timeout while waiting for balancer to be GC'ed")
   end)
 
   describe("getting targets", function()
