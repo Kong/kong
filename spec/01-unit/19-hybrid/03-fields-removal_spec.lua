@@ -64,6 +64,16 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      kafka_log = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
+      },
+      kafka_upstream = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
+      },
       openid_connect = {
         "disable_session",
         "downstream_introspection_jwt_header",
@@ -114,6 +124,16 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+      },
+      kafka_log = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
+      },
+      kafka_upstream = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
       },
       openid_connect = {
         "disable_session",
@@ -166,6 +186,16 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      kafka_log = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
+      },
+      kafka_upstream = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
+      },
       openid_connect = {
         "disable_session",
         "downstream_introspection_jwt_header",
@@ -217,6 +247,16 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      kafka_log = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
+      },
+      kafka_upstream = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
+      },
       openid_connect = {
         "disable_session",
         "downstream_introspection_jwt_header",
@@ -258,6 +298,16 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      kafka_log = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
+      },
+      kafka_upstream = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
+      },
       openid_connect = {
         "disable_session",
         "downstream_introspection_jwt_header",
@@ -298,6 +348,16 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+      },
+      kafka_log = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
+      },
+      kafka_upstream = {
+        "authentication",
+        "keepalive_enabled",
+        "security",
       },
       openid_connect = {
         "disable_session",

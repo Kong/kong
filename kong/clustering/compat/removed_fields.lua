@@ -64,6 +64,16 @@ return {
     },
 
     -- Enterprise plugins
+    kafka_log = {
+      "authentication",
+      "keepalive_enabled",
+      "security",
+    },
+    kafka_upstream = {
+      "authentication",
+      "keepalive_enabled",
+      "security",
+    },
     openid_connect = {
       "disable_session",
       "downstream_introspection_jwt_header",
