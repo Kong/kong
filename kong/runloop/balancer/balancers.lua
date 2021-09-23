@@ -354,12 +354,6 @@ function balancer_mt:addAddress(target, entry)
   local entry_ip = entry.address or entry.target
   local entry_port = (entry.port ~= 0 and entry.port) or target.port
   local addresses = target.addresses
-  for _, addr in ipairs(addresses) do
-    if addr.ip == entry_ip and addr.port == entry_port then
-      -- already there, should we update something? add weights?
-      return
-    end
-  end
 
   local weight = entry.weight  -- this is nil for anything else than SRV
   if weight == 0 then

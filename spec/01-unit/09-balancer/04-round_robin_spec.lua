@@ -707,7 +707,6 @@ describe("[round robin balancer]", function()
       assert.equal(1, count_remove)
     end)
     it("for 1 level dns", function()
-      pending("two identical addresses for the same target.  one or two adds?")
       local count_add = 0
       local count_remove = 0
       local b
@@ -741,7 +740,10 @@ describe("[round robin balancer]", function()
       ngx.sleep(0.1)
       assert.equal(2, count_add)
       assert.equal(0, count_remove)
-      b:removeHost("mashape.test", 123)
+
+      b.targets[1].addresses[1].disabled = true
+      b.targets[1].addresses[2].disabled = true
+      b:deleteDisabledAddresses(b.targets[1])
       ngx.sleep(0.1)
       assert.equal(2, count_add)
       assert.equal(2, count_remove)
