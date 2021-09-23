@@ -1,7 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
-use t::Util;
+do "./t/Util.pm";
 
 plan tests => 49;
 

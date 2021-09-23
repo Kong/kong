@@ -66,7 +66,6 @@ local HOST_PORTS = {}
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
-local EMPTY_T = {}
 local TTL_ZERO = { ttl = 0 }
 
 
@@ -886,30 +885,39 @@ do
 
   function balancer_prepare(ctx, scheme, host_type, host, port,
                             service, route)
+    local retries
+    local connect_timeout
+    local send_timeout
+    local read_timeout
+
+    if service then
+      retries         = service.retries
+      connect_timeout = service.connect_timeout
+      send_timeout    = service.write_timeout
+      read_timeout    = service.read_timeout
+    end
+
     local balancer_data = {
-      scheme         = scheme,    -- scheme for balancer: http, https
-      type           = host_type, -- type of 'host': ipv4, ipv6, name
-      host           = host,      -- target host per `service` entity
-      port           = port,      -- final target port
-      try_count      = 0,         -- retry counter
+      scheme             = scheme,    -- scheme for balancer: http, https
+      type               = host_type, -- type of 'host': ipv4, ipv6, name
+      host               = host,      -- target host per `service` entity
+      port               = port,      -- final target port
+      try_count          = 0,         -- retry counter
+
+      retries            = retries         or 5,
+      connect_timeout    = connect_timeout or 60000,
+      send_timeout       = send_timeout    or 60000,
+      read_timeout       = read_timeout    or 60000,
+
       -- stores info per try, metatable is needed for basic log serializer
       -- see #6390
-      tries          = setmetatable({}, ARRAY_MT),
-      -- ip          = nil,       -- final target IP address
-      -- balancer    = nil,       -- the balancer object, if any
-      -- hostname    = nil,       -- hostname of the final target IP
-      -- hash_cookie = nil,       -- if Upstream sets hash_on_cookie
-      -- balancer_handle = nil,   -- balancer handle for the current connection
+      tries              = setmetatable({}, ARRAY_MT),
+      -- ip              = nil,       -- final target IP address
+      -- balancer        = nil,       -- the balancer object, if any
+      -- hostname        = nil,       -- hostname of the final target IP
+      -- hash_cookie     = nil,       -- if Upstream sets hash_on_cookie
+      -- balancer_handle = nil,       -- balancer handle for the current connection
     }
-
-    do
-      local s = service or EMPTY_T
-
-      balancer_data.retries         = s.retries         or 5
-      balancer_data.connect_timeout = s.connect_timeout or 60000
-      balancer_data.send_timeout    = s.write_timeout   or 60000
-      balancer_data.read_timeout    = s.read_timeout    or 60000
-    end
 
     ctx.service          = service
     ctx.route            = route
