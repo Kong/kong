@@ -11,6 +11,9 @@ local UPSTREAM_PORT = 8088
 local KONG_ADMIN_PORT
 local PG_PASSWORD = tools.random_string()
 local KONG_ERROR_LOG_PATH = "/tmp/error.log"
+-- threshold for load_avg / nproc, not based on specific research,
+-- just a arbitrary number to ensure test env is normalized
+local LOAD_NORMALIZED_THRESHOLD = 0.2
 
 function _M.new(opts)
   local provider = opts and opts.provider or "equinix-metal"
@@ -308,6 +311,10 @@ function _M:start_kong(version, kong_conf)
 end
 
 function _M:stop_kong()
+  local load = perf.execute(ssh_execute_wrap(self, self.kong_ip,
+              "cat /proc/loadavg")):match("[%d%.]+")
+  self.log.debug("Kong node end 1m loadavg is ", load)
+
   return perf.execute(ssh_execute_wrap(self, self.kong_ip, "kong stop"),
                                 { logger = self.ssh_log.log_exec })
 end
@@ -331,6 +338,21 @@ function _M:get_start_load_cmd(stub, script, uri)
   end
 
   script_path = script_path and ("-s " .. script_path) or ""
+
+  local nproc = tonumber(perf.execute(ssh_execute_wrap(self, self.kong_ip, "nproc")))
+  local load, load_normalized
+  while true do
+    load = perf.execute(ssh_execute_wrap(self, self.kong_ip,
+              "cat /proc/loadavg")):match("[%d%.]+")
+    load_normalized = tonumber(load) / nproc
+    if load_normalized < LOAD_NORMALIZED_THRESHOLD then
+      break
+    end
+    self.log.info("waiting for Kong node 1m loadavg to drop under ",
+                  nproc * LOAD_NORMALIZED_THRESHOLD)
+    ngx.sleep(15)
+  end
+  self.log.debug("Kong node start 1m loadavg is ", load)
 
   return ssh_execute_wrap(self, self.worker_ip,
             stub:format(script_path, uri))
