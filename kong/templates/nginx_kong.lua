@@ -54,6 +54,10 @@ init_worker_by_lua_block {
     Kong.init_worker()
 }
 
+exit_worker_by_lua_block {
+    Kong.exit_worker()
+}
+
 > if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
 # Load variable indexes
 lua_kong_load_var_index $args;

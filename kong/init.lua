@@ -82,6 +82,7 @@ local balancer = require "kong.runloop.balancer"
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local lmdb = require("resty.lmdb")
 
 local kong             = kong
 local ngx              = ngx
@@ -195,7 +196,7 @@ do
 
     if dbless then
       -- prevent POST /config while initializing dbless
-      declarative.try_lock()
+      --declarative.try_lock()
     end
 
     local old_page = kong_shm:get(DECLARATIVE_PAGE_KEY)
@@ -225,7 +226,7 @@ do
     kong_shm:flush_all()
     if dbless then
       -- reinstate the lock to hold POST /config, which was flushed with the previous `flush_all`
-      declarative.try_lock()
+      --declarative.try_lock()
     end
     for key, value in pairs(preserved) do
       kong_shm:set(key, value)
@@ -379,32 +380,32 @@ local function load_declarative_config(kong_config, entities, meta)
   }
 
   local kong_shm = ngx.shared.kong
-  local ok, err = concurrency.with_worker_mutex(opts, function()
-    local value = kong_shm:get(DECLARATIVE_LOAD_KEY)
-    if value then
-      return true
-    end
+  --local ok, err = concurrency.with_worker_mutex(opts, function()
+  --  local value = kong_shm:get(DECLARATIVE_LOAD_KEY)
+  --  if value then
+  --    return true
+  --  end
 
-    local ok, err = declarative.load_into_cache(entities, meta)
-    if not ok then
-      return nil, err
-    end
+  --  local ok, err = declarative.load_into_cache(entities, meta)
+  --  if not ok then
+  --    return nil, err
+  --  end
 
-    if kong_config.declarative_config then
-      kong.log.notice("declarative config loaded from ",
-                      kong_config.declarative_config)
-    end
+  --  if kong_config.declarative_config then
+  --    kong.log.notice("declarative config loaded from ",
+  --                    kong_config.declarative_config)
+  --  end
 
-    ok, err = kong_shm:safe_set(DECLARATIVE_LOAD_KEY, true)
-    if not ok then
-      kong.log.warn("failed marking declarative_config as loaded: ", err)
-    end
+  --  ok, err = kong_shm:safe_set(DECLARATIVE_LOAD_KEY, true)
+  --  if not ok then
+  --    kong.log.warn("failed marking declarative_config as loaded: ", err)
+  --  end
 
-    return true
-  end)
+  --  return true
+  --end)
 
-  if ok then
-    declarative.try_unlock()
+  if true then
+    --declarative.try_unlock()
 
     local default_ws = kong.db.workspaces:select_by_name("default")
     kong.default_workspace = default_ws and default_ws.id or kong.default_workspace
@@ -599,7 +600,15 @@ function Kong.init_worker()
   end
   kong.cache = cache
 
-  local core_cache, err = kong_global.init_core_cache(kong.configuration, cluster_events, worker_events)
+  --local core_cache, err = kong_global.init_core_cache(kong.configuration, cluster_events, worker_events)
+  --if not core_cache then
+  --  stash_init_worker_error("failed to instantiate 'kong.core_cache' module: " ..
+  --                          err)
+  --  return
+  --end
+  --kong.core_cache = core_cache
+
+  local core_cache, err = require("kong.cache.lmdb").new(assert(lmdb.new("/tmp/test-lua-resty-lmdb", tonumber("600", 8))))
   if not core_cache then
     stash_init_worker_error("failed to instantiate 'kong.core_cache' module: " ..
                             err)
@@ -669,6 +678,11 @@ function Kong.init_worker()
   if kong.hybrid then
     kong.hybrid:init_worker()
   end
+end
+
+
+function Kong.exit_worker()
+  kong.core_cache.lmdb:close()
 end
 
 

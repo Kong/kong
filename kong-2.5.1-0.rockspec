@@ -87,6 +87,9 @@ build = {
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
     ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 
+    ["kong.cache.lmdb"] = "kong/cache/lmdb/init.lua",
+    ["kong.cache.lmdb.marshaller"] = "kong/cache/lmdb/marshaller.lua",
+
     ["kong.cmd"] = "kong/cmd/init.lua",
     ["kong.cmd.roar"] = "kong/cmd/roar.lua",
     ["kong.cmd.stop"] = "kong/cmd/stop.lua",

@@ -335,8 +335,8 @@ local function register_events()
       local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
         balancer.stop_healthcheckers()
 
-        kong.cache:flip()
-        core_cache:flip()
+        --kong.cache:flip()
+        --core_cache:flip()
 
         kong.default_workspace = default_ws
         ngx.ctx.workspace = kong.default_workspace
@@ -346,7 +346,7 @@ local function register_events()
 
         balancer.init()
 
-        declarative.lock()
+        --declarative.lock()
 
         return true
       end)
@@ -502,8 +502,11 @@ end
 -- or an error happened).
 -- @returns error message as a second return value in case of failure/error
 local function rebuild(name, callback, version, opts)
-  local current_version, err = kong.core_cache:get(name .. ":version", TTL_ZERO,
-                                                   utils.uuid)
+  local current_version, err = kong.core_cache:get(name .. ":version")
+  if not current_version then
+    current_version = utils.uuid()
+    assert(kong.core_cache:safe_set(name .. ":version", current_version))
+  end
   if err then
     return nil, "failed to retrieve " .. name .. " version: " .. err
   end
@@ -677,11 +680,18 @@ do
 
 
   local function get_router_version()
-    return kong.core_cache:get("router:version", TTL_ZERO, utils.uuid)
+    local ver = kong.core_cache:get("router:version", utils.uuid)
+    if not ver then
+      ver = utils.uuid()
+      kong.core_cache:safe_set("router:version", ver)
+    end
+
+    return ver
   end
 
 
   build_router = function(version)
+    print("build_router")
     local db = kong.db
     local routes, i = {}, 0
 
