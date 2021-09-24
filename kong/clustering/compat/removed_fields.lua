@@ -38,5 +38,18 @@ return {
     syslog = {
       "facility",
     },
+  },
+
+  -- Any dataplane older than 2.6.0
+  [2005999999] = {
+    aws_lambda = {
+      "base64_encode_body",
+    },
+    grpc_web = {
+      "allow_origin_header",
+    },
+    request_termination = {
+      "echo",
+    },
   }
 }
