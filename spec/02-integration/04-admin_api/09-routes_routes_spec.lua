@@ -67,7 +67,9 @@ for _, strategy in helpers.each_strategy() do
           assert.equal("", body)
           assert.equal("GET, HEAD, OPTIONS, POST", res.headers["Allow"])
           assert.equal("GET, HEAD, OPTIONS, POST", res.headers["Access-Control-Allow-Methods"])
-          assert.equal("Content-Type", res.headers["Access-Control-Allow-Headers"])
+          -- XXX EE: default acah in ee
+          assert.equal("Content-Type, Kong-Admin-Token, Kong-Request-Type, Cache-Control",
+                       res.headers["Access-Control-Allow-Headers"])
           assert.equal("*", res.headers["Access-Control-Allow-Origin"])
           assert.not_nil(res.headers["X-Kong-Admin-Latency"])
         end)
@@ -634,7 +636,9 @@ for _, strategy in helpers.each_strategy() do
             assert.equal("", body)
             assert.equal("DELETE, GET, HEAD, OPTIONS, PATCH, PUT", res.headers["Allow"])
             assert.equal("DELETE, GET, HEAD, OPTIONS, PATCH, PUT", res.headers["Access-Control-Allow-Methods"])
-            assert.equal("Content-Type", res.headers["Access-Control-Allow-Headers"])
+            -- XXX EE: default acah in ee
+            assert.equal("Content-Type, Kong-Admin-Token, Kong-Request-Type, Cache-Control",
+                         res.headers["Access-Control-Allow-Headers"])
             assert.equal("*", res.headers["Access-Control-Allow-Origin"])
             assert.not_nil(res.headers["X-Kong-Admin-Latency"])
           end)

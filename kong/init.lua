@@ -1498,29 +1498,30 @@ local function serve_content(module, options)
   ctx.KONG_PROCESSING_START = start_time() * 1000
   ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or now() * 1000
 
-
   log_init_worker_errors(ctx)
 
   options = options or {}
 
+  -- XXX EE [[
   -- if we support authentication via plugin as well as via RBAC token, then
   -- use cors plugin in api/init.lua to process cors requests and
   -- support the right origins, headers, etc.
   if not singletons.configuration.admin_gui_auth then
     header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
 
+    -- this is mainly for backward compatibility
+    -- if the lua block specifies the acam or acah headers, use them.
+    -- those will be used in the auto-generated OPTIONS handlers
     if ngx.req.get_method() == "OPTIONS" then
-      header["Access-Control-Allow-Methods"] = options.acam or
-        "GET, HEAD, PATCH, POST, PUT, DELETE"
-      header["Access-Control-Allow-Headers"] = options.acah or "Content-Type"
-
-      ctx.KONG_ADMIN_CONTENT_ENDED_AT = get_updated_now_ms()
-      ctx.KONG_ADMIN_CONTENT_TIME = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_ADMIN_CONTENT_START
-      ctx.KONG_ADMIN_LATENCY = ctx.KONG_ADMIN_CONTENT_ENDED_AT - ctx.KONG_PROCESSING_START
-
-      return ngx.exit(204)
+      if options.acam then
+        header["Access-Control-Allow-Methods"] = options.acam
+      end
+      if options.acah then
+        header["Access-Control-Allow-Headers"] = options.acah
+      end
     end
   end
+  -- EE ]]
 
   local headers = ngx.req.get_headers()
 
