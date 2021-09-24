@@ -137,6 +137,8 @@ In addition to that, the following changes were specifically included to improve
   [#7742](https://github.com/Kong/kong/pull/7742)
 - Accelerated variable loading via indexes
   [#7818](https://github.com/Kong/kong/pull/7818)
+- Removed unnecessary call to `get_phase` in balancer
+  [#7854](https://github.com/Kong/kong/pull/7854)
 
 #### Configuration
 
@@ -207,6 +209,9 @@ In addition to that, the following changes were specifically included to improve
 - Ensure data plane config thread is terminated gracefully, preventing a semi-deadlocked state
   [#7568](https://github.com/Kong/kong/pull/7568)
   Thanks [flrgh](https://github.com/flrgh) for the patch!
+- Older data planes using `aws-lambda`, `grpc-web` or `request-termination` plugins can now talk
+  with newer control planes by ignoring new plugin fields.
+  [#7881](https://github.com/Kong/kong/pull/7881)
 
 ##### CLI
 
