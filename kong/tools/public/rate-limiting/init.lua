@@ -87,7 +87,12 @@ local function fetch(premature, namespace, time, timeout)
   -- mutex so only one worker fetches from the cluster and
   -- updates our shared zone
   local lock_key = "rl-init-fetch-" .. namespace
-  local ok, err  = locks_shm:add(lock_key, true, timeout)
+  local ok, err
+  if timeout then
+    ok, err = locks_shm:add(lock_key, true, math.max(timeout, 0.001))
+  else
+    ok, err = locks_shm:add(lock_key, true)
+  end
   if not ok then
     if err ~= "exists" then
       log(ERR, "err in setting initial ratelimit fetch mutex for ",
