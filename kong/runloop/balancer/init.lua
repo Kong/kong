@@ -33,7 +33,6 @@ local table_concat = table.concat
 local timer_at = ngx.timer.at
 local run_hook = hooks.run_hook
 local var = ngx.var
-local get_phase = ngx.get_phase
 
 
 local CRIT = ngx.CRIT
@@ -332,20 +331,18 @@ local function post_health(upstream, hostname, ip, port, is_healthy)
 end
 
 
-local function set_host_header(balancer_data, upstream_scheme, upstream_host)
+local function set_host_header(balancer_data, upstream_scheme, upstream_host, is_balancer_phase)
   if balancer_data.preserve_host then
     return true
   end
 
   -- set the upstream host header if not `preserve_host`
   local new_upstream_host = balancer_data.hostname
-  local phase = get_phase()
 
   local port = balancer_data.port
-  if  upstream_scheme == "http"  and port ~= 80 or
-      upstream_scheme == "https" and port ~= 443 or
-      upstream_scheme == "grpc"  and port ~= 80 or
-      upstream_scheme == "grpcs" and port ~= 443
+  if (port ~= 80  and port ~= 443)
+  or (port == 80  and upstream_scheme ~= "http"  and upstream_scheme ~= "grpc")
+  or (port == 443 and upstream_scheme ~= "https" and upstream_scheme ~= "grpcs")
   then
     new_upstream_host = new_upstream_host .. ":" .. port
   end
@@ -362,7 +359,7 @@ local function set_host_header(balancer_data, upstream_scheme, upstream_host)
 
     var.upstream_host = new_upstream_host
 
-    if phase == "balancer" then
+    if is_balancer_phase then
       return recreate_request()
     end
   end

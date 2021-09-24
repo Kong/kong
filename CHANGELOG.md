@@ -60,7 +60,6 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-
 ## [2.6.0]
 
 > Release date: TBA
@@ -90,7 +89,6 @@
 
 > Release date: 2021/09/07
 
-
 This is the first patch release in the 2.5 series. Being a patch release,
 it strictly contains bugfixes. There are no new features or breaking changes.
 
@@ -101,7 +99,6 @@ it strictly contains bugfixes. There are no new features or breaking changes.
 - Bumped `penlight` from 1.10.0 to 1.11.0 [#7736](https://github.com/Kong/kong/pull/7736)
 - Bumped `luasec` from 1.0.1 to 1.0.2 [#7750](https://github.com/Kong/kong/pull/7750)
 - Bumped `OpenSSL` from 1.1.1k to 1.1.1l [#7767](https://github.com/Kong/kong/pull/7767)
-
 
 ### Fixes
 
@@ -6403,6 +6400,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
 [2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Kong/kong/compare/2.4.1...2.5.0
 [2.4.1]: https://github.com/Kong/kong/compare/2.4.0...2.4.1
