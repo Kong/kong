@@ -13,11 +13,20 @@ local strategies = require("kong.plugins.proxy-cache.strategies")
 
 
 do
-  local policy = "memory"
+  local configs = {
+    memory = {
+      dictionary_name = "kong",
+    },
+    redis = {
+      host = helpers.redis_host,
+      port = 6379,
+    },
+  }
+  for _, policy in ipairs({ "redis"}) do
   describe("proxy-cache access with policy: " .. policy, function()
     local client, admin_client
     --local cache_key
-    local policy_config = { dictionary_name = "kong", }
+    local policy_config = configs[policy]
 
     local strategy = strategies({
       strategy_name = policy,
@@ -1241,4 +1250,5 @@ do
       end)
     end)
   end)
+end
 end
