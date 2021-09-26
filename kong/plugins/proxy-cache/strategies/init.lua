@@ -16,6 +16,11 @@ _M.LOCAL_DATA_STRATEGIES = {
   [1]    = "memory",
 }
 
+_M.DELAY_STRATEGY_STORE = {
+  memory = false,
+  redis = true,
+}
+
 local function require_strategy(name)
   return require("kong.plugins.proxy-cache.strategies." .. name)
 end

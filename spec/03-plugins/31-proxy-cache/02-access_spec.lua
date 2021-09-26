@@ -2,14 +2,14 @@ local helpers = require "spec.helpers"
 local strategies = require("kong.plugins.proxy-cache.strategies")
 
 
---local TIMEOUT = 10 -- default timeout for non-memory strategies
+local TIMEOUT = 10 -- default timeout for non-memory strategies
 
 -- use wait_until spec helper only on async strategies
---local function strategy_wait_until(strategy, func, timeout)
---  if strategies.DELAY_STRATEGY_STORE[strategy] then
---    helpers.wait_until(func, timeout)
---  end
---end
+local function strategy_wait_until(strategy, func, timeout)
+  if strategies.DELAY_STRATEGY_STORE[strategy] then
+    helpers.wait_until(func, timeout)
+  end
+end
 
 
 do
@@ -22,7 +22,7 @@ do
       port = 6379,
     },
   }
-  for _, policy in ipairs({ "redis"}) do
+  for _, policy in ipairs({"memory", "redis"}) do
   describe("proxy-cache access with policy: " .. policy, function()
     local client, admin_client
     --local cache_key
@@ -300,9 +300,9 @@ do
       assert.equals(32, #cache_key1)
 
       -- wait until the underlying strategy converges
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key1) ~= nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key1) ~= nil
+      end, TIMEOUT)
 
       local res = client:send {
         method = "GET",
@@ -333,14 +333,14 @@ do
         }
       })
 
-      --local cache_key2 = res.headers["X-Cache-Key"]
+      local cache_key2 = res.headers["X-Cache-Key"]
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
 
       -- wait until the underlying strategy converges
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key2) ~= nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key2) ~= nil
+      end, TIMEOUT)
 
       res = client:send {
         method = "GET",
@@ -352,7 +352,7 @@ do
 
       assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
-      --local cache_key = res.headers["X-Cache-Key"]
+      local cache_key = res.headers["X-Cache-Key"]
 
       -- if strategy is local, it's enough to simply use a sleep
       if strategies.LOCAL_DATA_STRATEGIES[policy] then
@@ -361,9 +361,9 @@ do
 
       -- wait until the strategy expires the object for the given
       -- cache key
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key) == nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key) == nil
+      end, TIMEOUT)
 
       -- and go through the cycle again
       res = assert(client:send {
@@ -376,12 +376,12 @@ do
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
-      --cache_key = res.headers["X-Cache-Key"]
+      cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key) ~= nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key) ~= nil
+      end, TIMEOUT)
 
       res = assert(client:send {
         method = "GET",
@@ -405,12 +405,12 @@ do
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
-      --cache_key = res.headers["X-Cache-Key"]
+      cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key) ~= nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key) ~= nil
+      end, TIMEOUT)
 
       res = assert(client:send {
         method = "GET",
@@ -431,10 +431,10 @@ do
       -- give ourselves time to expire
       -- as storage_ttl > cache_ttl, the object still remains in storage
       -- in an expired state
-      --strategy_wait_until(policy, function()
-      --  local obj = strategy:fetch(cache_key)
-      --  return ngx.time() - obj.timestamp > obj.ttl
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        local obj = strategy:fetch(cache_key)
+        return ngx.time() - obj.timestamp > obj.ttl
+      end, TIMEOUT)
 
       -- and go through the cycle again
       res = assert(client:send {
@@ -447,6 +447,13 @@ do
 
       assert.res_status(200, res)
       assert.same("Refresh", res.headers["X-Cache-Status"])
+      cache_key = res.headers["X-Cache-Key"]
+
+      -- wait until the underlying strategy converges
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key) ~= nil
+      end, TIMEOUT)
+
 
       res = assert(client:send {
         method = "GET",
@@ -471,12 +478,12 @@ do
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
-      --local cache_key = res.headers["X-Cache-Key"]
+      local cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key) ~= nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key) ~= nil
+      end, TIMEOUT)
 
       res = assert(client:send {
         method = "GET",
@@ -495,9 +502,9 @@ do
       end
 
       -- give ourselves time to expire
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key) == nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key) == nil
+      end, TIMEOUT)
 
       -- and go through the cycle again
       res = assert(client:send {
@@ -512,9 +519,9 @@ do
       assert.same("Miss", res.headers["X-Cache-Status"])
 
       -- wait until the underlying strategy converges
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key) ~= nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key) ~= nil
+      end, TIMEOUT)
 
       res = assert(client:send {
         method = "GET",
@@ -622,12 +629,12 @@ do
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
-        --local cache_key = res.headers["X-Cache-Key"]
+        local cache_key = res.headers["X-Cache-Key"]
 
         -- wait until the underlying strategy converges
-        --strategy_wait_until(policy, function()
-        --  return strategy:fetch(cache_key) ~= nil
-        --end, TIMEOUT)
+        strategy_wait_until(policy, function()
+          return strategy:fetch(cache_key) ~= nil
+        end, TIMEOUT)
 
         res = assert(client:send {
           method = "GET",
@@ -640,7 +647,7 @@ do
 
         assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
-        --local cache_key = res.headers["X-Cache-Key"]
+        local cache_key = res.headers["X-Cache-Key"]
 
         -- if strategy is local, it's enough to simply use a sleep
         if strategies.LOCAL_DATA_STRATEGIES[policy] then
@@ -648,10 +655,10 @@ do
         end
 
         -- wait until max-age
-        --strategy_wait_until(policy, function()
-        --  local obj = strategy:fetch(cache_key)
-        --  return ngx.time() - obj.timestamp > 2
-        --end, TIMEOUT)
+        strategy_wait_until(policy, function()
+          local obj = strategy:fetch(cache_key)
+          return ngx.time() - obj.timestamp > 2
+        end, TIMEOUT)
 
         res = assert(client:send {
           method = "GET",
@@ -677,12 +684,12 @@ do
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
-        --local cache_key = res.headers["X-Cache-Key"]
+        local cache_key = res.headers["X-Cache-Key"]
 
         -- wait until the underlying strategy converges
-        --strategy_wait_until(policy, function()
-        --  return strategy:fetch(cache_key) ~= nil
-        --end, TIMEOUT)
+        strategy_wait_until(policy, function()
+          return strategy:fetch(cache_key) ~= nil
+        end, TIMEOUT)
 
         res = assert(client:send {
           method = "GET",
@@ -701,10 +708,10 @@ do
         end
 
         -- wait for longer than max-stale below
-        --strategy_wait_until(policy, function()
-        --  local obj = strategy:fetch(cache_key)
-        --  return ngx.time() - obj.timestamp - obj.ttl > 2
-        --end, TIMEOUT)
+        strategy_wait_until(policy, function()
+          local obj = strategy:fetch(cache_key)
+          return ngx.time() - obj.timestamp - obj.ttl > 2
+        end, TIMEOUT)
 
         res = assert(client:send {
           method = "GET",
@@ -745,12 +752,12 @@ do
       local body1 = assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
       assert.is_nil(res.headers["Content-Length"])
-      --local cache_key = res.headers["X-Cache-Key"]
+      local cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key) ~= nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key) ~= nil
+      end, TIMEOUT)
 
       res = assert(client:send {
         method = "GET",
@@ -865,9 +872,9 @@ do
       assert.equals(32, #cache_key1)
 
       -- wait until the underlying strategy converges
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key1) ~= nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key1) ~= nil
+      end, TIMEOUT)
 
       res = assert(client:send {
         method = "GET",
@@ -906,6 +913,12 @@ do
       assert.res_status(200, res)
 
       assert.same("Miss", res.headers["X-Cache-Status"])
+        local cache_key = res.headers["X-Cache-Key"]
+
+        -- wait until the underlying strategy converges
+        strategy_wait_until(policy, function()
+          return strategy:fetch(cache_key) ~= nil
+        end, TIMEOUT)
 
       res = assert(client:send {
         method = "GET",
@@ -928,6 +941,12 @@ do
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
 
+        cache_key = res.headers["X-Cache-Key"]
+
+        -- wait until the underlying strategy converges
+        strategy_wait_until(policy, function()
+          return strategy:fetch(cache_key) ~= nil
+        end, TIMEOUT)
       res = assert(client:send {
         method = "GET",
         path = "/get?a&b",
@@ -951,12 +970,12 @@ do
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
 
-      --local cache_key = res.headers["X-Cache-Key"]
+      local cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key) ~= nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key) ~= nil
+      end, TIMEOUT)
 
       res = assert(client:send {
         method = "GET",
@@ -982,12 +1001,12 @@ do
       })
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
-      --local cache_key = res.headers["X-Cache-Key"]
+      local cache_key = res.headers["X-Cache-Key"]
 
       -- wait until the underlying strategy converges
-      --strategy_wait_until(policy, function()
-      --  return strategy:fetch(cache_key) ~= nil
-      --end, TIMEOUT)
+      strategy_wait_until(policy, function()
+        return strategy:fetch(cache_key) ~= nil
+      end, TIMEOUT)
 
       res = assert(client:send {
         method = "GET",
@@ -1038,6 +1057,12 @@ do
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
+          local cache_key = res.headers["X-Cache-Key"]
+
+          -- wait until the underlying strategy converges
+          strategy_wait_until(policy, function()
+            return strategy:fetch(cache_key) ~= nil
+          end, TIMEOUT)
 
         res = assert(client:send {
           method = "GET",
@@ -1063,6 +1088,12 @@ do
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
 
+          cache_key = res.headers["X-Cache-Key"]
+
+          -- wait until the underlying strategy converges
+          strategy_wait_until(policy, function()
+            return strategy:fetch(cache_key) ~= nil
+          end, TIMEOUT)
         res = assert(client:send {
           method = "GET",
           path = "/get",
@@ -1141,12 +1172,12 @@ do
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
-        --local cache_key = res.headers["X-Cache-Key"]
+        local cache_key = res.headers["X-Cache-Key"]
 
         -- wait until the underlying strategy converges
-        --strategy_wait_until(policy, function()
-        --  return strategy:fetch(cache_key) ~= nil
-        --end, TIMEOUT)
+        strategy_wait_until(policy, function()
+          return strategy:fetch(cache_key) ~= nil
+        end, TIMEOUT)
 
         res = assert(client:send {
           method = "POST",
@@ -1175,6 +1206,12 @@ do
 
         assert.res_status(417, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
+          local cache_key = res.headers["X-Cache-Key"]
+
+          -- wait until the underlying strategy converges
+          strategy_wait_until(policy, function()
+            return strategy:fetch(cache_key) ~= nil
+          end, TIMEOUT)
 
         res = assert(client:send {
           method = "GET",
@@ -1203,6 +1240,12 @@ do
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Proxy-Latency"])
+          local cache_key = res.headers["X-Cache-Key"]
+
+          -- wait until the underlying strategy converges
+          strategy_wait_until(policy, function()
+            return strategy:fetch(cache_key) ~= nil
+          end, TIMEOUT)
 
         res = assert(client:send {
           method = "GET",
@@ -1229,12 +1272,12 @@ do
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Upstream-Latency"])
-        --cache_key = res.headers["X-Cache-Key"]
+        local cache_key = res.headers["X-Cache-Key"]
 
         -- wait until the underlying strategy converges
-        --strategy_wait_until(policy, function()
-        --  return strategy:fetch(cache_key) ~= nil
-        --end, TIMEOUT)
+        strategy_wait_until(policy, function()
+          return strategy:fetch(cache_key) ~= nil
+        end, TIMEOUT)
 
         res = assert(client:send {
           method = "GET",
