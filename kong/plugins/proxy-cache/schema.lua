@@ -1,4 +1,6 @@
+local typedefs = require "kong.db.schema.typedefs"
 local strategies = require "kong.plugins.proxy-cache.strategies"
+
 
 
 local ngx = ngx
@@ -69,6 +71,16 @@ return {
               }},
             },
           }},
+          { redis = {
+            type = "record",
+            fields = {
+              { host = typedefs.host },
+              { port = typedefs.port({ default = 6379 }), },
+              { password = { type = "string", len_min = 0 }, },
+              { timeout = { type = "number", default = 2000, }, },
+              { database = { type = "integer", default = 0 }, },
+            },
+          }},
           { vary_query_params = {
             type = "array",
             elements = { type = "string" },
@@ -83,6 +95,10 @@ return {
   },
 
   entity_checks = {
+    { conditional = {
+      if_field = "config.strategy", if_match = { eq = "redis" },
+      then_field = "config.redis.host", then_match = { required = true },
+    } },
     { custom_entity_check = {
       field_sources = { "config" },
       fn = function(entity)
@@ -93,10 +109,13 @@ return {
           if not ok then
             return nil, err
           end
+          return true
 
+        elseif config.strategy == "redis" then
+          return true
         end
 
-        return true
+        return nil, "unknown strategy"
       end
     }},
   },

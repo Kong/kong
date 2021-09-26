@@ -6,6 +6,7 @@ local _M = {}
 
 _M.STRATEGY_TYPES = {
   "memory",
+  "redis",
 }
 
 -- strategies that store cache data only on the node, instead of

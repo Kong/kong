@@ -121,4 +121,80 @@ describe("proxy-cache schema", function()
     assert.is_nil(err)
     assert.is_truthy(entity)
   end)
+  it("accepts a minimal redis config", function()
+    local entity, err = v({
+      strategy = "redis",
+      redis= { host = "test.com" },
+    }, proxy_cache_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+  end)
+  it("error if redis conf is missing with redis strategy", function()
+    local entity, err = v({
+      strategy = "redis",
+    }, proxy_cache_schema)
+
+    assert.same("required field missing", err.config.redis.host)
+    assert.is_falsy(entity)
+  end)
+  it("error if host is missing with redis strategy", function()
+    local entity, err = v({
+      strategy = "redis",
+      redis = { port = 1234 },
+    }, proxy_cache_schema)
+
+    assert.same("required field missing", err.config.redis.host)
+    assert.is_falsy(entity)
+  end)
+  it("error if host is invalid", function()
+    local entity, err = v({
+      strategy = "redis",
+      redis = { host = 123 },
+    }, proxy_cache_schema)
+
+    assert.same("expected a string", err.config.redis.host)
+    assert.is_falsy(entity)
+  end)
+  it("error if host is invalid", function()
+    local entity, err = v({
+      strategy = "redis",
+      redis = { host = "300.0.0.120" },
+    }, proxy_cache_schema)
+
+    assert.same("invalid value: 300.0.0.120", err.config.redis.host)
+    assert.is_falsy(entity)
+  end)
+  it("error if host is invalid", function()
+    local entity, err = v({
+      strategy = "redis",
+      redis = { host = "10.0.0.12:660" },
+    }, proxy_cache_schema)
+
+    assert.same("must not have a port", err.config.redis.host)
+    assert.is_falsy(entity)
+  end)
+  it("error if port is invalid", function()
+    local entity, err = v({
+      strategy = "redis",
+      redis = { port = -123 },
+    }, proxy_cache_schema)
+
+    assert.same("value should be between 0 and 65535", err.config.redis.port)
+    assert.is_falsy(entity)
+  end)
+  it("accepts a full redis config", function()
+    local entity, err = v({
+      strategy = "redis",
+      redis = {
+        host = "test.com",
+        port = 1234,
+        timeout = 100,
+        database = 3,
+      }
+    }, proxy_cache_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(entity)
+  end)
 end)
