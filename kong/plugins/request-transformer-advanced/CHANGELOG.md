@@ -1,3 +1,7 @@
+## 0.38.1
+
+- fix: url encode transformed path [FTI-2682](https://konghq.atlassian.net/browse/FTI-2682)/[FTI-2781](https://konghq.atlassian.net/browse/FTI-2781)
+
 ## 0.38.0
 
 - Keep the configured name case on append/add headers.
