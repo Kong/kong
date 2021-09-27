@@ -1,8 +1,15 @@
-## Unreleased
+## 1.5.0
 
-- fix(sync_delay) relax limit from 0-1 to 0-0.02 [FTI-2777](https://konghq.atlassian.net/browse/FTI-2777)
-- feat(*) allow request path to be used as the rl identifier [FT-1502](https://konghq.atlassian.net/browse/FT-1502)
-- fix(schema) add a "local" strategy [FT-1859](https://konghq.atlassian.net/browse/FT-1859)
+- tests(*) remove credentials from travis.yaml
+- chore(ci) update platform, newer docker engine
+- chore(cl) update changelog
+- chore(test) speed up and reduce flakiness
+- chore(test) reduce description length, and add strategies as tags
+- fix(sync_delay) relax limit from 0-1 to 0-0.02
+- fix(schema) replace type check by ngx.null check
+- feat/port rate limit by path feature [FT-1502](https://konghq.atlassian.net/browse/FT-1502)
+- docs(changelog) add unreleased entry for adding a "local" strategy
+- fix(schema) add a "local" strategy
 
 ## 1.4.4
 
