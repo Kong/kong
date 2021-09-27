@@ -14,7 +14,7 @@ description = {
 build = {
   type = "builtin",
   modules = {
-    ["kong.plugins.forward-proxy.handler"] = "kong/plugins/enterprise_edition/forward-proxy/handler.lua",
-    ["kong.plugins.forward-proxy.schema"]  = "kong/plugins/enterprise_edition/forward-proxy/schema.lua",
+    ["kong.plugins.forward-proxy.handler"] = "kong/plugins/forward-proxy/handler.lua",
+    ["kong.plugins.forward-proxy.schema"]  = "kong/plugins/forward-proxy/schema.lua",
   }
 }
