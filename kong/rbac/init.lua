@@ -82,6 +82,7 @@ do
       PATCH  = actions_bitfields.update,
       PUT    = actions_bitfields.update,
       DELETE = actions_bitfields.delete,
+      OPTIONS = actions_bitfields.read,
     },
     {
       __index = function(t, k)
