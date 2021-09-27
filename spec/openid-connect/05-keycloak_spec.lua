@@ -34,6 +34,7 @@ local INVALID_SECRET = "soldier"
 
 local INVALID_CREDENTIALS = "Basic " .. encode_base64(INVALID_ID .. ":" .. INVALID_SECRET)
 local PASSWORD_CREDENTIALS = "Basic " .. encode_base64(USERNAME .. ":" .. PASSWORD)
+local UPPERCASE_USERNAME_PASSWORD_CREDENTIALS = "Basic " .. encode_base64(USERNAME:upper() .. ":" .. PASSWORD)
 local CLIENT_CREDENTIALS = "Basic " .. encode_base64(CLIENT_ID .. ":" .. CLIENT_SECRET)
 
 local KONG_CLIENT_ID = "kong-client-secret"
@@ -1480,6 +1481,55 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
+        local prohibit_username_different_case = bp.routes:insert {
+          paths   = { "/prohibit-username-different-case" },
+        }
+
+        bp.plugins:insert {
+          route   = prohibit_username_different_case,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            consumer_claim = {
+              "preferred_username",
+            },
+            consumer_by = {
+              "username",
+            },
+          },
+        }
+
+        local grant_username_different_case = bp.routes:insert {
+          paths   = { "/grant-username-different-case" },
+        }
+
+        bp.plugins:insert {
+          route   = grant_username_different_case,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            consumer_claim = {
+              "preferred_username",
+            },
+            consumer_by = {
+              "username",
+            },
+            by_username_ignore_case = true
+          },
+        }
+
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -1628,6 +1678,26 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(403)
           local json = assert.response(res).has.jsonbody()
           assert.same("Forbidden", json.message)
+        end)
+
+        it("prohibits access for different text-case when by_username_ignore_case=[false]", function ()
+          local res = proxy_client:get("/prohibit-username-different-case", {
+            headers = {
+              Authorization = UPPERCASE_USERNAME_PASSWORD_CREDENTIALS
+            },
+          })
+          assert.response(res).has.status(403)
+          local json = assert.response(res).has.jsonbody()
+          assert.same("Forbidden", json.message)
+        end)
+
+        it("grants access for different text-case when by_username_ignore_case=[true]", function ()
+          local res = proxy_client:get("/grant-username-different-case", {
+            headers = {
+              Authorization = UPPERCASE_USERNAME_PASSWORD_CREDENTIALS
+            },
+          })
+          assert.response(res).has.status(200)
         end)
       end)
     end)
