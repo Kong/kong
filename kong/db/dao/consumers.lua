@@ -127,7 +127,7 @@ function Consumers:insert(entity, options)
 
   local err = check_username_lower_unique(self, entity, options)
   if err then
-    return nil, err
+    return nil, err, err
   end
 
   invalidate_consumer_cache(self, entity, options)
