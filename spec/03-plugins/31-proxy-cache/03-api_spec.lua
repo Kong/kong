@@ -1,10 +1,27 @@
 local helpers = require "spec.helpers"
+local strategies = require("kong.plugins.proxy-cache.strategies")
 local cjson = require "cjson"
 
 
-describe("Plugin: proxy-cache", function()
+local configs = {
+  memory = {
+    dictionary_name = "kong",
+  },
+  redis = {
+    host = helpers.redis_host,
+    port = 6379,
+  },
+}
+for _, policy in ipairs(strategies.STRATEGY_TYPES) do
+  describe("Plugin: proxy-cache with policy: " .. policy, function()
   local bp
   local proxy_client, admin_client, cache_key, plugin1, route1
+    local policy_config = configs[policy]
+
+    local strategy = strategies({
+      strategy_name = policy,
+      strategy_opts = policy_config,
+    })
 
   setup(function()
     bp = helpers.get_db_utils(nil, nil, {"proxy-cache"})
@@ -21,6 +38,7 @@ describe("Plugin: proxy-cache", function()
         memory = {
           dictionary_name = "kong",
         },
+        [policy] = policy_config,
       },
     })
 
@@ -44,6 +62,7 @@ describe("Plugin: proxy-cache", function()
         memory = {
           dictionary_name = "kong",
         },
+        [policy] = policy_config,
       },
     })
 
@@ -61,6 +80,7 @@ describe("Plugin: proxy-cache", function()
 
     admin_client = helpers.admin_client()
     proxy_client = helpers.proxy_client()
+      strategy:flush(true)
   end)
 
   teardown(function()
@@ -77,7 +97,8 @@ describe("Plugin: proxy-cache", function()
         body = {
           name = "proxy-cache",
           config = {
-            strategy = "memory",
+            strategy = policy,
+            [policy] = policy_config,
             memory = {
               dictionary_name = "kong",
             },
@@ -106,7 +127,8 @@ describe("Plugin: proxy-cache", function()
         body = {
           name = "proxy-cache",
           config = {
-            strategy = "memory",
+            strategy = policy,
+            [policy] = policy_config,
             memory = {
               dictionary_name = "kong",
             },
@@ -131,7 +153,8 @@ describe("Plugin: proxy-cache", function()
         body = {
           name = "proxy-cache",
           config = {
-            strategy = "memory",
+            strategy = policy,
+            [policy] = policy_config,
             memory = {
               dictionary_name = "kong",
             },
@@ -156,7 +179,8 @@ describe("Plugin: proxy-cache", function()
         body = {
           name = "proxy-cache",
           config = {
-            strategy = "memory",
+            strategy = policy,
+            [policy] = policy_config,
             memory = {
               dictionary_name = "kong",
             },
@@ -182,7 +206,8 @@ describe("Plugin: proxy-cache", function()
         body = {
           name = "proxy-cache",
           config = {
-            strategy = "memory",
+            strategy = policy,
+            [policy] = policy_config,
             memory = {
               dictionary_name = "kong",
             },
@@ -425,3 +450,4 @@ describe("Plugin: proxy-cache", function()
     end)
   end)
 end)
+end
