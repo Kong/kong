@@ -59,13 +59,14 @@ local function write_duplicate_username_lowers(coordinator, strategy, outfd)
   end
 
   local write_duplicate = function(row)
-    outfd:write(fmt("%s, %s, %s, %s, %s, %s\n",
+    outfd:write(fmt("%s, %s, %s, %s, %s, %s, %s\n",
       row.id,
       row.ws_id,
       get_ws_name(row.ws_id),
       enums.CONSUMERS.TYPE_LABELS[row.type],
       escape_commas(remove_ws_id(row.username)),
-      escape_commas(remove_ws_id(row.username_lower))
+      escape_commas(remove_ws_id(row.username_lower)),
+      row.created_at
     ))
   end
 
@@ -84,9 +85,9 @@ local function write_duplicate_username_lowers(coordinator, strategy, outfd)
     end
   end
 
-  outfd:write("id, ws_id, ws_name, type, username, username_lower\n")
+  outfd:write("id, ws_id, ws_name, type, username, username_lower, created_at\n")
 
-  for rows, err in coordinator:iterate("SELECT id, ws_id, username, username_lower, type FROM consumers") do
+  for rows, err in coordinator:iterate("SELECT id, ws_id, username, username_lower, type, created_at FROM consumers") do
     if err then
       return nil, err
     end
