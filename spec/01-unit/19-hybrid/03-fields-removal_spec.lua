@@ -55,6 +55,15 @@ describe("kong.clustering.control_plane", function()
         "read_timeout",
         "send_timeout",
       },
+      aws_lambda = {
+        "base64_encode_body",
+      },
+      grpc_web = {
+        "allow_origin_header",
+      },
+      request_termination = {
+        "echo",
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -67,7 +76,16 @@ describe("kong.clustering.control_plane", function()
       },
       syslog = {
         "facility",
-      }
+      },
+      aws_lambda = {
+        "base64_encode_body",
+      },
+      grpc_web = {
+        "allow_origin_header",
+      },
+      request_termination = {
+        "echo",
+      },
     }, cp._get_removed_fields(2003003003))
 
     assert.same({
@@ -80,9 +98,18 @@ describe("kong.clustering.control_plane", function()
       },
       syslog = {
         "facility",
-      }
+      },
+      aws_lambda = {
+        "base64_encode_body",
+      },
+      grpc_web = {
+        "allow_origin_header",
+      },
+      request_termination = {
+        "echo",
+      },
     }, cp._get_removed_fields(2003004000))
-  
+
     assert.same({
       redis = {
         "connect_timeout",
@@ -93,14 +120,46 @@ describe("kong.clustering.control_plane", function()
       },
       syslog = {
         "facility",
-      }
+      },
+      aws_lambda = {
+        "base64_encode_body",
+      },
+      grpc_web = {
+        "allow_origin_header",
+      },
+      request_termination = {
+        "echo",
+      },
     }, cp._get_removed_fields(2004001000))
 
-    assert.same(nil, cp._get_removed_fields(2004001002))
-    assert.same(nil, cp._get_removed_fields(2005000000))
+    assert.same({
+      aws_lambda = {
+        "base64_encode_body",
+      },
+      grpc_web = {
+        "allow_origin_header",
+      },
+      request_termination = {
+        "echo",
+      },
+    }, cp._get_removed_fields(2004001002))
+
+    assert.same({
+      aws_lambda = {
+        "base64_encode_body",
+      },
+      grpc_web = {
+        "allow_origin_header",
+      },
+      request_termination = {
+        "echo",
+      },
+    }, cp._get_removed_fields(2005000000))
+
+    assert.same(nil, cp._get_removed_fields(2006000000))
   end)
 
-  it("removing unknonwn fields", function()
+  it("removing unknown fields", function()
     local test_with = function(payload, dp_version)
       local has_update, deflated_payload, err = cp._update_compatible_payload(
         payload, dp_version
