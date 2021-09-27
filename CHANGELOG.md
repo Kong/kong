@@ -12,13 +12,17 @@
 
 For steps 2 - 6 above [this script](https://github.com/Kong/kong-ee/blob/master/scripts/bump-plugin) can be used.
 
-## unreleased
+## 1.1.6
 
+- fix(verbose) when parameters are required, the code path would not add an
+  explanation to the error.
+- chore(deps) bump deserializer lib, remove workaround
+- chore(ci) update platform for newer docker version
+- tests(*) add dbless integration testing
+- fix(ci) update version matrix, move secrets to GUI
 - fix(verbose) add more verbosity to error messages. When parameters fail to
   validate, and verbose errors are requested, a copy of the deserialized value
   is included in the response.
-- fix(verbose) when parameters are required, the code path would not add an
-  explanation to the error.
 
 ## 1.1.5
 
