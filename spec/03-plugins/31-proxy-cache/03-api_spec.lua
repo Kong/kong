@@ -1,7 +1,10 @@
 local helpers = require "spec.helpers"
+local myhelpers = require "spec.03-plugins.31-proxy-cache.myhelpers"
 local strategies = require("kong.plugins.proxy-cache.strategies")
 local cjson = require "cjson"
 
+local strategy_wait_disappear = myhelpers.wait_disappear
+local strategy_wait_appear = myhelpers.wait_appear
 
 local configs = {
   memory = {
@@ -33,11 +36,8 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
       name = "proxy-cache",
       route = { id = route1.id },
       config = {
-        strategy = "memory",
+        strategy = policy,
         content_type = { "text/plain", "application/json" },
-        memory = {
-          dictionary_name = "kong",
-        },
         [policy] = policy_config,
       },
     })
@@ -57,11 +57,8 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
       name = "proxy-cache",
       route = { id = route2.id },
       config = {
-        strategy = "memory",
+        strategy = policy,
         content_type = { "text/plain", "application/json" },
-        memory = {
-          dictionary_name = "kong",
-        },
         [policy] = policy_config,
       },
     })
@@ -80,7 +77,7 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
 
     admin_client = helpers.admin_client()
     proxy_client = helpers.proxy_client()
-      strategy:flush(true)
+    strategy:flush(true)
   end)
 
   teardown(function()
@@ -99,9 +96,6 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
           config = {
             strategy = policy,
             [policy] = policy_config,
-            memory = {
-              dictionary_name = "kong",
-            },
             response_code = {123, 200},
             cache_ttl = 600,
             request_method = { "GET" },
@@ -129,9 +123,6 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
           config = {
             strategy = policy,
             [policy] = policy_config,
-            memory = {
-              dictionary_name = "kong",
-            },
             response_code = {},
             cache_ttl = 600,
             request_method = { "GET" },
@@ -155,9 +146,6 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
           config = {
             strategy = policy,
             [policy] = policy_config,
-            memory = {
-              dictionary_name = "kong",
-            },
             response_code = {},
             cache_ttl = 600,
             request_method = "GET",
@@ -181,9 +169,6 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
           config = {
             strategy = policy,
             [policy] = policy_config,
-            memory = {
-              dictionary_name = "kong",
-            },
             response_code = {true, "alo", 123},
             cache_ttl = 600,
             request_method = "GET",
@@ -208,9 +193,6 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
           config = {
             strategy = policy,
             [policy] = policy_config,
-            memory = {
-              dictionary_name = "kong",
-            },
             response_code = {90},
             cache_ttl = 600,
             request_method = "GET",
@@ -245,7 +227,7 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
         local cache_key1 = res.headers["X-Cache-Key"]
         assert.matches("^[%w%d]+$", cache_key1)
         assert.equals(32, #cache_key1)
-        cache_key = cache_key1
+        strategy_wait_appear(policy, strategy, cache_key1)
 
         res = assert(proxy_client:send {
           method = "GET",
@@ -263,10 +245,11 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
         -- delete the key
         res = assert(admin_client:send {
           method = "DELETE",
-          path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key,
+          path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key1,
         })
         assert.res_status(204, res)
 
+        strategy_wait_disappear(policy, strategy, cache_key1)
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/get",
@@ -281,9 +264,10 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
         -- delete directly, having to look up all proxy-cache instances
         res = assert(admin_client:send {
           method = "DELETE",
-          path = "/proxy-cache/" .. cache_key,
+          path = "/proxy-cache/" .. cache_key1,
         })
         assert.res_status(204, res)
+        strategy_wait_disappear(policy, strategy, cache_key1)
 
         local res = assert(proxy_client:send {
           method = "GET",
@@ -295,6 +279,7 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
 
         assert.res_status(200, res)
         assert.same("Miss", res.headers["X-Cache-Status"])
+        strategy_wait_appear(policy, strategy, cache_key1)
       end)
       it("purge all the cache entries", function()
         -- make a `Hit` request to `route-1`
@@ -325,7 +310,8 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
         assert.matches("^[%w%d]+$", cache_key1)
         assert.equals(32, #cache_key1)
 
-        -- make a `Hit` request to `route-1`
+        -- make a `Hit` request to `route-2`
+        strategy_wait_appear(policy, strategy, cache_key1)
         res = assert(proxy_client:send {
           method = "GET",
           path = "/get",
@@ -346,6 +332,7 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
         })
         assert.res_status(204, res)
 
+        strategy_wait_disappear(policy, strategy, cache_key1)
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/get",
@@ -399,6 +386,17 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
     end)
     describe("GET", function()
       it("get a non-existing cache", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            host = "route-1.com",
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.same("Miss", res.headers["X-Cache-Status"])
+        local cache_key = res.headers["X-Cache-Key"]
         -- delete all the cache keys
         local res = assert(admin_client:send {
           method = "DELETE",
@@ -429,6 +427,8 @@ for _, policy in ipairs(strategies.STRATEGY_TYPES) do
           }
         })
         assert.res_status(200, res)
+          cache_key = res.headers["X-Cache-Key"]
+          strategy_wait_appear(policy, strategy, cache_key)
 
         local res = assert(admin_client:send {
           method = "GET",
