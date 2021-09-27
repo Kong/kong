@@ -133,14 +133,15 @@ In addition to that, the following changes were specifically included to improve
   [#7853](https://github.com/Kong/kong/pull/7853)
 - Use read-only replica for PostgreSQL meta-schema reading
   [#7454](https://github.com/Kong/kong/pull/7454)
-- URL escaping detects cases when it's not needed and early-exists
+- URL escaping detects cases when it's not needed and early-exits
   [#7742](https://github.com/Kong/kong/pull/7742)
 - Accelerated variable loading via indexes
   [#7818](https://github.com/Kong/kong/pull/7818)
 
 #### Configuration
 
-- Enable IPV6 on `dns_order` as unsupported experimental feature
+- Enable IPV6 on `dns_order` as unsupported experimental feature. Please
+  give it a try and report back any issues.
   [#7819](https://github.com/Kong/kong/pull/7819).
 - The template renderer can now use `os.getenv`
   [#6872](https://github.com/Kong/kong/pull/6872).
@@ -152,38 +153,43 @@ In addition to that, the following changes were specifically included to improve
 
 #### Admin API
 
-- Add support for HEAD requests
+- Added support for the HTTP HEAD method for all Admin API endpoints
   [#7796](https://github.com/Kong/kong/pull/7796)
-- Improve support for OPTIONS requests
-  [#7830](https://github.com/Kong/kong/pull/7830)
+- Added better support for OPTIONS requests. Previously, the Admin API replied the same on all OPTIONS requests, where as now OPTIONS request will only reply to routes that our Admin API has. Non-existing routes will have a 404 returned. It also adds Allow header to responses, both Allow and Access-Control-Allow-Methods now contain only the methods that the specific API supports. [#7830](https://github.com/Kong/kong/pull/7830)
 
 #### Plugins
 
 - **AWS-Lambda**: The plugin will now try to detect the AWS region by using `AWS_REGION` and
   `AWS_DEFAULT_REGION` environment variables (when not specified with the plugin configuration).
+  This allows to specify a 'region' on a per Kong node basis, hence adding the ability to invoke the
+  Lamda in the same region where Kong is located.
   [#7765](https://github.com/Kong/kong/pull/7765)
-- **Datadog**: `host` and `port` config options can be configured from `ENV` variables
+- **Datadog**: `host` and `port` config options can be configured from environment variables
+  `KONG_DATADOG_AGENT_HOST` and `KONG_DATADOG_AGENT_PORT`. This allows to set different
+  destinations on a per Kong node basis, which makes multi-DC setups easier and in Kubernetes allows to
+  run the datadog agents as a daemon-set.
   [#7463](https://github.com/Kong/kong/pull/7463)
   Thanks [rallyben](https://github.com/rallyben) for the patch!
-- **Prometheus**: The new `data_plane_cluster_cert_expiry_timestamp` exposes DP cert expiry timestamp
-  [#7800](https://github.com/Kong/kong/pull/7800).
+- **Prometheus:** A new metric `data_plane_cluster_cert_expiry_timestamp` is added to expose the Data Plane's cluster_cert expiry timestamp for improved monitoring in Hybrid Mode. [#7800](https://github.com/Kong/kong/pull/7800).
 
 **GRPC-Gateway**:
 
-- The plugin can decode entities of type `.google.protobuf.Timestamp`
+- Fields of type `.google.protobuf.Timestamp` on the gRPC side are now
+  transcoded to and from ISO8601 strings in the REST side.
   [#7538](https://github.com/Kong/kong/pull/7538)
-- Added support for structured URI arguments
+- URI arguments like `..?foo.bar=x&foo.baz=y` are interpreted as structured
+  fields, equivalent to `{"foo": {"bar": "x", "baz": "y"}}`
   [#7564](https://github.com/Kong/kong/pull/7564)
   Thanks [git-torrent](https://github.com/git-torrent) for the patch!
 
 **Request Termination**:
 
-- New `trigger` config option, which makes the plugin activate for any requests with a header or query parameter
-  named like the trigger
+- New `trigger` config option, which makes the plugin only activate for any requests with a header or query parameter
+  named like the trigger. This can be a great debugging aid, without impacting actual traffic being processed.
   [#6744](https://github.com/Kong/kong/pull/6744).
-- The `request-echo` config option. If not set, the plugin activates on all requests.
-  If set, then the plugin only activates for any requests with a header or query parameter
-  named like the trigger
+- The `request-echo` config option. If set, the plugin responds with a copy of
+  the incoming request. This eases troubleshooting when Kong is behind one or more
+  other proxies or LB's, especially when combined with the new 'trigger' option.
   [#6744](https://github.com/Kong/kong/pull/6744).
 
 ### Fixes
