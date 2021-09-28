@@ -111,7 +111,8 @@ release:
 
 #### Core
 
-- New schema entity validator: `mutually_exclusive`.
+- New schema entity validator: `mutually_exclusive`. It accepts a list of fields. If more than 1 of those fields
+  is set simultaneously, the entity is considered invalid.
   [#7765](https://github.com/Kong/kong/pull/7765)
 
 #### Performance
@@ -176,11 +177,11 @@ In addition to that, the following changes were specifically included to improve
 
 **Request Termination**:
 
-- New `trigger` config option, which makes the plugin only activate for any requests with a header or query parameter 
-  named like the trigger. This can be a great debugging aid, without impacting actual traffic being processed. 
+- New `trigger` config option, which makes the plugin only activate for any requests with a header or query parameter
+  named like the trigger. This can be a great debugging aid, without impacting actual traffic being processed.
   [#6744](https://github.com/Kong/kong/pull/6744).
 - The `request-echo` config option was added. If set, the plugin responds with a copy of the incoming request.
-  This eases troubleshooting when Kong is behind one or more other proxies or LB's, especially when combined with 
+  This eases troubleshooting when Kong is behind one or more other proxies or LB's, especially when combined with
   the new 'trigger' option.
   [#6744](https://github.com/Kong/kong/pull/6744).
 
