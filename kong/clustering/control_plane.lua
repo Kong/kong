@@ -244,12 +244,48 @@ _M._get_removed_fields = get_removed_fields
 
 -- returns has_update, modified_deflated_payload, err
 local function update_compatible_payload(payload, dp_version, log_suffix)
-  local fields = get_removed_fields(dp_version_num(dp_version))
+  local dp_version_num = dp_version_num(dp_version)
+  local fields = get_removed_fields(dp_version_num)
 
   if fields then
     payload = utils.deep_copy(payload, false)
     local config_table = payload["config_table"]
     local has_update = invalidate_items_from_config(config_table["plugins"], fields, log_suffix)
+
+    -- XXX EE: this should be moved in its own file (compat/config.lua). With a table
+    -- similar to compat/remove_fields, each plugin could register a function to handle
+    -- its compatibility issues.
+    if config_table["plugins"] and dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
+      for _, t in ipairs(config_table["plugins"]) do
+        local config = t and t["config"]
+        if config then
+          if t["name"] == "rate-limiting-advanced" then
+            if config["strategy"] == "local" then
+              ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin contains configuration 'strategy=local'",
+                    " which is incompatible with dataplane and will",
+                    " be replaced by 'strategy=redis' and 'sync_rate=-1'.", log_suffix)
+              config["strategy"] = "redis"
+              config["sync_rate"] = -1
+              has_update = true
+            elseif config["sync_rate"] and config["sync_rate"] > 0 and config["sync_rate"] < 1 then
+              ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin contains configuration 'sync_rate < 1'",
+              " which is incompatible with dataplane and will",
+              " be replaced by 'sync_rate=1'.", log_suffix)
+              config["sync_rate"] = 1
+              has_update = true
+            end
+
+            if config["identifier"] == "path" then
+              ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin contains configuration 'identifier=path'",
+              " which is incompatible with dataplane and will",
+              " be replaced by 'identifier=consumer'.", log_suffix)
+              config["identifier"] = "consumer" -- default
+              has_update = true
+            end
+          end
+        end
+      end
+    end
 
     if has_update then
       local deflated_payload, err = deflate_gzip(cjson_encode(payload))
@@ -444,7 +480,7 @@ function _M:check_configuration_compatibility(dp_plugin_map, dp_version)
         ngx_log(ngx_DEBUG, _log_prefix, "data plane plugin vault-auth version ",
           "1.0.0 was incorrectly versioned, but is compatible")
         dp_plugin = cp_plugin
-      elseif name == "openid-connect" and dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
+      elseif (name == "rate-limiting-advanced" or name == "openid-connect") and dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
         ngx_log(ngx_WARN, _log_prefix, "data plane plugin openid-connect version ",
           dp_plugin.version, " is partially compatible with version ", cp_plugin.version,
           "; it is strongly recommended to upgrade your data plane version ", dp_version,

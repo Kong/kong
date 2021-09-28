@@ -113,5 +113,8 @@ return {
         "refresh_token",
       },
     },
+    rate_limiting_advanced = {
+      "path",
+    },
   },
 }
