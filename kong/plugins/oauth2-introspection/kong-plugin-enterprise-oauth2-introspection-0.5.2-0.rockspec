@@ -13,7 +13,7 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
-    ["kong.plugins.oauth2-introspection.handler"] = "kong/plugins/enterprise_edition/oauth2-introspection/handler.lua",
-    ["kong.plugins.oauth2-introspection.schema"] = "kong/plugins/enterprise_edition/oauth2-introspection/schema.lua",
+    ["kong.plugins.oauth2-introspection.handler"] = "kong/plugins/oauth2-introspection/handler.lua",
+    ["kong.plugins.oauth2-introspection.schema"] = "kong/plugins/oauth2-introspection/schema.lua",
   }
 }

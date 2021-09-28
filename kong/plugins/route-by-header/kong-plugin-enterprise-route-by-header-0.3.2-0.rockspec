@@ -18,7 +18,7 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
-    ["kong.plugins.route-by-header.handler"] = "kong/plugins/enterprise_edition/route-by-header/handler.lua",
-    ["kong.plugins.route-by-header.schema"] = "kong/plugins/enterprise_edition/route-by-header/schema.lua",
+    ["kong.plugins.route-by-header.handler"] = "kong/plugins/route-by-header/handler.lua",
+    ["kong.plugins.route-by-header.schema"] = "kong/plugins/route-by-header/schema.lua",
   }
 }
