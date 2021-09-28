@@ -27,7 +27,7 @@ local conf_cache = setmetatable({},{__mode = "k"})
 
 local Canary = {
   PRIORITY = 13,
-  VERSION  = "0.4.4"
+  VERSION  = "0.5.0"
 }
 
 local hashing  -- need a forward declaration here

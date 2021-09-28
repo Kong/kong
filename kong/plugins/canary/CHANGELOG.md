@@ -1,3 +1,14 @@
+## 0.5.0
+
+- tests(*) remove credentials from travis.yaml
+- chore(ci) update platform, newer docker engine
+- docs(readme) link to kong-ee and docs website
+- tests(*) add dbless integration testing
+- feat(hashing) added option to hash on header (falls back on IP, and
+  then random)
+- chore(*) remove obsolete package script
+- tests(*) travis docker hub transition
+
 ## 0.4.4
 
 - fix(*) BasePlugin inheritance removal (FT-1701)
