@@ -131,7 +131,7 @@ function lc:getPeer(cacheOnly, handle, hashValue)
       break
     end
 
-    if port ~= self.errors.ERR_DNS_UPDATED then
+    if port ~= balancers.errors.ERR_DNS_UPDATED then
       -- an unknown error
       break
     end
