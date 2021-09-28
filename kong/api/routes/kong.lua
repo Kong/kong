@@ -317,7 +317,10 @@ return {
         return kong.response.exit(404, { message = "Not found" })
       end
 
-      local admin, err = ee_api.validate_admin()
+      local by_username_ignore_case = gui_auth_conf and gui_auth_conf.by_username_ignore_case
+
+      local admin, err = ee_api.validate_admin(by_username_ignore_case)
+
       if not admin then
         log(DEBUG, _log_prefix, "Admin not found")
         return kong.response.exit(401, { message = "Unauthorized" })
