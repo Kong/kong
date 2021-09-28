@@ -137,11 +137,13 @@ In addition to that, the following changes were specifically included to improve
   [#7742](https://github.com/Kong/kong/pull/7742)
 - Accelerated variable loading via indexes
   [#7818](https://github.com/Kong/kong/pull/7818)
+- Removed unnecessary call to `get_phase` in balancer
+  [#7854](https://github.com/Kong/kong/pull/7854)
 
 #### Configuration
 
 - Enable IPV6 on `dns_order` as unsupported experimental feature. Please
-  give it a try and report back any issues.
+  give it a try and report back any issues
   [#7819](https://github.com/Kong/kong/pull/7819).
 - The template renderer can now use `os.getenv`
   [#6872](https://github.com/Kong/kong/pull/6872).
@@ -172,6 +174,16 @@ In addition to that, the following changes were specifically included to improve
   Thanks [rallyben](https://github.com/rallyben) for the patch!
 - **Prometheus:** A new metric `data_plane_cluster_cert_expiry_timestamp` is added to expose the Data Plane's cluster_cert expiry timestamp for improved monitoring in Hybrid Mode. [#7800](https://github.com/Kong/kong/pull/7800).
 
+**Request Termination**:
+
+- New `trigger` config option, which makes the plugin only activate for any requests with a header or query parameter 
+  named like the trigger. This can be a great debugging aid, without impacting actual traffic being processed. 
+  [#6744](https://github.com/Kong/kong/pull/6744).
+- The `request-echo` config option was added. If set, the plugin responds with a copy of the incoming request.
+  This eases troubleshooting when Kong is behind one or more other proxies or LB's, especially when combined with 
+  the new 'trigger' option.
+  [#6744](https://github.com/Kong/kong/pull/6744).
+
 **GRPC-Gateway**:
 
 - Fields of type `.google.protobuf.Timestamp` on the gRPC side are now
@@ -181,16 +193,6 @@ In addition to that, the following changes were specifically included to improve
   fields, equivalent to `{"foo": {"bar": "x", "baz": "y"}}`
   [#7564](https://github.com/Kong/kong/pull/7564)
   Thanks [git-torrent](https://github.com/git-torrent) for the patch!
-
-**Request Termination**:
-
-- New `trigger` config option, which makes the plugin only activate for any requests with a header or query parameter
-  named like the trigger. This can be a great debugging aid, without impacting actual traffic being processed.
-  [#6744](https://github.com/Kong/kong/pull/6744).
-- The `request-echo` config option. If set, the plugin responds with a copy of
-  the incoming request. This eases troubleshooting when Kong is behind one or more
-  other proxies or LB's, especially when combined with the new 'trigger' option.
-  [#6744](https://github.com/Kong/kong/pull/6744).
 
 ### Fixes
 
@@ -213,6 +215,9 @@ In addition to that, the following changes were specifically included to improve
 - Ensure data plane config thread is terminated gracefully, preventing a semi-deadlocked state
   [#7568](https://github.com/Kong/kong/pull/7568)
   Thanks [flrgh](https://github.com/flrgh) for the patch!
+- Older data planes using `aws-lambda`, `grpc-web` or `request-termination` plugins can now talk
+  with newer control planes by ignoring new plugin fields.
+  [#7881](https://github.com/Kong/kong/pull/7881)
 
 ##### CLI
 

@@ -928,7 +928,7 @@ function Kong.balancer()
       return ngx.exit(errcode)
     end
 
-    ok, err = balancer.set_host_header(balancer_data, var.upstream_scheme, var.upstream_host)
+    ok, err = balancer.set_host_header(balancer_data, var.upstream_scheme, var.upstream_host, true)
     if not ok then
       ngx_log(ngx_ERR, "failed to set balancer Host header: ", err)
 
