@@ -189,6 +189,23 @@ local function configure_credentials(conf, allow_all, header_filter)
 end
 
 
+local function configure_private_network(conf)
+  local set_header = kong.response.set_header
+
+  if not conf.private_network
+     or conf.private_network == "default"
+  then
+    return
+  end
+
+  if conf.private_network == "enabled" then
+    set_header("Access-Control-Allow-Private-Network", true)
+  else
+    set_header("Access-Control-Allow-Private-Network", false)
+  end
+end
+
+
 function CorsHandler:access(conf)
   if kong.request.get_method() ~= "OPTIONS"
      or not kong.request.get_header("Origin")
@@ -208,6 +225,8 @@ function CorsHandler:access(conf)
 
   local allow_all = configure_origin(conf, false)
   configure_credentials(conf, allow_all, false)
+
+  configure_private_network(conf)
 
   local set_header = kong.response.set_header
 
@@ -243,6 +262,8 @@ function CorsHandler:header_filter(conf)
 
   local allow_all = configure_origin(conf, true)
   configure_credentials(conf, allow_all, true)
+
+  configure_private_network(conf)
 
   if conf.exposed_headers and #conf.exposed_headers > 0 then
     kong.response.set_header("Access-Control-Expose-Headers",

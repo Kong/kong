@@ -14,6 +14,12 @@ local METHODS = {
   "CONNECT",
 }
 
+local PRIVATE_NETWORKS = {
+  "default",
+  "enabled",
+  "disabled",
+}
+
 
 local function validate_asterisk_or_regex(value)
   if value == "*" or is_regex(value) then
@@ -48,6 +54,11 @@ return {
           }, }, },
           { max_age = { type = "number" }, },
           { credentials = { type = "boolean", required = true, default = false }, },
+          { private_network = {
+              type = "string",
+              default = 'default',
+              one_of = PRIVATE_NETWORKS,
+          }, },
           { preflight_continue = { type = "boolean", required = true, default = false }, },
     }, }, },
   },
