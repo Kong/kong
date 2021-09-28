@@ -25,6 +25,7 @@ local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT .. REALM_P
 local ISSUER_SSL_URL = "https://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_SSL_PORT .. REALM_PATH
 
 local USERNAME = "john"
+local USERNAME_UPPERCASE = USERNAME:upper()
 local INVALID_USERNAME = "irvine"
 local PASSWORD = "doe"
 local CLIENT_ID = "service"
@@ -34,7 +35,6 @@ local INVALID_SECRET = "soldier"
 
 local INVALID_CREDENTIALS = "Basic " .. encode_base64(INVALID_ID .. ":" .. INVALID_SECRET)
 local PASSWORD_CREDENTIALS = "Basic " .. encode_base64(USERNAME .. ":" .. PASSWORD)
-local UPPERCASE_USERNAME_PASSWORD_CREDENTIALS = "Basic " .. encode_base64(USERNAME:upper() .. ":" .. PASSWORD)
 local CLIENT_CREDENTIALS = "Basic " .. encode_base64(CLIENT_ID .. ":" .. CLIENT_SECRET)
 
 local KONG_CLIENT_ID = "kong-client-secret"
@@ -130,6 +130,39 @@ for _, strategy in helpers.all_strategies() do
             },
             upstream_refresh_token_header = "refresh_token",
             refresh_token_param_name      = "refresh_token",
+          },
+        }
+
+        local code_flow_ignore_username_case_route = bp.routes:insert {
+          service = service,
+          paths   = { "/code-flow-ignore-username-case" },
+        }
+
+        bp.plugins:insert {
+          route   = code_flow_ignore_username_case_route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            scopes = {
+              -- this is the default
+              "openid",
+            },
+            auth_methods = {
+              "authorization_code",
+              "session"
+            },
+            preserve_query_args = true,
+            login_action = "redirect",
+            login_tokens = {},
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            upstream_refresh_token_header = "refresh_token",
+            refresh_token_param_name      = "refresh_token",
+            by_username_ignore_case = true,
           },
         }
 
@@ -594,6 +627,166 @@ for _, strategy in helpers.all_strategies() do
 
           assert.is_nil(err)
           assert.equal(302, ures_final.status)
+        end)
+
+        it("is not allowed with invalid username text-case", function()
+          local res = proxy_client:get("/code-flow", {
+            headers = {
+              ["Host"] = "kong"
+            }
+          })
+          assert.response(res).has.status(302)
+
+          local redirect = res.headers["Location"]
+          -- get authorization=...; cookie
+          local auth_cookie = res.headers["Set-Cookie"]
+          local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") -1)
+          local http = require "resty.http".new()
+          local rres, err = http:request_uri(redirect, {
+            headers = {
+              -- impersonate as browser
+              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
+              ["Host"] = "keycloak:8080",
+            }
+          })
+          assert.is_nil(err)
+          assert.equal(200, rres.status)
+
+          local cookies = rres.headers["Set-Cookie"]
+          local user_session
+          local user_session_header_table = {}
+          for _, cookie in ipairs(cookies) do
+            user_session = sub(cookie, 0, find(cookie, ";") -1)
+            if find(user_session, 'AUTH_SESSION_ID=', 1, true) ~= 1 then
+              -- auth_session_id is dropped by the browser for non-https connections
+              table.insert(user_session_header_table, user_session)
+            end
+          end
+          -- get the action_url from submit button and post username:password
+          local action_start = find(rres.body, 'action="', 0, true)
+          local action_end = find(rres.body, '"', action_start+8, true)
+          local login_button_url = string.sub(rres.body, action_start+8, action_end-1)
+          -- the login_button_url is endcoded. decode it
+          login_button_url = string.gsub(login_button_url,"&amp;", "&")
+          -- build form_data
+          local form_data = "username="..USERNAME_UPPERCASE.."&password="..PASSWORD.."&credentialId="
+          local opts = { method = "POST",
+            body = form_data,
+            headers = {
+              -- impersonate as browser
+              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
+              ["Host"] = "keycloak:8080",
+              -- due to form_data
+              ["Content-Type"] = "application/x-www-form-urlencoded",
+              Cookie = user_session_header_table,
+          }}
+          local loginres
+          loginres, err = http:request_uri(login_button_url, opts)
+          local idx = find(loginres.body, "Invalid username or password", 0, true)
+          assert.is_number(idx)
+          assert.is_nil(err)
+          assert.equal(200, loginres.status)
+
+          -- verify that access isn't granted
+          local final_res = proxy_client:get("/code-flow", {
+            headers = {
+              Cookie = auth_cookie_cleaned
+            }
+          })
+          assert.response(final_res).has.status(302)
+        end)
+
+
+        it("is allowed with different username case when by_username_ignore_case=true", function()
+          local res = proxy_client:get("/code-flow-ignore-username-case", {
+            headers = {
+              ["Host"] = "kong"
+            }
+          })
+          assert.response(res).has.status(302)
+          local redirect = res.headers["Location"]
+          -- get authorization=...; cookie
+          local auth_cookie = res.headers["Set-Cookie"]
+          local auth_cookie_cleaned = sub(auth_cookie, 0, find(auth_cookie, ";") -1)
+          local http = require "resty.http".new()
+          local rres, err = http:request_uri(redirect, {
+            headers = {
+              -- impersonate as browser
+              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", -- luacheck: ignore
+              ["Host"] = "keycloak:8080",
+            }
+          })
+          assert.is_nil(err)
+          assert.equal(200, rres.status)
+
+          local cookies = rres.headers["Set-Cookie"]
+          local user_session
+          local user_session_header_table = {}
+          for _, cookie in ipairs(cookies) do
+            user_session = sub(cookie, 0, find(cookie, ";") -1)
+            if find(user_session, 'AUTH_SESSION_ID=', 1, true) ~= 1 then
+              -- auth_session_id is dropped by the browser for non-https connections
+              table.insert(user_session_header_table, user_session)
+            end
+          end
+          -- get the action_url from submit button and post username:password
+          local action_start = find(rres.body, 'action="', 0, true)
+          local action_end = find(rres.body, '"', action_start+8, true)
+          local login_button_url = string.sub(rres.body, action_start+8, action_end-1)
+          -- the login_button_url is endcoded. decode it
+          login_button_url = string.gsub(login_button_url,"&amp;", "&")
+          -- build form_data
+          local form_data = "username=".. USERNAME_UPPERCASE.."&password="..PASSWORD.."&credentialId="
+          local opts = { method = "POST",
+            body = form_data,
+            headers = {
+              -- impersonate as browser
+              ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36", --luacheck: ignore
+              ["Host"] = "keycloak:8080",
+              -- due to form_data
+              ["Content-Type"] = "application/x-www-form-urlencoded",
+              Cookie = user_session_header_table,
+          }}
+          local loginres
+          loginres, err = http:request_uri(login_button_url, opts)
+          assert.is_nil(err)
+          assert.equal(302, loginres.status)
+
+          -- after sending login data to the login action page, expect a redirect
+          local upstream_url = loginres.headers["Location"]
+          local ures
+          ures, err = http:request_uri(upstream_url, {
+            headers = {
+              -- authenticate using the cookie from the initial request
+              Cookie = auth_cookie_cleaned
+            }
+          })
+          assert.is_nil(err)
+          assert.equal(302, ures.status)
+
+          local client_session
+          local client_session_header_table = {}
+          -- extract session cookies
+          local ucookies = ures.headers["Set-Cookie"]
+          -- extract final redirect
+          local final_url = ures.headers["Location"]
+          for i, cookie in ipairs(ucookies) do
+            client_session = sub(cookie, 0, find(cookie, ";") -1)
+            client_session_header_table[i] = client_session
+          end
+          local ures_final
+          ures_final, err = http:request_uri(final_url, {
+            headers = {
+              -- send session cookie
+              Cookie = client_session_header_table
+            }
+          })
+          assert.is_nil(err)
+          assert.equal(200, ures_final.status)
+
+          local json = assert(cjson.decode(ures_final.body))
+          assert.is_not_nil(json.headers.authorization)
+          assert.equal("Bearer", sub(json.headers.authorization, 1, 6))
         end)
       end)
 
@@ -1481,55 +1674,6 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
-        local prohibit_username_different_case = bp.routes:insert {
-          paths   = { "/prohibit-username-different-case" },
-        }
-
-        bp.plugins:insert {
-          route   = prohibit_username_different_case,
-          name    = PLUGIN_NAME,
-          config  = {
-            issuer    = ISSUER_URL,
-            client_id = {
-              KONG_CLIENT_ID,
-            },
-            client_secret = {
-              KONG_CLIENT_SECRET,
-            },
-            consumer_claim = {
-              "preferred_username",
-            },
-            consumer_by = {
-              "username",
-            },
-          },
-        }
-
-        local grant_username_different_case = bp.routes:insert {
-          paths   = { "/grant-username-different-case" },
-        }
-
-        bp.plugins:insert {
-          route   = grant_username_different_case,
-          name    = PLUGIN_NAME,
-          config  = {
-            issuer    = ISSUER_URL,
-            client_id = {
-              KONG_CLIENT_ID,
-            },
-            client_secret = {
-              KONG_CLIENT_SECRET,
-            },
-            consumer_claim = {
-              "preferred_username",
-            },
-            consumer_by = {
-              "username",
-            },
-            by_username_ignore_case = true
-          },
-        }
-
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -1678,26 +1822,6 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(403)
           local json = assert.response(res).has.jsonbody()
           assert.same("Forbidden", json.message)
-        end)
-
-        it("prohibits access for different text-case when by_username_ignore_case=[false]", function ()
-          local res = proxy_client:get("/prohibit-username-different-case", {
-            headers = {
-              Authorization = UPPERCASE_USERNAME_PASSWORD_CREDENTIALS
-            },
-          })
-          assert.response(res).has.status(403)
-          local json = assert.response(res).has.jsonbody()
-          assert.same("Forbidden", json.message)
-        end)
-
-        it("grants access for different text-case when by_username_ignore_case=[true]", function ()
-          local res = proxy_client:get("/grant-username-different-case", {
-            headers = {
-              Authorization = UPPERCASE_USERNAME_PASSWORD_CREDENTIALS
-            },
-          })
-          assert.response(res).has.status(200)
         end)
       end)
     end)
