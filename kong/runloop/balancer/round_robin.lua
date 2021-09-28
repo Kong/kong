@@ -34,15 +34,18 @@ function roundrobin_algorithm:afterHostUpdate()
   local total_weight = 0
   local divisor = 0
 
+  local targets = self.balancer.targets or {}
+
   -- calculate the gcd to find the proportional weight of each address
-  for _, host in ipairs(self.hosts) do
-    for _, address in ipairs(host.addresses) do
+  for _, target in ipairs(targets) do
+    for _, address in ipairs(target.addresses) do
       local address_weight = address.weight
       divisor = gcd(divisor, address_weight)
       total_weight = total_weight + address_weight
     end
   end
 
+  self.balancer.totalWeight = total_weight
   if total_weight == 0 then
     ngx.log(ngx.DEBUG, "trying to set a round-robin balancer with no addresses")
     return
@@ -53,8 +56,8 @@ function roundrobin_algorithm:afterHostUpdate()
   end
 
   -- add all addresses to the wheel
-  for _, host in ipairs(self.hosts) do
-    for _, address in ipairs(host.addresses) do
+  for _, targets in ipairs(targets) do
+    for _, address in ipairs(targets.addresses) do
       local address_points = address.weight / divisor
       for _ = 1, address_points do
         new_wheel[#new_wheel + 1] = address
@@ -65,7 +68,6 @@ function roundrobin_algorithm:afterHostUpdate()
   -- store the shuffled wheel
   self.wheel = wheel_shuffle(new_wheel)
   self.wheelSize = total_points
-  self.weight = total_weight
 end
 
 
@@ -125,7 +127,6 @@ function roundrobin_algorithm.new(opts)
 
   local self = setmetatable({
     health_threshold = balancer.health_threshold,
-    hosts = balancer.targets or {},
     balancer = balancer,
 
     pointer = 1,
