@@ -109,6 +109,9 @@ describe("kong.clustering.control_plane", function()
           "refresh_token",
         },
       },
+      rate_limiting_advanced = {
+        "path",
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -175,6 +178,9 @@ describe("kong.clustering.control_plane", function()
         token_headers_grants = {
           "refresh_token",
         },
+      },
+      rate_limiting_advanced = {
+        "path",
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -243,6 +249,9 @@ describe("kong.clustering.control_plane", function()
           "refresh_token",
         },
       },
+      rate_limiting_advanced = {
+        "path",
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -310,6 +319,9 @@ describe("kong.clustering.control_plane", function()
           "refresh_token",
         },
       },
+      rate_limiting_advanced = {
+        "path",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -366,6 +378,9 @@ describe("kong.clustering.control_plane", function()
         token_headers_grants = {
           "refresh_token",
         },
+      },
+      rate_limiting_advanced = {
+        "path",
       },
     }, cp._get_removed_fields(2004001002))
 
@@ -424,12 +439,15 @@ describe("kong.clustering.control_plane", function()
           "refresh_token",
         },
       },
+      rate_limiting_advanced = {
+        "path",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same(nil, cp._get_removed_fields(2006000000))
   end)
 
-  it("removing unknown fields", function()
+  it("update or remove unknown fields", function()
     local test_with = function(payload, dp_version)
       local has_update, deflated_payload, err = cp._update_compatible_payload(
         payload, dp_version, ""
@@ -478,6 +496,15 @@ describe("kong.clustering.control_plane", function()
               "send_timeout",
             },
           }
+        }, {
+          name = "rate-limiting-advanced",
+          config = {
+            limit = 5,
+            identifier = "path",
+            window_size = 30,
+            strategy = "local",
+            path = "/test",
+          }
         } }
       }
     }
@@ -503,6 +530,15 @@ describe("kong.clustering.control_plane", function()
           "send_timeout",
         },
       }
+    }, {
+      name = "rate-limiting-advanced",
+      config = {
+        limit = 5,
+        identifier = "consumer",
+        window_size = 30,
+        strategy = "redis",
+        sync_rate = -1,
+      }
     } }, test_with(payload, "2.3.0").config_table.plugins)
 
     assert.same({ {
@@ -527,13 +563,74 @@ describe("kong.clustering.control_plane", function()
           "send_timeout",
         },
       }
+    }, {
+      name = "rate-limiting-advanced",
+      config = {
+        limit = 5,
+        identifier = "consumer",
+        window_size = 30,
+        strategy = "redis",
+        sync_rate = -1,
+      }
     } }, test_with(payload, "2.4.0").config_table.plugins)
 
+    assert.same({ {
+      name = "prometheus",
+      config = {
+        per_consumer = true,
+      },
+    }, {
+      name = "syslog",
+      config = {
+        custom_fields_by_lua = true,
+        facility = "user",
+      }
+    }, {
+      name = "redis-advanced",
+      config = {
+        redis = {
+          "connect_timeout",
+          "keepalive_backlog",
+          "keepalive_pool_size",
+          "read_timeout",
+          "send_timeout",
+        },
+      }
+    }, {
+      name = "rate-limiting-advanced",
+      config = {
+        limit = 5,
+        identifier = "consumer",
+        window_size = 30,
+        strategy = "redis",
+        sync_rate = -1,
+      }
+    } }, test_with(payload, "2.5.0").config_table.plugins)
+
     -- nothing should be removed
-    assert.same(payload.config_table.plugins, test_with(payload, "2.5.0").config_table.plugins)
+    assert.same(payload.config_table.plugins, test_with(payload, "2.6.0").config_table.plugins)
+
+    -- test that the RLA sync_rate is updated
+    payload = {
+      config_table = {
+        plugins = { {
+          name = "rate-limiting-advanced",
+          config = {
+            sync_rate = 0.001,
+          }
+        } }
+      }
+    }
+
+    assert.same({{
+      name = "rate-limiting-advanced",
+      config = {
+        sync_rate = 1,
+      }
+    } }, test_with(payload, "2.5.0").config_table.plugins)
   end)
 
-  it("removing unknown field elements", function()
+  it("update or remove unknown field elements", function()
     local test_with = function(payload, dp_version)
       local has_update, deflated_payload, err = cp._update_compatible_payload(
         payload, dp_version, ""
@@ -578,7 +675,12 @@ describe("kong.clustering.control_plane", function()
             custom_fields_by_lua = true,
             facility = "user",
           }
-        } }
+        }, {
+          name = "rate-limiting-advanced",
+          config = {
+            identifier = "path",
+          }
+        }, }
       }
     }
     assert.same({ {
@@ -611,6 +713,11 @@ describe("kong.clustering.control_plane", function()
         -- custom_fields_by_lua = true, -- this is removed
         -- facility = "user", -- this is removed
       }
+    }, {
+      name = "rate-limiting-advanced",
+      config = {
+        identifier = "consumer",  -- was path, fallback to default consumer
+      }
     } }, test_with(payload, "2.3.0").config_table.plugins)
 
     assert.same({ {
@@ -642,6 +749,11 @@ describe("kong.clustering.control_plane", function()
       config = {
         custom_fields_by_lua = true,
         facility = "user",
+      }
+    }, {
+      name = "rate-limiting-advanced",
+      config = {
+        identifier = "consumer",  -- was path, fallback to default consumer
       }
     } }, test_with(payload, "2.5.0").config_table.plugins)
 
