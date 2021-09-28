@@ -64,6 +64,12 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      canary = {
+        "hash_header",
+        hash = {
+          "header",
+        },
+      },
       kafka_log = {
         "authentication",
         "keepalive_enabled",
@@ -124,6 +130,12 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+      },
+      canary = {
+        "hash_header",
+        hash = {
+          "header",
+        },
       },
       kafka_log = {
         "authentication",
@@ -186,6 +198,12 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      canary = {
+        "hash_header",
+        hash = {
+          "header",
+        },
+      },
       kafka_log = {
         "authentication",
         "keepalive_enabled",
@@ -247,6 +265,12 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      canary = {
+        "hash_header",
+        hash = {
+          "header",
+        },
+      },
       kafka_log = {
         "authentication",
         "keepalive_enabled",
@@ -298,6 +322,12 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
       },
+      canary = {
+        "hash_header",
+        hash = {
+          "header",
+        },
+      },
       kafka_log = {
         "authentication",
         "keepalive_enabled",
@@ -348,6 +378,12 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+      },
+      canary = {
+        "hash_header",
+        hash = {
+          "header",
+        },
       },
       kafka_log = {
         "authentication",
