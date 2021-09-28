@@ -566,6 +566,14 @@ local myString = "hello world"
 -- good
 local my_string = "hello world"
 ```
+when naming a variable we can't start with symbols , underscore or numerical value:
+'''lua
+-- bad
+local $mystring = "hello world"
+local _mystring = "hello world"
+local 1mystring = "helllo world"
+
+'''
 
 When assigning a constant variable, **do** give it an uppercase name:
 
@@ -782,7 +790,7 @@ else
   error()
 end
 ```
-
+For one-line blocks, we don't need to use '{ }' in our statement 
 For one-line blocks, blank lines are not necessary:
 
 ```lua
