@@ -21,6 +21,7 @@ local kong = kong
 local log = ngx.log
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
+local NOTICE = ngx.NOTICE
 local unescape_uri = ngx.unescape_uri
 
 local _M = {}
@@ -40,6 +41,32 @@ local auth_whitelisted_uris = {
   ["/auth"] = true,
 }
 
+
+local function find_admin_ignore_case(user_name)
+  local admins, err = kong.db.admins:select_by_username_ignore_case(user_name)
+
+  if err then
+    log(DEBUG, _log_prefix, "Admin not found with user_name=" .. user_name)
+    return nil, err
+  end
+
+  if #admins > 1 then
+    local match_info = {}
+
+    for _, match in pairs(admins) do
+      table.insert(match_info, fmt("%s (id: %s)", match.username, match.id))
+    end
+
+    log(NOTICE, _log_prefix, fmt("Multiple Admins match '%s' case-insensitively: %s", user_name, table.concat(match_info, ", ")))
+  end
+
+  local admin = admins[1]
+  if admin then
+    admin, err = kong.db.admins:select({ id = admin.id }, {skip_rbac = true})
+  end
+
+  return admin, err
+end
 
 function _M.get_consumer_status(consumer)
   local status
@@ -69,7 +96,7 @@ function _M.retrieve_consumer(consumer_id)
   return consumer or nil
 end
 
-function _M.validate_admin()
+function _M.validate_admin(ignore_case)
   local user_header = singletons.configuration.admin_gui_auth_header
   local args = ngx.req.get_uri_args()
   local user_name = args[user_header] or ngx.req.get_headers()[user_header]
@@ -84,6 +111,11 @@ function _M.validate_admin()
   if err then
     log(ERR, _log_prefix, err)
     return nil, err
+  end
+
+  -- find an admin case-insensitively if specified
+  if not admin and ignore_case then
+    admin, err = find_admin_ignore_case(user_name)
   end
 
   if not admin then
@@ -121,7 +153,10 @@ function _M.authenticate(self, rbac_enabled, gui_auth)
   local old_ws = ctx.workspace
   ctx.workspace = nil
 
-  local admin, err = _M.validate_admin()
+  local gui_auth_conf = singletons.configuration.admin_gui_auth_conf
+  local by_username_ignore_case = gui_auth_conf and gui_auth_conf.by_username_ignore_case
+
+  local admin, err = _M.validate_admin(by_username_ignore_case)
 
   if err then
     log(ERR, _log_prefix, err)

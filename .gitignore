@@ -22,6 +22,9 @@ autodoc/output
 # ldoc
 spec/docs
 
+# migration output
+migration-reports/
+
 kong-build-tools
 bin/grpcurl
 

@@ -55,7 +55,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("inserts a valid admin", function()
         local admin_params = {
-          username = "admin-1",
+          username = "Admin-1",
           custom_id = "admin-1-custom-id",
           email = "admin-1@konghq.com",
           status = enums.CONSUMERS.STATUS.APPROVED,
@@ -65,6 +65,8 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err)
         assert.is_table(admin)
         assert.same(admin_params.email, admin.email)
+        assert.same(admin_params.username, admin.username)
+        assert.same(admin_params.username:lower(), admin.username_lower)
         assert.same(admin_params.status, admin.status)
         assert.not_nil(admin.consumer)
         assert.not_nil(admin.rbac_user)
@@ -94,6 +96,7 @@ for _, strategy in helpers.each_strategy() do
         local admin, err = admins:insert(admin_params)
         assert.is_nil(err)
         assert.same(admin.username, admin.consumer.username)
+        assert.same(admin.username_lower, admin.consumer.username_lower)
         assert.same(admin.custom_id, admin.consumer.custom_id)
       end)
 
@@ -195,6 +198,70 @@ for _, strategy in helpers.each_strategy() do
         -- leave no trace
         assert.same(nil, kong.db.consumers:select_by_username("gruce"))
         assert.same(nil, kong.db.rbac_users:select_by_name("gruce"))
+      end)
+    end)
+
+    describe("username_lower", function()
+      it("admins:update() sets username_lower", function()
+        assert(kong.db.admins:insert {
+          username = "KING@kong.com",
+        })
+        local admin, err
+        admin, err = kong.db.admins:select_by_username("KING@kong.com")
+        assert.is_nil(err)
+        assert(admin.username == "KING@kong.com")
+        assert(admin.username_lower == "king@kong.com")
+        assert(kong.db.admins:update({ id = admin.id }, { username = "KINGDOM@kong.com" }))
+        admin, err = kong.db.admins:select({ id = admin.id })
+        assert.is_nil(err)
+        assert(admin.username == "KINGDOM@kong.com")
+        assert(admin.username_lower == "kingdom@kong.com")
+      end)
+
+      it("admins:update_by_username() sets username_lower", function()
+        assert(kong.db.admins:insert {
+          username = "ANOTHER@kong.com",
+        })
+        local admin, err
+        admin, err = kong.db.admins:select_by_username("ANOTHER@kong.com")
+        assert.is_nil(err)
+        assert(admin.username == "ANOTHER@kong.com")
+        assert(admin.username_lower == "another@kong.com")
+        assert(kong.db.admins:update_by_username("ANOTHER@kong.com", { username = "YANOTHER@kong.com" }))
+        admin, err = kong.db.admins:select({ id = admin.id })
+        assert.is_nil(err)
+        assert(admin.username == "YANOTHER@kong.com")
+        assert(admin.username_lower == "yanother@kong.com")
+      end)
+
+      it("admins:select_by_username_ignore_case() ignores username case", function()
+        assert(kong.db.admins:insert {
+          username = "GRUCEO@kong.com",
+          custom_id = "12345",
+        })
+        local admins, err = kong.db.admins:select_by_username_ignore_case("gruceo@kong.com")
+        assert.is_nil(err)
+        assert(#admins == 1)
+        assert.same("GRUCEO@kong.com", admins[1].username)
+        assert.same("12345", admins[1].custom_id)
+      end)
+
+      it("admins:select_by_username_ignore_case() sorts oldest created_at first", function()
+        assert(kong.db.admins:insert {
+          username = "gruceO@kong.com",
+          custom_id = "23456",
+        })
+
+        assert(kong.db.admins:insert {
+          username = "GruceO@kong.com",
+          custom_id = "34567",
+        })
+
+        local admins, err = kong.db.admins:select_by_username_ignore_case("Gruceo@kong.com")
+        assert.is_nil(err)
+        assert(#admins == 3)
+        assert(admins[1].created_at <= admins[2].created_at)
+        assert(admins[2].created_at <= admins[3].created_at)
       end)
     end)
   end)

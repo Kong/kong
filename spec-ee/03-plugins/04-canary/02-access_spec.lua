@@ -190,20 +190,14 @@ for _, strategy in strategies() do
         database = db_strategy,
         plugins = "canary,key-auth,acl",
       }))
-      proxy_client = helpers.proxy_client()
-      admin_client = helpers.admin_client()
     end)
 
 
     teardown(function()
-      if proxy_client then
-        proxy_client:close()
-      end
-      if admin_client then
-        admin_client:close()
-      end
       helpers.stop_kong(nil, true)
     end)
+
+
 
     local test_plugin_id -- retain id to remove again in after_each, max 1 per test
     -- add a canary plugin to an api, with the given config.
@@ -225,6 +219,11 @@ for _, strategy in strategies() do
       test_plugin_id = json.id
     end
 
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
     after_each(function()
       -- when a test plugin was added, we remove it again to clean up
       if test_plugin_id then
@@ -235,6 +234,13 @@ for _, strategy in strategies() do
         assert.response(res).has.status(204)
       end
       test_plugin_id = nil
+
+      if proxy_client then
+        proxy_client:close()
+      end
+      if admin_client then
+        admin_client:close()
+      end
     end)
 
 
@@ -350,6 +356,40 @@ for _, strategy in strategies() do
           count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
         end
         -- we have 4 consumers, but they should, based on ip, be all in the same target
+        if count["/requests/path2"] then
+          assert.are.equal(4, count["/requests/path2"])
+          assert.is_nil(count["/requests"])
+        else
+          assert.are.equal(4, count["/requests"])
+          assert.is_nil(count["/requests/path2"])
+        end
+      end)
+
+      it("test 'header' as hash", function()
+        add_canary(route1.id, {
+          upstream_uri = "/requests/path2",
+          percentage = 50,
+          steps = 4,
+          hash = "header",
+          hash_header = "X-My-Hash",
+        })
+        local ids = generate_consumers(admin_client, {0,1,2,3}, 4)
+        local count = {}
+        for _, apikey in pairs(ids) do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey,
+              ["X-My-Hash"] = "1234"
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
+        end
+        -- we have 4 consumers, but they should, based on same header value, be all in the same target
         if count["/requests/path2"] then
           assert.are.equal(4, count["/requests/path2"])
           assert.is_nil(count["/requests"])

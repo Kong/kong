@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.5.1-0"
+version = "2.6.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.5.1"
+  tag = "2.6.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -235,6 +235,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2211"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2211.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300_1"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300_1.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.011_2300_to_2600"] = "kong/enterprise_edition/db/migrations/enterprise/011_2300_to_2600.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
@@ -378,6 +379,7 @@ build = {
     ["kong.db.strategies.cassandra"] = "kong/db/strategies/cassandra/init.lua",
     ["kong.db.strategies.cassandra.connector"] = "kong/db/strategies/cassandra/connector.lua",
     ["kong.db.strategies.cassandra.tags"] = "kong/db/strategies/cassandra/tags.lua",
+    ["kong.db.strategies.cassandra.consumers"] = "kong/db/strategies/cassandra/consumers.lua",
     -- [[ XXX EE
     ["kong.db.strategies.cassandra.rbac_role_endpoints"] = "kong/db/strategies/cassandra/rbac_role_endpoints.lua",
     ["kong.db.strategies.cassandra.keyring_meta"] = "kong/db/strategies/cassandra/keyring_meta.lua",
@@ -388,8 +390,10 @@ build = {
     ["kong.db.strategies.off"] = "kong/db/strategies/off/init.lua",
     ["kong.db.strategies.off.connector"] = "kong/db/strategies/off/connector.lua",
     ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
+    ["kong.db.strategies.off.consumers"] = "kong/db/strategies/off/consumers.lua",
     ["kong.db.strategies.postgres.rbac_role_endpoints"] = "kong/db/strategies/postgres/rbac_role_endpoints.lua",
     ["kong.db.strategies.postgres.keyring_meta"] = "kong/db/strategies/postgres/keyring_meta.lua",
+    ["kong.db.strategies.postgres.consumers"] = "kong/db/strategies/postgres/consumers.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
     ["kong.db.migrations.helpers"] = "kong/db/migrations/helpers.lua",
@@ -407,9 +411,11 @@ build = {
     ["kong.db.migrations.core.011_212_to_213"] = "kong/db/migrations/core/011_212_to_213.lua",
     ["kong.db.migrations.core.012_213_to_220"] = "kong/db/migrations/core/012_213_to_220.lua",
     ["kong.db.migrations.core.013_220_to_230"] = "kong/db/migrations/core/013_220_to_230.lua",
+    ["kong.db.migrations.core.014_230_to_260"] = "kong/db/migrations/core/014_230_to_260.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
+    ["kong.db.migrations.operations.230_to_260"] = "kong/db/migrations/operations/230_to_260.lua",
 
     ["kong.hybrid"] = "kong/hybrid/init.lua",
     ["kong.hybrid.data_plane"] = "kong/hybrid/data_plane.lua",

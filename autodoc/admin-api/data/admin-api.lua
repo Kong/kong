@@ -322,6 +322,42 @@ return {
           ]],
         },
       },
+      ["/[any endpoint]"] = {
+        HEAD = {
+          title = [[Check endpoint or entity existence]],
+          endpoint = [[<div class="endpoint head">/&lt;any-endpoint&gt;</div>]],
+          description = [[Similar to `HTTP GET`, but does not return the body. Returns `HTTP 200` when the endpoint exits or `HTTP 404` when it does not. Other status codes are possible.]],
+          response =[[
+            ```
+            HTTP 200 OK
+            ```
+
+            ```http
+            Access-Control-Allow-Origin: *
+            Content-Length: 11389
+            Content-Type: application/json; charset=utf-8
+            X-Kong-Admin-Latency: 1
+            ```
+          ]],
+        },
+        OPTIONS = {
+          title = [[List HTTP methods by endpoint]],
+          endpoint = [[<div class="endpoint options">/&lt;any-endpoint&gt;</div>]],
+          description = [[List all the supported `HTTP` methods by an endpoint. This can also be used with a `CORS` preflight request.]],
+          response =[[
+            ```
+            HTTP 204 No Content
+            ```
+
+            ```http
+            Access-Control-Allow-Headers: Content-Type
+            Access-Control-Allow-Methods: GET, HEAD, OPTIONS
+            Access-Control-Allow-Origin: *
+            Allow: GET, HEAD, OPTIONS
+            ```
+          ]],
+        },
+      },
       ["/schemas/:db_entity_name/validate"] = {
         POST = {
           title = [[Validate a configuration against a schema]],
@@ -1058,6 +1094,7 @@ return {
           ]],
           example = "my-username",
         },
+        username_lower = { skip = true, skip_in_example = true},
         custom_id = {
           kind = "semi-optional",
           description = [[

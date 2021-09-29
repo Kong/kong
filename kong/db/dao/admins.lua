@@ -77,12 +77,17 @@ function _Admins:insert(admin, options)
     return nil, err
   end
 
+  if type(admin.username) == 'string' then
+    admin.username_lower = admin.username:lower()
+  end
+
   local admin_for_db = {
     consumer = { id = consumer.id },
     rbac_user = { id = rbac_user.id },
     email = admin.email,
     status = admin.status or enums.CONSUMERS.STATUS.INVITED,
     username = admin.username,
+    username_lower = admin.username_lower,
     custom_id = admin.custom_id,
     rbac_token_enabled = admin.rbac_token_enabled,
   }
@@ -101,6 +106,45 @@ function _Admins:insert(admin, options)
   return saved_admin
 end
 
+function _Admins:update(primary_key, admin, options)
+  if type(admin.username) == 'string' then
+    admin.username_lower = admin.username:lower()
+  end
+
+  return self.super.update(self, primary_key, admin, options)
+end
+
+function _Admins:update_by_username(username, admin, options)
+  if type(admin.username) == 'string' then
+    admin.username_lower = admin.username:lower()
+  end
+
+  return self.super.update_by_username(self, username, admin, options)
+end
+
+function _Admins:update_by_email(email, admin, options)
+  if type(admin.username) == 'string' then
+    admin.username_lower = admin.username:lower()
+  end
+
+  return self.super.update_by_email(self, email, admin, options)
+end
+
+function _Admins:update_by_custom_id(custom_id, admin, options)
+  if type(admin.username) == 'string' then
+    admin.username_lower = admin.username:lower()
+  end
+
+  return self.super.update_by_custom_id(self, custom_id, admin, options)
+end
+
+function _Admins:upsert(primary_key, admin, options)
+  if type(admin.username) == 'string' then
+    admin.username_lower = admin.username:lower()
+  end
+
+  return self.super.upsert(self, primary_key, admin, options)
+end
 
 function _Admins:delete(admin, options)
   local consumer_id = admin.consumer.id
@@ -166,6 +210,21 @@ function _Admins:select_by_rbac_user(rbac_user)
   end
 
   return admins[1]
+end
+
+function _Admins:select_by_username_ignore_case(username)
+  local admins, err = self.strategy:select_by_username_ignore_case(username)
+
+  if err then
+    return nil, err
+  end
+
+  -- sort by created_at date so that the first entry is the oldest
+  table.sort(admins, function(a,b)
+    return a.created_at < b.created_at
+  end)
+
+  return self:rows_to_entities(admins), nil
 end
 
 

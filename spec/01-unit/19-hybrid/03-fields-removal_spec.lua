@@ -5,7 +5,11 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-_G.kong = {}
+_G.kong = {
+  -- XXX EE: kong.version is used in some warning messages in
+  -- clustering/control_plane.lua and fail if nil
+  version = "x.y.z"
+}
 
 local cp = require("kong.clustering.control_plane")
 local cjson_decode = require("cjson").decode
