@@ -12,7 +12,7 @@ local canary_schema = require "kong.plugins.canary.schema"
 describe("canary schema", function()
   it("should work with all require fields provided", function()
     local ok, err = validate_entity({ percentage = 10, upstream_host = "balancer_a" }, canary_schema)
- 
+
     assert.is_truthy(ok)
     assert.is_nil(err)
   end)
@@ -37,6 +37,27 @@ describe("canary schema", function()
 
     assert.is_truthy(ok)
     assert.is_nil(err)
+  end)
+  it("hash set as `header`", function()
+    local ok, err = validate_entity({
+      hash = "header",
+      percentage = 10,
+      upstream_host = "balancer_a",
+      hash_header = "X-My-Header",
+    }, canary_schema)
+
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+  it("hash set as `header` requires 'hash_header'", function()
+    local ok, err = validate_entity({ hash = "header", percentage = 10, upstream_host = "balancer_a" }, canary_schema)
+
+    assert.is_same({
+      ["@entity"] = {
+        [1] = "failed conditional validation given value of field 'config.hash'" },
+      ["config"] = {
+        ["hash_header"] = 'required field missing' } }, err)
+    assert.is_falsy(ok)
   end)
   it("hash set as `none`", function()
     local ok, err = validate_entity({ hash = "none", percentage = 10, upstream_host = "balancer_a" },

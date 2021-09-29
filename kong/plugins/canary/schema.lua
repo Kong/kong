@@ -46,8 +46,9 @@ return {
           { hash = {
               type = "string",
               default = "consumer",
-              one_of = { "consumer", "ip", "none", "allow", "deny" },
+              one_of = { "consumer", "ip", "none", "allow", "deny", "header" },
           }},
+          { hash_header = typedefs.header_name },
           { duration = {
               type = "number",
               default = 60 * 60,
@@ -83,12 +84,16 @@ return {
   entity_checks = {
     { at_least_one_of = { "config.upstream_uri", "config.upstream_host", "config.upstream_port" }},
     { conditional = {
+        if_field = "config.hash", if_match = { eq = "header" },
+        then_field = "config.hash_header", then_match = { required = true }
+    }},
+    { conditional = {
         if_field = "config.upstream_fallback", if_match = { eq = true },
         then_field = "config.upstream_host", then_match = { required = true }
     }},
     { conditional_at_least_one_of = {
         if_field = "config.hash", if_match = { one_of = { "consumer", "ip", "none" }},
         then_at_least_one_of = { "config.percentage", "config.start" }
-    }}
+    }},
   }
 }
