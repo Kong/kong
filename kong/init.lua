@@ -24,6 +24,9 @@
 -- |[[    ]]|
 -- ==========
 
+local pcall = pcall
+
+
 pcall(require, "luarocks.loader")
 
 
@@ -235,6 +238,28 @@ do
 end
 
 
+local function setup_plugin_context(ctx, plugin)
+  if ctx then
+    if plugin.handler._go then
+      ctx.ran_go_plugin = true
+    end
+
+    kong_global.set_named_ctx(kong, "plugin", plugin.handler)
+  end
+
+  kong_global.set_namespaced_log(kong, plugin.name)
+end
+
+
+local function reset_plugin_context(ctx, old_ws)
+  kong_global.reset_log(kong)
+
+  if old_ws then
+    ctx.workspace = old_ws
+  end
+end
+
+
 local function execute_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws
   local delay_response
@@ -247,17 +272,9 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
   end
 
   for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
-    if ctx then
-      if plugin.handler._go then
-        ctx.ran_go_plugin = true
-      end
-
-      kong_global.set_named_ctx(kong, "plugin", plugin.handler)
-    end
-
-    kong_global.set_namespaced_log(kong, plugin.name)
-
     if not delay_response then
+      setup_plugin_context(ctx, plugin)
+
       -- guard against failed handler in "init_worker" phase only because it will
       -- cause Kong to not correctly initialize and can not be recovered automatically.
       if phase == "init_worker" then
@@ -274,7 +291,11 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
         plugin.handler[phase](plugin.handler, configuration)
       end
 
+      reset_plugin_context(ctx, old_ws)
+
     elseif not ctx.delayed_response then
+      setup_plugin_context(ctx, plugin)
+
       local co = coroutine.create(plugin.handler.access)
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
       if not cok then
@@ -284,12 +305,8 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
           content = { message  = "An unexpected error occurred" },
         }
       end
-    end
 
-    kong_global.reset_log(kong)
-
-    if old_ws then
-      ctx.workspace = old_ws
+      reset_plugin_context(ctx, old_ws)
     end
   end
 
