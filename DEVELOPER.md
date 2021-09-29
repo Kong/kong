@@ -63,7 +63,7 @@ internally to make the necessary setup of containers to get all
 dependencies needed to run a particular branch of Kong locally, as well
 as easily switching across versions, configurations and dependencies. It
 has support for running Kong in Hybrid (CP/DP) mode, testing migrations,
-running a Kong cluster, among other [features](https://github.com/Kong/gojira/blob/master/doc/manual.md).
+running a Kong cluster, among other [features](https://github.com/Kong/gojira/blob/master/docs/manual.md).
 
 #### Kong Pongo
 
