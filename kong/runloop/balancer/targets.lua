@@ -17,7 +17,7 @@ local singletons = require "kong.singletons"
 
 local dns_client = require "resty.dns.client"
 local upstreams = require "kong.runloop.balancer.upstreams"
-local balancers   -- require at init time to avoid dependency loop
+local balancers = require "kong.runloop.balancer.balancers"
 local dns_utils = require "resty.dns.utils"
 
 local ngx = ngx
@@ -48,10 +48,10 @@ local resolve_timer_callback
 local queryDns
 
 function targets_M.init()
-  require("kong.tools.dns")(kong.configuration)    -- configure DNS client
-  balancers = require "kong.runloop.balancer.balancers"
+  dns_client = require("kong.tools.dns")(kong.configuration)    -- configure DNS client
   ngx.timer.every(1, resolve_timer_callback)
 end
+
 
 local _rtype_to_name
 function targets_M.get_dns_name_from_record_type(rtype)

@@ -5,6 +5,11 @@
 - [0.1.1](#011---20200526)
 - [0.1.0](#010---20200521)
 
+##  [0.2.0] - 2021-09-28
+
+- Transcode `.google.protobuf.Timestamp` fields to and from datetime strings (#7538)
+- Support structured URL arguments (#7564)
+
 ##  [0.1.3] - 2021/06/03
 
 - Fix typo from gatewat to gateway (#16)

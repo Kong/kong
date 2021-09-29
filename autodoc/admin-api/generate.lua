@@ -15,10 +15,12 @@ local general = require("autodoc.admin-api.general")
 
 local method_array = {
   "POST",
+  "HEAD",
   "GET",
   "PATCH",
   "PUT",
   "DELETE",
+  "OPTIONS",
 }
 
 -- Chicago-style prepositions to be lowercased,
