@@ -39,7 +39,7 @@ dependencies = {
   "lua-resty-openssl == 0.7.4",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
-  "lua-resty-acme == 0.7.1",
+  "lua-resty-acme == 0.7.2",
   "lua-resty-session == 3.8",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
