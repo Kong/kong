@@ -83,6 +83,7 @@ return {
       "security",
     },
     openid_connect = {
+      "by_username_ignore_case",
       "disable_session",
       "downstream_introspection_jwt_header",
       "downstream_user_info_jwt_header",

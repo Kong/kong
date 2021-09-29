@@ -727,6 +727,22 @@ function main() {
   local start
   start="$(date -u +%s)"
 
+  # In Kong Gateway v2.6.0.0 consumer:username_lower was added
+  printf "Validating consumers with simple route and service ... "
+  reset_kong
+  curl -s -X POST http://127.0.0.1:8001/consumers \
+    --data username=kongsumer > /dev/null
+  curl -s -X POST http://127.0.0.1:8001/services \
+    --data name=default \
+    --data path="/request" \
+    --data url="http://mockbin.org/request" > /dev/null
+  curl -s -X POST http://127.0.0.1:8001/services/default/routes \
+    --data name=default \
+    --data paths[1]="/path" > /dev/null
+  if configure_plugin "$plugin_name"; then
+    check_clustering_status "consumers"
+  fi
+
   for plugin_name in "${plugin_names[@]}"; do
     # Skipping application-registration - DevPortal plugin
     # Skipping collector - no configuration
@@ -737,6 +753,7 @@ function main() {
       [[ "$plugin_name" != "route-by-header" ]]; then
       printf "Validating %s plugin ... " "$plugin_name"
       reset_kong "$plugin_name"
+      curl -s -X POST http://127.0.0.1:8001/consumers --data username=kongsumer > /dev/null
       if configure_plugin "$plugin_name"; then
         check_clustering_status "$plugin_name"
       fi
