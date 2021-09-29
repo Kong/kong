@@ -1094,6 +1094,7 @@ return {
           ]],
           example = "my-username",
         },
+        username_lower = { skip = true, skip_in_example = true},
         custom_id = {
           kind = "semi-optional",
           description = [[
