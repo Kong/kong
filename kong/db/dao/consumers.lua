@@ -11,7 +11,7 @@ local constants        = require "kong.constants"
 local workspaces       = require "kong.workspaces"
 local workspace_config = require "kong.portal.workspace_config"
 
-
+local tostring         = tostring
 local ws_constants     = constants.WORKSPACE_CONFIG
 
 local invalidate_consumer_cache = function(self, entity, options)
@@ -72,6 +72,26 @@ local check_username_lower_unique = function(self, entity, options)
   return nil
 end
 
+local handle_username_lower = function(self, entity, options)
+  local err_t
+
+  if entity.username_lower then
+    err_t = self.errors:schema_violation({ username_lower = 'auto-generated field cannot be set by user' })
+    return nil, tostring(err_t), err_t
+  end
+
+  if type(entity.username) == 'string' then
+    entity.username_lower = entity.username:lower()
+  end
+
+  err_t = check_username_lower_unique(self, entity, options)
+  if err_t then
+    return nil, tostring(err_t), err_t
+  end
+
+  return true
+end
+
 local Consumers = {}
 
 
@@ -121,13 +141,9 @@ function Consumers:delete(primary_key, options)
 end
 
 function Consumers:insert(entity, options)
-  if type(entity.username) == 'string' then
-    entity.username_lower = entity.username:lower()
-  end
-
-  local err = check_username_lower_unique(self, entity, options)
-  if err then
-    return nil, err, err
+  local _, err, err_t = handle_username_lower(self, entity, options)
+  if err_t then
+    return nil, err, err_t
   end
 
   invalidate_consumer_cache(self, entity, options)
@@ -136,13 +152,9 @@ function Consumers:insert(entity, options)
 end
 
 function Consumers:update(primary_key, entity, options)
-  if type(entity.username) == 'string' then
-    entity.username_lower = entity.username:lower()
-  end
-
-  local err = check_username_lower_unique(self, entity, options)
-  if err then
-    return nil, err
+  local _, err, err_t = handle_username_lower(self, entity, options)
+  if err_t then
+    return nil, err, err_t
   end
 
   local old_consumer = self:select(primary_key)
@@ -154,13 +166,9 @@ function Consumers:update(primary_key, entity, options)
 end
 
 function Consumers:update_by_username(username, entity, options)
-  if type(entity.username) == 'string' then
-    entity.username_lower = entity.username:lower()
-  end
-
-  local err = check_username_lower_unique(self, entity, options)
-  if err then
-    return nil, err
+  local _, err, err_t = handle_username_lower(self, entity, options)
+  if err_t then
+    return nil, err, err_t
   end
 
   local old_consumer = self:select_by_username(username)
@@ -172,13 +180,9 @@ function Consumers:update_by_username(username, entity, options)
 end
 
 function Consumers:upsert(primary_key, entity, options)
-  if type(entity.username) == 'string' then
-    entity.username_lower = entity.username:lower()
-  end
-
-  local err = check_username_lower_unique(self, entity, options)
-  if err then
-    return nil, err
+  local _, err, err_t = handle_username_lower(self, entity, options)
+  if err_t then
+    return nil, err, err_t
   end
 
   local old_consumer = self:select(primary_key)

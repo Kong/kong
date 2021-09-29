@@ -78,6 +78,49 @@ for _, strategy in helpers.all_strategies() do
       assert(consumer.username_lower == "absurd@kong.com")
     end)
 
+    it("consumers:insert() doesn't allow username_lower values", function()
+      local consumer, err, err_t = kong.db.consumers:insert({
+        custom_id = "insert654321",
+        username_lower = "heyo"
+      })
+      assert.is_nil(consumer)
+      assert.same('auto-generated field cannot be set by user', err_t.fields.username_lower)
+    end)
+
+    it("consumers:update() doesn't allow username_lower values", function()
+      local consumer = kong.db.consumers:insert({
+        custom_id = "update654321",
+      })
+      assert(consumer)
+      local updated, err, err_t = kong.db.consumers:update({ id = consumer.id }, {
+        username = "HEYO",
+        username_lower = "heyo"
+      })
+      assert.is_nil(updated)
+      assert.same('auto-generated field cannot be set by user', err_t.fields.username_lower)
+    end)
+
+    it("consumers:update_by_username() doesn't allow username_lower values", function()
+      local consumer = kong.db.consumers:insert({
+        username = "update_by_username654321",
+      })
+      assert(consumer)
+      local updated, err, err_t = kong.db.consumers:update_by_username("update_by_username654321", {
+        username_lower = "heyo"
+      })
+      assert.is_nil(updated)
+      assert.same('auto-generated field cannot be set by user', err_t.fields.username_lower)
+    end)
+
+    it("consumers:upsert() doesn't allow username_lower values", function()
+      local consumer, err, err_t = kong.db.consumers:upsert({ id = "deadbeef-beef-beef-beef-deaddeadbeef" }, {
+        username = "upsert654321",
+        username_lower = "upsert654321",
+      })
+      assert.is_nil(consumer)
+      assert.same('auto-generated field cannot be set by user', err_t.fields.username_lower)
+    end)
+
     it("consumers:select_by_username_ignore_case() ignores username case", function() 
       local consumers, err = kong.db.consumers:select_by_username_ignore_case("gruceo@kong.com")
       assert.is_nil(err)
