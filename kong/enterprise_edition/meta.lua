@@ -13,8 +13,8 @@ local version = setmetatable({
   -- automation add a suffix "internal-preview" at build time
   suffix = "dev",
   x = 2,
-  y = 5,
-  z = 1,
+  y = 6,
+  z = 0,
   e = 0,
 }, {
   __tostring = function(t)
