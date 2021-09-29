@@ -7,7 +7,6 @@ local utils        = require "kong.tools.utils"
 
 local kong         = kong
 local null         = ngx.null
-local type         = type
 local error        = error
 local pairs        = pairs
 local ipairs       = ipairs
@@ -15,7 +14,6 @@ local assert       = assert
 local tostring     = tostring
 
 
-local EMPTY_T      = {}
 local TTL_ZERO     = { ttl = 0 }
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
 
@@ -28,15 +26,6 @@ local COMBO_RC     = 5
 local COMBO_SC     = 6
 local COMBO_RSC    = 7
 local COMBO_GLOBAL = 0
-
-
-local MUST_LOAD_CONFIGURATION_IN_PHASES = {
-  preread     = true,
-  certificate = true,
-  rewrite     = true,
-  access      = true,
-  content     = true,
-}
 
 
 local subsystem = ngx.config.subsystem
@@ -258,9 +247,40 @@ local function load_configuration_through_combos(ctx, combos, plugin)
 end
 
 
+local function get_workspace(self, ctx)
+  if not ctx then
+    return self.ws[kong.default_workspace]
+  end
+
+  return self.ws[workspaces.get_workspace_id(ctx) or kong.default_workspace]
+end
+
+
+local function zero_iter()
+  return nil
+end
+
+
+local function get_next_init_worker(self)
+  local i = self.i + 1
+  local plugin = self.loaded[i]
+  if not plugin then
+    return nil
+  end
+
+  self.i = i
+
+  local phase_handler = plugin.handler.init_worker
+  if phase_handler and phase_handler ~= BasePlugin.init_worker then
+    return plugin
+  end
+
+  return get_next_init_worker(self)
+end
+
+
 local function get_next(self)
   local i = self.i + 1
-
   local plugin = self.loaded[i]
   if not plugin then
     return nil
@@ -269,14 +289,6 @@ local function get_next(self)
   self.i = i
 
   local name = plugin.name
-  if not self.ctx then
-    if self.phases[name] then
-      return plugin
-    end
-
-    return get_next(self)
-  end
-
   if not self.map[name] then
     return get_next(self)
   end
@@ -284,28 +296,55 @@ local function get_next(self)
   local ctx = self.ctx
   local plugins = ctx.plugins
 
-  if self.configure then
-    local combos = self.combos[name]
-    if combos then
-      local cfg = load_configuration_through_combos(ctx, combos, plugin)
-      if cfg then
-        plugins[name] = cfg
-        if plugin.handler.response and plugin.handler.response ~= BasePlugin.response then
-          ctx.buffered_proxying = true
-        end
+  local combos = self.combos[name]
+  if combos then
+    local cfg = load_configuration_through_combos(ctx, combos, plugin)
+    if cfg then
+      local n = plugins[name]
+      if not n then
+        n = plugins.n + 2
+        plugins.n = n
+        plugins[n-1] = plugin
+        plugins[name] = n
+      end
+
+      plugins[n] = cfg
+
+      if not ctx.buffered_proxying and plugin.handler.response and
+                                       plugin.handler.response ~= BasePlugin.response then
+        ctx.buffered_proxying = true
       end
     end
   end
 
-  if self.phases[name] and plugins[name] then
-    return plugin, plugins[name]
+  if self.phases[name] then
+    local n = plugins[name]
+    if n then
+      return plugin, plugins[n]
+    end
   end
 
-  return get_next(self) -- Load next plugin
+  return get_next(self)
 end
 
-local function zero_iter()
-  return nil
+
+local function get_next_configured_plugin(self)
+  local i = self.i + 2
+  local plugin = self.plugins[i-1]
+  if not plugin then
+    return nil
+  end
+
+  self.i = i
+
+  local phase = self.phase
+  local phase_handler = plugin.handler[phase]
+
+  if phase_handler and phase_handler ~= BasePlugin[phase] then
+    return plugin, self.plugins[i]
+  end
+
+  return get_next_configured_plugin(self)
 end
 
 
@@ -321,28 +360,45 @@ local PluginsIterator = {}
 -- @param[type=table] ctx Nginx context table
 -- @treturn function iterator
 local function iterate(self, phase, ctx)
-  -- no ctx, we are in init_worker phase
-  if ctx and not ctx.plugins then
-    ctx.plugins = {}
-  end
-  local ws_id = workspaces.get_workspace_id(ctx) or kong.default_workspace
-
-  local ws = self.ws[ws_id]
+  local ws = get_workspace(self, ctx)
   if not ws then
     return zero_iter
   end
 
-  local iteration = {
-    configure = MUST_LOAD_CONFIGURATION_IN_PHASES[phase],
+  if not ctx.plugins then
+    ctx.plugins = { n = 0 }
+  end
+
+  return get_next, {
     loaded = self.loaded,
-    phases = ws.phases[phase] or EMPTY_T,
+    phases = ws.phases[phase] or {},
     combos = ws.combos,
     map = ws.map,
     ctx = ctx,
     i = 0,
   }
+end
 
-  return get_next, iteration
+
+local function iterate_init_worker(self)
+  return get_next_init_worker, {
+    loaded = self.loaded,
+    i = 0,
+  }
+end
+
+
+local function iterate_configured_plugins(phase, ctx)
+  local plugins = ctx.plugins
+  if not plugins or plugins.n == 0 then
+    return zero_iter
+  end
+
+  return get_next_configured_plugin, {
+    plugins = plugins,
+    phase = phase,
+    i = 0,
+  }
 end
 
 
@@ -350,21 +406,14 @@ local function new_ws_data()
   local phases
   if subsystem == "stream" then
     phases = {
-      init_worker = {},
       certificate = {},
       preread     = {},
-      log         = {},
     }
   else
     phases = {
-      init_worker   = {},
-      certificate   = {},
-      rewrite       = {},
-      access        = {},
-      response      = {},
-      header_filter = {},
-      body_filter   = {},
-      log           = {},
+      certificate = {},
+      rewrite     = {},
+      access      = {},
     }
   end
   return {
@@ -534,11 +583,9 @@ function PluginsIterator.new(version)
   for _, plugin in ipairs(loaded_plugins) do
     for _, data in pairs(ws) do
       for phase_name, phase in pairs(data.phases) do
-        if phase_name == "init_worker" or data.combos[plugin.name] then
+        if data.combos[plugin.name] then
           local phase_handler = plugin.handler[phase_name]
-          if type(phase_handler) == "function"
-            and phase_handler ~= BasePlugin[phase_name]
-          then
+          if phase_handler and phase_handler ~= BasePlugin[phase_name] then
             phase[plugin.name] = true
           end
         end
@@ -551,6 +598,8 @@ function PluginsIterator.new(version)
     ws = ws,
     loaded = loaded_plugins,
     iterate = iterate,
+    iterate_configured_plugins = iterate_configured_plugins,
+    iterate_init_worker = iterate_init_worker,
   }
 end
 
