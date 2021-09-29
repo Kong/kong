@@ -8,7 +8,7 @@
 
 
 local upstreams = require "kong.runloop.balancer.upstreams"
-local targets = require "kong.runloop.balancer.targets"
+local targets
 local healthcheckers
 local dns_utils = require "resty.dns.utils"
 
@@ -56,6 +56,7 @@ balancers_M.errors = setmetatable({
 
 
 function balancers_M.init()
+  targets = require "kong.runloop.balancer.targets"
   healthcheckers = require "kong.runloop.balancer.healthcheckers"
 end
 
@@ -310,6 +311,9 @@ function balancer_mt:setAddressStatus(address, available)
   address.target.unavailableWeight = address.target.unavailableWeight + delta
   self.unavailableWeight = self.unavailableWeight + delta
   self:updateStatus()
+  if self.algorithm and self.algorithm.afterHostUpdate then
+    self.algorithm:afterHostUpdate()
+  end
   return true
 end
 
@@ -357,12 +361,6 @@ function balancer_mt:addAddress(target, entry)
   local entry_ip = entry.address or entry.target
   local entry_port = (entry.port ~= 0 and entry.port) or target.port
   local addresses = target.addresses
-  for _, addr in ipairs(addresses) do
-    if addr.ip == entry_ip and addr.port == entry_port then
-      -- already there, should we update something? add weights?
-      return
-    end
-  end
 
   local weight = entry.weight  -- this is nil for anything else than SRV
   if weight == 0 then
@@ -390,6 +388,14 @@ function balancer_mt:addAddress(target, entry)
   self.totalWeight = self.totalWeight + weight
   self:updateStatus()
 
+  if self.callback then
+    self:callback("added", addr, addr.ip, addr.port, addr.target.name, addr.hostHeader)
+  end
+
+  if self.algorithm and self.algorithm.afterHostUpdate then
+    self.algorithm:afterHostUpdate()
+  end
+
   return true
 end
 
@@ -414,6 +420,9 @@ function balancer_mt:changeWeight(target, entry, newWeight)
 
       addr.weight = newWeight
       self:updateStatus()
+      if self.algorithm and self.algorithm.afterHostUpdate then
+        self.algorithm:afterHostUpdate()
+      end
       return addr
     end
   end
@@ -553,6 +562,10 @@ end
 
 
 function balancer_mt:getPeer(...)
+  if not self.healthy then
+    return nil, "Balancer is unhealthy"
+  end
+
   if not self.algorithm or not self.algorithm.afterHostUpdate then
     return
   end
