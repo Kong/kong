@@ -274,7 +274,7 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
           if config then
             if t["name"] == "rate-limiting-advanced" then
               if config["strategy"] == "local" then
-                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin version " .. KONG_VERSION ..
+                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
                         " contains configuration 'strategy=local'",
                         " which is incompatible with dataplane version " .. dp_version .. " and will",
                         " be replaced by 'strategy=redis' and 'sync_rate=-1'.", log_suffix)
@@ -282,7 +282,7 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
                 config["sync_rate"] = -1
                 has_update = true
               elseif config["sync_rate"] and config["sync_rate"] > 0 and config["sync_rate"] < 1 then
-                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin version " .. KONG_VERSION ..
+                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
                         " contains configuration 'sync_rate < 1'",
                         " which is incompatible with dataplane version " .. dp_version .. " and will",
                         " be replaced by 'sync_rate=1'.", log_suffix)
@@ -291,7 +291,7 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
               end
 
               if config["identifier"] == "path" then
-                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin version " .. KONG_VERSION ..
+                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
                         " contains configuration 'identifier=path'",
                         " which is incompatible with dataplane version " .. dp_version .. " and will",
                         " be replaced by 'identifier=consumer'.", log_suffix)
