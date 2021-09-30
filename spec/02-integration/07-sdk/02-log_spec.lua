@@ -17,7 +17,7 @@ local function find_in_file(f, pat)
 end
 
 
-describe("SDK: kong.log", function()
+describe("PDK: kong.log", function()
   local proxy_client
   local bp, db
 

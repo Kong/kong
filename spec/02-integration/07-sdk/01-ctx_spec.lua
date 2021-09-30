@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 
 
-describe("SDK: kong.ctx", function()
+describe("PDK: kong.ctx", function()
   local proxy_client
   local bp, db
 
