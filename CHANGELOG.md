@@ -1,3 +1,15 @@
+## v2.1.0
+
+- test(travis) remove 2.5.0.x image from travis for compatibility with tests
+- test(by_username_ignore_case) add test cases for testing the by_username_ignore_case param
+- test(by_username_ignore_case) retry previous test case
+- test(by_username_ignore_case) add test case for by_username_ignore_case
+- fix(consumer_by) update cache key when selecting case-insensitively
+- feat(consumer_by) log when multiple consumers match case-insensitively
+- feat(consumer_by) unique cache key when ignoring username case
+- feat(consumer_by) add param to match username case-insensitively
+- tests(*) remove credentials from travis.yaml
+
 ## v2.0.2
 
 - Fix a bug where the revocation endpoint was required to be specified
