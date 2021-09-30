@@ -111,7 +111,7 @@ function _GLOBAL.get_phase(self)
 
   local kctx = self.ctx
   if not kctx then
-    error("ctx SDK module not initialized", 2)
+    error("ctx PDK module not initialized", 2)
   end
 
   return kctx.core.phase

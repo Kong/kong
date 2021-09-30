@@ -39,7 +39,7 @@ fixtures_cp.http_mock.my_server_block = [[
 ]]
 
 for _, strategy in helpers.each_strategy() do
-  describe("SDK: kong.cluster for #" .. strategy, function()
+  describe("PDK: kong.cluster for #" .. strategy, function()
     local proxy_client
 
     lazy_setup(function()
