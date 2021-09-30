@@ -243,6 +243,7 @@ function _M:start_kong(version, kong_conf)
 
   KONG_ADMIN_PORT = math.floor(math.random()*50000+10240)
   kong_conf['admin_listen'] = "0.0.0.0:" .. KONG_ADMIN_PORT
+  kong_conf['anonymous_reports'] = "off"
 
   local kong_conf_blob = ""
   for k, v in pairs(kong_conf) do
