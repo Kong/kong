@@ -18,6 +18,7 @@ local pcall        = pcall
 local floor        = math.floor
 local type         = type
 local next         = next
+local update_time  = ngx.update_time
 local ngx_time     = ngx.time
 local ngx_now      = ngx.now
 local find         = string.find
@@ -1562,11 +1563,6 @@ end
 -- @return A new table, with the auto fields containing
 -- appropriate updated values.
 function Schema:process_auto_fields(data, context, nulls, opts)
-  ngx.update_time()
-
-  local now_s  = ngx_time()
-  local now_ms = ngx_now()
-
   local check_immutable_fields = false
 
   data = tablex.deepcopy(data)
@@ -1613,6 +1609,9 @@ function Schema:process_auto_fields(data, context, nulls, opts)
     end
   end
 
+  local now_s
+  local now_ms
+
   for key, field in self:each_field(data) do
 
     if field.legacy and field.uuid and data[key] == "" then
@@ -1634,8 +1633,17 @@ function Schema:process_auto_fields(data, context, nulls, opts)
              and (context == "insert" or context == "upsert")
              and (data[key] == null or data[key] == nil) then
         if field.type == "number" then
+          if not now_ms then
+            update_time()
+            now_ms = ngx_now()
+          end
           data[key] = now_ms
+
         elseif field.type == "integer" then
+          if not now_s then
+            update_time()
+            now_s = ngx_time()
+          end
           data[key] = now_s
         end
 
@@ -1643,8 +1651,17 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                                       context == "upsert" or
                                       context == "update") then
         if field.type == "number" then
+          if not now_ms then
+            update_time()
+            now_ms = ngx_now()
+          end
           data[key] = now_ms
+
         elseif field.type == "integer" then
+          if not now_s then
+            update_time()
+            now_s = ngx_time()
+          end
           data[key] = now_s
         end
       end

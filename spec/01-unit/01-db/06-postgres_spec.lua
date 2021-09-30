@@ -145,6 +145,9 @@ describe("kong.db [#postgres] connector", function()
           end
         end)
 
+        -- we are running in timer and semaphore needs some time to pass
+        ngx.update_time()
+
         local co2 = ngx.thread.spawn(function()
           local _, err = connector:query(0.001)
           if err then
