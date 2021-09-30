@@ -25,6 +25,8 @@ local ISSUER_URL = "http://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_PORT .. REALM_P
 local ISSUER_SSL_URL = "https://" .. KEYCLOAK_HOST .. ":" .. KEYCLOAK_SSL_PORT .. REALM_PATH
 
 local USERNAME = "john"
+local USERNAME2 = "bill"
+local USERNAME2_UPPERCASE = USERNAME2:upper()
 local INVALID_USERNAME = "irvine"
 local PASSWORD = "doe"
 local CLIENT_ID = "service"
@@ -34,6 +36,7 @@ local INVALID_SECRET = "soldier"
 
 local INVALID_CREDENTIALS = "Basic " .. encode_base64(INVALID_ID .. ":" .. INVALID_SECRET)
 local PASSWORD_CREDENTIALS = "Basic " .. encode_base64(USERNAME .. ":" .. PASSWORD)
+local USERNAME2_PASSWORD_CREDENTIALS = "Basic " .. encode_base64(USERNAME2 .. ":" .. PASSWORD)
 local CLIENT_CREDENTIALS = "Basic " .. encode_base64(CLIENT_ID .. ":" .. CLIENT_SECRET)
 
 local KONG_CLIENT_ID = "kong-client-secret"
@@ -1451,8 +1454,38 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
+        local consumer_ignore_username_case_route = bp.routes:insert {
+          paths   = { "/consumer-ignore-username-case" },
+        }
+
+        bp.plugins:insert {
+          route   = consumer_ignore_username_case_route,
+          name    = PLUGIN_NAME,
+          config  = {
+            issuer    = ISSUER_URL,
+            client_id = {
+              KONG_CLIENT_ID,
+            },
+            client_secret = {
+              KONG_CLIENT_SECRET,
+            },
+            consumer_claim = {
+              "preferred_username",
+            },
+            consumer_by = {
+              "username",
+            },
+            by_username_ignore_case = true,
+          },
+        }
+
+
         bp.consumers:insert {
           username = "john"
+        }
+
+        bp.consumers:insert {
+          username = USERNAME2_UPPERCASE
         }
 
         local no_consumer_route = bp.routes:insert {
@@ -1628,6 +1661,26 @@ for _, strategy in helpers.all_strategies() do
           assert.response(res).has.status(403)
           local json = assert.response(res).has.jsonbody()
           assert.same("Forbidden", json.message)
+        end)
+
+        it("prohibits access for different text-case when by_username_ignore_case=[false]", function ()
+          local res = proxy_client:get("/consumer", {
+            headers = {
+              Authorization = USERNAME2_PASSWORD_CREDENTIALS
+            },
+          })
+          assert.response(res).has.status(403)
+          local json = assert.response(res).has.jsonbody()
+          assert.same("Forbidden", json.message)
+        end)
+
+        it("grants access for different text-case when by_username_ignore_case=[true]", function ()
+          local res = proxy_client:get("/consumer-ignore-username-case", {
+            headers = {
+              Authorization = USERNAME2_PASSWORD_CREDENTIALS
+            },
+          })
+          assert.response(res).has.status(200)
         end)
       end)
     end)

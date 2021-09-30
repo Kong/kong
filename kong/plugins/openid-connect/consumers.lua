@@ -21,7 +21,7 @@ local null       = ngx.null
 local set_header = ngx.req.set_header
 
 
-local function find_consumer(token, claim, anonymous, consumer_by, ttl)
+local function find_consumer(token, claim, anonymous, consumer_by, ttl, by_username_ignore_case)
   if not token then
     return nil, "token for consumer mapping was not found"
   end
@@ -49,7 +49,7 @@ local function find_consumer(token, claim, anonymous, consumer_by, ttl)
     return nil, "claim (" .. tostring(claim) .. ") was not found for consumer mapping"
   end
 
-  return cache.consumers.load(subject, anonymous, consumer_by, ttl)
+  return cache.consumers.load(subject, anonymous, consumer_by, ttl, by_username_ignore_case)
 end
 
 
@@ -116,7 +116,7 @@ local function set_anonymous(ctx, anonymous, client)
     }
   }
 
-  local consumer, err = find_consumer(consumer_token, "id", true, "id")
+  local consumer, err = find_consumer(consumer_token, "id", true, "id", false)
   if type(consumer) ~= "table" then
     if err then
       return unexpected(client, "anonymous consumer was not found (", err, ")")

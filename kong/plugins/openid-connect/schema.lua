@@ -1766,6 +1766,13 @@ local config = {
               default  = false,
             },
           },
+          {
+            by_username_ignore_case = {
+              required = false,
+              type     = "boolean",
+              default  = false,
+            },
+          },
         },
       },
     },

@@ -388,7 +388,31 @@
   "webAuthnPolicyPasswordlessCreateTimeout" : 0,
   "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister" : false,
   "webAuthnPolicyPasswordlessAcceptableAaguids" : [ ],
-  "users" : [ {
+  "users" : [
+  {
+    "id" : "deadaf17-b1be-43c9-be4e-082ea31ab553",
+    "createdTimestamp" : 1628676021583,
+    "username" : "bill",
+    "enabled" : true,
+    "totp" : false,
+    "emailVerified" : true,
+    "firstName" : "Bill",
+    "lastName" : "Joe",
+    "email" : "bill.joe@konghq.com",
+    "credentials" : [ {
+      "id" : "60218019-13d1-4bb1-99c2-1a08bb596d36",
+      "type" : "password",
+      "createdDate" : 1628676035270,
+      "secretData" : "{\"value\":\"CsTBttTniJG3uzuFtaJXKq5ezKa/UaBXiuP2nFizaNdVlzwDMJqzKudtcSR/BI7wZYl0QslYg20v3guqAwV2ig==\",\"salt\":\"Q+lfM8ILDHw+mSMLEGXVPQ==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+    }],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-demo" ],
+    "notBefore" : 0,
+    "groups" : [ "/employees" ]
+  },
+  {
     "id" : "23e1af17-b1be-43c9-be4e-082ea31ab553",
     "createdTimestamp" : 1628676021583,
     "username" : "john",
@@ -404,13 +428,14 @@
       "createdDate" : 1628676035270,
       "secretData" : "{\"value\":\"CsTBttTniJG3uzuFtaJXKq5ezKa/UaBXiuP2nFizaNdVlzwDMJqzKudtcSR/BI7wZYl0QslYg20v3guqAwV2ig==\",\"salt\":\"Q+lfM8ILDHw+mSMLEGXVPQ==\",\"additionalParameters\":{}}",
       "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
-    } ],
+    }],
     "disableableCredentialTypes" : [ ],
     "requiredActions" : [ ],
     "realmRoles" : [ "default-roles-demo" ],
     "notBefore" : 0,
     "groups" : [ "/employees" ]
-  }, {
+  },
+  {
     "id" : "668be670-c0b7-4286-936d-83e60dc5ac06",
     "createdTimestamp" : 1628675906320,
     "username" : "service-account-service",
@@ -424,7 +449,8 @@
     "realmRoles" : [ "default-roles-demo" ],
     "notBefore" : 0,
     "groups" : [ ]
-  } ],
+  }
+],
   "scopeMappings" : [ {
     "clientScope" : "offline_access",
     "roles" : [ "offline_access" ]
