@@ -70,13 +70,13 @@ local function check_phase(accepted_phases)
     return
   end
 
-  local current_phase = kong.ctx.core.phase
+  local current_phase = ngx.ctx.KONG_PHASE
   if not current_phase then
     if ngx_get_phase() == "content" then
       -- treat custom content blocks as the Admin API
       current_phase = PHASES.admin_api
     else
-      error(fmt("no phase in kong.ctx.core.phase, (need one of %s)",
+      error(fmt("no phase in ngx.ctx.KONG_PHASE, (need one of %s)",
                 table.concat(get_phases_names(accepted_phases), ", ")))
     end
   end
@@ -100,9 +100,9 @@ local function check_not_phase(rejected_phases)
     return
   end
 
-  local current_phase = kong.ctx.core.phase
+  local current_phase = ngx.ctx.KONG_PHASE
   if not current_phase then
-    error("no phase in kong.ctx.core.phase")
+    error("no phase in ngx.ctx.KONG_PHASE")
   end
 
   if band(current_phase, rejected_phases) == 0 then

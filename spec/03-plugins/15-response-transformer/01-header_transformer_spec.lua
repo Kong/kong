@@ -27,14 +27,12 @@ describe("Plugin: response-transformer", function()
       config = {
         subsystem = "http",
       },
+      ctx = {
+        KONG_PHASE = 0x00000200,
+      },
     }
     _G.kong = {
       response = require "kong.pdk.response".new(),
-      ctx = {
-        core = {
-          phase = 0x00000200,
-        }
-      }
     }
 
     -- mock since FFI based ngx.resp.add_header won't work in this setup
