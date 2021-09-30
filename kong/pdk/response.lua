@@ -711,7 +711,9 @@ local function new(self, major_version)
       end
     end
 
-    local is_header_filter_phase = self.ctx.core.phase == PHASES.header_filter
+    local ctx = ngx.ctx
+
+    local is_header_filter_phase = ctx.KONG_PHASE == PHASES.header_filter
 
     if json ~= nil then
       if not has_content_type then
@@ -735,7 +737,7 @@ local function new(self, major_version)
         ngx.header[GRPC_MESSAGE_NAME] = body
 
         if is_header_filter_phase then
-          ngx.ctx.response_body = ""
+          ctx.response_body = ""
 
         else
           ngx.print() -- avoid default content
@@ -751,7 +753,7 @@ local function new(self, major_version)
         end
 
         if is_header_filter_phase then
-          ngx.ctx.response_body = body
+          ctx.response_body = body
 
         else
           ngx.print(body)
@@ -769,7 +771,7 @@ local function new(self, major_version)
 
       if is_grpc then
         if is_header_filter_phase then
-          ngx.ctx.response_body = ""
+          ctx.response_body = ""
 
         else
           ngx.print() -- avoid default content

@@ -90,34 +90,6 @@ function _GLOBAL.del_named_ctx(self, name)
 end
 
 
-function _GLOBAL.set_phase(self, phase)
-  if not self then
-    error("arg #1 cannot be nil", 2)
-  end
-
-  local kctx = self.ctx
-  if not kctx then
-    error("ctx PDK module not initialized", 2)
-  end
-
-  kctx.core.phase = phase
-end
-
-
-function _GLOBAL.get_phase(self)
-  if not self then
-    error("arg #1 cannot be nil", 2)
-  end
-
-  local kctx = self.ctx
-  if not kctx then
-    error("ctx PDK module not initialized", 2)
-  end
-
-  return kctx.core.phase
-end
-
-
 do
   local log_facilities = setmetatable({}, { __index = "k" })
 
