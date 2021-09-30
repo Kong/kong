@@ -84,6 +84,7 @@ for _, strategy in helpers.all_strategies() do
         username_lower = "heyo"
       })
       assert.is_nil(consumer)
+      assert(err)
       assert.same('auto-generated field cannot be set by user', err_t.fields.username_lower)
     end)
 
@@ -97,6 +98,7 @@ for _, strategy in helpers.all_strategies() do
         username_lower = "heyo"
       })
       assert.is_nil(updated)
+      assert(err)
       assert.same('auto-generated field cannot be set by user', err_t.fields.username_lower)
     end)
 
@@ -109,6 +111,7 @@ for _, strategy in helpers.all_strategies() do
         username_lower = "heyo"
       })
       assert.is_nil(updated)
+      assert(err)
       assert.same('auto-generated field cannot be set by user', err_t.fields.username_lower)
     end)
 
@@ -118,6 +121,7 @@ for _, strategy in helpers.all_strategies() do
         username_lower = "upsert654321",
       })
       assert.is_nil(consumer)
+      assert(err)
       assert.same('auto-generated field cannot be set by user', err_t.fields.username_lower)
     end)
 

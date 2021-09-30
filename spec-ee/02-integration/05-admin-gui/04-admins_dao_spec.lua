@@ -286,6 +286,7 @@ for _, strategy in helpers.each_strategy() do
           username_lower = "heyo"
         })
         assert.is_nil(admin)
+        assert(err)
         assert.same('auto-generated field cannot be set by user', err_t.fields.username_lower)
       end)
 
@@ -301,6 +302,7 @@ for _, strategy in helpers.each_strategy() do
           username_lower = "heyo"
         })
         assert.is_nil(updated)
+        assert(err)
         assert.same(err_t.fields.username_lower, 'auto-generated field cannot be set by user')
       end)
 
@@ -309,6 +311,7 @@ for _, strategy in helpers.each_strategy() do
           username_lower = "heyo"
         })
         assert.is_nil(updated)
+        assert(err)
         assert.same(err_t.fields.username_lower, 'auto-generated field cannot be set by user')
       end)
 
@@ -317,6 +320,7 @@ for _, strategy in helpers.each_strategy() do
           username_lower = "heyo"
         })
         assert.is_nil(updated)
+        assert(err)
         assert.same(err_t.fields.username_lower, 'auto-generated field cannot be set by user')
       end)
 
@@ -325,6 +329,7 @@ for _, strategy in helpers.each_strategy() do
           username_lower = "heyo"
         })
         assert.is_nil(updated)
+        assert(err)
         assert.same(err_t.fields.username_lower, 'auto-generated field cannot be set by user')
       end)
 
