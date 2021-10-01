@@ -56,11 +56,14 @@ local function init()
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
                                           "Datastore reachable from Kong, " ..
                                           "0 is unreachable")
-  metrics.upstream_target_health = prometheus:gauge("upstream_target_health",
-                                          "Health status of targets of upstream. " ..
-                                          "States = healthchecks_off|healthy|unhealthy|dns_error, " ..
-                                          "value is 1 when state is populated.",
-                                          {"upstream", "target", "address", "state", "subsystem"})
+  -- only export upstream health metrics in traditional mode and data plane
+  if role ~= "control_plane" then
+    metrics.upstream_target_health = prometheus:gauge("upstream_target_health",
+                                            "Health status of targets of upstream. " ..
+                                            "States = healthchecks_off|healthy|unhealthy|dns_error, " ..
+                                            "value is 1 when state is populated.",
+                                            {"upstream", "target", "address", "state", "subsystem"})
+  end
 
   local memory_stats = {}
   memory_stats.worker_vms = prometheus:gauge("memory_workers_lua_vms_bytes",
@@ -331,34 +334,37 @@ local function metric_data()
                  "/metrics endpoint: ", err)
   end
 
-  -- erase all target/upstream metrics, prevent exposing old metrics
-  metrics.upstream_target_health:reset()
+  -- only export upstream health metrics in traditional mode and data plane
+  if role ~= "control_plane" then
+    -- erase all target/upstream metrics, prevent exposing old metrics
+    metrics.upstream_target_health:reset()
 
-  -- upstream targets accessible?
-  local upstreams_dict = get_all_upstreams()
-  for key, upstream_id in pairs(upstreams_dict) do
-    local _, upstream_name = key:match("^([^:]*):(.-)$")
-    upstream_name = upstream_name and upstream_name or key
-    -- based on logic from kong.db.dao.targets
-    local health_info
-    health_info, err = balancer.get_upstream_health(upstream_id)
-    if err then
-      kong.log.err("failed getting upstream health: ", err)
-    end
+    -- upstream targets accessible?
+    local upstreams_dict = get_all_upstreams()
+    for key, upstream_id in pairs(upstreams_dict) do
+      local _, upstream_name = key:match("^([^:]*):(.-)$")
+      upstream_name = upstream_name and upstream_name or key
+      -- based on logic from kong.db.dao.targets
+      local health_info
+      health_info, err = balancer.get_upstream_health(upstream_id)
+      if err then
+        kong.log.err("failed getting upstream health: ", err)
+      end
 
-    if health_info then
-      for target_name, target_info in pairs(health_info) do
-        if target_info ~= nil and target_info.addresses ~= nil and
-          #target_info.addresses > 0 then
-          -- healthchecks_off|healthy|unhealthy
-          for _, address in ipairs(target_info.addresses) do
-            local address_label = concat({address.ip, ':', address.port})
-            local status = lower(address.health)
-            set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, address_label, status, metrics.upstream_target_health)
+      if health_info then
+        for target_name, target_info in pairs(health_info) do
+          if target_info ~= nil and target_info.addresses ~= nil and
+            #target_info.addresses > 0 then
+            -- healthchecks_off|healthy|unhealthy
+            for _, address in ipairs(target_info.addresses) do
+              local address_label = concat({address.ip, ':', address.port})
+              local status = lower(address.health)
+              set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, address_label, status, metrics.upstream_target_health)
+            end
+          else
+            -- dns_error
+            set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, '', 'dns_error', metrics.upstream_target_health)
           end
-        else
-          -- dns_error
-          set_healthiness_metrics(upstream_target_addr_health_table, upstream_name, target_name, '', 'dns_error', metrics.upstream_target_health)
         end
       end
     end
