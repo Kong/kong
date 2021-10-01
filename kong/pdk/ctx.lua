@@ -1,10 +1,10 @@
 --- Current request context data
 --
 -- @module kong.ctx
+local base = require "resty.core.base"
 
 
 local ngx = ngx
-local ngx_get_phase = ngx.get_phase
 
 
 -- shared between all global instances
@@ -140,7 +140,7 @@ local function new(self)
       return del_namespace
     end
 
-    if ngx_get_phase() == "init" then
+    if not base.get_request() then
       return
     end
 

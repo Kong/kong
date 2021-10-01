@@ -244,12 +244,12 @@ local function setup_plugin_context(ctx, plugin)
   end
 
   kong_global.set_named_ctx(kong, "plugin", plugin.handler)
-  kong_global.set_namespaced_log(kong, plugin.name)
+  kong_global.set_namespaced_log(kong, plugin.name, ctx)
 end
 
 
 local function reset_plugin_context(ctx, old_ws)
-  kong_global.reset_log(kong)
+  kong_global.reset_log(kong, ctx)
 
   if old_ws then
     ctx.workspace = old_ws
@@ -257,11 +257,11 @@ local function reset_plugin_context(ctx, old_ws)
 end
 
 
-local function execute_init_worker_plugins_iterator(plugins_iterator)
+local function execute_init_worker_plugins_iterator(plugins_iterator, ctx)
   local errors
 
   for plugin in plugins_iterator:iterate_init_worker() do
-    kong_global.set_namespaced_log(kong, plugin.name)
+    kong_global.set_namespaced_log(kong, plugin.name, ctx)
 
     -- guard against failed handler in "init_worker" phase only because it will
     -- cause Kong to not correctly initialize and can not be recovered automatically.
@@ -274,7 +274,7 @@ local function execute_init_worker_plugins_iterator(plugins_iterator)
       }
     end
 
-    kong_global.reset_log(kong)
+    kong_global.reset_log(kong, ctx)
   end
 
   return errors
@@ -576,7 +576,9 @@ end
 
 
 function Kong.init_worker()
-  ngx.ctx.KONG_PHASE = PHASES.init_worker
+  local ctx = ngx.ctx
+
+  ctx.KONG_PHASE = PHASES.init_worker
 
   -- special math.randomseed from kong.globalpatches not taking any argument.
   -- Must only be called in the init or init_worker phases, to avoid
@@ -678,7 +680,7 @@ function Kong.init_worker()
   end
 
   local plugins_iterator = runloop.get_plugins_iterator()
-  local errors = execute_init_worker_plugins_iterator(plugins_iterator)
+  local errors = execute_init_worker_plugins_iterator(plugins_iterator, ctx)
   if errors then
     for _, e in ipairs(errors) do
       local err = "failed to execute the \"init_worker\" " ..
