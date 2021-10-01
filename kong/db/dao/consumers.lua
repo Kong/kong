@@ -36,7 +36,7 @@ end
 local check_username_lower_unique = function(self, entity, options)
   local workspace = workspaces.get_workspace()
 
-  local admin_auth_type, admin_auth_conf, portal_auth_type, portal_auth_conf
+  local admin_auth_type, admin_auth_conf, portal_auth_type, portal_auth_conf, err
 
   if singletons.configuration then
     admin_auth_type = singletons.configuration.admin_gui_auth
@@ -46,23 +46,22 @@ local check_username_lower_unique = function(self, entity, options)
   portal_auth_conf = workspace_config.retrieve(ws_constants.PORTAL_AUTH_CONF, workspace)
 
   if type(portal_auth_conf) == 'string' then
-    local err
     portal_auth_conf, err = cjson.decode(portal_auth_conf)
     if err then
       return err
     end
   end
 
-  if (portal_auth_type ~= "openid-connect" or not portal_auth_conf or not portal_auth_conf.by_username_ignore_case)
-    and (admin_auth_type ~= "openid-connect" or not admin_auth_conf or not admin_auth_conf.by_username_ignore_case)
-  then
+  local portal_by_username_ignore_case = portal_auth_type == "openid-connect" and
+    portal_auth_conf and portal_auth_conf.by_username_ignore_case
+
+  local admin_by_username_ignore_case = admin_auth_type == "openid-connect" and
+    admin_auth_conf and admin_auth_conf.by_username_ignore_case
+
+  if not portal_by_username_ignore_case and not admin_by_username_ignore_case then
+    -- only check for unique_violation on username_lower if by_username_ignore_case
+    -- is used in portal or admin OIDC conf
     return nil
-  end
-
-  local consumers, err = self.strategy:select_by_username_ignore_case(entity.username)
-
-  if #consumers > 0 then
-    return self.errors:unique_violation({ username_lower = entity.username_lower })
   end
 
   if err then
