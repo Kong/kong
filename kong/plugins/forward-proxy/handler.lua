@@ -20,6 +20,8 @@ local ngx_req_get_method  = ngx.req.get_method
 local ngx_req_read_body    = ngx.req.read_body
 local ngx_req_get_body    = ngx.req.get_body_data
 local ngx_now             = ngx.now
+local ngx_print           = ngx.print
+local str_lower           = string.lower
 
 
 local _prefix_log = "[forward-proxy] "
@@ -125,6 +127,62 @@ local function simulate_access_before()
 end
 
 
+-- http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.5.1
+local HOP_BY_HOP_HEADERS = {
+    ["connection"]          = true,
+    ["keep-alive"]          = true,
+    ["proxy-authenticate"]  = true,
+    ["proxy-authorization"] = true,
+    ["te"]                  = true,
+    ["trailers"]            = true,
+    ["transfer-encoding"]   = true,
+    ["upgrade"]             = true,
+    ["content-length"]      = true, -- Not strictly hop-by-hop, but Nginx will deal
+                                    -- with this (may send chunked for example).
+}
+
+
+-- Originally lifted from lua-resty-http (where is is now deprecated,
+-- encouraging users to roll their own).
+local function send_proxied_response(response)
+  if not response then
+    log(ERR, "no response provided")
+    return
+  end
+
+  kong.response.set_status(response.status)
+
+  -- Set headers, filtering out hop-by-hop.
+  for k, v in pairs(response.headers) do
+    if not HOP_BY_HOP_HEADERS[str_lower(k)] then
+      kong.response.set_header(k, v)
+    end
+  end
+
+  local reader = response.body_reader
+
+  repeat
+    local chunk, ok, read_err, print_err
+
+    chunk, read_err = reader()
+    if read_err then
+      log(ERR, read_err)
+    end
+
+    if chunk then
+      ok, print_err = ngx_print(chunk)
+      if not ok then
+        log(ERR, print_err)
+      end
+    end
+
+    if read_err or print_err then
+      break
+    end
+  until not chunk
+end
+
+
 function ForwardProxyHandler:access(conf)
 
   -- connect to the proxy
@@ -189,7 +247,8 @@ function ForwardProxyHandler:access(conf)
   local callback = function()
     ngx.header["Via"] = server_header
 
-    httpc:proxy_response(res)
+    send_proxied_response(res)
+
     if var.upstream_scheme ~= "https" then
       -- Pooled SSL connection error out for next request, so connection
       -- is kept alive only for non HTTPS connections. A Github issue is
