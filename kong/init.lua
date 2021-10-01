@@ -243,7 +243,7 @@ local function setup_plugin_context(ctx, plugin)
     ctx.ran_go_plugin = true
   end
 
-  kong_global.set_named_ctx(kong, "plugin", plugin.handler)
+  kong_global.set_named_ctx(kong, "plugin", plugin.handler, ctx)
   kong_global.set_namespaced_log(kong, plugin.name, ctx)
 end
 
