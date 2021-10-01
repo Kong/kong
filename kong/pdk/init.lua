@@ -208,6 +208,14 @@
 
 assert(package.loaded["resty.core"])
 
+local base = require "resty.core.base"
+
+local type = type
+local error = error
+local rawget = rawget
+local ipairs = ipairs
+local setmetatable = setmetatable
+
 
 local MAJOR_VERSIONS = {
   [1] = {
@@ -303,13 +311,12 @@ function _PDK.new(kong_config, major_version, self)
 
   return setmetatable(self, {
     __index = function(t, k)
-      if k == "core_log" then
-        return (rawget(t, "_log"))
-      end
-
       if k == "log" then
-        if t.ctx.core and t.ctx.core.log then
-          return t.ctx.core.log
+        if base.get_request() then
+          local log = ngx.ctx.KONG_LOG
+          if log then
+            return log
+          end
         end
 
         return (rawget(t, "_log"))

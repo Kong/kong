@@ -6,7 +6,9 @@ local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
 local kong_constants = require "kong.constants"
 
+local ngx = ngx
 local type = type
+local error = error
 local setmetatable = setmetatable
 
 
@@ -94,7 +96,7 @@ do
   local log_facilities = setmetatable({}, { __index = "k" })
 
 
-  function _GLOBAL.set_namespaced_log(self, namespace)
+  function _GLOBAL.set_namespaced_log(self, namespace, ctx)
     if not self then
       error("arg #1 cannot be nil", 2)
     end
@@ -103,30 +105,22 @@ do
       error("namespace (arg #2) must be a string", 2)
     end
 
-    if not self.ctx then
-      error("ctx PDK module not initialized", 2)
-    end
-
     local log = log_facilities[namespace]
     if not log then
-      log = self.core_log.new(namespace) -- use default namespaced format
+      log = self._log.new(namespace) -- use default namespaced format
       log_facilities[namespace] = log
     end
 
-    self.ctx.core.log = log
+    (ctx or ngx.ctx).KONG_LOG = log
   end
 
 
-  function _GLOBAL.reset_log(self)
+  function _GLOBAL.reset_log(self, ctx)
     if not self then
       error("arg #1 cannot be nil", 2)
     end
 
-    if not self.ctx then
-      error("ctx PDK module not initialized", 2)
-    end
-
-    self.ctx.core.log = self.core_log
+    (ctx or ngx.ctx).KONG_LOG = self._log
   end
 end
 
