@@ -27,8 +27,9 @@ for _, strategy in helpers.all_strategies() do
       assert(bp.consumers:insert {
         username = "GRUCEO@kong.com",
         custom_id = "12345",
-        created_at = 1,
+        created_at = 1000,
       })
+
     end)
 
     lazy_teardown(function()
@@ -286,21 +287,28 @@ for _, strategy in helpers.all_strategies() do
       assert(bp.consumers:insert {
         username = "gruceO@kong.com",
         custom_id = "23456",
-        created_at = 2
+        created_at = 2000
       })
 
       assert(bp.consumers:insert {
         username = "GruceO@kong.com",
         custom_id = "34567",
-        created_at = 3
+        created_at = 3000
+      })
+
+      assert(bp.consumers:insert {
+        username = "GRUCEO@KONG.com",
+        custom_id = "34568",
+        created_at = 1
       })
 
       local consumers, err = kong.db.consumers:select_by_username_ignore_case("Gruceo@kong.com")
       assert.is_nil(err)
-      assert(#consumers == 3)
-      assert.same("GRUCEO@kong.com", consumers[1].username)
-      assert.same("gruceO@kong.com", consumers[2].username)
-      assert.same("GruceO@kong.com", consumers[3].username)
+      assert(#consumers == 4)
+      assert.same("GRUCEO@KONG.com", consumers[1].username)
+      assert.same("GRUCEO@kong.com", consumers[2].username)
+      assert.same("gruceO@kong.com", consumers[3].username)
+      assert.same("GruceO@kong.com", consumers[4].username)
     end)
   end)
 end
