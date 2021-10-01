@@ -544,7 +544,7 @@ local function new(self, major_version)
     local chunk = arg[1]
     local eof = arg[2]
     if eof then
-      body_buffer = self.ctx.core.body_buffer
+      body_buffer = ngx.ctx.KONG_BODY_BUFFER
       if not body_buffer then
         return chunk
       end
@@ -552,7 +552,7 @@ local function new(self, major_version)
 
     if type(chunk) == "string" and chunk ~= "" then
       if not eof then
-        body_buffer = self.ctx.core.body_buffer
+        body_buffer = ngx.ctx.KONG_BODY_BUFFER
       end
 
       if body_buffer then
@@ -563,10 +563,10 @@ local function new(self, major_version)
       else
         body_buffer = {
           chunk,
-          n = 1
+          n = 1,
         }
 
-        self.ctx.core.body_buffer = body_buffer
+        ngx.ctx.KONG_BODY_BUFFER = body_buffer
       end
     end
 
@@ -621,7 +621,7 @@ local function new(self, major_version)
 
     arg[2] = true
 
-    self.ctx.core.body_buffer = nil
+    ngx.ctx.KONG_BODY_BUFFER = nil
   end
 
 
