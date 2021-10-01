@@ -31,6 +31,7 @@ local upstream_by_name = {}
 function upstreams_M.init()
   balancers = require "kong.runloop.balancer.balancers"
   healthcheckers = require "kong.runloop.balancer.healthcheckers"
+  upstream_by_name = {}
 end
 
 
