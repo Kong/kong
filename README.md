@@ -78,6 +78,7 @@ Please see the [Changelog](CHANGELOG.md) for more details about a given release.
 
 - Join the Kong discussions at the Kong Nation forum: [https://discuss.konghq.com/](https://discuss.konghq.com/)
 - Follow us on Twitter: [https://twitter.com/thekonginc](https://twitter.com/thekonginc)
+- Join Kong Academy: [https://education.konghq.com/](https://education.konghq.com/)
 - Check out the docs: [https://docs.konghq.com/](https://docs.konghq.com/)
 - Keep updated on YouTube by subscribing: [https://www.youtube.com/c/KongInc/videos](https://www.youtube.com/c/KongInc/videos)
 - Read up on the latest happenings at our blog: [https://konghq.com/blog/](https://konghq.com/blog/)
