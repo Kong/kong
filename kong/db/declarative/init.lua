@@ -364,10 +364,22 @@ function declarative.load_into_db(entities, meta)
   local schema, primary_key, ok, err, err_t
   for i = 1, #sorted_schemas do
     schema = sorted_schemas[i]
+
+    local skip_import_fields = {}
+    for field_name, field in schema:each_field() do
+      if field.db_export == false then
+        table.insert(skip_import_fields, field_name)
+      end
+    end
+
     for _, entity in pairs(entities[schema.name]) do
       entity = deepcopy(entity)
       entity._tags = nil
       entity.ws_id = nil
+
+      for _, field_name in ipairs(skip_import_fields) do
+        entity[field_name] = nil
+      end
 
       primary_key = schema:extract_pk_values(entity)
 
@@ -407,6 +419,7 @@ local function export_from_db(emitter, skip_ws, skip_ttl)
     local name = schema.name
     local fks = {}
     local pointers_to_nonexported = {}
+    local skip_db_export_fields = {}
     for field_name, field in schema:each_field() do
       if field.type == "foreign" then
         table.insert(fks, field_name)
@@ -414,6 +427,10 @@ local function export_from_db(emitter, skip_ws, skip_ttl)
         if kong.db[field.reference].schema.db_export == false then
           pointers_to_nonexported[field_name] = true
         end
+      end
+
+      if field.db_export == false then
+        table.insert(skip_db_export_fields, field_name)
       end
     end
 
@@ -426,6 +443,10 @@ local function export_from_db(emitter, skip_ws, skip_ttl)
       -- XXX hack, do not export ttl values ??
       if skip_ttl and row.ttl and schema.ttl then
         row.ttl = nil
+      end
+
+      for _, skip_field in ipairs(skip_db_export_fields) do
+        row[skip_field] = nil
       end
 
       for _, foreign_name in ipairs(fks) do
