@@ -138,26 +138,24 @@ function ForwardProxyHandler:access(conf)
 
   local addr = ctx.balancer_address
 
-  httpc:set_timeout(addr.connect_timeout)
+  httpc:set_timeouts(addr.connect_timeout, addr.send_timeout, addr.read_timeout)
 
   local proxy_uri = "http://"  .. conf.proxy_host .. ":" .. conf.proxy_port .. "/"
 
-  local ok, err = httpc:connect_proxy(proxy_uri, var.upstream_scheme,
-                                      addr.host, addr.port)
+  local ok, err = httpc:connect {
+    scheme = var.upstream_scheme,
+    host = addr.host,
+    port = addr.port,
+    proxy_opts = {
+      http_proxy = proxy_uri,
+    },
+    ssl_verify = conf.https_verify,
+    ssl_server_name = addr.host,
+  }
 
   if not ok then
     log(ERR, _prefix_log, "failed to connect to proxy: ", err)
     return kong.response.exit(500)
-  end
-
-  if var.upstream_scheme == "https" then
-    -- Perform the TLS handshake for HTTPS request.
-    -- First param reuse_session set as `false` as session is not
-    -- reused
-    local ok, err = httpc:ssl_handshake(false, addr.host, conf.https_verify)
-    if not ok then
-      return kong.response.exit(500, err)
-    end
   end
 
   local res
@@ -177,24 +175,9 @@ function ForwardProxyHandler:access(conf)
 
   headers["Host"] = var.upstream_host
 
-  local path
-
-  if var.upstream_scheme == "https" and addr.port == 443 or
-     var.upstream_scheme == "http" and addr.port == 80 then
-    path = var.upstream_scheme .."://" .. addr.host .. var.upstream_uri
-
-  else
-    path = var.upstream_scheme .."://" .. addr.host .. ":" ..
-           addr.port .. var.upstream_uri
-
-    if var.upstream_host then
-      headers["Host"] = var.upstream_host .. ":" .. addr.port
-    end
-  end
-
   res, err = httpc:request({
     method  = ngx_req_get_method(),
-    path    = path,
+    path    = var.upstream_uri,
     headers = headers,
     body    = ngx_req_get_body(),
   })
