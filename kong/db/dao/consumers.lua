@@ -12,6 +12,7 @@ local workspaces       = require "kong.workspaces"
 local workspace_config = require "kong.portal.workspace_config"
 
 local tostring         = tostring
+local null             = ngx.null
 local ws_constants     = constants.WORKSPACE_CONFIG
 
 local invalidate_consumer_cache = function(self, entity, options)
@@ -33,7 +34,7 @@ local invalidate_consumer_cache = function(self, entity, options)
   end
 end
 
-local check_username_lower_unique = function(self, entity, options)
+local check_username_lower_unique = function(self, username, existing_entity, options)
   local workspace = workspaces.get_workspace()
 
   local admin_auth_type, admin_auth_conf, portal_auth_type, portal_auth_conf, err
@@ -64,28 +65,44 @@ local check_username_lower_unique = function(self, entity, options)
     return nil
   end
 
+  -- find consumers that conflict on username_lower
+  local consumers, err = self.strategy:select_by_username_ignore_case(username)
   if err then
     return err
+  end
+
+  if #consumers > 0 then
+    if #consumers == 1 and existing_entity then
+      -- if the conflicting consumer is the same as the request, it is not a conflict
+      if existing_entity.id ~= consumers[1].id then
+        return self.errors:unique_violation({ username_lower = username:lower() })
+      end
+    else
+      return self.errors:unique_violation({ username_lower = username:lower() })
+    end
   end
 
   return nil
 end
 
-local handle_username_lower = function(self, entity, options)
+local handle_username_lower = function(self, entity_updates, existing_entity, options)
   local err_t
 
-  if entity.username_lower then
+  if entity_updates.username_lower then
     err_t = self.errors:schema_violation({ username_lower = 'auto-generated field cannot be set by user' })
     return nil, tostring(err_t), err_t
   end
 
-  if type(entity.username) == 'string' then
-    entity.username_lower = entity.username:lower()
-  end
+  if type(entity_updates.username) == 'string' then
+    err_t = check_username_lower_unique(self, entity_updates.username, existing_entity, options)
+    if err_t then
+      return nil, tostring(err_t), err_t
+    end
 
-  err_t = check_username_lower_unique(self, entity, options)
-  if err_t then
-    return nil, tostring(err_t), err_t
+    entity_updates.username_lower = entity_updates.username:lower()
+  elseif entity_updates.username == null then
+    -- clear out username_lower if username is ngx.null
+    entity_updates.username_lower = null
   end
 
   return true
@@ -140,7 +157,7 @@ function Consumers:delete(primary_key, options)
 end
 
 function Consumers:insert(entity, options)
-  local _, err, err_t = handle_username_lower(self, entity, options)
+  local _, err, err_t = handle_username_lower(self, entity, nil, options)
   if err_t then
     return nil, err, err_t
   end
@@ -150,43 +167,55 @@ function Consumers:insert(entity, options)
   return self.super.insert(self, entity, options)
 end
 
-function Consumers:update(primary_key, entity, options)
-  local _, err, err_t = handle_username_lower(self, entity, options)
+function Consumers:update(primary_key, entity_updates, options)
+  local existing_consumer, err, err_t = self:select(primary_key)
   if err_t then
     return nil, err, err_t
   end
 
-  local old_consumer = self:select(primary_key)
-  if old_consumer then
-    invalidate_consumer_cache(self, old_consumer, options)
+  local _, err, err_t = handle_username_lower(self, entity_updates, existing_consumer, options)
+  if err_t then
+    return nil, err, err_t
   end
 
-  return self.super.update(self, primary_key, entity, options)
+  if existing_consumer then
+    invalidate_consumer_cache(self, existing_consumer, options)
+  end
+
+  return self.super.update(self, primary_key, entity_updates, options)
 end
 
-function Consumers:update_by_username(username, entity, options)
-  local _, err, err_t = handle_username_lower(self, entity, options)
+function Consumers:update_by_username(username, entity_updates, options)
+  local existing_consumer, err, err_t = self:select_by_username(username)
   if err_t then
     return nil, err, err_t
   end
 
-  local old_consumer = self:select_by_username(username)
-  if old_consumer then
-    invalidate_consumer_cache(self, old_consumer, options)
+  local _, err, err_t = handle_username_lower(self, entity_updates, existing_consumer, options)
+  if err_t then
+    return nil, err, err_t
   end
 
-  return self.super.update_by_username(self, username, entity, options)
+  if existing_consumer then
+    invalidate_consumer_cache(self, existing_consumer, options)
+  end
+
+  return self.super.update_by_username(self, username, entity_updates, options)
 end
 
 function Consumers:upsert(primary_key, entity, options)
-  local _, err, err_t = handle_username_lower(self, entity, options)
+  local existing_consumer, err, err_t = self:select(primary_key)
   if err_t then
     return nil, err, err_t
   end
 
-  local old_consumer = self:select(primary_key)
-  if old_consumer then
-    invalidate_consumer_cache(self, old_consumer, options)
+  local _, err, err_t = handle_username_lower(self, entity, existing_consumer, options)
+  if err_t then
+    return nil, err, err_t
+  end
+
+  if existing_consumer then
+    invalidate_consumer_cache(self, existing_consumer, options)
   end
 
   return self.super.upsert(self, primary_key, entity, options)
