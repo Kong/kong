@@ -117,16 +117,13 @@ local function make_introspection_request(conf, access_token)
 
   client:set_timeout(conf.timeout)
 
-  local ok, err = client:connect(host, port)
+  local ok, err = client:connect {
+    scheme = parsed_url.scheme,
+    host = host,
+    port = port,
+  }
   if not ok then
     return false, err
-  end
-
-  if is_https then
-    ok, err = client:ssl_handshake()
-    if not ok then
-      return false, err
-    end
   end
 
   local headers = {
