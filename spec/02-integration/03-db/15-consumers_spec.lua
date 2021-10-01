@@ -5,9 +5,13 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local helpers = require "spec.helpers"
+local helpers          = require "spec.helpers"
+local singletons       = require "kong.singletons"
+local workspace_config = require "kong.portal.workspace_config"
+local constants        = require "kong.constants"
 
 local null             = ngx.null
+local ws_constants     = constants.WORKSPACE_CONFIG
 
 -- Note: include "off" strategy here as well
 for _, strategy in helpers.all_strategies() do
@@ -161,6 +165,113 @@ for _, strategy in helpers.all_strategies() do
       assert.is_nil(err_t)
       assert.is_nil(updated.username)
       assert.is_nil(updated.username_lower)
+    end)
+
+    it("consumer username_lower conflicts if by_username_ignore_case", function()
+      local consumer = kong.db.consumers:insert({
+        username = "KonGSumeR",
+      })
+      assert(consumer)
+
+      local consumer_to_update = kong.db.consumers:insert({
+        username = "KONGSUMER_TO_UPDATE",
+      })
+      assert(consumer_to_update)
+
+      -- should conflict when admin openid-connect + by_username_ignore_case = true
+      local temp_config = singletons.configuration
+      singletons.configuration = {
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = { by_username_ignore_case = true },
+      }
+
+      local consumer, err, err_t = kong.db.consumers:insert({
+        username = "Kongsumer",
+      })
+      assert.is_nil(consumer)
+      assert(err)
+      assert(err_t)
+      assert.same([[UNIQUE violation detected on '{username_lower="kongsumer"}']], err_t.message)
+
+      -- but should not conflict with own row
+      local updated, err, err_t = kong.db.consumers:update({ id = consumer_to_update.id }, {
+        username = "Kongsumer_To_Update"
+      })
+      assert.is_nil(err)
+      assert.is_nil(err_t)
+      assert(updated)
+
+      singletons.configuration = temp_config
+
+      -- should not conflict when admin openid-connect + by_username_ignore_case = false
+      local temp_config = singletons.configuration
+      singletons.configuration = {
+        admin_gui_auth = "openid-connect",
+        admin_gui_auth_conf = { by_username_ignore_case = false },
+      }
+
+      local consumer, err, err_t = kong.db.consumers:insert({
+        username = "KongSumer",
+      })
+      assert(consumer)
+      assert.is_nil(err)
+      assert.is_nil(err_t)
+
+      singletons.configuration = temp_config
+
+      -- should conflict when portal openid-connect + by_username_ignore_case = true
+      local temp_ws_config_retrieve = workspace_config.retrieve
+      workspace_config.retrieve = function(key)
+        if key == ws_constants.PORTAL_AUTH then
+          return "openid-connect"
+        elseif key == ws_constants.PORTAL_AUTH_CONF then
+          return [[{"by_username_ignore_case": true}]]
+        end
+      end
+      local consumer, err, err_t = kong.db.consumers:insert({
+        username = "Kongsumer",
+      })
+      assert.is_nil(consumer)
+      assert(err)
+      assert(err_t)
+      assert.same([[UNIQUE violation detected on '{username_lower="kongsumer"}']], err_t.message)
+
+      -- but should not conflict with own row
+      local updated, err, err_t = kong.db.consumers:update({ id = consumer_to_update.id }, {
+        username = "Kongsumer_to_update"
+      })
+      assert(updated)
+      assert.is_nil(err)
+      assert.is_nil(err_t)
+
+      workspace_config.retrieve = temp_ws_config_retrieve
+
+      -- should not conflict when portal openid-connect + by_username_ignore_case = false
+      local temp_ws_config_retrieve = workspace_config.retrieve
+      workspace_config.retrieve = function(key)
+        if key == ws_constants.PORTAL_AUTH then
+          return "openid-connect"
+        elseif key == ws_constants.PORTAL_AUTH_CONF then
+          return [[{"by_username_ignore_case": false}]]
+        end
+      end
+      local consumer, err, err_t = kong.db.consumers:insert({
+        username = "Kongsumer",
+      })
+      assert(consumer)
+      assert.is_nil(err)
+      assert.is_nil(err_t)
+
+      workspace_config.retrieve = temp_ws_config_retrieve
+
+      -- should not conflict if neither portal or admin use openid-connect
+      local consumer, err, err_t = kong.db.consumers:insert({
+        username = "KongsumeR",
+      })
+      assert(consumer)
+      assert.is_nil(err_t)
+      assert.is_nil(err)
+
     end)
 
     it("consumers:select_by_username_ignore_case() ignores username case", function() 
