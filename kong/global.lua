@@ -18,11 +18,49 @@ local KONG_VERSION_NUM = tonumber(string.format("%d%.2d%.2d",
                                   meta._VERSION_TABLE.minor * 10,
                                   meta._VERSION_TABLE.patch))
 
-
 local LOCK_OPTS = {
   exptime = 10,
   timeout = 5,
 }
+
+
+local _ns_mt = { __mode = "v" }
+local function get_namespaces(self, ctx)
+  if not ctx then
+    ctx = ngx.ctx
+  end
+
+  local namespaces = ctx.KONG_NAMESPACES
+  if not namespaces then
+    -- 4 namespaces for request, i.e. ~4 plugins
+    namespaces = self.table.new(0, 4)
+    ctx.KONG_NAMESPACES = setmetatable(namespaces, _ns_mt)
+  end
+
+  return namespaces
+end
+
+
+local function set_namespace(self, namespace, namespace_key, ctx)
+  local namespaces = get_namespaces(self, ctx)
+
+  local ns = namespaces[namespace]
+  if ns and ns == namespace_key then
+    return
+  end
+
+  namespaces[namespace] = namespace_key
+end
+
+
+local function del_namespace(self, namespace, ctx)
+  if not ctx then
+    ctx = ngx.ctx
+  end
+
+  local namespaces = get_namespaces(self, ctx)
+  namespaces[namespace] = nil
+end
 
 
 -- Runloop interface
@@ -46,7 +84,7 @@ function _GLOBAL.new()
 end
 
 
-function _GLOBAL.set_named_ctx(self, name, key)
+function _GLOBAL.set_named_ctx(self, name, key, ctx)
   if not self then
     error("arg #1 cannot be nil", 2)
   end
@@ -63,15 +101,15 @@ function _GLOBAL.set_named_ctx(self, name, key)
     error("key cannot be nil", 2)
   end
 
-  if not self.ctx then
+  if not self.table then
     error("ctx PDK module not initialized", 2)
   end
 
-  self.ctx.__set_namespace(name, key)
+  set_namespace(self, name, key, ctx)
 end
 
 
-function _GLOBAL.del_named_ctx(self, name)
+function _GLOBAL.del_named_ctx(self, name, ctx)
   if not self then
     error("arg #1 cannot be nil", 2)
   end
@@ -84,11 +122,7 @@ function _GLOBAL.del_named_ctx(self, name)
     error("name cannot be an empty string", 2)
   end
 
-  if not self.ctx then
-    error("ctx PDK module not initialized", 2)
-  end
-
-  self.ctx.__del_namespace(name)
+  del_namespace(self, name, ctx)
 end
 
 
