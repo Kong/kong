@@ -7,6 +7,8 @@
 
 local helpers = require "spec.helpers"
 
+local null             = ngx.null
+
 -- Note: include "off" strategy here as well
 for _, strategy in helpers.all_strategies() do
   describe("db.consumers #" .. strategy, function()
@@ -123,6 +125,42 @@ for _, strategy in helpers.all_strategies() do
       assert.is_nil(consumer)
       assert(err)
       assert.same('auto-generated field cannot be set by user', err_t.fields.username_lower)
+    end)
+
+    it("consumers:update() should set username_lower to null if username is null", function()
+      local consumer = kong.db.consumers:insert({
+        username = "Kongsumer1",
+        custom_id = "custom_id1"
+      })
+      assert(consumer.username)
+      assert(consumer.username_lower)
+      assert(consumer)
+      local updated, err, err_t = kong.db.consumers:update({ id = consumer.id }, {
+        username = null
+      })
+      assert(updated)
+      assert.is_nil(err)
+      assert.is_nil(err_t)
+      assert.is_nil(updated.username)
+      assert.is_nil(updated.username_lower)
+    end)
+
+    it("consumers:update_by_username() should set username_lower to null if username is null", function()
+      local consumer = kong.db.consumers:insert({
+        username = "Kongsumer2",
+        custom_id = "custom_id2"
+      })
+      assert(consumer.username)
+      assert(consumer.username_lower)
+      assert(consumer)
+      local updated, err, err_t = kong.db.consumers:update_by_username(consumer.username, {
+        username = null
+      })
+      assert(updated)
+      assert.is_nil(err)
+      assert.is_nil(err_t)
+      assert.is_nil(updated.username)
+      assert.is_nil(updated.username_lower)
     end)
 
     it("consumers:select_by_username_ignore_case() ignores username case", function() 
