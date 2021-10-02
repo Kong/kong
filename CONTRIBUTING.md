@@ -96,7 +96,7 @@ on [Submitting a patch](#submitting-a-patch) for details.
 ## Contributing
 
 We welcome contributions of all kinds, you do not need to code to be helpful!
-All of the following tasks are noble and worthy contributions that you can
+All the following tasks are noble and worthy contributions that you can
 make without coding:
 
 - Reporting a bug (see the [report bugs](#where-to-report-bugs) section)
@@ -170,7 +170,7 @@ to verify a few things:
 - Rebase your work on top of the base branch (seek help online on how to use
   `git rebase`; this is important to ensure your commit history is clean and
    linear)
-- The static linting is succeeding: run `make lint`, or `luacheck .` (see the
+- The static linting is succeeding: run `make lint`, or `luacheck` (see the
   development documentation for additional details)
 - The tests are passing: run `make test`, `make test-all`, or whichever is
   appropriate for your change
