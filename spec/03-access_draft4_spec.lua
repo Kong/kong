@@ -534,81 +534,93 @@ for _, strategy in strategies() do
       end)
 
 
-      it("parameter type[object] validation for multi/single header with a object(delim: =) value #explode -> true", function()
-        local param_schema = {
-          {
-            name = "x-kong-name",
-            ["in"] = "header",
-            required = true,
-            schema = '{"type": "object"}',
-            style = "simple",
-            explode = true,
+      describe("parameter type[object] validation for multi/single header with a object", function()
+
+        for _, explode in ipairs({true, false}) do
+
+          local delim = explode and "=" or ","
+          local param_schema = {
+            {
+              name = "x-kong-name",
+              ["in"] = "header",
+              required = true,
+              -- note: trailing whitespace on the roles must be stripped to match
+              -- the enum values below and pass the tests
+              schema = [[{
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": [ "admin", "user" ]
+                  },
+                  "firstName": { "type": "string" }
+                },
+                "additionalProperties": false
+              }]],
+              style = "simple",
+              explode = explode,
+            }
           }
-        }
-        add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
 
-        local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Content-Type"] = "application/json",
-            ["x-kong-name"] = "role=admin,firstName=Alex",
-          },
-          body = { }
-        })
-        assert.response(res).has.status(200)
-        assert.response(res).has.jsonbody()
 
-        local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Content-Type"] = "application/json",
-            ["x-kong-name"] = "role=admin,firstName=Alex",
-          },
-          body = { }
-        })
-        assert.response(res).has.status(200)
-        assert.response(res).has.jsonbody()
+          it("(delim: "..delim..") value #explode -> " .. tostring(explode), function()
+            add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
+
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/status/200",
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["x-kong-name"] = "role"..delim.."admin,firstName"..delim.."Alex",
+              },
+              body = { }
+            })
+            assert.response(res).has.status(200)
+            assert.response(res).has.jsonbody()
+
+            -- same, but adding whitespace in header
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/status/200",
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["x-kong-name"] = "   role"..delim.."admin   ,   firstName"..delim.."Alex",
+              },
+              body = { }
+            })
+            assert.response(res).has.status(200)
+            assert.response(res).has.jsonbody()
+
+            -- same, but adding whitespace and multiple headers
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/status/200",
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["x-kong-name"] = {
+                  "   role"..delim.."admin   ",
+                  "   firstName"..delim.."Alex",
+                },
+              },
+              body = { }
+            })
+            assert.response(res).has.status(200)
+            assert.response(res).has.jsonbody()
+
+            local res = assert(proxy_client:send {
+              method = "GET",
+              path = "/status/200",
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["x-kong-name"] = "role"..delim.."admin,firstName"..delim.."Alex,lastName"..delim.."not-allowed",
+              },
+              body = { }
+            })
+            assert.response(res).has.status(400)
+          end)
+        end
       end)
 
-      it("parameter type[object] validation for multi/single headers with a object(delim: ,) value #explode -> false", function()
-        local param_schema = {
-          {
-            name = "x-kong-name",
-            ["in"] = "header",
-            required = true,
-            schema = '{"type": "object"}',
-            style = "simple",
-            explode = false,
-          }
-        }
-        add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
-
-        local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Content-Type"] = "application/json",
-            ["x-kong-name"] = "role,admin,firstName,Alex",
-          },
-          body = { }
-        })
-        assert.response(res).has.status(200)
-        assert.response(res).has.jsonbody()
-
-        local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Content-Type"] = "application/json",
-            ["x-kong-name"] = "role,admin,firstName,Alex",
-          },
-          body = { }
-        })
-        assert.response(res).has.status(200)
-        assert.response(res).has.jsonbody()
-      end)
 
       for _, explode in ipairs({true, false}) do
       -- behavior for explode->true & explode->false are identical
@@ -618,13 +630,16 @@ for _, strategy in strategies() do
               name = "x-kong-name",
               ["in"] = "header",
               required = true,
-              schema = '{"type": "string"}',
+              schema = [[{
+                "type": "string",
+                "enum": [ "hello", "bye   ,   triple-whitespace" ]
+              }]],
               style = "simple",
               explode = explode,
             }
           }
 
-        it("parameter type[primitive] validation for single header with a primitive value #explode -> " .. tostring(explode), function()
+        it("parameter type[primitive] validation for single/double header with a primitive value #explode -> " .. tostring(explode), function()
           add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
 
           local res = assert(proxy_client:send {
@@ -632,30 +647,81 @@ for _, strategy in strategies() do
             path = "/status/200",
             headers = {
               ["Content-Type"] = "application/json",
-              ["x-kong-name"] = "a",
+              ["x-kong-name"] = "hello",
             },
             body = { }
           })
           assert.response(res).has.status(200)
           assert.response(res).has.jsonbody()
+
+          -- whitespace doesn't get stripped, multi-value is evaluated as single string for 'primitive'
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["x-kong-name"] = "bye   ,   triple-whitespace",
+            },
+            body = { }
+          })
+          assert.response(res).has.status(200)
+          assert.response(res).has.jsonbody()
+
+          -- whitespace doesn't get stripped, multi-value is evaluated as single string for 'primitive'
+          -- multiple headers are individually evaluated
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["x-kong-name"] = {
+                "hello",
+                "bye   ,   triple-whitespace",
+              },
+            },
+            body = { }
+          })
+          assert.response(res).has.status(200)
+          assert.response(res).has.jsonbody()
+
+          -- whitespace mismatch fails
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["x-kong-name"] = {
+                "hello",
+                "bye, triple-whitespace", --whitespace mismatch
+              },
+            },
+            body = { }
+          })
+          assert.response(res).has.status(400)
         end)
       end
 
       for _, explode in ipairs({true, false}) do
       -- behavior for explode->true & explode->false are identical
 
-          local param_schema = {
-            {
-              name = "kong-name",
-              ["in"] = "header",
-              required = true,
-              schema = '{"type": "array", "items": {"type": "string"}}',
-              style = "simple",
-              explode = explode,
-            }
+        local param_schema = {
+          {
+            name = "kong-name",
+            ["in"] = "header",
+            required = true,
+            schema = [[{
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [ "a", "b", "c", "d" ]
+              }
+            }]],
+            style = "simple",
+            explode = explode,
           }
+        }
 
-        it("parameter type[simple] validation for single header with comma separated values #explode -> " .. tostring(explode), function()
+        it("parameter type[array] validation for single/multi header with comma separated values #explode -> " .. tostring(explode), function()
           add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
 
           local res = assert(proxy_client:send {
@@ -663,28 +729,82 @@ for _, strategy in strategies() do
             path = "/status/200",
             headers = {
               ["Content-Type"] = "application/json",
-              ["kong-name"] = "a,b,c",
+              ["kong-name"] = "a,b,c",  -- single header
             },
             body = { }
           })
           assert.response(res).has.status(200)
           assert.response(res).has.jsonbody()
-        end)
 
-        it("parameter type[simple] validation for single headers without csvs with #explode -> " .. tostring(explode), function()
-          add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
+          -- two headers, and whitespace being ignored
           local res = assert(proxy_client:send {
             method = "GET",
             path = "/status/200",
             headers = {
               ["Content-Type"] = "application/json",
-              ["kong-name"] = "a",
+              ["kong-name"] = { " a , b ", " c , d " }  -- two headers to be combined
+            },
+            body = { }
+          })
+          assert.response(res).has.status(200)
+          assert.response(res).has.jsonbody()
+
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["kong-name"] = { " a , b ", " c , e " }  -- two headers to be combined, but bad values
             },
             body = { }
           })
           assert.response(res).has.status(400)
-          local json = assert.response(res).has.jsonbody()
-          assert.same("header 'kong-name' validation failed, [error] wrong type: expected array, got string", json.message)
+          -- the error message proves that the 2 headers were combined into 1 array
+          -- and whitespace was stripped
+          local body = assert.response(res).has.jsonbody()
+          assert.same({ "a", "b", "c", "e"}, body.data)
+        end)
+
+        it("parameter type[array] validation for single/multi headers without csvs with #explode -> " .. tostring(explode), function()
+          add_plugin(admin_client, {parameter_schema = param_schema, verbose_response = true }, 201)
+
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["kong-name"] = "a",  -- single header
+            },
+            body = { }
+          })
+          assert.response(res).has.status(200)
+          assert.response(res).has.jsonbody()
+
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["kong-name"] = { "a", "c" } -- multiple headers
+            },
+            body = { }
+          })
+          assert.response(res).has.status(200)
+          assert.response(res).has.jsonbody()
+
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/status/200",
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["kong-name"] = { "a", "e" } -- multiple headers, one having bad values
+            },
+            body = { }
+          })
+          assert.response(res).has.status(400)
+          -- the error message proves that the 2 headers were combined into 1 array
+          local body = assert.response(res).has.jsonbody()
+          assert.same({ "a", "e"}, body.data)
         end)
       end
     end)

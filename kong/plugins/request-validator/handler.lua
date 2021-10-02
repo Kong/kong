@@ -196,46 +196,70 @@ local function validate_required(location, parameter)
 end
 
 
-local function validate_style_deepobject(location, parameter)
+local validate_data do
+  local function validate_style_deepobject(location, parameter)
 
-  local validator = validator_param_cache[parameter]
+    local validator = validator_param_cache[parameter]
 
-  local result, err =  deserialize(parameter.style, parameter.decoded_schema.type,
-          parameter.explode, parameter.name, template_environment[location])
-  if err == "not found" and not parameter.required then
-    return true
+    local result, err =  deserialize(parameter.style, parameter.decoded_schema.type,
+            parameter.explode, parameter.name, template_environment[location], location)
+    if err == "not found" and not parameter.required then
+      return true
+    end
+
+    if err or not result then
+      return false, err
+    end
+
+    return validator(result)
   end
 
-  if err or not result then
-    return false, err
-  end
+  local tables_allowed = {
+    object = true,
+    array = true,
+  }
 
-  return validator(result)
+  validate_data = function(location, parameter)
+    if location == "query" and parameter.style == "deepObject" then
+      return validate_style_deepobject(location, parameter)
+    end
+
+    -- if param is not required and value is nil or serialization
+    -- information not being set, return valid
+    if not parameter.value or parameter.style == ngx_null  then
+      return true
+    end
+
+    local validator = validator_param_cache[parameter]
+    if type(parameter.value) ~= "table" or tables_allowed[parameter.decoded_schema.type] then
+      -- if the value is a table, then we can only validate it for non-primitives
+      local result, err =  deserialize(parameter.style, parameter.decoded_schema.type,
+              parameter.explode, parameter.value, nil, parameter["in"])
+      if err or not result then
+        return false, err
+      end
+
+      local ok, err = validator(result)
+      return ok, err, result
+    end
+
+    -- by now we have a primitive type (not array nor object) and the value is a table
+    -- so we got duplicate headers or query values. We need to validate them individually.
+    for _, value in ipairs(parameter.value) do
+      local result, err =  deserialize(parameter.style, parameter.decoded_schema.type,
+            parameter.explode, value, nil, parameter["in"])
+      if err or not result then
+        return false, err
+      end
+
+      local ok, err = validator(result)
+      if not ok then
+        return ok, err, result
+      end
+    end
+    return true, nil, parameter.value
+  end
 end
-
-
-local function validate_data(location, parameter)
-  if location == "query" and parameter.style == "deepObject" then
-    return validate_style_deepobject(location, parameter)
-  end
-
-  -- if param is not required and value is nil or serialization
-  -- information not being set, return valid
-  if not parameter.value or parameter.style == ngx_null  then
-    return true
-  end
-
-  local validator = validator_param_cache[parameter]
-  local result, err =  deserialize(parameter.style, parameter.decoded_schema.type,
-          parameter.explode, parameter.value)
-  if err or not result then
-    return false, err
-  end
-
-  local ok, err = validator(result)
-  return ok, err, result
-end
-
 
 local function validate_parameters(location, parameter)
   local ok, err, data = validate_required(location, parameter)

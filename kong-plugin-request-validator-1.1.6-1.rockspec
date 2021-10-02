@@ -13,7 +13,7 @@ description = {
 
 dependencies = {
   "lua-resty-ljsonschema == 1.1.2",
-  "lua-resty-openapi3-deserializer == 1.2.0",
+  "lua-resty-openapi3-deserializer == 2.0.0",
 }
 
 build = {

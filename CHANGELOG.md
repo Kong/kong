@@ -12,6 +12,16 @@
 
 For steps 2 - 6 above [this script](https://github.com/Kong/kong-ee/blob/master/scripts/bump-plugin) can be used.
 
+## unreleased
+
+- revert the change in parsing multiple values as arrays in version 1.1.3
+  (FTI-2530)
+  headers and query-args as `primitive` are now validated individually when
+  duplicates are provided, instead of merging them as an array.
+- fix(headers) whitespace around CSV values is now dropped since it is not
+  significant according to the RFC (whitespace is optional)
+- chore(*) bump openapi3-deserialiser to 2.0.0 to enable the above changes
+
 ## 1.1.6
 
 - fix(verbose) when parameters are required, the code path would not add an
