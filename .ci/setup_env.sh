@@ -124,7 +124,7 @@ fi
 if [[ "$TEST_SUITE" == "pdk" ]]; then
   CPAN_DOWNLOAD=$DOWNLOAD_ROOT/cpanm
   mkdir -p $CPAN_DOWNLOAD
-  wget -O $CPAN_DOWNLOAD/cpanm https://cpanmin.us
+  curl -o $CPAN_DOWNLOAD/cpanm https://cpanmin.us
   chmod +x $CPAN_DOWNLOAD/cpanm
   export PATH=$CPAN_DOWNLOAD:$PATH
 
