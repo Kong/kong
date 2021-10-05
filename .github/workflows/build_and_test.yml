@@ -162,6 +162,11 @@ jobs:
           - 6379:6379
         options: --entrypoint redis-server
 
+      squid:
+        image: datadog/squid
+        ports:
+          - 3128:3128
+
     steps:
     - name: Set environment variables
       run: |
@@ -286,6 +291,11 @@ jobs:
         ports:
           - 6379:6379
         options: --entrypoint redis-server
+
+      squid:
+        image: datadog/squid
+        ports:
+          - 3128:3128
 
     steps:
     - name: Set environment variables
