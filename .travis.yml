@@ -1,4 +1,4 @@
-dist: xenial
+dist: focal
 
 language: go
 
@@ -46,26 +46,18 @@ env:
   matrix:
     # enterprise matrix begin
     # XXX add extra jobs for different cassandra versions
-    - KONG_TEST_DATABASE=postgres POSTGRES=9.6 TEST_SUITE=integration-ee
-    - KONG_TEST_DATABASE=postgres POSTGRES=10.18 TEST_SUITE=integration-ee
-    - KONG_TEST_DATABASE=postgres POSTGRES=11.13 TEST_SUITE=integration-ee
-    - KONG_TEST_DATABASE=postgres POSTGRES=9.6 TEST_SUITE=plugins-ee
-    - KONG_TEST_DATABASE=postgres POSTGRES=10.18 TEST_SUITE=plugins-ee
-    - KONG_TEST_DATABASE=postgres POSTGRES=11.13 TEST_SUITE=plugins-ee
+    - KONG_TEST_DATABASE=postgres POSTGRES=9.5 TEST_SUITE=integration-ee
+    - KONG_TEST_DATABASE=postgres POSTGRES=9.5 TEST_SUITE=plugins-ee
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.11 TEST_SUITE=integration-ee
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.11 TEST_SUITE=plugins-ee
-    - KONG_TEST_DATABASE=postgres TEST_SUITE=plugins-ee
+    - KONG_TEST_DATABASE=postgres POSTGRES=9.5 TEST_SUITE=plugins-ee
     # enterprise matrix end
-    - KONG_TEST_DATABASE=postgres POSTGRES=9.6 TEST_SUITE=integration
-    - KONG_TEST_DATABASE=postgres POSTGRES=10.18 TEST_SUITE=integration
-    - KONG_TEST_DATABASE=postgres POSTGRES=11.13 TEST_SUITE=integration
+    - KONG_TEST_DATABASE=postgres POSTGRES=9.5 TEST_SUITE=integration
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.11 TEST_SUITE=integration
     - KONG_TEST_DATABASE=off TEST_SUITE=dbless
-    - KONG_TEST_DATABASE=postgres POSTGRES=9.6 TEST_SUITE=plugins
-    - KONG_TEST_DATABASE=postgres POSTGRES=10.18 TEST_SUITE=plugins
-    - KONG_TEST_DATABASE=postgres POSTGRES=11.13 TEST_SUITE=plugins
+    - KONG_TEST_DATABASE=postgres POSTGRES=9.5 TEST_SUITE=plugins
     - KONG_TEST_DATABASE=cassandra CASSANDRA=3.11 TEST_SUITE=plugins
-    - KONG_TEST_DATABASE=postgres POSTGRES=9.6 TEST_SUITE=pdk
+    - KONG_TEST_DATABASE=postgres POSTGRES=9.5 TEST_SUITE=pdk
 
 install:
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
@@ -92,7 +84,7 @@ jobs:
   include:
     - stage: lint and unit
       script:
-      - docker run -d -t --name=postgres --rm -p 5432:5432 -e POSTGRES_USER=travis -e POSTGRES_PASSWORD=travis -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=travis postgres:9.6
+      - docker run -d -t --name=postgres --rm -p 5432:5432 -e POSTGRES_USER=travis -e POSTGRES_PASSWORD=travis -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=travis postgres:9.5
       - make lint
       - bin/busted -v -o htest spec/01-unit --exclude-tags=flaky
       - bin/busted -v -o htest spec-ee/01-unit --exclude-tags=flaky
