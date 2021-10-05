@@ -25,6 +25,7 @@ addons:
       - libpasswdqc-dev
       - valgrind
       - build-essential
+      - ca-certificates
   hosts:
     - grpcs_1.test
     - grpcs_2.test
