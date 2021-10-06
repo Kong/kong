@@ -255,35 +255,49 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
     -- XXX EE: this should be moved in its own file (compat/config.lua). With a table
     -- similar to compat/remove_fields, each plugin could register a function to handle
     -- its compatibility issues.
-    if config_table["plugins"] and dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
-      for _, t in ipairs(config_table["plugins"]) do
-        local config = t and t["config"]
-        if config then
-          if t["name"] == "rate-limiting-advanced" then
-            if config["strategy"] == "local" then
-              ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin version " .. KONG_VERSION ..
-                      " contains configuration 'strategy=local'",
-                      " which is incompatible with dataplane version " .. dp_version .. " and will",
-                      " be replaced by 'strategy=redis' and 'sync_rate=-1'.", log_suffix)
-              config["strategy"] = "redis"
-              config["sync_rate"] = -1
-              has_update = true
-            elseif config["sync_rate"] and config["sync_rate"] > 0 and config["sync_rate"] < 1 then
-              ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin version " .. KONG_VERSION ..
-                      " contains configuration 'sync_rate < 1'",
-                      " which is incompatible with dataplane version " .. dp_version .. " and will",
-                      " be replaced by 'sync_rate=1'.", log_suffix)
-              config["sync_rate"] = 1
-              has_update = true
-            end
+    if dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
+      if config_table["consumers"] then
+        for _, t in ipairs(config_table["consumers"]) do
+          if t["username_lower"] then
+            ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                    " contains configuration 'consumer.username_lower'",
+                    " which is incompatible with dataplane version " .. dp_version .. " and will",
+                    " be removed.", log_suffix)
+            t["username_lower"] = nil
+            has_update = true
+          end
+        end
+      end
+      if config_table["plugins"] then
+        for _, t in ipairs(config_table["plugins"]) do
+          local config = t and t["config"]
+          if config then
+            if t["name"] == "rate-limiting-advanced" then
+              if config["strategy"] == "local" then
+                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
+                        " contains configuration 'strategy=local'",
+                        " which is incompatible with dataplane version " .. dp_version .. " and will",
+                        " be replaced by 'strategy=redis' and 'sync_rate=-1'.", log_suffix)
+                config["strategy"] = "redis"
+                config["sync_rate"] = -1
+                has_update = true
+              elseif config["sync_rate"] and config["sync_rate"] > 0 and config["sync_rate"] < 1 then
+                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
+                        " contains configuration 'sync_rate < 1'",
+                        " which is incompatible with dataplane version " .. dp_version .. " and will",
+                        " be replaced by 'sync_rate=1'.", log_suffix)
+                config["sync_rate"] = 1
+                has_update = true
+              end
 
-            if config["identifier"] == "path" then
-              ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin version " .. KONG_VERSION ..
-                      " contains configuration 'identifier=path'",
-                      " which is incompatible with dataplane version " .. dp_version .. " and will",
-                      " be replaced by 'identifier=consumer'.", log_suffix)
-              config["identifier"] = "consumer" -- default
-              has_update = true
+              if config["identifier"] == "path" then
+                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
+                        " contains configuration 'identifier=path'",
+                        " which is incompatible with dataplane version " .. dp_version .. " and will",
+                        " be replaced by 'identifier=consumer'.", log_suffix)
+                config["identifier"] = "consumer" -- default
+                has_update = true
+              end
             end
           end
         end
