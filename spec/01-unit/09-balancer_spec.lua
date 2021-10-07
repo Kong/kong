@@ -511,7 +511,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
       end)
     end)
 
-    describe("healthcheck events", function()
+    describe("#flaky healthcheck events", function()
       it("(un)subscribe_to_healthcheck_events()", function()
         setup_it_block(consistency)
         local my_balancer = assert(balancers.create_balancer(upstream_hc))

@@ -150,6 +150,17 @@ if [ "$KONG_TEST_DATABASE" == "cassandra" -o "$KONG_TEST_DATABASE" == "" ]; then
   echo "Setting up Cassandra"
   docker run -d --name=cassandra --rm -p 7199:7199 -p 7000:7000 -p 9160:9160 -p 9042:9042 cassandra:$CASSANDRA
   grep -q 'Created default superuser role' <(docker logs -f cassandra)
+# -------------------------------------
+# Setup Postgres
+# -------------------------------------
+elif  [ "$KONG_TEST_DATABASE" == "postgres" ]; then
+  PG_DB=${KONG_TEST_PG_DATABASE:-kong_tests}
+  PG_USER=${KONG_TEST_PG_USER:-kong}
+  PG_PASS=${KONG_TEST_PG_PASSWORD:-kong}
+  echo "Setting up Postgres $POSTGRES db $PG_DB with auth $PG_USER:$PG_PASS"
+  docker run -d --name=postgres --rm -p 5432:5432 -e POSTGRES_USER=$PG_USER \
+  -e POSTGRES_PASSWORD=$PG_PASS -e POSTGRES_HOST_AUTH_METHOD=trust \
+  -e POSTGRES_DB=$PG_DB postgres:$POSTGRES
 fi
 
 # -------------------
@@ -158,7 +169,7 @@ fi
 if [[ "$TEST_SUITE" == "pdk" ]]; then
   CPAN_DOWNLOAD=$DOWNLOAD_ROOT/cpanm
   mkdir -p $CPAN_DOWNLOAD
-  wget -O $CPAN_DOWNLOAD/cpanm https://cpanmin.us
+  curl -o $CPAN_DOWNLOAD/cpanm https://cpanmin.us
   chmod +x $CPAN_DOWNLOAD/cpanm
   export PATH=$CPAN_DOWNLOAD:$PATH
 
