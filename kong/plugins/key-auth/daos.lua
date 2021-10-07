@@ -1,7 +1,7 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  keyauth_credentials = {
+  {
     ttl = true,
     primary_key = { "id" },
     name = "keyauth_credentials",

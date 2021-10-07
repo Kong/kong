@@ -2,7 +2,7 @@ local typedefs = require "kong.db.schema.typedefs"
 
 
 return {
-  hmacauth_credentials = {
+  {
     primary_key = { "id" },
     name = "hmacauth_credentials",
     endpoint_key = "username",

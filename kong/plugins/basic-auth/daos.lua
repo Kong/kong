@@ -3,7 +3,7 @@ local crypto = require "kong.plugins.basic-auth.crypto"
 
 
 return {
-  basicauth_credentials = {
+  {
     name = "basicauth_credentials",
     primary_key = { "id" },
     cache_key = { "username" },
