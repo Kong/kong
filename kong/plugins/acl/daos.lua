@@ -1,7 +1,7 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  acls = {
+  {
     dao = "kong.plugins.acl.acls",
     name = "acls",
     primary_key = { "id" },

@@ -1,7 +1,7 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  acme_storage = {
+  {
     ttl = true,
     primary_key = { "id" },
     cache_key = { "key" },

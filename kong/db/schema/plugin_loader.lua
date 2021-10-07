@@ -297,6 +297,11 @@ function plugin_loader.load_entities(plugin, errors, loader_fn)
     -- daos_schemas is a non-empty hash (old syntax). Sort it topologically in order to avoid errors when loading
     -- relationships before loading entities within the same plugin
     daos_schemas = sort_daos_schemas_topologically(daos_schemas)
+
+    kong.log.deprecation("The plugin ", plugin,
+     " is using a hash-like syntax on its `daos.lua` file. ",
+     "Please replace the hash table with a sequential array of schemas.",
+     { after = "2.6.0", removal = "3.0.0" })
   end
 
   local res = {}

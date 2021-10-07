@@ -11,7 +11,7 @@ local function validate_ssl_key(key)
 end
 
 return {
-  jwt_secrets = {
+  {
     name = "jwt_secrets",
     primary_key = { "id" },
     cache_key = { "key" },
