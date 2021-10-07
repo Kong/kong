@@ -15,9 +15,11 @@ local dns_client = require "kong.resty.dns.client"
 
 
 local toip = dns_client.toip
+local sub = string.sub
 local ngx = ngx
 local log = ngx.log
 local null = ngx.null
+local header = ngx.header
 local type = type
 local pairs = pairs
 local tostring = tostring
@@ -102,6 +104,39 @@ local function get_value_to_hash(upstream, ctx)
     end
   end
   -- nothing found, leave without a hash
+end
+
+
+local function set_cookie(cookie)
+  local prefix = cookie.key .. "="
+  local length = #prefix
+  local path = cookie.path or "/"
+  local cookie_value = prefix .. cookie.value .. "; Path=" .. path .. "; Same-Site=Lax; HttpOnly"
+  local cookie_header = header["Set-Cookie"]
+  local header_type = type(cookie_header)
+  if header_type == "table" then
+    local found
+    local count = #cookie_header
+    for i = 1, count do
+      if sub(cookie_header[i], 1, length) == prefix then
+        cookie_header[i] = cookie_value
+        found = true
+        break
+      end
+    end
+
+    if not found then
+      cookie_header[count+1] = cookie_value
+    end
+
+  elseif header_type == "string" and sub(cookie_header, 1, length) ~= prefix then
+    cookie_header = { cookie_header, cookie_value }
+
+  else
+    cookie_header = cookie_value
+  end
+
+  header["Set-Cookie"] = cookie_header
 end
 
 
@@ -377,6 +412,7 @@ return {
   get_balancer_health = healthcheckers.get_balancer_health,
   stop_healthcheckers = healthcheckers.stop_healthcheckers,
   set_host_header = set_host_header,
+  set_cookie = set_cookie,
 
   -- ones below are exported for test purposes only
   --_create_balancer = create_balancer,
