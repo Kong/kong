@@ -35,7 +35,6 @@ dependencies = {
   "lua-protobuf == 0.3.3",
   "lua-resty-worker-events == 1.0.0",
   "lua-resty-healthcheck == 1.4.2",
-  "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
   "lua-resty-openssl == 0.7.5",
