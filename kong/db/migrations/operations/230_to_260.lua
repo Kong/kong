@@ -73,7 +73,12 @@ local function output_duplicate_username_lower_report(coordinator, strategy)
 
   local process_row = function(row)
     if type(row.username_lower) == 'string' then
-      local key = row.username_lower
+      local key
+      if strategy == "cassandra" then
+        key = row.username_lower
+      else
+        key = fmt("%s:%s", row.ws_id, row.username_lower)
+      end
 
       if type(unique_username_lowers[key]) == 'table' then
         unique_username_lower_count = unique_username_lower_count + 1
