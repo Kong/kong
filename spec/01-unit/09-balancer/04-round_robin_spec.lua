@@ -695,14 +695,14 @@ describe("[round robin balancer]", function()
         end
       })
       add_target(b, "12.34.56.78", 123, 100)
-      ngx.sleep(0.1)
+      ngx.sleep(0)
       assert.equal(1, count_add)
       assert.equal(0, count_remove)
 
       --b:removeHost("12.34.56.78", 123)
       b.targets[1].addresses[1].disabled = true
       b:deleteDisabledAddresses(b.targets[1])
-      ngx.sleep(0.1)
+      ngx.sleep(0)
       assert.equal(1, count_add)
       assert.equal(1, count_remove)
     end)
@@ -737,14 +737,14 @@ describe("[round robin balancer]", function()
         { name = "mashape.test", address = "12.34.56.78" },
       })
       add_target(b, "mashape.test", 123, 100)
-      ngx.sleep(0.1)
+      ngx.sleep(0)
       assert.equal(2, count_add)
       assert.equal(0, count_remove)
 
       b.targets[1].addresses[1].disabled = true
       b.targets[1].addresses[2].disabled = true
       b:deleteDisabledAddresses(b.targets[1])
-      ngx.sleep(0.1)
+      ngx.sleep(0)
       assert.equal(2, count_add)
       assert.equal(2, count_remove)
     end)
@@ -785,7 +785,7 @@ describe("[round robin balancer]", function()
         { name = "mashape.test", target = "mashape2.test", port = 8002, weight = 5 },
       })
       add_target(b, "mashape.test", 123, 100)
-      ngx.sleep(0.1)
+      ngx.sleep(0)
       assert.equal(2, count_add)
       assert.equal(0, count_remove)
 
@@ -793,7 +793,7 @@ describe("[round robin balancer]", function()
       b.targets[1].addresses[1].disabled = true
       b.targets[1].addresses[2].disabled = true
       b:deleteDisabledAddresses(b.targets[1])
-      ngx.sleep(0.1)
+      ngx.sleep(0)
       assert.equal(2, count_add)
       assert.equal(2, count_remove)
     end)
@@ -814,7 +814,7 @@ describe("[round robin balancer]", function()
           -- this callback is called when updating. So yield here and
           -- verify that the second thread does not interfere with
           -- the first update, yielded here.
-          ngx.sleep(0.1)
+          ngx.sleep(0)
         end
       })
       dnsA({
@@ -835,7 +835,7 @@ describe("[round robin balancer]", function()
       end)
       ngx.thread.wait(t1)
       ngx.thread.wait(t2)
-      ngx.sleep(0.1)
+      ngx.sleep(0)
       assert.same({
         [1] = 'thread1 start',
         [2] = 'thread1 end',
