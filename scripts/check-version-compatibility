@@ -557,53 +557,6 @@ function install_requirements() {
       curl -sL "$url" -o /usr/local/bin/yq
       chmod a+x /usr/local/bin/yq
     fi
-
-    # Build and install GMP
-    if [[ ! -f "/build/usr/local/kong/lib/libgmp.so" ]]; then
-      curl -sL "$GMP_URL" -o "/tmp/$GMP_FILENAME"
-      tar xjf "/tmp/$GMP_FILENAME" -C /tmp
-      (
-        cd "/tmp/$GMP_DIRECTORY" || return
-        ./configure \
-          --build=x86_64-linux-gnu \
-          --enable-static=no \
-          --libdir=/build/usr/local/kong/lib
-        make install
-      )
-    fi
-
-    # Build and install libnettle
-    if [[ ! -f "/build/usr/local/kong/lib/libnettle.so" ]] ||
-      [[ ! -f "/build/usr/local/kong/lib/libhogweed.so" ]]; then
-      curl -sL "$NETTLE_URL" -o "/tmp/$NETTLE_FILENAME"
-      tar xzf "/tmp/$NETTLE_FILENAME" -C /tmp
-      (
-        cd "/tmp/$NETTLE_DIRECTORY" || return
-        sed -i 's/for (size_t i = 0; i < limbs; i++)/size_t i;for (i = 0; i < limbs; i++)/' rsa-sign-tr.c
-        LDFLAGS="-Wl,-rpath,/build/usr/local/kong/lib" \
-          ./configure --disable-static \
-            --with-include-path="/tmp/$GMP_DIRECTORY" \
-            --with-lib-path="/tmp/$GMP_DIRECTORY/.libs/" \
-            --libdir=/build/usr/local/kong/lib
-        make install
-      )
-    fi
-
-    # Build and install libjq
-    if [[ ! -f "/build/usr/local/kong/lib/libjq.so" ]]; then
-      curl -sL "$JQ_URL" -o "/tmp/$JQ_FILENAME"
-      tar xzf "/tmp/$JQ_FILENAME" -C /tmp
-      (
-        cd "/tmp/$JQ_DIRECTORY" || return
-        ./configure --prefix=/build/usr/local/kong
-        make install
-      )
-    fi
-
-    # Cleanup of dependencies
-    rm -rf "/tmp/$GMP_DIRECTORY" "/tmp/$GMP_FILENAME" \
-           "/tmp/$NETTLE_DIRECTORY" "/tmp/$NETTLE_FILENAME" \
-           "/tmp/$JQ_DIRECTORY" "/tmp/$JQ_FILENAME"
   fi
 }
 
