@@ -1654,7 +1654,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
             end
           end
 
-          ngx.sleep(0.1)  -- wait a bit before retrying
+          ngx.sleep(0)  -- wait a bit before retrying
         end
       end)
     end)
