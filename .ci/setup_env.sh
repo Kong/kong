@@ -150,10 +150,12 @@ if [ "$KONG_TEST_DATABASE" == "cassandra" -o "$KONG_TEST_DATABASE" == "" ]; then
   echo "Setting up Cassandra"
   docker run -d --name=cassandra --rm -p 7199:7199 -p 7000:7000 -p 9160:9160 -p 9042:9042 cassandra:$CASSANDRA
   grep -q 'Created default superuser role' <(docker logs -f cassandra)
+fi
+
 # -------------------------------------
 # Setup Postgres
 # -------------------------------------
-elif  [ "$KONG_TEST_DATABASE" == "postgres" ]; then
+if [ "$KONG_TEST_DATABASE" == "postgres" -o "$KONG_TEST_DATABASE" == "" ]; then
   PG_DB=${KONG_TEST_PG_DATABASE:-kong_tests}
   PG_USER=${KONG_TEST_PG_USER:-kong}
   PG_PASS=${KONG_TEST_PG_PASSWORD:-kong}
