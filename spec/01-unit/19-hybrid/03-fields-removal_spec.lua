@@ -672,6 +672,11 @@ describe("kong.clustering.control_plane", function()
           config = {
             identifier = "path",
           }
+        }, {
+          name = "canary",
+          config = {
+            hash = "header",
+          }
         }, }
       }
     }
@@ -710,6 +715,11 @@ describe("kong.clustering.control_plane", function()
       config = {
         identifier = "consumer",  -- was path, fallback to default consumer
       }
+    }, {
+      name = "canary",
+      config = {
+        hash = "consumer",
+      }
     } }, test_with(payload, "2.3.0").config_table.plugins)
 
     assert.same({ {
@@ -746,6 +756,11 @@ describe("kong.clustering.control_plane", function()
       name = "rate-limiting-advanced",
       config = {
         identifier = "consumer",  -- was path, fallback to default consumer
+      }
+    }, {
+      name = "canary",
+      config = {
+        hash = "consumer",
       }
     } }, test_with(payload, "2.5.0").config_table.plugins)
 
