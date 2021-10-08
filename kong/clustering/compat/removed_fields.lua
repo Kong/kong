@@ -50,6 +50,7 @@ return {
     },
     request_termination = {
       "echo",
+      "trigger",
     },
   }
 }
