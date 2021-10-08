@@ -155,7 +155,6 @@ pipeline {
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
-                        sh 'RESTY_IMAGE_TAG=jessie make release'
                         sh 'RESTY_IMAGE_TAG=stretch make release'
                     }
                 }
