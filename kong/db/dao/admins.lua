@@ -9,6 +9,7 @@ local utils = require "kong.tools.utils"
 local enums = require "kong.enterprise_edition.dao.enums"
 local rbac      = require "kong.rbac"
 
+local tostring = tostring
 local log = ngx.log
 local ERR = ngx.ERR
 local _log_prefix = "[admins-dao] "
@@ -34,6 +35,21 @@ local function rollback_on_create(self, entities)
   end
 end
 
+local handle_username_lower = function(self, entity, options)
+  local err_t
+
+  if entity.username_lower then
+    err_t = self.errors:schema_violation({ username_lower = 'auto-generated field cannot be set by user' })
+    return nil, tostring(err_t), err_t
+  end
+
+  if type(entity.username) == 'string' then
+    entity.username_lower = entity.username:lower()
+  end
+
+  return true
+end
+
 
 local _Admins = {}
 
@@ -49,6 +65,11 @@ function _Admins:insert(admin, options)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t
+  end
+
+  local _, err, err_t = handle_username_lower(self, admin, options)
+  if err_t then
+    return nil, err, err_t
   end
 
   local unique_name = admin.username .. "-" .. utils.uuid()
@@ -107,40 +128,45 @@ function _Admins:insert(admin, options)
 end
 
 function _Admins:update(primary_key, admin, options)
-  if type(admin.username) == 'string' then
-    admin.username_lower = admin.username:lower()
+  local _, err, err_t = handle_username_lower(self, admin, options)
+  if err_t then
+    return nil, err, err_t
   end
 
   return self.super.update(self, primary_key, admin, options)
 end
 
 function _Admins:update_by_username(username, admin, options)
-  if type(admin.username) == 'string' then
-    admin.username_lower = admin.username:lower()
+  local _, err, err_t = handle_username_lower(self, admin, options)
+  if err_t then
+    return nil, err, err_t
   end
 
   return self.super.update_by_username(self, username, admin, options)
 end
 
 function _Admins:update_by_email(email, admin, options)
-  if type(admin.username) == 'string' then
-    admin.username_lower = admin.username:lower()
+  local _, err, err_t = handle_username_lower(self, admin, options)
+  if err_t then
+    return nil, err, err_t
   end
 
   return self.super.update_by_email(self, email, admin, options)
 end
 
 function _Admins:update_by_custom_id(custom_id, admin, options)
-  if type(admin.username) == 'string' then
-    admin.username_lower = admin.username:lower()
+  local _, err, err_t = handle_username_lower(self, admin, options)
+  if err_t then
+    return nil, err, err_t
   end
 
   return self.super.update_by_custom_id(self, custom_id, admin, options)
 end
 
 function _Admins:upsert(primary_key, admin, options)
-  if type(admin.username) == 'string' then
-    admin.username_lower = admin.username:lower()
+  local _, err, err_t = handle_username_lower(self, admin, options)
+  if err_t then
+    return nil, err, err_t
   end
 
   return self.super.upsert(self, primary_key, admin, options)
