@@ -67,6 +67,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
       canary = {
         "hash_header",
@@ -138,6 +139,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
       canary = {
         "hash_header",
@@ -209,6 +211,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
       canary = {
         "hash_header",
@@ -280,6 +283,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
       canary = {
         "hash_header",
@@ -341,6 +345,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
       canary = {
         "hash_header",
@@ -402,6 +407,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
       canary = {
         "hash_header",

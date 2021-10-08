@@ -61,6 +61,7 @@ return {
     },
     request_termination = {
       "echo",
+      "trigger",
     },
 
     -- Enterprise plugins
