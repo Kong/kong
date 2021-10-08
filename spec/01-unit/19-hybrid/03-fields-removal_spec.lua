@@ -70,9 +70,6 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
-        hash = {
-          "header",
-        },
       },
       kafka_log = {
         "authentication",
@@ -141,9 +138,6 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
-        hash = {
-          "header",
-        },
       },
       kafka_log = {
         "authentication",
@@ -212,9 +206,6 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
-        hash = {
-          "header",
-        },
       },
       kafka_log = {
         "authentication",
@@ -283,9 +274,6 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
-        hash = {
-          "header",
-        },
       },
       kafka_log = {
         "authentication",
@@ -344,9 +332,6 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
-        hash = {
-          "header",
-        },
       },
       kafka_log = {
         "authentication",
@@ -405,9 +390,6 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
-        hash = {
-          "header",
-        },
       },
       kafka_log = {
         "authentication",
