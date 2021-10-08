@@ -59,6 +59,9 @@ describe("kong.clustering.control_plane", function()
         "read_timeout",
         "send_timeout",
       },
+      acme = {
+        "preferred_chain",
+      },
       aws_lambda = {
         "base64_encode_body",
       },
@@ -127,6 +130,9 @@ describe("kong.clustering.control_plane", function()
       },
       syslog = {
         "facility",
+      },
+      acme = {
+        "preferred_chain",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -197,6 +203,9 @@ describe("kong.clustering.control_plane", function()
       syslog = {
         "facility",
       },
+      acme = {
+        "preferred_chain",
+      },
       aws_lambda = {
         "base64_encode_body",
       },
@@ -266,6 +275,9 @@ describe("kong.clustering.control_plane", function()
       syslog = {
         "facility",
       },
+      acme = {
+        "preferred_chain",
+      },
       aws_lambda = {
         "base64_encode_body",
       },
@@ -325,6 +337,9 @@ describe("kong.clustering.control_plane", function()
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
+      acme = {
+        "preferred_chain",
+      },
       aws_lambda = {
         "base64_encode_body",
       },
@@ -384,6 +399,9 @@ describe("kong.clustering.control_plane", function()
     }, cp._get_removed_fields(2004001002))
 
     assert.same({
+      acme = {
+        "preferred_chain",
+      },
       aws_lambda = {
         "base64_encode_body",
       },

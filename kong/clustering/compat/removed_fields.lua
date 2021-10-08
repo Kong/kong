@@ -53,6 +53,13 @@ return {
   -- Any dataplane older than 2.6.0
   [2005999999] = {
     -- OSS plugins
+    acme = {
+      "preferred_chain",
+      -- Note: storage_config.vault fields are located in control_plane.lua
+      --       This needs to be refactored and include nested field_sources
+      --       Field elements may become their own file or a proper
+      --       implementation per plugin with table functions
+    },
     aws_lambda = {
       "base64_encode_body",
     },
