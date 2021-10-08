@@ -2,7 +2,7 @@ local typedefs = require "kong.db.schema.typedefs"
 
 
 return {
-  {
+  foreign_entities = {
     name = "foreign_entities",
     primary_key = { "id" },
     endpoint_key = "name",
@@ -13,7 +13,7 @@ return {
       { same = typedefs.uuid },
     },
   },
-  {
+  foreign_references = {
     name = "foreign_references",
     primary_key = { "id" },
     endpoint_key = "name",
