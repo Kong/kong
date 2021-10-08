@@ -290,6 +290,17 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
         for _, t in ipairs(config_table["plugins"]) do
           local config = t and t["config"]
           if config then
+            if t["name"] == "canary" then
+              if config["hash"] == "header" then
+                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
+                        " contains configuration 'hash=header'",
+                        " which is incompatible with dataplane version " .. dp_version .. " and will",
+                        " be replaced by 'hash=consumer'.", log_suffix)
+                config["hash"] = "consumer" -- default
+                has_update = true
+              end
+            end
+
             if t["name"] == "rate-limiting-advanced" then
               if config["strategy"] == "local" then
                 ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
