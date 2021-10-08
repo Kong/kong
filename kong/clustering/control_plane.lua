@@ -268,6 +268,24 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
           end
         end
       end
+      if config_table["oic_jwks"] then
+        for _, t in ipairs(config_table["oic_jwks"]) do
+          if t["jwks"] and t["jwks"].keys then
+            for _, k in ipairs(t["jwks"].keys) do
+              for _, e in ipairs({ "oth", "r", "t" }) do
+                if k[e] then
+                  ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                          " contains configuration 'oic_jwks.jwks.keys[\"" .. e .. "\"]'",
+                          " which is incompatible with dataplane version " .. dp_version .. " and will",
+                          " be removed.", log_suffix)
+                  k[e] = nil
+                  has_update = true
+                end
+              end
+            end
+          end
+        end
+      end
       if config_table["plugins"] then
         for _, t in ipairs(config_table["plugins"]) do
           local config = t and t["config"]
