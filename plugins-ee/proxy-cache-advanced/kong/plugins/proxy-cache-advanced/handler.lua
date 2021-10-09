@@ -386,7 +386,14 @@ function ProxyCacheHandler:access(conf)
   nctx.KONG_PROXY_LATENCY = proxy_latency
   nctx.KONG_PROXIED = true
 
-  ee.handlers.log.after(nctx)
+  local kong_global = require "kong.global"
+  local PHASES = kong_global.phases
+  local current_phase = kong_global.get_phase(kong)
+  kong_global.set_phase(kong, PHASES.log)
+
+  ee.handlers.log.after(ctx)
+
+  kong_global.set_phase(kong, current_phase)
 
   for k in pairs(res.headers) do
     if not overwritable_header(k) then
