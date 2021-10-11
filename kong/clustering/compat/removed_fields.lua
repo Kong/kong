@@ -61,16 +61,12 @@ return {
     },
     request_termination = {
       "echo",
+      "trigger",
     },
 
     -- Enterprise plugins
     canary = {
       "hash_header",
-
-      -- Remove elements from fields
-      hash = {
-        "header",
-      },
     },
     kafka_log = {
       "authentication",

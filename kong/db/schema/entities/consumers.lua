@@ -19,7 +19,7 @@ return {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
     { username       = { type = "string",  unique = true }, },
-    { username_lower = { type = "string",  prefix_ws = true }, },
+    { username_lower = { type = "string",  prefix_ws = true, db_export = false }, },
     { custom_id      = { type = "string",  unique = true }, },
     { type           = ee_typedefs.consumer_type { required = true } },
     { tags           = typedefs.tags },
