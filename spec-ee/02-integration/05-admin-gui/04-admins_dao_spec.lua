@@ -202,6 +202,17 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("username_lower", function()
+      it("admins:insert() sets username_lower", function()
+        assert(kong.db.admins:insert {
+          username = "INSERT@kong.com",
+        })
+        local admin, err
+        admin, err = kong.db.admins:select_by_username("INSERT@kong.com")
+        assert.is_nil(err)
+        assert(admin.username == "INSERT@kong.com")
+        assert(admin.username_lower == "insert@kong.com")
+      end)
+
       it("admins:update() sets username_lower", function()
         assert(kong.db.admins:insert {
           username = "KING@kong.com",
@@ -232,6 +243,94 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err)
         assert(admin.username == "YANOTHER@kong.com")
         assert(admin.username_lower == "yanother@kong.com")
+      end)
+
+      it("admins:update_by_email() sets username_lower", function()
+        assert(kong.db.admins:insert {
+          email = "ANOTHER_by_email@kong.com",
+          username = "ANOTHER_by_email@kong.com",
+        })
+        local admin, err
+        admin, err = kong.db.admins:select_by_username("ANOTHER_by_email@kong.com")
+        assert.is_nil(err)
+        assert(admin.username == "ANOTHER_by_email@kong.com")
+        assert(admin.username_lower == "another_by_email@kong.com")
+        assert(kong.db.admins:update_by_email("ANOTHER_by_email@kong.com", { username = "YANOTHER_by_email@kong.com" }))
+        admin, err = kong.db.admins:select({ id = admin.id })
+        assert.is_nil(err)
+        assert(admin.username == "YANOTHER_by_email@kong.com")
+        assert(admin.username_lower == "yanother_by_email@kong.com")
+      end)
+
+      it("admins:update_by_custom_id() sets username_lower", function()
+        assert(kong.db.admins:insert {
+          custom_id = "ANOTHER_by_custom_id@kong.com",
+          username = "ANOTHER_by_custom_id@kong.com",
+        })
+        local admin, err
+        admin, err = kong.db.admins:select_by_username("ANOTHER_by_custom_id@kong.com")
+        assert.is_nil(err)
+        assert(admin.username == "ANOTHER_by_custom_id@kong.com")
+        assert(admin.username_lower == "another_by_custom_id@kong.com")
+        assert(kong.db.admins:update_by_custom_id("ANOTHER_by_custom_id@kong.com", { username = "YANOTHER_by_custom_id@kong.com" }))
+        admin, err = kong.db.admins:select({ id = admin.id })
+        assert.is_nil(err)
+        assert(admin.username == "YANOTHER_by_custom_id@kong.com")
+        assert(admin.username_lower == "yanother_by_custom_id@kong.com")
+      end)
+
+      it("admins:insert() doesn't allow username_lower values", function()
+        local admin, err, err_t = kong.db.admins:insert({
+          email = "heyo@admin.com",
+          username = "HEYO",
+          username_lower = "heyo"
+        })
+        assert.is_nil(admin)
+        assert(err)
+        assert.same('auto-generated field cannot be set by user', err_t.fields.username_lower)
+      end)
+
+      it("admins:update() doesn't allow username_lower values", function()
+        local admin = kong.db.admins:insert({
+          email = "update@admin.com",
+          username = "update",
+          custom_id = "update",
+        })
+        assert(admin)
+        local updated, err, err_t = kong.db.admins:update({ id = admin.id }, {
+          username = "HEYO",
+          username_lower = "heyo"
+        })
+        assert.is_nil(updated)
+        assert(err)
+        assert.same(err_t.fields.username_lower, 'auto-generated field cannot be set by user')
+      end)
+
+      it("admins:update_by_username() doesn't allow username_lower values", function()
+        local updated, err, err_t = kong.db.admins:update_by_username("update", {
+          username_lower = "heyo"
+        })
+        assert.is_nil(updated)
+        assert(err)
+        assert.same(err_t.fields.username_lower, 'auto-generated field cannot be set by user')
+      end)
+
+      it("admins:update_by_email() doesn't allow username_lower values", function()
+        local updated, err, err_t = kong.db.admins:update_by_email("update@admin.com", {
+          username_lower = "heyo"
+        })
+        assert.is_nil(updated)
+        assert(err)
+        assert.same(err_t.fields.username_lower, 'auto-generated field cannot be set by user')
+      end)
+
+      it("admins:update_by_custom_id() doesn't allow username_lower values", function()
+        local updated, err, err_t = kong.db.admins:update_by_custom_id("update", {
+          username_lower = "heyo"
+        })
+        assert.is_nil(updated)
+        assert(err)
+        assert.same(err_t.fields.username_lower, 'auto-generated field cannot be set by user')
       end)
 
       it("admins:select_by_username_ignore_case() ignores username case", function()

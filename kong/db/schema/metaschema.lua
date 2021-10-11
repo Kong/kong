@@ -80,6 +80,7 @@ local field_schema = {
   { err = { type = "string" } },
   { encrypted = { type = "boolean" }, },
   { prefix_ws = { type = "boolean" }, },
+  { db_export = { type = "boolean" }, },
 }
 
 for _, field in ipairs(validators) do

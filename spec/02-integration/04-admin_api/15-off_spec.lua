@@ -711,7 +711,6 @@ describe("Admin API #off", function()
             { id = "d885e256-1abe-5e24-80b6-8f68fe59ea8e",
               created_at = 1566863706,
               username = "bobo",
-              username_lower = lyaml.null,
               type = 0,
               custom_id = lyaml.null,
               tags = lyaml.null,
