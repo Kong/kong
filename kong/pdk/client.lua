@@ -81,7 +81,15 @@ local function new(self)
   function _CLIENT.get_forwarded_ip()
     check_not_phase(PHASES.init_worker)
 
-    return ngx.var.remote_addr
+    local client_ip
+    if ngx.var.upstream_x_forwarded_for ~= nil then
+      -- take the first ip in x-forwarded-for list (client real ip)
+      client_ip = utils.split(ngx.var.upstream_x_forwarded_for, ",")[1]
+      -- remove port from ip (if it's present)
+      client_ip = utils.strip(utils.split(client_ip, ":")[1])
+    end
+
+    return client_ip or ngx.var.remote_addr
   end
 
 
