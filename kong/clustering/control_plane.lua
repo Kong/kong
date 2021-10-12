@@ -542,7 +542,13 @@ function _M:check_configuration_compatibility(dp_plugin_map, dp_version)
         ngx_log(ngx_DEBUG, _log_prefix, "data plane plugin vault-auth version ",
           "1.0.0 was incorrectly versioned, but is compatible")
         dp_plugin = cp_plugin
-      elseif (name == "rate-limiting-advanced" or name == "openid-connect") and dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
+      elseif (name == "rate-limiting-advanced" or
+              name == "openid-connect" or
+              name == "canary") and dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
+        -- Add special error message for partially compatible plugins.
+        --
+        -- Note: These are plugins that get configuration values changed before
+        -- they are pushed to the dataplanes.
         ngx_log(ngx_WARN, _log_prefix, "data plane plugin openid-connect version ",
           dp_plugin.version, " is partially compatible with version ", cp_plugin.version,
           "; it is strongly recommended to upgrade your data plane version ", dp_version,
