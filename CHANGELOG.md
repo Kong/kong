@@ -1,6 +1,6 @@
 # Table of Contents
 
-
+- [Unreleased](#Unreleased)
 - [2.6.0](#260)
 - [2.5.1](#251)
 - [2.5.0](#250)
@@ -60,9 +60,21 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## [Unreleased]
+
+### Additions
+
+### Plugins
+
+- **Datadog**: add support for the `distribution` metric type.
+  [#6231](https://github.com/Kong/kong/pull/6231)
+  Thanks [onematchfox](https://github.com/onematchfox) for the patch!
+
+[Back to TOC](#table-of-contents)
+
 ## [2.6.0]
 
-> Release date: TBA
+> Release date: 2021/10/04
 
 ### Dependencies
 
@@ -6570,6 +6582,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[Unreleased]: https://github.com/Kong/kong/compare/2.6.0...master
 [2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
 [2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Kong/kong/compare/2.4.1...2.5.0

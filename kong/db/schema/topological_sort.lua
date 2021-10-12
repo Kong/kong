@@ -46,7 +46,7 @@ end
 -- @usage
 -- local res = topological_sort({ services, routes, plugins, consumers })
 -- assert.same({ consumers, services, routes, plugins }, res)
-local declarative_topological_sort = function(schemas)
+local schema_topological_sort = function(schemas)
   local s
   local schemas_by_name = {}
   local copy = {}
@@ -84,4 +84,4 @@ local declarative_topological_sort = function(schemas)
   return utils_toposort(schemas, get_schema_neighbors)
 end
 
-return declarative_topological_sort
+return schema_topological_sort
