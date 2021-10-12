@@ -128,6 +128,12 @@ describe("kong.clustering.control_plane", function()
         "read_timeout",
         "send_timeout",
       },
+      prometheus = {
+        "per_consumer",
+      },
+      zipkin = {
+        "tags_header",
+      },
       syslog = {
         "facility",
       },
@@ -202,6 +208,12 @@ describe("kong.clustering.control_plane", function()
       },
       syslog = {
         "facility",
+      },
+      prometheus = {
+        "per_consumer",
+      },
+      zipkin = {
+        "tags_header",
       },
       acme = {
         "preferred_chain",
