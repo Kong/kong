@@ -525,20 +525,8 @@ function _M:check_configuration_compatibility(dp_plugin_map, dp_version)
       --            and was fixed during BasePlugin inheritance removal.
       --
       -- Note: These vault-auth plugins in the legacy dataplanes are compatible
-      local function is_legacy_dataplane(dp_version_num)
-        --[[
-        -- Kong Gateway v2.3.3.3 and v2.4.1.2 will be backporting the clustering
-        -- relaxation
-        --]]
-        return (dp_version_num > 2003000000 --[[ 2.3.0.0 ]] and dp_version_num < 2003003003) --[[ 2.3.3.3 ]]
-               or (dp_version_num > 2004000000 --[[ 2.4.0.0 ]] and dp_version_num < 2004001002) --[[ 2.4.1.2 ]]
-               or dp_version_num <= 2003000000 --[[ 2.3.0.0; everything else that came before ]]
-
-      end
-
       local dp_version_num = dp_version_num(dp_version)
-      if name == "vault-auth" and is_legacy_dataplane(dp_version_num) and
-        dp_plugin.version == "1.0.0" then
+      if name == "vault-auth" and dp_plugin.version == "1.0.0" then
         ngx_log(ngx_DEBUG, _log_prefix, "data plane plugin vault-auth version ",
           "1.0.0 was incorrectly versioned, but is compatible")
         dp_plugin = cp_plugin
