@@ -144,9 +144,7 @@ of the Plugin Development Guide.
 
 To give visibility to your plugin, we advise that you:
 
-1. [Add your
-   plugin](https://github.com/Kong/docs.konghq.com/blob/master/CONTRIBUTING.md#contributing-to-kong-documentation-and-the-kong-hub)
-   to the [Kong Hub](https://docs.konghq.com/hub/)
+1. Add your plugin to the [Kong Hub](https://docs.konghq.com/hub/)
 2. Create a post in the [Announcements category of Kong
    Nation](https://discuss.konghq.com/c/announcements)
 
