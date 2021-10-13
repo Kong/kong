@@ -22,16 +22,22 @@ local get_consumer_id = {
 }
 
 
-local function compose_tags(service_name, status, consumer_id, tags)
-  local result = {"name:" ..service_name, "status:"..status}
+local function compose_tags(service_name, status, consumer_id, tags, conf)
+  local result = {
+    (conf.service_name_tag or "name") .. ":" .. service_name,
+    (conf.status_tag or "status") .. ":" .. status
+  }
+
   if consumer_id ~= nil then
-    insert(result, "consumer:" ..consumer_id)
+    insert(result, (conf.consumer_tag or "consumer") .. ":" .. consumer_id)
   end
+
   if tags ~= nil then
     for _, v in pairs(tags) do
       insert(result, v)
     end
   end
+
   return result
 end
 
@@ -75,7 +81,7 @@ local function log(premature, conf, message)
     local consumer_id     = get_consumer_id and get_consumer_id(message.consumer) or nil
     local tags            = compose_tags(
             name, message.response and message.response.status or "-",
-            consumer_id, metric_config.tags)
+            consumer_id, metric_config.tags, conf)
 
     if stat_name ~= nil then
       logger:send_statsd(stat_name, stat_value,

@@ -77,6 +77,9 @@ return {
           { host = typedefs.host({ default = "localhost" }), },
           { port = typedefs.port({ default = 8125 }), },
           { prefix = { type = "string", default = "kong" }, },
+          { service_name_tag = { type = "string", default = "name" }, },
+          { status_tag = { type = "string", default = "status" }, },
+          { consumer_tag = { type = "string", default = "consumer" }, },
           { metrics = {
               type     = "array",
               required = true,
