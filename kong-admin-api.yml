@@ -433,6 +433,7 @@ components:
                 - 306
                 - 307
                 - 308
+                - 309
         created_at:
           format: int32
           type: integer
@@ -557,7 +558,7 @@ components:
           type: string
 openapi: 3.1.0
 info:
-  title: Kong Admin API
+  title: Kong Admin
   summary: Kong RESTful Admin API for administration purposes.
   description: "       {{site.base_gateway}} comes with an **internal** RESTful Admin
     API for administration purposes.\n        Requests to the Admin API can be sent
@@ -571,7 +572,9 @@ info:
   license:
     name: Apache 2.0
     url: https://github.com/Kong/kong/blob/master/LICENSE
-  version: 2.6.0
+  version: 2.6.0.0
   contact:
     name: Kong
-    url: https://github.com/Kong/kong
+    url: github.com/Kong/kong
+    email: cdeveloper@gmail.com
+    
