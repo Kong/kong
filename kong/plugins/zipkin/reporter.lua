@@ -8,9 +8,6 @@ local zipkin_reporter_mt = {
   __index = zipkin_reporter_methods,
 }
 
-local localEndpoint = {
-  serviceName = "kong"
-}
 
 -- Utility function to set either ipv4 or ipv6 tags
 -- nginx apis don't have a flag to indicate whether an address is v4 or v6
@@ -24,9 +21,10 @@ local function ip_kind(addr)
 end
 
 
-local function new(http_endpoint, default_service_name)
+local function new(http_endpoint, default_service_name, local_service_name)
   return setmetatable({
     default_service_name = default_service_name,
+    local_service_name = local_service_name,
     http_endpoint = http_endpoint,
     pending_spans = {},
     pending_spans_n = 0,
@@ -80,7 +78,7 @@ function zipkin_reporter_methods:report(span)
     timestamp = span.timestamp,
     duration = span.duration,
     -- shared = nil, -- We don't use shared spans (server reuses client generated spanId)
-    localEndpoint = localEndpoint,
+    localEndpoint = { serviceName = self.local_service_name },
     remoteEndpoint = remoteEndpoint,
     tags = zipkin_tags,
     annotations = span.annotations,

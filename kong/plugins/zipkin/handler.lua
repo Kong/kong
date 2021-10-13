@@ -38,7 +38,8 @@ end
 local function get_reporter(conf)
   if reporter_cache[conf] == nil then
     reporter_cache[conf] = new_zipkin_reporter(conf.http_endpoint,
-                                               conf.default_service_name)
+                                               conf.default_service_name,
+                                               conf.local_service_name)
   end
   return reporter_cache[conf]
 end

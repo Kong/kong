@@ -46,6 +46,7 @@ return {
     { config = {
         type = "record",
         fields = {
+          { local_service_name = { type = "string", required = true, default = "kong" } },
           { http_endpoint = typedefs.url },
           { sample_ratio = { type = "number",
                              default = 0.001,

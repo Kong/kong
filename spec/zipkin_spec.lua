@@ -77,7 +77,7 @@ end
 
 
 -- the following assertions should be true on any span list, even in error mode
-local function assert_span_invariants(request_span, proxy_span, expected_name, traceid_len, start_s)
+local function assert_span_invariants(request_span, proxy_span, expected_name, traceid_len, start_s, service_name)
   -- request_span
   assert.same("table", type(request_span))
   assert.same("string", type(request_span.id))
@@ -103,7 +103,7 @@ local function assert_span_invariants(request_span, proxy_span, expected_name, t
   assert_valid_timestamp(rann["krf"], start_s)
   assert.truthy(rann["krs"] <= rann["krf"])
 
-  assert.same({ serviceName = "kong" }, request_span.localEndpoint)
+  assert.same({ serviceName = service_name }, request_span.localEndpoint)
 
   -- proxy_span
   assert.same("table", type(proxy_span))
@@ -158,7 +158,7 @@ for _, strategy in helpers.each_strategy() do
         preserve_host = true,
       })
 
-      -- enable zipkin plugin globally, with sample_ratio = 1
+      -- enable zipkin plugin globally, with sample_ratio = 0
       bp.plugins:insert({
         name = "zipkin",
         config = {
@@ -209,7 +209,72 @@ for _, strategy in helpers.each_strategy() do
       local _, proxy_span, request_span =
         wait_for_spans(zipkin_client, 3, service.name)
       -- common assertions for request_span and proxy_span
-      assert_span_invariants(request_span, proxy_span, "get", 16 * 2, start_s)
+      assert_span_invariants(request_span, proxy_span, "get", 16 * 2, start_s, "kong")
+    end)
+  end)
+end
+
+
+for _, strategy in helpers.each_strategy() do
+  describe("serviceName configuration", function()
+    local proxy_client, zipkin_client, service
+
+    setup(function()
+      local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+      service = bp.services:insert {
+        name = string.lower("http-" .. utils.random_string()),
+      }
+
+      -- kong (http) mock upstream
+      bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "http-route" },
+        preserve_host = true,
+      })
+
+      -- enable zipkin plugin globally, with sample_ratio = 1
+      bp.plugins:insert({
+        name = "zipkin",
+        config = {
+          sample_ratio = 1,
+          http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+          default_header_type = "b3-single",
+          local_service_name = "custom-service-name",
+        }
+      })
+
+      helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+      })
+
+      proxy_client = helpers.proxy_client()
+      zipkin_client = helpers.http_client(ZIPKIN_HOST, ZIPKIN_PORT)
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("#generates traces with configured serviceName if set", function()
+      local start_s = ngx.now()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          ["x-b3-sampled"] = "1",
+          host  = "http-route",
+          ["zipkin-tags"] = "foo=bar; baz=qux"
+        },
+      })
+      assert.response(r).has.status(200)
+
+      local _, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, service.name)
+      -- common assertions for request_span and proxy_span
+      assert_span_invariants(request_span, proxy_span, "get", 16 * 2, start_s, "custom-service-name")
     end)
   end)
 end
@@ -317,7 +382,7 @@ describe("http integration tests with zipkin server [#"
     local balancer_span, proxy_span, request_span =
       wait_for_spans(zipkin_client, 3, service.name)
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "get", traceid_byte_count * 2, start_s)
+    assert_span_invariants(request_span, proxy_span, "get", traceid_byte_count * 2, start_s, "kong")
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -395,7 +460,7 @@ describe("http integration tests with zipkin server [#"
     local balancer_span, proxy_span, request_span =
       wait_for_spans(zipkin_client, 3, grpc_service.name)
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "post", traceid_byte_count * 2, start_s)
+    assert_span_invariants(request_span, proxy_span, "post", traceid_byte_count * 2, start_s, "kong")
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
@@ -580,7 +645,7 @@ describe("http integration tests with zipkin server [#"
       wait_for_spans(zipkin_client, 2, nil, trace_id)
 
     -- common assertions for request_span and proxy_span
-    assert_span_invariants(request_span, proxy_span, "get", #trace_id, start_s)
+    assert_span_invariants(request_span, proxy_span, "get", #trace_id, start_s, "kong")
 
     -- specific assertions for request_span
     local request_tags = request_span.tags
