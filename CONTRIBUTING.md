@@ -852,3 +852,11 @@ end
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+common functions for:
+
+loading a .proto file
+from common subdirectories
+installs "well-known types" transcoding (only Timestamp for now)
+applies a function to analize each defined RPC method.
+(un)framing protobuf messages in a data stream.
+please reduce the length of the content
