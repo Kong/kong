@@ -28,7 +28,7 @@ local function wait()
   -- in the logs when executing this
   helpers.wait_until(function()
     local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
-    local _, count = logs:gsub([[executing plugin "logger": log]], "")
+    local _, count = logs:gsub("%[logger%] log phase", "")
 
     return count >= 1
   end, 10)

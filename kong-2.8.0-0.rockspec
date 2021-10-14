@@ -89,7 +89,6 @@ build = {
     ["kong.resty.dns.client"] = "kong/resty/dns/client.lua",
     ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
-    ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",
     ["kong.cmd.roar"] = "kong/cmd/roar.lua",
@@ -255,8 +254,6 @@ build = {
     ["kong.pdk.nginx"] = "kong/pdk/nginx.lua",
     ["kong.pdk.cluster"] = "kong/pdk/cluster.lua",
     ["kong.pdk.vault"] = "kong/pdk/vault.lua",
-
-    ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
     ["kong.plugins.basic-auth.migrations"] = "kong/plugins/basic-auth/migrations/init.lua",
     ["kong.plugins.basic-auth.migrations.000_base_basic_auth"] = "kong/plugins/basic-auth/migrations/000_base_basic_auth.lua",
