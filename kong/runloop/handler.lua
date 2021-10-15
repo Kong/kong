@@ -5,6 +5,7 @@ local utils        = require "kong.tools.utils"
 local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local reports      = require "kong.reports"
+local kong_var     = require "resty.kong.var"
 local constants    = require "kong.constants"
 local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
@@ -33,6 +34,8 @@ local exit         = ngx.exit
 local exec         = ngx.exec
 local null         = ngx.null
 local header       = ngx.header
+local var_get      = kong_var.get
+local var_set      = kong_var.set
 local timer_at     = ngx.timer.at
 local timer_every  = ngx.timer.every
 local subsystem    = ngx.config.subsystem
@@ -1102,7 +1105,8 @@ return {
   },
   preread = {
     before = function(ctx)
-      ctx.host_port = HOST_PORTS[var.server_port] or var.server_port
+      local server_port = var.server_port
+      ctx.host_port = HOST_PORTS[server_port] or server_port
 
       local router = get_updated_router()
 
@@ -1134,7 +1138,7 @@ return {
   },
   rewrite = {
     before = function(ctx)
-      local server_port = var.server_port
+      local server_port = var_get("server_port")
       ctx.host_port = HOST_PORTS[server_port] or server_port
     end,
     after = NOOP,
@@ -1149,8 +1153,8 @@ return {
         return
       end
 
-      ctx.scheme = var.scheme
-      ctx.request_uri = var.request_uri
+      ctx.scheme = var_get("scheme")
+      ctx.request_uri = var_get("request_uri")
 
       -- routing request
       local router = get_updated_router()
@@ -1161,15 +1165,15 @@ return {
 
       ctx.workspace = match_t.route and match_t.route.ws_id
 
-      local host           = var.host
+      local host           = var_get("host")
       local port           = tonumber(ctx.host_port, 10)
-                          or tonumber(var.server_port, 10)
+                          or tonumber(var_get("server_port"), 10)
 
       local route          = match_t.route
       local service        = match_t.service
       local upstream_url_t = match_t.upstream_url_t
 
-      local realip_remote_addr = var.realip_remote_addr
+      local realip_remote_addr = var_get("realip_remote_addr")
       local forwarded_proto
       local forwarded_host
       local forwarded_port
@@ -1187,11 +1191,11 @@ return {
 
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
-        forwarded_proto  = var.http_x_forwarded_proto  or ctx.scheme
-        forwarded_host   = var.http_x_forwarded_host   or host
-        forwarded_port   = var.http_x_forwarded_port   or port
-        forwarded_path   = var.http_x_forwarded_path
-        forwarded_prefix = var.http_x_forwarded_prefix
+        forwarded_proto  = var_get("http_x_forwarded_proto")  or ctx.scheme
+        forwarded_host   = var_get("http_x_forwarded_host")   or host
+        forwarded_port   = var_get("http_x_forwarded_port")   or port
+        forwarded_path   = var_get("http_x_forwarded_path")
+        forwarded_prefix = var_get("http_x_forwarded_prefix")
 
       else
         forwarded_proto  = ctx.scheme
@@ -1237,7 +1241,7 @@ return {
       local protocol_version = http_version()
       if protocols.grpc or protocols.grpcs then
         -- perf: branch usually not taken, don't cache var outside
-        local content_type = var.content_type
+        local content_type = var_get("content_type")
 
         if content_type and sub(content_type, 1, #"application/grpc") == "application/grpc" then
           if protocol_version ~= 2 then
@@ -1274,40 +1278,40 @@ return {
       -- `uri` is the URI with which to call upstream, as returned by the
       --       router, which might have truncated it (`strip_uri`).
       -- `host` is the original header to be preserved if set.
-      var.upstream_scheme = match_t.upstream_scheme -- COMPAT: pdk
-      var.upstream_uri    = escape(match_t.upstream_uri)
-      var.upstream_host   = match_t.upstream_host
+      var_set("upstream_scheme", match_t.upstream_scheme) -- COMPAT: pdk
+      var_set("upstream_uri", escape(match_t.upstream_uri))
+      var_set("upstream_host", match_t.upstream_host)
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
-      local upgrade = var.http_upgrade
+      local upgrade = var_get("http_upgrade")
       if upgrade and lower(upgrade) == "websocket" then
-        var.upstream_connection = "keep-alive, Upgrade"
-        var.upstream_upgrade    = "websocket"
+        var_set("upstream_connection", "keep-alive, Upgrade")
+        var_set("upstream_upgrade", "websocket")
 
       else
-        var.upstream_connection = "keep-alive"
+        var_set("upstream_connection", "keep-alive")
       end
 
       -- X-Forwarded-* Headers
-      local http_x_forwarded_for = var.http_x_forwarded_for
+      local http_x_forwarded_for = var_get("http_x_forwarded_for")
       if http_x_forwarded_for then
-        var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
-                                       realip_remote_addr
+        var_set("upstream_x_forwarded_for", http_x_forwarded_for .. ", " ..
+                                            realip_remote_addr)
 
       else
-        var.upstream_x_forwarded_for = var.remote_addr
+        var_set("upstream_x_forwarded_for", var_get("remote_addr"))
       end
 
-      var.upstream_x_forwarded_proto  = forwarded_proto
-      var.upstream_x_forwarded_host   = forwarded_host
-      var.upstream_x_forwarded_port   = forwarded_port
-      var.upstream_x_forwarded_path   = forwarded_path
-      var.upstream_x_forwarded_prefix = forwarded_prefix
+      var_set("upstream_x_forwarded_proto", forwarded_proto)
+      var_set("upstream_x_forwarded_host", forwarded_host)
+      var_set("upstream_x_forwarded_port", forwarded_port)
+      var_set("upstream_x_forwarded_path", forwarded_path)
+      var_set("upstream_x_forwarded_prefix", forwarded_prefix)
 
       -- At this point, the router and `balancer_setup_stage1` have been
       -- executed; detect requests that need to be redirected from `proxy_pass`
       -- to `grpc_pass`. After redirection, this function will return early
-      if service and var.kong_proxy_mode == "http" then
+      if service and var_get("kong_proxy_mode") == "http" then
         if service.protocol == "grpc" or service.protocol == "grpcs" then
           return exec("@grpc")
         end
@@ -1335,14 +1339,14 @@ return {
       -- We overcome this behavior with our own logic, to preserve user
       -- desired semantics.
       -- perf: branch usually not taken, don't cache var outside
-      if sub(ctx.request_uri or var.request_uri, -1) == "?" then
-        var.upstream_uri = var.upstream_uri .. "?"
-      elseif var.is_args == "?" then
-        var.upstream_uri = var.upstream_uri .. "?" .. var.args or ""
+      if sub(ctx.request_uri or var_get("request_uri"), -1) == "?" then
+        var_set("upstream_uri", var_get("upstream_uri") .. "?")
+      elseif var_get("is_args") == "?" then
+        var_set("upstream_uri", var_get("upstream_uri") .. "?" .. var_get("args") or "")
       end
 
       local balancer_data = ctx.balancer_data
-      balancer_data.scheme = var.upstream_scheme -- COMPAT: pdk
+      balancer_data.scheme = var_get("upstream_scheme") -- COMPAT: pdk
       local upstream_scheme = balancer_data.scheme
 
       -- The content of var.upstream_host is only set by the router if
@@ -1350,7 +1354,7 @@ return {
       --
       -- We can't rely on var.upstream_host for balancer retries inside
       -- `set_host_header` because it would never be empty after the first -- balancer try
-      local upstream_host = var.upstream_host
+      local upstream_host = var_get("upstream_host")
       if upstream_host ~= nil and upstream_host ~= "" then
         balancer_data.preserve_host = true
 
@@ -1374,7 +1378,7 @@ return {
       end
 
       upstream_scheme = balancer_data.scheme
-      var.upstream_scheme = balancer_data.scheme
+      var_set("upstream_scheme", balancer_data.scheme)
 
       local ok, err = balancer.set_host_header(balancer_data, upstream_scheme, upstream_host)
       if not ok then
@@ -1383,12 +1387,12 @@ return {
       end
 
       -- clear hop-by-hop request headers:
-      for _, header_name in csv(var.http_connection) do
+      for _, header_name in csv(var_get("http_connection")) do
         -- some of these are already handled by the proxy module,
         -- upgrade being an exception that is handled below with
         -- special semantics.
         if header_name == "upgrade" then
-          if var.upstream_connection == "keep-alive" then
+          if var_get("upstream_connection") == "keep-alive" then
             clear_header(header_name)
           end
 
@@ -1398,18 +1402,18 @@ return {
       end
 
       -- add te header only when client requests trailers (proxy removes it)
-      for _, header_name in csv(var.http_te) do
+      for _, header_name in csv(var_get("http_te")) do
         if header_name == "trailers" then
-          var.upstream_te = "trailers"
+          var_set("upstream_te", "trailers")
           break
         end
       end
 
-      if var.http_proxy then
+      if var_get("http_proxy") then
         clear_header("Proxy")
       end
 
-      if var.http_proxy_connection then
+      if var_get("http_proxy_connection") then
         clear_header("Proxy-Connection")
       end
     end
@@ -1425,25 +1429,25 @@ return {
       end
 
       -- clear hop-by-hop response headers:
-      for _, header_name in csv(var.upstream_http_connection) do
+      for _, header_name in csv(var_get("upstream_http_connection")) do
         if header_name ~= "close" and header_name ~= "upgrade" and header_name ~= "keep-alive" then
           header[header_name] = nil
         end
       end
 
-      local upgrade = var.upstream_http_upgrade
-      if upgrade and lower(upgrade) ~= lower(var.upstream_upgrade) then
+      local upgrade = var_get("upstream_http_upgrade")
+      if upgrade and lower(upgrade) ~= lower(var_get("upstream_upgrade")) then
         header["Upgrade"] = nil
       end
 
       -- remove trailer response header when client didn't ask for them
-      if var.upstream_te == "" and var.upstream_http_trailer then
+      if var_get("upstream_te") == "" and var_get("upstream_http_trailer") then
         header["Trailer"] = nil
       end
 
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
       if singletons.configuration.enabled_headers[upstream_status_header] then
-        header[upstream_status_header] = tonumber(sub(var.upstream_status or "", -3))
+        header[upstream_status_header] = tonumber(sub(var_get("upstream_status") or "", -3))
         if not header[upstream_status_header] then
           log(ERR, "failed to set ", upstream_status_header, " header")
         end

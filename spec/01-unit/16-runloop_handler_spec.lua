@@ -52,6 +52,12 @@ local function setup_it_block()
     },
 
     modules = {
+      { "resty.kong.var", setmetatable({
+        get = function() end,
+        set = function() end,
+      }, {
+        __index = function() end,
+      })},
       { "kong.singletons", {
         configuration = {
           database = "dummy",

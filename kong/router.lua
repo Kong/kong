@@ -12,8 +12,9 @@ local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local re_match      = ngx.re.match
 local re_find       = ngx.re.find
-local header        = ngx.header
 local var           = ngx.var
+local var_get       = require("resty.kong.var").get
+local header        = ngx.header
 local ngx_log       = ngx.log
 local insert        = table.insert
 local sort          = table.sort
@@ -32,7 +33,8 @@ local max           = math.max
 local band          = bit.band
 local bor           = bit.bor
 
--- limits regex degenerate times to the low miliseconds
+
+-- limits regex degenerate times to the low milliseconds
 local REGEX_PREFIX  = "(*LIMIT_MATCH=10000)"
 local SLASH         = byte("/")
 
@@ -272,6 +274,9 @@ local function _set_ngx(mock_ngx)
 
   if mock_ngx.var then
     var = mock_ngx.var
+    var_get = function(name)
+      return mock_ngx.var[name]
+    end
   end
 
   if mock_ngx.log then
@@ -748,7 +753,7 @@ local function sort_routes(r1, r2)
     end
   end
 
-  -- only regex path use regex_priority 
+  -- only regex path use regex_priority
   if band(r1.submatch_weight,MATCH_SUBRULES.HAS_REGEX_URI) ~= 0 then
     do
       local rp1 = r1.route.regex_priority or 0
@@ -1774,7 +1779,7 @@ function _M.new(routes)
               -- preserve_host header logic
 
               if matched_route.preserve_host then
-                upstream_host = raw_req_host or var.http_host
+                upstream_host = raw_req_host or var_get("http_host")
               end
             end
 
@@ -1824,10 +1829,10 @@ function _M.new(routes)
   if subsystem == "http" then
     function self.exec(ctx)
       local req_method = get_method()
-      local req_uri = ctx and ctx.request_uri or var.request_uri
-      local req_host = var.http_host or ""
-      local req_scheme = ctx and ctx.scheme or var.scheme
-      local sni = var.ssl_server_name
+      local req_uri = ctx and ctx.request_uri or var_get("request_uri")
+      local req_host = var_get("http_host") or ""
+      local req_scheme = ctx and ctx.scheme or var_get("scheme")
+      local sni = var_get("ssl_server_name")
 
       local headers
       local err
@@ -1861,7 +1866,7 @@ function _M.new(routes)
 
       -- debug HTTP request header logic
 
-      if var.http_kong_debug then
+      if var_get("http_kong_debug") then
         if match_t.route then
           if match_t.route.id then
             header["Kong-Route-Id"] = match_t.route.id

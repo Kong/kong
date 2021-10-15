@@ -73,6 +73,7 @@ local dns = require "kong.tools.dns"
 local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
+local kong_var = require "resty.kong.var"
 local stream_api = require "kong.tools.stream_api"
 local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
@@ -86,12 +87,13 @@ local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 
+
 local kong             = kong
 local ngx              = ngx
 local now              = ngx.now
 local update_time      = ngx.update_time
-local var              = ngx.var
 local arg              = ngx.arg
+local var              = ngx.var
 local header           = ngx.header
 local ngx_log          = ngx.log
 local ngx_ALERT        = ngx.ALERT
@@ -109,6 +111,7 @@ local ipairs           = ipairs
 local assert           = assert
 local tostring         = tostring
 local coroutine        = coroutine
+local var_get          = kong_var.get
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
@@ -571,7 +574,7 @@ function Kong.init()
 
   db:close()
 
-  require("resty.kong.var").patch_metatable()
+  kong_var.patch_metatable()
 end
 
 
@@ -765,7 +768,7 @@ end
 
 
 function Kong.rewrite()
-  local proxy_mode = var.kong_proxy_mode
+  local proxy_mode = var_get("kong_proxy_mode")
   if proxy_mode == "grpc" or proxy_mode == "unbuffered"  then
     kong_resty_ctx.apply_ref()    -- if kong_proxy_mode is gRPC/unbuffered, this is executing
     local ctx = ngx.ctx           -- after an internal redirect. Restore (and restash)
@@ -790,7 +793,7 @@ function Kong.rewrite()
 
   kong_resty_ctx.stash_ref(ctx)
 
-  local is_https = var.https == "on"
+  local is_https = var_get("https") == "on"
   if not is_https then
     log_init_worker_errors(ctx)
   end
@@ -868,7 +871,7 @@ function Kong.access()
 
   if ctx.buffered_proxying then
     local version = ngx.req.http_version()
-    local upgrade = var.upstream_upgrade or ""
+    local upgrade = var_get("upstream_upgrade") or ""
     if version < 2 and upgrade == "" then
       return Kong.response()
     end
