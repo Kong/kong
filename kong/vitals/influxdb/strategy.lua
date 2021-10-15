@@ -676,6 +676,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
       "name",
       "total",
       "2XX",
+      "3XX",
       "4XX",
       "5XX"
     },
@@ -687,6 +688,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
       "app_id",
       "total",
       "2XX",
+      "3XX",
       "4XX",
       "5XX"
     }
