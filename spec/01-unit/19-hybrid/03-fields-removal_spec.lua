@@ -56,6 +56,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
     }, cp._get_removed_fields(2003000000))
 
@@ -78,6 +79,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -100,6 +102,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
     }, cp._get_removed_fields(2003004000))
 
@@ -122,6 +125,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
     }, cp._get_removed_fields(2004001000))
 
@@ -134,6 +138,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
     }, cp._get_removed_fields(2004001002))
 
@@ -146,6 +151,7 @@ describe("kong.clustering.control_plane", function()
       },
       request_termination = {
         "echo",
+        "trigger",
       },
     }, cp._get_removed_fields(2005000000))
 
