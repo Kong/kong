@@ -391,7 +391,7 @@ function ProxyCacheHandler:access(conf)
   local current_phase = kong_global.get_phase(kong)
   kong_global.set_phase(kong, PHASES.log)
 
-  ee.handlers.log.after(ctx)
+  ee.handlers.log.after(nctx)
 
   kong_global.set_phase(kong, current_phase)
 
