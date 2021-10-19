@@ -62,6 +62,13 @@
 
 ## [Unreleased]
 
+### Dependencies
+
+- Bumped `kong-plugin-session` from 0.7.1 to 0.7.2
+  [#7910](https://github.com/Kong/kong/pull/7910)
+- Bumped `resty.openssl` from 0.7.4 to 0.7.5
+  [#7909](https://github.com/Kong/kong/pull/7909)
+
 ### Additions
 
 #### Performance
@@ -73,7 +80,19 @@ In this release we continued our work on better performance:
 - Simplified the Kong core context read and writes for better performance
   [#7919](https://github.com/Kong/kong/pull/7919)
 
-### Plugins
+### Core
+
+- DAOs in plugins must be listed in an array, so that their loading order is explicit. Loading them in a
+  hash-like table is now **deprecated**.
+  [#7942](https://github.com/Kong/kong/pull/7942)
+
+
+#### PDK
+
+- New functions: `kong.response.get_raw_body` and `kong.response.set_raw_body`
+  [#7887](https://github.com/Kong/kong/pull/7877)
+
+#### Plugins
 
 - **IP-Restriction**: response status and message can now be customized
   through configurations `status` and `message`.
@@ -100,10 +119,30 @@ In this release we continued our work on better performance:
 
 ### Fixes
 
+#### Core
+
 - Balancer caches are now reset on configuration reload.
   [#7924](https://github.com/Kong/kong/pull/7924)
 - Configuration reload no longer causes a new DNS-resolving timer to be started.
   [#7943](https://github.com/Kong/kong/pull/7943)
+- Fixed problem when bootstrapping multi-node Cassandra clusters, where migrations could attempt
+  insertions before schema agreement occurred.
+  [#7667](https://github.com/Kong/kong/pull/7667)
+- Fixed intermittent botting error which happened when a custom plugin had inter-dependent entity schemas
+  on its custom DAO and they were loaded in an incorrect order
+  [#7911](https://github.com/Kong/kong/pull/7911)
+
+
+#### PDK
+
+- `kong.log.inspect` log level is now debug instead of warn. It also renders text
+  boxes more cleanly now [#7815](https://github.com/Kong/kong/pull/7815)
+
+#### Plugins
+
+- **Prometheus**: Control Plane does not show Upstream Target health metrics
+  [#7992](https://github.com/Kong/kong/pull/7922)
+
 
 [Back to TOC](#table-of-contents)
 
