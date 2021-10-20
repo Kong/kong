@@ -315,12 +315,6 @@ local function get_next(self)
   local combos = self.combos[name]
   if combos then
     local cfg = load_configuration_through_combos(ctx, combos, plugin)
-    -- XXX EE In the case that we are loading the configuration from a named workspace,
-    -- we need this new config context to override any values that may already exist for
-    -- the table key that originated from the default workspace. If the context is a nil
-    -- value that means the plugin exists but is disabled in the workspace.
-    plugins[name] = cfg
-
     if cfg then
       local n = plugins[name]
       if not n then
@@ -387,9 +381,7 @@ local function iterate(self, phase, ctx)
     return zero_iter
   end
 
-  if not ctx.plugins then
-    ctx.plugins = { n = 0 }
-  end
+  ctx.plugins = { n = 0 }
 
   return get_next, {
     loaded = self.loaded,
