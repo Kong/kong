@@ -78,6 +78,29 @@ for _, strategy in strategies() do
 
       })
 
+      local service2 = bp.services:insert{
+        protocol = "http",
+        port     = 80,
+        host     = "mocking2.com",
+      }
+
+      db.routes:insert({
+        hosts = { "mocking2.com" },
+        service    = service2,
+
+      })
+
+      -- add the plugin to test to the route we created
+      db.plugins:insert {
+        name = PLUGIN_NAME,
+        service = { id = service2.id },
+        config = {
+          api_specification_filename = "multipleexamples.json",
+          random_delay = false,
+          random_examples = true
+        },
+      }
+
       -- add the plugin to test to the route we created
       db.plugins:insert {
         name = PLUGIN_NAME,
@@ -234,6 +257,28 @@ for _, strategy in strategies() do
         local count = 0
         for _ in pairs(body) do count = count+1 end
         assert.equal(2,count)
+      end)
+    end)
+
+    describe("multipleexamples API Specification tests with <random_examples>", function()
+      it("Check for examples(Multiple Examples) with Multiple Search Parameters", function()
+        local r = assert(client:send {
+          method = "GET",
+          path = "/pet/findByStatus/MultipleExamples?name=dog&name=cat",
+          headers = {
+            host = "mocking2.com"
+          }
+        })
+        -- validate that the request succeeded, response status 200
+        local body = cjson.decode(assert.res_status(200, r))
+        -- check if body is of type table (as expected from the examples)
+        assert.equal(type(body), "table")
+        -- check if body is one element
+        assert.equal(#body, 0)
+        -- check if expected content is present
+        assert.equal(type(body.category.id), "number")
+        -- check if the catory.name attribute is either of cat or dog (as per the query args)
+        assert((body.category.name == "dog" or body.category.name == "cat"), true)
       end)
     end)
 
