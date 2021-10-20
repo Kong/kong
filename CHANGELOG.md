@@ -1,3 +1,9 @@
+## v2.1.1
+
+- Allow redis cluster nodes to be configured using hostnames instead of strictly
+  ip addresses (FTI-2887)
+
+
 ## v2.1.0
 
 - test(travis) remove 2.5.0.x image from travis for compatibility with tests
