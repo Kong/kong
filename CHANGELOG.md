@@ -90,6 +90,10 @@ In this release we continued our work on better performance:
   `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
   [#6737](https://github.com/Kong/kong/pull/6737)
   Thanks [gabeio](https://github.com/gabeio) for the patch!
+- **LDAP**: basic authentication header was not parsed correctly when
+  the password contained colon (`:`).
+  [#7977](https://github.com/Kong/kong/pull/7977)
+  Thanks [beldahanit](https://github.com/beldahanit) for reporting the issue!
 
 [Back to TOC](#table-of-contents)
 
