@@ -77,7 +77,9 @@
   plugin configurations `service_tag`, `consumer_tag`, and `status_tag`.
   [#6230](https://github.com/Kong/kong/pull/6230)
   Thanks [onematchfox](https://github.com/onematchfox) for the patch!
-- **grpc-gateway** and **grpc-web**: Now share most of the Protcol Buffer code.  Both plugins now share the Timestamp transcoding and included `.proto` files features. [#7950](https://github.com/Kong/kong/pull/7950)
+- **gRPC gGateway** and **gRPC Web**: Now share most of the ProtoBuf definitions.
+  Both plugins now share the Timestamp transcoding and included `.proto` files features.
+  [#7950(https://github.com/Kong/kong/pull/7950)
 
 ### Fixes
 
