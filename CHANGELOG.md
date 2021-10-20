@@ -83,8 +83,10 @@
 
 ### Fixes
 
-- Balancer caches are now reset on configuration reload. [#7924](https://github.com/Kong/kong/pull/7924)
-- Configuration reload no longer causes a new DNS-resolving timer to be started. [#7943](https://github.com/Kong/kong/pull/7943)
+- Balancer caches are now reset on configuration reload.
+  [#7924](https://github.com/Kong/kong/pull/7924)
+- Configuration reload no longer causes a new DNS-resolving timer to be started.
+  [#7943](https://github.com/Kong/kong/pull/7943)
 
 [Back to TOC](#table-of-contents)
 
