@@ -5,7 +5,7 @@
 -- all metrics. Each metric is stored as a separate entry in that dictionary.
 --
 -- In addition, each worker process has a separate set of counters within
--- its lua runtime that are used to track increments to counte metrics, and
+-- its lua runtime that are used to track increments to count metrics, and
 -- are regularly flushed into the main shared dictionary. This is a performance
 -- optimization that allows counters to be incremented without locking the
 -- shared dictionary. It also means that counter increments are "eventually
