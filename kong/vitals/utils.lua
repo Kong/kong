@@ -57,7 +57,7 @@ _M.resolve_entity_metadata = resolve_entity_metadata
 -- @param[type=number] request_count: total requests
 -- @param[type=table] entity_metadata: kong entity name and if application consumer then app_id
 local function append_to_stats(current_state, index, status_group, request_count, entity_metadata)
-  current_state[index] = current_state[index] or { ["total"] = 0, ["2XX"] = 0, ["3XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
+  current_state[index] = current_state[index] or { ["total"] = 0, ["1XX"] = 0, ["2XX"] = 0, ["3XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
   current_state[index]["total"] = current_state[index]["total"] + request_count
   current_state[index][status_group] = current_state[index][status_group] + request_count
   current_state[index]["name"] = entity_metadata.name

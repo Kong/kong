@@ -66,7 +66,7 @@ describe("append_to_stats", function()
       local request_count = 10
       local entity = { name = "example"}
       local current_state = {}
-      local expected = { exampleid = { ["total"] = 10, ["2XX"] = 10, ["3XX"] = 0, ["4XX"] = 0, ["5XX"] = 0, ["name"] = "example" }}
+      local expected = { exampleid = { ["total"] = 10, ["1XX"] = 0, ["2XX"] = 10, ["3XX"] = 0, ["4XX"] = 0, ["5XX"] = 0, ["name"] = "example" }}
       assert.are.same(expected, utils.append_to_stats(current_state, id, status_group, request_count, entity))
     end)
   end)
@@ -77,8 +77,8 @@ describe("append_to_stats", function()
       local status_group = "2XX"
       local request_count = 10
       local entity = { name = "example"}
-      local current_state = { exampleid = { ["total"] = 15, ["2XX"] = 15, ["3XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }}
-      local expected = { exampleid = { ["total"] = 25, ["2XX"] = 25, ["3XX"] = 0, ["4XX"] = 0, ["5XX"] = 0, ["name"] = "example" }}
+      local current_state = { exampleid = { ["total"] = 15, ["1XX"] =0, ["2XX"] = 15, ["3XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }}
+      local expected = { exampleid = { ["total"] = 25, ["1XX"] = 0, ["2XX"] = 25, ["3XX"] = 0, ["4XX"] = 0, ["5XX"] = 0, ["name"] = "example" }}
       assert.are.same(expected, utils.append_to_stats(current_state, id, status_group, request_count, entity))
     end)
   end)
@@ -89,8 +89,8 @@ describe("append_to_stats", function()
       local status_group = "2XX"
       local request_count = 10
       local entity = { name = "consumername", app_id = "appid", app_name = "appname"}
-      local current_state = { exampleid = { ["total"] = 15, ["2XX"] = 15, ["3XX"] = 5, ["4XX"] = 0, ["5XX"] = 0 }}
-      local expected = { exampleid = { ["total"] = 25, ["2XX"] = 25, ["3XX"] = 5, ["4XX"] = 0, ["5XX"] = 0, ["name"] = "consumername", ["app_id"] = "appid", ["app_name"] = "appname" }}
+      local current_state = { exampleid = { ["total"] = 15, ["1XX"] = 0, ["2XX"] = 15, ["3XX"] = 5, ["4XX"] = 0, ["5XX"] = 0 }}
+      local expected = { exampleid = { ["total"] = 25, ["1XX"] = 0, ["2XX"] = 25, ["3XX"] = 5, ["4XX"] = 0, ["5XX"] = 0, ["name"] = "consumername", ["app_id"] = "appid", ["app_name"] = "appname" }}
       assert.are.same(expected, utils.append_to_stats(current_state, id, status_group, request_count, entity))
     end)
   end)

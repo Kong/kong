@@ -675,6 +675,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
     stat_labels = {
       "name",
       "total",
+      "1XX",
       "2XX",
       "3XX",
       "4XX",
@@ -687,6 +688,7 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
       "app_name",
       "app_id",
       "total",
+      "1XX",
       "2XX",
       "3XX",
       "4XX",
