@@ -64,6 +64,15 @@
 
 ### Additions
 
+#### Performance
+
+In this release we continued our work on better performance:
+
+- Improved the plugin iterator performance and JITability
+  [#7912](https://github.com/Kong/kong/pull/7912)
+- Simplified the Kong core context read and writes for better performance
+  [#7919](https://github.com/Kong/kong/pull/7919)
+
 ### Plugins
 
 - **IP-Restriction**: response status and message can now be customized
@@ -79,6 +88,7 @@
   Thanks [onematchfox](https://github.com/onematchfox) for the patch!
 
 [Back to TOC](#table-of-contents)
+
 
 ## [2.6.0]
 
