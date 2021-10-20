@@ -77,6 +77,12 @@
   plugin configurations `service_tag`, `consumer_tag`, and `status_tag`.
   [#6230](https://github.com/Kong/kong/pull/6230)
   Thanks [onematchfox](https://github.com/onematchfox) for the patch!
+- **grpc-gateway** and **grpc-web**: Now share most of the Protcol Buffer code.  Both plugins now share the Timestamp transcoding and included `.proto` files features. [#7950](https://github.com/Kong/kong/pull/7950)
+
+### Fixes
+
+- Balancer caches are now reset on configuration reload. [#7924](https://github.com/Kong/kong/pull/7924)
+- Configuration reload no longer causes a new DNS-resolving timer to be started. [#7943](https://github.com/Kong/kong/pull/7943)
 
 [Back to TOC](#table-of-contents)
 
