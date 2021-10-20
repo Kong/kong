@@ -137,12 +137,19 @@ if subsystem == "http" then
       parent_id,
       baggage)
 
+    local http_version = req.get_http_version()
+    local protocol = http_version and 'HTTP/'..http_version or nil
+
     request_span.ip = kong.client.get_forwarded_ip()
     request_span.port = kong.client.get_forwarded_port()
 
     request_span:set_tag("lc", "kong")
     request_span:set_tag("http.method", method)
+    request_span:set_tag("http.host", req.get_host())
     request_span:set_tag("http.path", req.get_path())
+    if protocol then
+      request_span:set_tag("http.protocol", protocol)
+    end
 
     local static_tags = conf.static_tags
     if type(static_tags) == "table" then

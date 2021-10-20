@@ -392,10 +392,12 @@ describe("http integration tests with zipkin server [#"
       ["http.method"] = "GET",
       ["http.path"] = "/",
       ["http.status_code"] = "200", -- found (matches server status)
+      ["http.protocol"] = "HTTP/1.1",
+      ["http.host"] = "http-route",
       lc = "kong",
       static = "ok",
       foo = "bar",
-      baz = "qux",
+      baz = "qux"
     }, request_tags)
     local consumer_port = request_span.remoteEndpoint.port
     assert_is_integer(consumer_port)
@@ -471,6 +473,8 @@ describe("http integration tests with zipkin server [#"
       ["http.method"] = "POST",
       ["http.path"] = "/hello.HelloService/SayHello",
       ["http.status_code"] = "200", -- found (matches server status)
+      ["http.protocol"] = "HTTP/2",
+      ["http.host"] = "grpc-route",
       lc = "kong",
       static = "ok",
     }, request_tags)
@@ -655,6 +659,8 @@ describe("http integration tests with zipkin server [#"
       ["http.method"] = "GET",
       ["http.path"] = "/foobar",
       ["http.status_code"] = "404", -- note that this was "not found"
+      ["http.protocol"] = 'HTTP/1.1',
+      ["http.host"] = '0.0.0.0',
       lc = "kong",
       static = "ok",
       error = "true",
