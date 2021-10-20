@@ -40,4 +40,48 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_falsy(ok)
   end)
 
+  it("redis cluster nodes accepts ips or hostnames", function()
+    local ok, err = validate({
+      issuer = "https://accounts.google.com/.well-known/openid-configuration",
+      session_redis_cluster_nodes = {
+        {
+          ip = "redis-node-1",
+          port = 6379,
+        },
+        {
+          ip = "redis-node-2",
+          port = 6380,
+        },
+        {
+          ip = "127.0.0.1",
+          port = 6381,
+        },
+      },
+    })
+    assert.is_nil(err)
+    assert.is_truthy(ok)
+  end)
+
+
+  it("redis cluster nodes rejects bad ports", function()
+    local ok, err = validate({
+      issuer = "https://accounts.google.com/.well-known/openid-configuration",
+      session_redis_cluster_nodes = {
+        {
+          ip = "redis-node-1",
+          port = "6379",
+        },
+        {
+          ip = "redis-node-2",
+          port = 6380,
+        },
+      },
+    })
+    assert.is_same(
+    { port = "expected an integer" },
+    err.config.session_redis_cluster_nodes[1]
+    )
+    assert.is_falsy(ok)
+  end)
+
 end)

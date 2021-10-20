@@ -1033,7 +1033,7 @@ local config = {
                 type = "record",
                 fields = {
                   {
-                    ip = typedefs.ip {
+                    ip = typedefs.host {
                       required = true,
                       default  = "127.0.0.1",
                     },
