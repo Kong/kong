@@ -32,6 +32,9 @@ return {
         { random_delay = { type = "boolean", default = false } },
         { max_delay_time = { type = "number", default = 1 } },
         { min_delay_time = { type = "number", default = 0.001 } },
+        -- this causes to randomly select one example if multiple examples
+        -- are present.
+        { random_examples = { type = "boolean", default = false } },
       }
     } },
   },
