@@ -64,6 +64,15 @@
 
 ### Additions
 
+#### Performance
+
+In this release we continued our work on better performance:
+
+- Improved the plugin iterator performance and JITability
+  [#7912](https://github.com/Kong/kong/pull/7912)
+- Simplified the Kong core context read and writes for better performance
+  [#7919](https://github.com/Kong/kong/pull/7919)
+
 ### Plugins
 
 - **IP-Restriction**: response status and message can now be customized
@@ -80,6 +89,14 @@
 - **gRPC gGateway** and **gRPC Web**: Now share most of the ProtoBuf definitions.
   Both plugins now share the Timestamp transcoding and included `.proto` files features.
   [#7950(https://github.com/Kong/kong/pull/7950)
+- **Rate-Limiting**: add support for Redis SSL, through configuration properties
+  `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
+  [#6737](https://github.com/Kong/kong/pull/6737)
+  Thanks [gabeio](https://github.com/gabeio) for the patch!
+- **LDAP**: basic authentication header was not parsed correctly when
+  the password contained colon (`:`).
+  [#7977](https://github.com/Kong/kong/pull/7977)
+  Thanks [beldahanit](https://github.com/beldahanit) for reporting the issue!
 
 ### Fixes
 
@@ -89,6 +106,7 @@
   [#7943](https://github.com/Kong/kong/pull/7943)
 
 [Back to TOC](#table-of-contents)
+
 
 ## [2.6.0]
 

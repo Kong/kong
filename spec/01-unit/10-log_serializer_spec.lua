@@ -47,7 +47,7 @@ describe("kong.log.serialize", function()
       package.loaded["kong.pdk.request"] = nil
       local pdk_request = require "kong.pdk.request"
       kong.request = pdk_request.new(kong)
-      kong.ctx.core.phase = LOG_PHASE
+      ngx.ctx.KONG_PHASE = LOG_PHASE
     end)
 
     describe("Basic", function()
@@ -232,7 +232,7 @@ describe("kong.log.serialize", function()
       package.loaded["kong.pdk.request"] = nil
       local pdk_request = require "kong.pdk.request"
       kong.request = pdk_request.new(kong)
-      kong.ctx.core.phase = LOG_PHASE
+      ngx.ctx.KONG_PHASE = LOG_PHASE
 
       -- reload log module, after ngx.config.subsystem has been patched
       -- to make sure the correct variant is used

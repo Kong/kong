@@ -28,7 +28,6 @@ local log          = ngx.log
 local match        = string.match
 local fmt          = string.format
 local sub          = string.sub
-local kong         = kong
 local utils_toposort = utils.topological_sort
 local insert       = table.insert
 
@@ -51,7 +50,6 @@ local OPERATIONS = {
   write = true,
 }
 local ADMIN_API_PHASE = kong_global.phases.admin_api
-local kong_get_phase = kong_global.get_phase
 local CORE_ENTITIES = constants.CORE_ENTITIES
 
 
@@ -195,7 +193,7 @@ local setkeepalive
 
 
 local function connect(config)
-  local phase  = get_phase(kong)
+  local phase = get_phase()
   if phase == "init" or phase == "init_worker" or ngx.IS_CLI then
     -- Force LuaSocket usage in the CLI in order to allow for self-signed
     -- certificates to be trusted (via opts.cafile) in the resty-cli
@@ -488,11 +486,11 @@ function _mt:query(sql, operation)
     error("operation must be 'read' or 'write', was: " .. tostring(operation), 2)
   end
 
-  local phase  = get_phase(kong)
+  local phase = get_phase()
 
   if not operation or
      not self.config_ro or
-     (phase == "content" and kong_get_phase(kong) == ADMIN_API_PHASE)
+     (phase == "content" and ngx.ctx.KONG_PHASE == ADMIN_API_PHASE)
   then
     -- admin API requests skips the replica optimization
     -- to ensure all its results are always strongly consistent

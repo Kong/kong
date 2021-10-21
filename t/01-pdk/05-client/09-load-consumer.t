@@ -19,7 +19,6 @@ __DATA__
             _G.kong = {
               ctx = {
                 core = {
-                  phase = 0x00000020,
                 },
               },
               db = {
@@ -30,6 +29,8 @@ __DATA__
                 },
               },
             }
+
+            ngx.ctx.KONG_PHASE = 0x00000020
 
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
@@ -55,7 +56,6 @@ consumer: bob
             _G.kong = {
               ctx = {
                 core = {
-                  phase = 0x00000020,
                 },
               },
               db = {
@@ -69,6 +69,8 @@ consumer: bob
                 },
               },
             }
+
+            ngx.ctx.KONG_PHASE = 0x00000020
 
             local PDK = require "kong.pdk"
             local pdk = PDK.new()

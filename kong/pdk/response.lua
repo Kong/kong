@@ -544,7 +544,7 @@ local function new(self, major_version)
     local chunk = arg[1]
     local eof = arg[2]
     if eof then
-      body_buffer = self.ctx.core.body_buffer
+      body_buffer = ngx.ctx.KONG_BODY_BUFFER
       if not body_buffer then
         return chunk
       end
@@ -552,7 +552,7 @@ local function new(self, major_version)
 
     if type(chunk) == "string" and chunk ~= "" then
       if not eof then
-        body_buffer = self.ctx.core.body_buffer
+        body_buffer = ngx.ctx.KONG_BODY_BUFFER
       end
 
       if body_buffer then
@@ -563,10 +563,10 @@ local function new(self, major_version)
       else
         body_buffer = {
           chunk,
-          n = 1
+          n = 1,
         }
 
-        self.ctx.core.body_buffer = body_buffer
+        ngx.ctx.KONG_BODY_BUFFER = body_buffer
       end
     end
 
@@ -621,7 +621,7 @@ local function new(self, major_version)
 
     arg[2] = true
 
-    self.ctx.core.body_buffer = nil
+    ngx.ctx.KONG_BODY_BUFFER = nil
   end
 
 
@@ -711,7 +711,9 @@ local function new(self, major_version)
       end
     end
 
-    local is_header_filter_phase = self.ctx.core.phase == PHASES.header_filter
+    local ctx = ngx.ctx
+
+    local is_header_filter_phase = ctx.KONG_PHASE == PHASES.header_filter
 
     if json ~= nil then
       if not has_content_type then
@@ -735,7 +737,7 @@ local function new(self, major_version)
         ngx.header[GRPC_MESSAGE_NAME] = body
 
         if is_header_filter_phase then
-          ngx.ctx.response_body = ""
+          ctx.response_body = ""
 
         else
           ngx.print() -- avoid default content
@@ -751,7 +753,7 @@ local function new(self, major_version)
         end
 
         if is_header_filter_phase then
-          ngx.ctx.response_body = body
+          ctx.response_body = body
 
         else
           ngx.print(body)
@@ -769,7 +771,7 @@ local function new(self, major_version)
 
       if is_grpc then
         if is_header_filter_phase then
-          ngx.ctx.response_body = ""
+          ctx.response_body = ""
 
         else
           ngx.print() -- avoid default content

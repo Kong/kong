@@ -243,13 +243,13 @@ local function setup_plugin_context(ctx, plugin)
     ctx.ran_go_plugin = true
   end
 
-  kong_global.set_named_ctx(kong, "plugin", plugin.handler)
-  kong_global.set_namespaced_log(kong, plugin.name)
+  kong_global.set_named_ctx(kong, "plugin", plugin.handler, ctx)
+  kong_global.set_namespaced_log(kong, plugin.name, ctx)
 end
 
 
 local function reset_plugin_context(ctx, old_ws)
-  kong_global.reset_log(kong)
+  kong_global.reset_log(kong, ctx)
 
   if old_ws then
     ctx.workspace = old_ws
@@ -257,11 +257,11 @@ local function reset_plugin_context(ctx, old_ws)
 end
 
 
-local function execute_init_worker_plugins_iterator(plugins_iterator)
+local function execute_init_worker_plugins_iterator(plugins_iterator, ctx)
   local errors
 
   for plugin in plugins_iterator:iterate_init_worker() do
-    kong_global.set_namespaced_log(kong, plugin.name)
+    kong_global.set_namespaced_log(kong, plugin.name, ctx)
 
     -- guard against failed handler in "init_worker" phase only because it will
     -- cause Kong to not correctly initialize and can not be recovered automatically.
@@ -274,7 +274,7 @@ local function execute_init_worker_plugins_iterator(plugins_iterator)
       }
     end
 
-    kong_global.reset_log(kong)
+    kong_global.reset_log(kong, ctx)
   end
 
   return errors
@@ -576,7 +576,9 @@ end
 
 
 function Kong.init_worker()
-  kong_global.set_phase(kong, PHASES.init_worker)
+  local ctx = ngx.ctx
+
+  ctx.KONG_PHASE = PHASES.init_worker
 
   -- special math.randomseed from kong.globalpatches not taking any argument.
   -- Must only be called in the init or init_worker phases, to avoid
@@ -678,7 +680,7 @@ function Kong.init_worker()
   end
 
   local plugins_iterator = runloop.get_plugins_iterator()
-  local errors = execute_init_worker_plugins_iterator(plugins_iterator)
+  local errors = execute_init_worker_plugins_iterator(plugins_iterator, ctx)
   if errors then
     for _, e in ipairs(errors) do
       local err = "failed to execute the \"init_worker\" " ..
@@ -707,7 +709,7 @@ function Kong.ssl_certificate()
   -- Note: ctx here is for a connection (not for a single request)
   local ctx = ngx.ctx
 
-  kong_global.set_phase(kong, PHASES.certificate)
+  ctx.KONG_PHASE = PHASES.certificate
 
   log_init_worker_errors(ctx)
 
@@ -734,7 +736,7 @@ function Kong.preread()
     ctx.KONG_PREREAD_START = now() * 1000
   end
 
-  kong_global.set_phase(kong, PHASES.preread)
+  ctx.KONG_PHASE = PHASES.preread
 
   log_init_worker_errors(ctx)
 
@@ -784,7 +786,8 @@ function Kong.rewrite()
     ctx.KONG_REWRITE_START = now() * 1000
   end
 
-  kong_global.set_phase(kong, PHASES.rewrite)
+  ctx.KONG_PHASE = PHASES.rewrite
+
   kong_resty_ctx.stash_ref(ctx)
 
   local is_https = var.https == "on"
@@ -826,7 +829,7 @@ function Kong.access()
     end
   end
 
-  kong_global.set_phase(kong, PHASES.access)
+  ctx.KONG_PHASE = PHASES.access
 
   runloop.access.before(ctx)
 
@@ -912,7 +915,7 @@ function Kong.balancer()
     end
   end
 
-  kong_global.set_phase(kong, PHASES.balancer)
+  ctx.KONG_PHASE = PHASES.balancer
 
   local balancer_data = ctx.balancer_data
   local tries = balancer_data.tries
@@ -1086,12 +1089,12 @@ do
 
     local res = ngx.location.capture("/kong_buffered_http", options)
     if res.truncated and options.method ~= ngx.HTTP_HEAD then
-      kong_global.set_phase(kong, PHASES.error)
+      ctx.KONG_PHASE = PHASES.error
       ngx.status = 502
       return kong_error_handlers(ctx)
     end
 
-    kong_global.set_phase(kong, PHASES.response)
+    ctx.KONG_PHASE = PHASES.response
 
     local status = res.status
     local headers = res.header
@@ -1199,7 +1202,7 @@ function Kong.header_filter()
                                  ctx.KONG_PROCESSING_START
   end
 
-  kong_global.set_phase(kong, PHASES.header_filter)
+  ctx.KONG_PHASE = PHASES.header_filter
 
   runloop.header_filter.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
@@ -1257,7 +1260,7 @@ function Kong.body_filter()
     end
   end
 
-  kong_global.set_phase(kong, PHASES.body_filter)
+  ctx.KONG_PHASE = PHASES.body_filter
 
   if ctx.response_body then
     arg[1] = ctx.response_body
@@ -1370,7 +1373,7 @@ function Kong.log()
     end
   end
 
-  kong_global.set_phase(kong, PHASES.log)
+  ctx.KONG_PHASE = PHASES.log
 
   runloop.log.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
@@ -1386,9 +1389,9 @@ end
 
 function Kong.handle_error()
   kong_resty_ctx.apply_ref()
-  kong_global.set_phase(kong, PHASES.error)
 
   local ctx = ngx.ctx
+  ctx.KONG_PHASE = PHASES.error
   ctx.KONG_UNEXPECTED = true
 
   local old_ws = ctx.workspace
@@ -1407,12 +1410,10 @@ end
 
 
 local function serve_content(module, options)
-  kong_global.set_phase(kong, PHASES.admin_api)
-
   local ctx = ngx.ctx
   ctx.KONG_PROCESSING_START = start_time() * 1000
   ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or now() * 1000
-
+  ctx.KONG_PHASE = PHASES.admin_api
 
   log_init_worker_errors(ctx)
 
@@ -1495,7 +1496,7 @@ Kong.status_header_filter = Kong.admin_header_filter
 function Kong.serve_cluster_listener(options)
   log_init_worker_errors()
 
-  kong_global.set_phase(kong, PHASES.cluster_listener)
+  ngx.ctx.KONG_PHASE = PHASES.cluster_listener
 
   return kong.clustering:handle_cp_websocket()
 end
@@ -1504,7 +1505,7 @@ end
 function Kong.serve_cp_protocol(options)
   log_init_worker_errors()
 
-  kong_global.set_phase(kong, PHASES.cluster_listener)
+  ngx.ctx.KONG_PHASE = PHASES.cluster_listener
 
   return kong.hybrid:handle_cp_protocol()
 end
