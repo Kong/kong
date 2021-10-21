@@ -62,6 +62,7 @@ function grpc.each_method(fname, f)
   p:addpath("/usr/local/opt/protobuf/include/")
   p:addpath("/usr/local/kong/lib/")
   p:addpath("kong")
+  p:addpath("kong/include")
 
   p.include_imports = true
   p:addpath(dir)
