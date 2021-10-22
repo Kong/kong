@@ -840,6 +840,8 @@ function _M:handle_cp_websocket()
 
   local ok, err, perr = ngx.thread.wait(write_thread, read_thread)
 
+  self.clients[wb] = nil
+
   ngx.thread.kill(write_thread)
   ngx.thread.kill(read_thread)
 

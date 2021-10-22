@@ -1,8 +1,8 @@
 # Contributing to Kong :monkey_face:
 
 Hello, and welcome! Whether you are looking for help, trying to report a bug,
-thinking about getting involved in the project or about to submit a patch, this
-document is for you! Its intent is to be both an entry point for newcomers to
+thinking about getting involved in the project, or about to submit a patch, this
+document is for you! It intends to be both an entry point for newcomers to
 the community (with various technical backgrounds), and a guide/reference for
 contributors and maintainers.
 
@@ -51,7 +51,7 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 There are several channels where you can get answers from the community
 or the maintainers of this project:
 
-- Our public forum, [Kong Nation](https://discuss.konghq.com), is great for
+- Our public forum, [Kong Nation](https://discuss.konghq.com) is great for
   asking questions, giving advice, and staying up-to-date with the latest
   announcements. Kong Nation is frequented by Kong maintainers.
 - Two chat channels are used by the community, but are rarely visited by Kong
@@ -144,9 +144,7 @@ of the Plugin Development Guide.
 
 To give visibility to your plugin, we advise that you:
 
-1. [Add your
-   plugin](https://github.com/Kong/docs.konghq.com/blob/master/CONTRIBUTING.md#contributing-to-kong-documentation-and-the-kong-hub)
-   to the [Kong Hub](https://docs.konghq.com/hub/)
+1. Add your plugin to the [Kong Hub](https://docs.konghq.com/hub/)
 2. Create a post in the [Announcements category of Kong
    Nation](https://discuss.konghq.com/c/announcements)
 
@@ -160,7 +158,7 @@ first!
 
 When contributing, please follow the guidelines provided in this document. They
 will cover topics such as the different Git branches we use, the commit message
-format to use or the appropriate code style.
+format to use, or the appropriate code style.
 
 Once you have read them, and you are ready to submit your Pull Request, be sure
 to verify a few things:
@@ -174,7 +172,7 @@ to verify a few things:
   development documentation for additional details)
 - The tests are passing: run `make test`, `make test-all`, or whichever is
   appropriate for your change
-- Do not update CHANGELOG.md yourself. Your change will be included there in
+- Do not update CHANGELOG.md yourself. Your change will be included therein
   due time if it is accepted, no worries!
 
 If the above guidelines are respected, your Pull Request has all its chances
@@ -532,7 +530,7 @@ contributors should find themselves at ease when contributing to Kong.
 When you are unsure about the style to adopt, please browse other parts of the
 codebase to find a similar case, and stay consistent with it.
 
-You might also notice places in the code base where the described style is not
+You might also notice places in the codebase where the described style is not
 respected. This is due to legacy code. **Contributions to update the code to
 the recommended style are welcome!**
 

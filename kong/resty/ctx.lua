@@ -22,6 +22,7 @@
 
 local ffi = require "ffi"
 local base = require "resty.core.base"
+require "resty.core.ctx"
 
 
 local C = ffi.C
