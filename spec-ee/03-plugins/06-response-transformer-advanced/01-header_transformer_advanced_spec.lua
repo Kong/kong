@@ -34,15 +34,13 @@ describe("Plugin: response-transformer-advanced", function()
       re = {
         match = re_match,
         find  = re_find
+      },
+      ctx = {
+        KONG_PHASE = 0x00000200,
       }
     }
     _G.kong = {
       response = require "kong.pdk.response".new(),
-      ctx = {
-        core = {
-          phase = 0x00000200,
-        }
-      }
     }
 
     -- mock since FFI based ngx.resp.add_header won't work in this setup
