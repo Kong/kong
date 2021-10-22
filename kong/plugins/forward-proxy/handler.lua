@@ -70,11 +70,11 @@ local function simulate_access_after(ctx)
   local kong_global = require "kong.global"
   local PHASES = kong_global.phases
   local current_phase = kong_global.get_phase(kong)
-  kong_global.set_phase(kong, PHASES.log)
+  ctx.KONG_PHASE = PHASES.log
 
   ee.handlers.log.after(ctx)
 
-  kong_global.set_phase(kong, current_phase)
+  ctx.KONG_PHASE = current_phase
 end
 
 
