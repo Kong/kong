@@ -26,12 +26,14 @@ local utils = require "kong.tools.utils"
 
 
 local ngx = ngx
+local arg = ngx.arg
 local fmt = string.format
 local type = type
 local find = string.find
 local lower = string.lower
 local error = error
 local pairs = pairs
+local concat = table.concat
 local coroutine = coroutine
 local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
@@ -524,14 +526,111 @@ local function new(self, major_version)
   end
 
 
-  --function _RESPONSE.set_raw_body(body)
-  --  -- TODO: implement, but how?
-  --end
+  ---
+  -- Returns the full body when the last chunk has been read.
   --
+  -- Calling this function will start to buffer the body in
+  -- an internal request context variable, and set the current
+  -- chunk (`ngx.arg[1]`) to `nil` when the chunk is not the
+  -- last one. Otherwise it returns the full buffered body.
   --
-  --function _RESPONSE.set_body(args, mimetype)
-  --  -- TODO: implement, but how?
-  --end
+  -- @function kong.response.get_raw_body
+  -- @phases `body_filter`
+  -- @treturn string body The full body when the last chunk has been read,
+  --                      otherwise returns `nil`
+  -- @usage
+  -- local body = kong.response.get_raw_body()
+  -- if body then
+  --   body = transform(body)
+  --   kong.response.set_raw_body(body)
+  -- end
+  function _RESPONSE.get_raw_body()
+    check_phase(PHASES.body_filter)
+
+    local body_buffer
+    local chunk = arg[1]
+    local eof = arg[2]
+    if eof then
+      body_buffer = self.ctx.core.body_buffer
+      if not body_buffer then
+        return chunk
+      end
+    end
+
+    if type(chunk) == "string" and chunk ~= "" then
+      if not eof then
+        body_buffer = self.ctx.core.body_buffer
+      end
+
+      if body_buffer then
+        local n = body_buffer.n + 1
+        body_buffer.n = n
+        body_buffer[n] = chunk
+
+      else
+        body_buffer = {
+          chunk,
+          n = 1
+        }
+
+        self.ctx.core.body_buffer = body_buffer
+      end
+    end
+
+    if eof then
+      if body_buffer then
+        body_buffer = concat(body_buffer, "", 1, body_buffer.n)
+      else
+        body_buffer = ""
+      end
+
+      arg[1] = body_buffer
+      return body_buffer
+    end
+
+    arg[1] = nil
+    return nil
+  end
+
+
+  ---
+  -- Sets the body of the response
+  --
+  -- The `body` argument must be a string and will not be processed in any way.
+  -- This function cannot anymore change the `Content-Length` header if one was
+  -- added. So if you decide to use this function, the `Content-Length` header
+  -- should also be cleared, e.g. in `header_filter` phase.
+  --
+  -- @function kong.response.set_raw_body
+  -- @phases `body_filter`
+  -- @tparam string body The raw body
+  -- @return Nothing; throws an error on invalid inputs.
+  -- @usage
+  -- kong.response.set_raw_body("Hello, world!")
+  -- -- or
+  -- local body = kong.response.get_raw_body()
+  -- if body then
+  --   body = transform(body)
+  --   kong.response.set_raw_body(body)
+  -- end
+  function _RESPONSE.set_raw_body(body)
+    check_phase(PHASES.body_filter)
+
+    if type(body) ~= "string" then
+      error("body must be a string", 2)
+    end
+
+    if body == "" then -- Needed by Nginx
+      arg[1] = "\n"
+    else
+      arg[1] = body
+    end
+
+    arg[2] = true
+
+    self.ctx.core.body_buffer = nil
+  end
+
 
   local function is_grpc_request()
     local req_ctype = ngx.var.content_type

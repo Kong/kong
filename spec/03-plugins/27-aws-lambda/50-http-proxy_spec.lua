@@ -5,6 +5,8 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+require "spec.helpers"
+local http = require "resty.http"
 
 local configs = {
   {
@@ -22,63 +24,53 @@ local configs = {
     scheme = "http",
     host = "mockbin.org",
     path = "/request",
-    proxy_url = "http://squid:3128/",
+    proxy_url = "http://127.0.0.1:3128/",
   },{
     name = "#https via proxy",
     scheme = "https",
     host = "mockbin.org",
     path = "/request",
-    proxy_url = "http://squid:3128/",
+    proxy_url = "http://127.0.0.1:3128/",
   },{
     name = "#http via authenticated proxy",
     scheme = "http",
     host = "httpbin.org",
     path = "/anything",
-    proxy_url = "http://squid:3128/",
+    proxy_url = "http://127.0.0.1:3128/",
     authorization = "Basic a29uZzpraW5n",  -- base64("kong:king")
   },{
     name = "#https via authenticated proxy",
     scheme = "https",
     host = "httpbin.org",
     path = "/anything",
-    proxy_url = "http://squid:3128/",
+    proxy_url = "http://127.0.0.1:3128/",
     authorization = "Basic a29uZzpraW5n",  -- base64("kong:king")
   }
 }
 
 local max_idle_timeout = 3
 
-local function make_request(http, config)
+local function make_request(config)
   -- create and connect the client
   local client = http.new()
-  local ok, err = client:connect_better {
+  local ok, err = client:connect {
     scheme = config.scheme,
     host = config.host,
     port = config.scheme == "https" and 443 or 80,
-    ssl = config.scheme == "https" and {
-      server_name = config.host,
-      verify = false,
-    },
-    proxy = config.proxy_url and {
-      uri = config.proxy_url,
-      authorization = config.authorization,
+    ssl_verify = config.scheme == "https" and false,
+    ssl_server_name = config.scheme == "https" and config.host,
+    proxy_opts = config.proxy_url and {
+      http_proxy = config.proxy_url,
+      http_proxy_authorization = config.authorization,
     }
   }
   assert.is_nil(err)
   assert.truthy(ok)
 
-  -- if proxy then path must be absolute
-  local path
-  if config.proxy_url then
-    path = config.scheme .."://" .. config.host .. (config.scheme == "https" and ":443" or ":80") .. config.path
-  else
-    path = config.path
-  end
-
   -- make the request
   local res, err = client:request {
     method = "GET",
-    path = path,
+    path = config.path,
     body = nil,
     headers = {
       Host = config.host,
@@ -109,20 +101,13 @@ end
 
 
 describe("#proxy #squid", function()
-
-  local http
-  before_each(function()
-    package.loaded["kong.plugins.aws-lambda.http.connect-better"] = nil
-    http = require "kong.plugins.aws-lambda.http.connect-better"
-  end)
-
   lazy_teardown(function()
     ngx.sleep(max_idle_timeout + 0.5) -- wait for keepalive to expire and all socket pools to become empty again
   end)
 
   for _, config in ipairs(configs) do
     it("Make a request " .. config.name, function()
-      make_request(http, config)
+      make_request(config)
     end)
   end
 
@@ -131,13 +116,6 @@ end)
 
 
 describe("#keepalive #squid", function()
-
-  local http
-  before_each(function()
-    package.loaded["kong.plugins.aws-lambda.http.connect-better"] = nil
-    http = require "kong.plugins.aws-lambda.http.connect-better"
-  end)
-
   lazy_teardown(function()
     ngx.sleep(max_idle_timeout + 0.5) -- wait for keepalive to expire and all socket pools to become empty again
   end)
@@ -148,7 +126,7 @@ describe("#keepalive #squid", function()
       local loop_size = 10
 
       for i = 1, loop_size do
-        local conn_count = make_request(http, config)
+        local conn_count = make_request(config)
         reuse = math.max(reuse, conn_count)
       end
 

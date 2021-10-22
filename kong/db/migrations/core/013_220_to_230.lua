@@ -72,11 +72,14 @@ return {
     ]],
     teardown = function(connector)
       local coordinator = assert(connector:get_stored_connection())
-      local _, err = coordinator:execute(string.format([[
-        INSERT INTO parameters (key, value) VALUES('cluster_id', '%s')
-        IF NOT EXISTS;
-      ]], CLUSTER_ID))
-
+      local cassandra = require "cassandra"
+      local _, err = coordinator:execute(
+        "INSERT INTO parameters (key, value) VALUES (?, ?)",
+        {
+          cassandra.text("cluster_id"),
+          cassandra.text(CLUSTER_ID)
+        }
+      )
       if err then
         return nil, err
       end

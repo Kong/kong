@@ -31,6 +31,9 @@
 -- |[[    ]]|
 -- ==========
 
+local pcall = pcall
+
+
 pcall(require, "luarocks.loader")
 
 
@@ -255,46 +258,58 @@ do
 end
 
 
-local function execute_plugins_iterator(plugins_iterator, phase, ctx)
-  local old_ws
-  local delay_response
-  local errors
-
-  if ctx then
-    old_ws = ctx.workspace
-    delay_response = phase == "access" or nil
-    ctx.delay_response = delay_response
+local function setup_plugin_context(ctx, plugin)
+  if plugin.handler._go then
+    ctx.ran_go_plugin = true
   end
 
-  for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
-    if ctx then
-      if plugin.handler._go then
-        ctx.ran_go_plugin = true
-      end
+  kong_global.set_named_ctx(kong, "plugin", plugin.handler)
+  kong_global.set_namespaced_log(kong, plugin.name)
+end
 
-      kong_global.set_named_ctx(kong, "plugin", plugin.handler)
-    end
 
+local function reset_plugin_context(ctx, old_ws)
+  kong_global.reset_log(kong)
+
+  if old_ws then
+    ctx.workspace = old_ws
+  end
+end
+
+
+local function execute_init_worker_plugins_iterator(plugins_iterator)
+  local errors
+
+  for plugin in plugins_iterator:iterate_init_worker() do
     kong_global.set_namespaced_log(kong, plugin.name)
 
-    if not delay_response then
-      -- guard against failed handler in "init_worker" phase only because it will
-      -- cause Kong to not correctly initialize and can not be recovered automatically.
-      if phase == "init_worker" then
-        local ok, err = pcall(plugin.handler[phase], plugin.handler, configuration)
-        if not ok then
-          errors = errors or {}
-          errors[#errors + 1] = {
-            plugin = plugin.name,
-            err = err,
-          }
-        end
+    -- guard against failed handler in "init_worker" phase only because it will
+    -- cause Kong to not correctly initialize and can not be recovered automatically.
+    local ok, err = pcall(plugin.handler.init_worker, plugin.handler)
+    if not ok then
+      errors = errors or {}
+      errors[#errors + 1] = {
+        plugin = plugin.name,
+        err = err,
+      }
+    end
 
-      else
-        plugin.handler[phase](plugin.handler, configuration)
-      end
+    kong_global.reset_log(kong)
+  end
 
-    elseif not ctx.delayed_response then
+  return errors
+end
+
+
+local function execute_access_plugins_iterator(plugins_iterator, ctx)
+  local old_ws = ctx.workspace
+
+  ctx.delay_response = true
+
+  for plugin, configuration in plugins_iterator:iterate("access", ctx) do
+    if not ctx.delayed_response then
+      setup_plugin_context(ctx, plugin)
+
       local co = coroutine.create(plugin.handler.access)
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
       if not cok then
@@ -310,16 +325,32 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
         ctx.delay_response = false
         return kong.response.exit(401, { message = err })
       end
-    end
 
-    kong_global.reset_log(kong)
-
-    if old_ws then
-      ctx.workspace = old_ws
+      reset_plugin_context(ctx, old_ws)
     end
   end
 
-  return errors
+  ctx.delay_response = nil
+end
+
+
+local function execute_plugins_iterator(plugins_iterator, phase, ctx)
+  local old_ws = ctx.workspace
+  for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
+    setup_plugin_context(ctx, plugin)
+    plugin.handler[phase](plugin.handler, configuration)
+    reset_plugin_context(ctx, old_ws)
+  end
+end
+
+
+local function execute_configured_plugins_iterator(plugins_iterator, phase, ctx)
+  local old_ws = ctx.workspace
+  for plugin, configuration in plugins_iterator.iterate_configured_plugins(phase, ctx) do
+    setup_plugin_context(ctx, plugin)
+    plugin.handler[phase](plugin.handler, configuration)
+    reset_plugin_context(ctx, old_ws)
+  end
 end
 
 
@@ -748,7 +779,7 @@ function Kong.init_worker()
   end
 
   local plugins_iterator = runloop.get_plugins_iterator()
-  local errors = execute_plugins_iterator(plugins_iterator, "init_worker")
+  local errors = execute_init_worker_plugins_iterator(plugins_iterator)
   if errors then
     for _, e in ipairs(errors) do
       local err = "failed to execute the \"init_worker\" " ..
@@ -906,7 +937,7 @@ function Kong.access()
 
   local plugins_iterator = runloop.get_plugins_iterator()
 
-  execute_plugins_iterator(plugins_iterator, "access", ctx)
+  execute_access_plugins_iterator(plugins_iterator, ctx)
 
   if ctx.delayed_response then
     ctx.KONG_ACCESS_ENDED_AT = get_updated_now_ms()
@@ -1207,7 +1238,7 @@ do
     kong.response.set_headers(headers)
 
     runloop.response.before(ctx)
-    execute_plugins_iterator(plugins_iterator, "response", ctx)
+    execute_configured_plugins_iterator(plugins_iterator, "response", ctx)
     runloop.response.after(ctx)
 
     ctx.KONG_RESPONSE_ENDED_AT = get_updated_now_ms()
@@ -1286,7 +1317,7 @@ function Kong.header_filter()
 
   runloop.header_filter.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "header_filter", ctx)
+  execute_configured_plugins_iterator(plugins_iterator, "header_filter", ctx)
   runloop.header_filter.after(ctx)
   ee.handlers.header_filter.after(ctx)
 
@@ -1349,7 +1380,7 @@ function Kong.body_filter()
   end
 
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "body_filter", ctx)
+  execute_configured_plugins_iterator(plugins_iterator, "body_filter", ctx)
 
   if not arg[2] then
     return
@@ -1458,7 +1489,7 @@ function Kong.log()
 
   runloop.log.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_plugins_iterator(plugins_iterator, "log", ctx)
+  execute_configured_plugins_iterator(plugins_iterator, "log", ctx)
   runloop.log.after(ctx)
   ee.handlers.log.after(ctx, ngx.status)
 

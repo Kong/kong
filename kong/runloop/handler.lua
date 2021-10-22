@@ -7,7 +7,6 @@
 
 -- Kong runloop
 
-local ck           = require "resty.cookie"
 local ee           = require "kong.enterprise_edition.runloop.handler"
 local meta         = require "kong.meta"
 local utils        = require "kong.tools.utils"
@@ -1513,17 +1512,8 @@ return {
       end
 
       local hash_cookie = ctx.balancer_data.hash_cookie
-      if not hash_cookie then
-        return
-      end
-
-      local cookie = ck:new()
-      local ok, err = cookie:set(hash_cookie)
-
-      if not ok then
-        log(WARN, "failed to set the cookie for hash-based load balancing: ", err,
-                  " (key=", hash_cookie.key,
-                  ", path=", hash_cookie.path, ")")
+      if hash_cookie then
+        balancer.set_cookie(hash_cookie)
       end
     end,
     after = function(ctx)

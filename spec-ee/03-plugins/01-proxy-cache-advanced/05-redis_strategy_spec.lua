@@ -12,7 +12,7 @@ local cjson = require "cjson"
 
 local helpers = require "spec.helpers"
 
-require"resty.dns.client".init(nil)
+require"kong.resty.dns.client".init(nil)
 
 local REDIS_DB = 1
 

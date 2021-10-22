@@ -7,7 +7,7 @@
 
 
 local client -- forward declaration
-local dns_utils = require "resty.dns.utils"
+local dns_utils = require "kong.resty.dns.utils"
 local helpers = require "spec.helpers.dns"
 local dnsSRV = function(...) return helpers.dnsSRV(client, ...) end
 local dnsA = function(...) return helpers.dnsA(client, ...) end
@@ -162,14 +162,14 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
     local snapshot
 
     setup(function()
-      _G.package.loaded["resty.dns.client"] = nil -- make sure module is reloaded
+      _G.package.loaded["kong.resty.dns.client"] = nil -- make sure module is reloaded
       _G.package.loaded["kong.runloop.balancer.targets"] = nil -- make sure module is reloaded
 
       local singletons = require "kong.singletons"
       singletons.worker_events = require "resty.worker.events"
       singletons.db = {}
 
-      client = require "resty.dns.client"
+      client = require "kong.resty.dns.client"
       targets = require "kong.runloop.balancer.targets"
       balancers = require "kong.runloop.balancer.balancers"
       local healthcheckers = require "kong.runloop.balancer.healthcheckers"
@@ -1661,7 +1661,7 @@ for _, algorithm in ipairs{ "consistent-hashing", "least-connections", "round-ro
             end
           end
 
-          ngx.sleep(0.1)  -- wait a bit before retrying
+          ngx.sleep(0)  -- wait a bit before retrying
         end
       end)
     end)

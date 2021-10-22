@@ -53,9 +53,85 @@ local function setup_it_block(consistency)
   })
 end
 
+local function setup_singletons(fixtures)
+  local singletons = require "kong.singletons"
+  singletons.worker_events = require "resty.worker.events"
+  singletons.db = {}
+
+  singletons.worker_events.configure({
+    shm = "kong_process_events", -- defined by "lua_shared_dict"
+    timeout = 5,            -- life time of event data in shm
+    interval = 1,           -- poll interval (seconds)
+
+    wait_interval = 0.010,  -- wait before retry fetching event data
+    wait_max = 0.5,         -- max wait time before discarding event
+  })
+
+  local function each(fixture)
+    return function()
+      local i = 0
+      return function(self)
+        i = i + 1
+        return fixture[i]
+      end
+    end
+  end
+
+  local function select(fixture)
+    return function(self, pk)
+      for item in self:each() do
+        if item.id == pk.id then
+          return item
+        end
+      end
+    end
+  end
+
+  singletons.db = {
+    targets = {
+      each = each(fixtures.targets),
+      select_by_upstream_raw = function(self, upstream_pk)
+        local upstream_id = upstream_pk.id
+        local res, len = {}, 0
+        for tgt in self:each() do
+          if tgt.upstream.id == upstream_id then
+            tgt.order = string.format("%d:%s", tgt.created_at * 1000, tgt.id)
+            len = len + 1
+            res[len] = tgt
+          end
+        end
+
+        table.sort(res, function(a, b) return a.order < b.order end)
+        return res
+      end
+    },
+    upstreams = {
+      each = each(fixtures.upstreams),
+      select = select(fixtures.upstreams),
+    },
+  }
+
+  singletons.core_cache = {
+    _cache = {},
+    get = function(self, key, _, loader, arg)
+      local v = self._cache[key]
+      if v == nil then
+        v = loader(arg)
+        self._cache[key] = v
+      end
+      return v
+    end,
+    invalidate_local = function(self, key)
+      self._cache[key] = nil
+    end
+  }
+
+  return singletons
+end
+
 for _, consistency in ipairs({"strict", "eventual"}) do
   describe("Balancer (worker_consistency = " .. consistency .. ")", function()
-    local singletons, balancer
+    local balancer
     local targets, upstreams, balancers, healthcheckers
     local UPSTREAMS_FIXTURES
     local TARGETS_FIXTURES
@@ -71,22 +147,10 @@ for _, consistency in ipairs({"strict", "eventual"}) do
       stub(ngx, "log")
 
       balancer = require "kong.runloop.balancer"
-      singletons = require "kong.singletons"
-      singletons.worker_events = require "resty.worker.events"
-      singletons.db = {}
       targets = require "kong.runloop.balancer.targets"
       upstreams = require "kong.runloop.balancer.upstreams"
       balancers = require "kong.runloop.balancer.balancers"
       healthcheckers = require "kong.runloop.balancer.healthcheckers"
-
-      singletons.worker_events.configure({
-        shm = "kong_process_events", -- defined by "lua_shared_dict"
-        timeout = 5,            -- life time of event data in shm
-        interval = 1,           -- poll interval (seconds)
-
-        wait_interval = 0.010,  -- wait before retry fetching event data
-        wait_max = 0.5,         -- max wait time before discarding event
-      })
 
       local hc_defaults = {
         active = {
@@ -280,64 +344,10 @@ for _, consistency in ipairs({"strict", "eventual"}) do
         },
       }
 
-      local function each(fixture)
-        return function()
-          local i = 0
-          return function(self)
-            i = i + 1
-            return fixture[i]
-          end
-        end
-      end
-
-      local function select(fixture)
-        return function(self, pk)
-          for item in self:each() do
-            if item.id == pk.id then
-              return item
-            end
-          end
-        end
-      end
-
-      singletons.db = {
-        targets = {
-          each = each(TARGETS_FIXTURES),
-          select_by_upstream_raw = function(self, upstream_pk)
-            local upstream_id = upstream_pk.id
-            local res, len = {}, 0
-            for tgt in self:each() do
-              if tgt.upstream.id == upstream_id then
-                tgt.order = string.format("%d:%s", tgt.created_at * 1000, tgt.id)
-                len = len + 1
-                res[len] = tgt
-              end
-            end
-
-            table.sort(res, function(a, b) return a.order < b.order end)
-            return res
-          end
-        },
-        upstreams = {
-          each = each(UPSTREAMS_FIXTURES),
-          select = select(UPSTREAMS_FIXTURES),
-        },
-      }
-
-      singletons.core_cache = {
-        _cache = {},
-        get = function(self, key, _, loader, arg)
-          local v = self._cache[key]
-          if v == nil then
-            v = loader(arg)
-            self._cache[key] = v
-          end
-          return v
-        end,
-        invalidate_local = function(self, key)
-          self._cache[key] = nil
-        end
-      }
+      setup_singletons({
+        targets = TARGETS_FIXTURES,
+        upstreams = UPSTREAMS_FIXTURES,
+      })
 
       balancers.init()
       healthcheckers.init()
@@ -345,7 +355,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
     end)
 
     describe("create_balancer()", function()
-      local dns_client = require("resty.dns.client")
+      local dns_client = require("kong.resty.dns.client")
       dns_client.init()
 
       it("creates a balancer with a healthchecker", function()
@@ -375,7 +385,7 @@ for _, consistency in ipairs({"strict", "eventual"}) do
     end)
 
     describe("get_balancer()", function()
-      local dns_client = require("resty.dns.client")
+      local dns_client = require("kong.resty.dns.client")
       dns_client.init()
 
       it("balancer and healthchecker match; remove and re-add", function()
@@ -435,6 +445,10 @@ for _, consistency in ipairs({"strict", "eventual"}) do
 
     describe("get_upstream_by_name()", function()
       it("retrieves a complete upstream based on its name", function()
+        setup_singletons({
+          targets = TARGETS_FIXTURES,
+          upstreams = UPSTREAMS_FIXTURES,
+        })
         setup_it_block(consistency)
         for _, fixture in ipairs(UPSTREAMS_FIXTURES) do
           local upstream = balancer.get_upstream_by_name(fixture.name)

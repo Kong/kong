@@ -10,7 +10,7 @@ local redis = require "resty.redis"
 local helpers = require "spec.helpers"
 
 
-require"resty.dns.client".init(nil)
+require"kong.resty.dns.client".init(nil)
 
 local function window_floor(size, time)
   return math.floor(time / size) * size
