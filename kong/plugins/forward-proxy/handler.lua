@@ -249,14 +249,9 @@ function ForwardProxyHandler:access(conf)
 
     send_proxied_response(res)
 
-    if var.upstream_scheme ~= "https" then
-      -- Pooled SSL connection error out for next request, so connection
-      -- is kept alive only for non HTTPS connections. A Github issue is
-      -- created to track it https://github.com/pintsized/lua-resty-http/issues/161
-      local ok, err = httpc:set_keepalive()
-      if ok ~= 1 then
-        log(ERR, "could not keepalive connection: ", err)
-      end
+    local ok, err = httpc:set_keepalive()
+    if ok ~= 1 then
+      log(ERR, "could not keepalive connection: ", err)
     end
 
     return ngx.exit(res.status)
