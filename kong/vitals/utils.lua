@@ -53,13 +53,15 @@ _M.resolve_entity_metadata = resolve_entity_metadata
 -- Append to vitals stats object.
 -- @param[type=table] current_state: vitals "stats" object
 -- @param[type=string] index: consumer or service id, or timestamp
--- @param[type=string] status_group: 1XX/2XX/3XX/4XX/5XX
+-- @param[type=string] status_group: 2XX/4XX/5XX
 -- @param[type=number] request_count: total requests
 -- @param[type=table] entity_metadata: kong entity name and if application consumer then app_id
 local function append_to_stats(current_state, index, status_group, request_count, entity_metadata)
-  current_state[index] = current_state[index] or { ["total"] = 0, ["1XX"] = 0, ["2XX"] = 0, ["3XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
+  current_state[index] = current_state[index] or { ["total"] = 0, ["2XX"] = 0, ["4XX"] = 0, ["5XX"] = 0 }
   current_state[index]["total"] = current_state[index]["total"] + request_count
-  current_state[index][status_group] = current_state[index][status_group] + request_count
+  if status_group == "2XX" or status_group == "4XX" or status_group == "5XX" then
+    current_state[index][status_group] = current_state[index][status_group] + request_count
+  end
   current_state[index]["name"] = entity_metadata.name
   if not not entity_metadata.app_id then
     current_state[index]["app_id"] = entity_metadata.app_id
