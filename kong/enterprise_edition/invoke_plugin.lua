@@ -10,6 +10,7 @@ local cjson = require "cjson"
 
 local tostring     = tostring
 local type         = type
+local ngx          = ngx
 
 local SERVICE_IDS = {
   portal = "00000000-0000-0000-0000-000000000000",
@@ -18,10 +19,11 @@ local SERVICE_IDS = {
 
 local loaded_plugins_map = {}
 local admin_plugin_models = {}
-local PHASES, set_phase, set_named_ctx
+local PHASES, set_named_ctx
 
 local function apply_plugin(plugin, phase, opts)
-  set_phase(kong, PHASES[phase])
+  local ctx = ngx.ctx
+  ctx.KONG_PHASE = PHASES[phase]
   set_named_ctx(kong, "plugin", plugin.config)
 
   local res, err = coroutine.wrap(plugin.handler[phase])(plugin.handler,
@@ -31,7 +33,7 @@ local function apply_plugin(plugin, phase, opts)
     return nil, err
   end
 
-  set_phase(kong, PHASES.admin_api)
+  ctx.KONG_PHASE = PHASES.admin_api
 
   return res or true
 end
@@ -165,6 +167,10 @@ local function prepare_and_invoke(opts)
   return res
 end
 
+local function set_phase(phase)
+  ngx.ctx.KONG_PHASE = phase
+end
+
 return {
   new = function(opts)
     for _, plugin in ipairs(opts.loaded_plugins) do
@@ -174,7 +180,7 @@ return {
     local kong_global = opts.kong_global
 
     PHASES = kong_global.phases
-    set_phase = kong_global.set_phase
+    set_phase = set_phase
     set_named_ctx = kong_global.set_named_ctx
 
     return setmetatable({

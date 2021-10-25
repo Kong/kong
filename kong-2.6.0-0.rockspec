@@ -26,7 +26,7 @@ dependencies = {
   "lua-cassandra == 1.5.1",
   -- XXX EE: do not use pgmoon here
   -- XXX EE: we're using a special pgmoon branch in .ci/setup_env.sh and k-d
-  -- "pgmoon == 1.12.0",
+  -- "pgmoon == 1.13.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
@@ -209,6 +209,7 @@ build = {
     ["kong.status"] = "kong/status/init.lua",
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
+    ["kong.tools.grpc"] = "kong/tools/grpc.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
     ["kong.tools.stream_api"] = "kong/tools/stream_api.lua",
@@ -527,7 +528,6 @@ build = {
     ["kong.plugins.response-ratelimiting.header_filter"] = "kong/plugins/response-ratelimiting/header_filter.lua",
     ["kong.plugins.response-ratelimiting.log"] = "kong/plugins/response-ratelimiting/log.lua",
     ["kong.plugins.response-ratelimiting.schema"] = "kong/plugins/response-ratelimiting/schema.lua",
-    ["kong.plugins.response-ratelimiting.daos"] = "kong/plugins/response-ratelimiting/daos.lua",
     ["kong.plugins.response-ratelimiting.policies"] = "kong/plugins/response-ratelimiting/policies/init.lua",
     ["kong.plugins.response-ratelimiting.policies.cluster"] = "kong/plugins/response-ratelimiting/policies/cluster.lua",
 
@@ -641,7 +641,6 @@ build = {
     ["kong.plugins.prometheus.api"] = "kong/plugins/prometheus/api.lua",
     ["kong.plugins.prometheus.status_api"] = "kong/plugins/prometheus/status_api.lua",
     ["kong.plugins.prometheus.exporter"] = "kong/plugins/prometheus/exporter.lua",
-    ["kong.plugins.prometheus.enterprise.exporter"] = "kong/plugins/prometheus/enterprise/exporter.lua",
     ["kong.plugins.prometheus.handler"] = "kong/plugins/prometheus/handler.lua",
     ["kong.plugins.prometheus.prometheus"] = "kong/plugins/prometheus/prometheus.lua",
     ["kong.plugins.prometheus.serve"] = "kong/plugins/prometheus/serve.lua",

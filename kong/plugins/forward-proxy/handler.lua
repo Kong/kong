@@ -12,6 +12,7 @@ local ee         = require "kong.enterprise_edition"
 
 local kong                = kong
 local ngx                 = ngx
+local ngx_get_phase       = ngx.get_phase
 local ERR                 = ngx.ERR
 local log                 = ngx.log
 local ngx_req_get_headers = ngx.req.get_headers
@@ -71,12 +72,12 @@ local function simulate_access_after(ctx)
 
   local kong_global = require "kong.global"
   local PHASES = kong_global.phases
-  local current_phase = kong_global.get_phase(kong)
-  kong_global.set_phase(kong, PHASES.log)
+  local current_phase = ngx_get_phase()
+  ctx.KONG_PHASE = PHASES.log
 
   ee.handlers.log.after(ctx)
 
-  kong_global.set_phase(kong, current_phase)
+  ctx.KONG_PHASE = current_phase
 end
 
 

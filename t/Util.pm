@@ -100,10 +100,12 @@ our $HttpConfig = <<_EOC_;
                             fname .. " expected "
 
                 -- Run function with phase checked disabled
-		if kong then
-		  kong.ctx = nil
-		end
-		-- kong = nil
+                if kong then
+                    kong.ctx = nil
+                end
+                -- kong = nil
+
+                ngx.ctx.KONG_PHASE = nil
 
                 local expected = fdata[phases[phase]]
                 if expected == "pending" then
@@ -136,10 +138,12 @@ our $HttpConfig = <<_EOC_;
                 end
 
                 -- Re-enable phase checking and compare results
-		if not kong then
-		  kong = {}
-		end
-                kong.ctx = { core = { phase = phase } }
+                if not kong then
+                    kong = {}
+                end
+
+                kong.ctx = { core = { } }
+                ngx.ctx.KONG_PHASE = phase
 
                 if forced_false then
                     ok1, err1 = false, ""
