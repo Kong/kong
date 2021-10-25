@@ -53,7 +53,7 @@ _M.resolve_entity_metadata = resolve_entity_metadata
 -- Append to vitals stats object.
 -- @param[type=table] current_state: vitals "stats" object
 -- @param[type=string] index: consumer or service id, or timestamp
--- @param[type=string] status_group: 2XX/4XX/5XX
+-- @param[type=string] status_group: 1XX/2XX/3XX/4XX/5XX
 -- @param[type=number] request_count: total requests
 -- @param[type=table] entity_metadata: kong entity name and if application consumer then app_id
 local function append_to_stats(current_state, index, status_group, request_count, entity_metadata)

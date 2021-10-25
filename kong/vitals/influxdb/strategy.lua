@@ -27,7 +27,13 @@ local tostring      = tostring
 local BUF_SIZE = 5000 -- number of points to buffer before flushing
 local FLUSH_INTERVAL = 10 -- flush buffered points at most every 10
 local MEASUREMENT = "kong_request" -- influx point measurement name
-
+local REPORT_STATUS_GROUPS = {
+  "1XX",
+  "2XX",
+  "3XX",
+  "4XX",
+  "5XX"
+}
 
 -- datastore cache format string
 -- cheaper to format this string since we know the format
@@ -615,6 +621,17 @@ function _M:select_stats(query_type, level, node_id, start_ts)
   }
 end
 
+local function check_status_group(status_group)
+  local supported_status_group = nil
+  for _, v in pairs(REPORT_STATUS_GROUPS) do
+    if status_group == v then
+      supported_status_group = true
+      break
+    end
+  end
+  return supported_status_group
+end
+
 
 local function status_code_query(entity_id, entity, seconds_from_now, interval)
   local q = "SELECT count(status) FROM kong_request"
@@ -662,9 +679,12 @@ function _M:status_code_report_by(entity, entity_id, interval, start_ts)
       end
       local has_key = key ~= nil and key ~= ''
       if has_key then
-        local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
         local request_count = value[2]
-        stats = vitals_utils.append_to_stats(stats, key, status_group, request_count, entity_metadata)
+        local status_group = tostring(series.tags.status_f):sub(1, 1) .. "XX"
+        local supported_status_group = check_status_group(status_group)
+        if supported_status_group then
+          stats = vitals_utils.append_to_stats(stats, key, status_group, request_count, entity_metadata)
+        end
       end 
     end
   end
