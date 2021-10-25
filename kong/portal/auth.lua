@@ -13,6 +13,7 @@ local enums         = require "kong.enterprise_edition.dao.enums"
 local singletons    = require "kong.singletons"
 local rbac          = require "kong.rbac"
 local auth_helpers  = require "kong.enterprise_edition.auth_helpers"
+local file_helpers  = require "kong.portal.file_helpers"
 local workspace_config = require "kong.portal.workspace_config"
 
 local ws_constants  = constants.WORKSPACE_CONFIG
@@ -59,6 +60,43 @@ local auth_plugins = {
     name = "openid-connect"
   },
 }
+
+local oidc_redirect_map = {
+  forbidden = {
+    oidc = "forbidden_redirect_uri",
+    portal_conf = "unauthorized"
+  },
+  login = {
+    oidc = "login_redirect_uri",
+    portal_conf = "login"
+  }
+}
+
+local function get_oidc_auth_redirect(workspace, auth_conf, redirect_type)
+  local redirect_map = oidc_redirect_map[redirect_type]
+  if not redirect_map then
+    return
+  end
+
+  -- first try OIDC conf for redirect
+  local redirect_uri_arr = auth_conf[redirect_map.oidc]
+  if type(redirect_uri_arr) == "table" then
+    local client_arg = auth_conf.client_argx
+    local client_idx = ngx.header[client_arg] or 1
+    local oidc_redirect_uri = redirect_uri_arr[client_idx]
+
+    if type(oidc_redirect_uri) == "string" and oidc_redirect_uri ~= "" then
+      return oidc_redirect_uri
+    end
+  end
+
+  -- otherwise get redirect from portal conf
+  local portal_conf = file_helpers.get_conf("portal")
+  local redirect_path = portal_conf and portal_conf.redirect and
+                        portal_conf.redirect[redirect_map.portal_conf] or ""
+
+  return workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)  .. '/' .. redirect_path
+end
 
 
 local function get_oidc_developer_status()
@@ -238,7 +276,10 @@ function _M.login(self, db, helpers)
 
   local workspace = workspaces.get_workspace()
   local auth_conf = workspace_config.retrieve(
-                                      ws_constants.PORTAL_AUTH_CONF, workspace)
+    ws_constants.PORTAL_AUTH_CONF,
+    workspace,
+    { decode_json = true }
+  )
 
   local plugin_auth_response, err = invoke_plugin({
     name = self.plugin.name,
@@ -281,16 +322,28 @@ function _M.login(self, db, helpers)
     end
   end
 
-  local developer, err = get_authenticated_developer(self)
+  local _, err = get_authenticated_developer(self)
   if err then
     if ngx.ctx.authenticated_session then
       ngx.ctx.authenticated_session:destroy()
     end
 
+    if self.plugin.name == "openid-connect" then
+      local redirect = get_oidc_auth_redirect(workspace, auth_conf, "forbidden")
+      if redirect then
+        return ngx.redirect(redirect)
+      end
+    end
+
     return kong.response.exit(401, { message = err })
   end
 
-  self.developer = developer
+  if self.plugin.name == "openid-connect" then
+    local redirect = get_oidc_auth_redirect(workspace, auth_conf, "login")
+    if redirect then
+      return ngx.redirect(redirect)
+    end
+  end
 end
 
 
