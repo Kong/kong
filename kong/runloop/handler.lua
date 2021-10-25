@@ -1113,9 +1113,32 @@ return {
         return exit(500)
       end
 
+      local route = match_t.route
+      -- if matched route doesn't do tls_passthrough and we are in the preread server block
+      -- this request should be TLS terminated; return immediately and not run further steps
+      -- (even bypassing the balancer)
+      local tls_preread_block = var.kong_tls_preread_block
+      if tls_preread_block and #tls_preread_block > 0 then
+        local protocols = route.protocols
+        if protocols and protocols.tls then
+          log(DEBUG, "TLS termination required, return to second layer proxying")
+          var.kong_tls_preread_block_upstream = "unix:" .. kong.configuration.prefix .. "/stream_tls_terminate.sock"
+
+        elseif protocols and protocols.tls_passthrough then
+          var.kong_tls_preread_block_upstream = "unix:" .. kong.configuration.prefix .. "/stream_tls_passthrough.sock"
+
+        else
+          log(ERR, "unexpected protocols in matched Route")
+          return exit(500)
+        end
+
+        ctx.stream_proxy_preread_terminate = true
+        return
+      end
+
+
       ctx.workspace = match_t.route and match_t.route.ws_id
 
-      local route = match_t.route
       local service = match_t.service
       local upstream_url_t = match_t.upstream_url_t
 

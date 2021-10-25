@@ -742,6 +742,12 @@ function Kong.preread()
 
   runloop.preread.before(ctx)
 
+  -- if proxying to a second layer TLS terminator is required
+  -- abort further execution and return back to Nginx
+  if ctx.stream_proxy_preread_terminate then
+    return
+  end
+
   local plugins_iterator = runloop.get_updated_plugins_iterator()
   execute_plugins_iterator(plugins_iterator, "preread", ctx)
 

@@ -794,7 +794,7 @@ describe("routes schema", function()
         local ok, errs = Routes:validate(route)
         assert.falsy(ok)
         assert.same({
-          paths = "cannot set 'paths' when 'protocols' is 'tcp', 'tls' or 'udp'",
+          paths = "cannot set 'paths' when 'protocols' is 'tcp', 'tls', 'tls_passthrough' or 'udp'",
         }, errs)
       end
     end)
@@ -811,7 +811,7 @@ describe("routes schema", function()
         local ok, errs = Routes:validate(route)
         assert.falsy(ok)
         assert.same({
-          methods = "cannot set 'methods' when 'protocols' is 'tcp', 'tls' or 'udp'",
+          methods = "cannot set 'methods' when 'protocols' is 'tcp', 'tls', 'tls_passthrough' or 'udp'",
         }, errs)
       end
     end)
@@ -1038,7 +1038,7 @@ describe("routes schema", function()
         assert.falsy(ok)
         assert.same({
           ["@entity"] = {
-            "must set one of 'sources', 'destinations', 'snis' when 'protocols' is 'tcp', 'tls' or 'udp'"
+            "must set one of 'sources', 'destinations', 'snis' when 'protocols' is 'tcp', 'tls', 'tls_passthrough' or 'udp'"
           }
         }, errs)
       end
