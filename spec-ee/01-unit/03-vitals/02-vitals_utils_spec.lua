@@ -106,5 +106,4 @@ describe("append_to_stats", function()
       end)
     end)
   end)
-
 end)

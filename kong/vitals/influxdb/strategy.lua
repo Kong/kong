@@ -28,6 +28,7 @@ local BUF_SIZE = 5000 -- number of points to buffer before flushing
 local FLUSH_INTERVAL = 10 -- flush buffered points at most every 10
 local MEASUREMENT = "kong_request" -- influx point measurement name
 
+
 -- datastore cache format string
 -- cheaper to format this string since we know the format
 local CACHE_FMT = "kong_datastore_cache,hostname=%s,wid=%d hits=%di,misses=%di %s"
