@@ -290,6 +290,23 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
         for _, t in ipairs(config_table["plugins"]) do
           local config = t and t["config"]
           if config then
+            -- TODO: Properly implemented nested field removal [acme plugin]
+            --       Note: This is not as straightforward due to field element
+            --             removal implementation; this needs to be refactored
+            if t["name"] == "acme" then
+              if config["storage_config"] and config["storage_config"].vault then
+                for _, i in ipairs({ "auth_method", "auth_path", "auth_role", "jwt_path" }) do
+                  if config["storage_config"].vault[i] ~= nil then
+                    ngx_log(ngx_WARN, _log_prefix, "acme plugin for Kong Gateway v" .. KONG_VERSION ..
+                            "contains vault storage configuration '", i, "' which is incompatible with",
+                            "dataplane version " .. dp_version .. " and will be ignored", log_suffix)
+                    config["storage_config"].vault[i] = nil
+                    has_update = true
+                  end
+                end
+              end
+            end
+
             if t["name"] == "canary" then
               if config["hash"] == "header" then
                 ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
@@ -300,7 +317,6 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
                 has_update = true
               end
             end
-
             if t["name"] == "rate-limiting-advanced" then
               if config["strategy"] == "local" then
                 ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
