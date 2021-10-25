@@ -25,7 +25,7 @@ local str_lower           = string.lower
 
 
 local _prefix_log = "[forward-proxy] "
-local server_header = meta._NAME .. "/" .. meta._VERSION
+local server_header = meta._SERVER_TOKENS
 
 
 local ForwardProxyHandler = {

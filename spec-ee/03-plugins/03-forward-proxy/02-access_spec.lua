@@ -11,7 +11,7 @@ local pl_file = require "pl.file"
 local meta    = require "kong.meta"
 
 
-local server_header = meta._NAME .. "/" .. meta._VERSION
+local server_header = meta._SERVER_TOKENS
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 for _, strategy in strategies() do
