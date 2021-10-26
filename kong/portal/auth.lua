@@ -281,10 +281,21 @@ function _M.login(self, db, helpers)
     { decode_json = true }
   )
 
+  local is_oidc = self.plugin.name == "openid-connect"
+  if is_oidc then
+    -- Don't exit if we don't find a consumer,
+    -- we will redirect to register below if no consumer found
+    auth_conf.consumer_optional = true
+
+    -- This will allow execution beyond invoke_plugin instead of a redirection
+    -- We need to check developer status after login
+    auth_conf.login_action = "upstream"
+  end
+
   local plugin_auth_response, err = invoke_plugin({
     name = self.plugin.name,
     config = auth_conf,
-    phases = { "access"},
+    phases = { "access" },
     api_type = ee_api.apis.PORTAL,
     db = db,
     exit_handler = function (res) return res end,
@@ -302,7 +313,7 @@ function _M.login(self, db, helpers)
 
   -- if not openid-connect
   -- run session header_filter to attach session to response
-  if self.plugin.name ~= "openid-connect" then
+  if not is_oidc then
     local opts = { decode_json = true }
     local session_conf = workspace_config.retrieve(
                              ws_constants.PORTAL_SESSION_CONF, workspace, opts)
@@ -311,7 +322,7 @@ function _M.login(self, db, helpers)
     local ok, err = invoke_plugin({
       name = "session",
       config = session_conf,
-      phases = { "header_filter"},
+      phases = { "header_filter" },
       api_type = ee_api.apis.PORTAL,
       db = db,
     })
@@ -328,8 +339,16 @@ function _M.login(self, db, helpers)
       ngx.ctx.authenticated_session:destroy()
     end
 
-    if self.plugin.name == "openid-connect" then
-      local redirect = get_oidc_auth_redirect(workspace, auth_conf, "forbidden")
+    -- oidc auth error redirects
+    if is_oidc then
+      local redirect
+      if err == UNAUTHED_ERR.message then
+        redirect = workspace_config.build_ws_portal_gui_url(kong.configuration, workspace)  .. '/register'
+        return ngx.redirect(redirect)
+      else
+        redirect = get_oidc_auth_redirect(workspace, auth_conf, "forbidden")
+      end
+
       if redirect then
         return ngx.redirect(redirect)
       end
@@ -338,7 +357,8 @@ function _M.login(self, db, helpers)
     return kong.response.exit(401, { message = err })
   end
 
-  if self.plugin.name == "openid-connect" then
+  -- oidc success redirect
+  if is_oidc then
     local redirect = get_oidc_auth_redirect(workspace, auth_conf, "login")
     if redirect then
       return ngx.redirect(redirect)
@@ -362,7 +382,7 @@ function _M.authenticate_api_session(self, db, helpers)
     ok, err = invoke_plugin({
       name = self.plugin.name,
       config = auth_conf,
-      phases = { "access"},
+      phases = { "access" },
       api_type = ee_api.apis.PORTAL,
       db = db,
     })
@@ -381,7 +401,7 @@ function _M.authenticate_api_session(self, db, helpers)
     ok, err = invoke_plugin({
       name = "session",
       config = session_conf,
-      phases = { "access", "header_filter"},
+      phases = { "access", "header_filter" },
       api_type = ee_api.apis.PORTAL,
       db = db,
     })
@@ -435,12 +455,26 @@ function _M.authenticate_gui_session(self, db, helpers)
     local has_session = check_oidc_session()
 
     -- assume unauthenticated if no session
-    if not has_session then
+    -- don't exit early on /register path so we can run oidc preauth
+    if not has_session and self.path ~= "/register"  then
       return
     end
 
     local auth_conf = workspace_config.retrieve(
-                                      ws_constants.PORTAL_AUTH_CONF, workspace)
+      ws_constants.PORTAL_AUTH_CONF,
+      workspace,
+      { decode_json = true }
+    )
+
+    -- instruct the OIDC plugin to attach downstream_headers_claims
+    if self.path == "/register" then
+      auth_conf.downstream_headers_claims = auth_conf.downstream_headers_claims or {}
+      auth_conf.downstream_headers_names = auth_conf.downstream_headers_names or {}
+      table.insert(auth_conf.downstream_headers_claims, "email")
+      table.insert(auth_conf.downstream_headers_names, "portal-registration-email")
+      auth_conf.consumer_optional = true
+    end
+
     ok, err = invoke_plugin({
       name = self.plugin.name,
       config = auth_conf,
@@ -467,6 +501,20 @@ function _M.authenticate_gui_session(self, db, helpers)
   if not ok then
     log(ERR, err)
     return kong.response.exit(500, UNEXPECTED_ERR)
+  end
+
+  -- For register path with OIDC, process downstream claims headers
+  if portal_auth == "openid-connect" and self.path == "/register" then
+    local preauth_claims = {
+      email = ngx.header['portal-registration-email']
+    }
+
+    -- remove the header
+    ngx.header['portal-registration-email'] = nil
+
+    -- attach to preauth_claims to be used by the render
+    self.preauth_claims = preauth_claims.email and preauth_claims or nil
+    return
   end
 
   local developer = get_authenticated_developer(self)

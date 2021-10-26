@@ -402,6 +402,7 @@ local function set_render_ctx(self, email_tokens)
   end
 
   local developer = self.developer or {}
+  local preauth_claims = self.preauth_claims or {}
   local path   = set_path(self.path)
   local layout, updated_path = set_layout_by_permission(route_config, developer, workspace, portal_config)
   if updated_path then
@@ -417,6 +418,7 @@ local function set_render_ctx(self, email_tokens)
     layout               = layout,
     path                 = path,
     example_email_tokens = email_tokens,
+    preauth_claims       = preauth_claims,
   }
 end
 

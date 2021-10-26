@@ -8,6 +8,7 @@
 local singletons    = require "kong.singletons"
 local rbac          = require "kong.rbac"
 local constants     = require "kong.constants"
+local utils         = require "kong.tools.utils"
 local looper = require "kong.portal.render_toolset.looper"
 
 local PORTAL_PREFIX = constants.PORTAL_PREFIX
@@ -51,6 +52,13 @@ return function()
   user.get = function(arg)
     local render_ctx = singletons.render_ctx
     return render_ctx.developer[arg]
+  end
+
+  -- preauth_claims are not stored on the developer table
+  -- to not interfere with is_authenticated checks
+  user.preauth_claims = function()
+    local render_ctx = singletons.render_ctx
+    return utils.deep_copy(render_ctx.preauth_claims)
   end
 
   return user
