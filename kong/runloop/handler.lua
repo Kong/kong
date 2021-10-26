@@ -1151,7 +1151,8 @@ return {
   },
   preread = {
     before = function(ctx)
-      ctx.host_port = HOST_PORTS[var.server_port] or var.server_port
+      local server_port = var.server_port
+      ctx.host_port = HOST_PORTS[server_port] or server_port
 
       local router = get_updated_router()
 
@@ -1325,7 +1326,9 @@ return {
       -- `host` is the original header to be preserved if set.
       var.upstream_scheme = match_t.upstream_scheme -- COMPAT: pdk
       var.upstream_uri    = escape(match_t.upstream_uri)
-      var.upstream_host   = match_t.upstream_host
+      if match_t.upstream_host then
+        var.upstream_host = match_t.upstream_host
+      end
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
       local upgrade = var.http_upgrade
@@ -1390,9 +1393,10 @@ return {
         var.upstream_uri = var.upstream_uri .. "?" .. var.args or ""
       end
 
+      local upstream_scheme = var.upstream_scheme
+
       local balancer_data = ctx.balancer_data
-      balancer_data.scheme = var.upstream_scheme -- COMPAT: pdk
-      local upstream_scheme = balancer_data.scheme
+      balancer_data.scheme = upstream_scheme -- COMPAT: pdk
 
       -- The content of var.upstream_host is only set by the router if
       -- preserve_host is true
@@ -1421,9 +1425,6 @@ return {
         local body = utils.get_default_exit_body(errcode, err)
         return kong.response.exit(errcode, body)
       end
-
-      upstream_scheme = balancer_data.scheme
-      var.upstream_scheme = balancer_data.scheme
 
       local ok, err = balancer.set_host_header(balancer_data, upstream_scheme, upstream_host)
       if not ok then
