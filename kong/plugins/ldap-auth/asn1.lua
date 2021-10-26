@@ -1,15 +1,6 @@
-local bpack, bunpack
-do
-  local string_pack = string.pack
-  local string_unpack = string.unpack
-  require "lua_pack"
-  bpack = string.pack
-  bunpack = string.unpack
-  -- luacheck: globals string.unpack
-  string.unpack = string_unpack
-  -- luacheck: globals string.pack
-  string.pack = string_pack
-end
+local lpack = require "lua_pack"
+local bpack = lpack.pack
+local bunpack = lpack.unpack
 
 
 local setmetatable = setmetatable
@@ -25,7 +16,7 @@ local char = string.char
 local bit = bit
 
 
-local _M = { bpack = bpack, bunpack = bunpack }
+local _M = {}
 
 
 _M.BERCLASS = {

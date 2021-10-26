@@ -3,12 +3,12 @@
 -- may changed or be removed in the future Kong releases once a better mechanism
 -- for inter subsystem communication in OpenResty became available.
 
-require "lua_pack"
+local lpack = require "lua_pack"
 
 
 local kong       = kong
-local st_pack    = string.pack      -- luacheck: ignore string
-local st_unpack  = string.unpack    -- luacheck: ignore string
+local st_pack    = lpack.pack
+local st_unpack  = lpack.unpack
 local st_format  = string.format
 local table_concat = table.concat
 local assert     = assert
