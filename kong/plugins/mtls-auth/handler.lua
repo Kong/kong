@@ -14,6 +14,7 @@ if ngx.config.subsystem ~= "http" then
     return {}
 end
 
+local ngx = ngx
 local mtls_cache = require("kong.plugins.mtls-auth.cache")
 local access = require("kong.plugins.mtls-auth.access")
 local certificate = require("kong.plugins.mtls-auth.certificate")
@@ -39,8 +40,9 @@ function MtlsAuthHandler:init_worker()
   Kong.ssl_certificate = function()
     orig_ssl_certificate()
 
+    local ctx = ngx.ctx
     -- ensure phases are set
-    kong_global.set_phase(kong, PHASES.certificate)
+    ctx.KONG_PHASE = PHASES.certificate
 
     kong_global.set_namespaced_log(kong, "mtls-auth")
     certificate.execute()
