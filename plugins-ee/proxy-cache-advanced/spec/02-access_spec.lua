@@ -1387,7 +1387,6 @@ for i, policy in ipairs({"memory", "redis"}) do
     local bp
     local client, admin_client
     local policy_config
-    local cache_key
 
     if policy == "memory" then
       policy_config = {
@@ -1432,13 +1431,6 @@ for i, policy in ipairs({"memory", "redis"}) do
         end
 
         return false
-      end)
-    end
-
-    local function wait_until_key_not_in_cache(key)
-      wait_until_key(key, function(res)
-        -- API endpoint returns either 200, 500 or 404
-        return res.status > 200
       end)
     end
 
