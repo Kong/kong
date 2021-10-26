@@ -281,7 +281,7 @@ end
 
 local function get_next(self)
   local i = self.i + 1
-  local plugin = self.loaded[i]
+  local plugin = self.plugins[i]
   if not plugin then
     return nil
   end
@@ -289,27 +289,18 @@ local function get_next(self)
   self.i = i
 
   local name = plugin.name
-  if not self.map[name] then
-    return get_next(self)
-  end
-
   local ctx = self.ctx
   local plugins = ctx.plugins
 
+  local n
   local combos = self.combos[name]
   if combos then
     local cfg = load_configuration_through_combos(ctx, combos, plugin)
     if cfg then
-      local n = plugins[name]
-      if not n then
-        n = plugins.n + 2
-        plugins.n = n
-        plugins[n-1] = plugin
-        plugins[name] = n
-      end
-
+      n = plugins[0] + 2
+      plugins[0] = n
       plugins[n] = cfg
-
+      plugins[n-1] = plugin
       if not ctx.buffered_proxying and plugin.handler.response and
                                        plugin.handler.response ~= BasePlugin.response then
         ctx.buffered_proxying = true
@@ -317,11 +308,8 @@ local function get_next(self)
     end
   end
 
-  if self.phases[name] then
-    local n = plugins[name]
-    if n then
-      return plugin, plugins[n]
-    end
+  if n and self.phases[name] then
+    return plugin, plugins[n]
   end
 
   return get_next(self)
@@ -353,8 +341,8 @@ local PluginsIterator = {}
 
 --- Plugins Iterator
 --
--- Iterate over the plugin loaded for a request, stored in
---`ngx.ctx.plugins`.
+-- Iterate over the configured plugins that implement `phase`,
+-- and collect the configurations for post-proxy phases.
 --
 -- @param[type=string] phase Plugins iterator execution phase
 -- @param[type=table] ctx Nginx context table
@@ -365,21 +353,27 @@ local function iterate(self, phase, ctx)
     return zero_iter
   end
 
-  if not ctx.plugins then
-    ctx.plugins = { n = 0 }
+  local plugins = ws.plugins
+
+  ctx.plugins = kong.table.new(plugins[0] * 2, 1)
+  ctx.plugins[0] = 0
+
+  if plugins[0] == 0 then
+    return zero_iter
   end
 
   return get_next, {
-    loaded = self.loaded,
     phases = ws.phases[phase] or {},
     combos = ws.combos,
-    map = ws.map,
+    plugins = plugins,
     ctx = ctx,
     i = 0,
   }
 end
 
 
+-- Iterate over the loaded plugins that implement `init_worker`.
+-- @treturn function iterator
 local function iterate_init_worker(self)
   return get_next_init_worker, {
     loaded = self.loaded,
@@ -388,9 +382,12 @@ local function iterate_init_worker(self)
 end
 
 
-local function iterate_configured_plugins(phase, ctx)
+-- Iterate over collected plugins that implement `phase`.
+-- @param[type=string] phase Plugins iterator execution phase
+-- @treturn function iterator
+local function iterate_collected_plugins(phase, ctx)
   local plugins = ctx.plugins
-  if not plugins or plugins.n == 0 then
+  if not plugins or plugins[0] == 0 then
     return zero_iter
   end
 
@@ -416,8 +413,12 @@ local function new_ws_data()
       access      = {},
     }
   end
+
+  local plugins = {}
+  plugins[0] = 0
+
   return {
-    map = {},
+    plugins = plugins,
     combos = {},
     phases = phases,
   }
@@ -455,7 +456,7 @@ function PluginsIterator.new(version)
       data = new_ws_data()
       ws[plugin.ws_id] = data
     end
-    local map = data.map
+    local plugins = data.plugins
     local combos = data.combos
 
     if kong.core_cache and counter > 0 and counter % page_size == 0 and kong.db.strategy ~= "off" then
@@ -470,7 +471,7 @@ function PluginsIterator.new(version)
     end
 
     if should_process_plugin(plugin) then
-      map[name] = true
+      plugins[name] = true
 
       local combo_key = (plugin.route    and 1 or 0)
                       + (plugin.service  and 2 or 0)
@@ -581,14 +582,23 @@ function PluginsIterator.new(version)
   end
 
   for _, plugin in ipairs(loaded_plugins) do
+    local name = plugin.name
     for _, data in pairs(ws) do
       for phase_name, phase in pairs(data.phases) do
-        if data.combos[plugin.name] then
+        if data.combos[name] then
           local phase_handler = plugin.handler[phase_name]
           if phase_handler and phase_handler ~= BasePlugin[phase_name] then
-            phase[plugin.name] = true
+            phase[name] = true
           end
         end
+      end
+
+      local plugins = data.plugins
+      if plugins[name] then
+        local n = plugins[0] + 1
+        plugins[n] = plugin
+        plugins[0] = n
+        plugins[name] = nil
       end
     end
   end
@@ -598,7 +608,7 @@ function PluginsIterator.new(version)
     ws = ws,
     loaded = loaded_plugins,
     iterate = iterate,
-    iterate_configured_plugins = iterate_configured_plugins,
+    iterate_collected_plugins = iterate_collected_plugins,
     iterate_init_worker = iterate_init_worker,
   }
 end

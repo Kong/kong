@@ -318,9 +318,9 @@ local function execute_plugins_iterator(plugins_iterator, phase, ctx)
 end
 
 
-local function execute_configured_plugins_iterator(plugins_iterator, phase, ctx)
+local function execute_collected_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
-  for plugin, configuration in plugins_iterator.iterate_configured_plugins(phase, ctx) do
+  for plugin, configuration in plugins_iterator.iterate_collected_plugins(phase, ctx) do
     setup_plugin_context(ctx, plugin)
     plugin.handler[phase](plugin.handler, configuration)
     reset_plugin_context(ctx, old_ws)
@@ -1128,7 +1128,7 @@ do
     kong.response.set_headers(headers)
 
     runloop.response.before(ctx)
-    execute_configured_plugins_iterator(plugins_iterator, "response", ctx)
+    execute_collected_plugins_iterator(plugins_iterator, "response", ctx)
     runloop.response.after(ctx)
 
     ctx.KONG_RESPONSE_ENDED_AT = get_updated_now_ms()
@@ -1206,7 +1206,7 @@ function Kong.header_filter()
 
   runloop.header_filter.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_configured_plugins_iterator(plugins_iterator, "header_filter", ctx)
+  execute_collected_plugins_iterator(plugins_iterator, "header_filter", ctx)
   runloop.header_filter.after(ctx)
 
   ctx.KONG_HEADER_FILTER_ENDED_AT = get_updated_now_ms()
@@ -1268,7 +1268,7 @@ function Kong.body_filter()
   end
 
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_configured_plugins_iterator(plugins_iterator, "body_filter", ctx)
+  execute_collected_plugins_iterator(plugins_iterator, "body_filter", ctx)
 
   if not arg[2] then
     return
@@ -1377,7 +1377,7 @@ function Kong.log()
 
   runloop.log.before(ctx)
   local plugins_iterator = runloop.get_plugins_iterator()
-  execute_configured_plugins_iterator(plugins_iterator, "log", ctx)
+  execute_collected_plugins_iterator(plugins_iterator, "log", ctx)
   runloop.log.after(ctx)
 
 

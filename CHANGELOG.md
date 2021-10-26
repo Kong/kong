@@ -70,6 +70,7 @@ In this release we continued our work on better performance:
 
 - Improved the plugin iterator performance and JITability
   [#7912](https://github.com/Kong/kong/pull/7912)
+  [#7979](https://github.com/Kong/kong/pull/7979)
 - Simplified the Kong core context read and writes for better performance
   [#7919](https://github.com/Kong/kong/pull/7919)
 
