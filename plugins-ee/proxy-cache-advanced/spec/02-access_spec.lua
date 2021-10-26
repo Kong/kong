@@ -1518,9 +1518,6 @@ for i, policy in ipairs({"memory", "redis"}) do
 
       -- assert that response bodies are identical
       assert.same(body1, body2)
-
-      -- examine this cache key against another plugin's cache key for the same req
-      cache_key = cache_key1
     end)
 
   end)
