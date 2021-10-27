@@ -8,6 +8,7 @@
 
 return {
   [2003003003] = {
+    -- OSS plugins
     file_log = {
       "custom_fields_by_lua",
     },
@@ -17,9 +18,6 @@ return {
     loggly = {
       "custom_fields_by_lua",
     },
-    prometheus = {
-      "per_consumer",
-    },
     syslog = {
       "custom_fields_by_lua",
     },
@@ -28,6 +26,14 @@ return {
     },
     udp_log = {
       "custom_fields_by_lua",
+    },
+  },
+
+  -- Any dataplane older than 2.4.0
+  [2003999999] = {
+    -- OSS plugins
+    prometheus = {
+      "per_consumer",
     },
     zipkin = {
       "tags_header",
