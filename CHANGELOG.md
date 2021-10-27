@@ -1,3 +1,7 @@
+## Unreleased
+
+- fix(handler) ensure certificate phase is set with ngx.ctx.KONG_PHASE
+
 ## 0.3.3
 
 - fix(handler) ensure certificate phase is set in ngx.ctx
