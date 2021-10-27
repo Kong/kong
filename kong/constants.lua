@@ -33,9 +33,9 @@ local plugins = {
   "grpc-web",
   "pre-function",
   "post-function",
+  "zipkin",
   -- external plugins
   "azure-functions",
-  "zipkin",
 }
 
 local plugin_map = {}
