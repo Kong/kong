@@ -21,7 +21,7 @@ dependencies = {
   "lua-ffi-zlib == 0.5",
   "multipart == 0.5.9",
   "version == 1.0.1",
-  "resty-redis-cluster == 1.02",
+  "kong-redis-cluster == 1.2.0",
   "kong-lapis == 1.8.3.1",
   "lua-cassandra == 1.5.1",
   -- XXX EE: do not use pgmoon here
