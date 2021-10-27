@@ -131,12 +131,20 @@ function _Admins:delete(admin, options)
     return nil, err
   end
 
-  _, err = self.db.consumers:delete({ id = consumer_id }, options)
+  -- Delete the consumer and rbac_user by id regardless of the workspace they are in. They could be in a non-default workspace, but if the Admin
+  -- has role permissions in the default super-admin workspace, they have permission to delete that consumer. 
+  local delete_options = { workspace = ngx.null }
+  if options ~= nil then
+    for k, v in pairs(options) do
+      delete_options[k] = v
+    end
+  end
+  _, err = self.db.consumers:delete({ id = consumer_id }, delete_options)
   if err then
     return nil, err
   end
 
-  _, err = self.db.rbac_users:delete({ id = rbac_user_id }, options)
+  _, err = self.db.rbac_users:delete({ id = rbac_user_id }, delete_options)
   if err then
     return nil, err
   end
