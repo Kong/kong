@@ -1,10 +1,14 @@
+## Unreleased
+
+* fix(handler) do not set Host header if var.upstream_host is an empty string
+
 ## 1.0.5
 
-- fix(*) BasePlugin inheritance removal (FT-1701)
+* fix(*) BasePlugin inheritance removal (FT-1701)
 
 ## 1.0.4
 
-- Simulate log phase to resolve pdk error when used with a logging plugin
+* Simulate log phase to resolve pdk error when used with a logging plugin
 
 ## 1.0.3
 
