@@ -160,14 +160,14 @@ end
 
 local function load_service()
   local p = protoc.new()
-  --p:loadfile("kong/pluginsocket.proto")
-
   p:addpath("/usr/include")
-  p:addpath("/usr/local/opt/protobuf/include/")
-
-  p:addpath("/usr/local/kong/lib/")
+  p:addpath("/usr/local/opt/protobuf/include")
+  p:addpath("/usr/local/kong/lib")
   p:addpath("kong")
+  p:addpath("spec/fixtures/grpc")
+  p.include_imports = true
 
+  p:loadfile("pluginsocket.proto")
   local parsed = p:parsefile("pluginsocket.proto")
 
   local service = {}
@@ -189,10 +189,6 @@ local function load_service()
       --print(("service[%q] = %s"):format(lower_name, pp(service[lower_name])))
     end
   end
-
-  p:loadfile("google/protobuf/empty.proto")
-  p:loadfile("google/protobuf/struct.proto")
-  p:loadfile("pluginsocket.proto")
 
   return service
 end

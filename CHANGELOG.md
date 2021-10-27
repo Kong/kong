@@ -62,6 +62,10 @@
 
 ## [Unreleased]
 
+### Dependencies
+
+- Bumped `go-pdk` used in tests from v0.6.0 to v0.7.1 [#7964](https://github.com/Kong/kong/pull/7964)
+
 ### Additions
 
 #### Performance
