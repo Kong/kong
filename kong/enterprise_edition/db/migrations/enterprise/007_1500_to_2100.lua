@@ -49,6 +49,16 @@ local ee_core_entities = {
     primary_key = "id",
     uniques = {"composite_id"},
     fks = {{name = "application", reference = "applications"}, {name = "service", reference = "services"}},
+  }, {
+    name = "consumer_groups",
+    primary_key = "id",
+    uniques = {"name"},
+    fks = {},
+  }, {
+    name = "consumer_group_plugins",
+    primary_key = "id",
+    uniques = {"name"},
+    fks = {{name="consumer_group", reference = "consumer_groups", on_delete = "cascade"}},
   }
 }
 
