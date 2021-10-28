@@ -30,8 +30,6 @@ local grpc_gateway = {
   VERSION = '0.2.0',
 }
 
---require "lua_pack"
-
 
 local CORS_HEADERS = {
   ["Content-Type"] = "application/json",

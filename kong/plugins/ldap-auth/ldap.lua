@@ -6,9 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local asn1 = require "kong.plugins.ldap-auth.asn1"
-
-
-local bunpack = asn1.bunpack
+local bunpack = require "lua_pack".unpack
 local fmt = string.format
 
 
