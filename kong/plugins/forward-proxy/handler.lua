@@ -231,7 +231,11 @@ function ForwardProxyHandler:access(conf)
                                   -- happen, e.g., due to a different transfer
                                   -- encoding being used subsequently)
 
-  headers["Host"] = var.upstream_host
+  if var.upstream_host == "" then
+    headers["Host"] = nil
+  else
+    headers["Host"] = var.upstream_host
+  end
 
   res, err = httpc:request({
     method  = ngx_req_get_method(),
