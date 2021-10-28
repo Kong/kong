@@ -44,7 +44,6 @@ dependencies = {
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.4",
-  "kong-plugin-request-transformer ~> 1.3",
 }
 build = {
   type = "builtin",
@@ -458,5 +457,12 @@ build = {
 
     ["kong.plugins.post-function.handler"] = "kong/plugins/post-function/handler.lua",
     ["kong.plugins.post-function.schema"] = "kong/plugins/post-function/schema.lua",
+
+    ["kong.plugins.request-transformer.migrations.cassandra"] = "kong/plugins/request-transformer/migrations/cassandra.lua",
+    ["kong.plugins.request-transformer.migrations.postgres"] = "kong/plugins/request-transformer/migrations/postgres.lua",
+    ["kong.plugins.request-transformer.migrations.common"] = "kong/plugins/request-transformer/migrations/common.lua",
+    ["kong.plugins.request-transformer.handler"] = "kong/plugins/request-transformer/handler.lua",
+    ["kong.plugins.request-transformer.access"] = "kong/plugins/request-transformer/access.lua",
+    ["kong.plugins.request-transformer.schema"] = "kong/plugins/request-transformer/schema.lua",
   }
 }
