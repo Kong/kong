@@ -1,8 +1,0 @@
-.DS_Store
-.vagrant/
-.buildpath
-.project
-.idea
-*.tar.gz
-*.rock
-servroot
