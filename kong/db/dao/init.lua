@@ -885,7 +885,13 @@ local function generate_foreign_key_methods(schema)
           return nil, err, err_t
         end
 
+        -- Must have fully hydrated entity (including workspace id) for hooks to notify on
         local show_ws_id = { show_ws_id = true }
+        if options ~= nil then
+          for k, v in pairs(options) do
+            show_ws_id[k] = v
+          end
+        end
         local entity, err, err_t = self["select_by_" .. name](self, unique_value, show_ws_id)
         if err then
           return nil, err, err_t
@@ -1260,7 +1266,13 @@ function DAO:delete(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
+  -- Must have fully hydrated entity (including workspace id) for hooks to notify on
   local show_ws_id = { show_ws_id = true }
+  if options ~= nil then
+    for k, v in pairs(options) do
+      show_ws_id[k] = v
+    end
+  end
   local entity, err, err_t = self:select(primary_key, show_ws_id)
   if err then
     return nil, err, err_t
