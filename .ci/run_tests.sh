@@ -178,6 +178,13 @@ elif [ "$TEST_SUITE" == "unit-ee" ]; then
 elif [ "$TEST_SUITE" == "integration-ee" ]; then
     cd .ci/ad-server && make build-ad-server && make clone-plugin && cd ../..
     make test-integration-ee
+elif [ "$TEST_SUITE" == "plugins-spec-ee" ]; then
+    make test-plugins-spec-ee
 elif [ "$TEST_SUITE" == "plugins-ee" ]; then
+    # dist.sh variables
+    export KONG_REVISION=$(git rev-parse HEAD)
+    export KONG_VERSION=nightly-ee
+    export DOCKER_IMAGE_NAME=kong-ee-test
+    export KONG_DISTRIBUTIONS_VERSION=$(kong_distribution_version)
     make test-plugins-ee
 fi
