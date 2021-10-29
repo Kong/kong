@@ -135,19 +135,19 @@ case "$step" in
 
    #---------------------------------------------------------------------------
    check_perf)
-      CONFIRM "Ensure Kong performance tests were performed and no showstopper regressions were found. If everything looks all right, press Enter to continue or Ctrl+C to quit"
+      CONFIRM "Ensure Kong performance tests were performed. At minimum that requires running the https://github.com/Kong/kong/actions/workflows/perf.yml on the release branch and on the previous release, and compare the results. It can involve more custom tests. If everything looks all right, press Enter to continue or Ctrl+C to quit"
       SUCCESS "Proceeding."
       ;;
 
    #---------------------------------------------------------------------------
    check_upgrade_tests)
-      CONFIRM "Ensure Kong upgrade tests were performed and no showstopper regressions were found. If everything looks all right, press Enter to continue or Ctrl+C to quit"
+      CONFIRM "Ensure Kong upgrade tests were performed. Current upgrade tests are https://github.com/Kong/kong-upgrade-tests. There should be tests on every release that has migrations, and no stoppers should appear. If everything looks all right, press Enter to continue or Ctrl+C to quit"
       SUCCESS "Proceeding."
       ;;
 
    #---------------------------------------------------------------------------
    check_changelog)
-      echo "Ensure changelog was written in pre-release and is ready for the final. Press 'y' to open the CHANGELOG or Ctrl+C to quit"
+      echo "Ensure changelog contains all the changes needed the final. Press 'y' to open the CHANGELOG or Ctrl+C to quit"
       read
       if [ "$REPLY" = "y" ]
       then
@@ -250,8 +250,13 @@ case "$step" in
 
       SUCCESS "Make sure the packages are built and available on download.konghq.com" \
               "before continuing to the following steps." \
-              "Once they are built, you may run the following steps in parallel:" \
-              "* 'homebrew'" \
+
+              "They should be visible on https://internal.builds.konghq.com/job/kong/view/tags/. " \
+              "An recurrent task checks for new releases every 15 minutes on the server. " \
+              "If needed, the link 'Scan Multibranch Pipeline Now' will scan on-demmand. It can be used " \
+              "to attempt to rebuild, if there was an error."
+
+              "As the packages are built, you may run the following steps in parallel:" \
               "* 'luarocks'" \
               "* 'vagrant'" \
               "* 'update_docker', then 'merge_docker', then 'submit_docker'"
