@@ -122,7 +122,7 @@ install-pgmoon:
 install-kong:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
 
-install: install-kong install-pgmoon
+install: install-kong install-pgmoon install-plugins-ee
 
 remove:
 	-@luarocks remove kong
