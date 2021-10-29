@@ -759,6 +759,8 @@ for _, strategy in helpers.each_strategy() do
       }))
       assert.res_status(404, res)
 
+      helpers.clean_logfile()
+
       --Assert that the plugin executed and has 1 log entry
       helpers.wait_until(function()
         local client = assert(helpers.http_client(helpers.mock_upstream_host,
