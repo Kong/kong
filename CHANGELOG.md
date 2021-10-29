@@ -1,3 +1,7 @@
+## Unreleased
+
+- Upgrade to lua_pack 2.0.0
+
 ## 1.1.0
 
 - added a config `log_search_results` that allows displaying all the LDAP search results received from the LDAP server

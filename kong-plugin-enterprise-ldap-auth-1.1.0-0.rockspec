@@ -12,7 +12,7 @@ description = {
 }
 
 dependencies = {
-  "lua_pack == 1.0.5",
+  "lua_pack == 2.0.0",
 }
 
 build = {
