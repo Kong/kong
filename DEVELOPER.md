@@ -199,7 +199,8 @@ If you use Linux for your desktop, you can skip this section.
 There are no "hard" requirements on any Linux distro, but RHEL and CentOS can be more of a challenge to get recent versions of many packages; Fedora, Debian or Ubuntu are easier for this.
 
 To avoid long compilation times, give the VM plenty of RAM (8GB recommended) and all the CPU cores you can.
-
+## Work of Virtual machine
+Virtual machines allow you to run an operating system in an app window on your desktop that behaves like a full, separate computer.
 ### Virtual Box setup
 
 You will need to setup port forwarding on VirtualBox to be able to ssh into the box which can be done as follows:
