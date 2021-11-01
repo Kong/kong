@@ -23,7 +23,7 @@ endif
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
-KONG_PLUGINS_EE_LOCATION ?= $(KONG_SOURCE_LOCATION)/plugins
+KONG_PLUGINS_EE_LOCATION ?= $(KONG_SOURCE_LOCATION)/plugins-ee
 KONG_BUILD_TOOLS_LOCATION ?= $(KONG_SOURCE_LOCATION)/../kong-build-tools
 KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_VERSION ?= `grep RESTY_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
@@ -145,7 +145,7 @@ bin/grpcurl:
 dev: remove install dependencies
 
 lint:
-	@luacheck --exclude-files ./plugins/ -q .
+	@luacheck --exclude-files ./plugins-ee/ -q .
 	@!(grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected") >&2
 	@!(grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected") >&2
 	@$(KONG_SOURCE_LOCATION)/scripts/copyright-header-checker
@@ -175,7 +175,7 @@ test-integration:
 test-integration-ee:
 	@$(TEST_CMD) spec-ee/02-integration
 
-test-plugins:
+test-plugins-spec:
 	@$(TEST_CMD) spec/03-plugins
 
 test-plugins-spec-ee:

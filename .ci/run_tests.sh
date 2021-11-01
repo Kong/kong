@@ -110,7 +110,7 @@ if [ "$TEST_SUITE" == "dbless" ]; then
                      spec/02-integration/04-admin_api/02-kong_routes_spec.lua \
                      spec/02-integration/04-admin_api/15-off_spec.lua
 fi
-if [ "$TEST_SUITE" == "plugins" ]; then
+if [ "$TEST_SUITE" == "plugins-spec" ]; then
     set +ex
     rm -f .failed
 
