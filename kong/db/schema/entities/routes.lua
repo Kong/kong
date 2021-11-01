@@ -61,7 +61,7 @@ return {
                       if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough" }}},
                       then_field = "snis",
                       then_match = { len_eq = 0 },
-                      then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls'",
+                      then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
                     }},
                   },
 }

@@ -33,7 +33,7 @@ local stream_subschema = {
     { conditional_at_least_one_of = { if_field = "protocols",
                                       if_match = { elements = { type = "string", one_of = { "tcp", "tls", "udp", } } },
                                       then_at_least_one_of = { "sources", "destinations", "snis" },
-                                      then_err = "must set one of %s when 'protocols' is 'tcp', 'tls', 'tls_passthrough' or 'udp'",
+                                      then_err = "must set one of %s when 'protocols' is 'tcp', 'tls' or 'udp'",
                                     }},
     {conditional_at_least_one_of = { if_field = "protocols",
                                       if_match = { elements = { type = "string", one_of = { "tls_passthrough" } } },
