@@ -1307,6 +1307,7 @@ function _M.new(routes)
 
 
   local cache = lrucache.new(MATCH_LRUCACHE_SIZE)
+  local cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
 
 
   -- index routes
@@ -1554,6 +1555,10 @@ function _M.new(routes)
       return match_t
     end
 
+    if cache_neg:get(cache_key) then
+      return
+    end
+
     -- host match
 
     if match_hosts and (plain_indexes.hosts[host_with_port] or
@@ -1798,6 +1803,7 @@ function _M.new(routes)
     end
 
     -- no match :'(
+    cache_neg:set(cache_key, true)
   end
 
 
