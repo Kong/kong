@@ -695,9 +695,6 @@ build = {
     ["kong.plugins.oauth2-introspection.handler"] = "kong/plugins/oauth2-introspection/handler.lua",
     ["kong.plugins.oauth2-introspection.schema"] = "kong/plugins/oauth2-introspection/schema.lua",
 
-    ["kong.plugins.forward-proxy.handler"] = "kong/plugins/forward-proxy/handler.lua",
-    ["kong.plugins.forward-proxy.schema"]  = "kong/plugins/forward-proxy/schema.lua",
-
     ["kong.plugins.canary.handler"] = "kong/plugins/canary/handler.lua",
     ["kong.plugins.canary.schema"]  = "kong/plugins/canary/schema.lua",
     ["kong.plugins.canary.groups"]  = "kong/plugins/canary/groups.lua",

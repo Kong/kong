@@ -36,6 +36,7 @@ DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 BUILD_TOOLS_DOWNLOAD=$INSTALL_ROOT/kong-build-tools
 GO_PLUGINSERVER_DOWNLOAD=$INSTALL_ROOT/go-pluginserver
 LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD=$INSTALL_ROOT/lua-resty-openssl-aux-module
+PONGO_DOWNLOAD=$INSTALL_ROOT/kong-pongo
 
 # XXX kong-ee specific, for now at least
 # - Allow overriding via ENV_VAR (for CI)
@@ -91,6 +92,13 @@ if [[ ! $KONG_LICENSE_DATA == *"signature"* || ! $KONG_LICENSE_DATA == *"payload
     $KONG_LICENSE_DATA"
 fi
 export KONG_TEST_LICENSE_DATA=$KONG_LICENSE_DATA
+
+# Install Pongo
+if [ ! -d $PONGO_DOWNLOAD ]; then
+    git clone https://github.com/Kong/kong-pongo.git $PONGO_DOWNLOAD
+fi
+ln -s $PONGO_DOWNLOAD/pongo.sh $PONGO_DOWNLOAD/pongo
+export PATH=$PONGO_DOWNLOAD:$PATH
 # XXX EE
 
 #--------

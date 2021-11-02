@@ -23,6 +23,7 @@ endif
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
+KONG_PLUGINS_EE_LOCATION ?= $(KONG_SOURCE_LOCATION)/plugins-ee
 KONG_BUILD_TOOLS_LOCATION ?= $(KONG_SOURCE_LOCATION)/../kong-build-tools
 KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_VERSION ?= `grep RESTY_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
@@ -121,10 +122,13 @@ install-pgmoon:
 install-kong:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
 
-install: install-kong install-pgmoon
+install: install-kong install-pgmoon install-plugins-ee
 
-remove:
+remove: remove-plugins-ee
 	-@luarocks remove kong
+
+remove-plugins-ee:
+	-@luarocks remove kong-plugin-enterprise-forward-proxy
 
 dependencies: bin/grpcurl
 	@for rock in $(DEV_ROCKS) ; do \
@@ -144,10 +148,23 @@ bin/grpcurl:
 dev: remove install dependencies
 
 lint:
-	@luacheck -q .
+	@luacheck --exclude-files ./plugins-ee/ -q .
 	@!(grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected") >&2
 	@!(grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected") >&2
 	@$(KONG_SOURCE_LOCATION)/scripts/copyright-header-checker
+
+install-plugins-ee:
+	@err_code=0; \
+	for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
+	  if [ -d $$plugin_ee ]; then \
+	    echo "Installing plugin: `basename $$plugin_ee`" ; \
+	    cd $$plugin_ee ; \
+	    luarocks make *.rockspec ; \
+	    last_err_code=$$? ; \
+	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
+	  fi ; \
+	done ; \
+	exit $$err_code ;
 
 test:
 	@$(TEST_CMD) spec/01-unit
@@ -161,10 +178,10 @@ test-integration:
 test-integration-ee:
 	@$(TEST_CMD) spec-ee/02-integration
 
-test-plugins:
+test-plugins-spec:
 	@$(TEST_CMD) spec/03-plugins
 
-test-plugins-ee:
+test-plugins-spec-ee:
 	@$(TEST_CMD) spec-ee/03-plugins
 
 test-all:
@@ -172,6 +189,29 @@ test-all:
 
 test-all-ee:
 	@$(TEST_CMD) spec-ee/
+
+test-build-package:
+	$(KONG_SOURCE_LOCATION)/dist/dist.sh build alpine
+
+test-build-image: test-build-package
+	$(KONG_SOURCE_LOCATION)/dist/dist.sh build-image alpine
+
+test-plugins-ee: test-build-image
+	@err_code=0; \
+	for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
+	  if [ -d $$plugin_ee ]; then \
+	    echo "Running plugin tests: `basename $$plugin_ee`" ; \
+	    cd $$plugin_ee ; \
+	    KONG_IMAGE=$(DOCKER_IMAGE_NAME) pongo lint ; \
+	    last_err_code=$$? ; \
+	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
+	    KONG_IMAGE=$(DOCKER_IMAGE_NAME) pongo run ; \
+	    last_err_code=$$? ; \
+	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
+	    pongo down ; \
+	  fi ; \
+	done ; \
+	exit $$err_code;
 
 pdk-phase-checks:
 	rm -f t/phase_checks.stats
