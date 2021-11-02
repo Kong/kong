@@ -31,7 +31,6 @@ dependencies = {
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
   "luasyslog == 2.0.1",
-  "kikito/sandbox == 1.0.1",
   "lua_pack == 2.0.0",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
