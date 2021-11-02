@@ -9,7 +9,7 @@ local bit           = require "bit"
 local hostname_type = require("kong.tools.utils").hostname_type
 local normalize     = require("kong.tools.uri").normalize
 local setmetatable  = setmetatable
-local subsystem     = ngx.config.subsystem
+local is_http       = ngx.config.subsystem == "http"
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local re_match      = ngx.re.match
@@ -313,7 +313,7 @@ local function _set_ngx(mock_ngx)
 
   if type(mock_ngx.config) == "table" then
     if mock_ngx.config.subsystem then
-      subsystem = mock_ngx.config.subsystem
+      is_http = mock_ngx.config.subsystem == "http"
     end
   end
 
@@ -1813,7 +1813,7 @@ function _M.new(routes, cache, cache_neg)
   self.select = find_route
   self._set_ngx = _set_ngx
 
-  if subsystem == "http" then
+  if is_http then
     function self.exec(ctx)
       local req_method = get_method()
       local req_uri = ctx and ctx.request_uri or var.request_uri
