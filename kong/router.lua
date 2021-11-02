@@ -9,7 +9,7 @@ local bit           = require "bit"
 local hostname_type = require("kong.tools.utils").hostname_type
 local normalize     = require("kong.tools.uri").normalize
 local setmetatable  = setmetatable
-local subsystem     = ngx.config.subsystem
+local is_http       = ngx.config.subsystem == "http"
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
 local re_match      = ngx.re.match
@@ -249,8 +249,17 @@ local MATCH_RULES = {
 
 local SORTED_MATCH_RULES = { [0] = 0 }
 
-for _, v in pairs(MATCH_RULES) do
-  append(SORTED_MATCH_RULES, v)
+for n, v in pairs(MATCH_RULES) do
+  if is_http then
+    if n ~= "SRC" and n ~= "DST" then
+      append(SORTED_MATCH_RULES, v)
+    end
+
+  else
+    if n ~= "HOST" and n ~= "HEADER" and n ~= "URI" and n ~= "METHOD" then
+      append(SORTED_MATCH_RULES, v)
+    end
+  end
 end
 
 sort(SORTED_MATCH_RULES, function(a, b)
@@ -304,7 +313,7 @@ local function _set_ngx(mock_ngx)
 
   if type(mock_ngx.config) == "table" then
     if mock_ngx.config.subsystem then
-      subsystem = mock_ngx.config.subsystem
+      is_http = mock_ngx.config.subsystem == "http"
     end
   end
 
@@ -1802,7 +1811,7 @@ function _M.new(routes, cache, cache_neg)
   self.select = find_route
   self._set_ngx = _set_ngx
 
-  if subsystem == "http" then
+  if is_http then
     function self.exec(ctx)
       local req_method = get_method()
       local req_uri = ctx and ctx.request_uri or var.request_uri
