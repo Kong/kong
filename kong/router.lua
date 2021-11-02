@@ -312,15 +312,6 @@ local function _set_ngx(mock_ngx)
 end
 
 
-local function has_capturing_groups(subj)
-  local s =      find(subj, "[^\\]%(.-[^\\]%)")
-        s = s or find(subj, "^%(.-[^\\]%)")
-        s = s or find(subj, "%(%)")
-
-  return s ~= nil
-end
-
-
 local protocol_subsystem = constants.PROTOCOLS_WITH_SUBSYSTEM
 
 
@@ -506,13 +497,11 @@ local function marshall_route(r)
 
           -- regex URI
           local strip_regex  = REGEX_PREFIX .. path .. [[(?<uri_postfix>.*)]]
-          local has_captures = has_capturing_groups(path)
 
           local uri_t    = {
             is_regex     = true,
             value        = path,
             regex        = path,
-            has_captures = has_captures,
             strip_regex  = strip_regex,
           }
 
@@ -759,7 +748,7 @@ local function sort_routes(r1, r2)
     end
   end
 
-  -- only regex path use regex_priority 
+  -- only regex path use regex_priority
   if band(r1.submatch_weight,MATCH_SUBRULES.HAS_REGEX_URI) ~= 0 then
     do
       local rp1 = r1.route.regex_priority or 0
@@ -1024,7 +1013,7 @@ do
               ctx.matches.uri = uri_t.value
               ctx.matches.uri_postfix = uri_postfix
 
-              if uri_t.has_captures then
+              if m[1] then
                 ctx.matches.uri_captures = m
               end
 
@@ -1066,7 +1055,7 @@ do
             ctx.matches.uri = uri_t.value
             ctx.matches.uri_postfix = uri_postfix
 
-            if uri_t.has_captures then
+            if m[1] then
               ctx.matches.uri_captures = m
             end
 
@@ -1290,9 +1279,6 @@ end
 
 
 local _M = {}
-
-
-_M.has_capturing_groups = has_capturing_groups
 
 
 -- for unit-testing purposes only
