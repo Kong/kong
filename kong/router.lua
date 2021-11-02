@@ -500,7 +500,7 @@ local function marshall_route(r)
       for i = 1, count do
         local path = paths[i]
 
-        if re_find(path, [[^[a-zA-Z0-9\.\-_~/%]*$]]) then
+        if re_find(path, [[[a-zA-Z0-9\.\-_~/%]*$]], "ajo") then
           -- plain URI or URI prefix
 
           local uri_t = {
