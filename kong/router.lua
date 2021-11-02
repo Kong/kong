@@ -1247,7 +1247,7 @@ local function match_candidates(candidates, ctx)
 end
 
 
-local _M = {}
+local _M = { MATCH_LRUCACHE_SIZE = MATCH_LRUCACHE_SIZE }
 
 
 -- for unit-testing purposes only
@@ -1255,7 +1255,7 @@ _M._set_ngx = _set_ngx
 _M.split_port = split_port
 
 
-function _M.new(routes)
+function _M.new(routes, cache, cache_neg)
   if type(routes) ~= "table" then
     return error("expected arg #1 routes to be a table")
   end
@@ -1294,10 +1294,13 @@ function _M.new(routes)
   -- all routes indexed by id
   local routes_by_id = {}
 
+  if not cache then
+    cache = lrucache.new(MATCH_LRUCACHE_SIZE)
+  end
 
-  local cache = lrucache.new(MATCH_LRUCACHE_SIZE)
-  local cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
-
+  if not cache_neg then
+    cache_neg = lrucache.new(MATCH_LRUCACHE_SIZE)
+  end
 
   -- index routes
 

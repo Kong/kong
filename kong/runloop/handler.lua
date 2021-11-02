@@ -11,6 +11,9 @@ local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local declarative  = require "kong.db.declarative"
 local workspaces   = require "kong.workspaces"
+local lrucache     = require "resty.lrucache"
+
+
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 
 
@@ -615,6 +618,8 @@ end
 do
   local router
   local router_version
+  local router_cache = lrucache.new(Router.MATCH_LRUCACHE_SIZE)
+  local router_cache_neg = lrucache.new(Router.MATCH_LRUCACHE_SIZE)
 
 
   -- Given a protocol, return the subsystem that handles it
@@ -769,7 +774,7 @@ do
       counter = counter + 1
     end
 
-    local new_router, err = Router.new(routes)
+    local new_router, err = Router.new(routes, router_cache, router_cache_neg)
     if not new_router then
       return nil, "could not create router: " .. err
     end
@@ -779,6 +784,9 @@ do
     if version then
       router_version = version
     end
+
+    router_cache:flush_all()
+    router_cache_neg:flush_all()
 
     -- LEGACY - singletons module is deprecated
     singletons.router = router
