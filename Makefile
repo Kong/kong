@@ -124,8 +124,11 @@ install-kong:
 
 install: install-kong install-pgmoon install-plugins-ee
 
-remove:
+remove: remove-plugins-ee
 	-@luarocks remove kong
+
+remove-plugins-ee:
+	-@luarocks remove kong-plugin-enterprise-forward-proxy
 
 dependencies: bin/grpcurl
 	@for rock in $(DEV_ROCKS) ; do \
