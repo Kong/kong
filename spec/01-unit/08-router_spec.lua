@@ -3178,46 +3178,6 @@ describe("Router", function()
   end)
 
 
-  describe("has_capturing_groups()", function()
-    -- load the `assert.fail` assertion
-    require "spec.helpers"
-
-    it("detects if a string has capturing groups", function()
-      local paths                         = {
-        ["/users/(foo)"]                 = true,
-        ["/users/()"]                    = true,
-        ["/users/()/foo"]                = true,
-        ["/users/(hello(foo)world)"]     = true,
-        ["/users/(hello(foo)world"]      = true,
-        ["/users/(foo)/thing/(bar)"]     = true,
-        ["/users/\\(foo\\)/thing/(bar)"] = true,
-        -- 0-indexed capture groups
-        ["()/world"]                     = true,
-        ["(/hello)/world"]               = true,
-
-        ["/users/\\(foo\\)"]             = false,
-        ["/users/\\(\\)"]                = false,
-        -- unbalanced capture groups
-        ["(/hello\\)/world"]             = false,
-        ["/users/(foo"]                  = false,
-        ["/users/\\(foo)"]               = false,
-        ["/users/(foo\\)"]               = false,
-      }
-
-      for uri, expected_to_match in pairs(paths) do
-        local has_captures = Router.has_capturing_groups(uri)
-        if expected_to_match and not has_captures then
-          assert.fail(uri, "has capturing groups that were not detected")
-
-        elseif not expected_to_match and has_captures then
-          assert.fail(uri, "has no capturing groups but false-positives " ..
-                           "were detected")
-        end
-      end
-    end)
-  end)
-
-
   describe("#stream context", function()
     describe("[sources]", function()
       local use_case = {
