@@ -2,6 +2,7 @@ local constants     = require "kong.constants"
 local ipmatcher     = require "resty.ipmatcher"
 local lrucache      = require "resty.lrucache"
 local isempty       = require "table.isempty"
+local clone         = require "table.clone"
 local bit           = require "bit"
 
 
@@ -16,6 +17,7 @@ local re_find       = ngx.re.find
 local header        = ngx.header
 local var           = ngx.var
 local ngx_log       = ngx.log
+local concat        = table.concat
 local sort          = table.sort
 local byte          = string.byte
 local upper         = string.upper
@@ -1492,31 +1494,53 @@ function _M.new(routes)
 
     -- header match
 
-    if match_headers then
-      for i = 1, plain_indexes.headers[0] do
-        local name = plain_indexes.headers[i]
-        local value = req_headers[name]
-        if value then
-          req_category = bor(req_category, MATCH_RULES.HEADER)
-          hits.header_name = name
-          break
+    local headers_key do
+      local headers_count
+      if match_headers then
+        for i = 1, plain_indexes.headers[0] do
+          local name = plain_indexes.headers[i]
+          local value = req_headers[name]
+          if value then
+            if type(value) == "table" then
+              value = clone(value)
+              for i = 1, #value do
+                value[i] = lower(value[i])
+              end
+              sort(value)
+              value = concat(value, ", ")
+
+            else
+              value = lower(value)
+            end
+
+            if not headers_count then
+              headers_count = 1
+              headers_key = { "|" .. name .. "=" .. value }
+
+            else
+              headers_count = headers_count + 1
+              headers_key[headers_count] = name .. "=" .. value
+            end
+
+            if not hits.header_name then
+              hits.header_name = name
+              req_category = bor(req_category, MATCH_RULES.HEADER)
+            end
+          end
         end
       end
+      headers_key = headers_key and concat(headers_key, "|") or ""
     end
 
-    -- cache lookup (except for headers-matched Routes)
-    -- if trigger headers match rule, ignore routes cache
+    -- cache lookup
 
-    local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host ..
-                      "|" .. ctx.src_ip .. "|" .. ctx.src_port ..
-                      "|" .. ctx.dst_ip .. "|" .. ctx.dst_port ..
-                      "|" .. ctx.sni
-
-    do
-      local match_t = cache:get(cache_key)
-      if match_t and hits.header_name == nil then
-        return match_t
-      end
+    local cache_key = req_method .. "|" .. req_uri .. "|" .. req_host
+                                 .. "|" .. src_ip  .. "|" .. src_port
+                                 .. "|" .. dst_ip  .. "|" .. dst_port
+                                 .. "|" .. sni .. headers_key
+    local match_t = cache:get(cache_key)
+    if match_t then
+      return match_t
     end
 
     -- host match
@@ -1751,9 +1775,7 @@ function _M.new(routes)
               }
             }
 
-            if band(matched_route.match_rules, MATCH_RULES.HEADER) == 0 then
-              cache:set(cache_key, match_t)
-            end
+            cache:set(cache_key, match_t)
 
             return match_t
           end
