@@ -65,6 +65,8 @@
 ### Dependencies
 
 - Bumped `go-pdk` used in tests from v0.6.0 to v0.7.1 [#7964](https://github.com/Kong/kong/pull/7964)
+- Cassandra support is deprecated with 2.7 and will be fully removed with 4.0.
+  https://konghq.com/blog/cassandra-support-deprecated
 
 ### Additions
 
