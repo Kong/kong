@@ -911,7 +911,9 @@ return {
         created_at = { skip = true },
         updated_at = { skip = true },
         name = {
-          description = [[The name of the Route. Name values must be unique.]]
+          description = [[The name of the Route. Name values must be unique. Route names 
+          are case sensitive. For example, if you name two different Routes "test" and 
+          "Test", Kong Gateway will register them as unique Routes.]]
         },
         regex_priority = {
           description = [[
