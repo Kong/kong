@@ -416,11 +416,8 @@ local function new_ws_data()
     }
   end
 
-  local plugins = {}
-  plugins[0] = 0
-
   return {
-    plugins = plugins,
+    plugins = { [0] = 0 },
     globals = 0,
     combos = {},
     phases = phases,
