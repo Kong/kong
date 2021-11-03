@@ -2007,7 +2007,7 @@ for _, strategy in helpers.each_strategy() do
 
             end)
 
-            it("perform passive health checks -- connection #timeouts", function()
+            it("#flaky perform passive health checks -- connection #timeouts", function()
 
               -- configure healthchecks
               bu.begin_testcase_setup(strategy, bp)
