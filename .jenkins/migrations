@@ -13,7 +13,7 @@ pipeline {
 
   agent {
     node {
-      label 'bionic'
+      label 'hybrid'
     }
   }
 
@@ -36,14 +36,34 @@ pipeline {
   stages {
     stage('prepare environment') {
       steps {
-        sh "docker login -u ${env.DOCKERHUB_KONGCLOUD_PULL_USR} -p ${env.DOCKERHUB_KONGCLOUD_PULL_PSW}"
-        sh "mkdir -p ~/.local/bin"
+        sh """
+          echo "${env.DOCKERHUB_KONGCLOUD_PULL_PSW}" | docker login -u "${env.DOCKERHUB_KONGCLOUD_PULL_USR}" --password-stdin
 
-        sh "git clone https://$GITHUB_TOKEN@github.com/Kong/gojira-enterprise.git /tmp/gojira"
-        sh 'ln -s $(realpath /tmp/gojira/gojira.sh) $(realpath ~/.local/bin/gojira)'
+          [[ -d ~/.local/bin ]] || mkdir -p ~/.local/bin
+          [[ -d ~/tools ]] || mkdir -p ~/tools
 
-        sh "git clone https://$GITHUB_TOKEN@github.com/Kong/sealy.git /tmp/sealy"
-        sh 'ln -s $(realpath /tmp/sealy/sealy.sh) $(realpath ~/.local/bin/sealy)'
+          # install or update gojira enterprise
+          if [[ -f ~/tools/gojira-enterprise/gojira.sh ]]; then
+            (
+              cd ~/tools/gojira-enterprise
+              git pull
+            )
+          else
+            git clone https://${env.GITHUB_TOKEN}@github.com/Kong/gojira-enterprise ~/tools/gojira-enterprise
+            ln -s \$(realpath ~/tools/gojira-enterprise/gojira.sh) ~/.local/bin/gojira
+          fi
+
+          # install or update sealy
+          if [[ -f ~/tools/sealy/sealy.sh ]]; then
+            (
+              cd ~/tools/sealy
+              git pull
+            )
+          else
+            git clone https://${env.GITHUB_TOKEN}@github.com/Kong/sealy ~/tools/sealy
+            ln -s \$(realpath ~/tools/sealy/sealy.sh) ~/.local/bin/sealy
+          fi
+        """
       }
     }
 
