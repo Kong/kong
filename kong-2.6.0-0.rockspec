@@ -691,6 +691,9 @@ build = {
     ["kong.plugins.proxy-cache-advanced.migrations"]                          = "kong/plugins/proxy-cache-advanced/migrations/init.lua",
     ["kong.plugins.proxy-cache-advanced.migrations.001_035_to_050"]           = "kong/plugins/proxy-cache-advanced/migrations/001_035_to_050.lua",
 
+    ["kong.plugins.oauth2-introspection.handler"] = "kong/plugins/oauth2-introspection/handler.lua",
+    ["kong.plugins.oauth2-introspection.schema"] = "kong/plugins/oauth2-introspection/schema.lua",
+
     ["kong.plugins.canary.handler"] = "kong/plugins/canary/handler.lua",
     ["kong.plugins.canary.schema"]  = "kong/plugins/canary/schema.lua",
     ["kong.plugins.canary.groups"]  = "kong/plugins/canary/groups.lua",
