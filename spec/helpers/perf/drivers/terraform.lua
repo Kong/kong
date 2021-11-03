@@ -290,6 +290,11 @@ function _M:start_kong(version, kong_conf)
     "wget -nv " .. download_path .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     "echo " .. kong_conf_blob .. " | sudo base64 -d > /etc/kong/kong.conf",
+    -- XXX: temporary hack
+    "sudo apt-get install -f -y build-essential",
+    "sudo rm -rf /usr/local/lib/lua/5.1/lua_pack* /usr/local/lib/luarocks/rocks-5.1/lua_pack/1.0.5-0",
+    "sudo luarocks install lua_pack",
+    -- temporary hack ends
     "sudo kong check",
   })
   if not ok then
