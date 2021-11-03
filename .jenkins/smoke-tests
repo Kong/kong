@@ -52,12 +52,23 @@ pipeline {
     }
     stage('Install Gojira Enterprise') {
       steps {
-        sh label: 'Clone Gojira enterprise',
-           script: 'git clone https://$GITHUB_TOKEN:@github.com/Kong/gojira-enterprise /tmp/gojira'
-        sh label: 'Create ~/.local/bin directory',
-           script: 'mkdir -p ~/.local/bin'
-        sh label: 'Install Gojira enterprise',
-           script: 'ln -s $(realpath /tmp/gojira/gojira.sh) $(realpath ~/.local/bin/gojira)'
+        sh label: 'Prepare bin and tool directories',
+           script: """
+             [[ -d ~/.local/bin ]] || mkdir -p ~/.local/bin
+             [[ -d ~/tools ]] || mkdir -p ~/tools
+           """
+        sh label: 'Install or Update Gojira enterprise',
+           script: """
+             if [[ -f ~/tools/gojira-enterprise/gojira.sh ]]; then
+               (
+                 cd ~/tools/gojira-enterprise
+                 git pull
+               )
+             else
+               git clone https://${env.GITHUB_TOKEN}@github.com/Kong/gojira-enterprise ~/tools/gojira-enterprise
+               ln -s \$(realpath ~/tools/gojira-enterprise/gojira.sh) ~/.local/bin/gojira
+             fi
+           """
       }
     }
     stage('Apache Cassandra Migrations') {
