@@ -666,7 +666,7 @@ build = {
     ["kong.plugins.grpc-web.deco"] = "kong/plugins/grpc-web/deco.lua",
     ["kong.plugins.grpc-web.handler"] = "kong/plugins/grpc-web/handler.lua",
     ["kong.plugins.grpc-web.schema"] = "kong/plugins/grpc-web/schema.lua",
-    
+
     ["kong.plugins.pre-function._handler"] = "kong/plugins/pre-function/_handler.lua",
     ["kong.plugins.pre-function._schema"] = "kong/plugins/pre-function/_schema.lua",
 
@@ -690,9 +690,6 @@ build = {
     ["kong.plugins.proxy-cache-advanced.strategies.redis"]                    = "kong/plugins/proxy-cache-advanced/strategies/redis.lua",
     ["kong.plugins.proxy-cache-advanced.migrations"]                          = "kong/plugins/proxy-cache-advanced/migrations/init.lua",
     ["kong.plugins.proxy-cache-advanced.migrations.001_035_to_050"]           = "kong/plugins/proxy-cache-advanced/migrations/001_035_to_050.lua",
-
-    ["kong.plugins.oauth2-introspection.handler"] = "kong/plugins/oauth2-introspection/handler.lua",
-    ["kong.plugins.oauth2-introspection.schema"] = "kong/plugins/oauth2-introspection/schema.lua",
 
     ["kong.plugins.canary.handler"] = "kong/plugins/canary/handler.lua",
     ["kong.plugins.canary.schema"]  = "kong/plugins/canary/schema.lua",
