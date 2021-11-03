@@ -59,6 +59,7 @@ local constants = {
     "response-transformer-advanced",
     "statsd-advanced",
     "route-by-header",
+    "application-registration"
   },
 
   release = false,

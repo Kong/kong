@@ -46,8 +46,6 @@ local plugins = {
   -- external plugins
   "azure-functions",
   "zipkin",
-  -- XXX EE
-  "application-registration",
 }
 
 -- XXX EE

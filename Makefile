@@ -131,6 +131,7 @@ remove-plugins-ee:
 	-@luarocks remove kong-plugin-enterprise-forward-proxy
 	-@luarocks remove kong-plugin-enterprise-oauth2-introspection
 	-@luarocks remove kong-plugin-enterprise-proxy-cache
+	-@luarocks remove kong-plugin-enterprise-application-registration
 
 dependencies: bin/grpcurl
 	@for rock in $(DEV_ROCKS) ; do \
