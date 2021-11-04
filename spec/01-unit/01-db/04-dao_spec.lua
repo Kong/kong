@@ -494,17 +494,20 @@ describe("DAO", function()
       }
 
       local parent_strategy = {
-        select = function()
+        select = function(_, pk, opt)
+          assert.are.same({ ["a"] = 42 }, pk)
+          assert.are.same({ show_ws_id = true, foo = "bar" }, opt)
           return data
         end,
-        delete = function(pk, _)
-          -- assert.are.same({ a = 42 }, pk)
+        delete = function(_, pk, opt)
+          assert.are.same({ ["a"] = 42 }, pk)
+          assert.are.same({ foo = "bar" }, opt)
           return nil, nil
         end
       }
       local parent_dao = DAO.new(mock_db, parent_schema, parent_strategy, errors)
 
-      local _, err = parent_dao:delete({ a = 42 })
+      local _, err = parent_dao:delete({ a = 42 }, { foo = "bar" })
       assert.falsy(err)
     end)
   end)
