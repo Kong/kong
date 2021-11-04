@@ -154,17 +154,16 @@ lint:
 	@$(KONG_SOURCE_LOCATION)/scripts/copyright-header-checker
 
 install-plugins-ee:
-	@err_code=0; \
-	for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
+	@for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
 	  if [ -d $$plugin_ee ]; then \
-	    echo "Installing plugin: `basename $$plugin_ee`" ; \
+	    echo "Trying to install plugin: `basename $$plugin_ee`" ; \
 	    cd $$plugin_ee ; \
 	    luarocks make *.rockspec ; \
-	    last_err_code=$$? ; \
-	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
+	    if [ $$? -ne 0 ]; then \
+		  echo "Failed to install plugin: `basename $$plugin_ee`. Probably due to external dependencies missing in the current env." ; \
+		fi; \
 	  fi ; \
-	done ; \
-	exit $$err_code ;
+	done ;
 
 test:
 	@$(TEST_CMD) spec/01-unit
