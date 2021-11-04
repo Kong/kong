@@ -73,7 +73,6 @@ describe("Plugins", function()
       "basic-auth",
       "hmac-auth",
       "grpc-gateway",
-      "application-registration",
       "ip-restriction",
       "request-size-limiting",
       "acl",
