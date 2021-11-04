@@ -1270,9 +1270,6 @@ function _M.new(routes, cache, cache_neg)
   end
 
 
-  local self = {}
-
-
   -- hash table for fast lookup of plain properties
   -- incoming requests/connections
   local plain_indexes = {
@@ -1454,6 +1451,10 @@ function _M.new(routes, cache, cache_neg)
       error("headers must be a table", 2)
     end
 
+    -- input sanitization for matchers
+
+    local raw_req_host = req_host
+
     req_method = req_method or ""
     req_uri = req_uri or ""
     req_host = req_host or ""
@@ -1464,42 +1465,8 @@ function _M.new(routes, cache, cache_neg)
     dst_port = dst_port or ""
     sni = sni or ""
 
-    local matches = {}
-    local hits = {}
-    local ctx = {
-      hits        = hits,
-      matches     = matches,
-      req_method  = req_method,
-      req_uri     = req_uri,
-      req_host    = req_host,
-      req_scheme  = req_scheme,
-      req_headers = req_headers,
-      src_ip      = src_ip,
-      src_port    = src_port,
-      dst_ip      = dst_ip,
-      dst_port    = dst_port,
-      sni         = sni,
-    }
-
-    -- input sanitization for matchers
-
-    -- hosts
-
-    local raw_req_host = req_host
-
-    -- req_host might have port or maybe not, host_no_port definitely doesn't
-    -- if there wasn't a port, req_port is assumed to be the default port
-    -- according the protocol scheme
-    local host_no_port, host_with_port = split_port(req_host,
-                                                    req_scheme == "https"
-                                                    and 443 or 80)
-
-    ctx.host_with_port = host_with_port
-    ctx.host_no_port   = host_no_port
-
     local req_category = 0x00
-
-    clear_tab(hits)
+    local hits = {}
 
     -- router, router, which of these routes is the fairest?
     --
@@ -1508,7 +1475,7 @@ function _M.new(routes, cache, cache_neg)
     -- header match
 
     local headers_key do
-      local headers_count
+      local headers_count = 0
       if match_headers then
         for i = 1, plain_indexes.headers[0] do
           local name = plain_indexes.headers[i]
@@ -1526,14 +1493,17 @@ function _M.new(routes, cache, cache_neg)
               value = lower(value)
             end
 
-            if not headers_count then
-              headers_count = 1
-              headers_key = { "|" .. name .. "=" .. value }
+            if headers_count == 0 then
+              headers_key = { "|", name, "=", value }
 
             else
-              headers_count = headers_count + 1
-              headers_key[headers_count] = name .. "=" .. value
+              headers_key[headers_count+1] = "|"
+              headers_key[headers_count+2] = name
+              headers_key[headers_count+3] = "="
+              headers_key[headers_count+4] = value
             end
+
+            headers_count = headers_count + 4
 
             if not hits.header_name then
               hits.header_name = name
@@ -1542,7 +1512,7 @@ function _M.new(routes, cache, cache_neg)
           end
         end
       end
-      headers_key = headers_key and concat(headers_key, "|") or ""
+      headers_key = headers_key and concat(headers_key, nil, 1, headers_count) or ""
     end
 
     -- cache lookup
@@ -1562,24 +1532,31 @@ function _M.new(routes, cache, cache_neg)
 
     -- host match
 
-    if match_hosts and (plain_indexes.hosts[host_with_port] or
-                        plain_indexes.hosts[host_no_port])
-    then
-      req_category = bor(req_category, MATCH_RULES.HOST)
+    -- req_host might have port or maybe not, host_no_port definitely doesn't
+    -- if there wasn't a port, req_port is assumed to be the default port
+    -- according the protocol scheme
+    local host_no_port, host_with_port
+    if raw_req_host then
+      host_no_port, host_with_port = split_port(req_host, req_scheme == "https" and 443 or 80)
+      if match_hosts and (plain_indexes.hosts[host_with_port] or
+                          plain_indexes.hosts[host_no_port])
+      then
+        req_category = bor(req_category, MATCH_RULES.HOST)
 
-    elseif match_wildcard_hosts and req_host then
-      for i = 1, wildcard_hosts[0] do
-        local host = wildcard_hosts[i]
-        local from, _, err = re_find(host_with_port, host.regex, "ajo")
-        if err then
-          log(ERR, "could not match wildcard host: ", err)
-          return
-        end
+      elseif match_wildcard_hosts then
+        for i = 1, wildcard_hosts[0] do
+          local host = wildcard_hosts[i]
+          local from, _, err = re_find(host_with_port, host.regex, "ajo")
+          if err then
+            log(ERR, "could not match wildcard host: ", err)
+            return
+          end
 
-        if from then
-          hits.host    = host.value
-          req_category = bor(req_category, MATCH_RULES.HOST)
-          break
+          if from then
+            hits.host    = host.value
+            req_category = bor(req_category, MATCH_RULES.HOST)
+            break
+          end
         end
       end
     end
@@ -1649,7 +1626,25 @@ function _M.new(routes, cache, cache_neg)
 
     if req_category ~= 0x00 then
       local category_idx = categories_lookup[req_category] or 1
+      local matches = {}
       local matched_route
+
+      local ctx = {
+        hits           = hits,
+        matches        = matches,
+        req_method     = req_method,
+        req_uri        = req_uri,
+        req_host       = req_host,
+        req_scheme     = req_scheme,
+        req_headers    = req_headers,
+        src_ip         = src_ip,
+        src_port       = src_port,
+        dst_ip         = dst_ip,
+        dst_port       = dst_port,
+        sni            = sni,
+        host_with_port = host_with_port,
+        host_no_port   = host_no_port,
+      }
 
       while category_idx <= categories_weight_sorted[0] do
         local bit_category = categories_weight_sorted[category_idx].category_bit
@@ -1765,7 +1760,7 @@ function _M.new(routes, cache, cache_neg)
               -- preserve_host header logic
 
               if matched_route.preserve_host then
-                upstream_host = raw_req_host or var.http_host
+                upstream_host = raw_req_host
               end
             end
 
@@ -1807,22 +1802,17 @@ function _M.new(routes, cache, cache_neg)
     cache_neg:set(cache_key, true)
   end
 
-
-  self.select = find_route
-  self._set_ngx = _set_ngx
-
+  local exec
   if is_http then
-    function self.exec(ctx)
+    exec = function(ctx)
       local req_method = get_method()
       local req_uri = ctx and ctx.request_uri or var.request_uri
-      local req_host = var.http_host or ""
+      local req_host = var.http_host
       local req_scheme = ctx and ctx.scheme or var.scheme
       local sni = var.ssl_server_name
-
       local headers
-      local err
-
       if match_headers then
+        local err
         headers, err = get_headers(MAX_REQ_HEADERS)
         if err == "truncated" then
           log(WARN, "retrieved ", MAX_REQ_HEADERS, " headers for evaluation ",
@@ -1844,11 +1834,10 @@ function _M.new(routes, cache, cache_neg)
                                  nil, nil, -- dst_ip, dst_port
                                  sni, headers)
       if not match_t then
-        return nil
+        return
       end
 
       -- debug HTTP request header logic
-
       if var.http_kong_debug then
         local route = match_t.route
         if route then
@@ -1879,14 +1868,14 @@ function _M.new(routes, cache, cache_neg)
   else -- stream
     local server_name = require("ngx.ssl").server_name
 
-    function self.exec(ctx)
+    exec = function(ctx)
       local src_ip = var.remote_addr
       local dst_ip = var.server_addr
       local src_port = tonumber(var.remote_port, 10)
       local dst_port = tonumber((ctx or ngx.ctx).host_port, 10)
                     or tonumber(var.server_port, 10)
       -- error value for non-TLS connections ignored intentionally
-      local sni, _ = server_name()
+      local sni = server_name()
       -- fallback to preread SNI if current connection doesn't terminate TLS
       if not sni then
         sni = var.ssl_preread_server_name
@@ -1895,13 +1884,12 @@ function _M.new(routes, cache, cache_neg)
       local scheme
       if var.protocol == "UDP" then
         scheme = "udp"
-
       else
         scheme = sni and "tls" or "tcp"
       end
 
       -- when proxying TLS request in second layer or doing TLS passthrough
-      -- rewrite the dst_ip,port back to what specified in proxy_protocol
+      -- rewrite the dst_ip, port back to what specified in proxy_protocol
       if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
         dst_ip = var.proxy_protocol_server_addr
         dst_port = tonumber(var.proxy_protocol_server_port)
@@ -1914,7 +1902,11 @@ function _M.new(routes, cache, cache_neg)
     end
   end
 
-  return self
+  return {
+    _set_ngx = _set_ngx,
+    select = find_route,
+    exec = exec
+  }
 end
 
 
