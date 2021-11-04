@@ -675,19 +675,6 @@ build = {
     ["kong.plugins.post-function.handler"] = "kong/plugins/post-function/handler.lua",
     ["kong.plugins.post-function.schema"] = "kong/plugins/post-function/schema.lua",
 
-    ["kong.plugins.proxy-cache-advanced.handler"]                             = "kong/plugins/proxy-cache-advanced/handler.lua",
-    ["kong.plugins.proxy-cache-advanced.cache_key"]                           = "kong/plugins/proxy-cache-advanced/cache_key.lua",
-    ["kong.plugins.proxy-cache-advanced.schema"]                              = "kong/plugins/proxy-cache-advanced/schema.lua",
-    ["kong.plugins.proxy-cache-advanced.api"]                                 = "kong/plugins/proxy-cache-advanced/api.lua",
-    ["kong.plugins.proxy-cache-advanced.strategies"]                          = "kong/plugins/proxy-cache-advanced/strategies/init.lua",
-    ["kong.plugins.proxy-cache-advanced.strategies.memory"]                   = "kong/plugins/proxy-cache-advanced/strategies/memory.lua",
-    ["kong.plugins.proxy-cache-advanced.strategies.redis"]                    = "kong/plugins/proxy-cache-advanced/strategies/redis.lua",
-    ["kong.plugins.proxy-cache-advanced.migrations"]                          = "kong/plugins/proxy-cache-advanced/migrations/init.lua",
-    ["kong.plugins.proxy-cache-advanced.migrations.001_035_to_050"]           = "kong/plugins/proxy-cache-advanced/migrations/001_035_to_050.lua",
-
-    ["kong.plugins.oauth2-introspection.handler"] = "kong/plugins/oauth2-introspection/handler.lua",
-    ["kong.plugins.oauth2-introspection.schema"] = "kong/plugins/oauth2-introspection/schema.lua",
-
     ["kong.plugins.canary.handler"] = "kong/plugins/canary/handler.lua",
     ["kong.plugins.canary.schema"]  = "kong/plugins/canary/schema.lua",
     ["kong.plugins.canary.groups"]  = "kong/plugins/canary/groups.lua",
