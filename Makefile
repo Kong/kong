@@ -133,6 +133,7 @@ remove-plugins-ee:
 	-@luarocks remove kong-plugin-enterprise-proxy-cache
 	-@luarocks remove kong-plugin-enterprise-application-registration
 	-@luarocks remove kong-plugin-enterprise-ldap-auth
+	-@luarocks remove kong-plugin-jwt-signer
 
 dependencies: bin/grpcurl
 	@for rock in $(DEV_ROCKS) ; do \
