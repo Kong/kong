@@ -1976,6 +1976,12 @@ describe("Router", function()
           router = assert(Router.new(benchmark_use_cases))
         end)
 
+        lazy_teardown(function()
+          -- this avoids memory leakage
+          router = nil
+          benchmark_use_cases = nil
+        end)
+
         it("takes < 1ms", function()
           local match_t = router.select("GET", "/", target_domain)
           assert.truthy(match_t)
@@ -2020,6 +2026,12 @@ describe("Router", function()
           router = assert(Router.new(benchmark_use_cases))
         end)
 
+        lazy_teardown(function()
+          -- this avoids memory leakage
+          router = nil
+          benchmark_use_cases = nil
+        end)
+
         it("takes < 1ms", function()
           local match_t = router.select("POST", target_uri, target_domain)
           assert.truthy(match_t)
@@ -2049,6 +2061,12 @@ describe("Router", function()
 
             target_location =  "somewhere-" .. n
             router = assert(Router.new(benchmark_use_cases))
+          end)
+
+          lazy_teardown(function()
+            -- this avoids memory leakage
+            router = nil
+            benchmark_use_cases = nil
           end)
 
           it("takes < 1ms", function()
@@ -2084,6 +2102,12 @@ describe("Router", function()
             target_key = "key-" .. n
             target_val =  "somewhere"
             router = assert(Router.new(benchmark_use_cases))
+          end)
+
+          lazy_teardown(function()
+            -- this avoids memory leakage
+            router = nil
+            benchmark_use_cases = nil
           end)
 
           it("takes < 1ms", function()
@@ -2131,6 +2155,12 @@ describe("Router", function()
           target_uri = "/my-real-route"
           target_domain = "domain.org"
           router = assert(Router.new(benchmark_use_cases))
+        end)
+
+        lazy_teardown(function()
+          -- this avoids memory leakage
+          router = nil
+          benchmark_use_cases = nil
         end)
 
         it("takes < 1ms", function()
@@ -2182,6 +2212,12 @@ describe("Router", function()
           target_domain = "domain-" .. n .. ".org"
           target_location = "somewhere-" .. n
           router = assert(Router.new(benchmark_use_cases))
+        end)
+
+        lazy_teardown(function()
+          -- this avoids memory leakage
+          router = nil
+          benchmark_use_cases = nil
         end)
 
         it("takes < 1ms", function()
@@ -3542,7 +3578,7 @@ end)
 
 describe("[both regex and prefix with regex_priority]", function()
   local use_case = {
-    -- regex  
+    -- regex
     {
       service = service,
       route   = {

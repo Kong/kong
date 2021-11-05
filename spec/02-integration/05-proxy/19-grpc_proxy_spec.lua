@@ -7,7 +7,6 @@
 
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 
 local FILE_LOG_PATH = os.tmpname()
@@ -263,10 +262,16 @@ for _, strategy in helpers.each_strategy() do
             ["-v"] = true,
           }
         })
-        file_log_json = cjson.decode((assert(pl_file.read(FILE_LOG_PATH))))
+        local f = io.open(FILE_LOG_PATH, 'r')
+        if not f then
+          return false
+        end
+
+        file_log_json = cjson.decode((assert(f:read("*a"))))
+        f:close()
         return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
               and #file_log_json.tries >= 2
-      end, 15)
+      end, 5)
 
       assert.matches("received%-host: 127.0.0.1:8765", resp)
     end)
