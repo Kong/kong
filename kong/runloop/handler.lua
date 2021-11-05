@@ -833,8 +833,16 @@ do
   local get_ca_certificate_store = certificate.get_ca_certificate_store
   local subsystem = ngx.config.subsystem
 
+  local function sleep_once_for_balancer_init()
+    ngx.sleep(0)
+    sleep_once_for_balancer_init = NOOP
+  end
+
   function balancer_prepare(ctx, scheme, host_type, host, port,
                             service, route)
+
+    sleep_once_for_balancer_init()
+
     local retries
     local connect_timeout
     local send_timeout
