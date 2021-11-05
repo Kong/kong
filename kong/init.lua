@@ -101,7 +101,8 @@ local ngx_WARN         = ngx.WARN
 local ngx_NOTICE       = ngx.NOTICE
 local ngx_INFO         = ngx.INFO
 local ngx_DEBUG        = ngx.DEBUG
-local subsystem        = ngx.config.subsystem
+local is_http_module   = ngx.config.subsystem == "http"
+local is_stream_module = ngx.config.subsystem == "stream"
 local start_time       = ngx.req.start_time
 local type             = type
 local error            = error
@@ -531,8 +532,7 @@ function Kong.init()
     certificate.init()
   end
 
-  if subsystem == "http" and
-     (config.role == "data_plane" or config.role == "control_plane")
+  if is_http_module and (config.role == "data_plane" or config.role == "control_plane")
   then
     kong.clustering = require("kong.clustering").new(config)
 
@@ -544,7 +544,7 @@ function Kong.init()
   -- Load plugins as late as possible so that everything is set up
   assert(db.plugins:load_plugin_schemas(config.loaded_plugins))
 
-  if subsystem == "stream" then
+  if is_stream_module then
     stream_api.load_handlers()
   end
 
@@ -892,7 +892,7 @@ function Kong.balancer()
   if not ctx.KONG_BALANCER_START then
     ctx.KONG_BALANCER_START = now_ms
 
-    if subsystem == "stream" then
+    if is_stream_module then
       if ctx.KONG_PREREAD_START and not ctx.KONG_PREREAD_ENDED_AT then
         ctx.KONG_PREREAD_ENDED_AT = ctx.KONG_BALANCER_START
         ctx.KONG_PREREAD_TIME = ctx.KONG_PREREAD_ENDED_AT -
@@ -946,7 +946,7 @@ function Kong.balancer()
 
       else
         balancer_instance.report_http_status(balancer_data.balancer_handle,
-                                    previous_try.code)
+                                             previous_try.code)
       end
     end
 
@@ -980,9 +980,7 @@ function Kong.balancer()
   local pool_opts
   local kong_conf = kong.configuration
 
-  if enable_keepalive and kong_conf.upstream_keepalive_pool_size > 0
-     and subsystem == "http"
-  then
+  if enable_keepalive and kong_conf.upstream_keepalive_pool_size > 0 and is_http_module then
     local pool = balancer_data.ip .. "|" .. balancer_data.port
 
     if balancer_data.scheme == "https" then
@@ -1294,7 +1292,7 @@ function Kong.log()
   local ctx = ngx.ctx
   if not ctx.KONG_LOG_START then
     ctx.KONG_LOG_START = now() * 1000
-    if subsystem == "stream" then
+    if is_stream_module then
       if not ctx.KONG_PROCESSING_START then
         ctx.KONG_PROCESSING_START = start_time() * 1000
       end
