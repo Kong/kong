@@ -123,14 +123,7 @@ jobs:
     strategy:
       matrix:
         suite: [integration, plugins]
-        split: [all, first (01-04), second (>= 05)]
-        exclude:
-          - suite: plugins
-            split: first (01-04)
-          - suite: plugins
-            split: second (>= 05)
-          - suite: integration
-            split: all
+        split: [first (01-04), second (>= 05)]
 
     env:
       KONG_TEST_PG_DATABASE: kong
@@ -256,14 +249,7 @@ jobs:
       matrix:
         suite: [integration, plugins]
         cassandra_version: [3]
-        split: [all, first (01-04), second (>= 05)]
-        exclude:
-          - suite: plugins
-            split: first (01-04)
-          - suite: plugins
-            split: second (>= 05)
-          - suite: integration
-            split: all
+        split: [first (01-04), second (>= 05)]
 
     env:
       KONG_TEST_DATABASE: cassandra
