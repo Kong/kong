@@ -132,6 +132,7 @@ remove-plugins-ee:
 	-@luarocks remove kong-plugin-enterprise-oauth2-introspection
 	-@luarocks remove kong-plugin-enterprise-proxy-cache
 	-@luarocks remove kong-plugin-enterprise-application-registration
+	-@luarocks remove kong-plugin-enterprise-ldap-auth
 
 dependencies: bin/grpcurl
 	@for rock in $(DEV_ROCKS) ; do \
@@ -198,7 +199,20 @@ test-build-package:
 test-build-image: test-build-package
 	$(KONG_SOURCE_LOCATION)/dist/dist.sh build-image alpine
 
-test-plugins-ee: test-build-image
+test-build-pongo-deps:
+	@err_code=0; \
+	for plugin_dep in $(KONG_PLUGINS_EE_LOCATION)/*/.pongo/*; do \
+	  if [ -d $$plugin_dep ]; then \
+	    echo "Building pongo dependency image: `basename $$plugin_dep`" ; \
+	    cd $$plugin_dep ; \
+	    docker build -t `basename $$plugin_dep` . ; \
+	    last_err_code=$$? ; \
+	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
+	  fi ; \
+	done ; \
+	exit $$err_code;
+
+test-plugins-ee: test-build-pongo-deps test-build-image
 	@err_code=0; \
 	for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
 	  if [ -d $$plugin_ee ]; then \
