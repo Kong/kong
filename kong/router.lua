@@ -1256,6 +1256,164 @@ local function match_candidates(candidates, ctx)
 end
 
 
+local function find_match(ctx)
+  -- iterate from the highest matching to the lowest category to
+  -- find our route
+  local category_idx = ctx.categories_lookup[ctx.req_category] or 1
+  while category_idx <= ctx.categories_weight_sorted[0] do
+    local matched_route
+
+    local bit_category = ctx.categories_weight_sorted[category_idx].category_bit
+    local category     = ctx.categories[bit_category]
+
+    if category then
+      local reduced_candidates, category_candidates = reduce(category,
+                                                             bit_category,
+                                                             ctx)
+      if reduced_candidates then
+        -- check against a reduced set of routes that is a strong candidate
+        -- for this request, instead of iterating over all the routes of
+        -- this category
+        matched_route = match_candidates(reduced_candidates, ctx)
+      end
+
+      if not matched_route then
+        -- no result from the reduced set, must check for results from the
+        -- full list of routes from that category before checking a lower
+        -- category
+        matched_route = match_candidates(category_candidates, ctx)
+      end
+
+      if matched_route then
+        local upstream_host
+        local upstream_uri
+        local upstream_url_t = matched_route.upstream_url_t
+
+        if matched_route.route.id and ctx.routes_by_id[matched_route.route.id].route then
+          matched_route.route = ctx.routes_by_id[matched_route.route.id].route
+        end
+
+        local matches = ctx.matches
+
+        -- Path construction
+
+        local request_prefix
+
+        if matched_route.type == "http" then
+          request_prefix = matched_route.strip_uri and matches.uri_prefix or nil
+
+          -- if we do not have a path-match, then the postfix is simply the
+          -- incoming path, without the initial slash
+          local req_uri = ctx.req_uri
+          local request_postfix = matches.uri_postfix or sub(req_uri, 2, -1)
+          local upstream_base = upstream_url_t.path or "/"
+
+          if matched_route.route.path_handling == "v1" then
+            if matched_route.strip_uri then
+              -- we drop the matched part, replacing it with the upstream path
+              if byte(upstream_base, -1) == SLASH and
+                 byte(request_postfix, 1) == SLASH then
+                -- double "/", so drop the first
+                upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
+
+              else
+                upstream_uri = upstream_base .. request_postfix
+              end
+
+            else
+              -- we retain the incoming path, just prefix it with the upstream
+              -- path, but skip the initial slash
+              upstream_uri = upstream_base .. sub(req_uri, 2, -1)
+            end
+
+          else -- matched_route.route.path_handling == "v0"
+            if byte(upstream_base, -1) == SLASH then
+              -- ends with / and strip_uri = true
+              if matched_route.strip_uri then
+                if request_postfix == "" then
+                  if upstream_base == "/" then
+                    upstream_uri = "/"
+                  elseif byte(req_uri, -1) == SLASH then
+                    upstream_uri = upstream_base
+                  else
+                    upstream_uri = sub(upstream_base, 1, -2)
+                  end
+                elseif byte(request_postfix, 1, 1) == SLASH then
+                  -- double "/", so drop the first
+                  upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
+                else -- ends with / and strip_uri = true, no double slash
+                  upstream_uri = upstream_base .. request_postfix
+                end
+
+              else -- ends with / and strip_uri = false
+                -- we retain the incoming path, just prefix it with the upstream
+                -- path, but skip the initial slash
+                upstream_uri = upstream_base .. sub(req_uri, 2)
+              end
+
+            else -- does not end with /
+              -- does not end with / and strip_uri = true
+              if matched_route.strip_uri then
+                if request_postfix == "" then
+                  if #req_uri > 1 and byte(req_uri, -1) == SLASH then
+                    upstream_uri = upstream_base .. "/"
+                  else
+                    upstream_uri = upstream_base
+                  end
+                elseif byte(request_postfix, 1, 1) == SLASH then
+                  upstream_uri = upstream_base .. request_postfix
+                else
+                  upstream_uri = upstream_base .. "/" .. request_postfix
+                end
+
+              else -- does not end with / and strip_uri = false
+                if req_uri == "/" then
+                  upstream_uri = upstream_base
+                else
+                  upstream_uri = upstream_base .. req_uri
+                end
+              end
+            end
+          end
+
+          -- preserve_host header logic
+
+          if matched_route.preserve_host then
+            upstream_host = ctx.raw_req_host
+          end
+        end
+
+        return {
+          route           = matched_route.route,
+          service         = matched_route.service,
+          headers         = matched_route.headers,
+          upstream_url_t  = upstream_url_t,
+          upstream_scheme = upstream_url_t.scheme,
+          upstream_uri    = upstream_uri,
+          upstream_host   = upstream_host,
+          prefix          = request_prefix,
+          matches         = {
+            uri_captures  = matches.uri_captures,
+            uri           = matches.uri,
+            host          = matches.host,
+            headers       = matches.headers,
+            method        = matches.method,
+            src_ip        = matches.src_ip,
+            src_port      = matches.src_port,
+            dst_ip        = matches.dst_ip,
+            dst_port      = matches.dst_port,
+            sni           = matches.sni,
+          }
+        }
+      end
+    end
+
+    -- check lower category
+    category_idx = category_idx + 1
+  end
+end
+
+
 local _M = { MATCH_LRUCACHE_SIZE = MATCH_LRUCACHE_SIZE }
 
 
@@ -1621,180 +1779,32 @@ function _M.new(routes, cache, cache_neg)
 
     --print("highest potential category: ", req_category)
 
-    -- iterate from the highest matching to the lowest category to
-    -- find our route
-
     if req_category ~= 0x00 then
-      local category_idx = categories_lookup[req_category] or 1
-      local matches = {}
-      local matched_route
-
-      local ctx = {
-        hits           = hits,
-        matches        = matches,
-        req_method     = req_method,
-        req_uri        = req_uri,
-        req_host       = req_host,
-        req_scheme     = req_scheme,
-        req_headers    = req_headers,
-        src_ip         = src_ip,
-        src_port       = src_port,
-        dst_ip         = dst_ip,
-        dst_port       = dst_port,
-        sni            = sni,
-        host_with_port = host_with_port,
-        host_no_port   = host_no_port,
-      }
-
-      while category_idx <= categories_weight_sorted[0] do
-        local bit_category = categories_weight_sorted[category_idx].category_bit
-        local category     = categories[bit_category]
-
-        if category then
-          local reduced_candidates, category_candidates = reduce(category,
-                                                                 bit_category,
-                                                                 ctx)
-          if reduced_candidates then
-            -- check against a reduced set of routes that is a strong candidate
-            -- for this request, instead of iterating over all the routes of
-            -- this category
-            matched_route = match_candidates(reduced_candidates, ctx)
-          end
-
-          if not matched_route then
-            -- no result from the reduced set, must check for results from the
-            -- full list of routes from that category before checking a lower
-            -- category
-            matched_route = match_candidates(category_candidates, ctx)
-          end
-
-          if matched_route then
-            local upstream_host
-            local upstream_uri
-            local upstream_url_t = matched_route.upstream_url_t
-
-            if matched_route.route.id and routes_by_id[matched_route.route.id].route then
-              matched_route.route = routes_by_id[matched_route.route.id].route
-            end
-
-            local request_prefix
-
-            -- Path construction
-
-            if matched_route.type == "http" then
-              request_prefix = matched_route.strip_uri and matches.uri_prefix or nil
-
-              -- if we do not have a path-match, then the postfix is simply the
-              -- incoming path, without the initial slash
-              local request_postfix = matches.uri_postfix or sub(req_uri, 2, -1)
-              local upstream_base = upstream_url_t.path or "/"
-
-              if matched_route.route.path_handling == "v1" then
-                if matched_route.strip_uri then
-                  -- we drop the matched part, replacing it with the upstream path
-                  if byte(upstream_base, -1) == SLASH and
-                     byte(request_postfix, 1) == SLASH then
-                    -- double "/", so drop the first
-                    upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
-
-                  else
-                    upstream_uri = upstream_base .. request_postfix
-                  end
-
-                else
-                  -- we retain the incoming path, just prefix it with the upstream
-                  -- path, but skip the initial slash
-                  upstream_uri = upstream_base .. sub(req_uri, 2, -1)
-                end
-
-              else -- matched_route.route.path_handling == "v0"
-                if byte(upstream_base, -1) == SLASH then
-                  -- ends with / and strip_uri = true
-                  if matched_route.strip_uri then
-                    if request_postfix == "" then
-                      if upstream_base == "/" then
-                        upstream_uri = "/"
-                      elseif byte(req_uri, -1) == SLASH then
-                        upstream_uri = upstream_base
-                      else
-                        upstream_uri = sub(upstream_base, 1, -2)
-                      end
-                    elseif byte(request_postfix, 1, 1) == SLASH then
-                      -- double "/", so drop the first
-                      upstream_uri = sub(upstream_base, 1, -2) .. request_postfix
-                    else -- ends with / and strip_uri = true, no double slash
-                      upstream_uri = upstream_base .. request_postfix
-                    end
-
-                  else -- ends with / and strip_uri = false
-                    -- we retain the incoming path, just prefix it with the upstream
-                    -- path, but skip the initial slash
-                    upstream_uri = upstream_base .. sub(req_uri, 2)
-                  end
-
-                else -- does not end with /
-                  -- does not end with / and strip_uri = true
-                  if matched_route.strip_uri then
-                    if request_postfix == "" then
-                      if #req_uri > 1 and byte(req_uri, -1) == SLASH then
-                        upstream_uri = upstream_base .. "/"
-                      else
-                        upstream_uri = upstream_base
-                      end
-                    elseif byte(request_postfix, 1, 1) == SLASH then
-                      upstream_uri = upstream_base .. request_postfix
-                    else
-                      upstream_uri = upstream_base .. "/" .. request_postfix
-                    end
-
-                  else -- does not end with / and strip_uri = false
-                    if req_uri == "/" then
-                      upstream_uri = upstream_base
-                    else
-                      upstream_uri = upstream_base .. req_uri
-                    end
-                  end
-                end
-              end
-
-              -- preserve_host header logic
-
-              if matched_route.preserve_host then
-                upstream_host = raw_req_host
-              end
-            end
-
-            local match_t     = {
-              route           = matched_route.route,
-              service         = matched_route.service,
-              headers         = matched_route.headers,
-              upstream_url_t  = upstream_url_t,
-              upstream_scheme = upstream_url_t.scheme,
-              upstream_uri    = upstream_uri,
-              upstream_host   = upstream_host,
-              prefix          = request_prefix,
-              matches         = {
-                uri_captures  = matches.uri_captures,
-                uri           = matches.uri,
-                host          = matches.host,
-                headers       = matches.headers,
-                method        = matches.method,
-                src_ip        = matches.src_ip,
-                src_port      = matches.src_port,
-                dst_ip        = matches.dst_ip,
-                dst_port      = matches.dst_port,
-                sni           = matches.sni,
-              }
-            }
-
-            cache:set(cache_key, match_t)
-
-            return match_t
-          end
-        end
-
-        -- check lower category
-        category_idx = category_idx + 1
+      local match_t = find_match({
+        hits                     = hits,
+        matches                  = {},
+        categories               = categories,
+        categories_lookup        = categories_lookup,
+        categories_weight_sorted = categories_weight_sorted,
+        req_category             = req_category,
+        raw_req_host             = raw_req_host,
+        routes_by_id             = routes_by_id,
+        req_method               = req_method,
+        req_uri                  = req_uri,
+        req_host                 = req_host,
+        req_scheme               = req_scheme,
+        req_headers              = req_headers,
+        src_ip                   = src_ip,
+        src_port                 = src_port,
+        dst_ip                   = dst_ip,
+        dst_port                 = dst_port,
+        sni                      = sni,
+        host_with_port           = host_with_port,
+        host_no_port             = host_no_port,
+      })
+      if match_t then
+        cache:set(cache_key, match_t)
+        return match_t
       end
     end
 
