@@ -393,8 +393,9 @@ components:
               healthy:
                 http_statuses:
                 - 200
-                - 302
+                - 301
                 interval: 0
+                please make a model
                 successes: 0
               https_verify_certificate: true
               http_path: /
