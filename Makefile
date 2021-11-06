@@ -133,6 +133,7 @@ remove-plugins-ee:
 	-@luarocks remove kong-plugin-enterprise-proxy-cache
 	-@luarocks remove kong-plugin-enterprise-application-registration
 	-@luarocks remove kong-plugin-enterprise-ldap-auth
+	-@luarocks remove kong-plugin-jwt-signer
 
 dependencies: bin/grpcurl
 	@for rock in $(DEV_ROCKS) ; do \
@@ -215,7 +216,7 @@ test-build-pongo-deps:
 test-plugins-ee: test-build-pongo-deps test-build-image
 	@err_code=0; \
 	for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
-	  if [ -d $$plugin_ee ]; then \
+	  if [ -d $$plugin_ee -a -d $$plugin_ee/spec ]; then \
 	    echo "Running plugin tests: `basename $$plugin_ee`" ; \
 	    cd $$plugin_ee ; \
 	    KONG_IMAGE=$(DOCKER_IMAGE_NAME) pongo lint ; \
