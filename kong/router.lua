@@ -1563,6 +1563,18 @@ function _M.new(routes, cache, cache_neg)
     end
   end
 
+
+  local hits = {}
+  local matches = {}
+  local ctx = {
+    hits = hits,
+    matches = matches,
+    categories = categories,
+    categories_lookup = categories_lookup,
+    categories_weight_sorted = categories_weight_sorted,
+    routes_by_id = routes_by_id,
+  }
+
   local match_headers        = plain_indexes.headers[0] > 0
   local match_prefix_uris    = prefix_uris[0] > 0
   local match_regex_uris     = regex_uris[0] > 0
@@ -1624,7 +1636,8 @@ function _M.new(routes, cache, cache_neg)
     sni = sni or ""
 
     local req_category = 0x00
-    local hits = {}
+
+    clear_tab(hits)
 
     -- router, router, which of these routes is the fairest?
     --
@@ -1780,28 +1793,22 @@ function _M.new(routes, cache, cache_neg)
     --print("highest potential category: ", req_category)
 
     if req_category ~= 0x00 then
-      local match_t = find_match({
-        hits                     = hits,
-        matches                  = {},
-        categories               = categories,
-        categories_lookup        = categories_lookup,
-        categories_weight_sorted = categories_weight_sorted,
-        req_category             = req_category,
-        raw_req_host             = raw_req_host,
-        routes_by_id             = routes_by_id,
-        req_method               = req_method,
-        req_uri                  = req_uri,
-        req_host                 = req_host,
-        req_scheme               = req_scheme,
-        req_headers              = req_headers,
-        src_ip                   = src_ip,
-        src_port                 = src_port,
-        dst_ip                   = dst_ip,
-        dst_port                 = dst_port,
-        sni                      = sni,
-        host_with_port           = host_with_port,
-        host_no_port             = host_no_port,
-      })
+      ctx.req_category             = req_category
+      ctx.raw_req_host             = raw_req_host
+      ctx.req_method               = req_method
+      ctx.req_uri                  = req_uri
+      ctx.req_host                 = req_host
+      ctx.req_scheme               = req_scheme
+      ctx.req_headers              = req_headers
+      ctx.src_ip                   = src_ip
+      ctx.src_port                 = src_port
+      ctx.dst_ip                   = dst_ip
+      ctx.dst_port                 = dst_port
+      ctx.sni                      = sni
+      ctx.host_with_port           = host_with_port
+      ctx.host_no_port             = host_no_port
+
+      local match_t = find_match(ctx)
       if match_t then
         cache:set(cache_key, match_t)
         return match_t
