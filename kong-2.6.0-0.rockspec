@@ -694,11 +694,6 @@ build = {
     ["kong.plugins.response-transformer-advanced.transform_utils"] = "kong/plugins/response-transformer-advanced/transform_utils.lua",
     ["kong.plugins.response-transformer-advanced.constants"] = "kong/plugins/response-transformer-advanced/constants.lua",
 
-    ["kong.plugins.statsd-advanced.handler"] = "kong/plugins/statsd-advanced/handler.lua",
-    ["kong.plugins.statsd-advanced.schema"]  = "kong/plugins/statsd-advanced/schema.lua",
-    ["kong.plugins.statsd-advanced.log_helper"]  = "kong/plugins/statsd-advanced/log_helper.lua",
-    ["kong.plugins.statsd-advanced.constants"]  = "kong/plugins/statsd-advanced/constants.lua",
-
     ["kong.plugins.route-by-header.handler"] = "kong/plugins/route-by-header/handler.lua",
     ["kong.plugins.route-by-header.schema"] = "kong/plugins/route-by-header/schema.lua",
   }
