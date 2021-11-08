@@ -374,7 +374,9 @@ local function iterate(self, phase, ctx)
   ctx.plugins = kong.table.new(plugins[0] * 2, 1)
   ctx.plugins[0] = 0
 
-  if plugins[0] == 0 then
+  if (plugins[0] == 0)
+  or (ws.globals == 0 and (phase == "certificate" or phase == "rewrite"))
+  then
     return zero_iter
   end
 
@@ -430,11 +432,9 @@ local function new_ws_data()
     }
   end
 
-  local plugins = {}
-  plugins[0] = 0
-
   return {
-    plugins = plugins,
+    plugins = { [0] = 0 },
+    globals = 0,
     combos = {},
     phases = phases,
   }
@@ -492,6 +492,10 @@ function PluginsIterator.new(version)
       local combo_key = (plugin.route    and 1 or 0)
                       + (plugin.service  and 2 or 0)
                       + (plugin.consumer and 4 or 0)
+
+      if combo_key == 0 then
+        data.globals = data.globals + 1
+      end
 
       if kong.db.strategy == "off" then
         if plugin.enabled then
