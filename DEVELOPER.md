@@ -7,7 +7,7 @@ experience (both for you and for the Kong team), please read
 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [COPYRIGHT](COPYRIGHT) before
 you start.
 
-If you are planning on developing on Kong, you'll need a development
+If you are planning to develop on Kong, you'll need a development
 installation. The `master` branch holds the latest unreleased source code.
 
 You can read more about writing your own plugins in the [Plugin Development
@@ -59,8 +59,8 @@ following the instructions on [Kong/kong-build-tools](https://github.com/Kong/ko
 #### Kong Gojira
 
 [Gojira](https://github.com/Kong/gojira) is a CLI that uses docker-compose
-internally to make the necessary setup of containers to get all
-dependencies needed to run a particular branch of Kong locally, as well
+internally to make the necessary setup of containers for getting all
+dependencies required to run a particular branch of Kong locally, as well
 as easily switching across versions, configurations and dependencies. It
 has support for running Kong in Hybrid (CP/DP) mode, testing migrations,
 running a Kong cluster, among other [features](https://github.com/Kong/gojira/blob/master/docs/manual.md).
@@ -69,7 +69,7 @@ running a Kong cluster, among other [features](https://github.com/Kong/gojira/bl
 
 [Pongo](https://github.com/Kong/kong-pongo) is another CLI like Gojira,
 but specific for plugin development. It is docker-compose based and will
-create local test environments including all dependencies. Core features
+create local test environments including all dependencies. It's core features
 are running tests, integrated linter, config initialization, CI support,
 and custom dependencies.
 
