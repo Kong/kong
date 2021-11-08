@@ -128,12 +128,14 @@ remove: remove-plugins-ee
 	-@luarocks remove kong
 
 remove-plugins-ee:
-	-@luarocks remove kong-plugin-enterprise-forward-proxy
-	-@luarocks remove kong-plugin-enterprise-oauth2-introspection
-	-@luarocks remove kong-plugin-enterprise-proxy-cache
-	-@luarocks remove kong-plugin-enterprise-application-registration
-	-@luarocks remove kong-plugin-enterprise-ldap-auth
-	-@luarocks remove kong-plugin-jwt-signer
+	-@for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
+	  if [ -d $$plugin_ee ]; then \
+	    echo "Removing plugin: `basename $$plugin_ee`" ; \
+		package_name=`sed -n 's/^package\s*=\s*"\(.*\)".*/\1/p' *.rockspec` ; \
+	    cd $$plugin_ee ; \
+	    luarocks remove $$package_name ; \
+	  fi ; \
+	done ;
 
 dependencies: bin/grpcurl
 	@for rock in $(DEV_ROCKS) ; do \
