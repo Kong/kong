@@ -76,6 +76,9 @@ local get_updated_router, build_router, update_router
 local server_header = meta._SERVER_TOKENS
 local rebuild_router
 
+local stream_tls_terminate_sock = "unix:" .. ngx.config.prefix() .. "/stream_tls_terminate.sock"
+local stream_tls_passthrough_sock = "unix:" .. ngx.config.prefix() .. "/stream_tls_passthrough.sock"
+
 -- for tests
 local _set_update_plugins_iterator
 local _set_update_router
@@ -1122,10 +1125,10 @@ return {
         local protocols = route.protocols
         if protocols and protocols.tls then
           log(DEBUG, "TLS termination required, return to second layer proxying")
-          var.kong_tls_preread_block_upstream = "unix:" .. kong.configuration.prefix .. "/stream_tls_terminate.sock"
+          var.kong_tls_preread_block_upstream = stream_tls_terminate_sock
 
         elseif protocols and protocols.tls_passthrough then
-          var.kong_tls_preread_block_upstream = "unix:" .. kong.configuration.prefix .. "/stream_tls_passthrough.sock"
+          var.kong_tls_preread_block_upstream = stream_tls_passthrough_sock
 
         else
           log(ERR, "unexpected protocols in matched Route")
