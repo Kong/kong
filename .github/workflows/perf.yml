@@ -101,6 +101,7 @@ jobs:
         PERF_TEST_PACKET_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
         PERF_TEST_PACKET_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
+      timeout-minutes: 60
       run: |
         for suite in ${{ steps.choose_perf.outputs.suites }}; do
           # Run each test individually, ngx.pipe doesn't like to be imported twice
