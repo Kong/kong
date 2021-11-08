@@ -693,8 +693,5 @@ build = {
     ["kong.plugins.response-transformer-advanced.feature_flags.limit_body"] = "kong/plugins/response-transformer-advanced/feature_flags/limit_body.lua",
     ["kong.plugins.response-transformer-advanced.transform_utils"] = "kong/plugins/response-transformer-advanced/transform_utils.lua",
     ["kong.plugins.response-transformer-advanced.constants"] = "kong/plugins/response-transformer-advanced/constants.lua",
-
-    ["kong.plugins.route-by-header.handler"] = "kong/plugins/route-by-header/handler.lua",
-    ["kong.plugins.route-by-header.schema"] = "kong/plugins/route-by-header/schema.lua",
   }
 }
