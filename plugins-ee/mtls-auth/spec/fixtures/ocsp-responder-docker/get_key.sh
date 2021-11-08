@@ -1,0 +1,1 @@
+cat /root/ca/intermediate/private/$1.key.pem
