@@ -740,11 +740,11 @@ function Kong.preread()
 
   log_init_worker_errors(ctx)
 
-  runloop.preread.before(ctx)
+  local preread_terminate = runloop.preread.before(ctx)
 
   -- if proxying to a second layer TLS terminator is required
   -- abort further execution and return back to Nginx
-  if ctx.stream_proxy_preread_terminate then
+  if preread_terminate then
     return
   end
 

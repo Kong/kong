@@ -1132,8 +1132,7 @@ return {
           return exit(500)
         end
 
-        ctx.stream_proxy_preread_terminate = true
-        return
+        return true
       end
 
 
