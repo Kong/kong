@@ -675,12 +675,6 @@ build = {
     ["kong.plugins.post-function.handler"] = "kong/plugins/post-function/handler.lua",
     ["kong.plugins.post-function.schema"] = "kong/plugins/post-function/schema.lua",
 
-    ["kong.plugins.canary.handler"] = "kong/plugins/canary/handler.lua",
-    ["kong.plugins.canary.schema"]  = "kong/plugins/canary/schema.lua",
-    ["kong.plugins.canary.groups"]  = "kong/plugins/canary/groups.lua",
-    ["kong.plugins.canary.migrations"] = "kong/plugins/canary/migrations/init.lua",
-    ["kong.plugins.canary.migrations.001_200_to_210"] = "kong/plugins/canary/migrations/001_200_to_210.lua",
-
     ["kong.plugins.request-transformer-advanced.migrations.cassandra"] = "kong/plugins/request-transformer-advanced/migrations/cassandra.lua",
     ["kong.plugins.request-transformer-advanced.migrations.postgres"] = "kong/plugins/request-transformer-advanced/migrations/postgres.lua",
     ["kong.plugins.request-transformer-advanced.migrations.common"] = "kong/plugins/request-transformer-advanced/migrations/common.lua",
