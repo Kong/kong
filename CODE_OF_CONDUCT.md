@@ -15,7 +15,7 @@ Examples of behavior that contributes to creating a positive environment
 include:
 
 * Using welcoming and inclusive language
-* Being respectful of differing viewpoints and experiences
+* Being respectful towards different viewpoints and experiences
 * Gracefully accepting constructive criticism
 * Focusing on what is best for the community
 * Showing empathy towards other community members
@@ -27,7 +27,7 @@ advances
 * Trolling, insulting/derogatory comments, and personal or political attacks
 * Public or private harassment
 * Publishing others' private information, such as a physical or electronic
-  address, without explicit permission
+  address without explicit permission
 * Other conduct which could reasonably be considered inappropriate in a
   professional setting
 
