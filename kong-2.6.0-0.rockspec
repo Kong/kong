@@ -36,13 +36,12 @@ dependencies = {
   "lua-resty-healthcheck == 1.4.2",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.7.5",
+  "lua-resty-openssl == 0.8.1",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.7.2",
   "lua-resty-session == 3.8",
   -- external Kong plugins
-  "kong-plugin-azure-functions ~> 1.0",
   "kong-plugin-zipkin ~> 1.4",
 }
 build = {
@@ -464,5 +463,8 @@ build = {
     ["kong.plugins.request-transformer.handler"] = "kong/plugins/request-transformer/handler.lua",
     ["kong.plugins.request-transformer.access"] = "kong/plugins/request-transformer/access.lua",
     ["kong.plugins.request-transformer.schema"] = "kong/plugins/request-transformer/schema.lua",
+
+    ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
+    ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
   }
 }
