@@ -24,16 +24,21 @@ local stream_subschema = {
   name = "tcp",
 
   fields = {
-    { methods = typedefs.no_methods { err = "cannot set 'methods' when 'protocols' is 'tcp', 'tls' or 'udp'" } },
-    { hosts = typedefs.no_hosts { err = "cannot set 'hosts' when 'protocols' is 'tcp', 'tls' or 'udp'" } },
-    { paths = typedefs.no_paths { err = "cannot set 'paths' when 'protocols' is 'tcp', 'tls' or 'udp'" } },
-    { headers = typedefs.no_headers { err = "cannot set 'headers' when 'protocols' is 'tcp', 'tls' or 'udp'" } },
+    { methods = typedefs.no_methods { err = "cannot set 'methods' when 'protocols' is 'tcp', 'tls', 'tls_passthrough' or 'udp'" } },
+    { hosts = typedefs.no_hosts { err = "cannot set 'hosts' when 'protocols' is 'tcp', 'tls', 'tls_passthrough' or 'udp'" } },
+    { paths = typedefs.no_paths { err = "cannot set 'paths' when 'protocols' is 'tcp', 'tls', 'tls_passthrough' or 'udp'" } },
+    { headers = typedefs.no_headers { err = "cannot set 'headers' when 'protocols' is 'tcp', 'tls', 'tls_passthrough' or 'udp'" } },
   },
   entity_checks = {
     { conditional_at_least_one_of = { if_field = "protocols",
                                       if_match = { elements = { type = "string", one_of = { "tcp", "tls", "udp", } } },
                                       then_at_least_one_of = { "sources", "destinations", "snis" },
                                       then_err = "must set one of %s when 'protocols' is 'tcp', 'tls' or 'udp'",
+                                    }},
+    {conditional_at_least_one_of = { if_field = "protocols",
+                                      if_match = { elements = { type = "string", one_of = { "tls_passthrough" } } },
+                                      then_at_least_one_of = { "snis" },
+                                      then_err = "must set snis when 'protocols' is 'tls_passthrough'",
                                     }},
   },
 }
@@ -67,6 +72,7 @@ return {
   tcp = stream_subschema,
   tls = stream_subschema,
   udp = stream_subschema,
+  tls_passthrough = stream_subschema,
   grpc = grpc_subschema,
   grpcs = grpc_subschema,
 }
