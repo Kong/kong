@@ -224,7 +224,7 @@ test-plugins-ee: test-build-pongo-deps test-build-image
 	    KONG_IMAGE=$(DOCKER_IMAGE_NAME) pongo lint ; \
 	    last_err_code=$$? ; \
 	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
-	    KONG_IMAGE=$(DOCKER_IMAGE_NAME) pongo run ; \
+	    KONG_IMAGE=$(DOCKER_IMAGE_NAME) pongo run --exclude-tags=flaky ; \
 	    last_err_code=$$? ; \
 	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
 	    pongo down ; \
