@@ -62,6 +62,10 @@
 
 ## [Unreleased]
 
+### Dependencies
+
+- Bumped `go-pdk` used in tests from v0.6.0 to v0.7.1 [#7964](https://github.com/Kong/kong/pull/7964)
+
 ### Additions
 
 #### Performance
@@ -105,6 +109,11 @@ In this release we continued our work on better performance:
   [#7924](https://github.com/Kong/kong/pull/7924)
 - Configuration reload no longer causes a new DNS-resolving timer to be started.
   [#7943](https://github.com/Kong/kong/pull/7943)
+
+### Dependencies
+
+- Bumped `lua-pack` from 1.0.5 to 2.0.0
+  [#8004](https://github.com/Kong/kong/pull/8004)
 
 [Back to TOC](#table-of-contents)
 

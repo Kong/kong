@@ -77,6 +77,64 @@ http {
     }
 
 > if (role == "traditional" or role == "data_plane") and #proxy_listeners > 0 then
+    # Load variable indexes
+    lua_kong_load_var_index $args;
+    lua_kong_load_var_index $bytes_sent;
+    lua_kong_load_var_index $content_type;
+    lua_kong_load_var_index $ctx_ref;
+    lua_kong_load_var_index $host;
+    lua_kong_load_var_index $http_authorization;
+    lua_kong_load_var_index $http_connection;
+    lua_kong_load_var_index $http_host;
+    lua_kong_load_var_index $http_kong_debug;
+    lua_kong_load_var_index $http_proxy;
+    lua_kong_load_var_index $http_proxy_connection;
+    lua_kong_load_var_index $http_te;
+    lua_kong_load_var_index $http_upgrade;
+    lua_kong_load_var_index $http_x_forwarded_for;
+    lua_kong_load_var_index $http_x_forwarded_host;
+    lua_kong_load_var_index $http_x_forwarded_path;
+    lua_kong_load_var_index $http_x_forwarded_port;
+    lua_kong_load_var_index $http_x_forwarded_prefix;
+    lua_kong_load_var_index $http_x_forwarded_proto;
+    lua_kong_load_var_index $https;
+    lua_kong_load_var_index $http2;
+    lua_kong_load_var_index $is_args;
+    lua_kong_load_var_index $kong_proxy_mode;
+    lua_kong_load_var_index $realip_remote_addr;
+    lua_kong_load_var_index $realip_remote_port;
+    lua_kong_load_var_index $remote_addr;
+    lua_kong_load_var_index $remote_port;
+    lua_kong_load_var_index $request;
+    lua_kong_load_var_index $request_length;
+    lua_kong_load_var_index $request_method;
+    lua_kong_load_var_index $request_time;
+    lua_kong_load_var_index $request_uri;
+    lua_kong_load_var_index $scheme;
+    lua_kong_load_var_index $server_addr;
+    lua_kong_load_var_index $server_port;
+    lua_kong_load_var_index $ssl_cipher;
+    lua_kong_load_var_index $ssl_client_raw_cert;
+    lua_kong_load_var_index $ssl_client_verify;
+    lua_kong_load_var_index $ssl_protocol;
+    lua_kong_load_var_index $ssl_server_name;
+    lua_kong_load_var_index $upstream_connection;
+    lua_kong_load_var_index $upstream_host;
+    lua_kong_load_var_index $upstream_http_connection;
+    lua_kong_load_var_index $upstream_http_trailer;
+    lua_kong_load_var_index $upstream_http_upgrade;
+    lua_kong_load_var_index $upstream_scheme;
+    lua_kong_load_var_index $upstream_status;
+    lua_kong_load_var_index $upstream_te;
+    lua_kong_load_var_index $upstream_uri;
+    lua_kong_load_var_index $upstream_upgrade;
+    lua_kong_load_var_index $upstream_x_forwarded_for;
+    lua_kong_load_var_index $upstream_x_forwarded_host;
+    lua_kong_load_var_index $upstream_x_forwarded_path;
+    lua_kong_load_var_index $upstream_x_forwarded_port;
+    lua_kong_load_var_index $upstream_x_forwarded_prefix;
+    lua_kong_load_var_index $upstream_x_forwarded_proto;
+
     upstream kong_upstream {
         server 0.0.0.1;
 
@@ -803,18 +861,27 @@ stream {
     }
 
 > if #stream_listeners > 0 then
+# non-SSL listeners, and the SSL terminator
     server {
 > for _, entry in ipairs(stream_listeners) do
+> if not entry.ssl then
         listen $(entry.listener);
 > end
+> end
 
-        access_log ${{PROXY_ACCESS_LOG}} basic;
-        error_log  ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
+> if stream_proxy_ssl_enabled then
+        listen unix:${{PREFIX}}/stream_tls_terminate.sock ssl proxy_protocol;
+> end
+
+        access_log ${{PROXY_STREAM_ACCESS_LOG}};
+        error_log ${{PROXY_STREAM_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > for _, ip in ipairs(trusted_ips) do
         set_real_ip_from $(ip);
 > end
-        # injected nginx_sproxy_* directives
+        set_real_ip_from unix:;
+
+    # injected nginx_sproxy_* directives
 > for _, el in ipairs(nginx_sproxy_directives) do
         $(el.name) $(el.value);
 > end
@@ -829,6 +896,7 @@ stream {
             Kong.ssl_certificate()
         }
 > end
+
         preread_by_lua_block {
             Kong.preread()
         }
@@ -845,6 +913,70 @@ stream {
             Kong.log()
         }
     }
+
+> if stream_proxy_ssl_enabled then
+# SSL listeners, but only preread the handshake here
+    server {
+> for _, entry in ipairs(stream_listeners) do
+> if entry.ssl then
+        listen $(entry.listener:gsub(" ssl", ""));
+> end
+> end
+
+        access_log ${{PROXY_STREAM_ACCESS_LOG}};
+        error_log ${{PROXY_STREAM_ERROR_LOG}} ${{LOG_LEVEL}};
+
+> for _, ip in ipairs(trusted_ips) do
+        set_real_ip_from $(ip);
+> end
+
+        # injected nginx_sproxy_* directives
+> for _, el in ipairs(nginx_sproxy_directives) do
+        $(el.name) $(el.value);
+> end
+
+        preread_by_lua_block {
+            Kong.preread()
+        }
+
+        ssl_preread on;
+
+        proxy_protocol on;
+
+        set $kong_tls_preread_block 1;
+        set $kong_tls_preread_block_upstream '';
+        proxy_pass $kong_tls_preread_block_upstream;
+    }
+
+server {
+        listen unix:${{PREFIX}}/stream_tls_passthrough.sock proxy_protocol;
+
+        access_log ${{PROXY_STREAM_ACCESS_LOG}};
+        error_log ${{PROXY_STREAM_ERROR_LOG}} ${{LOG_LEVEL}};
+
+        set_real_ip_from unix:;
+
+    # injected nginx_sproxy_* directives
+> for _, el in ipairs(nginx_sproxy_directives) do
+        $(el.name) $(el.value);
+> end
+
+        preread_by_lua_block {
+            Kong.preread()
+        }
+
+        ssl_preread on;
+
+        set $kong_tls_passthrough_block 1;
+
+        proxy_pass kong_upstream;
+
+        log_by_lua_block {
+            Kong.log()
+        }
+    }
+> end -- stream_proxy_ssl_enabled
+
 
 > if database == "off" then
     server {

@@ -1,12 +1,11 @@
-package.loaded.lua_pack = nil   -- BUG: why?
-require "lua_pack"
+local lpack = require "lua_pack"
 local protoc = require "protoc"
 local pb = require "pb"
 local pl_path = require "pl.path"
 local date = require "date"
 
-local bpack=string.pack         -- luacheck: ignore string
-local bunpack=string.unpack     -- luacheck: ignore string
+local bpack = lpack.pack
+local bunpack = lpack.unpack
 
 
 local grpc = {}
@@ -62,6 +61,7 @@ function grpc.each_method(fname, f)
   p:addpath("/usr/local/opt/protobuf/include/")
   p:addpath("/usr/local/kong/lib/")
   p:addpath("kong")
+  p:addpath("kong/include")
 
   p.include_imports = true
   p:addpath(dir)

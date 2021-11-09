@@ -33,9 +33,8 @@ local plugins = {
   "grpc-web",
   "pre-function",
   "post-function",
-  "zipkin",
-  -- external plugins
   "azure-functions",
+  "zipkin",
 }
 
 local plugin_map = {}
@@ -56,6 +55,7 @@ local protocols_with_subsystem = {
   tcp = "stream",
   tls = "stream",
   udp = "stream",
+  tls_passthrough = "stream",
   grpc = "http",
   grpcs = "http",
 }

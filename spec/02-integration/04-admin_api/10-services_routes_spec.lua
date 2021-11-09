@@ -822,7 +822,7 @@ for _, strategy in helpers.each_strategy() do
               })
             body = assert.res_status(400, res)
             json = cjson.decode(body)
-            assert.same({ protocol = "expected one of: grpc, grpcs, http, https, tcp, tls, udp" }, json.fields)
+            assert.same({ protocol = "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp" }, json.fields)
           end
         end)
 

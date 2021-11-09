@@ -28,7 +28,7 @@ dependencies = {
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
   "luasyslog == 2.0.1",
-  "lua_pack == 1.0.5",
+  "lua_pack == 2.0.0",
   "binaryheap >= 0.4",
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.3.3",
@@ -36,14 +36,11 @@ dependencies = {
   "lua-resty-healthcheck == 1.4.2",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.7.5",
+  "lua-resty-openssl == 0.8.1",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.7.2",
   "lua-resty-session == 3.8",
-  -- external Kong plugins
-  "kong-plugin-azure-functions ~> 1.0",
-  "kong-plugin-request-transformer ~> 1.3",
 }
 build = {
   type = "builtin",
@@ -464,5 +461,15 @@ build = {
     ["kong.plugins.zipkin.tracing_headers"] = "kong/plugins/zipkin/tracing_headers.lua",
     ["kong.plugins.zipkin.schema"] = "kong/plugins/zipkin/schema.lua",
     ["kong.plugins.zipkin.request_tags"] = "kong/plugins/zipkin/request_tags.lua",
+
+    ["kong.plugins.request-transformer.migrations.cassandra"] = "kong/plugins/request-transformer/migrations/cassandra.lua",
+    ["kong.plugins.request-transformer.migrations.postgres"] = "kong/plugins/request-transformer/migrations/postgres.lua",
+    ["kong.plugins.request-transformer.migrations.common"] = "kong/plugins/request-transformer/migrations/common.lua",
+    ["kong.plugins.request-transformer.handler"] = "kong/plugins/request-transformer/handler.lua",
+    ["kong.plugins.request-transformer.access"] = "kong/plugins/request-transformer/access.lua",
+    ["kong.plugins.request-transformer.schema"] = "kong/plugins/request-transformer/schema.lua",
+
+    ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
+    ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
   }
 }

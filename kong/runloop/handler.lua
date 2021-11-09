@@ -76,6 +76,9 @@ local get_updated_router, build_router, update_router
 local server_header = meta._SERVER_TOKENS
 local rebuild_router
 
+local stream_tls_terminate_sock = "unix:" .. ngx.config.prefix() .. "/stream_tls_terminate.sock"
+local stream_tls_passthrough_sock = "unix:" .. ngx.config.prefix() .. "/stream_tls_passthrough.sock"
+
 -- for tests
 local _set_update_plugins_iterator
 local _set_update_router
@@ -833,8 +836,16 @@ do
   local get_ca_certificate_store = certificate.get_ca_certificate_store
   local subsystem = ngx.config.subsystem
 
+  local function sleep_once_for_balancer_init()
+    ngx.sleep(0)
+    sleep_once_for_balancer_init = NOOP
+  end
+
   function balancer_prepare(ctx, scheme, host_type, host, port,
                             service, route)
+
+    sleep_once_for_balancer_init()
+
     local retries
     local connect_timeout
     local send_timeout
@@ -1113,9 +1124,31 @@ return {
         return exit(500)
       end
 
+      local route = match_t.route
+      -- if matched route doesn't do tls_passthrough and we are in the preread server block
+      -- this request should be TLS terminated; return immediately and not run further steps
+      -- (even bypassing the balancer)
+      local tls_preread_block = var.kong_tls_preread_block
+      if tls_preread_block and #tls_preread_block > 0 then
+        local protocols = route.protocols
+        if protocols and protocols.tls then
+          log(DEBUG, "TLS termination required, return to second layer proxying")
+          var.kong_tls_preread_block_upstream = stream_tls_terminate_sock
+
+        elseif protocols and protocols.tls_passthrough then
+          var.kong_tls_preread_block_upstream = stream_tls_passthrough_sock
+
+        else
+          log(ERR, "unexpected protocols in matched Route")
+          return exit(500)
+        end
+
+        return true
+      end
+
+
       ctx.workspace = match_t.route and match_t.route.ws_id
 
-      local route = match_t.route
       local service = match_t.service
       local upstream_url_t = match_t.upstream_url_t
 

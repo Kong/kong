@@ -303,13 +303,13 @@ options ndots:2
       assert.Not.equal(val1, val2) -- no ttl specified, so distinct tables
       assert.Not.equal(val1r, val2r) -- no ttl specified, so distinct tables
 
-      val1r, val1 = dnsutils.getHosts(1)
+      val1r, val1 = dnsutils.getHosts(0.1)
       val2r, val2 = dnsutils.getHosts()
       assert.are.equal(val1, val2)   -- ttl specified, so same tables
       assert.are.equal(val1r, val2r) -- ttl specified, so same tables
 
       -- wait for cache to expire
-      sleep(2)
+      sleep(0.2)
 
       val2r, val2 = dnsutils.getHosts()
       assert.Not.equal(val1, val2) -- ttl timed out, so distinct tables
@@ -321,12 +321,12 @@ options ndots:2
       local val2 = dnsutils.getResolv()
       assert.Not.equal(val1, val2) -- no ttl specified, so distinct tables
 
-      val1 = dnsutils.getResolv(1)
+      val1 = dnsutils.getResolv(0.1)
       val2 = dnsutils.getResolv()
       assert.are.equal(val1, val2)   -- ttl specified, so same tables
 
       -- wait for cache to expire
-      sleep(2)
+      sleep(0.2)
 
       val2 = dnsutils.getResolv()
       assert.Not.equal(val1, val2)   -- ttl timed out, so distinct tables
