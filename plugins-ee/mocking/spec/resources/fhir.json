@@ -1,0 +1,308 @@
+           {
+           	"swagger": "2.0",
+           	"info": {
+           		"title": "FHIR Patient",
+           		"description": "Demographics and other administrative information about an individual or animal receiving care or other health-related services. For more information: https://www.hl7.org/fhir/patient.html",
+           		"version": "2.1"
+           	},
+           	"host": "localhost:8000",
+           	"basePath": "/v2",
+           	"schemes": [
+           		"http",
+           		"https"
+           	],
+           	"consumes": [
+           		"application/json"
+           	],
+           	"produces": [
+           		"application/json"
+           	],
+           	"paths": {
+           		"/Patient/{id}": {
+           			"get": {
+           				"description": "",
+           				"operationId": "GET /Patient/{id}",
+           				"produces": [
+           					"application/json+fhir",
+           					"application/xml+fhir"
+           				],
+           				"tags": [
+           					"Patient"
+           				],
+           				"parameters": [{
+           					"required": true,
+           					"in": "path",
+           					"name": "id",
+           					"type": "string"
+           				}],
+           				"responses": {
+           					"200": {
+           						"description": "Status 200",
+           						"examples": {
+           							"application/json+fhir": {
+           								"resourceType": "Patient",
+           								"identifier": [{
+           									"use": "official",
+           									"value": "1015617902"
+           								}],
+           								"active": true,
+           								"name": [{
+           									"use": "official",
+           									"family": "Sehl",
+           									"given": [
+           										"Vivien"
+           									]
+           								}],
+           								"gender": "male",
+           								"birthDate": "1946-05-11",
+           								"telecom": [{
+           										"system": "email",
+           										"use": "home",
+           										"value": "dynamic.extras2@medibank.com.au"
+           									},
+           									{
+           										"system": "phone",
+           										"use": "mobile",
+           										"value": "99999"
+           									}
+           								],
+           								"address": [{
+           									"use": "home",
+           									"type": "physical",
+           									"text": "720 Bourke Street, Medibank, Docklands, Queensland - 4074 ",
+           									"line": [
+           										"720 Bourke Street",
+           										"",
+           										"Medibank"
+           									],
+           									"city": "Docklands",
+           									"state": "Queensland",
+           									"postalCode": "4074"
+           								}]
+           							}
+           						}
+           					},
+           					"404": {
+           						"description": "Tried to get an unknown resource\n"
+           					},
+           					"410": {
+           						"description": "Tried to get a deleted resource\n"
+           					},
+           					"422": {
+           						"description": "Unprocessable Entity - the proposed resource violated applicable FHIR  profiles or server business rules.  This should be accompanied by an OperationOutcome resource providing additional detail.\n"
+           					}
+           				}
+           			},
+           			"put": {
+           				"description": "Update an existing instance\n",
+           				"operationId": "PUT /Patient/{id}",
+           				"consumes": [
+           					"application/json+fhir",
+           					"application/xml+fhir"
+           				],
+           				"produces": [
+           					"application/json+fhir",
+           					"application/xml+fhir"
+           				],
+           				"parameters": [{
+           					"required": true,
+           					"in": "path",
+           					"name": "id",
+           					"type": "string"
+           				}],
+           				"tags": [
+           					"Patient"
+           				],
+           				"responses": {
+           					"200": {
+           						"description": "Succesfully updated the instance \n"
+           					},
+           					"201": {
+           						"description": "Succesfully created the instance \n"
+           					},
+           					"400": {
+           						"description": "Bad Request - Resource cound not be parsed or failed basic FHIR validation rules\n"
+           					},
+           					"404": {
+           						"description": "Not Found - resource type not support, or not a FHIR validation rules\n"
+           					},
+           					"405": {
+           						"description": "Method Not allowed - the resource did not exist prior to the update, and the server does not allow client defined ids\n"
+           					},
+           					"409": {
+           						"description": "Version conflict management\n"
+           					},
+           					"412": {
+           						"description": "Version conflict management\n"
+           					},
+           					"422": {
+           						"description": "Unprocessable Entity - the proposed resource violated applicable FHIR  profiles or server business rules.  This should be accompanied by an OperationOutcome resource providing additional detail.\n"
+           					}
+           				}
+           			},
+           			"delete": {
+           				"description": "Delete resource\n",
+           				"operationId": "DELETE /Patient/{id}",
+           				"produces": [
+           					"application/json+fhir",
+           					"application/xml+fhir"
+           				],
+           				"parameters": [{
+           					"required": true,
+           					"in": "path",
+           					"name": "id",
+           					"type": "string"
+           				}],
+           				"tags": [
+           					"Patient"
+           				],
+           				"responses": {
+           					"204": {
+           						"description": "Succesfully deleted resource\n"
+           					},
+           					"404": {
+           						"description": "Not Found - resource was not found\n"
+           					},
+           					"405": {
+           						"description": "Method Not allowed - delete is not allowed\n"
+           					}
+           				}
+           			}
+           		}
+           	},
+           	"definitions": {
+           		"Patient": {
+           			"properties": {
+           				"resourceType": {
+           					"type": "string",
+           					"example": "Patient"
+           				},
+           				"identifier": {
+           					"type": "array",
+           					"items": {
+           						"type": "object",
+           						"properties": {
+           							"use": {
+           								"type": "string",
+           								"example": "official"
+           							},
+           							"value": {
+           								"type": "string",
+           								"example": "1015617902"
+           							}
+           						}
+           					}
+           				},
+           				"active": {
+           					"type": "boolean"
+           				},
+           				"name": {
+           					"type": "array",
+           					"items": {
+           						"type": "object",
+           						"properties": {
+           							"use": {
+           								"type": "string",
+           								"example": "official"
+           							},
+           							"family": {
+           								"type": "string",
+           								"example": "Sehl"
+           							},
+           							"given": {
+           								"type": "array",
+           								"items": {
+           									"type": "string",
+           									"example": "Vivien"
+           								}
+           							}
+           						}
+           					}
+           				},
+           				"gender": {
+           					"type": "string",
+           					"example": "male"
+           				},
+           				"birthDate": {
+           					"type": "string",
+           					"format": "date",
+           					"example": "1946-05-11"
+           				},
+           				"telecom": {
+           					"type": "array",
+           					"items": {
+           						"type": "object",
+           						"properties": {
+           							"system": {
+           								"type": "string",
+           								"example": "email"
+           							},
+           							"use": {
+           								"type": "string",
+           								"example": "home"
+           							},
+           							"value": {
+           								"type": "string",
+           								"example": "dynamic.extras2@medibank.com.au"
+           							}
+           						}
+           					}
+           				},
+           				"address": {
+           					"type": "array",
+           					"items": {
+           						"type": "object",
+           						"properties": {
+           							"use": {
+           								"type": "string",
+           								"example": "home"
+           							},
+           							"type": {
+           								"type": "string",
+           								"example": "physical"
+           							},
+           							"text": {
+           								"type": "string",
+           								"example": "720 Bourke Street, Medibank, Docklands, Queensland - 4074"
+           							},
+           							"line": {
+           								"type": "array",
+           								"items": {
+           									"type": "string",
+           									"example": "720 Bourke Street"
+           								}
+           							},
+           							"city": {
+           								"type": "string",
+           								"example": "Docklands"
+           							},
+           							"state": {
+           								"type": "string",
+           								"example": "Queensland"
+           							},
+           							"postalCode": {
+           								"type": "string",
+           								"example": "4074"
+           							}
+           						}
+           					}
+           				}
+           			}
+           		},
+           		"Error": {
+           			"required": [
+           				"code",
+           				"message"
+           			],
+           			"properties": {
+           				"code": {
+           					"type": "integer",
+           					"format": "int32"
+           				},
+           				"message": {
+           					"type": "string"
+           				}
+           			}
+           		}
+           	}
+           }
