@@ -1085,7 +1085,7 @@ describe("[DNS client]", function()
         assert.same(order[n], ip)
       end
     end)
-    it("SRV-record, round-robin on lowest prio",function()
+    it(" #flaky SRV-record, round-robin on lowest prio",function()
       assert(client.init({ search = {}, }))
       local host = "srvtest.thijsschreijer.nl"
 
@@ -1182,7 +1182,7 @@ describe("[DNS client]", function()
       assert.equal(100, track["1.2.3.6"])
       assert.equal(2, track["1.2.3.4"])
     end)
-    it("port passing",function()
+    it("#flaky port passing",function()
       assert(client.init({ search = {}, }))
       local ip, port, host
       host = "atest.thijsschreijer.nl"
