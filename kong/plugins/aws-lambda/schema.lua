@@ -91,7 +91,6 @@ return {
   } },
   entity_checks = {
     { mutually_required = { "config.aws_key", "config.aws_secret" } },
-    { mutually_exclusive = { "config.aws_region", "config.host" } },
     { custom_entity_check = {
         field_sources = { "config.proxy_url" },
         fn = function(entity)
