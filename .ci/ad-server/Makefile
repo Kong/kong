@@ -6,6 +6,6 @@ build-ad-server:
 	docker-compose exec -T ad-server samba -D
 
 clone-plugin:
-	git clone https://${GITHUB_TOKEN}:@github.com/Kong/kong-plugin-enterprise-ldap-auth.git ldap-auth-advanced
+	git clone --branch 1.0.3 --single-branch https://${GITHUB_TOKEN}:@github.com/Kong/kong-plugin-enterprise-ldap-auth.git ldap-auth-advanced
 	cp -r ./ldap-auth-advanced/kong/plugins/* ../../kong/plugins/
 	rm -rf ./ldap-auth-advanced
