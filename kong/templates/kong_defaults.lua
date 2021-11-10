@@ -55,6 +55,7 @@ upstream_keepalive = NONE
 upstream_keepalive_pool_size = 60
 upstream_keepalive_max_requests = 100
 upstream_keepalive_idle_timeout = 60
+normalize_req_uri = on
 
 nginx_user = kong kong
 nginx_worker_processes = auto

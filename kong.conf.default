@@ -787,6 +787,22 @@
                                         # connection may be kept open
                                         # indefinitely.
 
+#normalize_req_uri = on                 # Whether to normalize the request URI.
+                                        # If enabled, the request URI will be normalized.
+                                        #
+                                        # Examples of `normalize_req_uri = on`
+                                        # behavior:
+                                        #
+                                        # Assuming the request uri is `/test/some%20resource%20document`,
+                                        # it will be normalized as `/test/some resource document`.
+                                        #
+                                        # Valid values to this setting are:
+                                        #
+                                        # - `on`: Request URI normalization is enabled.
+                                        # - `off`: Request URI normalization is disabled.
+                                        #
+                                        # By default this value is set to `on`.
+
 #------------------------------------------------------------------------------
 # NGINX injected directives
 #------------------------------------------------------------------------------
