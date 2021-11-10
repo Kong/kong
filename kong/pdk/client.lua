@@ -52,9 +52,8 @@ local function new(self)
 
     -- when proxying TLS request in second layer or doing TLS passthrough
     -- realip_remote_addr is always the previous layer of nginx thus always unix:
-    local tls_passthrough_block = ngx.var.kong_tls_passthrough_block
     if stream_subsystem and
-        ((tls_passthrough_block and #tls_passthrough_block > 0) or ngx.var.ssl_protocol) then
+        (ngx.var.kong_tls_passthrough_block == "1" or ngx.var.ssl_protocol) then
       return ngx.var.remote_addr
     end
 
@@ -111,9 +110,8 @@ local function new(self)
 
     -- when proxying TLS request in second layer or doing TLS passthrough
     -- realip_remote_addr is always the previous layer of nginx thus always unix:
-    local tls_passthrough_block = ngx.var.kong_tls_passthrough_block
     if stream_subsystem and
-        ((tls_passthrough_block and #tls_passthrough_block > 0) or ngx.var.ssl_protocol) then
+        (ngx.var.kong_tls_passthrough_block == "1" or ngx.var.ssl_protocol) then
       return tonumber(ngx.var.remote_port)
     end
 
