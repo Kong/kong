@@ -205,7 +205,7 @@ test-build-image: test-build-package
 test-build-pongo-deps:
 	@err_code=0; \
 	for plugin_dep in $(KONG_PLUGINS_EE_LOCATION)/*/.pongo/*; do \
-	  if [ -d $$plugin_dep ]; then \
+	  if [ -d $$plugin_dep -a -f $$plugin_dep/Dockerfile ]; then \
 	    echo "Building pongo dependency image: `basename $$plugin_dep`" ; \
 	    cd $$plugin_dep ; \
 	    docker build -t `basename $$plugin_dep` . ; \
