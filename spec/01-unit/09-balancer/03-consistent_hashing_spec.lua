@@ -826,7 +826,7 @@ describe("[consistent_hashing]", function()
         ["9.9.9.9:123"] = 80,
       }, count)
     end)
-    it("weight change for unresolved record, updates properly", function()
+    it("#flaky weight change for unresolved record, updates properly", function()
       local record = dnsA({
         { name = "really.really.really.does.not.exist.thijsschreijer.nl", address = "1.2.3.4" },
       })

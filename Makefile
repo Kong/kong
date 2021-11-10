@@ -128,13 +128,14 @@ remove: remove-plugins-ee
 	-@luarocks remove kong
 
 remove-plugins-ee:
-	-@luarocks remove kong-plugin-enterprise-forward-proxy
-	-@luarocks remove kong-plugin-enterprise-oauth2-introspection
-	-@luarocks remove kong-plugin-enterprise-proxy-cache
-	-@luarocks remove kong-plugin-enterprise-application-registration
-	-@luarocks remove kong-plugin-enterprise-ldap-auth
-	-@luarocks remove kong-plugin-jwt-signer
-	-@luarocks remove kong-plugin-mtls-auth
+	-@for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
+	  if [ -d $$plugin_ee ]; then \
+	    echo "Removing plugin: `basename $$plugin_ee`" ; \
+		package_name=`sed -n 's/^package\s*=\s*"\(.*\)".*/\1/p' *.rockspec` ; \
+	    cd $$plugin_ee ; \
+	    luarocks remove $$package_name ; \
+	  fi ; \
+	done ;
 
 dependencies: bin/grpcurl
 	@for rock in $(DEV_ROCKS) ; do \
@@ -204,7 +205,7 @@ test-build-image: test-build-package
 test-build-pongo-deps:
 	@err_code=0; \
 	for plugin_dep in $(KONG_PLUGINS_EE_LOCATION)/*/.pongo/*; do \
-	  if [ -d $$plugin_dep ]; then \
+	  if [ -d $$plugin_dep -a -f $$plugin_dep/Dockerfile ]; then \
 	    echo "Building pongo dependency image: `basename $$plugin_dep`" ; \
 	    cd $$plugin_dep ; \
 	    docker build -t `basename $$plugin_dep` . ; \
@@ -223,7 +224,7 @@ test-plugins-ee: test-build-pongo-deps test-build-image
 	    KONG_IMAGE=$(DOCKER_IMAGE_NAME) pongo lint ; \
 	    last_err_code=$$? ; \
 	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
-	    KONG_IMAGE=$(DOCKER_IMAGE_NAME) pongo run ; \
+	    KONG_IMAGE=$(DOCKER_IMAGE_NAME) pongo run --exclude-tags=flaky ; \
 	    last_err_code=$$? ; \
 	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
 	    pongo down ; \

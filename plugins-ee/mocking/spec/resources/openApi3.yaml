@@ -1,0 +1,1045 @@
+openapi: 3.0.0
+# Added by API Auto Mocking Plugin
+servers:
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/rosireddy2020/CUOOrder/1.0.0
+info:
+  description: This is a simple API
+  version: "1.0.0"
+  title: CUO_Order
+  contact:
+    email: you@your-company.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+   
+  - name: login
+    description: order login api
+  - name: user
+    description: login user api
+  - name: location
+    description: Location API for eCUo orders
+  - name: orderEntry
+    description: order entry/editing APi for eCUO orders
+  - name: standingorder
+    description: Standing orders view and Activation for eCUO orders
+  - name: commitedAmounts
+    description: Commited amount Api for eCUO orders
+  - name: pickList
+    description: PickList Api for eCUO orders
+  - name: orderprint
+    description: Orderprint Api for eCUO orders
+  - name: manifest
+    description: Manifest Api for eCUO orders
+paths:
+  /login:
+    post:
+      tags:
+        - login
+      summary: find  user is valid or not
+      operationId: login
+      requestBody:
+        description:  login input deatails
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+    
+      responses:
+        '204':
+          description: login user is valid
+        '400':
+          description: Invalid login user name
+  /adLogin:
+    post:
+      tags:
+        - login
+      summary: find ad user is valid or not
+      operationId: adLogin
+      requestBody:
+        description: Ad login input deatails
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+    
+      responses:
+        '204':
+          description: Ad name is valid
+        '400':
+          description: Invalid Ad name
+  /locations:
+    post:
+      tags:
+        - location
+      summary: find all locations by login details
+      operationId: getLocationsForOrders
+      requestBody:
+        description: Input details for locations
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EcuoLoginBean'
+        required: true
+    
+      responses:
+        "200":
+          description: Location deatails featched successfully
+          content:
+            appliation/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationEnqResponseBean'
+        '412':
+          description: Invalid  Input
+  /location:
+    post:
+      tags:
+        - location
+      summary: find New Order confiuration deatils by location
+      operationId: validateLocation
+      requestBody:
+        description: Input Valid location details
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EcuoLoginBean'
+        required: true
+    
+      responses:
+        "200":
+          description: New order details featched successfully
+          content:
+            appliation/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CuoorderLocationDetailResponse'
+        '412':
+          description: Invalid location details
+  /cuoorder:
+    post:
+      tags:
+        - orderEntry
+      summary: creating order
+      operationId: createOrder
+      requestBody:
+        description: enter valid order details
+        content:
+          appliation/json:
+              schema:
+                $ref: '#/components/schemas/NewOrderEntryBean'
+      responses:
+        "200":
+          description: Order create successfully.
+          content:
+            appliation/json:
+              schema:
+                $ref: '#/components/schemas/AddOrderResponse'
+        "400":
+          description: Invalid Input
+        "404":
+          description: Page not found
+  
+    put:
+      tags:
+        - orderEntry
+      summary: update order
+      operationId: updateOrder
+      requestBody:
+        description: enter valid order details
+        content:
+          appliation/json:
+              schema:
+                $ref: '#/components/schemas/UpdateOrderRequest'
+      responses:
+        "200":
+          description: Order create successfully.
+          content:
+            appliation/json:
+              schema:
+                $ref: '#/components/schemas/AddOrderResponse'
+        "400":
+          description: Invalid Input
+        "404":
+          description: Page not found
+  /cuoorder/delorder:
+    post:
+      tags:
+        - orderEntry
+      summary: Cancel order
+      operationId: cancelOrder
+      requestBody:
+        description: enter valid order info
+        content:
+          appliation/json:
+              schema:
+                $ref: '#/components/schemas/CancelOrderRequest'
+      responses:
+        "200":
+          description: Order Canceled
+          content:
+            appliation/json:
+              schema:
+                $ref: '#/components/schemas/CancelOrderResponse'
+        "400":
+          description: Invalid Input
+        "404":
+          description: Page not found
+  /cuoorder/orderstatus:
+    post:
+      tags:
+        - orderEntry
+      summary: order subtypes
+      operationId: findOrdersWithStatus
+      requestBody:
+        description: enter valid order info
+        content:
+          appliation/json:
+              schema:
+                $ref: '#/components/schemas/FindOrderBean'
+      responses:
+        "200":
+          description: order subtypes featched successfully
+          content:
+            appliation/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IBrowseElement'
+        "400":
+          description: Invalid Input
+        "404":
+          description: Page not found
+  /cuoorder/subtypes:
+    post:
+      tags:
+        - orderEntry
+      summary: find order subtypes
+      operationId: findOrderSubtypes
+      requestBody:
+        description: enter valid order info
+        content:
+          appliation/json:
+              schema:
+                $ref: '#/components/schemas/FindOrderBean'
+      responses:
+        "200":
+          description: Order Canceled
+          content:
+            appliation/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IBrowseElement'
+        "400":
+          description: Invalid Input
+        "404":
+          description: Page not found
+  /standingOrder/view:
+    post:
+      tags:
+        - standingorder
+      summary: find standing orders
+      operationId: viewStandingOrders
+      requestBody:
+        description: enter valid standing orders by given input
+        content:
+          appliation/json:
+              schema:
+                $ref: '#/components/schemas/ViewStdOrderBean'
+      responses:
+        "200":
+          description: Standing orders featched successfully
+          content:
+            appliation/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StandingOrderBean'
+        "400":
+          description: Invalid Input
+        "404":
+          description: Page not found
+  /standingOrder/activate:
+    post:
+      tags:
+        - standingorder
+      summary: Activating standing orders
+      operationId: activateStdOrder
+      requestBody:
+        description: Activating standing orders
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StandingOrderBean'
+      parameters: 
+        - name: siteno
+          in: query
+          schema:
+            type: integer
+        - name: systemName
+          in: header
+          schema:
+            type: string
+          
+      responses:
+        "200":
+          description: Standing orders featched successfully
+          content:
+            appliation/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StandingOrderBean'
+        "400":
+          description: Invalid Input
+        "404":
+          description: Page not found
+  /commitedAmounts/view:
+    post:
+      tags:
+        - commitedAmounts
+      summary: find Commited Amount records 
+      operationId: viewReport
+      requestBody:
+        description: Input valid date, ordertypes and debitsiteno
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommitedAmountsRequest'
+        required: true
+    
+      responses:
+        "200":
+          description: Commited Amount records featched successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: byte
+        '412':
+          description: Invalid Commited Amount input
+  /picklist/view:
+    post:
+      tags:
+        - pickList
+      summary: view or print Picklist  records 
+      operationId: viewreport
+      requestBody:
+        description: Input valid date, ordertypes and debitsiteno
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PickListParamsBean'
+        required: true
+    
+      responses:
+        "200":
+          description: PickList records featched successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: byte
+        '412':
+          description: Invalid Picklist input
+  /manifest/view:
+    post:
+      tags:
+        - manifest
+      summary: view or print Manifest  records 
+      operationId: viewREport
+      requestBody:
+        description: Input valid date, ordertypes and debitsiteno
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManifestReportRequest'
+        required: true
+    
+      responses:
+        "200":
+          description: Manifest records featched successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: byte
+        '412':
+          description: Invalid Picklist input
+  /orderprint/view:
+    post:
+      tags:
+        - orderprint
+      summary: view or print OrderPrint  records 
+      operationId: viewReports
+      requestBody:
+        description: Input valid date, ordertypes and debitsiteno
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderPrintReportRequest'
+        required: true
+    
+      responses:
+        "200":
+          description: Manifest records featched successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: byte
+        '412':
+          description: Invalid Picklist input
+  /user/{userid}:
+    get:
+      tags:
+        - user
+      summary: find login user detail like alternate gloryid
+      operationId: findUser
+      parameters:
+        - in: path
+          name: userid
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the user to get
+      responses:
+        "201":
+          description: Envelop records featched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserModel'
+        "400":
+          description: Invalid Input
+        "404":
+          description: Page not found
+      
+  
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        stationName:
+          type: number
+          format: long
+        adName:
+          type: string
+        userId:
+          type: string
+        password:
+          type: string
+    UserModel:
+      type: object
+      properties:
+        gloryid:
+          type: string
+        name:
+          type: string
+        title:
+          type: string
+        expireDate:
+          type: string
+        lockStatus:
+          type: integer
+        retryCount:
+          type: integer
+        overShort:
+          type: number
+          format: double
+        siteno:
+          type: integer
+        autoSellBuy:
+          type: integer
+        invGroupNo:
+          type: integer
+        rotateFlg:
+          type: integer
+        glId:
+          type: string
+        modifyDate:
+          type: string
+        modifyTime:
+          type: string
+        modifier:
+          type: string
+        deleteFlg:
+          type: string
+        shift:
+          type: string
+        bankId:
+          type: string
+        altUsers:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsersAltIdModel'
+        clientList:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientSet'
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupsModel'
+        adName:
+          type: string
+        employeeId:
+          type: string
+        reSellGId:
+          type: string
+        buyGId:
+          type: string
+        sellQuality:
+          type: string
+        buysiteno:
+          type: integer
+        eodinv:
+          type: integer
+        creditDateChngCtrl:
+          type: integer
+        fedBuySellCtrl:
+          type: integer
+        invAdjCtrl:
+          type: integer
+        reCountCtrl:
+          type: integer
+        sellManifest:
+          type: integer
+        invverifyReq:
+          type: integer
+        sysAltId:
+          type: integer
+        sysAltSupervisor:
+          type: integer
+        sellMfstLoc:
+          type: string
+        sellMfstAddr:
+          type: string
+        # shift:
+        #   type: array
+        #   items:
+        #     $ref: '#/components/schemas/ShiftModel'
+        menuSecurity:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuView'
+        clientno:
+          type: integer
+        # name:
+        #   type: string
+    MenuView:
+      type: object
+      properties:
+        privilege:
+          type: integer
+        nodeno:
+          type: integer
+        itemno:
+          type: integer
+        name:
+          type: string
+        module:
+          type: string
+        param:
+          type: string
+        nextnode:
+          type: integer
+        dualcustody:
+          type: integer
+        moduletype:
+          type: integer
+        deleteflg:
+          type: string
+        address:
+          type: string
+    ShiftModel:
+      type: object
+      properties:
+        sun:
+          type: integer
+        mon:
+          type: integer
+        tue:
+          type: integer
+        wed:
+          type: integer
+        thu:
+          type: integer
+        fri:
+          type: integer
+        sat:
+          type: integer
+    GroupsModel:
+      type: object
+      properties:
+        groupID:
+          type: string
+        name:
+          type: string
+        glid:
+          type: string
+        privilege:
+          type: integer
+        deleteFLG:
+          type: string
+        overShort:
+          type: number
+          format: double
+        icom:
+          type: integer
+    UsersAltIdModel:
+      type: object
+      properties:
+        gloryId:
+          type: string
+        altGloryId:
+          type: string
+        sysAltId:
+          type: string
+        altGloryIdName:
+          type: string
+    ClientSet:
+      type: object
+      properties:
+        clientno:
+          type: integer
+        name:
+          type: string
+    EcuoLoginBean:
+      type: object
+      properties:
+        siteno:
+          type: integer
+        clientno:
+          type: integer
+        loginUserId:
+          type: integer
+        loginUserName:
+          type: integer
+        
+    LocationEnqResponseBean:
+      type: object
+      properties:
+        response:
+          $ref: '#/components/schemas/CommonResponseBean'
+        locList:
+          type: array
+          items:
+            $ref: '#/components/schemas/IBrowseElement'
+    ValidateLocationRequest:
+      type: object
+      properties:
+        siteno:
+          type: integer
+        clientno:
+          type: integer
+        cuoid:
+          type: number
+          format: long
+        locationid:
+          type: string
+        locname:
+          type: string
+    CuoorderLocationDetailResponse:
+      type: object
+      properties:
+        response:
+          $ref: '#/components/schemas/CommonResponseBean'
+        neworderentbean:
+          $ref: '#/components/schemas/NewOrderEntryBean'
+        
+    AddOrderResponse:
+      type: object
+    NewOrderEntryBean:
+      type: object
+      properties:
+        siteno:
+          type: integer
+        clientno:
+          type: integer
+        locationid:
+          type: number
+          format: long
+        orderid:
+          type: number
+          format: long
+        previd:
+          type: number
+          format: long
+        orderdate:
+          type: string
+          format: date
+        ordertime:
+          type: string
+          format: date
+        orderby:
+          type: string
+        gtotal:
+          type: number
+          format: long
+        mediacount:
+          type: integer
+        shipdate:
+          type: string
+        deliverydate:
+          type: string
+        routeid:
+          type: integer
+        courierid:
+          type: integer
+        firstshipdate:
+          type: string
+          format: date
+        manifestdate:
+          type: string
+          format: date
+        canceldate:
+          type: string
+          format: date
+        cancelby:
+          type: string
+        entrytype:
+          type: string
+        orOrdersubtypeid:
+          type: integer
+        passthruLong:
+          type: number
+          format: long
+        cashadd:
+          type: integer
+        status:
+          type: string
+        accountno:
+          type: string
+        rtno:
+          type: string
+        acctlocid:
+          type: string
+        memo:
+          type: string
+        minOrderAmount:
+          type: number
+          format: long
+        maxOrderAmount:
+          type: number
+          format: long
+        shpWks:
+          type: array
+          items:
+            type: integer
+        deliWks:
+          type: array
+          items:
+            type: integer
+        shpHolidaysList:
+          type: array
+          items:
+            type: string
+            format: date
+        deliHolidaysList:
+          type: array
+          items:
+            type: string
+            format: date
+        supervisor:
+          type: string
+    UpdateOrderRequest:
+      type: object
+      properties:
+        orderid:
+          type: number
+          format: long
+        subType:
+          type: integer
+        memo:
+          type: string
+        cashAdd:
+          type: integer
+        clientno:
+          type: integer
+        siteno:
+          type: integer
+        cuoid:
+          type: number
+          format: long
+        updatedDate:
+          type: string
+          format: date
+        userId:
+          type: string
+        userName:
+          type: string
+    CancelOrderRequest:
+      type: object
+      properties:
+        siteno:
+          type: integer
+        clientno:
+          type: integer
+        orderid:
+          type: number
+          format: long
+        cuoid:
+          type: number
+          format: long
+        cancelDate:
+          type: string
+          format: date
+        cancelBy:
+          type: string
+    CancelOrderResponse:
+      type: object
+    FindOrderBean:
+      type: object
+      properties:
+        siteno:
+          type: integer
+        clientno:
+          type: integer
+        cuoid:
+          type: number
+          format: long
+        clientLocId:
+          type: string
+        ordeno:
+          type: number
+          format: long
+    GetOrderResponse:
+      type: object
+    IBrowseElement:
+      type: object
+      properties:
+        id:
+          type: number
+          format: long
+        name:
+          type: string
+        key:
+          type: string
+    StandingOrderBean:
+      type: object
+      properties:
+        maxShipdate:
+          type: string
+        clientno:
+          type: integer
+        siteno:
+          type: integer
+        orderamount:
+          type: number
+          format: long
+        mediacount:
+          type: number
+          format: long
+        stdorderno:
+          type: integer
+        locationid:
+          type: string
+        accountno:
+          type: string
+        rtno:
+          type: string
+        cuoid:
+          type: number
+          format: long
+        nextdelidate:
+          type: string
+          format: date
+        deliverydays:
+          type: integer
+        prepardays:
+          type: integer
+        delileaddays:
+          type: integer
+        ordprepdays:
+          type: integer
+        delivleaddays:
+          type: integer
+        workdaysC:
+          type: integer
+        shiproute:
+          type: integer
+        courierid:
+          type: string
+        wklyinterval:
+          type: integer
+        shipdate:
+          type: string
+          format: date
+        deliverydate:
+          type: string
+          format: date
+        orderby:
+          type: string
+        siteZoneId:
+          type: string
+    ViewStdOrderBean:
+      type: object
+      properties:
+        siteno:
+          type: integer
+        clientno:
+          type: integer
+        stdOrdDate:
+          type: string
+          format: date
+        groupid:
+          type: integer
+        siteZoneId:
+          type: string
+    CommonResponseBean:
+      type: object
+      properties:
+        responseMessage:
+          type: string
+        responseCode:
+          type: string
+        responseDetailMessage:
+          type: string
+        processCount:
+          type: string
+        versionNo:
+          type: string
+        timestamp:
+          type: string
+          format: timestamp
+    CommitedAmountsRequest:
+      type: object
+      properties:
+        fromDate:
+          type: string
+        toDate:
+          type: string
+        debitSites:
+          type: array
+          items:
+            type: integer
+        ordertypes:
+          type: array
+          items:
+            type: integer
+        funcType:
+          type: integer
+        clientNo:
+          type: integer
+        siteNo:
+          type: integer
+        clientName:
+          type: string
+    PickListParamsBean:
+      type: object
+      properties:
+        fromDate:
+          type: string
+        toDate:
+          type: string
+        clientNo:
+          type: integer
+        siteNo:
+          type: integer
+        clientName:
+          type: string
+        entryTypes:
+          type: array
+          items:
+            type: integer
+        couriers:
+          type: array
+          items:
+            $ref: '#/components/schemas/IBrowseElement'
+        funcType:
+          type: integer
+        totalsOnly:
+          type: boolean
+    ManifestReportRequest:
+      type: object
+      properties:
+        fromDate:
+          type: string
+        toDate:
+          type: string
+        clientNo:
+            type: integer
+        siteNo:
+            type: integer
+        clientName:
+          type: string
+        couriers:
+          type: array
+          items:
+            $ref: '#/components/schemas/IBrowseElement'
+        deliveryDateSorting:
+          type: boolean
+        isrouteDetail:
+          type: boolean
+        useLocationId:
+          type: boolean
+        pageTotals:
+          type: boolean
+        printShipped:
+          type: boolean
+        rePrintManifested:
+          type: boolean
+        orderMediaType:
+          type: boolean
+        orderStatusType:
+          type: boolean
+        orderUpdateToManifestSts:
+          type: boolean
+        orderCurrUpdateSts:
+          type: boolean
+        orderCoinUpdateSts:
+          type: boolean
+    OrderPrintReportRequest:
+      type: object
+      properties:
+        fromDate:
+          type: string
+        toDate:
+          type: string
+        debitSites:
+          type: array
+          items:
+            type: integer
+        couriers:
+          type: array
+          items:
+            $ref: '#/components/schemas/IBrowseElement'
+        ordertypes:
+          type: array
+          items:
+            type: integer
+        clientNo:
+            type: integer
+        siteNo:
+            type: integer
+        toOrder:
+          type: string
+        fromOrder:
+          type: string
+        iscurrLabel:
+          type: boolean
+        iscoinLabel:
+          type: boolean
+        isshippingLabel:
+          type: boolean
+        isreturnLabel:
+          type: boolean
+        isprintNew:
+          type: boolean
+        isrePrintShipped:
+          type: boolean
+        isorderPickList:
+          type: boolean
+        istotalsOnly:
+          type: boolean
+        isupdateSts:
+          type: boolean
