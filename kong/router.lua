@@ -1820,6 +1820,7 @@ function _M.new(routes)
 
   self.select = find_route
   self._set_ngx = _set_ngx
+  self.normalize_req_uri = routes.normalize_req_uri
 
   if subsystem == "http" then
     function self.exec(ctx)
@@ -1848,8 +1849,7 @@ function _M.new(routes)
           req_uri = sub(req_uri, 1, idx - 1)
         end
         
-        local normalize_req_uri = kong.configuration.normalize_req_uri
-        if normalize_req_uri == "on" then
+        if self.normalize_req_uri == "on" then
             req_uri = normalize(req_uri, true)
         end
       end
