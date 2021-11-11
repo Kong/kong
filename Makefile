@@ -215,7 +215,7 @@ test-build-pongo-deps:
 	done ; \
 	exit $$err_code;
 
-test-plugins-ee:
+test-plugins-ee: test-build-pongo-deps test-build-image
 	@err_code=0; \
 	for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
 	  if [ "`basename $$plugin_ee`" = "vault-auth" ]; then \
