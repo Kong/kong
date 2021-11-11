@@ -95,17 +95,27 @@ do
   local ngx_re_gsub = ngx.re.gsub
   local string_char = string.char
 
-  function normalize_regex(regex)
-    -- Decoding percent-encoded triplets of unreserved characters
-    return ngx_re_gsub(regex, "%([\\dA-F]{2})", function(m)
-      local hex = m[1]
-      local num = tonumber(hex, 16)
-      if RESERVED_CHARACTERS[num] then
-        return upper(m[0])
-      end
+  local function percent_decode(m)
+    local hex = m[1]
+    local num = tonumber(hex, 16)
+    if RESERVED_CHARACTERS[num] then
+      return upper(m[0])
+    end
 
-      return (REGEX_META_CHARACTERS[num] and "\\" or "") .. string_char(num)
-    end, "joi")
+    local chr = string_char(num)
+    if REGEX_META_CHARACTERS[num] then
+      return "\\" .. chr
+    end
+
+    return chr
+  end
+
+  function normalize_regex(regex)
+    if find(regex, "%", 1, true) then
+      -- Decoding percent-encoded triplets of unreserved characters
+      return ngx_re_gsub(regex, "%([\\dA-F]{2})", percent_decode, "joi")
+    end
+    return regex
   end
 end
 
