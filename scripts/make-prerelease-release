@@ -79,7 +79,7 @@ fi
 
 if [ "$step" = "" ]
 then
-   usage
+   usage "$@"
 fi
 
 EDITOR="${EDITOR-$VISUAL}"

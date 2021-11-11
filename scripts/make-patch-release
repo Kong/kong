@@ -45,7 +45,7 @@ function usage() {
 if [ "$1" = "-h" ] || [ "$1" = "--help" ] || ! [ "$1" ]
 then
    version="<x.y.z>"
-   usage
+   usage "$@"
 fi
 
 #-------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ fi
 
 if [ "$step" = "" ]
 then
-   usage
+   usage "$@"
 fi
 
 EDITOR="${EDITOR-$VISUAL}"
