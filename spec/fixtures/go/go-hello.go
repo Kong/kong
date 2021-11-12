@@ -42,6 +42,18 @@ func (conf Config) Log(kong *pdk.PDK) {
 	}
 	kong.Log.Debug("access_start: ", access_start)
 
+	header_value, err := kong.Request.GetHeader("X-Loose-Data")
+	if err != nil {
+	    kong.Log.Err(err.Error())
+	}
+	kong.Log.Debug("request_header: ", header_value)
+
+	header_value, err = kong.Response.GetHeader("X-Powered-By")
+	if err != nil {
+	    kong.Log.Err(err.Error())
+	}
+	kong.Log.Debug("response_header: ", header_value)
+
 	shared_msg, err := kong.Ctx.GetSharedString("shared_msg")
 	if err != nil {
 		kong.Log.Err(err.Error())
