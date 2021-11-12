@@ -569,7 +569,7 @@ end)
         })
 
         assert.falsy(ok)
-        assert.matches("in 'protocol': expected one of: grpc, grpcs, http, https, tcp, tls, udp", err, nil, true)
+        assert.matches("in 'protocol': expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp", err, nil, true)
         assert.matches("in 'name': invalid value '@gobo': the only accepted ascii characters are alphanumerics or ., -, _, and ~", err, nil, true)
         assert.matches("in entry 2 of 'hosts': invalid hostname: \\\\99", err, nil, true)
       end)
