@@ -578,7 +578,7 @@ function _M.license_hooks(config)
 
 
   local function forbidden()
-    return kong.response.exit(403, { message = "Forbidden" })
+    return kong.response.exit(403, { message = "Enterprise license missing or expired" })
   end
 
 
