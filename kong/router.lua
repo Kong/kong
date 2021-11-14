@@ -1849,7 +1849,7 @@ function _M.new(routes)
           req_uri = sub(req_uri, 1, idx - 1)
         end
         
-        if self.normalize_req_uri == "on" then
+        if self.normalize_req_uri ~= "off" then
             req_uri = normalize(req_uri, true)
         end
       end
