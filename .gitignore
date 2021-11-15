@@ -26,3 +26,5 @@ bin/grpcurl
 
 *.so
 *.bak
+There are more tests that could benefit from this approach, but these were failing right now.
+
