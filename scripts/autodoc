@@ -77,7 +77,6 @@ echo "Generating docs ..."
 rm -rf ./autodoc/output
 ./autodoc/admin-api/generate.lua && \
 ./autodoc/cli/generate.lua && \
-./autodoc/conf/generate.lua && \
 ./autodoc/upgrading/generate.lua && \
 ./autodoc/pdk/generate.lua
 
@@ -126,7 +125,7 @@ then
     exit 2
 fi
 
-DOCS_APP="$DOCS_REPO/app/gateway-oss/$DOCS_VERSION"
+DOCS_APP="$DOCS_REPO/app/gateway/$DOCS_VERSION"
 
 if [ ! -d "$DOCS_APP" ]
 then
@@ -139,7 +138,7 @@ then
     exit 3
 fi
 
-DOCS_NAV="$DOCS_REPO/app/_data/docs_nav_ce_$DOCS_VERSION.yml"
+DOCS_NAV="$DOCS_REPO/app/_data/docs_nav_gateway_$DOCS_VERSION.yml"
 
 if [ ! -f "$DOCS_NAV" ]
 then
@@ -154,12 +153,10 @@ then
 fi
 
 copy autodoc/output/admin-api/admin-api.md "$DOCS_APP/admin-api.md"
+copy autodoc/output/cli.md "$DOCS_APP/reference/cli.md"
 
-copy autodoc/output/configuration.md "$DOCS_APP/configuration.md"
-copy autodoc/output/cli.md "$DOCS_APP/cli.md"
-
-rm -rf "$DOCS_APP/upgrading.md"
-copy autodoc/output/upgrading.md "$DOCS_APP/upgrading.md"
+rm -rf "$DOCS_APP/install-and-run/upgrading.md"
+copy autodoc/output/upgrading.md "$DOCS_APP/install-and-run/upgrading.md"
 
 rm -rf "$DOCS_APP/pdk/"
 mkdir -p "$DOCS_APP/pdk"
