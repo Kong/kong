@@ -1,7 +1,29 @@
 #!/bin/bash
 
+red="\033[0;31m"
+green="\033[0;32m"
+cyan="\033[0;36m"
+bold="\033[1m"
+nocolor="\033[0m"
+
 scripts_folder=$(dirname "$0")
 
+#-------------------------------------------------------------------------------
+function need() {
+  req="$1"
+
+  if [ -z "$(which "$req")" ]; then
+     echo "Required command $req not found."
+     exit 1
+  fi
+}
+
+#-------------------------------------------------------------------------------
+function check_requirements() {
+   need git
+   need hub
+   need sed
+}
 #-------------------------------------------------------------------------------
 function commit_changelog() {
     if ! git status CHANGELOG.md | grep -q "modified:"

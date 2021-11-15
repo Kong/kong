@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
 
-red="\033[0;31m"
-green="\033[0;32m"
-cyan="\033[0;36m"
-bold="\033[1m"
-nocolor="\033[0m"
-
-source $(dirname "$0")/common.sh
+source "$(dirname "$0")/common.sh"
+check_requirements
 
 #-------------------------------------------------------------------------------
 function usage() {
@@ -42,21 +37,6 @@ function usage() {
    exit 0
 }
 
-#-------------------------------------------------------------------------------
-function need() {
-  req="$1"
-
-  if [ -z $(which "$req") ]; then
-     echo "Required command $req not found."
-     exit 1
-  fi
-}
-
-function check_requirements() {
-   need git
-   need hub
-   need sed
-}
 
 #-------------------------------------------------------------------------------
 # Default help
@@ -71,8 +51,6 @@ fi
 #-------------------------------------------------------------------------------
 # Variables
 #-------------------------------------------------------------------------------
-
-check_requirements
 
 version="$1"
 step="$2"

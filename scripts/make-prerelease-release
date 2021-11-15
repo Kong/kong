@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
 
-red="\033[0;31m"
-green="\033[0;32m"
 cyan="\033[0;36m"
-bold="\033[1m"
 nocolor="\033[0m"
 
-source $(dirname "$0")/common.sh
+source "$(dirname "$0")/common.sh"
+check_requirements
 
 #-------------------------------------------------------------------------------
 function usage() {
    echo
-   echo -e "Make a Kong ${yellow}alpha|beta${nocolor} release using this script:"
+   echo -e "Make a Kong ${cyan}alpha|beta${nocolor} release using this script:"
    echo ""
    echo "Usage:"
    if [ "$version" = "<x.y.z-alpha.n>" ]
