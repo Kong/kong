@@ -92,7 +92,7 @@ for _, strategy in helpers.all_strategies() do
           producer_async = false,
           topic = 'sync_topic',
           security = {
-            ssl = false,
+            ssl = true,
             certificate_id = cert.id
           }
         }
@@ -238,7 +238,7 @@ for _, strategy in helpers.all_strategies() do
       })
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
-      
+
     end)
     before_each(function()
       proxy_client = helpers.proxy_client()
@@ -405,7 +405,7 @@ for _, strategy in helpers.all_strategies() do
         local uri = "/path?key1=value1&key2=value2"
         local res = proxy_client:post(uri, {
           headers = {
-            host = "sync-sasl-host.test",
+            host = "sync-mtls-host.test",
             ["Content-Type"] = "application/json",
           },
           body = { foo = "bar" },

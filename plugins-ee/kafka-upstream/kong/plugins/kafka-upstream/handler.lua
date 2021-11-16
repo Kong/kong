@@ -87,14 +87,13 @@ function KafkaUpstreamHandler:access(conf)
 
   -- fetch certificate from the store
   if conf.security.certificate_id then
-    local cert_obj, err = cert_utils.load_certificate(conf.security.certificate_id)
-    if not cert_obj then
-      kong.log.err("failed to find certificate: ", err)
+    local client_cert, client_priv_key, err = cert_utils.load_certificate(conf.security.certificate_id)
+    if not client_cert or not client_priv_key or err ~= nil then
+      kong.log.err("failed to find or load certificate: ", err)
       return kong.response.exit(500, { message = "Could not load certificate" })
     end
-
-    conf.security.client_cert = cert_obj.cert
-    conf.security.client_priv_key = cert_obj.priv_key
+    conf.security.client_cert = client_cert
+    conf.security.client_priv_key = client_priv_key
   end
 
   local producer, err = producers.get_or_create(conf)
