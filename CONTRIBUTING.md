@@ -36,7 +36,7 @@ If you are a Kong Enterprise customer, you may contact the Enterprise Support ch
 by opening an Enterprise support ticket on
 [https://support.konghq.com](https://support.konghq.com/).
 
-If you are experiencing a P1 issue, kindly call us at the [24/7 Enterprise Support
+If you are experiencing a P1 issue, please call at the [24/7 Enterprise Support
 phone line](https://support.konghq.com/hc/en-us/articles/115004921808-Telephone-Support)
 for immediate assistance, as published in the Customer Success Reference Guide.
 
