@@ -3,7 +3,7 @@
 Hello, and welcome! Whether you are looking for help, trying to report a bug,
 thinking about getting involved in the project, or about to submit a patch, this
 document is for you! It intends to be both an entry point for newcomers to
-the community (with various technical backgrounds), and a guide/reference too for
+the community (with various technical backgrounds), and a guide/reference for
 contributors and maintainers.
 
 Consult the Table of Contents below, and jump to the desired section.
