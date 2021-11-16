@@ -9,8 +9,8 @@ return {
     postgres = { -- TODO: Breaking Error. Reference route_id, service_id, or consumer_id
         up = [[
             CREATE TABLE IF NOT EXISTS "graphql_ratelimiting_advanced_cost_decoration" (
-                "id"                         UUID                           PRIMARY KEY,
-                "service_id"                 UUID                           REFERENCES "services" ("id") ON DELETE CASCADE,
+                "id"                         UUID                       PRIMARY KEY,
+                "service_id"                 UUID                       REFERENCES "services" ("id") ON DELETE CASCADE,
                 "type_path"                  TEXT,
                 "add_arguments"              TEXT[],
                 "add_constant"               FLOAT,

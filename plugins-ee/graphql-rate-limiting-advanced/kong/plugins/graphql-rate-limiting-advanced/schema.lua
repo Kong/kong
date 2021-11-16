@@ -7,6 +7,7 @@
 
 local redis  = require "kong.enterprise_edition.redis"
 
+local ngx = require "ngx"
 
 local function check_shdict(name)
   if not ngx.shared[name] then
@@ -110,7 +111,7 @@ return {
         -- of this array of pairs. finally, we re-assign the plugin_t configuration
         -- elements directly based off the sorted temp table
         local t = {}
-        for i, v in ipairs(config.limit) do
+        for i, _ in ipairs(config.limit) do
           t[i] = { config.limit[i], config.window_size[i] }
         end
 

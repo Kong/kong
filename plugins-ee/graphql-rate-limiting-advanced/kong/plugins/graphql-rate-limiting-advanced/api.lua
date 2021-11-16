@@ -8,6 +8,7 @@
 
 local endpoints = require "kong.api.endpoints"
 
+local kong = require "kong"
 local services_schema = kong.db.services.schema
 local cost_decoration_schema = kong.db.graphql_ratelimiting_advanced_cost_decoration.schema
 
