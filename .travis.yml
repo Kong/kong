@@ -123,9 +123,9 @@ jobs:
     - name: collector
       script:
       - make test-collector
-    - name: degraphql
-      script:
-      - make test-degraphql
+    #- name: degraphql
+    #  script:
+    #  - make test-degraphql
     - name: exit-transformer
       script:
       - make test-exit-transformer
@@ -192,6 +192,9 @@ jobs:
     - name: upstream-timeout
       script:
       - make test-upstream-timeout
+    #- name: vault-auth
+    #  script:
+    #  - make test-vault-auth
 
 script:
   - .ci/run_tests.sh
