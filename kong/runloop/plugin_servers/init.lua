@@ -57,6 +57,25 @@ local exposed_api = {
     ctx_shared[k] = v
   end,
 
+  ["kong.request.get_headers"] = function(max)
+    local saved = save_for_later[coroutine_running()]
+    return saved and saved.request_headers or kong.request.get_headers(max)
+  end,
+
+  ["kong.request.get_header"] = function(name)
+    local saved = save_for_later[coroutine_running()]
+    if not saved then
+      return kong.request.get_header(name)
+    end
+
+    local header_value = saved.request_headers[name]
+    if type(header_value) == "table" then
+      header_value = header_value[1]
+    end
+
+    return header_value
+  end,
+
   ["kong.response.get_status"] = function()
     local saved = save_for_later[coroutine_running()]
     return saved and saved.response_status or kong.response.get_status()
@@ -225,6 +244,7 @@ local function build_phases(plugin)
           serialize_data = kong.log.serialize(),
           ngx_ctx = ngx.ctx,
           ctx_shared = kong.ctx.shared,
+          request_headers = ngx.req.get_headers(100),
           response_headers = ngx.resp.get_headers(100),
           response_status = ngx.status,
         }
