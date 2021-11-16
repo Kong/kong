@@ -124,7 +124,7 @@ local function generate_token(conf, service, credential, authenticated_userid,
       refresh_token = random_string()
     end
     token, err = kong.db.oauth2_tokens:insert({
-      service = service_id and { id = service_id } or nil,
+      service_id = service_id and { id = service_id } or nil,
       credential = { id = credential.id },
       authenticated_userid = authenticated_userid,
       expires_in = token_expiration,
