@@ -17,7 +17,5 @@ build = {
    modules = {
       ["kong.plugins.kafka-upstream.handler"] = "kong/plugins/kafka-upstream/handler.lua",
       ["kong.plugins.kafka-upstream.schema"] = "kong/plugins/kafka-upstream/schema.lua",
-      ["kong.plugins.kafka-upstream.producers"] = "kong/plugins/kafka-upstream/producers.lua",
-      ["kong.plugins.kafka-upstream.cert_utils"] = "kong/plugins/kafka-upstream/cert_utils.lua",
    }
 }

@@ -682,5 +682,8 @@ build = {
 
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
+
+    ["kong.enterprise_edition.kafka.plugins.cert_utils"]  = "kong/enterprise_edition/kafka/plugins/cert_utils.lua",
+    ["kong.enterprise_edition.kafka.plugins.producers"]  = "kong/enterprise_edition/kafka/plugins/producers.lua",
   }
 }

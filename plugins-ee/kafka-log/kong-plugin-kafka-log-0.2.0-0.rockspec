@@ -17,7 +17,5 @@ build = {
    modules = {
       ["kong.plugins.kafka-log.handler"] = "kong/plugins/kafka-log/handler.lua",
       ["kong.plugins.kafka-log.schema"] = "kong/plugins/kafka-log/schema.lua",
-      ["kong.plugins.kafka-log.producers"] = "kong/plugins/kafka-log/producers.lua",
-      ["kong.plugins.kafka-log.cert_utils"] = "kong/plugins/kafka-log/cert_utils.lua",
    }
 }

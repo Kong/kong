@@ -6,8 +6,8 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local kong = kong
-local producers = require "kong.plugins.kafka-upstream.producers"
-local cert_utils = require "kong.plugins.kafka-upstream.cert_utils"
+local producers = require "kong.enterprise_edition.kafka.plugins.producers"
+local cert_utils = require "kong.enterprise_edition.kafka.plugins.cert_utils"
 local cjson_encode = require("cjson").encode
 
 local ngx_encode_base64 = ngx.encode_base64
