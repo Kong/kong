@@ -45,6 +45,9 @@ local ERR           = ngx.ERR
 local WARN          = ngx.WARN
 
 
+local DEFAULT_HOSTNAME_TYPE = hostname_type("")
+
+
 local function append(destination, value)
   local n = destination[0] + 1
   destination[0] = n
@@ -352,7 +355,6 @@ end
 
 local function marshall_route(r)
   local route        = r.route
-  local service      = r.service
   local hosts        = route.hosts
   local headers      = route.headers
   local paths        = route.paths
@@ -361,36 +363,22 @@ local function marshall_route(r)
   local sources      = route.sources
   local destinations = route.destinations
 
-  local protocol
-  if service then
-    protocol = service.protocol
-  end
-
-  if not (hosts or headers or methods or paths or snis or sources
-          or destinations)
+  if not (hosts or headers or methods or paths or snis or sources or destinations)
   then
     return nil, "could not categorize route"
   end
 
-  local route_t    = {
-    type           = protocol_subsystem[protocol],
-    route          = route,
-    service        = service,
-    strip_uri      = route.strip_path    == true,
-    preserve_host  = route.preserve_host == true,
-    match_rules    = 0x00,
-    match_weight   = 0,
-    submatch_weight = 0,
-    max_uri_length = 0,
-    hosts          = { [0] = 0 },
-    headers        = { [0] = 0 },
-    uris           = { [0] = 0 },
-    methods        = { [0] = 0 },
-    sources        = { [0] = 0 },
-    destinations   = { [0] = 0 },
-    snis           = { [0] = 0 },
-    upstream_url_t = {},
-  }
+  local match_rules     = 0x00
+  local match_weight    = 0
+  local submatch_weight = 0
+  local max_uri_length  = 0
+  local hosts_t         = { [0] = 0 }
+  local headers_t       = { [0] = 0 }
+  local uris_t          = { [0] = 0 }
+  local methods_t       = { [0] = 0 }
+  local sources_t       = { [0] = 0 }
+  local destinations_t  = { [0] = 0 }
+  local snis_t          = { [0] = 0 }
 
 
   -- hosts
@@ -405,7 +393,6 @@ local function marshall_route(r)
     local has_host_plain
     local has_wildcard_host_port
 
-    local hosts_t = route_t.hosts
     for i = 1, #hosts do
       local host = hosts[i]
       if type(host) ~= "string" then
@@ -443,18 +430,16 @@ local function marshall_route(r)
     end
 
     if has_host_plain or has_host_wildcard then
-      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.HOST)
-      route_t.match_weight = route_t.match_weight + 1
+      match_rules = bor(match_rules, MATCH_RULES.HOST)
+      match_weight = match_weight + 1
     end
 
     if not has_host_wildcard then
-      route_t.submatch_weight = bor(route_t.submatch_weight,
-                                    MATCH_SUBRULES.PLAIN_HOSTS_ONLY)
+      submatch_weight = bor(submatch_weight, MATCH_SUBRULES.PLAIN_HOSTS_ONLY)
     end
 
     if has_wildcard_host_port then
-      route_t.submatch_weight = bor(route_t.submatch_weight,
-                                    MATCH_SUBRULES.HAS_WILDCARD_HOST_PORT)
+      submatch_weight = bor(submatch_weight, MATCH_SUBRULES.HAS_WILDCARD_HOST_PORT)
     end
   end
 
@@ -467,7 +452,6 @@ local function marshall_route(r)
       return nil, "headers field must be a table"
     end
 
-    local headers_t = route_t.headers
     for header_name, header_values in pairs(headers) do
       if type(header_values) ~= "table" then
         return nil, "header values must be a table for header '" ..
@@ -490,8 +474,8 @@ local function marshall_route(r)
     end
 
     if headers_t[0] > 0 then
-      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.HEADER)
-      route_t.match_weight = route_t.match_weight + 1
+      match_rules = bor(match_rules, MATCH_RULES.HEADER)
+      match_weight = match_weight + 1
     end
   end
 
@@ -506,9 +490,8 @@ local function marshall_route(r)
 
     local count = #paths
     if count > 0 then
-      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.URI)
-      route_t.match_weight = route_t.match_weight + 1
-      local uris_t = route_t.uris
+      match_rules = bor(match_rules, MATCH_RULES.URI)
+      match_weight = match_weight + 1
       for i = 1, count do
         local path = paths[i]
 
@@ -522,7 +505,7 @@ local function marshall_route(r)
 
           append(uris_t, uri_t)
           uris_t[path] = uri_t
-          route_t.max_uri_length = max(route_t.max_uri_length, #path)
+          max_uri_length = max(max_uri_length, #path)
 
         else
           local path = normalize_regex(path)
@@ -539,8 +522,7 @@ local function marshall_route(r)
 
           append(uris_t, uri_t)
           uris_t[path] = uri_t
-          route_t.submatch_weight = bor(route_t.submatch_weight,
-                                        MATCH_SUBRULES.HAS_REGEX_URI)
+          submatch_weight = bor(submatch_weight, MATCH_SUBRULES.HAS_REGEX_URI)
         end
       end
     end
@@ -557,11 +539,11 @@ local function marshall_route(r)
 
     local count = #methods
     if count > 0 then
-      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.METHOD)
-      route_t.match_weight = route_t.match_weight + 1
+      match_rules = bor(match_rules, MATCH_RULES.METHOD)
+      match_weight = match_weight + 1
 
       for i = 1, count do
-        route_t.methods[upper(methods[i])] = true
+        methods_t[upper(methods[i])] = true
       end
     end
   end
@@ -576,8 +558,8 @@ local function marshall_route(r)
 
     local count = #snis
     if count > 0 then
-      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.SNI)
-      route_t.match_weight = route_t.match_weight + 1
+      match_rules = bor(match_rules, MATCH_RULES.SNI)
+      match_weight = match_weight + 1
 
       for i = 1, count do
         local sni = snis[i]
@@ -590,7 +572,7 @@ local function marshall_route(r)
           sni = sub(sni, 1, -2)
         end
 
-        route_t.snis[sni] = sni
+        snis_t[sni] = sni
       end
     end
   end
@@ -606,8 +588,8 @@ local function marshall_route(r)
 
     local count = #sources
     if count > 0 then
-      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.SRC)
-      route_t.match_weight = route_t.match_weight + 1
+      match_rules = bor(match_rules, MATCH_RULES.SRC)
+      match_weight = match_weight + 1
 
       for i = 1, count do
         local source = sources[i]
@@ -615,7 +597,7 @@ local function marshall_route(r)
           return nil, "sources elements must be tables"
         end
 
-        append(route_t.sources, {
+        append(sources_t, {
           ip = source.ip,
           port = source.port,
           range_f = create_range_f(source.ip),
@@ -635,8 +617,8 @@ local function marshall_route(r)
 
     local count = #destinations
     if count > 0 then
-      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.DST)
-      route_t.match_weight = route_t.match_weight + 1
+      match_rules = bor(match_rules, MATCH_RULES.DST)
+      match_weight = match_weight + 1
 
       for i = 1, count do
         local destination = destinations[i]
@@ -644,7 +626,7 @@ local function marshall_route(r)
           return nil, "destinations elements must be tables"
         end
 
-        append(route_t.destinations, {
+        append(destinations_t, {
           ip = destination.ip,
           port = destination.port,
           range_f = create_range_f(destination.ip),
@@ -657,39 +639,65 @@ local function marshall_route(r)
   -- upstream_url parsing
 
 
-  if protocol then
-    route_t.upstream_url_t.scheme = protocol
+  local service_protocol
+  local service_type
+  local service_host
+  local service_port
+  local service = r.service
+  if service then
+    service_protocol = service.protocol
+    service_host = service.host
+    service_port = service.port
   end
 
-  local s = service or EMPTY_T
-
-  local host = s.host
-  if host then
-    route_t.upstream_url_t.host = host
-    route_t.upstream_url_t.type = hostname_type(host)
-
-  else
-    route_t.upstream_url_t.type = hostname_type("")
+  if service_protocol then
+    service_type = protocol_subsystem[service_protocol]
   end
 
-  local port = s.port
-  if port then
-    route_t.upstream_url_t.port = port
+  local service_hostname_type
+  if service_host then
+    service_hostname_type = hostname_type(service_host)
+  end
 
-  else
-    if protocol == "https" then
-      route_t.upstream_url_t.port = 443
-
-    elseif protocol == "http" then
-      route_t.upstream_url_t.port = 80
+  if not service_port then
+    if service_protocol == "https" then
+      service_port = 443
+    elseif service_protocol == "http" then
+      service_port = 80
     end
   end
 
-  if route_t.type == "http" then
-    route_t.upstream_url_t.path = s.path or "/"
+  local service_path
+  if service_type == "http" then
+    service_path = service and service.path or "/"
   end
 
-  return route_t
+
+  return {
+    type            = service_type,
+    route           = route,
+    service         = service,
+    strip_uri       = route.strip_path    == true,
+    preserve_host   = route.preserve_host == true,
+    match_rules     = match_rules,
+    match_weight    = match_weight,
+    submatch_weight = submatch_weight,
+    max_uri_length  = max_uri_length,
+    hosts           = hosts_t,
+    headers         = headers_t,
+    uris            = uris_t,
+    methods         = methods_t,
+    sources         = sources_t,
+    destinations    = destinations_t,
+    snis            = snis_t,
+    upstream_url_t  = {
+      scheme = service_protocol,
+      type = service_hostname_type or DEFAULT_HOSTNAME_TYPE,
+      host = service_host,
+      port = service_port,
+      path = service_path,
+    },
+  }
 end
 
 
