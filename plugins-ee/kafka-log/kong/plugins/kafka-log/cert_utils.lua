@@ -39,27 +39,24 @@ local function load_certificate(cert_id)
   local certificate, err = kong.cache:get(cert_id_cache_key(cert_id), nil, load_cert, cert_id)
   if not certificate then
     kong.log.err("failed to find certificate: ", err)
-    return nil, "failed to find certificate " .. cert_id
+    return nil, nil, "failed to find certificate " .. cert_id
   end
 
-  local cert, priv_key, err
+  local cert, priv_key, key_err, cert_err
 
-  cert, err = ssl.parse_pem_cert(certificate.cert)
-  if not cert then
-    kong.log.err("failed to parse certificate: ", err)
-    return nil, "failed to parse pem cert " .. err
+  cert, cert_err = ssl.parse_pem_cert(certificate.cert)
+  if cert == nil then
+    kong.log.err("failed to parse certificate: ", cert_err)
+    return nil, nil, "failed to parse pem cert " .. cert_err
   end
 
-  priv_key, err = ssl.parse_pem_priv_key(certificate.key)
-  if not priv_key then
-    kong.log.err("failed to parse private key: ", err)
-    return nil, "failed to parse private key"
+  priv_key, key_err = ssl.parse_pem_priv_key(certificate.key)
+  if priv_key == nil then
+    kong.log.err("failed to parse private key: ", key_err)
+    return cert, nil, "failed to parse private key" .. key_err
   end
 
-  return {
-    cert,
-    priv_key
-  }
+  return cert, priv_key, nil
 end
 
 return {

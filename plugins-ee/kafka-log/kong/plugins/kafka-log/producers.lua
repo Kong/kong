@@ -56,11 +56,11 @@ local function create(conf)
   end
 
   -- set certificates for mTLS authentication
-  if conf.security.ssl and conf.security.cert and conf.security.cert_priv_key then
+  if conf.security.ssl and conf.security.client_cert and conf.security.client_priv_key then
     kong.log.debug("enabling mTLS configuration")
 
-    producer_config.client_cert = conf.security.cert
-    producer_config.client_priv_key = conf.security.cert_priv_key
+    producer_config.client_cert = conf.security.client_cert
+    producer_config.client_priv_key = conf.security.client_priv_key
   end
 
   return kafka_producer:new(broker_list, producer_config, cluster_name)
