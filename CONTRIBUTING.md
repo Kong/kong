@@ -134,7 +134,7 @@ If you are interested in writing a new plugin for your own needs, you should beg
 reading the [Plugin Development
 Guide](https://docs.konghq.com/latest/plugin-development).
 
-If you have already wrote a plugin, and are thinking about making it available to
+If you already wrote a plugin, and are thinking about making it available to
 the community, we strongly encourage you to host it on a publicly available
 repository (like GitHub), and to distribute it via
 [LuaRocks](https://luarocks.org/search?q=kong). A good resource on how to do
