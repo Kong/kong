@@ -40,7 +40,7 @@ If you are experiencing a P1 issue, kindly call us at the [24/7 Enterprise Suppo
 phone line](https://support.konghq.com/hc/en-us/articles/115004921808-Telephone-Support)
 for immediate assistance, as published in the Customer Success Reference Guide.
 
-If you are interested in becoming a Kong Enterprise customer, feel free to visit
+If you are interested in becoming a Kong Enterprise customer, please to visit
 https://konghq.com/kong-enterprise-edition/ or contact us at
 [sales@konghq.com](mailto:sales@konghq.com).
 
