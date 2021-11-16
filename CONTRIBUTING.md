@@ -32,7 +32,7 @@ Consult the Table of Contents below, and jump to the desired section.
 
 ### Enterprise Edition
 
-If you are a Kong Enterprise customer, you can contact the Enterprise Support channels
+If you are a Kong Enterprise customer, you may contact the Enterprise Support channels
 by opening an Enterprise support ticket on
 [https://support.konghq.com](https://support.konghq.com/).
 
