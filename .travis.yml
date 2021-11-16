@@ -53,7 +53,18 @@ env:
   matrix:
     # enterprise matrix begin
     # XXX add extra jobs for different cassandra versions
+    - KONG_TEST_DATABASE=postgres POSTGRES=9.6 TEST_SUITE=integration-ee
     - KONG_TEST_DATABASE=postgres POSTGRES=9.6 TEST_SUITE=plugins-spec-ee
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.11 TEST_SUITE=integration-ee
+    #- KONG_TEST_DATABASE=none TEST_SUITE=plugins-ee
+    - POSTGRES=9.6 CASSANDRA=3.11 TEST_SUITE=plugins-spec-ee
+    # enterprise matrix end
+    - KONG_TEST_DATABASE=postgres POSTGRES=9.6 TEST_SUITE=integration
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.11 TEST_SUITE=integration
+    - KONG_TEST_DATABASE=off TEST_SUITE=dbless
+    - KONG_TEST_DATABASE=postgres POSTGRES=9.6 TEST_SUITE=plugins-spec
+    - KONG_TEST_DATABASE=cassandra CASSANDRA=3.11 TEST_SUITE=plugins-spec
+    - KONG_TEST_DATABASE=postgres POSTGRES=9.6 TEST_SUITE=pdk
 
 install:
   # Add an IPv6 config - see the corresponding Travis issue
@@ -91,8 +102,7 @@ stages:
 
 jobs:
   include:
-    - stage: lint unit
-      if: type = cron
+    - stage: lint and unit
       script:
       # setup_env.sh is not used for unit tests but there are some failures to investigate if don't start a PG instance.
       - docker run -d -t --name=postgres --rm -p 5432:5432 -e POSTGRES_USER=travis -e POSTGRES_PASSWORD=travis -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=travis postgres:9.6
@@ -103,96 +113,123 @@ jobs:
       env:
         - KONG_DATABASE=none
     - stage: Kong Enterprise Plugins (Building Docker Image)
+      if: type = cron
       script:
-      - ./dist/dist.sh build alpine
-      - ./dist/dist.sh build-image alpine
+      - make test-build-image
       - make test-build-pongo-deps
-      - docker images
       - docker save -o $HOME/docker-cache/kong-ee-test.tar kong-ee-test
       - docker save -o $HOME/docker-cache/ad-server.tar ad-server
     - stage: Kong Enterprise Plugins (Tests)
       name: forward-proxy
+      if: type = cron
       script:
       - make test-forward-proxy
     - name: canary
+      if: type = cron
       script:
       - make test-canary
     - name: application-registration
+      if: type = cron
       script:
       - make test-application-registration
     - name: collector
+      if: type = cron
       script:
       - make test-collector
     #- name: degraphql
+    #  if: type = cron
     #  script:
     #  - make test-degraphql
     - name: exit-transformer
+      if: type = cron
       script:
       - make test-exit-transformer
     - name: graphql-proxy-cache-advanced
+      if: type = cron
       script:
       - make test-graphql-proxy-cache-advanced
     - name: graphql-rate-limiting-advanced
+      if: type = cron
       script:
       - make test-graphql-rate-limiting-advanced
     - name: jq
+      if: type = cron
       script:
       - make test-jq
     - name: jwt-signer
+      if: type = cron
       script:
       - make test-jwt-signer
     - name: kafka-log
+      if: type = cron
       script:
       - make test-kafka-log
     - name: kafka-upstream
+      if: type = cron
       script:
       - make test-kafka-upstream
     - name: key-auth-enc
+      if: type = cron
       script:
       - make test-key-auth-enc
     - name: ldap-auth-advanced
+      if: type = cron
       script:
       - make test-ldap-auth-advanced
     - name: mocking
+      if: type = cron
       script:
       - make test-mocking
     - name: mtls-auth
+      if: type = cron
       script:
       - make test-mtls-auth
     - name: oauth2-introspection
+      if: type = cron
       script:
       - make test-oauth2-introspection
     - name: opa
+      if: type = cron
       script:
       - make test-opa
     - name: openid-connect
+      if: type = cron
       script:
       - make test-openid-connect
     - name: proxy-cache-advanced
+      if: type = cron
       script:
       - make test-proxy-cache-advanced
     - name: request-transformer-advanced
+      if: type = cron
       script:
       - make test-request-transformer-advanced
     - name: request-validator
+      if: type = cron
       script:
       - make test-request-validator
     - name: response-transformer-advanced
+      if: type = cron
       script:
       - make test-response-transformer-advanced
     - name: route-by-header
+      if: type = cron
       script:
       - make test-route-by-header
     - name: route-transformer-advanced
+      if: type = cron
       script:
       - make test-route-transformer-advanced
     - name: statsd-advanced
+      if: type = cron
       script:
       - make test-statsd-advanced
     - name: upstream-timeout
+      if: type = cron
       script:
       - make test-upstream-timeout
     #- name: vault-auth
+    #  if: type = cron
     #  script:
     #  - make test-vault-auth
 

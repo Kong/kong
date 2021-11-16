@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This is a temporary shell script, to avoid having unclean bash in the Makfefile.
+# This is a temporary shell script, to avoid having unclean bash in the Makefile.
 
 function globals {
   # Project related global variables
