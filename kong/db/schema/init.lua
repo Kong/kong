@@ -1596,6 +1596,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   local shorthand_fields = self.shorthand_fields
   if shorthand_fields then
     local errs = {}
+    local has_errs
     for i = 1, #shorthand_fields do
       local sname, sdata = next(shorthand_fields[i])
       local value = data[sname]
@@ -1603,6 +1604,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
         local _, err = self:validate_field(sdata, value)
         if err then
           errs[sname] = err
+          has_errs = true
         else
           data[sname] = nil
           local new_values = sdata.func(value)
@@ -1614,7 +1616,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
         end
       end
     end
-    if next(errs) then
+    if has_errs then
       return nil, errs
     end
   end
@@ -1640,44 +1642,30 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   local now_s
   local now_ms
 
-  for key, field in self:each_field(data) do
+  local is_select = context == "select"
 
+  for key, field in self:each_field(data) do
     if field.legacy and field.uuid and data[key] == "" then
       data[key] = null
     end
 
-    if field.auto then
+    if not is_select and field.auto then
+      local is_insert_or_upsert = context == "insert" or context == "upsert"
       if field.uuid then
-        if (context == "insert" or context == "upsert") and data[key] == nil then
+        if is_insert_or_upsert and data[key] == nil then
           data[key] = utils.uuid()
         end
 
       elseif field.type == "string" then
-        if (context == "insert" or context == "upsert") and data[key] == nil then
+        if is_insert_or_upsert and data[key] == nil then
           data[key] = utils.random_string()
         end
 
-      elseif key == "created_at"
-             and (context == "insert" or context == "upsert")
-             and (data[key] == null or data[key] == nil) then
-        if field.type == "number" then
-          if not now_ms then
-            update_time()
-            now_ms = ngx_now()
-          end
-          data[key] = now_ms
-
-        elseif field.type == "integer" then
-          if not now_s then
-            update_time()
-            now_s = ngx_time()
-          end
-          data[key] = now_s
-        end
-
-      elseif key == "updated_at" and (context == "insert" or
-                                      context == "upsert" or
-                                      context == "update") then
+      elseif (key == "created_at" and is_insert_or_upsert and (data[key] == null or
+                                                               data[key] == nil))
+      or
+             (key == "updated_at" and (is_insert_or_upsert or context == "update"))
+      then
         if field.type == "number" then
           if not now_ms then
             update_time()
@@ -1697,43 +1685,45 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
     data[key] = adjust_field_for_context(field, data[key], context, nulls, opts)
 
-    if context == "select" and data[key] == null and not nulls then
-      data[key] = nil
-    end
+    if is_select then
+      if data[key] == null and not nulls then
+        data[key] = nil
+      elseif field.type == "integer" and type(data[key]) == "number" then
+        data[key] = floor(data[key])
+      end
 
-    if context == "select" and field.type == "integer" and type(data[key]) == "number" then
-      data[key] = floor(data[key])
-    end
-
-    if context == 'update' and field.immutable then
+    elseif context == "update" and field.immutable then
       check_immutable_fields = true
     end
   end
 
-  if context == "select" then
-    if self.ttl and data.ttl == null and not nulls then
-      data.ttl = nil
-    end
+  if not is_select then
+    return data, nil, check_immutable_fields
+  end
 
-    for key in pairs(data) do
-      local field = self.fields[key]
-      if field then
-        if not field.legacy
-           and field.type == "string"
-           and (field.len_min or 1) > 0
-           and data[key] == ""
-        then
-          data[key] = nulls and null or nil
-        end
+  if self.ttl and data.ttl == null and not nulls then
+    data.ttl = nil
+  end
 
-      elseif not ((key == "ttl" and self.ttl) or
-                  (key == "ws_id" and opts and opts.show_ws_id)) then
-        data[key] = nil
+  local show_ws = opts and opts.show_ws_id
+  for key in pairs(data) do
+    local field = self.fields[key]
+    if field then
+      if not field.legacy
+         and field.type == "string"
+         and (field.len_min or 1) > 0
+         and data[key] == ""
+      then
+        data[key] = nulls and null or nil
       end
+
+    elseif not ((key == "ttl"   and self.ttl) or
+                (key == "ws_id" and show_ws)) then
+      data[key] = nil
     end
   end
 
-  return data, nil, check_immutable_fields
+  return data
 end
 
 
