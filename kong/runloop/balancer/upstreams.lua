@@ -83,7 +83,13 @@ local function load_upstreams_dict_into_memory()
   local found = nil
 
   -- build a dictionary, indexed by the upstream name
-  for up, err in singletons.db.upstreams:each(nil, GLOBAL_QUERY_OPTS) do
+  local upstreams = singletons.db.upstreams
+
+  local page_size
+  if upstreams.pagination then
+    page_size = upstreams.pagination.max_page_size
+  end
+  for up, err in upstreams:each(page_size, GLOBAL_QUERY_OPTS) do
     if err then
       log(CRIT, "could not obtain list of upstreams: ", err)
       return nil
