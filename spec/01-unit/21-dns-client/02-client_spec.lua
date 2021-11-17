@@ -1085,9 +1085,46 @@ describe("[DNS client]", function()
         assert.same(order[n], ip)
       end
     end)
-    it(" #flaky SRV-record, round-robin on lowest prio",function()
-      assert(client.init({ search = {}, }))
-      local host = "srvtest.thijsschreijer.nl"
+    it("SRV-record, round-robin on lowest prio",function()
+      assert(client.init())
+      local lrucache = client.getcache()
+      local host = "hello.world.test"
+      local entry = {
+        {
+          type = client.TYPE_SRV,
+          target = "1.2.3.4",
+          port = 8000,
+          weight = 5,
+          priority = 10,
+          class = 1,
+          name = host,
+          ttl = 10,
+        },
+        {
+          type = client.TYPE_SRV,
+          target = "1.2.3.4",
+          port = 8001,
+          weight = 5,
+          priority = 20,
+          class = 1,
+          name = host,
+          ttl = 10,
+        },
+        {
+          type = client.TYPE_SRV,
+          target = "1.2.3.4",
+          port = 8002,
+          weight = 5,
+          priority = 10,
+          class = 1,
+          name = host,
+          ttl = 10,
+        },
+        touch = 0,
+        expire = gettime()+10,
+      }
+      -- insert in the cache
+      lrucache:set(entry[1].type..":"..entry[1].name, entry)
 
       local results = {}
       for _ = 1,20 do
@@ -1182,10 +1219,39 @@ describe("[DNS client]", function()
       assert.equal(100, track["1.2.3.6"])
       assert.equal(2, track["1.2.3.4"])
     end)
-    it("#flaky port passing",function()
-      assert(client.init({ search = {}, }))
-      local ip, port, host
-      host = "atest.thijsschreijer.nl"
+    it("port passing",function()
+      assert(client.init())
+      local lrucache = client.getcache()
+      local entry_a = {
+        {
+          type = client.TYPE_A,
+          address = "1.2.3.4",
+          class = 1,
+          name = "a.record.test",
+          ttl = 10,
+        },
+        touch = 0,
+        expire = gettime()+10,
+      }
+      local entry_srv = {
+        {
+          type = client.TYPE_SRV,
+          target = "a.record.test",
+          port = 8001,
+          weight = 5,
+          priority = 20,
+          class = 1,
+          name = "srv.record.test",
+          ttl = 10,
+        },
+        touch = 0,
+        expire = gettime()+10,
+      }
+      -- insert in the cache
+      lrucache:set(entry_a[1].type..":"..entry_a[1].name, entry_a)
+      lrucache:set(entry_srv[1].type..":"..entry_srv[1].name, entry_srv)
+      local ip, port
+      local host = "a.record.test"
       ip,port = client.toip(host)
       assert.is_string(ip)
       assert.is_nil(port)
@@ -1194,7 +1260,7 @@ describe("[DNS client]", function()
       assert.is_string(ip)
       assert.equal(1234, port)
 
-      host = "srvtest.thijsschreijer.nl"
+      host = "srv.record.test"
       ip, port = client.toip(host)
       assert.is_string(ip)
       assert.is_number(port)

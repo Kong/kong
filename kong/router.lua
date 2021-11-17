@@ -1919,8 +1919,7 @@ function _M.new(routes)
 
       -- when proxying TLS request in second layer or doing TLS passthrough
       -- rewrite the dst_ip,port back to what specified in proxy_protocol
-      local tls_passthrough_block = var.kong_tls_passthrough_block
-      if (tls_passthrough_block and #tls_passthrough_block > 0) or var.ssl_protocol then
+      if var.kong_tls_passthrough_block == "1" or var.ssl_protocol then
         dst_ip = var.proxy_protocol_server_addr
         dst_port = tonumber(var.proxy_protocol_server_port)
       end
