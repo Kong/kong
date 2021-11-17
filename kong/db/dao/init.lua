@@ -9,8 +9,8 @@ local workspaces = require "kong.workspaces"
 local setmetatable = setmetatable
 local tostring     = tostring
 local require      = require
-local ipairs       = ipairs
 local concat       = table.concat
+local insert       = table.insert
 local error        = error
 local pairs        = pairs
 local floor        = math.floor
@@ -634,7 +634,8 @@ local function find_cascade_delete_entities(self, entity, show_ws_id)
   local constraints = self.schema:get_constraints()
   local entries = {}
   local pk = self.schema:extract_pk_values(entity)
-  for _, constraint in ipairs(constraints) do
+  for i = 1, #constraints do
+    local constraint = constraints[i]
     if constraint.on_delete == "cascade" then
       local dao = self.db.daos[constraint.schema.name]
       local method = "each_for_" .. constraint.field_name
@@ -643,8 +644,8 @@ local function find_cascade_delete_entities(self, entity, show_ws_id)
           log(ERR, "[db] failed to traverse entities for cascade-delete: ", err)
           break
         end
-        
-        table.insert(entries, { dao = dao, entity = row })
+
+        insert(entries, { dao = dao, entity = row })
       end
     end
   end
@@ -654,8 +655,8 @@ end
 
 
 local function propagate_cascade_delete_events(entries, options)
-  for _, entry in ipairs(entries) do
-    entry.dao:post_crud_event("delete", entry.entity, nil, options)
+  for i = 1, #entries do
+    entries[i].dao:post_crud_event("delete", entries[i].entity, nil, options)
   end
 end
 
@@ -1487,7 +1488,8 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
   local source = self.schema.cache_key or self.schema.primary_key
 
   local i = 2
-  for _, name in ipairs(source) do
+  for j = 1, #source do
+    local name = source[j]
     local field = self.schema.fields[name]
     local value = key[name]
     if value == null or value == nil then
