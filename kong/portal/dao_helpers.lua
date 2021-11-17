@@ -39,6 +39,7 @@ local auth_plugins = {
   ["hmac-auth"] =  { name = "hmac-auth",  dao = "hmacauth_credentials" },
   ["jwt"] =        { name = "jwt",        dao = "jwt_secrets" },
   ["key-auth"] =   { name = "key-auth",   dao = "keyauth_credentials" },
+  ["openid-connect"] = { name = 'openid-connect' },
 }
 
 
@@ -737,37 +738,37 @@ local function update_developer(self, developer, entity, options)
       return nil, err, err_t
     end
 
+    -- retrieve auth plugin
+    local plugin = auth_plugins[self.portal_auth]
+    if not plugin then
+      local code = Errors.codes.DATABASE_ERROR
+      local err = "developer update: invalid authentication applied to portal in workspace" .. workspace.name
+      local err_t = { code = code }
+      return nil, err, err_t
+    end
+
+    -- find developers consumer
+    if not consumer then
+      local code = Errors.codes.DATABASE_ERROR
+      local err = "developer update: could not find consumer mapping for " .. developer.email
+      local err_t = { code = code }
+      return nil, err, err_t
+    end
+
+    -- update consumer username
+    -- XXX DEVX: look into expanding this error state to include more generic 500 error
+    local ok = self.db.consumers:update(
+      { id = consumer.id },
+      { username = entity.email }
+    )
+    if not ok then
+      local code = Errors.codes.UNIQUE_VIOLATION
+      local err = "developer update: could not update consumer mapping for " .. developer.email
+      local err_t = { code = code, fields = { ["email"] = "already exists with value '" .. entity.email .. "'" } }
+      return nil, err, err_t
+    end
+
     if self.portal_auth ~= "openid-connect" then
-      -- retrieve auth plugin
-      local plugin = auth_plugins[self.portal_auth]
-      if not plugin then
-        local code = Errors.codes.DATABASE_ERROR
-        local err = "developer update: invalid authentication applied to portal in workspace" .. workspace.name
-        local err_t = { code = code }
-        return nil, err, err_t
-      end
-
-      -- find developers consumer
-      if not consumer then
-        local code = Errors.codes.DATABASE_ERROR
-        local err = "developer update: could not find consumer mapping for " .. developer.email
-        local err_t = { code = code }
-        return nil, err, err_t
-      end
-
-      -- update consumer username
-      -- XXX DEVX: look into expanding this error state to include more generic 500 error
-      local ok = self.db.consumers:update(
-        { id = consumer.id },
-        { username = entity.email }
-      )
-      if not ok then
-        local code = Errors.codes.UNIQUE_VIOLATION
-        local err = "developer update: could not update consumer mapping for " .. developer.email
-        local err_t = { code = code, fields = { ["email"] = "already exists with value '" .. entity.email .. "'" } }
-        return nil, err, err_t
-      end
-
       -- find all consumers credentails
       local credential
       for row, err in self.db.credentials:each_for_consumer({ id = consumer.id }) do
