@@ -38,7 +38,17 @@ local function warmup_dns(premature, hosts, count)
   local upstreams_dao = kong.db["upstreams"]
   local upstreams_names = {}
   if upstreams_dao then
-    for upstream, err in upstreams_dao:each(nil, GLOBAL_QUERY_OPTS) do
+    local page_size
+    if upstreams_dao.pagination then
+      page_size = upstreams_dao.pagination.max_page_size
+    end
+
+    for upstream, err in upstreams_dao:each(page_size, GLOBAL_QUERY_OPTS) do
+      if err then
+        ngx.log(ngx.NOTICE, "failed to iterate over upstreams: ", err)
+        break
+      end
+
       upstreams_names[upstream.name] = true
     end
   end
@@ -100,7 +110,11 @@ function cache_warmup.single_dao(dao)
     host_count = 0
   end
 
-  for entity, err in dao:each(nil, GLOBAL_QUERY_OPTS) do
+  local page_size
+  if dao.pagination then
+    page_size = dao.pagination.max_page_size
+  end
+  for entity, err in dao:each(page_size, GLOBAL_QUERY_OPTS) do
     if err then
       return nil, err
     end
