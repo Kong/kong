@@ -8,13 +8,31 @@ local tablex = require "pl.tablex"
 local constants = require "kong.constants"
 
 
+local setmetatable = setmetatable
+local loadstring = loadstring
+local get_phase = ngx.get_phase
+local tostring = tostring
+local exiting = ngx.worker.exiting
+local setfenv = setfenv
+local io_open = io.open
+local insert = table.insert
+local concat = table.concat
+local assert = assert
+local sleep = ngx.sleep
+local error = error
+local pcall = pcall
+local sort = table.sort
+local type = type
+local next = next
 local deepcopy = tablex.deepcopy
 local null = ngx.null
-local SHADOW = true
 local md5 = ngx.md5
 local pairs = pairs
 local ngx_socket_tcp = ngx.socket.tcp
 local yield = require("kong.tools.utils").yield
+
+
+local SHADOW = true
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
 local PREFIX = ngx.config.prefix()
 local SUBSYS = ngx.config.subsystem
@@ -24,6 +42,7 @@ local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 
 local DECLARATIVE_LOCK_KEY = "declarative:lock"
 local DECLARATIVE_LOCK_TTL = 60
+local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null }
 
 
 local declarative = {}
@@ -66,14 +85,14 @@ local function pretty_print_error(err_t, item, indent)
                         and "- in entry " .. k .. " of '" .. item .. "'"
                         or  "in '" .. k .. "'"
       if type(v) == "table" then
-        table.insert(out, indent .. prettykey .. ":")
-        table.insert(out, pretty_print_error(v, k, indent .. "  "))
+        insert(out, indent .. prettykey .. ":")
+        insert(out, pretty_print_error(v, k, indent .. "  "))
       else
-        table.insert(out, indent .. prettykey .. ": " .. v)
+        insert(out, indent .. prettykey .. ": " .. v)
       end
     end
   end
-  return table.concat(out, "\n")
+  return concat(out, "\n")
 end
 
 
@@ -205,12 +224,12 @@ function Config:parse_string(contents, filename, accept, old_hash)
       for k, _ in pairs(accept) do
         accepted[#accepted + 1] = k
       end
-      table.sort(accepted)
+      sort(accepted)
 
       err = "unknown file type: " ..
             tostring(filename) ..
             ". (Accepted types: " ..
-            table.concat(accepted, ", ") .. ")"
+            concat(accepted, ", ") .. ")"
     else
       err = "failed parsing declarative configuration" .. (err and (": " .. err) or "")
     end
@@ -294,7 +313,7 @@ function declarative.to_yaml_file(entities, filename)
     return nil, err
   end
 
-  local fd, err = io.open(filename, "w")
+  local fd, err = io_open(filename, "w")
   if not fd then
     return nil, err
   end
@@ -313,13 +332,14 @@ end
 local function find_or_create_current_workspace(name)
   name = name or "default"
 
-  local workspace, err, err_t = kong.db.workspaces:select_by_name(name)
+  local db_workspaces = kong.db.workspaces
+  local workspace, err, err_t = db_workspaces:select_by_name(name)
   if err then
     return nil, err, err_t
   end
 
   if not workspace then
-    workspace, err, err_t = kong.db.workspaces:upsert_by_name(name, {
+    workspace, err, err_t = db_workspaces:upsert_by_name(name, {
       name = name,
       no_broadcast_crud_event = true,
     })
@@ -336,10 +356,13 @@ end
 function declarative.load_into_db(entities, meta)
   assert(type(entities) == "table")
 
+  local db = kong.db
+
   local schemas = {}
-  for entity_name, _ in pairs(entities) do
-    if kong.db[entity_name] then
-      table.insert(schemas, kong.db[entity_name].schema)
+  for entity_name in pairs(entities) do
+    local entity = db[entity_name]
+    if entity then
+      insert(schemas, entity.schema)
     else
       return nil, "unknown entity: " .. entity_name
     end
@@ -367,7 +390,7 @@ function declarative.load_into_db(entities, meta)
 
       primary_key = schema:extract_pk_values(entity)
 
-      ok, err, err_t = kong.db[schema.name]:upsert(primary_key, entity, options)
+      ok, err, err_t = db[schema.name]:upsert(primary_key, entity, options)
       if not ok then
         return nil, err, err_t
       end
@@ -380,9 +403,12 @@ end
 
 local function export_from_db(emitter, skip_ws, skip_disabled_entities)
   local schemas = {}
-  for _, dao in pairs(kong.db.daos) do
+
+  local db = kong.db
+
+  for _, dao in pairs(db.daos) do
     if not (skip_ws and dao.schema.name == "workspaces") then
-      table.insert(schemas, dao.schema)
+      insert(schemas, dao.schema)
     end
   end
   local sorted_schemas, err = schema_topological_sort(schemas)
@@ -396,7 +422,8 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities)
   })
 
   local disabled_services = {}
-  for _, schema in ipairs(sorted_schemas) do
+  for i = 1, #sorted_schemas do
+    local schema = sorted_schemas[i]
     if schema.db_export == false then
       goto continue
     end
@@ -405,11 +432,12 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities)
     local fks = {}
     for field_name, field in schema:each_field() do
       if field.type == "foreign" then
-        table.insert(fks, field_name)
+        insert(fks, field_name)
       end
     end
-    
-    for row, err in kong.db[name]:each(nil, { nulls = true, workspace = null }) do
+
+    local page_size = db[name].pagination.max_page_size
+    for row, err in db[name]:each(page_size, GLOBAL_QUERY_OPTS) do
       if not row then
         kong.log.err(err)
         return nil, err
@@ -419,21 +447,20 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities)
       -- as well do not export plugins and routes of dsiabled services
       if skip_disabled_entities and name == "services" and not row.enabled then
         disabled_services[row.id] = true
-
       elseif skip_disabled_entities and name == "plugins" and not row.enabled then
         goto skip_emit
-
       else
-        for _, foreign_name in ipairs(fks) do
+
+        for j = 1, #fks do
+          local foreign_name = fks[j]
           if type(row[foreign_name]) == "table" then
             local id = row[foreign_name].id
-            if disabled_services[id] then
-              goto skip_emit
-            end
             if id ~= nil then
+              if disabled_services[id] then
+                goto skip_emit
+              end
               row[foreign_name] = id
             end
-
           end
         end
 
@@ -476,12 +503,12 @@ end
 
 function declarative.export_from_db(fd, skip_ws, skip_disabled_entities)
   -- not sure if this really useful for skip_ws,
-  -- but I want to allow skip_disabled_entities and would rather have consistant interface
+  -- but I want to allow skip_disabled_entities and would rather have consistent interface
   if skip_ws == nil then
     skip_ws = true
   end
 
-  if skip_disabled_entities == nil then 
+  if skip_disabled_entities == nil then
     skip_disabled_entities = false
   end
 
@@ -498,7 +525,7 @@ local table_emitter = {
     if not self.out[entity_name] then
       self.out[entity_name] = { entity_data }
     else
-      table.insert(self.out[entity_name], entity_data)
+      insert(self.out[entity_name], entity_data)
     end
   end,
 
@@ -519,7 +546,7 @@ function declarative.export_config(skip_ws, skip_disabled_entities)
     skip_ws = false
   end
 
-  if skip_disabled_entities == nil then 
+  if skip_disabled_entities == nil then
     skip_disabled_entities = true
   end
 
@@ -584,15 +611,20 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
   -- but filtered for a given tag
   local tags_by_name = {}
 
-  kong.core_cache:purge(shadow)
-  kong.cache:purge(shadow)
+  local db = kong.db
+
+  local core_cache = kong.core_cache
+  local cache = kong.cache
+
+  core_cache:purge(shadow)
+  cache:purge(shadow)
 
   local transform = meta._transform == nil and true or meta._transform
 
   for entity_name, items in pairs(entities) do
     yield()
 
-    local dao = kong.db[entity_name]
+    local dao = db[entity_name]
     if not dao then
       return nil, "unknown entity: " .. entity_name
     end
@@ -611,12 +643,12 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
     for fname, fdata in schema:each_field() do
       if fdata.unique then
         if fdata.type == "foreign" then
-          if #kong.db[fdata.reference].schema.primary_key == 1 then
-            table.insert(uniques, fname)
+          if #db[fdata.reference].schema.primary_key == 1 then
+            insert(uniques, fname)
           end
 
         else
-          table.insert(uniques, fname)
+          insert(uniques, fname)
         end
       end
       if fdata.type == "foreign" then
@@ -663,36 +695,37 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
         end
       end
 
-      local ok, err = kong.core_cache:safe_set(cache_key, item, shadow)
+      local ok, err = core_cache:safe_set(cache_key, item, shadow)
       if not ok then
         return nil, err
       end
 
       local global_query_cache_key = dao:cache_key(id, nil, nil, nil, nil, "*")
-      local ok, err = kong.core_cache:safe_set(global_query_cache_key, item, shadow)
+      local ok, err = core_cache:safe_set(global_query_cache_key, item, shadow)
       if not ok then
         return nil, err
       end
 
       -- insert individual entry for global query
-      table.insert(keys_by_ws["*"], cache_key)
+      insert(keys_by_ws["*"], cache_key)
 
       -- insert individual entry for workspaced query
       if ws_id ~= "" then
         keys_by_ws[ws_id] = keys_by_ws[ws_id] or {}
         local keys = keys_by_ws[ws_id]
-        table.insert(keys, cache_key)
+        insert(keys, cache_key)
       end
 
       if schema.cache_key then
         local cache_key = dao:cache_key(item)
-        ok, err = kong.core_cache:safe_set(cache_key, item, shadow)
+        ok, err = core_cache:safe_set(cache_key, item, shadow)
         if not ok then
           return nil, err
         end
       end
 
-      for _, unique in ipairs(uniques) do
+      for i = 1, #uniques do
+        local unique = uniques[i]
         if item[unique] then
           local unique_key = item[unique]
           if type(unique_key) == "table" then
@@ -707,7 +740,7 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
           end
 
           local unique_cache_key = prefix .. "|" .. unique .. ":" .. unique_key
-          ok, err = kong.core_cache:safe_set(unique_cache_key, item, shadow)
+          ok, err = core_cache:safe_set(unique_cache_key, item, shadow)
           if not ok then
             return nil, err
           end
@@ -716,30 +749,31 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
 
       for fname, ref in pairs(foreign_fields) do
         if item[fname] then
-          local fschema = kong.db[ref].schema
+          local fschema = db[ref].schema
 
           local fid = declarative_config.pk_string(fschema, item[fname])
 
           -- insert paged search entry for global query
           page_for[ref]["*"] = page_for[ref]["*"] or {}
           page_for[ref]["*"][fid] = page_for[ref]["*"][fid] or {}
-          table.insert(page_for[ref]["*"][fid], cache_key)
+          insert(page_for[ref]["*"][fid], cache_key)
 
           -- insert paged search entry for workspaced query
           page_for[ref][ws_id] = page_for[ref][ws_id] or {}
           page_for[ref][ws_id][fid] = page_for[ref][ws_id][fid] or {}
-          table.insert(page_for[ref][ws_id][fid], cache_key)
+          insert(page_for[ref][ws_id][fid], cache_key)
         end
       end
 
-      if item.tags then
-
+      local item_tags = item.tags
+      if item_tags then
         local ws = schema.workspaceable and ws_id or ""
-        for _, tag_name in ipairs(item.tags) do
-          table.insert(tags, tag_name .. "|" .. entity_name .. "|" .. id)
+        for i = 1, #item_tags do
+          local tag_name = item_tags[i]
+          insert(tags, tag_name .. "|" .. entity_name .. "|" .. id)
 
           tags_by_name[tag_name] = tags_by_name[tag_name] or {}
-          table.insert(tags_by_name[tag_name], tag_name .. "|" .. entity_name .. "|" .. id)
+          insert(tags_by_name[tag_name], tag_name .. "|" .. entity_name .. "|" .. id)
 
           taggings[tag_name] = taggings[tag_name] or {}
           taggings[tag_name][ws] = taggings[tag_name][ws] or {}
@@ -751,7 +785,7 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
     for ws_id, keys in pairs(keys_by_ws) do
       local entity_prefix = entity_name .. "|" .. (schema.workspaceable and ws_id or "")
 
-      local ok, err = kong.core_cache:safe_set(entity_prefix .. "|@list", keys, shadow)
+      local ok, err = core_cache:safe_set(entity_prefix .. "|@list", keys, shadow)
       if not ok then
         return nil, err
       end
@@ -761,7 +795,7 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
         if fids then
           for fid, entries in pairs(fids) do
             local key = entity_prefix .. "|" .. ref .. "|" .. fid .. "|@list"
-            local ok, err = kong.core_cache:safe_set(key, entries, shadow)
+            local ok, err = core_cache:safe_set(key, entries, shadow)
             if not ok then
               return nil, err
             end
@@ -783,8 +817,8 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
           arr[len] = id
         end
         -- stay consistent with pagination
-        table.sort(arr)
-        local ok, err = kong.core_cache:safe_set(key, arr, shadow)
+        sort(arr)
+        local ok, err = core_cache:safe_set(key, arr, shadow)
         if not ok then
           return nil, err
         end
@@ -798,7 +832,7 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
     -- tags:admin|@list -> all tags tagged "admin", regardless of the entity type
     -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
     local key = "tags:" .. tag_name .. "|@list"
-    local ok, err = kong.core_cache:safe_set(key, tags, shadow)
+    local ok, err = core_cache:safe_set(key, tags, shadow)
     if not ok then
       return nil, err
     end
@@ -806,7 +840,7 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
 
   -- tags||@list -> all tags, with no distinction of tag name or entity type.
   -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
-  local ok, err = kong.core_cache:safe_set("tags||@list", tags, shadow)
+  local ok, err = core_cache:safe_set("tags||@list", tags, shadow)
   if not ok then
     return nil, err
   end
@@ -815,7 +849,6 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
   if not ok then
     return nil, "failed to set " .. DECLARATIVE_HASH_KEY .. " in shm: " .. err
   end
-
 
   kong.default_workspace = default_workspace
   return true, nil, default_workspace
@@ -826,9 +859,11 @@ do
   local DECLARATIVE_PAGE_KEY = constants.DECLARATIVE_PAGE_KEY
 
   function declarative.load_into_cache_with_events(entities, meta, hash)
-    if ngx.worker.exiting() then
+    if exiting() then
       return nil, "exiting"
     end
+
+    local kong_shm = ngx.shared.kong
 
     local ok, err = declarative.try_lock()
     if not ok then
@@ -837,19 +872,21 @@ do
         return nil, "busy", ttl
       end
 
-      ngx.shared.kong:delete(DECLARATIVE_LOCK_KEY)
+      kong_shm:delete(DECLARATIVE_LOCK_KEY)
       return nil, err
     end
 
+    local worker_events = kong.worker_events
+
     -- ensure any previous update finished (we're flipped to the latest page)
-    ok, err = kong.worker_events.poll()
+    ok, err = worker_events.poll()
     if not ok then
-      ngx.shared.kong:delete(DECLARATIVE_LOCK_KEY)
+      kong_shm:delete(DECLARATIVE_LOCK_KEY)
       return nil, err
     end
 
     if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 and
-       ngx.get_phase() ~= "init_worker"
+       get_phase() ~= "init_worker"
     then
       -- update stream if necessary
       -- TODO: remove this once shdict can be shared between subsystems
@@ -857,7 +894,7 @@ do
       local sock = ngx_socket_tcp()
       ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
       if not ok then
-        ngx.shared.kong:delete(DECLARATIVE_LOCK_KEY)
+        kong_shm:delete(DECLARATIVE_LOCK_KEY)
         return nil, err
       end
 
@@ -867,40 +904,40 @@ do
       sock:close()
 
       if not bytes then
-        ngx.shared.kong:delete(DECLARATIVE_LOCK_KEY)
+        kong_shm:delete(DECLARATIVE_LOCK_KEY)
         return nil, err
       end
 
       assert(bytes == #json, "incomplete config sent to the stream subsystem")
     end
 
-    if ngx.worker.exiting() then
-      ngx.shared.kong:delete(DECLARATIVE_LOCK_KEY)
+    if exiting() then
+      kong_shm:delete(DECLARATIVE_LOCK_KEY)
       return nil, "exiting"
     end
 
     local default_ws
     ok, err, default_ws = declarative.load_into_cache(entities, meta, hash, SHADOW)
     if ok then
-      ok, err = kong.worker_events.post("declarative", "flip_config", default_ws)
+      ok, err = worker_events.post("declarative", "flip_config", default_ws)
       if ok ~= "done" then
-        ngx.shared.kong:delete(DECLARATIVE_LOCK_KEY)
+        kong_shm:delete(DECLARATIVE_LOCK_KEY)
         return nil, "failed to flip declarative config cache pages: " .. (err or ok)
       end
 
     else
-      ngx.shared.kong:delete(DECLARATIVE_LOCK_KEY)
+      kong_shm:delete(DECLARATIVE_LOCK_KEY)
       return nil, err
     end
 
-    ok, err = ngx.shared.kong:set(DECLARATIVE_PAGE_KEY, kong.cache:get_page())
+    ok, err = kong_shm:set(DECLARATIVE_PAGE_KEY, kong.cache:get_page())
     if not ok then
-      ngx.shared.kong:delete(DECLARATIVE_LOCK_KEY)
+      kong_shm:delete(DECLARATIVE_LOCK_KEY)
       return nil, "failed to persist cache page number: " .. err
     end
 
-    if ngx.worker.exiting() then
-      ngx.shared.kong:delete(DECLARATIVE_LOCK_KEY)
+    if exiting() then
+      kong_shm:delete(DECLARATIVE_LOCK_KEY)
       return nil, "exiting"
     end
 
@@ -908,7 +945,7 @@ do
     local sleep_time = 0.0375
 
     while sleep_left > 0 do
-      local flips = ngx.shared.kong:get(DECLARATIVE_LOCK_KEY)
+      local flips = kong_shm:get(DECLARATIVE_LOCK_KEY)
       if flips == nil or flips >= WORKER_COUNT then
         break
       end
@@ -918,17 +955,17 @@ do
         sleep_time = sleep_left
       end
 
-      ngx.sleep(sleep_time)
+      sleep(sleep_time)
 
-      if ngx.worker.exiting() then
-        ngx.shared.kong:delete(DECLARATIVE_LOCK_KEY)
+      if exiting() then
+        kong_shm:delete(DECLARATIVE_LOCK_KEY)
         return nil, "exiting"
       end
 
       sleep_left = sleep_left - sleep_time
     end
 
-    ngx.shared.kong:delete(DECLARATIVE_LOCK_KEY)
+    kong_shm:delete(DECLARATIVE_LOCK_KEY)
 
     if sleep_left <= 0 then
       return nil, "timeout"
