@@ -23,7 +23,6 @@ endif
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
-KONG_PLUGINS_EE_LOCATION ?= $(KONG_SOURCE_LOCATION)/plugins-ee
 KONG_BUILD_TOOLS_LOCATION ?= $(KONG_SOURCE_LOCATION)/../kong-build-tools
 KONG_GMP_VERSION ?= `grep KONG_GMP_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
 RESTY_VERSION ?= `grep RESTY_VERSION $(KONG_SOURCE_LOCATION)/.requirements | awk -F"=" '{print $$2}'`
@@ -122,20 +121,13 @@ install-pgmoon:
 install-kong:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
 
-install: install-kong install-pgmoon install-plugins-ee
+install: install-kong install-pgmoon
 
-remove: remove-plugins-ee
+remove:
 	-@luarocks remove kong
 
 remove-plugins-ee:
-	-@for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
-	  if [ -d $$plugin_ee ]; then \
-	    echo "Removing plugin: `basename $$plugin_ee`" ; \
-		package_name=`sed -n 's/^package\s*=\s*"\(.*\)".*/\1/p' *.rockspec` ; \
-	    cd $$plugin_ee ; \
-	    luarocks remove $$package_name ; \
-	  fi ; \
-	done ;
+	scripts/enterprise_plugin.sh remove-all
 
 dependencies: bin/grpcurl
 	@for rock in $(DEV_ROCKS) ; do \
@@ -161,16 +153,10 @@ lint:
 	@$(KONG_SOURCE_LOCATION)/scripts/copyright-header-checker
 
 install-plugins-ee:
-	@for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
-	  if [ -d $$plugin_ee ]; then \
-	    echo "Trying to install plugin: `basename $$plugin_ee`" ; \
-	    cd $$plugin_ee ; \
-	    luarocks make *.rockspec ; \
-	    if [ $$? -ne 0 ]; then \
-		  echo "Failed to install plugin: `basename $$plugin_ee`. Probably due to external dependencies missing in the current env." ; \
-		fi; \
-	  fi ; \
-	done ;
+	scripts/enterprise_plugin.sh install-all
+
+try-install-plugins-ee:
+	scripts/enterprise_plugin.sh install-all --ignore-errors
 
 test:
 	@$(TEST_CMD) spec/01-unit
@@ -203,37 +189,91 @@ test-build-image: test-build-package
 	$(KONG_SOURCE_LOCATION)/dist/dist.sh build-image alpine
 
 test-build-pongo-deps:
-	@err_code=0; \
-	for plugin_dep in $(KONG_PLUGINS_EE_LOCATION)/*/.pongo/*; do \
-	  if [ -d $$plugin_dep -a -f $$plugin_dep/Dockerfile ]; then \
-	    echo "Building pongo dependency image: `basename $$plugin_dep`" ; \
-	    cd $$plugin_dep ; \
-	    docker build -t `basename $$plugin_dep` . ; \
-	    last_err_code=$$? ; \
-	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
-	  fi ; \
-	done ; \
-	exit $$err_code;
+	scripts/enterprise_plugin.sh build-deps
 
-test-plugins-ee: test-build-pongo-deps test-build-image
-	@err_code=0; \
-	for plugin_ee in $(KONG_PLUGINS_EE_LOCATION)/*; do \
-	  if [ "`basename $$plugin_ee`" = "vault-auth" ]; then \
-	    continue ; \
-	  fi ; \
-	  if [ -d $$plugin_ee -a -d $$plugin_ee/spec ]; then \
-	    echo "Running plugin tests: `basename $$plugin_ee`" ; \
-	    cd $$plugin_ee ; \
-	    KONG_IMAGE=$(DOCKER_IMAGE_NAME) pongo lint ; \
-	    last_err_code=$$? ; \
-	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
-	    KONG_IMAGE=$(DOCKER_IMAGE_NAME) pongo run --exclude-tags=flaky ; \
-	    last_err_code=$$? ; \
-	    if [ $$err_code -eq 0 ]; then err_code=$$last_err_code; fi ; \
-	    pongo down ; \
-	  fi ; \
-	done ; \
-	exit $$err_code;
+test-forward-proxy:
+	scripts/enterprise_plugin.sh test forward-proxy
+
+test-canary:
+	scripts/enterprise_plugin.sh test canary
+
+test-application-registration:
+	scripts/enterprise_plugin.sh test application-registration
+
+test-collector:
+	scripts/enterprise_plugin.sh test collector
+
+test-degraphql:
+	scripts/enterprise_plugin.sh test degraphql
+
+test-exit-transformer:
+	scripts/enterprise_plugin.sh test exit-transformer
+
+test-graphql-proxy-cache-advanced:
+	scripts/enterprise_plugin.sh test graphql-proxy-cache-advanced
+
+test-graphql-rate-limiting-advanced:
+	scripts/enterprise_plugin.sh test graphql-rate-limiting-advanced
+
+test-jq:
+	scripts/enterprise_plugin.sh test jq
+
+test-jwt-signer:
+	scripts/enterprise_plugin.sh test jwt-signer
+
+test-kafka-log:
+	scripts/enterprise_plugin.sh test kafka-log
+
+test-kafka-upstream:
+	scripts/enterprise_plugin.sh test kafka-upstream
+
+test-key-auth-enc:
+	scripts/enterprise_plugin.sh test key-auth-enc
+
+test-ldap-auth-advanced:
+	scripts/enterprise_plugin.sh test ldap-auth-advanced
+
+test-mocking:
+	scripts/enterprise_plugin.sh test mocking
+
+test-mtls-auth:
+	scripts/enterprise_plugin.sh test mtls-auth
+
+test-oauth2-introspection:
+	scripts/enterprise_plugin.sh test oauth2-introspection
+
+test-opa:
+	scripts/enterprise_plugin.sh test opa
+
+test-openid-connect:
+	scripts/enterprise_plugin.sh test openid-connect
+
+test-proxy-cache-advanced:
+	scripts/enterprise_plugin.sh test proxy-cache-advanced
+
+test-request-transformer-advanced:
+	scripts/enterprise_plugin.sh test request-transformer-advanced
+
+test-request-validator:
+	scripts/enterprise_plugin.sh test request-validator
+
+test-response-transformer-advanced:
+	scripts/enterprise_plugin.sh test response-transformer-advanced
+
+test-route-by-header:
+	scripts/enterprise_plugin.sh test route-by-header
+
+test-route-transformer-advanced:
+	scripts/enterprise_plugin.sh test route-transformer-advanced
+
+test-statsd-advanced:
+	scripts/enterprise_plugin.sh test statsd-advanced
+
+test-upstream-timeout:
+	scripts/enterprise_plugin.sh test upstream-timeout
+
+test-vault-auth:
+	scripts/enterprise_plugin.sh test vault-auth
 
 pdk-phase-checks:
 	rm -f t/phase_checks.stats

@@ -16,7 +16,8 @@ local http         = require "resty.http"
 local cjson        = require "cjson.safe"
 
 
-local kong     = kong
+local ngx      = require "ngx"
+local kong     = require "kong"
 local max      = math.max
 local tonumber = tonumber
 
@@ -142,7 +143,7 @@ local function each_by_name(entity, name)
 end
 
 
-function NewRLHandler:init_worker()
+function NewRLHandler.init_worker()
   local worker_events = kong.worker_events
 
   -- to start with, load existing plugins and create the

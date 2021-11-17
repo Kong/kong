@@ -106,7 +106,7 @@ local cost_functions = {
 }
 
 local function calculate_cost(query_ast, cost_function)
-  local cost_function = cost_function or "default"
+  cost_function = cost_function or "default"
 
   if not cost_functions[cost_function] then
     return nil, "cost function " .. cost_function .. " not implemented"
