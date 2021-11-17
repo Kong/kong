@@ -25,6 +25,8 @@ local insert = table.insert
 local concat = table.concat
 local tostring = tostring
 local cjson_encode = require("cjson.safe").encode
+local ngx_sleep = ngx.sleep
+local get_phase = ngx.get_phase
 
 local DeclarativeConfig = {}
 
@@ -43,6 +45,12 @@ local foreign_references = {}
 -- Maps an entity to entities that foreign-reference it
 -- e.g. `foreign_children["services"]["routes"] = "service"`
 local foreign_children = {}
+
+local function yield()
+  if get_phase() ~= "init" then
+    ngx_sleep(0)
+  end
+end
 
 
 function DeclarativeConfig.pk_string(schema, object)
@@ -663,6 +671,8 @@ local function flatten(self, input)
 
   local ok, err = self:validate(input)
   if not ok then
+    yield()
+
     -- the error may be due entity validation that depends on foreign entity,
     -- and that is the reason why we try to validate the input again with the
     -- filled foreign keys
@@ -677,16 +687,24 @@ local function flatten(self, input)
       local err3 = utils.deep_merge(err2, extract_null_errors(err))
       return nil, err3
     end
+
+    yield()
   end
 
   generate_ids(input, self.known_entities)
 
+  yield()
+
   local processed = self:process_auto_fields(input, "insert")
+
+  yield()
 
   local by_id, by_key = validate_references(self, processed)
   if not by_id then
     return nil, by_key
   end
+
+  yield()
 
   local meta = {}
   for key, value in pairs(processed) do
@@ -696,7 +714,16 @@ local function flatten(self, input)
   end
 
   local entities = {}
+  local yield_n = 0
+
   for entity, entries in pairs(by_id) do
+    if get_phase() ~= "init" then
+      yield_n = yield_n + 1
+      if yield_n % 500 == 0 then
+        ngx_sleep(0)
+      end
+    end
+
     local schema = all_schemas[entity]
     entities[entity] = {}
     for id, entry in pairs(entries) do
