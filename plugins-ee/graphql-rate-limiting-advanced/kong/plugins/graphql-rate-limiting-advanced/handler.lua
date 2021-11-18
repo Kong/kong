@@ -16,8 +16,8 @@ local http         = require "resty.http"
 local cjson        = require "cjson.safe"
 
 
-local ngx      = require "ngx"
-local kong     = require "kong"
+local ngx      = ngx
+local kong     = kong
 local max      = math.max
 local tonumber = tonumber
 
