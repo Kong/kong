@@ -12,7 +12,7 @@ local schema       = require "kong.plugins.rate-limiting-advanced.schema"
 local event_hooks  = require "kong.enterprise_edition.event_hooks"
 local concurrency  = require "kong.concurrency"
 local cjson_safe   = require "cjson.safe"
-
+local helpers        = require "kong.enterprise_edition.consumer_groups_helpers"
 
 local kong     = kong
 local ceil     = math.ceil
@@ -366,6 +366,24 @@ function NewRLHandler:access(conf)
   -- currently rely on this in scenarios where workers initialize without database availability
   if not ratelimiting.config[conf.namespace] then
     new_namespace(conf, true)
+  end
+
+  -- check to apply consumer groups
+  if conf.enforce_consumer_groups then
+    if kong.client.get_consumer() then
+      local consumer = kong.client.get_consumer()
+      for i = 1, #conf.consumer_groups do
+        if helpers.is_consumer_in_group(consumer.id, conf.consumer_groups[i]) then
+          local consumer_group = helpers.get_consumer_group(conf.consumer_groups[i])
+          local group_config = helpers.get_consumer_group_config(consumer_group.id)
+    
+          conf.window_size = group_config.config.window_size
+          conf.window_type = group_config.config.window_type
+          conf.limit = group_config.config.limit
+          break --exit on the first matching group found
+        end
+      end
+    end
   end
 
   local limit

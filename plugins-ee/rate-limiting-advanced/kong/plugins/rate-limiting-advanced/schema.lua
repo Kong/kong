@@ -79,6 +79,16 @@ return {
           { header_name = typedefs.header_name, },
           { path = typedefs.path },
           { redis = redis.config_schema},
+          { enforce_consumer_groups = {
+            type = "boolean",
+            default = false,
+          }},
+          { consumer_groups = {
+            type = "array",
+            elements = {
+              type = "string",
+            },
+          }},
         },
       },
     }

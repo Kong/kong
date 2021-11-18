@@ -7,40 +7,10 @@
 
 local endpoints          = require "kong.api.endpoints"
 local utils              = require "kong.tools.utils"
-local inspect            = require "inspect"
-local kong = kong 
+local kong = kong
 local consumer_group
 local consumer_groups             = kong.db.consumer_groups
-
-local function get_consumers_in_group(consumer_group_pk)
-  local consumers = {}
-  local len = 0
-  for row, err in kong.db.consumer_group_consumers:each() do
-    if consumer_group_pk == row.consumer_group.id then
-      len = len + 1
-      consumers[len] = kong.db.consumers:select(row.consumer)
-    end
-  end
-  if len == 0 then
-    return nil
-  end
-  return consumers
-end
-
-local function get_plugins_in_group(consumer_group_pk)
-  local plugins = {}
-  local len = 0
-  for row, err in kong.db.consumer_group_plugins:each() do
-    if consumer_group_pk == row.consumer_group.id then
-      len = len + 1
-      plugins[len] = row
-    end
-  end
-  if len == 0 then
-    return nil
-  end
-  return plugins
-end
+local consumer_group_helpers        = require "kong.enterprise_edition.consumer_groups_helpers"
 
 return {
   ["/consumer_groups"] = {
@@ -57,7 +27,9 @@ return {
         return endpoints.handle_error(err_t)
       end
       if not group then
+        if self.req.method ~= "PUT" then
         return kong.response.error(404, "No group named '" .. self.params.consumer_groups .. "'" )
+        end
       end
       consumer_group = group
     end,
@@ -67,12 +39,9 @@ return {
         return kong.response.error(400, "No consumer provided")
       end
 
-      kong.log.err("params : " .. inspect(self.params.consumer))
-
       local consumer_id
       for i = 1, #self.params.consumer do
         if not utils.is_valid_uuid(self.params.consumer[i]) then
-          kong.log.err("param : " .. inspect(self.params.consumer[i]))
           local consumer, second, err_t = kong.db.consumers:select_by_username(self.params.consumer[i])
           if not consumer then
             return kong.response.error(400, "Consumer '" .. self.params.consumer[i] .. "' not found")
@@ -97,12 +66,20 @@ return {
           return endpoints.handle_error(err_t)
         end
       end
+     
+      local consumer_group =  consumer_group_helpers.get_consumer_group(self.params.consumer_groups)
+      local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
+    
+      return kong.response.exit(201, {
+        consumer_group = consumer_group,
+        consumers = consumers,
+      })
     end,
 
     GET = function(self, db, helpers)
     --get plugins and consumers
-    local consumers = get_consumers_in_group(consumer_group.id)
-    local plugins = get_plugins_in_group(consumer_group.id)
+    local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
+    local plugins = consumer_group_helpers.get_plugins_in_group(consumer_group.id)
 
     return kong.response.exit(200, {
                                     consumer_group = consumer_group,
@@ -110,6 +87,12 @@ return {
                                     consumers = consumers
     })
   
+    end,
+
+    PUT = function (self, db, helpers)
+      return endpoints.put_entity_endpoint(consumer_groups.schema)
+                                          (self, db, helpers)
+      
     end,
 
 
