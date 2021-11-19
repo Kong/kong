@@ -42,7 +42,7 @@ return {
       local consumer_id
       for i = 1, #self.params.consumer do
         if not utils.is_valid_uuid(self.params.consumer[i]) then
-          local consumer, second, err_t = kong.db.consumers:select_by_username(self.params.consumer[i])
+          local consumer = kong.db.consumers:select_by_username(self.params.consumer[i])
           if not consumer then
             return kong.response.error(400, "Consumer '" .. self.params.consumer[i] .. "' not found")
           end
@@ -116,7 +116,7 @@ return {
         return kong.response.error(400, "No configuration provided")
       end
 
-      local record, err_t = kong.db.consumer_group_plugins:select_by_name(plugin.name)
+      local record = kong.db.consumer_group_plugins:select_by_name(plugin.name)
       local id
       if not record then
         id = utils.uuid()

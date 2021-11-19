@@ -72,7 +72,7 @@ local function get_consumers_in_group(consumer_group_pk)
 end
 
 local function is_consumer_in_group(consumer_pk, consumer_group_name)
-  local relation, err_t = kong.db.consumer_group_consumers:select(
+  local relation = kong.db.consumer_group_consumers:select(
     {
       consumer = {id = consumer_pk},
       consumer_group = {id = get_consumer_group(consumer_group_name).id},
