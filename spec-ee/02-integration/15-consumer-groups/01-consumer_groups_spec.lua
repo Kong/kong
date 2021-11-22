@@ -228,7 +228,8 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("delete cascade should work as expected", function()
-      local consumer_group, consumer, consumer_group_plugin
+
+      local consumer_group, consumer
 
       local function insert_and_delete(dao_name, delete_id)
         local mapping = {
