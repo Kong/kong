@@ -1296,8 +1296,7 @@
                                  # Least recently used DNS records are discarded 
                                  # from cache if it is full. Both errors and 
                                  # data are cached, therefore a single name query 
-                                 # can easily take up 10-15 slots. Especially 
-                                 # with k8s, with the default ndots=5 setting.
+                                 # can easily take up 10-15 slots.
 
 #dns_not_found_ttl = 30          # TTL in seconds for empty DNS responses and
                                  # "(3) name error" responses.
