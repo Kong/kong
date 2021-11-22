@@ -1294,7 +1294,10 @@
 #dns_cache_size = 10000          # Defines the maximum allowed number of
                                  # DNS records stored in memory cache.
                                  # Least recently used DNS records are discarded 
-                                 # from cache if it is full.
+                                 # from cache if it is full. Both errors and 
+                                 # data are cached, therefore a single name query 
+                                 # can easily take up 10-15 slots. Especially 
+                                 # with k8s, with the default ndots=5 setting.
 
 #dns_not_found_ttl = 30          # TTL in seconds for empty DNS responses and
                                  # "(3) name error" responses.
