@@ -33,13 +33,23 @@ return {
       end
       consumer_group = group
     end,
-  
+
     POST = function(self, db, helpers)
       if not self.params.consumer then
         return kong.response.error(400, "No consumer provided")
       end
 
       local consumer_id
+
+      for i = 1, #self.params.consumer do
+        if not utils.is_valid_uuid(self.params.consumer[i]) then
+          local consumer = kong.db.consumers:select_by_username(self.params.consumer[i])
+          if not consumer then
+            return kong.response.error(400, "Consumer '" .. self.params.consumer[i] .. "' not found")
+          end
+        end
+      end
+
       for i = 1, #self.params.consumer do
         if not utils.is_valid_uuid(self.params.consumer[i]) then
           local consumer = kong.db.consumers:select_by_username(self.params.consumer[i])
@@ -55,7 +65,6 @@ return {
           consumer_id = consumer.id
         end
 
-      
         local consumer_group_relation, _, err_t = kong.db.consumer_group_consumers:insert(
           {
             consumer_group = { id = consumer_group.id },
@@ -66,10 +75,10 @@ return {
           return endpoints.handle_error(err_t)
         end
       end
-     
+
       local consumer_group =  consumer_group_helpers.get_consumer_group(self.params.consumer_groups)
       local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
-    
+
       return kong.response.exit(201, {
         consumer_group = consumer_group,
         consumers = consumers,

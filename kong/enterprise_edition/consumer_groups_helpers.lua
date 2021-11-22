@@ -29,7 +29,7 @@ end
 
 local function load_group_config(consumer_group_id)
   local grpcfg
-    for row, err_t in kong.db.consumer_group_plugins:each() do
+    for row in kong.db.consumer_group_plugins:each() do
       if row.consumer_group.id == consumer_group_id then
         if row.name == "rate-limiting-advanced" then
           grpcfg = row
@@ -87,7 +87,7 @@ end
 local function get_plugins_in_group(consumer_group_pk)
   local plugins = {}
   local len = 0
-  for row, err in kong.db.consumer_group_plugins:each() do
+  for row in kong.db.consumer_group_plugins:each() do
     if consumer_group_pk == row.consumer_group.id then
       len = len + 1
       plugins[len] = row
