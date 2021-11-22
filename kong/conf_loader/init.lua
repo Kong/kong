@@ -74,6 +74,18 @@ local cipher_suites = {
                          .. "AES256-SHA:"
                          .. "DES-CBC3-SHA",
     prefer_server_ciphers = "on",
+  },
+                     fips = { -- https://wiki.openssl.org/index.php/FIPS_mode_and_TLS
+                          -- TLSv1.0 and TLSv1.1 is not completely not FIPS compliant,
+                          -- but must be used under certain condititions like key sizes,
+                          -- signatures in the full chain that Kong can't control.
+                          -- In that case, we disables TLSv1.0 and TLSv1.1 and user
+                          -- can optionally turn them on if they are aware of the caveats.
+                          -- No FIPS compliant predefined DH group available prior to
+                          -- OpenSSL 3.0.
+                protocols = "TLSv1.2",
+                  ciphers = "TLSv1.2+FIPS:kRSA+FIPS:!eNULL:!aNULL",
+    prefer_server_ciphers = "on",
   }
 }
 
