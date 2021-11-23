@@ -65,6 +65,8 @@ local cache_opts = {
       reverse_lookup = reverse_lookup,
     }
   end,
+  ttl = 3600,
+  neg_ttl = 3600,
 }
 
 
