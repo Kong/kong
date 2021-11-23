@@ -173,13 +173,13 @@ describe("licensing", function()
         }
       end)
 
-      it("denies defined methods", function()
+      it("#only denies defined methods", function()
         for _, method in ipairs({ "GET", "OPTION" }) do
           -- clean up calls
           assert(stub(kong.response, "exit"))
           assert(stub(ngx.req, "get_method").returns(method))
           assert.is_nil(lic_helper.license_can_proceed({route_name = "/workspaces"}))
-          assert.stub(kong.response.exit).was.called_with(403,  { message = "Forbidden" })
+          assert.stub(kong.response.exit).was.called_with(403,  { message = "Enterprise license missing or expired" })
         end
       end)
 
@@ -197,7 +197,7 @@ describe("licensing", function()
           assert(stub(kong.response, "exit"))
           assert(stub(ngx.req, "get_method").returns(method))
           assert.is_nil(lic_helper.license_can_proceed({route_name = "/workspaces/:workspaces"}))
-          assert.stub(kong.response.exit).was.called_with(403,  { message = "Forbidden" })
+          assert.stub(kong.response.exit).was.called_with(403,  { message = "Enterprise license missing or expired" })
         end
       end)
     end)
@@ -230,7 +230,7 @@ describe("licensing", function()
           assert(stub(kong.response, "exit"))
           assert(stub(ngx.req, "get_method").returns(method))
           assert.is_nil(lic_helper.license_can_proceed({route_name = "/workspaces"}))
-          assert.stub(kong.response.exit).was.called_with(403,  { message = "Forbidden" })
+          assert.stub(kong.response.exit).was.called_with(403,  { message = "Enterprise license missing or expired" })
         end
       end)
 
@@ -264,7 +264,7 @@ describe("licensing", function()
           it("denies ".. method, function()
             assert(stub(ngx.req, "get_method").returns(method))
             assert.is_nil(lic_helper.license_can_proceed({route_name = "/foo"}))
-            assert.stub(kong.response.exit).was.called_with(403,  { message = "Forbidden" })
+            assert.stub(kong.response.exit).was.called_with(403,  { message = "Enterprise license missing or expired" })
           end)
         end
 
