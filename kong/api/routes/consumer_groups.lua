@@ -14,13 +14,6 @@ local consumer_group_helpers        = require "kong.enterprise_edition.consumer_
 local inspect = require "inspect"
 
 return {
-  ["/consumer_groups"] = {
-    GET = function(self, db, helpers)
-      return endpoints.get_collection_endpoint(kong.db.consumer_groups.schema)
-                                          (self, db, helpers)
-    end,
-  },
-
   ["/consumer_groups/:consumer_groups"] = {
     before = function(self, db, helpers)
       local group, _, err_t = endpoints.select_entity(self, db, kong.db.consumer_groups.schema)
@@ -51,7 +44,6 @@ return {
     PUT = function(self, db, helpers)
       return endpoints.put_entity_endpoint(kong.db.consumer_groups.schema)
                                           (self, db, helpers)
-      
     end,
 
   },
@@ -68,6 +60,16 @@ return {
         end
       end
       consumer_group = group
+    end,
+
+    GET = function(self, db, helpers)
+      consumer_group =  consumer_group_helpers.get_consumer_group(self.params.consumer_groups)
+      local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
+
+      return kong.response.exit(201, {
+        consumer_group = consumer_group,
+        consumers = consumers,
+      })
     end,
 
     POST = function(self, db, helpers)
@@ -258,4 +260,32 @@ return {
       return kong.response.exit(204)
     end,
   },
+
+  ["/consumers/:consumers/groups/:groups"] = {
+    before = function(self, db, helpers)
+      local consumer_in_path, _, err_t = endpoints.select_entity(self, db, db.consumers.schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+      if not consumer_in_path then
+        return kong.response.error(404, "Consumer '" .. self.params.consumers .. "' not found" )
+      end
+      consumer = consumer_in_path
+      local group = consumer_group_helpers.get_consumer_group(self.params.groups)
+      if not group then
+        return kong.response.error(404, { message = "No group named '" .. self.params.consumer_groups .. "'" })
+      end
+      consumer_group = group
+    end,
+
+    DELETE = function(self, db, helpers)
+      if consumer_group_helpers.delete_consumer_in_group(consumer.id, consumer_group.id) then
+        return kong.response.exit(204)
+      else
+        return kong.response.error(404,
+        "Consumer '" .. consumer.id .. "' not found in Group '" .. consumer_group.id .."'" )
+      end
+    end,
+
+  }
 }
