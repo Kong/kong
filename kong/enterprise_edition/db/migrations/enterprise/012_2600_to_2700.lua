@@ -60,6 +60,26 @@ return {
       ]],
     },
     cassandra = {
-      up = [[]],
+      up = [[
+        CREATE TABLE IF NOT EXISTS consumer_groups(
+          id          uuid PRIMARY KEY,
+          created_at  timestamp,
+          name        text
+        );
+
+        CREATE TABLE IF NOT EXISTS consumer_group_consumers(
+          consumer_id uuid,
+          consumer_group_id uuid,
+          PRIMARY KEY(consumer_id, consumer_group_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS consumer_group_plugins(
+          id          uuid PRIMARY KEY,
+          created_at  timestamp,
+          consumer_group_id uuid,
+          name        text,
+          config      text
+        );
+      ]],
      }
     }
