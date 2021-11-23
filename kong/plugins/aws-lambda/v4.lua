@@ -79,7 +79,6 @@ local function derive_signing_key(kSecret, date, region, service)
 end
 
 local function prepare_awsv4_request(tbl)
-  local domain = tbl.domain or "amazonaws.com"
   local region = tbl.region
   local service = tbl.service
   local request_method = tbl.method
