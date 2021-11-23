@@ -7,7 +7,7 @@
 
 local redis  = require "kong.enterprise_edition.redis"
 
-local ngx = require "ngx"
+local ngx = ngx
 
 local function check_shdict(name)
   if not ngx.shared[name] then

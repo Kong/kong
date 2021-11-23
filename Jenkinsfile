@@ -78,6 +78,16 @@ pipeline {
             sh "./dist/dist.sh test debian:9 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p debian:9 -e -R ${env.RELEASE_SCOPE}"
           },
+          debian10: {
+            sh "./dist/dist.sh build debian:10 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test debian:10 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p debian:10 -e -R ${env.RELEASE_SCOPE}"
+          },
+          debian11: {
+            sh "./dist/dist.sh build debian:11 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh test debian:11 ${env.RELEASE_SCOPE}"
+            sh "./dist/dist.sh release -H prod -V -u $PULP_USR -k $PULP_PSW -p debian:11 -e -R ${env.RELEASE_SCOPE}"
+          },
           ubuntu1604: {
             sh "./dist/dist.sh build ubuntu:16.04 ${env.RELEASE_SCOPE}"
             sh "./dist/dist.sh test ubuntu:16.04 ${env.RELEASE_SCOPE}"

@@ -51,14 +51,6 @@ local constants = {
   },
 
   plugins = {
-    "proxy-cache-advanced",
-    "oauth2-introspection",
-    "forward-proxy",
-    "canary",
-    "request-transformer-advanced",
-    "response-transformer-advanced",
-    "statsd-advanced",
-    "route-by-header",
     "application-registration"
   },
 

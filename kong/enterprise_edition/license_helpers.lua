@@ -239,7 +239,7 @@ function _M.license_can_proceed(self)
   if (deny[route] and (deny[route][method] or deny[route]["*"]))
     and not (allow[route] and (allow[route][method] or allow[route]["*"]))
   then
-    return kong.response.exit(403, { message = "Forbidden" })
+    return kong.response.exit(403, { message = "Enterprise license missing or expired" })
   end
 
   if not kong.licensing:can("write_admin_api")
@@ -250,7 +250,7 @@ function _M.license_can_proceed(self)
     -- Maybe this operation is allowed even with write_admin_api off
     and not (allow[route] and (allow[route][method] or allow[route]["*"]))
   then
-    return kong.response.exit(403, { message = "Forbidden" })
+    return kong.response.exit(403, { message = "Enterprise license missing or expired" })
   end
 
   if not license_utils.license_validation_can_proceed()

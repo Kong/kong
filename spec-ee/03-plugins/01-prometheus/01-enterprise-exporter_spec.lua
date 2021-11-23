@@ -7,13 +7,7 @@
 
 local helpers = require "spec.helpers"
 
-local t = pending
-local pok = pcall(require, "kong.enterprise_edition.licensing")
-if pok then
-  t = describe
-end
-
-t("Plugin: prometheus (exporter) enterprise licenses", function()
+describe("Plugin: prometheus (exporter) enterprise licenses", function()
   local admin_client
 
   setup(function()

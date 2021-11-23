@@ -649,6 +649,8 @@ build = {
     ["kong.plugins.prometheus.prometheus"] = "kong/plugins/prometheus/prometheus.lua",
     ["kong.plugins.prometheus.serve"] = "kong/plugins/prometheus/serve.lua",
     ["kong.plugins.prometheus.schema"] = "kong/plugins/prometheus/schema.lua",
+    -- XXX EE
+    ["kong.plugins.prometheus.enterprise.exporter"] = "kong/plugins/prometheus/enterprise/exporter.lua",
 
     ["kong.plugins.session.handler"] = "kong/plugins/session/handler.lua",
     ["kong.plugins.session.schema"] = "kong/plugins/session/schema.lua",
