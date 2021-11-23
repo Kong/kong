@@ -529,6 +529,7 @@ local CONF_INFERENCES = {
   dns_order = { typ = "array" },
   dns_valid_ttl = { typ = "number" },
   dns_stale_ttl = { typ = "number" },
+  dns_cache_size = { typ = "number" },
   dns_not_found_ttl = { typ = "number" },
   dns_error_ttl = { typ = "number" },
   dns_no_sync = { typ = "boolean" },

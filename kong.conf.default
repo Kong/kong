@@ -1292,6 +1292,13 @@
                                  # completes, or the `dns_stale_ttl` number of
                                  # seconds have passed.
 
+#dns_cache_size = 10000          # Defines the maximum allowed number of
+                                 # DNS records stored in memory cache.
+                                 # Least recently used DNS records are discarded 
+                                 # from cache if it is full. Both errors and 
+                                 # data are cached, therefore a single name query 
+                                 # can easily take up 10-15 slots.
+
 #dns_not_found_ttl = 30          # TTL in seconds for empty DNS responses and
                                  # "(3) name error" responses.
 
