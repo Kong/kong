@@ -63,6 +63,16 @@ function _M.new(parent)
 end
 
 
+function _M:encode_config(config)
+  return deflate_gzip(config)
+end
+
+
+function _M:decode_config(config)
+  return inflate_gzip(config)
+end
+
+
 function _M:update_config(config_table, config_hash, update_cache)
   assert(type(config_table) == "table")
 
@@ -78,7 +88,7 @@ function _M:update_config(config_table, config_hash, update_cache)
 
   if declarative.get_current_hash() == new_hash then
     ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
-                   "no need to reload")
+                                    "no need to reload")
     return true
   end
 
@@ -94,12 +104,14 @@ function _M:update_config(config_table, config_hash, update_cache)
     -- local persistence only after load finishes without error
     local f, err = io_open(CONFIG_CACHE, "w")
     if not f then
-      ngx_log(ngx_ERR, _log_prefix, "unable to open cache file: ", err)
+      ngx_log(ngx_ERR, _log_prefix, "unable to open config cache file: ", err)
 
     else
-      res, err = f:write(assert(deflate_gzip(cjson_encode(config_table))))
+      local config = assert(cjson_encode(config_table))
+      config = assert(self:encode_config(config))
+      res, err = f:write(config)
       if not res then
-        ngx_log(ngx_ERR, _log_prefix, "unable to write cache file: ", err)
+        ngx_log(ngx_ERR, _log_prefix, "unable to write config cache file: ", err)
       end
 
       f:close()
@@ -124,24 +136,23 @@ function _M:init_worker()
       f:close()
 
       if config and #config > 0 then
-        ngx_log(ngx_INFO, _log_prefix, "found cached copy of data-plane config, loading..")
-
-        local err
-
-        config, err = inflate_gzip(config)
+        ngx_log(ngx_INFO, _log_prefix, "found cached config, loading...")
+        config, err = self:decode_config(config)
         if config then
-          config = cjson_decode(config)
-
+          config, err = cjson_decode(config)
           if config then
             local res
             res, err = self:update_config(config)
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config from cache: ", err)
             end
+
+          else
+            ngx_log(ngx_ERR, _log_prefix, "unable to json decode cached config: ", err, ", ignoring")
           end
 
         else
-          ngx_log(ngx_ERR, _log_prefix, "unable to inflate cached config: ", err, ", ignoring...")
+          ngx_log(ngx_ERR, _log_prefix, "unable to decode cached config: ", err, ", ignoring")
         end
       end
 
