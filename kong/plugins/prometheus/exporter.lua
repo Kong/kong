@@ -33,6 +33,11 @@ local prometheus
 -- use the same counter library shipped with Kong
 package.loaded['prometheus_resty_counter'] = require("resty.counter")
 
+local enterprise
+local pok = pcall(require, "kong.enterprise_edition.licensing")
+if pok then
+  enterprise = require("kong.plugins.prometheus.enterprise.exporter")
+end
 
 local kong_subsystem = ngx.config.subsystem
 
@@ -109,6 +114,9 @@ local function init()
                                           "HTTP status codes for customer per service/route in Kong",
                                           {"service", "route", "code", "consumer"})
 
+  if enterprise then
+    enterprise.init(prometheus)
+  end
 
   -- Hybrid mode status
   if role == "control_plane" then
@@ -376,6 +384,10 @@ local function metric_data()
   for i = 1, #res.workers_lua_vms do
     metrics.memory_stats.worker_vms:set(res.workers_lua_vms[i].http_allocated_gc,
                                         { res.workers_lua_vms[i].pid, kong_subsystem })
+  end
+
+  if enterprise then
+    enterprise.metric_data()
   end
 
   -- Hybrid mode status
