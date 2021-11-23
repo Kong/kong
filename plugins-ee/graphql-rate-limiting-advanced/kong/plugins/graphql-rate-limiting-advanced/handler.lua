@@ -123,12 +123,6 @@ local function new_namespace(config, init_timer)
 end
 
 
-function NewRLHandler:new()
-  self.gql_schema = {}
-  self.costs = {}
-end
-
-
 local function each_by_name(entity, name)
   local iter = entity:each(1000)
   local function iterator()
@@ -143,7 +137,10 @@ local function each_by_name(entity, name)
 end
 
 
-function NewRLHandler.init_worker()
+function NewRLHandler:init_worker()
+  self.gql_schema = {}
+  self.costs = {}
+
   local worker_events = kong.worker_events
 
   -- to start with, load existing plugins and create the
