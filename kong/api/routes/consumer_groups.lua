@@ -9,80 +9,30 @@ local endpoints          = require "kong.api.endpoints"
 local utils              = require "kong.tools.utils"
 local kong = kong
 local consumer_group
-local consumer_groups             = kong.db.consumer_groups
+local consumer
 local consumer_group_helpers        = require "kong.enterprise_edition.consumer_groups_helpers"
+local inspect = require "inspect"
 
 return {
   ["/consumer_groups"] = {
     GET = function(self, db, helpers)
-      return endpoints.get_collection_endpoint(consumer_groups.schema)
+      return endpoints.get_collection_endpoint(kong.db.consumer_groups.schema)
                                           (self, db, helpers)
     end,
   },
 
   ["/consumer_groups/:consumer_groups"] = {
     before = function(self, db, helpers)
-      local group, _, err_t = endpoints.select_entity(self, db, db.consumer_groups.schema)
+      local group, _, err_t = endpoints.select_entity(self, db, kong.db.consumer_groups.schema)
       if err_t then
         return endpoints.handle_error(err_t)
       end
       if not group then
         if self.req.method ~= "PUT" then
-        return kong.response.error(404, "No group named '" .. self.params.consumer_groups .. "'" )
+        return kong.response.error(404, "Group '" .. self.params.consumer_groups .. "' not found" )
         end
       end
       consumer_group = group
-    end,
-
-    POST = function(self, db, helpers)
-      if not self.params.consumer then
-        return kong.response.error(400, "No consumer provided")
-      end
-
-      local consumer_id
-
-      for i = 1, #self.params.consumer do
-        if not utils.is_valid_uuid(self.params.consumer[i]) then
-          local consumer = kong.db.consumers:select_by_username(self.params.consumer[i])
-          if not consumer then
-            return kong.response.error(400, "Consumer '" .. self.params.consumer[i] .. "' not found")
-          end
-        end
-      end
-
-      for i = 1, #self.params.consumer do
-        if not utils.is_valid_uuid(self.params.consumer[i]) then
-          local consumer = kong.db.consumers:select_by_username(self.params.consumer[i])
-          if not consumer then
-            return kong.response.error(400, "Consumer '" .. self.params.consumer[i] .. "' not found")
-          end
-          consumer_id = consumer.id
-        else
-          local consumer, _, err_t = kong.db.consumers:select(self.params.consumer[i])
-          if not consumer then
-            return endpoints.handle_error(err_t)
-          end
-          consumer_id = consumer.id
-        end
-
-        local consumer_group_relation, _, err_t = kong.db.consumer_group_consumers:insert(
-          {
-            consumer_group = { id = consumer_group.id },
-            consumer = { id = consumer_id},
-          }
-        )
-        if not consumer_group_relation then
-          return endpoints.handle_error(err_t)
-        end
-      end
-
-      local consumer_group =  consumer_group_helpers.get_consumer_group(self.params.consumer_groups)
-      local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
-
-      return kong.response.exit(201, {
-        consumer_group = consumer_group,
-        consumers = consumers,
-      })
     end,
 
     GET = function(self, db, helpers)
@@ -98,18 +48,116 @@ return {
   
     end,
 
-    PUT = function (self, db, helpers)
-      return endpoints.put_entity_endpoint(consumer_groups.schema)
+    PUT = function(self, db, helpers)
+      return endpoints.put_entity_endpoint(kong.db.consumer_groups.schema)
                                           (self, db, helpers)
       
     end,
 
-
   },
 
-  ["/consumer_groups/:consumer_groups/plugins/:plugins/overrides"] ={
+  ["/consumer_groups/:consumer_groups/consumers"] ={
+    before = function(self, db, helpers)
+      local group, _, err_t = endpoints.select_entity(self, db, kong.db.consumer_groups.schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+      if not group then
+        if self.req.method ~= "PUT" then
+        return kong.response.error(404, "Group '" .. self.params.consumer_groups .. "' not found" )
+        end
+      end
+      consumer_group = group
+    end,
+
+    POST = function(self, db, helpers)
+      if not self.params.consumer then
+        return kong.response.error(400, "must provide consumer")
+      end
+
+      local consumer_id
+      -- validate the list of consumers before processing
+      for i = 1, #self.params.consumer do
+        consumer = consumer_group_helpers.select_by_username_or_id(kong.db.consumers, self.params.consumer[i])
+        if not consumer then
+          return kong.response.error(404, "Consumer '" .. self.params.consumer[i] .. "' not found")
+        end
+      end
+
+      for i = 1, #self.params.consumer do
+        if not utils.is_valid_uuid(self.params.consumer[i]) then
+          consumer = kong.db.consumers:select_by_username(self.params.consumer[i])
+          consumer_id = consumer.id
+        else
+          consumer = kong.db.consumers:select(self.params.consumer[i])
+          consumer_id = consumer.id
+        end
+
+        local consumer_group_relation, _, err_t = kong.db.consumer_group_consumers:insert(
+          {
+            consumer_group = { id = consumer_group.id },
+            consumer = { id = consumer_id},
+          }
+        )
+        if not consumer_group_relation then
+          return endpoints.handle_error(err_t)
+        end
+      end
+
+      consumer_group =  consumer_group_helpers.get_consumer_group(self.params.consumer_groups)
+      local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
+
+      return kong.response.exit(201, {
+        consumer_group = consumer_group,
+        consumers = consumers,
+      })
+    end,
+  },
+
+  ["/consumer_groups/:consumer_groups/consumers/:consumers"] = {
+    before = function(self, db, helpers)
+      local consumer_in_path, _, err_t = endpoints.select_entity(self, db, db.consumers.schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+      if not consumer_in_path then
+        return kong.response.error(404, "Consumer '" .. self.params.consumers .. "' not found" )
+      end
+      consumer = consumer_in_path
+      local group, _, err_t = endpoints.select_entity(self, db, kong.db.consumer_groups.schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+      if not group then
+        return kong.response.error(404, { message = "No group named '" .. self.params.consumer_groups .. "'" })
+      end
+      consumer_group = group
+    end,
+
+    GET = function(self, db, helpers)
+      if consumer_group_helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
+        return kong.response.exit(200, {
+          consumer = consumer
+        })
+      else
+        return kong.response.error(404,
+        "Consumer '" .. consumer.id .. "' not found in Group '" .. consumer_group.id .."'" )
+      end
+    end,
+
+    DELETE = function(self, db, helpers)
+      if consumer_group_helpers.delete_consumer_in_group(consumer.id, consumer_group.id) then
+        return kong.response.exit(204)
+      else
+        return kong.response.error(404,
+        "Consumer '" .. consumer.id .. "' not found in Group '" .. consumer_group.id .."'" )
+      end
+    end,
+  },
+
+  ["/consumer_groups/:consumer_groups/overrides/plugins/:plugins"] ={
     PUT = function(self, db, helpers)
-      local group, _, err_t = endpoints.select_entity(self, db, db.consumer_groups.schema)
+      local group, _, err_t = endpoints.select_entity(self, db, kong.db.consumer_groups.schema)
       if err_t then
         return endpoints.handle_error(err_t)
       end
@@ -151,5 +199,63 @@ return {
       })
     end,
 
-  }
+  },
+
+  ["/consumers/:consumers/groups"] = {
+    before = function(self, db, helpers)
+      local consumer_in_path, _, err_t = endpoints.select_entity(self, db, db.consumers.schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+      if not consumer_in_path then
+        return kong.response.error(404, "Consumer '" .. self.params.consumers .. "' not found" )
+      end
+      consumer = consumer_in_path
+    end,
+
+    POST = function(self, db, helpers)
+      if not self.params.group then
+        return kong.response.error(400, "must provide group")
+      end
+      --validate the list before processing
+      for i = 1, #self.params.group do
+        consumer_group = consumer_group_helpers.get_consumer_group(self.params.group[i])
+        if not consumer_group then
+          return kong.response.error(404, "Group '" .. self.params.group[i] .. "' not found")
+        end
+      end
+
+      for i = 1, #self.params.group do
+        consumer_group = consumer_group_helpers.get_consumer_group(self.params.group[i])
+        local consumer_group_relation, _, err_t = kong.db.consumer_group_consumers:insert(
+          {
+            consumer_group = { id = consumer_group.id },
+            consumer = { id = consumer.id },
+          }
+        )
+        if not consumer_group_relation then
+          return endpoints.handle_error(err_t)
+        end
+        return kong.response.exit(201, {
+          consumer_group = consumer_group,
+          consumer = consumer,
+        })
+      end
+    end,
+
+    GET = function(self, db, helpers)
+      local consumer_groups = consumer_group_helpers.get_groups_by_consumer(consumer.id)
+      return kong.response.exit(200, {
+        consumer_groups = consumer_groups,
+      })
+    end,
+
+    DELETE = function(self, db, helpers)
+      local consumer_groups = consumer_group_helpers.get_groups_by_consumer(consumer.id)
+      for i = 1, #consumer_groups do
+        consumer_group_helpers.delete_consumer_in_group(consumer.id, consumer_groups[i])
+      end
+      return kong.response.exit(204)
+    end,
+  },
 }

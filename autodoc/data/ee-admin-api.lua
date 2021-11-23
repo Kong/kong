@@ -23,6 +23,7 @@ return {
       "kong/api/routes/rbac.lua",
       "kong/api/routes/vitals.lua",
       "kong/api/routes/workspaces.lua",
+      "kong/api/routes/consumer_groups.lua",
     },
     entities = {
       services = {
