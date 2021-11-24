@@ -22,6 +22,14 @@ return {
             required = true,
             default = "http",
           }},
+          { auth_username = {
+            type = "string",
+            required = false,
+          }},
+          { auth_password = {
+            type = "string",
+            required = false,
+          }},
           { https_verify = {
             type = "boolean",
             required = true,
