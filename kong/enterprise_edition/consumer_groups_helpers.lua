@@ -90,6 +90,7 @@ local function delete_consumer_in_group(consumer_pk, consumer_group_pk_or_name)
         consumer = { id = consumer_pk,},
       }
     )
+
     return true
   else
     return false

@@ -11,7 +11,6 @@ local kong = kong
 local consumer_group
 local consumer
 local consumer_group_helpers        = require "kong.enterprise_edition.consumer_groups_helpers"
-local inspect = require "inspect"
 
 return {
   ["/consumer_groups/:consumer_groups"] = {
@@ -131,7 +130,8 @@ return {
         return endpoints.handle_error(err_t)
       end
       if not group then
-        return kong.response.error(404, { message = "No group named '" .. self.params.consumer_groups .. "'" })
+        return kong.response.error(404,
+        { message = "Group '" .. self.params.consumer_groups .. "' not found" })
       end
       consumer_group = group
     end,
@@ -225,6 +225,11 @@ return {
         if not consumer_group then
           return kong.response.error(404, "Group '" .. self.params.group[i] .. "' not found")
         end
+        if consumer_group_helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
+          return kong.response.error(409,
+          "Consumer '" .. self.params.consumers ..
+          "' already in group '" .. self.params.group[i] .."'")
+        end
       end
 
       for i = 1, #self.params.group do
@@ -238,11 +243,11 @@ return {
         if not consumer_group_relation then
           return endpoints.handle_error(err_t)
         end
-        return kong.response.exit(201, {
-          consumer_group = consumer_group,
-          consumer = consumer,
-        })
       end
+      return kong.response.exit(201, {
+        consumer_groups = consumer_group_helpers.get_groups_by_consumer(consumer.id),
+        consumer = consumer,
+      })
     end,
 
     GET = function(self, db, helpers)
@@ -255,7 +260,7 @@ return {
     DELETE = function(self, db, helpers)
       local consumer_groups = consumer_group_helpers.get_groups_by_consumer(consumer.id)
       for i = 1, #consumer_groups do
-        consumer_group_helpers.delete_consumer_in_group(consumer.id, consumer_groups[i])
+        consumer_group_helpers.delete_consumer_in_group(consumer.id, consumer_groups[i].id)
       end
       return kong.response.exit(204)
     end,
