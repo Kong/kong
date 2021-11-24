@@ -476,6 +476,11 @@ local function execute(strategy, statement_name, attributes, options)
     argv[i] = (value == nil and is_update)
               and escape_identifier(connector, name)
               or  escape_literal(connector, value, fields[name])
+
+    -- XXX: don't escape if it's the sort_by field
+    if options and options.sort_by and name == "sort_by" then
+      argv[i] = value
+    end
   end
 
   local sql = statement.make(argv)
@@ -495,6 +500,8 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
     [LIMIT] = limit,
   }
 
+  local order_by_field
+
   local suffix = token and "_next" or "_first"
   if foreign_entity_name then
     statement_name = "page_for_" .. foreign_entity_name .. suffix
@@ -505,6 +512,13 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
                     "page_by_tags_or" .. suffix or
                     "page_by_tags_and" .. suffix
     attributes.tags = options.tags
+
+  elseif options and options.sort_by then
+    statement_name = options.sort_desc and
+                    "page_by_order_desc" .. suffix or
+                    "page_by_order_asc" .. suffix
+    order_by_field = options.sort_by
+    attributes.sort_by = order_by_field
 
   else
     statement_name = "page" .. suffix
@@ -523,6 +537,13 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
 
     for i, field_name in ipairs(self.schema.primary_key) do
       attributes[field_name] = token_decoded[i]
+    end
+
+    if order_by_field then
+      attributes.sort_offset = token_decoded[#token_decoded]
+      if not attributes.sort_offset then
+        return nil, self.errors:invalid_offset(token, "sort_by offset missing")
+      end
     end
   end
 
@@ -545,6 +566,10 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
       local offset = {}
       for _, field_name in ipairs(self.schema.primary_key) do
         insert(offset, row[field_name])
+      end
+
+      if order_by_field then
+        insert(offset, row[order_by_field])
       end
 
       offset = cjson.encode(offset)
@@ -1240,6 +1265,54 @@ function _M.new(connector, schema, errors)
       "   LIMIT " .. placeholder(#page_next_names), ";"
     }
   })
+
+  local order_by_next_args = {}
+  for i, key in ipairs(primary_key) do
+    insert(order_by_next_args, key)
+  end
+  insert(order_by_next_args, "sort_by")
+  insert(order_by_next_args, "sort_offset")
+  insert(order_by_next_args, LIMIT)
+
+  for op, sort_order in pairs({[">"] = "asc", ["<"] = "desc"}) do
+    add_statement("page_by_order_" .. sort_order .. "_first", {
+      operation = "read",
+      argn = { "sort_by", LIMIT },
+      argv = single_args,
+      code = {
+        "  SELECT ",  select_expressions, "\n",
+        "    FROM ",  table_name_escaped, "\n",
+        where_clause(
+        "   WHERE ", ttl_select_where,
+                    ws_id_select_where),
+        "ORDER BY \"$1\" ", sort_order, ", ",
+        concat(primary_key_escaped, sort_order .. " , "), sort_order, " \n",
+        "   LIMIT $2;";
+      }
+    })
+
+    local nargs = #order_by_next_args
+    add_statement("page_by_order_" .. sort_order .. "_next", {
+      operation = "read",
+      argn = order_by_next_args,
+      argv = page_next_args,
+      code = {
+        "  SELECT ",  select_expressions, "\n",
+        "    FROM ",  table_name_escaped, "\n",
+        where_clause(
+        -- WHERE ( (sort_by > sort_by_offset) OR (sort_by = sort_by_offset and pk > pk_offset) )
+        -- note this statement concacted with `..` not `,` to avoid AND being added in between
+        "   WHERE ", "( (" .. placeholder(nargs-2) .. ") " .. op .. " (" .. placeholder(nargs-1) .. ") OR " ..
+                      "((" .. placeholder(nargs-2) .. ") = (" .. placeholder(nargs-1) .. ") AND " ..
+                      "(" .. pk_escaped .. ") " .. op .. " (" .. primary_key_placeholders .. ")) )",
+                    ttl_select_where,
+                    ws_id_select_where),
+        "ORDER BY \"", placeholder(nargs-2), "\" ", sort_order, ", ",
+        concat(primary_key_escaped, sort_order .. " , "), sort_order, " \n",
+        "   LIMIT ", placeholder(nargs), ";",
+      }
+    })
+  end
 
   if #foreign_key_list > 0 then
     for foreign_entity_name, foreign_key in pairs(foreign_keys) do

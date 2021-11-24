@@ -202,6 +202,14 @@ local function extract_options(args, schema, context)
 
       args.tags = nil
     end
+
+    if args.sort_by ~= nil and context == "page" then
+      options.sort_by = type(args.sort_by) == "table" and args.sort_by[1] or args.sort_by
+      options.sort_desc = not not args.sort_desc
+
+      args.sort_by = nil
+      args.sort_desc = nil
+    end
   end
 
   return options
@@ -332,6 +340,14 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       next_page_tags = "&tags=" .. (type(args.tags) == "table" and args.tags[1] or args.tags)
     end
 
+    local next_page_sort = ""
+    if args.sort_by then
+      next_page_sort = "&sort_by=" .. (type(args.sort_by) == "table" and args.sort_by[1] or args.sort_by)
+      if args.sort_desc then
+        next_page_sort = next_page_sort .. "&sort_desc=true"
+      end
+    end
+
     local data, _, err_t, offset = page_collection(self, db, schema, method)
     if err_t then
       return handle_error(err_t)
@@ -350,12 +366,13 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       p_data = data
     end
 
-    local next_page = offset and fmt("/%s?offset=%s%s",
+    local next_page = offset and fmt("/%s?offset=%s%s%s",
                                      prefix_path or
                                      schema.admin_api_name or
                                      schema.name,
                                      escape_uri(offset),
-                                     next_page_tags) or null
+                                     next_page_tags,
+                                     next_page_sort) or null
 
     return ok {
       data   = setmetatable(p_data, cjson.empty_array_mt),
