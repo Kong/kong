@@ -268,6 +268,7 @@ dns_hostsfile = /etc/hosts
 dns_order = LAST,SRV,A,CNAME
 dns_valid_ttl = NONE
 dns_stale_ttl = 4
+dns_cache_size = 10000
 dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off
