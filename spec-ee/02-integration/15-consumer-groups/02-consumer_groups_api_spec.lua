@@ -98,7 +98,7 @@ for _, strategy in helpers.each_strategy() do
         local name = "test_group_" .. utils.uuid()
         local res
 
-        assert(db.groups:insert{ name = name})
+        assert(db.consumer_groups:insert{ name = name})
         res = get_request("/consumer_groups")
 
         assert.same(name, res.data[1].name)
@@ -107,7 +107,7 @@ for _, strategy in helpers.each_strategy() do
       it("GET The endpoint should list a consumer group by id", function()
         local res_insert = insert_group()
 
-        local res_select = get_request("/groups/" .. res_insert.id)
+        local res_select = get_request("/consumer_groups/" .. res_insert.id)
 
         assert.same(res_insert, res_select)
       end)
@@ -171,8 +171,8 @@ for _, strategy in helpers.each_strategy() do
             name = "rate-limiting-advanced",
             consumer_group = { id = consumer_group.id, },
             config = {
-              window_size = 10,
-              limit = 10,
+              window_size = { 10 },
+              limit = { 10 },
             }
           }))
         return consumer_group, consumer, consumer_group_plugin
