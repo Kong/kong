@@ -368,9 +368,13 @@ function NewRLHandler:access(conf)
     new_namespace(conf, true)
   end
 
+<<<<<<< HEAD
   local conf_limit = conf.limit
   local conf_window_size = conf.window_size
   local conf_window_type = conf.window_type
+=======
+  local config
+>>>>>>> c88daa157 (fix the lingering config issue)
   -- check to apply consumer groups
   if conf.enforce_consumer_groups then
     if kong.client.get_consumer() and conf.consumer_groups then
@@ -379,11 +383,15 @@ function NewRLHandler:access(conf)
         -- if found a match, overrides the configuration value
         if helpers.is_consumer_in_group(consumer.id, conf.consumer_groups[i]) then
           local consumer_group = helpers.get_consumer_group(conf.consumer_groups[i])
+<<<<<<< HEAD
           local group_config = helpers.get_consumer_group_config(consumer_group.id)
           kong.log.err("####Found a match consumer " .. consumer.username .. " group " .. consumer_group.name )
           conf.window_size = group_config.config.window_size
           conf.window_type = group_config.config.window_type
           conf.limit = group_config.config.limit
+=======
+          config = helpers.get_consumer_group_config(consumer_group.id).config
+>>>>>>> c88daa157 (fix the lingering config issue)
           break --exit on the first matching group found
         else -- if not recover the original configurations
           conf.window_size = conf_window_size
@@ -395,16 +403,21 @@ function NewRLHandler:access(conf)
   end
   kong.log.err("####config.limit " .. conf.limit[1])
 
+  -- fall back to the original plugin configurations
+  if not config then
+    config = conf
+  end
+
   local limit
   local window
   local remaining
   local reset
   local namespace = conf.namespace
-  local window_type = conf.window_type
+  local window_type = config.window_type
   local shm = ngx.shared[conf.dictionary_name]
-  for i = 1, #conf.window_size do
-    local current_window = tonumber(conf.window_size[i])
-    local current_limit = tonumber(conf.limit[i])
+  for i = 1, #config.window_size do
+    local current_window = tonumber(config.window_size[i])
+    local current_limit = tonumber(config.limit[i])
 
     -- if we have exceeded any rate, we should not increment any other windows,
     -- butwe should still show the rate to the client, maintaining a uniform
@@ -414,7 +427,7 @@ function NewRLHandler:access(conf)
       rate = ratelimiting.sliding_window(key, current_window, nil, namespace)
     else
       rate = ratelimiting.increment(key, current_window, 1, namespace,
-                                    conf.window_type == "fixed" and 0 or nil)
+                                    config.window_type == "fixed" and 0 or nil)
     end
 
     -- Ensure the window start time persists using shared memory
@@ -485,7 +498,7 @@ function NewRLHandler:access(conf)
 
   if deny then
     local retry_after = reset
-    local jitter_max = conf.retry_after_jitter_max
+    local jitter_max = config.retry_after_jitter_max
 
     -- Add a random value (a jitter) to the Retry-After value
     -- to reduce a chance of retries spike occurrence.
