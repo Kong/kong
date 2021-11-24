@@ -15,7 +15,7 @@ local version = setmetatable({
   x = 2,
   y = 6,
   z = 0,
-  e = 0,
+  e = 1,
 }, {
   __tostring = function(t)
     local suffix = strip(t.suffix)
