@@ -259,6 +259,9 @@ return {
 
     DELETE = function(self, db, helpers)
       local consumer_groups = consumer_group_helpers.get_groups_by_consumer(consumer.id)
+      if not consumer_groups then
+        return kong.response.error(404, "Consumer '" .. consumer.id .. "' not in group")
+      end
       for i = 1, #consumer_groups do
         consumer_group_helpers.delete_consumer_in_group(consumer.id, consumer_groups[i].id)
       end
