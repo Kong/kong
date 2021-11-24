@@ -368,13 +368,7 @@ function NewRLHandler:access(conf)
     new_namespace(conf, true)
   end
 
-<<<<<<< HEAD
-  local conf_limit = conf.limit
-  local conf_window_size = conf.window_size
-  local conf_window_type = conf.window_type
-=======
   local config
->>>>>>> c88daa157 (fix the lingering config issue)
   -- check to apply consumer groups
   if conf.enforce_consumer_groups then
     if kong.client.get_consumer() and conf.consumer_groups then
@@ -383,25 +377,12 @@ function NewRLHandler:access(conf)
         -- if found a match, overrides the configuration value
         if helpers.is_consumer_in_group(consumer.id, conf.consumer_groups[i]) then
           local consumer_group = helpers.get_consumer_group(conf.consumer_groups[i])
-<<<<<<< HEAD
-          local group_config = helpers.get_consumer_group_config(consumer_group.id)
-          kong.log.err("####Found a match consumer " .. consumer.username .. " group " .. consumer_group.name )
-          conf.window_size = group_config.config.window_size
-          conf.window_type = group_config.config.window_type
-          conf.limit = group_config.config.limit
-=======
           config = helpers.get_consumer_group_config(consumer_group.id).config
->>>>>>> c88daa157 (fix the lingering config issue)
           break --exit on the first matching group found
-        else -- if not recover the original configurations
-          conf.window_size = conf_window_size
-          conf.window_type = conf_window_type
-          conf.limit = conf_limit
         end
       end
     end
   end
-  kong.log.err("####config.limit " .. conf.limit[1])
 
   -- fall back to the original plugin configurations
   if not config then
