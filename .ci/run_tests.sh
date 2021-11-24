@@ -190,7 +190,7 @@ if [ "$TEST_SUITE" == "unit" ]; then
 elif [ "$TEST_SUITE" == "unit-ee" ]; then
     make test-ee
 elif [ "$TEST_SUITE" == "integration-ee" ]; then
-    cd .ci/ad-server && make build-ad-server && make clone-plugin && cd ../..
+    cd .ci/ad-server && make build-ad-server && cd ../..
     make test-integration-ee
 elif [ "$TEST_SUITE" == "plugins-spec-ee" ]; then
     make test-plugins-spec-ee
