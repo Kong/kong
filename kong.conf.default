@@ -580,11 +580,12 @@
 
 #ssl_cipher_suite = intermediate # Defines the TLS ciphers served by Nginx.
                                  # Accepted values are `modern`,
-                                 # `intermediate`, `old`, or `custom`.
+                                 # `intermediate`, `old`, `fips` or `custom`.
                                  #
                                  # See https://wiki.mozilla.org/Security/Server_Side_TLS
                                  # for detailed descriptions of each cipher
-                                 # suite.
+                                 # suite. `fips` cipher suites are as decribed in
+                                 # https://wiki.openssl.org/index.php/FIPS_mode_and_TLS.
 
 #ssl_ciphers =                   # Defines a custom list of TLS ciphers to be
                                  # served by Nginx. This list must conform to
@@ -1367,6 +1368,13 @@
                                  # record until either the refresh query
                                  # completes, or the `dns_stale_ttl` number of
                                  # seconds have passed.
+
+#dns_cache_size = 10000          # Defines the maximum allowed number of
+                                 # DNS records stored in memory cache.
+                                 # Least recently used DNS records are discarded 
+                                 # from cache if it is full. Both errors and 
+                                 # data are cached, therefore a single name query 
+                                 # can easily take up 10-15 slots.
 
 #dns_not_found_ttl = 30          # TTL in seconds for empty DNS responses and
                                  # "(3) name error" responses.
