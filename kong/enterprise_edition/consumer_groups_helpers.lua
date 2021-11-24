@@ -7,7 +7,6 @@
 
 local kong = kong
 local utils              = require "kong.tools.utils"
-local inspect = require "inspect"
 
 
 local function load_group_into_memory(consumer_group_pk_or_name)
@@ -48,7 +47,7 @@ local function get_consumer_group_config(consumer_group_pk)
   return grpcfg
 end
 
-local function load_consumers_in_group(consumer_group_pk)
+local function get_consumers_in_group(consumer_group_pk)
   local consumers = {}
   local len = 0
   for row in kong.db.consumer_group_consumers:each() do
@@ -60,12 +59,6 @@ local function load_consumers_in_group(consumer_group_pk)
   if len == 0 then
     return nil
   end
-  return consumers
-end
-
-local function get_consumers_in_group(consumer_group_pk)
-  local cache_key = kong.db.consumer_group_consumers:cache_key(consumer_group_pk)
-  local consumers = kong.cache:get(cache_key, nil, load_consumers_in_group, consumer_group_pk)
   return consumers
 end
 
@@ -90,7 +83,6 @@ local function delete_consumer_in_group(consumer_pk, consumer_group_pk_or_name)
         consumer = { id = consumer_pk,},
       }
     )
-
     return true
   else
     return false
@@ -122,7 +114,7 @@ local function select_by_username_or_id(db, key)
   return entity
 end
 
-local function load_groups_by_consumer(consumer_pk)
+local function get_groups_by_consumer(consumer_pk)
   local groups = {}
   local len = 0
   for row in kong.db.consumer_group_consumers:each() do
@@ -134,12 +126,6 @@ local function load_groups_by_consumer(consumer_pk)
   if len == 0 then
     return nil
   end
-  return groups
-end
-
-local function  get_groups_by_consumer(consumer_pk)
-  local cache_key = kong.db.consumer_group_consumers:cache_key(consumer_pk)
-  local groups = kong.cache:get(cache_key, nil, load_groups_by_consumer, consumer_pk)
   return groups
 end
 
