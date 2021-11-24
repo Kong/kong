@@ -8,6 +8,7 @@
 local meta       = require "kong.meta"
 local http       = require "resty.http"
 local ee         = require "kong.enterprise_edition"
+local base64     = require "ngx.base64"
 
 
 local kong                = kong
@@ -235,6 +236,11 @@ function ForwardProxyHandler:access(conf)
     headers["Host"] = nil
   else
     headers["Host"] = var.upstream_host
+  end
+
+  if conf.auth_username ~= nil and conf.auth_password ~= nil then
+    local auth_header = "Basic " .. base64.encode_base64url(conf.auth_username .. ":" .. conf.auth_password)
+    headers["Proxy-Authorization"] = auth_header
   end
 
   res, err = httpc:request({

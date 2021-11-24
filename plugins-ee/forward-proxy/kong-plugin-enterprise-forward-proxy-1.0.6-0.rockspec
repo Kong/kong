@@ -1,9 +1,9 @@
 package = "kong-plugin-enterprise-forward-proxy"
-version = "1.0.5-0"
+version = "1.0.6-0"
 
 source = {
   url = "https://github.com/Mashape/kong-plugin-enterprise-forward-proxy",
-  tag = "1.0.5"
+  tag = "1.0.6"
 }
 
 supported_platforms = {"linux", "macosx"}
