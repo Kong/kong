@@ -159,6 +159,8 @@ release:
 - Moved Prometheus inside the Kong repo
   [#7666](https://github.com/Kong/kong/pull/7666).
 - Moved Session inside the Kong repo
+  [#7731](https://github.com/Kong/kong/pull/7731).
+- Moved Proxy-cache inside the Kong repo
   [#7738](https://github.com/Kong/kong/pull/7738).
 - Moved GRPC-web inside the Kong repo
   [#7782](https://github.com/Kong/kong/pull/7782).

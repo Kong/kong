@@ -17,6 +17,8 @@ local ee_declarative = require "kong.enterprise_edition.db.declarative"
 local constants = require "kong.constants"
 
 
+local get_phase = ngx.get_phase
+local ngx_sleep = ngx.sleep
 local deepcopy = tablex.deepcopy
 local null = ngx.null
 local SHADOW = true
@@ -38,6 +40,13 @@ local declarative = {}
 
 
 local Config = {}
+
+
+local function yield()
+  if get_phase() ~= "init" then
+    ngx_sleep(0)
+  end
+end
 
 
 -- Produce an instance of the declarative config schema, tailored for a
@@ -266,6 +275,8 @@ function Config:parse_table(dc_table, hash)
   if err_t then
     return nil, pretty_print_error(err_t), err_t
   end
+
+  yield()
 
   if not self.partial then
     self.schema:insert_default_workspace_if_not_given(entities)
@@ -570,6 +581,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
+local yield_n = 0
 function declarative.load_into_cache(entities, meta, hash, shadow)
   -- Array of strings with this format:
   -- "<tag_name>|<entity_name>|<uuid>".
@@ -596,6 +608,7 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
   local transform = meta._transform == nil and true or meta._transform
 
   for entity_name, items in pairs(entities) do
+    yield()
     local dao = kong.db[entity_name]
     if not dao then
       return nil, "unknown entity: " .. entity_name
@@ -637,6 +650,11 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
       -- When loading the entities, when we load the default_ws, we
       -- set it to the current. But this only works in the worker that
       -- is doing the loading (0), other ones still won't have it
+
+      yield_n = yield_n + 1
+      if yield_n % 500 == 0 then
+        yield()
+      end
 
       assert(type(fallback_workspace) == "string")
 
@@ -795,6 +813,7 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
   end
 
   for tag_name, tags in pairs(tags_by_name) do
+    yield()
     -- tags:admin|@list -> all tags tagged "admin", regardless of the entity type
     -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
     local key = "tags:" .. tag_name .. "|@list"
