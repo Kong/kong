@@ -64,8 +64,7 @@ return {
         CREATE TABLE IF NOT EXISTS consumer_groups(
           id          uuid PRIMARY KEY,
           created_at  timestamp,
-          name        text,
-          workspace_id uuid,
+          name        text
         );
 
         CREATE INDEX IF NOT EXISTS consumer_groups_name_idx ON consumer_groups(name);
@@ -83,8 +82,7 @@ return {
           created_at  timestamp,
           consumer_group_id uuid,
           name        text,
-          config      text,
-          workspace_id uuid,
+          config      text
         );
 
         CREATE INDEX IF NOT EXISTS consumer_group_consumers_group_id_idx ON consumer_group_consumers(consumer_group_id);

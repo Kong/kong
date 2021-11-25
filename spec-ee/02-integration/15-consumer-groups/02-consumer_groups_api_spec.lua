@@ -16,7 +16,7 @@ local db
 local function truncate_tables(db)
   db:truncate("consumer_groups")
   db:truncate("consumer_group_plugins")
-  db:truncate("consumer_groups_consumers")
+  db:truncate("consumer_group_consumers")
 end
 
 for _, strategy in helpers.each_strategy() do
@@ -86,10 +86,6 @@ for _, strategy in helpers.each_strategy() do
         assert.same({}, res.data)
       end
 
-      lazy_setup(function()
-        ee_helpers.register_rbac_resources(db)
-      end)
-
       lazy_teardown(function()
         db:truncate("consumer_groups")
       end)
@@ -107,7 +103,7 @@ for _, strategy in helpers.each_strategy() do
       it("GET The endpoint should list a consumer group by id", function()
         local res_insert = insert_group()
 
-        local res_select = get_request("/consumer_groups/" .. res_insert.id)
+        local res_select = get_request("/consumer_groups/" .. res_insert.id).consumer_group
 
         assert.same(res_insert, res_select)
       end)
@@ -115,7 +111,7 @@ for _, strategy in helpers.each_strategy() do
       it("GET The endpoint should list a consumer group by name", function()
         local res_insert = insert_group()
 
-        local res_select = get_request("/consumer_groups/" .. res_insert.name)
+        local res_select = get_request("/consumer_groups/" .. res_insert.name).consumer_group
 
         assert.same(res_insert, res_select)
       end)
@@ -196,24 +192,23 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          db:truncate("consumer_group_consumers")
-          db:truncate("consumer_group_plugins")
+          db:truncate_tables(db)
         end)
 
         it("The endpoint should list consumers and plugins by a group id", function()
           local res = get_request("/consumer_groups/" .. consumer_group.id)
 
-          assert.same(res.data[1].consumer_group.id, consumer_group.id)
-          assert.same(res.data[1].consumers[1].id, consumer.id)
-          assert.same(res.data[1].plugins[1].id, consumer_group_plugin.id)
+          assert.same(res.consumer_group.id, consumer_group.id)
+          assert.same(res.consumers[1].id, consumer.id)
+          assert.same(res.plugins[1].id, consumer_group_plugin.id)
         end)
 
         it("The endpoint should list consumers and plugins by a group name", function()
           local res = get_request("/consumer_groups/" .. consumer_group.name)
 
-          assert.same(res.data[1].consumer_group.name, consumer_group.id)
-          assert.same(res.data[1].consumers[1].id, consumer.id)
-          assert.same(res.data[1].plugins[1].id, consumer_group_plugin.id)
+          assert.same(res.consumer_group.name, consumer_group.id)
+          assert.same(res.consumers[1].id, consumer.id)
+          assert.same(res.plugins[1].id, consumer_group_plugin.id)
         end)
 
       end)
@@ -249,7 +244,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          db:truncate("consumer_group_consumers")
+          db:truncate_tables(db)
         end)
 
         it("The endpoint should not create a mapping with incorrect params", function()
@@ -321,7 +316,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          db:truncate("consumer_group_consumers")
+          db:truncate_tables(db)
         end)
 
         it("The endpoint should delete a mapping with correct params by id", function()

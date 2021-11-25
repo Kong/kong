@@ -55,11 +55,11 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong({
           database  = strategy,
         }))
-
         client = assert(helpers.admin_client())
-        assert(db.consuemr_groups)
-        assert(db.consumer_group_plugins)
+
+        assert(db.consumer_groups)
         assert(db.consumer_group_consumers)
+        assert(db.consumer_group_plugins)
       end)
 
       lazy_teardown(function()
@@ -68,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("the consumer groups schema in Lua should be init correctly", function()
+      it("the consumer_groups schema in Lua should be init correctly", function()
         local expected_schema = {
           {
             id = {
@@ -258,7 +258,7 @@ for _, strategy in helpers.each_strategy() do
             }
           }))
         assert(db[dao_name]:delete({ id = delete_id }))
-        assert.is_nil(db.consumer_group_plugins:select(config_id))
+        assert.is_nil(db.consumer_group_plugins:select({ id = config_id }))
       end
 
       lazy_setup(function()
