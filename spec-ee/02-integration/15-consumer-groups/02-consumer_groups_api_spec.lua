@@ -234,7 +234,6 @@ for _, strategy in helpers.each_strategy() do
           local res = cjson.decode(json)
 
           assert.same(res.consumer_group.id, _consumer_group.id)
-      
         end
 
         lazy_setup(function()
@@ -247,25 +246,23 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("The endpoint should not create a mapping with incorrect params", function()
-          local _consumer_group = insert_entities()
-
           do
             -- body params need to be correct
             local json_no_consumer = assert.res_status(400, assert(client:send {
               method = "POST",
-              path = "/consumer_groups/" .. _consumer_group.id,
+              path = "/consumer_groups/" .. consumer_group.id,
               headers = {
                 ["Content-Type"] = "application/json",
               },
             }))
-            assert.same("No consumer provided", cjson.decode(json_no_consumer).message)
+            assert.same("must provide consumer", cjson.decode(json_no_consumer).message)
           end
 
           do
             -- entities need to be found
             assert.res_status(404, assert(client:send {
               method = "POST",
-              path = "/consumer_groups/" .. _consumer_group.id,
+              path = "/consumer_groups/" .. consumer_group.id,
               body = {
                 consumer = utils.uuid()
               },
@@ -277,18 +274,15 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("The endpoint should not create a mapping with incorrect ids", function()
-          local _consumer_group, _consumer = insert_entities()
-          check_create(404, utils.uuid(), _consumer_group, _consumer)
+          check_create(404, utils.uuid(), consumer_group, consumer)
         end)
 
         it("The endpoint should create a mapping with correct params by id", function()
-          local _consumer_group, _consumer = insert_entities()
-          check_create(201, _consumer_group.id, _consumer_group, _consumer)
+          check_create(201, consumer_group.id, consumer_group, consumer)
         end)
 
         it("The endpoint should create a mapping with correct params by group name", function()
-          local _consumer_group, _consumer = insert_entities()
-          check_create(201, _consumer_group.name, _consumer_group, _consumer)
+          check_create(201, consumer_group.name, consumer_group, consumer)
         end)
       end)
 
@@ -304,9 +298,9 @@ for _, strategy in helpers.each_strategy() do
             },
           }))
 
-          local res = get_request("/consumer_groups/" .. consumer_group.id)
+          local res = get_request("/consumer_groups/" .. key)
 
-          assert.same({}, res.data)
+          assert.same("Group '" .. key .. "' not found", res.message)
         end
 
         before_each(function()
@@ -327,5 +321,6 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
+
   end)
 end

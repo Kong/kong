@@ -200,7 +200,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("a consumer group 'name' should be required during creation", function()
-        local _, _, err_t = db.consumer_groups:insert()
+        local _, _, err_t = db.consumer_groups:insert({
+          id = utils.uuid()
+        })
 
         assert.same("schema violation", err_t.name)
         assert(err_t.fields.name)
