@@ -82,9 +82,6 @@ return {
           PRIMARY KEY(consumer_id, consumer_group_id)
         );
 
-        CREATE INDEX IF NOT EXISTS consumer_group_consumers_consumer_id_idx ON consumer_group_consumers(consumer_id);
-        CREATE INDEX IF NOT EXISTS consumer_group_consumers_group_id_idx ON consumer_group_consumers(consumer_group_id);
-
         CREATE TABLE IF NOT EXISTS consumer_group_plugins(
           id          uuid PRIMARY KEY,
           created_at  timestamp,
