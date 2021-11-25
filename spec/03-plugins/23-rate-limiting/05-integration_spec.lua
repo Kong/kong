@@ -119,6 +119,7 @@ describe("Plugin: rate-limiting (integration)", function()
           redis_port     = REDIS_PORT,
           redis_username = REDIS_USER_VALID,
           redis_password = REDIS_PASSWORD,
+          redis_database = 3, -- ensure to not get a pooled authenticated connection by using a different db
           fault_tolerant = false,
         }
       })
@@ -136,6 +137,7 @@ describe("Plugin: rate-limiting (integration)", function()
           redis_port     = REDIS_PORT,
           redis_username = REDIS_USER_INVALID,
           redis_password = REDIS_PASSWORD,
+          redis_database = 4, -- ensure to not get a pooled authenticated connection by using a different db                  
           fault_tolerant = false,
         }
       })
