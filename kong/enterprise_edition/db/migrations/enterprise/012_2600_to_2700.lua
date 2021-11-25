@@ -77,6 +77,7 @@ return {
         CREATE INDEX IF NOT EXISTS consumer_groups_name_idx ON consumer_groups(name);
 
         CREATE TABLE IF NOT EXISTS consumer_group_consumers(
+          created_at  timestamp,
           consumer_id uuid,
           consumer_group_id uuid,
           PRIMARY KEY(consumer_id, consumer_group_id)
