@@ -26,6 +26,15 @@ local function configure_portal(db, config)
   })
 end
 
+
+local function verify_order(data, key, sort_desc)
+  local prev_val = data[1][key]
+  for i = 2, #data do
+    assert.is_true(prev_val > data[i][key] == sort_desc)
+  end
+end
+
+
 for _, strategy in helpers.each_strategy() do
   describe("Admin API - Applications #" .. strategy, function()
     local client
@@ -354,6 +363,12 @@ for _, strategy in helpers.each_strategy() do
             redirect_uri = "http://doghouse.com",
           }))
 
+          assert(db.applications:insert({
+            developer = { id = developer_one.id },
+            name = "bonesRcool2",
+            redirect_uri = "http://doghouse.com",
+          }))
+
           developer_two = assert(db.developers:insert({
             email = "cat@meow.com",
             password = "meow",
@@ -384,7 +399,7 @@ for _, strategy in helpers.each_strategy() do
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          assert.equal(#json.data, 1)
+          assert.equal(#json.data, 2)
           assert.equal(json.data[1].developer.id, developer_one.id)
 
           res = assert(client:send({
@@ -401,12 +416,6 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("Paginates properly", function()
-          assert(db.applications:insert({
-            developer = { id = developer_one.id },
-            name = "bonesRcool2",
-            redirect_uri = "http://doghouse.com",
-          }))
-
           local res = assert(client:send({
             method = "GET",
             path = "/developers/" .. developer_one.id .. "/applications?size=1",
@@ -429,6 +438,164 @@ for _, strategy in helpers.each_strategy() do
 
           assert.equal(#json.data, 1)
           assert.equal(ngx.null, json.next)
+        end)
+
+        it("sorts by id ASC by default", function()
+          local res = assert(client:send({
+            method = "GET",
+            path = "/developers/" .. developer_one.id .. "/applications",
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(2, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "id", false)
+        end)
+
+        it("sorts by id DESC with 'sort_desc=true' param", function()
+          local res = assert(client:send({
+            method = "GET",
+            path = "/developers/" .. developer_one.id .. "/applications?sort_desc=true",
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(2, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "id", true)
+        end)
+
+        it("sorts by name ASC with 'sort_by=name' param", function()
+          local res = assert(client:send({
+            method = "GET",
+            path = "/developers/" .. developer_one.id .. "/applications?sort_by=name",
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(2, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "name", false)
+        end)
+
+        it("sorts by name DESC with 'sort_by=name&sort_desc=true' param", function()
+          local res = assert(client:send({
+            method = "GET",
+            path = "/developers/" .. developer_one.id .. "/applications?sort_by=name&sort_desc=true",
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(2, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "name", true)
+        end)
+
+        it("sorts by id ASC if sort_by values are the same", function ()
+          local res = assert(client:send({
+            method = "GET",
+            path = "/developers/" .. developer_one.id .. "/applications?sort_by=redirect_uri",
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(2, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "id", false)
+        end)
+
+        it("sorts by id DESC if sort_by values are the same", function ()
+          local res = assert(client:send({
+            method = "GET",
+            path = "/developers/" .. developer_one.id .. "/applications?sort_by=redirect_uri&sort_desc=true",
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(2, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "id", true)
+        end)
+
+        it("maintains sort across pages ASC", function()
+          local res = assert(client:send({
+            method = "GET",
+            path = "/developers/" .. developer_one.id .. "/applications?sort_by=name&size=1",
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(1, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "name", false)
+
+          local last_name_first_page = resp_body_json.data[#resp_body_json.data]
+
+          local res = assert(client:send {
+            method = "GET",
+            path = resp_body_json.next,
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(1, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "name", false)
+
+          local first_name_second_page = resp_body_json.data[1]
+
+          verify_order({last_name_first_page, first_name_second_page}, "name", false)
+        end)
+
+        it("maintains sort across pages DESC", function()
+          local res = assert(client:send({
+            method = "GET",
+            path = "/developers/" .. developer_one.id .. "/applications?sort_by=name&size=1&sort_desc=true",
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(1, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "name", true)
+
+          local last_name_first_page = resp_body_json.data[#resp_body_json.data]
+
+          local res = assert(client:send {
+            method = "GET",
+            path = resp_body_json.next,
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(1, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "name", true)
+
+          local first_name_second_page = resp_body_json.data[1]
+
+          verify_order({last_name_first_page, first_name_second_page}, "name", true)
         end)
       end)
 
