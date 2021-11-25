@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+import "direct_imports.proto";
+
+service Added {
+  rpc Final(hello.HelloRequest) returns (hello.HelloResponse);
+}

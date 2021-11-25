@@ -53,25 +53,35 @@ local function set_hooks()
 end
 
 --- loads a .proto file optionally applies a function on each defined method.
-function grpc.each_method(fname, f)
-
-  local dir, name = pl_path.splitpath(pl_path.abspath(fname))
+function grpc.each_method(fname, f, recurse)
+  local dir = pl_path.splitpath(pl_path.abspath(fname))
   local p = protoc.new()
   p:addpath("/usr/include")
   p:addpath("/usr/local/opt/protobuf/include/")
   p:addpath("/usr/local/kong/lib/")
   p:addpath("kong")
   p:addpath("kong/include")
+  p:addpath("spec/fixtures/grpc")
 
   p.include_imports = true
   p:addpath(dir)
-  p:loadfile(name)
+  p:loadfile(fname)
   set_hooks()
-  local parsed = p:parsefile(name)
+  local parsed = p:parsefile(fname)
 
   if f then
-    for _, srvc in ipairs(parsed.service) do
-      for _, mthd in ipairs(srvc.method) do
+
+    if recurse and parsed.dependency then
+      if parsed.public_dependency then
+        for _, dependency_index in ipairs(parsed.public_dependency) do
+          local sub = parsed.dependency[dependency_index + 1]
+          grpc.each_method(sub, f, true)
+        end
+      end
+    end
+
+    for _, srvc in ipairs(parsed.service or {}) do
+      for _, mthd in ipairs(srvc.method or {}) do
         f(parsed, srvc, mthd)
       end
     end
