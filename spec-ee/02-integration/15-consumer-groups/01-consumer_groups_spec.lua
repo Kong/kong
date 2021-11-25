@@ -253,8 +253,8 @@ for _, strategy in helpers.each_strategy() do
             name = "rate-limiting-advanced",
             consumer_group = { id = consumer_group.id, },
             config = {
-              window_size = 10,
-              limit = 10,
+              window_size = { 10 },
+              limit = { 10 },
             }
           }))
         assert(db[dao_name]:delete({ id = delete_id }))

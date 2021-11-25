@@ -64,8 +64,11 @@ return {
         CREATE TABLE IF NOT EXISTS consumer_groups(
           id          uuid PRIMARY KEY,
           created_at  timestamp,
-          name        text
+          name        text,
+          workspace_id uuid,
         );
+
+        CREATE INDEX IF NOT EXISTS consumer_groups_name_idx ON consumer_groups(name);
 
         CREATE TABLE IF NOT EXISTS consumer_group_consumers(
           consumer_id uuid,
@@ -73,13 +76,20 @@ return {
           PRIMARY KEY(consumer_id, consumer_group_id)
         );
 
+        CREATE INDEX IF NOT EXISTS consumer_group_plugins_group_id_idx ON consumer_group_plugins(consumer_group_id);
+
         CREATE TABLE IF NOT EXISTS consumer_group_plugins(
           id          uuid PRIMARY KEY,
           created_at  timestamp,
           consumer_group_id uuid,
           name        text,
-          config      text
+          config      text,
+          workspace_id uuid,
         );
+
+        CREATE INDEX IF NOT EXISTS consumer_group_consumers_group_id_idx ON consumer_group_consumers(consumer_group_id);
+        CREATE INDEX IF NOT EXISTS consumer_group_consumers_consumer_id_idx ON consumer_group_consumers(consumer_id);
+
       ]],
      }
     }
