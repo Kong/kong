@@ -225,6 +225,8 @@ return {
       ["/consumer_groups/:consumer_groups/consumers"] = {},
       ["/consumer_groups/:consumer_groups/consumers/:consumers"] = {},
       ["/consumer_groups/:consumer_groups/overrides/plugins/:plugins"] = {},
+      ["/consumers/:consumers/groups"] = {},
+      ["/consumers/:consumers/groups/:groups"] = {},
     },
 
     vitals = {
