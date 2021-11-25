@@ -191,7 +191,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          db:truncate_tables(db)
+          truncate_tables(db)
         end)
 
         it("The endpoint should list consumers and plugins by a group id", function()
@@ -205,7 +205,7 @@ for _, strategy in helpers.each_strategy() do
         it("The endpoint should list consumers and plugins by a group name", function()
           local res = get_request("/consumer_groups/" .. consumer_group.name)
 
-          assert.same(res.consumer_group.name, consumer_group.id)
+          assert.same(res.consumer_group.name, consumer_group.name)
           assert.same(res.consumers[1].id, consumer.id)
           assert.same(res.plugins[1].id, consumer_group_plugin.id)
         end)
@@ -243,7 +243,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          db:truncate_tables(db)
+          truncate_tables(db)
         end)
 
         it("The endpoint should not create a mapping with incorrect params", function()
@@ -315,7 +315,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         lazy_teardown(function()
-          db:truncate_tables(db)
+          truncate_tables(db)
         end)
 
         it("The endpoint should delete a mapping with correct params by id", function()
