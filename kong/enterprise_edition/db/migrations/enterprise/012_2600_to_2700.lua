@@ -36,6 +36,13 @@ return {
         -- Do nothing, accept existing state
       END$$;
 
+      DO $$
+      BEGIN
+        CREATE INDEX IF NOT EXISTS "consumer_group_plugins_plugin_name_idx" ON "consumer_group_plugins" ("name");
+      EXCEPTION WHEN UNDEFINED_COLUMN THEN
+        -- Do nothing, accept existing state
+      END$$;
+
       CREATE TABLE IF NOT EXISTS "consumer_group_consumers" (
         "created_at"  TIMESTAMP WITH TIME ZONE     DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         "consumer_group_id"     UUID                         REFERENCES "consumer_groups" ("id") ON DELETE CASCADE,
@@ -75,7 +82,8 @@ return {
           PRIMARY KEY(consumer_id, consumer_group_id)
         );
 
-        CREATE INDEX IF NOT EXISTS consumer_group_plugins_group_id_idx ON consumer_group_plugins(consumer_group_id);
+        CREATE INDEX IF NOT EXISTS consumer_group_consumers_consumer_id_idx ON consumer_group_consumers(consumer_id);
+        CREATE INDEX IF NOT EXISTS consumer_group_consumers_group_id_idx ON consumer_group_consumers(consumer_group_id);
 
         CREATE TABLE IF NOT EXISTS consumer_group_plugins(
           id          uuid PRIMARY KEY,
@@ -85,9 +93,8 @@ return {
           config      text
         );
 
-        CREATE INDEX IF NOT EXISTS consumer_group_consumers_group_id_idx ON consumer_group_consumers(consumer_group_id);
-        CREATE INDEX IF NOT EXISTS consumer_group_consumers_consumer_id_idx ON consumer_group_consumers(consumer_id);
-
+        CREATE INDEX IF NOT EXISTS consumer_group_plugins_group_id_idx ON consumer_group_plugins(consumer_group_id);
+        CREATE INDEX IF NOT EXISTS consumer_group_plugins_plugin_name_idx ON consumer_group_plugins(name);
       ]],
      }
     }
