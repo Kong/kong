@@ -127,7 +127,7 @@ return {
         return kong.response.error(404, "Group '" .. consumer_group.id .. "' has no consumers")
       end
       for i = 1, #consumers do
-        local flag = consumer_group_helpers.delete_consumer_in_group(consumers[i].id, consumer_group.id)
+        consumer_group_helpers.delete_consumer_in_group(consumers[i].id, consumer_group.id)
       end
       return kong.response.exit(204)
     end,
