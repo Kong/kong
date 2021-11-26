@@ -140,7 +140,7 @@ return {
         return endpoints.handle_error(err_t)
       end
       if not consumer_in_path then
-        return kong.response.error(404, "Consumer '" .. self.params.consumers .. "' not found" )
+        return kong.response.error(404, "Consumer '" .. self.params.consumers .. "' not found")
       end
       consumer = consumer_in_path
       local group, _, err_t = endpoints.select_entity(self, db, kong.db.consumer_groups.schema)
@@ -148,8 +148,7 @@ return {
         return endpoints.handle_error(err_t)
       end
       if not group then
-        return kong.response.error(404,
-        { message = "Group '" .. self.params.consumer_groups .. "' not found" })
+        return kong.response.error(404, "Group '" .. self.params.consumer_groups .. "' not found")
       end
       consumer_group = group
     end,
@@ -182,12 +181,12 @@ return {
         return endpoints.handle_error(err_t)
       end
       if not group then
-        return kong.response.error(404, { message = "No group named '" .. self.params.consumer_groups .. "'" })
+        return kong.response.error(404, "Group '" .. self.params.consumer_groups .. "' not found")
       end
 
       local plugin = kong.db.plugins.schema.subschemas[self.params.plugins]
       if not plugin then
-        return kong.response.exit(404, { message = "No plugin named '" .. self.params.plugins .. "'" })
+        return kong.response.error(404,  "Plugin '" .. self.params.plugins .. "' not found")
       end
       if not self.params.config then
         return kong.response.error(400, "No configuration provided")
@@ -201,7 +200,7 @@ return {
       if record then
         id = record.id
       end
-      local _, err_t = kong.db.consumer_group_plugins:upsert(
+      local _, _, err_t = kong.db.consumer_group_plugins:upsert(
               { id = id, },
               {
                 name = plugin.name,
@@ -316,7 +315,7 @@ return {
       consumer = consumer_in_path
       local group = consumer_group_helpers.get_consumer_group(self.params.consuemer_groups)
       if not group then
-        return kong.response.error(404, { message = "No group named '" .. self.params.consumer_groups .. "'" })
+        return kong.response.error(404, "Group '" .. self.params.consumer_groups .. "' not found")
       end
       consumer_group = group
     end,
