@@ -156,7 +156,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/consumer_groups/:consumer_groups : ", function()
+    describe("/consumer_groups/:consumer_groups :", function()
       local function insert_entities()
         local consumer_group = assert(db.consumer_groups:insert{ name = "test_group_" .. utils.uuid()})
         local consumer = assert(db.consumers:insert( {username = "test_consumer_" .. utils.uuid()}))
@@ -224,7 +224,15 @@ for _, strategy in helpers.each_strategy() do
             },
           }))
 
-          local res = get_request("/consumer_groups/" .. key .. "/consumers")
+          local json = assert.res_status(404, assert(client:send {
+            method = "GET",
+            path = "/consumer_groups/" .. key,
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          }))
+
+          local res = cjson.decode(json)
 
           assert.same("Group '" .. key .. "' not found", res.message)
         end
@@ -248,7 +256,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/consumer_groups/:consumer_groups/consumers", function ()
+    describe("/consumer_groups/:consumer_groups/consumers :", function ()
       local function insert_entities()
         local consumer_group = assert(db.consumer_groups:insert{ name = "test_group_" .. utils.uuid()})
         local consumer = assert(db.consumers:insert( {username = "test_consumer_" .. utils.uuid()}))
@@ -338,6 +346,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("The endpoint should create a mapping with correct params by group name", function()
+          db:truncate("consumer_group_consumers")
           check_create(201, consumer_group.name, consumer_group, consumer)
         end)
       end)
@@ -374,7 +383,15 @@ for _, strategy in helpers.each_strategy() do
             },
           }))
 
-          local res = get_request("/consumer_groups" .. key .. "/consumers")
+          local json = assert.res_status(404, assert(client:send {
+            method = "GET",
+            path = "/consumer_groups/" .. key .. "/consumers",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          }))
+
+          local res = cjson.decode(json)
           assert.same({}, res.data)
         end
 
@@ -394,6 +411,80 @@ for _, strategy in helpers.each_strategy() do
 
         it("The endpoint should delete all consumers in group by group name ", function()
           check_delete(consumer_group.name)
+        end)
+
+      end)
+    end)
+
+    describe("/consumer_groups/:consumer_groups/overrides/plugins/:plugins :", function()
+      local function insert_entities()
+        local consumer_group = assert(db.consumer_groups:insert{ name = "test_group_" .. utils.uuid()})
+        return consumer_group
+      end
+
+      local function check_create(res_code, key, _plugin, _config)
+        local json = assert.res_status(res_code, assert(client:send {
+          method = "PUT",
+          path = "/consumer_groups/" .. key .. "/overrides/plugins/" .. _plugin,
+          body = {
+            id = utils.uuid(),
+            name = _plugin,
+            consumer_group = { id = key, },
+            config = _config,
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        }))
+
+        if res_code ~= 201 then
+          return nil
+        end
+
+        local res = cjson.decode(json)
+
+        assert.same(50, res.config.window_size)
+        assert.same(50, res.config.limit)
+      end
+
+      describe("PUT", function()
+        local consumer_group
+        before_each(function()
+          consumer_group = insert_entities()
+        end)
+
+        lazy_teardown(function()
+          truncate_tables(db)
+        end)
+
+        it("The endpoint should create a record in consumer_group_plugins", function()
+          local config = {
+            window_size = { 50 },
+            limit = { 50 },
+          }
+          check_create(201, consumer_group.id, "rate-limiting-advanced", config)
+        end)
+
+        it("The endpoint should not create a record if config is incorrect", function()
+          local config = {
+            wrong_config = "wrong_config"
+          }
+          local json = assert.res_status(400, assert(client:send {
+            method = "PUT",
+            path = "/consumer_groups/" .. consumer_group.id .. "/overrides/plugins/rate-limiting-advanced" ,
+            body = {
+              id = utils.uuid(),
+              name = "rate-limiting-advanced",
+              consumer_group = { id = consumer_group.id },
+              config = config,
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          }))
+
+          local res = cjson.decode(json)
+          assert.same("schema violation", res.name)
         end)
 
       end)
