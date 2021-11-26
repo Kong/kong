@@ -224,13 +224,7 @@ for _, strategy in helpers.each_strategy() do
             },
           }))
 
-          local res =  assert.res_status(404, assert(client:send {
-            method = "GET",
-            path = "/consumer_groups/" .. key,
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-          }))
+          local res = get_request("/consumer_groups/" .. key .. "/consumers")
 
           assert.same("Group '" .. key .. "' not found", res.message)
         end
@@ -380,14 +374,7 @@ for _, strategy in helpers.each_strategy() do
             },
           }))
 
-          local res =  assert.res_status(200, assert(client:send {
-            method = "GET",
-            path = "/consumer_groups/" .. key .. "/consumers",
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-          }))
-
+          local res = get_request("/consumer_groups" .. key .. "/consumers")
           assert.same({}, res.data)
         end
 

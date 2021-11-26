@@ -109,7 +109,7 @@ local function select_by_username_or_id(db, key)
   if not utils.is_valid_uuid(key) then
     entity = db:select_by_username(key)
   else
-    entity = db:select(key)
+    entity = db:select({ id = key })
   end
   return entity
 end
