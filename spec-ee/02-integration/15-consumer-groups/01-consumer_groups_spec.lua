@@ -142,6 +142,34 @@ for _, strategy in helpers.each_strategy() do
             config = {
               type = "record",
               required = true,
+              fields = {
+                { window_size = {
+                  type = "array",
+                  elements = {
+                    type = "number",
+                  },
+                  required = true,
+                }},
+                { window_type = {
+                  type = "string",
+                  one_of = { "fixed", "sliding" },
+                  default = "sliding",
+                }},
+                { limit = {
+                  type = "array",
+                  elements = {
+                    type = "number",
+                  },
+                  required = true,
+                }},
+                { sync_rate = {
+                  type = "number",
+                }},
+                { retry_after_jitter_max = { -- in seconds
+                  type = "number",
+                  default = 0,
+                }},
+              }
             }
           },
         }

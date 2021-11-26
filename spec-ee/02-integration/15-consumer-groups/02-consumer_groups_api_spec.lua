@@ -212,12 +212,12 @@ for _, strategy in helpers.each_strategy() do
 
       end)
 
-      describe("POST", function()
+      describe("PUT", function()
         local consumer_group, consumer
 
         local function check_create(res_code, key, _consumer_group, _consumer)
           local json = assert.res_status(res_code, assert(client:send {
-            method = "POST",
+            method = "PUT",
             path = "/consumer_groups/" .. key,
             body = {
               consumer = _consumer.id,
@@ -249,7 +249,7 @@ for _, strategy in helpers.each_strategy() do
           do
             -- body params need to be correct
             local json_no_consumer = assert.res_status(400, assert(client:send {
-              method = "POST",
+              method = "PUT",
               path = "/consumer_groups/" .. consumer_group.id,
               headers = {
                 ["Content-Type"] = "application/json",
@@ -261,7 +261,7 @@ for _, strategy in helpers.each_strategy() do
           do
             -- entities need to be found
             assert.res_status(404, assert(client:send {
-              method = "POST",
+              method = "PUT",
               path = "/consumer_groups/" .. consumer_group.id,
               body = {
                 consumer = utils.uuid()
@@ -298,7 +298,13 @@ for _, strategy in helpers.each_strategy() do
             },
           }))
 
-          local res = get_request("/consumer_groups/" .. key)
+          local res =  assert.res_status(404, assert(client:send {
+            method = "GET",
+            path = "/consumer_groups/" .. key,
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          }))
 
           assert.same("Group '" .. key .. "' not found", res.message)
         end
