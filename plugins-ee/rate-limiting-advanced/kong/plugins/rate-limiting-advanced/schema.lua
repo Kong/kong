@@ -172,6 +172,11 @@ return {
           return nil, "Config option 'sync_rate' must not be a decimal between 0 and 0.02"
         end
 
+        if config.enforce_consumer_groups then
+          if config.consumer_groups == ngx.null then
+            return nil, "No consumer groups provided"
+          end
+        end
         return true
       end
     }},

@@ -11,6 +11,7 @@ local kong = kong
 local consumer_group
 local consumer
 local consumer_group_helpers        = require "kong.enterprise_edition.consumer_groups_helpers"
+local inspect  = require "inspect"
 
 return {
   ["/consumer_groups/:consumer_groups"] = {
@@ -76,35 +77,44 @@ return {
         return kong.response.error(400, "must provide consumer")
       end
 
-      local consumer_id
-      -- validate the list of consumers before processing
-      for i = 1, #self.params.consumer do
-        consumer = consumer_group_helpers.select_by_username_or_id(kong.db.consumers, self.params.consumer[i])
+      --handle 1 or more consumers
+      if type(self.params.consumer) == "string" then
+        consumer = consumer_group_helpers.select_by_username_or_id(kong.db.consumers, self.params.consumer)
         if not consumer then
-          return kong.response.error(404, "Consumer '" .. self.params.consumer[i] .. "' not found")
-        end
-      end
-
-      for i = 1, #self.params.consumer do
-        if not utils.is_valid_uuid(self.params.consumer[i]) then
-          consumer = kong.db.consumers:select_by_username(self.params.consumer[i])
-          consumer_id = consumer.id
-        else
-          consumer = kong.db.consumers:select(self.params.consumer[i])
-          consumer_id = consumer.id
+          return kong.response.error(404, "Consumer '" .. self.params.consumer .. "' not found")
         end
 
         local consumer_group_relation, _, err_t = kong.db.consumer_group_consumers:insert(
-          {
-            consumer_group = { id = consumer_group.id },
-            consumer = { id = consumer_id},
-          }
-        )
+            {
+              consumer_group = { id = consumer_group.id },
+              consumer = { id = consumer.id},
+            }
+          )
         if not consumer_group_relation then
           return endpoints.handle_error(err_t)
         end
-      end
+      else
+        --filter the list before processing
+        for i = 1, #self.params.consumer do
+          consumer = consumer_group_helpers.select_by_username_or_id(kong.db.consumers, self.params.consumer[i])
+          if not consumer then
+            return kong.response.error(404, "Consumer '" .. self.params.consumer[i] .. "' not found")
+          end
+        end
 
+        for i = 1, #self.params.consumer do
+          consumer = consumer_group_helpers.select_by_username_or_id(kong.db.consumers, self.params.consumer[i])
+          local consumer_group_relation, _, err_t = kong.db.consumer_group_consumers:insert(
+            {
+              consumer_group = { id = consumer_group.id },
+              consumer = { id = consumer.id},
+            }
+          )
+          if not consumer_group_relation then
+            return endpoints.handle_error(err_t)
+          end
+        end
+      end
       consumer_group =  consumer_group_helpers.get_consumer_group(self.params.consumer_groups)
       local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
 
@@ -112,6 +122,17 @@ return {
         consumer_group = consumer_group,
         consumers = consumers,
       })
+    end,
+
+    DELETE = function(self, db, helpers)
+      local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
+      if not consumers then
+        return kong.response.error(404, "Group '" .. consumer_group.id .. "' has no consumers")
+      end
+      for i = 1, #consumers do
+        consumer_group_helpers.delete_consumer_in_group(consumers[i], consumer_group.id)
+      end
+      return kong.response.exit(204)
     end,
   },
 
@@ -219,21 +240,12 @@ return {
       if not self.params.group then
         return kong.response.error(400, "must provide group")
       end
-      --validate the list before processing
-      for i = 1, #self.params.group do
-        consumer_group = consumer_group_helpers.get_consumer_group(self.params.group[i])
-        if not consumer_group then
-          return kong.response.error(404, "Group '" .. self.params.group[i] .. "' not found")
-        end
-        if consumer_group_helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
-          return kong.response.error(409,
-          "Consumer '" .. self.params.consumers ..
-          "' already in group '" .. self.params.group[i] .."'")
-        end
-      end
 
-      for i = 1, #self.params.group do
-        consumer_group = consumer_group_helpers.get_consumer_group(self.params.group[i])
+      if type(self.params.group) == "string" then
+        consumer_group = consumer_group_helpers.get_consumer_group(self.params.group)
+        if not consumer_group then
+          return kong.response.error(404, "Group '" .. self.params.group .. "' not found")
+        end
         local consumer_group_relation, _, err_t = kong.db.consumer_group_consumers:insert(
           {
             consumer_group = { id = consumer_group.id },
@@ -242,6 +254,32 @@ return {
         )
         if not consumer_group_relation then
           return endpoints.handle_error(err_t)
+        end
+      else
+        --validate the list before processing
+        for i = 1, #self.params.group do
+          consumer_group = consumer_group_helpers.get_consumer_group(self.params.group[i])
+          if not consumer_group then
+            return kong.response.error(404, "Group '" .. self.params.group[i] .. "' not found")
+          end
+          if consumer_group_helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
+            return kong.response.error(409,
+            "Consumer '" .. self.params.consumers ..
+            "' already in group '" .. self.params.group[i] .."'")
+          end
+        end
+
+        for i = 1, #self.params.group do
+          consumer_group = consumer_group_helpers.get_consumer_group(self.params.group[i])
+          local consumer_group_relation, _, err_t = kong.db.consumer_group_consumers:insert(
+            {
+              consumer_group = { id = consumer_group.id },
+              consumer = { id = consumer.id },
+            }
+          )
+          if not consumer_group_relation then
+            return endpoints.handle_error(err_t)
+          end
         end
       end
       return kong.response.exit(201, {
