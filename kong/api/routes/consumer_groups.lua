@@ -203,7 +203,7 @@ return {
 
   },
 
-  ["/consumers/:consumers/groups"] = {
+  ["/consumers/:consumers/consumer_groups"] = {
     before = function(self, db, helpers)
       local consumer_in_path, _, err_t = endpoints.select_entity(self, db, db.consumers.schema)
       if err_t then
@@ -269,7 +269,7 @@ return {
     end,
   },
 
-  ["/consumers/:consumers/groups/:groups"] = {
+  ["/consumers/:consumers/consumer_groups/:consumer_groups"] = {
     before = function(self, db, helpers)
       local consumer_in_path, _, err_t = endpoints.select_entity(self, db, db.consumers.schema)
       if err_t then
@@ -279,7 +279,7 @@ return {
         return kong.response.error(404, "Consumer '" .. self.params.consumers .. "' not found" )
       end
       consumer = consumer_in_path
-      local group = consumer_group_helpers.get_consumer_group(self.params.groups)
+      local group = consumer_group_helpers.get_consumer_group(self.params.consuemer_groups)
       if not group then
         return kong.response.error(404, { message = "No group named '" .. self.params.consumer_groups .. "'" })
       end
