@@ -311,6 +311,8 @@ for _, strategy in helpers.each_strategy() do
             local json_no_consumer = assert.res_status(400, assert(client:send {
               method = "POST",
               path = "/consumer_groups/" .. consumer_group.id .. "/consumers",
+              body = {
+              },
               headers = {
                 ["Content-Type"] = "application/json",
               },
@@ -361,7 +363,6 @@ for _, strategy in helpers.each_strategy() do
 
         it("should list all consumers in the consumer_group", function()
           local res = get_request("/consumer_groups/" .. consumer_group.id .. "/consumers")
-          assert.same(res.consumer_group.id, consumer_group.id)
           assert.same(res.consumers[1].id, consumer.id)
           assert.same(res.consumers[2].id, consumer2.id)
         end)
@@ -379,7 +380,7 @@ for _, strategy in helpers.each_strategy() do
             },
           }))
 
-          local res =  assert.res_status(404, assert(client:send {
+          local res =  assert.res_status(200, assert(client:send {
             method = "GET",
             path = "/consumer_groups/" .. key .. "/consumers",
             headers = {
