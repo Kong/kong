@@ -11,7 +11,6 @@ local kong = kong
 local consumer_group
 local consumer
 local consumer_group_helpers        = require "kong.enterprise_edition.consumer_groups_helpers"
-local inspect  = require "inspect"
 
 return {
   ["/consumer_groups/:consumer_groups"] = {
@@ -63,11 +62,9 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      consumer_group =  consumer_group_helpers.get_consumer_group(self.params.consumer_groups)
       local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
 
-      return kong.response.exit(201, {
-        consumer_group = consumer_group,
+      return kong.response.exit(200, {
         consumers = consumers,
       })
     end,
@@ -130,7 +127,7 @@ return {
         return kong.response.error(404, "Group '" .. consumer_group.id .. "' has no consumers")
       end
       for i = 1, #consumers do
-        consumer_group_helpers.delete_consumer_in_group(consumers[i], consumer_group.id)
+        local flag = consumer_group_helpers.delete_consumer_in_group(consumers[i].id, consumer_group.id)
       end
       return kong.response.exit(204)
     end,

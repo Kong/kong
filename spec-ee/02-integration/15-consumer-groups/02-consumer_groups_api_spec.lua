@@ -262,6 +262,7 @@ for _, strategy in helpers.each_strategy() do
 
         return consumer_group, consumer, consumer2
       end
+
       local function insert_mapping(consumer_group, consumer)
 
         local mapping = {
@@ -364,6 +365,49 @@ for _, strategy in helpers.each_strategy() do
           assert.same(res.consumers[1].id, consumer.id)
           assert.same(res.consumers[2].id, consumer2.id)
         end)
+      end)
+
+      describe("DELETE", function()
+        local consumer_group, consumer, consumer2
+
+        local function check_delete(key)
+          assert.res_status(204, assert(client:send {
+            method = "DELETE",
+            path = "/consumer_groups/" .. key .. "/consumers",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          }))
+
+          local res =  assert.res_status(404, assert(client:send {
+            method = "GET",
+            path = "/consumer_groups/" .. key .. "/consumers",
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          }))
+
+          assert.same({}, res.data)
+        end
+
+        before_each(function()
+          consumer_group, consumer, consumer2 = insert_entities()
+          insert_mapping(consumer_group, consumer)
+          insert_mapping(consumer_group, consumer2)
+        end)
+
+        lazy_teardown(function()
+          truncate_tables(db)
+        end)
+
+        it("The endpoint should delete all consumers in group by group id ", function()
+          check_delete(consumer_group.id)
+        end)
+
+        it("The endpoint should delete all consumers in group by group name ", function()
+          check_delete(consumer_group.name)
+        end)
+
       end)
     end)
 
