@@ -383,7 +383,7 @@ for _, strategy in helpers.each_strategy() do
             },
           }))
 
-          local json = assert.res_status(404, assert(client:send {
+          local json = assert.res_status(200, assert(client:send {
             method = "GET",
             path = "/consumer_groups/" .. key .. "/consumers",
             headers = {
@@ -427,9 +427,6 @@ for _, strategy in helpers.each_strategy() do
           method = "PUT",
           path = "/consumer_groups/" .. key .. "/overrides/plugins/" .. _plugin,
           body = {
-            id = utils.uuid(),
-            name = _plugin,
-            consumer_group = { id = key, },
             config = _config,
           },
           headers = {
@@ -462,6 +459,7 @@ for _, strategy in helpers.each_strategy() do
             window_size = { 50 },
             limit = { 50 },
           }
+
           check_create(201, consumer_group.id, "rate-limiting-advanced", config)
         end)
 
@@ -473,9 +471,6 @@ for _, strategy in helpers.each_strategy() do
             method = "PUT",
             path = "/consumer_groups/" .. consumer_group.id .. "/overrides/plugins/rate-limiting-advanced" ,
             body = {
-              id = utils.uuid(),
-              name = "rate-limiting-advanced",
-              consumer_group = { id = consumer_group.id },
               config = config,
             },
             headers = {
