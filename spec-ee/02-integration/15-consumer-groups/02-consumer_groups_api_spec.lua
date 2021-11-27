@@ -440,8 +440,8 @@ for _, strategy in helpers.each_strategy() do
 
         local res = cjson.decode(json)
 
-        assert.same(50, res.config.window_size)
-        assert.same(50, res.config.limit)
+        assert.same(50, res.config.window_size[1])
+        assert.same(50, res.config.limit[1])
       end
 
       describe("PUT", function()
@@ -486,4 +486,5 @@ for _, strategy in helpers.each_strategy() do
     end)
 
   end)
+  break
 end
