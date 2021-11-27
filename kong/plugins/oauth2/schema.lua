@@ -22,7 +22,7 @@ return {
         fields = {
           { scopes = { type = "array", elements = { type = "string" }, }, },
           { mandatory_scope = { type = "boolean", default = false, required = true }, },
-          { provision_key = { type = "string", unique = true, auto = true, required = true }, },
+          { provision_key = { type = "string", unique = true, auto = true, required = true, encrypted = true }, }, -- encrypted = true is a Kong Enterprise Exclusive feature. It does nothing in Kong CE
           { token_expiration = { type = "number", default = 7200, required = true }, },
           { enable_authorization_code = { type = "boolean", default = false, required = true }, },
           { enable_implicit_grant = { type = "boolean", default = false, required = true }, },
