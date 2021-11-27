@@ -184,15 +184,11 @@ return {
         return kong.response.error(404, "Group '" .. self.params.consumer_groups .. "' not found")
       end
 
-      local plugin = kong.db.plugins.schema.subschemas[self.params.plugins]
-      if not plugin then
-        return kong.response.error(404,  "Plugin '" .. self.params.plugins .. "' not found")
-      end
       if not self.params.config then
         return kong.response.error(400, "No configuration provided")
       end
 
-      local record = kong.db.consumer_group_plugins:select_by_name(plugin.name)
+      local record = kong.db.consumer_group_plugins:select_by_name(self.params.plugins)
       local id
       if not record then
         id = utils.uuid()
@@ -203,7 +199,7 @@ return {
       local _, _, err_t = kong.db.consumer_group_plugins:upsert(
               { id = id, },
               {
-                name = plugin.name,
+                name = self.params.plugins,
                 consumer_group = { id = group.id, },
                 config = self.params.config,
               }
@@ -213,7 +209,7 @@ return {
       end
       return kong.response.exit(201, {
         group = group.name,
-        plugin = plugin.name,
+        plugin = self.params.plugins,
         config = self.params.config
       })
     end,

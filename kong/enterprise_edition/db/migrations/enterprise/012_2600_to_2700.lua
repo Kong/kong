@@ -80,7 +80,7 @@ return {
           created_at  timestamp,
           consumer_id uuid,
           consumer_group_id uuid,
-          PRIMARY KEY(consumer_group_id, consumer_id)
+          PRIMARY KEY(consumer_id,consumer_group_id)
         );
 
         CREATE TABLE IF NOT EXISTS consumer_group_plugins(

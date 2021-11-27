@@ -392,7 +392,7 @@ for _, strategy in helpers.each_strategy() do
           }))
 
           local res = cjson.decode(json)
-          assert.same({}, res.data)
+          assert.same({}, res)
         end
 
         before_each(function()
