@@ -3176,97 +3176,50 @@ describe("Router", function()
       end
     end)
 
-    describe("normalize request uri", function()
+    describe("#normalize uri captures", function()
       local use_case_routes = {
         {
           service = service,
           route   = {
-            paths = {
-              "/plain/a.b%2Ec/(.*)", -- /plain/a.b.c/(.*)
-            },
+            paths = { "" },
           },
         }
       }
 
-      describe("when normalize_req_uri is nil", function()
-        local router = assert(Router.new(use_case_routes))
+      local regex_path_1 = "/plain/(a.b c)/(.*)"
+      local regex_path_2 = "/plain/(a%2Eb%20c)/(.*)"
+      local req_uri_1 = "/plain/a.b c/a.b c"
+      local req_uri_2 = "/plain/a%2Eb%20c/a%2Eb%20c"
 
-        it("matches against normalized request uri", function()
-          local _ngx = mock_ngx("GET", "/plain/a.b.c/a%2Eb%20c", { host = "domain.org" })
+      local combination = {
+        -- normalize_uri_captures is false
+        {flag = false, path = regex_path_1, req_uri = req_uri_1, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
+        {flag = false, path = regex_path_1, req_uri = req_uri_2, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
+        {flag = false, path = regex_path_2, req_uri = req_uri_1, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
+        {flag = false, path = regex_path_2, req_uri = req_uri_2, uri_captures = {"/plain/a%2Eb%20c/a%2Eb%20c", "a%2Eb%20c", "a%2Eb%20c"} },
+        -- normalize_uri_captures is true
+        {flag = true, path = regex_path_1, req_uri = req_uri_1, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
+        {flag = true, path = regex_path_1, req_uri = req_uri_2, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
+        {flag = true, path = regex_path_2, req_uri = req_uri_1, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
+        {flag = true, path = regex_path_2, req_uri = req_uri_2, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
+      }
+
+      for _, c in pairs(combination) do
+        it("normalize_uri_captures: " .. tostring(c.flag) .. ", route path: " .. c.path .. ", req: " .. c.req_uri, function()
+          use_case_routes[1].route.paths[1] = c.path
+          use_case_routes.normalize_uri_captures = c.flag
+          local router = assert(Router.new(use_case_routes))
+          local _ngx = mock_ngx("GET", c.req_uri, { host = "domain.org" })
           router._set_ngx(_ngx)
           local match_t = router.exec()
+
           assert.truthy(match_t)
           assert.same(use_case_routes[1].route, match_t.route)
-          assert.same("/plain/a.b\\.c/(.*)", match_t.matches.uri)
-          assert.same("/plain/a.b.c/a.b c", match_t.matches.uri_captures[0])
-
-          local _ngx = mock_ngx("GET", "/plain/a.b%2Ec/a%2Eb%20c", { host = "domain.org" })
-          router._set_ngx(_ngx)
-          local match_t = router.exec()
-          assert.truthy(match_t)
-          assert.same(use_case_routes[1].route, match_t.route)
-          assert.same("/plain/a.b\\.c/(.*)", match_t.matches.uri)
-          assert.same("/plain/a.b.c/a.b c", match_t.matches.uri_captures[0])
-
-          local _ngx = mock_ngx("GET", "/plain/a.a.a/a%2Eb%20c", { host = "domain.org" })
-          router._set_ngx(_ngx)
-          local match_t = router.exec()
-          assert.falsy(match_t)
+          assert.same(c.uri_captures[1], match_t.matches.uri_captures[0])
+          assert.same(c.uri_captures[2], match_t.matches.uri_captures[1])
+          assert.same(c.uri_captures[3], match_t.matches.uri_captures[2])
         end)
-      end)
-
-      describe("when normalize_req_uri is on", function()
-        use_case_routes.normalize_req_uri = "on"
-        local router = assert(Router.new(use_case_routes))
-
-        it("matches against normalized request uri", function()
-          local _ngx = mock_ngx("GET", "/plain/a.b.c/a%2Eb%20c", { host = "domain.org" })
-          router._set_ngx(_ngx)
-          local match_t = router.exec()
-          assert.truthy(match_t)
-          assert.same(use_case_routes[1].route, match_t.route)
-          assert.same("/plain/a.b\\.c/(.*)", match_t.matches.uri)
-          assert.same("/plain/a.b.c/a.b c", match_t.matches.uri_captures[0])
-
-          local _ngx = mock_ngx("GET", "/plain/a.b%2Ec/a%2Eb%20c", { host = "domain.org" })
-          router._set_ngx(_ngx)
-          local match_t = router.exec()
-          assert.truthy(match_t)
-          assert.same(use_case_routes[1].route, match_t.route)
-          assert.same("/plain/a.b\\.c/(.*)", match_t.matches.uri)
-          assert.same("/plain/a.b.c/a.b c", match_t.matches.uri_captures[0])
-
-          local _ngx = mock_ngx("GET", "/plain/a.a.a/a%2Eb%20c", { host = "domain.org" })
-          router._set_ngx(_ngx)
-          local match_t = router.exec()
-          assert.falsy(match_t)
-        end)
-      end)
-
-      describe("when normalize_req_uri is off", function()
-        use_case_routes.normalize_req_uri = "off"
-        local router = assert(Router.new(use_case_routes))
-
-        it("matches against unnormalized request uri", function()
-          local _ngx = mock_ngx("GET", "/plain/a.b.c/a%2Eb%20c", { host = "domain.org" })
-          router._set_ngx(_ngx)
-          local match_t = router.exec()
-          assert.truthy(match_t)
-          assert.same(use_case_routes[1].route, match_t.route)
-          assert.same("/plain/a.b\\.c/(.*)", match_t.matches.uri)
-          assert.same("/plain/a.b.c/a%2Eb%20c", match_t.matches.uri_captures[0])
-
-          local _ngx = mock_ngx("GET", "/plain/a.b%2Ec/a%2Eb%20c", { host = "domain.org" })
-          router._set_ngx(_ngx)
-          local match_t = router.exec()
-          assert.falsy(match_t)
-
-          local _ngx = mock_ngx("GET", "/plain/a.a.a/a%2Eb%20c", { host = "domain.org" })
-          router._set_ngx(_ngx)
-          local match_t = router.exec()
-          assert.falsy(match_t)
-        end)
-      end)
+      end
     end)
   end)
 

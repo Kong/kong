@@ -496,10 +496,12 @@ local function marshall_route(r)
           route_t.max_uri_length = max(route_t.max_uri_length, #path)
 
         else
+          local unnormalized_path = path
           local path = normalize_regex(path)
 
           -- regex URI
           local strip_regex  = REGEX_PREFIX .. path .. [[(?<uri_postfix>.*)]]
+          local unnormalized_strip_regex  = REGEX_PREFIX .. unnormalized_path .. [[(?<uri_postfix>.*)]]
           local has_captures = has_capturing_groups(path)
 
           local uri_t    = {
@@ -508,6 +510,7 @@ local function marshall_route(r)
             regex        = path,
             has_captures = has_captures,
             strip_regex  = strip_regex,
+            unnormalized_strip_regex = unnormalized_strip_regex,
           }
 
           route_t.uris[path] = uri_t
@@ -1015,6 +1018,20 @@ do
 
               if uri_t.has_captures then
                 ctx.matches.uri_captures = m
+
+                -- for the case unnormalized_req_uri is not equal to req_uri
+                -- try to get unnormalized uri_captures
+                if (ctx.unnormalized_req_uri ~= ctx.req_uri) then
+                  local unnormalized_m, err = re_match(ctx.unnormalized_req_uri, uri_t.unnormalized_strip_regex, "ajo")
+                  if err then
+                    log(ERR, "could not evaluate URI prefix/regex: ", err)
+                    return
+                  end
+
+                  if unnormalized_m then
+                    ctx.matches.uri_captures = unnormalized_m
+                  end
+                end
               end
 
               return true
@@ -1057,6 +1074,20 @@ do
 
             if uri_t.has_captures then
               ctx.matches.uri_captures = m
+
+              -- for the case unnormalized_req_uri is not equal to req_uri
+              -- try to get unnormalized uri_captures
+              if (ctx.unnormalized_req_uri ~= ctx.req_uri) then
+                local unnormalized_m, err = re_match(ctx.unnormalized_req_uri, uri_t.unnormalized_strip_regex, "ajo")
+                if err then
+                  log(ERR, "could not evaluate URI prefix/regex: ", err)
+                  return
+                end
+
+                if unnormalized_m then
+                  ctx.matches.uri_captures = unnormalized_m
+                end
+              end
             end
 
             return true
@@ -1438,7 +1469,7 @@ function _M.new(routes)
   local function find_route(req_method, req_uri, req_host, req_scheme,
                             src_ip, src_port,
                             dst_ip, dst_port,
-                            sni, req_headers)
+                            sni, req_headers, unnormalized_req_uri)
     if req_method and type(req_method) ~= "string" then
       error("method must be a string", 2)
     end
@@ -1485,6 +1516,7 @@ function _M.new(routes)
     ctx.dst_ip         = dst_ip or ""
     ctx.dst_port       = dst_port or ""
     ctx.sni            = sni or ""
+    ctx.unnormalized_req_uri  = unnormalized_req_uri or ""
 
     -- input sanitization for matchers
 
@@ -1820,7 +1852,7 @@ function _M.new(routes)
 
   self.select = find_route
   self._set_ngx = _set_ngx
-  self.normalize_req_uri = routes.normalize_req_uri
+  self.normalize_uri_captures = routes.normalize_uri_captures
 
   if subsystem == "http" then
     function self.exec(ctx)
@@ -1832,6 +1864,7 @@ function _M.new(routes)
 
       local headers
       local err
+      local unnormalized_req_uri
 
       if grab_req_headers then
         headers, err = get_headers(MAX_REQ_HEADERS)
@@ -1849,15 +1882,18 @@ function _M.new(routes)
           req_uri = sub(req_uri, 1, idx - 1)
         end
         
-        if self.normalize_req_uri ~= "off" then
-            req_uri = normalize(req_uri, true)
+        unnormalized_req_uri = req_uri
+        req_uri = normalize(req_uri, true)
+        if self.normalize_uri_captures ~= false then
+          -- for the case unnormalized_req_uri is equal to req_uri, uri_captures will be normalized
+          unnormalized_req_uri = req_uri
         end
       end
 
       local match_t = find_route(req_method, req_uri, req_host, req_scheme,
                                  nil, nil, -- src_ip, src_port
                                  nil, nil, -- dst_ip, dst_port
-                                 sni, headers)
+                                 sni, headers, unnormalized_req_uri)
       if not match_t then
         return nil
       end
@@ -1923,7 +1959,7 @@ function _M.new(routes)
       return find_route(nil, nil, nil, scheme,
                         src_ip, src_port,
                         dst_ip, dst_port,
-                        sni)
+                        sni, nil)
     end
   end
 

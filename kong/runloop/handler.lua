@@ -688,7 +688,7 @@ do
   build_router = function(version)
     local db = kong.db
     local routes, i = {}, 0
-    routes.normalize_req_uri = kong.configuration.normalize_req_uri
+    routes.normalize_uri_captures = kong.configuration.normalize_uri_captures
 
     local err
     -- The router is initially created on init phase, where kong.core_cache is

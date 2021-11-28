@@ -787,21 +787,30 @@
                                         # connection may be kept open
                                         # indefinitely.
 
-#normalize_req_uri = on                 # Whether to normalize the request URI.
-                                        # If enabled, the request URI will be normalized.
+#normalize_uri_captures = on            # Whether to normalize the captured request URI after route matching.
+                                        # If enabled, the captured URI will be normalized.
                                         #
-                                        # Examples of `normalize_req_uri = on`
-                                        # behavior:
+                                        # Examples of `normalize_uri_captures = on`
                                         #
-                                        # Assuming the request uri is `/test/some%20resource%20document`,
-                                        # it will be normalized as `/test/some resource document`.
+                                        # - Assuming that the route path is `/plain/(a%2Eb%20c)/(.*)` and the request URI is `/plain/a%2Eb%20c/a%2Eb%20c`,
+                                        # the captured request URI is normalized as `/plain/a.b c/a.b c`.
+                                        # - Assuming that the route path is `/plain/(a.b c)/(.*)` and the request URI is `/plain/a%2Eb%20c/a%2Eb%20c`,
+                                        # the captured request URI is normalized as `/plain/a.b c/a.b c`.
+                                        #
+                                        # Examples of `normalize_uri_captures = off`
+                                        #
+                                        # - Assuming that the route path is `/plain/(a%2Eb%20c)/(.*)` and the request URI is `/plain/a%2Eb%20c/a%2Eb%20c`,
+                                        # the captured request URI is `/plain/a%2Eb%20c/a%2Eb%20c` without URI normalization.
+                                        # - Assuming that the route path is `/plain/(a.b c)/(.*)` and the request URI is `/plain/a%2Eb%20c/a%2Eb%20c`,
+                                        # the request URI can not match the route path without URI normalization.
+                                        # As a result, the captured request URI is normalized as `/plain/a.b c/a.b c`.
                                         #
                                         # Valid values to this setting are:
                                         #
-                                        # - `on`: Request URI normalization is enabled.
-                                        # - `off`: Request URI normalization is disabled.
+                                        # - `on`: Captured request URI normalization is enabled.
+                                        # - `off`: Captured request URI normalization is disabled.
                                         #
-                                        # By default this value is set to `on`.
+                                        # By default this value is set as `on`.
 
 #------------------------------------------------------------------------------
 # NGINX injected directives

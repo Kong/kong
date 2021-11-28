@@ -324,7 +324,7 @@ local CONF_INFERENCES = {
   db_cache_neg_ttl = {  typ = "number"  },
   db_resurrect_ttl = {  typ = "number"  },
   db_cache_warmup_entities = { typ = "array" },
-  normalize_req_uri = { enum = { "on", "off"} },
+  normalize_uri_captures = { typ = "boolean" },
   nginx_user = {
     typ = "string",
     alias = {
