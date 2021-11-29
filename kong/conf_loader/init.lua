@@ -787,6 +787,7 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.database == "cassandra" then
+    log.deprecation("Support for Cassandra is deprecated. Please refer to https://konghq.com/blog/cassandra-support-deprecated", {after = "2.7", removal = "4.0"})
     if string.find(conf.cassandra_lb_policy, "DCAware", nil, true)
        and not conf.cassandra_local_datacenter
     then
