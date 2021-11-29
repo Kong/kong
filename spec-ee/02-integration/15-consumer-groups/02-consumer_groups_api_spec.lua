@@ -256,7 +256,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/consumer_groups/:consumer_groups/consumers :", function ()
+    describe("/consumer_groups/:consumer_groups/consumers :", function()
       local function insert_entities()
         local consumer_group = assert(db.consumer_groups:insert{ name = "test_group_" .. utils.uuid()})
         local consumer = assert(db.consumers:insert( {username = "test_consumer_" .. utils.uuid()}))
@@ -483,6 +483,12 @@ for _, strategy in helpers.each_strategy() do
         end)
 
       end)
+    end)
+
+    descrbie("/consumers/:consumers/consumer_groups", function() 
+    end)
+
+    describe("/consumers/:consumers/consumer_groups/:consumer_groups", function()
     end)
 
   end)

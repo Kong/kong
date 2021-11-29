@@ -5,6 +5,48 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local log          = require "kong.cmd.utils.log"
+local operations = require "kong.enterprise_edition.db.migrations.operations.1500_to_2100"
+local ee_new_entities = {
+  {
+    name = "consumer_groups",
+    primary_key = "id",
+    uniques = {"name"},
+    fks = {},
+  }, {
+    name = "consumer_group_plugins",
+    primary_key = "id",
+    uniques = {"name"},
+    fks = {{name="consumer_group", reference = "consumer_groups", on_delete = "cascade"}},
+  }
+}
+--------------------------------------------------------------------------------
+-- High-level description of the migrations to execute on 'up'
+-- @param ops table: table of functions which execute the low-level operations
+-- for the database (each function returns a string).
+-- @return SQL or CQL
+local function ws_migration_up(ops)
+  return ops:ws_adjust_fields(ee_new_entities)
+end
+
+
+--------------------------------------------------------------------------------
+-- High-level description of the migrations to execute on 'teardown'
+-- @param ops table: table of functions which execute the low-level operations
+-- for the database (each function receives a connector).
+-- @return a function that receives a connector
+local function ws_migration_teardown(ops)
+  return function(connector)
+    ops:drop_run_on(connector)
+    log.debug("run_on dropped")
+
+    if ops:has_workspace_entities(connector)[1] then
+      ops:ws_adjust_data(connector, ee_new_entities)
+      log.debug("adjusted EE data")
+    end
+  end
+end
+
 return {
   postgres = {
     up = [[
@@ -64,9 +106,10 @@ return {
         -- Do nothing, accept existing state
       END$$;
 
-      ]],
+      ]] .. ws_migration_up(operations.postgres.up),
+      teardown = ws_migration_teardown(operations.postgres.teardown),
     },
-    cassandra = {
+  cassandra = {
       up = [[
         CREATE TABLE IF NOT EXISTS consumer_groups(
           id          uuid PRIMARY KEY,
@@ -95,6 +138,8 @@ return {
 
         CREATE INDEX IF NOT EXISTS consumer_group_plugins_group_id_idx ON consumer_group_plugins(consumer_group_id);
         CREATE INDEX IF NOT EXISTS consumer_group_plugins_plugin_name_idx ON consumer_group_plugins(name);
-      ]],
-     }
-    }
+      ]] .. ws_migration_up(operations.cassandra.up),
+      teardown = ws_migration_teardown(operations.cassandra.teardown),
+    },
+  }
+  

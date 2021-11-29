@@ -12,9 +12,6 @@ return {
   -- 010 must be ran before 007 because it creates table
   -- that 007 backs up data to
   "010_1500_to_2100",
-  -- 012 must be ran before 007 because it creates table
-  -- that 007 migrates the workspace
-  "012_2600_to_2700",
   "007_1500_to_1504",
   "008_1504_to_1505",
   "007_1500_to_2100",
@@ -24,4 +21,5 @@ return {
   "010_2200_to_2300",
   "010_2200_to_2300_1",
   "011_2300_to_2600",
+  "012_2600_to_2700",
 }

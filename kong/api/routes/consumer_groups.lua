@@ -309,11 +309,22 @@ return {
         return kong.response.error(404, "Consumer '" .. self.params.consumers .. "' not found" )
       end
       consumer = consumer_in_path
-      local group = consumer_group_helpers.get_consumer_group(self.params.consuemer_groups)
+      local group = consumer_group_helpers.get_consumer_group(self.params.consumer_groups)
       if not group then
         return kong.response.error(404, "Group '" .. self.params.consumer_groups .. "' not found")
       end
       consumer_group = group
+    end,
+
+    GET = function(self, db, helpers)
+      if consumer_group_helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
+        return kong.response.exit(200, {
+          consumer_group = consumer_group,
+        })
+      else
+        return kong.response.error(404,
+        "Consumer '" .. consumer.id .. "' not found in Group '" .. consumer_group.id .."'" )
+      end
     end,
 
     DELETE = function(self, db, helpers)
