@@ -37,7 +37,7 @@ Whether you’re running in the cloud, on bare metal or using containers, you ca
 The Gateway will be available on the following ports on localhost:
 
 `:8000` on which Kong listens for incoming HTTP traffic from your clients, and forwards it to your upstream services.
-`:8001` on which the Admin API used to configure Kong listens.
+`:8001` on which the Admin API is used to configure Kong listens.
 
 Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
 ) to tour the Gateway features
