@@ -485,11 +485,5 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    descrbie("/consumers/:consumers/consumer_groups", function() 
-    end)
-
-    describe("/consumers/:consumers/consumer_groups/:consumer_groups", function()
-    end)
-
   end)
 end
