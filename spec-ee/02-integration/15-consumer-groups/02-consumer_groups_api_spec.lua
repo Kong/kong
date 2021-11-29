@@ -366,8 +366,8 @@ for _, strategy in helpers.each_strategy() do
 
         it("should list all consumers in the consumer_group", function()
           local res = get_request("/consumer_groups/" .. consumer_group.id .. "/consumers")
-          assert.same(res.consumers[1].id, consumer.id)
-          assert.same(res.consumers[2].id, consumer2.id)
+
+          assert.same(2, #res.consumers)
         end)
       end)
 
