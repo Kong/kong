@@ -20,9 +20,13 @@ local workspace_config = require "kong.portal.workspace_config"
 local kong = kong
 local type = type
 local next = next
+local sort = table.sort
 
 
 local PORTAL = constants.WORKSPACE_CONFIG.PORTAL
+local PAGE_SIZE_DEFAULT = 100
+local PAGE_SIZE_MIN = 1
+local PAGE_SIZE_MAX = 1000
 
 
 local _M = {}
@@ -81,12 +85,44 @@ end
 
 
 function _M.paginate(self, set, post_process)
-  local new_offset
+  local new_offset, offset, sort_by
+  local size = PAGE_SIZE_DEFAULT
+  local sort_desc = false
   local data = setmetatable({}, cjson.empty_array_mt)
   local should_post_process = type(post_process) == "function"
 
-  local size = self.req.params_get and tonumber(self.req.params_get.size) or 100
-  local offset = self.req.params_get and self.req.params_get.offset
+  local params_get = self.req.params_get
+  if params_get then
+    offset = params_get.offset
+    size = tonumber(params_get.size) or PAGE_SIZE_DEFAULT
+    sort_by = type(params_get.sort_by) == "string" and params_get.sort_by
+    sort_desc = not not params_get.sort_desc
+  end
+
+  if type(size) ~= "number" or size > PAGE_SIZE_MAX or size < PAGE_SIZE_MIN then
+    return nil, "invalid size", {
+      code = Errors.codes.INVALID_SIZE,
+      message = "invalid size"
+    }
+  end
+
+  sort(set, function (a, b)
+    -- if there is no sort_by key
+    -- or the sort_by values are equal
+    -- sort by id instead
+    local key
+    if sort_by and a[sort_by] ~= b[sort_by] then
+      key = sort_by
+    else
+      key = "id"
+    end
+
+    if sort_desc then
+      return a[key] > b[key]
+    end
+
+    return a[key] < b[key]
+  end)
 
   -- find the index of the first element that matches our offset
   local i = 1

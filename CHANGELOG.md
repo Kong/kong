@@ -102,6 +102,8 @@ In this release we continued our work on better performance:
   the password contained colon (`:`).
   [#7977](https://github.com/Kong/kong/pull/7977)
   Thanks [beldahanit](https://github.com/beldahanit) for reporting the issue!
+- Old `BasePlugin` is deprecated and will be removed in a future version of Kong.
+  Porting tips in the [documentation](https://docs.konghq.com/gateway-oss/2.3.x/plugin-development/custom-logic/#porting-from-old-baseplugin-style)
 
 ### Fixes
 

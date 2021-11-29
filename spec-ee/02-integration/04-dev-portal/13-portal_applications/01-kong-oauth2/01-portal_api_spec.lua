@@ -57,6 +57,14 @@ local function insert_files(db)
 end
 
 
+local function verify_order(data, key, sort_desc)
+  local prev_val = data[1][key]
+  for i = 2, #data do
+    assert.is_true(prev_val > data[i][key] == sort_desc)
+  end
+end
+
+
 local function register_developer(portal_api_client, body)
   if type(body) == "string" then
     body = DEFAULT_CONSUMER[body].body
@@ -232,6 +240,46 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
+          it("return 400 if size is less than 1", function ()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?size=0",
+              headers = {
+                ["Cookie"] = cookie,
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal("invalid size", resp_body_json.message)
+          end)
+
+          it("return 400 if size is greater than 1000", function ()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?size=1001",
+              headers = {
+                ["Cookie"] = cookie,
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal("invalid size", resp_body_json.message)
+          end)
+
           it("paginates properly", function()
             local cookie = authenticate(portal_api_client, {
               ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
@@ -289,6 +337,216 @@ for _, strategy in helpers.each_strategy() do
 
             assert.equal(1, resp_body_json.total)
             assert.equal(ngx.null, resp_body_json.next)
+          end)
+
+          it("sorts by id ASC by default", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", false)
+          end)
+
+          it("sorts by id DESC with 'sort_desc=true' param", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", true)
+          end)
+
+          it("sorts by name ASC with 'sort_by=name' param", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", false)
+          end)
+
+          it("sorts by name DESC with 'sort_by=name&sort_desc=true' param", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?sort_by=name&sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", true)
+          end)
+
+          it("sorts by id ASC if sort_by values are the same", function ()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?sort_by=redirect_uri",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", false)
+          end)
+
+          it("sorts by id DESC if sort_by values are the same", function ()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?sort_by=redirect_uri&sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", true)
+          end)
+
+          it("maintains sort across pages ASC", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?sort_by=name&size=5",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(5, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", false)
+
+            local last_name_first_page = resp_body_json.data[#resp_body_json.data]
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = resp_body_json.next,
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(5, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", false)
+
+            local first_name_second_page = resp_body_json.data[1]
+
+            verify_order({last_name_first_page, first_name_second_page}, "name", false)
+          end)
+
+          it("maintains sort across pages DESC", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?sort_by=name&size=5&sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(5, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", true)
+
+            local last_name_first_page = resp_body_json.data[#resp_body_json.data]
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = resp_body_json.next,
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(5, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", true)
+
+            local first_name_second_page = resp_body_json.data[1]
+
+            verify_order({last_name_first_page, first_name_second_page}, "name", true)
           end)
         end)
 
@@ -938,6 +1196,38 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(10, resp_body_json.total)
           end)
 
+          it("return 400 if size is less than 1", function ()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials?size=0",
+              headers = {
+                ["Cookie"] = cookie,
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal("invalid size", resp_body_json.message)
+          end)
+
+          it("return 400 if size is greater than 1000", function ()
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials?size=1001",
+              headers = {
+                ["Cookie"] = cookie,
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal("invalid size", resp_body_json.message)
+          end)
+
           it("paginates properly", function()
             local res = assert(portal_api_client:send {
               method = "GET",
@@ -979,6 +1269,217 @@ for _, strategy in helpers.each_strategy() do
 
             assert.equal(2, resp_body_json.total)
             assert.equal(ngx.null, resp_body_json.next)
+          end)
+
+          it("sorts by id ASC by default", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials",
+              headers = {
+                ["Cookie"] = cookie,
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", false)
+          end)
+
+          it("sorts by id DESC with 'sort_desc=true' param", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials?sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", true)
+          end)
+
+          it("sorts by client_id ASC with 'sort_by=client_id' param", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials?sort_by=client_id",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "client_id", false)
+          end)
+
+          it("sorts by client_id DESC with 'sort_by=client_id&sort_desc=true' param", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials?sort_by=client_id&sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "client_id", true)
+          end)
+
+          it("sorts by id ASC if sort_by values are the same", function ()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials?sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", false)
+          end)
+
+          it("sorts by id DESC if sort_by values are the same", function ()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials?sort_by=name&sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", true)
+          end)
+
+          it("maintains sort across pages ASC", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials?sort_by=client_id&size=5",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(5, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "client_id", false)
+
+            local last_name_first_page = resp_body_json.data[#resp_body_json.data]
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = resp_body_json.next,
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(5, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "client_id", false)
+
+            local first_name_second_page = resp_body_json.data[1]
+
+            verify_order({last_name_first_page, first_name_second_page}, "client_id", false)
+          end)
+
+          it("maintains sort across pages DESC", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials?sort_by=client_id&size=5&sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(5, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "client_id", true)
+
+            local last_name_first_page = resp_body_json.data[#resp_body_json.data]
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = resp_body_json.next,
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(5, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "client_id", true)
+
+            local first_name_second_page = resp_body_json.data[1]
+
+            verify_order({last_name_first_page, first_name_second_page}, "client_id", true)
           end)
         end)
 
@@ -1584,7 +2085,6 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("can GET list of application instances", function()
-
             local res = assert(portal_api_client:send {
               method = "GET",
               path = "/applications/" .. application.id .. "/application_instances",
@@ -2225,6 +2725,217 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(2, resp_body_json.total)
 
             assert.equal(ngx.null, resp_body_json.next)
+          end)
+
+          it("sorts by id ASC by default", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services",
+              headers = {
+                ["Cookie"] = cookie,
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(4, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", false)
+          end)
+
+          it("sorts by id DESC with 'sort_desc=true' param", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(4, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", true)
+          end)
+
+          it("sorts by name ASC with 'sort_by=name' param", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(4, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", false)
+          end)
+
+          it("sorts by name DESC with 'sort_by=name&sort_desc=true' param", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?sort_by=name&sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(4, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", true)
+          end)
+
+          it("sorts by id ASC if sort_by values are the same", function ()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?sort_by=host",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(4, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", false)
+          end)
+
+          it("sorts by id DESC if sort_by values are the same", function ()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?sort_by=host&sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(4, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "id", true)
+          end)
+
+          it("maintains sort across pages ASC", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?sort_by=name&size=2",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(2, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", false)
+
+            local last_name_first_page = resp_body_json.data[#resp_body_json.data]
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = resp_body_json.next,
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(2, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", false)
+
+            local first_name_second_page = resp_body_json.data[1]
+
+            verify_order({last_name_first_page, first_name_second_page}, "name", false)
+          end)
+
+          it("maintains sort across pages DESC", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?sort_by=name&size=2&sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(2, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", true)
+
+            local last_name_first_page = resp_body_json.data[#resp_body_json.data]
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = resp_body_json.next,
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(2, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", true)
+
+            local first_name_second_page = resp_body_json.data[1]
+
+            verify_order({last_name_first_page, first_name_second_page}, "name", true)
           end)
 
           it("returns a permissioned service when the developer is assigned the proper role", function()

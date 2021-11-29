@@ -50,6 +50,14 @@ local function client_request(params)
 end
 
 
+local function verify_order(data, key, sort_desc)
+  local prev_val = data[1][key]
+  for i = 2, #data do
+    assert.is_true(prev_val > data[i][key] == sort_desc)
+  end
+end
+
+
 for _, strategy in helpers.each_strategy() do
 
 describe("Admin API - Developer Portal - #" .. strategy, function()
@@ -260,6 +268,164 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         local json = cjson.decode(res)
         assert.equal(5, #json.data)
         assert.equal(ngx.null, json.next)
+      end)
+
+      it("return 400 if size is less than 1", function ()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/developers?size=0",
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(400, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal("invalid size", resp_body_json.message)
+      end)
+
+      it("return 400 if size is greater than 1000", function ()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/developers?size=1001",
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(400, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal("invalid size", resp_body_json.message)
+      end)
+
+      it("sorts by id ASC by default", function()
+        local res = assert(client:send({
+          method = "GET",
+          path = "/developers",
+          headers = {["Content-Type"] = "application/json"}
+        }))
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal(15, resp_body_json.total)
+
+        verify_order(resp_body_json.data, "id", false)
+      end)
+
+      it("sorts by id DESC with 'sort_desc=true' param", function()
+        local res = assert(client:send({
+          method = "GET",
+          path = "/developers?sort_desc=true",
+          headers = {["Content-Type"] = "application/json"}
+        }))
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal(15, resp_body_json.total)
+
+        verify_order(resp_body_json.data, "id", true)
+      end)
+
+      it("sorts by email ASC with 'sort_by=email' param", function()
+        local res = assert(client:send({
+          method = "GET",
+          path = "/developers?sort_by=email",
+          headers = {["Content-Type"] = "application/json"}
+        }))
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal(15, resp_body_json.total)
+
+        verify_order(resp_body_json.data, "email", false)
+      end)
+
+      it("sorts by email DESC with 'sort_by=email&sort_desc=true' param", function()
+        local res = assert(client:send({
+          method = "GET",
+          path = "/developers?sort_by=email&sort_desc=true",
+          headers = {["Content-Type"] = "application/json"}
+        }))
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal(15, resp_body_json.total)
+
+        verify_order(resp_body_json.data, "email", true)
+      end)
+
+      it("maintains sort across pages ASC", function()
+        local res = assert(client:send({
+          method = "GET",
+          path = "/developers?sort_by=email&size=4",
+          headers = {["Content-Type"] = "application/json"}
+        }))
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal(4, resp_body_json.total)
+
+        verify_order(resp_body_json.data, "email", false)
+
+        local last_name_first_page = resp_body_json.data[#resp_body_json.data]
+
+        local res = assert(client:send {
+          method = "GET",
+          path = resp_body_json.next,
+          headers = {["Content-Type"] = "application/json"}
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal(4, resp_body_json.total)
+
+        verify_order(resp_body_json.data, "email", false)
+
+        local first_name_second_page = resp_body_json.data[1]
+
+        verify_order({last_name_first_page, first_name_second_page}, "email", false)
+      end)
+
+      it("maintains sort across pages DESC", function()
+        local res = assert(client:send({
+          method = "GET",
+          path = "/developers?sort_by=email&size=4&sort_desc=true",
+          headers = {["Content-Type"] = "application/json"}
+        }))
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal(4, resp_body_json.total)
+
+        verify_order(resp_body_json.data, "email", true)
+
+        local last_name_first_page = resp_body_json.data[#resp_body_json.data]
+
+        local res = assert(client:send {
+          method = "GET",
+          path = resp_body_json.next,
+          headers = {["Content-Type"] = "application/json"}
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        assert.equal(4, resp_body_json.total)
+
+        verify_order(resp_body_json.data, "email", true)
+
+        local first_name_second_page = resp_body_json.data[1]
+
+        verify_order({last_name_first_page, first_name_second_page}, "email", true)
       end)
 
       it("return null 'next' when role is not found after the first page", function()
