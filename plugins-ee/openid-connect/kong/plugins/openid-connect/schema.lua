@@ -11,7 +11,6 @@ local cache     = require "kong.plugins.openid-connect.cache"
 local arguments = require "kong.plugins.openid-connect.arguments"
 
 
-local pcall = pcall
 local get_phase = ngx.get_phase
 
 
@@ -40,19 +39,6 @@ local function validate_issuer(conf)
 
   return true
 end
-
-
-local function keyring_enabled()
-  local ok, enabled = pcall(function()
-    return kong.configuration.keyring_enabled
-  end)
-
-  return ok and enabled or nil
-end
-
-
-local ENCRYPTED = keyring_enabled()
-
 
 local config = {
   name = "openid-connect",
@@ -135,7 +121,7 @@ local config = {
             client_id = {
               required  = false,
               type      = "array",
-              encrypted = ENCRYPTED,
+              encrypted = true,
               elements  = {
                 type    = "string",
               },
@@ -145,7 +131,7 @@ local config = {
             client_secret = {
               required  = false,
               type      = "array",
-              encrypted = ENCRYPTED,
+              encrypted = true,
               elements  = {
                 type    = "string",
               },
@@ -822,6 +808,7 @@ local config = {
             session_secret = {
               required = false,
               type     = "string",
+              encrypted = true,
             },
           },
           {
@@ -986,6 +973,7 @@ local config = {
             session_redis_auth = {
               required = false,
               type     = "string",
+              encrypted = true,
             },
           },
           {

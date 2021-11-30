@@ -71,6 +71,7 @@ local schema = {
           -- very loose validation for basic sanity test
           match = "%w*%p*@+%w*%.?%w*",
           required = true,
+          encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
         }, },
         { api_uri = typedefs.url({ default = "https://acme-v02.api.letsencrypt.org/directory" }),
         },
@@ -80,9 +81,11 @@ local schema = {
         }, },
         { eab_kid = {
           type = "string",
+          encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
         }, },
         { eab_hmac_key = {
           type = "string",
+          encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
         }, },
         -- Kong doesn't support multiple certificate chains yet
         { cert_type = {

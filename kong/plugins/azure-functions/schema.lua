@@ -17,8 +17,8 @@ return {
           { https         = { type = "boolean", default  = true  }, },
           { https_verify  = { type = "boolean", default  = false }, },
           -- authorization
-          { apikey        = { type = "string"                    }, },
-          { clientid      = { type = "string"                    }, },
+          { apikey        = { type = "string", encrypted = true }, }, -- encrypted = true is a Kong Enterprise Exclusive feature. It does nothing in Kong CE
+          { clientid      = { type = "string", encrypted = true }, }, -- encrypted = true is a Kong Enterprise Exclusive feature. It does nothing in Kong CE
           -- target/location
           { appname       = { type = "string",  required = true  }, },
           { hostdomain    = { type = "string",  required = true, default = "azurewebsites.net" }, },
