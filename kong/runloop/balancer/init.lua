@@ -37,6 +37,13 @@ local DEBUG = ngx.DEBUG
 local EMPTY_T = pl_tablex.readonly {}
 
 
+local set_authority
+local set_upstream_cert_and_key
+if ngx.config.subsystem ~= "stream" then
+  set_authority = require("resty.kong.grpc").set_authority
+  set_upstream_cert_and_key = require("resty.kong.tls").set_upstream_cert_and_key
+end
+
 
 -- Calculates hash-value.
 -- Will only be called once per request, on first try.
@@ -265,7 +272,7 @@ local function execute(balancer_data, ctx)
             return
           end
 
-          res, err = kong.service.set_tls_cert_key(cert.cert, cert.key)
+          res, err = set_upstream_cert_and_key(cert.cert, cert.key)
           if not res then
             log(ERR, "unable to apply upstream client TLS certificate ",
                      client_certificate.id, ": ", err)
@@ -379,7 +386,7 @@ local function set_host_header(balancer_data, upstream_scheme, upstream_host, is
     -- the nginx grpc module does not offer a way to override the
     -- :authority pseudo-header; use our internal API to do so
     if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
-      local ok, err = kong.service.request.set_header(":authority", new_upstream_host)
+      local ok, err = set_authority(new_upstream_host)
       if not ok then
         log(ERR, "failed to set :authority header: ", err)
       end
