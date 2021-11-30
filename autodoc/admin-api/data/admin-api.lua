@@ -879,7 +879,7 @@ return {
         * For `grpc`, at least one of `hosts`, `headers` or `paths`;
         * For `grpcs`, at least one of `hosts`, `headers`, `paths` or `snis`.
 
-        A route can't have both `tls` and `tls_passthrough` in protocols at same time.
+        A route can't have both `tls` and `tls_passthrough` protocols at same time.
 
         #### Path handling algorithms
 
