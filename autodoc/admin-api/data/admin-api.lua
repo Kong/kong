@@ -875,8 +875,11 @@ return {
         * For `https`, at least one of `methods`, `hosts`, `headers`, `paths` or `snis`;
         * For `tcp`, at least one of `sources` or `destinations`;
         * For `tls`, at least one of `sources`, `destinations` or `snis`;
+        * For `tls_passthrough`, set `snis`;
         * For `grpc`, at least one of `hosts`, `headers` or `paths`;
         * For `grpcs`, at least one of `hosts`, `headers`, `paths` or `snis`.
+
+        A route can't have both `tls` and `tls_passthrough` protocols at same time.
 
         #### Path handling algorithms
 
