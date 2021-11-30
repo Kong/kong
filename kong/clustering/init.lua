@@ -129,6 +129,13 @@ function _M.new(conf)
   local key = pl_file.read(conf.cluster_cert_key)
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
 
+  --- XXX EE: needed for encrypting config cache at the rest
+  if conf.role == "data_plane" then
+    self.cert_public = cert:get_pubkey()
+    self.cert_private = key
+  end
+  --- EE
+
   self.child = require("kong.clustering." .. conf.role).new(self)
 
   return self

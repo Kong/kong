@@ -226,6 +226,14 @@ for _, strategy in helpers.each_strategy() do
 
       it("local cached config file has correct permission", function()
         local handle = io.popen("ls -l servroot2/config.cache.json.gz")
+
+        --- XXX EE
+        local ee = require "kong.enterprise_edition.clustering.data_plane"
+        if ee then
+          handle = io.popen("ls -l servroot2/.config.cache.jwt")
+        end
+        --- EE
+
         local result = handle:read("*a")
         handle:close()
 
