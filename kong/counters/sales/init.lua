@@ -88,49 +88,7 @@ end
 
 -- retrieves all merged counters data from all nodes that is stored in the database
 local function get_counters_data(strategy)
-  local data = {}
-
-  local counters_data = strategy:pull_data()
-  if counters_data then
-    for i = 1, #counters_data do
-
-      if counters_data[i] then
-        -- get license_creation_date
-        local date = counters_data[i]["license_creation_date"]
-
-        -- normalize date format by database strategy type
-        local db_strategy_name = kong.db.strategy
-        if db_strategy_name == "cassandra" then
-          -- cassandra returns seconds since beginning of epoch, we have to convert to format `YYYY-MM-DD`
-          date = os.date("%Y-%m-%d", date / 1000)
-        elseif db_strategy_name == "postgres" then
-          -- postgress return string `YYYY-MM-DD HH:DD:SS` we only need `YYYY-MM-DD`
-          date = utils.split(date, ' ')[1]
-        end
-
-        if not data[date] then
-          data[date] = {}
-        end
-
-        -- group counters by license creation date
-        local bucket = data[date]
-
-        -- iterate over counters and sum data
-        for key, counter in pairs(counters_data[i]) do
-          -- sum only numbers
-          if type(counter) == "number" and key ~= "license_creation_date" then
-            if not bucket[key] then
-              bucket[key] = 0
-            end
-
-            bucket[key] = bucket[key] + counter
-          end
-        end
-      end
-    end
-  end
-
-  return data
+  return strategy:pull_data()
 end
 
 local function get_workspaces_count()

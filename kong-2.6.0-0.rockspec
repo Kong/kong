@@ -93,6 +93,7 @@ build = {
 
     ["kong.counters"] = "kong/counters/init.lua",
     ["kong.counters.sales"] = "kong/counters/sales/init.lua",
+    ["kong.counters.sales.strategies.common"] = "kong/counters/sales/strategies/common.lua",
     ["kong.counters.sales.strategies.postgres"] = "kong/counters/sales/strategies/postgres/init.lua",
     ["kong.counters.sales.strategies.cassandra"] = "kong/counters/sales/strategies/cassandra/init.lua",
     ["kong.counters.sales.strategies.off"] = "kong/counters/sales/strategies/off/init.lua",
@@ -239,6 +240,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300_1"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300_1.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.011_2300_to_2600"] = "kong/enterprise_edition/db/migrations/enterprise/011_2300_to_2600.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.012_2600_to_2700"] = "kong/enterprise_edition/db/migrations/enterprise/012_2600_to_2700.lua",
+    ["kong.enterprise_edition.db.migrations.operations.2600_to_2700"] = "kong/enterprise_edition/db/migrations/operations/2600_to_2700.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
