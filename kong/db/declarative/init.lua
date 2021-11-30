@@ -469,8 +469,14 @@ end
 function declarative.export_from_db(fd, skip_ws, skip_disabled_services)
   -- not sure if this really useful for skip_ws,
   -- but I want to allow skip_disabled_services and would rather have consistant interface
-  skip_ws = skip_ws or true 
-  skip_disabled_services = skip_disabled_services or false
+  if skip_ws == nil then
+    skip_ws = true
+  end
+
+  if skip_disabled_services == nil then 
+    skip_disabled_services = false
+  end
+
   return export_from_db(fd_emitter.new(fd), skip_ws, skip_disabled_services)
 end
 
@@ -499,9 +505,17 @@ function table_emitter.new()
 end
 
 
-function declarative.export_config()
-  -- always skip_ws and skip_disabled_services
-  return export_from_db(table_emitter.new(), false, true)
+function declarative.export_config(skip_ws, skip_disabled_services)
+  -- default skip_ws=false and skip_disabled_services=true
+  if skip_ws == nil then
+    skip_ws = false
+  end
+
+  if skip_disabled_services == nil then 
+    skip_disabled_services = true
+  end
+
+  return export_from_db(table_emitter.new(), skip_ws, skip_disabled_services)
 end
 
 
