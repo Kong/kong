@@ -8,19 +8,19 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  name         = "consumer_group_plugins",
-  generate_admin_api  = false,
+  name = "consumer_group_plugins",
+  generate_admin_api = false,
   admin_api_nested_name = "plugins",
-  primary_key  = { "id" },
+  primary_key = { "id" },
   endpoint_key = "name",
   workspaceable = true,
 
   fields = {
-    { id             = typedefs.uuid },
-    { created_at     = typedefs.auto_timestamp_s },
-    { consumer_group           = { type = "foreign", required = true, reference = "consumer_groups", on_delete = "cascade" }, },
-    { name           = { type = "string", required = true, unique = true }, },
-    { config         = { type = "record", 
+    { id = typedefs.uuid },
+    { created_at = typedefs.auto_timestamp_s },
+    { consumer_group = { type = "foreign", required = true, reference = "consumer_groups", on_delete = "cascade" }, },
+    { name = { type = "string", required = true, unique = true }, },
+    { config = { type = "record", 
     fields = {
       { window_size = {
         type = "array",

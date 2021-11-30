@@ -256,18 +256,6 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
     -- similar to compat/remove_fields, each plugin could register a function to handle
     -- its compatibility issues.
     if dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
-      if config_table["consumer_groups"] then
-        config_table["consumer_groups"] = nil
-        has_update = true
-      end
-      if config_table["consumer_group_consumers"] then
-        config_table["consumer_group_consumers"] = nil
-        has_update = true
-      end
-      if config_table["consumer_group_plugins"] then
-        config_table["consumer_group_plugins"] = nil
-        has_update = true
-      end
       if config_table["consumers"] then
         for _, t in ipairs(config_table["consumers"]) do
           if t["username_lower"] then

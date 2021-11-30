@@ -29,16 +29,16 @@ return {
   ["/consumer_groups/:consumer_groups"] = {
     GET = function(self, db, helpers)
     local err
-    consumer_group, err = get_group_from_endpoint(self, db)
+    self.consumer_group, err = get_group_from_endpoint(self, db)
     if err then
       return err
     end
     --get plugins and consumers
-    local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
-    local plugins = consumer_group_helpers.get_plugins_in_group(consumer_group.id)
+    local consumers = consumer_group_helpers.get_consumers_in_group(self.consumer_group.id)
+    local plugins = consumer_group_helpers.get_plugins_in_group(self.consumer_group.id)
 
     return kong.response.exit(200, {
-                                    consumer_group = consumer_group,
+                                    consumer_group = self.consumer_group,
                                     plugins = plugins,
                                     consumers = consumers
     })
@@ -55,14 +55,14 @@ return {
   ["/consumer_groups/:consumer_groups/consumers"] ={
     before = function(self, db, helpers)
       local err
-      consumer_group, err = get_group_from_endpoint(self, db)
+      self.consumer_group, err = get_group_from_endpoint(self, db)
       if err then
         return err
       end
     end,
 
     GET = function(self, db, helpers)
-      local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
+      local consumers = consumer_group_helpers.get_consumers_in_group(self.consumer_group.id)
 
       return kong.response.exit(200, {
         consumers = consumers,
@@ -81,46 +81,46 @@ return {
       end
         --filter the list before processing
       for i = 1, #self.params.consumer do
-        consumer = consumer_group_helpers.select_by_username_or_id(kong.db.consumers, self.params.consumer[i])
-        if not consumer then
+        self.consumer = consumer_group_helpers.select_by_username_or_id(kong.db.consumers, self.params.consumer[i])
+        if not self.consumer then
           return kong.response.error(404, "Consumer '" .. self.params.consumer[i] .. "' not found")
         end
-        if consumer_group_helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
+        if consumer_group_helpers.is_consumer_in_group(self.consumer.id, self.consumer_group.id) then
           return kong.response.error(409,
             "Consumer '" .. self.params.consumer[i] ..
-            "' already in group '" .. consumer_group.id .."'")
+            "' already in group '" .. self.consumer_group.id .."'")
         end
       end
 
       consumers = {}
       for i = 1, #self.params.consumer do
-        consumer = consumer_group_helpers.select_by_username_or_id(kong.db.consumers, self.params.consumer[i])
+        self.consumer = consumer_group_helpers.select_by_username_or_id(kong.db.consumers, self.params.consumer[i])
         local _, _, err_t = kong.db.consumer_group_consumers:insert(
           {
-            consumer_group = { id = consumer_group.id },
-            consumer = { id = consumer.id},
+            consumer_group = { id = self.consumer_group.id },
+            consumer = { id = self.consumer.id},
           }
         )
         if err_t then
           return endpoints.handle_error(err_t)
         end
-        table.insert(consumers, consumer)
+        table.insert(consumers, self.consumer)
       end
 
 
       return kong.response.exit(201, {
-        consumer_group = consumer_group,
+        consumer_group = self.consumer_group,
         consumers = consumers,
       })
     end,
 
     DELETE = function(self, db, helpers)
-      local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
+      local consumers = consumer_group_helpers.get_consumers_in_group(self.consumer_group.id)
       if not consumers then
-        return kong.response.error(404, "Group '" .. consumer_group.id .. "' has no consumers")
+        return kong.response.error(404, "Group '" .. self.consumer_group.id .. "' has no consumers")
       end
       for i = 1, #consumers do
-        consumer_group_helpers.delete_consumer_in_group(consumers[i].id, consumer_group.id)
+        consumer_group_helpers.delete_consumer_in_group(consumers[i].id, self.consumer_group.id)
       end
       return kong.response.exit(204)
     end,
@@ -135,39 +135,39 @@ return {
       if not consumer_in_path then
         return kong.response.error(404, "Consumer '" .. self.params.consumers .. "' not found")
       end
-      consumer = consumer_in_path
+      self.consumer = consumer_in_path
       local err
-      consumer_group, err = get_group_from_endpoint(self, db)
+      self.consumer_group, err = get_group_from_endpoint(self, db)
       if err then
         return err
       end
     end,
 
     GET = function(self, db, helpers)
-      if consumer_group_helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
+      if consumer_group_helpers.is_consumer_in_group(self.consumer.id, self.consumer_group.id) then
         return kong.response.exit(200, {
-          consumer = consumer
+          consumer = self.consumer
         })
       else
         return kong.response.error(404,
-        "Consumer '" .. consumer.id .. "' not found in Group '" .. consumer_group.id .."'" )
+        "Consumer '" .. self.consumer.id .. "' not found in Group '" .. self.consumer_group.id .."'" )
       end
     end,
 
     DELETE = function(self, db, helpers)
-      if consumer_group_helpers.delete_consumer_in_group(consumer.id, consumer_group.id) then
+      if consumer_group_helpers.delete_consumer_in_group(self.consumer.id, self.consumer_group.id) then
         return kong.response.exit(204)
       else
         return kong.response.error(404,
-        "Consumer '" .. consumer.id .. "' not found in Group '" .. consumer_group.id .."'" )
+        "Consumer '" .. self.consumer.id .. "' not found in Group '" .. self.consumer_group.id .."'" )
       end
     end,
   },
 
-  ["/consumer_groups/:consumer_groups/overrides/plugins/:plugins"] ={
+  ["/consumer_groups/:consumer_groups/overrides/plugins/rate-limiting-advanced"] ={
     PUT = function(self, db, helpers)
       local err
-      consumer_group, err = get_group_from_endpoint(self, db)
+      self.consumer_group, err = get_group_from_endpoint(self, db)
       if err then
         return err
       end
@@ -176,6 +176,7 @@ return {
         return kong.response.error(400, "No configuration provided")
       end
 
+      self.params.plugins = "rate-limiting-advanced"
       local record = kong.db.consumer_group_plugins:select_by_name(self.params.plugins)
       local id
       if not record then
@@ -188,7 +189,7 @@ return {
               { id = id, },
               {
                 name = self.params.plugins,
-                consumer_group = { id = consumer_group.id, },
+                consumer_group = { id = self.consumer_group.id, },
                 config = self.params.config,
               }
       )
@@ -196,7 +197,7 @@ return {
         return endpoints.handle_error(err_t)
       end
       return kong.response.exit(201, {
-        group = consumer_group.name,
+        group = self.consumer_group.name,
         plugin = self.params.plugins,
         config = self.params.config
       })
@@ -213,7 +214,7 @@ return {
       if not consumer_in_path then
         return kong.response.error(404, "Consumer '" .. self.params.consumers .. "' not found" )
       end
-      consumer = consumer_in_path
+      self.consumer = consumer_in_path
     end,
 
     POST = function(self, db, helpers)
@@ -228,11 +229,11 @@ return {
       end
         --validate the list before processing
       for i = 1, #self.params.group do
-        consumer_group = consumer_group_helpers.get_consumer_group(self.params.group[i])
-        if not consumer_group then
+        self.consumer_group = consumer_group_helpers.get_consumer_group(self.params.group[i])
+        if not self.consumer_group then
           return kong.response.error(404, "Group '" .. self.params.group[i] .. "' not found")
         end
-        if consumer_group_helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
+        if consumer_group_helpers.is_consumer_in_group(self.consumer.id, self.consumer_group.id) then
           return kong.response.error(409,
             "Consumer '" .. self.params.consumers ..
             "' already in group '" .. self.params.group[i] .."'")
@@ -241,39 +242,39 @@ return {
 
       consumer_groups = {}
       for i = 1, #self.params.group do
-        consumer_group = consumer_group_helpers.get_consumer_group(self.params.group[i])
+        self.consumer_group = consumer_group_helpers.get_consumer_group(self.params.group[i])
         local _, _, err_t = kong.db.consumer_group_consumers:insert(
           {
-              consumer_group = { id = consumer_group.id },
-              consumer = { id = consumer.id },
+              consumer_group = { id = self.consumer_group.id },
+              consumer = { id = self.consumer.id },
           }
         )
         if err_t then
           return endpoints.handle_error(err_t)
         end
-        table.insert(consumer_groups, consumer_group)
+        table.insert(consumer_groups, self.consumer_group)
       end
 
       return kong.response.exit(201, {
         consumer_groups = consumer_groups,
-        consumer = consumer,
+        consumer = self.consumer,
       })
     end,
 
     GET = function(self, db, helpers)
-      local consumer_groups = consumer_group_helpers.get_groups_by_consumer(consumer.id)
+      local consumer_groups = consumer_group_helpers.get_groups_by_consumer(self.consumer.id)
       return kong.response.exit(200, {
         consumer_groups = consumer_groups,
       })
     end,
 
     DELETE = function(self, db, helpers)
-      local consumer_groups = consumer_group_helpers.get_groups_by_consumer(consumer.id)
+      local consumer_groups = consumer_group_helpers.get_groups_by_consumer(self.consumer.id)
       if not consumer_groups then
-        return kong.response.error(404, "Consumer '" .. consumer.id .. "' not in group")
+        return kong.response.error(404, "Consumer '" .. self.consumer.id .. "' not in group")
       end
       for i = 1, #consumer_groups do
-        consumer_group_helpers.delete_consumer_in_group(consumer.id, consumer_groups[i].id)
+        consumer_group_helpers.delete_consumer_in_group(self.consumer.id, consumer_groups[i].id)
       end
       return kong.response.exit(204)
     end,
@@ -288,31 +289,31 @@ return {
       if not consumer_in_path then
         return kong.response.error(404, "Consumer '" .. self.params.consumers .. "' not found" )
       end
-      consumer = consumer_in_path
+      self.consumer = consumer_in_path
       local err
-      consumer_group, err = get_group_from_endpoint(self, db)
+      self.consumer_group, err = get_group_from_endpoint(self, db)
       if err then
         return err
       end
     end,
 
     GET = function(self, db, helpers)
-      if consumer_group_helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
+      if consumer_group_helpers.is_consumer_in_group(self.consumer.id, self.consumer_group.id) then
         return kong.response.exit(200, {
-          consumer_group = consumer_group,
+          consumer_group = self.consumer_group,
         })
       else
         return kong.response.error(404,
-        "Consumer '" .. consumer.id .. "' not found in Group '" .. consumer_group.id .."'" )
+        "Consumer '" .. self.consumer.id .. "' not found in Group '" .. self.consumer_group.id .."'" )
       end
     end,
 
     DELETE = function(self, db, helpers)
-      if consumer_group_helpers.delete_consumer_in_group(consumer.id, consumer_group.id) then
+      if consumer_group_helpers.delete_consumer_in_group(self.consumer.id, self.consumer_group.id) then
         return kong.response.exit(204)
       else
         return kong.response.error(404,
-        "Consumer '" .. consumer.id .. "' not found in Group '" .. consumer_group.id .."'" )
+        "Consumer '" .. self.consumer.id .. "' not found in Group '" .. self.consumer_group.id .."'" )
       end
     end,
 
