@@ -10,8 +10,6 @@ local utils              = require "kong.tools.utils"
 local consumer_group_helpers        = require "kong.enterprise_edition.consumer_groups_helpers"
 local kong = kong
 local table = table
-local consumer_group
-local consumer
 
 local function get_group_from_endpoint(self, db)
   local err
