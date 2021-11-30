@@ -8,6 +8,7 @@
 local cjson = require "cjson.safe".new()
 local multipart = require "multipart"
 local phase_checker = require "kong.pdk.private.phases"
+local normalize = require("kong.tools.uri").normalize
 
 
 local ngx = ngx
@@ -383,6 +384,34 @@ local function new(self)
     local uri = ngx.var.request_uri or ""
     local s = find(uri, "?", 2, true)
     return s and sub(uri, 1, s - 1) or uri
+  end
+
+  ---
+  -- Returns the normalized path component of the request's URL. The return
+  -- value is the same as `kong.request.get_path()` but normalized according
+  -- to RFC 3986 section 6:
+  --
+  -- * Percent-encoded values of unreserved characters are decoded (`%20`
+  --   becomes ` `).
+  -- * Percent-encoded values of reserved characters have their hexidecimal
+  --   value uppercased (`%2f` becomes `%2F`).
+  -- * Relative path elements (`/.` and `/..`) are dereferenced.
+  -- * Duplicate slashes are consolidated (`//` becomes `/`).
+  --
+  -- Merging of duplicate slashes can be disabled by passing in `false` for the
+  -- `merge_slashes` parameter.
+  --
+  -- @function kong.request.get_normalized_path
+  -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
+  -- @tparam[opt=true] boolean merge_slashes consolidate duplicate slashes in the path
+  -- @treturn string the path
+  -- @usage
+  -- -- Given a request to https://example.com/t/Abc%20123%C3%B8%2f/parent/..//test/./
+  --
+  -- kong.request.get_normalized_path()       -- "/t/Abc 123ø%2F/test/"
+  -- kong.request.get_normalized_path(false)  -- "/t/Abc 123ø%2F//test/"
+  function _REQUEST.get_normalized_path(merge_slashes)
+    return normalize(_REQUEST.get_path(), merge_slashes ~= false)
   end
 
 
