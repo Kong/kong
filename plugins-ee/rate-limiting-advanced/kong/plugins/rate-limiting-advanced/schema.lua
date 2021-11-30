@@ -7,6 +7,7 @@
 
 local redis  = require "kong.enterprise_edition.redis"
 local typedefs = require "kong.db.schema.typedefs"
+local kong = kong
 
 
 local function check_shdict(name)
@@ -175,6 +176,10 @@ return {
         if config.enforce_consumer_groups then
           if config.consumer_groups == ngx.null then
             return nil, "No consumer groups provided"
+          end
+        else
+          if config.consumer_groups then
+            kong.log.warn("Consumer groups provided but not enforced")
           end
         end
         return true

@@ -9,7 +9,7 @@ local kong = kong
 local utils              = require "kong.tools.utils"
 
 
-local function load_group_into_memory(consumer_group_pk_or_name)
+local function load_consumer_group_into_memory(consumer_group_pk_or_name)
   local grp
   if not utils.is_valid_uuid(consumer_group_pk_or_name) then
     grp = kong.db.consumer_groups:select_by_name(consumer_group_pk_or_name)
@@ -20,15 +20,15 @@ local function load_group_into_memory(consumer_group_pk_or_name)
 end
 
 local function get_consumer_group(consumer_group_pk_or_name)
-    local cache_key = kong.db.consumer_groups:cache_key(consumer_group_pk_or_name)
-    local grp = kong.cache:get(cache_key, nil,
-                                           load_group_into_memory,
+  local cache_key = kong.db.consumer_groups:cache_key(consumer_group_pk_or_name)
+  local grp = kong.cache:get(cache_key, nil,
+                                           load_consumer_group_into_memory,
                                            consumer_group_pk_or_name)
-    return grp
+  return grp
 
 end
 
-local function load_group_config(consumer_group_pk)
+local function load_consumer_group_config(consumer_group_pk)
   local grpcfg
     for row in kong.db.consumer_group_plugins:each() do
       if row.consumer_group.id == consumer_group_pk then
@@ -43,7 +43,7 @@ local function load_group_config(consumer_group_pk)
 
 local function get_consumer_group_config(consumer_group_pk)
   local cache_key = kong.db.consumer_group_plugins:cache_key(consumer_group_pk)
-  local grpcfg = kong.cache:get(cache_key,nil, load_group_config, consumer_group_pk)
+  local grpcfg = kong.cache:get(cache_key,nil, load_consumer_group_config, consumer_group_pk)
   return grpcfg
 end
 

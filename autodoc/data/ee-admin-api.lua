@@ -12,6 +12,7 @@ return {
       "kong/api/routes/admins.lua",
       "kong/api/routes/applications.lua",
       "kong/api/routes/audit.lua",
+      "kong/api/routes/consumer_groups.lua",
       "kong/api/routes/developers.lua",
       "kong/api/routes/entities.lua",
       "kong/api/routes/event_hooks.lua",
@@ -23,7 +24,6 @@ return {
       "kong/api/routes/rbac.lua",
       "kong/api/routes/vitals.lua",
       "kong/api/routes/workspaces.lua",
-      "kong/api/routes/consumer_groups.lua",
     },
     entities = {
       services = {
