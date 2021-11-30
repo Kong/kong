@@ -104,6 +104,7 @@ build = {
     ["kong.enterprise_edition.api_helpers"] = "kong/enterprise_edition/api_helpers.lua",
     ["kong.enterprise_edition.audit_log"] = "kong/enterprise_edition/audit_log.lua",
     ["kong.enterprise_edition.auth_helpers"] = "kong/enterprise_edition/auth_helpers.lua",
+    ["kong.enterprise_edition.auth_plugin_helpers"] = "kong/enterprise_edition/auth_plugin_helpers.lua",
     ["kong.enterprise_edition.conf_loader"] = "kong/enterprise_edition/conf_loader.lua",
     ["kong.enterprise_edition.constants"] = "kong/enterprise_edition/constants.lua",
     ["kong.enterprise_edition.consumer_reset_secret_helpers"] = "kong/enterprise_edition/consumer_reset_secret_helpers.lua",
@@ -237,6 +238,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300_1"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300_1.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.011_2300_to_2600"] = "kong/enterprise_edition/db/migrations/enterprise/011_2300_to_2600.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.012_2600_to_2700"] = "kong/enterprise_edition/db/migrations/enterprise/012_2600_to_2700.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",

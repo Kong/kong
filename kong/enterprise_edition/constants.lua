@@ -46,7 +46,7 @@ return {
   },
 
   -- the remaining entities are inserted as-in into the kong.constants table:
-
+  ADMIN_CONSUMER_USERNAME_SUFFIX = "_ADMIN_",
   PORTAL_PREFIX = "__PORTAL-",
   WORKSPACE_CONFIG = {
     PORTAL = "portal",

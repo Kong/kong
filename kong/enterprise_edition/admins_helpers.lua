@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local constants  = require "kong.constants"
 local singletons = require "kong.singletons"
 local enums = require "kong.enterprise_edition.dao.enums"
 local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
@@ -227,7 +228,9 @@ function _M.create(params, opts)
     return validation_failures
   end
 
-  local _, admin, err = _M.validate(safe_params, opts.db)
+  local db = opts.db or singletons.db
+
+  local _, admin, err = _M.validate(safe_params, db)
 
   if err then
     return nil, err
@@ -244,7 +247,7 @@ function _M.create(params, opts)
   end
 
   -- and if we got here, we're good to go.
-  local admin, err, err_t = singletons.db.admins:insert(params)
+  local admin, err, err_t = db.admins:insert(params)
 
   -- error table is kong-generated schema violations
   if err_t then
@@ -369,8 +372,8 @@ function _M.update(params, admin_to_update, opts)
     local _, err = db.consumers:update(
     { id = admin_to_update.consumer.id },
     {
-      username = params.username,
-      custom_id = params.custom_id,
+      username = admin.username .. constants.ADMIN_CONSUMER_USERNAME_SUFFIX,
+      custom_id = admin.custom_id,
     }, { workspace = consumer.ws_id })
     if err then
       return nil, err

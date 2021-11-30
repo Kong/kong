@@ -7,8 +7,10 @@
 
 local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
+local utils = require "kong.tools.utils"
 local ee_api = require "kong.enterprise_edition.api_helpers"
 local admins = require "kong.enterprise_edition.admins_helpers"
+local auth_plugin_helpers = require "kong.enterprise_edition.auth_plugin_helpers"
 local auth_helpers = require "kong.enterprise_edition.auth_helpers"
 local cjson = require "cjson"
 local rbac = require "kong.rbac"
@@ -317,28 +319,46 @@ return {
         return kong.response.exit(404, { message = "Not found" })
       end
 
-      local by_username_ignore_case = gui_auth_conf and gui_auth_conf.by_username_ignore_case
-
-      local admin, err = ee_api.validate_admin(by_username_ignore_case)
-
-      if not admin then
-        log(DEBUG, _log_prefix, "Admin not found")
-        return kong.response.exit(401, { message = "Unauthorized" })
+      if gui_auth == "openid-connect" then
+        gui_auth_conf = utils.shallow_copy(singletons.configuration.admin_gui_auth_conf)
+        gui_auth_conf.admin_claim = nil
+        gui_auth_conf.admin_by = nil
       end
 
-      if err then
-        log(ERR, _log_prefix, err)
-        return kong.response.exit(500, err)
+      local admin
+      local by_username_ignore_case =
+              gui_auth_conf and gui_auth_conf.by_username_ignore_case
+
+      -- Defer admin valdition and ctx attachement after Auth Plugin execution,
+      -- when using OIDC AUTH
+      if gui_auth ~= "openid-connect" then
+        local user_header = singletons.configuration.admin_gui_auth_header
+        local args = ngx.req.get_uri_args()
+
+        local user_name = args[user_header] or ngx.req.get_headers()[user_header]
+
+        -- for ldap auth, validates admin by the username from the authorization header
+        if (gui_auth == "ldap-auth-advanced") then
+          local header_type = singletons.configuration.admin_gui_auth_conf and
+                              singletons.configuration.admin_gui_auth_conf.header_type or
+                              "Basic"
+
+          local auth_header_value = ngx.req.get_headers()['authorization']
+
+          if not auth_header_value then
+            return kong.response.exit(401,
+            { message = "Authorization header is required" })
+          end
+
+          user_name = auth_plugin_helpers.retrieve_credentials(auth_header_value, header_type) 
+        end
+
+        admin = auth_plugin_helpers.validate_admin_and_attach_ctx(
+                  self,
+                  by_username_ignore_case,
+                  user_name
+                )
       end
-
-      -- Check if an admin exists before going through auth plugin flow
-      if self.params.validate_user then
-        return admin and true
-      end
-
-      local consumer_id = admin.consumer.id
-
-      ee_api.attach_consumer_and_workspaces(self, consumer_id)
 
       local session_conf = singletons.configuration.admin_gui_session_conf
 
@@ -364,7 +384,21 @@ return {
 
       -- apply auth plugin
       local plugin_auth_response
+      local userinfo_claim_name = "user_info"
+
       if not ngx.ctx.authenticated_consumer then
+        -- Before Auth Plugin execution. 
+        if gui_auth == "openid-connect" then
+          gui_auth_conf.consumer_optional = true
+          gui_auth_conf.upstream_user_info_header = userinfo_claim_name
+        end
+
+        if gui_auth == "ldap-auth-advanced" then
+          -- since the OIDC create if admin not exists improvement,
+          -- the admin.username no longer as same as consumer.username
+          gui_auth_conf.consumer_optional = true
+        end
+
         plugin_auth_response, err = invoke_plugin({
           name = gui_auth,
           config = gui_auth_conf,
@@ -378,6 +412,65 @@ return {
           log(ERR, _log_prefix, err)
           return kong.response.exit(500, err)
         end
+
+        -- After Auth Plugin execution.
+        if gui_auth == "openid-connect" then
+          local userinfo_header = ngx.req.get_headers()[userinfo_claim_name]
+          local userinfo_json, base64_err = ngx.decode_base64(userinfo_header)
+          local userinfo, json_err = cjson.decode(userinfo_json)
+
+          if base64_err or json_err then
+            log(ERR, _log_prefix, base64_err or json_err)
+
+            return kong.response.exit(401, { message = "Unauthorized" })
+          end
+
+          local default_admin_by = "username"
+          local gui_auth_conf_origin = singletons.configuration.admin_gui_auth_conf
+          local admin_claim = gui_auth_conf_origin
+                              and gui_auth_conf_origin.admin_claim
+
+          local admin_by = gui_auth_conf_origin and gui_auth_conf_origin.admin_by
+                           or default_admin_by
+
+          local admin_claim_value = userinfo[admin_claim]
+
+          if not admin_claim_value then
+            log(ERR, _log_prefix, "the 'admin_claim' not found from the user_info claims.", gui_auth)
+            return kong.response.exit(401, { message = "Unauthorized" })
+          end
+ 
+          admin = auth_plugin_helpers.validate_admin_and_attach_ctx(
+                    self,
+                    by_username_ignore_case,
+                    admin_claim_value,
+                    admin_by == "custom_id" and admin_claim_value or nil,
+                    true,
+                    true
+                  )
+
+          -- role mapping
+          local role_claim = gui_auth_conf and
+                             gui_auth_conf.authenticated_groups_claim and
+                             gui_auth_conf.authenticated_groups_claim[1]
+
+          local role_claim_values = userinfo[role_claim]
+          
+          if role_claim_values then
+            auth_plugin_helpers.map_admin_roles_by_idp_claim(admin, role_claim_values)
+          else
+            -- only logs an error if kong-ee can not find the claims
+            ngx.log(ERR, role_claim .. " not found from the user_info claims.", gui_auth)
+          end
+
+        end
+
+        if gui_auth == "ldap-auth-advanced" then
+          -- since the OIDC create if admin not exists improvement,
+          -- plugin not longer handle conusmer mapping.
+          auth_plugin_helpers.set_admin_consumer_to_ctx(admin)
+        end
+
       end
 
       -- Plugin ran but consumer was not created on context

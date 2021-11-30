@@ -5,10 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local helpers = require "spec.helpers"
+local helpers    = require "spec.helpers"
+local constants  = require "kong.constants"
 local singletons = require "kong.singletons"
-local enums = require "kong.enterprise_edition.dao.enums"
+local enums      = require "kong.enterprise_edition.dao.enums"
 
+local ADMIN_CONSUMER_USERNAME_SUFFIX = constants.ADMIN_CONSUMER_USERNAME_SUFFIX
 
 for _, strategy in helpers.each_strategy() do
   local db, dao, admins, _
@@ -85,7 +87,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same(enums.CONSUMERS.STATUS.INVITED, admin.status)
       end)
 
-      it("sets consumer username and custom_id same as admin's", function()
+      it("sets consumer username and custom_id according to admin's", function()
         local admin_params = {
           username = "admin-2",
           custom_id = "admin-2-custom-id",
@@ -95,8 +97,8 @@ for _, strategy in helpers.each_strategy() do
 
         local admin, err = admins:insert(admin_params)
         assert.is_nil(err)
-        assert.same(admin.username, admin.consumer.username)
-        assert.same(admin.username_lower, admin.consumer.username_lower)
+        assert.same(admin.username .. ADMIN_CONSUMER_USERNAME_SUFFIX, admin.consumer.username)
+        assert.same(admin.username_lower .. ADMIN_CONSUMER_USERNAME_SUFFIX:lower(), admin.consumer.username_lower)
         assert.same(admin.custom_id, admin.consumer.custom_id)
       end)
 
@@ -113,7 +115,7 @@ for _, strategy in helpers.each_strategy() do
 
         local admin, err = admins:insert(admin_params)
         assert.is_nil(err)
-        assert.same(admin.username, admin.consumer.username)
+        assert.same(admin.username .. ADMIN_CONSUMER_USERNAME_SUFFIX, admin.consumer.username)
         assert.not_same(admin.username, admin.rbac_user.name)
       end)
 
