@@ -102,6 +102,10 @@
   [#8815](https://github.com/Kong/kong/pull/8815)
 - The dataplane config cache was removed. The config persistence is now done automatically with LMDB.
   [#8704](https://github.com/Kong/kong/pull/8704)
+- The `kong.request.get_path()` PDK function now performs path normalization
+  on the string that is returned to the caller. The raw, non-normalized version
+  of the request path can be fetched via `kong.request.get_raw_path()`.
+  [8823](https://github.com/Kong/kong/pull/8823)
 
 #### Admin API
 
