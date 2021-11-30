@@ -953,7 +953,15 @@ return {
     end,
 
     PATCH = function(self, db, helpers)
-      local application, _, err_t = db.applications:update({ id = self.application.id }, self.params)
+      local updates = self.params and {
+        custom_id = self.params.custom_id,
+        description = self.params.description,
+        meta = self.params.meta,
+        name = self.params.name,
+        redirect_uri = self.params.redirect_uri,
+      } or {}
+
+      local application, _, err_t = db.applications:update({ id = self.application.id }, updates)
       if err_t then
         return endpoints.handle_error(err_t)
       end
