@@ -41,8 +41,6 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.7.2",
   "lua-resty-session == 3.8",
-  -- external Kong plugins
-  "kong-plugin-zipkin ~> 1.4",
 }
 build = {
   type = "builtin",
@@ -456,6 +454,13 @@ build = {
 
     ["kong.plugins.post-function.handler"] = "kong/plugins/post-function/handler.lua",
     ["kong.plugins.post-function.schema"] = "kong/plugins/post-function/schema.lua",
+
+    ["kong.plugins.zipkin.handler"] = "kong/plugins/zipkin/handler.lua",
+    ["kong.plugins.zipkin.reporter"] = "kong/plugins/zipkin/reporter.lua",
+    ["kong.plugins.zipkin.span"] = "kong/plugins/zipkin/span.lua",
+    ["kong.plugins.zipkin.tracing_headers"] = "kong/plugins/zipkin/tracing_headers.lua",
+    ["kong.plugins.zipkin.schema"] = "kong/plugins/zipkin/schema.lua",
+    ["kong.plugins.zipkin.request_tags"] = "kong/plugins/zipkin/request_tags.lua",
 
     ["kong.plugins.request-transformer.migrations.cassandra"] = "kong/plugins/request-transformer/migrations/cassandra.lua",
     ["kong.plugins.request-transformer.migrations.postgres"] = "kong/plugins/request-transformer/migrations/postgres.lua",

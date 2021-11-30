@@ -34,7 +34,6 @@ local plugins = {
   "pre-function",
   "post-function",
   "azure-functions",
-  -- external plugins
   "zipkin",
 }
 
