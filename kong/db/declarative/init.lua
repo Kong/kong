@@ -375,7 +375,7 @@ function declarative.load_into_db(entities, meta)
 end
 
 
-local function export_from_db(emitter, skip_ws, skip_disabled_services)
+local function export_from_db(emitter, skip_ws, skip_disabled_entities)
   local schemas = {}
   for _, dao in pairs(kong.db.daos) do
     if not (skip_ws and dao.schema.name == "workspaces") then
@@ -412,26 +412,31 @@ local function export_from_db(emitter, skip_ws, skip_disabled_services)
         return nil, err
       end
 
-      -- do not export disabled services and associated enitties when skip_disabled_services
-      if skip_disabled_services and name == "services" and not row.enabled then
+      -- do not export disabled services and disabled plugins when skip_disabled_entities
+      -- as well do not export plugins and routes of dsiabled services
+      if skip_disabled_entities and name == "services" and not row.enabled then
         disabled_services[row.id] = true
+
+      elseif skip_disabled_entities and name == "plugins" and not row.enabled then
+        goto skip_emit
+
       else
         for _, foreign_name in ipairs(fks) do
           if type(row[foreign_name]) == "table" then
             local id = row[foreign_name].id
-            if disabled_services[id] then 
+            if disabled_services[id] then
               goto skip_emit
             end
-
             if id ~= nil then
               row[foreign_name] = id
             end
+
           end
         end
 
         emitter:emit_entity(name, row)
-        ::skip_emit::
       end
+      ::skip_emit::
     end
 
     ::continue::
@@ -466,18 +471,18 @@ function fd_emitter.new(fd)
 end
 
 
-function declarative.export_from_db(fd, skip_ws, skip_disabled_services)
+function declarative.export_from_db(fd, skip_ws, skip_disabled_entities)
   -- not sure if this really useful for skip_ws,
-  -- but I want to allow skip_disabled_services and would rather have consistant interface
+  -- but I want to allow skip_disabled_entities and would rather have consistant interface
   if skip_ws == nil then
     skip_ws = true
   end
 
-  if skip_disabled_services == nil then 
-    skip_disabled_services = false
+  if skip_disabled_entities == nil then 
+    skip_disabled_entities = false
   end
 
-  return export_from_db(fd_emitter.new(fd), skip_ws, skip_disabled_services)
+  return export_from_db(fd_emitter.new(fd), skip_ws, skip_disabled_entities)
 end
 
 
@@ -505,17 +510,17 @@ function table_emitter.new()
 end
 
 
-function declarative.export_config(skip_ws, skip_disabled_services)
+function declarative.export_config(skip_ws, skip_disabled_entities)
   -- default skip_ws=false and skip_disabled_services=true
   if skip_ws == nil then
     skip_ws = false
   end
 
-  if skip_disabled_services == nil then 
-    skip_disabled_services = true
+  if skip_disabled_entities == nil then 
+    skip_disabled_entities = true
   end
 
-  return export_from_db(table_emitter.new(), skip_ws, skip_disabled_services)
+  return export_from_db(table_emitter.new(), skip_ws, skip_disabled_entities)
 end
 
 

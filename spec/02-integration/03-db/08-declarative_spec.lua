@@ -143,6 +143,16 @@ for _, strategy in helpers.each_strategy() do
       }
     }
 
+    -- plugin is disabled, but attached to enabled service
+    local disabled_plugin_def = {
+      _tags = ngx.null,
+      created_at = 1547047310,
+      id = "9d26ae22-dc45-4988-87f6-bd655a676ae6",
+      enabled = false,
+      name = "key-auth",
+      service = { id = service_def.id },
+    }
+
     --[[ FIXME this case is known to cause an issue
     local plugin_with_null_def = {
       _tags = ngx.null,
@@ -210,6 +220,7 @@ for _, strategy in helpers.each_strategy() do
         plugins = { 
           [plugin_def.id] = plugin_def,
           [disabled_service_plugin_def.id] = disabled_service_plugin_def,
+          [disabled_plugin_def.id] = disabled_plugin_def,
         -- [plugin_with_null_def.id] = plugin_with_null_def,
         },
         acls = { [acl_def.id] = acl_def  },
@@ -358,16 +369,21 @@ for _, strategy in helpers.each_strategy() do
         assert.equals("andru", consumer_def.username)
         assert.equals("donalds", consumer_def.custom_id)
 
-        assert.equals(2, #yaml.plugins)
+        assert.equals(3, #yaml.plugins)
         local plugin = assert(yaml.plugins[1])
         assert.equals(plugin_def.id, plugin.id)
         assert.equals(service.id, plugin.service)
         assert.equals("acl", plugin.name)
 
-        local disabled_plugin = assert(yaml.plugins[2])
-        assert.equals(disabled_service_plugin_def.id, disabled_plugin.id)
-        assert.equals(disabled_service_def.id, disabled_plugin.service)
-        assert.equals("acl", disabled_plugin.name)
+        local service_disabled_plugin = assert(yaml.plugins[2])
+        assert.equals(disabled_service_plugin_def.id, service_disabled_plugin.id)
+        assert.equals(disabled_service_def.id, service_disabled_plugin.service)
+        assert.equals("acl", service_disabled_plugin.name)
+
+        local disabled_plugin = assert(yaml.plugins[3])
+        assert.equals(disabled_plugin_def.id, disabled_plugin.id)
+        assert.equals(service_def.id, disabled_plugin.service)
+        assert.equals("key-auth", disabled_plugin.name)
 
         -- lyaml.load above returns null as its own format
         assert(plugin.config.deny == lyaml.null)
