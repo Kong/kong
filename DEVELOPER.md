@@ -47,7 +47,7 @@ code, other repos are also under active development:
 - [Kong on IBM Cloud](https://github.com/andrew40404/installing-kong-IBM-cloud) - How to deploy Kong on IBM Cloud
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
   Instaclustr manage your Cassandra cluster.
-- [Master Builds][kong-master-builds]: Docker images for each commit in the `master` branch.
+- [Master Builds](https://hub.docker.com/r/kong/kong): Docker images for each commit in the `master` branch.
 
 You can find every supported distribution at the [official installation page](https://konghq.com/install/#kong-community).
 
