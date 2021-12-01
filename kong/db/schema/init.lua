@@ -2080,6 +2080,39 @@ local function allow_record_fields_by_name(record, loop)
 end
 
 
+local function get_transform_args(input, original_input, output, transformation)
+  local args = {}
+  local argc = 0
+  for _, input_field_name in ipairs(transformation.input) do
+    local value = get_field(output or original_input or input, input_field_name)
+    if is_nonempty(value) then
+      argc = argc + 1
+      if original_input then
+        args[argc] = get_field(output or input, input_field_name)
+      else
+        args[argc] = value
+      end
+
+    else
+      return nil
+    end
+  end
+
+  if transformation.needs then
+    for _, need in ipairs(transformation.needs) do
+      local value = get_field(output or input, need)
+      if is_nonempty(value) then
+        argc = argc + 1
+        args[argc] = get_field(output or input, need)
+
+      else
+        return nil
+      end
+    end
+  end
+  return args
+end
+
 --- Run transformations on fields.
 -- @param input The input table.
 -- @param original_input The original input for transformation detection.
@@ -2101,48 +2134,19 @@ function Schema:transform(input, original_input, context)
       transform = transformation.on_write
     end
 
-    if not transform then
-      goto next
-    end
+    if transform then
+      local args = get_transform_args(input, original_input, output, transformation)
 
-    local args = {}
-    local argc = 0
-    for _, input_field_name in ipairs(transformation.input) do
-      local value = get_field(output or original_input or input, input_field_name)
-      if is_nonempty(value) then
-        argc = argc + 1
-        if original_input then
-          args[argc] = get_field(output or input, input_field_name)
-        else
-          args[argc] = value
+      if args then
+        local data, err = transform(unpack(args))
+        if err then
+          return nil, validation_errors.TRANSFORMATION_ERROR:format(err)
         end
 
-      else
-        goto next
+        output = self:merge_values(data, output or input)
       end
     end
 
-    if transformation.needs then
-      for _, need in ipairs(transformation.needs) do
-        local value = get_field(output or input, need)
-        if is_nonempty(value) then
-          argc = argc + 1
-          args[argc] = get_field(output or input, need)
-
-        else
-          goto next
-        end
-      end
-    end
-
-    local data, err = transform(unpack(args))
-    if err then
-      return nil, validation_errors.TRANSFORMATION_ERROR:format(err)
-    end
-
-    output = self:merge_values(data, output or input)
-
-    ::next::
   end
 
   return output or input

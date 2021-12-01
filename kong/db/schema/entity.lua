@@ -43,23 +43,21 @@ function Entity.new(definition)
       return nil, entity_errors.NO_NILABLE:format(name)
     end
 
-    if field.abstract then
-      goto continue
-    end
+    if not field.abstract then
 
-    if field.type == "map" then
-      if field.keys.type ~= "string" then
-        return nil, entity_errors.MAP_KEY_STRINGS_ONLY:format(name)
+      if field.type == "map" then
+        if field.keys.type ~= "string" then
+          return nil, entity_errors.MAP_KEY_STRINGS_ONLY:format(name)
+        end
+
+      elseif field.type == "record" then
+        make_records_required(field)
+
+      elseif field.type == "function" then
+        return nil, entity_errors.NO_FUNCTIONS:format(name)
       end
 
-    elseif field.type == "record" then
-      make_records_required(field)
-
-    elseif field.type == "function" then
-      return nil, entity_errors.NO_FUNCTIONS:format(name)
     end
-
-    ::continue::
   end
 
   self.new_subschema = Entity.new_subschema
