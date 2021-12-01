@@ -12,7 +12,7 @@ description = {
   license = "Apache 2.0"
 }
 dependencies = {
-  "inspect == 3.1.1",
+  "inspect == 3.1.2",
   "luasec == 1.0.2",
   "luasocket == 3.0-rc1",
   "penlight == 1.11.0",
