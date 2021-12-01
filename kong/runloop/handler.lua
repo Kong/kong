@@ -50,6 +50,10 @@ local unpack       = unpack
 local escape       = require("kong.tools.uri").escape
 
 
+local is_http_module   = subsystem == "http"
+local is_stream_module = subsystem == "stream"
+
+
 local NOOP = function() end
 
 
@@ -94,6 +98,27 @@ local _set_build_router
 local _set_router
 local _set_router_version
 local _register_balancer_events
+
+
+local set_upstream_cert_and_key
+local set_upstream_ssl_verify
+local set_upstream_ssl_verify_depth
+local set_upstream_ssl_trusted_store
+local set_authority
+if is_http_module then
+  local tls = require("resty.kong.tls")
+  set_upstream_cert_and_key = tls.set_upstream_cert_and_key
+  set_upstream_ssl_verify = tls.set_upstream_ssl_verify
+  set_upstream_ssl_verify_depth = tls.set_upstream_ssl_verify_depth
+  set_upstream_ssl_trusted_store = tls.set_upstream_ssl_trusted_store
+  set_authority = require("resty.kong.grpc").set_authority
+end
+
+
+local disable_proxy_ssl
+if is_stream_module then
+  disable_proxy_ssl = require("resty.kong.tls").disable_proxy_ssl
+end
 
 
 local update_lua_mem
@@ -775,13 +800,17 @@ do
           return nil, err
         end
 
-        local r = {
-          route   = route,
-          service = service,
-        }
+        -- routes with no services are added to router
+        -- but routes where the services.enabled == false are not put in router
+        if service == nil or service.enabled ~= false then
+          local r = {
+            route   = route,
+            service = service,
+          }
 
-        i = i + 1
-        routes[i] = r
+          i = i + 1
+          routes[i] = r
+        end
       end
 
       counter = counter + 1
@@ -885,7 +914,6 @@ local balancer_prepare
 do
   local get_certificate = certificate.get_certificate
   local get_ca_certificate_store = certificate.get_ca_certificate_store
-  local subsystem = ngx.config.subsystem
 
   local function sleep_once_for_balancer_init()
     ngx.sleep(0)
@@ -936,7 +964,7 @@ do
     ctx.balancer_data    = balancer_data
     ctx.balancer_address = balancer_data -- for plugin backward compatibility
 
-    if service then
+    if is_http_module and service then
       local res, err
       local client_certificate = service.client_certificate
 
@@ -948,7 +976,7 @@ do
           return
         end
 
-        res, err = kong.service.set_tls_cert_key(cert.cert, cert.key)
+        res, err = set_upstream_cert_and_key(cert.cert, cert.key)
         if not res then
           log(ERR, "unable to apply upstream client TLS certificate ",
                    client_certificate.id, ": ", err)
@@ -957,7 +985,7 @@ do
 
       local tls_verify = service.tls_verify
       if tls_verify then
-        res, err = kong.service.set_tls_verify(tls_verify)
+        res, err = set_upstream_ssl_verify(tls_verify)
         if not res then
           log(CRIT, "unable to set upstream TLS verification to: ",
                    tls_verify, ", err: ", err)
@@ -966,7 +994,7 @@ do
 
       local tls_verify_depth = service.tls_verify_depth
       if tls_verify_depth then
-        res, err = kong.service.set_tls_verify_depth(tls_verify_depth)
+        res, err = set_upstream_ssl_verify_depth(tls_verify_depth)
         if not res then
           log(CRIT, "unable to set upstream TLS verification to: ",
                    tls_verify, ", err: ", err)
@@ -983,7 +1011,7 @@ do
           log(CRIT, "unable to get upstream TLS CA store, err: ", err)
 
         else
-          res, err = kong.service.set_tls_verify_store(res)
+          res, err = set_upstream_ssl_trusted_store(res)
           if not res then
             log(CRIT, "unable to set upstream TLS CA store, err: ", err)
           end
@@ -991,8 +1019,8 @@ do
       end
     end
 
-    if subsystem == "stream" and scheme == "tcp" then
-      local res, err = kong.service.request.disable_tls()
+    if is_stream_module and scheme == "tcp" then
+      local res, err = disable_proxy_ssl()
       if not res then
         log(ERR, "unable to disable upstream TLS handshake: ", err)
       end
@@ -1445,7 +1473,7 @@ return {
         -- preserve_host=false, the header is set in `set_host_header`,
         -- so that it also applies to balancer retries
         if upstream_scheme == "grpc" or upstream_scheme == "grpcs" then
-          local ok, err = kong.service.request.set_header(":authority", upstream_host)
+          local ok, err = set_authority(upstream_host)
           if not ok then
             log(ERR, "failed to set :authority header: ", err)
           end

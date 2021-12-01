@@ -79,6 +79,8 @@ In this release we continued our work on better performance:
   [#7979](https://github.com/Kong/kong/pull/7979)
 - Simplified the Kong core context read and writes for better performance
   [#7919](https://github.com/Kong/kong/pull/7919)
+- Reduced proxy long tail latency while reloading DB-less config
+  [#8133](https://github.com/Kong/kong/pull/8133)
 
 ### Plugins
 

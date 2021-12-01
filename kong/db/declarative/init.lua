@@ -25,6 +25,7 @@ local SHADOW = true
 local md5 = ngx.md5
 local pairs = pairs
 local ngx_socket_tcp = ngx.socket.tcp
+local yield = require("kong.tools.utils").yield
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
 local PREFIX = ngx.config.prefix()
 local SUBSYS = ngx.config.subsystem
@@ -405,7 +406,7 @@ function declarative.load_into_db(entities, meta)
 end
 
 
-local function export_from_db(emitter, skip_ws, skip_ttl)
+local function export_from_db(emitter, skip_ws, skip_disabled_entities, skip_ttl)
   local schemas = {}
   for _, dao in pairs(kong.db.daos) do
     if not (skip_ws and dao.schema.name == "workspaces") then
@@ -422,6 +423,7 @@ local function export_from_db(emitter, skip_ws, skip_ttl)
     _transform = false,
   })
 
+  local disabled_services = {}
   for _, schema in ipairs(sorted_schemas) do
     if schema.db_export == false then
       goto continue
@@ -451,29 +453,44 @@ local function export_from_db(emitter, skip_ws, skip_ttl)
         return nil, err
       end
 
-      -- XXX hack, do not export ttl values ??
-      if skip_ttl and row.ttl and schema.ttl then
-        row.ttl = nil
-      end
+      -- do not export disabled services and disabled plugins when skip_disabled_entities
+      -- as well do not export plugins and routes of dsiabled services
+      if skip_disabled_entities and name == "services" and not row.enabled then
+        disabled_services[row.id] = true
 
-      for _, skip_field in ipairs(skip_db_export_fields) do
-        row[skip_field] = nil
-      end
+      elseif skip_disabled_entities and name == "plugins" and not row.enabled then
+        goto skip_emit
 
-      for _, foreign_name in ipairs(fks) do
-        if type(row[foreign_name]) == "table" then
-          local id = row[foreign_name].id
-          if id ~= nil then
-            row[foreign_name] = id
+      else
+        -- XXX hack, do not export ttl values ??
+        if skip_ttl and row.ttl and schema.ttl then
+          row.ttl = nil
+        end
+
+        for _, skip_field in ipairs(skip_db_export_fields) do
+          row[skip_field] = nil
+        end
+
+        for _, foreign_name in ipairs(fks) do
+          if type(row[foreign_name]) == "table" then
+            local id = row[foreign_name].id
+            if disabled_services[id] then
+              goto skip_emit
+            end
+            if id ~= nil then
+              row[foreign_name] = id
+            end
+
+          end
+
+          if pointers_to_nonexported[foreign_name] then
+            row[foreign_name] = nil
           end
         end
 
-        if pointers_to_nonexported[foreign_name] then
-          row[foreign_name] = nil
-        end
+        emitter:emit_entity(name, row)
       end
-
-      emitter:emit_entity(name, row)
+      ::skip_emit::
     end
 
     ::continue::
@@ -508,8 +525,18 @@ function fd_emitter.new(fd)
 end
 
 
-function declarative.export_from_db(fd)
-  return export_from_db(fd_emitter.new(fd), false)
+function declarative.export_from_db(fd, skip_ws, skip_disabled_entities)
+  -- not sure if this really useful for skip_ws,
+  -- but I want to allow skip_disabled_entities and would rather have consistant interface
+  if skip_ws == nil then
+    skip_ws = true
+  end
+
+  if skip_disabled_entities == nil then
+    skip_disabled_entities = false
+  end
+
+  return export_from_db(fd_emitter.new(fd), skip_ws, skip_disabled_entities)
 end
 
 
@@ -537,8 +564,17 @@ function table_emitter.new()
 end
 
 
-function declarative.export_config()
-  return export_from_db(table_emitter.new(), false, true)
+function declarative.export_config(skip_ws, skip_disabled_entities)
+  -- default skip_ws=false and skip_disabled_services=true
+  if skip_ws == nil then
+    skip_ws = false
+  end
+
+  if skip_disabled_entities == nil then
+    skip_disabled_entities = true
+  end
+
+  return export_from_db(table_emitter.new(), skip_ws, skip_disabled_entities, true)
 end
 
 
@@ -651,10 +687,7 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
       -- set it to the current. But this only works in the worker that
       -- is doing the loading (0), other ones still won't have it
 
-      yield_n = yield_n + 1
-      if yield_n % 500 == 0 then
-        yield()
-      end
+      yield(true)
 
       assert(type(fallback_workspace) == "string")
 

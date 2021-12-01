@@ -72,7 +72,7 @@ local function get_proto_info(fname)
       mthd.input_type,
       mthd.output_type,
     }
-  end)
+  end, true)
 
   _proto_info[fname] = info
   return info
