@@ -85,7 +85,7 @@ local schema = {
           default = 'rsa',
           one_of = CERT_TYPES,
         }, },
-        { rsa_key_length = {
+        { rsa_key_size = {
           type = "number",
           default = 4096,
           one_of = RSA_KEY_SIZES,
