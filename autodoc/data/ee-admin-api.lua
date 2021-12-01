@@ -12,6 +12,7 @@ return {
       "kong/api/routes/admins.lua",
       "kong/api/routes/applications.lua",
       "kong/api/routes/audit.lua",
+      "kong/api/routes/consumer_groups.lua",
       "kong/api/routes/developers.lua",
       "kong/api/routes/entities.lua",
       "kong/api/routes/event_hooks.lua",
@@ -130,6 +131,17 @@ return {
         ["/audit/objects"] = {},
     },
 
+    consumer_groups = {
+      description = [[ consumer_groups endpoints ]],
+      ["/consumer_groups"] = {},
+      ["/consumer_groups/:consumer_groups"] = {},
+      ["/consumer_groups/:consumer_groups/consumers"] = {},
+      ["/consumer_groups/:consumer_groups/consumers/:consumers"] = {},
+      ["/consumer_groups/:consumer_groups/overrides/plugins/:plugins"] = {},
+      ["/consumers/:consumers/consumer_groups"] = {},
+      ["/consumers/:consumers/consumer_groups/:consumer_groups"] = {},
+    },
+
     developers = {
       description = [[ developers endpoints]],
       ["/developers"] = {},
@@ -216,6 +228,7 @@ return {
       ["/rbac/roles/:rbac_roles/endpoints/:workspace/*"] = {},
       ["/rbac/roles/:rbac_roles/endpoints/permissions"] = {},
    },
+
     vitals = {
       description = [[ vitals endpoints ]],
 

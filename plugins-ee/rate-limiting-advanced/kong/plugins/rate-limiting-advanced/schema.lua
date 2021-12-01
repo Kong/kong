@@ -7,6 +7,7 @@
 
 local redis  = require "kong.enterprise_edition.redis"
 local typedefs = require "kong.db.schema.typedefs"
+local kong = kong
 
 
 local function check_shdict(name)
@@ -79,6 +80,16 @@ return {
           { header_name = typedefs.header_name, },
           { path = typedefs.path },
           { redis = redis.config_schema},
+          { enforce_consumer_groups = {
+            type = "boolean",
+            default = false,
+          }},
+          { consumer_groups = {
+            type = "array",
+            elements = {
+              type = "string",
+            },
+          }},
         },
       },
     }
@@ -162,6 +173,15 @@ return {
           return nil, "Config option 'sync_rate' must not be a decimal between 0 and 0.02"
         end
 
+        if config.enforce_consumer_groups then
+          if config.consumer_groups == ngx.null then
+            return nil, "No consumer groups provided"
+          end
+        else
+          if config.consumer_groups then
+            kong.log.warn("Consumer groups provided but not enforced")
+          end
+        end
         return true
       end
     }},

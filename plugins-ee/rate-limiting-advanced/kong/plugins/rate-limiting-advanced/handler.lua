@@ -12,7 +12,7 @@ local schema       = require "kong.plugins.rate-limiting-advanced.schema"
 local event_hooks  = require "kong.enterprise_edition.event_hooks"
 local concurrency  = require "kong.concurrency"
 local cjson_safe   = require "cjson.safe"
-
+local helpers        = require "kong.enterprise_edition.consumer_groups_helpers"
 
 local kong     = kong
 local ceil     = math.ceil
@@ -368,16 +368,37 @@ function NewRLHandler:access(conf)
     new_namespace(conf, true)
   end
 
+  local config
+  -- check to apply consumer groups
+  if conf.enforce_consumer_groups then
+    if kong.client.get_consumer() and conf.consumer_groups then
+      local consumer = kong.client.get_consumer()
+      for i = 1, #conf.consumer_groups do
+        -- if found a match, overrides the configuration value
+        if helpers.is_consumer_in_group(consumer.id, conf.consumer_groups[i]) then
+          local consumer_group = helpers.get_consumer_group(conf.consumer_groups[i])
+          config = helpers.get_consumer_group_config(consumer_group.id).config
+          break --exit on the first matching group found
+        end
+      end
+    end
+  end
+
+  -- fall back to the original plugin configurations
+  if not config then
+    config = conf
+  end
+
   local limit
   local window
   local remaining
   local reset
   local namespace = conf.namespace
-  local window_type = conf.window_type
+  local window_type = config.window_type
   local shm = ngx.shared[conf.dictionary_name]
-  for i = 1, #conf.window_size do
-    local current_window = tonumber(conf.window_size[i])
-    local current_limit = tonumber(conf.limit[i])
+  for i = 1, #config.window_size do
+    local current_window = tonumber(config.window_size[i])
+    local current_limit = tonumber(config.limit[i])
 
     -- if we have exceeded any rate, we should not increment any other windows,
     -- butwe should still show the rate to the client, maintaining a uniform
@@ -387,7 +408,7 @@ function NewRLHandler:access(conf)
       rate = ratelimiting.sliding_window(key, current_window, nil, namespace)
     else
       rate = ratelimiting.increment(key, current_window, 1, namespace,
-                                    conf.window_type == "fixed" and 0 or nil)
+                                    config.window_type == "fixed" and 0 or nil)
     end
 
     -- Ensure the window start time persists using shared memory
@@ -458,7 +479,7 @@ function NewRLHandler:access(conf)
 
   if deny then
     local retry_after = reset
-    local jitter_max = conf.retry_after_jitter_max
+    local jitter_max = config.retry_after_jitter_max
 
     -- Add a random value (a jitter) to the Retry-After value
     -- to reduce a chance of retries spike occurrence.
