@@ -16,12 +16,13 @@ local _log_prefix = "[keyring] "
 
 local CRYPTO_MARKER = "$ke$1$"
 local SEPARATOR = "-"
+local ALGORITHM = "id-aes256-gcm"
 
 
 local get_phase = ngx.get_phase
 
 
-local cipher = require "openssl.cipher"
+local cipher = require "resty.openssl.cipher"
 local to_hex = require("resty.string").to_hex
 local function from_hex(s)
   return s:gsub('..', function(cc) return string.char(tonumber(cc, 16)) end)
@@ -94,12 +95,23 @@ function _M.encrypt(p)
 
   local nonce = utils.get_rand_bytes(12, true)
 
-  local cp, err = cipher.new("id-aes256-GCM")
-  if not cp then
+  -- this can be cached per worker if it's becoming bottleneck
+  local cp, err = cipher.new(ALGORITHM)
+  if err then
     error(err)
   end
-  cp:encrypt(key, nonce)
-  local c = cp:update(p)
+
+  local _, err = cp:init(key, nonce, {
+    is_encrypt = true,
+  })
+  if err then
+    error(err)
+  end
+
+  local c, err = cp:update(p)
+  if err then
+    error(err)
+  end
 
   return CRYPTO_MARKER .. SEPARATOR .. id .. SEPARATOR .. to_hex(nonce) ..
          SEPARATOR .. to_hex(c)
@@ -150,12 +162,24 @@ function _M.decrypt(c)
     error(err)
   end
 
-  local cp, err = cipher.new("id-aes256-GCM")
-  if not cp then
+  -- this can be cached per worker if it's becoming bottleneck
+  local cp, err = cipher.new(ALGORITHM)
+  if err then
     error(err)
   end
-  cp:decrypt(key, nonce)
-  local plaintext = cp:update(ciphertext)
+
+  local _, err = cp:init(key, nonce, {
+    is_encrypt = false,
+  })
+  if err then
+    error(err)
+  end
+
+  -- don't call final as we are not providing the tag
+  local plaintext, err = cp:update(ciphertext)
+  if err then
+    error(err)
+  end
 
   return plaintext
 end

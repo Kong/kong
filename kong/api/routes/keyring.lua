@@ -10,7 +10,7 @@ local keyring_cluster = require "kong.keyring.strategies.cluster"
 local utils = require "kong.tools.utils"
 local resty_rsa = require "resty.rsa"
 local cjson = require "cjson"
-local cipher = require "openssl.cipher"
+local cipher = require "resty.openssl.cipher"
 
 
 local function cluster_only()
@@ -65,15 +65,17 @@ return {
       local key = utils.get_rand_bytes(32, true)
       local nonce = utils.get_rand_bytes(12, true)
 
-      local cp, err = cipher.new("id-aes256-GCM")
+      local cp, err = cipher.new("aes-256-gcm")
       if not cp then
         return kong.response.exit(500, { error = err })
       end
-      cp:encrypt(key, nonce)
-      local c = cp:update(cjson.encode({
+      local c, err = cp:encrypt(key, nonce, cjson.encode({
         keys = keyring.get_keys(),
         active = keyring.active_key_id(),
       }))
+      if err then
+        return kong.response.exit(500, { error = err })
+      end
 
       local k_enc, err = rsa:encrypt(key)
       if err then

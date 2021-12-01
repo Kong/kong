@@ -102,7 +102,7 @@ describe("keyring", function()
 
       it("", function()
         assert.has_error(function() keyring.encrypt("abeautifulerror") end,
-                         "bad argument #1 to 'encrypt' (4: invalid key length (should be 32))")
+                         "cipher:init: incorrect key size, expect 32")
       end)
     end)
   end)
