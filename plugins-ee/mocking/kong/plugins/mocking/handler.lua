@@ -243,7 +243,6 @@ end
 
 local function retrieve_example(parsed_content, uripath, accept, method)
   local paths = parsed_content.paths
-  local found = false
   -- Check to make sure we have paths in the spec file, Corrupt or bad spec file
   if (paths) then
   for specpath, value in pairs(paths) do
@@ -253,22 +252,17 @@ local function retrieve_example(parsed_content, uripath, accept, method)
     formatted_path = gsub(formatted_path, "{(.-)}", "[A-Za-z0-9]+") .. "$"
     local strmatch = match(uripath, formatted_path)
     if strmatch then
-      found = true
       local responsepath, status = get_method_path(value, method, accept)
       if responsepath then
-        kong.response.exit(status, responsepath)
+        return status, responsepath, nil
       else
-        return kong.response.exit(404, { message = "No examples exist in API specification for this" ..
-         " resource with Accept Header (" .. accept .. ")"})
+        return 404, nil, { message = "No examples exist in API specification for this resource with Accept Header (" .. accept .. ")"}
       end
     end
   end
   end
 
-  if not found then
-    return kong.response.exit(404, { message = "Path does not exist in API Specification" })
-  end
-
+  return 404, nil, { message = "Path does not exist in API Specification" }
 end
 
 function plugin:access(conf)
@@ -306,8 +300,27 @@ function plugin:access(conf)
   if conf.random_delay then
     ngx.sleep(random(conf.min_delay_time,conf.max_delay_time))
   end
-  retrieve_example(parsed_content, uripath, accept, method)
-
+  local status, responsepath, err
+  status, responsepath, err = retrieve_example(parsed_content, uripath, accept, method)
+  if conf.random_examples then
+    if type(responsepath) == "table" then
+      responsepath = responsepath[random(1, #responsepath)]
+    else
+      kong.log.warning("Could not randomly select an example. Table expected but got " .. type(responsepath))
+    end
+  end
+  if status and responsepath then
+    return kong.response.exit(status, responsepath)
+  end
+  if status and err then
+    return kong.response.exit(status, err)
+  end
+  if not status and err then
+    return kong.response.exit(400, err)
+  end
+  if not status and not err then
+    return kong.response.exit(400, { message = "Unexpected Error"})
+  end
 end
 
 function plugin:header_filter(conf)
