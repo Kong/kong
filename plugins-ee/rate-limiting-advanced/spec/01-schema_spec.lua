@@ -322,32 +322,6 @@ describe("rate-limiting-advanced schema", function()
     assert.same({ 60, 3600, 86400 }, ok.config.window_size)
   end)
 
-  it("accpets enforce_consumer_groups config", function()
-    local ok, err = v({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      enforce_consumer_groups = true,
-      consumer_groups = { "test" },
-    }, rate_limiting_schema)
-
-    assert.is_truthy(ok)
-    assert.is_nil(err)
-  end)
-
-  it("rejects incomplete consumer_groups config", function()
-    local ok, err = v({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      enforce_consumer_groups = true,
-    }, rate_limiting_schema)
-
-    assert.is_falsy(ok)
-    assert.same({ "No consumer groups provided" }, err["@entity"])
-
-  end)
-
   it("accepts a local strategy", function()
     local ok, err = v({
       window_size = { 60 },

@@ -49,7 +49,7 @@ local ee_core_entities = {
     primary_key = "id",
     uniques = {"composite_id"},
     fks = {{name = "application", reference = "applications"}, {name = "service", reference = "services"}},
-  },
+  }
 }
 
 

@@ -139,7 +139,6 @@ build = {
     ["kong.enterprise_edition.workspaces.route_collision"] = "kong/enterprise_edition/workspaces/route_collision.lua",
     ["kong.enterprise_edition.db.declarative"] = "kong/enterprise_edition/db/declarative/init.lua",
     ["kong.enterprise_edition.status"] = "kong/enterprise_edition/status/init.lua",
-    ["kong.enterprise_edition.consumer_groups_helpers"] = "kong/enterprise_edition/consumer_groups_helpers.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -207,7 +206,6 @@ build = {
     ["kong.api.routes.keyring"] = "kong/api/routes/keyring.lua",
     ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
     ["kong.api.routes.event_hooks"] = "kong/api/routes/event_hooks.lua",
-    ["kong.api.routes.consumer_groups"] = "kong/api/routes/consumer_groups.lua",
 
     ["kong.status"] = "kong/status/init.lua",
 
@@ -244,10 +242,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.010_2200_to_2300_1"] = "kong/enterprise_edition/db/migrations/enterprise/010_2200_to_2300_1.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.011_2300_to_2600"] = "kong/enterprise_edition/db/migrations/enterprise/011_2300_to_2600.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.012_2600_to_2700"] = "kong/enterprise_edition/db/migrations/enterprise/012_2600_to_2700.lua",
-    ["kong.enterprise_edition.db.migrations.enterprise.012_2600_to_2700_1"] = "kong/enterprise_edition/db/migrations/enterprise/012_2600_to_2700_1.lua",
-
     ["kong.enterprise_edition.db.migrations.operations.2600_to_2700"] = "kong/enterprise_edition/db/migrations/operations/2600_to_2700.lua",
-
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
@@ -378,10 +373,6 @@ build = {
     ["kong.db.schema.entities.parameters"] = "kong/db/schema/entities/parameters.lua",
     -- [[XXX EE
     ["kong.db.schema.entities.licenses"] = "kong/db/schema/entities/licenses.lua",
-    ["kong.db.schema.entities.consumer_groups"] = "kong/db/schema/entities/consumer_groups.lua",
-    ["kong.db.schema.entities.consumer_group_plugins"] = "kong/db/schema/entities/consumer_group_plugins.lua",
-    ["kong.db.schema.entities.consumer_group_consumers"] = "kong/db/schema/entities/consumer_group_consumers.lua",
-
     -- EE ]]
     ["kong.db.schema.others.migrations"] = "kong/db/schema/others/migrations.lua",
     ["kong.db.schema.others.declarative_config"] = "kong/db/schema/others/declarative_config.lua",
