@@ -38,7 +38,7 @@ local function cassandra_migrate_license_data(connector)
     end
 
     for _, row in ipairs(rows) do
-      assert(cluster:execute("UPDATE license_data_tmp SET req_cnt = req_cnt + ? WHERE license_creation_date = ? and node_id = ?",
+      assert(cluster:execute("UPDATE license_data_tmp_2600_to_2700 SET req_cnt = req_cnt + ? WHERE license_creation_date = ? and node_id = ?",
         {
           cassandra.counter(row.req_cnt),
           cassandra.timestamp(row.license_creation_date),
@@ -69,7 +69,7 @@ local function cassandra_migrate_license_data(connector)
   connector:wait_for_schema_consensus()
 
   -- copy data from temp table to a new one
-  for rows, err in coordinator:iterate("SELECT * FROM license_data_tmp") do
+  for rows, err in coordinator:iterate("SELECT * FROM license_data_tmp_2600_to_2700") do
     if err then
       return nil, err
     end
@@ -91,7 +91,7 @@ local function cassandra_migrate_license_data(connector)
 
   -- drop temp table
    assert(connector:query([[
-    DROP TABLE IF EXISTS license_data_tmp;
+    DROP TABLE IF EXISTS license_data_tmp_2600_to_2700;
   ]]))
 
 end
