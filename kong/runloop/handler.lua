@@ -753,13 +753,17 @@ do
           return nil, err
         end
 
-        local r = {
-          route   = route,
-          service = service,
-        }
+        -- routes with no services are added to router
+        -- but routes where the services.enabled == false are not put in router
+        if service == nil or service.enabled ~= false then
+          local r = {
+            route   = route,
+            service = service,
+          }
 
-        i = i + 1
-        routes[i] = r
+          i = i + 1
+          routes[i] = r
+        end
       end
 
       counter = counter + 1
