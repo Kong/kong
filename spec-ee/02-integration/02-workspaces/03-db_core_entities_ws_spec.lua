@@ -708,6 +708,7 @@ for _, strategy in helpers.each_strategy() do
               write_timeout   = 10000,
               read_timeout    = 10000,
               retries         = 6,
+              enabled         = true,
             }, service)
           end, db)
         end)
