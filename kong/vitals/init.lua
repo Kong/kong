@@ -397,6 +397,7 @@ function _M:start()
 
   -- we're configured, initialized, and ready to phone home
   reports.add_ping_value("vitals", true)
+  reports.add_ping_value("vitals_backend", kong.configuration.vitals_strategy)
   for _, v in ipairs(PH_STATS) do
     reports.add_ping_value(v, function()
       local res, err = kong.vitals:phone_home(v)

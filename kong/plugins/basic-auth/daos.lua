@@ -8,7 +8,6 @@
 local typedefs = require "kong.db.schema.typedefs"
 local crypto = require "kong.plugins.basic-auth.crypto"
 
-
 return {
   {
     name = "basicauth_credentials",
@@ -23,7 +22,7 @@ return {
       { created_at = typedefs.auto_timestamp_s },
       { consumer = { type = "foreign", reference = "consumers", required = true, on_delete = "cascade" }, },
       { username = { type = "string", required = true, unique = true }, },
-      { password = { type = "string", required = true , encrypted = true }, },
+      { password = { type = "string", required = true, encrypted = true }, }, -- encrypted = true is a Kong Enterprise Exclusive feature, it does nothing in Kong CE
       { tags     = typedefs.tags },
     },
     transformations = {

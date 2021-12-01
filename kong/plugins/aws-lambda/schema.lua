@@ -7,18 +7,6 @@
 
 local typedefs = require "kong.db.schema.typedefs"
 
-local function keyring_enabled()
-  local ok, enabled = pcall(function()
-    return kong.configuration.keyring_enabled
-  end)
-
-  return ok and enabled or nil
-end
-
--- symmetrically encrypt IAM access keys, if configured. this is available
--- in Kong Enterprise: https://docs.konghq.com/enterprise/1.3-x/db-encryption/
-local ENCRYPTED = keyring_enabled()
-
 return {
   name = "aws-lambda",
   fields = {
@@ -38,11 +26,11 @@ return {
         } },
         { aws_key = {
           type = "string",
-          encrypted = ENCRYPTED,
+          encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
         } },
         { aws_secret = {
           type = "string",
-          encrypted = ENCRYPTED,
+          encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
         } },
         { aws_region = typedefs.host },
         { function_name = {

@@ -247,6 +247,34 @@ local function validate_admin_gui_authentication(conf, errors)
       errors[#errors+1] = "admin_gui_auth_conf must be valid json or not set: "
         .. err .. " - " .. conf.admin_gui_auth_conf
     else
+       -- validate admin_gui_auth_conf for OIDC Auth
+      if conf.admin_gui_auth == "openid-connect" then
+        
+        if not auth_config.admin_claim then
+          errors[#errors+1] = "admin_gui_auth_conf must contains 'admin_claim' "
+                              .. "when admin_gui_auth='openid-connect'"
+        end
+
+         -- admin_claim type checking
+         if auth_config.admin_claim and type(auth_config.admin_claim) ~= "string" then
+          errors[#errors+1] = "admin_claim must be a string"
+        end
+
+        -- only allow customers to map admin with 'username' temporary
+        -- also ensured admin_by is a string value
+        if auth_config.admin_by and auth_config.admin_by ~= "username" then
+          errors[#errors+1] = "admin_by only supports value with 'username'"
+        end
+
+        -- only allow customers to specify 1 claim to map with rbac roles
+        if auth_config.authenticated_groups_claim and 
+           #auth_config.authenticated_groups_claim > 1
+        then
+          errors[#errors+1] = "authenticated_groups_claim only supports 1 claim"
+        end
+
+      end
+
       conf.admin_gui_auth_conf = auth_config
 
       -- used for writing back to prefix/.kong_env

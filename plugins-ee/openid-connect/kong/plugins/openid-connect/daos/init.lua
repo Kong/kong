@@ -42,6 +42,7 @@ return {
         secret = {
           required = true,
           type     = "string",
+          encrypted = true,
         },
       },
       {

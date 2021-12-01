@@ -5,8 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local utils = require "kong.tools.utils"
-local enums = require "kong.enterprise_edition.dao.enums"
+local constants = require "kong.constants"
+local utils     = require "kong.tools.utils"
+local enums     = require "kong.enterprise_edition.dao.enums"
 local rbac      = require "kong.rbac"
 
 local tostring = tostring
@@ -14,6 +15,7 @@ local log = ngx.log
 local ERR = ngx.ERR
 local _log_prefix = "[admins-dao] "
 
+local ADMIN_CONSUMER_USERNAME_SUFFIX = constants.ADMIN_CONSUMER_USERNAME_SUFFIX
 
 local function rollback_on_create(self, entities)
   local _, err
@@ -86,9 +88,9 @@ function _Admins:insert(admin, options)
     return nil, err
   end
 
-  -- create consumer
+  -- create consumer with admin suffix username
   local consumer, err = self.db.consumers:insert({
-    username  = admin.username,
+    username  = admin.username .. ADMIN_CONSUMER_USERNAME_SUFFIX,
     custom_id = admin.custom_id,
     type = enums.CONSUMERS.TYPE.ADMIN,
   }, options)

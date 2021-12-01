@@ -16,6 +16,9 @@ local license_strategies = {
   "unlicensed",
 }
 
+local current_year = tonumber(os.date("%Y"))
+local current_month = tonumber(os.date("%m"))
+
 local function get_license_creation_date(license_strategy)
   local date = "2019-03-03"
   if license_strategy == "licensed" then
@@ -90,10 +93,16 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
           local expected_data = {
               node_id  = uuid,
               license_creation_date = select(2, get_license_creation_date(license_strategy)) * 1000,
-              req_cnt = 10
+              req_cnt = 10,
+              year = current_year,
+              month = current_month,
           }
 
-          assert.same(expected_data, res[1])
+          assert.same(expected_data.node_id, res[1].node_id)
+          assert.same(expected_data.license_creation_date, res[1].license_creation_date)
+          assert.same(expected_data.req_cnt, res[1].req_cnt)
+          assert.same(expected_data.year, res[1].year)
+          assert.same(expected_data.month, res[1].month)
         end)
 
         it("should flush data to cassandra with more than one row from node", function()
@@ -110,10 +119,16 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
           local expected_data = {
             node_id  = uuid,
             license_creation_date = select(2, get_license_creation_date(license_strategy)) * 1000,
-            req_cnt = 10
+            req_cnt = 10,
+            year = current_year,
+            month = current_month,
           }
 
-          assert.same(expected_data, res[1])
+          assert.same(expected_data.node_id, res[1].node_id)
+          assert.same(expected_data.license_creation_date, res[1].license_creation_date)
+          assert.same(expected_data.req_cnt, res[1].req_cnt)
+          assert.same(expected_data.year, res[1].year)
+          assert.same(expected_data.month, res[1].month)
 
           local data = {
             request_count = 269,
@@ -128,10 +143,16 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
           local expected_data = {
             node_id  = uuid,
             license_creation_date = select(2, get_license_creation_date(license_strategy)) * 1000,
-            req_cnt = 279
+            req_cnt = 279,
+            year = current_year,
+            month = current_month,
           }
 
-          assert.same(expected_data, res[1])
+          assert.same(expected_data.node_id, res[1].node_id)
+          assert.same(expected_data.license_creation_date, res[1].license_creation_date)
+          assert.same(expected_data.req_cnt, res[1].req_cnt)
+          assert.same(expected_data.year, res[1].year)
+          assert.same(expected_data.month, res[1].month)
         end)
 
         it("should flush data to cassandra from more than one node", function()
@@ -148,10 +169,16 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
           local expected_data = {
             node_id  = data.node_id,
             license_creation_date = select(2, get_license_creation_date(license_strategy)) * 1000,
-            req_cnt = 10
+            req_cnt = 10,
+            year = current_year,
+            month = current_month,
           }
 
-          assert.same(expected_data, res[1])
+          assert.same(expected_data.node_id, res[1].node_id)
+          assert.same(expected_data.license_creation_date, res[1].license_creation_date)
+          assert.same(expected_data.req_cnt, res[1].req_cnt)
+          assert.same(expected_data.year, res[1].year)
+          assert.same(expected_data.month, res[1].month)
 
           local data = {
             request_count = 58,
@@ -166,10 +193,16 @@ for _, strategy in helpers.each_strategy({"cassandra"}) do
           local expected_data = {
             node_id  = data.node_id,
             license_creation_date = select(2, get_license_creation_date(license_strategy)) * 1000,
-            req_cnt = 58
+            req_cnt = 58,
+            year = current_year,
+            month = current_month,
           }
 
-          assert.same(expected_data, res[1])
+          assert.same(expected_data.node_id, res[1].node_id)
+          assert.same(expected_data.license_creation_date, res[1].license_creation_date)
+          assert.same(expected_data.req_cnt, res[1].req_cnt)
+          assert.same(expected_data.year, res[1].year)
+          assert.same(expected_data.month, res[1].month)
         end)
       end)
     end)

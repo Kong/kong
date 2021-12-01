@@ -792,6 +792,45 @@ for _, strategy in helpers.each_strategy() do
           end
         end)
 
+        it("validates and attach user by username from authorization header", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/auth",
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64(read_only_admin.username .. ":"
+                                                                .. skeleton_key),
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          })
+
+          assert.res_status(200, res)
+          local cookie = res.headers["Set-Cookie"]
+
+          -- use cookie with super admin gui-auth-header
+          res = assert(client:send({
+            method = "GET",
+            path = "/userinfo",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = super_admin.username,
+            }
+          }))
+
+          assert.res_status(401, res)
+
+           -- use cookie with readonly admin gui-auth-header
+           res = assert(client:send({
+            method = "GET",
+            path = "/userinfo",
+            headers = {
+              ["cookie"] = cookie,
+              ["Kong-Admin-User"] = read_only_admin.username,
+            }
+          }))
+
+          assert.res_status(200, res)
+        end)
+
         describe("groups - rbac roles mapped from ldap groups", function()
           it("read-only user - can login and only read resources", function()
             local cookie = get_admin_cookie_basic_auth(client, read_only_admin.username,

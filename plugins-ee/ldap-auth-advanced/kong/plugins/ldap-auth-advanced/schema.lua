@@ -41,7 +41,8 @@ return {
           required = true,
         }},
         { ldap_password = {
-          type = "string"
+          type = "string",
+          encrypted = true,
         }},
         { ldap_port = {
           type = "number",

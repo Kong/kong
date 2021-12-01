@@ -5,6 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local ee = require "kong.enterprise_edition.clustering.data_plane"
+
+
 local _M = {}
 
 
@@ -78,6 +81,16 @@ end
 function _M:decode_config(config)
   return inflate_gzip(config)
 end
+
+--- XXX EE
+if ee then
+  -- a better location when encrypting config cache at the rest
+  -- TODO: should we store it in tmp?
+  CONFIG_CACHE = ngx.config.prefix() .. "/.config.cache.jwt"
+  _M.encode_config = ee.encode_config
+  _M.decode_config = ee.decode_config
+end
+--- EE
 
 
 function _M:update_config(config_table, config_hash, update_cache)
@@ -182,6 +195,10 @@ function _M:init_worker()
       self:communicate(premature)
     end))
   end
+
+  --- XXX EE: clear private key as it is not needed after this point
+  self.cert_private = nil
+  --- EE
 end
 
 

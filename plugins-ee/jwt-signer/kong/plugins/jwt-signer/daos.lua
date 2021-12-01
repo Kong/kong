@@ -85,6 +85,7 @@ local jwk = schema.define {
       k = {
         type = "string",
         required = false,
+        encrypted = true,
       },
     },
     {
@@ -121,36 +122,42 @@ local jwk = schema.define {
       d = {
         type = "string",
         required = false,
+        encrypted = true,
       },
     },
     {
       p = {
         type = "string",
         required = false,
+        encrypted = true,
       },
     },
     {
       q = {
         type = "string",
         required = false,
+        encrypted = true,
       },
     },
     {
       dp = {
         type = "string",
         required = false,
+        encrypted = true,
       },
     },
     {
       dq = {
         type = "string",
         required = false,
+        encrypted = true,
       },
     },
     {
       qi = {
         type = "string",
         required = false,
+        encrypted = true,
       },
     },
   },

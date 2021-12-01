@@ -6,12 +6,15 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local enums = require "kong.enterprise_edition.dao.enums"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 local basicauth_crypto = require "kong.plugins.basic-auth.crypto"
 local singletons = require "kong.singletons"
 local cjson = require "cjson"
+
+local ADMIN_CONSUMER_USERNAME_SUFFIX = constants.ADMIN_CONSUMER_USERNAME_SUFFIX
 
 local cache = {
   get = function(self, x, y, f, ...) return f(...) end,
@@ -381,8 +384,8 @@ for _, strategy in helpers.each_strategy() do
         local creds = assert(db.basicauth_credentials:page_for_consumer(admin.consumer))
         assert.same(params.username, creds[1].username)
 
-        local consumers = assert(db.admins:page_for_consumer(admin.consumer))
-        assert.same(params.username, consumers[1].username)
+        local consumer = assert(db.consumers:select({ id = admin.consumer.id }))
+        assert.same(params.username .. ADMIN_CONSUMER_USERNAME_SUFFIX, consumer.username)
       end)
 
       it("keeps custom_id for admin and consumer in sync", function()

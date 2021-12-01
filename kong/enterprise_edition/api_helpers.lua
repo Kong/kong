@@ -96,30 +96,50 @@ function _M.retrieve_consumer(consumer_id)
   return consumer or nil
 end
 
-function _M.validate_admin(ignore_case)
-  local user_header = singletons.configuration.admin_gui_auth_header
-  local args = ngx.req.get_uri_args()
-  local user_name = args[user_header] or ngx.req.get_headers()[user_header]
-
+function _M.validate_admin(ignore_case, user_name, custom_id)
   if not user_name then
+    local user_header = singletons.configuration.admin_gui_auth_header
+    local args = ngx.req.get_uri_args()
+
+    user_name = args[user_header] or ngx.req.get_headers()[user_header]
+  end
+
+  -- if user_name and custom_id not specified,
+  -- 'admin_gui_auth_header' is required. 
+  if not user_name and not custom_id then
     return kong.response.exit(401,
       { message = "Invalid credentials. Token or User credentials required" })
   end
 
-  local admin, err = kong.db.admins:select_by_username(user_name, {skip_rbac = true})
-
-  if err then
-    log(ERR, _log_prefix, err)
-    return nil, err
+  local admin, err
+  -- find an admin by custom_id if specified
+  if custom_id then
+    admin, err = kong.db.admins:select_by_custom_id(custom_id, {skip_rbac = true})
+      
+    if err then
+      log(ERR, _log_prefix, err)
+      return nil, err
+    end
   end
 
-  -- find an admin case-insensitively if specified
-  if not admin and ignore_case then
-    admin, err = find_admin_ignore_case(user_name)
+  -- find an admin by username
+  if user_name then
+    admin, err = kong.db.admins:select_by_username(user_name, {skip_rbac = true})
+
+    -- find an admin case-insensitively if specified
+    if not admin and ignore_case then
+      admin, err = find_admin_ignore_case(user_name)
+    end
+
+    if err then
+      log(ERR, _log_prefix, err)
+      return nil, err
+    end
   end
 
   if not admin then
-    log(DEBUG, _log_prefix, "Admin not found with user_name=" .. user_name)
+    log(DEBUG, _log_prefix, "Admin not found with user_name=" ..
+        user_name or "nil" .. "or custom_id=" .. custom_id or "nil")
     return nil, err
   end
 
