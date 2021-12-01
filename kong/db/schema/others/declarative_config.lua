@@ -25,8 +25,7 @@ local insert = table.insert
 local concat = table.concat
 local tostring = tostring
 local cjson_encode = require("cjson.safe").encode
-local ngx_sleep = ngx.sleep
-local get_phase = ngx.get_phase
+local yield = require("kong.tools.utils").yield
 
 local DeclarativeConfig = {}
 
@@ -45,12 +44,6 @@ local foreign_references = {}
 -- Maps an entity to entities that foreign-reference it
 -- e.g. `foreign_children["services"]["routes"] = "service"`
 local foreign_children = {}
-
-local function yield()
-  if get_phase() ~= "init" then
-    ngx_sleep(0)
-  end
-end
 
 
 function DeclarativeConfig.pk_string(schema, object)
@@ -714,15 +707,9 @@ local function flatten(self, input)
   end
 
   local entities = {}
-  local yield_n = 0
 
   for entity, entries in pairs(by_id) do
-    if get_phase() ~= "init" then
-      yield_n = yield_n + 1
-      if yield_n % 500 == 0 then
-        ngx_sleep(0)
-      end
-    end
+    yield(true)
 
     local schema = all_schemas[entity]
     entities[entity] = {}

@@ -114,6 +114,7 @@ describe("declarative config: flatten", function()
           - name: foo
             host: example.com
             protocol: https
+            enabled: false
             _comment: my comment
             _ignore:
             - foo: bar
@@ -147,6 +148,7 @@ describe("declarative config: flatten", function()
               tls_verify = null,
               ca_certificates = null,
               ws_id = null,
+              enabled = true,
             },
             {
               id = "UUID",
@@ -167,6 +169,7 @@ describe("declarative config: flatten", function()
               tls_verify = null,
               ca_certificates = null,
               ws_id = null,
+              enabled = false,
             },
           }
         }, idempotent(config))
@@ -243,6 +246,7 @@ describe("declarative config: flatten", function()
               tls_verify = null,
               ca_certificates = null,
               ws_id = null,
+              enabled = true,
             }
           }
         }, idempotent(config))
@@ -485,6 +489,7 @@ describe("declarative config: flatten", function()
               tls_verify_depth = null,
               tls_verify = null,
               ca_certificates = null,
+              enabled = true,
             }
           }
         }, idempotent(config))
@@ -523,6 +528,7 @@ describe("declarative config: flatten", function()
                 tls_verify = null,
                 ca_certificates = null,
                 ws_id = null,
+                enabled = true,
               }
             }
           }, idempotent(config))
@@ -665,6 +671,7 @@ describe("declarative config: flatten", function()
                 tls_verify = null,
                 ca_certificates = null,
                 ws_id = null,
+                enabled = true,
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -684,6 +691,7 @@ describe("declarative config: flatten", function()
                 tls_verify = null,
                 ca_certificates = null,
                 ws_id = null,
+                enabled = true,
               } }
           }, idempotent(config))
         end)
@@ -720,6 +728,7 @@ describe("declarative config: flatten", function()
                 tls_verify = null,
                 ca_certificates = null,
                 ws_id = null,
+                enabled = true,
               }
             }
           }, idempotent(config))
@@ -784,6 +793,7 @@ describe("declarative config: flatten", function()
                 tls_verify = null,
                 ca_certificates = null,
                 ws_id = null,
+                enabled = true,
               } }
           }, idempotent(config))
         end)
@@ -941,6 +951,7 @@ describe("declarative config: flatten", function()
                 tls_verify = null,
                 ca_certificates = null,
                 ws_id = null,
+                enabled = true,
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -960,6 +971,7 @@ describe("declarative config: flatten", function()
                 tls_verify = null,
                 ca_certificates = null,
                 ws_id = null,
+                enabled = true,
               } }
           }, idempotent(config))
         end)
@@ -1029,6 +1041,7 @@ describe("declarative config: flatten", function()
                 tls_verify = null,
                 ca_certificates = null,
                 ws_id = null,
+                enabled = true,
               }
             }
           }, idempotent(config))
@@ -1225,6 +1238,7 @@ describe("declarative config: flatten", function()
                 tls_verify_depth = null,
                 tls_verify = null,
                 ca_certificates = null,
+                enabled = true,
               }, {
                 connect_timeout = 60000,
                 created_at = 1234567890,
@@ -1244,6 +1258,7 @@ describe("declarative config: flatten", function()
                 tls_verify_depth = null,
                 tls_verify = null,
                 ca_certificates = null,
+                enabled = true,
               } }
           }, idempotent(config))
         end)

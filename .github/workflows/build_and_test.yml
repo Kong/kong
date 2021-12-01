@@ -160,6 +160,11 @@ jobs:
         ports:
           - 3128:3128
 
+      zipkin:
+        image: openzipkin/zipkin:2.19
+        ports:
+          - 9411:9411
+
     steps:
     - name: Set environment variables
       run: |
@@ -282,6 +287,11 @@ jobs:
         image: datadog/squid
         ports:
           - 3128:3128
+
+      zipkin:
+        image: openzipkin/zipkin:2.19
+        ports:
+          - 9411:9411
 
     steps:
     - name: Set environment variables

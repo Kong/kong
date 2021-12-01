@@ -178,7 +178,6 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
 
         route_id = json.id
-
         helpers.wait_until(function()
           local proxy_client = helpers.http_client("127.0.0.1", 9002)
 
@@ -238,6 +237,69 @@ for _, strategy in helpers.each_strategy() do
         handle:close()
 
         assert.matches("-rw-------", result, nil, true)
+      end)
+
+      it('does not sync services where enabled == false', function() 
+        local admin_client = helpers.admin_client(10000)
+        finally(function()
+          admin_client:close()
+        end)
+
+        -- create service
+        local res = assert(admin_client:post("/services", {
+          body = { name = "mockbin-service2", url = "https://127.0.0.1:15556/request", },
+          headers = {["Content-Type"] = "application/json"}
+        }))
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        local service_id = json.id
+
+        -- -- create route
+        res = assert(admin_client:post("/services/mockbin-service2/routes", {
+          body = { paths = { "/soon-to-be-disabled" }, },
+          headers = {["Content-Type"] = "application/json"}
+        }))
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        route_id = json.id
+
+        -- test route
+        helpers.wait_until(function()
+          local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+          res = proxy_client:send({
+            method  = "GET",
+            path    = "/soon-to-be-disabled",
+          })
+
+          local status = res and res.status
+          proxy_client:close()
+          if status == 200 then
+            return true
+          end
+        end, 10)
+
+        -- disable service
+        local res = assert(admin_client:patch("/services/" .. service_id, {
+          body = { enabled = false, },
+          headers = {["Content-Type"] = "application/json"}
+        }))
+        assert.res_status(200, res)
+        -- as this is testing a negative behavior, there is no sure way to wait
+        -- this can probably be optimizted
+        ngx.sleep(2)
+
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+
+        -- test route again
+        res = assert(proxy_client:send({
+          method  = "GET",
+          path    = "/soon-to-be-disabled",
+        }))
+        assert.res_status(404, res)
+
+        proxy_client:close()
       end)
     end)
   end)

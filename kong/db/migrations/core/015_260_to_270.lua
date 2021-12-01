@@ -5,19 +5,23 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local typedefs = require "kong.db.schema.typedefs"
-
 return {
-  name = "hybrid-comm-tests",
-  fields = {
-    {
-      protocols = typedefs.protocols,
+    postgres = {
+      up = [[
+        DO $$
+        BEGIN
+          ALTER TABLE IF EXISTS ONLY "services" ADD "enabled" BOOLEAN DEFAULT true;
+        EXCEPTION WHEN DUPLICATE_COLUMN THEN
+          -- Do nothing, accept existing state
+        END;
+        $$;
+      ]]
     },
-    {
-      config = {
-        type = "record",
-        fields = {},
-      },
+  
+    cassandra = {
+      up = [[
+        ALTER TABLE services ADD enabled boolean;
+      ]]
     },
-  },
-}
+  }
+ 

@@ -51,7 +51,7 @@ return {
   cassandra = {
     up = [[
       /* Add temporary table for license data table */
-      CREATE TABLE IF NOT EXISTS license_data_tmp (
+      CREATE TABLE IF NOT EXISTS license_data_tmp_2600_to_2700 (
         node_id                 uuid,
         license_creation_date   timestamp,
         req_cnt                 counter,
