@@ -137,7 +137,7 @@ return {
       ["/consumer_groups/:consumer_groups"] = {},
       ["/consumer_groups/:consumer_groups/consumers"] = {},
       ["/consumer_groups/:consumer_groups/consumers/:consumers"] = {},
-      ["/consumer_groups/:consumer_groups/overrides/plugins/:plugins"] = {},
+      ["/consumer_groups/:consumer_groups/overrides/plugins/rate-limiting-advanced"] = {},
       ["/consumers/:consumers/consumer_groups"] = {},
       ["/consumers/:consumers/consumer_groups/:consumer_groups"] = {},
     },
