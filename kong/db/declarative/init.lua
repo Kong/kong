@@ -519,7 +519,7 @@ function declarative.export_from_db(fd, skip_ws, skip_disabled_entities)
   -- not sure if this really useful for skip_ws,
   -- but I want to allow skip_disabled_entities and would rather have consistant interface
   if skip_ws == nil then
-    skip_ws = true
+    skip_ws = false
   end
 
   if skip_disabled_entities == nil then
