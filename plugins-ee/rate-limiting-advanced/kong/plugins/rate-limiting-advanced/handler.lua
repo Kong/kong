@@ -375,8 +375,8 @@ function NewRLHandler:access(conf)
       local consumer = kong.client.get_consumer()
       for i = 1, #conf.consumer_groups do
         -- if found a match, overrides the configuration value
-        if helpers.is_consumer_in_group(consumer.id, conf.consumer_groups[i]) then
-          local consumer_group = helpers.get_consumer_group(conf.consumer_groups[i])
+        local consumer_group = helpers.get_consumer_group(conf.consumer_groups[i])
+        if consumer_group and helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
           config = helpers.get_consumer_group_config(consumer_group.id).config
           break --exit on the first matching group found
         end

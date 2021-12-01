@@ -8,14 +8,15 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  name         = "consumer_groups",
-  primary_key  = { "id" },
+  name = "consumer_groups",
+  primary_key = { "id" },
   endpoint_key = "name",
+  cache_key = { "name" },
   workspaceable = true,
 
   fields = {
-    { id             = typedefs.uuid, },
-    { created_at     = typedefs.auto_timestamp_s },
-    { name       = { type = "string", required = true, unique = true }, },
+    { id = typedefs.uuid, },
+    { created_at = typedefs.auto_timestamp_s },
+    { name = { type = "string", required = true, unique = true }, },
   }
 }

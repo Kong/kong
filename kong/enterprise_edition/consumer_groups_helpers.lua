@@ -58,24 +58,24 @@ local function get_consumers_in_group(consumer_group_pk)
   return consumers
 end
 
-local function is_consumer_in_group(consumer_pk, consumer_group_pk_or_name)
-  local relation = kong.db.consumer_group_consumers:select(
+local function is_consumer_in_group(consumer_pk, consumer_group_pk)
+  local relation, err = kong.db.consumer_group_consumers:select(
     {
       consumer = {id = consumer_pk},
-      consumer_group = {id = get_consumer_group(consumer_group_pk_or_name).id},
+      consumer_group = {id = consumer_group_pk},
     }
     )
     if relation then
       return true
     end
-    return false
+    return false, err
 end
 
-local function delete_consumer_in_group(consumer_pk, consumer_group_pk_or_name)
-  if is_consumer_in_group(consumer_pk, consumer_group_pk_or_name) then
+local function delete_consumer_in_group(consumer_pk, consumer_group_pk)
+  if is_consumer_in_group(consumer_pk, consumer_group_pk) then
     kong.db.consumer_group_consumers:delete(
       {
-        consumer_group = {id = get_consumer_group(consumer_group_pk_or_name).id},
+        consumer_group = {id = consumer_group_pk},
         consumer = { id = consumer_pk,},
       }
     )

@@ -171,11 +171,11 @@ return {
       self.params.plugins = "rate-limiting-advanced"
       local record = kong.db.consumer_group_plugins:select_by_name(self.params.plugins)
       local id
-      if not record then
-        id = utils.uuid()
-      end
+
       if record then
         id = record.id
+      else
+        id = utils.uuid()
       end
       local _, _, err_t = kong.db.consumer_group_plugins:upsert(
               { id = id, },
@@ -213,7 +213,6 @@ return {
       if not self.params.group then
         return kong.response.error(400, "must provide group")
       end
-
       local consumer_groups = {}
       if type(self.params.group) == "string" then
         table.insert(consumer_groups, self.params.group)
