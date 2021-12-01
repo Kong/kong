@@ -17,8 +17,6 @@ local ee_declarative = require "kong.enterprise_edition.db.declarative"
 local constants = require "kong.constants"
 
 
-local get_phase = ngx.get_phase
-local ngx_sleep = ngx.sleep
 local deepcopy = tablex.deepcopy
 local null = ngx.null
 local SHADOW = true
@@ -41,14 +39,6 @@ local declarative = {}
 
 
 local Config = {}
-
-
-local function yield()
-  if get_phase() ~= "init" then
-    ngx_sleep(0)
-  end
-end
-
 
 -- Produce an instance of the declarative config schema, tailored for a
 -- specific list of plugins (and their configurations and custom
@@ -617,7 +607,6 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-local yield_n = 0
 function declarative.load_into_cache(entities, meta, hash, shadow)
   -- Array of strings with this format:
   -- "<tag_name>|<entity_name>|<uuid>".

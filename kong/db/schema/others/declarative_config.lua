@@ -707,7 +707,6 @@ local function flatten(self, input)
   end
 
   local entities = {}
-  local yield_n = 0
 
   for entity, entries in pairs(by_id) do
     yield(true)
