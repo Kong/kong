@@ -36,9 +36,6 @@ return {
     "keyring_meta",
     "event_hooks",
     "licenses",
-    "consumer_groups",
-    "consumer_group_plugins",
-    "consumer_group_consumers",
   },
 
   -- this list is joined into the DICTS list in kong.constants
