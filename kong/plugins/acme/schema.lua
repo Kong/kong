@@ -2,7 +2,7 @@ local typedefs = require "kong.db.schema.typedefs"
 
 local CERT_TYPES = { "rsa", "ecc" }
 
-local RSA_KEY_SIZES = {2048, 3072, 4096}
+local RSA_KEY_SIZES = { 2048, 3072, 4096 }
 
 local STORAGE_TYPES = { "kong", "shm", "redis", "consul", "vault" }
 
@@ -88,7 +88,7 @@ local schema = {
         { rsa_key_length = {
           type = "number",
           default = 4096,
-          one_of = RSA_KEY_LENGTHS,
+          one_of = RSA_KEY_SIZES,
         }, },
         { renew_threshold_days = {
           type = "number",
