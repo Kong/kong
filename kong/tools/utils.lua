@@ -1429,20 +1429,19 @@ _M.topological_sort = topological_sort
 
 do
   local counter = 0
-  function _M.yield(in_loop)
-    if get_phase() ~= "init" then
-      if in_loop then
-        counter = counter + 1
-        if counter % YIELD_ITERATIONS == 0 then
-          counter = 0
-          ngx_sleep(0)
-        end
-
+  function _M.yield(in_loop, phase)
+    phase = phase or get_phase()
+    if phase == "init" or phase == "init_worker"  then
+      return
+    end
+    if in_loop then
+      counter = counter + 1
+      if counter % YIELD_ITERATIONS ~= 0 then
         return
       end
-
-      ngx_sleep(0)
+      counter = 0
     end
+    ngx_sleep(0)
   end
 end
 
