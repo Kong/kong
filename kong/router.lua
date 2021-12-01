@@ -31,6 +31,7 @@ local type          = type
 local max           = math.max
 local band          = bit.band
 local bor           = bit.bor
+local yield         = require("kong.tools.utils").yield
 
 -- limits regex degenerate times to the low miliseconds
 local REGEX_PREFIX  = "(*LIMIT_MATCH=10000)"
@@ -1344,6 +1345,7 @@ function _M.new(routes)
     local marshalled_routes = {}
 
     for i = 1, #routes do
+      yield(true)
 
       local route = utils.deep_copy(routes[i], false)
       local paths = utils.deep_copy(route.route.paths, false)
@@ -1386,6 +1388,8 @@ function _M.new(routes)
     sort(marshalled_routes, sort_routes)
 
     for i = 1, #marshalled_routes do
+      yield(true)
+
       local route_t = marshalled_routes[i]
 
       categorize_route_t(route_t, route_t.match_rules, categories)
@@ -1418,12 +1422,16 @@ function _M.new(routes)
     categories_lookup[c.category_bit] = i
   end
 
+  yield()
+
   -- the number of categories to iterate on for this instance of the router
   local categories_len = #categories_weight_sorted
 
   sort(prefix_uris, sort_uris)
 
   for _, category in pairs(categories) do
+    yield()
+
     for _, routes in pairs(category.routes_by_sources) do
       sort(routes, sort_sources)
     end

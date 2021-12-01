@@ -35,6 +35,8 @@ local gsub          = string.gsub
 local split         = pl_stringx.split
 local re_find       = ngx.re.find
 local re_match      = ngx.re.match
+local get_phase     = ngx.get_phase
+local ngx_sleep     = ngx.sleep
 local inflate_gzip  = zlib.inflateGzip
 local deflate_gzip  = zlib.deflateGzip
 local stringio_open = pl_stringio.open
@@ -60,6 +62,7 @@ char *strerror(int errnum);
 ]]
 
 local _M = {}
+local YIELD_ITERATIONS = 500
 
 --- splits a string.
 -- just a placeholder to the penlight `pl.stringx.split` function
@@ -1422,5 +1425,26 @@ local topological_sort do
   end
 end
 _M.topological_sort = topological_sort
+
+
+do
+  local counter = 0
+  function _M.yield(in_loop)
+    if get_phase() ~= "init" then
+      if in_loop then
+        counter = counter + 1
+        if counter % YIELD_ITERATIONS == 0 then
+          counter = 0
+          ngx_sleep(0)
+        end
+
+        return
+      end
+
+      ngx_sleep(0)
+    end
+  end
+end
+
 
 return _M
