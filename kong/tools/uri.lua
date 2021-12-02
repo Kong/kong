@@ -1,6 +1,3 @@
-local _M = {}
-
-
 local string_char = string.char
 local string_upper = string.upper
 local string_find = string.find
@@ -35,6 +32,7 @@ local RESERVED_CHARACTERS = {
   [0x5D] = true, -- ]
 }
 
+
 local ESCAPE_PATTERN = "[^!#$&'()*+,/:;=?@[\\]A-Z\\d-_.~%]"
 
 local TMP_OUTPUT = require("table.new")(16, 0)
@@ -52,12 +50,21 @@ local function percent_decode(m)
 end
 
 
-local function escape(m)
+local function percent_escape(m)
   return string_format("%%%02X", string_byte(m[0]))
 end
 
 
-function _M.normalize(uri, merge_slashes)
+local function escape(uri)
+  if ngx_re_find(uri, ESCAPE_PATTERN, "joi") then
+    return ngx_re_gsub(uri, ESCAPE_PATTERN, percent_escape, "joi")
+  end
+
+  return uri
+end
+
+
+local function unescape(uri, merge_slashes)
   -- check for simple cases and early exit
   if uri == "" or uri == "/" then
     return uri
@@ -148,13 +155,13 @@ function _M.normalize(uri, merge_slashes)
 end
 
 
-function _M.escape(uri)
-  if ngx_re_find(uri, ESCAPE_PATTERN, "joi") then
-    return ngx_re_gsub(uri, ESCAPE_PATTERN, escape, "joi")
-  end
-
-  return uri
+local function normalize(uri, merge_slashes)
+  return escape(unescape(uri, merge_slashes))
 end
 
 
-return _M
+return {
+  escape = escape,
+  unescape = unescape,
+  normalize = normalize,
+}

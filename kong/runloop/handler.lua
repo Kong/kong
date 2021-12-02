@@ -39,7 +39,8 @@ local subsystem         = ngx.config.subsystem
 local clear_header      = ngx.req.clear_header
 local http_version      = ngx.req.http_version
 local unpack            = unpack
-local escape            = require("kong.tools.uri").escape
+
+
 
 
 local is_http_module   = subsystem == "http"
@@ -1379,7 +1380,7 @@ return {
       --       router, which might have truncated it (`strip_uri`).
       -- `host` is the original header to be preserved if set.
       var.upstream_scheme = match_t.upstream_scheme -- COMPAT: pdk
-      var.upstream_uri    = escape(match_t.upstream_uri)
+      var.upstream_uri    = match_t.upstream_uri
       if match_t.upstream_host then
         var.upstream_host = match_t.upstream_host
       end
