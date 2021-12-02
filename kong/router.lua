@@ -1020,7 +1020,7 @@ do
                 ctx.matches.uri_captures = m
 
                 -- for the case unnormalized_req_uri is not equal to req_uri
-                -- try to get unnormalized uri_captures
+                -- try to get uri_captures without decoding
                 if (ctx.unnormalized_req_uri ~= ctx.req_uri) then
                   local unnormalized_m, err = re_match(ctx.unnormalized_req_uri, uri_t.unnormalized_strip_regex, "ajo")
                   if err then
@@ -1076,7 +1076,7 @@ do
               ctx.matches.uri_captures = m
 
               -- for the case unnormalized_req_uri is not equal to req_uri
-              -- try to get unnormalized uri_captures
+              -- try to get uri_captures without decoding
               if (ctx.unnormalized_req_uri ~= ctx.req_uri) then
                 local unnormalized_m, err = re_match(ctx.unnormalized_req_uri, uri_t.unnormalized_strip_regex, "ajo")
                 if err then
@@ -1852,7 +1852,7 @@ function _M.new(routes)
 
   self.select = find_route
   self._set_ngx = _set_ngx
-  self.normalize_uri_captures = routes.normalize_uri_captures
+  self.decode_uri_captures = routes.decode_uri_captures
 
   if subsystem == "http" then
     function self.exec(ctx)
@@ -1884,8 +1884,8 @@ function _M.new(routes)
         
         unnormalized_req_uri = req_uri
         req_uri = normalize(req_uri, true)
-        if self.normalize_uri_captures ~= false then
-          -- for the case unnormalized_req_uri is equal to req_uri, uri_captures will be normalized
+        if self.decode_uri_captures ~= false then
+          -- for the case unnormalized_req_uri is equal to req_uri, uri_captures will be decoded
           unnormalized_req_uri = req_uri
         end
       end

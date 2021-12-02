@@ -3176,7 +3176,7 @@ describe("Router", function()
       end
     end)
 
-    describe("#normalize uri captures", function()
+    describe("#decode uri captures", function()
       local use_case_routes = {
         {
           service = service,
@@ -3192,12 +3192,12 @@ describe("Router", function()
       local req_uri_2 = "/plain/a%2Eb%20c/a%2Eb%20c"
 
       local combination = {
-        -- normalize_uri_captures is false
+        -- decode_uri_captures is false
         {flag = false, path = regex_path_1, req_uri = req_uri_1, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
         {flag = false, path = regex_path_1, req_uri = req_uri_2, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
         {flag = false, path = regex_path_2, req_uri = req_uri_1, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
         {flag = false, path = regex_path_2, req_uri = req_uri_2, uri_captures = {"/plain/a%2Eb%20c/a%2Eb%20c", "a%2Eb%20c", "a%2Eb%20c"} },
-        -- normalize_uri_captures is true
+        -- decode_uri_captures is true
         {flag = true, path = regex_path_1, req_uri = req_uri_1, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
         {flag = true, path = regex_path_1, req_uri = req_uri_2, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
         {flag = true, path = regex_path_2, req_uri = req_uri_1, uri_captures = {"/plain/a.b c/a.b c", "a.b c", "a.b c"} },
@@ -3205,9 +3205,9 @@ describe("Router", function()
       }
 
       for _, c in pairs(combination) do
-        it("normalize_uri_captures: " .. tostring(c.flag) .. ", route path: " .. c.path .. ", req: " .. c.req_uri, function()
+        it("decode_uri_captures: " .. tostring(c.flag) .. ", route path: " .. c.path .. ", req: " .. c.req_uri, function()
           use_case_routes[1].route.paths[1] = c.path
-          use_case_routes.normalize_uri_captures = c.flag
+          use_case_routes.decode_uri_captures = c.flag
           local router = assert(Router.new(use_case_routes))
           local _ngx = mock_ngx("GET", c.req_uri, { host = "domain.org" })
           router._set_ngx(_ngx)

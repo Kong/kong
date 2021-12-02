@@ -787,28 +787,28 @@
                                         # connection may be kept open
                                         # indefinitely.
 
-#normalize_uri_captures = on            # Whether to normalize the captured request URI after route matching.
-                                        # If enabled, the captured URI will be normalized.
+#decode_uri_captures = on               # Whether to decode the captured request URI after route matching.
+                                        # If enabled, the captured URI will be decoded.
                                         #
-                                        # Examples of `normalize_uri_captures = on`
-                                        #
-                                        # - Assuming that the route path is `/plain/(a%2Eb%20c)/(.*)` and the request URI is `/plain/a%2Eb%20c/a%2Eb%20c`,
-                                        # the captured request URI is normalized as `/plain/a.b c/a.b c`.
-                                        # - Assuming that the route path is `/plain/(a.b c)/(.*)` and the request URI is `/plain/a%2Eb%20c/a%2Eb%20c`,
-                                        # the captured request URI is normalized as `/plain/a.b c/a.b c`.
-                                        #
-                                        # Examples of `normalize_uri_captures = off`
+                                        # Examples of `decode_uri_captures = on`
                                         #
                                         # - Assuming that the route path is `/plain/(a%2Eb%20c)/(.*)` and the request URI is `/plain/a%2Eb%20c/a%2Eb%20c`,
-                                        # the captured request URI is `/plain/a%2Eb%20c/a%2Eb%20c` without URI normalization.
+                                        # the captured request URI is decoded as `/plain/a.b c/a.b c`.
                                         # - Assuming that the route path is `/plain/(a.b c)/(.*)` and the request URI is `/plain/a%2Eb%20c/a%2Eb%20c`,
-                                        # the request URI can not match the route path without URI normalization.
-                                        # As a result, the captured request URI is normalized as `/plain/a.b c/a.b c`.
+                                        # the captured request URI is decoded as `/plain/a.b c/a.b c`.
+                                        #
+                                        # Examples of `decode_uri_captures = off`
+                                        #
+                                        # - Assuming that the route path is `/plain/(a%2Eb%20c)/(.*)` and the request URI is `/plain/a%2Eb%20c/a%2Eb%20c`,
+                                        # the captured request URI is `/plain/a%2Eb%20c/a%2Eb%20c` without URI decoding.
+                                        # - Assuming that the route path is `/plain/(a.b c)/(.*)` and the request URI is `/plain/a%2Eb%20c/a%2Eb%20c`,
+                                        # the request URI can not match the route path without URI decoding.
+                                        # As a result, the captured request URI is decoded as `/plain/a.b c/a.b c`.
                                         #
                                         # Valid values to this setting are:
                                         #
-                                        # - `on`: Captured request URI normalization is enabled.
-                                        # - `off`: Captured request URI normalization is disabled.
+                                        # - `on`: Captured request URI decoding is enabled.
+                                        # - `off`: Captured request URI decoding is disabled.
                                         #
                                         # By default this value is set as `on`.
 
