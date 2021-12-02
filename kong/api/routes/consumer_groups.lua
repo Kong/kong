@@ -33,7 +33,6 @@ return {
     --get plugins and consumers
     local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
     local plugins = consumer_group_helpers.get_plugins_in_group(consumer_group.id)
-
     return kong.response.exit(200, {
                                     consumer_group = consumer_group,
                                     plugins = plugins,
@@ -59,7 +58,6 @@ return {
 
     GET = function(self, db, helpers)
       local consumers = consumer_group_helpers.get_consumers_in_group(self.consumer_group.id)
-
       return kong.response.exit(200, {
         consumers = consumers,
       })
@@ -169,13 +167,13 @@ return {
       end
 
       self.params.plugins = "rate-limiting-advanced"
-      local record = kong.db.consumer_group_plugins:select_by_name(self.params.plugins)
+      local cache_key = kong.db.consumer_group_plugins:cache_key(consumer_group.id, self.params.plugins)
+      local record = kong.db.consumer_group_plugins:select_by_cache_key(cache_key)
       local id
-      if not record then
-        id = utils.uuid()
-      end
       if record then
         id = record.id
+      else
+        id = utils.uuid()
       end
       local _, _, err_t = kong.db.consumer_group_plugins:upsert(
               { id = id, },
@@ -213,7 +211,6 @@ return {
       if not self.params.group then
         return kong.response.error(400, "must provide group")
       end
-
       local consumer_groups = {}
       if type(self.params.group) == "string" then
         table.insert(consumer_groups, self.params.group)

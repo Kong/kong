@@ -8,12 +8,12 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  name         = "consumer_group_consumers",
-  generate_admin_api  = false,
-  primary_key  = {"consumer_group","consumer"},
+  name = "consumer_group_consumers",
+  generate_admin_api = false,
+  primary_key = {"consumer_group","consumer"},
   fields = {
-    { created_at     = typedefs.auto_timestamp_s },
-    { consumer_group           = { type = "foreign", required = true, reference = "consumer_groups", on_delete = "cascade" }, },
-    { consumer          = { type = "foreign", required = true, reference = "consumers", on_delete = "cascade" }, },
+    { created_at = typedefs.auto_timestamp_s },
+    { consumer_group = { type = "foreign", required = true, reference = "consumer_groups", on_delete = "cascade" }, },
+    { consumer = { type = "foreign", required = true, reference = "consumers", on_delete = "cascade" }, },
   }
 }

@@ -416,7 +416,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("/consumer_groups/:consumer_groups/overrides/plugins/:plugins :", function()
+    describe("/consumer_groups/:consumer_groups/overrides/plugins/rate-limiting-advanced :", function()
       local function insert_entities()
         local consumer_group = assert(db.consumer_groups:insert{ name = "test_group_" .. utils.uuid()})
         return consumer_group

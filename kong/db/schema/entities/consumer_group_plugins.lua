@@ -12,6 +12,7 @@ return {
   generate_admin_api = false,
   admin_api_nested_name = "plugins",
   primary_key = { "id" },
+  cache_key = {"consumer_group", "name"},
   endpoint_key = "name",
   workspaceable = true,
 
@@ -19,7 +20,7 @@ return {
     { id = typedefs.uuid },
     { created_at = typedefs.auto_timestamp_s },
     { consumer_group = { type = "foreign", required = true, reference = "consumer_groups", on_delete = "cascade" }, },
-    { name = { type = "string", required = true, unique = true }, },
+    { name = { type = "string", required = true }, },
     { config = { type = "record", 
     fields = {
       { window_size = {
