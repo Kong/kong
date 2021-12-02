@@ -33,7 +33,6 @@ return {
     --get plugins and consumers
     local consumers = consumer_group_helpers.get_consumers_in_group(consumer_group.id)
     local plugins = consumer_group_helpers.get_plugins_in_group(consumer_group.id)
-
     return kong.response.exit(200, {
                                     consumer_group = consumer_group,
                                     plugins = plugins,
@@ -168,9 +167,9 @@ return {
       end
 
       self.params.plugins = "rate-limiting-advanced"
-      local record = kong.db.consumer_group_plugins:select_by_name(self.params.plugins)
+      local cache_key = kong.db.consumer_group_plugins:cache_key(consumer_group.id, self.params.plugins)
+      local record = kong.db.consumer_group_plugins:select_by_cache_key(cache_key)
       local id
-
       if record then
         id = record.id
       else
