@@ -77,7 +77,7 @@ local function add_encryption_transformations(self, name, field)
         return tbl
       end,
     })
-  elseif field.type == "array" then
+  elseif field.type == "array" and field.elements.type == "string" then
     table.insert(self.transformations, {
       input = { name },
       on_write = function(value)
@@ -120,12 +120,17 @@ end
 function Entity.new_subschema(schema, key, definition)
   make_records_required(definition)
 
-  -- EE [[
-  find_encrypted_fields(schema, definition, "")
-  -- EE [[
-
   definition.required = nil
-  return Schema.new_subschema(schema, key, definition)
+  local ok, err = Schema.new_subschema(schema, key, definition)
+  if not ok then
+    return ok, err
+  end
+
+  -- EE [[
+  find_encrypted_fields(schema.subschemas[key], definition, "")
+  -- EE ]]
+
+  return ok
 end
 
 

@@ -33,30 +33,46 @@ describe("encrypt subschemas", function()
         package.loaded["kong.db.schema"] = nil
 
 
-        Test_Sub = Entity.new({
+        Test_Sub = assert(Entity.new({
           name = "test",
           primary_key = { "id" },
+          subschema_key = "name",
+          subschema_error = "schema '%s' not enabled",
           fields = {
+            { name = { type = "string", required = true, }, },
             { id = { type = "string" } },
             { str_not_enc = { type = "string" } },
             { str_enc = { type = "string" } },
           }
-        })
+        }))
 
-        Test_Sub:new_subschema("Test_Subschema", {
-          name = "test",
+        assert(Test_Sub:new_subschema("Test_Subschema", {
+          name = "Test_Subschema",
           primary_key = { "id" },
           fields = {
             { id = { type = "string" } },
             { str_not_enc = { type = "string" } },
             { str_enc = { type = "string", encrypted = true } },
           }
-        })
+        }))
 
-        TestArrays_Sub = Entity.new({
-          name = "test_arrays",
+        assert(Test_Sub:new_subschema("Test_Subschema_Plain", {
+          name = "Test_Subschema_Plain",
           primary_key = { "id" },
           fields = {
+            { id = { type = "string" } },
+            { str_not_enc = { type = "string" } },
+            { str_enc = { type = "string", encrypted = false } },
+          }
+        }))
+
+        TestArrays_Sub = assert(Entity.new({
+          name = "test_arrays",
+          subschema_key = "name",
+          subschema_error = "schema '%s' not enabled",
+          primary_key = { "id" },
+          fields = {
+            { name = { type = "string", required = true, }, },
             { id = { type = "string" } },
             {
               str_enc = {
@@ -89,10 +105,10 @@ describe("encrypt subschemas", function()
               }
             },
           }
-        })
+        }))
 
-        TestArrays_Sub:new_subschema("TestArrays_Subschema", {
-          name = "test_arrays",
+        assert(TestArrays_Sub:new_subschema("TestArrays_Subschema", {
+          name = "TestArrays_Subschema",
           primary_key = { "id" },
           fields = {
             { id = { type = "string" } },
@@ -133,26 +149,67 @@ describe("encrypt subschemas", function()
               }
             },
           }
-        })
+        }))
+
+        assert(TestArrays_Sub:new_subschema("TestArrays_Subschema_Plain", {
+          name = "TestArrays_Subschema_Plain",
+          primary_key = { "id" },
+          fields = {
+            { id = { type = "string" } },
+            {
+              str_enc = {
+                type = "string",
+                encrypted = false,
+              }
+            },
+            {
+              -- encrypted only works as a top-level key: this won't encrypt
+              arr_not_enc = {
+                type = "array",
+                elements = {
+                  type = "string",
+                  encrypted = false,
+                }
+              }
+            },
+            {
+              arr_enc_1 = {
+                type = "array",
+                encrypted = false,
+                elements = {
+                  type = "string",
+                }
+              }
+            },
+            {
+              arr_enc_2 = {
+                type = "array",
+                encrypted = false,
+                elements = {
+                  type = "string",
+                  encrypted = false,
+                  random_field = true,
+                }
+              }
+            },
+          }
+        }))
 
         local errors = require("kong.db.errors").new("mockstrategy")
 
         mock_test_strategy = {
           insert = function(self, data)
             self.value = data
-            assert.same(MOCK_ENC, data.str_enc)
             return data
           end,
 
-          update = function(self, pk, data)
+          update = function(self, _, data)
             self.value = data
-            assert.same(MOCK_ENC, data.str_enc)
             return data
           end,
 
-          upsert = function(self, pk, data)
+          upsert = function(self, _, data)
             self.value = data
-            assert.same(MOCK_ENC, data.str_enc)
             return data
           end,
 
@@ -164,31 +221,16 @@ describe("encrypt subschemas", function()
         mock_test_arrays_strategy = {
           insert = function(self, data)
             self.value = data
-            assert.same(MOCK_ENC, data.str_enc)
-            assert.same(MOCK_ENC, data.arr_enc_1[1])
-            assert.same(MOCK_ENC, data.arr_enc_1[2])
-            assert.same(MOCK_ENC, data.arr_enc_2[1])
-            assert.same(MOCK_ENC, data.arr_enc_2[2])
             return data
           end,
 
-          update = function(self, pk, data)
+          update = function(self, _, data)
             self.value = data
-            assert.same(MOCK_ENC, data.str_enc)
-            assert.same(MOCK_ENC, data.arr_enc_1[1])
-            assert.same(MOCK_ENC, data.arr_enc_1[2])
-            assert.same(MOCK_ENC, data.arr_enc_2[1])
-            assert.same(MOCK_ENC, data.arr_enc_2[2])
             return data
           end,
 
-          upsert = function(self, pk, data)
+          upsert = function(self, _, data)
             self.value = data
-            assert.same(MOCK_ENC, data.str_enc)
-            assert.same(MOCK_ENC, data.arr_enc_1[1])
-            assert.same(MOCK_ENC, data.arr_enc_1[2])
-            assert.same(MOCK_ENC, data.arr_enc_2[1])
-            assert.same(MOCK_ENC, data.arr_enc_2[2])
             return data
           end,
 
@@ -209,26 +251,44 @@ describe("encrypt subschemas", function()
 
         spy.on(mock_test_strategy, "insert")
 
-        local obj = mockdb.test:insert({
+        local obj = assert(mockdb.test:insert({
+          name = "Test_Subschema",
           str_not_enc = "foo",
           str_enc = "bar",
-        })
+        }))
 
         assert.spy(mock_test_strategy.insert).was_called(1)
 
-        assert.same(obj.str_enc, MOCK_DEC)
+        assert.same(MOCK_DEC, obj.str_enc)
       end)
+
+      it("on insert (plain)", function()
+
+        spy.on(mock_test_strategy, "insert")
+
+        local obj = assert(mockdb.test:insert({
+          name = "Test_Subschema_Plain",
+          str_not_enc = "foo",
+          str_enc = "bar",
+        }))
+
+        assert.spy(mock_test_strategy.insert).was_called(1)
+
+        assert.same("foo", obj.str_not_enc)
+        assert.same("bar", obj.str_enc)
+      end)
+
 
       it("on insert (arrays)", function()
         spy.on(mock_test_arrays_strategy, "insert")
 
-        local obj, err = mockdb.test_arrays:insert({
+        local obj = assert(mockdb.test_arrays:insert({
+          name = "TestArrays_Subschema",
           str_enc = "foo",
           arr_not_enc = { "bar", "bar2" },
           arr_enc_1 = { "one", "two" },
           arr_enc_2 = { "one", "two" }
-        })
-        assert.same(nil, err)
+        }))
 
         assert.spy(mock_test_arrays_strategy.insert).was_called(1)
 
@@ -241,28 +301,66 @@ describe("encrypt subschemas", function()
         assert.same(MOCK_DEC, obj.arr_enc_2[2])
       end)
 
+      it("on insert (arrays, plain)", function()
+        spy.on(mock_test_arrays_strategy, "insert")
+
+        local obj = assert(mockdb.test_arrays:insert({
+          name = "TestArrays_Subschema_Plain",
+          str_enc = "foo",
+          arr_not_enc = { "bar", "bar2" },
+          arr_enc_1 = { "one", "two" },
+          arr_enc_2 = { "one", "two" }
+        }))
+
+        assert.spy(mock_test_arrays_strategy.insert).was_called(1)
+
+        assert.same("foo", obj.str_enc)
+        assert.same("bar", obj.arr_not_enc[1])
+        assert.same("bar2", obj.arr_not_enc[2])
+        assert.same("one", obj.arr_enc_1[1])
+        assert.same("two", obj.arr_enc_1[2])
+        assert.same("one", obj.arr_enc_2[1])
+        assert.same("two", obj.arr_enc_2[2])
+      end)
+
       it("on update", function()
         spy.on(mock_test_strategy, "update")
 
-        local obj = mockdb.test:update({ id = "wat" }, {
+        local obj = assert(mockdb.test:update({ id = "wat" }, {
+          name = "Test_Subschema",
           str_not_enc = "foo",
           str_enc = "bar",
-        })
+        }))
 
         assert.spy(mock_test_strategy.update).was_called(1)
 
-        assert.same(obj.str_enc, MOCK_DEC)
+        assert.same(MOCK_DEC, obj.str_enc)
+      end)
+
+      it("on update (plain)", function()
+        spy.on(mock_test_strategy, "update")
+
+        local obj = assert(mockdb.test:update({ id = "wat" }, {
+          name = "Test_Subschema_Plain",
+          str_not_enc = "foo",
+          str_enc = "bar",
+        }))
+
+        assert.spy(mock_test_strategy.update).was_called(1)
+
+        assert.same("bar", obj.str_enc)
       end)
 
       it("on update (arrays)", function()
         spy.on(mock_test_arrays_strategy, "update")
 
-        local obj = mockdb.test_arrays:update({ id = "wat" }, {
+        local obj = assert(mockdb.test_arrays:update({ id = "wat" }, {
+          name = "TestArrays_Subschema",
           str_enc = "foo",
           arr_not_enc = { "bar", "bar2" },
           arr_enc_1 = { "one", "two" },
           arr_enc_2 = { "one", "two" }
-        })
+        }))
 
         assert.spy(mock_test_arrays_strategy.update).was_called(1)
 
@@ -275,28 +373,66 @@ describe("encrypt subschemas", function()
         assert.same(MOCK_DEC, obj.arr_enc_2[2])
       end)
 
+      it("on update (arrays, plain)", function()
+        spy.on(mock_test_arrays_strategy, "update")
+
+        local obj = assert(mockdb.test_arrays:update({ id = "wat" }, {
+          name = "TestArrays_Subschema_Plain",
+          str_enc = "foo",
+          arr_not_enc = { "bar", "bar2" },
+          arr_enc_1 = { "one", "two" },
+          arr_enc_2 = { "one", "two" }
+        }))
+
+        assert.spy(mock_test_arrays_strategy.update).was_called(1)
+
+        assert.same("foo", obj.str_enc)
+        assert.same("bar", obj.arr_not_enc[1])
+        assert.same("bar2", obj.arr_not_enc[2])
+        assert.same("one", obj.arr_enc_1[1])
+        assert.same("two", obj.arr_enc_1[2])
+        assert.same("one", obj.arr_enc_2[1])
+        assert.same("two", obj.arr_enc_2[2])
+      end)
+
       it("on upsert", function()
         spy.on(mock_test_strategy, "upsert")
 
-        local obj = mockdb.test:upsert({ id = "wat" }, {
+        local obj = assert(mockdb.test:upsert({ id = "wat" }, {
+          name = "Test_Subschema",
           str_not_enc = "foo",
           str_enc = "bar",
-        })
+        }))
 
         assert.spy(mock_test_strategy.upsert).was_called(1)
 
-        assert.same(obj.str_enc, MOCK_DEC)
+        assert.same(MOCK_DEC, obj.str_enc)
+      end)
+
+      it("on upsert (plain)", function()
+        spy.on(mock_test_strategy, "upsert")
+
+        local obj = assert(mockdb.test:upsert({ id = "wat" }, {
+          name = "Test_Subschema_Plain",
+          str_not_enc = "foo",
+          str_enc = "bar",
+        }))
+
+        assert.spy(mock_test_strategy.upsert).was_called(1)
+
+        assert.same("bar", obj.str_enc)
       end)
 
       it("on upsert (arrays)", function()
         spy.on(mock_test_arrays_strategy, "upsert")
 
-        local obj = mockdb.test_arrays:upsert({ id = "wat" }, {
+        local obj = assert(mockdb.test_arrays:upsert({ id = "wat" }, {
+          name = "TestArrays_Subschema",
           str_enc = "foo",
           arr_not_enc = { "bar", "bar2" },
           arr_enc_1 = { "one", "two" },
           arr_enc_2 = { "one", "two" }
-        })
+        }))
 
         assert.spy(mock_test_arrays_strategy.upsert).was_called(1)
 
@@ -309,35 +445,75 @@ describe("encrypt subschemas", function()
         assert.same(MOCK_DEC, obj.arr_enc_2[2])
       end)
 
+      it("on upsert (arrays, plain)", function()
+        spy.on(mock_test_arrays_strategy, "upsert")
+
+        local obj = assert(mockdb.test_arrays:upsert({ id = "wat" }, {
+          name = "TestArrays_Subschema_Plain",
+          str_enc = "foo",
+          arr_not_enc = { "bar", "bar2" },
+          arr_enc_1 = { "one", "two" },
+          arr_enc_2 = { "one", "two" }
+        }))
+
+        assert.spy(mock_test_arrays_strategy.upsert).was_called(1)
+
+        assert.same("foo", obj.str_enc)
+        assert.same("bar", obj.arr_not_enc[1])
+        assert.same("bar2", obj.arr_not_enc[2])
+        assert.same("one", obj.arr_enc_1[1])
+        assert.same("two", obj.arr_enc_1[2])
+        assert.same("one", obj.arr_enc_2[1])
+        assert.same("two", obj.arr_enc_2[2])
+      end)
+
       it("on select", function()
         spy.on(mock_test_strategy, "select")
 
-        mockdb.test:insert({
+        assert(mockdb.test:insert({
+          name = "Test_Subschema",
           id = "wat",
           str_not_enc = "foo",
           str_enc = "bar",
-        })
+        }))
 
-        local obj = mockdb.test:select({ id = "wat" })
+        local obj = assert(mockdb.test:select({ id = "wat" }))
 
         assert.spy(mock_test_strategy.select).was_called(1)
 
-        assert.same(obj.str_enc, MOCK_DEC)
+        assert.same(MOCK_DEC, obj.str_enc)
+      end)
 
+     it("on select (plain)", function()
+        spy.on(mock_test_strategy, "select")
+
+        assert(mockdb.test:insert({
+          name = "Test_Subschema_Plain",
+          id = "wat",
+          str_not_enc = "foo",
+          str_enc = "bar",
+        }))
+
+        local obj = assert(mockdb.test:select({ id = "wat" }))
+
+        assert.spy(mock_test_strategy.select).was_called(1)
+
+        assert.same("bar", obj.str_enc)
       end)
 
       it("on select (arrays)", function()
         spy.on(mock_test_arrays_strategy, "select")
 
-        mockdb.test_arrays:insert({
+        assert(mockdb.test_arrays:insert({
+          name = "TestArrays_Subschema",
           id = "wat",
           str_enc = "foo",
           arr_not_enc = { "bar", "bar2" },
           arr_enc_1 = { "one", "two" },
           arr_enc_2 = { "one", "two" }
-        })
+        }))
 
-        local obj = mockdb.test_arrays:select({ id = "wat" })
+        local obj = assert(mockdb.test_arrays:select({ id = "wat" }))
 
         assert.spy(mock_test_arrays_strategy.select).was_called(1)
 
@@ -348,6 +524,31 @@ describe("encrypt subschemas", function()
         assert.same(MOCK_DEC, obj.arr_enc_1[2])
         assert.same(MOCK_DEC, obj.arr_enc_2[1])
         assert.same(MOCK_DEC, obj.arr_enc_2[2])
+      end)
+
+      it("on select (arrays, plain)", function()
+        spy.on(mock_test_arrays_strategy, "select")
+
+        assert(mockdb.test_arrays:insert({
+          name = "TestArrays_Subschema_Plain",
+          id = "wat",
+          str_enc = "foo",
+          arr_not_enc = { "bar", "bar2" },
+          arr_enc_1 = { "one", "two" },
+          arr_enc_2 = { "one", "two" }
+        }))
+
+        local obj = assert(mockdb.test_arrays:select({ id = "wat" }))
+
+        assert.spy(mock_test_arrays_strategy.select).was_called(1)
+
+        assert.same("foo", obj.str_enc)
+        assert.same("bar", obj.arr_not_enc[1])
+        assert.same("bar2", obj.arr_not_enc[2])
+        assert.same("one", obj.arr_enc_1[1])
+        assert.same("two", obj.arr_enc_1[2])
+        assert.same("one", obj.arr_enc_2[1])
+        assert.same("two", obj.arr_enc_2[2])
       end)
     end)
   end)
