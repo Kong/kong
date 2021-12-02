@@ -12,6 +12,7 @@ return {
   generate_admin_api = false,
   admin_api_nested_name = "plugins",
   primary_key = { "id" },
+  cache_key = {"consumer_group", "name"},
   endpoint_key = "name",
   workspaceable = true,
 

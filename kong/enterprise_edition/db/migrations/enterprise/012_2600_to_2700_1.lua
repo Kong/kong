@@ -68,6 +68,7 @@ return {
         "created_at"  TIMESTAMP WITH TIME ZONE     DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         "consumer_group_id"     UUID                         REFERENCES "consumer_groups" ("id") ON DELETE CASCADE,
         "name"        TEXT                         NOT NULL,
+        "cache_key"   TEXT                         UNIQUE,
         "config"      JSONB                        NOT NULL
       );
 
@@ -133,6 +134,7 @@ return {
           created_at  timestamp,
           consumer_group_id uuid,
           name        text,
+          cache_key   text,
           config      text
         );
 

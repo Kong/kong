@@ -12,7 +12,7 @@ local schema       = require "kong.plugins.rate-limiting-advanced.schema"
 local event_hooks  = require "kong.enterprise_edition.event_hooks"
 local concurrency  = require "kong.concurrency"
 local cjson_safe   = require "cjson.safe"
-local helpers        = require "kong.enterprise_edition.consumer_groups_helpers"
+local helpers      = require "kong.enterprise_edition.consumer_groups_helpers"
 
 local kong     = kong
 local ceil     = math.ceil
@@ -377,7 +377,7 @@ function NewRLHandler:access(conf)
         -- if found a match, overrides the configuration value
         local consumer_group = helpers.get_consumer_group(conf.consumer_groups[i])
         if consumer_group and helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
-          config = helpers.get_consumer_group_config(consumer_group.id).config
+          config = helpers.get_consumer_group_config(consumer_group.id, "rate-limiting-advanced").config
           break --exit on the first matching group found
         end
       end

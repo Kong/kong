@@ -21,7 +21,7 @@ local function get_consumer_group(consumer_group_pk)
   return kong.cache:get(cache_key, nil, _select_consumer_group,consumer_group_pk)
 end
 
-local function _find_consumer_group_config(consumer_group_pk)
+local function _find_consumer_group_config(consumer_group_pk, plugin_name)
     for row, err in kong.db.consumer_group_plugins:each() do
       if row.consumer_group.id == consumer_group_pk then
         if err then
@@ -29,7 +29,7 @@ local function _find_consumer_group_config(consumer_group_pk)
           return nil, err
         end
         if row.consumer_group.id == consumer_group_pk and
-          row.name == "rate-limiting-advanced" then
+          row.name == plugin_name then
             return row, nil
         end
       end
@@ -38,9 +38,9 @@ local function _find_consumer_group_config(consumer_group_pk)
   end
 
 
-local function get_consumer_group_config(consumer_group_pk)
-  local cache_key = kong.db.consumer_group_plugins:cache_key(consumer_group_pk)
-  return kong.cache:get(cache_key, nil, _find_consumer_group_config, consumer_group_pk)
+local function get_consumer_group_config(consumer_group_pk, plugin_name)
+  local cache_key = kong.db.consumer_group_plugins:cache_key(consumer_group_pk, plugin_name)
+  return kong.cache:get(cache_key, nil, _find_consumer_group_config, consumer_group_pk, plugin_name)
 end
 
 local function get_consumers_in_group(consumer_group_pk)
