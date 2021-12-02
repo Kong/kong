@@ -7,6 +7,7 @@ local bit           = require "bit"
 
 local hostname_type = utils.hostname_type
 local normalize     = require("kong.tools.uri").normalize
+local escape        = require("kong.tools.uri").escape
 local subsystem     = ngx.config.subsystem
 local get_method    = ngx.req.get_method
 local get_headers   = ngx.req.get_headers
@@ -749,7 +750,7 @@ local function sort_routes(r1, r2)
     end
   end
 
-  -- only regex path use regex_priority 
+  -- only regex path use regex_priority
   if band(r1.submatch_weight,MATCH_SUBRULES.HAS_REGEX_URI) ~= 0 then
     do
       local rp1 = r1.route.regex_priority or 0
@@ -1015,6 +1016,10 @@ do
               ctx.matches.uri_postfix = uri_postfix
 
               if uri_t.has_captures then
+                for k, v in pairs(m) do
+                  m[k] = escape(v)
+                end
+
                 ctx.matches.uri_captures = m
               end
 
