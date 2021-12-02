@@ -242,6 +242,34 @@ for _, strategy in helpers.each_strategy() do
             hosts     = { "serviceless-route-http.test" },
             service   = ngx.null,
           },
+          {
+            paths      = { "/disabled-service1" },
+            protocols  = { "http" },
+            strip_path = false,
+            service    = {
+              path     = "/disabled-service-path/",
+              enabled  = false,
+            },
+          },
+          {
+            paths      = { [[/enabled-service/\w+]] },
+            protocols  = { "http" },
+            strip_path = true,
+            service    = {
+              path     = "/anything/",
+              enabled  = true,
+              name     = "enabled-service",
+            },
+          },
+          {
+            paths     = { "/enabled-service/disabled" },
+            protocols  = { "http" },
+            strip_path = true,
+            service    = {
+              path     = "/some-path/",
+              enabled  = false,
+            },
+          },
         })
         first_service_name = routes[1].service.name
       end)
@@ -417,6 +445,31 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(routes[5].id,           res.headers["kong-route-id"])
         assert.equal(routes[5].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[5].service.name, res.headers["kong-service-name"])
+      end)
+
+      describe('handles not enabled services', function()
+        it('ignores route where service enabled=false', function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/disabled-service1",
+            headers = { ["kong-debug"] = 1 },
+          })
+
+          assert.res_status(404, res)
+        end)
+
+        it('routes to regex path when longer path service enabled=false', function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/enabled-service/disabled",
+            headers = { ["kong-debug"] = 1 },
+          })
+
+          assert.res_status(200, res)
+          assert.equal(routes[8].id,           res.headers["kong-route-id"])
+          assert.equal(routes[8].service.id,   res.headers["kong-service-id"])
+          assert.equal("enabled-service",      res.headers["kong-service-name"])
+        end)
       end)
     end)
 

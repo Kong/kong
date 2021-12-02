@@ -38,8 +38,7 @@ local type          = type
 local max           = math.max
 local band          = bit.band
 local bor           = bit.bor
-local ngx_sleep = ngx.sleep
-local get_phase = ngx.get_phase
+local yield         = require("kong.tools.utils").yield
 
 -- limits regex degenerate times to the low miliseconds
 local REGEX_PREFIX  = "(*LIMIT_MATCH=10000)"
@@ -105,18 +104,6 @@ do
     end, "joi")
   end
 end
-
-
-local yield_n = 0
-local function yield()
-  if get_phase() ~= "init" then
-    yield_n = yield_n + 1
-    if yield_n % 500 == 0 then
-      ngx_sleep(0)
-    end
-  end
-end
-
 
 local clear_tab
 local log
@@ -1364,7 +1351,7 @@ function _M.new(routes)
     local marshalled_routes = {}
 
     for i = 1, #routes do
-      yield()
+      yield(true)
 
       local route = utils.deep_copy(routes[i], false)
       local paths = utils.deep_copy(route.route.paths, false)
@@ -1407,7 +1394,8 @@ function _M.new(routes)
     sort(marshalled_routes, sort_routes)
 
     for i = 1, #marshalled_routes do
-      yield()
+      yield(true)
+
       local route_t = marshalled_routes[i]
 
       categorize_route_t(route_t, route_t.match_rules, categories)

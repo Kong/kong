@@ -201,6 +201,13 @@ if [[ "$TEST_SUITE" =~ integration|dbless|plugins ]]; then
   docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 moul/grpcbin
 fi
 
+# -----------------
+# Run zipkin server
+# -----------------
+if [[ "$TEST_SUITE" =~ plugins ]]; then
+  docker run -d --name zipkin -p 9411:9411 openzipkin/zipkin:2.19
+fi
+
 # ------------------------------------
 # Install additional test dependencies
 # ------------------------------------

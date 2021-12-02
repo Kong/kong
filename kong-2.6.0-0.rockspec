@@ -12,7 +12,7 @@ description = {
   license = "Apache 2.0"
 }
 dependencies = {
-  "inspect == 3.1.1",
+  "inspect == 3.1.2",
   "luasec == 1.0.2",
   "luasocket == 3.0-rc1",
   "penlight == 1.11.0",
@@ -46,15 +46,13 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.1",
+  "lua-resty-openssl == 0.8.2",
   "lua-resty-counter == 0.2.1",
   "lua-resty-template == 1.9",
   "lua-resty-passwdqc == 1.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.7.2",
   "lua-resty-session == 3.8",
-  -- external Kong plugins
-  "kong-plugin-zipkin ~> 1.4",
 }
 build = {
   type = "builtin",
@@ -428,19 +426,11 @@ build = {
     ["kong.db.migrations.core.012_213_to_220"] = "kong/db/migrations/core/012_213_to_220.lua",
     ["kong.db.migrations.core.013_220_to_230"] = "kong/db/migrations/core/013_220_to_230.lua",
     ["kong.db.migrations.core.014_230_to_260"] = "kong/db/migrations/core/014_230_to_260.lua",
+    ["kong.db.migrations.core.015_260_to_270"] = "kong/db/migrations/core/015_260_to_270.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
     ["kong.db.migrations.operations.230_to_260"] = "kong/db/migrations/operations/230_to_260.lua",
-
-    ["kong.hybrid"] = "kong/hybrid/init.lua",
-    ["kong.hybrid.data_plane"] = "kong/hybrid/data_plane.lua",
-    ["kong.hybrid.event_loop"] = "kong/hybrid/event_loop.lua",
-    ["kong.hybrid.control_plane"] = "kong/hybrid/control_plane.lua",
-    ["kong.hybrid.message"] = "kong/hybrid/message.lua",
-    ["kong.hybrid.queue"] = "kong/hybrid/queue.lua",
-    ["kong.hybrid.rpc"] = "kong/hybrid/rpc.lua",
-
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -689,6 +679,13 @@ build = {
 
     ["kong.plugins.post-function.handler"] = "kong/plugins/post-function/handler.lua",
     ["kong.plugins.post-function.schema"] = "kong/plugins/post-function/schema.lua",
+
+    ["kong.plugins.zipkin.handler"] = "kong/plugins/zipkin/handler.lua",
+    ["kong.plugins.zipkin.reporter"] = "kong/plugins/zipkin/reporter.lua",
+    ["kong.plugins.zipkin.span"] = "kong/plugins/zipkin/span.lua",
+    ["kong.plugins.zipkin.tracing_headers"] = "kong/plugins/zipkin/tracing_headers.lua",
+    ["kong.plugins.zipkin.schema"] = "kong/plugins/zipkin/schema.lua",
+    ["kong.plugins.zipkin.request_tags"] = "kong/plugins/zipkin/request_tags.lua",
 
     ["kong.plugins.request-transformer.migrations.cassandra"] = "kong/plugins/request-transformer/migrations/cassandra.lua",
     ["kong.plugins.request-transformer.migrations.postgres"] = "kong/plugins/request-transformer/migrations/postgres.lua",
