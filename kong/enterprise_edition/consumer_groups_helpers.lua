@@ -30,7 +30,7 @@ local function _find_consumer_group_config(consumer_group_pk, plugin_name)
         end
         if row.consumer_group.id == consumer_group_pk and
           row.name == plugin_name then
-            return row, nil
+            return row
         end
       end
     end
@@ -46,10 +46,11 @@ end
 local function get_consumers_in_group(consumer_group_pk)
   local consumers = {}
   local len = 0
-  for row in kong.db.consumer_group_consumers:each() do
-    if consumer_group_pk == row.consumer_group.id then
-      len = len + 1
-      consumers[len] = kong.db.consumers:select(row.consumer)
+  for row, err in kong.db.consumer_group_consumers:each_for_consumer_group({ id = consumer_group_pk }) do
+    len = len + 1
+    consumers[len] = kong.db.consumers:select(row.consumer)
+    if err then
+      return nil, err
     end
   end
   if len == 0 then
@@ -88,10 +89,11 @@ end
 local function get_plugins_in_group(consumer_group_pk)
   local plugins = {}
   local len = 0
-  for row in kong.db.consumer_group_plugins:each() do
-    if consumer_group_pk == row.consumer_group.id then
-      len = len + 1
-      plugins[len] = row
+  for row, err in kong.db.consumer_group_plugins:each_for_consumer_group({ id = consumer_group_pk }) do
+    len = len + 1
+    plugins[len] = row
+    if err then
+      return nil, err
     end
   end
   if len == 0 then
@@ -113,10 +115,11 @@ end
 local function get_groups_by_consumer(consumer_pk)
   local groups = {}
   local len = 0
-  for row in kong.db.consumer_group_consumers:each() do
-    if consumer_pk == row.consumer.id then
-      len = len + 1
-      groups[len] = get_consumer_group(row.consumer_group.id)
+  for row, err in kong.db.consumer_group_consumers:each_for_consumer({ id = consumer_pk }) do
+    len = len + 1
+    groups[len] = get_consumer_group(row.consumer_group.id)
+    if err then
+      return nil, err
     end
   end
   if len == 0 then

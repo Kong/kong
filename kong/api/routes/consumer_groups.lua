@@ -59,7 +59,6 @@ return {
 
     GET = function(self, db, helpers)
       local consumers = consumer_group_helpers.get_consumers_in_group(self.consumer_group.id)
-
       return kong.response.exit(200, {
         consumers = consumers,
       })
