@@ -140,6 +140,7 @@ return {
 
         CREATE INDEX IF NOT EXISTS consumer_group_plugins_group_id_idx ON consumer_group_plugins(consumer_group_id);
         CREATE INDEX IF NOT EXISTS consumer_group_plugins_plugin_name_idx ON consumer_group_plugins(name);
+        CREATE INDEX IF NOT EXISTS consumer_group_plugins_cache_key_idx ON consumer_group_plugins(cache_key)
       ]] .. ws_migration_up(operations.cassandra.up),
       teardown = ws_migration_teardown(operations.cassandra.teardown),
     },
