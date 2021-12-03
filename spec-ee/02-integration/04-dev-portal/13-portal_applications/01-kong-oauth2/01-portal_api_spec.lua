@@ -856,7 +856,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("PATCH", function()
-          local application, application_2, cookie
+          local application, application_2, cookie, dev2_cookie, dev2_application
 
           before_each(function()
             portal_api_client = assert(ee_helpers.portal_api_client())
@@ -904,6 +904,34 @@ for _, strategy in helpers.each_strategy() do
 
             local body = assert.res_status(200, res)
             application_2 = cjson.decode(body)
+
+            local res = register_developer(portal_api_client, {
+              email = "chip@konghq.com",
+              password = "kongboi",
+              meta = "{\"full_name\":\"lol\"}",
+            })
+
+            assert.res_status(200, res)
+
+            dev2_cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("chip@konghq.com:kongboi"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/applications",
+              body = {
+                name = "dev2app",
+                redirect_uri = "http://dev2.com"
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = dev2_cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            dev2_application = cjson.decode(body)
           end)
 
           after_each(function()
@@ -913,6 +941,25 @@ for _, strategy in helpers.each_strategy() do
             assert(db:truncate('developers'))
           end)
 
+          it("empty patch does nothing", function()
+            local res = assert(portal_api_client:send {
+              method = "PATCH",
+              path = "/applications/" .. application.id,
+              body = {},
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(application.name, resp_body_json.name)
+            assert.equal(application.redirect_uri, resp_body_json.redirect_uri)
+            assert.is_nil(application.description)
+          end)
+
           it("developer can update application", function()
             local res = assert(portal_api_client:send {
               method = "PATCH",
@@ -920,6 +967,7 @@ for _, strategy in helpers.each_strategy() do
               body = {
                 name = "mysecondapp",
                 redirect_uri = "http://cat.com",
+                description = "something new!",
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -932,6 +980,7 @@ for _, strategy in helpers.each_strategy() do
 
             assert.equal("mysecondapp", resp_body_json.name)
             assert.equal("http://cat.com", resp_body_json.redirect_uri)
+            assert.equal("something new!", resp_body_json.description)
           end)
 
           it("developer cannot update application with duplicate name", function()
@@ -991,7 +1040,6 @@ for _, strategy in helpers.each_strategy() do
             assert.equal("required field missing", resp_body_json.fields.redirect_uri)
           end)
 
-
           it("developer cannot update applications foreign keys", function()
             local res = assert(portal_api_client:send {
               method = "PATCH",
@@ -1011,6 +1059,77 @@ for _, strategy in helpers.each_strategy() do
 
             assert.equal(application.consumer.id, resp_body_json.consumer.id)
             assert.equal(application.developer.id, resp_body_json.developer.id)
+          end)
+
+          it("developer cannot update id of application FTI-3016", function()
+            local res = assert(portal_api_client:send {
+              method = "PATCH",
+              path = "/applications/" .. application.id,
+              body = {
+                id = dev2_application.id
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(application.id, resp_body_json.id)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id,
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(application.id, resp_body_json.id)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications",
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(2, #resp_body_json.data)
+
+            local app_ids = {}
+
+            for _, app in ipairs(resp_body_json.data) do
+              app_ids[app.id] = true
+            end
+
+            assert.True(app_ids[application.id])
+            assert.True(app_ids[application_2.id])
+            assert.is_nil(app_ids[dev2_application.id])
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications",
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = dev2_cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(1, #resp_body_json.data)
+            assert.equal(dev2_application.id, resp_body_json.data[1].id)
           end)
         end)
 
