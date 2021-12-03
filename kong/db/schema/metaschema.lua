@@ -767,6 +767,9 @@ MetaSchema.MetaSubSchema = Schema.new({
       shorthands = shorthands_array,
     },
     {
+      shorthand_fields = shorthand_fields_array,
+    },
+    {
       transformations = transformations_array,
     },
     {
