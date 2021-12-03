@@ -1346,52 +1346,55 @@ do
 end
 
 
-local function run_transformation_checks(self, input, original_input, rbw_entity, errors)
-  if not self.transformations then
-    return
-  end
-
-  for _, transformation in ipairs(self.transformations) do
-    local args = {}
-    local argc = 0
-    local none_set = true
-    for _, input_field_name in ipairs(transformation.input) do
-      if is_nonempty(get_field(original_input or input, input_field_name)) then
-        none_set = false
-      end
-
-      argc = argc + 1
-      args[argc] = input_field_name
-    end
-
-    local needs_changed = false
-    if transformation.needs then
-      for _, input_field_name in ipairs(transformation.needs) do
-        if rbw_entity and not needs_changed then
-          local value = get_field(original_input or input, input_field_name)
-          local rbw_value = get_field(rbw_entity, input_field_name)
-          if value ~= rbw_value then
-            needs_changed = true
-          end
+local function run_transformation_checks(schema_or_subschema, input, original_input, rbw_entity, errors)
+  if schema_or_subschema.transformations then
+    for _, transformation in ipairs(schema_or_subschema.transformations) do
+      local args = {}
+      local argc = 0
+      local none_set = true
+      for _, input_field_name in ipairs(transformation.input) do
+        if is_nonempty(get_field(original_input or input, input_field_name)) then
+          none_set = false
         end
 
         argc = argc + 1
         args[argc] = input_field_name
       end
-    end
 
-    if needs_changed or (not none_set) then
-      local ok, err = mutually_required(needs_changed and original_input or input, args)
-      if not ok then
-        insert_entity_error(errors, validation_errors.MUTUALLY_REQUIRED:format(err))
+      local needs_changed = false
+      if transformation.needs then
+        for _, input_field_name in ipairs(transformation.needs) do
+          if rbw_entity and not needs_changed then
+            local value = get_field(original_input or input, input_field_name)
+            local rbw_value = get_field(rbw_entity, input_field_name)
+            if value ~= rbw_value then
+              needs_changed = true
+            end
+          end
 
-      else
-        ok, err = mutually_required(original_input or input, transformation.input)
+          argc = argc + 1
+          args[argc] = input_field_name
+        end
+      end
+
+      if needs_changed or (not none_set) then
+        local ok, err = mutually_required(needs_changed and original_input or input, args)
         if not ok then
           insert_entity_error(errors, validation_errors.MUTUALLY_REQUIRED:format(err))
+
+        else
+          ok, err = mutually_required(original_input or input, transformation.input)
+          if not ok then
+            insert_entity_error(errors, validation_errors.MUTUALLY_REQUIRED:format(err))
+          end
         end
       end
     end
+  end
+
+  local subschema = get_subschema(schema_or_subschema, input)
+  if subschema then
+    run_transformation_checks(subschema, input, original_input, rbw_entity, errors)
   end
 end
 
@@ -2129,19 +2132,10 @@ local function get_transform_args(input, original_input, output, transformation)
   return args
 end
 
---- Run transformations on fields.
--- @param input The input table.
--- @param original_input The original input for transformation detection.
--- @param context a string describing the CRUD context:
--- valid values are: "insert", "update", "upsert", "select"
--- @return the transformed entity
-function Schema:transform(input, original_input, context)
-  if not self.transformations then
-    return input
-  end
 
-  local output = nil
-  for _, transformation in ipairs(self.transformations) do
+local function run_transformations(self, transformations, input, original_input, context)
+  local output
+  for _, transformation in ipairs(transformations) do
     local transform
     if context == "select" then
       transform = transformation.on_read
@@ -2152,7 +2146,6 @@ function Schema:transform(input, original_input, context)
 
     if transform then
       local args = get_transform_args(input, original_input, output, transformation)
-
       if args then
         local data, err = transform(unpack(args))
         if err then
@@ -2168,6 +2161,32 @@ function Schema:transform(input, original_input, context)
   return output or input
 end
 
+
+--- Run transformations on fields.
+-- @param input The input table.
+-- @param original_input The original input for transformation detection.
+-- @param context a string describing the CRUD context:
+-- valid values are: "insert", "update", "upsert", "select"
+-- @return the transformed entity
+function Schema:transform(input, original_input, context)
+  local output, err
+  if self.transformations then
+    output, err = run_transformations(self, self.transformations, input, original_input, context)
+    if not output then
+      return nil, err
+    end
+  end
+
+  local subschema = get_subschema(self, input)
+  if subschema and subschema.transformations then
+    output, err = run_transformations(subschema, subschema.transformations, output or input, original_input, context)
+    if not output then
+      return nil, err
+    end
+  end
+
+  return output or input
+end
 
 --- Instatiate a new schema from a definition.
 -- @param definition A table with attributes describing

@@ -24,6 +24,21 @@ if luacov_ok then
 end
 
 
+local SchemaKind = {
+  { name = "schema", new = Schema.new, },
+  { name = "subschema", new = function(definition)
+      local schema = assert(Schema.new({
+        name = "test",
+        subschema_key = "name",
+        fields = definition.fields,
+      }))
+      assert(schema:new_subschema("subtest", definition))
+      return assert(schema.subschemas["subtest"])
+    end
+  }
+}
+
+
 describe("schema", function()
   local uuid_pattern = "^" .. ("%x"):rep(8) .. "%-" .. ("%x"):rep(4) .. "%-"
                            .. ("%x"):rep(4) .. "%-" .. ("%x"):rep(4) .. "%-"
@@ -1937,53 +1952,57 @@ describe("schema", function()
       assert.falsy(err)
     end)
 
-
-    it("test mutually required checks specified by transformations", function()
-      local Test = Schema.new({
-        fields = {
-          { a1 = { type = "string" } },
-          { a2 = { type = "string" } },
-          { a3 = { type = "string" } },
-        },
-        transformations = {
-          {
-            input = { "a2" },
-            on_write = function() return {} end
+    for i = 1, 2 do
+    it("test mutually required checks specified by transformations (" .. SchemaKind[i].name .. ")", function()
+        local Test = SchemaKind[i].new({
+          fields = {
+            { name = { type = "string", required = true, } },
+            { a1 = { type = "string" } },
+            { a2 = { type = "string" } },
+            { a3 = { type = "string" } },
           },
-          {
-            input = { "a1", "a3" },
-            on_write = function() return {} end
-          },
-        }
-      })
+          transformations = {
+            {
+              input = { "a2" },
+              on_write = function() return {} end
+            },
+            {
+              input = { "a1", "a3" },
+              on_write = function() return {} end
+            },
+          }
+        })
 
-      local ok, err = Test:validate_update({
-        a1 = "foo"
-      })
-      assert.is_falsy(ok)
-      assert.match("all or none of these fields must be set: 'a1', 'a3'", err["@entity"][1])
+        local ok, err = Test:validate_update({
+          name = "test",
+          a1 = "foo"
+        })
+        assert.is_falsy(ok)
+        assert.match("all or none of these fields must be set: 'a1', 'a3'", err["@entity"][1])
 
-      ok, err = Test:validate_update({
-        a2 = "foo"
-      })
-      assert.truthy(ok)
-      assert.falsy(err)
+        ok, err = Test:validate_update({
+          a2 = "foo"
+        })
+        assert.truthy(ok)
+        assert.falsy(err)
 
-      ok, err = Test:validate_update({
-        a1 = "aaa",
-        a2 = "bbb",
-        a3 = "ccc",
-        a4 = "ddd",
-      }, {
-        a1 = "foo"
-      })
+        ok, err = Test:validate_update({
+          a1 = "aaa",
+          a2 = "bbb",
+          a3 = "ccc",
+          a4 = "ddd",
+        }, {
+          a1 = "foo"
+        })
 
-      assert.is_falsy(ok)
-      assert.match("all or none of these fields must be set: 'a1', 'a3'", err["@entity"][1])
+        assert.is_falsy(ok)
+        assert.match("all or none of these fields must be set: 'a1', 'a3'", err["@entity"][1])
     end)
+    end
 
-    it("test mutually required checks specified by transformations with needs", function()
-      local Test = Schema.new({
+    for i = 1, 2 do
+    it("test mutually required checks specified by transformations with needs (" .. SchemaKind[i].name .. ")", function()
+      local Test = SchemaKind[i].new({
         fields = {
           { a1 = { type = "string" } },
           { a2 = { type = "string" } },
@@ -2029,9 +2048,10 @@ describe("schema", function()
       assert.truthy(ok)
       assert.falsy(err)
     end)
+    end
 
-
-    it("test mutually required checks specified by transformations with needs (combinations)", function()
+    for i = 1, 2 do
+    it("test mutually required checks specified by transformations with needs (combinations) (" .. SchemaKind[i].name .. ")", function()
       -- {
       --   input = I1, I2
       --   needs = N1, N2
@@ -2069,7 +2089,7 @@ describe("schema", function()
       -- 28. N1             ok, no changes in needs, would not invalidate I1 I2
       -- 29. N2             ok, no changes in needs, would not invalidate I1 I2
 
-      local Test = Schema.new({
+      local Test = SchemaKind[i].new({
         fields = {
           { i1 = { type = "string" } },
           { i2 = { type = "string" } },
@@ -2516,6 +2536,7 @@ describe("schema", function()
       assert.truthy(ok)
       assert.falsy(err)
     end)
+    end
 
     it("test mutually exclusive checks", function()
       local Test = Schema.new({
@@ -4040,7 +4061,8 @@ describe("schema", function()
     end)
   end)
 
-  describe("transform", function()
+  for i = 1, 2 do
+  describe("transform (" .. SchemaKind[i].name .. ")", function()
     it("transforms fields", function()
       local test_schema = {
         name = "test",
@@ -4062,7 +4084,7 @@ describe("schema", function()
       }
       local entity = { name = "test1" }
 
-      local TestEntities = Schema.new(test_schema)
+      local TestEntities = SchemaKind[i].new(test_schema)
       local transformed_entity, _ = TestEntities:transform(entity)
 
       assert.truthy(transformed_entity)
@@ -4093,7 +4115,7 @@ describe("schema", function()
       }
       local entity = { name = "TeSt1" }
 
-      local TestEntities = Schema.new(test_schema)
+      local TestEntities = SchemaKind[i].new(test_schema)
       local transformed_entity, _ = TestEntities:transform(entity)
 
       assert.truthy(transformed_entity)
@@ -4127,7 +4149,7 @@ describe("schema", function()
       local entity = { name = "test1" }
       local input = { name = "we have a value" }
 
-      local TestEntities = Schema.new(test_schema)
+      local TestEntities = SchemaKind[i].new(test_schema)
       local transformed_entity, _ = TestEntities:transform(entity, input)
 
       assert.truthy(transformed_entity)
@@ -4155,7 +4177,7 @@ describe("schema", function()
       }
       local entity = { name = "test1" }
 
-      local TestEntities = Schema.new(test_schema)
+      local TestEntities = SchemaKind[i].new(test_schema)
       local transformed_entity, _ = TestEntities:transform(entity)
 
       assert.truthy(transformed_entity)
@@ -4184,7 +4206,7 @@ describe("schema", function()
       local entity = { name = "test1" }
       local input = { name = nil }
 
-      local TestEntities = Schema.new(test_schema)
+      local TestEntities = SchemaKind[i].new(test_schema)
       local transformed_entity, _ = TestEntities:transform(entity, input)
 
       assert.truthy(transformed_entity)
@@ -4220,7 +4242,7 @@ describe("schema", function()
 
       local entity = { name = "Bob" }
 
-      local TestEntities = Schema.new(test_schema)
+      local TestEntities = SchemaKind[i].new(test_schema)
       local transformed_entity, _ = TestEntities:transform(entity)
 
       assert.truthy(transformed_entity)
@@ -4252,7 +4274,7 @@ describe("schema", function()
 
       local entity = { name = "Bob" }
 
-      local TestEntities = Schema.new(test_schema)
+      local TestEntities = SchemaKind[i].new(test_schema)
       local transformed_entity, _ = TestEntities:transform(entity)
 
       assert.truthy(transformed_entity)
@@ -4281,7 +4303,7 @@ describe("schema", function()
       }
       local entity = { name = "test1" }
 
-      local TestEntities = Schema.new(test_schema)
+      local TestEntities = SchemaKind[i].new(test_schema)
       local transformed_entity, err = TestEntities:transform(entity)
 
       assert.falsy(transformed_entity)
@@ -4313,7 +4335,7 @@ describe("schema", function()
       }
       local entity = { name = "test1" }
 
-      local TestEntities = Schema.new(test_schema)
+      local TestEntities = SchemaKind[i].new(test_schema)
       local transformed_entity, _ = TestEntities:transform(entity)
 
       assert.truthy(transformed_entity)
@@ -4346,11 +4368,12 @@ describe("schema", function()
       }
       local entity = { name = "John", age = 13 }
 
-      local TestEntities = Schema.new(test_schema)
+      local TestEntities = SchemaKind[i].new(test_schema)
       local transformed_entity, _ = TestEntities:transform(entity)
 
       assert.truthy(transformed_entity)
       assert.equal("John 13", transformed_entity.name)
     end)
   end)
+  end
 end)
