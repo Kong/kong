@@ -1,3 +1,7 @@
+## 0.5.3
+
+- fix(*) use newer http connect syntax
+
 ## 0.5.2
 
 - chore(*) add copyright
