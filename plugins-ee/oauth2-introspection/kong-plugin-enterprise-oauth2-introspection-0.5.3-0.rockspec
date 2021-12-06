@@ -1,8 +1,8 @@
 package = "kong-plugin-enterprise-oauth2-introspection"
-version = "0.5.2-0"
+version = "0.5.3-0"
 source = {
   url = "git://github.com/kong/kong-plugin-enterprise-oauth2-introspection",
-  tag = "0.5.2"
+  tag = "0.5.3"
 }
 description = {
   summary = "A Kong plugin for authenticating tokens using as third party OAuth 2.0 Introspection Endpoint",
