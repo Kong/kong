@@ -124,7 +124,7 @@ function _M:start_upstreams(conf, port_count)
   return uris
 end
 
-function _M:start_kong(version, kong_conf)
+function _M:start_kong(version, kong_conf, driver_conf)
   if not version:startswith("git:") then
     return nil, "\"local\" driver only support testing between git commits, " ..
                 "version should be prefixed with \"git:\""
