@@ -10,6 +10,7 @@ local strategies  = require "kong.plugins.proxy-cache-advanced.strategies"
 local cache_key   = require "kong.plugins.proxy-cache-advanced.cache_key"
 local utils       = require "kong.tools.utils"
 local ee          = require "kong.enterprise_edition"
+local kong_global = require "kong.global"
 
 
 local ngx              = ngx
@@ -38,7 +39,7 @@ local tab_new = require("table.new")
 local STRATEGY_PATH = "kong.plugins.proxy-cache-advanced.strategies"
 local CACHE_VERSION = 1
 local EMPTY = {}
-
+local PHASES = kong_global.phases
 
 local function get_now()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
@@ -386,14 +387,10 @@ function ProxyCacheHandler:access(conf)
   nctx.KONG_PROXY_LATENCY = proxy_latency
   nctx.KONG_PROXIED = true
 
-  local kong_global = require "kong.global"
-  local PHASES = kong_global.phases
-  local current_phase = kong_global.get_phase(kong)
-  kong_global.set_phase(kong, PHASES.log)
-
+  local current_phase = nctx.KONG_PHASE
+  nctx.KONG_PHASE = PHASES.log
   ee.handlers.log.after(nctx)
-
-  kong_global.set_phase(kong, current_phase)
+  nctx.KONG_PHASE = current_phase
 
   for k in pairs(res.headers) do
     if not overwritable_header(k) then

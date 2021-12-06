@@ -1,3 +1,7 @@
+## Unreleased
+
+- fix(phases) simulate log phase for prometheus vitals (FTI-2850)
+
 ## 0.5.6
 
 - remove empty migration
