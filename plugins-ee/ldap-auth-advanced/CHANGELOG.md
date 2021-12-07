@@ -1,6 +1,7 @@
-## Unreleased
+## 1.2.0
 
 - Upgrade to lua_pack 2.0.0
+- Encrypt config.ldap_password
 
 ## 1.1.0
 
