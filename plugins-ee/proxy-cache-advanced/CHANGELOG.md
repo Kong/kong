@@ -1,4 +1,4 @@
-## Unreleased
+## 0.5.7
 
 - fix(phases) simulate log phase for prometheus vitals (FTI-2850)
 
