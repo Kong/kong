@@ -8,7 +8,7 @@ return {
       -- if a port was passed, patch it in constants.REPORTS so
       -- that tests can change the default reports port
       if self.params.port then
-        constants.REPORTS.STATS_PORT = self.params.port
+        constants.REPORTS.STATS_TLS_PORT = self.params.port
       end
 
       reports._sync_counter()
