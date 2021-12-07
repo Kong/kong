@@ -854,6 +854,7 @@ return {
             { "admin", "high-priority", "critical" }
           },
         },
+        enabled = { description = [[Whether the service is applied.]] },
       },
       extra_fields = {
         { url = {
