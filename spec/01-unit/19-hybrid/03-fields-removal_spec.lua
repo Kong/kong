@@ -117,6 +117,8 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
       },
       forward_proxy = {
         "auth_username",
@@ -202,6 +204,8 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
       },
       forward_proxy = {
         "auth_username",
@@ -287,6 +291,8 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
       },
       forward_proxy = {
         "auth_username",
@@ -366,6 +372,8 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
       },
       forward_proxy = {
         "auth_username",
@@ -435,6 +443,8 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
       },
       forward_proxy = {
         "auth_username",
@@ -504,6 +514,8 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
       },
       forward_proxy = {
         "auth_username",
@@ -521,6 +533,10 @@ describe("kong.clustering.control_plane", function()
       },
       mocking = {
         "random_examples",
+      },
+      rate_limiting_advanced = {
+        "enforce_consumer_groups",
+        "consumer_groups",
       },
     }, cp._get_removed_fields(2006000000))
 

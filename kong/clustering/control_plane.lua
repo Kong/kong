@@ -268,7 +268,9 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
           end
         end
       end
-    elseif dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
+    end
+
+    if dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
       if config_table["consumers"] then
         for _, t in ipairs(config_table["consumers"]) do
           if t["username_lower"] then

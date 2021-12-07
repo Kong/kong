@@ -138,5 +138,9 @@ return {
     mocking = {
       "random_examples",
     },
+    rate_limiting_advanced = {
+      "enforce_consumer_groups",
+      "consumer_groups",
+    },
   },
 }
