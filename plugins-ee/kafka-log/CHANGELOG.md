@@ -1,3 +1,8 @@
+## 0.3.0
+
+- encrypt user and password
+- enhance error checks
+
 ## 0.2.0
 
 - add support for TLS

@@ -1,8 +1,8 @@
 package = "kong-plugin-kafka-log"
-version = "0.2.0-0"
+version = "0.3.0-0"
 source = {
    url = "git://github.com/kong/kong-plugin-kafka-log",
-   tag = "0.2.0"
+   tag = "0.3.0"
 }
 description = {
    summary = "This plugin sends request and response logs to Kafka.",
