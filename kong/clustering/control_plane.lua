@@ -255,7 +255,20 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
     -- XXX EE: this should be moved in its own file (compat/config.lua). With a table
     -- similar to compat/remove_fields, each plugin could register a function to handle
     -- its compatibility issues.
-    if dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
+    if dp_version_num < 2007000000 --[[ 2.7.0.0 ]] then
+      if config_table["services"] then
+        for _, t in ipairs(config_table["services"]) do
+          if t["enabled"] then
+            ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                    " contains configuration 'services.enabled'",
+                    " which is incompatible with dataplane version " .. dp_version .. " and will",
+                    " be removed.", log_suffix)
+            t["enabled"] = nil
+            has_update = true
+          end
+        end
+      end
+    elseif dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
       if config_table["consumers"] then
         for _, t in ipairs(config_table["consumers"]) do
           if t["username_lower"] then
