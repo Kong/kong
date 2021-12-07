@@ -278,7 +278,7 @@ end
 
 local RequestValidator = {
   PRIORITY = 999,
-  VERSION = "1.1.6"
+  VERSION = "1.2.0"
 }
 
 
