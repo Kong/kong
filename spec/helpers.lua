@@ -1045,7 +1045,7 @@ local function tcp_server(port, opts)
     function(port, opts)
       local socket = require "socket"
       local server = assert(socket.tcp())
-      server:settimeout(opts.timeout or 360)
+      server:settimeout(opts.timeout or 60)
       assert(server:setoption("reuseaddr", true))
       assert(server:bind("*", port))
       assert(server:listen())
@@ -1270,109 +1270,6 @@ local function udp_server(port, n, timeout)
 
   return thread
 end
-
-
-local function mock_reports_server(opts)
-  local localhost = "127.0.0.1"
-  local threads = require "llthreads2.ex"
-  local server_port = constants.REPORTS.STATS_PORT
-  opts = opts or {}
-
-  local thread = threads.new({
-    function(port, host, opts)
-      local socket = require "socket"
-      local server = assert(socket.tcp())
-      server:settimeout(360)
-      assert(server:setoption("reuseaddr", true))
-      local counter = 0
-      while not server:bind(host, port) do
-        counter = counter + 1
-        if counter > 5 then
-          error('could not bind successfully')
-        end
-        socket.sleep(1)
-      end
-      assert(server:listen())
-      local data = {}
-      local handshake_done = false
-      local n = opts.requests or math.huge
-      for _ = 1, n + 1 do
-        local client = assert(server:accept())
-
-        if opts.tls and handshake_done then
-          local ssl = require "ssl"
-          local params = {
-            mode = "server",
-            protocol = "any",
-            key = "spec/fixtures/kong_spec.key",
-            certificate = "spec/fixtures/kong_spec.crt",
-          }
-
-          client = ssl.wrap(client, params)
-          client:dohandshake()
-        end
-
-        local line, err = client:receive()
-        if err ~= "closed" then
-          if not handshake_done then
-            assert(line == "\\START")
-            client:send("\\OK\n")
-            handshake_done = true
-
-          else
-            if line == "@DIE@" then
-              client:close()
-              break
-            end
-
-            table.insert(data, line)
-          end
-
-          client:close()
-        end
-      end
-      server:close()
-
-      return data
-    end
-  }, server_port, localhost, opts)
-
-  thread:start()
-
-  -- not necessary for correctness because we do the handshake,
-  -- but avoids harmless "connection error" messages in the wait loop
-  -- in case the client is ready before the server below.
-  ngx.sleep(0.001)
-
-  local sock = ngx.socket.tcp()
-  sock:settimeout(0.01)
-  while true do
-    if not thread:alive() then
-      error('the reports thread died')
-    elseif sock:connect(localhost, server_port) then
-      sock:send("\\START\n")
-      local ok = sock:receive()
-      sock:close()
-      if ok == "\\OK" then
-        break
-      end
-    end
-  end
-  sock:close()
-
-  return {
-    stop = function()
-      local skt = assert(ngx.socket.tcp())
-      sock:settimeout(0.01)
-      skt:connect(localhost, server_port)
-      skt:send("@DIE@\n")
-      skt:close()
-
-      return thread:join()
-    end
-  }
-end
-
 
 --------------------
 -- Custom assertions
@@ -2953,7 +2850,6 @@ end
   udp_server = udp_server,
   kill_tcp_server = kill_tcp_server,
   http_server = http_server,
-  mock_reports_server = mock_reports_server,
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,
