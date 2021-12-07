@@ -122,6 +122,9 @@ describe("kong.clustering.control_plane", function()
         "auth_username",
         "auth_password"
       },
+      mocking = {
+        "random_examples",
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -203,6 +206,9 @@ describe("kong.clustering.control_plane", function()
       forward_proxy = {
         "auth_username",
         "auth_password"
+      },
+      mocking = {
+        "random_examples",
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -286,6 +292,9 @@ describe("kong.clustering.control_plane", function()
         "auth_username",
         "auth_password"
       },
+      mocking = {
+        "random_examples",
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -362,6 +371,9 @@ describe("kong.clustering.control_plane", function()
         "auth_username",
         "auth_password"
       },
+      mocking = {
+        "random_examples",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -427,6 +439,9 @@ describe("kong.clustering.control_plane", function()
       forward_proxy = {
         "auth_username",
         "auth_password"
+      },
+      mocking = {
+        "random_examples",
       },
     }, cp._get_removed_fields(2004001002))
 
@@ -494,12 +509,18 @@ describe("kong.clustering.control_plane", function()
         "auth_username",
         "auth_password"
       },
+      mocking = {
+        "random_examples",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
       forward_proxy = {
         "auth_username",
         "auth_password"
+      },
+      mocking = {
+        "random_examples",
       },
     }, cp._get_removed_fields(2006000000))
 

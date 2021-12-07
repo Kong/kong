@@ -135,5 +135,8 @@ return {
       "auth_username",
       "auth_password",
     },
+    mocking = {
+      "random_examples",
+    },
   },
 }
