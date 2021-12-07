@@ -127,4 +127,13 @@ return {
       "path",
     },
   },
+
+  -- Any dataplane older than 2.7.0
+  [2006999999] = {
+    -- Enterprise plugins
+    forward_proxy = {
+      "auth_username",
+      "auth_password",
+    },
+  },
 }
