@@ -33,14 +33,13 @@ end
 
 for _, strategy in helpers.each_strategy() do
 
-  -- Marked as flaky because they require an arbitrary high port
-  describe("#flaky anonymous reports in Admin API #" .. strategy, function()
+  describe("anonymous reports in Admin API #" .. strategy, function()
     local dns_hostsfile
     local yaml_file
     local reports_server
 
     lazy_setup(function()
-      dns_hostsfile = assert(os.tmpname())
+      dns_hostsfile = assert(os.tmpname() .. ".hosts")
       local fd = assert(io.open(dns_hostsfile, "w"))
       assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
       assert(fd:close())
@@ -54,7 +53,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     before_each(function()
-      reports_server = helpers.mock_reports_server()
+      reports_server = helpers.tcp_server(constants.REPORTS.STATS_TLS_PORT, {tls=true})
 
       assert(helpers.get_db_utils(strategy, {}))
 
@@ -101,12 +100,12 @@ for _, strategy in helpers.each_strategy() do
       assert.same(201, status)
       assert.string(plugin.id)
 
-      local _, reports_data = assert(reports_server:stop())
 
-      assert.same(1, #reports_data)
-      assert.match("signal=api", reports_data[1])
-      assert.match("e=s", reports_data[1])
-      assert.match("name=tcp%-log", reports_data[1])
+      local _, reports_data = assert(reports_server:join())
+
+      assert.match("signal=api", reports_data)
+      assert.match("e=s", reports_data)
+      assert.match("name=tcp%-log", reports_data)
     end)
 
     it("reports plugins added to services via /service/:id/plugins", function()
@@ -138,12 +137,11 @@ for _, strategy in helpers.each_strategy() do
       assert.same(201, status)
       assert.string(plugin.id)
 
-      local _, reports_data = assert(reports_server:stop())
+      local _, reports_data = assert(reports_server:join())
 
-      assert.same(1, #reports_data)
-      assert.match("signal=api", reports_data[1])
-      assert.match("e=s", reports_data[1])
-      assert.match("name=tcp%-log", reports_data[1])
+      assert.match("signal=api", reports_data)
+      assert.match("e=s", reports_data)
+      assert.match("name=tcp%-log", reports_data)
     end)
 
     it("reports plugins added to routes via /plugins", function()
@@ -189,12 +187,11 @@ for _, strategy in helpers.each_strategy() do
       assert.same(201, status)
       assert.string(plugin.id)
 
-      local _, reports_data = assert(reports_server:stop())
+      local _, reports_data = assert(reports_server:join())
 
-      assert.same(1, #reports_data)
-      assert.match("signal=api", reports_data[1])
-      assert.match("e=r", reports_data[1])
-      assert.match("name=tcp%-log", reports_data[1])
+      assert.match("signal=api", reports_data)
+      assert.match("e=r", reports_data)
+      assert.match("name=tcp%-log", reports_data)
     end)
 
     it("reports plugins added to routes via /routes/:id/plugins", function()
@@ -239,12 +236,11 @@ for _, strategy in helpers.each_strategy() do
       assert.same(201, status)
       assert.string(plugin.id)
 
-      local _, reports_data = assert(reports_server:stop())
+      local _, reports_data = assert(reports_server:join())
 
-      assert.same(1, #reports_data)
-      assert.match("signal=api", reports_data[1])
-      assert.match("e=r", reports_data[1])
-      assert.match("name=tcp%-log", reports_data[1])
+      assert.match("signal=api", reports_data)
+      assert.match("e=r", reports_data)
+      assert.match("name=tcp%-log", reports_data)
     end)
 
     if strategy == "off" then
@@ -262,11 +258,10 @@ for _, strategy in helpers.each_strategy() do
         assert.same(201, status)
         assert.table(config)
 
-        local _, reports_data = assert(reports_server:stop())
+        local _, reports_data = assert(reports_server:join())
 
-        assert.same(1, #reports_data)
-        assert.match("signal=dbless-reconfigure", reports_data[1], nil, true)
-        assert.match("decl_fmt_version=1.1", reports_data[1], nil, true)
+        assert.match("signal=dbless-reconfigure", reports_data, nil, true)
+        assert.match("decl_fmt_version=1.1", reports_data, nil, true)
       end)
     end
 

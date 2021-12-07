@@ -140,7 +140,7 @@ local constants = {
   },
   REPORTS = {
     ADDRESS = "kong-hf.konghq.com",
-    STATS_PORT = 61830
+    STATS_TLS_PORT = 61833,
   },
   DICTS = {
     "kong",
