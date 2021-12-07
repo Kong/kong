@@ -1,3 +1,7 @@
+## v1.9.0
+
+- Encrypt config.channel_token_keyset
+
 ## v1.8.0
 
 ### Fixed
