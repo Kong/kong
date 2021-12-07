@@ -305,7 +305,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       assert(helpers.start_kong({
         plugins = "bundled,proxy-cache-advanced",
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+      }, nil, nil))
     end)
 
 
@@ -330,7 +330,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         admin_client:close()
       end
 
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong(nil, false)
     end)
 
     it("caches a simple request", function()
@@ -1381,5 +1381,144 @@ for i, policy in ipairs({"memory", "redis"}) do
         end)
       end)
     end
+  end)
+
+  describe("proxy-cache-advanced works with vitals prometheus strategy: #mydescribe", function()
+    local bp
+    local client, admin_client
+    local policy_config
+
+    if policy == "memory" then
+      policy_config = {
+        dictionary_name = "kong",
+      }
+    elseif policy == "redis" then
+      policy_config = {
+        host = REDIS_HOST,
+        port = REDIS_PORT,
+        database = REDIS_DATABASE,
+      }
+    end
+
+    local strategy = strategies({
+      strategy_name = policy,
+      strategy_opts = policy_config,
+    })
+
+    local function wait_until_key(key, func)
+      helpers.wait_until(function()
+        local res = admin_client:send {
+          method = "GET",
+          path   = "/proxy-cache-advanced/" .. key
+        }
+        -- wait_until does not like asserts
+        if not res then return false end
+
+        local body = res:read_body()
+
+        return func(res, body)
+      end, TIMEOUT)
+    end
+
+    -- wait until key is in cache (we get a 200 on plugin API) and execute
+    -- a test function if provided.
+    local function wait_until_key_in_cache(key, func)
+      local func = func or function(obj) return true end
+      wait_until_key(key, function(res, body)
+        if res.status == 200 then
+          local obj = cjson.decode(body)
+          return func(obj)
+        end
+
+        return false
+      end)
+    end
+
+    setup(function()
+      bp = helpers.get_db_utils(nil, nil, {"proxy-cache-advanced"})
+      strategy:flush(true)
+
+      local route_vitals = assert(bp.routes:insert {
+        hosts = { "route-vitals.com" },
+      })
+
+      assert(bp.plugins:insert {
+        name = "proxy-cache-advanced",
+        route = { id = route_vitals.id },
+        config = {
+          strategy = policy,
+          content_type = { "text/plain", "application/json" },
+          [policy] = policy_config,},
+      })
+
+      helpers.start_kong({
+        plugins = "bundled,proxy-cache-advanced",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        vitals = "on",
+        vitals_strategy = "prometheus",
+        vitals_tsdb_address = "127.0.0.1:9090",
+        vitals_statsd_address = "127.0.0.1:8125",
+      }, nil, false)
+    end)
+
+    before_each(function()
+      if client then
+        client:close()
+      end
+      if admin_client then
+        admin_client:close()
+      end
+      client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+    
+    teardown(function()
+      if client then
+        client:close()
+      end
+
+      if admin_client then
+        admin_client:close()
+      end
+
+      helpers.stop_kong(nil, true)
+    end)
+
+    it("caches a simple request", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "route-vitals.com",
+        }
+      })
+      
+      local body1 = assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+
+      -- cache key is an md5sum of the prefix uuid, method, and $request
+      local cache_key1 = res.headers["X-Cache-Key"]
+      assert.matches("^[%w%d]+$", cache_key1)
+      assert.equals(32, #cache_key1)
+
+      wait_until_key_in_cache(cache_key1)
+
+      local res = client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "route-vitals.com",
+        }
+      }
+
+      local body2 = assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+      local cache_key2 = res.headers["X-Cache-Key"]
+      assert.same(cache_key1, cache_key2)
+
+      -- assert that response bodies are identical
+      assert.same(body1, body2)
+    end)
+
   end)
 end
