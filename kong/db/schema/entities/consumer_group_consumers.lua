@@ -11,6 +11,7 @@ return {
   name = "consumer_group_consumers",
   generate_admin_api = false,
   primary_key = {"consumer_group","consumer"},
+  cache_key = {"consumer_group","consumer"},
   fields = {
     { created_at = typedefs.auto_timestamp_s },
     { consumer_group = { type = "foreign", required = true, reference = "consumer_groups", on_delete = "cascade" }, },

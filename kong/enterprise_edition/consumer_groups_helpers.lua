@@ -59,17 +59,18 @@ local function get_consumers_in_group(consumer_group_pk)
   return consumers
 end
 
+
+local function _find_consumer_in_group(cache_key)
+  return kong.db.consumer_group_consumers:select_by_cache_key(cache_key)
+end
+
 local function is_consumer_in_group(consumer_pk, consumer_group_pk)
-  local relation, err = kong.db.consumer_group_consumers:select(
-    {
-      consumer = {id = consumer_pk},
-      consumer_group = {id = consumer_group_pk},
-    }
-    )
-    if relation then
-      return true
-    end
-    return false, err
+  local cache_key = kong.db.consumer_group_consumers:cache_key(consumer_group_pk, consumer_pk)
+  local relation, err = kong.cache:get(cache_key, nil, _find_consumer_in_group, cache_key)
+  if relation then
+    return true
+  end
+  return false, err
 end
 
 local function delete_consumer_in_group(consumer_pk, consumer_group_pk)

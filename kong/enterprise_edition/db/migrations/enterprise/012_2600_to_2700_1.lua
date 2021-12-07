@@ -90,6 +90,7 @@ return {
         "created_at"  TIMESTAMP WITH TIME ZONE     DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         "consumer_group_id"     UUID                         REFERENCES "consumer_groups" ("id") ON DELETE CASCADE,
         "consumer_id" UUID                         REFERENCES "consumers" ("id") ON DELETE CASCADE,
+        "cache_key"   TEXT                         UNIQUE,
         PRIMARY KEY (consumer_group_id, consumer_id)
       );
 
@@ -124,10 +125,12 @@ return {
           created_at  timestamp,
           consumer_id uuid,
           consumer_group_id uuid,
+          cache_key   text,
           PRIMARY KEY(consumer_group_id,consumer_id)
         );
 
-        CREATE INDEX IF NOT EXISTS consumer_groups_consumer_idx ON consumer_group_consumers(consumer_id);
+        CREATE INDEX IF NOT EXISTS consumer_group_consumer_idx ON consumer_group_consumers(consumer_id);
+        CREATE INDEX IF NOT EXISTS consumer_group_consumer_cache_key_idx ON consumer_group_consumers(cache_key);
 
         CREATE TABLE IF NOT EXISTS consumer_group_plugins(
           id          uuid PRIMARY KEY,
