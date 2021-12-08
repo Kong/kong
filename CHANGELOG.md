@@ -80,7 +80,7 @@ In this release we continued our work on better performance:
 - Simplified the Kong core context read and writes for better performance
   [#7919](https://github.com/Kong/kong/pull/7919)
 
-### Core
+#### Core
 
 - DAOs in plugins must be listed in an array, so that their loading order is explicit. Loading them in a
   hash-like table is now **deprecated**.
