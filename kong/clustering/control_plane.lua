@@ -256,6 +256,22 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
     -- similar to compat/remove_fields, each plugin could register a function to handle
     -- its compatibility issues.
     if dp_version_num < 2007000000 --[[ 2.7.0.0 ]] then
+      local entity_removal = {
+        "consumer_groups",
+        "consumer_group_consumers",
+        "consumer_group_plugins",
+      }
+      for _, entity in ipairs(entity_removal) do
+        if config_table[entity] then
+          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                  " contains configuration '" .. entity .. "'",
+                  " which is incompatible with dataplane version " .. dp_version .. " and will",
+                  " be removed.", log_suffix)
+          config_table[entity] = nil
+          has_update = true
+        end
+      end
+
       if config_table["services"] then
         for _, t in ipairs(config_table["services"]) do
           if t["enabled"] then
