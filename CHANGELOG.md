@@ -113,7 +113,7 @@ In this release we continued our work on better performance:
   Thanks [onematchfox](https://github.com/onematchfox) for the patch!
 - **gRPC gGateway** and **gRPC Web**: Now share most of the ProtoBuf definitions.
   Both plugins now share the Timestamp transcoding and included `.proto` files features.
-  [#7950(https://github.com/Kong/kong/pull/7950)
+  [#7950](https://github.com/Kong/kong/pull/7950)
 - **Rate-Limiting**: add support for Redis SSL, through configuration properties
   `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
   [#6737](https://github.com/Kong/kong/pull/6737)
