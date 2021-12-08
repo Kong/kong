@@ -1034,7 +1034,7 @@ return {
         HOST_PORTS = kong.configuration.host_ports
       end
 
-      if kong.configuration.anonymous_reports then
+      if kong.configuration.reports then
         reports.configure_ping(kong.configuration)
         reports.add_ping_value("database_version", kong.db.infos.db_ver)
         reports.toggle(true)
@@ -1568,7 +1568,7 @@ return {
     after = function(ctx)
       update_lua_mem()
 
-      if kong.configuration.anonymous_reports then
+      if kong.configuration.reports then
         reports.log(ctx)
       end
 

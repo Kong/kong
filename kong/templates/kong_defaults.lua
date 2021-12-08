@@ -12,7 +12,7 @@ status_error_log = logs/status_error.log
 plugins = bundled
 port_maps = NONE
 host_ports = NONE
-anonymous_reports = on
+reports = on
 go_pluginserver_exe = /usr/local/bin/go-pluginserver
 go_plugins_dir = off
 

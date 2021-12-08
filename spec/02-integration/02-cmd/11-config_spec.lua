@@ -96,7 +96,7 @@ describe("kong config", function()
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
       dns_hostsfile = dns_hostsfile,
-      anonymous_reports = "on",
+      reports = "on",
     }))
 
     local thread = helpers.tcp_server(constants.REPORTS.STATS_PORT)

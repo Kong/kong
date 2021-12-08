@@ -124,8 +124,8 @@ local function execute(args)
 
       log("import successful")
 
-      -- send anonymous report if reporting is not disabled
-      if conf.anonymous_reports then
+      -- send report if reporting is not disabled
+      if conf.reports then
         local kong_reports = require "kong.reports"
         kong_reports.configure_ping(conf)
         kong_reports.toggle(true)

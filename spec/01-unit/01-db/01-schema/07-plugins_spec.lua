@@ -34,7 +34,7 @@ describe("plugins", function()
     end
 
     local kong_conf = {
-      anonymous_reports = false,
+      reports = false,
       loaded_plugins = loaded_plugins,
     }
 

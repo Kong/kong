@@ -618,7 +618,7 @@ local CONF_INFERENCES = {
                 }
               },
   plugins = { typ = "array" },
-  anonymous_reports = { typ = "boolean" },
+  reports = { typ = "boolean" },
   nginx_optimizations = {
     typ = "boolean",
     deprecated = { replacement = false }

@@ -552,7 +552,7 @@ for _, strategy in helpers.each_strategy() do
         assert(helpers.start_kong {
           database          = strategy,
           nginx_conf        = "spec/fixtures/custom_nginx.template",
-          --anonymous_reports = true,
+          --reports = true,
         })
 
         proxy_client = helpers.proxy_client()

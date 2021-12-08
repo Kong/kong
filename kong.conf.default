@@ -176,8 +176,8 @@
                                  # instead of reporting the port Kong is
                                  # listening to.
 
-#anonymous_reports = on          # Send anonymous usage data such as error
-                                 # stack traces to help improve Kong.
+#reports = on                    # Send usage data to Kong, Inc to
+                                 # help improve Kong.
 
 #------------------------------------------------------------------------------
 # HYBRID MODE

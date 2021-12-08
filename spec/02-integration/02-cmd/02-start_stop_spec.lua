@@ -146,7 +146,7 @@ describe("kong start/stop #" .. strategy, function()
     end)
     it("prints config in alphabetical order", function()
       local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path))
-      assert.matches("admin_listen.*anonymous_reports.*cassandra_ssl.*prefix.*", stdout)
+      assert.matches("admin_listen.*cassandra_ssl.*prefix.*.*reports", stdout)
     end)
     it("does not print sensitive settings in config", function()
       local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {

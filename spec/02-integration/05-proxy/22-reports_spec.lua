@@ -174,7 +174,7 @@ for _, strategy in helpers.each_strategy() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = strategy,
         dns_hostsfile = dns_hostsfile,
-        anonymous_reports = true,
+        reports = true,
         plugins = "reports-api",
         stream_listen = helpers.get_proxy_ip(false) .. ":19000," ..
                         helpers.get_proxy_ip(false) .. ":19001," ..
