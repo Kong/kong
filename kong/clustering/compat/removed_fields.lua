@@ -146,6 +146,9 @@ return {
       "redis_server_name",
       "redis_username"
     },
+    zipkin = {
+      "local_service_name",
+    },
 
     -- Enterprise plugins
     forward_proxy = {

@@ -51,6 +51,7 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "tags_header",
+        "local_service_name",
       },
       redis = {
         "connect_timeout",
@@ -157,6 +158,7 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "tags_header",
+        "local_service_name",
       },
       syslog = {
         "facility",
@@ -262,6 +264,7 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "tags_header",
+        "local_service_name",
       },
       acme = {
         "preferred_chain",
@@ -442,6 +445,9 @@ describe("kong.clustering.control_plane", function()
         "redis_server_name",
         "redis_username"
       },
+      zipkin = {
+        "local_service_name",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -527,6 +533,9 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
         "redis_username"
+      },
+      zipkin = {
+        "local_service_name",
       },
     }, cp._get_removed_fields(2004001002))
 
@@ -614,6 +623,9 @@ describe("kong.clustering.control_plane", function()
         "redis_server_name",
         "redis_username"
       },
+      zipkin = {
+        "local_service_name",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -642,6 +654,9 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
         "redis_username"
+      },
+      zipkin = {
+        "local_service_name",
       },
     }, cp._get_removed_fields(2006000000))
 
@@ -719,7 +734,13 @@ describe("kong.clustering.control_plane", function()
               },
             }
           }
-      } }
+        }, {
+          name = "zipkin",
+          config = {
+            local_service_name = "ok",
+            header_type = "ignore"
+          }
+        }, }
       }
     }
     assert.same({ {
@@ -756,6 +777,11 @@ describe("kong.clustering.control_plane", function()
     }, {
       name = "datadog",
       config = { metrics={}, }
+    }, {
+      name = "zipkin",
+      config = {
+        header_type = "preserve"
+      }
     } }, test_with(payload, "2.3.0").config_table.plugins)
 
     assert.same({ {
@@ -792,6 +818,11 @@ describe("kong.clustering.control_plane", function()
     }, {
       name = "datadog",
       config = { metrics={}, }
+    }, {
+      name = "zipkin",
+      config = {
+        header_type = "preserve"
+      }
     } }, test_with(payload, "2.4.0").config_table.plugins)
 
     assert.same({ {
@@ -828,6 +859,11 @@ describe("kong.clustering.control_plane", function()
     }, {
       name = "datadog",
       config = { metrics={}, }
+    }, {
+      name = "zipkin",
+      config = {
+        header_type = "preserve"
+      }
     } }, test_with(payload, "2.5.0").config_table.plugins)
 
     assert.same({ {
@@ -864,6 +900,11 @@ describe("kong.clustering.control_plane", function()
     }, {
       name = "datadog",
       config = { metrics={}, }
+    }, {
+      name = "zipkin",
+      config = {
+        header_type = "preserve"
+      }
     } }, test_with(payload, "2.6.0").config_table.plugins)
 
     -- nothing should be removed

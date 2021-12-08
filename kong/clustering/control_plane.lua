@@ -281,12 +281,22 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
                 for i, m in ipairs(config["metrics"]) do
                   if m["stat_type"] == "distribution" then
                     ngx_log(ngx_WARN, _log_prefix, "datadog plugin for Kong Gateway v" .. KONG_VERSION ..
-                            "contains metric '" .. m["name"] .. "' of type 'distribution' which is incompatible with",
-                            "dataplane version " .. dp_version .. " and will be ignored.", log_suffix)
+                            " contains metric '" .. m["name"] .. "' of type 'distribution' which is incompatible with",
+                            " dataplane version " .. dp_version .. " and will be ignored.", log_suffix)
                     config["metrics"][i] = nil
                     has_update = true
                   end
                 end
+              end
+            end
+
+            if t["name"] == "zipkin" then
+              if config["header_type"] and config["header_type"] == "ignore" then
+                ngx_log(ngx_WARN, _log_prefix, "zipkin plugin for Kong Gateway v" .. KONG_VERSION ..
+                        " contains header_type=ignore, which is incompatible with",
+                        " dataplane version " .. dp_version .. " and will be replaced with 'header_type=preserve'.", log_suffix)
+                config["header_type"] = "preserve"
+                has_update = true
               end
             end
           end
