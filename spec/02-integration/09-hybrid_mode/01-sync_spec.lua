@@ -225,21 +225,13 @@ for _, strategy in helpers.each_strategy() do
 
       it("local cached config file has correct permission", function()
         local handle = io.popen("ls -l servroot2/config.cache.json.gz")
-
-        --- XXX EE
-        local ee = require "kong.enterprise_edition.clustering.data_plane"
-        if ee then
-          handle = io.popen("ls -l servroot2/.config.cache.jwt")
-        end
-        --- EE
-
         local result = handle:read("*a")
         handle:close()
 
         assert.matches("-rw-------", result, nil, true)
       end)
 
-      it('does not sync services where enabled == false', function() 
+      it('does not sync services where enabled == false', function()
         local admin_client = helpers.admin_client(10000)
         finally(function()
           admin_client:close()
@@ -364,13 +356,13 @@ for _, strategy in helpers.each_strategy() do
         ["CP configured plugins list matches DP enabled plugins major version (older dp plugin)"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
           plugins_list = {
-            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".0.0" }
+            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. [[.0.0]] }
           }
         },
         ["CP has configured plugin with older patch version than in DP enabled plugins"] = {
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
           plugins_list = {
-            {  name = "key-auth", version = plugins_map["key-auth"]:match("(%d+.%d+)") .. ".1000" }
+            {  name = "key-auth", version = plugins_map["key-auth"]:match("(%d+.%d+)") .. [[.1000]] }
           }
         },
         ["CP and DP minor version mismatches (older dp)"] = {
@@ -505,7 +497,7 @@ for _, strategy in helpers.each_strategy() do
           dp_version = string.format("%d.%d.%d", MAJOR, MINOR, PATCH),
           expected = CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE,
           plugins_list = {
-            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. ".1000.0" }
+            {  name = "key-auth", version = tonumber(plugins_map["key-auth"]:match("(%d+)")) .. [[.1000.0]] }
           }
         },
         ["CP and DP major version mismatches"] = {
@@ -610,6 +602,135 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("sync works", function()
+      it("pushes first change asap and following changes in a batch", function()
+        local admin_client = helpers.admin_client(10000)
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+        finally(function()
+          admin_client:close()
+          proxy_client:close()
+        end)
+
+        local res = admin_client:put("/routes/1", {
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            paths = { "/1" },
+          },
+        })
+
+        assert.res_status(200, res)
+
+        helpers.wait_until(function()
+          local proxy_client = helpers.http_client("127.0.0.1", 9002)
+          -- serviceless route should return 503 instead of 404
+          res = proxy_client:get("/1")
+          proxy_client:close()
+          if res and res.status == 503 then
+            return true
+          end
+        end, 2)
+
+        for i = 2, 5 do
+          res = admin_client:put("/routes/" .. i, {
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              paths = { "/" .. i },
+            },
+          })
+
+          assert.res_status(200, res)
+        end
+
+        helpers.wait_until(function()
+          local proxy_client = helpers.http_client("127.0.0.1", 9002)
+          -- serviceless route should return 503 instead of 404
+          res = proxy_client:get("/2")
+          proxy_client:close()
+          if res and res.status == 503 then
+            return true
+          end
+        end, 5)
+
+        for i = 5, 3, -1 do
+          res = proxy_client:get("/" .. i)
+          assert.res_status(503, res)
+        end
+
+        for i = 1, 5 do
+          local res = admin_client:delete("/routes/" .. i)
+          assert.res_status(204, res)
+        end
+
+        helpers.wait_until(function()
+          local proxy_client = helpers.http_client("127.0.0.1", 9002)
+          -- deleted route should return 404
+          res = proxy_client:get("/1")
+          proxy_client:close()
+          if res and res.status == 404 then
+            return true
+          end
+        end, 5)
+
+        for i = 5, 2, -1 do
+          res = proxy_client:get("/" .. i)
+          assert.res_status(404, res)
+        end
+      end)
+    end)
+  end)
+
+  describe("CP/DP sync works with #" .. strategy .. " backend using encrypted DP cache", function()
+    lazy_setup(function()
+      helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "upstreams",
+        "targets",
+        "certificates",
+        "clustering_data_planes",
+      }) -- runs migrations
+
+      assert(helpers.start_kong({
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        database = strategy,
+        db_update_frequency = 3,
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      assert(helpers.start_kong({
+        role = "data_plane",
+        database = "off",
+        prefix = "servroot2",
+        data_plane_config_cache_path = "servroot2/.config.cache.jwt",
+        data_plane_config_cache_mode = "encrypted",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_control_plane = "127.0.0.1:9005",
+        proxy_listen = "0.0.0.0:9002",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong("servroot2")
+      helpers.stop_kong()
+    end)
+
+    describe("sync works", function()
+      it("local cached config file has correct permission", function()
+        local handle = io.popen("ls -l servroot2/.config.cache.jwt")
+        local result = handle:read("*a")
+        handle:close()
+
+        assert.matches("-rw-------", result, nil, true)
+      end)
+
       it("pushes first change asap and following changes in a batch", function()
         local admin_client = helpers.admin_client(10000)
         local proxy_client = helpers.http_client("127.0.0.1", 9002)

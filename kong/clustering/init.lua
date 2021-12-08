@@ -130,7 +130,7 @@ function _M.new(conf)
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
 
   --- XXX EE: needed for encrypting config cache at the rest
-  if conf.role == "data_plane" then
+  if conf.role == "data_plane" and conf.data_plane_config_cache_mode == "encrypted" then
     self.cert_public = cert:get_pubkey()
     self.cert_private = key
   end

@@ -40,6 +40,9 @@ local deflate_gzip = utils.deflate_gzip
 
 local KONG_VERSION = kong.version
 local CONFIG_CACHE = ngx.config.prefix() .. "/config.cache.json.gz"
+--- XXX EE
+local CONFIG_CACHE_ENCRYPTED = ngx.config.prefix() .. "/.config.cache.jwt"
+--- EE
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
@@ -65,6 +68,19 @@ function _M.new(parent)
     declarative_config = declarative.new_config(parent.conf),
   }
 
+  --- XXX EE
+  local config_cache_path = parent.conf.data_plane_config_cache_path
+  local config_cache_mode = parent.conf.data_plane_config_cache_mode
+  if config_cache_mode == "unencrypted" then
+    self.config_cache = config_cache_path or CONFIG_CACHE
+
+  elseif config_cache_mode == "encrypted" then
+    self.config_cache = config_cache_path or CONFIG_CACHE_ENCRYPTED
+    self.encode_config = ee.encode_config
+    self.decode_config = ee.decode_config
+  end
+  --- EE
+
   return setmetatable(self, {
     __index = function(tab, key)
       return _M[key] or parent[key]
@@ -81,16 +97,6 @@ end
 function _M:decode_config(config)
   return inflate_gzip(config)
 end
-
---- XXX EE
-if ee then
-  -- a better location when encrypting config cache at the rest
-  -- TODO: should we store it in tmp?
-  CONFIG_CACHE = ngx.config.prefix() .. "/.config.cache.jwt"
-  _M.encode_config = ee.encode_config
-  _M.decode_config = ee.decode_config
-end
---- EE
 
 
 function _M:update_config(config_table, config_hash, update_cache)
@@ -120,9 +126,9 @@ function _M:update_config(config_table, config_hash, update_cache)
     return nil, err
   end
 
-  if update_cache then
+  if update_cache and self.config_cache then
     -- local persistence only after load finishes without error
-    local f, err = io_open(CONFIG_CACHE, "w")
+    local f, err = io_open(self.config_cache, "w")
     if not f then
       ngx_log(ngx_ERR, _log_prefix, "unable to open config cache file: ", err)
 
@@ -145,8 +151,8 @@ end
 function _M:init_worker()
   -- ROLE = "data_plane"
 
-  if ngx.worker.id() == 0 then
-    local f = io_open(CONFIG_CACHE, "r")
+  if ngx.worker.id() == 0 and self.config_cache then
+    local f = io_open(self.config_cache, "r")
     if f then
       local config, err = f:read("*a")
       if not config then
@@ -176,12 +182,12 @@ function _M:init_worker()
         end
       end
 
-    else
+    elseif self.config_cache then
       -- CONFIG_CACHE does not exist, pre create one with 0600 permission
-      local fd = ffi.C.open(CONFIG_CACHE, bit.bor(system_constants.O_RDONLY(),
-                                                  system_constants.O_CREAT()),
-                                          bit.bor(system_constants.S_IRUSR(),
-                                                  system_constants.S_IWUSR()))
+      local fd = ffi.C.open(self.config_cache, bit.bor(system_constants.O_RDONLY(),
+                                                       system_constants.O_CREAT()),
+                                               bit.bor(system_constants.S_IRUSR(),
+                                                       system_constants.S_IWUSR()))
       if fd == -1 then
         ngx_log(ngx_ERR, _log_prefix, "unable to pre-create cached config file: ",
                 ffi.string(ffi.C.strerror(ffi.errno())))
