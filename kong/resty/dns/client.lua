@@ -832,6 +832,8 @@ local function syncQuery(qname, r_opts, try_list, count)
     access = true,
     content = true,
     timer = true,
+    ssl_cert = true,
+    ssl_session_fetch = true,
   }
 
   local ngx_phase = get_phase()
