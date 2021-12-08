@@ -61,6 +61,12 @@ ENABLE_CORS=(
 
 ENABLE_DATADOG=(
   --data "name=datadog"
+  --data "config.service_name_tag=ok"
+  --data "config.status_tag=ok"
+  --data "config.consumer_tag=ok"
+  --data "config.metrics[1].name=request_count"
+  --data "config.metrics[1].stat_type=distribution"
+  --data "config.metrics[1].sample_rate=1"
 )
 
 ENABLE_FILE_LOG=(
@@ -90,6 +96,8 @@ ENABLE_HTTP_LOG=(
 ENABLE_IP_RESTRICTION=(
   --data "name=ip-restriction"
   --data "config.allow=1.2.3.4"
+  --data "config.status=1"
+  --data "config.message=ok"
 )
 
 ENABLE_JWT=(
@@ -141,6 +149,10 @@ ENABLE_PROXY_CACHE=(
 ENABLE_RATE_LIMITING=(
   --data "name=rate-limiting"
   --data "config.hour=1"
+  --data "config.redis_ssl=true"
+  --data "config.redis_ssl_verify=true"
+  --data "config.redis_server_name=test.com"
+  --data "config.redis_username=alan"
 )
 
 ENABLE_REQUEST_SIZE_LIMITING=(
@@ -190,6 +202,8 @@ ENABLE_UDP_LOG=(
 
 ENABLE_ZIPKIN=(
   --data "name=zipkin"
+  --data "config.local_service_name=ok"
+  --data "config.header_type=ignore"
 )
 
 # EE plugin configurations
