@@ -136,6 +136,12 @@ return {
       "status_tag",
       "consumer_tag",
     },
+
+    ip_restriction = {
+      "status",
+      "message",
+    },
+
     -- Enterprise plugins
     forward_proxy = {
       "auth_username",

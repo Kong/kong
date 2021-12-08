@@ -132,6 +132,10 @@ describe("kong.clustering.control_plane", function()
         "status_tag",
         "consumer_tag",
       },
+      ip_restriction = {
+        "status",
+        "message",
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -223,6 +227,10 @@ describe("kong.clustering.control_plane", function()
         "service_name_tag",
         "status_tag",
         "consumer_tag",
+      },
+      ip_restriction = {
+        "status",
+        "message",
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -316,6 +324,10 @@ describe("kong.clustering.control_plane", function()
         "status_tag",
         "consumer_tag",
       },
+      ip_restriction = {
+        "status",
+        "message",
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -402,6 +414,10 @@ describe("kong.clustering.control_plane", function()
         "status_tag",
         "consumer_tag",
       },
+      ip_restriction = {
+        "status",
+        "message",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -477,6 +493,10 @@ describe("kong.clustering.control_plane", function()
         "service_name_tag",
         "status_tag",
         "consumer_tag",
+      },
+      ip_restriction = {
+        "status",
+        "message",
       },
     }, cp._get_removed_fields(2004001002))
 
@@ -554,6 +574,10 @@ describe("kong.clustering.control_plane", function()
         "status_tag",
         "consumer_tag",
       },
+      ip_restriction = {
+        "status",
+        "message",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -572,6 +596,10 @@ describe("kong.clustering.control_plane", function()
         "service_name_tag",
         "status_tag",
         "consumer_tag",
+      },
+      ip_restriction = {
+        "status",
+        "message",
       },
     }, cp._get_removed_fields(2006000000))
 
