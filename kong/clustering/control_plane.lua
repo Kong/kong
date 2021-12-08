@@ -255,6 +255,55 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
     -- XXX EE: this should be moved in its own file (compat/config.lua). With a table
     -- similar to compat/remove_fields, each plugin could register a function to handle
     -- its compatibility issues.
+    if dp_version_num < 2007000000 --[[ 2.7.0.0 ]] then
+      if config_table["services"] then
+        for _, t in ipairs(config_table["services"]) do
+          if t["enabled"] then
+            ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                    " contains configuration 'services.enabled'",
+                    " which is incompatible with dataplane version " .. dp_version .. " and will",
+                    " be removed.", log_suffix)
+            t["enabled"] = nil
+            has_update = true
+          end
+        end
+      end
+
+      if config_table["plugins"] then
+        for _, t in ipairs(config_table["plugins"]) do
+          local config = t and t["config"]
+          if config then
+            -- TODO: Properly implemented nested field removal [datadog plugin]
+            --       Note: This is not as straightforward due to field element
+            --             removal implementation; this needs to be refactored
+            if t["name"] == "datadog" then
+              if config["metrics"] then
+                for i, m in ipairs(config["metrics"]) do
+                  if m["stat_type"] == "distribution" then
+                    ngx_log(ngx_WARN, _log_prefix, "datadog plugin for Kong Gateway v" .. KONG_VERSION ..
+                            " contains metric '" .. m["name"] .. "' of type 'distribution' which is incompatible with",
+                            " dataplane version " .. dp_version .. " and will be ignored.", log_suffix)
+                    config["metrics"][i] = nil
+                    has_update = true
+                  end
+                end
+              end
+            end
+
+            if t["name"] == "zipkin" then
+              if config["header_type"] and config["header_type"] == "ignore" then
+                ngx_log(ngx_WARN, _log_prefix, "zipkin plugin for Kong Gateway v" .. KONG_VERSION ..
+                        " contains header_type=ignore, which is incompatible with",
+                        " dataplane version " .. dp_version .. " and will be replaced with 'header_type=preserve'.", log_suffix)
+                config["header_type"] = "preserve"
+                has_update = true
+              end
+            end
+          end
+        end
+      end
+    end
+
     if dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
       if config_table["consumers"] then
         for _, t in ipairs(config_table["consumers"]) do

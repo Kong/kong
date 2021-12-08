@@ -1,4 +1,5 @@
 ## 1.6.0
+
 - feat(consumer groups) support consumer group configuration [FT-1881](https://konghq.atlassian.net/browse/FT-1881)
 
 ## 1.5.0

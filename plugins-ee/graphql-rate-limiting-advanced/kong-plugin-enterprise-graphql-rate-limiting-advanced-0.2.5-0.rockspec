@@ -1,5 +1,5 @@
 package = "kong-plugin-enterprise-graphql-rate-limiting-advanced"
-version = "0.2.4-0"
+version = "0.2.5-0"
 source = {
    url = "git+https://github.com/Kong/kong-plugin-enterprise-gql-rate-limiting.git"
 }

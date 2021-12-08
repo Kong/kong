@@ -1,9 +1,9 @@
 package = "kong-plugin-request-validator"
-version = "1.1.6-1"
+version = "1.2.0-1"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-enterprise-request-validator",
-  tag = "1.1.6"
+  tag = "1.2.0"
 }
 
 supported_platforms = {"linux", "macosx"}

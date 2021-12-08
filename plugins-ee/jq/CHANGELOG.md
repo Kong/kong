@@ -1,3 +1,3 @@
-## Unreleased
+## 0.0.1
 
-- Demo plugins merged into a single complete `jq` plugin.
+- Initial release

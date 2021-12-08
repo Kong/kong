@@ -65,6 +65,7 @@ describe(JWKS_URI, function()
       ES384 = true,
       ES512 = true,
       EdDSA = true,
+      RS384 = true,
     }, algs)
   end)
 

@@ -1,3 +1,7 @@
+## 0.2.5
+
+- fix(*) fix worker initialization (FTI-2933)
+
 ## 0.2.4
 
 - fix(*) BasePlugin inheritance removal (FT-1701)

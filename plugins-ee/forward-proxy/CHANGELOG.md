@@ -1,11 +1,11 @@
-## 1.0.6
+## 1.1.0
 
+* Added option for proxy authentication
 * refactor(forward-proxy) use _SERVER_TOKENS from meta
 * fix(forward-proxy) always call set_keepalive
 * fix(forward-proxy) re-implement response proxying
 * fix(forward-proxy) use newer, simpler http connect syntax
 * fix(handler) do not set Host header if var.upstream_host is an empty string
-* added option for proxy authentication
 
 ## 1.0.5
 

@@ -127,4 +127,40 @@ return {
       "path",
     },
   },
+
+  -- Any dataplane older than 2.7.0
+  [2006999999] = {
+    -- OSS
+    datadog = {
+      "service_name_tag",
+      "status_tag",
+      "consumer_tag",
+    },
+    ip_restriction = {
+      "status",
+      "message",
+    },
+    rate_limiting = {
+      "redis_ssl",
+      "redis_ssl_verify",
+      "redis_server_name",
+      "redis_username"
+    },
+    zipkin = {
+      "local_service_name",
+    },
+
+    -- Enterprise plugins
+    forward_proxy = {
+      "auth_username",
+      "auth_password",
+    },
+    mocking = {
+      "random_examples",
+    },
+    rate_limiting_advanced = {
+      "enforce_consumer_groups",
+      "consumer_groups",
+    },
+  },
 }

@@ -12,7 +12,7 @@ local match       = string.match
 local ngx         = ngx
 local random      = math.random
 local plugin = {
-  VERSION  = "0.2.2",
+  VERSION  = "0.3.0",
   -- Mocking plugin should execute after all other plugins
   PRIORITY = -1,
 }

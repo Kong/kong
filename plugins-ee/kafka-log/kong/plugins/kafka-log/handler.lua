@@ -14,7 +14,7 @@ local cjson_encode = require("cjson").encode
 local KafkaLogHandler = {}
 
 KafkaLogHandler.PRIORITY = 5
-KafkaLogHandler.VERSION = "0.2.0"
+KafkaLogHandler.VERSION = "0.3.0"
 
 --- Publishes a message to Kafka.
 -- Must run in the context of `ngx.timer.at`.

@@ -51,6 +51,7 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "tags_header",
+        "local_service_name",
       },
       redis = {
         "connect_timeout",
@@ -117,6 +118,30 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
+      },
+      forward_proxy = {
+        "auth_username",
+        "auth_password"
+      },
+      mocking = {
+        "random_examples",
+      },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
+      },
+      ip_restriction = {
+        "status",
+        "message",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
       },
     }, cp._get_removed_fields(2003000000))
 
@@ -133,6 +158,7 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "tags_header",
+        "local_service_name",
       },
       syslog = {
         "facility",
@@ -195,6 +221,30 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
+      },
+      forward_proxy = {
+        "auth_username",
+        "auth_password"
+      },
+      mocking = {
+        "random_examples",
+      },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
+      },
+      ip_restriction = {
+        "status",
+        "message",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -214,6 +264,7 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "tags_header",
+        "local_service_name",
       },
       acme = {
         "preferred_chain",
@@ -273,6 +324,30 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
+      },
+      forward_proxy = {
+        "auth_username",
+        "auth_password"
+      },
+      mocking = {
+        "random_examples",
+      },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
+      },
+      ip_restriction = {
+        "status",
+        "message",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
       },
     }, cp._get_removed_fields(2003004000))
 
@@ -345,6 +420,33 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
+      },
+      forward_proxy = {
+        "auth_username",
+        "auth_password"
+      },
+      mocking = {
+        "random_examples",
+      },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
+      },
+      ip_restriction = {
+        "status",
+        "message",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
+      },
+      zipkin = {
+        "local_service_name",
       },
     }, cp._get_removed_fields(2004001000))
 
@@ -407,6 +509,33 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
+      },
+      forward_proxy = {
+        "auth_username",
+        "auth_password"
+      },
+      mocking = {
+        "random_examples",
+      },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
+      },
+      ip_restriction = {
+        "status",
+        "message",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
+      },
+      zipkin = {
+        "local_service_name",
       },
     }, cp._get_removed_fields(2004001002))
 
@@ -469,10 +598,69 @@ describe("kong.clustering.control_plane", function()
       },
       rate_limiting_advanced = {
         "path",
+        "enforce_consumer_groups",
+        "consumer_groups",
+      },
+      forward_proxy = {
+        "auth_username",
+        "auth_password"
+      },
+      mocking = {
+        "random_examples",
+      },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
+      },
+      ip_restriction = {
+        "status",
+        "message",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
+      },
+      zipkin = {
+        "local_service_name",
       },
     }, cp._get_removed_fields(2005000000))
 
-    assert.same(nil, cp._get_removed_fields(2006000000))
+    assert.same({
+      forward_proxy = {
+        "auth_username",
+        "auth_password"
+      },
+      mocking = {
+        "random_examples",
+      },
+      rate_limiting_advanced = {
+        "enforce_consumer_groups",
+        "consumer_groups",
+      },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
+      },
+      ip_restriction = {
+        "status",
+        "message",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
+      },
+      zipkin = {
+        "local_service_name",
+      },
+    }, cp._get_removed_fields(2006000000))
+
+    assert.same(nil, cp._get_removed_fields(2007000000))
   end)
 
   it("update or remove unknown fields", function()
@@ -533,7 +721,26 @@ describe("kong.clustering.control_plane", function()
             strategy = "local",
             path = "/test",
           }
-        } }
+        }, {
+          name = "datadog",
+          config = {
+            service_name_tag= "ok",
+            status_tag= "ok",
+            consumer_tag = "ok",
+            metrics = {
+              {
+                name = "request_count",
+                stat_type = "distribution",
+              },
+            }
+          }
+        }, {
+          name = "zipkin",
+          config = {
+            local_service_name = "ok",
+            header_type = "ignore"
+          }
+        }, }
       }
     }
     assert.same({ {
@@ -566,6 +773,14 @@ describe("kong.clustering.control_plane", function()
         window_size = 30,
         strategy = "redis",
         sync_rate = -1,
+      }
+    }, {
+      name = "datadog",
+      config = { metrics={}, }
+    }, {
+      name = "zipkin",
+      config = {
+        header_type = "preserve"
       }
     } }, test_with(payload, "2.3.0").config_table.plugins)
 
@@ -600,6 +815,14 @@ describe("kong.clustering.control_plane", function()
         strategy = "redis",
         sync_rate = -1,
       }
+    }, {
+      name = "datadog",
+      config = { metrics={}, }
+    }, {
+      name = "zipkin",
+      config = {
+        header_type = "preserve"
+      }
     } }, test_with(payload, "2.4.0").config_table.plugins)
 
     assert.same({ {
@@ -633,10 +856,59 @@ describe("kong.clustering.control_plane", function()
         strategy = "redis",
         sync_rate = -1,
       }
+    }, {
+      name = "datadog",
+      config = { metrics={}, }
+    }, {
+      name = "zipkin",
+      config = {
+        header_type = "preserve"
+      }
     } }, test_with(payload, "2.5.0").config_table.plugins)
 
+    assert.same({ {
+      name = "prometheus",
+      config = {
+        per_consumer = true,
+      },
+    }, {
+      name = "syslog",
+      config = {
+        custom_fields_by_lua = true,
+        facility = "user",
+      }
+    }, {
+      name = "redis-advanced",
+      config = {
+        redis = {
+          "connect_timeout",
+          "keepalive_backlog",
+          "keepalive_pool_size",
+          "read_timeout",
+          "send_timeout",
+        },
+      }
+    }, {
+      name = "rate-limiting-advanced",
+      config = {
+        limit = 5,
+        identifier = "path",
+        window_size = 30,
+        strategy = "local",
+        path = "/test",
+      }
+    }, {
+      name = "datadog",
+      config = { metrics={}, }
+    }, {
+      name = "zipkin",
+      config = {
+        header_type = "preserve"
+      }
+    } }, test_with(payload, "2.6.0").config_table.plugins)
+
     -- nothing should be removed
-    assert.same(payload.config_table.plugins, test_with(payload, "2.6.0").config_table.plugins)
+    assert.same(payload.config_table.plugins, test_with(payload, "2.7.0").config_table.plugins)
 
     -- test that the RLA sync_rate is updated
     payload = {
