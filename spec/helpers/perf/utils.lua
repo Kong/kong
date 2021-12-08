@@ -12,7 +12,7 @@ end
 --- Spawns a child process and get its exit code and outputs
 -- @param opts.stdin string the stdin buffer
 -- @param opts.logger function(lvl, _, line) stdout+stderr writer; if not defined, whole
--- stdoud and stderr is returned
+-- stdout and stderr is returned
 -- @param opts.stop_signal function return true to abort execution
 -- @return stdout+stderr, err if opts.logger not set; bool+err if opts.logger set
 local function execute(cmd, opts)
