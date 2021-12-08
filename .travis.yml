@@ -156,10 +156,10 @@ jobs:
       if: type = cron
       script:
       - make test-jq
-    - name: jwt-signer
-      if: type = cron
-      script:
-      - make test-jwt-signer
+    # - name: jwt-signer
+    #   if: type = cron
+    #   script:
+    #   - make test-jwt-signer
     - name: kafka-log
       if: type = cron
       script:
