@@ -508,7 +508,9 @@ function install_enterprise_plugins() {
       make install-plugins-ee
 
       for plugin_ee in ./plugins-ee/*; do
-        if [ -d $plugin_ee ]; then
+        if [ -d "$plugin_ee" ]; then
+          local plugin_name
+          plugin_name="$(basename "$plugin_ee")"
           ENTERPRISE_PLUGIN_NAMES+=("$plugin_name")
         fi
       done
