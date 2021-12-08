@@ -77,7 +77,8 @@ return {
           { groups = {
               type = "array",
               elements = { type = "string" }
-          }}
+          }},
+          { override_header =  typedefs.header_name },
         }
     }}
   },

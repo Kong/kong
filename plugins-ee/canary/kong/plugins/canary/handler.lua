@@ -164,6 +164,16 @@ local function upstream_healthy(host, port)
 end
 
 function Canary:access(conf)
+
+  if conf.override_header and kong.request.get_header(conf.override_header) == "true" then
+    -- use the canary if override is true
+    switch_target(conf.upstream_host, conf.upstream_port, conf.upstream_uri)
+    return
+  elseif conf.override_header and kong.request.get_header(conf.override_header) == "false" then
+    -- use original target if override is false
+    return
+  end
+
   if conf.upstream_fallback and not upstream_healthy(conf.upstream_host,
                                                      conf.upstream_port) then
     ngx.log(NGX_DEBUG, log_prefix, "canary upstream is unhealthy, not switching to it")
@@ -181,6 +191,7 @@ function Canary:access(conf)
   end
 
   exec()
+
 end
 
 

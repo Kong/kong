@@ -744,6 +744,139 @@ for _, strategy in strategies() do
         json = assert.response(res).has.jsonbody()
         assert.are.equal("canary3.com", json.vars.host)
       end)
+
+      it("test 'override_header' is configured and request header value == false", function()
+        add_canary(route1.id, {
+          upstream_uri = "/requests/path2",
+          percentage = 50,
+          steps = 4,
+          hash = "none",
+          override_header = "X-Canary-Override",
+        })
+        -- only use 1 consumer, which should still randomly end up in all targets
+        local apikey = generate_consumers(admin_client, {0}, 4)[0]
+        local count = {
+          ["/requests/path2"] = 0,
+          ["/requests"] = 0,
+        }
+        local timeout = ngx.now() + 30
+        while count["/requests"] < 4 do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey,
+              ["X-Canary-Override"] = "false",
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = count[json.vars.request_uri] + 1
+          assert(ngx.now() < timeout, "timeout")
+        end
+        assert(count["/requests"] == 4 )
+        assert(count["/requests/path2"] == 0 )
+      end)
+
+      it("test 'override_header' is configured and request header value == true", function()
+        add_canary(route1.id, {
+          upstream_uri = "/requests/path2",
+          percentage = 50,
+          steps = 4,
+          hash = "none",
+          override_header = "X-Canary-Override",
+        })
+        -- only use 1 consumer, which should still randomly end up in all targets
+        local apikey = generate_consumers(admin_client, {0}, 4)[0]
+        local count = {
+          ["/requests/path2"] = 0,
+          ["/requests"] = 0,
+        }
+        local timeout = ngx.now() + 30
+        while count["/requests/path2"] < 4 do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey,
+              ["X-Canary-Override"] = "true",
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = count[json.vars.request_uri] + 1
+          assert(ngx.now() < timeout, "timeout")
+        end
+        assert(count["/requests"] == 0 )
+        assert(count["/requests/path2"] == 4 )
+      end)
+
+      it("test 'override_header' is configured and header in request is neither 'true' nor 'false'", function()
+        add_canary(route1.id, {
+          upstream_uri = "/requests/path2",
+          percentage = 50,
+          steps = 4,
+          hash = "none",
+          override_header = "X-Canary-Override",
+        })
+        -- only use 1 consumer, which should still randomly end up in all targets
+        local apikey = generate_consumers(admin_client, {0}, 4)[0]
+        local count = {
+          ["/requests/path2"] = 0,
+          ["/requests"] = 0,
+        }
+        local timeout = ngx.now() + 30
+        while count["/requests/path2"] == 0 or
+          count["/requests"] == 0 do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey,
+              ["X-Canary-Override"] = "foo",
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = count[json.vars.request_uri] + 1
+          assert(ngx.now() < timeout, "timeout")
+        end
+      end)
+
+      it("test 'override_header' is configured but header is not provided in request", function()
+        add_canary(route1.id, {
+          upstream_uri = "/requests/path2",
+          percentage = 50,
+          steps = 4,
+          hash = "none",
+          override_header = "X-Canary-Override",
+        })
+        -- only use 1 consumer, which should still randomly end up in all targets
+        local apikey = generate_consumers(admin_client, {0}, 4)[0]
+        local count = {
+          ["/requests/path2"] = 0,
+          ["/requests"] = 0,
+        }
+        local timeout = ngx.now() + 30
+        while count["/requests/path2"] == 0 or
+          count["/requests"] == 0 do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey,
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = count[json.vars.request_uri] + 1
+          assert(ngx.now() < timeout, "timeout")
+        end
+      end)
     end)
     describe("Canary healthchecks", function()
       local route5, canary_server
