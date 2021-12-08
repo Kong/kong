@@ -130,6 +130,12 @@ return {
 
   -- Any dataplane older than 2.7.0
   [2006999999] = {
+    -- OSS
+    datadog = {
+      "service_name_tag",
+      "status_tag",
+      "consumer_tag",
+    },
     -- Enterprise plugins
     forward_proxy = {
       "auth_username",

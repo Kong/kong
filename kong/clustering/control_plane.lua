@@ -268,6 +268,30 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
           end
         end
       end
+
+      if config_table["plugins"] then
+        for _, t in ipairs(config_table["plugins"]) do
+          local config = t and t["config"]
+          if config then
+            -- TODO: Properly implemented nested field removal [datadog plugin]
+            --       Note: This is not as straightforward due to field element
+            --             removal implementation; this needs to be refactored
+            if t["name"] == "datadog" then
+              if config["metrics"] then
+                for i, m in ipairs(config["metrics"]) do
+                  if m["stat_type"] == "distribution" then
+                    ngx_log(ngx_WARN, _log_prefix, "datadog plugin for Kong Gateway v" .. KONG_VERSION ..
+                            "contains metric '" .. m["name"] .. "' of type 'distribution' which is incompatible with",
+                            "dataplane version " .. dp_version .. " and will be ignored.", log_suffix)
+                    config["metrics"][i] = nil
+                    has_update = true
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
     end
 
     if dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then

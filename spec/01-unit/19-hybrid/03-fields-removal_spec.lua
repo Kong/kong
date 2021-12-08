@@ -127,6 +127,11 @@ describe("kong.clustering.control_plane", function()
       mocking = {
         "random_examples",
       },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -213,6 +218,11 @@ describe("kong.clustering.control_plane", function()
       },
       mocking = {
         "random_examples",
+      },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -301,6 +311,11 @@ describe("kong.clustering.control_plane", function()
       mocking = {
         "random_examples",
       },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -382,6 +397,11 @@ describe("kong.clustering.control_plane", function()
       mocking = {
         "random_examples",
       },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -452,6 +472,11 @@ describe("kong.clustering.control_plane", function()
       },
       mocking = {
         "random_examples",
+      },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
       },
     }, cp._get_removed_fields(2004001002))
 
@@ -524,6 +549,11 @@ describe("kong.clustering.control_plane", function()
       mocking = {
         "random_examples",
       },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -537,6 +567,11 @@ describe("kong.clustering.control_plane", function()
       rate_limiting_advanced = {
         "enforce_consumer_groups",
         "consumer_groups",
+      },
+      datadog = {
+        "service_name_tag",
+        "status_tag",
+        "consumer_tag",
       },
     }, cp._get_removed_fields(2006000000))
 
@@ -601,7 +636,20 @@ describe("kong.clustering.control_plane", function()
             strategy = "local",
             path = "/test",
           }
-        } }
+        }, {
+          name = "datadog",
+          config = {
+            service_name_tag= "ok",
+            status_tag= "ok",
+            consumer_tag = "ok",
+            metrics = {
+              {
+                name = "request_count",
+                stat_type = "distribution",
+              },
+            }
+          }
+      } }
       }
     }
     assert.same({ {
@@ -635,6 +683,9 @@ describe("kong.clustering.control_plane", function()
         strategy = "redis",
         sync_rate = -1,
       }
+    }, {
+      name = "datadog",
+      config = { metrics={}, }
     } }, test_with(payload, "2.3.0").config_table.plugins)
 
     assert.same({ {
@@ -668,6 +719,9 @@ describe("kong.clustering.control_plane", function()
         strategy = "redis",
         sync_rate = -1,
       }
+    }, {
+      name = "datadog",
+      config = { metrics={}, }
     } }, test_with(payload, "2.4.0").config_table.plugins)
 
     assert.same({ {
@@ -701,10 +755,49 @@ describe("kong.clustering.control_plane", function()
         strategy = "redis",
         sync_rate = -1,
       }
+    }, {
+      name = "datadog",
+      config = { metrics={}, }
     } }, test_with(payload, "2.5.0").config_table.plugins)
 
+    assert.same({ {
+      name = "prometheus",
+      config = {
+        per_consumer = true,
+      },
+    }, {
+      name = "syslog",
+      config = {
+        custom_fields_by_lua = true,
+        facility = "user",
+      }
+    }, {
+      name = "redis-advanced",
+      config = {
+        redis = {
+          "connect_timeout",
+          "keepalive_backlog",
+          "keepalive_pool_size",
+          "read_timeout",
+          "send_timeout",
+        },
+      }
+    }, {
+      name = "rate-limiting-advanced",
+      config = {
+        limit = 5,
+        identifier = "path",
+        window_size = 30,
+        strategy = "local",
+        path = "/test",
+      }
+    }, {
+      name = "datadog",
+      config = { metrics={}, }
+    } }, test_with(payload, "2.6.0").config_table.plugins)
+
     -- nothing should be removed
-    assert.same(payload.config_table.plugins, test_with(payload, "2.6.0").config_table.plugins)
+    assert.same(payload.config_table.plugins, test_with(payload, "2.7.0").config_table.plugins)
 
     -- test that the RLA sync_rate is updated
     payload = {
