@@ -9,7 +9,8 @@ local lfs = require("lfs")
 local header = [[
 ---
 # Generated via autodoc/upgrading/generate.lua in the kong/kong repo
-title: Upgrade guide
+title: Upgrade Kong Gateway OSS
+badge: oss
 ---
 
 This document guides you through the process of upgrading {{site.ce_product_name}} to the **latest version**.

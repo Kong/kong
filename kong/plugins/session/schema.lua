@@ -2,7 +2,6 @@ local typedefs = require "kong.db.schema.typedefs"
 local Schema = require "kong.db.schema"
 local utils = require "kong.tools.utils"
 
-
 local char = string.char
 local rand = math.random
 local encode_base64 = ngx.encode_base64
@@ -42,6 +41,7 @@ return {
               type = "string",
               required = false,
               default = random_string(),
+              encrypted = true, -- Kong Enterprise Exclusive. This does nothing in Kong CE
             },
           },
           { cookie_name = { type = "string", default = "session" } },

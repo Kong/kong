@@ -17,6 +17,7 @@ local insert = table.insert
 local concat = table.concat
 local tostring = tostring
 local cjson_encode = require("cjson.safe").encode
+local yield = require("kong.tools.utils").yield
 
 local DeclarativeConfig = {}
 
@@ -646,6 +647,8 @@ local function flatten(self, input)
 
   local ok, err = self:validate(input)
   if not ok then
+    yield()
+
     -- the error may be due entity validation that depends on foreign entity,
     -- and that is the reason why we try to validate the input again with the
     -- filled foreign keys
@@ -660,16 +663,24 @@ local function flatten(self, input)
       local err3 = utils.deep_merge(err2, extract_null_errors(err))
       return nil, err3
     end
+
+    yield()
   end
 
   generate_ids(input, self.known_entities)
 
+  yield()
+
   local processed = self:process_auto_fields(input, "insert")
+
+  yield()
 
   local by_id, by_key = validate_references(self, processed)
   if not by_id then
     return nil, by_key
   end
+
+  yield()
 
   local meta = {}
   for key, value in pairs(processed) do
@@ -680,6 +691,8 @@ local function flatten(self, input)
 
   local entities = {}
   for entity, entries in pairs(by_id) do
+    yield(true)
+
     local schema = all_schemas[entity]
     entities[entity] = {}
     for id, entry in pairs(entries) do

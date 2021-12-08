@@ -46,7 +46,7 @@ jobs:
 
     - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: sudo apt update && sudo apt install libyaml-dev valgrind
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
 
     - name: Build Kong dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -123,14 +123,7 @@ jobs:
     strategy:
       matrix:
         suite: [integration, plugins]
-        split: [all, first (01-04), second (>= 05)]
-        exclude:
-          - suite: plugins
-            split: first (01-04)
-          - suite: plugins
-            split: second (>= 05)
-          - suite: integration
-            split: all
+        split: [first (01-04), second (>= 05)]
 
     env:
       KONG_TEST_PG_DATABASE: kong
@@ -166,6 +159,11 @@ jobs:
         image: datadog/squid
         ports:
           - 3128:3128
+
+      zipkin:
+        image: openzipkin/zipkin:2.19
+        ports:
+          - 9411:9411
 
     steps:
     - name: Set environment variables
@@ -256,14 +254,7 @@ jobs:
       matrix:
         suite: [integration, plugins]
         cassandra_version: [3]
-        split: [all, first (01-04), second (>= 05)]
-        exclude:
-          - suite: plugins
-            split: first (01-04)
-          - suite: plugins
-            split: second (>= 05)
-          - suite: integration
-            split: all
+        split: [first (01-04), second (>= 05)]
 
     env:
       KONG_TEST_DATABASE: cassandra
@@ -296,6 +287,11 @@ jobs:
         image: datadog/squid
         ports:
           - 3128:3128
+
+      zipkin:
+        image: openzipkin/zipkin:2.19
+        ports:
+          - 9411:9411
 
     steps:
     - name: Set environment variables

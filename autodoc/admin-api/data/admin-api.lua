@@ -819,6 +819,12 @@ return {
             If set to `null`, then the Nginx default is respected.
           ]],
         },
+        enabled = {
+          description = [[
+            Whether the Service is active. If set to `false`, the proxy behavior 
+            will be as if any routes attached to it do not exist (404). Default: `true`. 
+          ]],
+        },
         ca_certificates = {
           description = [[
             Array of `CA Certificate` object UUIDs that are used to build the trust store
@@ -875,8 +881,11 @@ return {
         * For `https`, at least one of `methods`, `hosts`, `headers`, `paths` or `snis`;
         * For `tcp`, at least one of `sources` or `destinations`;
         * For `tls`, at least one of `sources`, `destinations` or `snis`;
+        * For `tls_passthrough`, set `snis`;
         * For `grpc`, at least one of `hosts`, `headers` or `paths`;
         * For `grpcs`, at least one of `hosts`, `headers`, `paths` or `snis`.
+
+        A route can't have both `tls` and `tls_passthrough` protocols at same time.
 
         #### Path handling algorithms
 
@@ -892,18 +901,26 @@ return {
         Both versions of the algorithm detect "double slashes" when combining paths, replacing them by single
         slashes.
 
-        In the following table, `s` is the Service and `r` is the Route.
+        The following table shows the possible combinations of path handling version, strip path, and request:
 
-        | `s.path` | `r.path` | `r.strip_path` | `r.path_handling` | request path | proxied path  |
-        |----------|----------|----------------|-------------------|--------------|---------------|
-        | `/s`     | `/fv0`   | `false`        | `v0`              | `/fv0req`    | `/s/fv0req`   |
-        | `/s`     | `/fv1`   | `false`        | `v1`              | `/fv1req`    | `/sfv1req`    |
-        | `/s`     | `/tv0`   | `true`         | `v0`              | `/tv0req`    | `/s/req`      |
-        | `/s`     | `/tv1`   | `true`         | `v1`              | `/tv1req`    | `/sreq`       |
-        | `/s`     | `/fv0/`  | `false`        | `v0`              | `/fv0/req`   | `/s/fv0/req`  |
-        | `/s`     | `/fv1/`  | `false`        | `v1`              | `/fv1/req`   | `/sfv1/req`   |
-        | `/s`     | `/tv0/`  | `true`         | `v0`              | `/tv0/req`   | `/s/req`      |
-        | `/s`     | `/tv1/`  | `true`         | `v1`              | `/tv1/req`   | `/sreq`       |
+        | `service.path` | `route.path` | `request` |`route.strip_path` | `route.path_handling` | request path | upstream path |
+        |----------------|--------------|-----------|-------------------|-----------------------|--------------|---------------|
+        | `/s`           | `/fv0`       | `req`     | `false`           | `v0`                  |  `/fv0/req`  | `/s/fv0/req`  |
+        | `/s`           | `/fv0`       | `blank`   | `false`           | `v0`                  |  `/fv0`      | `/s/fv0`      |
+        | `/s`           | `/fv1`       | `req`     | `false`           | `v1`                  |  `/fv1/req`  | `/sfv1/req`   |
+        | `/s`           | `/fv1`       | `blank`   | `false`           | `v1`                  |  `/fv1`      | `/sfv1`       |
+        | `/s`           | `/tv0`       | `req`     | `true`            | `v0`                  |  `/tv0/req`  | `/s/req`      |
+        | `/s`           | `/tv0`       | `blank`   | `true`            | `v0`                  |  `/tv0`      | `/s`          |
+        | `/s`           | `/tv1`       | `req`     | `true`            | `v1`                  |  `/tv1/req`  | `/s/req`      |
+        | `/s`           | `/tv1`       | `blank`   | `true`            | `v1`                  |  `/tv1`      | `/s`          |
+        | `/s`           | `/fv0/`      | `req`     | `false`           | `v0`                  |  `/fv0/req`  | `/s/fv0/req`  |
+        | `/s`           | `/fv0/`      | `blank`   | `false`           | `v0`                  |  `/fv0/`     | `/s/fv01/`    |
+        | `/s`           | `/fv1/`      | `req`     | `false`           | `v1`                  |  `/fv1/req`  | `/sfv1/req`   |
+        | `/s`           | `/fv1/`      | `blank`   | `false`           | `v1`                  |  `/fv1/`     | `/sfv1/`      |
+        | `/s`           | `/tv0/`      | `req`     | `true`            | `v0`                  |  `/tv0/req`  | `/s/req`      |
+        | `/s`           | `/tv0/`      | `blank`   | `true`            | `v0`                  |  `/tv0/`     | `/s/`         |
+        | `/s`           | `/tv1/`      | `req`     | `true`            | `v1`                  |  `/tv1/req`  | `/sreq`       |
+        | `/s`           | `/tv1/`      | `blank`   | `true`            | `v1`                  |  `/tv1/`     | `/s`          |
 
       ]],
       fields = {
@@ -911,7 +928,9 @@ return {
         created_at = { skip = true },
         updated_at = { skip = true },
         name = {
-          description = [[The name of the Route. Name values must be unique.]]
+          description = [[The name of the Route. Route names must be unique, and they are
+          case sensitive. For example, there can be two different Routes named "test" and 
+          "Test".]]
         },
         regex_priority = {
           description = [[

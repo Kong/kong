@@ -25,6 +25,8 @@ local AUTH_AND_LATER = phase_checker.new(PHASES.access,
                                          PHASES.log)
 local TABLE_OR_NIL = { ["table"] = true, ["nil"] = true }
 
+local stream_subsystem = ngx.config.subsystem == "stream"
+
 
 local function new(self)
   local _CLIENT = {}
@@ -47,6 +49,13 @@ local function new(self)
   -- kong.client.get_ip() -- "10.0.0.1"
   function _CLIENT.get_ip()
     check_not_phase(PHASES.init_worker)
+
+    -- when proxying TLS request in second layer or doing TLS passthrough
+    -- realip_remote_addr is always the previous layer of nginx thus always unix:
+    if stream_subsystem and
+        (ngx.var.kong_tls_passthrough_block == "1" or ngx.var.ssl_protocol) then
+      return ngx.var.remote_addr
+    end
 
     return ngx.var.realip_remote_addr or ngx.var.remote_addr
   end
@@ -98,6 +107,13 @@ local function new(self)
   -- kong.client.get_port() -- 30000
   function _CLIENT.get_port()
     check_not_phase(PHASES.init_worker)
+
+    -- when proxying TLS request in second layer or doing TLS passthrough
+    -- realip_remote_addr is always the previous layer of nginx thus always unix:
+    if stream_subsystem and
+        (ngx.var.kong_tls_passthrough_block == "1" or ngx.var.ssl_protocol) then
+      return tonumber(ngx.var.remote_port)
+    end
 
     return tonumber(ngx.var.realip_remote_port or ngx.var.remote_port)
   end

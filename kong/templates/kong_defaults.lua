@@ -29,7 +29,6 @@ cluster_ca_cert = NONE
 cluster_server_name = NONE
 cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
-cluster_v2 = off
 
 mem_cache_size = 128m
 ssl_cert = NONE
@@ -155,6 +154,7 @@ dns_hostsfile = /etc/hosts
 dns_order = LAST,SRV,A,CNAME
 dns_valid_ttl = NONE
 dns_stale_ttl = 4
+dns_cache_size = 10000
 dns_not_found_ttl = 30
 dns_error_ttl = 1
 dns_no_sync = off

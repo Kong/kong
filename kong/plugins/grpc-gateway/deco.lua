@@ -115,7 +115,7 @@ local function get_proto_info(fname)
         end
       end
     end
-  end)
+  end, true)
 
   _proto_info[fname] = info
   return info

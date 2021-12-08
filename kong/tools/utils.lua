@@ -35,6 +35,8 @@ local gsub          = string.gsub
 local split         = pl_stringx.split
 local re_find       = ngx.re.find
 local re_match      = ngx.re.match
+local get_phase     = ngx.get_phase
+local ngx_sleep     = ngx.sleep
 local inflate_gzip  = zlib.inflateGzip
 local deflate_gzip  = zlib.deflateGzip
 local stringio_open = pl_stringio.open
@@ -60,6 +62,7 @@ char *strerror(int errnum);
 ]]
 
 local _M = {}
+local YIELD_ITERATIONS = 500
 
 --- splits a string.
 -- just a placeholder to the penlight `pl.stringx.split` function
@@ -695,7 +698,9 @@ end
 -- @return success A boolean indicating wether the module was found.
 -- @return module The retrieved module, or the error in case of a failure
 function _M.load_module_if_exists(module_name)
-  local status, res = xpcall(require, debug.traceback, module_name)
+  local status, res = xpcall(function()
+    return require(module_name)
+  end, debug.traceback)
   if status then
     return true, res
   -- Here we match any character because if a module has a dash '-' in its name, we would need to escape it.
@@ -1420,5 +1425,25 @@ local topological_sort do
   end
 end
 _M.topological_sort = topological_sort
+
+
+do
+  local counter = 0
+  function _M.yield(in_loop, phase)
+    phase = phase or get_phase()
+    if phase == "init" or phase == "init_worker"  then
+      return
+    end
+    if in_loop then
+      counter = counter + 1
+      if counter % YIELD_ITERATIONS ~= 0 then
+        return
+      end
+      counter = 0
+    end
+    ngx_sleep(0)
+  end
+end
+
 
 return _M

@@ -2,7 +2,7 @@ local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
 local protoc = require "protoc"
 local pb = require "pb"
-require "lua_pack"
+local lpack = require "lua_pack"
 
 local ngx = ngx
 local kong = kong
@@ -10,8 +10,8 @@ local kong = kong
 
 local cjson_encode = cjson.encode
 local t_unpack = table.unpack       -- luacheck: ignore table
-local st_pack = string.pack         -- luacheck: ignore string
-local st_unpack = string.unpack     -- luacheck: ignore string
+local st_pack = lpack.pack
+local st_unpack = lpack.unpack
 
 local Rpc = {}
 Rpc.__index = Rpc
@@ -160,14 +160,14 @@ end
 
 local function load_service()
   local p = protoc.new()
-  --p:loadfile("kong/pluginsocket.proto")
-
   p:addpath("/usr/include")
-  p:addpath("/usr/local/opt/protobuf/include/")
-
-  p:addpath("/usr/local/kong/lib/")
+  p:addpath("/usr/local/opt/protobuf/include")
+  p:addpath("/usr/local/kong/lib")
   p:addpath("kong")
+  p:addpath("spec/fixtures/grpc")
+  p.include_imports = true
 
+  p:loadfile("pluginsocket.proto")
   local parsed = p:parsefile("pluginsocket.proto")
 
   local service = {}
@@ -189,10 +189,6 @@ local function load_service()
       --print(("service[%q] = %s"):format(lower_name, pp(service[lower_name])))
     end
   end
-
-  p:loadfile("google/protobuf/empty.proto")
-  p:loadfile("google/protobuf/struct.proto")
-  p:loadfile("pluginsocket.proto")
 
   return service
 end

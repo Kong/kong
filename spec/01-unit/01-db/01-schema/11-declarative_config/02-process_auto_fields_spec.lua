@@ -35,6 +35,7 @@ describe("declarative config: process_auto_fields", function()
           - name: foo
             host: example.com
             protocol: https
+            enabled: true
             _comment: my comment
             _ignore:
             - foo: bar
@@ -59,6 +60,7 @@ describe("declarative config: process_auto_fields", function()
               read_timeout = 60000,
               write_timeout = 60000,
               retries = 5,
+              enabled = true,
               _comment = "my comment",
               _ignore = { { foo = "bar" } },
             },
@@ -71,6 +73,7 @@ describe("declarative config: process_auto_fields", function()
               read_timeout = 60000,
               write_timeout = 60000,
               retries = 5,
+              enabled = true,
               _comment = "my comment",
               _ignore = { { foo = "bar" } },
             }
@@ -101,6 +104,7 @@ describe("declarative config: process_auto_fields", function()
               read_timeout = 60000,
               write_timeout = 60000,
               retries = 5,
+              enabled = true,
             }
           }
         }, config)
@@ -254,7 +258,8 @@ describe("declarative config: process_auto_fields", function()
                 read_timeout = 60000,
                 write_timeout = 60000,
                 retries = 5,
-                plugins = {}
+                plugins = {},
+                enabled = true,
               }
             }
           }, config)
@@ -302,6 +307,7 @@ describe("declarative config: process_auto_fields", function()
                 read_timeout = 60000,
                 write_timeout = 60000,
                 retries = 5,
+                enabled = true,
                 _comment = "my comment",
                 _ignore = { { foo = "bar" } },
                 plugins = {
@@ -346,6 +352,7 @@ describe("declarative config: process_auto_fields", function()
                 read_timeout = 60000,
                 write_timeout = 60000,
                 retries = 5,
+                enabled = true,
                 plugins = {
                   {
                     name = "basic-auth",
@@ -397,6 +404,7 @@ describe("declarative config: process_auto_fields", function()
                 read_timeout = 60000,
                 write_timeout = 60000,
                 retries = 5,
+                enabled = true,
                 routes = {}
               }
             }
@@ -444,6 +452,7 @@ describe("declarative config: process_auto_fields", function()
                 read_timeout = 60000,
                 write_timeout = 60000,
                 retries = 5,
+                enabled = true,
                 routes = {
                   {
                     paths = { "/path" },
@@ -489,6 +498,7 @@ describe("declarative config: process_auto_fields", function()
                 read_timeout = 60000,
                 write_timeout = 60000,
                 retries = 5,
+                enabled = true,
                 routes = {
                   {
                     paths = { "/path" },
@@ -538,6 +548,7 @@ describe("declarative config: process_auto_fields", function()
                 read_timeout = 60000,
                 write_timeout = 60000,
                 retries = 5,
+                enabled = true,
                 routes = {
                   {
                     name = "foo",
@@ -603,6 +614,7 @@ describe("declarative config: process_auto_fields", function()
                 read_timeout = 60000,
                 write_timeout = 60000,
                 retries = 5,
+                enabled = true,
                 routes = {
                   {
                     name = "foo",
@@ -657,6 +669,7 @@ describe("declarative config: process_auto_fields", function()
                 read_timeout = 60000,
                 write_timeout = 60000,
                 retries = 5,
+                enabled = true,
                 routes = {
                   {
                     name = "bar",

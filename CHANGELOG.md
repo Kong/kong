@@ -68,6 +68,9 @@
   [#7910](https://github.com/Kong/kong/pull/7910)
 - Bumped `resty.openssl` from 0.7.4 to 0.7.5
   [#7909](https://github.com/Kong/kong/pull/7909)
+- Bumped `go-pdk` used in tests from v0.6.0 to v0.7.1 [#7964](https://github.com/Kong/kong/pull/7964)
+- Cassandra support is deprecated with 2.7 and will be fully removed with 4.0.
+  https://konghq.com/blog/cassandra-support-deprecated
 
 ### Additions
 
@@ -77,8 +80,11 @@ In this release we continued our work on better performance:
 
 - Improved the plugin iterator performance and JITability
   [#7912](https://github.com/Kong/kong/pull/7912)
+  [#7979](https://github.com/Kong/kong/pull/7979)
 - Simplified the Kong core context read and writes for better performance
   [#7919](https://github.com/Kong/kong/pull/7919)
+- Reduced proxy long tail latency while reloading DB-less config
+  [#8133](https://github.com/Kong/kong/pull/8133)
 
 #### Core
 
@@ -116,6 +122,8 @@ In this release we continued our work on better performance:
   the password contained colon (`:`).
   [#7977](https://github.com/Kong/kong/pull/7977)
   Thanks [beldahanit](https://github.com/beldahanit) for reporting the issue!
+- Old `BasePlugin` is deprecated and will be removed in a future version of Kong.
+  Porting tips in the [documentation](https://docs.konghq.com/gateway-oss/2.3.x/plugin-development/custom-logic/#porting-from-old-baseplugin-style)
 
 ### Fixes
 
@@ -143,6 +151,11 @@ In this release we continued our work on better performance:
 - **Prometheus**: Control Plane does not show Upstream Target health metrics
   [#7992](https://github.com/Kong/kong/pull/7922)
 
+
+### Dependencies
+
+- Bumped `lua-pack` from 1.0.5 to 2.0.0
+  [#8004](https://github.com/Kong/kong/pull/8004)
 
 [Back to TOC](#table-of-contents)
 

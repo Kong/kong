@@ -6,6 +6,7 @@ local path_handling_tests = require "spec.fixtures.router_path_handling_tests"
 
 local enable_buffering
 local enable_buffering_plugin
+local stream_tls_listen_port = 9020
 
 
 local function insert_routes(bp, routes)
@@ -149,6 +150,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         plugins = "bundled,enable-buffering",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = string.format("127.0.0.1:%d ssl", stream_tls_listen_port),
       }, nil, nil, fixtures))
     end)
 
@@ -232,6 +234,34 @@ for _, strategy in helpers.each_strategy() do
             protocols = { "http", "https" },
             hosts     = { "serviceless-route-http.test" },
             service   = ngx.null,
+          },
+          {
+            paths      = { "/disabled-service1" },
+            protocols  = { "http" },
+            strip_path = false,
+            service    = {
+              path     = "/disabled-service-path/",
+              enabled  = false,
+            },
+          },
+          {
+            paths      = { [[/enabled-service/\w+]] },
+            protocols  = { "http" },
+            strip_path = true,
+            service    = {
+              path     = "/anything/",
+              enabled  = true,
+              name     = "enabled-service",
+            },
+          },
+          {
+            paths     = { "/enabled-service/disabled" },
+            protocols  = { "http" },
+            strip_path = true,
+            service    = {
+              path     = "/some-path/",
+              enabled  = false,
+            },
           },
         })
         first_service_name = routes[1].service.name
@@ -408,6 +438,31 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(routes[5].id,           res.headers["kong-route-id"])
         assert.equal(routes[5].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[5].service.name, res.headers["kong-service-name"])
+      end)
+
+      describe('handles not enabled services', function()
+        it('ignores route where service enabled=false', function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/disabled-service1",
+            headers = { ["kong-debug"] = 1 },
+          })
+
+          assert.res_status(404, res)
+        end)
+
+        it('routes to regex path when longer path service enabled=false', function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/enabled-service/disabled",
+            headers = { ["kong-debug"] = 1 },
+          })
+
+          assert.res_status(200, res)
+          assert.equal(routes[8].id,           res.headers["kong-route-id"])
+          assert.equal(routes[8].service.id,   res.headers["kong-service-id"])
+          assert.equal("enabled-service",      res.headers["kong-service-name"])
+        end)
       end)
     end)
 
@@ -1299,6 +1354,96 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(201, res)
         assert.equal("service_behind_example.org",
                      res.headers["kong-service-name"])
+      end)
+    end)
+
+    describe("tls_passthrough", function()
+      local routes
+      local proxy_ssl_client
+
+      lazy_setup(function()
+        routes = insert_routes(bp, {
+          {
+            protocols = { "tls_passthrough" },
+            snis = { "www.example.org" },
+            service = {
+              name = "service_behind_www.example.org",
+              host = helpers.mock_upstream_ssl_host,
+              port = helpers.mock_upstream_ssl_port,
+              protocol = "tcp",
+            },
+          },
+          {
+            protocols = { "tls_passthrough" },
+            snis = { "example.org" },
+            service = {
+              name = "service_behind_example.org",
+              host = helpers.mock_upstream_ssl_host,
+              port = helpers.mock_upstream_ssl_port,
+              protocol = "tcp",
+            },
+          },
+        })
+      end)
+
+      lazy_teardown(function()
+        remove_routes(strategy, routes)
+      end)
+
+      after_each(function()
+        if proxy_ssl_client then
+          proxy_ssl_client:close()
+        end
+      end)
+
+      it("matches a Route based on its 'snis' attribute", function()
+        -- config propogates to stream subsystems not instantly
+        -- try up to 10 seconds with step of 2 seconds
+        -- in vagrant it takes around 6 seconds
+        helpers.wait_until(function()
+          proxy_ssl_client = helpers.http_client("127.0.0.1", stream_tls_listen_port)
+          local ok = proxy_ssl_client:ssl_handshake(nil, "www.example.org", false) -- explicit no-verify
+          if not ok then
+            proxy_ssl_client:close()
+            return false
+          end
+          return true
+        end, 10, 2)
+
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+
+        res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/201",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(201, res)
+
+        proxy_ssl_client:close()
+
+        proxy_ssl_client = helpers.http_client("127.0.0.1", stream_tls_listen_port)
+        assert(proxy_ssl_client:ssl_handshake(nil, "example.org", false)) -- explicit no-verify
+
+        local res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/200",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+
+        res = assert(proxy_ssl_client:send {
+          method  = "GET",
+          path    = "/status/201",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(201, res)
+
+        proxy_ssl_client:close()
       end)
     end)
 

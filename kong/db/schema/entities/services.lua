@@ -43,6 +43,7 @@ return {
     { tls_verify         = { type = "boolean", }, },
     { tls_verify_depth   = { type = "integer", default = null, between = { 0, 64 }, }, },
     { ca_certificates    = { type = "array", elements = { type = "string", uuid = true, }, }, },
+    { enabled            = { type = "boolean", required = true, default = true, }, },
     -- { load_balancer = { type = "foreign", reference = "load_balancers" } },
   },
 

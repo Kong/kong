@@ -19,7 +19,8 @@ return {
                          elements = typedefs.protocol,
                          mutually_exclusive_subsets = {
                            { "http", "https" },
-                           { "tcp", "tls", "udp", },
+                           { "tcp", "tls", "udp" },
+                           { "tls_passthrough" },
                            { "grpc", "grpcs" },
                          },
                          default = { "http", "https" }, -- TODO: different default depending on service's scheme
@@ -57,10 +58,10 @@ return {
 
   entity_checks = {
     { conditional = { if_field = "protocols",
-                      if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls" }}},
+                      if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough" }}},
                       then_field = "snis",
                       then_match = { len_eq = 0 },
-                      then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https' or 'tls'",
+                      then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
                     }},
                   },
 }

@@ -8,6 +8,11 @@ local REDIS_DB_1 = 1
 local REDIS_DB_2 = 2
 
 
+local REDIS_USER_VALID = "ratelimit-user"
+local REDIS_USER_INVALID = "some-user"
+local REDIS_PASSWORD = "secret"
+
+
 local SLEEP_TIME = 1
 
 
@@ -20,6 +25,23 @@ local function flush_redis(db)
   red:close()
 end
 
+local function add_redis_user()
+  local red = redis:new()
+  red:set_timeout(2000)
+  assert(red:connect(REDIS_HOST, REDIS_PORT))
+  assert(red:acl("setuser", REDIS_USER_VALID, "on", "allkeys", "+incrby", "+select", "+info", "+expire", "+get", ">" .. REDIS_PASSWORD))
+  assert(red:acl("setuser", REDIS_USER_INVALID, "on", "allkeys", "+get", ">" .. REDIS_PASSWORD))
+  red:close()
+end
+
+local function remove_redis_user()
+  local red = redis:new()
+  red:set_timeout(2000)
+  assert(red:connect(REDIS_HOST, REDIS_PORT))
+  assert(red:acl("deluser", REDIS_USER_VALID))
+  assert(red:acl("deluser", REDIS_USER_INVALID))
+  red:close()
+end
 
 describe("Plugin: rate-limiting (integration)", function()
   local client
@@ -50,6 +72,7 @@ describe("Plugin: rate-limiting (integration)", function()
     lazy_setup(function()
       flush_redis(REDIS_DB_1)
       flush_redis(REDIS_DB_2)
+      add_redis_user()
 
       local route1 = assert(bp.routes:insert {
         hosts        = { "redistest1.com" },
@@ -82,10 +105,52 @@ describe("Plugin: rate-limiting (integration)", function()
           fault_tolerant = false,
         }
       })
+
+      local route3 = assert(bp.routes:insert {
+        hosts        = { "redistest3.com" },
+      })
+      assert(bp.plugins:insert {
+        name = "rate-limiting",
+        route = { id = route3.id },
+        config = {
+          minute         = 1,
+          policy         = "redis",
+          redis_host     = REDIS_HOST,
+          redis_port     = REDIS_PORT,
+          redis_username = REDIS_USER_VALID,
+          redis_password = REDIS_PASSWORD,
+          redis_database = 3, -- ensure to not get a pooled authenticated connection by using a different db
+          fault_tolerant = false,
+        }
+      })
+
+      local route4 = assert(bp.routes:insert {
+        hosts        = { "redistest4.com" },
+      })
+      assert(bp.plugins:insert {
+        name = "rate-limiting",
+        route = { id = route4.id },
+        config = {
+          minute         = 1,
+          policy         = "redis",
+          redis_host     = REDIS_HOST,
+          redis_port     = REDIS_PORT,
+          redis_username = REDIS_USER_INVALID,
+          redis_password = REDIS_PASSWORD,
+          redis_database = 4, -- ensure to not get a pooled authenticated connection by using a different db                  
+          fault_tolerant = false,
+        }
+      })
+
+
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
       client = helpers.proxy_client()
+    end)
+
+    lazy_teardown(function()
+      remove_redis_user()
     end)
 
     it("connection pool respects database setting", function()
@@ -160,5 +225,28 @@ describe("Plugin: rate-limiting (integration)", function()
       assert.equal(1, tonumber(size_1))
       assert.equal(1, tonumber(size_2))
     end)
+
+    it("authenticates and executes with a valid redis user having proper ACLs", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "redistest3.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+
+    it("fails to rate-limit for a redis user with missing ACLs", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "redistest4.com"
+        }
+      })
+      assert.res_status(500, res)
+    end)
+
   end)
 end)

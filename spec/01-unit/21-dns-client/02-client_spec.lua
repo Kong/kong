@@ -653,7 +653,7 @@ describe("[DNS client]", function()
   end)
 
   it("fetching A record redirected through 2 CNAME records (un-typed)", function()
-    assert(client.init())
+    assert(client.init({ search = {}, }))
     local lrucache = client.getcache()
 
     --[[
@@ -720,7 +720,7 @@ describe("[DNS client]", function()
   end)
 
   it("fetching multiple SRV records through CNAME (un-typed)", function()
-    assert(client.init())
+    assert(client.init({ search = {}, }))
     local lrucache = client.getcache()
 
     local host = "cname2srv.thijsschreijer.nl"
@@ -1058,7 +1058,7 @@ describe("[DNS client]", function()
 
   describe("toip() function", function()
     it("A/AAAA-record, round-robin",function()
-      assert(client.init())
+      assert(client.init({ search = {}, }))
       local host = "atest.thijsschreijer.nl"
       local answers = assert(client.resolve(host))
       answers.last_index = nil -- make sure to clean
@@ -1080,7 +1080,44 @@ describe("[DNS client]", function()
     end)
     it("SRV-record, round-robin on lowest prio",function()
       assert(client.init())
-      local host = "srvtest.thijsschreijer.nl"
+      local lrucache = client.getcache()
+      local host = "hello.world.test"
+      local entry = {
+        {
+          type = client.TYPE_SRV,
+          target = "1.2.3.4",
+          port = 8000,
+          weight = 5,
+          priority = 10,
+          class = 1,
+          name = host,
+          ttl = 10,
+        },
+        {
+          type = client.TYPE_SRV,
+          target = "1.2.3.4",
+          port = 8001,
+          weight = 5,
+          priority = 20,
+          class = 1,
+          name = host,
+          ttl = 10,
+        },
+        {
+          type = client.TYPE_SRV,
+          target = "1.2.3.4",
+          port = 8002,
+          weight = 5,
+          priority = 10,
+          class = 1,
+          name = host,
+          ttl = 10,
+        },
+        touch = 0,
+        expire = gettime()+10,
+      }
+      -- insert in the cache
+      lrucache:set(entry[1].type..":"..entry[1].name, entry)
 
       local results = {}
       for _ = 1,20 do
@@ -1177,8 +1214,37 @@ describe("[DNS client]", function()
     end)
     it("port passing",function()
       assert(client.init())
-      local ip, port, host
-      host = "atest.thijsschreijer.nl"
+      local lrucache = client.getcache()
+      local entry_a = {
+        {
+          type = client.TYPE_A,
+          address = "1.2.3.4",
+          class = 1,
+          name = "a.record.test",
+          ttl = 10,
+        },
+        touch = 0,
+        expire = gettime()+10,
+      }
+      local entry_srv = {
+        {
+          type = client.TYPE_SRV,
+          target = "a.record.test",
+          port = 8001,
+          weight = 5,
+          priority = 20,
+          class = 1,
+          name = "srv.record.test",
+          ttl = 10,
+        },
+        touch = 0,
+        expire = gettime()+10,
+      }
+      -- insert in the cache
+      lrucache:set(entry_a[1].type..":"..entry_a[1].name, entry_a)
+      lrucache:set(entry_srv[1].type..":"..entry_srv[1].name, entry_srv)
+      local ip, port
+      local host = "a.record.test"
       ip,port = client.toip(host)
       assert.is_string(ip)
       assert.is_nil(port)
@@ -1187,7 +1253,7 @@ describe("[DNS client]", function()
       assert.is_string(ip)
       assert.equal(1234, port)
 
-      host = "srvtest.thijsschreijer.nl"
+      host = "srv.record.test"
       ip, port = client.toip(host)
       assert.is_string(ip)
       assert.is_number(port)
@@ -1198,7 +1264,7 @@ describe("[DNS client]", function()
       assert.is_not.equal(0, port)
     end)
     it("port passing if SRV port=0",function()
-      assert(client.init())
+      assert(client.init({ search = {}, }))
       local ip, port, host
 
       host = "srvport0.thijsschreijer.nl"
@@ -1577,7 +1643,7 @@ describe("[DNS client]", function()
     it("timeout while waiting", function()
       -- basically the local function _synchronized_query
       assert(client.init({
-        timeout = 2000,
+        timeout = 500,
         retrans = 1,
         resolvConf = {
           -- resolv.conf without `search` and `domain` options
@@ -1600,7 +1666,7 @@ describe("[DNS client]", function()
           touch = 0,
           expire = gettime() + 10,
         }
-        sleep(2) -- wait before we return the results
+        sleep(0.5) -- wait before we return the results
         return entry
       end
 
