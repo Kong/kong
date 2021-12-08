@@ -136,6 +136,12 @@ describe("kong.clustering.control_plane", function()
         "status",
         "message",
       },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -231,6 +237,12 @@ describe("kong.clustering.control_plane", function()
       ip_restriction = {
         "status",
         "message",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -328,6 +340,12 @@ describe("kong.clustering.control_plane", function()
         "status",
         "message",
       },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -418,6 +436,12 @@ describe("kong.clustering.control_plane", function()
         "status",
         "message",
       },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -497,6 +521,12 @@ describe("kong.clustering.control_plane", function()
       ip_restriction = {
         "status",
         "message",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
       },
     }, cp._get_removed_fields(2004001002))
 
@@ -578,6 +608,12 @@ describe("kong.clustering.control_plane", function()
         "status",
         "message",
       },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -600,6 +636,12 @@ describe("kong.clustering.control_plane", function()
       ip_restriction = {
         "status",
         "message",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+        "redis_username"
       },
     }, cp._get_removed_fields(2006000000))
 

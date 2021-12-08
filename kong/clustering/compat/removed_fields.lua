@@ -136,10 +136,15 @@ return {
       "status_tag",
       "consumer_tag",
     },
-
     ip_restriction = {
       "status",
       "message",
+    },
+    rate_limiting = {
+      "redis_ssl",
+      "redis_ssl_verify",
+      "redis_server_name",
+      "redis_username"
     },
 
     -- Enterprise plugins
