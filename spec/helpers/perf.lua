@@ -111,7 +111,7 @@ local _M = {
 --- Start the upstream (nginx) with given conf
 -- @function start_upstream
 -- @param conf string the Nginx nginx snippet under server{} context
--- @return upstream_uri as string or table if port_count is more than 1
+-- @return upstream_uri as string
 function _M.start_upstream(conf)
   return invoke_driver("start_upstreams", conf, 1)[1]
 end
