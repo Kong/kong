@@ -86,13 +86,7 @@ local function get_redis_connection(conf)
 
   if times == 0 then
     if is_present(conf.redis_password) then
-      local ok, err
-      if is_present(conf.redis_username) then
-        ok, err = red:auth(conf.redis_username, conf.redis_password)
-      else
-        ok, err = red:auth(conf.redis_password)
-      end
-
+      local ok, err = red:auth(conf.redis_password)
       if not ok then
         kong.log.err("failed to auth Redis: ", err)
         return nil, err
