@@ -165,13 +165,15 @@ end
 
 function Canary:access(conf)
 
-  if conf.override_header and kong.request.get_header(conf.override_header) == "true" then
-    -- use the canary if override is true
-    switch_target(conf.upstream_host, conf.upstream_port, conf.upstream_uri)
-    return
-  elseif conf.override_header and kong.request.get_header(conf.override_header) == "false" then
-    -- use original target if override is false
-    return
+  if conf.override_header
+    local header = kong.request.get_header(conf.override_header)
+    if header == "true" then
+      -- use the canary if override is true
+      return switch_target(conf.upstream_host, conf.upstream_port, conf.upstream_uri)
+    elseif header == "false" then
+      -- use original target if override is false
+      return
+    end
   end
 
   if conf.upstream_fallback and not upstream_healthy(conf.upstream_host,
