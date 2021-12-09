@@ -144,7 +144,6 @@ return {
       "redis_ssl",
       "redis_ssl_verify",
       "redis_server_name",
-      "redis_username"
     },
     zipkin = {
       "local_service_name",
