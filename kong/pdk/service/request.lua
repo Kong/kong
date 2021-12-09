@@ -77,6 +77,7 @@ local function new(self)
   local CONTENT_TYPE_JSON      = "application/json"
   local CONTENT_TYPE_FORM_DATA = "multipart/form-data"
 
+  local SLASH                  = string_byte("/")
 
   ---
   -- Enables buffered proxying that allows plugins to access service body and
@@ -142,8 +143,7 @@ local function new(self)
       error("path must be a string", 2)
     end
 
-    -- 47 = 0x2f = '/'
-    if string_byte(path) ~= 47 then
+    if string_byte(path) ~= SLASH then
       error("path must start with /", 2)
     end
 
