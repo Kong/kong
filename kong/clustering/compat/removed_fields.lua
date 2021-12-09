@@ -45,14 +45,19 @@ return {
     syslog = {
       "facility",
     },
-
     -- Enterprise plugins
     redis = {
       "connect_timeout",
       "keepalive_backlog",
-      "keepalive_pool_size",
       "read_timeout",
       "send_timeout",
+    },
+  },
+
+  [2004999999] = {
+    -- Enterprise plugins
+    redis = {
+      "keepalive_pool_size",
     },
   },
 
