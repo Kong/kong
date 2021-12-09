@@ -15,6 +15,7 @@ local table_concat = table.concat
 local type = type
 local string_find = string.find
 local string_sub = string.sub
+local string_byte = string.byte
 local string_lower = string.lower
 local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
@@ -141,7 +142,8 @@ local function new(self)
       error("path must be a string", 2)
     end
 
-    if string_sub(path, 1, 1) ~= "/" then
+    -- 47 = 0x2f = '/'
+    if string_byte(path) ~= 47 then
       error("path must start with /", 2)
     end
 
