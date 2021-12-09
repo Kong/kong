@@ -165,7 +165,7 @@ end
 
 function Canary:access(conf)
 
-  if conf.override_header
+  if conf.override_header then
     local header = kong.request.get_header(conf.override_header)
     if header == "true" then
       -- use the canary if override is true
