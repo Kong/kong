@@ -46,7 +46,7 @@ local function execute(cmd, opts)
     local l, err = proc:stdout_read_line()
     if l then
       if log_output then
-        opts.logger(l)
+        log_output(l)
       else
         table.insert(ret, l)
       end
