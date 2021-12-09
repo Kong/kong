@@ -111,7 +111,7 @@ local _M = {
 --- Start the upstream (nginx) with given conf
 -- @function start_upstream
 -- @param conf string the Nginx nginx snippet under server{} context
--- @return upstream_uri as string or table if port_count is more than 1
+-- @return upstream_uri as string
 function _M.start_upstream(conf)
   return invoke_driver("start_upstreams", conf, 1)[1]
 end
@@ -345,15 +345,17 @@ end
 
 --- Generate the flamegraph and return SVG
 -- @function generate_flamegraph
+-- @param title the title for flamegraph
+-- @param opts the command line options string(not table) for flamegraph.pl
 -- @return Nothing. Throws an error if any.
-function _M.generate_flamegraph(filename, title)
+function _M.generate_flamegraph(filename, title, opts)
   if not filename then
     error("filename must be specified for generate_flamegraph")
   end
   if string.sub(filename, #filename-3, #filename):lower() ~= ".svg" then
     filename = filename .. ".svg"
   end
-  
+
   if not title then
     title = "Flame graph"
   end
@@ -364,7 +366,7 @@ function _M.generate_flamegraph(filename, title)
     title = title .. " (based on " .. git.get_kong_version() .. ")"
   end
 
-  local out = invoke_driver("generate_flamegraph", title)
+  local out = invoke_driver("generate_flamegraph", title, opts)
 
   local f, err = io.open(filename, "w")
   if not f then
