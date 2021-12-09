@@ -201,7 +201,7 @@ local stapxx_thread
 local stapxx_should_stop
 
 --- Start to send load to Kong
--- @function start_load
+-- @function start_stapxx
 -- @param sample_name string stapxx sample name
 -- @param ... string extra arguments passed to stapxx script
 -- @return nothing. Throws an error if any.
