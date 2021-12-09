@@ -105,6 +105,10 @@ return {
           return true
         end
 
+        if #config.window_size ~= #config.limit then
+          return nil, "You must provide the same number of windows and limits"
+        end
+
         -- sort the window_size and limit arrays by limit
         -- first we create a temp table, each element of which is a pair of
         -- limit/window_size values. we then sort based on the limit element
@@ -146,10 +150,6 @@ return {
           if not ok then
             return nil, err
           end
-        end
-
-        if #config.window_size ~= #config.limit then
-          return nil, "You must provide the same number of windows and limits"
         end
 
         if config.identifier == "header" then

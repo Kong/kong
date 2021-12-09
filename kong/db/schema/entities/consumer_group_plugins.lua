@@ -61,6 +61,10 @@ return {
           return true
         end
 
+        if #config.window_size ~= #config.limit then
+          return nil, "You must provide the same number of windows and limits"
+        end
+
         -- sort the window_size and limit arrays by limit
         -- first we create a temp table, each element of which is a pair of
         -- limit/window_size values. we then sort based on the limit element
@@ -76,10 +80,6 @@ return {
         for i = 1, #t do
           config.limit[i] = tonumber(t[i][1])
           config.window_size[i] = tonumber(t[i][2])
-        end
-
-        if #config.window_size ~= #config.limit then
-          return nil, "You must provide the same number of windows and limits"
         end
 
         if config.retry_after_jitter_max < 0 then
