@@ -15,6 +15,7 @@ local table_concat = table.concat
 local type = type
 local string_find = string.find
 local string_sub = string.sub
+local string_byte = string.byte
 local string_lower = string.lower
 local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
@@ -76,6 +77,7 @@ local function new(self)
   local CONTENT_TYPE_JSON      = "application/json"
   local CONTENT_TYPE_FORM_DATA = "multipart/form-data"
 
+  local SLASH                  = string_byte("/")
 
   ---
   -- Enables buffered proxying that allows plugins to access service body and
@@ -141,7 +143,7 @@ local function new(self)
       error("path must be a string", 2)
     end
 
-    if string_sub(path, 1, 1) ~= "/" then
+    if string_byte(path) ~= SLASH then
       error("path must start with /", 2)
     end
 
