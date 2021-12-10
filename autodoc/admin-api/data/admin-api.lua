@@ -832,6 +832,12 @@ return {
             If set to `null`, then the Nginx default is respected.
           ]],
         },
+        enabled = {
+          description = [[
+            Whether the Service is active. If set to `false`, the proxy behavior
+            will be as if any routes attached to it do not exist (404). Default: `true`.
+          ]],
+        },
         ca_certificates = {
           description = [[
             Array of `CA Certificate` object UUIDs that are used to build the trust store

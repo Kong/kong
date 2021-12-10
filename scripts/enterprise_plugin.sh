@@ -78,7 +78,7 @@ function test_plugin {
   err_code=$?
   pongo down
   popd
-  exit $?
+  exit $err_code
 }
 
 function build_deps {

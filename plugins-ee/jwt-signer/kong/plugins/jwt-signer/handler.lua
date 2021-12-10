@@ -7,7 +7,7 @@
 
 local JwtSignerHandler = {
   PRIORITY = 999,
-  VERSION  = "1.8.0",
+  VERSION  = "1.9.0",
 }
 
 

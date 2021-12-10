@@ -16,7 +16,7 @@ local ee_new_entities = {
   }, {
     name = "consumer_group_plugins",
     primary_key = "id",
-    uniques = {"name"},
+    uniques = {},
     fks = {{name="consumer_group", reference = "consumer_groups", on_delete = "cascade"}},
   }
 }
@@ -68,6 +68,7 @@ return {
         "created_at"  TIMESTAMP WITH TIME ZONE     DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         "consumer_group_id"     UUID                         REFERENCES "consumer_groups" ("id") ON DELETE CASCADE,
         "name"        TEXT                         NOT NULL,
+        "cache_key"   TEXT                         UNIQUE,
         "config"      JSONB                        NOT NULL
       );
 
@@ -89,6 +90,7 @@ return {
         "created_at"  TIMESTAMP WITH TIME ZONE     DEFAULT (CURRENT_TIMESTAMP(0) AT TIME ZONE 'UTC'),
         "consumer_group_id"     UUID                         REFERENCES "consumer_groups" ("id") ON DELETE CASCADE,
         "consumer_id" UUID                         REFERENCES "consumers" ("id") ON DELETE CASCADE,
+        "cache_key"   TEXT                         UNIQUE,
         PRIMARY KEY (consumer_group_id, consumer_id)
       );
 
@@ -123,21 +125,25 @@ return {
           created_at  timestamp,
           consumer_id uuid,
           consumer_group_id uuid,
+          cache_key   text,
           PRIMARY KEY(consumer_group_id,consumer_id)
         );
 
-        CREATE INDEX IF NOT EXISTS consumer_groups_consumer_idx ON consumer_group_consumers(consumer_id);
+        CREATE INDEX IF NOT EXISTS consumer_group_consumer_idx ON consumer_group_consumers(consumer_id);
+        CREATE INDEX IF NOT EXISTS consumer_group_consumer_cache_key_idx ON consumer_group_consumers(cache_key);
 
         CREATE TABLE IF NOT EXISTS consumer_group_plugins(
           id          uuid PRIMARY KEY,
           created_at  timestamp,
           consumer_group_id uuid,
           name        text,
+          cache_key   text,
           config      text
         );
 
         CREATE INDEX IF NOT EXISTS consumer_group_plugins_group_id_idx ON consumer_group_plugins(consumer_group_id);
         CREATE INDEX IF NOT EXISTS consumer_group_plugins_plugin_name_idx ON consumer_group_plugins(name);
+        CREATE INDEX IF NOT EXISTS consumer_group_plugins_cache_key_idx ON consumer_group_plugins(cache_key);
       ]] .. ws_migration_up(operations.cassandra.up),
       teardown = ws_migration_teardown(operations.cassandra.teardown),
     },

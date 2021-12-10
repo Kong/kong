@@ -23,7 +23,7 @@ local tonumber = tonumber
 
 local NewRLHandler = {
   PRIORITY = 902,
-  VERSION = "0.2.4"
+  VERSION = "0.2.5"
 }
 
 

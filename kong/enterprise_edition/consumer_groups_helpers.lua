@@ -21,7 +21,7 @@ local function get_consumer_group(consumer_group_pk)
   return kong.cache:get(cache_key, nil, _select_consumer_group,consumer_group_pk)
 end
 
-local function _find_consumer_group_config(consumer_group_pk)
+local function _find_consumer_group_config(consumer_group_pk, plugin_name)
     for row, err in kong.db.consumer_group_plugins:each() do
       if row.consumer_group.id == consumer_group_pk then
         if err then
@@ -29,8 +29,8 @@ local function _find_consumer_group_config(consumer_group_pk)
           return nil, err
         end
         if row.consumer_group.id == consumer_group_pk and
-          row.name == "rate-limiting-advanced" then
-            return row, nil
+          row.name == plugin_name then
+            return row
         end
       end
     end
@@ -38,18 +38,19 @@ local function _find_consumer_group_config(consumer_group_pk)
   end
 
 
-local function get_consumer_group_config(consumer_group_pk)
-  local cache_key = kong.db.consumer_group_plugins:cache_key(consumer_group_pk)
-  return kong.cache:get(cache_key, nil, _find_consumer_group_config, consumer_group_pk)
+local function get_consumer_group_config(consumer_group_pk, plugin_name)
+  local cache_key = kong.db.consumer_group_plugins:cache_key(consumer_group_pk, plugin_name)
+  return kong.cache:get(cache_key, nil, _find_consumer_group_config, consumer_group_pk, plugin_name)
 end
 
 local function get_consumers_in_group(consumer_group_pk)
   local consumers = {}
   local len = 0
-  for row in kong.db.consumer_group_consumers:each() do
-    if consumer_group_pk == row.consumer_group.id then
-      len = len + 1
-      consumers[len] = kong.db.consumers:select(row.consumer)
+  for row, err in kong.db.consumer_group_consumers:each_for_consumer_group({ id = consumer_group_pk }) do
+    len = len + 1
+    consumers[len] = kong.db.consumers:select(row.consumer)
+    if err then
+      return nil, err
     end
   end
   if len == 0 then
@@ -58,24 +59,25 @@ local function get_consumers_in_group(consumer_group_pk)
   return consumers
 end
 
-local function is_consumer_in_group(consumer_pk, consumer_group_pk_or_name)
-  local relation = kong.db.consumer_group_consumers:select(
-    {
-      consumer = {id = consumer_pk},
-      consumer_group = {id = get_consumer_group(consumer_group_pk_or_name).id},
-    }
-    )
-    if relation then
-      return true
-    end
-    return false
+
+local function _find_consumer_in_group(cache_key)
+  return kong.db.consumer_group_consumers:select_by_cache_key(cache_key)
 end
 
-local function delete_consumer_in_group(consumer_pk, consumer_group_pk_or_name)
-  if is_consumer_in_group(consumer_pk, consumer_group_pk_or_name) then
+local function is_consumer_in_group(consumer_pk, consumer_group_pk)
+  local cache_key = kong.db.consumer_group_consumers:cache_key(consumer_group_pk, consumer_pk)
+  local relation, err = kong.cache:get(cache_key, nil, _find_consumer_in_group, cache_key)
+  if relation then
+    return true
+  end
+  return false, err
+end
+
+local function delete_consumer_in_group(consumer_pk, consumer_group_pk)
+  if is_consumer_in_group(consumer_pk, consumer_group_pk) then
     kong.db.consumer_group_consumers:delete(
       {
-        consumer_group = {id = get_consumer_group(consumer_group_pk_or_name).id},
+        consumer_group = {id = consumer_group_pk},
         consumer = { id = consumer_pk,},
       }
     )
@@ -88,10 +90,11 @@ end
 local function get_plugins_in_group(consumer_group_pk)
   local plugins = {}
   local len = 0
-  for row in kong.db.consumer_group_plugins:each() do
-    if consumer_group_pk == row.consumer_group.id then
-      len = len + 1
-      plugins[len] = row
+  for row, err in kong.db.consumer_group_plugins:each_for_consumer_group({ id = consumer_group_pk }) do
+    len = len + 1
+    plugins[len] = row
+    if err then
+      return nil, err
     end
   end
   if len == 0 then
@@ -113,10 +116,11 @@ end
 local function get_groups_by_consumer(consumer_pk)
   local groups = {}
   local len = 0
-  for row in kong.db.consumer_group_consumers:each() do
-    if consumer_pk == row.consumer.id then
-      len = len + 1
-      groups[len] = get_consumer_group(row.consumer_group.id)
+  for row, err in kong.db.consumer_group_consumers:each_for_consumer({ id = consumer_pk }) do
+    len = len + 1
+    groups[len] = get_consumer_group(row.consumer_group.id)
+    if err then
+      return nil, err
     end
   end
   if len == 0 then

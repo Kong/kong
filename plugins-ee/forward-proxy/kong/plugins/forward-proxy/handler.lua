@@ -31,7 +31,7 @@ local server_header = meta._SERVER_TOKENS
 
 local ForwardProxyHandler = {
   PRIORITY = 50,
-  VERSION = "1.0.6"
+  VERSION = "1.1.0"
 }
 
 

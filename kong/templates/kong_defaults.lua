@@ -318,6 +318,9 @@ cluster_telemetry_listen = 0.0.0.0:8006
 cluster_telemetry_endpoint = 127.0.0.1:8006
 cluster_telemetry_server_name = NONE
 
+data_plane_config_cache_mode = unencrypted
+data_plane_config_cache_path = NONE
+
 untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =

@@ -1,3 +1,8 @@
+## v2.2.0
+
+- Add support for RS384 (FTI-3035)
+- Mark client_id and client_secret always encrypted (FT-2047)
+
 ## v2.1.1
 
 - Allow redis cluster nodes to be configured using hostnames instead of strictly

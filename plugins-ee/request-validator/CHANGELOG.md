@@ -12,10 +12,9 @@
 
 For steps 2 - 6 above [this script](https://github.com/Kong/kong-ee/blob/master/scripts/bump-plugin) can be used.
 
-## unreleased
+## 1.2.0
 
-- revert the change in parsing multiple values as arrays in version 1.1.3
-  (FTI-2530)
+- revert the change in parsing multiple values as arrays in version 1.1.3 (FTI-2530)
   headers and query-args as `primitive` are now validated individually when
   duplicates are provided, instead of merging them as an array.
 - fix(headers) whitespace around CSV values is now dropped since it is not

@@ -1,3 +1,7 @@
+## 0.3.0
+
+- Encrypt config.vault_token and va_cred.secret_token
+
 ## 0.2.2
 
 - fix(*) BasePlugin inheritance removal (FT-1701)

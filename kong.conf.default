@@ -276,6 +276,25 @@
                                  # to which telemetry updates will be posted
                                  # in `host:port` format.
 
+#data_plane_config_cache_mode = unencrypted
+                                 # Data planes can store their config to file system
+                                 # as a backup in case the node is restarted or reloaded
+                                 # to faster bring the node in configured state or in
+                                 # case there are issues connecting to control plane.
+                                 # This parameter can be used to control the behavior.
+                                 #
+                                 # To be used by data plane nodes only:
+                                 # `unencrypted` = stores config cache unencrypted
+                                 # `encrypted` = stores config cache encrypted
+                                 # `off` = does not store the config cache
+
+#data_plane_config_cache_path =  # The unencrypted config cache is stored by default
+                                 # to Kong `prefix` with a filename `config.cache.json.gz`.
+                                 # The encrypted config cache is stored by default
+                                 # to Kong `prefix` with a filename `.config.cache.jwt`
+                                 # Alternatively you can specify path for config cache
+                                 # with this parameter, e.g. `/tmp/kong-config-cache`.
+
 #------------------------------------------------------------------------------
 # HYBRID MODE CONTROL PLANE
 #------------------------------------------------------------------------------
@@ -1371,9 +1390,9 @@
 
 #dns_cache_size = 10000          # Defines the maximum allowed number of
                                  # DNS records stored in memory cache.
-                                 # Least recently used DNS records are discarded 
-                                 # from cache if it is full. Both errors and 
-                                 # data are cached, therefore a single name query 
+                                 # Least recently used DNS records are discarded
+                                 # from cache if it is full. Both errors and
+                                 # data are cached, therefore a single name query
                                  # can easily take up 10-15 slots.
 
 #dns_not_found_ttl = 30          # TTL in seconds for empty DNS responses and

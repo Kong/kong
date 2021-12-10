@@ -166,6 +166,9 @@ local EE_CONF_INFERENCES = {
   cluster_telemetry_server_name = { typ = "string" },
   cluster_telemetry_endpoint  = { typ = "string" },
 
+  data_plane_config_cache_mode = { typ = "string" },
+  data_plane_config_cache_path = { typ = "string" },
+
   admin_gui_header_txt = { typ = "string" },
   admin_gui_header_bg_color = { typ = "string" },
   admin_gui_header_txt_color = { typ = "string" },
@@ -249,7 +252,7 @@ local function validate_admin_gui_authentication(conf, errors)
     else
        -- validate admin_gui_auth_conf for OIDC Auth
       if conf.admin_gui_auth == "openid-connect" then
-        
+
         if not auth_config.admin_claim then
           errors[#errors+1] = "admin_gui_auth_conf must contains 'admin_claim' "
                               .. "when admin_gui_auth='openid-connect'"
@@ -267,7 +270,7 @@ local function validate_admin_gui_authentication(conf, errors)
         end
 
         -- only allow customers to specify 1 claim to map with rbac roles
-        if auth_config.authenticated_groups_claim and 
+        if auth_config.authenticated_groups_claim and
            #auth_config.authenticated_groups_claim > 1
         then
           errors[#errors+1] = "authenticated_groups_claim only supports 1 claim"

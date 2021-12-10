@@ -61,6 +61,12 @@ ENABLE_CORS=(
 
 ENABLE_DATADOG=(
   --data "name=datadog"
+  --data "config.service_name_tag=ok"
+  --data "config.status_tag=ok"
+  --data "config.consumer_tag=ok"
+  --data "config.metrics[1].name=request_count"
+  --data "config.metrics[1].stat_type=distribution"
+  --data "config.metrics[1].sample_rate=1"
 )
 
 ENABLE_FILE_LOG=(
@@ -90,6 +96,8 @@ ENABLE_HTTP_LOG=(
 ENABLE_IP_RESTRICTION=(
   --data "name=ip-restriction"
   --data "config.allow=1.2.3.4"
+  --data "config.status=1"
+  --data "config.message=ok"
 )
 
 ENABLE_JWT=(
@@ -141,6 +149,10 @@ ENABLE_PROXY_CACHE=(
 ENABLE_RATE_LIMITING=(
   --data "name=rate-limiting"
   --data "config.hour=1"
+  --data "config.redis_ssl=true"
+  --data "config.redis_ssl_verify=true"
+  --data "config.redis_server_name=test.com"
+  --data "config.redis_username=alan"
 )
 
 ENABLE_REQUEST_SIZE_LIMITING=(
@@ -190,6 +202,8 @@ ENABLE_UDP_LOG=(
 
 ENABLE_ZIPKIN=(
   --data "name=zipkin"
+  --data "config.local_service_name=ok"
+  --data "config.header_type=ignore"
 )
 
 # EE plugin configurations
@@ -294,6 +308,12 @@ ENABLE_RATE_LIMITING_ADVANCED=(
   --data "config.limit=5"
   --data "config.window_size=30"
   --data "config.sync_rate=-1"
+)
+
+ENABLE_RATE_LIMITING_ADVANCED_CONSUMER_GROUPS=(
+  "${ENABLE_RATE_LIMITING_ADVANCED[@]}"
+  --data "config.enforce_consumer_groups=true"
+  --data "config.consumer_groups=kongsumergroup"
 )
 
 ENABLE_REQUEST_TRANSFORMER_ADVANCED=(
@@ -433,7 +453,7 @@ function install_enterprise_plugins() {
     fi
     mapfile -t github_urls < <(yq e '.enterprise[].github_url' "$build_yml")
 
-    # Install the discovered plugins and libraries
+    # Install the discovered libraries
     for github_url in "${github_urls[@]}"; do
       local repo
       repo="$(basename "$github_url" .git)"
@@ -452,7 +472,7 @@ function install_enterprise_plugins() {
             base64 --decode > "$ssh_key_filename"
         fi
 
-        # Clone and install the plugin/library using the discovered SSH key
+        # Clone and install the library using the discovered SSH key
         local plugin_name
         local plugin_version
         local repo_directory
@@ -488,6 +508,19 @@ function install_enterprise_plugins() {
         rm -rf "$repo_directory" "$ssh_key_filename"
       fi
     done
+
+    # Install built-in EE plugins of Kong Gateway 2.7+
+    if [[ -d ./plugins-ee ]]; then
+      make install-plugins-ee
+
+      for plugin_ee in ./plugins-ee/*; do
+        if [ -d "$plugin_ee" ]; then
+          local plugin_name
+          plugin_name="$(basename "$plugin_ee")"
+          ENTERPRISE_PLUGIN_NAMES+=("$plugin_name")
+        fi
+      done
+    fi
     printf "\n"
 
     # Export the installed plugins to a temporary file in the event things are re-run
@@ -594,6 +627,7 @@ function reset_kong() {
 CONFIGURATION_FAILED_PLUGIN_NAMES=()
 function configure_plugin() {
   local plugin_configuration="${1^^}"
+  local plugin_name_override="${2:-$1}"
   plugin_configuration="ENABLE_${plugin_configuration//-/_}"
   declare -n values=$plugin_configuration
 
@@ -611,7 +645,8 @@ function configure_plugin() {
   fi
   local name
   name="$(curl -s -X GET "$ADMIN_URL/plugins" | jq -r '.data[].name')"
-  if [[ "$1" != "$name" ]]; then
+
+  if [[ "$plugin_name_override" != "$name" ]]; then
     CONFIGURATION_FAILED_PLUGIN_NAMES+=("$1")
     printf "failed to verify configuration\n"
     jq -r < "$output_filename"
@@ -683,18 +718,31 @@ function main() {
   # In Kong Gateway v2.6.0.0 consumer:username_lower was added
   printf "Validating consumers with simple route and service ... "
   reset_kong
-  curl -s -X POST http://127.0.0.1:8001/consumers \
+  curl -s -X POST "$ADMIN_URL/consumers" \
     --data username=kongsumer > /dev/null
-  curl -s -X POST http://127.0.0.1:8001/services \
+  curl -s -X POST "$ADMIN_URL/services" \
     --data name=default \
     --data path="/request" \
     --data url="http://mockbin.org/request" > /dev/null
-  curl -s -X POST http://127.0.0.1:8001/services/default/routes \
+  curl -s -X POST "$ADMIN_URL/services/default/routes" \
     --data name=default \
     --data paths[1]="/path" > /dev/null
-  if configure_plugin "$plugin_name"; then
-    check_clustering_status "consumers"
-  fi
+  check_clustering_status "consumers"
+
+  # In Kong Gateway v2.7.0.0 consumer_groups were added
+  printf "Validating consumer groups with simple rate limiting plugin ..."
+  reset_kong "rate-limiting-advanced"
+  curl -s -X POST "$ADMIN_URL/consumers" \
+    --data username=kongsumer > /dev/null
+  curl -s -X POST "$ADMIN_URL/consumer_groups" \
+    --data name=kongsumergroup > /dev/null
+  curl -s -X POST "$ADMIN_URL/consumer_groups/kongsumergroup/consumers" \
+   --data consumer=kongsumer > /dev/null
+  configure_plugin "rate-limiting-advanced-consumer-groups" "rate-limiting-advanced"
+  curl -s -X PUT "$ADMIN_URL/consumer_groups/kongsumergroup/overrides/plugins/rate-limiting-advanced" \
+    --header "Content-Type: application/json" \
+    --data '{"config": {"limit": [50], "window_size": [50]}}' > /dev/null
+  check_clustering_status "consumer groups with rate-limiting-advanced"
 
   for plugin_name in "${plugin_names[@]}"; do
     # Skipping application-registration - DevPortal plugin
