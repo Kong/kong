@@ -458,7 +458,7 @@ return {
           
           if role_claim_values then
             auth_plugin_helpers.map_admin_roles_by_idp_claim(admin, role_claim_values)
-          else
+          elseif role_claim then
             -- only logs an error if kong-ee can not find the claims
             ngx.log(ERR, role_claim .. " not found from the user_info claims.", gui_auth)
           end
