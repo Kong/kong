@@ -177,10 +177,6 @@ return {
           if config.consumer_groups == ngx.null then
             return nil, "No consumer groups provided"
           end
-        else
-          if config.consumer_groups then
-            kong.log.warn("Consumer groups provided but not enforced")
-          end
         end
         return true
       end

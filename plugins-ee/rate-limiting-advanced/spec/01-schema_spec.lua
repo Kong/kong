@@ -114,6 +114,16 @@ describe("rate-limiting-advanced schema", function()
     assert.same({ "expected a number" }, err.config.limit)
   end)
 
+  it("errors with size/limit number does not match", function()
+    local ok, err = v({
+      window_size = { 60 },
+      limit = { 50, 10 },
+    }, rate_limiting_schema)
+
+    assert.is_falsy(ok)
+    assert.same({ "You must provide the same number of windows and limits" }, err["@entity"])
+  end)
+
   it("accepts a redis config", function()
     local ok, err = v({
       window_size = { 60 },
