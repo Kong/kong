@@ -506,6 +506,85 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
     end)
   end)
 
+  describe("/developers/download", function()
+    lazy_setup(function()
+      configure_portal()
+    end)
+
+    lazy_teardown(function()
+      assert(db:truncate())
+    end)
+
+    before_each(function()
+      assert(client_request({
+        method = "POST",
+        path = "/developers/roles",
+        body = {
+          name = "red"
+        },
+        headers = {["Content-Type"] = "application/json"},
+      }))
+
+      assert(client_request({
+        method = "POST",
+        path = "/developers/roles",
+        body = {
+          name = "blue"
+        },
+        headers = {["Content-Type"] = "application/json"},
+      }))
+
+      for i = 1, 5 do
+        assert(db.developers:insert {
+          email = "developer-" .. i .. "@dog.com",
+          meta = '{"full_name":"Testy Mctesty Face"}',
+          password = "pw",
+        })
+      end
+
+      for i = 1, 5 do
+        assert(db.developers:insert {
+          email = "developer-" .. i .. "@cat.com",
+          meta = '{"full_name":"Testy Mctesty Face 2"}',
+          password = "pw",
+          roles = {"red"},
+        })
+      end
+
+      for i = 1, 5 do
+        assert(db.developers:insert {
+          email = "developer-" .. i .. "@cow.com",
+          meta = '{"full_name":"Testy Mctesty Face 3"}',
+          password = "pw",
+          roles = {"blue"},
+        })
+      end
+    end)
+
+    after_each(function()
+      assert(db:truncate("rbac_roles"))
+      assert(db:truncate("developers"))
+      assert(db:truncate("consumers"))
+      assert(db:truncate("basicauth_credentials"))
+    end)
+
+
+    it("exports the list of developers as a csv string", function()
+      local res = assert(client:send {
+        methd = "GET",
+        path = "/developers/export"
+      })
+      local body = assert.res_status(200, res)
+
+      assert.equals('text/csv', res.headers["Content-Type"])
+      assert.equals(true, body:find('^Email, Status') ~= nil)
+      assert.equals(5, select(2, string.gsub(body, "cat.com", "")))
+      assert.equals(5, select(2, string.gsub(body, "dog.com", "")))
+      assert.equals(5, select(2, string.gsub(body, "cow.com", "")))
+    end)
+
+  end)
+
   describe("/developers/:developers", function()
     local developer
 

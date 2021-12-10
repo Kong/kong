@@ -283,6 +283,28 @@ return {
     end,
   },
 
+  ["/developers/export"] = {
+    before = function (self, db, helpers)
+      crud_helpers.exit_if_portal_disabled()
+    end,
+
+    GET = function(self, db, helpers)
+      local csvString = 'Email, Status\n'
+      for developer, err in db.developers:each() do
+        if err then
+          return endpoints.handle_error(err)
+        end
+
+        local status_label = enums.CONSUMERS.STATUS_LABELS[developer.status]
+        csvString = csvString .. developer.email .. ',' ..  status_label .. '\n'
+      end
+      return kong.response.exit(200, csvString, {
+        ["Content-Type"] = "text/csv",
+        ["Content-Disposition"] = "attachment; filename=\"developers.csv\"",
+      })
+    end,
+  },
+
   ["/developers/roles/:rbac_roles"] = {
     before = function(self, db, helpers)
       crud_helpers.exit_if_portal_disabled()
