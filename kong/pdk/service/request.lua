@@ -464,6 +464,8 @@ local function new(self)
 
 
   do
+    local QUOTE = string_byte('"')
+
     local set_body_handlers = {
 
       [CONTENT_TYPE_POST] = function(args, mime)
@@ -496,7 +498,7 @@ local function new(self)
         local at = string_find(mime, "boundary=", 1, true)
         if at then
           at = at + 9
-          if string_sub(mime, at, at) == '"' then
+          if string_byte(mime, at) == QUOTE then
             local till = string_find(mime, '"', at + 1, true)
             boundary = string_sub(mime, at + 1, till - 1)
           else
