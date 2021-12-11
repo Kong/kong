@@ -14,17 +14,19 @@ for _, strategy in helpers.each_strategy() do
       local dns_hostsfile
       local reports_server
 
-      local reports_send_ping = function()
+      local reports_send_ping = function(opts)
         ngx.sleep(0.01) -- hand over the CPU so other threads can do work (processing the sent data)
         local admin_client = helpers.admin_client()
-        local res = admin_client:post("/reports/send-ping")
+        local opts = opts or nil
+        local port = opts.port or nil
+        local res = admin_client:post("/reports/send-ping" .. (port and "?port=" .. port or ""))
         assert.response(res).has_status(200)
         admin_client:close()
       end
 
 
       lazy_setup(function()
-        dns_hostsfile = assert(os.tmpname())
+        dns_hostsfile = assert(os.tmpname()  .. ".hosts")
         local fd = assert(io.open(dns_hostsfile, "w"))
         assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
         assert(fd:close())
@@ -95,11 +97,11 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       before_each(function()
-        reports_server = helpers.mock_reports_server()
+        reports_server = helpers.tcp_server(constants.REPORTS.STATS_TLS_PORT, {tls=true})
       end)
 
       after_each(function()
-        reports_server:stop()
+        helpers.stop_kong()
       end)
 
       it("reports vitals backend strategy", function()
@@ -109,11 +111,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.response(res).has_status(200)
 
-        reports_send_ping()
+        reports_send_ping({port=constants.REPORTS.STATS_TLS_PORT})
 
-        local _, reports_data = assert(reports_server:stop())
-        assert.same(1, #reports_data)
-        assert.is_nil(string.find(reports_data[1], "vitals_backend="))
+        local _, reports_data = assert(reports_server:join())
+        assert.is_nil(string.find(reports_data, "vitals_backend="))
 
         proxy_client:close()
       end)
@@ -135,7 +136,7 @@ for _, strategy in helpers.each_strategy() do
 
 
       lazy_setup(function()
-        dns_hostsfile = assert(os.tmpname())
+        dns_hostsfile = assert(os.tmpname()  .. ".hosts")
         local fd = assert(io.open(dns_hostsfile, "w"))
         assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
         assert(fd:close())
@@ -209,11 +210,11 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       before_each(function()
-        reports_server = helpers.mock_reports_server()
+        reports_server = helpers.tcp_server(constants.REPORTS.STATS_TLS_PORT, {tls=true})
       end)
 
       after_each(function()
-        reports_server:stop()
+        helpers.stop_kong()
       end)
 
       it("reports vitals backend strategy", function()
@@ -223,11 +224,10 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.response(res).has_status(200)
 
-        reports_send_ping()
+        reports_send_ping({port=constants.REPORTS.STATS_TLS_PORT})
 
-        local _, reports_data = assert(reports_server:stop())
-        assert.same(1, #reports_data)
-        assert.match("vitals_backend=" .. vitals_strategy, reports_data[1])
+        local _, reports_data = assert(reports_server:join())
+        assert.match("vitals_backend=" .. vitals_strategy, reports_data)
 
         proxy_client:close()
       end)
