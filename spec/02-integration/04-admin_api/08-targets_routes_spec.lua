@@ -159,7 +159,6 @@ describe("Admin API #" .. strategy, function()
           assert.equal("single-target.test:8080", json.target)
           assert.is_number(json.created_at)
           assert.is_string(json.id)
-          local id = json.id
           assert.are.equal(1, json.weight)
 
           local res = assert(client:send {
