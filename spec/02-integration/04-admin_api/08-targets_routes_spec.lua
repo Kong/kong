@@ -161,7 +161,7 @@ describe("Admin API #" .. strategy, function()
           assert.is_string(json.id)
           assert.are.equal(1, json.weight)
 
-          local res = assert(client:send {
+          local res2 = assert(client:send {
             method = "PUT",
             path = "/upstreams/" .. upstream.name .. "/targets/",
             body = {
@@ -170,7 +170,7 @@ describe("Admin API #" .. strategy, function()
             },
             headers = {["Content-Type"] = content_type}
           })
-          assert.response(res).has.status(409)
+          assert.response(res2).has.status(409)
         end
       end)
 
