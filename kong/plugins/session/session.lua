@@ -24,6 +24,7 @@ local function get_opts(conf)
       secure   = conf.cookie_secure,
       renew    = conf.cookie_renew,
       discard  = conf.cookie_discard,
+      persistent  = conf.cookie_persistent,
     }
   }
 
