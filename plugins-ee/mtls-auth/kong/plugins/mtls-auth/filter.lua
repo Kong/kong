@@ -98,6 +98,11 @@ function _M.build_ssl_route_filter_set()
 
   local options = {}
   for workspace, err in workspaces_iter(db) do
+    if not workspace then
+      kong.log.err("failed to iterate workspace ", err)
+      goto next_workspace
+    end
+
     kong.log.debug("build filter for workspace ", workspace.name, " ", workspace.id)
 
     options.workspace = workspace.id
@@ -117,6 +122,7 @@ function _M.build_ssl_route_filter_set()
         end
       end
     end
+  ::next_workspace::
   end
 
   return snis
