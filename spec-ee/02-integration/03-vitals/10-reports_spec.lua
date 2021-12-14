@@ -17,7 +17,7 @@ for _, strategy in helpers.each_strategy() do
       local reports_send_ping = function(opts)
         ngx.sleep(0.01) -- hand over the CPU so other threads can do work (processing the sent data)
         local admin_client = helpers.admin_client()
-        local opts = opts or nil
+        opts = opts or {}
         local port = opts.port or nil
         local res = admin_client:post("/reports/send-ping" .. (port and "?port=" .. port or ""))
         assert.response(res).has_status(200)
