@@ -152,7 +152,6 @@ ENABLE_RATE_LIMITING=(
   --data "config.redis_ssl=true"
   --data "config.redis_ssl_verify=true"
   --data "config.redis_server_name=test.com"
-  --data "config.redis_username=alan"
 )
 
 ENABLE_REQUEST_SIZE_LIMITING=(
