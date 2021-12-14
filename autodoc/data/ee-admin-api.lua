@@ -159,6 +159,7 @@ return {
       ["/developers/:developers/credentials/:plugin"] = {},
       ["/developers/:developers/credentials/:plugin/:credential_id"] = {},
       ["/developers/invite"] = {},
+      ["/developers/export"] = {},
     },
     entities = {
       description = [[ entities endpoints]],
