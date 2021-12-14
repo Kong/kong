@@ -7,7 +7,6 @@
 
 local redis  = require "kong.enterprise_edition.redis"
 local typedefs = require "kong.db.schema.typedefs"
-local kong = kong
 
 
 local function check_shdict(name)
