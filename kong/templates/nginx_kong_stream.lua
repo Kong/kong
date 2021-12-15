@@ -122,11 +122,9 @@ server {
     }
 > end
 
-    set $tls_sni_name 'kong_upstream';
     preread_by_lua_block {
         Kong.preread()
     }
-    proxy_ssl_name $tls_sni_name;
 
     proxy_ssl on;
     proxy_ssl_server_name on;
