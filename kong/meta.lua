@@ -1,6 +1,6 @@
 local version = setmetatable({
   major = 2,
-  minor = 6,
+  minor = 7,
   patch = 0,
   --suffix = "rc.1"
 }, {

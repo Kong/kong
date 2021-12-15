@@ -1,6 +1,6 @@
 # Table of Contents
 
-- [Unreleased](#Unreleased)
+- [2.7.0](#270)
 - [2.6.0](#260)
 - [2.5.1](#251)
 - [2.5.0](#250)
@@ -60,7 +60,7 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## [Unreleased]
+## [2.7.0]
 
 ### Dependencies
 
@@ -70,7 +70,6 @@
   [#7909](https://github.com/Kong/kong/pull/7909)
 - Bumped `go-pdk` used in tests from v0.6.0 to v0.7.1 [#7964](https://github.com/Kong/kong/pull/7964)
 - Cassandra support is deprecated with 2.7 and will be fully removed with 4.0.
-  https://konghq.com/blog/cassandra-support-deprecated
 
 ### Additions
 
@@ -6671,7 +6670,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[Unreleased]: https://github.com/Kong/kong/compare/2.6.0...master
+[2.7.0]: https://github.com/Kong/kong/compare/2.6.0...2.7.0
 [2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
 [2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Kong/kong/compare/2.4.1...2.5.0

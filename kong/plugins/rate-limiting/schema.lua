@@ -84,7 +84,6 @@ return {
           { redis_host = typedefs.host },
           { redis_port = typedefs.port({ default = 6379 }), },
           { redis_password = { type = "string", len_min = 0 }, },
-          { redis_username = { type = "string" }, },
           { redis_ssl = { type = "boolean", required = true, default = false, }, },
           { redis_ssl_verify = { type = "boolean", required = true, default = false }, },
           { redis_server_name = typedefs.sni },
