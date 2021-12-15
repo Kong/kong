@@ -5,12 +5,12 @@ local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local ssl = require("ngx.ssl")
 local openssl_x509 = require("resty.openssl.x509")
+local openssl_digest = require("resty.openssl.digest")
+local to_hex = require("resty.string").to_hex
 local ngx_null = ngx.null
-local ngx_md5 = ngx.md5
 local tostring = tostring
 local assert = assert
 local error = error
-local concat = table.concat
 local sort = table.sort
 local type = type
 
@@ -21,37 +21,37 @@ local MT = { __index = _M, }
 local compare_sorted_strings
 
 
-local function to_sorted_string(value)
+local function hash_config(value, hash)
   if value == ngx_null then
-    return "/null/"
+    hash:update("/null/")
+    return
   end
 
   local t = type(value)
   if t == "table" then
-    local i = 1
-    local o = { "{" }
+    hash:update("{")
     for k, v in pl_tablex.sort(value, compare_sorted_strings) do
-      o[i+1] = to_sorted_string(k)
-      o[i+2] = ":"
-      o[i+3] = to_sorted_string(v)
-      o[i+4] = ";"
-      i=i+4
+      hash_config(k, hash)
+      hash:update(":")
+      hash_config(v, hash)
+      hash:update(";")
     end
-    if i == 1 then
-      i = i + 1
-    end
-    o[i] = "}"
-
-    return concat(o, nil, 1, i)
+    hash:update("}")
 
   elseif t == "string" then
-    return "$" .. value .. "$"
+    hash:update("$")
+    hash:update(value)
+    hash:update("$")
 
   elseif t == "number" then
-    return "#" .. tostring(value) .. "#"
+    hash:update("#")
+    hash:update(tostring(value))
+    hash:update("#")
 
   elseif t == "boolean" then
-    return "?" .. tostring(value) .. "?"
+    hash:update("?")
+    hash:update(tostring(value))
+    hash:update("?")
 
   else
     error("invalid type to be sorted (JSON types are supported")
@@ -60,8 +60,12 @@ end
 
 
 compare_sorted_strings = function(a, b)
-  a = to_sorted_string(a)
-  b = to_sorted_string(b)
+  local md5 = openssl_digest.new("MD5")
+  a = hash_config(a, md5)
+  a = to_hex((md5:final()))
+  md5 = openssl_digest.new("MD5")
+  b = hash_config(b, md5)
+  b = to_hex((md5:final()))
   return a < b
 end
 
@@ -93,7 +97,19 @@ end
 
 
 function _M:calculate_config_hash(config_table)
-  return ngx_md5(to_sorted_string(config_table))
+  local md5, err = openssl_digest.new("MD5")
+  if not md5 then
+    return nil, err
+  end
+
+  hash_config(config_table, md5)
+
+  local digest, err = md5:final()
+  if not digest then
+    return nil, err
+  end
+
+  return to_hex(digest)
 end
 
 
