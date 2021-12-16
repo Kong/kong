@@ -33,7 +33,7 @@ for _, strategy in helpers.each_strategy() do
     local reports_send_ping = function(opts)
       ngx.sleep(0.01) -- hand over the CPU so other threads can do work (processing the sent data)
       local admin_client = helpers.admin_client()
-      local opts = opts or nil
+      local opts = opts or {}
       local port = opts.port or nil
 
       local res = admin_client:post("/reports/send-ping" .. (port and "?port=" .. port or ""))
@@ -421,6 +421,10 @@ for _, strategy in helpers.each_strategy() do
           ["X-Large"] = string.rep("a", 2^10 * 10), -- default large_client_header_buffers is 8k
         }
       })
+
+      -- send a ping so the tcp server shutdown cleanly and not with a timeout.
+      reports_send_ping({port=constants.REPORTS.STATS_TLS_PORT})
+
       assert.res_status(400, res)
       proxy_client:close()
 
