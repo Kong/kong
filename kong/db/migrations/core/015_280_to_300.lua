@@ -13,25 +13,23 @@ local function c_remove_unused_targets(coordinator)
       local key = string.format("%s:%s", row.upstream_id, row.target)
 
       if not upstream_targets[key] then
-        upstream_targets[key] = { n = 0 }
-      end
-
-      upstream_targets[key].n = upstream_targets[key].n + 1
-      upstream_targets[key][upstream_targets[key].n] = { row.id, row.created_at }
-    end
-  end
-
-  local sort = function(a, b)
-    return a[2] > b[2]
-  end
-
-  for _, targets in pairs(upstream_targets) do
-    if targets.n > 1 then
-      table.sort(targets, sort)
-
-      for i = 2, targets.n do
+        upstream_targets[key] = {
+          id = row.id,
+          created_at = row.created_at,
+        }
+      else
+        local to_remove
+        if row.created_at > upstream_targets[key].created_at then
+          to_remove = upstream_targets[key].id
+          upstream_targets[key] = {
+            id = row.id,
+            created_at = row.created_at,
+          }
+        else
+          to_remove = row.id
+        end
         local _, err = coordinator:execute("DELETE FROM targets WHERE id = ?", {
-          cassandra.uuid(targets[i][1])
+          cassandra.uuid(to_remove)
         })
 
         if err then

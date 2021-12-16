@@ -142,7 +142,7 @@ describe("Admin API #" .. strategy, function()
         end
       end)
 
-      it_content_types("updates and does not create duplicated targets", function(content_type)
+      it_content_types("refuses to create duplicated targets", function(content_type)
         return function()
           local upstream = bp.upstreams:insert { slots = 10 }
           local res = assert(client:send {
