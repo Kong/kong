@@ -63,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
         dns_hostsfile = dns_hostsfile,
         anonymous_reports = "on",
         declarative_config = yaml_file,
-      }))
+      }, {"routes", "services"}))
     end)
 
     after_each(function()
