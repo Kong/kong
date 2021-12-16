@@ -5,20 +5,22 @@ local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local ssl = require("ngx.ssl")
 local openssl_x509 = require("resty.openssl.x509")
+local isempty = require("table.isempty")
+local isarray = require("table.isarray")
+local nkeys = require("table.nkeys")
+local new_tab = require("table.new")
 local ngx_null = ngx.null
 local ngx_md5 = ngx.md5
 local tostring = tostring
 local assert = assert
 local error = error
 local concat = table.concat
+local pairs = pairs
 local sort = table.sort
 local type = type
 
 
 local MT = { __index = _M, }
-
-
-local compare_sorted_strings
 
 
 local function to_sorted_string(value)
@@ -27,42 +29,65 @@ local function to_sorted_string(value)
   end
 
   local t = type(value)
-  if t == "table" then
-    local i = 1
-    local o = { "{" }
-    for k, v in pl_tablex.sort(value, compare_sorted_strings) do
-      o[i+1] = to_sorted_string(k)
-      o[i+2] = ":"
-      o[i+3] = to_sorted_string(v)
-      o[i+4] = ";"
-      i=i+4
-    end
-    if i == 1 then
-      i = i + 1
-    end
-    o[i] = "}"
-
-    return concat(o, nil, 1, i)
-
-  elseif t == "string" then
+  if t == "string" then
     return "$" .. value .. "$"
 
   elseif t == "number" then
-    return "#" .. tostring(value) .. "#"
+    return "#" .. value .. "#"
 
   elseif t == "boolean" then
     return "?" .. tostring(value) .. "?"
 
+  elseif t == "table" then
+    if isempty(value) then
+      return "{}"
+
+    elseif isarray(value) then
+      local count = #value
+      local narr = count * 2 + 1
+      local o = new_tab(narr, 0)
+      local i = 1
+      o[i] = "{"
+      for j = 1, count do
+        o[i+1] = to_sorted_string(value[j])
+        o[i+2] = ";"
+        i=i+2
+      end
+      o[i] = "}"
+      return concat(o, nil, 1, narr)
+
+    else
+      local count = nkeys(value)
+      local keys = new_tab(count, count)
+      local i = 0
+      for k in pairs(value) do
+        i = i + 1
+        local key = to_sorted_string(k)
+        keys[i] = key
+        keys[key] = k
+      end
+
+      sort(keys)
+
+      local narr = count * 4 + 1
+      local o = new_tab(narr, 0)
+      i = 1
+      o[i] = "{"
+      for j = 1, count do
+        local key = keys[j]
+        o[i+1] = key
+        o[i+2] = ":"
+        o[i+3] = to_sorted_string(value[keys[key]])
+        o[i+4] = ";"
+        i=i+4
+      end
+      o[i] = "}"
+      return concat(o, nil, 1, narr)
+    end
+
   else
     error("invalid type to be sorted (JSON types are supported")
   end
-end
-
-
-compare_sorted_strings = function(a, b)
-  a = to_sorted_string(a)
-  b = to_sorted_string(b)
-  return a < b
 end
 
 
