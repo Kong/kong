@@ -31,7 +31,7 @@ local function new()
   -- request would be proxied to one of the Targets associated with that
   -- Upstream).
   --
-  -- The `host` argument should receive a string equal to that of one of the
+  -- The `host` argument should receive a string equal to the name of one of the
   -- Upstream entities currently configured.
   --
   -- @function kong.service.set_upstream
@@ -72,9 +72,8 @@ local function new()
   -- Load-balancing components such as retries and health-checks will also be
   -- ignored for this request.
   --
-  -- The `host` argument expects a string containing the IP address of the
-  -- upstream server (IPv4/IPv6), and the `port` argument must contain a number
-  -- representing the port on which to connect to.
+  -- The `host` and `port` arguments expect the values as set on a Service
+  -- entity.
   --
   -- @function kong.service.set_target
   -- @phases access
