@@ -7,7 +7,6 @@
 
 local redis  = require "kong.enterprise_edition.redis"
 local typedefs = require "kong.db.schema.typedefs"
-local kong = kong
 
 
 local function check_shdict(name)
@@ -105,6 +104,10 @@ return {
           return true
         end
 
+        if #config.window_size ~= #config.limit then
+          return nil, "You must provide the same number of windows and limits"
+        end
+
         -- sort the window_size and limit arrays by limit
         -- first we create a temp table, each element of which is a pair of
         -- limit/window_size values. we then sort based on the limit element
@@ -148,10 +151,6 @@ return {
           end
         end
 
-        if #config.window_size ~= #config.limit then
-          return nil, "You must provide the same number of windows and limits"
-        end
-
         if config.identifier == "header" then
           if config.header_name == ngx.null then
             return nil, "No header name provided"
@@ -176,10 +175,6 @@ return {
         if config.enforce_consumer_groups then
           if config.consumer_groups == ngx.null then
             return nil, "No consumer groups provided"
-          end
-        else
-          if config.consumer_groups then
-            kong.log.warn("Consumer groups provided but not enforced")
           end
         end
         return true

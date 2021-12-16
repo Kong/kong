@@ -124,6 +124,10 @@ jobs:
       if: type = cron
       script:
       - make test-forward-proxy
+    - name: rate-limiting-advanced
+      if: type = cron
+      script:
+      - make test-rate-limiting-advanced
     - name: canary
       if: type = cron
       script:
