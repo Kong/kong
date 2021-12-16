@@ -588,7 +588,7 @@ function JwtSignerHandler.access(_, conf)
     end
 
     if payload then
-      local expiry
+      local expiry = tonumber(payload.exp) or time()
 
       if enable_introspection and trust_introspection then
         log(logs.trusting)
@@ -602,7 +602,6 @@ function JwtSignerHandler.access(_, conf)
 
           local leeway = args.get_conf_arg(config.leeway, 0)
 
-          expiry = tonumber(payload.exp)
           if expiry then
             if time() > (expiry + leeway) then
               ins(logs.expired)
@@ -613,9 +612,6 @@ function JwtSignerHandler.access(_, conf)
             ins(logs.expiry)
             return unauthorized(realm, "invalid_token", errs.expiry, logs.expiry)
           end
-
-        else
-          expiry = tonumber(payload.exp) or time()
         end
 
         local verify_scopes = args.get_conf_arg(config.verify_scopes)
@@ -695,7 +691,7 @@ function JwtSignerHandler.access(_, conf)
 
         local upstream_leeway = args.get_conf_arg(config.upstream_leeway, 0)
         if upstream_leeway ~= 0 then
-          payload.original_exp = expiry or tonumber(payload.exp)
+          payload.original_exp = expiry
           payload.exp = expiry + upstream_leeway
         end
 
