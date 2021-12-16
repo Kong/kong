@@ -110,9 +110,12 @@ In this release we continued our work on better performance:
   plugin configurations `service_tag`, `consumer_tag`, and `status_tag`.
   [#6230](https://github.com/Kong/kong/pull/6230)
   Thanks [onematchfox](https://github.com/onematchfox) for the patch!
-- **gRPC gGateway** and **gRPC Web**: Now share most of the ProtoBuf definitions.
+- **gRPC Gateway** and **gRPC Web**: Now share most of the ProtoBuf definitions.
   Both plugins now share the Timestamp transcoding and included `.proto` files features.
-  [#7950(https://github.com/Kong/kong/pull/7950)
+  [#7950](https://github.com/Kong/kong/pull/7950)
+- **gRPC Gateway**: processes services and methods defined in imported
+  `.proto` files.
+  [#8107](https://github.com/Kong/kong/pull/8107)
 - **Rate-Limiting**: add support for Redis SSL, through configuration properties
   `redis_ssl` (can be set to `true` or `false`), `ssl_verify`, and `ssl_server_name`.
   [#6737](https://github.com/Kong/kong/pull/6737)
