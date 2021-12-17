@@ -28,7 +28,7 @@ end
 function _M:setup()
   local bin
   for _, test in ipairs({"nginx", "/usr/local/openresty/nginx/sbin/nginx"}) do
-    bin, _ = perf.execute("which nginx")
+    bin, _ = perf.execute("which " .. test)
     if bin then
       self.nginx_bin = bin
       break
