@@ -17,6 +17,20 @@ local data_plane_role = kong.configuration.role == "data_plane"
 
 
 return {
+  ["/config/ready"] = {
+    GET = function(self, dao, helpers)
+      if kong.db.strategy ~= "off" then
+        return kong.response.exit(200)
+      end
+    -- unintuitively, "true" is unitialized. we do always initialize the shdict key
+    -- after a config loads, this returns the hash string
+    if declarative.get_current_hash() == true then
+      return kong.response.exit(503)
+    end
+
+    return kong.response.exit(200)
+    end
+  },
   ["/status"] = {
     GET = function(self, dao, helpers)
       local query = self.req.params_get

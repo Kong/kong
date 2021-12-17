@@ -129,6 +129,7 @@ local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 
 local declarative_entities
 local declarative_meta
+local declarative_hash
 local schema_state
 
 
@@ -372,6 +373,7 @@ local function parse_declarative_config(kong_config)
   end
 
   local dc = declarative.new_config(kong_config)
+  local hash = nil
 
   if not kong_config.declarative_config and not kong_config.declarative_config_string then
     -- return an empty configuration,
@@ -382,9 +384,9 @@ local function parse_declarative_config(kong_config)
 
   local entities, err, _, meta
   if kong_config.declarative_config ~= nil then
-    entities, err, _, meta = dc:parse_file(kong_config.declarative_config)
+    entities, err, _, meta, hash = dc:parse_file(kong_config.declarative_config)
   elseif kong_config.declarative_config_string ~= nil then
-    entities, err, _, meta = dc:parse_string(kong_config.declarative_config_string)
+    entities, err, _, meta, hash = dc:parse_string(kong_config.declarative_config_string)
   end
 
   if not entities then
@@ -397,11 +399,11 @@ local function parse_declarative_config(kong_config)
     end
   end
 
-  return entities, nil, meta
+  return entities, nil, meta, hash
 end
 
 
-local function load_declarative_config(kong_config, entities, meta)
+local function load_declarative_config(kong_config, entities, meta, hash)
   if kong_config.database ~= "off" then
     return true
   end
@@ -417,7 +419,7 @@ local function load_declarative_config(kong_config, entities, meta)
       return true
     end
 
-    local ok, err = declarative.load_into_cache(entities, meta)
+    local ok, err = declarative.load_into_cache(entities, meta, hash)
     if not ok then
       return nil, err
     end
@@ -548,7 +550,7 @@ function Kong.init()
 
   if config.database == "off" then
     local err
-    declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
+    declarative_entities, err, declarative_meta, declarative_hash = parse_declarative_config(kong.configuration)
     if not declarative_entities then
       error(err)
     end
@@ -655,7 +657,8 @@ function Kong.init_worker()
 
   ok, err = load_declarative_config(kong.configuration,
                                     declarative_entities,
-                                    declarative_meta)
+                                    declarative_meta,
+                                    declarative_hash)
   if not ok then
     stash_init_worker_error("failed to load declarative config file: " .. err)
     return
@@ -1530,7 +1533,7 @@ do
       return
     end
 
-    local ok, err = declarative.load_into_cache_with_events(parsed[1], parsed[2])
+    local ok, err = declarative.load_into_cache_with_events(parsed[1], parsed[2], parsed[3])
     if not ok then
       if err == "no memory" then
         kong.log.err("not enough cache space for declarative config, " ..

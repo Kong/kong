@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local constants = require "kong.constants"
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
@@ -13,13 +14,45 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
   local meta = require "kong.meta"
   local client
 
+  local fixtures = {
+    http_mock = {}
+  }
+  -- a hack API to allow direct interaction with the test instance SHM
+  fixtures.http_mock.my_server_block = [[
+    server {
+      server_name shmserver;
+      listen 32765;
+
+      location /shm {
+        content_by_lua_block {
+          local key = ngx.req.get_uri_args()["key"]
+          if ngx.var.request_method == "GET" then
+            local val = ngx.shared.kong:get(key)
+            ngx.say(val)
+            ngx.exit(ngx.HTTP_OK)
+          elseif ngx.var.request_method == "PUT" then
+            ngx.req.read_body()
+            local val = ngx.req.get_body_data()
+            if val == "true" then
+              ngx.shared.kong:safe_set(key, true)
+            else
+              ngx.shared.kong:safe_set(key, val)
+            end
+            ngx.exit(ngx.HTTP_OK)
+          end
+        }
+      }
+    }
+  ]]
+
   lazy_setup(function()
     helpers.get_db_utils(nil, {}) -- runs migrations
-    assert(helpers.start_kong {
+    assert(helpers.start_kong({
       database = strategy,
       plugins = "bundled,reports-api",
-      pg_password = "hide_me"
-    })
+      pg_password = "hide_me",
+      nginx_conf       = "spec/fixtures/custom_nginx.template",
+      }, nil, nil, fixtures))
     client = helpers.admin_client(10000)
   end)
 
@@ -184,6 +217,44 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert(find("/plugins"))                             -- Kong base endpoint
       assert(find("/basic-auths/{basicauth_credentials}")) -- Core plugin endpoint
       assert(find("/reports/send-ping"))                   -- Custom plugin "reports-api"
+    end)
+  end)
+
+  describe("/config/ready", function()
+    -- 32765 is a utility server that allows us to interact with the Kong instance SHM
+    -- see the start_kong() call above
+    it("returns 200 when config is ready", function()
+      local shm_client = helpers.http_client("localhost", 32765, 30)
+      -- during the test, the config SHM isn't initialized as usual, and will be nil unless set
+      -- stuff a "hash" into it to simulate a non-initialized value
+      assert(shm_client:send {
+        method = "PUT",
+        path = "/shm?key=" .. constants.DECLARATIVE_HASH_KEY,
+        body = "lkdjglkjdkgjfdlkgjdj"
+      })
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/config/ready"
+      })
+      assert.res_status(200, res)
+    end)
+    it("returns 503 when config is not ready", function()
+      if strategy == "off" then
+        local shm_client = helpers.http_client("localhost", 32765, 30)
+        -- similarly, we need to force the config SHM into its normal init state
+        assert(shm_client:send {
+          method = "PUT",
+          path = "/shm?key=" .. constants.DECLARATIVE_HASH_KEY,
+          body = "true"
+        })
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/config/ready"
+        })
+        assert.res_status(503, res)
+      end
     end)
   end)
 
