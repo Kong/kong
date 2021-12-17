@@ -9,11 +9,7 @@ return {
 
   fields = {
     { tag          = typedefs.tag, },
-    { entity_name  = { type = "string", required = true, unique = false }, },
-    { entity_id    = { type = "string",
-                        elements = typedefs.uuid,
-                        unique = true,
-                        required = true }, },
-    }
-
+    { entity_name  = { type = "string", required = true }, },
+    { entity_id    = typedefs.uuid { required = true }, },
+  }
 }
