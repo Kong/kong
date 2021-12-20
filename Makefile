@@ -119,7 +119,7 @@ dependencies: bin/grpcurl
 	    echo $$rock already installed, skipping ; \
 	  else \
 	    echo $$rock not found, installing via luarocks... ; \
-	    luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR); \
+	    luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) || exit 1; \
 	  fi \
 	done;
 
