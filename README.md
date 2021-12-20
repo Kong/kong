@@ -83,7 +83,7 @@ Please see the [Changelog](CHANGELOG.md) for more details about a given release.
 - Read up on the latest happenings at our blog: [https://konghq.com/blog/](https://konghq.com/blog/)
 - Visit our homepage to learn more: [https://konghq.com/](https://konghq.com/)
 
-## Konnect
+## Connect
 Kong Inc. offers commercial subscriptions that enhance the Kong API Gateway in a variety of ways. Customers of Kong's [Konnect](https://konghq.com/kong-konnect/) subscription take advantage of additional gateway functionality, commercial support, and access to Kong's managed (SaaS) control plane platform. The Konnect platform features include real-time analytics, a service catalog, developer portals, and so much more! [Get started](https://konghq.com/get-started/) with Konnect.
 
 ## License
