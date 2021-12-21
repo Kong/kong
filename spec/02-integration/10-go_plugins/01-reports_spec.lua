@@ -17,7 +17,6 @@ for _, strategy in helpers.each_strategy() do
       admin_client:close()
     end
 
-
     lazy_setup(function()
       dns_hostsfile = assert(os.tmpname() .. ".hosts")
       local fd = assert(io.open(dns_hostsfile, "w"))
@@ -82,7 +81,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     before_each(function()
-      constants.REPORTS.STATS_TLS_PORT = constants.REPORTS.STATS_TLS_PORT + math.random(1, 50)
       reports_server = helpers.tcp_server(constants.REPORTS.STATS_TLS_PORT, {tls=true})
     end)
 
@@ -117,6 +115,10 @@ for _, strategy in helpers.each_strategy() do
       local res = proxy_client:get("/", {
         headers = { host  = "http-service.test" }
       })
+
+      -- send a ping so the tcp server shutdown cleanly and not with a timeout.
+      reports_send_ping(constants.REPORTS.STATS_TLS_PORT)
+
       assert.res_status(200, res)
       assert.equal("got from server 'mock-upstream/1.0.0'", res.headers['x-hello-from-go-at-response'])
       proxy_client:close()
@@ -131,6 +133,10 @@ for _, strategy in helpers.each_strategy() do
             ["X-Loose-Data"] = "this",
           }
         })
+
+        -- send a ping so the tcp server shutdown cleanly and not with a timeout.
+        reports_send_ping(constants.REPORTS.STATS_TLS_PORT)
+
         assert.res_status(200, res)
         proxy_client:close()
 
