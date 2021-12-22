@@ -277,6 +277,9 @@ test-upstream-timeout:
 test-vault-auth:
 	scripts/enterprise_plugin.sh test vault-auth
 
+test-rate-limiting-advanced:
+	scripts/enterprise_plugin.sh test rate-limiting-advanced
+
 pdk-phase-checks:
 	rm -f t/phase_checks.stats
 	rm -f t/phase_checks.report

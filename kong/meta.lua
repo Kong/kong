@@ -9,7 +9,7 @@ local ee_meta = require "kong.enterprise_edition.meta"
 
 local version = setmetatable({
   major = 2,
-  minor = 6,
+  minor = 7,
   patch = 0,
   --suffix = "rc.1"
 }, {

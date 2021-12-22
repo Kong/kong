@@ -56,9 +56,9 @@ describe("kong.clustering.control_plane", function()
       redis = {
         "connect_timeout",
         "keepalive_backlog",
-        "keepalive_pool_size",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
       },
       acme = {
         "preferred_chain",
@@ -141,7 +141,6 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
-        "redis_username"
       },
     }, cp._get_removed_fields(2003000000))
 
@@ -149,9 +148,9 @@ describe("kong.clustering.control_plane", function()
       redis = {
         "connect_timeout",
         "keepalive_backlog",
-        "keepalive_pool_size",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
       },
       prometheus = {
         "per_consumer",
@@ -244,7 +243,6 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
-        "redis_username"
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -252,9 +250,9 @@ describe("kong.clustering.control_plane", function()
       redis = {
         "connect_timeout",
         "keepalive_backlog",
-        "keepalive_pool_size",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
       },
       syslog = {
         "facility",
@@ -347,7 +345,6 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
-        "redis_username"
       },
     }, cp._get_removed_fields(2003004000))
 
@@ -355,9 +352,9 @@ describe("kong.clustering.control_plane", function()
       redis = {
         "connect_timeout",
         "keepalive_backlog",
-        "keepalive_pool_size",
         "read_timeout",
         "send_timeout",
+        "keepalive_pool_size",
       },
       syslog = {
         "facility",
@@ -443,7 +440,6 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
-        "redis_username"
       },
       zipkin = {
         "local_service_name",
@@ -451,6 +447,9 @@ describe("kong.clustering.control_plane", function()
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
+      redis = {
+        "keepalive_pool_size",
+      },
       acme = {
         "preferred_chain",
       },
@@ -532,7 +531,6 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
-        "redis_username"
       },
       zipkin = {
         "local_service_name",
@@ -621,7 +619,6 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
-        "redis_username"
       },
       zipkin = {
         "local_service_name",
@@ -653,7 +650,6 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
-        "redis_username"
       },
       zipkin = {
         "local_service_name",

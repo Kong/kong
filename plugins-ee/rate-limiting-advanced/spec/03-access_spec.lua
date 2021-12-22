@@ -76,13 +76,13 @@ for _, strategy in strategies() do
   local build_plugin = build_plugin_fn(policy)
 
   describe(s, function()
-    local bp, consumer1, consumer2, plugin, plugin2, plugin3, plugin4, consumer_in_group
+    local bp, db, consumer1, consumer2, plugin, plugin2, plugin3, plugin4, consumer_in_group
 
     lazy_setup(function()
       helpers.kill_all()
       redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, REDIS_PASSWORD)
 
-      bp = helpers.get_db_utils(strategy ~= "off" and strategy or nil,
+      bp, db = helpers.get_db_utils(strategy ~= "off" and strategy or nil,
                                 nil,
                                 {"rate-limiting-advanced"})
 
@@ -102,27 +102,23 @@ for _, strategy in strategies() do
         custom_id = "consumer_in_group"
       })
 
-      local consumer_group = assert(bp.consumer_groups:insert {
-        name = "test_group"
-      })
+      local consumer_group = assert(db.consumer_groups:insert({
+        name = "test_consumer_group"
+      }))
 
-      local mapping = {
+      assert(db.consumer_group_consumers:insert({
         consumer          = { id = consumer_in_group.id },
         consumer_group 	  = { id = consumer_group.id },
-      }
+      }))
 
-      assert(bp.consumer_group_consumers:insert {
-        mapping
-      })
-
-      assert(bp.consumer_group_plugins:insert {
+      assert(db.consumer_group_plugins:insert({
           name = "rate-limiting-advanced",
           consumer_group = { id = consumer_group.id },
           config = {
             window_size = { MOCK_GROUP_SIZE },
             limit = { MOCK_GROUP_LIMIT },
           }
-      })
+      }))
 
       assert(bp.keyauth_credentials:insert {
         key = "apikeycg",
@@ -1563,9 +1559,9 @@ for _, strategy in strategies() do
             }
           })
           assert.res_status(200, res)
-          assert.are.same(MOCK_GROUP_LIMIT, tonumber(res.headers["x-ratelimit-limit-3"]))
+          assert.are.same(MOCK_GROUP_LIMIT, tonumber(res.headers["x-ratelimit-limit-10"]))
           assert.are.same(MOCK_GROUP_LIMIT, tonumber(res.headers["ratelimit-limit"]))
-          assert.are.same(MOCK_GROUP_LIMIT - 1, tonumber(res.headers["x-ratelimit-remaining-3"]))
+          assert.are.same(MOCK_GROUP_LIMIT - 1, tonumber(res.headers["x-ratelimit-remaining-10"]))
           assert.are.same(MOCK_GROUP_LIMIT - 1, tonumber(res.headers["ratelimit-remaining"]))
         end)
         name = "should not use group configurations when consumer is not in group"
@@ -1581,9 +1577,9 @@ for _, strategy in strategies() do
             }
           })
           assert.res_status(200, res)
-          assert.are.same(MOCK_ORIGINAL_LIMIT, tonumber(res.headers["x-ratelimit-limit-3"]))
+          assert.are.same(MOCK_ORIGINAL_LIMIT, tonumber(res.headers["x-ratelimit-limit-5"]))
           assert.are.same(MOCK_ORIGINAL_LIMIT, tonumber(res.headers["ratelimit-limit"]))
-          assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["x-ratelimit-remaining-3"]))
+          assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["x-ratelimit-remaining-5"]))
           assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["ratelimit-remaining"]))
         end)
         name = "should not change limit for plugin instances of the same consumer if group not enforced"
