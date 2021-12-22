@@ -11,6 +11,7 @@ local nkeys = require("table.nkeys")
 local new_tab = require("table.new")
 local ngx_null = ngx.null
 local ngx_md5 = ngx.md5
+local ngx_md5_bin = ngx.md5_bin
 local tostring = tostring
 local assert = assert
 local error = error
@@ -18,6 +19,7 @@ local concat = table.concat
 local pairs = pairs
 local sort = table.sort
 local type = type
+local min = math.min
 
 
 local MT = { __index = _M, }
@@ -44,17 +46,45 @@ local function to_sorted_string(value)
 
     elseif isarray(value) then
       local count = #value
-      local narr = count * 2 + 1
-      local o = new_tab(narr, 0)
-      local i = 1
-      o[i] = "{"
-      for j = 1, count do
-        o[i+1] = to_sorted_string(value[j])
-        o[i+2] = ";"
-        i=i+2
+      if count == 1 then
+        return "{" .. to_sorted_string(value[1]) .. "}"
+
+      elseif count == 2 then
+        return "{" .. to_sorted_string(value[1]) .. ";"
+                   .. to_sorted_string(value[2]) .. "}"
+
+      elseif count == 3 then
+        return "{" .. to_sorted_string(value[1]) .. ";"
+                   .. to_sorted_string(value[2]) .. ";"
+                   .. to_sorted_string(value[3]) .. "}"
+
+      elseif count == 4 then
+        return "{" .. to_sorted_string(value[1]) .. ";"
+                   .. to_sorted_string(value[2]) .. ";"
+                   .. to_sorted_string(value[3]) .. ";"
+                   .. to_sorted_string(value[4]) .. "}"
+
+      elseif count == 5 then
+        return "{" .. to_sorted_string(value[1]) .. ";"
+                   .. to_sorted_string(value[2]) .. ";"
+                   .. to_sorted_string(value[3]) .. ";"
+                   .. to_sorted_string(value[4]) .. ";"
+                   .. to_sorted_string(value[5]) .. "}"
       end
-      o[i] = "}"
-      return concat(o, nil, 1, narr)
+
+      local i = 0
+      local o = new_tab(min(count, 100), 0)
+      for j = 1, count do
+        i = i + 1
+        o[i] = to_sorted_string(value[j])
+
+        if j % 100 == 0 then
+          i = 1
+          o[i] = ngx_md5_bin(concat(o, ";", 1, 100))
+        end
+      end
+
+      return "{" .. ngx_md5(concat(o, ";", 1, i)) .. "}"
 
     else
       local count = nkeys(value)
@@ -69,20 +99,14 @@ local function to_sorted_string(value)
 
       sort(keys)
 
-      local narr = count * 4 + 1
-      local o = new_tab(narr, 0)
-      i = 1
-      o[i] = "{"
-      for j = 1, count do
-        local key = keys[j]
-        o[i+1] = key
-        o[i+2] = ":"
-        o[i+3] = to_sorted_string(value[keys[key]])
-        o[i+4] = ";"
-        i=i+4
+      local o = new_tab(count, 0)
+      for i = 1, count do
+        o[i] = keys[i] .. ":" .. to_sorted_string(value[keys[keys[i]]])
       end
-      o[i] = "}"
-      return concat(o, nil, 1, narr)
+
+      value = concat(o, ";", 1, count)
+
+      return "{" .. (count > 10 and ngx_md5(value) or value) .. "}"
     end
 
   else
