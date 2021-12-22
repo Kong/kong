@@ -1,4 +1,7 @@
 -- Copyright (C) Kong Inc.
+require "kong.tools.utils" -- ffi.cdefs
+
+
 local ffi = require "ffi"
 local cjson = require "cjson"
 local system_constants = require "lua_system_constants"
@@ -18,7 +21,7 @@ local S_IROTH = system_constants.S_IROTH()
 
 
 local oflags = bit.bor(O_WRONLY, O_CREAT, O_APPEND)
-local mode = bit.bor(S_IRUSR, S_IWUSR, S_IRGRP, S_IROTH)
+local mode = ffi.new("int", bit.bor(S_IRUSR, S_IWUSR, S_IRGRP, S_IROTH))
 
 
 local sandbox_opts = { env = { kong = kong, ngx = ngx } }
@@ -27,15 +30,10 @@ local sandbox_opts = { env = { kong = kong, ngx = ngx } }
 local C = ffi.C
 
 
-ffi.cdef [[
-int write(int fd, const void * ptr, int numbytes);
-]]
-
-
 -- fd tracking utility functions
 local file_descriptors = {}
 
--- Log to a file. 
+-- Log to a file.
 -- @param `conf`     Configuration table, holds http endpoint details
 -- @param `message`  Message to be logged
 local function log(conf, message)

@@ -54,7 +54,7 @@ void ERR_free_strings(void);
 
 const char *ERR_reason_error_string(unsigned long e);
 
-int open(const char * filename, int flags, int mode);
+int open(const char * filename, int flags, ...);
 size_t read(int fd, void *buf, size_t count);
 int write(int fd, const void *ptr, int numbytes);
 int close(int fd);
