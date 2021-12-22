@@ -1516,6 +1516,9 @@ do
       return
     end
 
+    kong.core_cache:purge()
+    kong.cache:purge()
+
     local ok, err = kong.worker_events.post("declarative", "reconfigure", data)
     if ok ~= "done" then
       ngx_log(ngx_ERR, "failed to reboadcast reconfigure event in stream: ", err or ok)
