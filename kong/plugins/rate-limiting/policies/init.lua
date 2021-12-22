@@ -54,11 +54,6 @@ local EXPIRATION = require "kong.plugins.rate-limiting.expiration"
 local function get_redis_connection(conf)
   local red = redis:new()
   red:set_timeout(conf.redis_timeout)
-
-  sock_opts.ssl = conf.redis_ssl
-  sock_opts.ssl_verify = conf.redis_ssl_verify
-  sock_opts.server_name = conf.redis_server_name
-
   -- use a special pool name only if redis_database is set to non-zero
   -- otherwise use the default pool name host:port
   if conf.redis_database ~= 0 then
@@ -253,6 +248,43 @@ return {
       end
 
       return current_metric or 0
+    end,
+    sliding_window_usage = function(conf, identifier, window_size)
+      local red, err = get_redis_connection(conf)
+      if not red then
+        return nil, nil, err
+      end
+
+      reports.retrieve_redis_version(red)
+      local cache_key = get_local_key(conf, identifier, 'sliding' ,window_size)
+
+      local result, err = red:eval([[
+        local cache_key, expiration = KEYS[1], ARGV[1]
+        local result_incr = redis.call("incr", cache_key)
+        if result_incr == 1 then
+          redis.call("expire", cache_key, expiration)
+        end
+        local remaining_time = redis.call("ttl", cache_key)
+
+        return {result_incr, remaining_time}
+      ]], 1, cache_key, window_size)
+
+      if not result or not result[1] or not result[2] then
+        kong.log.err("failed to commit increment pipeline in Redis: ", err)
+        return nil, nil, err
+      end
+
+      local ok, err = red:set_keepalive(10000, 100)
+      if not ok then
+        kong.log.err("failed to set Redis keepalive: ", err)
+        return nil, nil, err
+      end
+
+      local current_usage = result[1]
+      local remaining_time = result[2]
+
+      return current_usage, remaining_time
+
     end
   }
 }

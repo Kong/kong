@@ -122,84 +122,131 @@ function RateLimitingHandler:access(conf)
   -- Consumer is identified by ip address or authenticated_credential id
   local identifier = get_identifier(conf)
   local fault_tolerant = conf.fault_tolerant
+  local window_type = conf.window_type
 
-  -- Load current metric for configured period
-  local limits = {
-    second = conf.second,
-    minute = conf.minute,
-    hour = conf.hour,
-    day = conf.day,
-    month = conf.month,
-    year = conf.year,
-  }
+  if window_type == "fixed" then
+    -- Load current metric for configured period
+    local limits = {
+      second = conf.second,
+      minute = conf.minute,
+      hour = conf.hour,
+      day = conf.day,
+      month = conf.month,
+      year = conf.year,
+    }
 
-  local usage, stop, err = get_usage(conf, identifier, current_timestamp, limits)
-  if err then
-    if not fault_tolerant then
-      return error(err)
-    end
-
-    kong.log.err("failed to get usage: ", tostring(err))
-  end
-
-  if usage then
-    -- Adding headers
-    local reset
-    local headers
-    if not conf.hide_client_headers then
-      headers = {}
-      local timestamps
-      local limit
-      local window
-      local remaining
-      for k, v in pairs(usage) do
-        local current_limit = v.limit
-        local current_window = EXPIRATION[k]
-        local current_remaining = v.remaining
-        if stop == nil or stop == k then
-          current_remaining = current_remaining - 1
-        end
-        current_remaining = max(0, current_remaining)
-
-        if not limit or (current_remaining < remaining)
-                     or (current_remaining == remaining and
-                         current_window > window)
-        then
-          limit = current_limit
-          window = current_window
-          remaining = current_remaining
-
-          if not timestamps then
-            timestamps = timestamp.get_timestamps(current_timestamp)
-          end
-
-          reset = max(1, window - floor((current_timestamp - timestamps[k]) / 1000))
-        end
-
-        headers[X_RATELIMIT_LIMIT[k]] = current_limit
-        headers[X_RATELIMIT_REMAINING[k]] = current_remaining
+    local usage, stop, err = get_usage(conf, identifier, current_timestamp, limits)
+    if err then
+      if not fault_tolerant then
+        return error(err)
       end
 
-      headers[RATELIMIT_LIMIT] = limit
-      headers[RATELIMIT_REMAINING] = remaining
-      headers[RATELIMIT_RESET] = reset
+      kong.log.err("failed to get usage: ", tostring(err))
     end
 
-    -- If limit is exceeded, terminate the request
-    if stop then
-      headers = headers or {}
-      headers[RETRY_AFTER] = reset
-      return kong.response.error(429, "API rate limit exceeded", headers)
+    if usage then
+      -- Adding headers
+      local reset
+      local headers
+      if not conf.hide_client_headers then
+        headers = {}
+        local timestamps
+        local limit
+        local window
+        local remaining
+        for k, v in pairs(usage) do
+          local current_limit = v.limit
+          local current_window = EXPIRATION[k]
+          local current_remaining = v.remaining
+          if stop == nil or stop == k then
+            current_remaining = current_remaining - 1
+          end
+          current_remaining = max(0, current_remaining)
+
+          if not limit or (current_remaining < remaining)
+                      or (current_remaining == remaining and
+                          current_window > window)
+          then
+            limit = current_limit
+            window = current_window
+            remaining = current_remaining
+
+            if not timestamps then
+              timestamps = timestamp.get_timestamps(current_timestamp)
+            end
+
+            reset = max(1, window - floor((current_timestamp - timestamps[k]) / 1000))
+          end
+
+          headers[X_RATELIMIT_LIMIT[k]] = current_limit
+          headers[X_RATELIMIT_REMAINING[k]] = current_remaining
+        end
+
+        headers[RATELIMIT_LIMIT] = limit
+        headers[RATELIMIT_REMAINING] = remaining
+        headers[RATELIMIT_RESET] = reset
+      end
+
+      -- If limit is exceeded, terminate the request
+      if stop then
+        headers = headers or {}
+        headers[RETRY_AFTER] = reset
+        return kong.response.error(429, "API rate limit exceeded", headers)
+      end
+
+      if headers then
+        kong.response.set_headers(headers)
+      end
     end
 
-    if headers then
-      kong.response.set_headers(headers)
+    local ok, err = timer_at(0, increment, conf, limits, identifier, current_timestamp, 1)
+    if not ok then
+      kong.log.err("failed to create timer: ", err)
     end
-  end
 
-  local ok, err = timer_at(0, increment, conf, limits, identifier, current_timestamp, 1)
-  if not ok then
-    kong.log.err("failed to create timer: ", err)
+  elseif window_type == "sliding" then
+    local limit = conf.limit
+    local window_size = conf.window_size
+
+    if conf.policy ~= 'redis' then
+      return error("invalid policy for sliding window")
+    end
+
+    local current_usage, reset, err = policies[conf.policy].sliding_window_usage(conf, identifier, window_size)
+    if err then
+      if not fault_tolerant then
+        return error(err)
+      end
+
+      kong.log.err("failed to get sliding_window_usage: ", tostring(err))
+    end
+
+    if current_usage and reset then
+      local remaining = max(0, limit - current_usage)
+      local stop = current_usage > limit
+      local headers
+      if not conf.hide_client_headers then
+        headers = {}
+
+        headers[RATELIMIT_LIMIT] = limit
+        headers[RATELIMIT_REMAINING] = remaining
+        headers[RATELIMIT_RESET] = reset
+      end
+
+      if stop then
+        headers = headers or {}
+        headers[RETRY_AFTER] = reset
+        return kong.response.error(429, "API rate limit exceeded", headers)
+      end
+
+      if headers then
+        kong.response.set_headers(headers)
+      end
+
+    end
+
+  else
+    kong.log.err("invalid window_type: ", window_type)
   end
 end
 

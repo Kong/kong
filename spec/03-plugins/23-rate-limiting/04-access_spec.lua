@@ -1344,6 +1344,329 @@ for _, strategy in helpers.each_strategy() do
           end)
         end)
 
+        if policy == 'redis' then
+          describe(fmt("Plugin: rate-limiting (access) with window_type: sliding and with policy: %s [#%s]", policy, strategy), function()
+            local bp
+            local db
+            local client
+            local window_type = 'sliding'
+    
+            lazy_setup(function()
+              helpers.kill_all()
+              flush_redis()
+    
+              bp, db = helpers.get_db_utils(strategy)
+    
+              local route1 = bp.routes:insert {
+                hosts = { "test1.com" },
+              }
+    
+              bp.rate_limiting_plugins:insert({
+                route = { id = route1.id },
+                config = {
+                  policy         = policy,
+                  window_type    = window_type,
+                  window_size    = 10,
+                  limit          = 6,
+                  fault_tolerant = false,
+                  redis_host     = REDIS_HOST,
+                  redis_port     = REDIS_PORT,
+                  redis_password = REDIS_PASSWORD,
+                  redis_database = REDIS_DATABASE,
+                }
+              })
+    
+              local route_grpc_1 = assert(bp.routes:insert {
+                protocols = { "grpc" },
+                paths = { "/hello.HelloService/" },
+                service = assert(bp.services:insert {
+                  name = "grpc",
+                  url = "grpc://localhost:15002",
+                }),
+              })
+    
+              bp.rate_limiting_plugins:insert({
+                route = { id = route_grpc_1.id },
+                config = {
+                  policy         = policy,
+                  window_type    = window_type,
+                  window_size    = 10,
+                  limit          = 6,
+                  fault_tolerant = false,
+                  redis_host     = REDIS_HOST,
+                  redis_port     = REDIS_PORT,
+                  redis_password = REDIS_PASSWORD,
+                  redis_database = REDIS_DATABASE,
+                }
+              })
+    
+              local route2 = bp.routes:insert {
+                hosts      = { "test2.com" },
+              }
+    
+              bp.rate_limiting_plugins:insert({
+                route = { id = route2.id },
+                config = {
+                  limit          = 6,
+                  window_size    = 10,
+                  fault_tolerant = false,
+                  window_type    = window_type,
+                  policy         = policy,
+                  limit_by       = "header",
+                  header_name    = "Customer-Id",
+                  redis_host     = REDIS_HOST,
+                  redis_port     = REDIS_PORT,
+                  redis_password = REDIS_PASSWORD,
+                  redis_database = REDIS_DATABASE,
+                }
+              })
+    
+              local route3 = bp.routes:insert {
+                hosts = { "test3.com" },
+              }
+    
+              bp.rate_limiting_plugins:insert({
+                route = { id = route3.id },
+                config = {
+                  hide_client_headers = true,
+                  policy         = policy,
+                  window_type    = window_type,
+                  window_size    = 10,
+                  limit          = 6,
+                  redis_host     = REDIS_HOST,
+                  redis_port     = REDIS_PORT,
+                  redis_password = REDIS_PASSWORD,
+                  redis_database = REDIS_DATABASE,
+                },
+              })
+    
+              local service4 = bp.services:insert()
+    
+              local route4 = bp.routes:insert {
+                hosts      = { "failtest4.com" },
+                protocols  = { "http", "https" },
+                service    = service4
+              }
+    
+              bp.rate_limiting_plugins:insert {
+                route = { id = route4.id },
+                config  = {
+                  limit          = 6,
+                  window_size    = 1,
+                  window_type    = window_type,
+                  policy         = policy,
+                  redis_host     = "5.5.5.5",
+                  fault_tolerant = false
+                },
+              }
+    
+              local service5 = bp.services:insert()
+    
+              local route5 = bp.routes:insert {
+                hosts      = { "failtest5.com" },
+                protocols  = { "http", "https" },
+                service    = service5
+              }
+    
+              bp.rate_limiting_plugins:insert {
+                route = { id = route5.id },
+                config  = {
+                  limit          = 6,
+                  window_size    = 1,
+                  window_type    = window_type,
+                  policy         = policy,
+                  redis_host     = "5.5.5.5",
+                  fault_tolerant = true
+                },          }
+    
+              assert(helpers.start_kong({
+                database   = strategy,
+                nginx_conf = "spec/fixtures/custom_nginx.template",
+              }))
+            end)
+    
+            lazy_teardown(function()
+              helpers.stop_kong()
+              assert(db:truncate())
+            end)
+    
+            before_each(function()
+              client = helpers.proxy_client()
+            end)
+    
+            after_each(function()
+              if client then client:close() end
+            end)
+    
+            describe("IP address: ", function()
+              it("Allow 6 requests, then RateLimit, then wait and allow 6 requests again.", function()
+    
+                local first_request_time = ngx.now()
+    
+                for i = 1, 6 do
+                  local res = client:get("/status/200", {
+                    headers = {
+                      host = "test1.com"
+                    }
+                  })
+                  assert.response(res).has.status(200)
+                  assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+                  assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+                  local reset = tonumber(res.headers["ratelimit-reset"])
+                  assert.equal(true, reset <= 10 and reset >= 0)
+                end
+    
+                -- Additonal request, while limit is 6/minute
+                local res = client:get("/status/200", {
+                  headers = {
+                    host = "test1.com"
+                  }
+                })
+                assert.response(res).has.status(429)
+                assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+                assert.are.same(0, tonumber(res.headers["ratelimit-remaining"]))
+    
+                local reset = tonumber(res.headers["ratelimit-reset"])
+                assert.equal(true, reset <= 10 and reset > 0)
+    
+                local retry = tonumber(res.headers["retry-after"])
+                assert.equal(true, retry <= 10 and retry > 0)
+    
+                local body = assert.response(res).has.jsonbody()
+                assert.equal("API rate limit exceeded", body['message'])
+    
+                local time_to_sleep_until_ok = (11 + first_request_time) - ngx.now()
+                ngx.sleep(time_to_sleep_until_ok)
+    
+                for i = 1, 6 do
+                  local res = client:get("/status/200", {
+                    headers = {
+                      host = "test1.com"
+                    }
+                  })
+                  assert.response(res).has.status(200)
+                  assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+                  assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+                  local reset = tonumber(res.headers["ratelimit-reset"])
+                  assert.equal(true, reset <= 10 and reset >= 0)
+                end
+    
+              end)
+            end)
+    
+            describe("Via header: ", function()
+              it("Allow 6 requests, then RateLimit, then allow 6 requests to another Customer-Id, then wait and allow 6 requests again.", function()
+    
+                local first_request_time = ngx.now()
+    
+                -- Allow 6 requests
+                for i = 1, 6 do
+                  local res = client:get("/status/200", {
+                    headers = {
+                      host = "test2.com",
+                      ["Customer-Id"] = "e672d6cd-d768-412b-92d3-5ae3c8b434c7",
+                    }
+                  })
+                  assert.response(res).has.status(200)
+                  assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+                  assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+                  local reset = tonumber(res.headers["ratelimit-reset"])
+                  assert.equal(true, reset <= 10 and reset >= 0)
+                end
+    
+                -- Then RateLimit Additonal request, while limit is 6/minute
+                local res = client:get("/status/200", {
+                  headers = {
+                    host = "test2.com",
+                    ["Customer-Id"] = "e672d6cd-d768-412b-92d3-5ae3c8b434c7",
+                  }
+                })
+                assert.response(res).has.status(429)
+                assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+                assert.are.same(0, tonumber(res.headers["ratelimit-remaining"]))
+                local reset = tonumber(res.headers["ratelimit-reset"])
+    
+                assert.equal(true, reset <= 10 and reset > 0)
+    
+                local retry = tonumber(res.headers["retry-after"])
+                assert.equal(true, retry <= 10 and retry > 0)
+    
+                local body = assert.response(res).has.jsonbody()
+                assert.equal("API rate limit exceeded", body['message'])
+    
+                -- Then allow 6 requests to another Customer-Id
+                for i = 1, 6 do
+                  local res = client:get("/status/200", {
+                    headers = {
+                      host = "test2.com",
+                      ["Customer-Id"] = "another",
+                    }
+                  })
+                  assert.response(res).has.status(200)
+                  assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+                  assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+                  local reset = tonumber(res.headers["ratelimit-reset"])
+                  assert.equal(true, reset <= 10 and reset >= 0)
+                end
+    
+                --Then wait
+                local time_to_sleep_until_ok = (11 + first_request_time) - ngx.now()
+                ngx.sleep(time_to_sleep_until_ok)
+    
+                --Then allow 6 requests again
+                for i = 1, 6 do
+                  local res = client:get("/status/200", {
+                    headers = {
+                      host = "test2.com",
+                      ["Customer-Id"] = "e672d6cd-d768-412b-92d3-5ae3c8b434c7",
+                    }
+                  })
+                  assert.response(res).has.status(200)
+                  assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+                  assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+                  local reset = tonumber(res.headers["ratelimit-reset"])
+                  assert.equal(true, reset <= 10 and reset >= 0)
+                end
+    
+              end)
+            end)
+    
+            describe("Config with hide_client_headers", function()
+              it("does not send rate-limit headers when hide_client_headers==true", function()
+                local res = client:get("/status/200", {
+                  headers = { Host = "test3.com" },
+                }, 200)
+                assert.is_nil(res.headers["ratelimit-limit"])
+                assert.is_nil(res.headers["ratelimit-remaining"])
+                assert.is_nil(res.headers["ratelimit-reset"])
+              end)
+            end)
+    
+            describe("Fault tolerancy", function()
+    
+              it("does not work if an error occurs", function()
+                local _, body = GET("/status/200", {
+                  headers = { Host = "failtest4.com" },
+                }, 500)
+    
+                local json = cjson.decode(body)
+                assert.same({ message = "An unexpected error occurred" }, json)
+              end)
+    
+              it("keeps working if an error occurs", function()
+                local res = GET("/status/200", {
+                  headers = { Host = "failtest5.com" },
+                }, 200)
+    
+                assert.falsy(res.headers["ratelimit-limit"])
+                assert.falsy(res.headers["ratelimit-remaining"])
+                assert.falsy(res.headers["ratelimit-reset"])
+              end)
+            end)
+    
+          end)
+        end
+
         ::continue::
       end
   end
