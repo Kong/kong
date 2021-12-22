@@ -168,6 +168,7 @@ build = {
     ["kong.db.dao.vaults"] = "kong/db/dao/vaults.lua",
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
+    ["kong.db.declarative.marshaller"] = "kong/db/declarative/marshaller.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
     ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
