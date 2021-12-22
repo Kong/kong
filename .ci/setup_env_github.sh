@@ -32,6 +32,7 @@ kong-ngx-build \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
+    --resty-lmdb master \
     --pcre $PCRE \
     --debug
 
