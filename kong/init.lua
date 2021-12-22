@@ -176,7 +176,6 @@ end
 
 local reset_kong_shm
 do
-  local DECLARATIVE_PAGE_KEY = constants.DECLARATIVE_PAGE_KEY
   local preserve_keys = {
     "kong:node_id",
     "events:requests",
@@ -198,25 +197,14 @@ do
     local kong_shm = ngx.shared.kong
     local dbless = config.database == "off"
 
-    local old_page = kong_shm:get(DECLARATIVE_PAGE_KEY)
-    if old_page == nil then -- fresh node, just storing the initial page
-      kong_shm:set(DECLARATIVE_PAGE_KEY, 1)
-      return
-    end
-
     local preserved = {}
 
-    local new_page = old_page
     if dbless then
-      if config.declarative_config or config.declarative_config_string then
-        new_page = old_page == 1 and 2 or 1
-      else
+      if not (config.declarative_config or config.declarative_config_string) then
         preserved[DECLARATIVE_LOAD_KEY] = kong_shm:get(DECLARATIVE_LOAD_KEY)
         preserved[DECLARATIVE_HASH_KEY] = kong_shm:get(DECLARATIVE_HASH_KEY)
       end
     end
-
-    preserved[DECLARATIVE_PAGE_KEY] = new_page
 
     for _, key in ipairs(preserve_keys) do
       preserved[key] = kong_shm:get(key) -- ignore errors

@@ -196,7 +196,7 @@ end
 
 local function select_by_key(self, key)
   local entity, err = unmarshall(lmdb_get(key))
-  if err then
+  if not entity then
     return nil, err
   end
 

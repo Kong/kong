@@ -865,6 +865,9 @@ function declarative.load_into_cache(entities, meta, hash)
     return nil, err
   end
 
+  kong.core_cache:purge()
+  kong.cache:purge()
+
   return true, nil, default_workspace
 end
 
