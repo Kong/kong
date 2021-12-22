@@ -205,13 +205,6 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
   local page = 1
   local cache_pages = 1
 
-  if kong_config.database == "off" then
-    db_cache_ttl = 0
-    db_cache_neg_ttl = 0
-    cache_pages = 2
-    page = ngx.shared.kong:get(kong_constants.DECLARATIVE_PAGE_KEY) or page
-  end
-
   return kong_cache.new {
     shm_name        = "kong_db_cache",
     cluster_events  = cluster_events,
@@ -231,12 +224,6 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
   local db_cache_neg_ttl = kong_config.db_cache_neg_ttl
   local page = 1
   local cache_pages = 1
-  if kong_config.database == "off" then
-    db_cache_ttl = 0
-    db_cache_neg_ttl = 0
-    cache_pages = 2
-    page = ngx.shared.kong:get(kong_constants.DECLARATIVE_PAGE_KEY) or page
-  end
 
   return kong_cache.new {
     shm_name        = "kong_core_db_cache",

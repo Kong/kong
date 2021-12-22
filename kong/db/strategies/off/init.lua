@@ -1,5 +1,7 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local workspaces = require "kong.workspaces"
+local lmdb = require("resty.lmdb")
+local marshaller = require("kong.db.declarative.marshaller")
 
 
 
@@ -13,6 +15,8 @@ local tonumber = tonumber
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local null          = ngx.null
+local unmarshall    = marshaller.unmarshall
+local lmdb_get      = lmdb.get
 
 
 local off = {}
@@ -57,16 +61,17 @@ end
 -- @tparam string|nil tags_cond either "or", "and". `nil` means "or"
 -- @treturn table|nil returns a table with entity_ids as values, and `true` as keys
 local function get_entity_ids_tagged(key, tag_names, tags_cond)
-  local cache = kong.core_cache
   local tag_name, list, err
   local dict = {} -- keys are entity_ids, values are true
 
   for i = 1, #tag_names do
     tag_name = tag_names[i]
-    list, err = cache:get("taggings:" .. tag_name .. "|" .. key, nil, empty_list_cb)
-    if not list then
+    list, err = unmarshall(lmdb_get("taggings:" .. tag_name .. "|" .. key))
+    if err then
       return nil, err
     end
+
+    list = list or {}
 
     if i > 1 and tags_cond == "and" then
       local list_len = #list
@@ -130,20 +135,17 @@ local function page_for_key(self, key, size, offset, options)
     offset = 1
   end
 
-  local cache = kong.core_cache
-  if not cache then
-    return {}
-  end
-
   local list, err
   if options and options.tags then
     list, err = get_entity_ids_tagged(key, options.tags, options.tags_cond)
-  else
-    list, err = cache:get(key, nil, empty_list_cb)
-  end
 
-  if not list then
-    return nil, err
+  else
+    list, err = unmarshall(lmdb_get(key))
+    if err then
+      return nil, err
+    end
+
+    list = list or {}
   end
 
   local ret = {}
@@ -173,7 +175,10 @@ local function page_for_key(self, key, size, offset, options)
     -- The rest of entities' lists (i.e. "services|<ws_id>|@list") only contain ids, so in order to
     -- get the entities we must do an additional cache access per entry
     else
-      item = cache:get(item, nil, nil_cb)
+      item, err = unmarshall(lmdb_get(item))
+      if err then
+        return nil, err
+      end
     end
 
     if not item then
@@ -197,12 +202,8 @@ end
 
 
 local function select_by_key(self, key)
-  if not kong.core_cache then
-    return nil
-  end
-
-  local entity, err = kong.core_cache:get(key, nil, nil_cb)
-  if not entity then
+  local entity, err = unmarshall(lmdb_get(key))
+  if err then
     return nil, err
   end
 

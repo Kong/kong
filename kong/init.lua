@@ -85,6 +85,7 @@ local balancer = require "kong.runloop.balancer"
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local lmdb = require "resty.lmdb"
 
 local kong             = kong
 local ngx              = ngx
@@ -197,11 +198,6 @@ do
     local kong_shm = ngx.shared.kong
     local dbless = config.database == "off"
 
-    if dbless then
-      -- prevent POST /config while initializing dbless
-      declarative.try_lock()
-    end
-
     local old_page = kong_shm:get(DECLARATIVE_PAGE_KEY)
     if old_page == nil then -- fresh node, just storing the initial page
       kong_shm:set(DECLARATIVE_PAGE_KEY, 1)
@@ -227,10 +223,6 @@ do
     end
 
     kong_shm:flush_all()
-    if dbless then
-      -- reinstate the lock to hold POST /config, which was flushed with the previous `flush_all`
-      declarative.try_lock()
-    end
     for key, value in pairs(preserved) do
       kong_shm:set(key, value)
     end
@@ -401,11 +393,25 @@ local function parse_declarative_config(kong_config)
 end
 
 
-local function load_declarative_config(kong_config, entities, meta)
-  if kong_config.database ~= "off" then
-    return true
+local function declarative_init_build()
+  local default_ws = kong.db.workspaces:select_by_name("default")
+  kong.default_workspace = default_ws and default_ws.id or kong.default_workspace
+
+  local ok, err = runloop.build_plugins_iterator("init")
+  if not ok then
+    return nil, "error building initial plugins iterator: " .. err
   end
 
+  ok, err = runloop.build_router("init")
+  if not ok then
+    return nil, "error building initial router: " .. err
+  end
+
+  return true
+end
+
+
+local function load_declarative_config(kong_config, entities, meta)
   local opts = {
     name = "declarative_config",
   }
@@ -436,23 +442,10 @@ local function load_declarative_config(kong_config, entities, meta)
   end)
 
   if ok then
-    declarative.try_unlock()
-
-    local default_ws = kong.db.workspaces:select_by_name("default")
-    kong.default_workspace = default_ws and default_ws.id or kong.default_workspace
-
-    ok, err = runloop.build_plugins_iterator("init")
-    if not ok then
-      return nil, "error building initial plugins iterator: " .. err
-    end
-
-    ok, err = runloop.build_router("init")
-    if not ok then
-      return nil, "error building initial router: " .. err
-    end
+    return declarative_init_build()
   end
 
-  return ok, err
+  return nil, err
 end
 
 
@@ -547,10 +540,12 @@ function Kong.init()
   end
 
   if config.database == "off" then
-    local err
-    declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
-    if not declarative_entities then
-      error(err)
+    if is_http_module then
+      local err
+      declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
+      if not declarative_entities then
+        error(err)
+      end
     end
 
   else
@@ -653,12 +648,21 @@ function Kong.init_worker()
 
   kong.db:set_events_handler(worker_events)
 
-  ok, err = load_declarative_config(kong.configuration,
-                                    declarative_entities,
-                                    declarative_meta)
-  if not ok then
-    stash_init_worker_error("failed to load declarative config file: " .. err)
-    return
+  if kong.configuration.database == "off" then
+    if is_http_module then
+      ok, err = load_declarative_config(kong.configuration,
+                                        declarative_entities,
+                                        declarative_meta)
+      if not ok then
+        stash_init_worker_error("failed to load declarative config file: " .. err)
+        return
+      end
+
+    else
+      -- stream does not need to load declarative config again, just build
+      -- the router and plugins iterator
+      declarative_init_build()
+    end
   end
 
   if kong.configuration.role ~= "control_plane" then
@@ -1523,22 +1527,9 @@ do
       return
     end
 
-    local parsed
-    parsed, err = cjson.decode(data)
-    if not parsed then
-      kong.log.err("unable to parse received declarative config: ", err)
-      return
-    end
-
-    local ok, err = declarative.load_into_cache_with_events(parsed[1], parsed[2])
-    if not ok then
-      if err == "no memory" then
-        kong.log.err("not enough cache space for declarative config, " ..
-                     "consider raising the \"mem_cache_size\" Kong config")
-
-      else
-        kong.log.err("failed loading declarative config into cache: ", err)
-      end
+    local ok, err = kong.worker_events.post("declarative", "reconfigure", data)
+    if ok ~= "done" then
+      ngx_log(ngx_ERR, "failed to reboadcast reconfigure event in stream: ", err or ok)
     end
   end
 end
