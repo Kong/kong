@@ -125,7 +125,6 @@ end
 
 
 local DECLARATIVE_LOAD_KEY = constants.DECLARATIVE_LOAD_KEY
-local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 
 
 local declarative_entities
@@ -202,7 +201,6 @@ do
     if dbless then
       if not (config.declarative_config or config.declarative_config_string) then
         preserved[DECLARATIVE_LOAD_KEY] = kong_shm:get(DECLARATIVE_LOAD_KEY)
-        preserved[DECLARATIVE_HASH_KEY] = kong_shm:get(DECLARATIVE_HASH_KEY)
       end
     end
 

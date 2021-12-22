@@ -7,7 +7,7 @@ local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
 local constants = require "kong.constants"
 local txn = require "resty.lmdb.transaction"
-
+local lmdb = require "resty.lmdb"
 
 local setmetatable = setmetatable
 local loadstring = loadstring
@@ -433,7 +433,10 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities)
       end
     end
 
-    local page_size = db[name].pagination.max_page_size
+    local page_size
+    if db[name].pagination then
+      page_size = db[name].pagination.max_page_size
+    end
     for row, err in db[name]:each(page_size, GLOBAL_QUERY_OPTS) do
       if not row then
         kong.log.err(err)
@@ -565,7 +568,7 @@ end
 
 
 function declarative.get_current_hash()
-  return ngx.shared.kong:get(DECLARATIVE_HASH_KEY)
+  return lmdb.get(DECLARATIVE_HASH_KEY)
 end
 
 
