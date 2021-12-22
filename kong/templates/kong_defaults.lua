@@ -34,7 +34,6 @@ cluster_max_payload = 4194304
 
 lmdb_environment_path = dbless.lmdb
 lmdb_map_size = 64m
-:wq
 mem_cache_size = 128m
 ssl_cert = NONE
 ssl_cert_key = NONE
