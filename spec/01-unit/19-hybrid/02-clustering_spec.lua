@@ -211,16 +211,10 @@ describe("kong.clustering", function()
         g = {},
       }
 
-      local correct = ngx.md5(
-        "{#-1#:$b$;#0.9#:$c$;#1#:$a$;#10#:#0.9#;#11#:{};#12#:{$a$:$b$};#13#:/null/;" ..
-        "#2#:#-3#;#3#:#3#;#4#:$b$;#5#:#-2#;#6#:#2#;#7#:$c$;#8#:#1#;#9#:#-1#;$a$:$he" ..
-        "llo$;$b$:#-1#;$c$:#0.9#;$d$:?true?;$e$:?false?;$f$:/null/;$g$:{};$hello$:$" ..
-        "a$;/null/:$f$;?false?:$e$;?true?:$d$;{}:$g$}")
-
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
         assert.is_string(hash)
-        assert.equal(correct, hash)
+        assert.equal("7c3d524eb49961172ada4ae2083a168e", hash)
       end
     end)
 
