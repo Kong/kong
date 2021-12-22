@@ -345,10 +345,6 @@ end
 
 
 local function parse_declarative_config(kong_config)
-  if kong_config.database ~= "off" then
-    return {}, nil, {}
-  end
-
   local dc = declarative.new_config(kong_config)
 
   if not kong_config.declarative_config and not kong_config.declarative_config_string then
@@ -398,6 +394,7 @@ end
 
 
 local function load_declarative_config(kong_config, entities, meta)
+  print("load_declarative_config!!!")
   local opts = {
     name = "declarative_config",
   }
@@ -526,7 +523,7 @@ function Kong.init()
   end
 
   if config.database == "off" then
-    if is_http_module then
+    if is_http_module or #config.proxy_listeners == 0 then
       local err
       declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
       if not declarative_entities then
@@ -639,7 +636,7 @@ function Kong.init_worker()
     t:db_open(true)
     assert(t:commit())
 
-    if is_http_module then
+    if is_http_module or #kong.configuration.proxy_listeners == 0 then
       ok, err = load_declarative_config(kong.configuration,
                                         declarative_entities,
                                         declarative_meta)
