@@ -9,7 +9,6 @@ local constants    = require "kong.constants"
 local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
-local declarative  = require "kong.db.declarative"
 local workspaces   = require "kong.workspaces"
 local lrucache     = require "resty.lrucache"
 

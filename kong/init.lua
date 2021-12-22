@@ -85,7 +85,7 @@ local balancer = require "kong.runloop.balancer"
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
-local lmdb = require "resty.lmdb"
+local lmdb_txn = require "resty.lmdb.transaction"
 
 local kong             = kong
 local ngx              = ngx
@@ -649,6 +649,10 @@ function Kong.init_worker()
   kong.db:set_events_handler(worker_events)
 
   if kong.configuration.database == "off" then
+    local t = lmdb_txn.begin(1)
+    t:db_open(true)
+    assert(t:commit())
+
     if is_http_module then
       ok, err = load_declarative_config(kong.configuration,
                                         declarative_entities,
@@ -1511,9 +1515,6 @@ end
 
 
 do
-  local declarative = require("kong.db.declarative")
-  local cjson = require("cjson.safe")
-
   function Kong.stream_config_listener()
     local sock, err = ngx.req.socket()
     if not sock then

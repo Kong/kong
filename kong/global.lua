@@ -4,7 +4,6 @@ local PDK = require "kong.pdk"
 local phase_checker = require "kong.pdk.private.phases"
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
-local kong_constants = require "kong.constants"
 
 local ngx = ngx
 local type = type

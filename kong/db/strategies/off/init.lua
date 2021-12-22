@@ -26,16 +26,6 @@ local _mt = {}
 _mt.__index = _mt
 
 
-local function empty_list_cb()
-  return {}
-end
-
-
-local function nil_cb()
-  return nil
-end
-
-
 local function ws(self, options)
   if not self.schema.workspaceable then
     return ""
@@ -138,6 +128,9 @@ local function page_for_key(self, key, size, offset, options)
   local list, err
   if options and options.tags then
     list, err = get_entity_ids_tagged(key, options.tags, options.tags_cond)
+    if err then
+      return nil, err
+    end
 
   else
     list, err = unmarshall(lmdb_get(key))
