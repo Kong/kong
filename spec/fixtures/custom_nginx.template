@@ -691,6 +691,10 @@ http {
                 if not code then
                     return ngx.exit(ngx.HTTP_NOT_FOUND)
                 end
+                if code == 204 or code == 304 then
+                    return ngx.exit(code)
+                end
+
                 ngx.status = code
                 return mu.send_default_json_response({
                   code = code,

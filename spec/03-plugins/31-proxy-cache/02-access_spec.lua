@@ -1201,6 +1201,8 @@ do
 
         assert.res_status(304, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
+        assert.is_nil(res.headers["Content-Type"])
+
       end)
 
       it("response status with 204 empty Content-Type", function()
@@ -1225,6 +1227,7 @@ do
 
         assert.res_status(204, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
+        assert.is_nil(res.headers["Content-Type"])
       end)
     end)
 
