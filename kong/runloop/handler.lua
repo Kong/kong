@@ -56,9 +56,9 @@ local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
 local COMMA = byte(",")
 local SPACE = byte(" ")
+local QUESTION_MARK = byte("?")
 local ARRAY_MT = require("cjson.safe").array_mt
 
-local QUESTION_MARK = byte("?")
 
 local HOST_PORTS = {}
 
