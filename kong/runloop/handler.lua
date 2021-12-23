@@ -58,6 +58,7 @@ local COMMA = byte(",")
 local SPACE = byte(" ")
 local ARRAY_MT = require("cjson.safe").array_mt
 
+local QUESTION_MARK = byte("?")
 
 local HOST_PORTS = {}
 
@@ -1398,7 +1399,7 @@ return {
       -- We overcome this behavior with our own logic, to preserve user
       -- desired semantics.
       -- perf: branch usually not taken, don't cache var outside
-      if sub(ctx.request_uri or var.request_uri, -1) == "?" then
+      if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK then
         var.upstream_uri = var.upstream_uri .. "?"
       elseif var.is_args == "?" then
         var.upstream_uri = var.upstream_uri .. "?" .. var.args or ""
