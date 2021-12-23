@@ -8,8 +8,8 @@ terraform {
     null = {
       version = "~> 2.1"
     }
-    packet = {
-      source = "packethost/packet"
+    metal = {
+      source = "equinix/metal"
       version = "~> 3.2"
     }
     tls = {
@@ -21,6 +21,6 @@ terraform {
   }
 }
 
-provider "packet" {
-  auth_token = var.packet_auth_token
+provider "metal" {
+  auth_token = var.metal_auth_token
 }
