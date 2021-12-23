@@ -1,30 +1,30 @@
-resource "packet_ssh_key" "key" {
+resource "metal_ssh_key" "key" {
   name       = "key1"
   public_key = tls_private_key.key.public_key_openssh
 }
 
-resource "packet_device" "kong" {
+resource "metal_device" "kong" {
   hostname         = "kong-test-${random_string.ident.result}"
-  plan             = var.packet_plan
-  facilities       = [var.packet_region]
-  operating_system = var.packet_os
+  plan             = var.metal_plan
+  facilities       = [var.metal_region]
+  operating_system = var.metal_os
   billing_cycle    = "hourly"
-  project_id       = var.packet_project_id
+  project_id       = var.metal_project_id
   depends_on = [
-    packet_ssh_key.key,
+    metal_ssh_key.key,
     null_resource.key_chown,
   ]
 }
 
-resource "packet_device" "worker" {
+resource "metal_device" "worker" {
   hostname         = "worker-${random_string.ident.result}"
-  plan             = var.packet_plan
-  facilities       = [var.packet_region]
-  operating_system = var.packet_os
+  plan             = var.metal_plan
+  facilities       = [var.metal_region]
+  operating_system = var.metal_os
   billing_cycle    = "hourly"
-  project_id       = var.packet_project_id
+  project_id       = var.metal_project_id
   depends_on = [
-    packet_ssh_key.key,
+    metal_ssh_key.key,
     null_resource.key_chown,
   ]
 
