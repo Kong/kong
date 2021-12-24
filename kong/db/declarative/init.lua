@@ -890,6 +890,9 @@ do
         return nil, "failed to broadcast reconfigure event: " .. (err or ok)
       end
 
+    elseif err:find("MDB_MAP_FULL", nil, true) then
+      return nil, "map full"
+
     else
       return nil, err
     end

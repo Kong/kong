@@ -118,7 +118,7 @@ return {
           })
         end
 
-        if err:find("MDB_MAP_FULL", nil, true) then
+        if err == "map full" then
           kong.log.err("not enough space for declarative config")
           return kong.response.exit(413, {
             message = "Configuration does not fit in LMDB database, " ..
