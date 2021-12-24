@@ -394,7 +394,6 @@ end
 
 
 local function load_declarative_config(kong_config, entities, meta)
-  print("load_declarative_config!!!")
   local opts = {
     name = "declarative_config",
   }
@@ -523,7 +522,11 @@ function Kong.init()
   end
 
   if config.database == "off" then
-    if is_http_module or #config.proxy_listeners == 0 then
+    if is_http_module or
+       (#config.proxy_listeners == 0 and
+        #config.admin_listeners == 0 and
+        #config.status_listeners == 0)
+    then
       local err
       declarative_entities, err, declarative_meta = parse_declarative_config(kong.configuration)
       if not declarative_entities then
@@ -632,11 +635,14 @@ function Kong.init_worker()
   kong.db:set_events_handler(worker_events)
 
   if kong.configuration.database == "off" then
+    -- databases in LMDB need to be explicitly created, otherwise `get`
+    -- operations will return error instead of `nil`. This ensures the default
+    -- namespace always exists in the
     local t = lmdb_txn.begin(1)
     t:db_open(true)
     assert(t:commit())
 
-    if is_http_module or #kong.configuration.proxy_listeners == 0 then
+    if declarative_entities then
       ok, err = load_declarative_config(kong.configuration,
                                         declarative_entities,
                                         declarative_meta)
