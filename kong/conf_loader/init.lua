@@ -1348,7 +1348,10 @@ local function load(path, custom_conf, opts)
   else
     log.verbose("reading config file at %s", path)
 
-    from_file_conf = load_config_file(path)
+    from_file_conf, err = load_config_file(path)
+    if not from_file_conf then
+      return nil, "could not load config file: " .. err
+    end
   end
 
   -----------------------
