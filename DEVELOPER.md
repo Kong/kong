@@ -299,10 +299,10 @@ These commands don't have to be performed as root, since all compilation is done
     cd kong-build-tools/openresty-build-tools
 
     ./kong-ngx-build -p build \
-        --openresty 1.15.8.3 \
-        --openssl 1.1.1g \
-        --luarocks 3.3.1 \
-        --pcre 8.44
+        --openresty 1.19.9.1 \
+        --openssl 1.1.1m \
+        --luarocks 3.8.0 \
+        --pcre 8.45
 ```
 
 After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
