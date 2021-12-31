@@ -376,7 +376,7 @@ local function marshall_route(r)
 
     local has_host_wildcard
     local has_host_plain
-    local has_port, has_wildcard_host_port
+    local has_wildcard_host_port
 
     for _, host in ipairs(hosts) do
       if type(host) ~= "string" then
@@ -390,7 +390,7 @@ local function marshall_route(r)
         local wildcard_host_regex = host:gsub("%.", "\\.")
                                         :gsub("%*", ".+") .. "$"
 
-        _, _, has_port = split_port(host)
+        local _, _, has_port = split_port(host)
         if not has_port then
           wildcard_host_regex = wildcard_host_regex:gsub("%$$", [[(?::\d+)?$]])
         end
