@@ -6,7 +6,7 @@ https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#contributing
 
 ### Summary
 
-SUMMARY_GOES_HERE
+<!--- Why is this change required? What problem does it solve? -->
 
 ### Full changelog
 
@@ -14,6 +14,7 @@ SUMMARY_GOES_HERE
 * [Add related tests]
 * ...
 
-### Issues resolved
+### Issue reference
 
-Fix #XXX
+<!--- If it fixes an open issue, please link to the issue here. -->
+Fix #_[issue number]_
