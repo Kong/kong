@@ -31,9 +31,10 @@ local tonumber = tonumber
 local table_sort = table.sort
 local assert = assert
 
+local CRIT = ngx.CRIT
+local DEBUG = ngx.DEBUG
 local ERR = ngx.ERR
 local WARN = ngx.WARN
-local DEBUG = ngx.DEBUG
 
 local SRV_0_WEIGHT = 1      -- SRV record with weight 0 should be hit minimally, hence we replace by 1
 local EMPTY = setmetatable({},
@@ -52,7 +53,7 @@ function targets_M.init()
   dns_client = require("kong.tools.dns")(kong.configuration)    -- configure DNS client
 
   if not resolve_timer_running then
-    resolve_timer_running = assert(ngx.timer.every(1, resolve_timer_callback))
+    resolve_timer_running = assert(ngx.timer.at(1, resolve_timer_callback))
   end
 end
 
@@ -247,6 +248,13 @@ function resolve_timer_callback()
       queryDns(target, false) -- timer-context; cacheOnly always false
     end
   end
+
+  local err
+  resolve_timer_running, err = ngx.timer.at(1, resolve_timer_callback)
+  if not resolve_timer_running then
+    log(CRIT, "could not reschedule DNS resolver timer: ", err)
+  end
+
 end
 
 
