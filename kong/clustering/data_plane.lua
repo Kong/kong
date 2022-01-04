@@ -184,10 +184,13 @@ function _M:init_worker()
 
     elseif self.config_cache then
       -- CONFIG_CACHE does not exist, pre create one with 0600 permission
-      local fd = ffi.C.open(self.config_cache, bit.bor(system_constants.O_RDONLY(),
-                                                       system_constants.O_CREAT()),
-                                               bit.bor(system_constants.S_IRUSR(),
-                                                       system_constants.S_IWUSR()))
+      local flags = bit.bor(system_constants.O_RDONLY(),
+                            system_constants.O_CREAT())
+
+      local mode = ffi.new("int", bit.bor(system_constants.S_IRUSR(),
+                                          system_constants.S_IWUSR()))
+
+      local fd = ffi.C.open(self.config_cache, flags, mode)
       if fd == -1 then
         ngx_log(ngx_ERR, _log_prefix, "unable to pre-create cached config file: ",
                 ffi.string(ffi.C.strerror(ffi.errno())))

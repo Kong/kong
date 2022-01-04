@@ -12,6 +12,10 @@ on:
       target_branch:
         description: "Target Branch in kong/docs.konghq.com (e.g. release/2.4)"
         required: true
+      force_build:
+        description: "Ignore the build cache and build dependencies from scratch"
+        type: boolean
+        default: false
 jobs:
   build:
     name: Build dependencies
@@ -38,7 +42,7 @@ jobs:
           key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
 
       - name: Checkout kong-build-tools
-        if: steps.cache-deps.outputs.cache-hit != 'true'
+        if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
         uses: actions/checkout@v2
         with:
           repository: Kong/kong-build-tools
@@ -46,22 +50,22 @@ jobs:
           ref: master
 
       - name: Checkout go-pluginserver
-        if: steps.cache-deps.outputs.cache-hit != 'true'
+        if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
         uses: actions/checkout@v2
         with:
           repository: Kong/go-pluginserver
           path: go-pluginserver
 
       - name: Add to Path
-        if: steps.cache-deps.outputs.cache-hit != 'true'
+        if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
         run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
 
       - name: Install packages
-        if: steps.cache-deps.outputs.cache-hit != 'true'
+        if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
         run: sudo apt update && sudo apt install libyaml-dev valgrind
 
       - name: Build Kong dependencies
-        if: steps.cache-deps.outputs.cache-hit != 'true'
+        if: steps.cache-deps.outputs.cache-hit != 'true' || github.event.inputs.force_build == 'true'
         run: |
           source .ci/setup_env_github.sh
           make dev

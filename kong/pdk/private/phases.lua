@@ -40,13 +40,12 @@ do
     t[k] = v
   end
 
-  local n = 0
   for k, v in pairs(t) do
-    n = n + 1
     PHASES[v] = k
   end
 
-  PHASES.n = n
+  -- max lshift limit, 2^30 = 0x40000000
+  PHASES.n = 30
 end
 
 

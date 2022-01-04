@@ -14,11 +14,6 @@ local openssl_x509_store = require "resty.openssl.x509.store"
 local openssl_x509 = require "resty.openssl.x509"
 local workspaces = require "kong.workspaces" -- XXX EE: Needed for certificates on workspaces
 
-if jit.arch == 'arm64' then
-  jit.off(mlcache.get_bulk)        -- "temporary" workaround for issue #5748 on ARM
-end
-
-
 
 local ngx_log     = ngx.log
 local ERR         = ngx.ERR

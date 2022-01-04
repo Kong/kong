@@ -942,7 +942,7 @@ return {
         updated_at = { skip = true },
         name = {
           description = [[The name of the Route. Route names must be unique, and they are
-          case sensitive. For example, there can be two different Routes named "test" and 
+          case sensitive. For example, there can be two different Routes named "test" and
           "Test".]]
         },
         regex_priority = {

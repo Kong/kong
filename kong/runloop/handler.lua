@@ -64,6 +64,7 @@ local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
 local COMMA = byte(",")
 local SPACE = byte(" ")
+local QUESTION_MARK = byte("?")
 local ARRAY_MT = require("cjson.safe").array_mt
 
 
@@ -124,15 +125,16 @@ end
 local update_lua_mem
 do
   local pid = ngx.worker.pid
+  local ngx_time = ngx.time
   local kong_shm = ngx.shared.kong
 
   local LUA_MEM_SAMPLE_RATE = 10 -- seconds
-  local last = ngx.time()
+  local last = ngx_time()
 
   local collectgarbage = collectgarbage
 
   update_lua_mem = function(force)
-    local time = ngx.time()
+    local time = ngx_time()
 
     if force or time - last >= LUA_MEM_SAMPLE_RATE then
       local count = collectgarbage("count")
@@ -142,7 +144,7 @@ do
         log(ERR, "could not record Lua VM allocated memory: ", err)
       end
 
-      last = ngx.time()
+      last = time
     end
   end
 end
@@ -1447,7 +1449,7 @@ return {
       -- We overcome this behavior with our own logic, to preserve user
       -- desired semantics.
       -- perf: branch usually not taken, don't cache var outside
-      if sub(ctx.request_uri or var.request_uri, -1) == "?" then
+      if byte(ctx.request_uri or var.request_uri, -1) == QUESTION_MARK then
         var.upstream_uri = var.upstream_uri .. "?"
       elseif var.is_args == "?" then
         var.upstream_uri = var.upstream_uri .. "?" .. var.args or ""

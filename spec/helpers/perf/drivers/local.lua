@@ -35,7 +35,7 @@ end
 function _M:setup()
   local bin
   for _, test in ipairs({"nginx", "/usr/local/openresty/nginx/sbin/nginx"}) do
-    bin, _ = perf.execute("which nginx")
+    bin, _ = perf.execute("which " .. test)
     if bin then
       self.nginx_bin = bin
       break
@@ -235,7 +235,7 @@ function _M:get_wait_stapxx_cmd(timeout)
   return "lsmod | grep stap_"
 end
 
-function _M:generate_flamegraph(title)
+function _M:generate_flamegraph(title, opts)
   local path = self.systemtap_dest_path
   self.systemtap_dest_path = nil
 
@@ -248,7 +248,7 @@ function _M:generate_flamegraph(title)
   local cmds = {
     "/tmp/perf-ost/fix-lua-bt " .. path .. ".bt > " .. path .. ".fbt",
     "/tmp/perf-fg/stackcollapse-stap.pl " .. path .. ".fbt > " .. path .. ".cbt",
-    "/tmp/perf-fg/flamegraph.pl --title='" .. title .. "' " .. path .. ".cbt > " .. path .. ".svg",
+    "/tmp/perf-fg/flamegraph.pl --title='" .. title .. "' " .. (opts or "") .. " " .. path .. ".cbt > " .. path .. ".svg",
     "cat " .. path .. ".svg",
   }
   local out, err
