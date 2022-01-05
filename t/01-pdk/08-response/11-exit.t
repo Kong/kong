@@ -1125,3 +1125,29 @@ unable to proxy stream connection, status: 400, err: error message
 [error]
 --- error_log
 finalize stream session: 200
+
+
+
+=== TEST 44: response.exit() does not set content-length header when transfer-encoding header is present
+--- http_config eval: $t::Util::HttpConfig
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local PDK = require "kong.pdk"
+            local pdk = PDK.new()
+
+            pdk.response.exit(200, "", {
+                ["Transfer-Encoding"] = "chunked" 
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Transfer-Encoding: chunked
+--- response_body chop
+
+--- no_error_log
+[error]

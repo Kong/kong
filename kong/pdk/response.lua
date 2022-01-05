@@ -651,7 +651,9 @@ local function new(self, major_version)
           then
             has_content_type = true
           elseif lower_name == "content-length"
-              or lower_name == "content_length" then
+              or lower_name == "content_length"
+              or lower_name == "transfer-encoding"
+              or lower_name == "transfer_encoding" then
             has_content_length = true
           end
         end
