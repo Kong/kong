@@ -9,7 +9,7 @@ nocolor="\033[0m"
 scripts_folder=$(dirname "$0")
 
 browser="echo"
-if which firefox > /dev/null 2>&1
+if command -v firefox > /dev/null 2>&1
 then
   browser=firefox
 elif which xdg-open > /dev/null 2>&1
@@ -26,7 +26,7 @@ EDITOR="${EDITOR-$VISUAL}"
 function need() {
   req="$1"
 
-  if [ -z "$(which "$req")" ]; then
+  if ! type -t "$req" &>/dev/null; then
      echo "Required command $req not found."
      exit 1
   fi
