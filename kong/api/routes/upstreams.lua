@@ -198,10 +198,37 @@ return {
   },
 
   ["/upstreams/:upstreams/targets/all"] = {
-    GET = endpoints.get_collection_endpoint(kong.db.targets.schema,
-                                            kong.db.upstreams.schema,
-                                            "upstream",
-                                            "page_for_upstream_raw")
+    GET = function(self, db)
+      local schema = db.targets.schema
+      local foreign_schema = db.upstreams.schema
+      local foreign_entity, _, err_t = endpoints.select_entity(self, db, foreign_schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not foreign_entity then
+        return endpoints.not_found()
+      end
+
+      self.params[schema.name] = schema:extract_pk_values(foreign_entity)
+
+      local method = "page_for_upstream_raw"
+      local data, _, err_t, offset = endpoints.page_collection(self, db, schema, method)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      local foreign_key = self.params[foreign_schema.name]
+      local next_page = offset and fmt("/upstreams/%s/targets/all?offset=%s",
+                                       foreign_key,
+                                       escape_uri(offset)) or null
+
+      return kong.response.exit(200, {
+        data   = data,
+        offset = offset,
+        next   = next_page,
+      })
+    end
   },
 
   ["/upstreams/:upstreams/targets/:targets/healthy"] = {
