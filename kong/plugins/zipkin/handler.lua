@@ -174,19 +174,7 @@ if subsystem == "http" then
       request_span = request_span,
       header_type = header_type,
       proxy_span = nil,
-      header_filter_finished = false,
     }
-  end
-
-
-  function ZipkinLogHandler:rewrite(conf) -- luacheck: ignore 212
-    local zipkin = get_context(conf, kong.ctx.plugin)
-    local ngx_ctx = ngx.ctx
-    -- note: rewrite is logged on the request_span, not on the proxy span
-    local rewrite_start_mu =
-      ngx_ctx.KONG_REWRITE_START and ngx_ctx.KONG_REWRITE_START * 1000
-      or ngx_now_mu()
-    zipkin.request_span:annotate("kong.rewrite.start", rewrite_start_mu)
   end
 
 
@@ -210,22 +198,7 @@ if subsystem == "http" then
       ngx_ctx.KONG_HEADER_FILTER_STARTED_AT and ngx_ctx.KONG_HEADER_FILTER_STARTED_AT * 1000
       or ngx_now_mu()
 
-    local proxy_span = get_or_add_proxy_span(zipkin, header_filter_start_mu)
-    proxy_span:annotate("kong.header_filter.start", header_filter_start_mu)
-  end
-
-
-  function ZipkinLogHandler:body_filter(conf) -- luacheck: ignore 212
-    local zipkin = get_context(conf, kong.ctx.plugin)
-
-    -- Finish header filter when body filter starts
-    if not zipkin.header_filter_finished then
-      local now_mu = ngx_now_mu()
-
-      zipkin.proxy_span:annotate("kong.header_filter.finish", now_mu)
-      zipkin.header_filter_finished = true
-      zipkin.proxy_span:annotate("kong.body_filter.start", now_mu)
-    end
+    get_or_add_proxy_span(zipkin, header_filter_start_mu)
   end
 
 elseif subsystem == "stream" then
@@ -265,8 +238,7 @@ elseif subsystem == "stream" then
       ngx_ctx.KONG_PREREAD_START and ngx_ctx.KONG_PREREAD_START * 1000
       or ngx_now_mu()
 
-    local proxy_span = get_or_add_proxy_span(zipkin, preread_start_mu)
-    proxy_span:annotate("kong.preread.start", preread_start_mu)
+    get_or_add_proxy_span(zipkin, preread_start_mu)
   end
 end
 
@@ -283,40 +255,12 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
     ngx_ctx.KONG_BODY_FILTER_ENDED_AT and ngx_ctx.KONG_BODY_FILTER_ENDED_AT * 1000
     or now_mu
 
-  if ngx_ctx.KONG_REWRITE_START and ngx_ctx.KONG_REWRITE_TIME then
-    -- note: rewrite is logged on the request span, not on the proxy span
-    local rewrite_finish_mu = (ngx_ctx.KONG_REWRITE_START + ngx_ctx.KONG_REWRITE_TIME) * 1000
-    zipkin.request_span:annotate("kong.rewrite.finish", rewrite_finish_mu)
-  end
-
-  if subsystem == "http" then
-    -- annotate access_start here instead of in the access phase
-    -- because the plugin access phase is skipped when dealing with
-    -- requests which are not matched by any route
-    -- but we still want to know when the access phase "started"
-    local access_start_mu =
-      ngx_ctx.KONG_ACCESS_START and ngx_ctx.KONG_ACCESS_START * 1000
-      or proxy_span.timestamp
-    proxy_span:annotate("kong.access.start", access_start_mu)
-
-    local access_finish_mu =
-      ngx_ctx.KONG_ACCESS_ENDED_AT and ngx_ctx.KONG_ACCESS_ENDED_AT * 1000
-      or proxy_finish_mu
-    proxy_span:annotate("kong.access.finish", access_finish_mu)
-
-    if not zipkin.header_filter_finished then
-      proxy_span:annotate("kong.header_filter.finish", now_mu)
-      zipkin.header_filter_finished = true
-    end
-
-    proxy_span:annotate("kong.body_filter.finish", now_mu)
-
-  else
-    local preread_finish_mu =
-      ngx_ctx.KONG_PREREAD_ENDED_AT and ngx_ctx.KONG_PREREAD_ENDED_AT * 1000
-      or proxy_finish_mu
-    proxy_span:annotate("kong.preread.finish", preread_finish_mu)
-  end
+  request_span:set_tag("kong.rewrite.duration_ms", ngx_ctx.KONG_REWRITE_TIME or 0)
+  proxy_span:set_tag("kong.preread.duration_ms", ngx_ctx.KONG_PREREAD_TIME or 0)
+  proxy_span:set_tag("kong.access.duration_ms", ngx_ctx.KONG_ACCESS_TIME or 0)
+  proxy_span:set_tag("kong.balancer.duration_ms", ngx_ctx.KONG_BALANCER_TIME or 0)
+  proxy_span:set_tag("kong.header_filter.duration_ms", ngx_ctx.KONG_HEADER_FILTER_TIME or 0)
+  proxy_span:set_tag("kong.body_filter.duration_ms", ngx_ctx.KONG_BODY_FILTER_TIME or 0)
 
   local balancer_data = ngx_ctx.balancer_data
   if balancer_data then
