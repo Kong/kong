@@ -186,7 +186,7 @@ if subsystem == "http" then
     local rewrite_start_mu =
       ngx_ctx.KONG_REWRITE_START and ngx_ctx.KONG_REWRITE_START * 1000
       or ngx_now_mu()
-    zipkin.request_span:annotate("krs", rewrite_start_mu)
+    zipkin.request_span:annotate("kong.rewrite.start", rewrite_start_mu)
   end
 
 
@@ -211,7 +211,7 @@ if subsystem == "http" then
       or ngx_now_mu()
 
     local proxy_span = get_or_add_proxy_span(zipkin, header_filter_start_mu)
-    proxy_span:annotate("khs", header_filter_start_mu)
+    proxy_span:annotate("kong.header_filter.start", header_filter_start_mu)
   end
 
 
@@ -222,9 +222,9 @@ if subsystem == "http" then
     if not zipkin.header_filter_finished then
       local now_mu = ngx_now_mu()
 
-      zipkin.proxy_span:annotate("khf", now_mu)
+      zipkin.proxy_span:annotate("kong.header_filter.finish", now_mu)
       zipkin.header_filter_finished = true
-      zipkin.proxy_span:annotate("kbs", now_mu)
+      zipkin.proxy_span:annotate("kong.body_filter.start", now_mu)
     end
   end
 
@@ -266,7 +266,7 @@ elseif subsystem == "stream" then
       or ngx_now_mu()
 
     local proxy_span = get_or_add_proxy_span(zipkin, preread_start_mu)
-    proxy_span:annotate("kps", preread_start_mu)
+    proxy_span:annotate("kong.preread.start", preread_start_mu)
   end
 end
 
@@ -286,7 +286,7 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
   if ngx_ctx.KONG_REWRITE_START and ngx_ctx.KONG_REWRITE_TIME then
     -- note: rewrite is logged on the request span, not on the proxy span
     local rewrite_finish_mu = (ngx_ctx.KONG_REWRITE_START + ngx_ctx.KONG_REWRITE_TIME) * 1000
-    zipkin.request_span:annotate("krf", rewrite_finish_mu)
+    zipkin.request_span:annotate("kong.rewrite.finish", rewrite_finish_mu)
   end
 
   if subsystem == "http" then
@@ -297,25 +297,25 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
     local access_start_mu =
       ngx_ctx.KONG_ACCESS_START and ngx_ctx.KONG_ACCESS_START * 1000
       or proxy_span.timestamp
-    proxy_span:annotate("kas", access_start_mu)
+    proxy_span:annotate("kong.access.start", access_start_mu)
 
     local access_finish_mu =
       ngx_ctx.KONG_ACCESS_ENDED_AT and ngx_ctx.KONG_ACCESS_ENDED_AT * 1000
       or proxy_finish_mu
-    proxy_span:annotate("kaf", access_finish_mu)
+    proxy_span:annotate("kong.access.finish", access_finish_mu)
 
     if not zipkin.header_filter_finished then
-      proxy_span:annotate("khf", now_mu)
+      proxy_span:annotate("kong.header_filter.finish", now_mu)
       zipkin.header_filter_finished = true
     end
 
-    proxy_span:annotate("kbf", now_mu)
+    proxy_span:annotate("kong.body_filter.finish", now_mu)
 
   else
     local preread_finish_mu =
       ngx_ctx.KONG_PREREAD_ENDED_AT and ngx_ctx.KONG_PREREAD_ENDED_AT * 1000
       or proxy_finish_mu
-    proxy_span:annotate("kpf", preread_finish_mu)
+    proxy_span:annotate("kong.preread.finish", preread_finish_mu)
   end
 
   local balancer_data = ngx_ctx.balancer_data
