@@ -126,6 +126,7 @@ build = {
     ["kong.api.routes.clustering"] = "kong/api/routes/clustering.lua",
 
     ["kong.status"] = "kong/status/init.lua",
+    ["kong.status.routes.config"] = "kong/status/routes/config.lua",
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.grpc"] = "kong/tools/grpc.lua",

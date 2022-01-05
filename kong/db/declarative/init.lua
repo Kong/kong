@@ -572,6 +572,15 @@ function declarative.get_current_hash()
 end
 
 
+function declarative.has_config()
+  -- true is the unset value of the config hash
+  -- declarative.load_into_cache() sets DECLARATIVE_HASH_KEY's value to
+  -- "hash or true", and hash is only not set when loading the default (empty)
+  -- config
+  return declarative.get_current_hash() ~= true
+end
+
+
 local function find_default_ws(entities)
   for _, v in pairs(entities.workspaces or {}) do
     if v.name == "default" then
