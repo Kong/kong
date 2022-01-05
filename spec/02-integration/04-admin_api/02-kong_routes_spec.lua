@@ -246,7 +246,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
         assert(shm_client:send {
           method = "PUT",
           path = "/shm?key=" .. constants.DECLARATIVE_HASH_KEY,
-          body = "true"
+          body = tostring(constants.DECLARATIVE_HASH_EMPTY_VALUE)
         })
 
         local res = assert(client:send {

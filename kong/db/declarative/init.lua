@@ -38,7 +38,11 @@ local PREFIX = ngx.config.prefix()
 local SUBSYS = ngx.config.subsystem
 local WORKER_COUNT = ngx.worker.count()
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
+<<<<<<< HEAD
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
+=======
+local DECLARATIVE_HASH_EMPTY_VALUE = constants.DECLARATIVE_HASH_EMPTY_VALUE
+>>>>>>> 9ee265aa7 (feat(db) use a library variable for default hash)
 
 
 local DECLARATIVE_LOCK_KEY = "declarative:lock"
@@ -573,11 +577,7 @@ end
 
 
 function declarative.has_config()
-  -- true is the unset value of the config hash
-  -- declarative.load_into_cache() sets DECLARATIVE_HASH_KEY's value to
-  -- "hash or true", and hash is only not set when loading the default (empty)
-  -- config
-  return declarative.get_current_hash() ~= true
+  return declarative.get_current_hash() ~= DECLARATIVE_HASH_EMPTY_VALUE
 end
 
 
