@@ -184,8 +184,64 @@ When developing, you can use the `Makefile` for doing the following operations:
 
 These are the steps we follow at Kong to set up a development environment.
 
+## Dev on Docker
 
-## Virtual Machine
+[Gojira](https://github.com/Kong/gojira) is a multi-purpose tool to ease development and testing of Kong by using Docker containers.
+It's built on the top of Docker and Docker Compose, it separate multiple Kong development environments into different Docker Compose stacks.
+It also auto-manage the network configuration between Kong and PostgreSQL (if required) by configure the containers' environment variables.
+
+It's fully compatible with all platforms (even Apple Silicon).
+You can setup your development environment with Gojira in a couple of seconds (depends on your network speed). 
+
+See below links to install the dependencies: 
+
+- [Install Docker or Docker Desktop](https://docs.docker.com/get-docker/)
+- [Install Docker Compose](https://docs.docker.com/compose/install/)
+
+Install Gojira (see [full instructions](https://github.com/Kong/gojira#installation)):
+
+```bash
+git clone git@github.com:Kong/gojira.git
+mkdir -p ~/.local/bin
+ln -s $(realpath gojira/gojira.sh) ~/.local/bin/gojira
+```
+
+Add `export PATH=$PATH:~/.local/bin` to your `.bashrc` or `.zshrc` file.
+
+Clone the Kong project to your development folder.
+
+```bash
+git clone git@github.com:Kong/kong-.git
+cd kong
+```
+
+Within the `kong` folder run following Gojira commands to start a development version of the Kong Gateway using PostgreSQL:
+
+```bash
+gojira up -pp 8000:8000 -pp 8001:8001
+gojira run make dev
+gojira run kong migrations bootstrap
+gojira run kong start
+```
+
+Verify the Admin API is now available by navigating to `http://localhost:8001` on your host machine browser.
+
+Tips: 
+
+- Attach to shell by running `gojira shell` within `kong` folder.
+- Learn about [usage patterns](https://github.com/Kong/gojira/blob/master/docs/manual.md#usage-patterns) of Gojira.
+
+## Dev on Linux (Host/VM)
+
+If you have a Linux development environment (either virtual or bare metal), the build is done in four separate steps:
+
+1. Development dependencies and runtime libraries, include:
+   1. Prerequisite packages.  Mostly compilers, tools and libraries needed to compile everything else.
+   2. OpenResty system, including Nginx, LuaJIT, PCRE, etc.
+2. Databases. Kong uses Postgres, Cassandra and Redis.  We have a handy setup with docker-compose to keep each on its container.
+3. Kong itself.
+
+### Virtual Machine (Optional)
 
 Final deployments are typically on a Linux machine or container, so even if all components are multiplatform, it's easier to use it for development too.  If you use MacOS or Windows machines, setting a virtual machine is easy enough now.  Most of us use the freely available VirtualBox without any trouble.
 
@@ -195,7 +251,7 @@ There are no "hard" requirements on any Linux distro, but RHEL and CentOS can be
 
 To avoid long compilation times, give the VM plenty of RAM (8GB recommended) and all the CPU cores you can.
 
-### Virtual Box setup
+#### Virtual Box setup
 
 You will need to setup port forwarding on VirtualBox to be able to ssh into the box which can be done as follows:
 
@@ -227,16 +283,6 @@ Just keep hitting Enter until the key is generated. You do not need a password f
 ```
 
 Now try `ssh dev` on your host, you should be able to get into the guest directly
-
-## Linux Environment
-
-Once you have a Linux development environment (either virtual or bare metal), the build is done in four separate steps:
-
-1. Development dependencies and runtime libraries, include:
-   1. Prerequisite packages.  Mostly compilers, tools and libraries needed to compile everything else.
-   2. OpenResty system, including Nginx, LuaJIT, PCRE, etc.
-2. Databases. Kong uses Postgres, Cassandra and Redis.  We have a handy setup with docker-compose to keep each on its container.
-3. Kong itself.
 
 ### Dependencies (Binary release)
 
