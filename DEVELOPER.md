@@ -3,9 +3,8 @@
 
 We encourage community contributions to Kong. To make sure it is a smooth
 experience (both for you and for the Kong team), please read
-[CONTRIBUTING.md](CONTRIBUTING.md), [DEVELOPER.md](DEVELOPER.md),
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [COPYRIGHT](COPYRIGHT) before
-you start.
+[CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
+and [COPYRIGHT](COPYRIGHT) before you start.
 
 If you are planning on developing on Kong, you'll need a development
 installation. The `master` branch holds the latest unreleased source code.
@@ -108,10 +107,6 @@ $ luarocks make
 ```
 
 #### Running for development
-
-Check out the [development section](https://github.com/Kong/kong/blob/master/kong.conf.default#L244)
-of the default configuration file for properties to tweak to ease
-the development process for Kong.
 
 Modifying the [`lua_package_path`](https://github.com/openresty/lua-nginx-module#lua_package_path)
 and [`lua_package_cpath`](https://github.com/openresty/lua-nginx-module#lua_package_cpath)
@@ -237,22 +232,47 @@ Now try `ssh dev` on your host, you should be able to get into the guest directl
 
 Once you have a Linux development environment (either virtual or bare metal), the build is done in four separate steps:
 
-1. Prerequisite packages.  Mostly compilers, tools and libraries needed to compile everything else.
-1. OpenResty system, including Nginx, LuaJIT, PCRE, etc.
-1. Databases. Kong uses Postgres, Cassandra and Redis.  We have a handy setup with docker-compose to keep each on its container.
-1. Kong itself.
+1. Development dependencies and runtime libraries, include:
+   1. Prerequisite packages.  Mostly compilers, tools and libraries needed to compile everything else.
+   2. OpenResty system, including Nginx, LuaJIT, PCRE, etc.
+2. Databases. Kong uses Postgres, Cassandra and Redis.  We have a handy setup with docker-compose to keep each on its container.
+3. Kong itself.
 
+### Dependencies (Binary release)
 
-### Prerequisites
+For your convenience and to be more efficiently, we recommended install dependencies including OpenResty, OpenSSL, LuaRocks and PCRE by downloading and installing Kong's latest Linux package release (`.deb` or `.rpm`). 
+
+Follow below steps to install download and install Kong package. And you can find all downloadable Linux packages [here](https://download.konghq.com/).
+
+Ubuntu/Debian:
+
+```bash
+curl -Lo kong-2.7.0.amd64.deb "https://download.konghq.com/gateway-2.x-$(. /etc/os-release && echo "$ID")-$(lsb_release -cs)/pool/all/k/kong/kong_2.7.0_amd64.deb"
+sudo dpkg -i kong-2.7.0.amd64.deb
+```
+
+CentOS:
+
+```bash
+curl -Lo kong-2.7.0.rpm $(rpm --eval "https://download.konghq.com/gateway-2.x-centos-%{centos_ver}/Packages/k/kong-2.7.0.el%{centos_ver}.amd64.rpm")
+sudo yum install kong-2.7.0.rpm
+```
+
+Now you have meet all the requirements before install Kong.
+
+### Dependencies (Build from source)
+
+The-hard-way to build development environment and also a good start for beginners to understand how everything fits together.
+
+#### Prerequisites
 
 These are the needed tools and libraries that aren't installed out of the box on Ubuntu and Fedora, respectively.  Just run one of these, either as root or `sudo`.
 
-Ubuntu:
+Ubuntu/Debian:
 
 ```shell
-    apt-get update
-
-    apt-get install \
+    apt-get update \
+    && apt-get install -y \
         automake \
         build-essential \
         curl \
@@ -287,9 +307,9 @@ Fedora:
         zlib-devel
 ```
 
-### OpenResty
+#### OpenResty
 
-We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  Currently these include OpenResty 1.15.8.3, OpenSSl 1.1.1g, LuaRocks 3.3.1 and PCRE 8.44;  the exact versions can also be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file of the main Kong repository.
+We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  Currently these include OpenResty 1.19.9.1, OpenSSL 1.1.1m, LuaRocks 3.8.0 and PCRE 8.45;  the exact versions can also be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file of the main Kong repository.
 
 These commands don't have to be performed as root, since all compilation is done within a subdirectory, and installs everything in the target specified by the `-p` argument (here the `build` directory).
 
