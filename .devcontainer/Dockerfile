@@ -1,5 +1,7 @@
 FROM kong:ubuntu
 
+USER root
+
 RUN apt update && apt install -y automake \
         build-essential \
         curl \
