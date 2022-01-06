@@ -43,10 +43,13 @@ local os = os
 
 
 local function pre_create_private_file(file)
-  local fd = ffi.C.open(file, bit.bor(system_constants.O_RDONLY(),
-                                      system_constants.O_CREAT()),
-                              bit.bor(system_constants.S_IRUSR(),
+  local flags = bit.bor(system_constants.O_RDONLY(),
+                        system_constants.O_CREAT())
+
+  local mode = ffi.new("int", bit.bor(system_constants.S_IRUSR(),
                                       system_constants.S_IWUSR()))
+
+  local fd = ffi.C.open(file, flags, mode)
   if fd == -1 then
     log.warn("unable to pre-create '", file ,"' file: ",
              ffi.string(ffi.C.strerror(ffi.errno())))
@@ -306,7 +309,7 @@ local function write_env_file(path, data)
   local c = require "lua_system_constants"
 
   local flags = bit.bor(c.O_CREAT(), c.O_WRONLY(), c.O_TRUNC())
-  local mode  = bit.bor(c.S_IRUSR(), c.S_IWUSR(), c.S_IRGRP())
+  local mode = ffi.new("int", bit.bor(c.S_IRUSR(), c.S_IWUSR(), c.S_IRGRP()))
 
   local fd = ffi.C.open(path, flags, mode)
   if fd < 0 then

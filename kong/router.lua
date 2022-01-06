@@ -39,6 +39,7 @@ local max           = math.max
 local band          = bit.band
 local bor           = bit.bor
 local yield         = require("kong.tools.utils").yield
+local server_name   = require("ngx.ssl").server_name
 
 -- limits regex degenerate times to the low miliseconds
 local REGEX_PREFIX  = "(*LIMIT_MATCH=10000)"
@@ -1840,7 +1841,7 @@ function _M.new(routes)
       local req_uri = ctx and ctx.request_uri or var.request_uri
       local req_host = var.http_host or ""
       local req_scheme = ctx and ctx.scheme or var.scheme
-      local sni = var.ssl_server_name
+      local sni, _ = server_name()
 
       local headers
       local err
@@ -1900,8 +1901,6 @@ function _M.new(routes)
     end
 
   else -- stream
-    local server_name = require("ngx.ssl").server_name
-
     function self.exec(ctx)
       local src_ip = var.remote_addr
       local src_port = tonumber(var.remote_port, 10)

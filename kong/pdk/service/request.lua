@@ -22,6 +22,7 @@ local table_concat = table.concat
 local type = type
 local string_find = string.find
 local string_sub = string.sub
+local string_byte = string.byte
 local string_lower = string.lower
 local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
@@ -83,6 +84,7 @@ local function new(self)
   local CONTENT_TYPE_JSON      = "application/json"
   local CONTENT_TYPE_FORM_DATA = "multipart/form-data"
 
+  local SLASH                  = string_byte("/")
 
   ---
   -- Enables buffered proxying that allows plugins to access service body and
@@ -148,7 +150,7 @@ local function new(self)
       error("path must be a string", 2)
     end
 
-    if string_sub(path, 1, 1) ~= "/" then
+    if string_byte(path) ~= SLASH then
       error("path must start with /", 2)
     end
 
@@ -469,6 +471,8 @@ local function new(self)
 
 
   do
+    local QUOTE = string_byte('"')
+
     local set_body_handlers = {
 
       [CONTENT_TYPE_POST] = function(args, mime)
@@ -501,7 +505,7 @@ local function new(self)
         local at = string_find(mime, "boundary=", 1, true)
         if at then
           at = at + 9
-          if string_sub(mime, at, at) == '"' then
+          if string_byte(mime, at) == QUOTE then
             local till = string_find(mime, '"', at + 1, true)
             boundary = string_sub(mime, at + 1, till - 1)
           else
