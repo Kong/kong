@@ -31,38 +31,22 @@ function ResponseTransformerHandler:header_filter(conf)
 end
 
 function ResponseTransformerHandler:body_filter(conf)
-  local ctx = ngx.ctx
-
-  -- Initializes context here in case this plugin's access phase
-  -- did not run - and hence `rt_body_chunks` and `rt_body_chunk_number`
-  -- were not initialized
-  ctx.rt_body_chunks = ctx.rt_body_chunks or {}
-  ctx.rt_body_chunk_number = ctx.rt_body_chunk_number or 1
-
   if not feature_flag_limit_body.body_filter() then
     return
   end
 
   if is_body_transform_set(conf) then
-    local chunk, eof = ngx.arg[1], ngx.arg[2]
-
-    -- if eof wasn't received keep buffering
-    if not eof then
-      ctx.rt_body_chunks[ctx.rt_body_chunk_number] = chunk
-      ctx.rt_body_chunk_number = ctx.rt_body_chunk_number + 1
-      ngx.arg[1] = nil
+    local resp_body = kong.response.get_raw_body()
+    if not resp_body then
       return
     end
-
-    -- last piece of body is ready; do the thing
-    local resp_body = concat(ctx.rt_body_chunks)
 
     -- raw body transformation takes precedence over
     -- json transforms
     local replaced_body = body_transformer.replace_body(conf, resp_body, ngx.status)
 
     if replaced_body then
-      ngx.arg[1] = replaced_body
+      kong.response.set_raw_body(replaced_body)
       resp_body = replaced_body
     end
 
@@ -77,7 +61,7 @@ function ResponseTransformerHandler:body_filter(conf)
 
           -- Empty body to prevent non-transformed (potentially sensitive)
           -- data from being passed through.
-          ngx.arg[1] = nil
+          kong.response.set_raw_body(nil)
           ngx.status = 500
           return
         end
@@ -100,7 +84,7 @@ function ResponseTransformerHandler:body_filter(conf)
 
         -- Only replace with JSON body if transformation was successful.
         -- Otherwise, leave original or replaced_body (above) in place.
-        ngx.arg[1] = body
+        kong.response.set_raw_body(body)
       end
     end
   end
