@@ -143,7 +143,7 @@ $(ldoc.descript(item))
 >             for r in group:iter() do
 >               local type, ctypes = item:return_type(r);
 >               if type ~= '' then
->                 type = "`" .. type .. "`"
+>                 type = "`" .. type .. "`: "
 >               end
 $(list_prefix) $(type) $(r.text)
 
@@ -189,11 +189,6 @@ $(trim(usage))
 >           end -- for usage
 >         end -- if usage
 
->         if module.name == "PDK" then
-[Back to top](#plugin-development-kit)
->         else
-[Back to top](#$(ldoc.no_spaces(module.name):gsub("_", "")))
->         end
 >       end -- if not item.tags.redirect
 
 >     end -- for items
