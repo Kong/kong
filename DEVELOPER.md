@@ -355,7 +355,7 @@ Fedora:
 
 #### OpenResty
 
-We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  Currently these include OpenResty 1.19.9.1, OpenSSL 1.1.1m, LuaRocks 3.8.0 and PCRE 8.45;  the exact versions can also be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file of the main Kong repository.
+We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  <span class="x x-first x-last">Their </span>exact versions can be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file.
 
 These commands don't have to be performed as root, since all compilation is done within a subdirectory, and installs everything in the target specified by the `-p` argument (here the `build` directory).
 
