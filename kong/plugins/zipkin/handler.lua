@@ -45,6 +45,17 @@ local function get_reporter(conf)
 end
 
 
+local function tag_with_durations(span)
+  ctx = ngx.ctx
+  span:set_tag("kong.rewrite.duration_ms", ctx.KONG_REWRITE_TIME or 0)
+  span:set_tag("kong.preread.duration_ms", ctx.KONG_PREREAD_TIME or 0)
+  span:set_tag("kong.access.duration_ms", ctx.KONG_ACCESS_TIME or 0)
+  span:set_tag("kong.balancer.duration_ms", ctx.KONG_BALANCER_TIME or 0)
+  span:set_tag("kong.header_filter.duration_ms", ctx.KONG_HEADER_FILTER_TIME or 0)
+  span:set_tag("kong.body_filter.duration_ms", ctx.KONG_BODY_FILTER_TIME or 0)
+end
+
+
 local function tag_with_service_and_route(span)
   local service = kong.router.get_service()
   if service and service.id then
@@ -255,12 +266,8 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
     ngx_ctx.KONG_BODY_FILTER_ENDED_AT and ngx_ctx.KONG_BODY_FILTER_ENDED_AT * 1000
     or now_mu
 
-  request_span:set_tag("kong.rewrite.duration_ms", ngx_ctx.KONG_REWRITE_TIME or 0)
-  proxy_span:set_tag("kong.preread.duration_ms", ngx_ctx.KONG_PREREAD_TIME or 0)
-  proxy_span:set_tag("kong.access.duration_ms", ngx_ctx.KONG_ACCESS_TIME or 0)
-  proxy_span:set_tag("kong.balancer.duration_ms", ngx_ctx.KONG_BALANCER_TIME or 0)
-  proxy_span:set_tag("kong.header_filter.duration_ms", ngx_ctx.KONG_HEADER_FILTER_TIME or 0)
-  proxy_span:set_tag("kong.body_filter.duration_ms", ngx_ctx.KONG_BODY_FILTER_TIME or 0)
+  tag_with_durations(request_span)
+  tag_with_durations(proxy_span)
 
   local balancer_data = ngx_ctx.balancer_data
   if balancer_data then
@@ -279,6 +286,7 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
         span:set_tag("http.status_code", try.code)
       end
 
+      tag_with_durations(span)
       tag_with_service_and_route(span)
 
       if try.balancer_latency ~= nil then
