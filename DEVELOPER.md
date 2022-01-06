@@ -377,3 +377,11 @@ Verify the three new containers are up and running with `docker ps` on a separat
 Now run unit tests with `make test` and integration test with `make test-integration`.
 
 Hack on!
+
+## What's next
+
+- Refer to the [Kong Gateway Docs](https://docs.konghq.com/gateway/) for more information.
+- Learn about [lua-nginx-module](https://github.com/openresty/lua-nginx-module).
+- Learn about [lua-resty-core](https://github.com/openresty/lua-resty-core).
+- Learn about the fork [luajit2](https://github.com/openresty/luajit2) of OpenResty.
+- For profiling, see [stapxx](https://github.com/openresty/stapxx), the SystemTap framework for OpenResty.
