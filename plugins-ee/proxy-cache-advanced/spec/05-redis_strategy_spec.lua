@@ -79,89 +79,89 @@ end
 require"kong.resty.dns.client".init(nil)
 
 for redis_description, redis_configuration in pairs(redis_test_configurations()) do
-describe("proxy-cache-advanced: Redis strategy", function()
-  local strategy
-  local red, red_version = redis_connect()
+  describe("proxy-cache-advanced: Redis strategy", function()
+    local strategy
+    local red, red_version = redis_connect()
 
-  lazy_setup(function()
-    add_redis_user(red, red_version)
-    strategy = redis_strategy.new(redis_configuration)
-  end)
-
-  lazy_teardown(function()
-    redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, nil, nil)
-    remove_redis_user(red, red_version)
-    red:close()
-  end)
-
-  local cache_obj = {
-    headers = {
-      ["a-header"] = "a-header-value",
-      ["another-header"] = "another-header-value",
-    },
-    status = 200,
-    body = "a body",
-    timestamp = ngx.time(),
-  }
-
-  describe(":store [#" .. redis_description .. "]", function()
-    it("stores a cache object", function()
-      local key = utils.random_string()
-      assert(red:select(REDIS_DATABASE))
-      assert(strategy:store(key, cache_obj, 2))
-      local obj = red:array_to_hash(red:hgetall(key))
-      obj.headers = cjson.decode(obj.headers)
-      obj.timestamp = tonumber(obj.timestamp)
-      obj.status = tonumber(obj.status)
-      assert.same(obj, cache_obj)
+    lazy_setup(function()
+      add_redis_user(red, red_version)
+      strategy = redis_strategy.new(redis_configuration)
     end)
 
-    it("expires a cache object", function()
-      local key = utils.random_string()
-      assert(red:select(REDIS_DATABASE))
-      assert(strategy:store(key, cache_obj, 1))
-      ngx.sleep(2)
-      local obj = red:hgetall(key)
-      assert.same(obj, {})
+    lazy_teardown(function()
+      redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, nil, nil)
+      remove_redis_user(red, red_version)
+      red:close()
     end)
-  end)
 
-  describe(":fetch [#" .. redis_description .. "]", function()
-    it("fetches the same object as stored", function()
-      local key = utils.random_string()
-      assert(strategy:store(key, cache_obj, 5))
-      local obj = strategy:fetch(key)
-      assert.same(obj, cache_obj)
-    end)
-  end)
+    local cache_obj = {
+      headers = {
+        ["a-header"] = "a-header-value",
+        ["another-header"] = "another-header-value",
+      },
+      status = 200,
+      body = "a body",
+      timestamp = ngx.time(),
+    }
 
-  describe(":purge [#" .. redis_description .. "]", function()
-    it("purges a cache entry", function()
-      local key = utils.random_string()
-      assert(strategy:store(key, cache_obj))
-      assert(strategy:purge(key))
-      local obj = strategy:fetch(key)
-      assert.same(obj, nil)
-    end)
-  end)
+    describe(":store [#" .. redis_description .. "]", function()
+      it("stores a cache object", function()
+        local key = utils.random_string()
+        assert(red:select(REDIS_DATABASE))
+        assert(strategy:store(key, cache_obj, 2))
+        local obj = red:array_to_hash(red:hgetall(key))
+        obj.headers = cjson.decode(obj.headers)
+        obj.timestamp = tonumber(obj.timestamp)
+        obj.status = tonumber(obj.status)
+        assert.same(obj, cache_obj)
+      end)
 
-  describe(":touch [#" .. redis_description .. "]", function()
-    it("updates cached entry timestamp field", function()
-      local key = utils.random_string()
-      local ts = cache_obj.timestamp
-      assert(strategy:store(key, cache_obj))
-      local obj = strategy:fetch(key)
-      assert.same(obj.timestamp, ts)
-      assert(strategy:touch(key))
-      local obj = strategy:fetch(key)
-      assert.not_same(obj.timestamp, ts)
+      it("expires a cache object", function()
+        local key = utils.random_string()
+        assert(red:select(REDIS_DATABASE))
+        assert(strategy:store(key, cache_obj, 1))
+        ngx.sleep(2)
+        local obj = red:hgetall(key)
+        assert.same(obj, {})
+      end)
     end)
-  end)
 
-  describe(":flush [#" .. redis_description .. "]", function()
-    it("returns no error", function()
-      assert(strategy:flush())
+    describe(":fetch [#" .. redis_description .. "]", function()
+      it("fetches the same object as stored", function()
+        local key = utils.random_string()
+        assert(strategy:store(key, cache_obj, 5))
+        local obj = strategy:fetch(key)
+        assert.same(obj, cache_obj)
+      end)
+    end)
+
+    describe(":purge [#" .. redis_description .. "]", function()
+      it("purges a cache entry", function()
+        local key = utils.random_string()
+        assert(strategy:store(key, cache_obj))
+        assert(strategy:purge(key))
+        local obj = strategy:fetch(key)
+        assert.same(obj, nil)
+      end)
+    end)
+
+    describe(":touch [#" .. redis_description .. "]", function()
+      it("updates cached entry timestamp field", function()
+        local key = utils.random_string()
+        local ts = cache_obj.timestamp
+        assert(strategy:store(key, cache_obj))
+        local obj = strategy:fetch(key)
+        assert.same(obj.timestamp, ts)
+        assert(strategy:touch(key))
+        local obj = strategy:fetch(key)
+        assert.not_same(obj.timestamp, ts)
+      end)
+    end)
+
+    describe(":flush [#" .. redis_description .. "]", function()
+      it("returns no error", function()
+        assert(strategy:flush())
+      end)
     end)
   end)
-end)
 end
