@@ -8,11 +8,14 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local redis = require "kong.enterprise_edition.redis"
+local version = require "version"
 
 local REDIS_HOST = helpers.redis_host
 local REDIS_PORT = 6379
 local REDIS_DATABASE = 1
-local REDIS_PASSWORD = nil
+
+local REDIS_USERNAME_VALID = "rla-user"
+local REDIS_PASSWORD_VALID = "rla-pass"
 
 local floor = math.floor
 local time = ngx.time
@@ -32,7 +35,7 @@ local function build_request(host, path, method)
 end
 
 local function build_plugin_fn(strategy)
-  return function (route_id, windows, limits, sync_rate, retry_jitter, hide_headers)
+  return function (route_id, windows, limits, sync_rate, retry_jitter, hide_headers, redis_configuration)
     if type(windows) ~= "table" then
       windows = { windows }
     end
@@ -49,15 +52,69 @@ local function build_plugin_fn(strategy)
         sync_rate = sync_rate or 0,
         retry_after_jitter_max = retry_jitter,
         hide_client_headers = hide_headers,
-        redis = {
-          host = REDIS_HOST,
-          port = REDIS_PORT,
-          database = REDIS_DATABASE,
-          password = REDIS_PASSWORD,
-        }
+        redis = redis_configuration,
       }
     }
   end
+end
+
+local function redis_connect()
+  local red = assert(redis.connection({
+    host = REDIS_HOST,
+    port = REDIS_PORT,
+  }))
+  local red_version = string.match(red:info(), 'redis_version:([%g]+)\r\n')
+  return red, assert(version(red_version))
+end
+
+local function redis_version(policy)
+  local red, red_version = redis_connect()
+  red:close()
+  return red_version
+end
+
+local function add_redis_user(policy)
+  if policy == "redis" then
+    local red, red_version = redis_connect()
+    if red_version >= version("6.0.0") then
+      assert(red:acl("setuser", REDIS_USERNAME_VALID, "on", "allkeys", "+@all", ">" .. REDIS_PASSWORD_VALID))
+    end
+    red:close()
+  end
+end
+
+local function remove_redis_user(policy)
+  if policy == "redis" then
+    local red, red_version = redis_connect()
+    if red_version >= version("6.0.0") then
+      assert(red:acl("deluser", REDIS_USERNAME_VALID))
+    end
+    red:close()
+  end
+end
+
+local function redis_test_configurations(policy)
+  local redis_configurations = {
+    no_acl =  {
+      host = REDIS_HOST,
+      port = REDIS_PORT,
+      database = REDIS_DATABASE,
+      username = nil,
+      password = nil,
+    },
+  }
+
+  if policy == "redis" and redis_version() >= version("6.0.0") then
+    redis_configurations.acl = {
+      host = REDIS_HOST,
+      port = REDIS_PORT,
+      database = REDIS_DATABASE,
+      username = REDIS_USERNAME_VALID,
+      password = REDIS_PASSWORD_VALID,
+    }
+  end
+
+  return redis_configurations
 end
 
 for _, strategy in strategies() do
@@ -67,20 +124,24 @@ for _, strategy in strategies() do
   local MOCK_GROUP_SIZE = 10
   local MOCK_ORIGINAL_LIMIT = 6
 
-  local s = "rate-limiting-advanced, policy '" .. policy .."' [#"..strategy.."]"
-  if policy == "redis" then
-    s = s .. " #flaky"
-  end
+  local base = "rate-limiting-advanced, policy '" .. policy .."' [#"..strategy.."]"
 
   -- helper function to build plugin config
   local build_plugin = build_plugin_fn(policy)
 
+  for redis_description, redis_configuration in pairs(redis_test_configurations(policy)) do
+  local s = base
+  if policy == "redis" then
+    if policy == "redis" then
+      s = s .. " [#" .. redis_description .. "]"
+    end
+  end
   describe(s, function()
     local bp, db, consumer1, consumer2, plugin, plugin2, plugin3, plugin4, consumer_in_group
 
     lazy_setup(function()
-      helpers.kill_all()
-      redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, REDIS_PASSWORD)
+      redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, nil, nil)
+      add_redis_user(policy)
 
       bp, db = helpers.get_db_utils(strategy ~= "off" and strategy or nil,
                                 nil,
@@ -102,6 +163,7 @@ for _, strategy in strategies() do
         custom_id = "consumer_in_group"
       })
 
+      if strategy ~= "off" then
       local consumer_group = assert(db.consumer_groups:insert({
         name = "test_consumer_group"
       }))
@@ -124,6 +186,7 @@ for _, strategy in strategies() do
         key = "apikeycg",
         consumer = { id = consumer_in_group.id },
       })
+      end
 
       assert(bp.keyauth_credentials:insert {
         key = "apikey123",
@@ -146,12 +209,7 @@ for _, strategy in strategies() do
           window_size = { MOCK_RATE },
           limit = { 6 },
           sync_rate = 10,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -167,12 +225,7 @@ for _, strategy in strategies() do
           window_size = { 5, 10 },
           limit = { 3, 5 },
           sync_rate = 10,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -193,12 +246,7 @@ for _, strategy in strategies() do
           window_size = { MOCK_RATE },
           limit = { 6 },
           sync_rate = 10,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -215,12 +263,7 @@ for _, strategy in strategies() do
           limit = { 3 },
           sync_rate = 10,
           namespace = "foo",
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -237,12 +280,7 @@ for _, strategy in strategies() do
           limit = { 3 },
           sync_rate = 10,
           namespace = "foo",
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -259,12 +297,7 @@ for _, strategy in strategies() do
           window_type = "fixed",
           limit = { 6 },
           sync_rate = 10,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -284,12 +317,7 @@ for _, strategy in strategies() do
           window_size = { MOCK_RATE },
           limit = { 6 },
           sync_rate = 10,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -310,12 +338,7 @@ for _, strategy in strategies() do
           window_size = { MOCK_RATE },
           limit = { 6 },
           sync_rate = 10,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -332,12 +355,7 @@ for _, strategy in strategies() do
           window_type = "fixed",
           limit = { 1 },
           sync_rate = 10,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          redis = redis_configuration,
           hide_client_headers = true
         }
       })
@@ -357,12 +375,8 @@ for _, strategy in strategies() do
           window_type = "fixed",
           limit = { 6 },
           sync_rate = 10,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          redis = redis_configuration,
+          hide_client_headers = false
         }
       })
 
@@ -381,12 +395,7 @@ for _, strategy in strategies() do
           window_type = "fixed",
           limit = { 6 },
           sync_rate = 10,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          redis = redis_configuration,
         }
       })
 
@@ -408,12 +417,7 @@ for _, strategy in strategies() do
           window_size = { MOCK_RATE },
           limit = { 6 },
           sync_rate = 10,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -421,13 +425,13 @@ for _, strategy in strategies() do
         name = "test-13",
         hosts = { "test13.com" },
       })
-      assert(bp.plugins:insert(build_plugin(route13.id, MOCK_RATE, 2, 0, 5)))
+      assert(bp.plugins:insert(build_plugin(route13.id, MOCK_RATE, 2, 0, 5, false, redis_configuration)))
 
       local route14 = assert(bp.routes:insert {
         name = "test-14",
         hosts = { "test14.com" },
       })
-      assert(bp.plugins:insert(build_plugin(route14.id, MOCK_RATE, 2, 0, 5, true)))
+      assert(bp.plugins:insert(build_plugin(route14.id, MOCK_RATE, 2, 0, 5, true, redis_configuration)))
 
       -- Shared service with multiple routes
       local shared_service = bp.services:insert {
@@ -453,12 +457,7 @@ for _, strategy in strategies() do
           window_type = "fixed",
           limit = { 6 },
           sync_rate = 0,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          redis = redis_configuration,
         },
       })
 
@@ -475,12 +474,7 @@ for _, strategy in strategies() do
           window_size = { 10 },
           limit = { 6 },
           sync_rate = 1,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -497,12 +491,7 @@ for _, strategy in strategies() do
           window_size = { 10 },
           limit = { 6 },
           sync_rate = 1,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -520,12 +509,7 @@ for _, strategy in strategies() do
           namespace = "Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
           limit = { 6 },
           sync_rate = 2,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -543,12 +527,7 @@ for _, strategy in strategies() do
           namespace = "Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu",
           limit = { 6 },
           sync_rate = 1,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -567,12 +546,7 @@ for _, strategy in strategies() do
           window_size = { 5 },
           limit = { 6 },
           sync_rate = 1,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          }
+          redis = redis_configuration,
         }
       })
 
@@ -595,12 +569,7 @@ for _, strategy in strategies() do
           namespace = "Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
           limit = { MOCK_ORIGINAL_LIMIT },
           sync_rate = 2,
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          redis = redis_configuration,
           enforce_consumer_groups = true,
           consumer_groups = { "test_consumer_group" },
         }
@@ -611,7 +580,7 @@ for _, strategy in strategies() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         database = strategy ~= "off" and strategy or nil,
         db_update_propagation = strategy == "cassandra" and 1 or 0,
-        declarative_config = strategy == "off" and helpers.write_declarative_config() or nil,
+        declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
       })
 
 
@@ -619,7 +588,7 @@ for _, strategy in strategies() do
         plugins = "rate-limiting-advanced,key-auth",
         database = strategy ~= "off" and strategy or nil,
         db_update_propagation = strategy == "cassandra" and 1 or 0,
-        declarative_config = strategy == "off" and helpers.write_declarative_config() or nil,
+        declarative_config = strategy == "off" and helpers.make_yaml_file() or nil,
         prefix = "node2",
         proxy_listen = "0.0.0.0:9100",
         admin_listen = "127.0.0.1:9101",
@@ -676,6 +645,8 @@ for _, strategy in strategies() do
         helpers.stop_kong("dp1")
         helpers.stop_kong("dp2")
       end
+
+      remove_redis_user(policy)
     end)
 
     local client, admin_client
@@ -932,6 +903,7 @@ for _, strategy in strategies() do
         assert.logfile("node2/logs/error.log").has.line("killing Bk1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
         end)
 
+      if strategy ~= "off" then
       it("we are NOT leaking any timers after DELETE on hybrid mode", function()
         helpers.clean_logfile("dp1/logs/error.log")
         helpers.clean_logfile("dp2/logs/error.log")
@@ -949,6 +921,7 @@ for _, strategy in strategies() do
         -- Check in DP 2
         assert.logfile("dp2/logs/error.log").has.line("killing Ck1krkTWBqmcKEQVW5cQNLgikuKygjnu", true, 20)
       end)
+      end
 
       it("#flaky new plugin is created in a new route in hybrid mode", function()
         helpers.clean_logfile("dp1/logs/error.log")
@@ -995,12 +968,7 @@ for _, strategy in strategies() do
               namespace = "Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
               limit = { 6 },
               sync_rate = 1,
-              redis = {
-                host = REDIS_HOST,
-                port = REDIS_PORT,
-                database = REDIS_DATABASE,
-                password = REDIS_PASSWORD,
-              }
+              redis = redis_configuration,
             }
           },
           headers = {
@@ -1083,12 +1051,7 @@ for _, strategy in strategies() do
               namespace = "Ek1krkTWBqmcKEQVW5cQNLgikuKygjnu",
               limit = { 6 },
               sync_rate = 1,
-              redis = {
-                host = REDIS_HOST,
-                port = REDIS_PORT,
-                database = REDIS_DATABASE,
-                password = REDIS_PASSWORD,
-              }
+              redis = redis_configuration,
             }
           },
           headers = {
@@ -1494,11 +1457,7 @@ for _, strategy in strategies() do
     end)
     describe("With authentication", function()
       describe("Route-specific plugin", function()
-        local name = "blocks if exceeding limit"
-        if policy == "redis" then
-          name = "#flaky " .. name
-        end
-        it(name, function()
+        it("blocks if exceeding limit", function()
           for i = 1, 6 do
             local res = assert(helpers.proxy_client():send {
               method = "GET",
@@ -1545,12 +1504,9 @@ for _, strategy in strategies() do
         end)
       end)
 
+      if strategy ~= "off" then
       describe("With consumer group", function()
-        local name = "overrides with group configurations when consumer is in group"
-        if policy == "redis" then
-          name = "#flaky " .. name
-        end
-        it(name, function()
+        it("overrides with group configurations when consumer is in group", function()
           local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/get?apikey=apikeycg",
@@ -1564,11 +1520,7 @@ for _, strategy in strategies() do
           assert.are.same(MOCK_GROUP_LIMIT - 1, tonumber(res.headers["x-ratelimit-remaining-10"]))
           assert.are.same(MOCK_GROUP_LIMIT - 1, tonumber(res.headers["ratelimit-remaining"]))
         end)
-        name = "should not use group configurations when consumer is not in group"
-        if policy == "redis" then
-          name = "#flaky " .. name
-        end
-        it(name, function()
+        it("should not use group configurations when consumer is not in group", function()
           local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/get?apikey=apikey123",
@@ -1582,11 +1534,7 @@ for _, strategy in strategies() do
           assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["x-ratelimit-remaining-5"]))
           assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["ratelimit-remaining"]))
         end)
-        name = "should not change limit for plugin instances of the same consumer if group not enforced"
-        if policy == "redis" then
-          name = "#flaky " .. name
-        end
-        it(name, function()
+        it("should not change limit for plugin instances of the same consumer if group not enforced", function()
           local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/get?apikey=apikeycg",
@@ -1601,6 +1549,7 @@ for _, strategy in strategies() do
           assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["ratelimit-remaining"]))
         end)
       end)
+      end
     end)
     describe("With identifier", function()
       describe("not set, use default `consumer`", function()
@@ -1746,6 +1695,7 @@ for _, strategy in strategies() do
             assert.res_status(200, res)
             assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
             assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+
             assert.are.same(6 - ((i * 2) + 1), tonumber(res.headers["x-ratelimit-remaining-3"]))
             assert.are.same(6 - ((i * 2) + 1), tonumber(res.headers["ratelimit-remaining"]))
 
@@ -1944,4 +1894,5 @@ for _, strategy in strategies() do
       end)
     end)
   end)
+  end
 end
