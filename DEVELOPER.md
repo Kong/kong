@@ -96,14 +96,14 @@ Instead of following the second step (Install Kong), clone this repository
 and install the latest Lua sources instead of the currently released ones:
 
 ```shell
-$ git clone https://github.com/Kong/kong
-$ cd kong/
+git clone https://github.com/Kong/kong
+cd kong/
 
 # you might want to switch to the development branch. See CONTRIBUTING.md
-$ git checkout master
+git checkout master
 
 # install the Lua sources
-$ luarocks make
+luarocks make
 ```
 
 #### Running for development
@@ -118,7 +118,7 @@ might be in your system.
 Install the development dependencies ([busted], [luacheck]) with:
 
 ```shell
-$ make dev
+make dev
 ```
 
 Kong relies on three test suites using the [busted] testing library:
@@ -130,7 +130,7 @@ Kong relies on three test suites using the [busted] testing library:
 The first can simply be run after installing busted and running:
 
 ```
-$ make test
+make test
 ```
 
 However, the integration and plugins tests will spawn a Kong instance and
@@ -142,19 +142,19 @@ You can run the integration tests (assuming **both** Postgres and Cassandra are
 running and configured according to `spec/kong_tests.conf`) with:
 
 ```
-$ make test-integration
+make test-integration
 ```
 
 And the plugins tests with:
 
 ```
-$ make test-plugins
+make test-plugins
 ```
 
 Finally, all suites can be run at once by simply using:
 
 ```
-$ make test-all
+make test-all
 ```
 
 Consult the [run_tests.sh](.ci/run_tests.sh) script for a more advanced example
@@ -165,7 +165,7 @@ languages) is performing static linting of your code. You can use [luacheck]
 \(installed with `make dev`\) for this:
 
 ```
-$ make lint
+make lint
 ```
 
 #### Makefile
@@ -211,7 +211,7 @@ Add `export PATH=$PATH:~/.local/bin` to your `.bashrc` or `.zshrc` file.
 Clone the Kong project to your development folder.
 
 ```bash
-git clone git@github.com:Kong/kong-.git
+git clone git@github.com:Kong/kong.git
 cd kong
 ```
 
@@ -317,40 +317,40 @@ These are the needed tools and libraries that aren't installed out of the box on
 Ubuntu/Debian:
 
 ```shell
-    apt-get update \
-    && apt-get install -y \
-        automake \
-        build-essential \
-        curl \
-        docker \
-        docker-compose \
-        git \
-        libpcre3 \
-        libyaml-dev \
-        m4 \
-        openssl \
-        perl \
-        procps \
-        unzip \
-        zlib1g-dev
+apt-get update \
+&& apt-get install -y \
+    automake \
+    build-essential \
+    curl \
+    docker \
+    docker-compose \
+    git \
+    libpcre3 \
+    libyaml-dev \
+    m4 \
+    openssl \
+    perl \
+    procps \
+    unzip \
+    zlib1g-dev
 ```
 
 Fedora:
 
 ```shell
-    dnf install \
-        automake \
-        docker \
-        docker-compose \
-        gcc \
-        gcc-c++ \
-        git \
-        libyaml-devel \
-        make \
-        patch \
-        pcre-devel \
-        unzip \
-        zlib-devel
+dnf install \
+    automake \
+    docker \
+    docker-compose \
+    gcc \
+    gcc-c++ \
+    git \
+    libyaml-devel \
+    make \
+    patch \
+    pcre-devel \
+    unzip \
+    zlib-devel
 ```
 
 #### OpenResty
@@ -360,24 +360,25 @@ We have a build script that makes it easy to pull and compile specific versions 
 These commands don't have to be performed as root, since all compilation is done within a subdirectory, and installs everything in the target specified by the `-p` argument (here the `build` directory).
 
 ```
-    git clone https://github.com/kong/kong-build-tools
+git clone https://github.com/kong/kong-build-tools
 
-    cd kong-build-tools/openresty-build-tools
+cd kong-build-tools/openresty-build-tools
 
-    ./kong-ngx-build -p build \
-        --openresty 1.19.9.1 \
-        --openssl 1.1.1m \
-        --luarocks 3.8.0 \
-        --pcre 8.45
+./kong-ngx-build -p build \
+    --openresty 1.19.9.1 \
+    --openssl 1.1.1m \
+    --luarocks 3.8.0 \
+    --pcre 8.45
 ```
 
 After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
 
 ```
-    export PATH=$HOME/path/to/kong-build-tools/openresty-build-tools/build/openresty/bin:$HOME/path/to/kong-build-tools/openresty-build-tools/build/openresty/nginx/sbin:$HOME/path/to/kong-build-tools/openresty-build-tools/build/luarocks/bin:$PATH
-    export OPENSSL_DIR=$HOME/path/to/kong-build-tools/openresty-build-tools/build/openssl
+cd $HOME/path/to/kong-build-tools/openresty-build-tools/build
+export PATH=$PATH:$(pwd)/openresty/bin:$(pwd)/openresty/nginx/sbin:$(pwd)/luarocks/bin
+export OPENSSL_DIR=$(pwd)/openssl
 
-    eval `luarocks path`
+eval `luarocks path`
 ```
 
 The `$OPENSSL_DIR` variable is needed when compiling Kong, to make sure it uses the correct version of OpenSSL.
@@ -394,18 +395,16 @@ Make sure the docker daemon is enabled and running: `sudo systemctl enable docke
 On a Fedora VM, you might have to disable SELinux:
 
 ```
-    sudo vim /etc/selinux/config        # change the line to SELINUX=disabled
-    sudo setenforce 0
+sudo vim /etc/selinux/config        # change the line to SELINUX=disabled
+sudo setenforce 0
 ```
 
 Now pull the compose script from the repository and fire it up:
 
 ```
-    git clone https://github.com/thibaultcha/kong-tests-compose.git
-
-    cd kong-tests-compose
-
-    docker-compose up
+git clone https://github.com/thibaultcha/kong-tests-compose.git
+cd kong-tests-compose
+docker-compose up
 ```
 
 Verify the three new containers are up and running with `docker ps` on a separate terminal.
@@ -414,10 +413,10 @@ Verify the three new containers are up and running with `docker ps` on a separat
 ### Install Kong
 
 ```
-    git clone https://github.com/Kong/kong.git
-    cd kong
-    git checkout master
-    make dev
+git clone https://github.com/Kong/kong.git
+cd kong
+git checkout master
+make dev
 ```
 
 Now run unit tests with `make test` and integration test with `make test-integration`.
