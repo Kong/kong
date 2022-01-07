@@ -109,7 +109,7 @@ do
     end
 
     return {
-      null_value = t == "nil" or nil,
+      null_value = t == "nil" and 1 or nil,
       bool_value = bool_v,
       number_value = t == "number" and v or nil,
       string_value = t == "string" and v or nil,
