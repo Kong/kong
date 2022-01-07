@@ -131,7 +131,7 @@ dependencies: bin/grpcurl
 
 bin/grpcurl:
 	@curl -s -S -L \
-		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(MACHINE).tar.gz | tar xz -C bin;
+		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(GRPCURL_MACHINE).tar.gz | tar xz -C bin;
 	@rm bin/LICENSE
 
 dev: remove install dependencies
