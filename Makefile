@@ -14,6 +14,12 @@ OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
 endif
 
+ifeq ($(MACHINE), aarch64)
+GRPCURL_MACHINE ?= arm64
+else
+GRPCURL_MACHINE ?= $(MACHINE)
+endif
+
 .PHONY: install dependencies dev remove grpcurl \
 	setup-ci setup-kong-build-tools \
 	lint test test-integration test-plugins test-all \
