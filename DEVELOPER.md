@@ -96,14 +96,14 @@ Instead of following the second step (Install Kong), clone this repository
 and install the latest Lua sources instead of the currently released ones:
 
 ```shell
-$ git clone https://github.com/Kong/kong
-$ cd kong/
+git clone https://github.com/Kong/kong
+cd kong/
 
 # you might want to switch to the development branch. See CONTRIBUTING.md
-$ git checkout master
+git checkout master
 
 # install the Lua sources
-$ luarocks make
+luarocks make
 ```
 
 #### Running for development
@@ -118,7 +118,7 @@ might be in your system.
 Install the development dependencies ([busted], [luacheck]) with:
 
 ```shell
-$ make dev
+make dev
 ```
 
 Kong relies on three test suites using the [busted] testing library:
@@ -130,7 +130,7 @@ Kong relies on three test suites using the [busted] testing library:
 The first can simply be run after installing busted and running:
 
 ```
-$ make test
+make test
 ```
 
 However, the integration and plugins tests will spawn a Kong instance and
@@ -142,19 +142,19 @@ You can run the integration tests (assuming **both** Postgres and Cassandra are
 running and configured according to `spec/kong_tests.conf`) with:
 
 ```
-$ make test-integration
+make test-integration
 ```
 
 And the plugins tests with:
 
 ```
-$ make test-plugins
+make test-plugins
 ```
 
 Finally, all suites can be run at once by simply using:
 
 ```
-$ make test-all
+make test-all
 ```
 
 Consult the [run_tests.sh](.ci/run_tests.sh) script for a more advanced example
@@ -165,7 +165,7 @@ languages) is performing static linting of your code. You can use [luacheck]
 \(installed with `make dev`\) for this:
 
 ```
-$ make lint
+make lint
 ```
 
 #### Makefile
