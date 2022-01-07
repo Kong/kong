@@ -1,18 +1,9 @@
-FROM kong:ubuntu
+FROM kong/kong:2.7.0
 
 USER root
 
-RUN apt update && apt install -y automake \
-        build-essential \
-        curl \
-        docker \
-        docker-compose \
-        git \
-        libpcre3 \
-        libyaml-dev \
-        m4 \
-        openssl \
-        perl \
-        procps \
-        unzip \
-        zlib1g-dev
+RUN apk add --update \
+        alpine-sdk \
+        build-base \
+        bsd-compat-headers \
+        m4
