@@ -12,7 +12,6 @@ local feature_flag_limit_body = require "kong.plugins.response-transformer-advan
 
 local is_body_transform_set = header_transformer.is_body_transform_set
 local is_json_body = header_transformer.is_json_body
-local concat = table.concat
 local kong = kong
 local ngx = ngx
 
