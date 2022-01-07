@@ -33,6 +33,8 @@ services:
       KONG_PG_DATABASE: kong
       KONG_PG_PASSWORD: kong
       KONG_PG_HOST: db
+      OPENSSL_DIR: /usr/local/kong
+      CRYPTO_DIR: /usr/local/kong
 
     # Overrides default command so things don't shut down after the process ends.
     command: /bin/sh -c "while sleep 1000; do :; done" 
