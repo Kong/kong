@@ -38,6 +38,7 @@ local server_name   = require("ngx.ssl").server_name
 local REGEX_PREFIX  = "(*LIMIT_MATCH=10000)"
 local SLASH         = byte("/")
 
+local DEBUG         = ngx.DEBUG
 local ERR           = ngx.ERR
 local WARN          = ngx.WARN
 
@@ -621,6 +622,11 @@ local function marshall_route(r)
       for _, sni in ipairs(snis) do
         if type(sni) ~= "string" then
           return nil, "sni elements must be strings"
+        end
+        
+        if sni:len() > 1 and sni:sub(-1) == "." then
+          log(DEBUG, "last dot in FQDNs must not be used for routing, removing in ", sni)
+          sni = sni:sub(1, -2)
         end
 
         route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.SNI)
