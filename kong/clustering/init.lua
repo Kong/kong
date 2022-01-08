@@ -130,7 +130,14 @@ function _M.new(conf)
   local key = assert(pl_file.read(conf.cluster_cert_key))
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
 
-  self.child = require("kong.clustering." .. conf.role).new(self)
+  print("role: ", conf.role, "  protocol: ", conf.cluster_protocol)
+
+  local clustering_submodule = conf.role
+  if conf.cluster_protocol == "wRPC" then
+    clustering_submodule = "wrpc_" .. clustering_submodule
+  end
+
+  self.child = require("kong.clustering." .. clustering_submodule).new(self)
 
   return self
 end

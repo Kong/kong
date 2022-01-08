@@ -21,6 +21,7 @@ admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl 
 status_listen = off
 cluster_listen = 0.0.0.0:8005
 cluster_control_plane = 127.0.0.1:8005
+cluster_protocol = json
 cluster_cert = NONE
 cluster_cert_key = NONE
 cluster_mtls = shared
