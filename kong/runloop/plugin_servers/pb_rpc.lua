@@ -22,6 +22,10 @@ do
   local structpb_value, structpb_list, structpb_struct
 
   function structpb_value(v)
+    if type(v) ~= "table" then
+      return v
+    end
+
     if v.list_value then
       return structpb_list(v.list_value)
     end
@@ -35,14 +39,24 @@ do
 
   function structpb_list(l)
     local out = {}
-    for i, v in ipairs(l.values or l) do
-      out[i] = structpb_value(v)
+    if type(l) == "table" then
+      for i, v in ipairs(l.values or l) do
+        out[i] = structpb_value(v)
+      end
     end
     return out
   end
 
-  function structpb_struct(v)
-    return v.fields or v
+  function structpb_struct(struct)
+    if type(struct) ~= "table" then
+      return struct
+    end
+
+    local out = {}
+    for k, v in pairs(struct.fields or struct) do
+      out[k] = structpb_value(v)
+    end
+    return out
   end
 
   local function unwrap_val(d) return d.v end
@@ -95,7 +109,7 @@ do
     end
 
     return {
-      null_value = t == "nil" or nil,
+      null_value = t == "nil" and 1 or nil,
       bool_value = bool_v,
       number_value = t == "number" and v or nil,
       string_value = t == "string" and v or nil,

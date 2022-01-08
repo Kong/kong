@@ -3,9 +3,8 @@
 
 We encourage community contributions to Kong. To make sure it is a smooth
 experience (both for you and for the Kong team), please read
-[CONTRIBUTING.md](CONTRIBUTING.md), [DEVELOPER.md](DEVELOPER.md),
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [COPYRIGHT](COPYRIGHT) before
-you start.
+[CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
+and [COPYRIGHT](COPYRIGHT) before you start.
 
 If you are planning on developing on Kong, you'll need a development
 installation. The `master` branch holds the latest unreleased source code.
@@ -97,21 +96,17 @@ Instead of following the second step (Install Kong), clone this repository
 and install the latest Lua sources instead of the currently released ones:
 
 ```shell
-$ git clone https://github.com/Kong/kong
-$ cd kong/
+git clone https://github.com/Kong/kong
+cd kong/
 
 # you might want to switch to the development branch. See CONTRIBUTING.md
-$ git checkout master
+git checkout master
 
 # install the Lua sources
-$ luarocks make
+luarocks make
 ```
 
 #### Running for development
-
-Check out the [development section](https://github.com/Kong/kong/blob/master/kong.conf.default#L244)
-of the default configuration file for properties to tweak to ease
-the development process for Kong.
 
 Modifying the [`lua_package_path`](https://github.com/openresty/lua-nginx-module#lua_package_path)
 and [`lua_package_cpath`](https://github.com/openresty/lua-nginx-module#lua_package_cpath)
@@ -123,7 +118,7 @@ might be in your system.
 Install the development dependencies ([busted], [luacheck]) with:
 
 ```shell
-$ make dev
+make dev
 ```
 
 Kong relies on three test suites using the [busted] testing library:
@@ -135,7 +130,7 @@ Kong relies on three test suites using the [busted] testing library:
 The first can simply be run after installing busted and running:
 
 ```
-$ make test
+make test
 ```
 
 However, the integration and plugins tests will spawn a Kong instance and
@@ -147,19 +142,19 @@ You can run the integration tests (assuming **both** Postgres and Cassandra are
 running and configured according to `spec/kong_tests.conf`) with:
 
 ```
-$ make test-integration
+make test-integration
 ```
 
 And the plugins tests with:
 
 ```
-$ make test-plugins
+make test-plugins
 ```
 
 Finally, all suites can be run at once by simply using:
 
 ```
-$ make test-all
+make test-all
 ```
 
 Consult the [run_tests.sh](.ci/run_tests.sh) script for a more advanced example
@@ -170,7 +165,7 @@ languages) is performing static linting of your code. You can use [luacheck]
 \(installed with `make dev`\) for this:
 
 ```
-$ make lint
+make lint
 ```
 
 #### Makefile
@@ -189,8 +184,64 @@ When developing, you can use the `Makefile` for doing the following operations:
 
 These are the steps we follow at Kong to set up a development environment.
 
+## Dev on Docker
 
-## Virtual Machine
+[Gojira](https://github.com/Kong/gojira) is a multi-purpose tool to ease development and testing of Kong by using Docker containers.
+It's built on the top of Docker and Docker Compose, it separate multiple Kong development environments into different Docker Compose stacks.
+It also auto-manage the network configuration between Kong and PostgreSQL (if required) by configure the containers' environment variables.
+
+It's fully compatible with all platforms (even Apple Silicon).
+You can setup your development environment with Gojira in a couple of seconds (depends on your network speed). 
+
+See below links to install the dependencies: 
+
+- [Install Docker or Docker Desktop](https://docs.docker.com/get-docker/)
+- [Install Docker Compose](https://docs.docker.com/compose/install/)
+
+Install Gojira (see [full instructions](https://github.com/Kong/gojira#installation)):
+
+```bash
+git clone git@github.com:Kong/gojira.git
+mkdir -p ~/.local/bin
+ln -s $(realpath gojira/gojira.sh) ~/.local/bin/gojira
+```
+
+Add `export PATH=$PATH:~/.local/bin` to your `.bashrc` or `.zshrc` file.
+
+Clone the Kong project to your development folder.
+
+```bash
+git clone git@github.com:Kong/kong.git
+cd kong
+```
+
+Within the `kong` folder run following Gojira commands to start a development version of the Kong Gateway using PostgreSQL:
+
+```bash
+gojira up -pp 8000:8000 -pp 8001:8001
+gojira run make dev
+gojira run kong migrations bootstrap
+gojira run kong start
+```
+
+Verify the Admin API is now available by navigating to `http://localhost:8001` on your host machine browser.
+
+Tips: 
+
+- Attach to shell by running `gojira shell` within `kong` folder.
+- Learn about [usage patterns](https://github.com/Kong/gojira/blob/master/docs/manual.md#usage-patterns) of Gojira.
+
+## Dev on Linux (Host/VM)
+
+If you have a Linux development environment (either virtual or bare metal), the build is done in four separate steps:
+
+1. Development dependencies and runtime libraries, include:
+   1. Prerequisite packages.  Mostly compilers, tools and libraries needed to compile everything else.
+   2. OpenResty system, including Nginx, LuaJIT, PCRE, etc.
+2. Databases. Kong uses Postgres, Cassandra and Redis.  We have a handy setup with docker-compose to keep each on its container.
+3. Kong itself.
+
+### Virtual Machine (Optional)
 
 Final deployments are typically on a Linux machine or container, so even if all components are multiplatform, it's easier to use it for development too.  If you use MacOS or Windows machines, setting a virtual machine is easy enough now.  Most of us use the freely available VirtualBox without any trouble.
 
@@ -200,7 +251,7 @@ There are no "hard" requirements on any Linux distro, but RHEL and CentOS can be
 
 To avoid long compilation times, give the VM plenty of RAM (8GB recommended) and all the CPU cores you can.
 
-### Virtual Box setup
+#### Virtual Box setup
 
 You will need to setup port forwarding on VirtualBox to be able to ssh into the box which can be done as follows:
 
@@ -233,85 +284,101 @@ Just keep hitting Enter until the key is generated. You do not need a password f
 
 Now try `ssh dev` on your host, you should be able to get into the guest directly
 
-## Linux Environment
+### Dependencies (Binary release)
 
-Once you have a Linux development environment (either virtual or bare metal), the build is done in four separate steps:
+For your convenience and to be more efficiently, we recommended install dependencies including OpenResty, OpenSSL, LuaRocks and PCRE by downloading and installing Kong's latest Linux package release (`.deb` or `.rpm`). 
 
-1. Prerequisite packages.  Mostly compilers, tools and libraries needed to compile everything else.
-1. OpenResty system, including Nginx, LuaJIT, PCRE, etc.
-1. Databases. Kong uses Postgres, Cassandra and Redis.  We have a handy setup with docker-compose to keep each on its container.
-1. Kong itself.
+Follow below steps to install download and install Kong package. And you can find all downloadable Linux packages [here](https://download.konghq.com/).
 
+Ubuntu/Debian:
 
-### Prerequisites
+```bash
+curl -Lo kong-2.7.0.amd64.deb "https://download.konghq.com/gateway-2.x-$(. /etc/os-release && echo "$ID")-$(lsb_release -cs)/pool/all/k/kong/kong_2.7.0_amd64.deb"
+sudo dpkg -i kong-2.7.0.amd64.deb
+```
+
+CentOS:
+
+```bash
+curl -Lo kong-2.7.0.rpm $(rpm --eval "https://download.konghq.com/gateway-2.x-centos-%{centos_ver}/Packages/k/kong-2.7.0.el%{centos_ver}.amd64.rpm")
+sudo yum install kong-2.7.0.rpm
+```
+
+Now you have meet all the requirements before install Kong.
+
+### Dependencies (Build from source)
+
+The-hard-way to build development environment and also a good start for beginners to understand how everything fits together.
+
+#### Prerequisites
 
 These are the needed tools and libraries that aren't installed out of the box on Ubuntu and Fedora, respectively.  Just run one of these, either as root or `sudo`.
 
-Ubuntu:
+Ubuntu/Debian:
 
 ```shell
-    apt-get update
-
-    apt-get install \
-        automake \
-        build-essential \
-        curl \
-        docker \
-        docker-compose \
-        git \
-        libpcre3 \
-        libyaml-dev \
-        m4 \
-        openssl \
-        perl \
-        procps \
-        unzip \
-        zlib1g-dev
+apt-get update \
+&& apt-get install -y \
+    automake \
+    build-essential \
+    curl \
+    docker \
+    docker-compose \
+    git \
+    libpcre3 \
+    libyaml-dev \
+    m4 \
+    openssl \
+    perl \
+    procps \
+    unzip \
+    zlib1g-dev
 ```
 
 Fedora:
 
 ```shell
-    dnf install \
-        automake \
-        docker \
-        docker-compose \
-        gcc \
-        gcc-c++ \
-        git \
-        libyaml-devel \
-        make \
-        patch \
-        pcre-devel \
-        unzip \
-        zlib-devel
+dnf install \
+    automake \
+    docker \
+    docker-compose \
+    gcc \
+    gcc-c++ \
+    git \
+    libyaml-devel \
+    make \
+    patch \
+    pcre-devel \
+    unzip \
+    zlib-devel
 ```
 
-### OpenResty
+#### OpenResty
 
-We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  Currently these include OpenResty 1.15.8.3, OpenSSl 1.1.1g, LuaRocks 3.3.1 and PCRE 8.44;  the exact versions can also be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file of the main Kong repository.
+We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  <span class="x x-first x-last">Their </span>exact versions can be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file.
 
 These commands don't have to be performed as root, since all compilation is done within a subdirectory, and installs everything in the target specified by the `-p` argument (here the `build` directory).
 
 ```
-    git clone https://github.com/kong/kong-build-tools
+git clone https://github.com/kong/kong-build-tools
 
-    cd kong-build-tools/openresty-build-tools
+cd kong-build-tools/openresty-build-tools
 
-    ./kong-ngx-build -p build \
-        --openresty 1.19.9.1 \
-        --openssl 1.1.1m \
-        --luarocks 3.8.0 \
-        --pcre 8.45
+./kong-ngx-build -p build \
+    --openresty 1.19.9.1 \
+    --openssl 1.1.1m \
+    --luarocks 3.8.0 \
+    --pcre 8.45
 ```
 
 After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
 
 ```
-    export PATH=$HOME/path/to/kong-build-tools/openresty-build-tools/build/openresty/bin:$HOME/path/to/kong-build-tools/openresty-build-tools/build/openresty/nginx/sbin:$HOME/path/to/kong-build-tools/openresty-build-tools/build/luarocks/bin:$PATH
-    export OPENSSL_DIR=$HOME/path/to/kong-build-tools/openresty-build-tools/build/openssl
+cd $HOME/path/to/kong-build-tools/openresty-build-tools/build
+export PATH=$PATH:$(pwd)/openresty/bin:$(pwd)/openresty/nginx/sbin:$(pwd)/luarocks/bin
+export OPENSSL_DIR=$(pwd)/openssl
 
-    eval `luarocks path`
+eval `luarocks path`
 ```
 
 The `$OPENSSL_DIR` variable is needed when compiling Kong, to make sure it uses the correct version of OpenSSL.
@@ -328,18 +395,16 @@ Make sure the docker daemon is enabled and running: `sudo systemctl enable docke
 On a Fedora VM, you might have to disable SELinux:
 
 ```
-    sudo vim /etc/selinux/config        # change the line to SELINUX=disabled
-    sudo setenforce 0
+sudo vim /etc/selinux/config        # change the line to SELINUX=disabled
+sudo setenforce 0
 ```
 
 Now pull the compose script from the repository and fire it up:
 
 ```
-    git clone https://github.com/thibaultcha/kong-tests-compose.git
-
-    cd kong-tests-compose
-
-    docker-compose up
+git clone https://github.com/thibaultcha/kong-tests-compose.git
+cd kong-tests-compose
+docker-compose up
 ```
 
 Verify the three new containers are up and running with `docker ps` on a separate terminal.
@@ -348,12 +413,20 @@ Verify the three new containers are up and running with `docker ps` on a separat
 ### Install Kong
 
 ```
-    git clone https://github.com/Kong/kong.git
-    cd kong
-    git checkout master
-    make dev
+git clone https://github.com/Kong/kong.git
+cd kong
+git checkout master
+make dev
 ```
 
 Now run unit tests with `make test` and integration test with `make test-integration`.
 
 Hack on!
+
+## What's next
+
+- Refer to the [Kong Gateway Docs](https://docs.konghq.com/gateway/) for more information.
+- Learn about [lua-nginx-module](https://github.com/openresty/lua-nginx-module).
+- Learn about [lua-resty-core](https://github.com/openresty/lua-resty-core).
+- Learn about the fork [luajit2](https://github.com/openresty/luajit2) of OpenResty.
+- For profiling, see [stapxx](https://github.com/openresty/stapxx), the SystemTap framework for OpenResty.
