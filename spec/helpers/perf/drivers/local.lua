@@ -66,7 +66,7 @@ function _M:teardown()
 
   perf.git_restore()
 
-  perf.execute("rm -v " .. WRK_SCRIPT_PREFIX .. "*.lua",
+  perf.execute("rm -vf " .. WRK_SCRIPT_PREFIX .. "*.lua",
               { logger = self.log.log_exec })
 
   return self:stop_kong()
