@@ -81,6 +81,8 @@ function _M:start_upstreams(conf, port_count)
 
   local nginx_conf_path = "/tmp/perf-test-nginx.conf"
   local nginx_prefix = "/tmp/perf-test-nginx"
+
+  pl_path.mkdir(nginx_prefix)
   pl_path.mkdir(nginx_prefix .. "/logs")
 
   local f = io.open(nginx_conf_path, "w")
