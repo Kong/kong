@@ -75,15 +75,13 @@ function _M.new(conf)
 
   setmetatable(self, MT)
 
-  -- note: pl_file.read throws error on failure so
-  -- no need for error checking
-  local cert = pl_file.read(conf.cluster_cert)
+  local cert = assert(pl_file.read(conf.cluster_cert))
   self.cert = assert(ssl.parse_pem_cert(cert))
 
   cert = openssl_x509.new(cert, "PEM")
   self.cert_digest = cert:digest("sha256")
 
-  local key = pl_file.read(conf.cluster_cert_key)
+  local key = assert(pl_file.read(conf.cluster_cert_key))
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
 
   self.child = require("kong.clustering." .. conf.role).new(self)
