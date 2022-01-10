@@ -164,7 +164,7 @@ local jwk = schema.define {
 }
 
 return {
-  jwt_signer_jwks = {
+  {
     name                = "jwt_signer_jwks",
     primary_key         = { "id" },
     cache_key           = { "name" },

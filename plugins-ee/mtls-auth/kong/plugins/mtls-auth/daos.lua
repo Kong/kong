@@ -8,9 +8,9 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  mtls_auth_credentials = {
-    primary_key = { "id" },
+  {
     name = "mtls_auth_credentials",
+    primary_key = { "id" },
     cache_key = { "subject_name", "ca_certificate", },
     workspaceable = true,
     fields = {

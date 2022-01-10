@@ -10,7 +10,7 @@ local oidcdefs = require "kong.plugins.openid-connect.typedefs"
 
 
 return {
-  oic_issuers = {
+  {
     name               = "oic_issuers",
     primary_key        = { "id" },
     cache_key          = { "issuer" },
@@ -50,7 +50,8 @@ return {
       },
     },
   },
-  oic_jwks = {
+
+  {
     name               = "oic_jwks",
     dao                = "kong.plugins.openid-connect.daos.jwks",
     primary_key        = { "id" },

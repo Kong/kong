@@ -9,9 +9,9 @@ local typedefs = require "kong.db.schema.typedefs"
 
 
 return {
-  vaults = {
-    primary_key = { "id" },
+  {
     name = "vaults",
+    primary_key = { "id" },
     endpoint_key = "name",
 
     fields = {

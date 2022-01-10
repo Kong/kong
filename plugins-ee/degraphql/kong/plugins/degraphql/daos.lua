@@ -8,7 +8,7 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  degraphql_routes = {
+  {
     name = "degraphql_routes",
     primary_key = { "id" },
     endpoint_key = "id",

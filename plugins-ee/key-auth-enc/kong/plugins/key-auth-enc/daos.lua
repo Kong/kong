@@ -8,10 +8,10 @@
 local typedefs = require "kong.db.schema.typedefs"
 
 return {
-  keyauth_credentials = {
+  {
+    name = "keyauth_enc_credentials",
     primary_key = { "id" },
     dao = "kong.plugins.key-auth-enc.keyauth_enc_credentials",
-    name = "keyauth_enc_credentials",
     endpoint_key = "key",
     workspaceable = true,
     admin_api_name = "key-auths-enc",
