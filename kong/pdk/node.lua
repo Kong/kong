@@ -1,4 +1,4 @@
---- Node-level utilities
+--- Node-level utilities.
 --
 -- @module kong.node
 
@@ -53,10 +53,10 @@ local function new(self)
 
 
   ---
-  -- Returns the id used by this node to describe itself.
+  -- Returns the ID used by this node to describe itself.
   --
   -- @function kong.node.get_id
-  -- @treturn string The v4 UUID used by this node as its id
+  -- @treturn string The v4 UUID used by this node as its ID.
   -- @usage
   -- local id = kong.node.get_id()
   function _NODE.get_id()
@@ -88,14 +88,14 @@ local function new(self)
   -- Returns memory usage statistics about this node.
   --
   -- @function kong.node.get_memory_stats
-  -- @tparam[opt] string unit The unit memory should be reported in. Can be
-  -- either of `b/B`, `k/K`, `m/M`, or `g/G` for bytes, kibibytes, mebibytes,
+  -- @tparam[opt] string unit The unit that memory is reported in. Can be
+  -- any of `b/B`, `k/K`, `m/M`, or `g/G` for bytes, kibibytes, mebibytes,
   -- or gibibytes, respectively. Defaults to `b` (bytes).
   -- @tparam[opt] number scale The number of digits to the right of the decimal
   -- point. Defaults to 2.
   -- @treturn table A table containing memory usage statistics for this node.
-  -- If `unit` is `b/B` (the default) reported values will be Lua numbers.
-  -- Otherwise, reported values will be a string with the unit as a suffix.
+  -- If `unit` is `b/B` (the default), reported values are Lua numbers.
+  -- Otherwise, reported values are strings with the unit as a suffix.
   -- @usage
   -- local res = kong.node.get_memory_stats()
   -- -- res will have the following structure:
@@ -232,10 +232,10 @@ local function new(self)
 
 
   ---
-  -- Returns the name used by the local machine
+  -- Returns the name used by the local machine.
   --
   -- @function kong.node.get_hostname
-  -- @treturn string The local machine hostname
+  -- @treturn string The local machine hostname.
   -- @usage
   -- local hostname = kong.node.get_hostname()
   function _NODE.get_hostname()

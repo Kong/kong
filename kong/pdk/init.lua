@@ -5,13 +5,9 @@
 -- released in Kong 0.14.0. The PDK will be guaranteed to be forward-compatible
 -- from its 1.0.0 release and on.
 --
--- As of this release, the PDK has not yet reached 1.0.0, but plugin authors
--- can already depend on it for a safe and reliable way of interacting with the
--- request, response, or the core components.
---
 -- The Plugin Development Kit is accessible from the `kong` global variable,
 -- and various functionalities are namespaced under this table, such as
--- `kong.request`, `kong.log`, etc...
+-- `kong.request`, `kong.log`, etc.
 --
 -- @module PDK
 -- @release 1.0.0
@@ -67,7 +63,7 @@
 -- See [kong.conf.default](https://github.com/Kong/kong/blob/master/kong.conf.default)
 -- for details.
 --
--- Comma-separated lists in that file get promoted to arrays of strings in this
+-- Comma-separated lists in the `kong.conf` file get promoted to arrays of strings in this
 -- table.
 --
 -- @field kong.configuration
@@ -147,7 +143,7 @@
 -- Instance of Kong's DNS resolver, a client object from the
 -- [lua-resty-dns-client](https://github.com/kong/lua-resty-dns-client) module.
 --
--- **Note:** usage of this module is currently reserved to the core or to
+-- **Note:** Usage of this module is currently reserved to the core or to
 -- advanced users.
 --
 -- @field kong.dns
@@ -158,7 +154,7 @@
 -- [lua-resty-worker-events](https://github.com/Kong/lua-resty-worker-events)
 -- module.
 --
--- **Note:** usage of this module is currently reserved to the core or to
+-- **Note:** Usage of this module is currently reserved to the core or to
 -- advanced users.
 --
 -- @field kong.worker_events
@@ -167,7 +163,7 @@
 ---
 -- Instance of Kong's cluster events module for inter-nodes communication.
 --
--- **Note:** usage of this module is currently reserved to the core or to
+-- **Note:** Usage of this module is currently reserved to the core or to
 -- advanced users.
 --
 -- @field kong.cluster_events
@@ -176,7 +172,7 @@
 ---
 -- Instance of Kong's database caching object, from the `kong.cache` module.
 --
--- **Note:** usage of this module is currently reserved to the core or to
+-- **Note:** Usage of this module is currently reserved to the core or to
 -- advanced users.
 --
 -- @field kong.cache

@@ -1,4 +1,5 @@
---- Router module
+--- Router module.
+--
 -- A set of functions to access the routing properties of the request.
 --
 -- @module kong.router
@@ -23,12 +24,12 @@ local function new(self)
 
 
   ---
-  -- Returns the current `route` entity. The request was matched against this
+  -- Returns the current `route` entity. The request is matched against this
   -- route.
   --
   -- @function kong.router.get_route
   -- @phases access, header_filter, response, body_filter, log
-  -- @treturn table the `route` entity.
+  -- @treturn table The `route` entity.
   -- @usage
   -- local route = kong.router.get_route()
   -- local protocols = route.protocols
@@ -40,12 +41,12 @@ local function new(self)
 
 
   ---
-  -- Returns the current `service` entity. The request will be targetted to this
+  -- Returns the current `service` entity. The request is targeted to this
   -- upstream service.
   --
   -- @function kong.router.get_service
   -- @phases access, header_filter, response, body_filter, log
-  -- @treturn table the `service` entity.
+  -- @treturn table The `service` entity.
   -- @usage
   -- if kong.router.get_service() then
   --   -- routed by route & service entities
