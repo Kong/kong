@@ -56,7 +56,8 @@ local function new(args, secret)
           redis = {
             uselocking      = false,
             prefix          = args.get_conf_arg("session_redis_prefix", "sessions"),
-            auth            = args.get_conf_arg("session_redis_auth"),
+            username        = args.get_conf_arg("session_redis_username"),
+            password        = args.get_conf_arg("session_redis_password"),
             connect_timeout = args.get_conf_arg("session_redis_connect_timeout"),
             cluster         = {
               nodes           = cluster_nodes,
@@ -73,7 +74,8 @@ local function new(args, secret)
             socket          = args.get_conf_arg("session_redis_socket"),
             host            = args.get_conf_arg("session_redis_host", "127.0.0.1"),
             port            = args.get_conf_arg("session_redis_port", 6379),
-            auth            = args.get_conf_arg("session_redis_auth"),
+            username        = args.get_conf_arg("session_redis_username"),
+            password        = args.get_conf_arg("session_redis_password"),
             connect_timeout = args.get_conf_arg("session_redis_connect_timeout"),
             read_timeout    = args.get_conf_arg("session_redis_read_timeout"),
             send_timeout    = args.get_conf_arg("session_redis_send_timeout"),

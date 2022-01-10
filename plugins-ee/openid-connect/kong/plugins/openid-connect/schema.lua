@@ -970,7 +970,13 @@ local config = {
             },
           },
           {
-            session_redis_auth = {
+            session_redis_username = {
+              required = false,
+              type     = "string",
+            },
+          },
+          {
+            session_redis_password = {
               required = false,
               type     = "string",
               encrypted = true,
@@ -1762,6 +1768,12 @@ local config = {
               default  = false,
             },
           },
+        },
+        shorthands = {
+          -- deprecated auth (e.g. password), to be removed in Kong 3.0
+          { session_redis_auth = function(value)
+            return { session_redis_password = value }
+          end },
         },
       },
     },
