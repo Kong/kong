@@ -24,10 +24,6 @@ local marshallers = {
         return fmt("%d:%s", value_type, str_value)
     end,
 
-    shm_nil = function(at, ttl)
-        return "0:"
-    end,
-
     [1] = function(number) -- number
         return tostring(number)
     end,
@@ -53,7 +49,7 @@ local marshallers = {
 
 function _M.marshall(value)
     if value == nil then
-        return marshallers.shm_nil()
+        return nil
     end
 
     local value_type = TYPES_LOOKUP[type(value)]
@@ -78,10 +74,6 @@ local unmarshallers = {
         local str_value  = sub(marshalled, 3)
 
         return str_value, tonumber(value_type)
-    end,
-
-    [0] = function() -- nil
-        return nil
     end,
 
     [1] = function(str) -- number
