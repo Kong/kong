@@ -246,7 +246,9 @@ function _M:generate_flamegraph(title, opts)
   }
   local out, err
   for _, cmd in ipairs(cmds) do
-    out, err = perf.execute(cmd, { logger = self.log.log_exec })
+    local is_cat_cmd = string.find(cmd, "cat ", 1, true)
+
+    out, err = perf.execute(cmd, { logger = is_cat_cmd and nil or self.log.log_exec })
     if err then
       return nil, cmd .. " failed: " .. err
     end
