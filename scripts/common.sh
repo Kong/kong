@@ -39,12 +39,20 @@ function check_requirements() {
    need sed
 }
 
+
+#-------------------------------------------------------------------------------
+function yesno() {
+  echo "$1"
+  read -r
+  if [[ "$REPLY" =~ ^[yY] ]]; then
+    return 0
+  fi
+  return 1
+}
+
 #-------------------------------------------------------------------------------
 function check_milestone() {
-  echo "Visit the milestones page (https://github.com/Kong/kong/milestone) and ensure PRs are merged. Press 'y' to open it or Ctrl-C to quit"
-  read -r
-  if [ "$REPLY" = "y" ]
-  then
+  if yesno "Visit the milestones page (https://github.com/Kong/kong/milestone) and ensure PRs are merged. Press 'y' to open it or Ctrl-C to quit"; then
     $browser https://github.com/Kong/kong/milestones
   fi
 
@@ -54,10 +62,7 @@ function check_milestone() {
 
 #-------------------------------------------------------------------------------
 function check_dependencies() {
-  echo "Ensure Kong dependencies in the rockspec are bumped to their latest patch version. Press 'y' to open Kong's rockspec or Ctrl+C to quit"
-  read -r
-  if [ "$REPLY" = "y" ]
-  then
+  if yesno "Ensure Kong dependencies in the rockspec are bumped to their latest patch version. Press 'y' to open Kong's rockspec or Ctrl+C to quit"; then
     $EDITOR ./*.rockspec
   fi
 
