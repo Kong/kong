@@ -31,7 +31,7 @@ if env_versions then
   versions = split(env_versions, ",")
 end
 
-local LOAD_DURATION = 30
+local LOAD_DURATION = os.getenv("PERF_TEST_LOAD_DURATION") or 30
 
 local SERVICE_COUNT = 10
 local ROUTE_PER_SERVICE = 10
