@@ -242,15 +242,16 @@ function _M:generate_flamegraph(title, opts)
     "/tmp/perf-ost/fix-lua-bt " .. path .. ".bt > " .. path .. ".fbt",
     "/tmp/perf-fg/stackcollapse-stap.pl " .. path .. ".fbt > " .. path .. ".cbt",
     "/tmp/perf-fg/flamegraph.pl --title='" .. title .. "' " .. (opts or "") .. " " .. path .. ".cbt > " .. path .. ".svg",
-    "cat " .. path .. ".svg",
   }
-  local out, err
+  local err
   for _, cmd in ipairs(cmds) do
-    out, err = perf.execute(cmd, { logger = self.log.log_exec })
+    _, err = perf.execute(cmd, { logger = self.log.log_exec })
     if err then
       return nil, cmd .. " failed: " .. err
     end
   end
+
+  local out, _ = perf.execute("cat " .. path .. ".svg")
 
   perf.execute("rm " .. path .. ".*")
 
