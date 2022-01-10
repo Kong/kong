@@ -243,9 +243,9 @@ function _M:generate_flamegraph(title, opts)
     "/tmp/perf-fg/stackcollapse-stap.pl " .. path .. ".fbt > " .. path .. ".cbt",
     "/tmp/perf-fg/flamegraph.pl --title='" .. title .. "' " .. (opts or "") .. " " .. path .. ".cbt > " .. path .. ".svg",
   }
-  local out, err
+  local err
   for _, cmd in ipairs(cmds) do
-    out, err = perf.execute(cmd, { logger = self.log.log_exec })
+    _, err = perf.execute(cmd, { logger = self.log.log_exec })
     if err then
       return nil, cmd .. " failed: " .. err
     end
