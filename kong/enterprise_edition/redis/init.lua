@@ -64,7 +64,9 @@ _M.config_schema = {
     { connect_timeout = typedefs.timeout },
     { send_timeout = typedefs.timeout },
     { read_timeout = typedefs.timeout },
+    { username = { type = "string", } },
     { password = { type = "string", encrypted = true } },
+    { sentinel_username = { type = "string" } },
     { sentinel_password = { type = "string", encrypted = true } },
     { database = { type = "integer", default = 0 } },
     { keepalive_pool_size = { type = "integer", default = 30, between = { 1, MAX_INT } } },
@@ -233,7 +235,9 @@ function _M.connection(conf)
       master_name        = conf.sentinel_master,
       role               = conf.sentinel_role,
       sentinels          = conf.parsed_sentinel_addresses,
+      username           = conf.username,
       password           = conf.password,
+      sentinel_username  = conf.sentinel_username,
       sentinel_password  = conf.sentinel_password,
       db                 = conf.database,
       connection_options = connect_opts,
@@ -253,7 +257,7 @@ function _M.connection(conf)
 end
 
 
-function _M.flush_redis(host, port, database, password)
+function _M.flush_redis(host, port, database, username, password)
   local redis = require "resty.redis"
   local red = redis:new()
   red:set_timeout(2000)
@@ -263,7 +267,12 @@ function _M.flush_redis(host, port, database, password)
   end
 
   if password and password ~= "" then
-    local ok, err = red:auth(password)
+    local ok, err
+    if username and username ~= "" then
+      ok, err = red:auth(username, password)
+    else
+      ok, err = red:auth(password)
+    end
     if not ok then
       error("failed to connect to Redis: " .. err)
     end
