@@ -33,11 +33,11 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
         assert.is_string(hash)
-        assert.equal("326afd95b21a24c277d9d05684cc3de6", hash)
+        assert.equal("d3d9446802a44259755d38e6d163e820", hash)
       end
 
-      local correct = ngx.md5("#10#")
-      assert.equal("326afd95b21a24c277d9d05684cc3de6", correct)
+      local correct = ngx.md5("10")
+      assert.equal("d3d9446802a44259755d38e6d163e820", correct)
 
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
@@ -52,11 +52,11 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
         assert.is_string(hash)
-        assert.equal("fccfc6bd485ed004537bbcac3c697048", hash)
+        assert.equal("a894124cc6d5c5c71afe060d5dde0762", hash)
       end
 
-      local correct = ngx.md5("#0.9#")
-      assert.equal("fccfc6bd485ed004537bbcac3c697048", correct)
+      local correct = ngx.md5("0.9")
+      assert.equal("a894124cc6d5c5c71afe060d5dde0762", correct)
 
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
@@ -71,11 +71,11 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
         assert.is_string(hash)
-        assert.equal("58859d93c30e635814dc980ed86e3f84", hash)
+        assert.equal("d41d8cd98f00b204e9800998ecf8427e", hash)
       end
 
-      local correct = ngx.md5("$$")
-      assert.equal("58859d93c30e635814dc980ed86e3f84", correct)
+      local correct = ngx.md5("")
+      assert.equal("d41d8cd98f00b204e9800998ecf8427e", correct)
 
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
@@ -90,11 +90,11 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
         assert.is_string(hash)
-        assert.equal("34d2d743af7d615ff842c839ac762e14", hash)
+        assert.equal("5d41402abc4b2a76b9719d911017c592", hash)
       end
 
-      local correct = ngx.md5("$hello$")
-      assert.equal("34d2d743af7d615ff842c839ac762e14", correct)
+      local correct = ngx.md5("hello")
+      assert.equal("5d41402abc4b2a76b9719d911017c592", correct)
 
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
@@ -109,11 +109,11 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
         assert.is_string(hash)
-        assert.equal("7317c9dbe950ab8ffe4a4cff2f596e8a", hash)
+        assert.equal("68934a3e9455fa72420237eb05902327", hash)
       end
 
-      local correct = ngx.md5("?false?")
-      assert.equal("7317c9dbe950ab8ffe4a4cff2f596e8a", correct)
+      local correct = ngx.md5("false")
+      assert.equal("68934a3e9455fa72420237eb05902327", correct)
 
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
@@ -128,11 +128,11 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
         assert.is_string(hash)
-        assert.equal("437765a4d8772918472d8a25102edf2e", hash)
+        assert.equal("b326b5062b2f0e69046810717534cb09", hash)
       end
 
-      local correct = ngx.md5("?true?")
-      assert.equal("437765a4d8772918472d8a25102edf2e", correct)
+      local correct = ngx.md5("true")
+      assert.equal("b326b5062b2f0e69046810717534cb09", correct)
 
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
@@ -182,39 +182,33 @@ describe("kong.clustering", function()
 
     it("calculates hash for complex table", function()
       local value = {
-        "a",
-        -3,
-        3,
-        "b",
-        -2,
-        2,
-        "c",
-        1,
-        -1,
-        0.9,
-        {},
-        { a = "b" },
-        ngx.null,
-        hello      = "a",
-        [-1]       = "b",
-        [0.9]      = "c",
-        [true]     = "d",
-        [false]    = "e",
-        [ngx.null] = "f",
-        [{}]       = "g",
-        a = "hello",
-        b = -1,
-        c = 0.9,
-        d = true,
-        e = false,
-        f = ngx.null,
-        g = {},
+        plugins = {
+          { name = "0", config = { param = "value"}},
+          { name = "1", config = { param = { "v1", "v2", "v3", "v4", "v5", "v6" }}},
+          { name = "2", config = { param = { "v1", "v2", "v3", "v4", "v5" }}},
+          { name = "3", config = { param = { "v1", "v2", "v3", "v4" }}},
+          { name = "4", config = { param = { "v1", "v2", "v3" }}},
+          { name = "5", config = { param = { "v1", "v2" }}},
+          { name = "6", config = { param = { "v1" }}},
+          { name = "7", config = { param = {}}},
+          { name = "8", config = { param = "value", array = { "v1", "v2", "v3", "v4", "v5", "v6" }}},
+          { name = "9", config = { bool1 = true, bool2 = false, number = 1, double = 1.1, empty = {}, null = ngx.null,
+                                   string = "test", hash = { k = "v" }, array = { "v1", "v2", "v3", "v4", "v5", "v6" }}},
+        },
+        consumers = {}
       }
+
+      for i = 1, 1000 do
+        value.consumers[i] = { username = "user-" .. tostring(i) }
+      end
+
+      local h = clustering.calculate_config_hash(clustering, value)
 
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
         assert.is_string(hash)
-        assert.equal("7c3d524eb49961172ada4ae2083a168e", hash)
+        assert.equal("e287bdd83a30b3c83c498e6e524f619b", hash)
+        assert.equal(h, hash)
       end
     end)
 
