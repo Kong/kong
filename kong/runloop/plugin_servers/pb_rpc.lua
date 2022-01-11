@@ -82,6 +82,12 @@ do
     [".kong_plugin_protocol.ExitArgs"] = function (d)
       return d.status, d.body, structpb_struct(d.headers)
     end,
+    [".kong_plugin_protocol.ConsumerSpec"] = function (d)
+      return d.id, d.by_username
+    end,
+    [".kong_plugin_protocol.AuthenticateArgs"] = function (d)
+      return d.consumer, d.credential
+    end,
   }
 end
 
