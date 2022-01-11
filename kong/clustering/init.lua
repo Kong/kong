@@ -19,7 +19,6 @@ local concat = table.concat
 local pairs = pairs
 local sort = table.sort
 local type = type
-local min = math.min
 
 
 local MT = { __index = _M, }
@@ -31,14 +30,11 @@ local function to_sorted_string(value)
   end
 
   local t = type(value)
-  if t == "string" then
-    return "$" .. value .. "$"
-
-  elseif t == "number" then
-    return "#" .. value .. "#"
+  if t == "string" or t == "number" then
+    return value
 
   elseif t == "boolean" then
-    return "?" .. tostring(value) .. "?"
+    return tostring(value)
 
   elseif t == "table" then
     if isempty(value) then
@@ -47,33 +43,33 @@ local function to_sorted_string(value)
     elseif isarray(value) then
       local count = #value
       if count == 1 then
-        return "{" .. to_sorted_string(value[1]) .. "}"
+        return to_sorted_string(value[1])
 
       elseif count == 2 then
-        return "{" .. to_sorted_string(value[1]) .. ";"
-                   .. to_sorted_string(value[2]) .. "}"
+        return to_sorted_string(value[1]) .. ";" ..
+               to_sorted_string(value[2])
 
       elseif count == 3 then
-        return "{" .. to_sorted_string(value[1]) .. ";"
-                   .. to_sorted_string(value[2]) .. ";"
-                   .. to_sorted_string(value[3]) .. "}"
+        return to_sorted_string(value[1]) .. ";" ..
+               to_sorted_string(value[2]) .. ";" ..
+               to_sorted_string(value[3])
 
       elseif count == 4 then
-        return "{" .. to_sorted_string(value[1]) .. ";"
-                   .. to_sorted_string(value[2]) .. ";"
-                   .. to_sorted_string(value[3]) .. ";"
-                   .. to_sorted_string(value[4]) .. "}"
+        return to_sorted_string(value[1]) .. ";" ..
+               to_sorted_string(value[2]) .. ";" ..
+               to_sorted_string(value[3]) .. ";" ..
+               to_sorted_string(value[4])
 
       elseif count == 5 then
-        return "{" .. to_sorted_string(value[1]) .. ";"
-                   .. to_sorted_string(value[2]) .. ";"
-                   .. to_sorted_string(value[3]) .. ";"
-                   .. to_sorted_string(value[4]) .. ";"
-                   .. to_sorted_string(value[5]) .. "}"
+        return to_sorted_string(value[1]) .. ";" ..
+               to_sorted_string(value[2]) .. ";" ..
+               to_sorted_string(value[3]) .. ";" ..
+               to_sorted_string(value[4]) .. ";" ..
+               to_sorted_string(value[5])
       end
 
       local i = 0
-      local o = new_tab(min(count, 100), 0)
+      local o = new_tab(count < 100 and count or 100, 0)
       for j = 1, count do
         i = i + 1
         o[i] = to_sorted_string(value[j])
@@ -84,29 +80,27 @@ local function to_sorted_string(value)
         end
       end
 
-      return "{" .. ngx_md5(concat(o, ";", 1, i)) .. "}"
+      return ngx_md5_bin(concat(o, ";", 1, i))
 
     else
       local count = nkeys(value)
-      local keys = new_tab(count, count)
+      local keys = new_tab(count, 0)
       local i = 0
       for k in pairs(value) do
         i = i + 1
-        local key = to_sorted_string(k)
-        keys[i] = key
-        keys[key] = k
+        keys[i] = k
       end
 
       sort(keys)
 
       local o = new_tab(count, 0)
       for i = 1, count do
-        o[i] = keys[i] .. ":" .. to_sorted_string(value[keys[keys[i]]])
+        o[i] = keys[i] .. ":" .. to_sorted_string(value[keys[i]])
       end
 
       value = concat(o, ";", 1, count)
 
-      return "{" .. (count > 10 and ngx_md5(value) or value) .. "}"
+      return #value > 512 and ngx_md5_bin(value) or value
     end
 
   else
