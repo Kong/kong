@@ -31,7 +31,6 @@ local var          = ngx.var
 local log          = ngx.log
 local exit         = ngx.exit
 local exec         = ngx.exec
-local null         = ngx.null
 local header       = ngx.header
 local timer_at     = ngx.timer.at
 local timer_every  = ngx.timer.every
@@ -70,7 +69,7 @@ local TTL_ZERO = { ttl = 0 }
 local ROUTER_SYNC_OPTS
 local PLUGINS_ITERATOR_SYNC_OPTS
 local FLIP_CONFIG_OPTS
-local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
+local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 
 
 local get_plugins_iterator, get_updated_plugins_iterator
