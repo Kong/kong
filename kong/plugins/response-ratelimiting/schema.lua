@@ -74,6 +74,7 @@ return {
           { redis_host = typedefs.host },
           { redis_port = typedefs.port({ default = 6379 }), },
           { redis_password = { type = "string", len_min = 0 }, },
+          { redis_username = { type = "string" }, },
           { redis_timeout = { type = "number", default = 2000 }, },
           { redis_database = { type = "number", default = 0 }, },
           { block_on_first_violation = { type = "boolean", required = true, default = false }, },
