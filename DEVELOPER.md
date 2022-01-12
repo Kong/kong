@@ -243,15 +243,11 @@ If you have a Linux development environment (either virtual or bare metal), the 
 
 ### Virtual Machine (Optional)
 
-Final deployments are typically on a Linux machine or container, so even if all components are multiplatform, 
-it's easier to use it for development too.  If you use MacOS or Windows machines, setting a virtual machine is easy enough now.  
-Most of us use the freely available VirtualBox without any trouble.
+Final deployments are typically on a Linux machine or container, so even if all components are multiplatform, it's easier to use it for development too.  If you use MacOS or Windows machines, setting a virtual machine is easy enough now.  Most of us use the freely available VirtualBox without any trouble.
 
 If you use Linux for your desktop, you can skip this section.
 
-There are no "hard" requirements on any Linux distro, 
-but RHEL and CentOS can be more of a challenge to get recent versions of many packages; 
-Fedora, Debian or Ubuntu are easier for this.
+There are no "hard" requirements on any Linux distro, but RHEL and CentOS can be more of a challenge to get recent versions of many packages; Fedora, Debian or Ubuntu are easier for this.
 
 To avoid long compilation times, give the VM plenty of RAM (8GB recommended) and all the CPU cores you can.
 
@@ -263,17 +259,13 @@ You will need to setup port forwarding on VirtualBox to be able to ssh into the 
 1. Click "Network" tab
 1. Click "Advanced" dropdown
 1. Click "Port Forwarding"
-1. Add a new rule in the popup. The only thing you will need is "Host Port" to be 22222 and "Guest Port" to be 22. 
-  Everything else can be left default (see screenshot below)
+1. Add a new rule in the popup. The only thing you will need is "Host Port" to be 22222 and "Guest Port" to be 22. Everything else can be left default (see screenshot below)
 1. Click "Ok"
 
-Now you should be able to `ssh <your_name>@127.1 -p 22222` to get SSH prompt. 
-However, this requires us to type a long command and password every time we sign in. 
-It is recommended you setup a public key and SSH alias to make this process simpler:
+Now you should be able to `ssh <your_name>@127.1 -p 22222` to get SSH prompt. However, this requires us to type a long command and password every time we sign in. It is recommended you setup a public key and SSH alias to make this process simpler:
 
 1. On your host machine, generate a keypair for SSH into the guest: `ssh-keygen -t ed25519`.
-Just keep hitting Enter until the key is generated. 
-You do not need a password for this key file since it is only used for SSH into your guest
+Just keep hitting Enter until the key is generated. You do not need a password for this key file since it is only used for SSH into your guest
 1. Type `cat .ssh/id_ed25519.pub` and copy the public key
 1. SSH into the guest using the command above
 1. Create the ssh config directory (if it doesn't exist) `$ mkdir -p .ssh`
@@ -294,12 +286,9 @@ Now try `ssh dev` on your host, you should be able to get into the guest directl
 
 ### Dependencies (Binary release)
 
-For your convenience and to be more efficiently, we recommended install dependencies 
-including OpenResty, OpenSSL, LuaRocks and PCRE by downloading and installing 
-Kong's latest Linux package release (`.deb` or `.rpm`). 
+For your convenience and to be more efficiently, we recommended install dependencies including OpenResty, OpenSSL, LuaRocks and PCRE by downloading and installing Kong's latest Linux package release (`.deb` or `.rpm`). 
 
-Follow below steps to install download and install Kong package. 
-And you can find all downloadable Linux packages [here](https://download.konghq.com/).
+Follow below steps to install download and install Kong package. And you can find all downloadable Linux packages [here](https://download.konghq.com/).
 
 Ubuntu/Debian:
 
@@ -323,8 +312,7 @@ The-hard-way to build development environment and also a good start for beginner
 
 #### Prerequisites
 
-These are the needed tools and libraries that aren't installed out of the box on Ubuntu and Fedora, respectively.  
-Just run one of these, either as root or `sudo`.
+These are the needed tools and libraries that aren't installed out of the box on Ubuntu and Fedora, respectively.  Just run one of these, either as root or `sudo`.
 
 Ubuntu/Debian:
 
@@ -367,11 +355,9 @@ Fedora:
 
 #### OpenResty
 
-We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  
-<span class="x x-first x-last">Their </span>exact versions can be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file.
+We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  <span class="x x-first x-last">Their </span>exact versions can be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file.
 
-These commands don't have to be performed as root, since all compilation is done within a subdirectory, 
-and installs everything in the target specified by the `-p` argument (here the `build` directory).
+These commands don't have to be performed as root, since all compilation is done within a subdirectory, and installs everything in the target specified by the `-p` argument (here the `build` directory).
 
 ```
     git clone https://github.com/kong/kong-build-tools
@@ -385,8 +371,7 @@ and installs everything in the target specified by the `-p` argument (here the `
         --pcre 8.45
 ```
 
-After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  
-For that, it's important to set the `$PATH` variable accordingly:
+After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
 
 ```
     export PATH=$HOME/path/to/kong-build-tools/openresty-build-tools/build/openresty/bin:$HOME/path/to/kong-build-tools/openresty-build-tools/build/openresty/nginx/sbin:$HOME/path/to/kong-build-tools/openresty-build-tools/build/luarocks/bin:$PATH
@@ -397,18 +382,14 @@ For that, it's important to set the `$PATH` variable accordingly:
 
 The `$OPENSSL_DIR` variable is needed when compiling Kong, to make sure it uses the correct version of OpenSSL.
 
-You can add these lines to your `.profile` or `.bashrc` file.  
-Otherwise you could find yourself wondering where is everything!.
+You can add these lines to your `.profile` or `.bashrc` file.  Otherwise you could find yourself wondering where is everything!.
 
 
 ### Databases
 
-The easiest way to handle these as a single group is via docker-compose. 
-It's also recommended to set your user as a 
-[docker manager](https://docs.docker.com/install/linux/linux-postinstall/#manage-docker-as-a-non-root-user) to simplify the next steps.
+The easiest way to handle these as a single group is via docker-compose.  It's also recommended to set your user as a [docker manager](https://docs.docker.com/install/linux/linux-postinstall/#manage-docker-as-a-non-root-user) to simplify the next steps.
 
-Make sure the docker daemon is enabled and running: 
-`sudo systemctl enable docker` and `sudo systemctl start docker`. Verify that `docker ps` shows no errors.
+Make sure the docker daemon is enabled and running: `sudo systemctl enable docker` and `sudo systemctl start docker`. Verify that `docker ps` shows no errors.
 
 On a Fedora VM, you might have to disable SELinux:
 
