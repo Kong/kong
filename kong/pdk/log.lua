@@ -563,7 +563,7 @@ end
 -- @function kong.log.set_serialize_value
 -- @phases certificate, rewrite, access, header_filter, response, body_filter, log
 -- @tparam string key The name of the field.
--- @tparam number|string|boolean|table value Value to be set. When a table is used, its keys must be numbers, strings, or booleans, and its values can be numbers, strings, or other tables like itself, recursively.
+-- @tparam number\|string\|boolean\|table value Value to be set. When a table is used, its keys must be numbers, strings, or booleans, and its values can be numbers, strings, or other tables like itself, recursively.
 -- @tparam table options Can contain two entries: options.mode can be `set` (the default, always sets), `add` (only add if entry does not already exist) and `replace` (only change value if it already exists).
 -- @treturn table The request information table.
 -- @usage
