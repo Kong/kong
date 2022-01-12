@@ -1,5 +1,5 @@
 ---
--- The client.tls module provides functions for interacting with TLS
+-- A module that provides functions for interacting with TLS
 -- connections from client.
 --
 -- @module kong.client.tls
@@ -36,9 +36,11 @@ local function new()
   -- TLS authentication between server and client.
   --
   -- This function *requests*, but does not *require* the client to start
-  -- the mTLS process. Even if the client does not present a client certificate
-  -- the TLS handshake can still complete. In this case, it becomes a TLS
-  -- instead of an mTLS connection, as there is no mutual authentication.
+  -- the mTLS process. The TLS handshake can still complete even if the client
+  -- doesn't present a client certificate. However, in that case, it becomes a
+  -- TLS connection instead of an mTLS connection, as there is no mutual
+  -- authentication.
+  --
   -- To find out whether the client honored the request, use
   -- `get_full_client_certificate_chain` in later phases.
   --
@@ -121,10 +123,10 @@ local function new()
   -- [$ssl_client_verify](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#var_ssl_client_verify)
   -- Nginx variable.
   --
-  -- Only `"SUCCESS"`, `"NONE"` or `"FAILED:<reason>"` are accepted values.
+  -- Only `"SUCCESS"`, `"NONE"`, or `"FAILED:<reason>"` are accepted values.
   --
-  -- This function does not return anything on success, and throws an Lua error
-  -- in case of failures.
+  -- This function does not return anything on success, and throws a Lua error
+  -- in case of a failure.
   --
   -- @function kong.client.tls.set_client_verify
   -- @phases rewrite, access, balancer

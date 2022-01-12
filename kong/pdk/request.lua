@@ -61,7 +61,7 @@ local function new(self)
 
   ---
   -- Returns the scheme component of the request's URL. The returned value is
-  -- normalized to lower-case form.
+  -- normalized to lowercase form.
   --
   -- @function kong.request.get_scheme
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
@@ -79,7 +79,7 @@ local function new(self)
 
   ---
   -- Returns the host component of the request's URL, or the value of the
-  -- "Host" header. The returned value is normalized to lower-case form.
+  -- "Host" header. The returned value is normalized to lowercase form.
   --
   -- @function kong.request.get_host
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
@@ -125,8 +125,8 @@ local function new(self)
   -- * [real\_ip\_header](https://docs.konghq.com/gateway/latest/reference/configuration/#real_ip_header)
   -- * [real\_ip\_recursive](https://docs.konghq.com/gateway/latest/reference/configuration/#real_ip_recursive)
   --
-  -- **Note**: Support for the Forwarded HTTP Extension (RFC 7239) is not
-  -- offered since it is not supported by ngx\_http\_realip\_module.
+  -- **Note**: Kong does not offer support for the Forwarded HTTP Extension
+  -- (RFC 7239) since it is not supported by ngx_http_realip_module.
   --
   -- @function kong.request.get_forwarded_scheme
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
@@ -149,9 +149,9 @@ local function new(self)
 
   ---
   -- Returns the host component of the request's URL or the value of the "host"
-  -- header. Unlike `kong.request.get_host()`, this function will also consider
+  -- header. Unlike `kong.request.get_host()`, this function also considers
   -- `X-Forwarded-Host` if it comes from a trusted source. The returned value
-  -- is normalized to lower-case.
+  -- is normalized to lowercase.
   --
   -- Whether this function considers `X-Forwarded-Host` or not depends on
   -- several Kong configuration parameters:
@@ -160,7 +160,7 @@ local function new(self)
   -- * [real\_ip\_header](https://docs.konghq.com/gateway/latest/reference/configuration/#real_ip_header)
   -- * [real\_ip\_recursive](https://docs.konghq.com/gateway/latest/reference/configuration/#real_ip_recursive)
   --
-  -- **Note**: we do not currently offer support for Forwarded HTTP Extension
+  -- **Note**: Kong does not offer support for the Forwarded HTTP Extension
   -- (RFC 7239) since it is not supported by ngx_http_realip_module.
   --
   -- @function kong.request.get_forwarded_host
@@ -200,10 +200,10 @@ local function new(self)
   -- * [real\_ip\_header](https://docs.konghq.com/gateway/latest/reference/configuration/#real_ip_header)
   -- * [real\_ip\_recursive](https://docs.konghq.com/gateway/latest/reference/configuration/#real_ip_recursive)
   --
-  -- **Note**: Kong does not offer support for Forwarded HTTP Extension
+  -- **Note**: Kong does not offer support for the Forwarded HTTP Extension
   -- (RFC 7239) since it is not supported by ngx_http_realip_module.
   --
-  -- When running Kong behind the L4 port mapping (or forwarding) you can also
+  -- When running Kong behind the L4 port mapping (or forwarding), you can also
   -- configure:
   -- * [port\_maps](https://docs.konghq.com/gateway/latest/reference/configuration/#port_maps)
   --
@@ -292,9 +292,10 @@ local function new(self)
   -- from a trusted source, and uses it as-is when given. The value is returned
   -- as a Lua string.
   --
-  -- If a trusted `X-Forwarded-Prefix` is not passed, this function must be called after Kong has ran its router (`access` phase),
+  -- If a trusted `X-Forwarded-Prefix` is not passed, this function must be
+  -- called after Kong has run its router (`access` phase),
   -- as the Kong router may strip the prefix of the request path. That stripped
-  -- path will become the return value of this function, unless there was already
+  -- path becomes the return value of this function, unless there is already
   -- a trusted `X-Forwarded-Prefix` header in the request.
   --
   -- Whether this function considers `X-Forwarded-Prefix` or not depends on
@@ -308,7 +309,8 @@ local function new(self)
   --
   -- @function kong.request.get_forwarded_prefix
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
-  -- @treturn string|nil The forwarded path prefix or nil if prefix was not stripped.
+  -- @treturn string|nil The forwarded path prefix or `nil` if the prefix was
+  -- not stripped.
   -- @usage
   -- kong.request.get_forwarded_prefix() -- /prefix
   function _REQUEST.get_forwarded_prefix()
@@ -432,7 +434,7 @@ local function new(self)
   -- found.
   --
   -- If an argument with the same name is present multiple times in the
-  -- query string, this function will return the value of the first occurrence.
+  -- query string, this function returns the value of the first occurrence.
   --
   -- @function kong.request.get_query_arg
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
@@ -537,7 +539,7 @@ local function new(self)
   --
   -- The returned value is either a `string`, or can be `nil` if a header with
   -- `name` was not found in the request. If a header with the same name is
-  -- present multiple times in the request, this function will return the value
+  -- present multiple times in the request, this function returns the value
   -- of the first occurrence of this header.
   --
   -- Header names in are case-insensitive and are normalized to lowercase, and
@@ -639,7 +641,7 @@ local function new(self)
   -- If the body has no size (empty), this function returns an empty string.
   --
   -- If the size of the body is greater than the Nginx buffer size (set by
-  -- `client_body_buffer_size`), this function will fail and return an error
+  -- `client_body_buffer_size`), this function fails and returns an error
   -- message explaining this limitation.
   --
   -- @function kong.request.get_raw_body
@@ -671,10 +673,21 @@ local function new(self)
   ---
   -- Returns the request data as a key/value table.
   -- A high-level convenience function.
+  --
   -- The body is parsed with the most appropriate format:
   --
-  -- * If `mimetype` is specified:
-  --   * Decodes the body with the requested content type (if supported).
+  -- * If `mimetype` is specified, it decodes the body with the requested
+  --   content type (if supported). This takes precedence over any content type
+  --   present in the request.
+  --
+  --   The optional argument `mimetype` can be one of the following strings:
+  --     * `application/x-www-form-urlencoded`
+  --     * `application/json`
+  --     * `multipart/form-data`
+  --
+  -- Whether `mimetype` is specified or a request content type is otherwise
+  -- present in the request, each content type behaves as follows:
+  --
   -- * If the request content type is `application/x-www-form-urlencoded`:
   --   * Returns the body as form-encoded.
   -- * If the request content type is `multipart/form-data`:
@@ -685,14 +698,9 @@ local function new(self)
   --   * Decodes the body as JSON
   --     (same as `json.decode(kong.request.get_raw_body())`).
   --   * JSON types are converted to matching Lua types.
-  -- * If none of the above, returns `nil` and an error message indicating the
+  -- * If the request contains none of the above and the `mimetype` argument is
+  --   not set, returns `nil` and an error message indicating the
   --   body could not be parsed.
-  --
-  -- The optional argument `mimetype` can be one of the following strings:
-  --
-  -- * `application/x-www-form-urlencoded`
-  -- * `application/json`
-  -- * `multipart/form-data`
   --
   -- The optional argument `max_args` can be used to set a limit on the number
   -- of form arguments parsed for `application/x-www-form-urlencoded` payloads.

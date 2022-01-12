@@ -1,4 +1,5 @@
---- Client information module
+--- Client information module.
+--
 -- A set of functions to retrieve information about the client connecting to
 -- Kong in the context of a given request.
 --
@@ -33,10 +34,10 @@ local function new(self)
 
 
   ---
-  -- Returns the remote address of the client making the request. This will
-  -- **always** return the address of the client directly connecting to Kong.
+  -- Returns the remote address of the client making the request. This module
+  -- **always** returns the address of the client directly connecting to Kong.
   -- That is, in cases when a load balancer is in front of Kong, this function
-  -- will return the load balancer's address, and **not** that of the
+  -- returns the load balancer's address, and **not** that of the
   -- downstream client.
   --
   -- @function kong.client.get_ip
@@ -167,13 +168,13 @@ local function new(self)
 
   ---
   -- Returns the consumer from the datastore.
-  -- Will look up the consumer by id, and optionally will do a second search by name.
+  -- Looks up the consumer by ID, and can optionally do a second search by name.
   -- @function kong.client.load_consumer
   -- @phases access, header_filter, response, body_filter, log
-  -- @tparam string consumer_id The consumer id to look up.
+  -- @tparam string consumer_id The consumer ID to look up.
   -- @tparam[opt] boolean search_by_username. If truthy,
-  -- then if the consumer was not found by id,
-  -- then a second search by username will be performed
+  -- and if the consumer is not found by ID,
+  -- then a second search by username will be performed.
   -- @treturn table|nil Consumer entity or `nil`.
   -- @treturn nil|err `nil` if successful, or an error message if it fails.
   -- @usage
@@ -233,8 +234,8 @@ local function new(self)
 
   ---
   -- Sets the authenticated consumer and/or credential for the current request.
-  -- While both `consumer` and `credential` can be `nil`, it is required
-  -- that at least one of them exists. Otherwise this function will throw an
+  -- While both `consumer` and `credential` can be `nil`,
+  -- at least one of them must exist. Otherwise, this function will throw an
   -- error.
   -- @function kong.client.authenticate
   -- @phases access
@@ -268,7 +269,7 @@ local function new(self)
   -- erroneous requests.
   -- @function kong.client.get_protocol
   -- @phases access, header_filter, response, body_filter, log
-  -- @tparam[opt] boolean allow_terminated. If set, the `X-Forwarded-Proto` header will be checked when checking for HTTPS.
+  -- @tparam[opt] boolean allow_terminated. If set, the `X-Forwarded-Proto` header is checked when checking for HTTPS.
   -- @treturn string|nil Can be one of `"http"`, `"https"`, `"tcp"`, `"tls"` or `nil`.
   -- @treturn nil|err `nil` if successful, or an error message if it fails.
   -- @usage

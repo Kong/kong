@@ -6,7 +6,8 @@
 -- property.
 --
 -- Trusted IP addresses are those that are known to send correct replacement
--- addresses for clients (as per the chosen header field, e.g. X-Forwarded-*).
+-- addresses for clients (as per the chosen header field, for example
+-- X-Forwarded-*).
 --
 -- See the [documentation on trusted IPs](https://docs.konghq.com/gateway/latest/reference/configuration/#trusted_ips)
 --

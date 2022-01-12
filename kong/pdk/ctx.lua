@@ -54,10 +54,10 @@ local _CTX_CORE_KEY = {}
 ---
 -- A table that contains the entire history of the current request. Unlike
 -- `kong.ctx.shared`, this table is **not** shared between plugins.
--- Instead, it is only visible for the current plugin _instance_.
--- That is, if several instances of the rate-limiting plugin
--- are configured (e.g. on different Services), each instance has its
--- own table, for every request.
+-- Instead, it is only visible for the current plugin instance.
+-- For example, if several instances of the Rate Limiting plugin
+-- are configured on different Services, each instance has its
+-- own table for every request.
 --
 -- Because of its namespaced nature, this table is safer for a plugin to use
 -- than `kong.ctx.shared` since it avoids potential naming conflicts, which
@@ -70,7 +70,7 @@ local _CTX_CORE_KEY = {}
 -- of the plugin interfaces. Accessing this table in those functions (and
 -- their callees) is fine.
 --
--- Values inserted in this table by a plugin will be visible in successful
+-- Values inserted in this table by a plugin are visible in successful
 -- phases of this plugin's instance only.
 --
 -- @table kong.ctx.plugin

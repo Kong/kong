@@ -3,8 +3,8 @@
 --
 -- The downstream response module contains a set of functions for producing and
 -- manipulating responses sent back to the client (downstream). Responses can
--- be produced by Kong (e.g. an authentication plugin rejecting a request), or
--- proxied back from an Service's response body.
+-- be produced by Kong (for example, an authentication plugin rejecting a
+-- request), or proxied back from an Service's response body.
 --
 -- Unlike `kong.service.response`, this module allows mutating the response
 -- before sending it back to the client.
@@ -811,52 +811,56 @@ local function new(self, major_version)
     -- Calling `kong.response.exit()` interrupts the execution flow of
     -- plugins in the current phase. Subsequent phases will still be invoked.
     -- For example, if a plugin calls `kong.response.exit()` in the `access`
-    -- phase, no other plugin will be executed in that phase, but the
-    -- `header_filter`, `body_filter`, and `log` phases will still be executed,
+    -- phase, no other plugin is executed in that phase, but the
+    -- `header_filter`, `body_filter`, and `log` phases are still executed,
     -- along with their plugins. Plugins should be programmed defensively
     -- against cases when a request is **not** proxied to the Service, but
     -- instead is produced by Kong itself.
     --
-    -- The first argument `status` sets the status code of the response that
-    -- will be seen by the client.
+    -- 1. The first argument `status` sets the status code of the response that
+    -- is seen by the client.
     --
-    -- In L4 proxy mode, the `status` code provided is primarily for logging
-    -- and statistical purposes, and is not visible to the client directly.
-    -- In this mode, only the following status codes are supported:
+    --   In L4 proxy mode, the `status` code provided is primarily for logging
+    --   and statistical purposes, and is not visible to the client directly.
+    --   In this mode, only the following status codes are supported:
     --
-    -- * 200 - OK
-    -- * 400 - Bad request
-    -- * 403 - Forbidden
-    -- * 500 - Internal server error
-    -- * 502 - Bad gateway
-    -- * 503 - Service unavailable
+    --   * 200 - OK
+    --   * 400 - Bad request
+    --   * 403 - Forbidden
+    --   * 500 - Internal server error
+    --   * 502 - Bad gateway
+    --   * 503 - Service unavailable
     --
-    -- The second, optional, `body` argument sets the response body. If it is
-    -- a string, no special processing is done, and the body is sent
-    -- as-is.  It is the caller's responsibility to set the appropriate
-    -- Content-Type header via the third argument.  As a convenience, `body` can
-    -- be specified as a table; in which case, it will be JSON-encoded and the
-    -- `application/json` Content-Type header will be set. On gRPC we cannot send
-    -- the `body` with this function at the moment at least, so what it does
-    -- instead is that it sends "body" in `grpc-message` header instead. If the
-    -- body is a table it looks for a field `message` in it, and uses that as a
-    -- `grpc-message` header. Though, if you have specified `Content-Type` header
-    -- starting with `application/grpc`, the body will be sent.
+    -- 1. The second, optional, `body` argument sets the response body. If it is
+    --   a string, no special processing is done, and the body is sent
+    --   as-is.  It is the caller's responsibility to set the appropriate
+    --   `Content-Type` header via the third argument.
     --
-    -- In L4 proxy mode, `body` can only be `nil` or a string. Automatic JSON
-    -- encoding is not available. When `body` is provided, depending on the
-    -- value of `status`, the following happens:
+    --   As a convenience, `body` can be specified as a table. In that case,
+    --   the `body` is JSON-encoded and has the `application/json` Content-Type
+    --   header set.
     --
-    -- * When `status` is 500, 502 or 503, then `body` is logged in the Kong
-    -- error log file.
-    -- * When the `status` is anything else, `body` is sent back to the L4 client.
+    --   On gRPC, we cannot send the `body` with this function, so
+    --   it sends `"body"` in the `grpc-message` header instead.
+    --   * If the body is a table, it looks for the `message` field in the body,
+    --   and uses that as a `grpc-message` header.
+    --   * If you specify `application/grpc` in the `Content-Type` header, the
+    --   body is sent without needing the `grpc-message` header.
     --
-    -- The third, optional, `headers` argument can be a table specifying response
-    -- headers to send. If specified, its behavior is similar to
-    -- `kong.response.set_headers()`. This argument is ignored in L4 proxy mode.
+    --   In L4 proxy mode, `body` can only be `nil` or a string. Automatic JSON
+    --   encoding is not available. When `body` is provided, depending on the
+    --   value of `status`, the following happens:
     --
-    -- Unless manually specified, this method will automatically set the
-    -- Content-Length header in the produced response for convenience.
+    --   * When `status` is 500, 502 or 503, then `body` is logged in the Kong
+    --   error log file.
+    --   * When the `status` is anything else, `body` is sent back to the L4 client.
+    --
+    -- 1. The third, optional, `headers` argument can be a table specifying
+    --   response headers to send. If specified, its behavior is similar to
+    --   `kong.response.set_headers()`. This argument is ignored in L4 proxy mode.
+    --
+    -- Unless manually specified, this method automatically sets the
+    -- `Content-Length` header in the produced response for convenience.
     -- @function kong.response.exit
     -- @phases preread, rewrite, access, admin_api, header_filter (only if `body` is nil)
     -- @tparam number status The status to be used.

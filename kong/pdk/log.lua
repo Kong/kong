@@ -197,7 +197,7 @@ local serializers = {
 --
 -- Where:
 --
--- * `%namespace`: The configured namespace (the plugin name in this case).
+-- * `%namespace`: The configured namespace (in this case, the plugin name).
 -- * `%file_src`: The filename from where the log was called.
 -- * `%line_src`: The line number from where the log was called.
 -- * `%message`: The message, made of concatenated arguments given by the caller.
@@ -214,7 +214,7 @@ local serializers = {
 -- 2017/07/09 19:36:25 [notice] 25932#0: *1 [kong] some_file.lua:54 hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
 -- ```
 --
--- If invoked from within a plugin (e.g. `key-auth`) it would include the
+-- If invoked from within a plugin (for example, `key-auth`) it would include the
 -- namespace prefix:
 --
 -- ``` plain
@@ -230,7 +230,7 @@ local serializers = {
 -- kong.log("hello ", "world") -- alias to kong.log.notice()
 
 ---
--- Similar to `kong.log()`, but the produced log will have the severity given by
+-- Similar to `kong.log()`, but the produced log has the severity given by
 -- `<level>`, instead of `notice`. The supported levels are:
 --
 -- * `kong.log.alert()`
@@ -254,7 +254,7 @@ local serializers = {
 -- 2017/07/09 19:36:25 [error] 25932#0: *1 [kong] some_file.lua:54 hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
 -- ```
 --
--- If invoked from within a plugin (e.g. `key-auth`) it would include the
+-- If invoked from within a plugin (for example, `key-auth`) it would include the
 -- namespace prefix:
 --
 -- ``` plain
@@ -368,8 +368,8 @@ end
 -- Arguments given to this function can be of any type, but table arguments
 -- are converted to strings via `tostring` (thus potentially calling a
 -- table's `__tostring` metamethod if set). When the last argument is a table,
--- it is considered as a deprecation metadata. The table can include following
--- properties:
+-- it is considered as a deprecation metadata. The table can include the
+-- following properties:
 --
 -- ``` lua
 -- {
@@ -391,7 +391,7 @@ end
 -- 2017/07/09 19:36:25 [warn] 25932#0: *1 [kong] some_file.lua:54 hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
 -- ```
 --
--- If invoked from within a plugin (e.g. `key-auth`) it would include the
+-- If invoked from within a plugin (for example, `key-auth`) it would include the
 -- namespace prefix:
 --
 -- ``` plain

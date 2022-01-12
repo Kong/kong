@@ -22,9 +22,9 @@ local function new(self)
 
 
   ---
-  -- Returns the unique id for this Kong cluster. If Kong
+  -- Returns the unique ID for this Kong cluster. If Kong
   -- is running in DB-less mode without a cluster ID explicitly defined,
-  -- then this method returns nil.
+  -- then this method returns `nil`.
   --
   -- For hybrid mode, all control planes and data planes belonging to the same
   -- cluster return the same cluster ID. For traditional database-based
