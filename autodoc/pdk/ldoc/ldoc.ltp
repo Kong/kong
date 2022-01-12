@@ -78,8 +78,6 @@ pdk: true
 toc: true
 ---
 
-## $(module.name == "PDK" and ldoc.title or module.name)
-
 $(module.summary) $(module.description)
 > for kind, items in module.kinds() do
 >
@@ -89,7 +87,7 @@ $(module.kinds:get_section_description(kind))
 >     for item in items() do
 >       if not item.tags.redirect then -- skip redirects
 
-### $(display_name(item))
+## $(display_name(item))
 
 $(ldoc.descript(item))
 >         if ldoc.custom_tags then
