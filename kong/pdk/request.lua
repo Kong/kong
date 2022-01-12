@@ -436,7 +436,7 @@ local function new(self)
   --
   -- @function kong.request.get_query_arg
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
-  -- @treturn string|boolean|nil The value of the argument.
+  -- @treturn string\|boolean\|nil The value of the argument.
   -- @usage
   -- -- Given a request GET /test?foo=hello%20world&bar=baz&zzz&blo=&bar=bla&bar
   --

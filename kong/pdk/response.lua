@@ -424,7 +424,7 @@ local function new(self, major_version)
   -- @function kong.response.add_header
   -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam string name The header name.
-  -- @tparam string|number|boolean value The header value.
+  -- @tparam string\|number\|boolean value The header value.
   -- @return Nothing; throws an error on invalid input.
   -- @usage
   -- kong.response.add_header("Cache-Control", "no-cache")
