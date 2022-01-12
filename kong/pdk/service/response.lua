@@ -180,7 +180,7 @@ local function new(pdk, major_version)
   -- @tparam[opt] number max_headers Sets a limit on the maximum number of
   -- headers that can be parsed.
   -- @treturn table The response headers in table form.
-  -- @treturn string err If more headers than `max_headers` are present, returns
+  -- @treturn string If more headers than `max_headers` are present, returns
   -- a string with the error `"truncated"`.
   -- @usage
   -- -- Given a response with the following headers:
@@ -271,7 +271,7 @@ local function new(pdk, major_version)
   --
   -- @function kong.service.response.get_raw_body
   -- @phases `header_filter`, `body_filter`, `log`
-  -- @treturn string body The raw buffered body.
+  -- @treturn string The raw buffered body.
   -- @usage
   -- -- Plugin needs to call kong.service.request.enable_buffering() on `rewrite`
   -- -- or `access` phase prior calling this function.
@@ -297,7 +297,7 @@ local function new(pdk, major_version)
   -- @tparam[opt] string mimetype The MIME type of the response (if known).
   -- @tparam[opt] number max_args Sets a limit on the maximum number of (what?)
   -- that can be parsed.
-  -- @treturn string body The raw buffered body
+  -- @treturn string The raw buffered body
   -- @usage
   -- -- Plugin needs to call kong.service.request.enable_buffering() on `rewrite`
   -- -- or `access` phase prior calling this function.

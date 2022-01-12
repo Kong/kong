@@ -820,51 +820,51 @@ local function new(self, major_version)
     -- 1. The first argument `status` sets the status code of the response that
     -- is seen by the client.
     --
-    --   In L4 proxy mode, the `status` code provided is primarily for logging
-    --   and statistical purposes, and is not visible to the client directly.
-    --   In this mode, only the following status codes are supported:
+    --    In L4 proxy mode, the `status` code provided is primarily for logging
+    --    and statistical purposes, and is not visible to the client directly.
+    --    In this mode, only the following status codes are supported:
     --
-    --   * 200 - OK
-    --   * 400 - Bad request
-    --   * 403 - Forbidden
-    --   * 500 - Internal server error
-    --   * 502 - Bad gateway
-    --   * 503 - Service unavailable
+    --    * 200 - OK
+    --    * 400 - Bad request
+    --    * 403 - Forbidden
+    --    * 500 - Internal server error
+    --    * 502 - Bad gateway
+    --    * 503 - Service unavailable
     --
     -- 1. The second, optional, `body` argument sets the response body. If it is
-    --   a string, no special processing is done, and the body is sent
-    --   as-is.  It is the caller's responsibility to set the appropriate
-    --   `Content-Type` header via the third argument.
+    --    a string, no special processing is done, and the body is sent
+    --    as-is.  It is the caller's responsibility to set the appropriate
+    --    `Content-Type` header via the third argument.
     --
-    --   As a convenience, `body` can be specified as a table. In that case,
-    --   the `body` is JSON-encoded and has the `application/json` Content-Type
-    --   header set.
+    --    As a convenience, `body` can be specified as a table. In that case,
+    --    the `body` is JSON-encoded and has the `application/json` Content-Type
+    --    header set.
     --
-    --   On gRPC, we cannot send the `body` with this function, so
-    --   it sends `"body"` in the `grpc-message` header instead.
-    --   * If the body is a table, it looks for the `message` field in the body,
-    --   and uses that as a `grpc-message` header.
-    --   * If you specify `application/grpc` in the `Content-Type` header, the
-    --   body is sent without needing the `grpc-message` header.
+    --    On gRPC, we cannot send the `body` with this function, so
+    --    it sends `"body"` in the `grpc-message` header instead.
+    --    * If the body is a table, it looks for the `message` field in the body,
+    --    and uses that as a `grpc-message` header.
+    --    * If you specify `application/grpc` in the `Content-Type` header, the
+    --    body is sent without needing the `grpc-message` header.
     --
-    --   In L4 proxy mode, `body` can only be `nil` or a string. Automatic JSON
-    --   encoding is not available. When `body` is provided, depending on the
-    --   value of `status`, the following happens:
+    --    In L4 proxy mode, `body` can only be `nil` or a string. Automatic JSON
+    --    encoding is not available. When `body` is provided, depending on the
+    --    value of `status`, the following happens:
     --
-    --   * When `status` is 500, 502 or 503, then `body` is logged in the Kong
-    --   error log file.
-    --   * When the `status` is anything else, `body` is sent back to the L4 client.
+    --    * When `status` is 500, 502 or 503, then `body` is logged in the Kong
+    --    error log file.
+    --    * When the `status` is anything else, `body` is sent back to the L4 client.
     --
     -- 1. The third, optional, `headers` argument can be a table specifying
-    --   response headers to send. If specified, its behavior is similar to
-    --   `kong.response.set_headers()`. This argument is ignored in L4 proxy mode.
+    --    response headers to send. If specified, its behavior is similar to
+    --    `kong.response.set_headers()`. This argument is ignored in L4 proxy mode.
     --
     -- Unless manually specified, this method automatically sets the
     -- `Content-Length` header in the produced response for convenience.
     -- @function kong.response.exit
     -- @phases preread, rewrite, access, admin_api, header_filter (only if `body` is nil)
     -- @tparam number status The status to be used.
-    -- @tparam[opt] table|string body The body to be used.
+    -- @tparam[opt] table\|string body The body to be used.
     -- @tparam[opt] table headers The headers to be used.
     -- @return Nothing; throws an error on invalid input.
     -- @usage

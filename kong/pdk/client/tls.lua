@@ -1,6 +1,6 @@
 ---
 -- A module that provides functions for interacting with TLS
--- connections from client.
+-- connections from the client.
 --
 -- @module kong.client.tls
 

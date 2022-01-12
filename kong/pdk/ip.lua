@@ -9,7 +9,7 @@
 -- addresses for clients (as per the chosen header field, for example
 -- X-Forwarded-*).
 --
--- See the [documentation on trusted IPs](https://docs.konghq.com/gateway/latest/reference/configuration/#trusted_ips)
+-- See the [documentation on trusted IPs](https://docs.konghq.com/gateway/latest/reference/configuration/#trusted_ips).
 --
 -- @module kong.ip
 local utils = require "kong.tools.utils"
