@@ -423,6 +423,14 @@ Now run unit tests with `make test` and integration test with `make test-integra
 
 Hack on!
 
+## Dev on VSCode Container / GitHub Codespaces
+
+The `devcontainer.json` file in Kong's project tells VS Code 
+how to access (or create) a development container with a well-defined tool and runtime stack.
+
+- See [How to create a GitHub codespace](https://docs.github.com/en/codespaces/developing-in-codespaces/creating-a-codespace#creating-a-codespace).
+- See [How to create a VSCode development container](https://code.visualstudio.com/docs/remote/containers#_quick-start-try-a-development-container).
+
 ## What's next
 
 - Refer to the [Kong Gateway Docs](https://docs.konghq.com/gateway/) for more information.
