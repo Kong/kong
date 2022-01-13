@@ -142,7 +142,6 @@ function Jq:body_filter(conf)
 
       if not jq_output then
         kong.log.err(err)
-        kong.response.set_raw_body(response_body) -- restore original body
       else
         kong.response.set_raw_body(jq_output)
       end
