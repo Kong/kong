@@ -1194,6 +1194,33 @@ describe("Router", function()
         assert.same(nil, match_t.matches.uri_captures)
       end)
 
+      it("submatch_weight [wildcard host port] > [wildcard host] ", function()
+        local use_case = {
+          {
+            service = service,
+            route = {
+              hosts = { "route.*" },
+            },
+          },
+          {
+            service = service,
+            route = {
+              hosts = { "route.*:80", "route.com.*" },
+            },
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local match_t = router.select("GET", "/", "route.org:80")
+        assert.truthy(match_t)
+        assert.same(use_case[2].route, match_t.route)
+        assert.same("route.*:80", match_t.matches.host)
+        assert.same(nil, match_t.matches.method)
+        assert.same(nil, match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
+      end)
+
       it("matches a [wildcard host + port] even if a [wildcard host] matched", function()
         local use_case = {
           {
