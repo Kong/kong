@@ -7,7 +7,7 @@
 
 local OICHandler = {
   PRIORITY = 1000,
-  VERSION  = "2.2.0",
+  VERSION  = "2.2.1",
 }
 
 
@@ -955,7 +955,7 @@ function OICHandler.access(_, conf)
     local ttl_default   = args.get_conf_arg("cache_ttl", 3600)
     local ttl_max       = args.get_conf_arg("cache_ttl_max")
     local ttl_min       = args.get_conf_arg("cache_ttl_min")
-    local ttl_neg       = args.get_conf_arg("cache_ttl_min")
+    local ttl_neg       = args.get_conf_arg("cache_ttl_neg")
     local ttl_resurrect = args.get_conf_arg("cache_ttl_resurrect")
 
     if ttl_max and ttl_max > 0 then

@@ -1,7 +1,14 @@
+## v2.2.1
+
+- Fix negative caching, where `config.cache_ttl_neg` was not used, and
+  `config.cache_ttl_min` was used instead.
+
+
 ## v2.2.0
 
 - Add support for RS384 (FTI-3035)
 - Mark client_id and client_secret always encrypted (FT-2047)
+
 
 ## v2.1.1
 
@@ -20,6 +27,7 @@
 - feat(consumer_by) unique cache key when ignoring username case
 - feat(consumer_by) add param to match username case-insensitively
 - tests(*) remove credentials from travis.yaml
+
 
 ## v2.0.2
 
