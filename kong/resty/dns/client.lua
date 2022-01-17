@@ -43,6 +43,10 @@ local table_remove = table.remove
 local table_insert = table.insert
 local table_concat = table.concat
 local string_lower = string.lower
+local string_byte  = string.byte
+
+local DOT   = string_byte(".")
+local COLON = string_byte(":")
 
 local EMPTY = setmetatable({},
   {__newindex = function() error("The 'EMPTY' table is read-only") end})
@@ -646,7 +650,7 @@ local function parseAnswer(qname, qtype, answers, try_list)
 
   -- remove last '.' from FQDNs as the answer does not contain it
   local check_qname do
-    if qname:sub(-1, -1) == "." then
+    if string_byte(qname, -1) == DOT then
       check_qname = qname:sub(1, -2) -- FQDN, drop the last dot
     else
       check_qname = qname
@@ -945,8 +949,8 @@ local function check_ipv6(qname, qtype, try_list)
     check = qname
   end
 
-  if check:sub(1,1) == ":" then check = "0"..check end
-  if check:sub(-1,-1) == ":" then check = check.."0" end
+  if string_byte(check, 1)  == COLON then check = "0"..check end
+  if string_byte(check, -1) == COLON then check = check.."0" end
   if check:find("::") then
     -- expand double colon
     local _, count = check:gsub(":","")
@@ -1037,7 +1041,7 @@ local function search_iter(qname, qtype)
 
   local i_type = type_start
   local search do
-    if qname:sub(-1, -1) == "." then
+    if string_byte(qname, -1) == DOT then
       -- this is a FQDN, so no searches
       search = {}
     else
