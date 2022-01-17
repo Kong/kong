@@ -6,6 +6,7 @@ local ws_id = utils.uuid()
 
 local function setup_it_block()
   local cache_table = {}
+  local client = require "kong.resty.dns.client"
 
   local function mock_cache(cache_table, limit)
     return {
@@ -45,6 +46,14 @@ local function setup_it_block()
     }
   })
   balancer.init()
+
+  client.init {
+    hosts = {},
+    resolvConf = {},
+    nameservers = { "8.8.8.8" },
+    enable_ipv6 = true,
+    order = { "LAST", "SRV", "A", "CNAME" },
+  }
 end
 
 -- simple debug function
@@ -55,7 +64,7 @@ end
 
 describe("DNS", function()
   local resolver, query_func, old_new
-  local mock_records, singletons, client
+  local mock_records, singletons
 
   lazy_setup(function()
     stub(ngx, "log")
@@ -75,7 +84,6 @@ describe("DNS", function()
     singletons.origins = {}
 
     resolver = require "resty.dns.resolver"
-    client = require "kong.resty.dns.client"
   end)
 
   lazy_teardown(function()
@@ -120,13 +128,6 @@ describe("DNS", function()
       return r
     end
 
-    client.init {
-      hosts = {},
-      resolvConf = {},
-      nameservers = { "8.8.8.8" },
-      enable_ipv6 = true,
-      order = { "LAST", "SRV", "A", "CNAME" },
-    }
   end)
 
   after_each(function()
