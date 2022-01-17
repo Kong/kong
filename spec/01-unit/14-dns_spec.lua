@@ -5,8 +5,9 @@ local utils = require "kong.tools.utils"
 local ws_id = utils.uuid()
 
 local function setup_it_block()
-  local cache_table = {}
   local client = require "kong.resty.dns.client"
+
+  local cache_table = {}
 
   local function mock_cache(cache_table, limit)
     return {
