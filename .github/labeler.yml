@@ -53,114 +53,114 @@ chore:
 - .devcontainer/**/*
 
 plugins/acl:
-- kong/plugins/acl
+- kong/plugins/acl/**/*
 
 plugins/acme:
-- kong/plugins/acme
+- kong/plugins/acme/**/*
 
 plugins/aws-lambda:
-- kong/plugins/aws-lambda
+- kong/plugins/aws-lambda/**/*
 
 plugins/azure-functions:
-- kong/plugins/azure-functions
+- kong/plugins/azure-functions/**/*
 
 plugins/basic-auth:
-- kong/plugins/basic-auth
+- kong/plugins/basic-auth/**/*
 
 plugins/bot-detection:
-- kong/plugins/bot-detection
+- kong/plugins/bot-detection/**/*
 
 plugins/correlation-id:
-- kong/plugins/correlation-id
+- kong/plugins/correlation-id/**/*
 
 plugins/cors:
-- kong/plugins/cors
+- kong/plugins/cors/**/*
 
 plugins/datadog:
-- kong/plugins/datadog
+- kong/plugins/datadog/**/*
 
 plugins/file-log:
-- kong/plugins/file-log
+- kong/plugins/file-log/**/*
 
 plugins/grpc-gateway:
-- kong/plugins/grpc-gateway
+- kong/plugins/grpc-gateway/**/*
 
 plugins/grpc-web:
-- kong/plugins/grpc-web
+- kong/plugins/grpc-web/**/*
 
 plugins/hmac-auth:
-- kong/plugins/hmac-auth
+- kong/plugins/hmac-auth/**/*
 
 plugins/http-log:
-- kong/plugins/http-log
+- kong/plugins/http-log/**/*
 
 plugins/ip-restriction:
-- kong/plugins/ip-restriction
+- kong/plugins/ip-restriction/**/*
 
 plugins/jwt:
-- kong/plugins/jwt
+- kong/plugins/jwt/**/*
 
 plugins/key-auth:
-- kong/plugins/key-auth
+- kong/plugins/key-auth/**/*
 
 plugins/ldap-auth:
-- kong/plugins/ldap-auth
+- kong/plugins/ldap-auth/**/*
 
 plugins/log-serializers:
-- kong/plugins/log-serializers
+- kong/plugins/log-serializers/**/*
 
 plugins/loggly:
-- kong/plugins/loggly
+- kong/plugins/loggly/**/*
 
 plugins/oauth2:
-- kong/plugins/oauth2
+- kong/plugins/oauth2/**/*
 
 plugins/post-function:
-- kong/plugins/post-function
+- kong/plugins/post-function/**/*
 
 plugins/pre-function:
-- kong/plugins/pre-function
+- kong/plugins/pre-function/**/*
 
 plugins/prometheus:
-- kong/plugins/prometheus
+- kong/plugins/prometheus/**/*
 
 plugins/proxy-cache:
-- kong/plugins/proxy-cache
+- kong/plugins/proxy-cache/**/*
 
 plugins/rate-limiting:
-- kong/plugins/rate-limiting
+- kong/plugins/rate-limiting/**/*
 
 plugins/request-size-limiting:
-- kong/plugins/request-size-limiting
+- kong/plugins/request-size-limiting/**/*
 
 plugins/request-termination:
-- kong/plugins/request-termination
+- kong/plugins/request-termination/**/*
 
 plugins/request-transformer:
-- kong/plugins/request-transformer
+- kong/plugins/request-transformer/**/*
 
 plugins/response-ratelimiting:
-- kong/plugins/response-ratelimiting
+- kong/plugins/response-ratelimiting/**/*
 
 plugins/response-transformer:
-- kong/plugins/response-transformer
+- kong/plugins/response-transformer/**/*
 
 plugins/session:
-- kong/plugins/session
+- kong/plugins/session/**/*
 
 plugins/statsd:
-- kong/plugins/statsd
+- kong/plugins/statsd/**/*
 
 plugins/syslog:
-- kong/plugins/syslog
+- kong/plugins/syslog/**/*
 
 plugins/tcp-log:
-- kong/plugins/tcp-log
+- kong/plugins/tcp-log/**/*
 
 plugins/udp-log:
-- kong/plugins/udp-log
+- kong/plugins/udp-log/**/*
 
 plugins/zipkin:
-- kong/plugins/zipkin
+- kong/plugins/zipkin/**/*
 
 
