@@ -26,6 +26,7 @@ local ngx_WARN = ngx.WARN
 local tonumber = tonumber
 local registry = debug.getregistry()
 local subsystem = ngx.config.subsystem
+local get_request = base.get_request
 
 
 local ngx_lua_ffi_get_ctx_ref
@@ -47,7 +48,7 @@ local _M = {}
 
 
 function _M.stash_ref(ctx)
-  local r = base.get_request()
+  local r = get_request()
   if not r then
     ngx_log(ngx_WARN, "could not stash ngx.ctx ref: no request found")
     return
@@ -74,7 +75,7 @@ end
 
 
 function _M.apply_ref()
-  local r = base.get_request()
+  local r = get_request()
   if not r then
     ngx_log(ngx_WARN, "could not apply ngx.ctx: no request found")
     return
