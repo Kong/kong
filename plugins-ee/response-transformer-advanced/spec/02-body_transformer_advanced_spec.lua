@@ -994,7 +994,7 @@ describe("Plugin: response-transformer-advanced", function()
 
       local result = ngx.arg[1]
 
-      assert.is_nil(result)
+      assert.same("", result)
       assert.are.equal(500, ngx.status)
       assert.spy(kong.log.err).was.called()
     end)

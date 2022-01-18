@@ -60,7 +60,7 @@ function ResponseTransformerHandler:body_filter(conf)
 
           -- Empty body to prevent non-transformed (potentially sensitive)
           -- data from being passed through.
-          kong.response.set_raw_body(nil)
+          kong.response.set_raw_body("")
           ngx.status = 500
           return
         end
