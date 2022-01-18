@@ -344,10 +344,17 @@ local function execute_cache_warmup(kong_config)
   return true
 end
 
+local function get_start_time_ms()
+  return start_time() * 1000
+end
+
+local function get_now_ms()
+  return now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
 
 local function get_updated_now_ms()
   update_time()
-  return now() * 1000 -- time is kept in seconds with millisecond resolution.
+  return get_now_ms()
 end
 
 
@@ -721,11 +728,11 @@ end
 function Kong.preread()
   local ctx = ngx.ctx
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = start_time() * 1000
+    ctx.KONG_PROCESSING_START = get_start_time_ms()
   end
 
   if not ctx.KONG_PREREAD_START then
-    ctx.KONG_PREREAD_START = now() * 1000
+    ctx.KONG_PREREAD_START = get_now_ms()
   end
 
   ctx.KONG_PHASE = PHASES.preread
@@ -769,7 +776,7 @@ function Kong.rewrite()
     local ctx = ngx.ctx           -- after an internal redirect. Restore (and restash)
     kong_resty_ctx.stash_ref(ctx) -- context to avoid re-executing phases
 
-    ctx.KONG_REWRITE_ENDED_AT = now() * 1000
+    ctx.KONG_REWRITE_ENDED_AT = get_now_ms()
     ctx.KONG_REWRITE_TIME = ctx.KONG_REWRITE_ENDED_AT - ctx.KONG_REWRITE_START
 
     return
@@ -777,11 +784,11 @@ function Kong.rewrite()
 
   local ctx = ngx.ctx
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = start_time() * 1000
+    ctx.KONG_PROCESSING_START = get_start_time_ms()
   end
 
   if not ctx.KONG_REWRITE_START then
-    ctx.KONG_REWRITE_START = now() * 1000
+    ctx.KONG_REWRITE_START = get_now_ms()
   end
 
   ctx.KONG_PHASE = PHASES.rewrite
@@ -819,7 +826,7 @@ end
 function Kong.access()
   local ctx = ngx.ctx
   if not ctx.KONG_ACCESS_START then
-    ctx.KONG_ACCESS_START = now() * 1000
+    ctx.KONG_ACCESS_START = get_now_ms()
 
     if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
       ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_ACCESS_START
@@ -884,7 +891,7 @@ end
 
 function Kong.balancer()
   -- This may be called multiple times, and no yielding here!
-  local now_ms = now() * 1000
+  local now_ms = get_now_ms()
 
   local ctx = ngx.ctx
   if not ctx.KONG_BALANCER_START then
@@ -1103,7 +1110,7 @@ do
 
     -- fake response phase (this runs after the balancer)
     if not ctx.KONG_RESPONSE_START then
-      ctx.KONG_RESPONSE_START = now() * 1000
+      ctx.KONG_RESPONSE_START = get_now_ms()
 
       if ctx.KONG_BALANCER_START and not ctx.KONG_BALANCER_ENDED_AT then
         ctx.KONG_BALANCER_ENDED_AT = ctx.KONG_RESPONSE_START
@@ -1142,7 +1149,7 @@ end
 function Kong.header_filter()
   local ctx = ngx.ctx
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = start_time() * 1000
+    ctx.KONG_PROCESSING_START = get_start_time_ms()
   end
 
   if not ctx.workspace then
@@ -1150,7 +1157,7 @@ function Kong.header_filter()
   end
 
   if not ctx.KONG_HEADER_FILTER_START then
-    ctx.KONG_HEADER_FILTER_START = now() * 1000
+    ctx.KONG_HEADER_FILTER_START = get_now_ms()
 
     if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
       ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_BALANCER_START or
@@ -1214,7 +1221,7 @@ end
 function Kong.body_filter()
   local ctx = ngx.ctx
   if not ctx.KONG_BODY_FILTER_START then
-    ctx.KONG_BODY_FILTER_START = now() * 1000
+    ctx.KONG_BODY_FILTER_START = get_now_ms()
 
     if ctx.KONG_REWRITE_START and not ctx.KONG_REWRITE_ENDED_AT then
       ctx.KONG_REWRITE_ENDED_AT = ctx.KONG_ACCESS_START or
@@ -1290,10 +1297,10 @@ end
 function Kong.log()
   local ctx = ngx.ctx
   if not ctx.KONG_LOG_START then
-    ctx.KONG_LOG_START = now() * 1000
+    ctx.KONG_LOG_START = get_now_ms()
     if is_stream_module then
       if not ctx.KONG_PROCESSING_START then
-        ctx.KONG_PROCESSING_START = start_time() * 1000
+        ctx.KONG_PROCESSING_START = get_start_time_ms()
       end
 
       if ctx.KONG_PREREAD_START and not ctx.KONG_PREREAD_ENDED_AT then
@@ -1408,8 +1415,8 @@ end
 
 local function serve_content(module, options)
   local ctx = ngx.ctx
-  ctx.KONG_PROCESSING_START = start_time() * 1000
-  ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or now() * 1000
+  ctx.KONG_PROCESSING_START = get_start_time_ms()
+  ctx.KONG_ADMIN_CONTENT_START = ctx.KONG_ADMIN_CONTENT_START or get_now_ms()
   ctx.KONG_PHASE = PHASES.admin_api
 
   log_init_worker_errors(ctx)
@@ -1446,11 +1453,11 @@ function Kong.admin_header_filter()
   local ctx = ngx.ctx
 
   if not ctx.KONG_PROCESSING_START then
-    ctx.KONG_PROCESSING_START = start_time() * 1000
+    ctx.KONG_PROCESSING_START = get_start_time_ms()
   end
 
   if not ctx.KONG_ADMIN_HEADER_FILTER_START then
-    ctx.KONG_ADMIN_HEADER_FILTER_START = now() * 1000
+    ctx.KONG_ADMIN_HEADER_FILTER_START = get_now_ms()
 
     if ctx.KONG_ADMIN_CONTENT_START and not ctx.KONG_ADMIN_CONTENT_ENDED_AT then
       ctx.KONG_ADMIN_CONTENT_ENDED_AT = ctx.KONG_ADMIN_HEADER_FILTER_START
