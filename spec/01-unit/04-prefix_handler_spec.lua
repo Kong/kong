@@ -1057,6 +1057,15 @@ describe("NGINX conf compiler", function()
     describe("custom template", function()
       local templ_fixture = "spec/fixtures/custom_nginx.template"
 
+      lazy_setup(function()
+        pcall(helpers.dir.rmtree, "/tmp/not-a-file")
+        assert(helpers.dir.makepath("/tmp/not-a-file"))
+      end)
+
+      lazy_teardown(function()
+        pcall(helpers.dir.rmtree, "/tmp/not-a-file")
+      end)
+
       it("accepts a custom NGINX conf template", function()
         assert(prefix_handler.prepare_prefix(tmp_config, templ_fixture))
         assert.truthy(exists(tmp_config.nginx_conf))
@@ -1070,6 +1079,11 @@ describe("NGINX conf compiler", function()
         local ok, err = prefix_handler.prepare_prefix(tmp_config, "spec/fixtures/inexistent.template")
         assert.is_nil(ok)
         assert.equal("no such file: spec/fixtures/inexistent.template", err)
+      end)
+      it("errors on file read failures", function()
+        local ok, err = prefix_handler.prepare_prefix(tmp_config, "/tmp/not-a-file")
+        assert.is_nil(ok)
+        assert.matches("failed reading custom nginx template file: /tmp/not-a-file", err, nil, true)
       end)
       it("reports Penlight templating errors", function()
         local u = helpers.unindent

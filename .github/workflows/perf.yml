@@ -8,7 +8,7 @@ on:
   - cron:  '0 7 * * *'
 
 env:
-  terraform_version: '0.15.3'
+  terraform_version: '1.1.2'
 
 jobs:
   perf:
@@ -98,8 +98,8 @@ jobs:
     - name: Run Tests
       env:
         PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
-        PERF_TEST_PACKET_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
-        PERF_TEST_PACKET_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
+        PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
+        PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
       timeout-minutes: 60
       run: |
@@ -117,8 +117,8 @@ jobs:
       if: always()
       env:
         PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
-        PERF_TEST_PACKET_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
-        PERF_TEST_PACKET_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
+        PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_PACKET_PROJECT_ID }}
+        PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_PACKET_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
         PERF_TEST_TEARDOWN_ALL: "true"
       run: |

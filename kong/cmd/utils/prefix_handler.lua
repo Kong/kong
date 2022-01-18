@@ -209,7 +209,7 @@ local function gen_trusted_certs_combined_file(combined_filepath, paths)
   local fd = assert(io.open(combined_filepath, "w"))
 
   for _, path in ipairs(paths) do
-    fd:write(pl_file.read(path))
+    fd:write(assert(pl_file.read(path)))
     fd:write("\n")
   end
 
@@ -471,7 +471,12 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     if not pl_path.exists(nginx_custom_template_path) then
       return nil, "no such file: " .. nginx_custom_template_path
     end
-    nginx_template = pl_file.read(nginx_custom_template_path)
+    local read_err
+    nginx_template, read_err = pl_file.read(nginx_custom_template_path)
+    if not nginx_template then
+      read_err = tostring(read_err or "unknown error")
+      return nil, "failed reading custom nginx template file: " .. read_err
+    end
   end
 
   -- [[ XXX EE: adding admin_gui, portal_gui, and portal_api ]]

@@ -19,12 +19,12 @@ if driver == "terraform" then
     provider = "equinix-metal",
     tfvars = {
       -- Kong Benchmarking
-      packet_project_id = os.getenv("PERF_TEST_PACKET_PROJECT_ID"),
+      metal_project_id = os.getenv("PERF_TEST_METAL_PROJECT_ID"),
       -- TODO: use an org token
-      packet_auth_token = os.getenv("PERF_TEST_PACKET_AUTH_TOKEN"),
-      -- packet_plan = "baremetal_1",
-      -- packet_region = "sjc1",
-      -- packet_os = "ubuntu_20_04",
+      metal_auth_token = os.getenv("PERF_TEST_METAL_AUTH_TOKEN"),
+      -- metal_plan = "baremetal_1",
+      -- metal_region = "sjc1",
+      -- metal_os = "ubuntu_20_04",
     }
   })
 else
@@ -38,7 +38,7 @@ if env_versions then
   versions = split(env_versions, ",")
 end
 
-local LOAD_DURATION = 30
+local LOAD_DURATION = os.getenv("PERF_TEST_LOAD_DURATION") or 30
 
 local SERVICE_COUNT = 10
 local ROUTE_PER_SERVICE = 10

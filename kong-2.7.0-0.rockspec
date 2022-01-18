@@ -15,7 +15,7 @@ dependencies = {
   "inspect == 3.1.2",
   "luasec == 1.0.2",
   "luasocket == 3.0-rc1",
-  "penlight == 1.11.0",
+  "penlight == 1.12.0",
   "lua-resty-http == 0.16.1",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
@@ -52,7 +52,7 @@ dependencies = {
   "lua-resty-passwdqc == 1.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.7.2",
-  "lua-resty-session == 3.8",
+  "lua-resty-session == 3.10",
 }
 build = {
   type = "builtin",

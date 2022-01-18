@@ -1201,6 +1201,33 @@ describe("Router", function()
         assert.same(nil, match_t.matches.uri_captures)
       end)
 
+      it("submatch_weight [wildcard host port] > [wildcard host] ", function()
+        local use_case = {
+          {
+            service = service,
+            route = {
+              hosts = { "route.*" },
+            },
+          },
+          {
+            service = service,
+            route = {
+              hosts = { "route.*:80", "route.com.*" },
+            },
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local match_t = router.select("GET", "/", "route.org:80")
+        assert.truthy(match_t)
+        assert.same(use_case[2].route, match_t.route)
+        assert.same("route.*:80", match_t.matches.host)
+        assert.same(nil, match_t.matches.method)
+        assert.same(nil, match_t.matches.uri)
+        assert.same(nil, match_t.matches.uri_captures)
+      end)
+
       it("matches a [wildcard host + port] even if a [wildcard host] matched", function()
         local use_case = {
           {
@@ -3179,46 +3206,6 @@ describe("Router", function()
               assert.same(test.expected_path, match_t.upstream_uri)
             end)
           end
-        end
-      end
-    end)
-  end)
-
-
-  describe("has_capturing_groups()", function()
-    -- load the `assert.fail` assertion
-    require "spec.helpers"
-
-    it("detects if a string has capturing groups", function()
-      local paths                         = {
-        ["/users/(foo)"]                 = true,
-        ["/users/()"]                    = true,
-        ["/users/()/foo"]                = true,
-        ["/users/(hello(foo)world)"]     = true,
-        ["/users/(hello(foo)world"]      = true,
-        ["/users/(foo)/thing/(bar)"]     = true,
-        ["/users/\\(foo\\)/thing/(bar)"] = true,
-        -- 0-indexed capture groups
-        ["()/world"]                     = true,
-        ["(/hello)/world"]               = true,
-
-        ["/users/\\(foo\\)"]             = false,
-        ["/users/\\(\\)"]                = false,
-        -- unbalanced capture groups
-        ["(/hello\\)/world"]             = false,
-        ["/users/(foo"]                  = false,
-        ["/users/\\(foo)"]               = false,
-        ["/users/(foo\\)"]               = false,
-      }
-
-      for uri, expected_to_match in pairs(paths) do
-        local has_captures = Router.has_capturing_groups(uri)
-        if expected_to_match and not has_captures then
-          assert.fail(uri, "has capturing groups that were not detected")
-
-        elseif not expected_to_match and has_captures then
-          assert.fail(uri, "has no capturing groups but false-positives " ..
-                           "were detected")
         end
       end
     end)
