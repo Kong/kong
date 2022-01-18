@@ -22,7 +22,7 @@ pipeline {
         stage('Release Per Commit') {
             when {
                 beforeAgent true
-                anyOf { branch 'master'; }
+                anyOf { branch 'master'; branch 'feat/lmdb'; }
             }
             agent {
                 node {
