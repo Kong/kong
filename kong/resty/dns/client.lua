@@ -619,6 +619,13 @@ _M.init = function(options)
   options.search = options.search or resolv.search or { resolv.domain }
   log(DEBUG, PREFIX, "search = ", table_concat(options.search,", "))
 
+  -- check if there is special domain like "."
+  for i = 1, #options.search do
+    if options.search[i] == "." then
+      options.search[i] = ""
+    end
+  end
+
 
   -- other options
 
