@@ -1781,6 +1781,7 @@ describe("declarative config: flatten", function()
                     http_path = "/",
                     https_sni = null,
                     https_verify_certificate = true,
+                    headers = null,
                     timeout = 1,
                     type = "http",
                     unhealthy = {
@@ -1832,6 +1833,7 @@ describe("declarative config: flatten", function()
                     http_path = "/",
                     https_sni = null,
                     https_verify_certificate = true,
+                    headers = null,
                     timeout = 1,
                     type = "http",
                     unhealthy = {
