@@ -198,8 +198,8 @@ local serializers = {
 -- Where:
 --
 -- * `%namespace`: The configured namespace (in this case, the plugin name).
--- * `%file_src`: The filename from where the log was called.
--- * `%line_src`: The line number from where the log was called.
+-- * `%file_src`: The filename the log was called from.
+-- * `%line_src`: The line number the log was called from.
 -- * `%message`: The message, made of concatenated arguments given by the caller.
 --
 -- For example, the following call:
@@ -459,9 +459,9 @@ end
 --
 -- Where:
 --
--- * `%file_src`: The filename from where the log was called.
--- * `%func_name`: The name of the function from where the log was called.
--- * `%line_src`: The line number from where the log was called.
+-- * `%file_src`: The filename the log was called from.
+-- * `%func_name`: The name of the function the log was called from.
+-- * `%line_src`: The line number the log was called from.
 -- * `%message`: The message, made of concatenated, pretty-printed arguments
 --   given by the caller.
 --
@@ -551,7 +551,7 @@ end
 -- Sets a value to be used on the `serialize` custom table.
 --
 -- Logging plugins use the output of `kong.log.serialize()` as a base for their logs.
--- This function let you customize the log output.
+-- This function lets you customize the log output.
 --
 -- It can be used to replace existing values in the output, or to delete
 -- existing values by passing `nil`.

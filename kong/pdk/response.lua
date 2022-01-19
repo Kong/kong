@@ -831,7 +831,7 @@ local function new(self, major_version)
     --    * 502 - Bad gateway
     --    * 503 - Service unavailable
     --
-    -- 1. The second, optional, `body` argument sets the response body. If it is
+    -- 2. The second, optional, `body` argument sets the response body. If it is
     --    a string, no special processing is done, and the body is sent
     --    as-is.  It is the caller's responsibility to set the appropriate
     --    `Content-Type` header via the third argument.
@@ -855,7 +855,7 @@ local function new(self, major_version)
     --    error log file.
     --    * When the `status` is anything else, `body` is sent back to the L4 client.
     --
-    -- 1. The third, optional, `headers` argument can be a table specifying
+    -- 3. The third, optional, `headers` argument can be a table specifying
     --    response headers to send. If specified, its behavior is similar to
     --    `kong.response.set_headers()`. This argument is ignored in L4 proxy mode.
     --
@@ -1043,10 +1043,10 @@ local function new(self, major_version)
   -- is seen by the client. The status code must an error code, that is,
   -- greater than 399.
   --
-  -- 1. The optional `message` argument sets the message describing
+  -- 2. The optional `message` argument sets the message describing
   -- the error, which is written in the body.
   --
-  -- 1. The optional `headers` argument can be a table specifying response
+  -- 3. The optional `headers` argument can be a table specifying response
   -- headers to send. If specified, its behavior is similar to
   -- `kong.response.set_headers()`.
   --
