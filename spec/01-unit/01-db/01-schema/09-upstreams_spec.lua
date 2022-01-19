@@ -67,6 +67,12 @@ describe("load upstreams", function()
     assert.truthy(errs.healthchecks.active.concurrency)
   end)
 
+  it("invalid healthckecks.active.headers produces error", function()
+    local ok, errs = validate({ healthchecks = { active = { headers = { 114514 } } } } )
+    assert.falsy(ok)
+    assert.truthy(errs.healthchecks.active.http_path)
+  end)
+
   it("invalid healthckecks.active.http_path produces error", function()
     local ok, errs = validate({ healthchecks = { active = { http_path = "potato" } } } )
     assert.falsy(ok)
@@ -270,6 +276,8 @@ describe("load upstreams", function()
       local pos_integer = "value should be between 1 and 2147483648"
       local zero_integer = "value should be between 0 and 255"
       local status_code = "value should be between 100 and 999"
+      local string = "expected a string"
+      local empty_string = "vaule must be non-empty string"
       local integer = "expected an integer"
       local boolean = "expected a boolean"
       local number = "expected a number"
@@ -298,6 +306,10 @@ describe("load upstreams", function()
         {{ active = { https_sni = "hello-.example.com", }}, invalid_host },
         {{ active = { https_sni = "example.com:1234", }}, invalid_host_port },
         {{ active = { https_verify_certificate = "ovo", }}, boolean },
+        {{ active = { headers = 0, }}, "expected an array" },
+        {{ active = { headers = { 0 }, }}, string },
+        {{ active = { headers = { "" }, }}, empty_string },
+        {{ active = { headers = { 0, "example" }, }}, string },
         {{ active = { healthy = { interval = -1 }}}, seconds },
         {{ active = { healthy = { interval = 1e+42 }}}, seconds },
         {{ active = { healthy = { http_statuses = 404 }}}, "expected an array" },

@@ -73,6 +73,13 @@ local check_verify_certificate = Schema.define {
   required = true,
 }
 
+local check_headers = Schema.define {
+  type = "array",
+  elements = {
+    type = "string",
+    len_min = 1,
+  },
+}
 
 local health_threshold = Schema.define {
   type = "number",
@@ -92,6 +99,7 @@ local healthchecks_config = {
     http_path = "/",
     https_sni = NO_DEFAULT,
     https_verify_certificate = true,
+    headers = {""},
     healthy = {
       interval = 0,  -- 0 = probing disabled by default
       http_statuses = { 200, 302 },
@@ -136,6 +144,7 @@ local types = {
   http_statuses = http_statuses,
   https_sni = typedefs.sni,
   https_verify_certificate = check_verify_certificate,
+  headers = check_headers,
 }
 
 
