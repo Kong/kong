@@ -281,6 +281,7 @@ describe("load upstreams", function()
       local number = "expected a number"
       local array = "expected an array"
       local string = "expected a string"
+      local map = "expected a map"
       local len_min_default = "length must be at least 1"
       local invalid_host = "invalid value: "
       local invalid_host_port = "must not have a port"
@@ -307,11 +308,10 @@ describe("load upstreams", function()
         {{ active = { https_sni = "hello-.example.com", }}, invalid_host },
         {{ active = { https_sni = "example.com:1234", }}, invalid_host_port },
         {{ active = { https_verify_certificate = "ovo", }}, boolean },
-        {{ active = { headers = 0, }}, array },
-        {{ active = { headers = {}, }}, len_min_default },
+        {{ active = { headers = 0, }}, map },
         {{ active = { headers = { 0 }, }}, string },
-        {{ active = { headers = { "" }, }}, len_min_default },
-        {{ active = { headers = { 123, "example" }, }}, string },
+        {{ active = { headers = { "" }, }}, string },
+        {{ active = { headers = { ["x-header"] = 123 }, }}, array },
         {{ active = { healthy = { interval = -1 }}}, seconds },
         {{ active = { healthy = { interval = 1e+42 }}}, seconds },
         {{ active = { healthy = { http_statuses = 404 }}}, array },
