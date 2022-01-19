@@ -172,7 +172,7 @@ local function new(self)
   -- @function kong.client.load_consumer
   -- @phases access, header_filter, response, body_filter, log
   -- @tparam string consumer_id The consumer ID to look up.
-  -- @tparam[opt] boolean search_by_username. If truthy,
+  -- @tparam[opt] boolean search_by_username If truthy,
   -- and if the consumer is not found by ID,
   -- then a second search by username will be performed.
   -- @treturn table|nil Consumer entity or `nil`.
@@ -269,7 +269,7 @@ local function new(self)
   -- erroneous requests.
   -- @function kong.client.get_protocol
   -- @phases access, header_filter, response, body_filter, log
-  -- @tparam[opt] boolean allow_terminated. If set, the `X-Forwarded-Proto` header is checked when checking for HTTPS.
+  -- @tparam[opt] boolean allow_terminated If set, the `X-Forwarded-Proto` header is checked when checking for HTTPS.
   -- @treturn string|nil Can be one of `"http"`, `"https"`, `"tcp"`, `"tls"` or `nil`.
   -- @treturn nil|err `nil` if successful, or an error message if it fails.
   -- @usage
