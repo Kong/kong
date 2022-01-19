@@ -30,6 +30,7 @@ return {
   primary_key = { "id" },
   workspaceable = true,
   endpoint_key = "name",
+  dao = "kong.db.dao.services",
 
   fields = {
     { id                 = typedefs.uuid, },
@@ -60,11 +61,15 @@ return {
                       then_field = "path",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
-                      if_match = { ne = "https" },
+                      -- EE websockets [[
+                      if_match = { not_one_of = { "https", "wss" }},
+                      -- ]]
                       then_field = "client_certificate",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
-                      if_match = { ne = "https" },
+                      -- EE websockets [[
+                      if_match = { not_one_of = { "https", "wss" }},
+                      -- ]]
                       then_field = "tls_verify",
                       then_match = { eq = null }}},
     { conditional = { if_field = "protocol",
@@ -104,6 +109,8 @@ return {
                  parsed_url.port or
                  (protocol == "http"  and 80)  or
                  (protocol == "https" and 443) or
+                 (protocol == "ws"    and 80)  or
+                 (protocol == "wss"   and 443) or
                  default_port,
           path = parsed_url.path or null,
         }

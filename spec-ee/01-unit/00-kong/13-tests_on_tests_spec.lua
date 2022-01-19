@@ -9,23 +9,23 @@ local sx = require("pl.stringx")
 
 describe("testing directory", function()
   it("does not have extra lua files that are not going to be ran", function()
-    local command = 'ls -R spec-ee/ | grep "lua$"'
-    local f = io.popen(command)
-    local l = sx.splitlines(f:read("*a"))
-    f:close()
+    local command = [[find spec-ee/ -type f -name '*.lua']]
+    local fh = io.popen(command)
+    local l = sx.splitlines(fh:read("*a"))
+    fh:close()
 
     local wrong_filename = {}
     for _, f in ipairs(l) do
-      if f == "helpers.lua" or f == "06-proxies-spec.lua"  then
-        _ = 0 -- all cool
-      elseif f:find("_spec.lua$") then
-        _ = 0 -- all cool
-      else
+      if not f:find("^spec%-ee/fixtures/")
+         and not f:find("/helpers.lua$")
+         and not f:find("/06%-proxies%-spec.lua$")
+         and not f:find("_spec.lua$")
+      then
         table.insert(wrong_filename, f)
       end
-
-      assert.equals(0, #wrong_filename)
     end
+
+    assert.same({}, wrong_filename)
   end)
 
 end)

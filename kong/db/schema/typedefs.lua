@@ -439,13 +439,27 @@ typedefs.tags = Schema.define {
 }
 
 local http_protocols = {}
-for p, s in pairs(constants.PROTOCOLS_WITH_SUBSYSTEM) do
-  if s == "http" then
-    http_protocols[#http_protocols + 1] = p
+local http_and_ws_protocols = {}
+local ws_protocols = {}
+
+for proto, subsystem in pairs(constants.PROTOCOLS_WITH_SUBSYSTEM) do
+  local is_websocket = proto == "ws" or proto == "wss"
+
+  if subsystem == "http" then
+    http_and_ws_protocols[#http_and_ws_protocols + 1] = proto
+
+    if is_websocket then
+      ws_protocols[#ws_protocols + 1] = proto
+    else
+      http_protocols[#http_protocols + 1] = proto
+    end
   end
 end
 table.sort(http_protocols)
+table.sort(http_and_ws_protocols)
+table.sort(ws_protocols)
 
+-- all protocols
 typedefs.protocols = Schema.define {
   type = "set",
   required = true,
@@ -453,11 +467,28 @@ typedefs.protocols = Schema.define {
   elements = typedefs.protocol,
 }
 
+-- all HTTP protocols _excluding_ WebSockets (ws/wss)
 typedefs.protocols_http = Schema.define {
   type = "set",
   required = true,
   default = http_protocols,
   elements = { type = "string", one_of = http_protocols },
+}
+
+-- all HTTP protocols _including_ WebSockets (ws/wss)
+typedefs.protocols_http_and_ws = Schema.define {
+  type = "set",
+  required = true,
+  default = http_protocols,
+  elements = { type = "string", one_of = http_and_ws_protocols },
+}
+
+-- WebSocket protocols only (ws/wss)
+typedefs.protocols_ws = Schema.define {
+  type = "set",
+  required = true,
+  default = http_protocols,
+  elements = { type = "string", one_of = ws_protocols },
 }
 
 

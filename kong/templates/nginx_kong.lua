@@ -297,6 +297,34 @@ server {
         grpc_pass            $upstream_scheme://kong_upstream;
     }
 
+    location @websocket {
+        internal;
+        default_type         '';
+        set $kong_proxy_mode 'websocket';
+
+        # turning off lingering_close ensures that NGINX closes the client
+        # connection as soon as the content handler exits rather than leaving
+        # it open for some amount of time
+        lingering_close off;
+
+        lua_check_client_abort on;
+
+        body_filter_by_lua_block {;}
+
+        access_by_lua_block {
+          Kong.ws_handshake()
+        }
+
+        content_by_lua_block {
+          Kong.ws_proxy()
+        }
+
+        log_by_lua_block {
+          Kong.ws_close()
+        }
+    }
+
+
     location = /kong_buffered_http {
         internal;
         default_type         '';

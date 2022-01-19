@@ -1485,6 +1485,18 @@ return {
           return exec("@grpc")
         end
 
+        -- EE websockets [[
+        if service.protocol == "ws" or service.protocol == "wss" then
+          -- Jump over to our WebSocket-specific location
+          --
+          -- From a technical standpoint, this isn't strictly necessary, and
+          -- I'd be surprised if it doesn't incur a performance penalty), but
+          -- it seems like the easiest way to branch away from the regular
+          -- proxying code path without needing to modify a lot of OSS code.
+          return exec("@websocket")
+        end
+        -- ]]
+
         if protocol_version == 1.1 then
           if route.request_buffering == false then
             if route.response_buffering == false then

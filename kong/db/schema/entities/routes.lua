@@ -14,6 +14,7 @@ return {
   endpoint_key = "name",
   workspaceable = true,
   subschema_key = "protocols",
+  dao = "kong.db.dao.routes",
 
   fields = {
     { id             = typedefs.uuid, },
@@ -29,6 +30,9 @@ return {
                            { "tcp", "tls", "udp" },
                            { "tls_passthrough" },
                            { "grpc", "grpcs" },
+                           -- EE websockets [[
+                           { "ws", "wss" },
+                           -- ]]
                          },
                          default = { "http", "https" }, -- TODO: different default depending on service's scheme
                          indexed = true,
@@ -66,10 +70,12 @@ return {
 
   entity_checks = {
     { conditional = { if_field = "protocols",
-                      if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough" }}},
+                      -- EE websockets [[
+                      if_match = { elements = { type = "string", not_one_of = { "grpcs", "https", "tls", "tls_passthrough", "wss" }}},
                       then_field = "snis",
                       then_match = { len_eq = 0 },
-                      then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
+                      then_err = "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls', 'tls_passthrough', or 'wss'",
                     }},
+                      -- ]]
                   },
 }

@@ -47,13 +47,23 @@ local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
 local PHASES = phase_checker.phases
 local PHASES_LOG = PHASES.log
 
+-- EE websockets [[
+PHASES_LOG = phase_checker.new(PHASES_LOG, PHASES.ws_close)
+-- ]]
+
 local phases_with_ctx =
     phase_checker.new(PHASES.rewrite,
                       PHASES.access,
                       PHASES.header_filter,
                       PHASES.response,
                       PHASES.body_filter,
-                      PHASES_LOG)
+                      PHASES_LOG,
+                      -- EE websockets [[
+                      PHASES.ws_proxy,
+                      PHASES.ws_handshake,
+                      PHASES.ws_close)
+                      -- ]]
+
 local _LEVELS = {
   debug = ngx.DEBUG,
   info = ngx.INFO,

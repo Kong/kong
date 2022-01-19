@@ -55,14 +55,22 @@ local header_body_log = phase_checker.new(PHASES.response,
                                           PHASES.body_filter,
                                           PHASES.log,
                                           PHASES.error,
-                                          PHASES.admin_api)
+                                          PHASES.admin_api,
+                                          -- EE websockets [[
+                                          PHASES.ws_proxy,
+                                          PHASES.ws_close)
+                                          -- ]]
 
 local rewrite_access_header = phase_checker.new(PHASES.rewrite,
                                                 PHASES.access,
                                                 PHASES.response,
                                                 PHASES.header_filter,
                                                 PHASES.error,
-                                                PHASES.admin_api)
+                                                PHASES.admin_api,
+                                                -- EE websockets [[
+                                                PHASES.ws_handshake,
+                                                PHASES.ws_proxy)
+                                                -- ]]
 
 
 local function new(self, major_version)

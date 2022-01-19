@@ -107,6 +107,10 @@ local protocols_with_subsystem = {
   tls_passthrough = "stream",
   grpc = "http",
   grpcs = "http",
+  -- EE websockets [[
+  ws = "http",
+  wss = "http",
+  -- ]]
 }
 local protocols = {}
 for p,_ in pairs(protocols_with_subsystem) do

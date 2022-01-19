@@ -28,6 +28,7 @@ local tracing = require "kong.tracing"
 local counters = require "kong.workspaces.counters"
 local workspace_config = require "kong.portal.workspace_config"
 local BasePlugin = require "kong.plugins.base_plugin"
+local websocket = require "kong.enterprise_edition.runloop.websocket"
 
 local cjson = require "cjson.safe"
 
@@ -237,7 +238,11 @@ _M.handlers = {
         kong.vitals:log_phase_after_plugins(ctx, status)
       end
     end
-  }
+  },
+
+  ws_handshake = websocket.handlers.ws_handshake,
+  ws_proxy = websocket.handlers.ws_proxy,
+  ws_close = websocket.handlers.ws_close,
 }
 
 

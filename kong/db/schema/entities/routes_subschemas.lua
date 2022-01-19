@@ -82,4 +82,8 @@ return {
   tls_passthrough = stream_subschema,
   grpc = grpc_subschema,
   grpcs = grpc_subschema,
+  -- EE websockets [[
+  ws = http_subschema,
+  wss = http_subschema,
+  -- ]]
 }

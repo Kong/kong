@@ -171,6 +171,18 @@ describe("kong.clustering.control_plane", function()
       degraphql = {
         "graphql_server_path",
       },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -294,6 +306,18 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -419,6 +443,18 @@ describe("kong.clustering.control_plane", function()
       degraphql = {
         "graphql_server_path",
       },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -539,6 +575,18 @@ describe("kong.clustering.control_plane", function()
       degraphql = {
         "graphql_server_path",
       },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -652,6 +700,18 @@ describe("kong.clustering.control_plane", function()
       degraphql = {
         "graphql_server_path",
       },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
     }, cp._get_removed_fields(2004001002))
 
     assert.same({
@@ -764,6 +824,18 @@ describe("kong.clustering.control_plane", function()
       degraphql = {
         "graphql_server_path",
       },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -829,6 +901,18 @@ describe("kong.clustering.control_plane", function()
       degraphql = {
         "graphql_server_path",
       },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
     }, cp._get_removed_fields(2006000000))
 
     assert.same({
@@ -872,6 +956,18 @@ describe("kong.clustering.control_plane", function()
       degraphql = {
         "graphql_server_path",
       },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
     }, cp._get_removed_fields(2007000000))
 
     assert.same({
@@ -884,6 +980,18 @@ describe("kong.clustering.control_plane", function()
       },
       degraphql = {
         "graphql_server_path",
+      },
+      pre_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
+      },
+      post_function = {
+        "ws_handshake",
+        "ws_client_frame",
+        "ws_upstream_frame",
+        "ws_close",
       },
     }, cp._get_removed_fields(2008000000))
   end)
@@ -988,6 +1096,26 @@ describe("kong.clustering.control_plane", function()
           config = {
             cluster_name = "test",
           },
+        }, {
+          name = "pre-function",
+          config = {
+            access            = { [[error("oh no!")]] },
+            log               = { [[error("oh no!")]] },
+            ws_handshake      = { [[error("oh no!")]] },
+            ws_client_frame   = { [[error("oh no!")]] },
+            ws_upstream_frame = { [[error("oh no!")]] },
+            ws_close          = { [[error("oh no!")]] },
+          },
+        }, {
+          name = "post-function",
+          config = {
+            access            = { [[error("oh no!")]] },
+            log               = { [[error("oh no!")]] },
+            ws_handshake      = { [[error("oh no!")]] },
+            ws_client_frame   = { [[error("oh no!")]] },
+            ws_upstream_frame = { [[error("oh no!")]] },
+            ws_close          = { [[error("oh no!")]] },
+          },
         }, }
       }
     }
@@ -1049,6 +1177,18 @@ describe("kong.clustering.control_plane", function()
     }, {
       name = "kafka-upstream",
       config = {}
+    }, {
+      name = "pre-function",
+      config = {
+        access = { [[error("oh no!")]] },
+        log    = { [[error("oh no!")]] },
+      }
+    }, {
+      name = "post-function",
+      config = {
+        access = { [[error("oh no!")]] },
+        log    = { [[error("oh no!")]] },
+      }
     }, }, test_with(payload, "2.3.0").config_table.plugins)
 
     assert.same({ {
@@ -1109,6 +1249,18 @@ describe("kong.clustering.control_plane", function()
     }, {
       name = "kafka-upstream",
       config = {}
+    }, {
+      name = "pre-function",
+      config = {
+        access = { [[error("oh no!")]] },
+        log    = { [[error("oh no!")]] },
+      }
+    }, {
+      name = "post-function",
+      config = {
+        access = { [[error("oh no!")]] },
+        log    = { [[error("oh no!")]] },
+      }
     }, }, test_with(payload, "2.4.0").config_table.plugins)
 
     assert.same({ {
@@ -1169,6 +1321,18 @@ describe("kong.clustering.control_plane", function()
     }, {
       name = "kafka-upstream",
       config = {}
+    }, {
+      name = "pre-function",
+      config = {
+        access = { [[error("oh no!")]] },
+        log    = { [[error("oh no!")]] },
+      }
+    }, {
+      name = "post-function",
+      config = {
+        access = { [[error("oh no!")]] },
+        log    = { [[error("oh no!")]] },
+      }
     }, }, test_with(payload, "2.5.0").config_table.plugins)
 
     assert.same({ {
@@ -1229,6 +1393,18 @@ describe("kong.clustering.control_plane", function()
     }, {
       name = "kafka-upstream",
       config = {}
+    }, {
+      name = "pre-function",
+      config = {
+        access = { [[error("oh no!")]] },
+        log    = { [[error("oh no!")]] },
+      }
+    }, {
+      name = "post-function",
+      config = {
+        access = { [[error("oh no!")]] },
+        log    = { [[error("oh no!")]] },
+      }
     }, }, test_with(payload, "2.6.0").config_table.plugins)
 
     assert.same({ {
@@ -1300,6 +1476,18 @@ describe("kong.clustering.control_plane", function()
     }, {
       name = "kafka-upstream",
       config = {}
+    }, {
+      name = "pre-function",
+      config = {
+        access = { [[error("oh no!")]] },
+        log    = { [[error("oh no!")]] },
+      }
+    }, {
+      name = "post-function",
+      config = {
+        access = { [[error("oh no!")]] },
+        log    = { [[error("oh no!")]] },
+      }
     }, }, test_with(payload, "2.7.0").config_table.plugins)
 
     -- nothing should be removed

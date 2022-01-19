@@ -222,7 +222,12 @@ end
 -- @balancer_data target the data structure as defined in `core.access.before` where
 -- it is created.
 -- @return true on success, nil+error message+status code otherwise
-local function execute(balancer_data, ctx)
+--
+-- EE websockets [[
+-- XXX the added upstream_cert_present param is an ugly workaround that allows
+-- this function to run in a non-proxy_pass execution path
+local function execute(balancer_data, ctx, upstream_cert_present)
+-- ]]
   if balancer_data.type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
     balancer_data.ip       = balancer_data.host
@@ -265,7 +270,14 @@ local function execute(balancer_data, ctx)
         balancer_data.hash_value = hash_value
       end
 
-      if ctx and ctx.service and not ctx.service.client_certificate then
+      -- EE websockets [[
+      -- see above re: no_upstream_cert
+      if not upstream_cert_present
+         and ctx
+         and ctx.service
+         and not ctx.service.client_certificate
+      then
+      -- ]]
         -- service level client_certificate is not set
         local cert, res, err
         local client_certificate = upstream.client_certificate
@@ -383,8 +395,16 @@ local function set_host_header(balancer_data, upstream_scheme, upstream_host, is
 
   local port = balancer_data.port
   if (port ~= 80  and port ~= 443)
-  or (port == 80  and upstream_scheme ~= "http"  and upstream_scheme ~= "grpc")
-  or (port == 443 and upstream_scheme ~= "https" and upstream_scheme ~= "grpcs")
+  -- EE websockets [[
+  or (port == 80
+      and upstream_scheme ~= "http"
+      and upstream_scheme ~= "grpc"
+      and upstream_scheme ~= "ws")
+  or (port == 443
+      and upstream_scheme ~= "https"
+      and upstream_scheme ~= "grpcs"
+      and upstream_scheme ~= "wss")
+  -- ]]
   then
     new_upstream_host = new_upstream_host .. ":" .. port
   end

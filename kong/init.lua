@@ -873,7 +873,7 @@ end
 
 function Kong.rewrite()
   local proxy_mode = var.kong_proxy_mode
-  if proxy_mode == "grpc" or proxy_mode == "unbuffered"  then
+  if proxy_mode == "grpc" or proxy_mode == "unbuffered"  or proxy_mode == "websocket" then
     kong_resty_ctx.apply_ref()    -- if kong_proxy_mode is gRPC/unbuffered, this is executing
     local ctx = ngx.ctx           -- after an internal redirect. Restore (and restash)
     kong_resty_ctx.stash_ref(ctx) -- context to avoid re-executing phases
@@ -1321,8 +1321,16 @@ function Kong.header_filter()
   ctx.KONG_PHASE = PHASES.header_filter
 
   runloop.header_filter.before(ctx)
-  local plugins_iterator = runloop.get_plugins_iterator()
-  execute_collected_plugins_iterator(plugins_iterator, "header_filter", ctx)
+  -- EE websockets [[
+  --
+  -- XXX should we really skip header_filter for ws/wss services? There might
+  -- be a legitimate use case for it. Maybe we should leave it disabled for now
+  -- and add a `ws_header_filter` or `ws_post_handshake` handler.
+  if var.kong_proxy_mode ~= "websocket" then
+    local plugins_iterator = runloop.get_plugins_iterator()
+    execute_collected_plugins_iterator(plugins_iterator, "header_filter", ctx)
+  end
+  -- ]]
   runloop.header_filter.after(ctx)
   ee.handlers.header_filter.after(ctx)
 
@@ -1712,6 +1720,91 @@ do
     end
   end
 end
+
+
+-- EE websockets [[
+function Kong.ws_handshake()
+  local ctx = ngx.ctx
+
+  ctx.KONG_WS_HANDSHAKE_START = now() * 1000
+  ctx.KONG_PHASE = PHASES.ws_handshake
+
+  ee.handlers.ws_handshake.before(ctx)
+
+  ctx.delay_response = true
+  local plugins_iterator = runloop.get_plugins_iterator()
+  execute_plugins_iterator(plugins_iterator, "ws_handshake", ctx)
+
+  ---
+  -- Since WebSocket connections are long-lived, the likelihood that there will
+  -- be a config update while the request is in-flight is much higher than that
+  -- of a regular HTTP request.
+  --
+  -- Therefore, each phase after this one uses the same plugins iterator with
+  -- the `iterate_collected_plugins()` method.
+  ctx.KONG_WEBSOCKET_PLUGINS_ITERATOR = plugins_iterator.iterate_collected_plugins
+
+  if ctx.delayed_response then
+    ctx.KONG_WS_HANDSHAKE_ENDED_AT = get_updated_now_ms()
+    ctx.KONG_WS_HANDSHAKE_TIME = ctx.KONG_WS_HANDSHAKE_ENDED_AT - ctx.KONG_WS_HANDSHAKE_START
+    return flush_delayed_response(ctx)
+  end
+
+  ee.handlers.ws_handshake.after(ctx)
+
+  ctx.KONG_WS_HANDSHAKE_ENDED_AT = get_updated_now_ms()
+  ctx.KONG_WS_HANDSHAKE_TIME = ctx.KONG_WS_HANDSHAKE_ENDED_AT - ctx.KONG_WS_HANDSHAKE_START
+
+  if ctx.delayed_response then
+    return flush_delayed_response(ctx)
+  end
+end
+
+function Kong.ws_proxy()
+  local ctx = ngx.ctx
+
+  ctx.KONG_WS_PROXY_START = now() * 1000
+  ctx.KONG_PHASE = PHASES.ws_proxy
+
+  ctx.delay_response = true
+  ctx.KONG_PROXIED = true
+
+  ee.handlers.ws_proxy.before(ctx)
+
+  if ctx.delayed_response then
+    ctx.KONG_WS_PROXY_ENDED_AT = get_updated_now_ms()
+    ctx.KONG_WS_PROXY_TIME = ctx.KONG_WS_PROXY_ENDED_AT - ctx.KONG_WS_PROXY_START
+    return flush_delayed_response(ctx)
+  end
+
+  ctx.KONG_WS_PROXY_ENDED_AT = get_updated_now_ms()
+  ctx.KONG_WS_PROXY_TIME = ctx.KONG_WS_PROXY_ENDED_AT - ctx.KONG_WS_PROXY_START
+
+  ee.handlers.ws_proxy.after(ctx)
+end
+
+function Kong.ws_close()
+  local ctx = ngx.ctx
+
+  ctx.KONG_WS_CLOSE_START = now() * 1000
+  ctx.KONG_PHASE = PHASES.ws_close
+
+  ee.handlers.ws_close.before(ctx)
+
+  local iter = ctx.KONG_WEBSOCKET_PLUGINS_ITERATOR
+  local old_ws = ctx.workspace
+  for plugin, configuration in iter("ws_close", ctx) do
+    setup_plugin_context(ctx, plugin)
+    plugin.handler.ws_close(plugin.handler, configuration)
+    reset_plugin_context(ctx, old_ws)
+  end
+
+  ctx.KONG_WS_CLOSE_ENDED_AT = get_updated_now_ms()
+  ctx.KONG_WS_CLOSE_TIME = ctx.KONG_WS_CLOSE_ENDED_AT - ctx.KONG_WS_CLOSE_START
+
+  ee.handlers.ws_close.after(ctx)
+end
+-- ]]
 
 
 return Kong

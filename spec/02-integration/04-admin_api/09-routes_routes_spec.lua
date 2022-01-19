@@ -373,9 +373,9 @@ for _, strategy in helpers.each_strategy() do
                 code    = Errors.codes.SCHEMA_VIOLATION,
                 name    = "schema violation",
                 message = "schema violation " ..
-                          "(protocols.1: expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp)",
+                          "(protocols.1: expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp, ws, wss)",
                 fields = {
-                  protocols = { "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp" },
+                  protocols = { "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp, ws, wss" },
                 }
               }, cjson.decode(body))
 
@@ -393,12 +393,12 @@ for _, strategy in helpers.each_strategy() do
                 code    = Errors.codes.SCHEMA_VIOLATION,
                 name    = "schema violation",
                 message = "2 schema violations " ..
-                  "(protocols.1: expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp; " ..
-                  "service.protocol: expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp)",
+                  "(protocols.1: expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp, ws, wss; " ..
+                  "service.protocol: expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp, ws, wss)",
                 fields = {
-                  protocols = { "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp" },
+                  protocols = { "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp, ws, wss" },
                   service = {
-                    protocol = "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp"
+                    protocol = "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp, ws, wss"
                   }
                 }
               }, cjson.decode(body))
@@ -939,9 +939,9 @@ for _, strategy in helpers.each_strategy() do
                   code    = Errors.codes.SCHEMA_VIOLATION,
                   name    = "schema violation",
                   message = "schema violation " ..
-                    "(protocols.1: expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp)",
+                    "(protocols.1: expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp, ws, wss)",
                   fields  = {
-                    protocols = { "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp" },
+                    protocols = { "expected one of: grpc, grpcs, http, https, tcp, tls, tls_passthrough, udp, ws, wss" },
                   }
                 }, cjson.decode(body))
 

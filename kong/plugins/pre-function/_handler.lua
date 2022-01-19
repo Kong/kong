@@ -72,7 +72,9 @@ local config_cache do
 
 
   local phases = { "certificate", "rewrite", "access",
-                   "header_filter", "body_filter", "log" }
+                   "header_filter", "body_filter", "log",
+                   "ws_client_frame", "ws_upstream_frame",
+                   "ws_handshake", "ws_close"}
 
 
   config_cache = setmetatable({}, {
@@ -125,6 +127,21 @@ return function(priority)
     config_cache[config].log()
   end
 
+  function ServerlessFunction:ws_handshake(config)
+    config_cache[config].ws_handshake()
+  end
+
+  function ServerlessFunction:ws_client_frame(config)
+    config_cache[config].ws_client_frame()
+  end
+
+  function ServerlessFunction:ws_upstream_frame(config)
+    config_cache[config].ws_upstream_frame()
+  end
+
+  function ServerlessFunction:ws_close(config)
+    config_cache[config].ws_close()
+  end
 
   return ServerlessFunction
 end

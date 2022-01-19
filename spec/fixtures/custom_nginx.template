@@ -313,6 +313,30 @@ http {
             grpc_pass            $upstream_scheme://kong_upstream;
         }
 
+        location @websocket {
+            internal;
+            default_type         '';
+            set $kong_proxy_mode 'websocket';
+
+            lua_check_client_abort on;
+            lingering_close off;
+
+            body_filter_by_lua_block {;}
+
+            access_by_lua_block {
+              Kong.ws_handshake()
+            }
+
+            content_by_lua_block {
+              Kong.ws_proxy()
+            }
+
+            log_by_lua_block {
+                Kong.ws_close()
+            }
+        }
+
+
         location = /kong_buffered_http {
             internal;
             default_type         '';
@@ -567,6 +591,13 @@ http {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.serve_web_sockets()
+            }
+        }
+
+        location = /ws/log {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.retrieve_ws_log()
             }
         }
 

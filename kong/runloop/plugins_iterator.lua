@@ -429,6 +429,12 @@ local function new_ws_data()
       certificate = {},
       rewrite     = {},
       access      = {},
+      -- EE websockets [[
+      ws_handshake = {},
+      ws_client_frame = {},
+      ws_upstream_frame = {},
+      ws_close = {},
+      -- ]]
     }
   end
 

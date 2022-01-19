@@ -38,6 +38,7 @@ return function(plugin_name)
   return {
     name = plugin_name,
     fields = {
+      { protocols = typedefs.protocols_http_and_ws { required = false } },
       { consumer = typedefs.no_consumer },
       {
         config = {
@@ -50,6 +51,10 @@ return function(plugin_name)
             { header_filter = phase_functions },
             { body_filter = phase_functions },
             { log = phase_functions },
+            { ws_handshake = phase_functions },
+            { ws_client_frame = phase_functions },
+            { ws_upstream_frame = phase_functions },
+            { ws_close = phase_functions },
           },
         },
       },
@@ -62,6 +67,10 @@ return function(plugin_name)
         "config.header_filter",
         "config.body_filter",
         "config.log",
+        "config.ws_handshake",
+        "config.ws_upstream_frame",
+        "config.ws_client_frame",
+        "config.ws_close",
       } },
     },
   }

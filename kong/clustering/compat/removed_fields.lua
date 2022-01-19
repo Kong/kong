@@ -212,6 +212,20 @@ return {
       "http_span_name",
     },
 
+    pre_function = {
+      "ws_handshake",
+      "ws_client_frame",
+      "ws_upstream_frame",
+      "ws_close",
+    },
+
+    post_function = {
+      "ws_handshake",
+      "ws_client_frame",
+      "ws_upstream_frame",
+      "ws_close",
+    },
+
     -- Enterprise plugins
     opa = {
       "include_body_in_opa_input",

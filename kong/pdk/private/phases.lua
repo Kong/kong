@@ -31,6 +31,11 @@ local PHASES = {
   error             = 0x01000000,
   admin_api         = 0x10000000,
   cluster_listener  = 0x00000100,
+  -- EE websockets [[
+  ws_handshake      = 0x00010000,
+  ws_proxy          = 0x00020000,
+  ws_close          = 0x00040000,
+  -- ]]
 }
 
 
@@ -135,7 +140,12 @@ local public_phases = setmetatable({
                       PHASES.log,
                       PHASES.error,
                       PHASES.admin_api,
-                      PHASES.cluster_listener)
+                      PHASES.cluster_listener,
+                      -- EE websockets [[
+                      PHASES.ws_handshake,
+                      PHASES.ws_proxy,
+                      PHASES.ws_close)
+                      -- ]]
 }, {
   __index = function(t, k)
     error("unknown phase or phase alias: " .. k)

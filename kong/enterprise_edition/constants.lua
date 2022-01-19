@@ -114,4 +114,59 @@ return {
     },
     PRIORITY_INDEX_OFFSET = 6,
   },
+  WEBSOCKET = {
+    ---
+    -- Well-known status codes and canned reasons
+    --
+    -- See:
+    --   * https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+    --   * https://datatracker.ietf.org/doc/html/rfc6455#section-11.7
+    STATUS = {
+      NORMAL           = { CODE = 1000, REASON = "Normal Closure" },
+      GOING_AWAY       = { CODE = 1001, REASON = "Going Away" },
+      PROTOCOL_ERROR   = { CODE = 1002, REASON = "Protocol Error" },
+      UNSUPPORTED_DATA = { CODE = 1003, REASON = "Unsupported Data" },
+      NO_STATUS        = { CODE = 1005, REASON = "No Status" },
+      ABNORMAL         = { CODE = 1006, REASON = "Abnormal Closure" },
+      INVALID_DATA     = { CODE = 1007, REASON = "Invalid Frame Payload Data" },
+      POLICY_VIOLATION = { CODE = 1008, REASON = "Policy Violation" },
+      MESSAGE_TOO_BIG  = { CODE = 1009, REASON = "Message Too Big" },
+      SERVER_ERROR     = { CODE = 1011, REASON = "Internal Server Error" },
+    },
+
+    ---
+    -- Lookup tables for WebSocket opcodes and frame type names
+    --
+    -- See:
+    --   * https://datatracker.ietf.org/doc/html/rfc6455#section-11.8
+    OPCODE_BY_TYPE = {
+      continuation = 0x0,
+      text         = 0x1,
+      binary       = 0x2,
+      close        = 0x8,
+      ping         = 0x9,
+      pong         = 0xa,
+    },
+    TYPE_BY_OPCODE = {
+      [0x0] = "continuation",
+      [0x1] = "text",
+      [0x2] = "binary",
+      [0x8] = "close",
+      [0x9] = "ping",
+      [0xa] = "pong",
+    },
+
+    ---
+    -- Registered WebSocket header names
+    --
+    -- See:
+    --   * https://datatracker.ietf.org/doc/html/rfc6455#section-11.3
+    HEADERS = {
+      KEY        = "Sec-WebSocket-Key",
+      EXTENSIONS = "Sec-WebSocket-Extensions",
+      ACCEPT     = "Sec-WebSocket-Accept",
+      PROTOCOL   = "Sec-WebSocket-Protocol",
+      VERSION    = "Sec-WebSocket-Version",
+    },
+  },
 }

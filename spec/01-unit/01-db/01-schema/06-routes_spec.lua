@@ -130,6 +130,15 @@ describe("routes schema", function()
     assert.truthy(errs["protocols"])
   end)
 
+  -- EE websockets [[
+  it("websocket protocols are allowed", function()
+    local route = Routes:process_auto_fields({ protocols = {"ws", "wss"} }, "insert")
+    local ok, errs = Routes:validate(route)
+    assert.is_nil(errs)
+    assert.truthy(ok)
+  end)
+  -- ]]
+
   it("conflicting protocols produces error", function()
     local protocols_tests = {
       { {"http", "tcp"}, "('http', 'https'), ('tcp', 'tls', 'udp')" },
@@ -1017,7 +1026,7 @@ describe("routes schema", function()
         end
       end)
 
-      it("rejects specifying 'snis' if 'protocols' does not have 'https', 'tls' or 'tls_passthrough'", function()
+      it("rejects specifying 'snis' if 'protocols' does not have 'https', 'tls', 'tls_passthrough', or 'wss'", function()
         local route = Routes:process_auto_fields({
           protocols = { "tcp", "udp" },
           snis = { "example.org" },
@@ -1027,7 +1036,9 @@ describe("routes schema", function()
         assert.falsy(ok)
         assert.same({
           ["@entity"] = {
-            "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls' or 'tls_passthrough'",
+            -- EE websockets [[
+            "'snis' can only be set when 'protocols' is 'grpcs', 'https', 'tls', 'tls_passthrough', or 'wss'",
+            -- ]]
           },
           snis = "length must be 0",
         }, errs)

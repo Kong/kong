@@ -221,6 +221,9 @@ local MAJOR_MODULES = {
 
 if ngx.config.subsystem == 'http' then
   table.insert(MAJOR_MODULES, 'client.tls')
+  -- EE websockets [[
+  table.insert(MAJOR_MODULES, 'websocket')
+  -- ]]
 end
 
 local _PDK = { }
