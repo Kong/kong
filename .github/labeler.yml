@@ -22,7 +22,8 @@ core/db:
 
 core/docs:
 - kong/autodoc/**/*
-- *.md
+- ./**/*.md
+- ./*.md
 
 core/language/go:
 - kong/runloop/plugin_servers/*
