@@ -903,6 +903,13 @@ function upload_luarock() {
   SUCCESS "The LuaRocks entry is now up!"
 }
 
+#-------------------------------------------------------------------------------
+# Dependency checks
+#-------------------------------------------------------------------------------
+
+function dep_check() {
+
+hub --version &> /dev/null || die "hub is not in PATH. Get it from https://github.com/github/hub"
 
 if resty -v &> /dev/null
 then
@@ -913,3 +920,5 @@ then
 else
    die "Lua interpreter is not in PATH. Install any Lua or OpenResty to run this script."
 fi
+
+}
