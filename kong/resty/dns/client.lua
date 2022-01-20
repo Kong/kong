@@ -620,9 +620,9 @@ _M.init = function(options)
   log(DEBUG, PREFIX, "search = ", table_concat(options.search,", "))
 
   -- check if there is special domain like "."
-  for i = 1, #options.search do
+  for i = #options.search, 1, -1 do
     if options.search[i] == "." then
-      options.search[i] = ""
+      table_remove(options.search, i)
     end
   end
 
