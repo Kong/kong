@@ -60,6 +60,12 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## 2.8.0 (UNRELEASED)
+
+### Dependencies
+
+### Additions
+
 ## [2.7.0]
 
 ### Dependencies
