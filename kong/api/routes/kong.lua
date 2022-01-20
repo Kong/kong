@@ -18,6 +18,8 @@ local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
 local Errors = require "kong.db.errors"
 local process = require "ngx.process"
+-- Add JWT decoder to decode id_token
+local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 
 local endpoints  = require "kong.api.endpoints"
 local hooks = require "kong.hooks"
@@ -384,13 +386,14 @@ return {
 
       -- apply auth plugin
       local plugin_auth_response
-      local userinfo_claim_name = "user_info"
+      local id_token_claim_name = "id_token"
 
       if not ngx.ctx.authenticated_consumer then
         -- Before Auth Plugin execution. 
         if gui_auth == "openid-connect" then
           gui_auth_conf.consumer_optional = true
-          gui_auth_conf.upstream_user_info_header = userinfo_claim_name
+          -- change to upstream_id_token_header to avoid calling user info endpoint.
+          gui_auth_conf.upstream_id_token_header = id_token_claim_name
         end
 
         if gui_auth == "ldap-auth-advanced" then
@@ -415,15 +418,14 @@ return {
 
         -- After Auth Plugin execution.
         if gui_auth == "openid-connect" then
-          local userinfo_header = ngx.req.get_headers()[userinfo_claim_name]
-          local userinfo_json, base64_err = ngx.decode_base64(userinfo_header)
-          local userinfo, json_err = cjson.decode(userinfo_json)
-
-          if base64_err or json_err then
-            log(ERR, _log_prefix, base64_err or json_err)
-
+          local id_token_header = ngx.req.get_headers()[id_token_claim_name]
+          -- decode id_token
+          local jwt, err = jwt_decoder:new(id_token_header)
+          if err then
+            log(ERR, _log_prefix, "failed to decode id token.", err)
             return kong.response.exit(401, { message = "Unauthorized" })
           end
+          local claims = jwt.claims
 
           local default_admin_by = "username"
           local gui_auth_conf_origin = singletons.configuration.admin_gui_auth_conf
@@ -432,11 +434,11 @@ return {
 
           local admin_by = gui_auth_conf_origin and gui_auth_conf_origin.admin_by
                            or default_admin_by
-
-          local admin_claim_value = userinfo[admin_claim]
+          -- use claims in id_token to map kong admin
+          local admin_claim_value = claims[admin_claim]
 
           if not admin_claim_value then
-            log(ERR, _log_prefix, "the 'admin_claim' not found from the user_info claims.", gui_auth)
+            log(ERR, _log_prefix, "the 'admin_claim' not found from the id_token claims.", gui_auth)
             return kong.response.exit(401, { message = "Unauthorized" })
           end
  
@@ -453,14 +455,14 @@ return {
           local role_claim = gui_auth_conf and
                              gui_auth_conf.authenticated_groups_claim and
                              gui_auth_conf.authenticated_groups_claim[1]
-
-          local role_claim_values = userinfo[role_claim]
+          -- use claims in id_token to map groups here
+          local role_claim_values = claims[role_claim]
           
           if role_claim_values then
             auth_plugin_helpers.map_admin_roles_by_idp_claim(admin, role_claim_values)
           elseif role_claim then
             -- only logs an error if kong-ee can not find the claims
-            ngx.log(ERR, role_claim .. " not found from the user_info claims.", gui_auth)
+            ngx.log(ERR, role_claim .. " not found from the id_token claims.", gui_auth)
           end
 
         end
