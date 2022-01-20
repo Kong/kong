@@ -134,6 +134,7 @@ for _, strategy in ipairs { "postgres" } do --strategies() do
         })
 
         local body = res:read_body()
+        assert.res_status(404, res)
         assert.equal("{\"hello\":\"world\"}", body)
 
 
