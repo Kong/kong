@@ -232,7 +232,7 @@ function _M:start_upstreams(conf, port_count)
   return uris
 end
 
-function _M:start_kong(version, kong_conf)
+function _M:start_kong(version, kong_conf, driver_conf)
   kong_conf = kong_conf or {}
   kong_conf["pg_password"] = PG_PASSWORD
   kong_conf["pg_database"] = "kong_tests"
