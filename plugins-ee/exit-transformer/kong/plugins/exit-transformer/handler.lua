@@ -7,55 +7,44 @@
 
 local cjson = require "cjson.safe"
 
-local runloop_handler = require "kong.runloop.handler"
-local sandbox = require "kong.tools.sandbox"
+local sandbox     = require "kong.tools.sandbox"
+local utils       = require "kong.tools.utils"
+local workspaces  = require "kong.workspaces"
 
 local PLUGIN_NAME    = require("kong.plugins.exit-transformer").PLUGIN_NAME
 local PLUGIN_VERSION = require("kong.plugins.exit-transformer").PLUGIN_VERSION
 
 
 local function get_conf()
-  -- Gets plugin configuration for the ctx, no matter the priority
+  local conf = kong.ctx.shared.exit_transformer_conf
 
-  -- detect if it's an "unknown" call, so no service. We used to rely on
-  -- request having no workspace context
-  -- XXX: this is not using the pdk call. The pdk call cannot be run on the
-  -- error phase, which funnily enough is most of the cases we want this
-  -- plugin to run :) be attentive of route being on any other ctx
-  local unknown = ngx.ctx.route == nil
+  if not conf then
+    -- Our access handler was not run, which implies the request did not match
+    -- any route. If a global instance of this plugin is configured on the
+    -- current workspace then we can consult this to see if `handle_unknown`
+    -- has been specified.
 
-  -- Not really needed, but a hack because get_workspace might return an
-  -- empty {} to signal... something? AFAIK, this is fixed on 2.0 already,
-  -- this solution makes it so it won't work on neither version of kong.
+    -- Look for a global plugin instance for this workspace
+    local cache_key = kong.db.plugins:cache_key(
+      PLUGIN_NAME,
+      nil, -- route
+      nil, -- service
+      nil, -- consumer
+      nil, -- (unused)
+      workspaces.get_workspace_id()
+    )
 
-  local plugins_iterator = runloop_handler.get_plugins_iterator()
-
-  for plugin, plugin_conf in plugins_iterator:iterate("access", ngx.ctx) do
-
-    if plugin.name ~= PLUGIN_NAME then
-      goto continue
+    local _, _, global_plugin = kong.core_cache:probe(cache_key)
+    if global_plugin and global_plugin.config.handle_unknown then
+      conf = global_plugin.config
     end
-
-    -- it's very important that this filtering happens here and not once we
-    -- already have a config. Since plugin confs applying globally on
-    -- different workspaces would collide here and rely only on the first
-    -- match
-    if unknown and not plugin_conf.handle_unknown then
-      goto continue
-    end
-
-    if ngx.ctx.KONG_UNEXPECTED and not plugin_conf.handle_unexpected then
-      goto continue
-    end
-
-    do
-      return plugin_conf
-    end
-
-    ::continue::
   end
 
-  return nil
+  if conf and ngx.ctx.KONG_UNEXPECTED and not conf.handle_unexpected then
+    return nil
+  end
+
+  return conf
 end
 
 local _M = {}
@@ -97,7 +86,11 @@ local function get_functions(conf)
   return functions
 end
 
-function _M:access() end
+function _M:access(conf)
+  -- register our plugin conf with the request context so that it is available
+  -- during the `exit` hook.
+  kong.ctx.shared.exit_transformer_conf = conf
+end
 
 function _M:exit(status, body, headers)
   -- Do not transform already transformed requests
