@@ -445,7 +445,7 @@ function _M.create_document_object_by_service(self, db, helpers)
   local path = self.params.path
   local document = db.files:select_by_path(path)
   if not document then
-    return kong.response.exit(404, {message = "Not found" })
+    return kong.response.exit(404, { message = "Not found" })
   end
 
   local document_object, _, err_t = db.document_objects:insert({
@@ -455,6 +455,14 @@ function _M.create_document_object_by_service(self, db, helpers)
 
   if err_t then
     return endpoints.handle_error(err_t)
+  end
+
+  -- Currently not supporting multiple documents per service
+  -- Deleting previously created ones to replace it with the new one (TDX-1620)
+  for row, err in db.document_objects:each_for_service({ id = service_id }) do
+    if row and row.id ~= document_object.id then
+      db.document_objects:delete({ id = row.id })
+    end
   end
 
   kong.response.exit(200, {

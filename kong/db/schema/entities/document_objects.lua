@@ -12,7 +12,7 @@ return {
   endpoint_key  = "path",
   primary_key  = { "id" },
   workspaceable = true,
-  -- dao           = "kong.db.dao.document_objects",
+  dao           = "kong.db.dao.document_objects",
   db_export = false,
 
   fields = {

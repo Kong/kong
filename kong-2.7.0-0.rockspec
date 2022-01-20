@@ -325,6 +325,7 @@ build = {
     ["kong.db.dao.admins"] = "kong/db/dao/admins.lua",
     ["kong.db.dao.applications"] = "kong/db/dao/applications.lua",
     ["kong.db.dao.application_instances"] = "kong/db/dao/application_instances.lua",
+    ["kong.db.dao.document_objects"] = "kong/db/dao/document_objects.lua",
     ["kong.db.dao.consumers"] = "kong/db/dao/consumers.lua",
     ["kong.db.dao.developers"] = "kong/db/dao/developers.lua",
     ["kong.db.dao.certificates"] = "kong/db/dao/certificates.lua",
