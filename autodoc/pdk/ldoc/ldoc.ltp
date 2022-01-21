@@ -44,8 +44,12 @@
 >   local buf = "" -- no access to table.concat or ldoc.tools.join, I'm forced to use a string
 >   local comma = ""
 >   local tp  = item:type_of_param(p)
->   if tp ~= '' then
->     buf = buf .. comma .. tp
+>   if tp and tp ~= '' then
+>     if tp:sub(1,1) ~= '`' and tp:sub(-1) ~= '`' then
+>       buf = buf .. comma .. '`' .. tp .. '`'
+>     else
+>       buf = buf .. comma .. tp
+>     end
 >     comma = ", "
 >   end
 >   local def = item:default_of_param(p)
