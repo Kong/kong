@@ -14,9 +14,9 @@ local _CTX_CORE_KEY = {}
 
 
 ---
--- A table that contains the history of the current request and is shared between
--- all plugins. It can be used to share data between several plugins in a given
--- request.
+-- A table that has the same lifetime as the current request. This table is shared 
+-- between all plugins. It can be used to share data between several plugins in a 
+-- given request.
 --
 -- This table is only relevant in the context of a request and cannot be
 -- accessed from the top-level chunk of Lua modules. Instead, it can only be
@@ -52,7 +52,7 @@ local _CTX_CORE_KEY = {}
 
 
 ---
--- A table that contains the entire lifetime of the current request. Unlike
+-- A table that has the same lifetime as the current request. Unlike
 -- `kong.ctx.shared`, this table is **not** shared between plugins.
 -- Instead, it is only visible for the current plugin instance.
 -- For example, if several instances of the Rate Limiting plugin
