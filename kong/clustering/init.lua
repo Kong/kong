@@ -124,7 +124,21 @@ function _M.new(conf)
   cert = openssl_x509.new(cert, "PEM")
   self.cert_digest = cert:digest("sha256")
   local _, cert_cn_parent = get_cn_parent_domain(cert)
-  self.cert_cn_parent = cert_cn_parent
+
+  if conf.cluster_allowed_common_names and #conf.cluster_allowed_common_names > 0 then
+    self.cn_matcher = {}
+    for _, cn in ipairs(conf.cluster_allowed_common_names) do
+      self.cn_matcher[cn] = true
+    end
+
+  else
+    self.cn_matcher = setmetatable({}, {
+      __index = function(_, k)
+        return string.match(k, "^[%a%d-]+%.(.+)$") == cert_cn_parent
+      end
+    })
+
+  end
 
   local key = pl_file.read(conf.cluster_cert_key)
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
@@ -239,15 +253,14 @@ function _M:validate_client_cert(cert, log_prefix, log_suffix)
     end
 
   elseif kong.configuration.cluster_mtls == "pki_check_cn" then
-    local cn, cn_parent = get_cn_parent_domain(cert)
+    local cn, _ = get_cn_parent_domain(cert)
     if not cn then
       return false, "data plane presented incorrect client certificate " ..
-                    "during handshake, unable to extract CN: " .. cn_parent
+                    "during handshake, unable to extract CN: " .. cn
 
-    elseif cn_parent ~= self.cert_cn_parent then
-      return false, "data plane presented incorrect client certificate " ..
-                    "during handshake, expected CN as subdomain of: " ..
-                    self.cert_cn_parent .. " got: " .. cn
+    elseif not self.cn_matcher[cn] then
+      return false, "data plane presented client certificate with incorrect CN " ..
+                    "during handshake, got: " .. cn
     end
   elseif kong.configuration.cluster_ocsp ~= "off" then
     local ok

@@ -59,7 +59,7 @@ describe("hybrid mode validate client cert", function()
     local cert = create_self_signed("somedp.not_kong_clustering_pki.domain")
     local ok, err = kong_clustering:validate_client_cert(cert)
     assert.is_falsy(ok)
-    assert.matches("expected CN as subdomain of", err)
+    assert.matches("data plane presented client certificate with incorrect CN", err)
   end)
 end)
 
@@ -94,5 +94,52 @@ describe("hybrid mode validate client cert", function()
     local cert = create_self_signed("another.domain")
     local ok, _ = kong_clustering:validate_client_cert(cert)
     assert.is_truthy(ok)
+  end)
+end)
+
+describe("hybrid mode validate client cert with cluster_allowed_common_names", function()
+
+  local kong_clustering
+
+  lazy_setup(function()
+    local cert, key = create_self_signed("random.domain")
+    local f = assert(io.open("/tmp/pki_random.crt", "w"))
+    f:write(cert)
+    f:close()
+    f = assert(io.open("/tmp/pki_random.key", "w"))
+    f:write(key)
+    f:close()
+
+    kong_clustering = clustering.new({
+      role = "control_plane",
+      cluster_mtls = "pki_check_cn",
+      -- CN is server.kong_clustering_pki.domain
+      cluster_cert = "/tmp/pki_random.crt",
+      cluster_cert_key = "/tmp/pki_random.key",
+      cluster_allowed_common_names = {"dp.kong_clustering_pki.domain", "another.domain"},
+    })
+  end)
+
+  lazy_teardown(function()
+    os.remove("/tmp/pki_random.crt")
+    os.remove("/tmp/pki_random.key")
+  end)
+
+  it("validates if client cert is in cluster_allowed_common_names", function()
+    local cert = create_self_signed("dp.kong_clustering_pki.domain")
+    local ok, _ = kong_clustering:validate_client_cert(cert)
+    assert.is_truthy(ok)
+    cert = create_self_signed("another.domain")
+    ok, _ = kong_clustering:validate_client_cert(cert)
+    assert.is_truthy(ok)
+  end)
+
+  it("rejects if client cert is not in cluster_allowed_common_names", function()
+    local cert = create_self_signed("notmydp.kong_clustering_pki.domain")
+    local ok, _ = kong_clustering:validate_client_cert(cert)
+    assert.is_falsy(ok)
+    cert = create_self_signed("yetanother.domain")
+    ok, _ = kong_clustering:validate_client_cert(cert)
+    assert.is_falsy(ok)
   end)
 end)
