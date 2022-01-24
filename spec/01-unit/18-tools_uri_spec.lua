@@ -12,9 +12,9 @@ describe("kong.tools.uri", function()
       assert.equal("/a/b/c/", uri.normalize("/a/b/c/"))
     end)
 
-    it("no normalization necessary (reserved characters)", function()
+    it("no normalization necessary (not unreserved characters)", function()
       assert.equal("/a%2Fb%2Fc/", uri.normalize("/a%2Fb%2Fc/"))
-      assert.equal("/%21%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3D%3F%40%5B%5D", uri.normalize("/%21%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3D%3F%40%5B%5D"))
+      assert.equal("/%20%21%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3D%3F%40%5B%5D", uri.normalize("/%20%21%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3D%3F%40%5B%5D"))
     end)
 
     it("converting percent-encoded triplets to uppercase", function()
