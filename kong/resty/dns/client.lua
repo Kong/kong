@@ -619,6 +619,13 @@ _M.init = function(options)
   options.search = options.search or resolv.search or { resolv.domain }
   log(DEBUG, PREFIX, "search = ", table_concat(options.search,", "))
 
+  -- check if there is special domain like "."
+  for i = #options.search, 1, -1 do
+    if options.search[i] == "." then
+      table_remove(options.search, i)
+    end
+  end
+
 
   -- other options
 
