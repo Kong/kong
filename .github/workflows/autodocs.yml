@@ -135,4 +135,4 @@ jobs:
         run: |
           cd docs.konghq.com
           echo "${{ secrets.PAT }}" | gh auth login --with-token
-          gh pr create --base "${{ github.event.inputs.target_branch }}" --fill
+          gh pr create --base "${{ github.event.inputs.target_branch }}" --fill --label "review:autodoc"
