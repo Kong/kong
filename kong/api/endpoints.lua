@@ -11,6 +11,8 @@ local arguments    = require "kong.api.arguments"
 local workspaces   = require "kong.workspaces"
 local app_helpers  = require "lapis.application"
 local cjson        = require "cjson"
+local nkeys        = require "table.nkeys"
+local new_tab      = require "table.new"
 
 
 local kong         = kong
@@ -26,6 +28,7 @@ local fmt          = string.format
 local concat       = table.concat
 local re_match     = ngx.re.match
 local split        = utils.split
+local insert       = table.insert
 
 
 -- error codes http status codes
@@ -210,6 +213,26 @@ local function extract_options(args, schema, context)
       args.sort_by = nil
       args.sort_desc = nil
     end
+
+    if context == "page" then
+      local search_fields = {}
+      for k, v in pairs(args) do
+        v = type(v) == "table" and v[1] or v
+        if schema.fields[k] and schema.fields[k].indexed then
+          if schema.fields[k].type == "array" or schema.fields[k].type == "set" then
+            search_fields[k] = split(v, ",")
+          else
+            search_fields[k] = v
+          end
+          args[k] = nil
+        end
+      end
+
+      if nkeys(search_fields) > 0 then
+        options.search_fields = search_fields
+      end
+
+    end
   end
 
   return options
@@ -348,6 +371,25 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       end
     end
 
+    local next_page_search = ""
+    for k, v in pairs(args) do
+      -- ignore tags (search including foreign key)
+      local is_searchable = schema.fields[k] and schema.fields[k].indexed
+      if k ~= "tags" and is_searchable then
+        local safe_v
+        if type(v) == "table" then
+          local tab = new_tab(nkeys(v), 0)
+          for _, item in pairs(v) do
+            insert(tab, escape_uri(item))
+          end
+          safe_v = concat(tab, ",")
+        else
+          safe_v = escape_uri(v)
+        end
+        next_page_search = next_page_search .. fmt("&%s=%s", k, safe_v)
+      end
+    end
+
     local data, _, err_t, offset = page_collection(self, db, schema, method)
     if err_t then
       return handle_error(err_t)
@@ -366,13 +408,14 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       p_data = data
     end
 
-    local next_page = offset and fmt("/%s?offset=%s%s%s",
+    local next_page = offset and fmt("/%s?offset=%s%s%s%s",
                                      prefix_path or
                                      schema.admin_api_name or
                                      schema.name,
                                      escape_uri(offset),
                                      next_page_tags,
-                                     next_page_sort) or null
+                                     next_page_sort,
+                                     next_page_search) or null
 
     return ok {
       data   = setmetatable(p_data, cjson.empty_array_mt),

@@ -181,7 +181,7 @@ local r =  {
   fields = {
     { id = typedefs.uuid, },
     { created_at = typedefs.auto_timestamp_s },
-    { name = { type = "string", required = true, unique = true, custom_validator = validate_name }, },
+    { name = { type = "string", required = true, unique = true, custom_validator = validate_name, indexed = true }, },
     { algorithm = { type = "string",
         default = "round-robin",
         one_of = { "consistent-hashing", "least-connections", "round-robin" },
@@ -192,7 +192,7 @@ local r =  {
     { hash_fallback_header = typedefs.header_name, },
     { hash_on_cookie = { type = "string",  custom_validator = utils.validate_cookie_name }, },
     { hash_on_cookie_path = typedefs.path{ default = "/", }, },
-    { slots = { type = "integer", default = 10000, between = { 10, 2^16 }, }, },
+    { slots = { type = "integer", default = 10000, between = { 10, 2^16 }, indexed = true }, },
     { healthchecks = { type = "record",
         default = healthchecks_defaults,
         fields = healthchecks_fields,

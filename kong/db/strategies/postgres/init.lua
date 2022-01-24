@@ -48,6 +48,7 @@ local UNIQUE        = {}
 
 local new_tab
 local clear_tab
+local nkeys
 
 
 do
@@ -65,6 +66,20 @@ do
       for k, _ in pairs(tab) do
         tab[k] = nil
       end
+    end
+  end
+
+  -- OpenResty branch of LuaJIT New API
+  ok, nkeys = pcall(require, "table.nkeys")
+  if not ok then
+    nkeys = function (tab)
+      local count = 0
+      for _, v in pairs(tab) do
+        if v ~= nil then
+          count = count + 1
+        end
+      end
+      return count
     end
   end
 end
@@ -473,13 +488,13 @@ local function execute(strategy, statement_name, attributes, options)
       value = attributes[name]
     end
 
-    argv[i] = (value == nil and is_update)
+    if options and ((options.search_fields and name == "search_fields") or
+                    (options.sort_by and name == "sort_by")) then
+      argv[i] = value
+    else
+      argv[i] = (value == nil and is_update)
               and escape_identifier(connector, name)
               or  escape_literal(connector, value, fields[name])
-
-    -- XXX: don't escape if it's the sort_by field
-    if options and options.sort_by and name == "sort_by" then
-      argv[i] = value
     end
   end
 
@@ -502,6 +517,37 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
 
   local order_by_field
 
+  local has_search = options and options.search_fields and nkeys(options.search_fields) > 0
+  local function gen_search_query(self, options)
+    local where_query = new_tab(nkeys(options.search_fields), 0)
+    for k, v in pairs(options.search_fields) do
+      local field = self.schema.fields[k]
+      local typ = field.type
+      if typ == "integer" then
+        insert(where_query, fmt("%s = %s", k,  self.connector:escape_literal(tonumber(v))))
+      elseif typ == "string" and (field.one_of ~= nil or field.uuid) then
+        insert(where_query, fmt("%s = %s", k, self.connector:escape_literal(v))) 
+      elseif typ == "string" then
+        insert(where_query, fmt("%s like %s", k, self.connector:escape_literal("%" .. v .. "%", field)))
+      elseif typ == "boolean" then
+        insert(where_query, fmt("%s = %s", k, self.connector:escape_literal(tostring(v) == "true")))
+      elseif typ == "array" and field.elements ~= nil and field.elements.type == "string" then
+        v = type(v) == "table" and v[1] or v
+        insert(where_query, fmt("%s::text like %s", k, self.connector:escape_literal("%" .. v .. "%")))
+      elseif typ == "array" or typ == "set" then
+        if type(typ) ~= "table" then
+          local tab = new_tab(1, 0)
+          insert(tab, v)
+          v = tab
+        end
+        insert(where_query, fmt("%s @> %s", k, escape_literal(self.connector, v, field)))
+      else
+        insert(where_query, fmt("%s = %s", k, escape_literal(self.connector, v, field)))
+      end
+    end
+    return concat(where_query, " AND ")
+  end
+
   local suffix = token and "_next" or "_first"
   if foreign_entity_name then
     statement_name = "page_for_" .. foreign_entity_name .. suffix
@@ -513,6 +559,14 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
                     "page_by_tags_and" .. suffix
     attributes.tags = options.tags
 
+  elseif options and options.sort_by and has_search then
+    statement_name = options.sort_desc and
+                    "page_by_order_desc_search" .. suffix or
+                    "page_by_order_asc_search" .. suffix
+    order_by_field = options.sort_by
+    attributes.sort_by = order_by_field
+    attributes.search_fields = gen_search_query(self, options)
+
   elseif options and options.sort_by then
     statement_name = options.sort_desc and
                     "page_by_order_desc" .. suffix or
@@ -520,6 +574,10 @@ local function page(self, size, token, foreign_key, foreign_entity_name, options
     order_by_field = options.sort_by
     attributes.sort_by = order_by_field
 
+  elseif has_search then
+    statement_name = "page_search" .. suffix
+    attributes.search_fields = gen_search_query(self, options)
+    
   else
     statement_name = "page" .. suffix
   end
@@ -1266,6 +1324,41 @@ function _M.new(connector, schema, errors)
     }
   })
 
+  add_statement("page_search_first", {
+    operation = "read",
+    argn = { LIMIT, "search_fields" },
+    argv = single_args,
+    code = {
+      "  SELECT ",  select_expressions, "\n",
+      "    FROM ",  table_name_escaped, "\n",
+      where_clause(
+      "   WHERE ", ttl_select_where,
+                   ws_id_select_where,
+                   "$2"),
+      "ORDER BY ",  pk_escaped, "\n",
+      "   LIMIT $1;";
+    }
+  })
+
+  local page_search_next_names = pl_tablex.deepcopy(page_next_names)
+  insert(page_search_next_names, "search_fields")
+  add_statement("page_search_next", {
+    operation = "read",
+    argn = page_search_next_names,
+    argv = page_next_args,
+    code = {
+      "  SELECT ",  select_expressions, "\n",
+      "    FROM ",  table_name_escaped, "\n",
+      where_clause(
+      "   WHERE ", "(" .. pk_escaped .. ") > (" .. primary_key_placeholders .. ")",
+                   ttl_select_where,
+                   ws_id_select_where,
+                   placeholder(#page_search_next_names)),
+      "ORDER BY ",  pk_escaped, "\n",
+      "   LIMIT " .. placeholder(#page_search_next_names - 1), ";"
+    }
+  })
+
   local order_by_next_args = {}
   for i, key in ipairs(primary_key) do
     insert(order_by_next_args, key)
@@ -1273,6 +1366,9 @@ function _M.new(connector, schema, errors)
   insert(order_by_next_args, "sort_by")
   insert(order_by_next_args, "sort_offset")
   insert(order_by_next_args, LIMIT)
+
+  local order_by_search_next_args = pl_tablex.deepcopy(order_by_next_args)
+  insert(order_by_search_next_args, "search_fields")
 
   for op, sort_order in pairs({[">"] = "asc", ["<"] = "desc"}) do
     add_statement("page_by_order_" .. sort_order .. "_first", {
@@ -1310,6 +1406,46 @@ function _M.new(connector, schema, errors)
         "ORDER BY \"", placeholder(nargs-2), "\" ", sort_order, ", ",
         concat(primary_key_escaped, sort_order .. " , "), sort_order, " \n",
         "   LIMIT ", placeholder(nargs), ";",
+      }
+    })
+
+    add_statement("page_by_order_" .. sort_order .. "_search_first", {
+      operation = "read",
+      argn = { "sort_by", LIMIT, "search_fields" },
+      argv = single_args,
+      code = {
+        "  SELECT ",  select_expressions, "\n",
+        "    FROM ",  table_name_escaped, "\n",
+        where_clause(
+        "   WHERE ", ttl_select_where,
+                    ws_id_select_where,
+                    "$3"),
+        "ORDER BY \"$1\" ", sort_order, ", ",
+        concat(primary_key_escaped, sort_order .. " , "), sort_order, " \n",
+        "   LIMIT $2;";
+      }
+    })
+
+    nargs = #order_by_search_next_args
+    add_statement("page_by_order_" .. sort_order .. "_search_next", {
+      operation = "read",
+      argn = order_by_search_next_args,
+      argv = page_next_args,
+      code = {
+        "  SELECT ",  select_expressions, "\n",
+        "    FROM ",  table_name_escaped, "\n",
+        where_clause(
+        -- WHERE ( (sort_by > sort_by_offset) OR (sort_by = sort_by_offset and pk > pk_offset) )
+        -- note this statement concacted with `..` not `,` to avoid AND being added in between
+        "   WHERE ", "( (" .. placeholder(nargs-3) .. ") " .. op .. " (" .. placeholder(nargs-2) .. ") OR " ..
+                      "((" .. placeholder(nargs-3) .. ") = (" .. placeholder(nargs-2) .. ") AND " ..
+                      "(" .. pk_escaped .. ") " .. op .. " (" .. primary_key_placeholders .. ")) )",
+                    ttl_select_where,
+                    ws_id_select_where,
+                    placeholder(nargs)),
+        "ORDER BY \"", placeholder(nargs-3), "\" ", sort_order, ", ",
+        concat(primary_key_escaped, sort_order .. " , "), sort_order, " \n",
+        "   LIMIT ", placeholder(nargs-1), ";",
       }
     })
   end

@@ -21,14 +21,14 @@ return {
 
   fields = {
     { id = typedefs.uuid, },
-    { name = { type = "string", required = true, }, },
+    { name = { type = "string", required = true, indexed = true }, },
     { created_at = typedefs.auto_timestamp_s },
     { route = { type = "foreign", reference = "routes", default = null, on_delete = "cascade", }, },
     { service = { type = "foreign", reference = "services", default = null, on_delete = "cascade", }, },
     { consumer = { type = "foreign", reference = "consumers", default = null, on_delete = "cascade", }, },
     { config = { type = "record", abstract = true, }, },
     { protocols = typedefs.protocols },
-    { enabled = { type = "boolean", required = true, default = true }, },
+    { enabled = { type = "boolean", required = true, default = true, indexed = true }, },
     { tags           = typedefs.tags },
   },
 }

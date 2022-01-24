@@ -81,6 +81,7 @@ local field_schema = {
   { encrypted = { type = "boolean" }, },
   { prefix_ws = { type = "boolean" }, },
   { db_export = { type = "boolean" }, },
+  { indexed = { type = "boolean" }, },
 }
 
 for _, field in ipairs(validators) do
@@ -357,6 +358,14 @@ local attribute_types = {
     ["array"] = true,
     ["set"] = true,
     ["map"] = true,
+  },
+  indexed = {
+    ["string"] = true,
+    ["number"] = true,
+    ["integer"] = true,
+    ["array"] = true,
+    ["set"] = true,
+    ["boolean"] = true,
   },
 }
 

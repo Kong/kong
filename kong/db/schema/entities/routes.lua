@@ -19,7 +19,7 @@ return {
     { id             = typedefs.uuid, },
     { created_at     = typedefs.auto_timestamp_s },
     { updated_at     = typedefs.auto_timestamp_s },
-    { name           = typedefs.utf8_name },
+    { name           = typedefs.utf8_name { indexed = true } },
     { protocols      = { type     = "set",
                          len_min  = 1,
                          required = true,
@@ -31,10 +31,11 @@ return {
                            { "grpc", "grpcs" },
                          },
                          default = { "http", "https" }, -- TODO: different default depending on service's scheme
+                         indexed = true,
                        }, },
-    { methods        = typedefs.methods },
-    { hosts          = typedefs.hosts },
-    { paths          = typedefs.paths },
+    { methods        = typedefs.methods { indexed = true } },
+    { hosts          = typedefs.hosts { indexed = true } },
+    { paths          = typedefs.paths { indexed = true } },
     { headers = typedefs.headers {
       keys = typedefs.header_name {
         match_none = {
