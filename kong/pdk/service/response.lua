@@ -1,5 +1,5 @@
 ---
--- Manipulation of the response from the Service
+-- Module for manipulating the response from the Service.
 -- @module kong.service.response
 
 
@@ -142,9 +142,9 @@ local function new(pdk, major_version)
   --
   -- @function kong.service.response.get_status
   -- @phases `header_filter`, `body_filter`, `log`
-  -- @treturn number|nil the status code from the response from the Service, or `nil`
-  -- if the request was not proxied (i.e. `kong.response.get_source()` returned
-  -- anything other than `"service"`.
+  -- @treturn number|nil The status code from the response from the Service, or `nil`
+  -- if the request was not proxied (that is, if `kong.response.get_source()` returned
+  -- anything other than `"service"`).
   -- @usage
   -- kong.log.inspect(kong.service.response.get_status()) -- 418
   function response.get_status()
@@ -160,15 +160,15 @@ local function new(pdk, major_version)
 
 
   ---
-  -- Returns a Lua table holding the headers from the response from the Service. Keys are
+  -- Returns a Lua table holding the headers from the Service response. Keys are
   -- header names. Values are either a string with the header value, or an array of
   -- strings if a header was sent multiple times. Header names in this table are
   -- case-insensitive and dashes (`-`) can be written as underscores (`_`); that is,
   -- the header `X-Custom-Header` can also be retrieved as `x_custom_header`.
   --
-  -- Unlike `kong.response.get_headers()`, this function will only return headers that
-  -- were present in the response from the Service (ignoring headers added by Kong itself).
-  -- If the request was not proxied to a Service (e.g. an authentication plugin rejected
+  -- Unlike `kong.response.get_headers()`, this function only returns headers that
+  -- are present in the response from the Service (ignoring headers added by Kong itself).
+  -- If the request is not proxied to a Service (e.g. an authentication plugin rejected
   -- a request and produced an HTTP 401 response), then the returned `headers` value
   -- might be `nil`, since no response from the Service has been received.
   --
@@ -177,10 +177,11 @@ local function new(pdk, major_version)
   -- greater than **1** and not greater than **1000**.
   -- @function kong.service.response.get_headers
   -- @phases `header_filter`, `body_filter`, `log`
-  -- @tparam[opt] number max_headers customize the headers to parse
-  -- @treturn table the response headers in table form
-  -- @treturn string err If more headers than `max_headers` were present, a
-  -- string with the error `"truncated"`.
+  -- @tparam[opt] number max_headers Sets a limit on the maximum number of
+  -- headers that can be parsed.
+  -- @treturn table The response headers in table form.
+  -- @treturn string If more headers than `max_headers` are present, returns
+  -- a string with the error `"truncated"`.
   -- @usage
   -- -- Given a response with the following headers:
   -- -- X-Custom-Header: bla
@@ -225,21 +226,21 @@ local function new(pdk, major_version)
   ---
   -- Returns the value of the specified response header.
   --
-  -- Unlike `kong.response.get_header()`, this function will only return a header
-  -- if it was present in the response from the Service (ignoring headers added by Kong
+  -- Unlike `kong.response.get_header()`, this function only returns a header
+  -- if it is present in the response from the Service (ignoring headers added by Kong
   -- itself).
   --
   -- @function kong.service.response.get_header
   -- @phases `header_filter`, `body_filter`, `log`
   -- @tparam string name The name of the header.
   --
-  -- Header names in are case-insensitive and are normalized to lowercase, and
-  -- dashes (`-`) can be written as underscores (`_`); that is, the header
-  -- `X-Custom-Header` can also be retrieved as `x_custom_header`.
+  --   Header names in are case-insensitive and are normalized to lowercase, and
+  --   dashes (`-`) can be written as underscores (`_`); that is, the header
+  --   `X-Custom-Header` can also be retrieved as `x_custom_header`.
   --
   -- @treturn string|nil The value of the header, or `nil` if a header with
-  -- `name` was not found in the response. If a header with the same name is present
-  -- multiple times in the response, this function will return the value of the
+  -- `name` is not found in the response. If a header with the same name is present
+  -- multiple times in the response, this function returns the value of the
   -- first occurrence of this header.
   -- @usage
   -- -- Given a response with the following headers:
@@ -270,7 +271,7 @@ local function new(pdk, major_version)
   --
   -- @function kong.service.response.get_raw_body
   -- @phases `header_filter`, `body_filter`, `log`
-  -- @treturn string body The raw buffered body
+  -- @treturn string The raw buffered body.
   -- @usage
   -- -- Plugin needs to call kong.service.request.enable_buffering() on `rewrite`
   -- -- or `access` phase prior calling this function.
@@ -293,9 +294,10 @@ local function new(pdk, major_version)
   --
   -- @function kong.service.response.get_body
   -- @phases `header_filter`, `body_filter`, `log`
-  -- @tparam[opt] string mimetype The mime-type of the response (if known)
-  -- @tparam[opt] number max_args set a limit on the maximum number of parsed
-  -- @treturn string body The raw buffered body
+  -- @tparam[opt] string mimetype The MIME type of the response (if known).
+  -- @tparam[opt] number max_args Sets a limit on the maximum number of (what?)
+  -- that can be parsed.
+  -- @treturn string The raw buffered body
   -- @usage
   -- -- Plugin needs to call kong.service.request.enable_buffering() on `rewrite`
   -- -- or `access` phase prior calling this function.

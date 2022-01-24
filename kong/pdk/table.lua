@@ -1,4 +1,4 @@
---- Utilities for Lua tables
+--- Utilities for Lua tables.
 --
 -- @module kong.table
 
@@ -7,15 +7,15 @@ local new_tab
 local clear_tab
 do
   ---
-  -- Returns a table with pre-allocated number of slots in its array and hash
+  -- Returns a table with a pre-allocated number of slots in its array and hash
   -- parts.
   --
   -- @function kong.table.new
-  -- @tparam[opt] number narr specifies the number of slots to pre-allocate
+  -- @tparam[opt] number narr Specifies the number of slots to pre-allocate
   -- in the array part.
-  -- @tparam[opt] number nrec specifies the number of slots to pre-allocate in
+  -- @tparam[opt] number nrec Specifies the number of slots to pre-allocate in
   -- the hash part.
-  -- @treturn table the newly created table
+  -- @treturn table The newly created table.
   -- @usage
   -- local tab = kong.table.new(4, 4)
   local ok
@@ -26,11 +26,11 @@ do
 
 
   ---
-  -- Clears a table from all of its array and hash parts entries.
+  -- Clears all array and hash parts entries from a table.
   --
   -- @function kong.table.clear
-  -- @tparam table tab the table which will be cleared
-  -- @return Nothing
+  -- @tparam table tab The table to be cleared.
+  -- @return Nothing.
   -- @usage
   -- local tab = {
   --   "hello",
@@ -57,9 +57,9 @@ end
 -- If both tables have the same key, the second one takes precedence.
 -- If only one table is given, it returns a copy.
 -- @function kong.table.merge
--- @tparam[opt] table t1 The first table
--- @tparam[opt] table t2 The second table
--- @treturn table The (new) merged table
+-- @tparam[opt] table t1 The first table.
+-- @tparam[opt] table t2 The second table.
+-- @treturn table The (new) merged table.
 -- @usage
 -- local t1 = {1, 2, 3, foo = "f"}
 -- local t2 = {4, 5, bar = "b"}
