@@ -10,27 +10,16 @@ local ngx_re_find = ngx.re.find
 local ngx_re_gsub = ngx.re.gsub
 
 
-local RESERVED_CHARACTERS = {
-  [0x21] = true, -- !
-  [0x23] = true, -- #
-  [0x24] = true, -- $
-  [0x25] = true, -- %
-  [0x26] = true, -- &
-  [0x27] = true, -- '
-  [0x28] = true, -- (
-  [0x29] = true, -- )
-  [0x2A] = true, -- *
-  [0x2B] = true, -- +
-  [0x2C] = true, -- ,
-  [0x2F] = true, -- /
-  [0x3A] = true, -- :
-  [0x3B] = true, -- ;
-  [0x3D] = true, -- =
-  [0x3F] = true, -- ?
-  [0x40] = true, -- @
-  [0x5B] = true, -- [
-  [0x5D] = true, -- ]
-}
+local HYPHEN_BYTE = string_byte('-')
+local DOT_BYTE = string_byte('.')
+local UNDERSCORE_BYTE = string_byte('_')
+local TILDE_BYTE = string_byte('~')
+local CAP_A_BYTE = string_byte('A')
+local CAP_Z_BYTE = string_byte('Z')
+local A_BYTE = string_byte('a')
+local Z_BYTE = string_byte('z')
+local ZERO_BYTE = string_byte('0')
+local NINE_BYTE = string_byte('9')
 
 
 local ESCAPE_PATTERN = "[^!#$&'()*+,/:;=?@[\\]A-Z\\d-_.~%]"
@@ -42,11 +31,20 @@ local SLASH = string_byte("/")
 local function percent_decode(m)
     local hex = m[1]
     local num = tonumber(hex, 16)
-    if RESERVED_CHARACTERS[num] then
-      return string_upper(m[0])
+    -- from rfc3986: ...should be normalized by decoding any
+    -- percent-encoded octet that corresponds to an unreserved character
+    --
+    -- unreserved  = ALPHA / DIGIT / "-" / "." / "_" / "~"
+    if (num >= A_BYTE and num <= Z_BYTE) -- a..z
+       or (num >= CAP_A_BYTE and num <= CAP_Z_BYTE) -- A..Z
+       or (num >= ZERO_BYTE and num <= NINE_BYTE) -- 0..9
+       or num == HYPHEN_BYTE or num == DOT_BYTE
+       or num == UNDERSCORE_BYTE or num == TILDE_BYTE
+    then
+      return string_char(num)
     end
 
-    return string_char(num)
+    return string_upper(m[0])
 end
 
 
@@ -64,7 +62,7 @@ local function escape(uri)
 end
 
 
-local function unescape(uri, merge_slashes)
+local function normalize(uri, merge_slashes)
   -- check for simple cases and early exit
   if uri == "" or uri == "/" then
     return uri
@@ -155,13 +153,7 @@ local function unescape(uri, merge_slashes)
 end
 
 
-local function normalize(uri, merge_slashes)
-  return escape(unescape(uri, merge_slashes))
-end
-
-
 return {
   escape = escape,
-  unescape = unescape,
   normalize = normalize,
 }
