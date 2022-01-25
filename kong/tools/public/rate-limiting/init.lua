@@ -22,6 +22,7 @@ local WARN  = ngx.WARN
 
 
 local locks_shm = ngx.shared.kong_locks
+local timer_handle
 
 
 local new_tab
@@ -419,21 +420,11 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
 end
 
 
-local function run_maintenance_cycle(premature, period, namespace)
-  if premature then
-    return
-  end
-
+local function namespace_maintenance_cycle(namespace, period)
   local cfg = config[namespace]
   if not cfg then
     log(DEBUG, "namespace ", namespace, " no longer exists")
     return
-  end
-
-  log(DEBUG, "starting timer for ", namespace, " cleanup at ", time() + period)
-  local _, err = timer_at(period, run_maintenance_cycle, period, namespace)
-  if err then
-    log(ERR, "error starting new maintenance timer: ", err)
   end
 
   local ok, err = locks_shm:add("rl-maint-" .. namespace, true, period - 0.1)
@@ -451,6 +442,22 @@ local function run_maintenance_cycle(premature, period, namespace)
   end
 end
 
+
+local function run_maintenance_cycle(premature, period)
+  if premature then
+    return
+  end
+
+  for namespace, _ in pairs(config) do
+    namespace_maintenance_cycle(namespace, period)
+  end
+
+  local err
+  timer_handle, err = timer_at(period, run_maintenance_cycle, period)
+  if err then
+    log(ERR, "error starting new maintenance timer: ", err)
+  end
+end
 
 function _M.new(opts)
   if type(opts) ~= "table" then
@@ -494,10 +501,11 @@ function _M.new(opts)
   }
 
   -- start maintenance timer
-  do
+  if timer_handle == nil then
     local period = 3600
-    log(DEBUG, "starting timer for ", namespace, " cleanup at ", time() + period)
-    local _, err = timer_at(period, run_maintenance_cycle, period, namespace)
+    log(DEBUG, "starting timer for cleanup at ", time() + period)
+    local err
+    timer_handle, err = timer_at(period, run_maintenance_cycle, period)
     if err then
       log(ERR, "error starting new maintenance timer: ", err)
     end
