@@ -1598,6 +1598,26 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
       assert.equal("cluster_data_plane_purge_delay must be 60 or greater", err)
     end)
+
+    it("cluster_max_payload is accepted", function()
+      local conf = assert(conf_loader(nil, {
+        cluster_max_payload = 4194304,
+      }))
+      assert.equal(4194304, conf.cluster_max_payload)
+
+      conf = assert(conf_loader(nil, {
+        cluster_max_payload = 8388608,
+      }))
+      assert.equal(8388608, conf.cluster_max_payload)
+    end)
+
+    it("cluster_max_payload < 4Mb rejected", function()
+          local conf, err = conf_loader(nil, {
+            cluster_max_payload = 1048576,
+          })
+          assert.is_nil(conf)
+          assert.equal("cluster_max_payload must be 4194304 (4MB) or greater", err)
+        end)
   end)
 
   describe("upstream keepalive properties", function()
