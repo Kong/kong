@@ -27,6 +27,7 @@ local pairs = pairs
 local error = error
 local type = type
 local WARN = ngx.WARN
+local DEBUG = ngx.DEBUG
 local sub = string.sub
 
 
@@ -60,6 +61,10 @@ local _ping_infos = {}
 local _enabled = false
 local _unique_str = utils.random_string()
 local _buffer_immutable_idx
+local _tls_session
+local _tls_opts = {
+  ssl_verify = false,
+}
 
 -- the resty.counter instance, will be initialized in `init_worker`
 local report_counter = nil
@@ -116,10 +121,9 @@ local function send_report(signal_type, t, host, port)
   elseif type(signal_type) ~= "string" then
     return error("signal_type (arg #1) must be a string", 2)
   end
-
   t = t or {}
   host = host or constants.REPORTS.ADDRESS
-  port = port or constants.REPORTS.STATS_PORT
+  port = port or constants.REPORTS.STATS_TLS_PORT
 
   -- add signal type to data
 
@@ -151,6 +155,15 @@ local function send_report(signal_type, t, host, port)
   if not ok then
     return
   end
+
+  _tls_opts.reused_session = _tls_session
+  local hs_ok, err = sock:tlshandshake(_tls_opts)
+  if not hs_ok then
+    log(DEBUG, "failed to complete TLS handshake for reports: ", err)
+    return
+  end
+
+  _tls_session = hs_ok
 
   sock:send(concat(_buffer, ";", 1, mutable_idx) .. "\n")
   sock:setkeepalive()
