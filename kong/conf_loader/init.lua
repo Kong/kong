@@ -1091,6 +1091,10 @@ local function check_and_infer(conf, opts)
     errors[#errors + 1] = "cluster_data_plane_purge_delay must be 60 or greater"
   end
 
+  if conf.cluster_max_payload < 4194304 then
+    errors[#errors + 1] = "cluster_max_payload must be 4194304 (4MB) or greater"
+  end
+
   if conf.role == "control_plane" or conf.role == "data_plane" then
     if not conf.cluster_cert or not conf.cluster_cert_key then
       errors[#errors + 1] = "cluster certificate and key must be provided to use Hybrid mode"
