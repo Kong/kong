@@ -64,6 +64,11 @@ for _, strategy in helpers.each_strategy() do
         service = bp.services:insert { name = "dd6" }
       }
 
+      local route7 = bp.routes:insert {
+        hosts   = { "datadog7.com" },
+        service = bp.services:insert { name = "dd7" }
+      }
+
       bp.plugins:insert {
         name     = "key-auth",
         route = { id = route1.id },
@@ -182,6 +187,18 @@ for _, strategy in helpers.each_strategy() do
           service_name_tag = "upstream",
           status_tag       = "http_status",
           consumer_tag     = "user",
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "datadog",
+        route = { id = route7.id },
+        config = {
+          host        = "127.0.0.1",
+          port        = 9999,
+          common_tags = {
+            "test_tag:test_value",
+          },
         },
       }
 
@@ -354,6 +371,29 @@ for _, strategy in helpers.each_strategy() do
       assert.contains("kong.response.size:%d+|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
       assert.contains("kong.upstream_latency:%d+|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
       assert.contains("kong.kong_latency:%d*|ms|#name:dd5,status:200,consumer:bar,app:kong", gauges, true)
+    end)
+
+    it("logs metrics with additional common tags", function()
+      local thread = helpers.udp_server(9999, 7)
+
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/status/200?apikey=kong",
+        headers = {
+          ["Host"] = "datadog7.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      local ok, gauges = thread:join()
+      assert.True(ok)
+      assert.equal(6, #gauges)
+      assert.contains("kong.request.count:1|c|#upstream:dd7,http_status:200,consumer:bar,test_tag:test_value,app:kong",gauges)
+      assert.contains("kong.latency:%d+|ms|#upstream:dd7,http_status:200,consumer:bar,test_tag:test_value,app:kong", gauges, true)
+      assert.contains("kong.request.size:%d+|ms|#upstream:dd7,http_status:200,consumer:bar,test_tag:test_value,app:kong", gauges, true)
+      assert.contains("kong.response.size:%d+|ms|#upstream:dd7,http_status:200,consumer:bar,test_tag:test_value,app:kong", gauges, true)
+      assert.contains("kong.upstream_latency:%d+|ms|#upstream:dd7,http_status:200,consumer:bar,test_tag:test_value,app:kong", gauges, true)
+      assert.contains("kong.kong_latency:%d*|ms|#upstream:dd7,http_status:200,consumer:bar,test_tag:test_value,app:kong", gauges, true)
     end)
 
     it("should not return a runtime error (regression)", function()

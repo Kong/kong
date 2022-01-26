@@ -80,6 +80,10 @@ return {
           { service_name_tag = { type = "string", default = "name" }, },
           { status_tag = { type = "string", default = "status" }, },
           { consumer_tag = { type = "string", default = "consumer" }, },
+          { common_tags = {
+              type = "array",
+              elements = { type = "string", match = "^.*[^:]$" },
+          }, },
           { metrics = {
               type     = "array",
               required = true,
@@ -105,4 +109,3 @@ return {
     },
   },
 }
-

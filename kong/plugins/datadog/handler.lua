@@ -32,6 +32,12 @@ local function compose_tags(service_name, status, consumer_id, tags, conf)
     insert(result, (conf.consumer_tag or "consumer") .. ":" .. consumer_id)
   end
 
+  if conf.tags ~= nil then
+    for _, v in pairs(conf.common_tags) do
+      insert(result, v)
+    end
+  end
+
   if tags ~= nil then
     for _, v in pairs(tags) do
       insert(result, v)
