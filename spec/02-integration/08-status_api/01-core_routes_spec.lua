@@ -61,7 +61,6 @@ describe("Status API - with strategy #" .. strategy, function()
       })
       assert.res_status(201, postres)
 
-      -- verify the status endpoint now includes a value (other than the default) for the configuration_hash
       local res = assert(client:send {
         method = "GET",
         path = "/status"
