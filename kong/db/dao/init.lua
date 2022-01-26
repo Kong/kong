@@ -301,7 +301,7 @@ local function validate_options_value(self, options)
   end
 
   local sort_by = options.sort_by
-  if sort_by ~= nil and schema.fields[sort_by] == nil then
+  if sort_by ~= nil and (schema.fields[sort_by] == nil or schema.fields[sort_by].type == "foreign") then
     errors.sort_by = fmt("cannot order by unknown field '%s'", sort_by)
   end
 
