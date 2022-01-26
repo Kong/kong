@@ -98,6 +98,10 @@ function _M.build_ssl_route_filter_set()
 
   local options = {}
   for workspace, err in workspaces_iter(db) do
+    if not workspace then
+      return nil, "could not iterate workspace: " .. err
+    end
+
     kong.log.debug("build filter for workspace ", workspace.name, " ", workspace.id)
 
     options.workspace = workspace.id
