@@ -19,6 +19,9 @@ local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local declarative  = require "kong.db.declarative"
 local workspaces   = require "kong.workspaces"
+local lrucache     = require "resty.lrucache"
+
+
 local PluginsIterator = require "kong.runloop.plugins_iterator"
 
 
@@ -39,7 +42,6 @@ local var          = ngx.var
 local log          = ngx.log
 local exit         = ngx.exit
 local exec         = ngx.exec
-local null         = ngx.null
 local header       = ngx.header
 local timer_at     = ngx.timer.at
 local timer_every  = ngx.timer.every
@@ -78,7 +80,7 @@ local TTL_ZERO = { ttl = 0 }
 local ROUTER_SYNC_OPTS
 local PLUGINS_ITERATOR_SYNC_OPTS
 local FLIP_CONFIG_OPTS
-local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
+local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 
 
 local get_plugins_iterator, get_updated_plugins_iterator
@@ -664,6 +666,8 @@ end
 do
   local router
   local router_version
+  local router_cache = lrucache.new(Router.MATCH_LRUCACHE_SIZE)
+  local router_cache_neg = lrucache.new(Router.MATCH_LRUCACHE_SIZE)
 
 
   -- Given a protocol, return the subsystem that handles it
@@ -690,8 +694,13 @@ do
 
   local function build_services_init_cache(db)
     local services_init_cache = {}
+    local services = db.services
+    local page_size
+    if services.pagination then
+      page_size = services.pagination.max_page_size
+    end
 
-    for service, err in db.services:each(nil, GLOBAL_QUERY_OPTS) do
+    for service, err in services:each(page_size, GLOBAL_QUERY_OPTS) do
       if err then
         return nil, err
       end
@@ -818,7 +827,7 @@ do
       counter = counter + 1
     end
 
-    local new_router, err = Router.new(routes)
+    local new_router, err = Router.new(routes, router_cache, router_cache_neg)
 
     -- XXXCORE replace with a hook
     new_router = ee.new_router(new_router)
@@ -832,6 +841,9 @@ do
     if version then
       router_version = version
     end
+
+    router_cache:flush_all()
+    router_cache_neg:flush_all()
 
     -- LEGACY - singletons module is deprecated
     singletons.router = router

@@ -1155,6 +1155,7 @@ do
 
     local cql
     local args
+    local opts = { consistency = self.opts.write_consistency }
 
     if state == "executed" then
       cql = [[UPDATE schema_meta
@@ -1191,7 +1192,7 @@ do
     table.insert(args, SCHEMA_META_KEY)
     table.insert(args, subsystem)
 
-    local res, err = conn:execute(cql, args)
+    local res, err = conn:execute(cql, args, opts)
     if not res then
       return nil, err
     end

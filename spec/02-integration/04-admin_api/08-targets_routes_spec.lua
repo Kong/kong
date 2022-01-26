@@ -544,12 +544,22 @@ describe("Admin API #" .. strategy, function()
       it("offset is a string", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/upstreams/" .. upstream.name .. "/targets",
+          path = "/upstreams/" .. upstream.name .. "/targets/all",
           query = {size = 3},
         })
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
         assert.is_string(json.offset)
+      end)
+      it("next url ends with /targets/all", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/upstreams/" .. upstream.name .. "/targets/all",
+          query = {size = 3},
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.equals("/upstreams/" .. upstream.name .. "/targets/all?offset=" .. ngx.escape_uri(json.offset), json.next)
       end)
       it("paginates a set", function()
         local pages = {}

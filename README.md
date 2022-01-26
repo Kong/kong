@@ -238,7 +238,7 @@ The Gateway will be available on the following ports on localhost:
 `:8001` on which the Admin API used to configure Kong listens.
 
 Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
-) to tour the Gateway features
+) to tour the Gateway features.
 
 ## Features
 
@@ -261,9 +261,9 @@ Contribute to the Plugin Hub and ensure your next innovative idea is published a
 
 ## Contributing
 
-We ❤️  pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong API Gateway, please familiarize yourself with the following developer resources:
-- [CONTRIBUTING](CONTRIBUTING.md)
-- [DEVELOPER](DEVELOPER.md)
+We ❤️ pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong API Gateway, please familiarize yourself with the following developer resources:
+- Contributor Guide ([CONTRIBUTING.md](CONTRIBUTING.md)) to learn about how to contribute to Kong.
+- Development Guide ([DEVELOPER.md](DEVELOPER.md)): Setting up your development environment.
 - [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) and [COPYRIGHT](COPYRIGHT)
 
 Use the [Plugin Development Guide](https://docs.konghq.com/latest/plugin-development/) for building new and creative plugins, or browse the online version of Kong's source code documentation in the [Plugin Development Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/). Developers can build plugins in [Lua](https://docs.konghq.com/gateway-oss/latest/plugin-development/), [Go](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-go-plugins) or [JavaScript](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-javascript-plugins).
