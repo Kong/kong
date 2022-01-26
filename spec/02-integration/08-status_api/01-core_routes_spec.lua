@@ -40,7 +40,7 @@ describe("Status API - with strategy #" .. strategy, function()
       assert.is_number(json.server.connections_writing)
       assert.is_number(json.server.connections_waiting)
       assert.is_number(json.server.total_requests)
-      assert.is_nil(json.server.configuration_hash) -- no hash in DB more, or in DBLESS mode until configuration has been applied
+      assert.is_nil(json.server.configuration_hash) -- no hash in DB mode, or in DBLESS mode until configuration has been applied
     end)
 
     it("/status starts providing a configuration_hash once an initial configuration has been pushed in dbless mode #off", function()
