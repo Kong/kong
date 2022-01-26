@@ -18,7 +18,7 @@ local PLUGIN_NAME   = require("kong.plugins.exit-transformer").PLUGIN_NAME
 local FILE_LOG_PATH = os.tmpname()
 
 
-for _, strategy in ipairs { "postgres" } do --strategies() do
+for _, strategy in strategies() do
   describe(PLUGIN_NAME .. ": (scope) [#" .. strategy .. "]", function()
     local client, admin_client
     local bp, gplugin
