@@ -43,7 +43,7 @@ describe("Status API - with strategy #" .. strategy, function()
       assert.is_nil(json.server.configuration_hash) -- no hash in DB mode, or in DBLESS mode until configuration has been applied
     end)
 
-    it("/status starts providing a configuration_hash once an initial configuration has been pushed in dbless mode #off", function()
+    it("/status starts providing a config_hash once an initial configuration has been pushed in dbless mode #off", function()
       -- push an initial configuration so that a configuration_hash will be present
       local postres = assert(client:send {
         method = "POST",
