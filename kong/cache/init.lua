@@ -39,6 +39,10 @@ local mt = { __index = _M }
 
 
 function _M.new(opts)
+  opts = opts or {}
+
+  -- opts validation
+
   if type(opts.shm_name) ~= "string" then
     error("opts.shm_name must be a string", 2)
   end
@@ -46,10 +50,6 @@ function _M.new(opts)
   if _init[opts.shm_name] then
     error("kong.cache (" .. opts.shm_name .. ") was already created", 2)
   end
-
-  -- opts validation
-
-  opts = opts or {}
 
   if not opts.cluster_events then
     error("opts.cluster_events is required", 2)
