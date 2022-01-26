@@ -644,6 +644,7 @@ local CONF_INFERENCES = {
   cluster_server_name = { typ = "string" },
   cluster_data_plane_purge_delay = { typ = "number" },
   cluster_ocsp = { enum = { "on", "off", "optional" } },
+  cluster_max_payload = { typ = "number" },
 
   kic = { typ = "boolean" },
   pluginserver_names = { typ = "array" },
@@ -1088,6 +1089,10 @@ local function check_and_infer(conf, opts)
 
   if conf.cluster_data_plane_purge_delay < 60 then
     errors[#errors + 1] = "cluster_data_plane_purge_delay must be 60 or greater"
+  end
+
+  if conf.cluster_max_payload < 4194304 then
+    errors[#errors + 1] = "cluster_max_payload must be 4194304 (4MB) or greater"
   end
 
   if conf.role == "control_plane" or conf.role == "data_plane" then
