@@ -49,8 +49,6 @@ function _M.new(opts)
 
   -- opts validation
 
-  opts = opts or {}
-
   if not opts.cluster_events then
     error("opts.cluster_events is required", 2)
   end
