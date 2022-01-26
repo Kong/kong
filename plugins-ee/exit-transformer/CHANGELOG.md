@@ -1,3 +1,7 @@
+## 0.3.3
+
+- Fix avoid manually utilising the plugins iterator
+
 ## 0.3.2
 
 - fix plugin not running on latest 2.3 and 2.4
