@@ -259,8 +259,16 @@ function _M:validate_client_cert(cert, log_prefix, log_suffix)
                     "during handshake, unable to extract CN: " .. cn
 
     elseif not self.cn_matcher[cn] then
+      local expected
+      local common_names=kong.configuration.cluster_allowed_common_names
+      if common_names then
+        expected = "one of: [" .. concat(common_names, ",") .. "]"
+      else
+        expected = "subdomain of: " .. self.cert_cn_parent
+      end
       return false, "data plane presented client certificate with incorrect CN " ..
-                    "during handshake, got: " .. cn
+                    "during handshake, expected " .. expected ..
+                    ", got: " .. cn
     end
   elseif kong.configuration.cluster_ocsp ~= "off" then
     local ok

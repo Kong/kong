@@ -257,8 +257,8 @@
                                  # set to `shared`.
 
 #cluster_allowed_common_names =  # The list of Common Names that are allowed to
-                                 # connect to control plane. Mulitple entries may
-                                 # be supplied in a comma seperated string. When not
+                                 # connect to control plane. Multiple entries may
+                                 # be supplied in a comma-separated string. When not
                                  # set, Data Plane with same parent domain of
                                  # Control Plane cert is allowed to connect.
 
