@@ -67,6 +67,9 @@
 
 - Reschedule resolve timer only when the previous one has finished.
   [#8344](https://github.com/Kong/kong/pull/8344)
+- Plugins, and any entities implemented with subchemas, now can use the `transformations`
+  and `shorthand_fields` properties, which were previously only available for non-subschema entities.
+  [#8146](https://github.com/Kong/kong/pull/8146)
 
 ## [2.7.0]
 
