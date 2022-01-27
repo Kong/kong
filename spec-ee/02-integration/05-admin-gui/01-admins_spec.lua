@@ -288,6 +288,53 @@ for _, strategy in helpers.each_strategy() do
           assert(utils.is_array(admins.data))
           assert.same(ngx.null, admins.next)
         end)
+
+        it("retrieves list of admins in all workspaces", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/admins?all_workspaces=true",
+            headers = {
+              ["Kong-Admin-Token"] = "letmein-default",
+            },
+          })
+
+          res = assert.res_status(200, res)
+          local json = cjson.decode(res)
+          assert.equal(5, #json.data) -- 1 more admin in non-default workspaces
+          assert(utils.is_array(json.data))
+          assert.same(ngx.null, json.next)
+
+          -- omit value
+          res = assert(client:send {
+            method = "GET",
+            path = "/admins?all_workspaces",
+            headers = {
+              ["Kong-Admin-Token"] = "letmein-default",
+            },
+          })
+
+          res = assert.res_status(200, res)
+          json = cjson.decode(res)
+          assert(utils.is_array(json.data))
+          assert.equal(5, #json.data)
+          assert.same(ngx.null, json.next)
+        end)
+
+        it("retrieves list of admins in all workspaces - invalid params", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/admins?all_workspaces=false",
+            headers = {
+              ["Kong-Admin-Token"] = "letmein-default",
+            },
+          })
+
+          res = assert.res_status(200, res)
+          local json = cjson.decode(res)
+          assert(utils.is_array(json.data))
+          assert.equal(4, #json.data)
+          assert.same(ngx.null, json.next)
+        end)
       end)
 
       describe("POST", function ()
