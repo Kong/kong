@@ -71,7 +71,8 @@ return {
     end,
 
     GET = function(self, db, helpers, parent)
-      local res, err = admins.find_all()
+      local all_workspaces = self.params.all_workspaces ~= nil and tostring(self.params.all_workspaces) == "true"
+      local res, err = admins.find_all(all_workspaces)
 
       if err then
         return endpoints.handle_error(err)
