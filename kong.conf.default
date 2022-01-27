@@ -218,6 +218,9 @@
                                  #   These are different certificates for each
                                  #   DP node, but issued by a cluster-wide
                                  #   common CA certificate: `cluster_ca_cert`.
+                                 # - `pki_check_cn`: similar as `pki` but additionally
+                                 #   checks for Common Name of data plane certificate
+                                 #   specified in `cluster_allowed_common_names`.
 
 #cluster_cert =                  # Filename of the cluster certificate to use
                                  # when establishing secure communication
@@ -252,6 +255,15 @@
                                  #
                                  # This field is ignored if `cluster_mtls` is
                                  # set to `shared`.
+
+#cluster_allowed_common_names =  # The list of Common Names that are allowed to
+                                 # connect to control plane. Multiple entries may
+                                 # be supplied in a comma-separated string. When not
+                                 # set, Data Plane with same parent domain of
+                                 # Control Plane cert is allowed to connect.
+                                 #
+                                 # This field is ignored if `cluster_mtls` is
+                                 # not set to `pki_check_cn`.
 
 #------------------------------------------------------------------------------
 # HYBRID MODE DATA PLANE

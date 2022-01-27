@@ -666,6 +666,7 @@ local CONF_INFERENCES = {
   cluster_server_name = { typ = "string" },
   cluster_data_plane_purge_delay = { typ = "number" },
   cluster_ocsp = { enum = { "on", "off", "optional" } },
+  cluster_allowed_common_names = { typ = "array" },
   cluster_max_payload = { typ = "number" },
 
   kic = { typ = "boolean" },
@@ -1128,7 +1129,7 @@ local function check_and_infer(conf, opts)
         if err then
           errors[#errors + 1] = "cluster_cert file is not a valid PEM certificate: "..err
 
-        else
+        elseif not conf.cluster_allowed_common_names then
           local cn, cn_parent = utils.get_cn_parent_domain(cluster_cert)
           if not cn then
             errors[#errors + 1] = "unable to get CommonName of cluster_cert: " .. cn
