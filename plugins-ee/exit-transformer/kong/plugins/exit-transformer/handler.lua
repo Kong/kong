@@ -8,7 +8,6 @@
 local cjson = require "cjson.safe"
 
 local sandbox     = require "kong.tools.sandbox"
-local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
 
 local PLUGIN_NAME    = require("kong.plugins.exit-transformer").PLUGIN_NAME

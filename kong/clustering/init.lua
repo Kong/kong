@@ -49,7 +49,7 @@ local get_cn_parent_domain = utils.get_cn_parent_domain
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 local server_on_message_callbacks = {}
-local MAX_PAYLOAD = constants.CLUSTERING_MAX_PAYLOAD
+local MAX_PAYLOAD = kong.configuration.cluster_max_payload
 local WS_OPTS = {
   timeout = constants.CLUSTERING_TIMEOUT,
   max_payload_len = MAX_PAYLOAD,
@@ -151,6 +151,10 @@ function _M.new(conf)
   --- EE
 
   self.child = require("kong.clustering." .. conf.role).new(self)
+
+  --- XXX EE: clear private key as it is not needed after this point
+  self.cert_private = nil
+  --- EE
 
   return self
 end
