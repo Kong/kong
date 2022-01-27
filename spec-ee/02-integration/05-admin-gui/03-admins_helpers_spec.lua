@@ -103,15 +103,6 @@ for _, strategy in helpers.each_strategy() do
         assert.not_nil(res.body['data'][1].updated_at)
         assert.not_nil(res.body['data'][1].username)
       end)
-
-      it("in all workspaces", function()
-        local res, err = admins_helpers.find_all(true)
-        assert.is_nil(err)
-        assert.same(200, res.code)
-        assert(utils.is_array(res.body.data))
-        assert.same(4, #res.body.data) -- total admins in all workspaces
-        assert.same(ngx.null, res.body.next)
-      end)
     end)
 
     describe("validate admins", function()

@@ -91,7 +91,7 @@ local function sanitize_params(params)
 end
 
 
-function _M.find_all(all_workspaces)
+function _M.find_all()
 -- XXXCORE TODO
   local all_admins = {}
   for admin, err in kong.db.admins:each() do
@@ -109,7 +109,7 @@ function _M.find_all(all_workspaces)
     v.workspaces = rbac.find_all_ws_for_rbac_user(rbac_user, null)
 
     for _, ws in ipairs(v.workspaces) do
-      if all_workspaces or ws.id == ngx.ctx.workspace then
+      if ws.id == ngx.ctx.workspace then
         ws_admins[#ws_admins + 1] = transmogrify(v)
         break
       end
