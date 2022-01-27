@@ -1,3 +1,8 @@
+## 1.6.1
+
+- fix(consumer_groups) provide error message when consumer group is enforced but
+  not configured or no override value is provided. [FT-2220](https://konghq.atlassian.net/browse/FT-2220)
+
 ## 1.6.0
 
 - feat(consumer groups) support consumer group configuration [FT-1881](https://konghq.atlassian.net/browse/FT-1881)
