@@ -132,6 +132,7 @@ cluster_server_name = NONE
 cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
 cluster_v2 = off
+cluster_max_payload = 4194304
 
 mem_cache_size = 128m
 ssl_cert = NONE
