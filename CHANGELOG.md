@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [2.7.1](#271)
 - [2.7.0](#270)
 - [2.6.0](#260)
 - [2.5.1](#251)
@@ -59,6 +60,16 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+## [2.7.1]
+
+### Fixes
+
+- Reschedule resolve timer only when the previous one has finished.
+  [#8344](https://github.com/Kong/kong/pull/8344)
+- Plugins, and any entities implemented with subchemas, now can use the `transformations`
+  and `shorthand_fields` properties, which were previously only available for non-subschema entities.
+  [#8146](https://github.com/Kong/kong/pull/8146)
 
 ## [2.7.0]
 
@@ -6635,6 +6646,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1
 [2.7.0]: https://github.com/Kong/kong/compare/2.6.0...2.7.0
 [2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
 [2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
