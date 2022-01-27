@@ -138,6 +138,10 @@ function _M.new(conf)
 
   self.child = require("kong.clustering." .. conf.role).new(self)
 
+  --- XXX EE: clear private key as it is not needed after this point
+  self.cert_private = nil
+  --- EE
+
   return self
 end
 

@@ -151,7 +151,11 @@ end
 function _M:init_worker()
   -- ROLE = "data_plane"
 
-  if ngx.worker.id() == 0 and self.config_cache then
+  if ngx.worker.id() ~= 0 then
+    return
+  end
+
+  if self.config_cache then
     local f = io_open(self.config_cache, "r")
     if f then
       local config, err = f:read("*a")
@@ -182,7 +186,7 @@ function _M:init_worker()
         end
       end
 
-    elseif self.config_cache then
+    else
       -- CONFIG_CACHE does not exist, pre create one with 0600 permission
       local fd = ffi.C.open(self.config_cache, bit.bor(system_constants.O_RDONLY(),
                                                        system_constants.O_CREAT()),
@@ -196,15 +200,11 @@ function _M:init_worker()
         ffi.C.close(fd)
       end
     end
-
-    assert(ngx.timer.at(0, function(premature)
-      self:communicate(premature)
-    end))
   end
 
-  --- XXX EE: clear private key as it is not needed after this point
-  self.cert_private = nil
-  --- EE
+  assert(ngx.timer.at(0, function(premature)
+    self:communicate(premature)
+  end))
 end
 
 
