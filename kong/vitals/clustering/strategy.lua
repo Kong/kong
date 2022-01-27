@@ -89,8 +89,6 @@ for _, f in ipairs(dp_functions) do
   end
 end
 
-
-
 local function get_server_name()
   local conf = kong.configuration
   local server_name
@@ -98,9 +96,9 @@ local function get_server_name()
     server_name = "kong_clustering"
   else
     -- server_name will be set to the host if it is not explicitly defined here
-    if conf.cluster_telemetry_server_name ~= "" then
+    if conf.cluster_telemetry_server_name ~= nil and conf.cluster_telemetry_server_name ~= "" then
       server_name = conf.cluster_telemetry_server_name
-    elseif conf.cluster_server_name ~= "" then
+    elseif conf.cluster_server_name ~= nil and conf.cluster_server_name ~= "" then
       server_name = conf.cluster_server_name
     end
   end
