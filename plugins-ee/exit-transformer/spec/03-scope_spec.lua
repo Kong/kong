@@ -5,11 +5,17 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local helpers = require "spec.helpers"
+local helpers    = require "spec.helpers"
+local utils      = require "kong.tools.utils"
+local pl_path    = require "pl.path"
+local pl_file    = require "pl.file"
+local pl_stringx = require "pl.stringx"
+local cjson      = require "cjson"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-local PLUGIN_NAME    = require("kong.plugins.exit-transformer").PLUGIN_NAME
+local PLUGIN_NAME   = require("kong.plugins.exit-transformer").PLUGIN_NAME
+local FILE_LOG_PATH = os.tmpname()
 
 
 for _, strategy in strategies() do
@@ -64,6 +70,19 @@ for _, strategy in strategies() do
         config = { functions = { function_str_body_another } },
       }
 
+      local route3 = bp.routes:insert({
+        hosts = { "test3.com" },
+      })
+
+      bp.plugins:insert {
+        name = "file-log",
+        route = { id = route3.id },
+        config = {
+          path = FILE_LOG_PATH,
+          reopen = true,
+        },
+      }
+
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
@@ -82,11 +101,13 @@ for _, strategy in strategies() do
     before_each(function()
       client = helpers.proxy_client()
       admin_client = helpers.admin_client()
+      os.remove(FILE_LOG_PATH)
     end)
 
     after_each(function()
       if client then client:close() end
       if admin_client then admin_client:close() end
+      os.remove(FILE_LOG_PATH)
     end)
 
     describe("global scope", function()
@@ -113,6 +134,7 @@ for _, strategy in strategies() do
         })
 
         local body = res:read_body()
+        assert.res_status(404, res)
         assert.equal("{\"hello\":\"world\"}", body)
 
 
@@ -168,6 +190,34 @@ for _, strategy in strategies() do
 
         local body = res:read_body()
         assert.equal("{\"another\":\"transform\"}", body)
+      end)
+    end)
+
+    describe("with exit-transformer + file-log configured", function()
+      it("still runs the log phase plugins", function()
+        local uuid = utils.random_string()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            ["file-log-uuid"] = uuid,
+            host = "test3.com",
+          }
+        })
+
+        local body = res:read_body()
+        assert.equal("{\"hello\":\"world\"}", body)
+
+        helpers.wait_until(function()
+          return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
+        end, 5)
+
+        local log = pl_file.read(FILE_LOG_PATH)
+        local log_message = cjson.decode(pl_stringx.strip(log):match("%b{}"))
+        assert.same("127.0.0.1", log_message.client_ip)
+        assert.same(uuid, log_message.request.headers["file-log-uuid"])
+        assert.is_number(log_message.request.size)
+        assert.is_number(log_message.response.size)
       end)
     end)
   end)

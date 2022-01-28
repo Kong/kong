@@ -8,7 +8,10 @@
 _G.kong = {
   -- XXX EE: kong.version is used in some warning messages in
   -- clustering/control_plane.lua and fail if nil
-  version = "x.y.z"
+  version = "x.y.z",
+  configuration = {
+      cluster_max_payload = 4194304
+    }
 }
 
 local cp = require("kong.clustering.control_plane")
