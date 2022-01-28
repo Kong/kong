@@ -31,7 +31,7 @@ pipeline {
   parameters {
     string(
       name: 'DATA_PLANE_KONG_GATEWAY_IMAGE',
-      defaultValue: 'kong/kong-gateway:2.7',
+      defaultValue: 'kong/kong-gateway:2.6',
       trim: true,
       description: '''<p>Kong Gateway image to use for the data plane</p>
                       <ul>
