@@ -100,7 +100,6 @@ http {
     lua_kong_load_var_index $https;
     lua_kong_load_var_index $http2;
     lua_kong_load_var_index $is_args;
-    lua_kong_load_var_index $kong_proxy_mode;
     lua_kong_load_var_index $realip_remote_addr;
     lua_kong_load_var_index $realip_remote_port;
     lua_kong_load_var_index $remote_addr;
@@ -118,22 +117,10 @@ http {
     lua_kong_load_var_index $ssl_client_verify;
     lua_kong_load_var_index $ssl_protocol;
     lua_kong_load_var_index $ssl_server_name;
-    lua_kong_load_var_index $upstream_connection;
-    lua_kong_load_var_index $upstream_host;
     lua_kong_load_var_index $upstream_http_connection;
     lua_kong_load_var_index $upstream_http_trailer;
     lua_kong_load_var_index $upstream_http_upgrade;
-    lua_kong_load_var_index $upstream_scheme;
     lua_kong_load_var_index $upstream_status;
-    lua_kong_load_var_index $upstream_te;
-    lua_kong_load_var_index $upstream_uri;
-    lua_kong_load_var_index $upstream_upgrade;
-    lua_kong_load_var_index $upstream_x_forwarded_for;
-    lua_kong_load_var_index $upstream_x_forwarded_host;
-    lua_kong_load_var_index $upstream_x_forwarded_path;
-    lua_kong_load_var_index $upstream_x_forwarded_port;
-    lua_kong_load_var_index $upstream_x_forwarded_prefix;
-    lua_kong_load_var_index $upstream_x_forwarded_proto;
 
     upstream kong_upstream {
         server 0.0.0.1;
