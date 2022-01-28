@@ -272,15 +272,15 @@ local function parse_jaeger_trace_context_headers(jaeger_header)
   end
 
   -- valid span_id is required.
-  if #span_id ~= 16 or tonumber(parent_id, 16) == 0 then
+  if #span_id ~= 16 or tonumber(span_id, 16) == 0 then
     warn("invalid jaeger span ID; ignoring.")
     return nil, nil, nil, nil
   end
 
-  -- valid parent_id is required.
-  if #parent_id ~= 16 then
-    warn("invalid jaeger parent ID; ignoring.")
-    return nil, nil, nil, nil
+  -- validating parent_id. If it is invalid just logging, as it can be ignored
+  -- https://www.jaegertracing.io/docs/1.29/client-libraries/#tracespan-identity
+  if #parent_id ~= 16 and tonumber(parent_id, 16) ~= 0 then
+    warn(fmt("invalid jaeger parent ID; ignoring."))
   end
 
   -- valid flags are required
