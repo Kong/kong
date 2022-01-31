@@ -21,7 +21,7 @@ Let’s test drive Kong by adding authentication to an API in under 5 minutes.
 
 We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/install/docker/) procedure if you’d prefer to run the Kong API Gateway in DB-less mode. 
 
-Whether you’re running in the cloud, on bare metal or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
+Whether you’re running in the cloud, on bare metal,or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
 
 1) To start, clone the Docker repository and navigate to the compose folder.
 ```cmd
@@ -37,7 +37,7 @@ Whether you’re running in the cloud, on bare metal or using containers, you ca
 The Gateway will be available on the following ports on localhost:
 
 `:8000` on which Kong listens for incoming HTTP traffic from your clients, and forwards it to your upstream services.
-`:8001` on which the Admin API used to configure Kong listens.
+`:8001` on which the Admin API is used to configure Kong listens.
 
 Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
 ) to tour the Gateway features.
@@ -48,7 +48,7 @@ By centralizing common API functionality across all your organization's services
 
 The top Kong features include:
 - Advanced routing, load balancing, health checking - all configurable via an admin API or declarative configuration.
-- Authentication and Authorization for APIs using methods like JWT, basic auth, ACLs and more.
+- Authentication and Authorization for APIs using methods like JWT, basic auth, ACLs,and more.
 - Proxy, SSL/TLS termination, and connectivity support for L4 or L7 traffic.
 - Plugins for enforcing traffic controls, req/res transformations, logging, monitoring and including a plugin developer hub.
 - Sophisticated deployment models like Declarative Databaseless Deployment and Hybrid Deployment (control plane/data plane separation) without any vendor lock-in.
