@@ -757,6 +757,10 @@ function main() {
       if configure_plugin "$plugin_name"; then
         check_clustering_status "$plugin_name"
       fi
+
+      # Add a short delay for data plane log messages to complete
+      # (possible errors in configuration)
+      sleep 5 # This may create duplicates in the log, but that is OK
     fi
   done
 
