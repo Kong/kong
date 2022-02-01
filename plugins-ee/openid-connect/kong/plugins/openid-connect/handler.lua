@@ -272,6 +272,8 @@ function OICHandler.access(_, conf)
 
   local response = responses.new(args, ctx, iss, client, anonymous, session)
 
+  local proxy_despite_refresh_failure = false
+
   -- logout
   do
     local logout = false
@@ -1381,13 +1383,12 @@ function OICHandler.access(_, conf)
     end
 
   else
-    log("access token has expired")
+    -- possibly expired
 
     if not refresh_tokens then
       return response.unauthorized("access token has expired and refreshing of tokens was disabled")
     end
 
-    -- access token has expired, try to refresh the access token before proxying
     if not tokens_encoded.refresh_token then
       return response.unauthorized("access token cannot be refreshed in absence of refresh token")
     end
@@ -1399,89 +1400,100 @@ function OICHandler.access(_, conf)
 
     local tokens_refreshed
     tokens_refreshed, err = oic.token:refresh(refresh_token)
-    if type(tokens_refreshed) ~= "table" then
+    -- when leeway is configured we allow a refresh ahead of expiry. In case we have single-use
+    -- refresh tokens and concurrent requests we can fail unjustified here.
+    -- Allowing to skip refreshing and proxy when the token is still valid.
+    -- https://konghq.atlassian.net/browse/FTI-2999
+    if exp > 0 and (err or type(tokens_refreshed) ~= "table") then
+      if err then
+        log("unable to refresh soon to be expiring access token using refresh token: ", err)
+      end
+      log("continuing request processing with non-expired access token despite the token refresh failure")
+      proxy_despite_refresh_failure = true
+    elseif type(tokens_refreshed) ~= "table" then
       log("unable to refresh access token using refresh token")
       return response.unauthorized(err)
-
     else
       log("refreshed access token using refresh token")
     end
 
-    log("verifying refreshed tokens")
-    if ignore_signature.refresh_token then
-      tokens_decoded, err = oic.token:verify(tokens_refreshed, { ignore_signature = true })
-    else
-      tokens_decoded, err = oic.token:verify(tokens_refreshed)
-    end
+    if not proxy_despite_refresh_failure then
+      log("verifying refreshed tokens")
+      if ignore_signature.refresh_token then
+        tokens_decoded, err = oic.token:verify(tokens_refreshed, { ignore_signature = true })
+      else
+        tokens_decoded, err = oic.token:verify(tokens_refreshed)
+      end
 
-    if type(tokens_decoded) ~= "table" then
-      log("unable to verify refreshed tokens")
-      return response.unauthorized(err)
-
-    else
-      log("verified refreshed tokens")
-    end
-
-    local preserve_tokens
-    if not tokens_refreshed.refresh_token then
-      log("preserving refresh token")
-      tokens_refreshed.refresh_token = refresh_token
-      preserve_tokens = true
-    end
-
-    if not tokens_refreshed.id_token and id_token then
-      log("preserving id token")
-      tokens_refreshed.id_token = id_token
-      preserve_tokens = true
-    end
-
-    if preserve_tokens then
-      log("decoding tokens with preserved tokens")
-      tokens_decoded, err = oic.token:decode(tokens_refreshed, TOKEN_DECODE_OPTS)
       if type(tokens_decoded) ~= "table" then
-        log("unable to decode tokens with preserved tokens")
+        log("unable to verify refreshed tokens")
         return response.unauthorized(err)
 
       else
-        log("decoded tokens with preserved tokens")
+        log("verified refreshed tokens")
       end
-    end
 
-    tokens_encoded = tokens_refreshed
+      local preserve_tokens
+      if not tokens_refreshed.refresh_token then
+        log("preserving refresh token")
+        tokens_refreshed.refresh_token = refresh_token
+        preserve_tokens = true
+      end
 
-    exp = claims.exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
+      if not tokens_refreshed.id_token and id_token then
+        log("preserving id token")
+        tokens_refreshed.id_token = id_token
+        preserve_tokens = true
+      end
 
-    if exp > 0 then
-      local ttl_new = exp - ttl.now
-      if ttl_new > 0 then
-        if ttl.max_ttl and ttl.max_ttl > 0 then
-          if ttl_new > ttl.max_ttl then
-            ttl_new = ttl.max_ttl
+      if preserve_tokens then
+        log("decoding tokens with preserved tokens")
+        tokens_decoded, err = oic.token:decode(tokens_refreshed, TOKEN_DECODE_OPTS)
+        if type(tokens_decoded) ~= "table" then
+          log("unable to decode tokens with preserved tokens")
+          return response.unauthorized(err)
+
+        else
+          log("decoded tokens with preserved tokens")
+        end
+      end
+
+      tokens_encoded = tokens_refreshed
+
+      exp = claims.exp(tokens_decoded.access_token, tokens_encoded, ttl.now, exp_default)
+
+      if exp > 0 then
+        local ttl_new = exp - ttl.now
+        if ttl_new > 0 then
+          if ttl.max_ttl and ttl.max_ttl > 0 then
+            if ttl_new > ttl.max_ttl then
+              ttl_new = ttl.max_ttl
+            end
           end
+
+          if ttl.min_ttl and ttl.min_ttl > 0 then
+            if ttl_new < ttl.min_ttl then
+              ttl_new = ttl.min_ttl
+            end
+          end
+
+          ttl.default_ttl = ttl_new
+        end
+      end
+
+      if auth_methods.session then
+        if session_present then
+          session_regenerate = true
+        else
+          session_modified = true
         end
 
-        if ttl.min_ttl and ttl.min_ttl > 0 then
-          if ttl_new < ttl.min_ttl then
-            ttl_new = ttl.min_ttl
-          end
-        end
-
-        ttl.default_ttl = ttl_new
+        session.data = {
+          client  = client.index,
+          tokens  = tokens_encoded,
+          expires = exp,
+        }
       end
-    end
-
-    if auth_methods.session then
-      if session_present then
-        session_regenerate = true
-      else
-        session_modified = true
-      end
-
-      session.data = {
-        client  = client.index,
-        tokens  = tokens_encoded,
-        expires = exp,
-      }
     end
   end
 
@@ -2189,10 +2201,15 @@ function OICHandler.access(_, conf)
         end
       end
 
-      if not skip_session then
+      if not skip_session and (not proxy_despite_refresh_failure) then
         if session_regenerate then
-          log("regenerating session identifier")
-          session:regenerate()
+          if args.get_conf_arg("session_strategy") == "regenerate" then
+              log("saving session")
+              session:save()
+          else
+            log("regenerating session identifier")
+            session:regenerate()
+          end
 
         elseif session_modified then
           log("saving session")
