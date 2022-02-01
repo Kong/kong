@@ -183,7 +183,11 @@ pipeline {
         sh label: 'Build Kong Gateway development environment',
            script: 'gojira run make dev'
         sh label: 'Execute migrations',
-           script: 'gojira run kong migrations bootstrap --vv'
+           script: '''
+            echo "Wait 5 seconds to ensure the cassandra cluster is ready..."
+            sleep 5
+            gojira run kong migrations bootstrap --vv
+           '''
         sh label: 'Clean Kong Gateway instance',
            script: 'gojira nuke -f'
       }
