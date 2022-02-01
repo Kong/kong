@@ -81,7 +81,6 @@ http {
     lua_kong_load_var_index $args;
     lua_kong_load_var_index $bytes_sent;
     lua_kong_load_var_index $content_type;
-    lua_kong_load_var_index $ctx_ref;
     lua_kong_load_var_index $host;
     lua_kong_load_var_index $http_authorization;
     lua_kong_load_var_index $http_connection;
