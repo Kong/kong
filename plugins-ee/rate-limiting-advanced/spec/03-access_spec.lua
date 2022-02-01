@@ -173,13 +173,18 @@ for _, strategy in strategies() do
             name = "test_consumer_group"
           }))
 
-          assert(db.consumer_groups:insert({
+          local consumer_group_no_config = assert(db.consumer_groups:insert({
             name = "test_consumer_group_no_config"
           }))
 
           assert(db.consumer_group_consumers:insert({
             consumer          = { id = consumer_in_group.id },
             consumer_group 	  = { id = consumer_group.id },
+          }))
+
+          assert(db.consumer_group_consumers:insert({
+            consumer          = { id = consumer_in_group_no_config.id },
+            consumer_group 	  = { id = consumer_group_no_config.id },
           }))
 
           assert(db.consumer_group_plugins:insert({
