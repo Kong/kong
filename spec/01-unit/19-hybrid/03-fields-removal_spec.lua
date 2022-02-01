@@ -62,6 +62,7 @@ describe("kong.clustering.control_plane", function()
       },
       acme = {
         "preferred_chain",
+        "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -164,6 +165,7 @@ describe("kong.clustering.control_plane", function()
       },
       acme = {
         "preferred_chain",
+        "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -266,6 +268,7 @@ describe("kong.clustering.control_plane", function()
       },
       acme = {
         "preferred_chain",
+        "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -361,6 +364,7 @@ describe("kong.clustering.control_plane", function()
       },
       acme = {
         "preferred_chain",
+        "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -452,6 +456,7 @@ describe("kong.clustering.control_plane", function()
       },
       acme = {
         "preferred_chain",
+        "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -540,6 +545,7 @@ describe("kong.clustering.control_plane", function()
     assert.same({
       acme = {
         "preferred_chain",
+        "rsa_key_size",
       },
       aws_lambda = {
         "base64_encode_body",
@@ -626,6 +632,9 @@ describe("kong.clustering.control_plane", function()
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
+      acme = {
+        "rsa_key_size",
+      },
       forward_proxy = {
         "auth_username",
         "auth_password"
@@ -656,7 +665,13 @@ describe("kong.clustering.control_plane", function()
       },
     }, cp._get_removed_fields(2006000000))
 
-    assert.same(nil, cp._get_removed_fields(2007000000))
+    assert.same({
+      acme = {
+        "rsa_key_size",
+      },
+    }, cp._get_removed_fields(2007000000))
+
+    assert.same(nil, cp._get_removed_fields(2008000000))
   end)
 
   it("update or remove unknown fields", function()

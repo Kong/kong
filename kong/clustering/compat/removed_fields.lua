@@ -167,4 +167,12 @@ return {
       "consumer_groups",
     },
   },
+
+  -- Any dataplane older than 2.8.0
+  [2007999999] = {
+    -- OSS
+    acme = {
+      "rsa_key_size",
+    },
+  },
 }
