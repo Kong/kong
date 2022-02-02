@@ -73,14 +73,19 @@ local function redis_connect()
   return red, assert(version(red_version))
 end
 
-local function flush_redis(red, db)
-  assert(red:select(db))
-  red:flushall()
-end
+-- local function flush_redis(red, db)
+--   assert(red:select(db))
+--   red:flushall()
+-- end
 
 local function add_redis_user(red, red_version)
   if red_version >= version("6.0.0") then
-    assert(red:acl("setuser", REDIS_USER_VALID, "on", "allkeys", "+incrby", "+select", "+info", "+expire", "+get", "+exists", ">" .. REDIS_PASSWORD))
+    assert(red:acl(
+      "setuser",
+      REDIS_USER_VALID,
+      "on", "allkeys", "+incrby", "+select", "+info", "+expire", "+get", "+exists",
+      ">" .. REDIS_PASSWORD
+    ))
   end
 end
 
@@ -279,7 +284,8 @@ for _, strategy in helpers.all_strategies() do
             session_storage = "redis",
             session_redis_host = REDIS_HOST,
             session_redis_port = REDIS_PORT,
-            session_redis_password = os.getenv("REDIS_PASSWORD") or nil, -- This will allow for testing with a secured redis instance
+            -- This will allow for testing with a secured redis instance
+            session_redis_password = os.getenv("REDIS_PASSWORD") or nil,
           },
         }
 
@@ -1263,8 +1269,8 @@ for _, strategy in helpers.all_strategies() do
               },
             })
             assert.response(res).has.status(200)
-            local rediscookies = res.headers["Set-Cookie"]
-            local redisjson = assert.response(res).has.jsonbody()
+            rediscookies = res.headers["Set-Cookie"]
+            redisjson = assert.response(res).has.jsonbody()
             if type(rediscookies) == "table" then
               -- multiple cookies can be expected
               for i, cookie in ipairs(rediscookies) do
@@ -1355,7 +1361,7 @@ for _, strategy in helpers.all_strategies() do
           assert.is_not_nil(new_set_cookie_r2)
           -- the refresh should fail (see logs) now due to single-use refresh_token policy
           -- but the request will proxy (without starting the session) but we do not get a new token
-          local res = proxy_client:get("/leeway-refresh", {
+          res = proxy_client:get("/leeway-refresh", {
             headers = {
               Cookie = lw_user_session_header_table,
             },
