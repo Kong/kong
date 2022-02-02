@@ -1314,29 +1314,29 @@ for _, strategy in helpers.all_strategies() do
 
           -- wait until token is expired (according to leeway)
           ngx.sleep(2)
-          local res = proxy_client:get("/leeway-refresh", {
+          local res1 = proxy_client:get("/leeway-refresh", {
             headers = {
               Cookie = lw_user_session_header_table,
             },
           })
-          local set_cookie = res.headers["Set-Cookie"]
-          assert.is_not_nil(set_cookie)
+          local set_cookie_1 = res1.headers["Set-Cookie"]
+          assert.is_not_nil(set_cookie_1)
           -- now extract cookie and re-send
-          local new_session_cookie = extract_cookie(set_cookie)
+          local new_session_cookie = extract_cookie(set_cookie_1)
           -- we are still granted access
-          assert.response(res).has.status(200)
+          assert.response(res1).has.status(200)
           -- prove that we received a new session
           assert.not_same(new_session_cookie, lw_user_session_header_table)
 
           -- use new session
-          local res = proxy_client:get("/leeway-refresh", {
+          local res2 = proxy_client:get("/leeway-refresh", {
             headers = {
               Cookie = new_session_cookie
             },
           })
           -- and expect to get access
-          assert.response(res).has.status(200)
-          local new_set_cookie = res.headers["Set-Cookie"]
+          assert.response(res2).has.status(200)
+          local new_set_cookie = res2.headers["Set-Cookie"]
           -- we should not get a new cookie this time
           assert.is_nil(new_set_cookie)
           -- after the configured accesss_token_lifetime, we should not be able to
@@ -1344,13 +1344,13 @@ for _, strategy in helpers.all_strategies() do
           -- which is undesirable for this test case.
 
           -- reuseing the old cookie should still work
-          local res = proxy_client:get("/leeway-refresh", {
+          local res3 = proxy_client:get("/leeway-refresh", {
             headers = {
               Cookie = lw_user_session_header_table,
             },
           })
-          assert.response(res).has.status(200)
-          local new_set_cookie_r2 = res.headers["Set-Cookie"]
+          assert.response(res3).has.status(200)
+          local new_set_cookie_r2 = res3.headers["Set-Cookie"]
           -- we can still issue a new access_token -> expect a new cookie
           assert.is_not_nil(new_set_cookie_r2)
           -- the refresh should fail (see logs) now due to single-use refresh_token policy
@@ -1361,9 +1361,9 @@ for _, strategy in helpers.all_strategies() do
             },
           })
           assert.response(res).has.status(200)
-          local new_set_cookie = res.headers["Set-Cookie"]
+          local new_set_cookie1 = res.headers["Set-Cookie"]
           -- we should not get a new cookie this time
-          assert.is_nil(new_set_cookie)
+          assert.is_nil(new_set_cookie1)
 
         end)
 
