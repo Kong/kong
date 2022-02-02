@@ -70,6 +70,8 @@
   [#8191](https://github.com/Kong/kong/pull/8191)
 - Bumped resty.session from 3.8 to 3.10
   [#8294](https://github.com/Kong/kong/pull/8294)
+- Bump lua-resty-openssl to 0.8.5
+  [#8368](https://github.com/Kong/kong/pull/8368)
 
 ### Additions
 
