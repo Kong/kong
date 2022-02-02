@@ -106,6 +106,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_client",
         "userinfo_query_args_names",
         "userinfo_query_args_values",
+        "session_redis_username",
         auth_methods = {
           "userinfo",
         },
@@ -209,6 +210,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_client",
         "userinfo_query_args_names",
         "userinfo_query_args_values",
+        "session_redis_username",
         auth_methods = {
           "userinfo",
         },
@@ -312,6 +314,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_client",
         "userinfo_query_args_names",
         "userinfo_query_args_values",
+        "session_redis_username",
         auth_methods = {
           "userinfo",
         },
@@ -408,6 +411,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_client",
         "userinfo_query_args_names",
         "userinfo_query_args_values",
+        "session_redis_username",
         auth_methods = {
           "userinfo",
         },
@@ -500,6 +504,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_client",
         "userinfo_query_args_names",
         "userinfo_query_args_values",
+        "session_redis_username",
         auth_methods = {
           "userinfo",
         },
@@ -589,6 +594,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_client",
         "userinfo_query_args_names",
         "userinfo_query_args_values",
+        "session_redis_username",
         auth_methods = {
           "userinfo",
         },
@@ -666,11 +672,17 @@ describe("kong.clustering.control_plane", function()
       zipkin = {
         "local_service_name",
       },
+      openid_connect = {
+        "session_redis_username",
+      },
     }, cp._get_removed_fields(2006000000))
 
     assert.same({
       acme = {
         "rsa_key_size",
+      },
+      openid_connect = {
+        "session_redis_username",
       },
     }, cp._get_removed_fields(2007000000))
 
@@ -754,6 +766,11 @@ describe("kong.clustering.control_plane", function()
             local_service_name = "ok",
             header_type = "ignore"
           }
+        }, {
+          name = "openid-connect",
+          config = {
+            session_redis_password = "test",
+          }
         }, }
       }
     }
@@ -796,7 +813,12 @@ describe("kong.clustering.control_plane", function()
       config = {
         header_type = "preserve"
       }
-    } }, test_with(payload, "2.3.0").config_table.plugins)
+    }, {
+      name = "openid-connect",
+      config = {
+        session_redis_auth = "test",
+      }
+    }, }, test_with(payload, "2.3.0").config_table.plugins)
 
     assert.same({ {
       name = "prometheus",
@@ -837,7 +859,12 @@ describe("kong.clustering.control_plane", function()
       config = {
         header_type = "preserve"
       }
-    } }, test_with(payload, "2.4.0").config_table.plugins)
+    }, {
+      name = "openid-connect",
+      config = {
+        session_redis_auth = "test",
+      }
+    }, }, test_with(payload, "2.4.0").config_table.plugins)
 
     assert.same({ {
       name = "prometheus",
@@ -878,7 +905,12 @@ describe("kong.clustering.control_plane", function()
       config = {
         header_type = "preserve"
       }
-    } }, test_with(payload, "2.5.0").config_table.plugins)
+    }, {
+      name = "openid-connect",
+      config = {
+        session_redis_auth = "test",
+      }
+    }, }, test_with(payload, "2.5.0").config_table.plugins)
 
     assert.same({ {
       name = "prometheus",
@@ -919,10 +951,72 @@ describe("kong.clustering.control_plane", function()
       config = {
         header_type = "preserve"
       }
-    } }, test_with(payload, "2.6.0").config_table.plugins)
+    }, {
+      name = "openid-connect",
+      config = {
+        session_redis_auth = "test",
+      }
+    }, }, test_with(payload, "2.6.0").config_table.plugins)
+
+    assert.same({ {
+      name = "prometheus",
+      config = {
+        per_consumer = true,
+      },
+    }, {
+      name = "syslog",
+      config = {
+        custom_fields_by_lua = true,
+        facility = "user",
+      }
+    }, {
+      name = "redis-advanced",
+      config = {
+        redis = {
+          "connect_timeout",
+          "keepalive_backlog",
+          "keepalive_pool_size",
+          "read_timeout",
+          "send_timeout",
+        },
+      }
+    }, {
+      name = "rate-limiting-advanced",
+      config = {
+        limit = 5,
+        identifier = "path",
+        window_size = 30,
+        strategy = "local",
+        path = "/test",
+      }
+    }, {
+      name = "datadog",
+      config = {
+        service_name_tag= "ok",
+        status_tag= "ok",
+        consumer_tag = "ok",
+        metrics = {
+          {
+            name = "request_count",
+            stat_type = "distribution",
+          },
+        }
+      }
+    }, {
+      name = "zipkin",
+      config = {
+        local_service_name = "ok",
+        header_type = "ignore"
+      }
+    }, {
+      name = "openid-connect",
+      config = {
+        session_redis_auth = "test",
+      }
+    }, }, test_with(payload, "2.7.0").config_table.plugins)
 
     -- nothing should be removed
-    assert.same(payload.config_table.plugins, test_with(payload, "2.7.0").config_table.plugins)
+    assert.same(payload.config_table.plugins, test_with(payload, "2.8.0").config_table.plugins)
 
     -- test that the RLA sync_rate is updated
     payload = {

@@ -1,3 +1,12 @@
+## Unreleased
+
+- Add Redis ACL support for session storage
+  - Requires `lua-resty-session` >= 3.10
+  - New fields added:
+    - `session_redis_username` - Redis ACL username
+    - `session_redis_password` - Redis auth password or ACL password if username is present
+- Deprecate `session_redis_auth`; use `session_redis_password`
+
 ## v2.2.1
 
 - Fix negative caching, where `config.cache_ttl_neg` was not used, and

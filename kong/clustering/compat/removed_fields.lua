@@ -174,5 +174,10 @@ return {
     acme = {
       "rsa_key_size",
     },
+
+    -- Enterprise plugins
+    openid_connect = {
+      "session_redis_username",
+    },
   },
 }

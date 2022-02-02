@@ -255,6 +255,26 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
     -- XXX EE: this should be moved in its own file (compat/config.lua). With a table
     -- similar to compat/remove_fields, each plugin could register a function to handle
     -- its compatibility issues.
+    if dp_version_num < 2008000000 --[[ 2.8.0.0 ]] then
+      if config_table["plugins"] then
+        for _, t in ipairs(config_table["plugins"]) do
+          local config = t and t["config"]
+          if config then
+            if t["name"] == "openid-connect" then
+              if config["session_redis_password"] then
+                ngx_log(ngx_WARN, _log_prefix, "openid-connect plugin for Kong Gateway v" .. KONG_VERSION ..
+                        " contains configuration session_redis_password, which is incompatible with",
+                        " dataplane version " .. dp_version .. " and will be replaced with 'session_redis_auth'.", log_suffix)
+                config["session_redis_auth"] = config["session_redis_password"]
+                config["session_redis_password"] = nil
+                has_update = true
+              end
+            end
+          end
+        end
+      end
+    end
+
     if dp_version_num < 2007000000 --[[ 2.7.0.0 ]] then
       local entity_removal = {
         "consumer_groups",
