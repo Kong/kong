@@ -1,5 +1,7 @@
 # Table of Contents
 
+- [2.8.0](#280)
+- [2.7.1](#271)
 - [2.7.0](#270)
 - [2.6.0](#260)
 - [2.5.1](#251)
@@ -60,11 +62,104 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## 2.8.0 (UNRELEASED)
+## [2.8.0] (UNRELEASED)
 
 ### Dependencies
 
+- OpenSSL bumped to 1.1.1m
+  [#8191](https://github.com/Kong/kong/pull/8191)
+- Bumped resty.session from 3.8 to 3.10
+  [#8294](https://github.com/Kong/kong/pull/8294)
+
 ### Additions
+
+#### Core
+
+- Customizable transparent dynamic TLS SNI name.
+  Thanks, [@zhangshuaiNB](https://github.com/zhangshuaiNB)!
+  [#8196](https://github.com/Kong/kong/pull/8196)
+
+#### Performance
+
+- Improved the calculation of declarative configuration hash for big configurations
+  The new method is faster and uses less memory
+  [#8204](https://github.com/Kong/kong/pull/8204)
+- Several improvements in the Router decreased routing time and rebuild time. This should be
+  particularly noticeable when rebuilding on db-less environments
+  [#8087](https://github.com/Kong/kong/pull/8087)
+  [#8010](https://github.com/Kong/kong/pull/8010)
+
+#### Plugins
+
+- **Response-ratelimiting**: Redis ACL support,
+  and genenarized Redis connection support for usernames.
+  Thanks, [@27ascii](https://github.com/27ascii) for the origina contribution!
+  [#8213](https://github.com/Kong/kong/pull/8213)
+- **ACME**: Add rsa_key_size config option
+  Thanks, [lodrantl](https://github.com/lodrantl)!
+  [#8114](https://github.com/Kong/kong/pull/8114)
+
+#### Clustering
+
+- `CLUSTERING_MAX_PAYLOAD` is now configurable in kong.conf
+  Thanks, [@andrewgknew](https://github.com/andrewgknew)!
+  [#8337](https://github.com/Kong/kong/pull/8337)
+
+### Fixes
+
+#### Core
+
+- When the Router encounters an SNI FQDN with a trailing dot (`.`),
+  the dot will be ignored, since according to
+  [RFC-3546](https://datatracker.ietf.org/doc/html/rfc3546#section-3.1)
+  said dot is not part of the hostname.
+  [#8269](https://github.com/Kong/kong/pull/8269)
+- Fixed a bug in the Router that would not prioritize the routes with
+  both a wildcard and a port (`route.*:80`) over wildcard-only routes (`route.*`),
+  which have less specificity
+  [#8233](https://github.com/Kong/kong/pull/8233)
+- The internal DNS client isn't confused by the single-dot (`.`) domain
+  which can appear in `/etc/resolv.conf` in special cases like `search .`
+  [#8307](https://github.com/Kong/kong/pull/8307)
+- Cassandra connector now records migration consistency level.
+  Thanks, [@mpenick](https://github.com/mpenick)!
+  [#8226](https://github.com/Kong/kong/pull/8226)
+
+#### Clustering
+
+- Replaced cryptic error message with more useful one when
+  there is a failure on SSL when connecting with CP:
+  [#8260](https://github.com/Kong/kong/pull/8260)
+
+#### Admin API
+
+- Fix incorrect `next` field in when paginating Upstreams
+  [#8249](https://github.com/Kong/kong/pull/8249)
+
+#### PDK
+
+- Phase names are correctly selected when performing phase checks
+  [#8208](https://github.com/Kong/kong/pull/8208)
+
+#### Plugins
+
+- **External Plugins**: Fixed incorrect handling of the Headers Protobuf Structure
+  and representation of null values, which provoked an error on init with the go-pdk.
+  [#8267](https://github.com/Kong/kong/pull/8267)
+- **External Plugins**: Unwrap `ConsumerSpec` and `AuthenticateArgs`.
+  Thanks, [@raptium](https://github.com/raptium)!
+  [#8280](https://github.com/Kong/kong/pull/8280)
+
+
+## [2.7.1]
+
+### Fixes
+
+- Reschedule resolve timer only when the previous one has finished.
+  [#8344](https://github.com/Kong/kong/pull/8344)
+- Plugins, and any entities implemented with subchemas, now can use the `transformations`
+  and `shorthand_fields` properties, which were previously only available for non-subschema entities.
+  [#8146](https://github.com/Kong/kong/pull/8146)
 
 ## [2.7.0]
 
@@ -6679,6 +6774,8 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
+[2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1
 [2.7.0]: https://github.com/Kong/kong/compare/2.6.0...2.7.0
 [2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
 [2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
