@@ -59,6 +59,7 @@ local function extract_cookie(cookie)
     user_session_header_table[i] = user_session
   end
   return user_session_header_table
+end
 
 local function redis_connect()
   local red = redis:new()
