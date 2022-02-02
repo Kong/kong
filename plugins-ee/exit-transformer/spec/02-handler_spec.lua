@@ -156,7 +156,7 @@ for _, strategy in strategies() do
       }
 
       bp.plugins:insert {
-        name = "pre-function",
+        name = "post-function",
         route = { id = route7.id },
         -- access phase uses delayed response
         config = { access = { [[ return function()
@@ -180,7 +180,7 @@ for _, strategy in strategies() do
       }
 
       bp.plugins:insert {
-        name = "pre-function",
+        name = "post-function",
         route = { id = route8.id },
         config = { header_filter = { [[ return function()
           kong.response.exit(418, { count = 0 })

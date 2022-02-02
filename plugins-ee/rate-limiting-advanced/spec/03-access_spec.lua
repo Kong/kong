@@ -138,6 +138,7 @@ for _, strategy in strategies() do
     end
     describe(s, function()
       local bp, db, consumer1, consumer2, plugin, plugin2, plugin3, plugin4, consumer_in_group
+      local consumer_in_group_no_config
 
       lazy_setup(function()
         redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, nil, nil)
@@ -163,14 +164,27 @@ for _, strategy in strategies() do
           custom_id = "consumer_in_group"
         })
 
+        consumer_in_group_no_config = assert(bp.consumers:insert {
+          custom_id = "consumer_in_group_no_config"
+        })
+
         if strategy ~= "off" then
           local consumer_group = assert(db.consumer_groups:insert({
             name = "test_consumer_group"
           }))
 
+          local consumer_group_no_config = assert(db.consumer_groups:insert({
+            name = "test_consumer_group_no_config"
+          }))
+
           assert(db.consumer_group_consumers:insert({
             consumer          = { id = consumer_in_group.id },
             consumer_group 	  = { id = consumer_group.id },
+          }))
+
+          assert(db.consumer_group_consumers:insert({
+            consumer          = { id = consumer_in_group_no_config.id },
+            consumer_group 	  = { id = consumer_group_no_config.id },
           }))
 
           assert(db.consumer_group_plugins:insert({
@@ -185,6 +199,11 @@ for _, strategy in strategies() do
           assert(bp.keyauth_credentials:insert {
             key = "apikeycg",
             consumer = { id = consumer_in_group.id },
+          })
+
+          assert(bp.keyauth_credentials:insert {
+            key = "apikeycgnoconfig",
+            consumer = { id = consumer_in_group_no_config.id },
           })
         end
 
@@ -551,13 +570,23 @@ for _, strategy in strategies() do
         })
 
         local route_for_consumer_group = assert(bp.routes:insert {
-          name = "test-consumer_groups",
+          name = "test_consumer_groups",
           hosts = { "testconsumergroup.com"},
+        })
+
+        local route_for_consumer_group_no_config = assert(bp.routes:insert {
+          name = "test_consumer_groups_no_config",
+          hosts = { "testconsumergroupnoconfig.com"},
         })
 
         assert(bp.plugins:insert {
           name = "key-auth",
           route = { id = route_for_consumer_group.id },
+        })
+
+        assert(bp.plugins:insert {
+          name = "key-auth",
+          route = { id = route_for_consumer_group_no_config.id },
         })
 
         assert(bp.plugins:insert {
@@ -572,6 +601,26 @@ for _, strategy in strategies() do
             redis = redis_configuration,
             enforce_consumer_groups = true,
             consumer_groups = { "test_consumer_group" },
+          }
+        })
+
+        assert(bp.plugins:insert {
+          name = "rate-limiting-advanced",
+          route = { id = route_for_consumer_group_no_config.id },
+          config = {
+            strategy = policy,
+            window_size = { 5 },
+            namespace = "Dk1krkTWBqmcKEQVW5cQNLgikuKygjnu",
+            limit = { MOCK_ORIGINAL_LIMIT },
+            sync_rate = 2,
+            redis = {
+              host = REDIS_HOST,
+              port = REDIS_PORT,
+              database = REDIS_DATABASE,
+              password = REDIS_PASSWORD_VALID,
+            },
+            enforce_consumer_groups = true,
+            consumer_groups = { "test_consumer_group_no_config" },
           }
         })
 
@@ -1506,7 +1555,11 @@ for _, strategy in strategies() do
 
         if strategy ~= "off" then
         describe("With consumer group", function()
-          it("overrides with group configurations when consumer is in group", function()
+          local name = "overrides with group configurations when consumer is in group"
+          if policy == "redis" then
+            name = "#flaky " .. name
+          end
+          it(name, function()
             local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/get?apikey=apikeycg",
@@ -1520,7 +1573,11 @@ for _, strategy in strategies() do
             assert.are.same(MOCK_GROUP_LIMIT - 1, tonumber(res.headers["x-ratelimit-remaining-10"]))
             assert.are.same(MOCK_GROUP_LIMIT - 1, tonumber(res.headers["ratelimit-remaining"]))
           end)
-          it("should not use group configurations when consumer is not in group", function()
+          name = "should not use group configurations when consumer is not in group"
+          if policy == "redis" then
+            name = "#flaky " .. name
+          end
+          it(name, function()
             local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/get?apikey=apikey123",
@@ -1534,7 +1591,11 @@ for _, strategy in strategies() do
             assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["x-ratelimit-remaining-5"]))
             assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["ratelimit-remaining"]))
           end)
-          it("should not change limit for plugin instances of the same consumer if group not enforced", function()
+          name = "should not change limit for plugin instances of the same consumer if group not enforced"
+          if policy == "redis" then
+            name = "#flaky " .. name
+          end
+          it(name, function()
             local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/get?apikey=apikeycg",
@@ -1546,6 +1607,26 @@ for _, strategy in strategies() do
             assert.are.same(MOCK_ORIGINAL_LIMIT, tonumber(res.headers["x-ratelimit-limit-3"]))
             assert.are.same(MOCK_ORIGINAL_LIMIT, tonumber(res.headers["ratelimit-limit"]))
             assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["x-ratelimit-remaining-3"]))
+            assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["ratelimit-remaining"]))
+          end)
+
+          name = "should use default configs if consumer group is enforced but no config value is provided"
+          if policy == "redis" then
+            name = "#flaky " .. name
+          end
+          it(name, function()
+            local res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get?apikey=apikeycgnoconfig",
+              headers = {
+                ["Host"] = "testconsumergroupnoconfig.com"
+              }
+            })
+
+            assert.res_status(200, res)
+            assert.are.same(MOCK_ORIGINAL_LIMIT, tonumber(res.headers["x-ratelimit-limit-5"]))
+            assert.are.same(MOCK_ORIGINAL_LIMIT, tonumber(res.headers["ratelimit-limit"]))
+            assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["x-ratelimit-remaining-5"]))
             assert.are.same(MOCK_ORIGINAL_LIMIT - 1, tonumber(res.headers["ratelimit-remaining"]))
           end)
         end)

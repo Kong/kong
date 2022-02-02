@@ -32,7 +32,7 @@ local GLOBAL_FLIP_OPS = { name = "flip-rl" }
 
 local NewRLHandler = {
   PRIORITY = 902,
-  VERSION = "1.6.0"
+  VERSION = "1.6.1"
 }
 
 
@@ -377,7 +377,13 @@ function NewRLHandler:access(conf)
         -- if found a match, overrides the configuration value
         local consumer_group = helpers.get_consumer_group(conf.consumer_groups[i])
         if consumer_group and helpers.is_consumer_in_group(consumer.id, consumer_group.id) then
-          config = helpers.get_consumer_group_config(consumer_group.id, "rate-limiting-advanced").config
+          local config_raw = helpers.get_consumer_group_config(consumer_group.id, "rate-limiting-advanced")
+          if config_raw then
+            config = config_raw.config
+          else
+            kong.log.warn("Consumer group " .. consumer_group.name ..
+            " enforced but no consumer group configurations provided. Original plugin configurations will apply.")
+          end
           break --exit on the first matching group found
         end
       end

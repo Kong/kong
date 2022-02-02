@@ -55,7 +55,7 @@ local get_cn_parent_domain = utils.get_cn_parent_domain
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 local server_on_message_callbacks = {}
-local MAX_PAYLOAD = constants.CLUSTERING_MAX_PAYLOAD
+local MAX_PAYLOAD = kong.configuration.cluster_max_payload
 local WS_OPTS = {
   timeout = constants.CLUSTERING_TIMEOUT,
   max_payload_len = MAX_PAYLOAD,
@@ -165,7 +165,21 @@ function _M.new(conf)
   cert = openssl_x509.new(cert, "PEM")
   self.cert_digest = cert:digest("sha256")
   local _, cert_cn_parent = get_cn_parent_domain(cert)
-  self.cert_cn_parent = cert_cn_parent
+
+  if conf.cluster_allowed_common_names and #conf.cluster_allowed_common_names > 0 then
+    self.cn_matcher = {}
+    for _, cn in ipairs(conf.cluster_allowed_common_names) do
+      self.cn_matcher[cn] = true
+    end
+
+  else
+    self.cn_matcher = setmetatable({}, {
+      __index = function(_, k)
+        return string.match(k, "^[%a%d-]+%.(.+)$") == cert_cn_parent
+      end
+    })
+
+  end
 
   local key = assert(pl_file.read(conf.cluster_cert_key))
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
@@ -178,6 +192,10 @@ function _M.new(conf)
   --- EE
 
   self.child = require("kong.clustering." .. conf.role).new(self)
+
+  --- XXX EE: clear private key as it is not needed after this point
+  self.cert_private = nil
+  --- EE
 
   return self
 end
@@ -280,15 +298,14 @@ function _M:validate_client_cert(cert, log_prefix, log_suffix)
     end
 
   elseif kong.configuration.cluster_mtls == "pki_check_cn" then
-    local cn, cn_parent = get_cn_parent_domain(cert)
+    local cn, _ = get_cn_parent_domain(cert)
     if not cn then
       return false, "data plane presented incorrect client certificate " ..
-                    "during handshake, unable to extract CN: " .. cn_parent
+                    "during handshake, unable to extract CN: " .. cn
 
-    elseif cn_parent ~= self.cert_cn_parent then
-      return false, "data plane presented incorrect client certificate " ..
-                    "during handshake, expected CN as subdomain of: " ..
-                    self.cert_cn_parent .. " got: " .. cn
+    elseif not self.cn_matcher[cn] then
+      return false, "data plane presented client certificate with incorrect CN " ..
+                    "during handshake, got: " .. cn
     end
   elseif kong.configuration.cluster_ocsp ~= "off" then
     local ok

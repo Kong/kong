@@ -1378,7 +1378,7 @@ function _M.get_cn_parent_domain(x509)
     return nil, err
   end
   cn = cn.blob
-  local parent = match(cn, "^[%a%d-]+%.(.+)$")
+  local parent = match(cn, "^[%a%d%*-]+%.(.+)$")
   return cn, parent
 end
 

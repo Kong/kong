@@ -22,6 +22,7 @@ local WARN  = ngx.WARN
 
 
 local locks_shm = ngx.shared.kong_locks
+local timer_handle
 
 
 local new_tab
@@ -184,6 +185,12 @@ function _M.sync(premature, namespace)
       -- figure out by how much we need to incr this key and subtract it from
       -- the running diff counter (raceless operation)
       local diff_val = dict:get(key .. "|diff")
+      if diff_val == nil then
+        diff_val = 0
+        log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'diff_val' to 0")
+        log(WARN, "current dictionary capacity " .. dict:capacity())
+        log(WARN, "current dictionary free space " .. dict:free_space())
+      end
       log(DEBUG, "neg incr ", -diff_val)
       dict:incr(key .. "|diff", -diff_val)
 
@@ -321,10 +328,10 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
 
   if cur == nil then
     cur = 0
-    log(WARN, "rate limit counters shared dict is possibly out of space", "Setting 'cur' to 0")
+    log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'cur' to 0")
   end
 
-  cur = cur + dict:incr(cur_prefix .. "|sync", 0, 0)
+  cur = cur + (dict:incr(cur_prefix .. "|sync", 0, 0) or 0)
   log(DEBUG, "cur sum: ", cur)
 
   local prev = 0
@@ -336,8 +343,12 @@ local function sliding_window(key, window_size, cur_diff, namespace, weight)
   if weight > 0 then
     prev = dict:incr(prev_prefix .. "|diff", 0, 0)
     log(DEBUG, "prev diff: ", prev)
+    if prev == nil then
+      prev = 0
+      log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'prev' to 0")
+    end
 
-    prev = prev + dict:incr(prev_prefix .. "|sync", 0, 0)
+    prev = prev + (dict:incr(prev_prefix .. "|sync", 0, 0) or 0)
     log(DEBUG, "prev sum: ", prev)
 
     prev = prev * weight
@@ -365,6 +376,12 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
 
   -- increment this key
   local newval = dict:incr(incr_key .. "|diff", value, 0)
+  if newval == nil then
+    newval = 0
+    log(WARN, "rate limit counters shared dict is possibly out of space.", " Setting 'newval' to 0")
+    log(WARN, "current dictionary capacity " .. dict:capacity())
+    log(WARN, "current dictionary free space " .. dict:free_space())
+  end
 
   -- and mark that we've seen it (if we're syncing in the background;
   -- if we're not syncing at all, or syncing after every increment,
@@ -419,21 +436,11 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
 end
 
 
-local function run_maintenance_cycle(premature, period, namespace)
-  if premature then
-    return
-  end
-
+local function namespace_maintenance_cycle(namespace, period)
   local cfg = config[namespace]
   if not cfg then
     log(DEBUG, "namespace ", namespace, " no longer exists")
     return
-  end
-
-  log(DEBUG, "starting timer for ", namespace, " cleanup at ", time() + period)
-  local _, err = timer_at(period, run_maintenance_cycle, period, namespace)
-  if err then
-    log(ERR, "error starting new maintenance timer: ", err)
   end
 
   local ok, err = locks_shm:add("rl-maint-" .. namespace, true, period - 0.1)
@@ -451,6 +458,22 @@ local function run_maintenance_cycle(premature, period, namespace)
   end
 end
 
+
+local function run_maintenance_cycle(premature, period)
+  if premature then
+    return
+  end
+
+  for namespace, _ in pairs(config) do
+    namespace_maintenance_cycle(namespace, period)
+  end
+
+  local err
+  timer_handle, err = timer_at(period, run_maintenance_cycle, period)
+  if err then
+    log(ERR, "error starting new maintenance timer: ", err)
+  end
+end
 
 function _M.new(opts)
   if type(opts) ~= "table" then
@@ -494,10 +517,11 @@ function _M.new(opts)
   }
 
   -- start maintenance timer
-  do
+  if timer_handle == nil then
     local period = 3600
-    log(DEBUG, "starting timer for ", namespace, " cleanup at ", time() + period)
-    local _, err = timer_at(period, run_maintenance_cycle, period, namespace)
+    log(DEBUG, "starting timer for cleanup at ", time() + period)
+    local err
+    timer_handle, err = timer_at(period, run_maintenance_cycle, period)
     if err then
       log(ERR, "error starting new maintenance timer: ", err)
     end

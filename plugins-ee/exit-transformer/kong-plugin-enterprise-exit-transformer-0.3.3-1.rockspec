@@ -1,10 +1,10 @@
 package = "kong-plugin-enterprise-exit-transformer"
-version = "0.3.2-1"
+version = "0.3.3-1"
 
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "http://github.com/Kong/kong-plugin-enterprise-exit-transformer.git",
-  tag = "0.3.2"
+  tag = "0.3.3"
 }
 
 description = {
