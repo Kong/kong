@@ -58,9 +58,20 @@ end
 
 
 local function verify_order(data, key, sort_desc)
-  local prev_val = data[1][key]
-  for i = 2, #data do
-    assert.is_true(prev_val > data[i][key] == sort_desc)
+  for i = 1, #data - 1 do
+    local current_val = data[i][key]
+    local next_val = data[i + 1][key]
+
+    local current_is_nil = current_val == nil
+    local next_is_nil = next_val == nil
+
+    if current_is_nil then
+      assert.is_true(not sort_desc or next_is_nil)
+    elseif next_is_nil then
+      assert.is_true(sort_desc)
+    else
+      assert.is_true(current_val == next_val or current_val > next_val == sort_desc)
+    end
   end
 end
 
@@ -195,7 +206,8 @@ for _, strategy in helpers.each_strategy() do
                   path = "/applications",
                   body = {
                     name = dev .. "s_app_" .. i,
-                    redirect_uri = "http://dog.com"
+                    redirect_uri = "http://dog.com",
+                    description = i % 2 == 0 and "something" or nil,
                   },
                   headers = {
                     ["Content-Type"] = "application/json",
@@ -463,6 +475,48 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(10, resp_body_json.total)
 
             verify_order(resp_body_json.data, "id", true)
+          end)
+
+          it("handles nil values when sorting ASC", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?sort_by=description",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "description", false)
+          end)
+
+          it("handles nil values when sorting DESC", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?sort_by=description&sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "description", true)
           end)
 
           it("maintains sort across pages ASC", function()

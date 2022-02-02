@@ -51,9 +51,20 @@ end
 
 
 local function verify_order(data, key, sort_desc)
-  local prev_val = data[1][key]
-  for i = 2, #data do
-    assert.is_true(prev_val > data[i][key] == sort_desc)
+  for i = 1, #data - 1 do
+    local current_val = data[i][key]
+    local next_val = data[i + 1][key]
+
+    local current_is_nil = current_val == nil
+    local next_is_nil = next_val == nil
+
+    if current_is_nil then
+      assert.is_true(not sort_desc or next_is_nil)
+    elseif next_is_nil then
+      assert.is_true(sort_desc)
+    else
+      assert.is_true(current_val == next_val or current_val > next_val == sort_desc)
+    end
   end
 end
 

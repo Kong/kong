@@ -106,15 +106,27 @@ function _M.paginate(self, set, post_process)
     }
   end
 
+  -- default to id if no sort_by
+  sort_by = sort_by or "id"
+
   sort(set, function (a, b)
-    -- if there is no sort_by key
-    -- or the sort_by values are equal
+    -- if sort_by values are equal
     -- sort by id instead
     local key
-    if sort_by and a[sort_by] ~= b[sort_by] then
+    if a[sort_by] ~= b[sort_by] then
       key = sort_by
     else
       key = "id"
+    end
+
+    -- sort nil as "less"
+    -- avoid comparing them, this throws an error
+    if a[key] == nil then
+      return not sort_desc
+    end
+
+    if b[key] == nil then
+      return sort_desc
     end
 
     if sort_desc then

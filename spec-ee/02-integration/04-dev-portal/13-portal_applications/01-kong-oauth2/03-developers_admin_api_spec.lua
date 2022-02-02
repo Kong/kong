@@ -28,9 +28,20 @@ end
 
 
 local function verify_order(data, key, sort_desc)
-  local prev_val = data[1][key]
-  for i = 2, #data do
-    assert.is_true(prev_val > data[i][key] == sort_desc)
+  for i = 1, #data - 1 do
+    local current_val = data[i][key]
+    local next_val = data[i + 1][key]
+
+    local current_is_nil = current_val == nil
+    local next_is_nil = next_val == nil
+
+    if current_is_nil then
+      assert.is_true(not sort_desc or next_is_nil)
+    elseif next_is_nil then
+      assert.is_true(sort_desc)
+    else
+      assert.is_true(current_val == next_val or current_val > next_val == sort_desc)
+    end
   end
 end
 
@@ -361,6 +372,7 @@ for _, strategy in helpers.each_strategy() do
             developer = { id = developer_one.id },
             name = "bonesRcool",
             redirect_uri = "http://doghouse.com",
+            description = "weee"
           }))
 
           assert(db.applications:insert({
@@ -528,6 +540,36 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(2, resp_body_json.total)
 
           verify_order(resp_body_json.data, "id", true)
+        end)
+
+        it("handles nil values when sorting ASC", function()
+          local res = assert(client:send({
+            method = "GET",
+            path = "/developers/" .. developer_one.id .. "/applications?sort_by=description",
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(2, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "description", false)
+        end)
+
+        it("handles nil values when sorting DESC", function()
+          local res = assert(client:send({
+            method = "GET",
+            path = "/developers/" .. developer_one.id .. "/applications?sort_by=description&sort_desc=true",
+            headers = {["Content-Type"] = "application/json"}
+          }))
+
+          local body = assert.res_status(200, res)
+          local resp_body_json = cjson.decode(body)
+
+          assert.equal(2, resp_body_json.total)
+
+          verify_order(resp_body_json.data, "description", true)
         end)
 
         it("maintains sort across pages ASC", function()
