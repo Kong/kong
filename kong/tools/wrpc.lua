@@ -10,6 +10,8 @@ local table_remove = table.remove
 
 local exiting = ngx.worker.exiting
 
+local DEFAULT_EXPIRATION_DELAY = 90
+
 local wrpc = {}
 
 
@@ -43,10 +45,18 @@ do
     self.smph:post()
   end
 
+  local function expire(self)
+    self.data = nil
+    self.error = "timeout"
+    self.smph:post()
+  end
+
   function semaphore_waiter()
     return {
       smph = semaphore.new(),
+      deadline = ngx.now() + DEFAULT_EXPIRATION_DELAY,
       handle = trigger,
+      expire = expire,
     }
   end
 end
@@ -165,13 +175,15 @@ end
 --- sets a service handler for the givern rpc method
 --- @param rpc_name string Full name of the rpc method
 --- @param handler function Function called to handle the rpc method.
-function wrpc_service:set_handler(rpc_name, handler)
+--- @param response_handler function Fallback function called to handle responses.
+function wrpc_service:set_handler(rpc_name, handler, response_handler)
   local rpc = self:get_method(rpc_name)
   if not rpc then
     return nil, string.format("unknown method %q", rpc_name)
   end
 
   rpc.handler = handler
+  rpc.response_handler = response_handler
   return rpc
 end
 
@@ -207,7 +219,7 @@ function wrpc.new_peer(conn, service, opts)
   return setmetatable(merge({
     conn = conn,
     service = service,
-    seq = 0,
+    seq = 1,
     request_queue = (not conn.close) and Queue.new(),
     response_queue = {},
     closing = false,
@@ -262,10 +274,10 @@ end
 function wrpc_peer:call_wait(name, ...)
   local waiter = semaphore_waiter()
 
-  local next_seq = self.seq + 1
-  self.response_queue[next_seq] = waiter
+  local seq = self.seq
+  self.response_queue[seq] = waiter
   local new_seq = self:call(name, ...)
-  assert(new_seq == next_seq)
+  assert(new_seq == seq)
 
   waiter.smph:wait()
   return waiter.data
@@ -311,15 +323,16 @@ end
 
 
 function wrpc_peer:send_payload(payload)
-  local seq = self.seq + 1
+  local seq = self.seq
   payload.seq = seq
-  payload.deadline = ngx.now() + 10
+  self.seq = seq + 1
+
+  payload.deadline = ngx.now() + DEFAULT_EXPIRATION_DELAY
 
   self:send(self.encode("wrpc.WebsocketPayload",{
     version = "PAYLOAD_VERSION_V1",
     payload = payload,
   }))
-  self.seq = seq
 end
 
 
@@ -347,9 +360,19 @@ function wrpc_peer:handle(payload)
     -- response to a previous call
     local response_waiter = self.response_queue[ack]
     if response_waiter then
-      -- TODO: verify expiration
-      response_waiter:handle(decodearray(self.decode, rpc.output_type, payload.payloads))
+
+      if response_waiter.deadline and response_waiter.deadline < ngx.now() then
+        if response_waiter.expire then
+          response_waiter:expire()
+        end
+
+      else
+        response_waiter:handle(decodearray(self.decode, rpc.output_type, payload.payloads))
+      end
       self.response_queue[ack] = nil
+
+    elseif rpc.response_handler then
+      pcall(rpc.response_handler, self, decodearray(self.decode, rpc.output_type, payload.payloads))
     end
 
   else
@@ -397,9 +420,22 @@ function wrpc_peer:handle_error(payload)
     -- response to a previous call
     local response_waiter = self.response_queue[ack]
     if response_waiter and response_waiter.handle_error then
-      -- TODO: verify expiration
-      response_waiter:handle_error(etype, errdesc)
+
+      if response_waiter.deadline and response_waiter.deadline < ngx.now() then
+        if response_waiter.expire then
+          response_waiter:expire()
+        end
+
+      else
+        response_waiter:handle_error(etype, errdesc)
+      end
       self.response_queue[ack] = nil
+
+    else
+      local rpc = self.service:get_method(payload.svc_id, payload.rpc_id)
+      if rpc and rpc.error_handler then
+        pcall(rpc.error_handler, self, etype, errdesc)
+      end
     end
   end
 end
