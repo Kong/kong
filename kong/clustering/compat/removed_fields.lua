@@ -181,6 +181,7 @@ return {
     },
     openid_connect = {
       "session_redis_username",
+      "resolve_distributed_claims",
     },
   },
 }
