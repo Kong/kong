@@ -16,6 +16,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(nil, {}) -- runs migrations
     assert(helpers.start_kong {
+      database = strategy,
       plugins = "bundled,reports-api",
       pg_password = "hide_me"
     })
@@ -218,7 +219,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
           config = [[
           _format_version: "1.1"
           services:
-          - host = "konghq.com"
+          - host: "konghq.com"
           ]],
         },
         headers = {
@@ -244,8 +245,8 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.is_number(json.server.connections_writing)
       assert.is_number(json.server.connections_waiting)
       assert.is_number(json.server.total_requests)
-      assert.is_string(json.server.configuration_hash)
-      assert.equal(32, #json.server.configuration_hash)
+      assert.is_string(json.configuration_hash)
+      assert.equal(32, #json.configuration_hash)
 
     end)
 
