@@ -70,6 +70,7 @@ local function empty_wait(dict, key, deadline)
 
     step = waitstep(step, deadline)
   end
+  return nil, "timeout"
 end
 
 
@@ -81,7 +82,7 @@ Channel.__index = Channel
 --- @param name string channel name
 function Channel.new(dict_name, name)
   return setmetatable({
-    dict = ngx.shared[dict_name],
+    dict = assert(ngx.shared[dict_name]),
     name = name,
     exptime = DEFAULT_EXPTIME,
     timeout = DEFAULT_TIMEOUT,
@@ -126,11 +127,11 @@ end
 
 --- Waits until a value is posted by any client
 --- @param dict shdict shdict to use
---- @return any, string value, error
+--- @return any, string, string value, channel name, error
 function Channel.wait_all(dict)
   local name, err = get_wait(dict, NAME_KEY, now() + DEFAULT_TIMEOUT)
   if not name then
-    return nil, err
+    return nil, nil, err
   end
 
   local key = POST_VAL_KEY_PREFIX .. name
@@ -139,7 +140,7 @@ function Channel.wait_all(dict)
   dict:delete(key)
   dict:delete(NAME_KEY)
 
-  return val, err
+  return val, name, err
 end
 
 

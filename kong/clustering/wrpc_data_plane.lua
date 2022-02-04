@@ -201,19 +201,21 @@ local function get_config_service()
   if not wrpc_config_service then
     wrpc_config_service = wrpc.new_service()
     wrpc_config_service:add("kong.services.config.v1.config")
-    wrpc_config_service:set_handler("ConfigService.SyncConfig", function(client, data)
-      --require "pl.pretty".debug("data", data)
-      if client.config_semaphore then
+    wrpc_config_service:set_handler("ConfigService.SyncConfig", function(peer, data)
+      if peer.config_semaphore then
+        for _, plugin in ipairs(data.config.plugins) do
+          plugin.config = wrpc.pbunwrap_struct(plugin.config)
+        end
         data.config._format_version = data.config.format_version
         data.config.format_version = nil
 
-        client.config_obj.next_config = remove_empty_tables(data.config)
-        client.config_obj.next_config_version = tonumber(data.version)
-        if client.config_semaphore:count() <= 0 then
+        peer.config_obj.next_config = remove_empty_tables(data.config)
+        peer.config_obj.next_config_version = tonumber(data.version)
+        if peer.config_semaphore:count() <= 0 then
           -- the following line always executes immediately after the `if` check
           -- because `:count` will never yield, end result is that the semaphore
           -- count is guaranteed to not exceed 1
-          client.config_semaphore:post()
+          peer.config_semaphore:post()
         end
       end
       return { accepted = true }
@@ -269,8 +271,8 @@ function _M:communicate(premature)
   end
 
   local config_semaphore = semaphore.new(0)
-  local peer = wrpc.new_peer(c, get_config_service())
-  --peer:receive_thread()
+  local peer = wrpc.new_peer(c, get_config_service(), { channel = true })
+
   peer.config_semaphore = config_semaphore
   peer.config_obj = self
   peer:spawn_threads()

@@ -177,6 +177,9 @@ function _M:export_deflated_reconfigure_payload()
     plugin_data = config_table.plugin_data,
     workspaces = config_table.workspaces,
   })
+  for _, plugin in ipairs(payload.plugins) do
+    plugin.config = wrpc.pbwrap_struct(plugin.config)
+  end
   local service = get_config_service(self)
   self.config_call_rpc, self.config_call_args = assert(service:encode_args("ConfigService.SyncConfig", {
     config = payload,
