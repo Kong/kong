@@ -58,6 +58,7 @@ local function get_config_service(self)
       local client = self.clients[peer.conn]
       if client then
         client.last_seen = ngx_time()
+        client.update_sync_status()
         ngx_log(ngx_INFO, _log_prefix, "received ping frame from data plane")
       end
     end)
@@ -68,6 +69,7 @@ local function get_config_service(self)
         client.basic_info = data
         client.basic_info_semaphore:post()
       end
+      -- TODO: add error handler to change client status
     end)
   end
 
@@ -177,8 +179,10 @@ function _M:export_deflated_reconfigure_payload()
     plugin_data = config_table.plugin_data,
     workspaces = config_table.workspaces,
   })
-  for _, plugin in ipairs(payload.plugins) do
-    plugin.config = wrpc.pbwrap_struct(plugin.config)
+  if payload.plugins then
+    for _, plugin in ipairs(payload.plugins) do
+      plugin.config = wrpc.pbwrap_struct(plugin.config)
+    end
   end
   local service = get_config_service(self)
   self.config_call_rpc, self.config_call_args = assert(service:encode_args("ConfigService.SyncConfig", {
