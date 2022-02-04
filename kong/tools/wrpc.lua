@@ -347,7 +347,7 @@ function wrpc.new_peer(conn, service, opts)
     conn = conn,
     service = service,
     seq = 1,
-    request_queue = (not conn.close) and Queue.new(),
+    request_queue = (conn and not conn.close) and Queue.new(),
     response_queue = {},
     closing = false,
     channel_dict = opts.channel and ngx.shared[CHANNEL_DICT_NAME],
@@ -735,7 +735,7 @@ local function remote_close(self)
 end
 
 function wrpc.new_remote_client(service)
-  local self = wrpc.new_peer({ close = true }, service, {
+  local self = wrpc.new_peer(nil, service, {
     channel = channel.new(CHANNEL_DICT_NAME, CHANNEL_CLIENT_PREFIX .. ngx.worker.pid()),
     send_payload = send_payload_to_channel,
     close = remote_close,
