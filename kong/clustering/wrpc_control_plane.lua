@@ -58,7 +58,7 @@ local function get_config_service(self)
       local client = self.clients[peer.conn]
       if client then
         client.last_seen = ngx_time()
-        client.update_sync_status()
+        client:update_sync_status()
         ngx_log(ngx_INFO, _log_prefix, "received ping frame from data plane")
       end
     end)
@@ -528,14 +528,14 @@ function _M:handle_cp_websocket()
   client.config_hash = string.rep("0", 32) -- initial hash
   client.sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
   local purge_delay = self.conf.cluster_data_plane_purge_delay
-  client.update_sync_status = function()
+  function client:update_sync_status()
     local ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
-      last_seen = client.last_seen,
-      config_hash = client.config_hash ~= "" and client.config_hash or nil,
+      last_seen = self.last_seen,
+      config_hash = self.config_hash ~= "" and self.config_hash or nil,
       hostname = dp_hostname,
       ip = dp_ip,
       version = dp_version,
-      sync_status = client.sync_status, -- TODO: import may have been failed though
+      sync_status = self.sync_status, -- TODO: import may have been failed though
     }, { ttl = purge_delay })
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to update clustering data plane status: ", err, log_suffix)
@@ -548,7 +548,7 @@ function _M:handle_cp_websocket()
     if err then
       ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
       wb:send_close()
-      client.update_sync_status()
+      client:update_sync_status()
       return ngx_exit(ngx_CLOSE)
     end
   end
