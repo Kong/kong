@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package kong.services.metrics.v1;
+
+option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/service/metrics/v1;v1";
+
+import "kong/model/metrics/metrics.proto";
+
+// MetricsService is used by a DP to send back metrics to the CP.
+// +wrpc:service-id=4
+service MetricsService {
+  // Send is used to send metrics to CP.
+  // DP CAN make concurrent requests.
+  //
+  // Call direction:
+  // - DP to CP
+  // +wrpc:rpc-id=1
+  rpc StreamMetrics(stream StreamMetricsRequest) returns (StreamMetricsResponse);
+}
+
+message StreamMetricsRequest {
+  model.metrics.Metric metrics = 1;
+}
+
+message StreamMetricsResponse {
+}

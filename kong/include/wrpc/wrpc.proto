@@ -1,0 +1,154 @@
+syntax = "proto3";
+
+package wrpc;
+
+option go_package = "github.com/kong/go-wrpc/wrpc/internal/wrpc";
+
+// PayloadVersion identifies the version of the payload.
+enum PayloadVersion {
+  // UNSPECIFIED indicates that the version is not specified.
+  // Receiver MUST drop the message.
+  PAYLOAD_VERSION_UNSPECIFIED = 0;
+  // V1 denotes version 1.
+  PAYLOAD_VERSION_V1 = 1;
+}
+
+// MessageType identifies the type of a WebSocket message.
+enum MessageType {
+  // UNSPECIFIED indicates that the type of the message is unknown.
+  // Receiver MUST drop the message.
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  // ERROR signals a protocol error such as incorrect serialization, timeouts,
+  // network hiccups, etc.
+  MESSAGE_TYPE_ERROR = 1;
+  // RPC signals that the message contains a request or a response.
+  MESSAGE_TYPE_RPC = 2;
+  // MESSAGE_TYPE_STREAM = n;   // TODO(hbagdi): introduce streaming when
+                                // when required and use-cases are more clear
+}
+
+// Error identifies serialization, network, and protocol errors.
+enum ErrorType {
+  ERROR_TYPE_UNSPECIFIED = 0;
+  // INVALID_MESSAGE signals that the message received is invalid.
+  ERROR_TYPE_INVALID_MESSAGE = 1;
+  // INVALID_SERVICE signals that the service or RPC initiated by the sender
+  // is unknown to the receiver.
+  ERROR_TYPE_INVALID_SERVICE = 2;
+  // INVALID_SERVICE signals that the service or RPC initiated by the sender
+  // is unknown to the receiver.
+  ERROR_TYPE_INVALID_RPC = 3;
+  // INVALID_PAYLOAD signals that the payload within a received message is invalid.
+  // Use this error to signal incorrect number of arguments and incorrect
+  // serialization to the other side.
+  ERROR_TYPE_INVALID_PAYLOAD = 4;
+}
+
+// Error represents a protocol error.
+message Error {
+  // eType denotes the type of the error.
+  ErrorType etype = 1;
+
+  // description contains human readable contextual information associated
+  // with the error.
+  string description = 2;
+}
+
+// Encoding identifies the encoding method used to encode a payload.
+enum Encoding {
+  ENCODING_UNSPECIFIED = 0;
+  ENCODING_PROTO3 = 1;
+}
+
+// PayloadV1 is a container for WebSocket messages.
+message PayloadV1 {
+  // mtype denotes the type of the payload within a WebSocket message.
+  MessageType mtype = 1;
+
+  // When mtype is set to MESSAGE_TYPE_ERROR, this field contains the error.
+  // This field represents error due to encoding, network and protocol. Use ack
+  // to tie an error with a request or response received from the other side.
+  // Errors returned by an RPC are part of 'payloads' and NOT this field.
+  // Payloads field MUST not be set when this field is set. Sender MUST set
+  // set svc_id, rpc_id, seq to add contextual information for the receiver.
+  Error error = 2;
+
+  // svc_id is the ID of the service as defined in the proto file of the Service.
+  // The ID is defined in the description of the Service.
+  // We acknowledge that it is cumbersome to track these IDs manually
+  // without any support for linting and programmatic access.
+  // This may be defined within the proto file
+  // itself using proto3 custom options in future. 
+  // ID MUST be greater than 0.
+  //
+  // Receiver MUST return INVALID_SERVICE error when this field contains a
+  // service that the receiver doesn't understand.
+  uint32 svc_id = 3;
+
+  // rpc_id is the ID of the RPC as defined in the proto file of the Service.
+  // The ID is defined in the description of the RPC.
+  // We acknowledge that it is cumbersome to track these IDs manually
+  // without any support for linting and programmatic access.
+  // This may be defined within the proto file
+  // itself using proto3 custom options in future. 
+  // ID MUST be greater than 0.
+  //
+  // Receiver MUST return INVALID_RPC error when this field contains an
+  // RPC that the receiver doesn't understand.
+  uint32 rpc_id = 4;
+
+  // seq is a number chosen by the sender. The sender MUST initialize this
+  // field to 1 for the first RPC on a given connection and then it should be
+  // incremented every time a new RPC is initiated. The receiver must not assume
+  // that the sequence numbers are strictly incremental.
+  //
+  // There are no guarantees about the order in which requests will be
+  // processed by the receiver. This field has no semantics outside the context
+  // of a WebSocket connection. It is invalid to set this field to 0 and the
+  // receiver MUST drop the message if that is the case.
+  uint32 seq = 5;
+
+  // ack represents that the message contains a response or error for an RPC
+  // that was initiated earlier by the receiver of this message. To tie the message
+  // to a request received by the sender, sender ack MUST be set to the seq
+  // number in the request message.
+  uint32 ack = 6;
+
+  // deadline is UNIX epoch time in seconds to indicate the time when the
+  // client will give up waiting for a response. Absolute time is used instead
+  // of timeouts to account for network and TCP/HTTP buffer latencies. It is
+  // assumed that out of band time synchronization solutions are deployed
+  // already. This field MUST be set to a non-zero value for a request and MUST
+  // be set to 0 for a response.
+  uint32 deadline = 7;
+
+  // payload_encoding identifies the encoding used for the payload.
+  // This field MUST be specified when payloads is set.
+  Encoding payload_encoding = 8;
+
+  // payloads is an array representing the request or response data of an RPC.
+  // A request message MAY contain multiple elements where each element represents
+  // an argument to the RPC call. The order of the elements MUST correspond to
+  // the order of arguments in the function call.
+  // A response message MUST contain a single payload.
+  // Use a wrapper type for RPCs which contain multiple responses.
+  // Unless otherwise specified by the Service or RPC, the encoding method in
+  // use is PROTO3.
+  //
+  // Note: This results in double proto3 encoding. Once encoding of payloads,
+  // and then encoding of the entire message. We acknowledge that there are
+  // some overheads here and they will be addressed in a future iteration.
+  //
+  repeated bytes payloads = 9;
+}
+
+// WebsocketPayload represents a protobuf-based encoded payload of a WebSocket
+// message.
+message WebsocketPayload {
+  // version identifies the version of the payload.
+  PayloadVersion version = 1;
+
+  // payload contains the message. This field MUST be present if and only if
+  // version is set to 1.
+  PayloadV1 payload = 2;
+}

@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package kong.model.metrics;
+
+option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/model/metrics;metrics";
+
+// TODO(hbagdi): define these metrics concretely as
+// implementation progresses on this front.
+
+enum MetricType {
+  METRIC_TYPE_UNSPECIFIED = 0;
+  METRIC_TYPE_STATS = 1;
+  METRIC_TYPE_STATUS_CODE_BY_SERVICE = 2;
+  METRIC_TYPE_STATUS_CODE_BY_ROUTE = 3;
+  METRIC_TYPE_STATUS_CODE_BY_CONSUMER_AND_ROUTE = 4;
+  METRIC_TYPE_STATUS_CODE_CLASSES = 5;
+  METRIC_TYPE_STATUS_CODE_BY_WORKSPACE = 6;
+  METRIC_TYPE_CONSUMER_STATS = 7;
+}
+
+message Metric {
+  MetricType type = 1;
+}
+
+message Stats {
+}
+
+message StatusCodeByService {
+}
+
+message StatusCodeByRoute {
+}
+
+message StatusCodeByConsumerRoute {
+}
+
+message StatusCodeByClasses {
+}
+
+message StatusCodeByWorkspace {
+}
+
+message ConsumerStats {
+}

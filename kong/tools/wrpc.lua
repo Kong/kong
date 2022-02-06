@@ -199,7 +199,7 @@ local function merge(a, b)
 end
 
 local function proto_searchpath(name)
-  return package.searchpath(name, "/usr/include/?.proto;../koko/internal/wrpc/proto/?.proto;../go-wrpc/wrpc/internal/wrpc/?.proto")
+  return package.searchpath(name, "kong/include/?.proto;/usr/include/?.proto")
 end
 
 --- definitions for the transport protocol
@@ -214,7 +214,7 @@ wrpc_service.__index = wrpc_service
 --- in .proto files
 function wrpc.new_service()
   if not wrpc_proto then
-    local wrpc_protofname = assert(proto_searchpath("wrpc"))
+    local wrpc_protofname = assert(proto_searchpath("wrpc.wrpc"))
     wrpc_proto = assert(grpc.each_method(wrpc_protofname))
     --pp("wrpc_proto", wrpc_proto)
   end

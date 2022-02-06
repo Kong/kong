@@ -1,0 +1,62 @@
+syntax = "proto3";
+package kong.services.legal.v1;
+
+option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/service/legal/v1;v1";
+// LegalService is responsible for all things legal within Kong Gateway.
+// +wrpc:service-id=2
+service LegalService {
+  // GetLicense is used by CP to query a DP node for its license.
+  // DP MUST return the license it is configured with. If DP is not configured
+  // with a license, it MUST respond with configured set to false.
+  //
+  // Call direction:
+  // - CP to DP
+  // +wrpc:rpc-id=1
+  rpc GetLicenseFromDP(GetLicenseFromDPRequest) returns (GetLicenseFromDPResponse);
+
+  // SetLicense is used by CP to set a license on a DP node.
+  // If the license was successfully set, DP MUST respond back with accepted
+  // set to true. If it was unsuccessful, DP MUST respond back with accepted
+  // set to false and a descriptive error within `error`.
+  //
+  // Call direction:
+  // - CP to DP
+  // +wrpc:rpc-id=2
+  rpc SetLicense(SetLicenseRequest) returns (SetLicenseResponse);
+
+  // ReportRequestCount is used by DP to report the number of requests that a
+  // DP node has proxied. `request_count` in ReportRequestCountRequest is a
+  // delta and not a summation, meaning, each time this RPC is invoked, the DP
+  // reports back the number of requests the DP processed from the last time it
+  // made the same call. DP MUST not assume the call to have succeeded until
+  // it receives back a response.
+  //
+  // Call direction:
+  // - DP to CP
+  // +wrpc:rpc-id=3
+  rpc ReportRequestCount(ReportRequestCountRequest) returns (ReportRequestCountResponse);
+}
+
+message GetLicenseFromDPRequest {
+}
+
+message GetLicenseFromDPResponse {
+  bool configured = 1;
+  bytes license_data = 2;
+}
+
+message SetLicenseRequest {
+  bytes license_data = 1;
+}
+
+message SetLicenseResponse {
+ bool accepted = 1;
+ string error = 2;
+}
+
+message ReportRequestCountRequest {
+  uint64 request_count = 1;
+}
+
+message ReportRequestCountResponse {
+}

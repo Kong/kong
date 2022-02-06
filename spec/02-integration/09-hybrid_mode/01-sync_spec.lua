@@ -87,7 +87,6 @@ for _, strategy in helpers.each_strategy() do
                 return true
               end
             end
-            print("=========\n\n\n", require "pl.file".read("servroot/logs/error.log"))
           end, 10)
         end)
 

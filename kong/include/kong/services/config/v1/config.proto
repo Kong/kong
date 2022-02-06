@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package kong.services.config.v1;
+
+import "kong/model/config.proto";
+
+option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/service/config/v1;v1";
+
+// ConfigService enables CP and DP to get configuration from CP down to a DP.
+// +wrpc:service-id=1
+service ConfigService {
+  // GetCapabilities fetches the capabilities offered within the context of the
+  // service from the CP. A capability could span multiple RPCs within a Service,
+  // a single RPC. Capabilities are meant to introduce larger features
+  // without the need of a version upgrade.
+  // TODO(hbagdi): document that this RPC MUST be present in every service.
+  //
+  // Call direction: TODO(hbagdi)
+  // +wrpc:rpc-id=1
+  rpc GetCapabilities(GetCapabilitiesRequest) returns (GetCapabilitiesResponse);
+
+  // ReportBasicInfo informs the software installed in the DP.  Currently
+  // this is the list of plugins with respective version.  It's required
+  // that the CP send this information in order to receive configuration
+  // updates.
+  //
+  // Call direction: DP to CP
+  // +wrpc:rpc-id=4
+  rpc ReportBasicInfo(ReportBasicInfoRequest) returns (ReportBasicInfoResponse);
+
+  // SyncConfig is used by a CP to send a configuration request to the DP.
+  // CP may make concurrent calls to DP to update configuration. To guard
+  // against race conditions, version field in the request is used (read
+  // the documentation on the field).
+  //
+  // Call direction:
+  // - CP to DP
+  // +wrpc:rpc-id=2
+  rpc SyncConfig(SyncConfigRequest) returns (SyncConfigResponse);
+
+  // PingCP notifies that a DP would like CP to send the latest configuration.
+  // Once this call succeeds, CP MUST issue a SyncConfig request to the DP.
+  // DP expects the CP to send an updated configuration (or a no-op) on a
+  // soft real-time basis.
+  // DP can make multiple calls to CP and CP may choose to coallesce multiplee
+  // requests for configuration into a single SyncConfig().
+  //
+  // Configuration is always PUSHed to the DP and so configuration is not sent
+  // as part of the response to this call to simplify implementation. 
+  //
+  // Call direction:
+  // - DP to CP
+  // +wrpc:rpc-id=3
+  rpc PingCP(PingCPRequest) returns (PingCPResponse);
+}
+
+enum Capability { 
+  CAPABILITY_UNSPECIFIED = 0;
+  CAPABILITY_BULK_UPDATE = 1;
+  // Incremental configuration will be added in future and is considered out
+  // of scope at the moment.
+  // CAPABILITY_INCREMENTAL = 2;
+}
+
+message GetCapabilitiesRequest {
+}
+
+message GetCapabilitiesResponse {
+  repeated Capability capabilities = 1;
+}
+
+message ReportBasicInfoRequest {
+  repeated PluginVersion plugins = 1;
+}
+
+message ReportBasicInfoResponse {
+  oneof response {
+    string Ok = 1;
+    string Error = 2;
+  }
+}
+
+message PluginVersion {
+  string name = 1;
+  string version = 2;
+}
+
+message SyncConfigRequest {
+  // Config represents a configuration of Kong Gateway.
+  // This is same as the declarative configuration of Kong.
+  //
+  // DP MUST NOT combine configuration from two SyncConfigRequest. Config in
+  // each request is self-contained.
+  kong.model.Config config = 1;
+
+  // On every configuration change, CP MUST increment the version field
+  // in the request.
+  // Version field has no significance outside the context of a single ephemeral
+  // connection between a DP node and a CP node.
+  //
+  uint64 version = 2;
+}
+
+message SyncConfigResponse {
+  // accepted is set to true when the DP has accepted the configuration.
+  // Acceptance of configuration implies that the configuration is successfully
+  // processed by the DP.
+  bool accepted = 1;
+  // If accepted is set to false, errors denote the errors with the configuration.
+  // CP MAY analyze the errors and send back a correct configuration.
+  // If accepted is true, this field must be empty
+  repeated SyncConfigError errors = 2;
+}
+
+enum ErrorType {
+  ERROR_TYPE_UNSPECIFIED = 0;
+  ERROR_TYPE_VALIDATION = 1;
+  ERROR_TYPE_EXTRANEOUS_FIELD = 2;
+  ERROR_TYPE_ORPHANED = 3;
+}
+
+message SyncConfigError {
+  string id = 1;
+  string entity = 2;
+  ErrorType err_type = 3;
+}
+
+message PingCPRequest {
+}
+
+message PingCPResponse {
+}
+

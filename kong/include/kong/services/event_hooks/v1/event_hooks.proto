@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package kong.services.event_hooks.v1;
+
+import "kong/model/events/event_hooks.proto";
+
+option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/service/eventhooks/v1;v1";
+
+// EventHooksService pushes DP-specific event hooks from CP to DP.
+// +wrpc:service-id=3
+service EventHooksService {
+  // SyncEvents is used by a CP to send configuration of hooks down the the DP.
+  // CP may make concurrent calls to DP to update configuration. To guard
+  // against race conditions, version field in the request is used (read
+  // the documentation on the field).
+  // The configuration is atomic, meaning all hooks are present in each udpate.
+  //
+  // Call direction:
+  // - CP to DP
+  // +wrpc:rpc-id=1
+  rpc SyncHooks(SyncHooksRequest) returns (SyncHooksResponse);
+}
+
+message SyncHooksRequest {
+  repeated model.events.EventHook hooks = 1;
+
+  // On every configuration change, CP MUST increment the version field
+  // in the request.
+  // Version field has no significance outside the context of a single ephemeral
+  // connection between a DP node and a CP node.
+  uint64 version = 2;
+}
+
+message SyncHooksResponse {
+  // accepted is set to true when the DP has accepted the configuration.
+  // Acceptance of configuration indicates that the configuration is successfully
+  // processed by the DP.
+  bool accepted = 1;
+  // If accepted is set to false, errors denote the errors with the configuration.
+  // CP MAY analyze the errors and send back a correct configuration.
+  // If accepted is true, this field must be empty
+  repeated string errors = 2;
+}
