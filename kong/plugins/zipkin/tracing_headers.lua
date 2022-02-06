@@ -32,6 +32,10 @@ local function from_hex(str)
   return str
 end
 
+-- adds `count` number of zeros to the left of the str
+local function left_pad_zero(str, count)
+  return ('0'):rep(count-#str) .. str
+end
 
 local function parse_baggage_headers(headers, header_pattern)
   -- account for both ot and uber baggage headers
@@ -261,31 +265,41 @@ local function parse_jaeger_trace_context_headers(jaeger_header)
 
   -- values are not parsable hexidecimal and therefore invalid.
   if trace_id == nil or span_id == nil or parent_id == nil or trace_flags == nil then
-    warn("invalid jaeger uber-trace-id header; ignoring.")
+    warn(fmt("invalid jaeger uber-trace-id header; ignoring. Trace ID : %s, Span ID: %s, Parent ID: %s, Trace Flags: %s", trace_id, span_id, parent_id, trace_flags))
     return nil, nil, nil, nil
   end
 
   -- valid trace_id is required.
-  if (#trace_id ~= 16 and #trace_id ~= 32) or tonumber(trace_id, 16) == 0 then
-    warn("invalid jaeger trace ID; ignoring.")
+  if #trace_id > 32 or tonumber(trace_id, 16) == 0 then
+    warn(fmt("invalid jaeger trace ID: %s ; ignoring. ", trace_id))
     return nil, nil, nil, nil
   end
 
-  -- valid span_id is required.
-  if #span_id ~= 16 or tonumber(span_id, 16) == 0 then
-    warn("invalid jaeger span ID; ignoring.")
-    return nil, nil, nil, nil
+  -- if trace_id is not of length 32 chars then 0-pad to left
+  if #trace_id < 32 then
+    trace_id = left_pad_zero(trace_id, 32)
   end
 
   -- validating parent_id. If it is invalid just logging, as it can be ignored
   -- https://www.jaegertracing.io/docs/1.29/client-libraries/#tracespan-identity
   if #parent_id ~= 16 and tonumber(parent_id, 16) ~= 0 then
-    warn(fmt("invalid jaeger parent ID; ignoring."))
+    warn(fmt("invalid jaeger parent ID: %s ; ignoring. ", parent_id))
+  end
+
+  -- valid span_id is required.
+  if #span_id > 16 or tonumber(span_id, 16) == 0 then
+    warn(fmt("invalid jaeger span ID: %s; ignoring.", span_id))
+    return nil, nil, nil, nil
+  end
+
+  -- if span id length is less than 16 then 0-pad left
+  if #span_id < 16 then
+    span_id = left_pad_zero(span_id, 16)
   end
 
   -- valid flags are required
   if #trace_flags ~= 1 and #trace_flags ~= 2 then
-    warn("invalid jaeger flags; ignoring.")
+    warn(fmt("invalid jaeger flags: %s; ignoring.", trace_flags))
     return nil, nil, nil, nil
   end
 
