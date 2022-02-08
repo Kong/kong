@@ -214,6 +214,26 @@ describe("[DNS client]", function()
           }, list)
       end)
 
+      it("works with a 'search .' option", function()
+        assert(client.init({
+            resolvConf = {
+              "nameserver 8.8.8.8",
+              "search .",
+              "options ndots:1",
+            }
+          }))
+        local list = {}
+        for qname, qtype in client._search_iter("host", nil) do
+          table.insert(list, tostring(qname)..":"..tostring(qtype))
+        end
+        assert.same({
+            'host:33',
+            'host:1',
+            'host:28',
+            'host:5',
+          }, list)
+      end)
+
       it("works with a 'domain' option", function()
         assert(client.init({
             resolvConf = {
@@ -278,6 +298,26 @@ describe("[DNS client]", function()
             resolvConf = {
               "nameserver 8.8.8.8",
               "search one.com two.com",
+              "options ndots:1",
+            }
+          }))
+        local list = {}
+        for qname, qtype in client._search_iter("host.", nil) do
+          table.insert(list, tostring(qname)..":"..tostring(qtype))
+        end
+        assert.same({
+            'host.:33',
+            'host.:1',
+            'host.:28',
+            'host.:5',
+          }, list)
+      end)
+
+      it("works with a 'search .' option", function()
+        assert(client.init({
+            resolvConf = {
+              "nameserver 8.8.8.8",
+              "search .",
               "options ndots:1",
             }
           }))

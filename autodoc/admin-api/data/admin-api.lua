@@ -236,12 +236,12 @@ return {
   },
 
   footer = [[
-    [clustering]: /gateway-oss/{{page.kong_version}}/clustering
-    [cli]: /gateway-oss/{{page.kong_version}}/cli
-    [active]: /gateway-oss/{{page.kong_version}}/health-checks-circuit-breakers/#active-health-checks
-    [healthchecks]: /gateway-oss/{{page.kong_version}}/health-checks-circuit-breakers
-    [secure-admin-api]: /gateway-oss/{{page.kong_version}}/secure-admin-api
-    [proxy-reference]: /gateway-oss/{{page.kong_version}}/proxy
+    [clustering]: /gateway/{{page.kong_version}}/reference/clustering
+    [cli]: /gateway/{{page.kong_version}}/reference/cli
+    [active]: /gateway/{{page.kong_version}}/reference/health-checks-circuit-breakers/#active-health-checks
+    [healthchecks]: /gateway/{{page.kong_version}}/reference/health-checks-circuit-breakers
+    [secure-admin-api]: /gateway/{{page.kong_version}}/admin-api/secure-admin-api
+    [proxy-reference]: /gateway/{{page.kong_version}}/reference/proxy
   ]],
 
   general = {

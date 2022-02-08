@@ -21,11 +21,13 @@ local floor = math.floor
 local kong = kong
 local type = type
 local ngx = ngx
-local null = ngx.null
+local now = ngx.now
+local log = ngx.log
+local NOTICE  = ngx.NOTICE
 
 
 
-local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
+local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 
 
 function cache_warmup._mock_kong(mock_kong)
@@ -38,9 +40,9 @@ local function warmup_dns(premature, hosts, count)
     return
   end
 
-  ngx.log(ngx.NOTICE, "warming up DNS entries ...")
+  log(NOTICE, "warming up DNS entries ...")
 
-  local start = ngx.now()
+  local start = now()
 
   local upstreams_dao = kong.db["upstreams"]
   local upstreams_names = {}
@@ -52,7 +54,7 @@ local function warmup_dns(premature, hosts, count)
 
     for upstream, err in upstreams_dao:each(page_size, GLOBAL_QUERY_OPTS) do
       if err then
-        ngx.log(ngx.NOTICE, "failed to iterate over upstreams: ", err)
+        log(NOTICE, "failed to iterate over upstreams: ", err)
         break
       end
 
@@ -70,9 +72,9 @@ local function warmup_dns(premature, hosts, count)
     end
   end
 
-  local elapsed = floor((ngx.now() - start) * 1000)
+  local elapsed = floor((now() - start) * 1000)
 
-  ngx.log(ngx.NOTICE, "finished warming up DNS entries",
+  log(NOTICE, "finished warming up DNS entries",
                       "' into the cache (in ", tostring(elapsed), "ms)")
 end
 
@@ -106,9 +108,9 @@ function cache_warmup.single_dao(dao)
   local entity_name = dao.schema.name
   local cache_store = constants.ENTITY_CACHE_STORE[entity_name]
 
-  ngx.log(ngx.NOTICE, "Preloading '", entity_name, "' into the ", cache_store, "...")
+  log(NOTICE, "Preloading '", entity_name, "' into the ", cache_store, "...")
 
-  local start = ngx.now()
+  local start = now()
 
   local hosts_array, hosts_set, host_count
   if entity_name == "services" then
@@ -145,9 +147,9 @@ function cache_warmup.single_dao(dao)
     ngx.timer.at(0, warmup_dns, hosts_array, host_count)
   end
 
-  local elapsed = floor((ngx.now() - start) * 1000)
+  local elapsed = floor((now() - start) * 1000)
 
-  ngx.log(ngx.NOTICE, "finished preloading '", entity_name,
+  log(NOTICE, "finished preloading '", entity_name,
                       "' into the ", cache_store, " (in ", tostring(elapsed), "ms)")
   return true
 end

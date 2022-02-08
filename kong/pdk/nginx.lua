@@ -5,8 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
---- Nginx information module
--- A set of functions allowing to retrieve Nginx-specific implementation
+--- Nginx information module.
+--
+-- A set of functions for retrieving Nginx-specific implementation
 -- details and meta information.
 -- @module kong.nginx
 
@@ -19,12 +20,12 @@ local function new(self)
 
 
   ---
-  -- Returns the current Nginx subsystem this function is called from: "http"
-  -- or "stream".
+  -- Returns the current Nginx subsystem this function is called from. Can be
+  -- one of `"http"` or `"stream"`.
   --
   -- @function kong.nginx.get_subsystem
   -- @phases any
-  -- @treturn string subsystem Either `"http"` or `"stream"`
+  -- @treturn string Subsystem, either `"http"` or `"stream"`.
   -- @usage
   -- kong.nginx.get_subsystem() -- "http"
   function _NGINX.get_subsystem()
