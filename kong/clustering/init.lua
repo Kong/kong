@@ -133,7 +133,7 @@ function _M.new(conf)
   print("role: ", conf.role, "  protocol: ", conf.cluster_protocol)
 
   local clustering_submodule = conf.role
-  if conf.cluster_protocol == "wRPC" then
+  if conf.cluster_protocol == "wrpc" then
     clustering_submodule = "wrpc_" .. clustering_submodule
   end
 

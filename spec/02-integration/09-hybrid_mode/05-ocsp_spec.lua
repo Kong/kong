@@ -14,7 +14,7 @@ local function set_ocsp_status(status)
 end
 
 
-for _, cluster_protocol in ipairs{"json", "wRPC"} do
+for _, cluster_protocol in ipairs{"json", "wrpc"} do
   for _, strategy in helpers.each_strategy() do
     describe("cluster_ocsp = on works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
       describe("DP certificate good", function()

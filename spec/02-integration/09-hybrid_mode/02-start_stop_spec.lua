@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 
 
-for _, cluster_protocol in ipairs{"json", "wRPC"} do
+for _, cluster_protocol in ipairs{"json", "wrpc"} do
   describe("invalid config are rejected, protocol " .. cluster_protocol, function()
     describe("role is control_plane", function()
       it("can not disable admin_listen", function()

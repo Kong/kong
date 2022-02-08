@@ -37,7 +37,7 @@ local WS_OPTS = {
   max_payload_len = MAX_PAYLOAD,
 }
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
-local _log_prefix = "[clustering] "
+local _log_prefix = "[wrpc-clustering] "
 
 
 local function remove_empty_tables(t)

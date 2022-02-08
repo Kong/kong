@@ -17,7 +17,7 @@ local KEY_AUTH_PLUGIN
 
 
 for _, strategy in helpers.each_strategy() do
-  for _, cluster_protocol in ipairs{"json", "wRPC"} do
+  for _, cluster_protocol in ipairs{"json", "wrpc"} do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
 
       lazy_setup(function()
@@ -560,7 +560,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  for _, cluster_protocol in ipairs{"json", "wRPC"} do
+  for _, cluster_protocol in ipairs{"json", "wrpc"} do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
       lazy_setup(function()
         helpers.get_db_utils(strategy, {

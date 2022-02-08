@@ -20,7 +20,7 @@ local function find_in_file(filepath, pat)
 end
 
 for _, strategy in helpers.each_strategy() do
-  for _, cluster_protocol in ipairs{ { "json", "json" }, { "json", "wRPC" }, { "wRPC", "wRPC" } } do
+  for _, cluster_protocol in ipairs{ { "json", "json" }, { "json", "wrpc" }, { "wrpc", "wrpc" } } do
     describe(string.format("CP[%s]/CP[%s] sync works with #%s backend", cluster_protocol[1], cluster_protocol[2], strategy), function()
       lazy_setup(function()
         helpers.get_db_utils(strategy, { "routes", "services" })
