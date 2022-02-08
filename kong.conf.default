@@ -306,6 +306,10 @@
                                  # to Kong `prefix` with a filename `.config.cache.jwt`
                                  # Alternatively you can specify path for config cache
                                  # with this parameter, e.g. `/tmp/kong-config-cache`.
+#cluster_max_payload = 4194304
+                                 # This sets the maximum payload size allowed
+                                 # to be sent across from CP to DP in Hybrid mode
+                                 # Default is 4Mb - 4 * 1024 * 1024 due to historical reasons
 
 #------------------------------------------------------------------------------
 # HYBRID MODE CONTROL PLANE
