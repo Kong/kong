@@ -12,6 +12,7 @@ _G.kong = {
   configuration = {
       cluster_max_payload = 4194304
     }
+}
 
 local cp = require("kong.clustering.control_plane")
 local cjson_decode = require("cjson").decode
