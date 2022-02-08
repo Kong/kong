@@ -6,11 +6,10 @@ local string_upper = string.upper
 local string_find = string.find
 local string_sub = string.sub
 local string_byte = string.byte
-local string_format = string.format
 local tonumber = tonumber
 local table_concat = table.concat
-local ngx_re_find = ngx.re.find
 local ngx_re_gsub = ngx.re.gsub
+local escape_uri = ngx.escape_uri
 
 
 local RESERVED_CHARACTERS = {
@@ -35,8 +34,6 @@ local RESERVED_CHARACTERS = {
   [0x5D] = true, -- ]
 }
 
-local ESCAPE_PATTERN = "[^!#$&'()*+,/:;=?@[\\]A-Z\\d-_.~%]"
-
 local TMP_OUTPUT = require("table.new")(16, 0)
 local DOT = string_byte(".")
 local SLASH = string_byte("/")
@@ -49,11 +46,6 @@ local function percent_decode(m)
     end
 
     return string_char(num)
-end
-
-
-local function escape(m)
-  return string_format("%%%02X", string_byte(m[0]))
 end
 
 
@@ -149,11 +141,7 @@ end
 
 
 function _M.escape(uri)
-  if ngx_re_find(uri, ESCAPE_PATTERN, "joi") then
-    return ngx_re_gsub(uri, ESCAPE_PATTERN, escape, "joi")
-  end
-
-  return uri
+  return escape_uri(uri, 0)
 end
 
 
