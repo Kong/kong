@@ -216,7 +216,6 @@ function wrpc.new_service()
   if not wrpc_proto then
     local wrpc_protofname = assert(proto_searchpath("wrpc.wrpc"))
     wrpc_proto = assert(grpc.each_method(wrpc_protofname))
-    --pp("wrpc_proto", wrpc_proto)
   end
 
   return setmetatable({

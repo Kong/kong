@@ -17,7 +17,9 @@ local function waitstep(step, deadline)
   return min(max(0.001, step * 2), deadline-now(), 0.5)
 end
 
-
+--- waiting version of `d:add()`
+--- blocks the coroutine until there's no value under this key
+--- so the new value can be safely added
 local function add_wait(dict, key, val, exptime, deadline)
   local step = 0
 
@@ -37,6 +39,8 @@ local function add_wait(dict, key, val, exptime, deadline)
   return nil, "timeout"
 end
 
+--- waiting version of `d:get()`
+--- blocks the coroutine until there's actually a value under this key
 local function get_wait(dict, key, deadline)
   local step = 0
 
@@ -56,6 +60,8 @@ local function get_wait(dict, key, deadline)
   return nil, "timeout"
 end
 
+--- waits until the key is empty
+--- blocks the coroutine while there's a value under this key
 local function empty_wait(dict, key, deadline)
   local step = 0
   while deadline > now() do
