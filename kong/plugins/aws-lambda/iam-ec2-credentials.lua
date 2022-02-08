@@ -9,14 +9,39 @@ local kong = kong
 local METADATA_SERVICE_PORT = 80
 local METADATA_SERVICE_REQUEST_TIMEOUT = 5000
 local METADATA_SERVICE_HOST = "169.254.169.254"
-local METADATA_SERVICE_URI = "http://" .. METADATA_SERVICE_HOST .. ":" .. METADATA_SERVICE_PORT ..
+local METADATA_SERVICE_TOKEN_URI = "http://" .. METADATA_SERVICE_HOST .. ":" .. METADATA_SERVICE_PORT ..
+                             "/latest/api/token"
+local METADATA_SERVICE_IAM_URI = "http://" .. METADATA_SERVICE_HOST .. ":" .. METADATA_SERVICE_PORT ..
                              "/latest/meta-data/iam/security-credentials/"
 
 
 local function fetch_ec2_credentials()
   local client = http.new()
   client:set_timeout(METADATA_SERVICE_REQUEST_TIMEOUT)
-  local role_name_request_res, err = client:request_uri(METADATA_SERVICE_URI)
+
+  local token_request_res, err = client:request_uri(METADATA_SERVICE_TOKEN_URI, {
+    method = "PUT",
+    headers = {
+      ["X-aws-ec2-metadata-token-ttl-seconds"] = "60",
+    },
+  })
+
+  if not token_request_res then
+    return nil, "Could not fetch IMDSv2 token from metadata service: " .. tostring(err)
+  end
+
+  if token_request_res.status ~= 200 then
+    return nil, "Fetching IMDSv2 token from metadata service returned status code " ..
+    token_request_res.status .. " with body " .. token_request_res.body
+  end
+
+  local token = token_request_res.body
+
+  local role_name_request_res, err = client:request_uri(METADATA_SERVICE_IAM_URI, {
+    headers = {
+      ["X-aws-ec2-metadata-token"] = token,
+    },
+  })
 
   if not role_name_request_res then
     return nil, "Could not fetch role name from metadata service: " .. tostring(err)
@@ -31,7 +56,12 @@ local function fetch_ec2_credentials()
 
   kong.log.debug("Found IAM role on instance with name: ", iam_role_name)
 
-  local iam_security_token_request, err = client:request_uri(METADATA_SERVICE_URI .. iam_role_name)
+  local iam_security_token_request, err = client:request_uri(METADATA_SERVICE_IAM_URI .. iam_role_name, {
+    headers = {
+      ["X-aws-ec2-metadata-token"] = token,
+    },
+  })
+
   if not iam_security_token_request then
     return nil, "Failed to request IAM credentials for role " .. iam_role_name ..
                 " Request returned error: " .. tostring(err)
