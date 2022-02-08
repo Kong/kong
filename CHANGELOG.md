@@ -72,6 +72,8 @@
   [#8294](https://github.com/Kong/kong/pull/8294)
 - Bump lua-resty-openssl to 0.8.5
   [#8368](https://github.com/Kong/kong/pull/8368)
+- Bump [grpcurl](https://github.com/fullstorydev/grpcurl) to 1.8.6
+  [#8385](https://github.com/Kong/kong/pull/8385)
 
 ### Additions
 
