@@ -46,7 +46,7 @@ local WS_OPTS = {
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
-local _log_prefix = "[clustering] "
+local _log_prefix = "[wrpc-clustering] "
 
 local wrpc_config_service
 
@@ -65,7 +65,7 @@ local function get_config_service(self)
     wrpc_config_service:set_handler("ConfigService.ReportBasicInfo", function(peer, data)
       local client = self.clients[peer.conn]
       if client then
-        ngx_log(ngx_INFO, _log_prefix, "Received BasicInfo package from client: ", client.dp_id)
+        ngx_log(ngx_INFO, _log_prefix, "received BasicInfo package from client: ", client.dp_id)
         client.basic_info = data
         client.basic_info_semaphore:post()
       end

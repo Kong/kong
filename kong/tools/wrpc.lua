@@ -321,7 +321,7 @@ end
 function wrpc_service:encode_args(name, ...)
   local rpc = self:get_method(name)
   if not rpc then
-    return nil, string.format("no method %q", name)
+    return nil, string.format("unknown method %q", name)
   end
 
   local num_args = select('#', ...)
