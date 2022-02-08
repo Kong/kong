@@ -95,6 +95,12 @@ return {
           type = "boolean",
           default = true,
         } },
+        { aws_imds_protocol_version = {
+          type = "string",
+          required = true,
+          default = "v1",
+          one_of = { "v1", "v2" }
+        } },
       }
     },
   } },
