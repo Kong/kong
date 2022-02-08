@@ -15,6 +15,7 @@ local enums       = require "kong.enterprise_edition.dao.enums"
 local files       = require "kong.portal.migrations.01_initial_files"
 local constants    = require "kong.constants"
 local workspace_config = require "kong.portal.workspace_config"
+local arguments   = require "kong.api.arguments"
 
 
 local kong = kong
@@ -248,6 +249,32 @@ end
 
 function _M.get_credentials(self, db, helpers, opts)
   local credentials = setmetatable({}, cjson.empty_array_mt)
+  local search_fields = {}
+
+  local client_id_filter = self.req.params_get.client_id
+  if client_id_filter then
+    search_fields.client_id = { value = client_id_filter, field = { type = "string" }}
+  end
+
+  local username_filter = self.req.params_get.username
+  if username_filter then
+    search_fields.username = { value = username_filter, field = { type = "string" }}
+  end
+
+  local key_filter = self.req.params_get.key
+  if key_filter then
+    search_fields.key = { value = key_filter, field = { type = "string" }}
+  end
+
+  local matches_search_fields = function(row)
+    for k, search in pairs(search_fields) do
+      if row[k] and not _M.contains_substring(row[k], search.value) then
+        return false
+      end
+    end
+    return true
+  end
+
   local login_credentials, err = find_login_credentials(db, self.consumer.id)
   if err then
     return endpoints.handle_error(err)
@@ -258,7 +285,7 @@ function _M.get_credentials(self, db, helpers, opts)
       return endpoints.handle_error(err)
     end
 
-    if not is_login_credential(login_credentials, row) then
+    if not is_login_credential(login_credentials, row) and matches_search_fields(row) then
       credentials[#credentials + 1] = row
     end
   end
@@ -742,6 +769,105 @@ function _M.exit_if_external_oauth2()
   if kong.configuration.portal_app_auth == "external-oauth2" then
     return kong.response.exit(404, { message = "Not Found" })
   end
+end
+
+function _M.get_applications(self, db, helpers, include_instances)
+  local post_process_actions = include_instances and function (row)
+    if include_instances then
+      row.application_instances = setmetatable({}, cjson.empty_array_mt)
+      for instance, err in db.application_instances:each_for_application({ id = row.id }) do
+        if err then
+          return endpoints.handle_error(err)
+        end
+
+        if instance then
+          table.insert(row.application_instances, instance)
+        end
+      end
+    end
+    return row
+  end or nil
+
+  local endpoint = _M.page_by_foreign_key_endpoint(
+    db.applications.schema,
+    db.developers.schema,
+    "developer"
+  )
+
+  return endpoint(self, db, helpers, self.developer.id, post_process_actions)
+end
+
+function _M.page_by_foreign_key_endpoint(schema, foreign_schema, foreign_field_name)
+  return function (self, db, helpers, foreign_key, post_process)
+    local rows = setmetatable({}, cjson.empty_array_mt)
+    local search_fields = _M.get_search_fields(self.req, schema)
+
+    local dao = db[schema.name]
+
+    self.params[foreign_schema.name] =  { id = foreign_key }
+
+    for row, err in dao["each_for_" .. foreign_field_name](dao, { id = self.developer.id }) do
+      if err then
+        return endpoints.handle_error(err)
+      end
+      if _M.row_matches_search_fields(row, search_fields) then
+        local p_row = type(post_process) == "function" and post_process(row) or row
+        table.insert(rows, p_row)
+      end
+    end
+
+    local res, _, err_t = _M.paginate(self, rows)
+    if not res then
+      return endpoints.handle_error(err_t)
+    end
+    return kong.response.exit(200, res)
+  end
+end
+
+function _M.get_search_fields(req, schema)
+  local args = arguments.load({
+    schema  = schema,
+    request = req,
+  })
+
+  local search_fields = {}
+  for k, v in pairs(args.uri) do
+    v = type(v) == "table" and v[1] or v
+    if schema.fields[k] and schema.fields[k].type then
+      search_fields[k] = { field = schema.fields[k], value = v }
+    end
+  end
+
+  return search_fields
+end
+
+function _M.contains_substring(target, value)
+  if type(target) ~= "string" or type(value) ~= "string" then
+    return false
+  end
+
+  return not not string.find(
+    string.lower(target),
+    string.lower(value),
+    1, true
+  )
+end
+
+function _M.row_matches_search_fields(row, search_fields)
+  if not search_fields then
+    return true
+  end
+
+  -- simulates ANDing all the filters together (if 1 fails they all fail)
+  for k, search in pairs(search_fields) do
+    if search.field.type == "string" or search.field.type == "foreign" then
+      if not _M.contains_substring(row[k], search.value) then
+        return false
+      end
+    end
+  end
+
+  return true
 end
 
 

@@ -807,6 +807,15 @@ return {
 
     GET = function(self, db, helpers)
       local application_services = setmetatable({}, cjson.empty_array_mt)
+      local name_filter = self.req.params_get.name
+
+      local matches_filters = function(row)
+        if name_filter and not crud_helpers.contains_substring(row.config.display_name, name_filter) then
+          return false
+        end
+
+        return true
+      end
 
       local rows = {}
       for row, err in db.plugins:each() do
@@ -814,7 +823,7 @@ return {
           return kong.response.exit(500, { message = "An unexpected error occurred" })
         end
 
-        if row.name == "application-registration" then
+        if row.name == "application-registration" and matches_filters(row) then
           table.insert(rows, row)
         end
       end
@@ -886,36 +895,9 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      local applications = setmetatable({}, cjson.empty_array_mt)
       local include_instances = self.req.params_get and self.req.params_get.include_instances == "true"
 
-      for application, err in db.applications:each_for_developer({ id = self.developer.id }) do
-        if err then
-          return endpoints.handle_error(err)
-        end
-
-        if include_instances then
-          application.application_instances = setmetatable({}, cjson.empty_array_mt)
-          for instance, err in db.application_instances:each_for_application({ id = application.id }) do
-            if err then
-              return endpoints.handle_error(err)
-            end
-
-            if instance then
-              table.insert(application.application_instances, instance)
-            end
-          end
-        end
-
-        table.insert(applications, application)
-      end
-
-      local res, _, err_t = crud_helpers.paginate(self, applications)
-      if not res then
-        return endpoints.handle_error(err_t)
-      end
-
-      return kong.response.exit(200, res)
+      return crud_helpers.get_applications(self, db, helpers, include_instances)
     end,
 
     POST = function(self, db, helpers)
