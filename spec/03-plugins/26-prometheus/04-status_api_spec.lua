@@ -292,8 +292,8 @@ describe("Plugin: prometheus (access via status API)", function()
       path    = "/metrics",
     })
     local body = assert.res_status(200, res)
-    assert.matches('kong_nginx_current_timers{state="running"} %d+', body, nil, true)
-    assert.matches('kong_nginx_current_timers{state="pending"} %d+', body, nil, true)
+    assert.matches('kong_nginx_timers{state="running"} %d+', body, nil, true)
+    assert.matches('kong_nginx_timers{state="pending"} %d+', body, nil, true)
   end)
 
   it("exposes upstream's target health metrics - healthchecks-off", function()

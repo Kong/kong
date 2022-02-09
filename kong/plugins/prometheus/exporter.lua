@@ -48,7 +48,7 @@ local function init()
       "Number of Stream connections",
       {"state"})
   end
-  metrics.timers = prometheus:gauge("nginx_current_timers",
+  metrics.timers = prometheus:gauge("nginx_timers",
                                     "Number of nginx timers",
                                     {"state"})
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
