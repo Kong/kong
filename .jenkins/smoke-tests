@@ -162,7 +162,7 @@ pipeline {
   }
   post {
     always {
-      sh label: 'Clean Gojira Installation'
+      sh label: 'Clean Gojira Installation',
          script: 'rm -rf /tmp/gojira ~/.local/bin/gojira'
     }
     success {
