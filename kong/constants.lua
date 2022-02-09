@@ -49,6 +49,21 @@ for _, plugin in ipairs(deprecated_plugins) do
   deprecated_plugin_map[plugin] = true
 end
 
+local vaults = {
+}
+
+local vault_map = {}
+for i = 1, #vaults do
+  vault_map[vaults[i]] = true
+end
+
+local deprecated_vaults = {} -- no currently deprecated vaults
+
+local deprecated_vault_map = {}
+for _, vault in ipairs(deprecated_vaults) do
+  deprecated_vault_map[vault] = true
+end
+
 local protocols_with_subsystem = {
   http = "http",
   https = "http",
@@ -68,6 +83,8 @@ table.sort(protocols)
 local constants = {
   BUNDLED_PLUGINS = plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
+  BUNDLED_VAULTS = vault_map,
+  DEPRECATED_VAULTS = deprecated_vault_map,
   -- non-standard headers, specific to Kong
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",
