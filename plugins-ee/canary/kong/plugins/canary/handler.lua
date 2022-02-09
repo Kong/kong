@@ -29,7 +29,7 @@ local CANARY_BY_HEADER_ALWAYS = "always" -- always go to canary
 
 local Canary = {
   PRIORITY = 13,
-  VERSION  = "0.5.0"
+  VERSION  = "0.6.0"
 }
 
 local hashing  -- need a forward declaration here
