@@ -176,6 +176,9 @@ return {
     },
 
     -- Enterprise plugins
+    canary = {
+      "canary_by_header_name",
+    },
     openid_connect = {
       "session_redis_username",
     },

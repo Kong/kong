@@ -79,6 +79,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -183,6 +184,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -287,6 +289,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -384,6 +387,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -477,6 +481,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -567,6 +572,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -644,6 +650,9 @@ describe("kong.clustering.control_plane", function()
       acme = {
         "rsa_key_size",
       },
+      canary = {
+        "canary_by_header_name",
+      },
       forward_proxy = {
         "auth_username",
         "auth_password"
@@ -680,6 +689,9 @@ describe("kong.clustering.control_plane", function()
     assert.same({
       acme = {
         "rsa_key_size",
+      },
+      canary = {
+        "canary_by_header_name",
       },
       openid_connect = {
         "session_redis_username",
