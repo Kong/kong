@@ -467,5 +467,8 @@ build = {
 
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
+
+    ["kong.vaults.env"] = "kong/vaults/env/init.lua",
+    ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
   }
 }
