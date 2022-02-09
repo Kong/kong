@@ -243,6 +243,7 @@ build = {
     ["kong.pdk.node"] = "kong/pdk/node.lua",
     ["kong.pdk.nginx"] = "kong/pdk/nginx.lua",
     ["kong.pdk.cluster"] = "kong/pdk/cluster.lua",
+    ["kong.pdk.vault"] = "kong/pdk/vault.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
