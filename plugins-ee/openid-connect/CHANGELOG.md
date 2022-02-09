@@ -6,6 +6,7 @@
     - `session_redis_username` - Redis ACL username
     - `session_redis_password` - Redis auth password or ACL password if username is present
 - Deprecate `session_redis_auth`; use `session_redis_password`
+- Add `resolve_distributed_claims` config option
 
 ## v2.2.1
 
