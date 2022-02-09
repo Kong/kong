@@ -977,10 +977,30 @@ function _M.get_search_fields(req, schema)
 
   local search_fields = {}
   for k, v in pairs(args.uri) do
-    v = type(v) == "table" and v[1] or v
-    if schema.fields[k] and schema.fields[k].type then
-      search_fields[k] = { field = schema.fields[k], value = v }
+    if type(k) ~= "string" then
+      goto continue
     end
+
+    v = type(v) == "table" and v[1] or v
+
+    -- date range params will come in as, e.g., created_at_from / created_at_to
+    for _, suffix in ipairs({"_from", "_to"}) do
+      if string.sub(k, #k - #suffix + 1, #k) == suffix then
+        local field_name = string.sub(k, 1, #k - #suffix)
+        local field = schema.fields[field_name]
+        if field and field.type and field.type == "integer" and field.timestamp then
+          search_fields[k] = { field = field, value = v, suffix = suffix, name = field_name }
+          goto continue
+        end
+      end
+    end
+
+    local field = schema.fields[k]
+    if field and field.type then
+        search_fields[k] = { field = field, value = v }
+    end
+
+    ::continue::
   end
 
   return search_fields
@@ -1007,6 +1027,21 @@ function _M.row_matches_search_fields(row, search_fields)
   for k, search in pairs(search_fields) do
     if search.field.type == "string" or search.field.type == "foreign" then
       if not _M.contains_substring(row[k], search.value) then
+        return false
+      end
+    elseif search.field.type == 'integer' and
+      search.field.timestamp and search.suffix and search.name then
+
+      local valid = string.find(search.value, "^%d%d%d%d%-%d%d%-%d%d$")
+      if not valid then
+        return false
+      end
+
+      local row_date = os.date("!%Y-%m-%d", row[search.name])
+
+      if search.suffix == "_from" and row_date < search.value then
+        return false
+      elseif search.suffix == "_to" and row_date > search.value then
         return false
       end
     end

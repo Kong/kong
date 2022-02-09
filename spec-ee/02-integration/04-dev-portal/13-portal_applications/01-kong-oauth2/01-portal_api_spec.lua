@@ -124,6 +124,10 @@ local function close_clients(portal_api_client)
   end
 end
 
+local function timestamp_to_date(ts)
+    return os.date("!%Y-%m-%d", ts)
+end
+
 local rbac_mode = {"off", "on"}
 
 for _, strategy in helpers.each_strategy() do
@@ -229,6 +233,12 @@ for _, strategy in helpers.each_strategy() do
                   return 'even'
                 end
 
+                local make_created_at = function(i)
+                  return os.time({
+                    year = 2022, month = i, day = i
+                  })
+                end
+
                 for i = 1, 10, 1 do
                   res = assert(portal_api_client:send {
                     method = "POST",
@@ -244,7 +254,18 @@ for _, strategy in helpers.each_strategy() do
                     }
                   })
 
-                  assert.res_status(200, res)
+                  local body = assert.res_status(200, res)
+                  local application = cjson.decode(body)
+
+                  local created_at = make_created_at(i)
+
+                  local updated = assert(db.applications:update({
+                    id = application.id
+                  }, {
+                      created_at = created_at,
+                  }))
+
+                  assert.equal(created_at, updated.created_at)
                 end
               end
             end
@@ -727,6 +748,119 @@ for _, strategy in helpers.each_strategy() do
             assert.equal("odd", resp_body_json.data[5].description)
 
             verify_order(resp_body_json.data, "name", false)
+          end)
+
+          it("filters by created_at_from from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("ted@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?created_at_from=2022-03-03&sort_by=created_at",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(8, resp_body_json.total)
+            assert.equal("2022-03-03", timestamp_to_date(resp_body_json.data[1].created_at))
+            assert.equal("2022-04-04", timestamp_to_date(resp_body_json.data[2].created_at))
+            assert.equal("2022-05-05", timestamp_to_date(resp_body_json.data[3].created_at))
+            assert.equal("2022-06-06", timestamp_to_date(resp_body_json.data[4].created_at))
+            assert.equal("2022-07-07", timestamp_to_date(resp_body_json.data[5].created_at))
+            assert.equal("2022-08-08", timestamp_to_date(resp_body_json.data[6].created_at))
+            assert.equal("2022-09-09", timestamp_to_date(resp_body_json.data[7].created_at))
+            assert.equal("2022-10-10", timestamp_to_date(resp_body_json.data[8].created_at))
+          end)
+
+          it("filters by created_at_to from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("ted@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?created_at_to=2022-06-06&sort_by=created_at",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(6, resp_body_json.total)
+            assert.equal("2022-01-01", timestamp_to_date(resp_body_json.data[1].created_at))
+            assert.equal("2022-02-02", timestamp_to_date(resp_body_json.data[2].created_at))
+            assert.equal("2022-03-03", timestamp_to_date(resp_body_json.data[3].created_at))
+            assert.equal("2022-04-04", timestamp_to_date(resp_body_json.data[4].created_at))
+            assert.equal("2022-05-05", timestamp_to_date(resp_body_json.data[5].created_at))
+            assert.equal("2022-06-06", timestamp_to_date(resp_body_json.data[6].created_at))
+          end)
+
+          it("filters between created_at_from and created_at_to from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("ted@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?created_at_from=2022-03-03&created_at_to=2022-06-06&sort_by=created_at",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(4, resp_body_json.total)
+            assert.equal("2022-03-03", timestamp_to_date(resp_body_json.data[1].created_at))
+            assert.equal("2022-04-04", timestamp_to_date(resp_body_json.data[2].created_at))
+            assert.equal("2022-05-05", timestamp_to_date(resp_body_json.data[3].created_at))
+            assert.equal("2022-06-06", timestamp_to_date(resp_body_json.data[4].created_at))
+          end)
+
+          it("filters all rows out when invalid created_at_from or created_at_to from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("ted@konghq.com:kong"),
+            }, true)
+
+            local invalid_dates = { "", "yo", "2022-01-" }
+
+            for _, v in ipairs(invalid_dates) do
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/applications?created_at_from=" .. v .. "&sort_by=created_at",
+                headers = {
+                  ["Cookie"] = cookie
+                }
+              })
+
+              local body = assert.res_status(200, res)
+              local resp_body_json = cjson.decode(body)
+
+              assert.equal(0, resp_body_json.total)
+            end
+
+            for _, v in ipairs(invalid_dates) do
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/applications?created_at_to=" .. v .. "&sort_by=created_at",
+                headers = {
+                  ["Cookie"] = cookie
+                }
+              })
+
+              local body = assert.res_status(200, res)
+              local resp_body_json = cjson.decode(body)
+
+              assert.equal(0, resp_body_json.total)
+            end
           end)
         end)
 
