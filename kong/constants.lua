@@ -50,6 +50,7 @@ for _, plugin in ipairs(deprecated_plugins) do
 end
 
 local vaults = {
+  "env",
 }
 
 local vault_map = {}
