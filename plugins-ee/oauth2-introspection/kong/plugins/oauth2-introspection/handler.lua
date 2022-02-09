@@ -121,6 +121,7 @@ local function make_introspection_request(conf, access_token)
     scheme = parsed_url.scheme,
     host = host,
     port = port,
+    ssl_server_name = host
   }
   if not ok then
     return false, err
