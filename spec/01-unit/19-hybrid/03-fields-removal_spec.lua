@@ -108,6 +108,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -213,6 +214,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -318,6 +320,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -416,6 +419,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -510,6 +514,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -601,6 +606,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -683,6 +689,7 @@ describe("kong.clustering.control_plane", function()
       },
       openid_connect = {
         "session_redis_username",
+        "resolve_distributed_claims",
       },
     }, cp._get_removed_fields(2006000000))
 
@@ -695,6 +702,7 @@ describe("kong.clustering.control_plane", function()
       },
       openid_connect = {
         "session_redis_username",
+        "resolve_distributed_claims",
       },
     }, cp._get_removed_fields(2007000000))
 
