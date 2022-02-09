@@ -745,13 +745,13 @@ for _, strategy in strategies() do
         assert.are.equal("canary3.com", json.vars.host)
       end)
 
-      it("test 'override_header' is configured and request header value == false", function()
+      it("test 'canary_by_header_name' is configured and request header value == never", function()
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
           percentage = 50,
           steps = 4,
           hash = "none",
-          override_header = "X-Canary-Override",
+          canary_by_header_name = "X-Canary-Override",
         })
         -- only use 1 consumer, which should still randomly end up in all targets
         local apikey = generate_consumers(admin_client, {0}, 4)[0]
@@ -767,7 +767,7 @@ for _, strategy in strategies() do
             headers = {
               ["Host"] = "canary1.com",
               ["apikey"] = apikey,
-              ["X-Canary-Override"] = "false",
+              ["X-Canary-Override"] = "never",
             }
           })
           assert.response(res).has.status(200)
@@ -779,13 +779,13 @@ for _, strategy in strategies() do
         assert(count["/requests/path2"] == 0 )
       end)
 
-      it("test 'override_header' is configured and request header value == true", function()
+      it("test 'canary_by_header_name' is configured and request header value == always", function()
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
           percentage = 50,
           steps = 4,
           hash = "none",
-          override_header = "X-Canary-Override",
+          canary_by_header_name = "X-Canary-Override",
         })
         -- only use 1 consumer, which should still randomly end up in all targets
         local apikey = generate_consumers(admin_client, {0}, 4)[0]
@@ -801,7 +801,7 @@ for _, strategy in strategies() do
             headers = {
               ["Host"] = "canary1.com",
               ["apikey"] = apikey,
-              ["X-Canary-Override"] = "true",
+              ["X-Canary-Override"] = "always",
             }
           })
           assert.response(res).has.status(200)
@@ -813,13 +813,13 @@ for _, strategy in strategies() do
         assert(count["/requests/path2"] == 4 )
       end)
 
-      it("test 'override_header' is configured and header in request is neither 'true' nor 'false'", function()
+      it("test 'canary_by_header_name' is configured and header in request is neither 'always' nor 'never'", function()
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
           percentage = 50,
           steps = 4,
           hash = "none",
-          override_header = "X-Canary-Override",
+          canary_by_header_name = "X-Canary-Override",
         })
         -- only use 1 consumer, which should still randomly end up in all targets
         local apikey = generate_consumers(admin_client, {0}, 4)[0]
@@ -846,13 +846,13 @@ for _, strategy in strategies() do
         end
       end)
 
-      it("test 'override_header' is configured but header is not provided in request", function()
+      it("test 'canary_by_header_name' is configured but header is not provided in request", function()
         add_canary(route1.id, {
           upstream_uri = "/requests/path2",
           percentage = 50,
           steps = 4,
           hash = "none",
-          override_header = "X-Canary-Override",
+          canary_by_header_name = "X-Canary-Override",
         })
         -- only use 1 consumer, which should still randomly end up in all targets
         local apikey = generate_consumers(admin_client, {0}, 4)[0]

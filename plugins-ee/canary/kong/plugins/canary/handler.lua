@@ -24,6 +24,8 @@ local NGX_DEBUG = ngx.DEBUG
 local log_prefix = "[canary] "
 local conf_cache = setmetatable({},{__mode = "k"})
 
+local CANARY_BY_HEADER_NEVER = "never" -- never go to canary
+local CANARY_BY_HEADER_ALWAYS = "always" -- always go to canary
 
 local Canary = {
   PRIORITY = 13,
@@ -165,13 +167,13 @@ end
 
 function Canary:access(conf)
 
-  if conf.override_header then
-    local header = kong.request.get_header(conf.override_header)
-    if header == "true" then
-      -- use the canary if override is true
+  if conf.canary_by_header_name then
+    local header = kong.request.get_header(conf.canary_by_header_name)
+    if header == CANARY_BY_HEADER_ALWAYS then
+      -- use the canary
       return switch_target(conf.upstream_host, conf.upstream_port, conf.upstream_uri)
-    elseif header == "false" then
-      -- use original target if override is false
+    elseif header == CANARY_BY_HEADER_NEVER then
+      -- return and use original target
       return
     end
   end

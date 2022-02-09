@@ -78,7 +78,7 @@ return {
               type = "array",
               elements = { type = "string" }
           }},
-          { override_header =  typedefs.header_name },
+          { canary_by_header_name =  typedefs.header_name },
         }
     }}
   },
