@@ -617,6 +617,7 @@ local CONF_INFERENCES = {
                   "emerg",
                 }
               },
+  vaults = { typ = "array" },
   plugins = { typ = "array" },
   anonymous_reports = { typ = "boolean" },
   nginx_optimizations = {
