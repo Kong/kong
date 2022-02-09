@@ -9,7 +9,7 @@ local typedefs = require "kong.db.schema.typedefs"
 
 
 return {
-  name = "key-auth",
+  name = "key-auth-enc",
   fields = {
     { consumer = typedefs.no_consumer },
     { protocols = typedefs.protocols_http },

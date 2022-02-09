@@ -20,7 +20,7 @@ end
 
 
 return {
-  name = "route-transformer",
+  name = "route-transformer-advanced",
   fields = {
     { config = {
         type = "record",
