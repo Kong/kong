@@ -2782,6 +2782,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("/application_services", function()
+        local application
+        local application_jim
+
         lazy_setup(function()
           helpers.stop_kong()
           assert(db:truncate())
@@ -2827,6 +2830,34 @@ for _, strategy in helpers.each_strategy() do
           lazy_setup(function()
             portal_api_client = assert(ee_helpers.portal_api_client())
             admin_client = assert(helpers.admin_client())
+
+            local res = register_developer(portal_api_client, {
+              email = "jim@konghq.com",
+              password = "kong",
+              meta = "{\"full_name\":\"1337\"}",
+            })
+
+            assert.res_status(200, res)
+
+            local cookie_jim = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("jim@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/applications",
+              body = {
+                name = "jim's app",
+                redirect_uri = "http://cat.com"
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie_jim
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            application_jim =  assert(cjson.decode(body))
 
             local res = assert(admin_client:send {
               method = "POST",
@@ -2877,6 +2908,22 @@ for _, strategy in helpers.each_strategy() do
               ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
             }, true)
 
+            local res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/applications",
+              body = {
+                name = "myfirstapp",
+                redirect_uri = "http://dog.com"
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            application =  assert(cjson.decode(body))
+
             for i=1, 10 do
               local res = assert(admin_client:send {
                 method = "POST",
@@ -2920,6 +2967,46 @@ for _, strategy in helpers.each_strategy() do
                   service = { id = service_id },
                 }))
 
+                local function make_status(i)
+                  if i == 2 then return 0
+                  elseif i == 8 then return 1
+                  elseif i == 10 then return 3
+                  end
+                  return -1
+                end
+
+                local instance_status = make_status(i)
+
+                if instance_status ~= -1 then
+                  res = assert(portal_api_client:send {
+                    method = "POST",
+                    path = "/applications/" .. application.id .. "/application_instances",
+                    body = {
+                      service = {
+                        id = service_id,
+                      }
+                    },
+                    headers = {
+                      ["Cookie"] = cookie,
+                      ["Content-Type"] = "application/json",
+                    }
+                  })
+
+                  body = assert.res_status(201, res)
+                  local application_instance =  assert(cjson.decode(body))
+
+                  res = assert(admin_client:send {
+                    method = "PATCH",
+                    path = "/applications/" .. application.id .. "/application_instances/" .. application_instance.id,
+                    body = {
+                      status = instance_status
+                    },
+                    headers = {["Content-Type"] = "application/json"},
+                  })
+
+                  assert.res_status(200, res)
+                end
+  
                 local doc_config
 
                 if i == 2 then
@@ -3320,6 +3407,157 @@ for _, strategy in helpers.each_strategy() do
             assert.equal(2, resp_body_json.total)
             assert.equal("10 : irregular", resp_body_json.data[1].name)
             assert.equal("2 : irregular", resp_body_json.data[2].name)
+          end)
+
+          it("returns 404 if given query param app_id for an app that doesn't belong to developer", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application_jim.id .. "&sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(404, res)
+            local resp_body_json = cjson.decode(body)
+            assert.equal("Application not found", resp_body_json.message)
+          end)
+
+          it("returns 404 if given query param app_id for an app that doesn't exist", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=c7558663-4929-45a1-acd8-fbf6b0c586be&sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(404, res)
+            local resp_body_json = cjson.decode(body)
+            assert.equal("Application not found", resp_body_json.message)
+          end)
+
+          it("returns application_instances if given query param app_id", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(4, resp_body_json.total)
+
+            assert.equal("10 : irregular", resp_body_json.data[1].name)
+            assert(resp_body_json.data[1].instance)
+            assert.equal("2 : irregular", resp_body_json.data[2].name)
+            assert(resp_body_json.data[2].instance)
+            assert.equal("6 : regular", resp_body_json.data[3].name)
+            assert.equal(nil, resp_body_json.data[3].instance)
+            assert.equal("8 : regular", resp_body_json.data[4].name)
+            assert(resp_body_json.data[4].instance)
+          end)
+
+          it("filters by query params status when app_id is present in query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name&status=-1",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(1, resp_body_json.total)
+
+            assert.equal("6 : regular", resp_body_json.data[1].name)
+            assert.equal(nil, resp_body_json.data[1].instance)
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name&status=0",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            body = assert.res_status(200, res)
+            resp_body_json = cjson.decode(body)
+
+            assert.equal(1, resp_body_json.total)
+
+            assert.equal("2 : irregular", resp_body_json.data[1].name)
+            assert(resp_body_json.data[1].instance)
+            assert.equal(0, resp_body_json.data[1].instance.status)
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name&status=1",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            body = assert.res_status(200, res)
+            resp_body_json = cjson.decode(body)
+
+            assert.equal(1, resp_body_json.total)
+
+            assert.equal("8 : regular", resp_body_json.data[1].name)
+            assert(resp_body_json.data[1].instance)
+            assert.equal(1, resp_body_json.data[1].instance.status)
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name&status=2",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            body = assert.res_status(200, res)
+            resp_body_json = cjson.decode(body)
+
+            assert.equal(0, resp_body_json.total)
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name&status=3",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            body = assert.res_status(200, res)
+            resp_body_json = cjson.decode(body)
+
+            assert.equal(1, resp_body_json.total)
+
+            assert.equal("10 : irregular", resp_body_json.data[1].name)
+            assert(resp_body_json.data[1].instance)
+            assert.equal(3, resp_body_json.data[1].instance.status)
+
           end)
 
           it("returns a permissioned service when the developer is assigned the proper role", function()

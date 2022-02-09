@@ -13,9 +13,12 @@ local utils       = require "kong.tools.utils"
 local endpoints   = require "kong.api.endpoints"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local files       = require "kong.portal.migrations.01_initial_files"
-local constants    = require "kong.constants"
+local constants   = require "kong.constants"
 local workspace_config = require "kong.portal.workspace_config"
 local arguments   = require "kong.api.arguments"
+local permissions = require "kong.portal.permissions"
+local file_helpers = require "kong.portal.file_helpers"
+local app_auth_strategies = require "kong.portal.app_auth_strategies"
 
 
 local kong = kong
@@ -769,6 +772,148 @@ function _M.exit_if_external_oauth2()
   if kong.configuration.portal_app_auth == "external-oauth2" then
     return kong.response.exit(404, { message = "Not Found" })
   end
+end
+
+function _M.get_application_services(self, db, helpers)
+  local name_filter = self.req.params_get.name
+  local app_id = self.req.params_get.app_id
+  local status_filter = self.req.params_get.status
+
+  local application_services = setmetatable({}, cjson.empty_array_mt)
+  local application
+  local app_instances
+
+  local matches_plugin_filters = function(row)
+    if name_filter and not _M.contains_substring(row.config.display_name, name_filter) then
+      return false
+    end
+
+    return true
+  end
+
+  local matches_instance_filters = function(instance)
+    if status_filter == nil then return true end
+
+    local status = tonumber(status_filter)
+
+    if status == nil then
+      return false
+    elseif status == -1 then
+      return instance == nil
+    elseif instance then
+      return instance.status == status
+    end
+
+    return false
+  end
+
+  -- If query params contain an app_id, join with any
+  -- application_instances for each application_service.
+  -- In this case, also filter the joined instances by
+  -- their status if specified
+  if app_id then
+    local app, _, err_t = db.applications:select({ id = app_id })
+    if err_t or not app or app.developer.id ~= self.developer.id then
+      return kong.response.exit(404, { message = "Application not found" })
+    end
+
+    application = app
+  end
+
+  local app_reg_plugins = {}
+  for plugin, err in db.plugins:each() do
+    if err then
+      return kong.response.exit(500, { message = "An unexpected error occurred" })
+    end
+
+    if plugin.name == "application-registration" and matches_plugin_filters(plugin) then
+      table.insert(app_reg_plugins, plugin)
+    end
+  end
+
+  -- get all instances for the given application
+  if application then
+    app_instances = {}
+    for instance, err in db.application_instances:each_for_application({ id = application.id }) do
+      if err then
+        return endpoints.handle_error(err)
+      end
+
+      if instance then
+        app_instances[instance.service.id] = instance
+      end
+    end
+  end
+
+  local app_auth_type = kong.configuration.portal_app_auth
+  local app_auth_strategy = app_auth_strategies[app_auth_type]
+  local auth_config
+  for i, v in ipairs(app_reg_plugins) do
+    local service, _, err_t = db.services:select(v.service)
+    if err_t then
+      return endpoints.handle_error(err_t)
+    end
+
+    local instance = app_instances and app_instances[service.id]
+    if not matches_instance_filters(instance) then
+      goto continue
+    end
+
+    auth_config = app_auth_strategy.build_service_auth_config(service, v)
+
+    local document_object
+    for row, err in db.document_objects:each_for_service({ id = v.service.id }) do
+      if err then
+        return endpoints.handle_error(err)
+      end
+
+      document_object = row
+    end
+
+    local route
+
+    if document_object then
+      local file = db.files:select_by_path(document_object.path)
+      if file then
+        local file_meta = file_helpers.parse_content(file)
+        if file_meta then
+          local headmatter = file_meta.headmatter or {}
+          local readable_by = headmatter.readable_by
+          if type(readable_by) == "table" and #readable_by > 0 then
+            local ws = workspaces.get_workspace()
+            if not permissions.can_read(self.developer, ws.name, document_object.path) then
+              goto continue
+            end
+          end
+
+          route = file_meta.route
+        end
+      end
+    end
+
+    local application_service = {
+      id = service.id,
+      name = v.config.display_name,
+      document_route = route,
+      app_registration_config = v.config,
+      auth_plugin_config = auth_config,
+    }
+
+    if instance then
+      application_service.instance = instance
+    end
+
+    table.insert(application_services, application_service)
+
+    ::continue::
+  end
+
+  local res, _, err_t = _M.paginate(self, application_services)
+  if not res then
+    return endpoints.handle_error(err_t)
+  end
+
+  return kong.response.exit(200, res)
 end
 
 function _M.get_applications(self, db, helpers, include_instances)
