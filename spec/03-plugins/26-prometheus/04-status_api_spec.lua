@@ -286,6 +286,16 @@ describe("Plugin: prometheus (access via status API)", function()
     assert.matches('kong_datastore_reachable 1', body, nil, true)
   end)
 
+  it("exposes nginx timer metrics", function()
+    local res = assert(status_client:send {
+      method  = "GET",
+      path    = "/metrics",
+    })
+    local body = assert.res_status(200, res)
+    assert.matches('kong_nginx_current_timers{state="running"} %d+', body, nil, true)
+    assert.matches('kong_nginx_current_timers{state="pending"} %d+', body, nil, true)
+  end)
+
   it("exposes upstream's target health metrics - healthchecks-off", function()
     local body
     helpers.wait_until(function()
