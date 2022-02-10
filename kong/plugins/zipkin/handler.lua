@@ -129,7 +129,7 @@ if subsystem == "http" then
 
     local span_name = method
     local path = req.get_path()
-    if conf.span_include_path == true then
+    if conf.span_include_path then
       span_name = method .. ' ' .. path
     end
 
