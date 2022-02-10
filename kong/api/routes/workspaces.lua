@@ -103,7 +103,7 @@ return {
         return kong.response.exit(400, {message = "Cannot delete default workspace"})
       end
 
-      local counts, err = counters.counts(self.workspace.id)
+      local counts, err = counters.entity_counts(self.workspace.id)
       local empty = true
       local not_empty_message = {message = "Workspace is not empty"}
       local not_empty_entities = {}
@@ -139,7 +139,7 @@ return {
     end,
 
     GET = function(self)
-      local counts, err = counters.counts(self.workspace.id)
+      local counts, err = counters.entity_counts(self.workspace.id)
       if not counts then
         return kong.response.exit(500, {message = err})
       end

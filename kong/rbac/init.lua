@@ -1677,20 +1677,15 @@ end
 
 do
   local reports = require "kong.reports"
+  local counters = require "kong.workspaces.counters"
   local rbac_users_count = function()
-    local c = 0
-    for counter, err in kong.db.workspace_entity_counters:each() do
-      if err then
-        kong.log.warn("failed to get count of RBAC users: ", err)
-        return nil
-      end
-
-      if counter.entity_type == "rbac_users" then
-        c = c + (counter.count or 0)
-      end
+    local counts, err = counters.entity_counts()
+    if err then
+      kong.log.warn("failed to get count of RBAC users: ", err)
+      return nil
     end
 
-    return c
+    return counts.rbac_users or 0
   end
 
   reports.add_ping_value("rbac_users", rbac_users_count)

@@ -19,21 +19,33 @@ local _M = {}
 
 -- Entity count management
 
-function _M.counts(workspace_id)
 
+--- Retrieve entity counts
+--
+-- On success, returns a map-like table of entity type names and their respective
+-- counts.
+--
+-- On failure, returns `nil` and an error string
+--
+-- @tparam[opt] string workspace_id restrict results to a single workspace
+-- @treturn table|nil  counts
+-- @treturn nil|string error
+function _M.entity_counts(workspace_id)
   local counts = {}
-  for v in kong.db.workspace_entity_counters:each() do
-    if v.workspace_id ==  workspace_id then
-      counts[#counts+1]= v
+
+  for row, err in kong.db.workspace_entity_counters:each() do
+    if err then
+      return nil, err
+    end
+
+    local entity = row.entity_type
+
+    if (not workspace_id) or workspace_id == row.workspace_id then
+      counts[entity] = (counts[entity] or 0) + row.count
     end
   end
 
-  local res = {}
-  for _, v in ipairs(counts) do
-    res[v.entity_type] = v.count
-  end
-
-  return res
+  return counts
 end
 
 
