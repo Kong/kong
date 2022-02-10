@@ -28,6 +28,10 @@ local max          = math.max
 local sub          = string.sub
 
 
+local random_string = utils.random_string
+local uuid = utils.uuid
+
+
 local Schema       = {}
 Schema.__index     = Schema
 
@@ -1645,56 +1649,60 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   local is_select = context == "select"
 
   for key, field in self:each_field(data) do
-    if field.legacy and field.uuid and data[key] == "" then
-      data[key] = null
+    local ftype = field.type
+    local value = data[key]
+    if field.legacy and field.uuid and value == "" then
+      value = null
     end
 
     if not is_select and field.auto then
       local is_insert_or_upsert = context == "insert" or context == "upsert"
       if field.uuid then
-        if is_insert_or_upsert and data[key] == nil then
-          data[key] = utils.uuid()
+        if is_insert_or_upsert and value == nil then
+          value = uuid()
         end
 
-      elseif field.type == "string" then
-        if is_insert_or_upsert and data[key] == nil then
-          data[key] = utils.random_string()
+      elseif ftype == "string" then
+        if is_insert_or_upsert and value == nil then
+          value = random_string()
         end
 
-      elseif (key == "created_at" and is_insert_or_upsert and (data[key] == null or
-                                                               data[key] == nil))
+      elseif (key == "created_at" and is_insert_or_upsert and (value == null or
+                                                               value == nil))
       or
              (key == "updated_at" and (is_insert_or_upsert or context == "update"))
       then
-        if field.type == "number" then
+        if ftype == "number" then
           if not now_ms then
             update_time()
             now_ms = ngx_now()
           end
-          data[key] = now_ms
+          value = now_ms
 
-        elseif field.type == "integer" then
+        elseif ftype == "integer" then
           if not now_s then
             update_time()
             now_s = ngx_time()
           end
-          data[key] = now_s
+          value = now_s
         end
       end
     end
 
-    data[key] = adjust_field_for_context(field, data[key], context, nulls, opts)
+    value = adjust_field_for_context(field, value, context, nulls, opts)
 
     if is_select then
-      if data[key] == null and not nulls then
-        data[key] = nil
-      elseif field.type == "integer" and type(data[key]) == "number" then
-        data[key] = floor(data[key])
+      if value == null and not nulls then
+        value = nil
+      elseif ftype == "integer" and  type(value) == "number" then
+        value = floor(value)
       end
 
     elseif context == "update" and field.immutable then
       check_immutable_fields = true
     end
+
+    data[key] = value
   end
 
   if not is_select then
