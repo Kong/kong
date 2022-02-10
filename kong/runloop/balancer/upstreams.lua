@@ -8,6 +8,7 @@
 ---
 local singletons = require "kong.singletons"
 local workspaces = require "kong.workspaces"
+local constants  = require "kong.constants"
 local balancers
 local healthcheckers
 
@@ -22,6 +23,7 @@ local CRIT = ngx.CRIT
 local ERR = ngx.ERR
 
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
+local CLEAR_HEALTH_STATUS_DELAY = constants.CLEAR_HEALTH_STATUS_DELAY
 
 
 local upstreams_M = {}
@@ -196,7 +198,7 @@ local function do_upstream_event(operation, upstream_data)
 
     local balancer = balancers.get_balancer_by_id(upstream_id)
     if balancer then
-      healthcheckers.stop_healthchecker(balancer)
+      healthcheckers.stop_healthchecker(balancer, CLEAR_HEALTH_STATUS_DELAY)
     end
 
     if operation == "delete" then

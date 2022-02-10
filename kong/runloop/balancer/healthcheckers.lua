@@ -25,10 +25,16 @@ function healthcheckers_M.init()
 end
 
 
-function healthcheckers_M.stop_healthchecker(balancer)
+function healthcheckers_M.stop_healthchecker(balancer, delay)
   local healthchecker = balancer.healthchecker
   if healthchecker then
-    local ok, err = healthchecker:clear()
+    local ok, err
+    if delay and delay > 0 then
+      ok, err = healthchecker:delayed_clear(delay)
+    else
+      ok, err = healthchecker:clear()
+    end
+
     if not ok then
       log(ERR, "[healthchecks] error clearing healthcheck data: ", err)
     end
@@ -124,7 +130,6 @@ end
 
 -- @param hc The healthchecker object
 -- @param balancer The balancer object
--- @param upstream_id The upstream id
 local function attach_healthchecker_to_balancer(hc, balancer)
   local function hc_callback(tgt, event)
     local status
@@ -189,6 +194,24 @@ local function attach_healthchecker_to_balancer(hc, balancer)
 end
 
 
+-- add empty healthcheck functions to balancer when hc is not used
+local function populate_balancer(balancer)
+  balancer.report_http_status = function()
+    return true
+  end
+
+  balancer.report_tcp_failure = function()
+    return true
+  end
+
+  balancer.report_timeout = function()
+    return true
+  end
+
+  return true
+end
+
+
 local parsed_cert, parsed_key
 local function parse_global_cert_and_key()
   if not parsed_cert then
@@ -199,6 +222,21 @@ local function parse_global_cert_and_key()
 
   return parsed_cert, parsed_key
 end
+
+
+local function is_upstream_using_healthcheck(upstream)
+  if upstream ~= nil then
+    return upstream.healthchecks.active.healthy.interval ~= 0
+           or upstream.healthchecks.active.unhealthy.interval ~= 0
+           or upstream.healthchecks.passive.unhealthy.tcp_failures ~= 0
+           or upstream.healthchecks.passive.unhealthy.timeouts ~= 0
+           or upstream.healthchecks.passive.unhealthy.http_failures ~= 0
+  end
+
+  return false
+end
+
+
 ----------------------------------------------------------------------------
 -- Create a healthchecker object.
 -- @param upstream An upstream entity table.
@@ -211,6 +249,10 @@ function healthcheckers_M.create_healthchecker(balancer, upstream)
     checks = pl_tablex.deepcopy(checks)
     checks.active.healthy.interval = 0
     checks.active.unhealthy.interval = 0
+  end
+
+  if not is_upstream_using_healthcheck(upstream) then
+    return populate_balancer(balancer)
   end
 
   local ssl_cert, ssl_key
@@ -248,19 +290,6 @@ function healthcheckers_M.create_healthchecker(balancer, upstream)
   balancer:setCallback(ring_balancer_callback)
 
   return true
-end
-
-
-local function is_upstream_using_healthcheck(upstream)
-  if upstream ~= nil then
-    return upstream.healthchecks.active.healthy.interval ~= 0
-           or upstream.healthchecks.active.unhealthy.interval ~= 0
-           or upstream.healthchecks.passive.unhealthy.tcp_failures ~= 0
-           or upstream.healthchecks.passive.unhealthy.timeouts ~= 0
-           or upstream.healthchecks.passive.unhealthy.http_failures ~= 0
-  end
-
-  return false
 end
 
 
@@ -378,11 +407,17 @@ function healthcheckers_M.unsubscribe_from_healthcheck_events(callback)
 end
 
 
-function healthcheckers_M.stop_healthcheckers()
+--------------------------------------------------------------------------------
+-- Stop all health checkers.
+-- @param delay Delay before actually removing the health checker from memory.
+-- When a upstream with the same targets might be created right after stopping
+-- the health checker, this parameter is useful to avoid throwing away current
+-- health status.
+function healthcheckers_M.stop_healthcheckers(delay)
   for _, id in pairs(upstreams.get_all_upstreams()) do
     local balancer = balancers.get_balancer_by_id(id)
     if balancer then
-      healthcheckers_M.stop_healthchecker(balancer)
+      healthcheckers_M.stop_healthchecker(balancer, delay)
     end
 
     balancers.set_balancer(id, nil)
