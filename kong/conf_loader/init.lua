@@ -173,6 +173,10 @@ local DYNAMIC_KEY_NAMESPACES = {
     prefix = "pluginserver_",
     ignore = EMPTY,
   },
+  {
+    prefix = "vault_",
+    ignore = EMPTY,
+  },
 }
 
 
@@ -688,6 +692,54 @@ local _nop_tostring_mt = {
 }
 
 
+local function infer_value(value, typ, opts)
+  if type(value) == "string" then
+    if not opts.from_kong_env then
+      -- remove trailing comment, if any
+      -- and remove escape chars from octothorpes
+      value = string.gsub(value, "[^\\]#.-$", "")
+      value = string.gsub(value, "\\#", "#")
+    end
+
+    value = pl_stringx.strip(value)
+  end
+
+  -- transform {boolean} values ("on"/"off" aliasing to true/false)
+  -- transform {ngx_boolean} values ("on"/"off" aliasing to on/off)
+  -- transform {explicit string} values (number values converted to strings)
+  -- transform {array} values (comma-separated strings)
+  if typ == "boolean" then
+    value = value == true or value == "on" or value == "true"
+
+  elseif typ == "ngx_boolean" then
+    value = (value == "on" or value == true) and "on" or "off"
+
+  elseif typ == "string" then
+    value = tostring(value) -- forced string inference
+
+  elseif typ == "number" then
+    value = tonumber(value) -- catch ENV variables (strings) that are numbers
+
+  elseif typ == "array" and type(value) == "string" then
+    -- must check type because pl will already convert comma
+    -- separated strings to tables (but not when the arr has
+    -- only one element)
+    value = setmetatable(pl_stringx.split(value, ","), nil) -- remove List mt
+
+    for i = 1, #value do
+      value[i] = pl_stringx.strip(value[i])
+    end
+  end
+
+  if value == "" then
+    -- unset values are removed
+    value = nil
+  end
+
+  return value
+end
+
+
 -- Validate properties (type/enum/custom) and infer their type.
 -- @param[type=table] conf The configuration table to treat.
 local function check_and_infer(conf, opts)
@@ -695,53 +747,10 @@ local function check_and_infer(conf, opts)
 
   for k, value in pairs(conf) do
     local v_schema = CONF_INFERENCES[k] or {}
-    local typ = v_schema.typ
 
-    if type(value) == "string" then
-      if not opts.from_kong_env then
-        -- remove trailing comment, if any
-        -- and remove escape chars from octothorpes
-        value = string.gsub(value, "[^\\]#.-$", "")
-        value = string.gsub(value, "\\#", "#")
-      end
+    value = infer_value(value, v_schema.typ, opts)
 
-      value = pl_stringx.strip(value)
-    end
-
-    -- transform {boolean} values ("on"/"off" aliasing to true/false)
-    -- transform {ngx_boolean} values ("on"/"off" aliasing to on/off)
-    -- transform {explicit string} values (number values converted to strings)
-    -- transform {array} values (comma-separated strings)
-    if typ == "boolean" then
-      value = value == true or value == "on" or value == "true"
-
-    elseif typ == "ngx_boolean" then
-      value = (value == "on" or value == true) and "on" or "off"
-
-    elseif typ == "string" then
-      value = tostring(value) -- forced string inference
-
-    elseif typ == "number" then
-      value = tonumber(value) -- catch ENV variables (strings) that are numbers
-
-    elseif typ == "array" and type(value) == "string" then
-      -- must check type because pl will already convert comma
-      -- separated strings to tables (but not when the arr has
-      -- only one element)
-      value = setmetatable(pl_stringx.split(value, ","), nil) -- remove List mt
-
-      for i = 1, #value do
-        value[i] = pl_stringx.strip(value[i])
-      end
-    end
-
-    if value == "" then
-      -- unset values are removed
-      value = nil
-    end
-
-    typ = typ or "string"
-
+    local typ = v_schema.typ or "string"
     if value and not typ_checks[typ](value) then
       errors[#errors + 1] = fmt("%s is not a %s: '%s'", k, typ,
                                 tostring(value))
@@ -1461,6 +1470,49 @@ local function load(path, custom_conf, opts)
                               tablex.union(opts, { defaults_only = true, }),
                               user_conf)
 
+  ---------------------------------
+  -- Dereference process references
+  ---------------------------------
+
+  local loaded_vaults
+  do
+    -- validation
+    local vaults_array = infer_value(conf.vaults, CONF_INFERENCES["vaults"].typ, opts)
+
+    -- merge vaults
+    local vaults = {}
+
+    if #vaults_array > 0 and vaults_array[1] ~= "off" then
+      for i = 1, #vaults_array do
+        local vault_name = pl_stringx.strip(vaults_array[i])
+        if vault_name ~= "off" then
+          if vault_name == "bundled" then
+            vaults = tablex.merge(constants.BUNDLED_VAULTS, vaults, true)
+
+          else
+            vaults[vault_name] = true
+          end
+        end
+      end
+    end
+
+    loaded_vaults = setmetatable(vaults, _nop_tostring_mt)
+
+    local vault = require "kong.pdk.vault".new()
+    for k, v in pairs(conf) do
+      if vault.is_reference(v) then
+        local deref, deref_err = vault.get(v)
+        if deref == nil or deref_err then
+          return nil, fmt("failed to dereference '%s': %s for config option '%s'", v, deref_err, k)
+        end
+
+        if deref ~= nil then
+          conf[k] = deref
+        end
+      end
+    end
+  end
+
   -- validation
   local ok, err, errors = check_and_infer(conf, opts)
 
@@ -1473,6 +1525,7 @@ local function load(path, custom_conf, opts)
   end
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
+  conf.loaded_vaults = loaded_vaults
 
   local default_nginx_main_user = false
   local default_nginx_user = false
@@ -1549,28 +1602,6 @@ local function load(path, custom_conf, opts)
   -----------------------------
   -- Additional injected values
   -----------------------------
-
-  do
-    -- merge vaults
-    local vaults = {}
-
-    if #conf.vaults > 0 and conf.vaults[1] ~= "off" then
-      for i = 1, #conf.vaults do
-        local vault_name = pl_stringx.strip(conf.vaults[i])
-
-        if vault_name ~= "off" then
-          if vault_name == "bundled" then
-            vaults = tablex.merge(constants.BUNDLED_VAULTS, vaults, true)
-
-          else
-            vaults[vault_name] = true
-          end
-        end
-      end
-    end
-
-    conf.loaded_vaults = setmetatable(vaults, _nop_tostring_mt)
-  end
 
   do
     -- merge plugins
