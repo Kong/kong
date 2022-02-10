@@ -21,7 +21,7 @@ describe("Status API - with strategy #" .. strategy, function()
   end)
 
   describe("core", function()
-    it("/status returns status info", function()
+    it("/status returns status info without configuration_hash", function()
       local res = assert(client:send {
         method = "GET",
         path = "/status"
@@ -40,7 +40,47 @@ describe("Status API - with strategy #" .. strategy, function()
       assert.is_number(json.server.connections_writing)
       assert.is_number(json.server.connections_waiting)
       assert.is_number(json.server.total_requests)
+      assert.is_nil(json.server.configuration_hash) -- no hash in DB mode, or in DBLESS mode until configuration has been applied
     end)
+
+    it("/status starts providing a config_hash once an initial configuration has been pushed in dbless mode #off", function()
+      -- push an initial configuration so that a configuration_hash will be present
+      local postres = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+          _format_version: "1.1"
+          services:
+          - host = "konghq.com"
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(201, postres)
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.is_table(json.database)
+      assert.is_table(json.server)
+      assert.is_boolean(json.database.reachable)
+      assert.is_number(json.server.connections_accepted)
+      assert.is_number(json.server.connections_active)
+      assert.is_number(json.server.connections_handled)
+      assert.is_number(json.server.connections_reading)
+      assert.is_number(json.server.connections_writing)
+      assert.is_number(json.server.connections_waiting)
+      assert.is_number(json.server.total_requests)
+      assert.is_string(json.server.configuration_hash)
+      assert.equal(32, #json.server.configuration_hash)
+    end)
+
   end)
 
   describe("plugins", function()
