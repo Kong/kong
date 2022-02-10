@@ -61,10 +61,8 @@ local _ping_infos = {}
 local _enabled = false
 local _unique_str = utils.random_string()
 local _buffer_immutable_idx
-local _tls_session
-local _tls_opts = {
-  ssl_verify = false,
-}
+local _ssl_session
+local _ssl_verify = false
 
 -- the resty.counter instance, will be initialized in `init_worker`
 local report_counter = nil
@@ -156,14 +154,13 @@ local function send_report(signal_type, t, host, port)
     return
   end
 
-  _tls_opts.reused_session = _tls_session
-  local hs_ok, err = sock:tlshandshake(_tls_opts)
+  local hs_ok, err = sock:sslhandshake(_ssl_session, nil, _ssl_verify)
   if not hs_ok then
-    log(DEBUG, "failed to complete TLS handshake for reports: ", err)
+    log(DEBUG, "failed to complete SSL handshake for reports: ", err)
     return
   end
 
-  _tls_session = hs_ok
+  _ssl_session = hs_ok
 
   sock:send(concat(_buffer, ";", 1, mutable_idx) .. "\n")
   sock:setkeepalive()
