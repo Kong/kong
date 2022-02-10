@@ -315,8 +315,8 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
     local operation = data.operation
     local upstream = data.entity
 
-    if not data.entity.ws_id then
-      log(CRIT, "Operation ", operation, " for upstream ", data.entity.id,
+    if not upstream.ws_id then
+      log(CRIT, "Operation ", operation, " for upstream ", upstream.id,
           " received without workspace, discarding.")
       return
     end
