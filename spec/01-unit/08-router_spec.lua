@@ -213,6 +213,17 @@ local use_case = {
       },
     },
   },
+  -- 15. headers (regex)
+  {
+    service = service,
+    route = {
+      headers = {
+        user_agent = {
+          "~*windows|linux|os\\s+x\\s*[\\d\\._]+|solaris|bsd",
+        },
+      },
+    },
+  },
 }
 
 describe("Router", function()
@@ -458,6 +469,16 @@ describe("Router", function()
         location = { "my-location-3", "foo" }
       })
       assert.is_nil(match_t)
+
+      local match_t = router.select("GET", "/", nil, "http", nil, nil, nil, nil, nil, {
+        user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36"
+      })
+      assert.truthy(match_t)
+      assert.same(use_case[15].route, match_t.route)
+      assert.same(nil, match_t.matches.method)
+      assert.same(nil, match_t.matches.uri)
+      assert.same(nil, match_t.matches.uri_captures)
+      assert.same({ user_agent = "mozilla/5.0 (x11; linux x86_64) applewebkit/537.36 (khtml, like gecko) chrome/83.0.4103.116 safari/537.36" }, match_t.matches.headers)
     end)
 
     it("multiple [headers] values", function()

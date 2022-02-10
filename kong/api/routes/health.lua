@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local utils = require "kong.tools.utils"
+local declarative = require "kong.db.declarative"
 
 local find = string.find
 local select = select
@@ -18,6 +19,8 @@ local knode  = (kong and kong.node) and kong.node or
 local select = select
 local tonumber = tonumber
 local kong = kong
+local dbless = kong.configuration.database == "off"
+local data_plane_role = kong.configuration.role == "data_plane"
 
 
 return {
@@ -70,6 +73,15 @@ return {
           reachable = true,
         },
       }
+
+      -- if dbless mode is enabled we provide the current hash of the
+      -- data-plane in the status response as this enables control planes
+      -- to make decisions when something changes in the data-plane (e.g.
+      -- if the gateway gets unexpectedly restarted and its configuration
+      -- has been reset to empty).
+      if dbless or data_plane_role then
+        status_response.configuration_hash = declarative.get_current_hash()
+      end
 
       -- TODO: no way to bypass connection pool
       local ok, err = kong.db:connect()

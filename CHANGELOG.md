@@ -80,6 +80,9 @@
 - Customizable transparent dynamic TLS SNI name.
   Thanks, [@zhangshuaiNB](https://github.com/zhangshuaiNB)!
   [#8196](https://github.com/Kong/kong/pull/8196)
+- Routes now support matching headers with regular expressions
+  Thanks, [@vanhtuan0409](https://github.com/vanhtuan0409)!
+  [#6079](https://github.com/Kong/kong/pull/6079)
 
 #### Performance
 
