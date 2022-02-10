@@ -83,6 +83,8 @@
 - Routes now support matching headers with regular expressions
   Thanks, [@vanhtuan0409](https://github.com/vanhtuan0409)!
   [#6079](https://github.com/Kong/kong/pull/6079)
+- Targets keep their health status when upstreams are updated.
+  [#8394](https://github.com/Kong/kong/pull/8394)
 
 #### Performance
 
