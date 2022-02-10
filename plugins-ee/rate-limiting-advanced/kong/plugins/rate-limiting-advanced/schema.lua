@@ -134,7 +134,7 @@ return {
         end
 
         if config.strategy == "local" then
-          if config.sync_rate ~= ngx.null then
+          if config.sync_rate ~= ngx.null and config.sync_rate > -1 then
             return nil, "sync_rate cannot be configured when using a local strategy"
           end
           config.sync_rate = -1
