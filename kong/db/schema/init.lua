@@ -2,8 +2,11 @@ local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
 local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
+local vault        = require "kong.pdk.vault".new()
 
 
+local is_reference = vault.is_reference
+local dereference  = vault.get
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local re_match     = ngx.re.match
@@ -962,6 +965,10 @@ function Schema:validate_field(field, value)
       field.len_min = 1
     end
 
+    if field.referenceable and is_reference(value) then
+      return true
+    end
+
   elseif field.type == "function" then
     if type(value) ~= "function" then
       return nil, validation_errors.FUNCTION
@@ -1210,6 +1217,12 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
       end
     else
       all_nil = false
+
+      -- Don't run if any of the values is a reference in a referenceable field
+      local field = get_schema_field(self, fname)
+      if field.type == "string" and field.referenceable and is_reference(value) then
+        return
+      end
     end
     if errors[fname] then
       all_ok = false
@@ -1648,6 +1661,19 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
   local is_select = context == "select"
 
+  -- We don't want to resolve references on control planes
+  -- and and admin api requests, admin api request could be
+  -- detected with ngx.ctx.KONG_PHASE, but to limit context
+  -- access we use nulls that admin api sets to true.
+  local resolve_references
+  if is_select and not nulls then
+    if kong and kong.configuration then
+      resolve_references = kong.configuration.role ~= "control_plane"
+    else
+      resolve_references = true
+    end
+  end
+
   for key, field in self:each_field(data) do
     local ftype = field.type
     local value = data[key]
@@ -1692,10 +1718,50 @@ function Schema:process_auto_fields(data, context, nulls, opts)
     value = adjust_field_for_context(field, value, context, nulls, opts)
 
     if is_select then
+      local vtype = type(value)
       if value == null and not nulls then
         value = nil
-      elseif ftype == "integer" and  type(value) == "number" then
+      elseif ftype == "integer" and vtype == "number" then
         value = floor(value)
+      end
+
+      if resolve_references then
+        if ftype == "string" and field.referenceable then
+          if is_reference(value) then
+            local deref, err = dereference(value)
+            if deref then
+              value = deref
+            else
+              if err then
+                kong.log.warn("unable to resolve reference ", value, "(", err, ")")
+              else
+                kong.log.warn("unable to resolve reference ", value)
+              end
+            end
+          end
+
+        elseif vtype == "table" and (ftype == "array" or ftype == "set") then
+          local subfield = field.elements
+          if subfield.type == "string" and subfield.referenceable then
+            local count = #value
+            if count > 0 then
+              for i = 1, count do
+                if is_reference(value[i]) then
+                  local deref, err = dereference(value)
+                  if deref then
+                    value = deref
+                  else
+                    if err then
+                      kong.log.warn("unable to resolve reference ", value, "(", err, ")")
+                    else
+                      kong.log.warn("unable to resolve reference ", value)
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
       end
 
     elseif context == "update" and field.immutable then
@@ -1730,6 +1796,10 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       data[key] = nil
     end
   end
+
+  --if refs then
+  --  data["$refs"] = refs
+  --end
 
   return data
 end
