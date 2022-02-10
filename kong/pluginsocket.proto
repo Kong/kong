@@ -113,6 +113,14 @@ message CertificateKey {
     string id = 1;
 }
 
+message RawBodyResult {
+    oneof kind {
+        bytes content = 1;
+        string body_filepath = 2;
+        string error = 3;
+    }
+}
+
 message Route {
     string id = 1;
     int64 created_at = 2;
@@ -292,7 +300,7 @@ service Kong {
     rpc Request_GetQuery(Int) returns (google.protobuf.Struct);
     rpc Request_GetHeader(String) returns (String);
     rpc Request_GetHeaders(Int) returns (google.protobuf.Struct);
-    rpc Request_GetRawBody(google.protobuf.Empty) returns (String);
+    rpc Request_GetRawBody(google.protobuf.Empty) returns (RawBodyResult);
 
     rpc Response_GetStatus(google.protobuf.Empty) returns (Int);
     rpc Response_GetHeader(String) returns (String);
