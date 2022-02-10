@@ -67,6 +67,7 @@ local HOST_PORTS = {}
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
 local CLEAR_HEALTH_STATUS_DELAY = constants.CLEAR_HEALTH_STATUS_DELAY
+local DECLARATIVE_CONFIG_READY_KEY = constants.DECLARATIVE_CONFIG_READY_KEY
 local TTL_ZERO = { ttl = 0 }
 
 
@@ -387,6 +388,11 @@ local function register_events()
 
       if not ok then
         log(ERR, "config flip failed: ", err)
+      end
+
+      local ok, err = ngx.shared.kong:safe_set(DECLARATIVE_CONFIG_READY_KEY, true)
+      if not ok then
+        log(ERR, "failed to set config ready in SHM: ", err)
       end
     end, "declarative", "flip_config")
 
