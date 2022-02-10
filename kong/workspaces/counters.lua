@@ -16,6 +16,24 @@ local ipairs = ipairs
 
 local _M = {}
 
+local UNCOUNTED = {
+  -- oauth2 tokens are transient and may be created at high rate/volume
+  oauth2_tokens = true,
+}
+
+local function countable_schemas(daos)
+  local schemas = {}
+  for _, dao in pairs(daos or kong.db.daos) do
+    local schema = dao.schema
+    local name = schema.name
+
+    if schema.workspaceable and not UNCOUNTED[name] then
+      table.insert(schemas, name)
+    end
+  end
+  return ipairs(schemas)
+end
+
 
 -- Entity count management
 
@@ -52,6 +70,10 @@ end
 -- Return if entity is relevant to entity counts per workspace. Only
 -- non-proxy consumers should not be counted.
 local function should_be_counted(entity_type, entity)
+  if UNCOUNTED[entity_type] then
+    return false
+  end
+
   if entity_type ~= "consumers" then
     return true
   end
@@ -175,15 +197,12 @@ local function pg_build_queries()
 
   local code = {}
   table.insert(code, truncate_query)
-  for k, v in pairs(kong.db.daos) do
-    local name = v.schema.name
 
-    if v.schema.workspaceable then
-      local insert = render(insert_query, {TABLE = name})
-      table.insert(code, insert)
-    end
-
+  for _, name in countable_schemas() do
+    local insert = render(insert_query, {TABLE = name})
+    table.insert(code, insert)
   end
+
   return code
 end
 
@@ -209,20 +228,16 @@ local function c_initialize_counters_migration(connector)
   end
 
   connector:query(truncate_query)
-  for k, v in pairs(kong.db.daos) do
-    local name = v.schema.name
-    if v.schema.workspaceable then
-      local hash = {}
+  for _, name in countable_schemas() do
+    local hash = {}
+    cassandra_foreach_row(name,
+      function(e)
+        hash[e.ws_id] = hash[e.ws_id] or 0
+        hash[e.ws_id] = hash[e.ws_id] + 1
+    end)
 
-      cassandra_foreach_row(name,
-        function(e)
-          hash[e.ws_id] = hash[e.ws_id] or 0
-          hash[e.ws_id] = hash[e.ws_id] + 1
-      end)
-
-      for k, v in pairs(hash) do
-        _M.inc_counter(k, name, { type= enums.CONSUMERS.TYPE.PROXY }, v)
-      end
+    for k, v in pairs(hash) do
+      _M.inc_counter(k, name, { type= enums.CONSUMERS.TYPE.PROXY }, v)
     end
   end
 end

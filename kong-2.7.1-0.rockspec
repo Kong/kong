@@ -248,6 +248,7 @@ build = {
     ["kong.enterprise_edition.db.migrations.enterprise.012_2600_to_2700_1"] = "kong/enterprise_edition/db/migrations/enterprise/012_2600_to_2700_1.lua",
 
     ["kong.enterprise_edition.db.migrations.operations.2600_to_2700"] = "kong/enterprise_edition/db/migrations/operations/2600_to_2700.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.013_2700_to_2800"] = "kong/enterprise_edition/db/migrations/enterprise/013_2700_to_2800.lua",
 
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
