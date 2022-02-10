@@ -35,6 +35,8 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
             local val = ngx.req.get_body_data()
             if val == "true" then
               ngx.shared.kong:safe_set(key, true)
+            elseif val == "false" then
+              ngx.shared.kong:safe_set(key, false)
             else
               ngx.shared.kong:safe_set(key, val)
             end
@@ -51,6 +53,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       database = strategy,
       plugins = "bundled,reports-api",
       pg_password = "hide_me",
+      status_listen = "127.0.0.1:9100",
       nginx_conf       = "spec/fixtures/custom_nginx.template",
       }, nil, nil, fixtures))
     client = helpers.admin_client(10000)
@@ -220,11 +223,12 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
     end)
   end)
 
-  describe("/config/ready", function()
+  describe("/status/config", function()
     -- 32765 is a utility server that allows us to interact with the Kong instance SHM
     -- see the start_kong() call above
     it("returns 200 when config is ready", function()
       local shm_client = helpers.http_client("localhost", 32765, 30)
+      local status_client = helpers.http_client("localhost", 9100, 30)
       -- during the test, the config SHM isn't initialized as usual, and will be nil unless set
       -- stuff a "hash" into it to simulate a non-initialized value
       assert(shm_client:send {
@@ -232,26 +236,39 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
         path = "/shm?key=" .. constants.DECLARATIVE_HASH_KEY,
         body = "lkdjglkjdkgjfdlkgjdj"
       })
+      -- for some reason, this request "fails" with a nil response, but nil error
+      -- tcpdump shows it sent successfully
+      shm_client:send {
+        method = "PUT",
+        path = "/shm?key=" .. constants.DECLARATIVE_CONFIG_READY_KEY,
+        body = "true"
+      }
 
-      local res = assert(client:send {
+      local res = assert(status_client:send {
         method = "GET",
-        path = "/config/ready"
+        path = "/status/config"
       })
       assert.res_status(200, res)
     end)
     it("returns 503 when config is not ready", function()
       if strategy == "off" then
         local shm_client = helpers.http_client("localhost", 32765, 30)
+        local status_client = helpers.http_client("localhost", 9100, 30)
         -- similarly, we need to force the config SHM into its normal init state
         assert(shm_client:send {
           method = "PUT",
           path = "/shm?key=" .. constants.DECLARATIVE_HASH_KEY,
           body = tostring(constants.DECLARATIVE_HASH_EMPTY_VALUE)
         })
+        shm_client:send {
+          method = "PUT",
+          path = "/shm?key=" .. constants.DECLARATIVE_CONFIG_READY_KEY,
+          body = "false"
+        }
 
-        local res = assert(client:send {
+        local res = assert(status_client:send {
           method = "GET",
-          path = "/config/ready"
+          path = "/status/config"
         })
         assert.res_status(503, res)
       end
@@ -287,21 +304,23 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
 
     it("returns status info including a configuration_hash in DBLESS mode if an initial configuration has been provided #off", function()
       -- push an initial configuration so that a configuration_hash will be present
-      local postres = assert(client:send {
-        method = "POST",
-        path = "/config",
-        body = {
-          config = [[
-          _format_version: "1.1"
-          services:
-          - host: "konghq.com"
-          ]],
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-      assert.res_status(201, postres)
+      if strategy == "off" then
+        local postres = assert(client:send {
+          method = "POST",
+          path = "/config",
+          body = {
+            config = [[
+            _format_version: "1.1"
+            services:
+            - host: "konghq.com"
+            ]],
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, postres)
+      end
 
       -- verify the status endpoint now includes a value (other than the default) for the configuration_hash
       local res = assert(client:send {
@@ -320,8 +339,10 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.is_number(json.server.connections_writing)
       assert.is_number(json.server.connections_waiting)
       assert.is_number(json.server.total_requests)
-      assert.is_string(json.configuration_hash)
-      assert.equal(32, #json.configuration_hash)
+      if strategy == "off" then
+        assert.is_string(json.configuration_hash)
+        assert.equal(32, #json.configuration_hash)
+      end
 
     end)
 

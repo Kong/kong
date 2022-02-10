@@ -27,6 +27,7 @@ ngx.log(ngx.DEBUG, "Loading Status API endpoints")
 
 -- Load core health route
 api_helpers.attach_routes(app, require "kong.api.routes.health")
+api_helpers.attach_routes(app, require "kong.status.routes.config")
 
 
 if kong.configuration.database == "off" then
