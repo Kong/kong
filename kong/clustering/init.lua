@@ -205,7 +205,9 @@ function _M:handle_wrpc_websocket()
   return self.wrpc_handler:handle_cp_websocket()
 end
 
-_M.serve_version_handshake = version_negotiation.serve_version_handshake
+function _M:serve_version_handshake()
+  return version_negotiation.serve_version_handshake(self.conf)
+end
 
 function _M:init_worker()
   self.plugins_list = assert(kong.db.plugins:get_handlers())

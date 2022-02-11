@@ -1511,7 +1511,7 @@ end
 
 
 function Kong.serve_version_handshake()
-  return kong.clustering.serve_version_handshake()
+  return kong.clustering:serve_version_handshake()
 end
 
 

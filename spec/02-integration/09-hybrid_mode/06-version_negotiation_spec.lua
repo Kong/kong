@@ -1,10 +1,15 @@
 local ssl = require "ngx.ssl"
 
+local cjson = require "cjson.safe"
 local pl_file = require "pl.file"
 
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+local constants = require "kong.constants"
 local KONG_VERSION = require "kong.meta"._VERSION
+
+local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
+
 
 local VNEG_ENDPOINT = "/version-handshake"
 local SERVER_NAME = "kong_clustering"
@@ -145,6 +150,55 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(400, res)
         local body = assert.response(res).jsonbody()
         assert.is_string(body.message)
+      end)
+
+
+      it("API shows DP status", function()
+
+        local client = helpers.http_client{
+          host = "127.0.0.1",
+          port = 9005,
+          scheme = "https",
+          ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
+          client_cert = CLIENT_CERT,
+          client_priv_key = CLIENT_PRIV_KEY,
+          server_name = SERVER_NAME,
+        }
+        local res = assert(client:post(VNEG_ENDPOINT, {
+          headers = { ["Content-Type"] = "application/json"},
+          body = {
+            node = {
+              id = utils.uuid(),
+              type = "KONG",
+              version = KONG_VERSION,
+              hostname = "localhost",
+            },
+            services_requested = {},
+          },
+        }))
+
+        assert.res_status(200, res)
+
+        helpers.wait_until(function()
+          local admin_client = helpers.admin_client()
+          finally(function()
+            admin_client:close()
+          end)
+
+          local res = assert(admin_client:get("/clustering/data-planes"))
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          for _, v in pairs(json.data) do
+            if v.ip == "127.0.0.1" then
+              assert.near(14 * 86400, v.ttl, 3)
+              assert.matches("^(%d+%.%d+)%.%d+", v.version)
+              assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
+
+              return true
+            end
+          end
+        end, 10)
       end)
 
     end)
