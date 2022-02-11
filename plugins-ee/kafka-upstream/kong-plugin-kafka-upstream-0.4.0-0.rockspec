@@ -1,8 +1,8 @@
 package = "kong-plugin-kafka-upstream"
-version = "0.3.0-1"
+version = "0.4.0-0"
 source = {
    url = "git://github.com/kong/kong-plugin-kafka-upstream",
-   tag = "0.3.0"
+   tag = "0.4.0"
 }
 description = {
    summary = "This plugin encodes requests as Kafka messages and sends them to the configured Kafka topic.",
