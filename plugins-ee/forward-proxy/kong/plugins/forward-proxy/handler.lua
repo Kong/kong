@@ -9,6 +9,7 @@ local meta       = require "kong.meta"
 local http       = require "resty.http"
 local ee         = require "kong.enterprise_edition"
 local base64     = require "ngx.base64"
+local ssl        = require "ngx.ssl"
 
 
 local kong                = kong
@@ -201,6 +202,30 @@ function ForwardProxyHandler:access(conf)
 
   local proxy_uri = "http://"  .. conf.proxy_host .. ":" .. conf.proxy_port .. "/"
 
+  local ssl_client_cert, ssl_client_priv_key
+  if ctx.service.client_certificate then
+    local certificate_id = ctx.service.client_certificate.id
+
+    local db_cert, err = kong.db.certificates:select(
+      { id = certificate_id },
+      { nulls = true }
+    )
+
+    if not db_cert then
+      return kong.response.exit(500, err)
+    end
+
+    ssl_client_cert, err = ssl.parse_pem_cert(db_cert.cert)
+    if not ssl_client_cert then
+      return kong.response.exit(500, err)
+    end
+
+    ssl_client_priv_key, err = ssl.parse_pem_priv_key(db_cert.key)
+    if not ssl_client_priv_key then
+      return kong.response.exit(500, err)
+    end
+  end
+
   local ok, err = httpc:connect {
     scheme = var.upstream_scheme,
     host = addr.host,
@@ -210,6 +235,8 @@ function ForwardProxyHandler:access(conf)
     },
     ssl_verify = conf.https_verify,
     ssl_server_name = addr.host,
+    ssl_client_cert = ssl_client_cert,
+    ssl_client_priv_key = ssl_client_priv_key,
   }
 
   if not ok then
