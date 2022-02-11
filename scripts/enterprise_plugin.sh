@@ -20,13 +20,29 @@ EOF
 Options:
   -h, --help                      display this help
 Commands:
-  install-all          Install all enterprise plugins from the 'plugins-ee' directory.
+  install <plugin-name> Installs the specified plugin from the 'plugins-ee' directory.              b
+  install-all           Install all enterprise plugins from the 'plugins-ee' directory.
 
-                       --ignore-errors        ignore plugin installation errors.
-  remove-all           Remove all enterprise plugins from the 'plugins-ee' directory.
-  test <plugin-name>   Run lint and tests of the specified plugin.
-  build-deps           Build all docker image dependencies found in plugin directories.
+                        --ignore-errors        ignore plugin installation errors.
+  remove-all            Remove all enterprise plugins from the 'plugins-ee' directory.
+  test <plugin-name>    Run lint and tests of the specified plugin.
+  build-deps            Build all docker image dependencies found in plugin directories.
 EOF
+}
+
+function install_plugin_ee {
+  local plugin_name=$1
+  if [ -z "$plugin_name" ]; then
+    echo "Error: no plugin name specified."
+    exit 1
+  fi
+
+  echo "Installing plugin: $(basename $plugin_name)"
+  cd $KONG_PLUGINS_EE_LOCATION/$plugin_name
+  luarocks make *.rockspec
+  if [ $? -ne 0 ]; then
+    exit 1
+  fi
 }
 
 function install_all_plugins_ee {
@@ -133,6 +149,9 @@ function main {
 
   if [[ -n "$action" ]]; then
     case $action in
+    install)
+      install_plugin_ee "${unparsed_args[@]}"
+      ;;
     install-all)
       install_all_plugins_ee "${unparsed_args[@]}"
       ;;
