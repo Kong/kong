@@ -3,6 +3,7 @@ local ipmatcher     = require "resty.ipmatcher"
 local lrucache      = require "resty.lrucache"
 local isempty       = require "table.isempty"
 local clone         = require "table.clone"
+local new_tab       = require "table.new"
 local bit           = require "bit"
 
 
@@ -461,8 +462,8 @@ local function marshall_route(r)
       header_name = lower(header_name)
 
       if header_name ~= "host" then
-        local header_values_map = {}
         local header_values_count = #header_values
+        local header_values_map = new_tab(0, header_values_count)
         for i = 1, header_values_count do
           header_values_map[lower(header_values[i])] = true
         end
