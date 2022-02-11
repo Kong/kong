@@ -5,9 +5,13 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local kong = kong
+local ssl      = require "ngx.ssl"
+local lrucache = require "resty.lrucache"
+
+local kong    = kong
 local ngx_md5 = ngx.md5
-local ssl = require("ngx.ssl")
+
+local LRU = lrucache.new(200)
 
 local function load_cert(cert_id)
   kong.log.debug("cache miss for CA store")
@@ -36,7 +40,9 @@ end
 local function load_certificate(cert_id)
   kong.log.debug("Looking for certificate id: ", cert_id)
 
-  local certificate, err = kong.cache:get(cert_id_cache_key(cert_id), nil, load_cert, cert_id)
+  local cert_cache_key = cert_id_cache_key(cert_id)
+
+  local certificate, err = kong.cache:get(cert_cache_key, nil, load_cert, cert_id)
   if not certificate then
     kong.log.err("failed to find certificate: ", err)
     return nil, nil, "failed to find certificate " .. cert_id
@@ -44,16 +50,27 @@ local function load_certificate(cert_id)
 
   local cert, priv_key, key_err, cert_err
 
-  cert, cert_err = ssl.parse_pem_cert(certificate.cert)
-  if cert == nil then
-    kong.log.err("failed to parse certificate: ", cert_err)
-    return nil, nil, "failed to parse pem cert " .. cert_err
+  local parsed_cert_cache_key = cert_cache_key .. ":parsed_cert"
+  local parsed_priv_key_cache_key = cert_cache_key .. ":parsed_priv_key"
+
+  cert = LRU:get(parsed_cert_cache_key)
+  if not cert then
+    cert, cert_err = ssl.parse_pem_cert(certificate.cert)
+    if cert == nil then
+      kong.log.err("failed to parse certificate: ", cert_err)
+      return nil, nil, "failed to parse pem cert " .. cert_err
+    end
+    LRU:set(parsed_cert_cache_key, cert)
   end
 
-  priv_key, key_err = ssl.parse_pem_priv_key(certificate.key)
-  if priv_key == nil then
-    kong.log.err("failed to parse private key: ", key_err)
-    return cert, nil, "failed to parse private key" .. key_err
+  priv_key = LRU:get(parsed_priv_key_cache_key)
+  if not priv_key then
+    priv_key, key_err = ssl.parse_pem_priv_key(certificate.key)
+    if priv_key == nil then
+      kong.log.err("failed to parse private key: ", key_err)
+      return cert, nil, "failed to parse private key" .. key_err
+    end
+    LRU:set(parsed_priv_key_cache_key, priv_key)
   end
 
   return cert, priv_key, nil
