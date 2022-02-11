@@ -5,8 +5,9 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local helpers = require "spec.helpers"
+local helpers      = require "spec.helpers"
 local ssl_fixtures = require "spec.fixtures.ssl"
+local pl_path      = require "pl.path"
 
 
 local fixtures = {
@@ -219,6 +220,15 @@ for _, strategy in strategies() do
 
           local body = assert.res_status(200, res)
           assert.equals("it works", body)
+
+          -- Ensure we actually went via the forward-proxy
+          local forward_proxy_log = helpers.test_conf.prefix ..
+                                    "/logs/naive_forward_proxy.log"
+
+          helpers.wait_until(function()
+            return pl_path.exists(forward_proxy_log) and
+                   pl_path.getsize(forward_proxy_log) > 0
+          end, 5)
         end)
 
         it("remove client_certificate removes access", function()
