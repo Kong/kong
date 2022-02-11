@@ -90,6 +90,20 @@ describe("Plugin: AWS Lambda (schema)", function()
     assert.falsy(ok)
   end)
 
+  it("errors with a non-http proxy_url", function()
+    for _, scheme in ipairs({"https", "ftp", "wss"}) do
+      local ok, err = v({
+        proxy_url = scheme .. "://squid:3128",
+        aws_region = "us-east-1",
+        function_name = "my-function"
+      }, schema_def)
+
+      assert.not_nil(err)
+      assert.falsy(ok)
+      assert.equals("proxy_url scheme must be http", err["@entity"][1])
+    end
+  end)
+
   it("accepts a host", function()
     local ok, err = v({
       host = "my.lambda.host",
