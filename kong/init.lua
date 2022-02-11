@@ -1510,6 +1510,11 @@ function Kong.serve_wrpc_listener(options)
 end
 
 
+function Kong.serve_version_handshake()
+  return kong.clustering.serve_version_handshake()
+end
+
+
 function Kong.stream_api()
   stream_api.handle()
 end

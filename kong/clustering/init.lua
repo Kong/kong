@@ -1,6 +1,7 @@
 local _M = {}
 
 local constants = require("kong.constants")
+local version_negotiation = require("kong.clustering.version_negotiation")
 local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local ssl = require("ngx.ssl")
@@ -204,6 +205,7 @@ function _M:handle_wrpc_websocket()
   return self.wrpc_handler:handle_cp_websocket()
 end
 
+_M.serve_version_handshake = version_negotiation.serve_version_handshake
 
 function _M:init_worker()
   self.plugins_list = assert(kong.db.plugins:get_handlers())
