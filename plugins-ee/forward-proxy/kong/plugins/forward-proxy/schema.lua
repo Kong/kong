@@ -14,8 +14,11 @@ return {
     { config = {
         type = "record",
         fields = {
-          { proxy_host = typedefs.host {required = true} },
-          { proxy_port = typedefs.port {required = true} },
+          { http_proxy_host = typedefs.host },
+          { http_proxy_port = typedefs.port },
+          { https_proxy_host = typedefs.host },
+          { https_proxy_port = typedefs.port },
+
           { proxy_scheme = {
             type = "string",
             one_of = { "http" },
@@ -35,6 +38,30 @@ return {
             required = true,
             default = false,
           }},
+        },
+
+        shorthand_fields = {
+          -- deprecated forms, to be removed in Kong 3.0
+          { proxy_host = {
+              type = "string",
+              func = function(value)
+                return { http_host = value }
+              end,
+          }, },
+          { proxy_port = {
+              type = "integer",
+              func = function(value)
+                return { http_port = value }
+              end,
+          }, },
+        },
+
+        entity_checks = {
+          { at_least_one_of = { "http_proxy_host", "https_proxy_host" } },
+          { at_least_one_of = { "http_proxy_port", "https_proxy_port" } },
+
+          { mutually_required = { "http_proxy_host", "http_proxy_port" } },
+          { mutually_required = { "https_proxy_host", "https_proxy_port" } },
         }
       }
     }
