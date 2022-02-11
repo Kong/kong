@@ -17,6 +17,8 @@ local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
 
+local _logged_proxy_scheme_warning
+
 local fetch_credentials do
   local credential_sources = {
     require "kong.plugins.aws-lambda.iam-ecs-credentials",
@@ -243,6 +245,11 @@ function AWSLambdaHandler:access(conf)
 
   local uri = port and fmt("https://%s:%d", host, port)
                     or fmt("https://%s", host)
+
+  if conf.proxy_scheme and not _logged_proxy_scheme_warning then
+    kong.log.warn("`proxy_scheme` is deprecated and will be removed in Kong 3.0")
+    _logged_proxy_scheme_warning = true
+  end
 
   local proxy_opts
   if conf.proxy_url then

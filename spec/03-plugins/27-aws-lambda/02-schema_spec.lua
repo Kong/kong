@@ -79,17 +79,6 @@ describe("Plugin: AWS Lambda (schema)", function()
     assert.falsy(ok)
   end)
 
-  it("errors if proxy_scheme is missing while proxy_url is provided", function()
-    local ok, err = v({
-      proxy_url = "http://hello.com/proxy",
-      aws_region = "us-east-1",
-      function_name = "my-function"
-    }, schema_def)
-
-    assert.equal("all or none of these fields must be set: 'config.proxy_scheme', 'config.proxy_url'", err["@entity"][1])
-    assert.falsy(ok)
-  end)
-
   it("errors with a non-http proxy_url", function()
     for _, scheme in ipairs({"https", "ftp", "wss"}) do
       local ok, err = v({
