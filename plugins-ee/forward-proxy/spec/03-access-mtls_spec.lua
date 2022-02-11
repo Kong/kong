@@ -117,7 +117,7 @@ fixtures.dns_mock:A {
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
 for _, strategy in strategies() do
-  describe("forward-proxy overriding upstream TLS parameters for database #" .. strategy, function()
+  describe("forward-proxy mTLS #" .. strategy, function()
     local proxy_client, admin_client
     local bp
     local service_mtls
@@ -183,7 +183,7 @@ for _, strategy in strategies() do
       helpers.stop_kong("servroot", true)
     end)
 
-    describe("mutual TLS authentication against upstream with Service object", function()
+    describe("mTLS authentication against upstream with Service object, via forward-proxy", function()
       describe("no client certificate supplied", function()
         it("accessing protected upstream", function()
           local res = assert(proxy_client:send {
