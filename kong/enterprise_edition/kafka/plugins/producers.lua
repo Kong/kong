@@ -41,7 +41,7 @@ local function create(conf)
 
     ssl = conf.security.ssl,
   }
-  local cluster_name = conf.uuid
+  local cluster_name = conf.cluster_name
 
   -- set auth config if it is enabled
   if is_auth_enabled(conf.authentication) then
