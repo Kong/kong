@@ -6,15 +6,10 @@ local constants = require "kong.constants"
 local clustering_utils = require "kong.clustering.utils"
 
 local ngx_log = ngx.log
-local ngx_DEBUG = ngx.DEBUG
-local ngx_INFO = ngx.INFO
-local ngx_NOTICE = ngx.NOTICE
-local ngx_WARN = ngx.WARN
 local ngx_ERR = ngx.ERR
-local ngx_OK = ngx.OK
-local ngx_CLOSE = ngx.HTTP_CLOSE
 local _log_prefix = "[version-negotiation] "
 
+local KONG_VERSION
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 
 
@@ -91,7 +86,7 @@ local function check_node_compatibility(client_node)
     return nil, ("unknown node type %q"):format(client_node.type), CLUSTERING_SYNC_STATUS.UNKNOWN
   end
 
-  local ok, msg, status = clustering_utils.check_kong_version_compatibility(client_node.version)
+  local ok, msg, status = clustering_utils.check_kong_version_compatibility(KONG_VERSION, client_node.version)
   if not ok then
     return ok, msg, status
   end
@@ -159,10 +154,10 @@ end
 
 
 local function register_client(conf, client_node, services_accepted)
-  local client_services = {}
-  for _, service in ipairs(services_accepted) do
-    client_services[service.name] = service.version
-  end
+  --local client_services = {}
+  --for _, service in ipairs(services_accepted) do
+  --  client_services[service.name] = service.version
+  --end
 
   local ok, err = kong.db.clustering_data_planes:upsert({ id = client_node.id, }, {
     last_seen = ngx.time(),
@@ -183,6 +178,10 @@ end
 
 
 function _M.serve_version_handshake(conf)
+  if KONG_VERSION == nil then
+    KONG_VERSION = kong.version
+  end
+
   local body_in = cjson.decode(get_body())
   if not body_in then
     return response(400, { message = "Not valid JSON data" })

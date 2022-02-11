@@ -39,6 +39,7 @@ local deflate_gzip = utils.deflate_gzip
 
 
 local kong_dict = ngx.shared.kong
+local KONG_VERSION = kong.version
 local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
@@ -354,7 +355,7 @@ end
 
 
 function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
-  local ok, err, status = clustering_utils.check_kong_version_compatibility(dp_version, log_suffix)
+  local ok, err, status = clustering_utils.check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
   if not ok then
     return ok, err, status
   end
