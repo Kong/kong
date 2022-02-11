@@ -1,5 +1,5 @@
 package = "kong-plugin-kafka-upstream"
-version = "0.3.0-0"
+version = "0.3.0-1"
 source = {
    url = "git://github.com/kong/kong-plugin-kafka-upstream",
    tag = "0.3.0"
