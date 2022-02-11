@@ -7,7 +7,7 @@
 
 local kong = kong
 local producers = require "kong.enterprise_edition.kafka.plugins.producers"
-local cert_utils = require "kong.enterprise_edition.kafka.plugins.cert_utils"
+local cert_utils = require "kong.enterprise_edition.cert_utils"
 local cjson_encode = require("cjson").encode
 
 local ngx_encode_base64 = ngx.encode_base64
