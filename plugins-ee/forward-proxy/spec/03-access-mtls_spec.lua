@@ -113,9 +113,9 @@ fixtures.dns_mock:A {
   address = "127.0.0.1",
 }
 
---local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
-for _, strategy in ipairs({ "postgres"}) do --strategies() do
+for _, strategy in strategies() do
   describe("forward-proxy overriding upstream TLS parameters for database #" .. strategy, function()
     local proxy_client, admin_client
     local bp
