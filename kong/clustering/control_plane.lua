@@ -9,6 +9,7 @@ local http = require("resty.http")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
+local clustering_utils = require("kong.clustering.utils")
 local constants = require("kong.constants")
 local openssl_x509 = require("resty.openssl.x509")
 local string = string
@@ -38,7 +39,6 @@ local deflate_gzip = utils.deflate_gzip
 
 
 local kong_dict = ngx.shared.kong
-local KONG_VERSION = kong.version
 local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
@@ -59,26 +59,8 @@ local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local PONG_TYPE = "PONG"
 local RECONFIGURE_TYPE = "RECONFIGURE"
-local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local _log_prefix = "[clustering] "
-
-
-local function extract_major_minor(version)
-  if type(version) ~= "string" then
-    return nil, nil
-  end
-
-  local major, minor = version:match(MAJOR_MINOR_PATTERN)
-  if not major then
-    return nil, nil
-  end
-
-  major = tonumber(major, 10)
-  minor = tonumber(minor, 10)
-
-  return major, minor
-end
 
 
 local function plugins_list_to_map(plugins_list)
@@ -86,7 +68,7 @@ local function plugins_list_to_map(plugins_list)
   for _, plugin in ipairs(plugins_list) do
     local name = plugin.name
     local version = plugin.version
-    local major, minor = extract_major_minor(plugin.version)
+    local major, minor = clustering_utils.extract_major_minor(plugin.version)
 
     if major and minor then
       versions[name] = {
@@ -372,39 +354,9 @@ end
 
 
 function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
-  local major_cp, minor_cp = extract_major_minor(KONG_VERSION)
-  local major_dp, minor_dp = extract_major_minor(dp_version)
-
-  if not major_cp then
-    return nil, "data plane version " .. dp_version .. " is incompatible with control plane version",
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if not major_dp then
-    return nil, "data plane version is incompatible with control plane version " ..
-                KONG_VERSION .. " (" .. major_cp .. ".x.y are accepted)",
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if major_cp ~= major_dp then
-    return nil, "data plane version " .. dp_version ..
-                " is incompatible with control plane version " ..
-                KONG_VERSION .. " (" .. major_cp .. ".x.y are accepted)",
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if minor_cp < minor_dp then
-    return nil, "data plane version " .. dp_version ..
-                " is incompatible with older control plane version " .. KONG_VERSION,
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if minor_cp ~= minor_dp then
-    local msg = "data plane minor version " .. dp_version ..
-                " is different to control plane minor version " ..
-                KONG_VERSION
-
-    ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
+  local ok, err, status = clustering_utils.check_kong_version_compatibility(dp_version, log_suffix)
+  if not ok then
+    return ok, err, status
   end
 
   for _, plugin in ipairs(self.plugins_list) do
