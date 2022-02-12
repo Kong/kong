@@ -46,7 +46,6 @@ local error = error
 local pairs = pairs
 local kong = kong
 local type = type
-local find = string.find
 local fmt = string.format
 
 
@@ -253,15 +252,10 @@ function AWSLambdaHandler:access(conf)
 
   local proxy_opts
   if conf.proxy_url then
-    if find(conf.proxy_url, "https", 1, true) == 1 then
-      proxy_opts = {
-        https_proxy = conf.proxy_url,
-      }
-    else
-      proxy_opts = {
-        http_proxy = conf.proxy_url,
-      }
-    end
+    -- lua-resty-http uses the request scheme to determine which of
+    -- http_proxy/https_proxy it will use, and from this plugin's POV, the
+    -- request scheme is always https
+    proxy_opts = { https_proxy = conf.proxy_url }
   end
 
   -- Trigger request
