@@ -154,18 +154,19 @@ end
 
 
 local function register_client(conf, client_node, services_accepted)
-  --local client_services = {}
-  --for _, service in ipairs(services_accepted) do
-  --  client_services[service.name] = service.version
-  --end
+  local services_map = {}
+  for _, service in ipairs(services_accepted) do
+    services_map[service.name] = service.version
+  end
 
   local ok, err = kong.db.clustering_data_planes:upsert({ id = client_node.id, }, {
     last_seen = ngx.time(),
-    config_hash = "0123456789ABCDEF0123456789ABCDEF",
+    config_hash = "00000000000000000000000000000000",
     hostname = client_node.hostname,
     ip = ngx.var.realip_remote_addr or ngx.var.remote_addr,
     version = client_node.version,
     sync_status = client_node.sync_status,
+    services_accepted = services_map,
   }, { ttl = conf.cluster_data_plane_purge_delay })
 
   if not ok then
