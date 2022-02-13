@@ -1666,6 +1666,135 @@ for _, strategy in helpers.each_strategy() do
               assert.res_status(404, res)
             end)
           end)
+
+          describe("GET page", function()
+            lazy_setup(function()
+              portal_api_client = assert(ee_helpers.portal_api_client())
+
+              local function make_username(i)
+                if i % 2 == 0 then
+                  return 'guy' .. i
+                end
+                return 'dude' .. i
+              end
+
+              for i = 1, 10 do
+                local res = assert(portal_api_client:send {
+                  method = "POST",
+                  path = "/credentials/basic-auth",
+                  body = {
+                    username = make_username(i),
+                    password = "hunter1"
+                  },
+                  headers = {
+                    ["Content-Type"] = "application/json",
+                    ["Cookie"] = cookie,
+                  },
+                })
+
+                assert.res_status(201, res)
+              end
+
+              local function make_key(i)
+                if i % 2 == 0 then
+                  return 'kwikset' .. i
+                end
+                return 'schlage' .. i
+              end
+
+              for i = 1, 10 do
+                local res = assert(portal_api_client:send {
+                  method = "POST",
+                  path = "/credentials/key-auth",
+                  body = {
+                    key = make_key(i)
+                  },
+                  headers = {
+                    ["Content-Type"] = "application/json",
+                    ["Cookie"] = cookie,
+                  },
+                })
+
+                assert.res_status(201, res)
+              end
+            end)
+
+            it("filters basic-auth creds by username from query params", function()
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/credentials/basic-auth?username=guy&sort_by=username",
+                headers = {
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              local body = assert.res_status(200, res)
+              local credential_res = cjson.decode(body)
+
+              assert.equal(5, credential_res.total)
+              assert.equal("guy10", credential_res.data[1].username)
+              assert.equal("guy2", credential_res.data[2].username)
+              assert.equal("guy4", credential_res.data[3].username)
+              assert.equal("guy6", credential_res.data[4].username)
+              assert.equal("guy8", credential_res.data[5].username)
+
+              res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/credentials/basic-auth?username=dude&sort_by=username",
+                headers = {
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              body = assert.res_status(200, res)
+              credential_res = cjson.decode(body)
+
+              assert.equal(5, credential_res.total)
+              assert.equal("dude1", credential_res.data[1].username)
+              assert.equal("dude3", credential_res.data[2].username)
+              assert.equal("dude5", credential_res.data[3].username)
+              assert.equal("dude7", credential_res.data[4].username)
+              assert.equal("dude9", credential_res.data[5].username)
+            end)
+
+            it("filters key-auth creds by key from query params", function()
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/credentials/key-auth?key=wiks&sort_by=key",
+                headers = {
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              local body = assert.res_status(200, res)
+              local credential_res = cjson.decode(body)
+
+              assert.equal(5, credential_res.total)
+              assert.equal("kwikset10", credential_res.data[1].key)
+              assert.equal("kwikset2", credential_res.data[2].key)
+              assert.equal("kwikset4", credential_res.data[3].key)
+              assert.equal("kwikset6", credential_res.data[4].key)
+              assert.equal("kwikset8", credential_res.data[5].key)
+
+              res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/credentials/key-auth?key=schla&sort_by=key",
+                headers = {
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              body = assert.res_status(200, res)
+              credential_res = cjson.decode(body)
+
+              assert.equal(5, credential_res.total)
+              assert.equal("schlage1", credential_res.data[1].key)
+              assert.equal("schlage3", credential_res.data[2].key)
+              assert.equal("schlage5", credential_res.data[3].key)
+              assert.equal("schlage7", credential_res.data[4].key)
+              assert.equal("schlage9", credential_res.data[5].key)
+            end)
+          end)
         end)
 
         describe("/config [basic-auth]", function()
@@ -4396,6 +4525,135 @@ for _, strategy in helpers.each_strategy() do
               })
 
               assert.res_status(404, res)
+            end)
+          end)
+
+          describe("GET page", function()
+            lazy_setup(function()
+              portal_api_client = assert(ee_helpers.portal_api_client())
+
+              local function make_username(i)
+                if i % 2 == 0 then
+                  return 'guy' .. i
+                end
+                return 'dude' .. i
+              end
+
+              for i = 1, 10 do
+                local res = assert(portal_api_client:send {
+                  method = "POST",
+                  path = "/credentials/basic-auth",
+                  body = {
+                    username = make_username(i),
+                    password = "hunter1"
+                  },
+                  headers = {
+                    ["Content-Type"] = "application/json",
+                    ["Cookie"] = cookie,
+                  },
+                })
+
+                assert.res_status(201, res)
+              end
+
+              local function make_key(i)
+                if i % 2 == 0 then
+                  return 'kwikset' .. i
+                end
+                return 'schlage' .. i
+              end
+
+              for i = 1, 10 do
+                local res = assert(portal_api_client:send {
+                  method = "POST",
+                  path = "/credentials/key-auth",
+                  body = {
+                    key = make_key(i)
+                  },
+                  headers = {
+                    ["Content-Type"] = "application/json",
+                    ["Cookie"] = cookie,
+                  },
+                })
+
+                assert.res_status(201, res)
+              end
+            end)
+
+            it("filters basic-auth creds by username from query params", function()
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/credentials/basic-auth?username=guy&sort_by=username",
+                headers = {
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              local body = assert.res_status(200, res)
+              local credential_res = cjson.decode(body)
+
+              assert.equal(5, credential_res.total)
+              assert.equal("guy10", credential_res.data[1].username)
+              assert.equal("guy2", credential_res.data[2].username)
+              assert.equal("guy4", credential_res.data[3].username)
+              assert.equal("guy6", credential_res.data[4].username)
+              assert.equal("guy8", credential_res.data[5].username)
+
+              res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/credentials/basic-auth?username=dude&sort_by=username",
+                headers = {
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              body = assert.res_status(200, res)
+              credential_res = cjson.decode(body)
+
+              assert.equal(5, credential_res.total)
+              assert.equal("dude1", credential_res.data[1].username)
+              assert.equal("dude3", credential_res.data[2].username)
+              assert.equal("dude5", credential_res.data[3].username)
+              assert.equal("dude7", credential_res.data[4].username)
+              assert.equal("dude9", credential_res.data[5].username)
+            end)
+
+            it("filters key-auth creds by key from query params", function()
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/credentials/key-auth?key=wiks&sort_by=key",
+                headers = {
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              local body = assert.res_status(200, res)
+              local credential_res = cjson.decode(body)
+
+              assert.equal(5, credential_res.total)
+              assert.equal("kwikset10", credential_res.data[1].key)
+              assert.equal("kwikset2", credential_res.data[2].key)
+              assert.equal("kwikset4", credential_res.data[3].key)
+              assert.equal("kwikset6", credential_res.data[4].key)
+              assert.equal("kwikset8", credential_res.data[5].key)
+
+              res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/credentials/key-auth?key=schla&sort_by=key",
+                headers = {
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              body = assert.res_status(200, res)
+              credential_res = cjson.decode(body)
+
+              assert.equal(5, credential_res.total)
+              assert.equal("schlage1", credential_res.data[1].key)
+              assert.equal("schlage3", credential_res.data[2].key)
+              assert.equal("schlage5", credential_res.data[3].key)
+              assert.equal("schlage7", credential_res.data[4].key)
+              assert.equal("schlage9", credential_res.data[5].key)
             end)
           end)
         end)

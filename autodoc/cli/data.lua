@@ -17,8 +17,6 @@ data.header = [[
 title: CLI Reference
 ---
 
-## Introduction
-
 The provided CLI (*Command Line Interface*) allows you to start, stop, and
 manage your Kong instances. The CLI manages your local node (as in, on the
 current machine).
@@ -33,8 +31,6 @@ All commands take a set of special, optional flags as arguments:
 * `--v`: enable verbose mode
 * `--vv`: enable debug mode (noisy)
 
-[Back to top](#introduction)
-
 ## Available commands
 
 ]]
@@ -47,7 +43,7 @@ data.command_intro = {
 
 data.footer = [[
 
-[configuration-reference]: /gateway-oss/{{page.kong_version}}/configuration
+[configuration-reference]: /gateway/{{page.kong_version}}/reference/configuration/
 ]]
 
 return data

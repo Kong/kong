@@ -9,7 +9,6 @@ local inflate_gzip = require("kong.tools.utils").inflate_gzip
 
 local type, ipairs = type, ipairs
 local str_find = string.find
-local tbl_insert, tbl_concat = table.insert, table.concat
 
 local kong = kong
 
@@ -122,49 +121,30 @@ end
 --
 -- Note: we buffer the entire response in order to feed valid JSON to jq.
 function Jq:body_filter(conf)
-  local chunk, eof = ngx.arg[1], ngx.arg[2]
-
-  -- Other plugins may also be buffering, which means we may expect nil buffers
-  -- and then a large complete buffer at the end.
-  if not eof and (not chunk or chunk == "") then
-    return
-  end
-
   if type(conf.response_jq_program) == "string" and
     is_media_type_allowed(kong.response.get_header("Content-Type"),
                           conf.response_if_media_type) and
     is_status_code_allowed(kong.response.get_status(),
                            conf.response_if_status_code) then
 
-    local ctx = kong.ctx.plugin
-    ctx.buffered_body_chunks = ctx.buffered_body_chunks or {}
+    local response_body = kong.response.get_raw_body()
 
-    tbl_insert(ctx.buffered_body_chunks, chunk)
+    if response_body then
+      if kong.ctx.plugin.should_inflate_gzip then
+        response_body = inflate_gzip(response_body)
+      end
 
-    -- buffer until eof
-    if not eof then
-      ngx.arg[1] = nil
-      return
-    end
+      local jq_output, err = run_program(
+        conf.response_jq_program,
+        response_body,
+        conf.response_jq_program_options
+      )
 
-    -- done buffering, let's do this
-    local response_body = tbl_concat(ctx.buffered_body_chunks)
-
-    if ctx.should_inflate_gzip then
-      response_body = inflate_gzip(response_body)
-    end
-
-    local jq_output, err = run_program(
-      conf.response_jq_program,
-      response_body,
-      conf.response_jq_program_options
-    )
-
-    if not jq_output then
-      kong.log.err(err)
-      ngx.arg[1] = response_body -- restore original body
-    else
-      ngx.arg[1] = jq_output
+      if not jq_output then
+        kong.log.err(err)
+      else
+        kong.response.set_raw_body(jq_output)
+      end
     end
   end
 end

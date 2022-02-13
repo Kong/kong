@@ -868,7 +868,9 @@ describe("Plugin: response-transformer-advanced", function()
     setup(function()
       old_ngx  = ngx
       _G.ngx = {
-        ctx = {}
+        ctx = {
+          buffers = {},
+        },
       }
       _G.kong = {
         log = {
@@ -878,8 +880,23 @@ describe("Plugin: response-transformer-advanced", function()
         response = {
           get_header = function (header)
             return headers[header]
-          end
-        }
+          end,
+          get_raw_body = function()
+            table.insert(ngx.ctx.buffers, ngx.arg[1])
+
+            if not ngx.arg[2] then
+              ngx.arg[1] = nil
+            else
+              ngx.arg[1] = table.concat(ngx.ctx.buffers)
+            end
+
+            return ngx.arg[1]
+          end,
+          set_raw_body = function(body)
+            ngx.arg[1] = body
+            ngx.arg[2] = true
+          end,
+        },
       }
       handler = require("kong.plugins.response-transformer-advanced.handler")
     end)
@@ -890,7 +907,9 @@ describe("Plugin: response-transformer-advanced", function()
     end)
 
     before_each(function()
-      _G.ngx.ctx = {}
+      _G.ngx.ctx = {
+        buffers = {},
+      }
     end)
 
     it("valid gzip", function()
@@ -975,7 +994,7 @@ describe("Plugin: response-transformer-advanced", function()
 
       local result = ngx.arg[1]
 
-      assert.is_nil(result)
+      assert.same("", result)
       assert.are.equal(500, ngx.status)
       assert.spy(kong.log.err).was.called()
     end)

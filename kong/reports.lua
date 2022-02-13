@@ -61,10 +61,8 @@ local _ping_infos = {}
 local _enabled = false
 local _unique_str = utils.random_string()
 local _buffer_immutable_idx
-local _tls_session
-local _tls_opts = {
-  ssl_verify = false,
-}
+local _ssl_session
+local _ssl_verify = false
 
 -- the resty.counter instance, will be initialized in `init_worker`
 local report_counter = nil
@@ -111,9 +109,19 @@ local function serialize_report_value(v)
   return v ~= nil and tostring(v) or nil
 end
 
+-- [[ EE
+local function add_ee_info(infos)
+  local l = kong.license and
+    kong.license.license and
+    kong.license.license.payload and
+    kong.license.license.payload.license_key or
+    nil
+  infos.license_key = l
+  infos.rbac_enforced = kong.configuration.rbac ~= "off"
+end
+--- EE ]]
 
 -- TCP logger
-
 
 local function send_report(signal_type, t, host, port)
   if not _enabled then
@@ -156,19 +164,25 @@ local function send_report(signal_type, t, host, port)
     return
   end
 
-  _tls_opts.reused_session = _tls_session
-  local hs_ok, err = sock:tlshandshake(_tls_opts)
+  local hs_ok, err = sock:sslhandshake(_ssl_session, nil, _ssl_verify)
   if not hs_ok then
-    log(DEBUG, "failed to complete TLS handshake for reports: ", err)
+    log(DEBUG, "failed to complete SSL handshake for reports: ", err)
     return
   end
 
-  _tls_session = hs_ok
+  _ssl_session = hs_ok
 
   sock:send(concat(_buffer, ";", 1, mutable_idx) .. "\n")
   sock:setkeepalive()
 end
 
+-- send_report_ee is a simple wrapper that adds enterprise
+-- infos to the reports data
+local function send_report_ee(signal_type, t, host, port)
+  t = t or {}
+  add_ee_info(t)
+  return send_report(signal_type, t, host, port)
+end
 
 -- ping timer handler
 
@@ -288,16 +302,6 @@ else -- subsystem == "stream"
 
     return lower(var.protocol)
   end
-end
-
-local function add_ee_info(infos)
-  local l = kong.license and
-    kong.license.license and
-    kong.license.license.payload and
-    kong.license.license.payload.license_key or
-    nil
-  infos.license_key = l
-  infos.rbac_enforced = kong.configuration.rbac ~= "off"
 end
 
 local function send_ping(host, port)
@@ -556,6 +560,7 @@ return {
     _enabled = enable
   end,
   send = send_report,
+  send_ee = send_report_ee,
   retrieve_redis_version = retrieve_redis_version,
   report_cached_entity = report_cached_entity,
   add_entity_reports = add_entity_reports,

@@ -77,7 +77,8 @@ return {
           { groups = {
               type = "array",
               elements = { type = "string" }
-          }}
+          }},
+          { canary_by_header_name =  typedefs.header_name },
         }
     }}
   },

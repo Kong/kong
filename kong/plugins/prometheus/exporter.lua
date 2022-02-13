@@ -144,6 +144,9 @@ end
 
 local function init_worker()
   prometheus:init_worker()
+
+  -- XXX EE
+  enterprise.init_worker()
 end
 
 -- Convert the MD5 hex string to its numeric representation

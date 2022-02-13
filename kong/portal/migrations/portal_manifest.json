@@ -1,0 +1,3015 @@
+{
+    "kong-portal-templates": {
+        "@jquery@3.6.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jquery/jquery/"
+        },
+        "@js-yaml@3.13.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/nodeca/js-yaml"
+        },
+        "@react@15.6.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/react"
+        },
+        "@swagger-ui@3": {
+            "licenses": "Apache 2.0",
+            "repository": "https://github.com/swagger-api/swagger-ui"
+        }
+    },
+    "legacy-portal": {
+        "@braintree/sanitize-url@2.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/braintree/sanitize-url",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/@braintree/sanitize-url",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/@braintree/sanitize-url/LICENSE"
+        },
+        "@kongponents/kbutton@1.0.0": {
+            "licenses": "Apache-2.0",
+            "repository": "https://github.com/Kong/kongponents",
+            "publisher": "Kong Inc",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/kbutton",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/kbutton/LICENSE"
+        },
+        "@kongponents/kbutton@6.5.9": {
+            "licenses": "Apache-2.0",
+            "repository": "https://github.com/Kong/kongponents",
+            "publisher": "Kong Inc",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/kmodal/node_modules/@kongponents/kbutton",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/kmodal/node_modules/@kongponents/kbutton/LICENSE"
+        },
+        "@kongponents/kicon@6.5.9": {
+            "licenses": "Apache-2.0",
+            "repository": "https://github.com/Kong/kongponents",
+            "publisher": "Kong Inc",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/kicon",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/kicon/LICENSE"
+        },
+        "@kongponents/kmodal@6.5.9": {
+            "licenses": "Apache-2.0",
+            "repository": "https://github.com/Kong/kongponents",
+            "publisher": "Kong Inc",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/kmodal",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/kmodal/LICENSE"
+        },
+        "@kongponents/ktable@5.0.7": {
+            "licenses": "Apache-2.0",
+            "repository": "https://github.com/Kong/kongponents",
+            "publisher": "Kong Inc",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/ktable",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/ktable/LICENSE"
+        },
+        "@kongponents/ktoaster@0.0.1-beta.2": {
+            "licenses": "ISC",
+            "repository": "https://github.com/Kong/kongponents",
+            "publisher": "Kong Inc",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/ktoaster",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/@kongponents/ktoaster/Readme.md"
+        },
+        "@kyleshockey/js-yaml@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/shockey/js-yaml",
+            "publisher": "Kyle Shockey",
+            "email": "kyleshockey@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/@kyleshockey/js-yaml",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/@kyleshockey/js-yaml/LICENSE"
+        },
+        "@kyleshockey/object-assign-deep@0.4.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/saikojosh/Object-Assign-Deep",
+            "publisher": "Josh Cole",
+            "email": "saikojosh@gmail.com",
+            "url": "http://www.JoshuaCole.me",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/@kyleshockey/object-assign-deep",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/@kyleshockey/object-assign-deep/README.md"
+        },
+        "@kyleshockey/xml@1.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/shockey/node-xml",
+            "publisher": "Dylan Greene",
+            "url": "https://github.com/dylang",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/@kyleshockey/xml",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/@kyleshockey/xml/LICENSE"
+        },
+        "@types/react@16.4.6": {
+            "licenses": "MIT",
+            "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/@types/react",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/@types/react/LICENSE"
+        },
+        "align-text@0.1.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/align-text",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/align-text",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/align-text/LICENSE"
+        },
+        "amdefine@1.0.1": {
+            "licenses": "BSD-3-Clause OR MIT",
+            "repository": "https://github.com/jrburke/amdefine",
+            "publisher": "James Burke",
+            "email": "jrburke@gmail.com",
+            "url": "http://github.com/jrburke",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/amdefine",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/amdefine/LICENSE"
+        },
+        "ansi-regex@2.1.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chalk/ansi-regex",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/ansi-regex",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/ansi-regex/license"
+        },
+        "ansi-styles@2.2.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chalk/ansi-styles",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/ansi-styles",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/ansi-styles/license"
+        },
+        "argparse@0.1.16": {
+            "licenses": "MIT",
+            "repository": "https://github.com/nodeca/argparse",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/argparse",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/argparse/LICENSE"
+        },
+        "argparse@1.0.10": {
+            "licenses": "MIT",
+            "repository": "https://github.com/nodeca/argparse",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/js-yaml/node_modules/argparse",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/js-yaml/node_modules/argparse/LICENSE"
+        },
+        "asap@2.0.6": {
+            "licenses": "MIT",
+            "repository": "https://github.com/kriskowal/asap",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/asap",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/asap/LICENSE.md"
+        },
+        "async@1.5.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/caolan/async",
+            "publisher": "Caolan McMahon",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/handlebars/node_modules/async",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/handlebars/node_modules/async/LICENSE"
+        },
+        "async@2.6.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/caolan/async",
+            "publisher": "Caolan McMahon",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/async",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/async/LICENSE"
+        },
+        "autolinker@0.15.3": {
+            "licenses": "MIT*",
+            "repository": "https://github.com/gregjacobs/Autolinker.js",
+            "publisher": "Gregory Jacobs",
+            "email": "greg@greg-jacobs.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/autolinker",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/autolinker/LICENSE"
+        },
+        "axios@0.17.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/axios/axios",
+            "publisher": "Matt Zabriskie",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/axios",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/axios/LICENSE"
+        },
+        "babel-code-frame@6.26.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-code-frame",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-code-frame",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-code-frame/README.md"
+        },
+        "babel-core@6.26.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-core",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-core",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-core/README.md"
+        },
+        "babel-generator@6.26.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-generator",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-generator",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-generator/README.md"
+        },
+        "babel-helper-function-name@6.24.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-helper-function-name",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-helper-function-name",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-helper-function-name/README.md"
+        },
+        "babel-helper-get-function-arity@6.24.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-helper-get-function-arity",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-helper-get-function-arity",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-helper-get-function-arity/README.md"
+        },
+        "babel-helpers@6.24.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-helpers",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-helpers",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-helpers/README.md"
+        },
+        "babel-messages@6.23.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-messages",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-messages",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-messages/README.md"
+        },
+        "babel-plugin-syntax-class-properties@6.13.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-plugin-syntax-class-properties",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-plugin-syntax-class-properties",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-plugin-syntax-class-properties/README.md"
+        },
+        "babel-plugin-transform-class-properties@6.24.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-plugin-transform-class-properties",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-plugin-transform-class-properties",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-plugin-transform-class-properties/README.md"
+        },
+        "babel-register@6.26.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-register",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-register",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-register/README.md"
+        },
+        "babel-runtime@6.26.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-runtime",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-runtime",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-runtime/README.md"
+        },
+        "babel-template@6.26.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-template",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-template",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-template/README.md"
+        },
+        "babel-traverse@6.26.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-traverse",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-traverse",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-traverse/README.md"
+        },
+        "babel-types@6.26.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-types",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-types",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-types/README.md"
+        },
+        "babylon@6.18.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babylon",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babylon",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babylon/LICENSE"
+        },
+        "balanced-match@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/juliangruber/balanced-match",
+            "publisher": "Julian Gruber",
+            "email": "mail@juliangruber.com",
+            "url": "http://juliangruber.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/balanced-match",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/balanced-match/LICENSE.md"
+        },
+        "base64-js@1.3.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/beatgammit/base64-js",
+            "publisher": "T. Jameson Little",
+            "email": "t.jameson.little@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/base64-js",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/base64-js/LICENSE"
+        },
+        "brace-expansion@1.1.11": {
+            "licenses": "MIT",
+            "repository": "https://github.com/juliangruber/brace-expansion",
+            "publisher": "Julian Gruber",
+            "email": "mail@juliangruber.com",
+            "url": "http://juliangruber.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/brace-expansion",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/brace-expansion/LICENSE"
+        },
+        "btoa@1.1.2": {
+            "licenses": "Apache*",
+            "repository": "https://github.com/coolaj86/node-browser-compat",
+            "publisher": "AJ ONeal",
+            "email": "coolaj86@gmail.com",
+            "url": "http://coolaj86.info",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/btoa",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/btoa/LICENSE"
+        },
+        "buffer@5.2.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/feross/buffer",
+            "publisher": "Feross Aboukhadijeh",
+            "email": "feross@feross.org",
+            "url": "http://feross.org",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/buffer",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/buffer/LICENSE"
+        },
+        "call-me-maybe@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/limulus/call-me-maybe",
+            "publisher": "Eric McCarthy",
+            "email": "eric@limulus.net",
+            "url": "http://www.limulus.net/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/call-me-maybe",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/call-me-maybe/LICENSE"
+        },
+        "camelcase@1.2.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/camelcase",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "http://sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/camelcase",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/camelcase/license"
+        },
+        "center-align@0.1.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/center-align",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/center-align",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/center-align/LICENSE"
+        },
+        "chalk@1.1.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chalk/chalk",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/chalk",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/chalk/license"
+        },
+        "chart.js@2.7.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chartjs/Chart.js",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/chart.js",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/chart.js/LICENSE.md"
+        },
+        "chartjs-color-string@0.5.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chartjs/chartjs-color-string",
+            "publisher": "Heather Arthur",
+            "email": "fayearthur@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/chartjs-color-string",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/chartjs-color-string/LICENSE"
+        },
+        "chartjs-color@2.2.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chartjs/chartjs-color",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/chartjs-color",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/chartjs-color/LICENSE"
+        },
+        "classnames@2.2.6": {
+            "licenses": "MIT",
+            "repository": "https://github.com/JedWatson/classnames",
+            "publisher": "Jed Watson",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/classnames",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/classnames/LICENSE"
+        },
+        "clipboard@2.0.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zenorocha/clipboard.js",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/clipboard",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/clipboard/readme.md"
+        },
+        "cliui@2.1.0": {
+            "licenses": "ISC",
+            "repository": "https://github.com/bcoe/cliui",
+            "publisher": "Ben Coe",
+            "email": "ben@npmjs.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/cliui",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/cliui/LICENSE.txt"
+        },
+        "clone@2.1.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/pvorb/node-clone",
+            "publisher": "Paul Vorbach",
+            "email": "paul@vorba.ch",
+            "url": "http://paul.vorba.ch/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-toc-and-anchor/node_modules/clone",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-toc-and-anchor/node_modules/clone/LICENSE"
+        },
+        "color-convert@0.5.3": {
+            "licenses": "MIT*",
+            "repository": "https://github.com/harthur/color-convert",
+            "publisher": "Heather Arthur",
+            "email": "fayearthur@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/chartjs-color/node_modules/color-convert",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/chartjs-color/node_modules/color-convert/LICENSE"
+        },
+        "color-name@1.1.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/colorjs/color-name",
+            "publisher": "DY",
+            "email": "dfcreative@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/color-name",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/color-name/LICENSE"
+        },
+        "combined-stream@1.0.7": {
+            "licenses": "MIT",
+            "repository": "https://github.com/felixge/node-combined-stream",
+            "publisher": "Felix Geisendörfer",
+            "email": "felix@debuggable.com",
+            "url": "http://debuggable.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/combined-stream",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/combined-stream/License"
+        },
+        "commander@2.19.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/tj/commander.js",
+            "publisher": "TJ Holowaychuk",
+            "email": "tj@vision-media.ca",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/commander",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/commander/LICENSE"
+        },
+        "commonmark-react-renderer@4.3.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/rexxars/commonmark-react-renderer",
+            "publisher": "Espen Hovlandsdal",
+            "email": "espen@hovlandsdal.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/commonmark-react-renderer",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/commonmark-react-renderer/LICENSE"
+        },
+        "commonmark@0.24.0": {
+            "licenses": "BSD-2-Clause",
+            "repository": "https://github.com/jgm/commonmark.js",
+            "publisher": "John MacFarlane",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/commonmark",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/commonmark/LICENSE"
+        },
+        "concat-map@0.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/substack/node-concat-map",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/concat-map",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/concat-map/LICENSE"
+        },
+        "convert-source-map@1.6.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/thlorenz/convert-source-map",
+            "publisher": "Thorsten Lorenz",
+            "email": "thlorenz@gmx.de",
+            "url": "http://thlorenz.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/convert-source-map",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/convert-source-map/LICENSE"
+        },
+        "cookie@0.3.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jshttp/cookie",
+            "publisher": "Roman Shtylman",
+            "email": "shtylman@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/cookie",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/cookie/LICENSE"
+        },
+        "core-js@1.2.7": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zloirock/core-js",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/fbjs/node_modules/core-js",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/fbjs/node_modules/core-js/LICENSE"
+        },
+        "core-js@2.6.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zloirock/core-js",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/core-js",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/core-js/LICENSE"
+        },
+        "create-react-class@15.6.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/react",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/create-react-class",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/create-react-class/LICENSE.txt"
+        },
+        "cross-fetch@0.0.8": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lquixada/cross-fetch",
+            "publisher": "Leonardo Quixada",
+            "email": "lquixada@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/cross-fetch",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/cross-fetch/LICENSE"
+        },
+        "css.escape@1.5.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/mathiasbynens/CSS.escape",
+            "publisher": "Mathias Bynens",
+            "url": "https://mathiasbynens.be/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/css.escape",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/css.escape/LICENSE-MIT.txt"
+        },
+        "csstype@2.5.8": {
+            "licenses": "MIT",
+            "repository": "https://github.com/frenic/csstype",
+            "publisher": "Fredrik Nicol",
+            "email": "fredrik.nicol@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/csstype",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/csstype/LICENSE"
+        },
+        "d@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/medikoo/d",
+            "publisher": "Mariusz Nowak",
+            "email": "medyk@medikoo.com",
+            "url": "http://www.medikoo.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/d",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/d/LICENSE"
+        },
+        "debug@2.6.9": {
+            "licenses": "MIT",
+            "repository": "https://github.com/visionmedia/debug",
+            "publisher": "TJ Holowaychuk",
+            "email": "tj@vision-media.ca",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-traverse/node_modules/debug",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-traverse/node_modules/debug/LICENSE"
+        },
+        "debug@3.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/visionmedia/debug",
+            "publisher": "TJ Holowaychuk",
+            "email": "tj@vision-media.ca",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/debug",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/debug/LICENSE"
+        },
+        "decamelize@1.2.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/decamelize",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/decamelize",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/decamelize/license"
+        },
+        "deep-equal@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/substack/node-deep-equal",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/deep-equal",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/deep-equal/LICENSE"
+        },
+        "deep-extend@0.5.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/unclechu/node-deep-extend",
+            "publisher": "Viacheslav Lotsmanov",
+            "email": "lotsmanov89@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/deep-extend",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/deep-extend/LICENSE"
+        },
+        "delayed-stream@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/felixge/node-delayed-stream",
+            "publisher": "Felix Geisendörfer",
+            "email": "felix@debuggable.com",
+            "url": "http://debuggable.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/delayed-stream",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/delayed-stream/License"
+        },
+        "delegate@3.2.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zenorocha/delegate",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/delegate",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/delegate/readme.md"
+        },
+        "detect-indent@4.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/detect-indent",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/detect-indent",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/detect-indent/license"
+        },
+        "dompurify@1.0.8": {
+            "licenses": "MPL-2.0 OR Apache-2.0",
+            "repository": "https://github.com/cure53/DOMPurify",
+            "publisher": "Mario Heiderich",
+            "email": "mario@cure53.de",
+            "url": "https://cure53.de/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/dompurify",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/dompurify/LICENSE"
+        },
+        "duplexer@0.1.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/Raynos/duplexer",
+            "publisher": "Raynos",
+            "email": "raynos2@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/duplexer",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/duplexer/LICENCE"
+        },
+        "emitter-component@1.1.1": {
+            "licenses": "Custom: https://travis-ci.org/component/emitter.png",
+            "repository": "https://github.com/component/emitter",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/emitter-component",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/emitter-component/Readme.md"
+        },
+        "encode-3986@1.0.0": {
+            "licenses": "CC0-1.0",
+            "repository": "https://github.com/m59peacemaker/js-encode-3986",
+            "publisher": "Johnny Hauser",
+            "email": "johnnyhauser@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/encode-3986",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/encode-3986/LICENSE"
+        },
+        "encoding@0.1.12": {
+            "licenses": "MIT",
+            "repository": "https://github.com/andris9/encoding",
+            "publisher": "Andris Reinman",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/encoding",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/encoding/LICENSE"
+        },
+        "entities@1.1.2": {
+            "licenses": "BSD-2-Clause",
+            "repository": "https://github.com/fb55/entities",
+            "publisher": "Felix Boehm",
+            "email": "me@feedic.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/entities",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/entities/LICENSE"
+        },
+        "es5-ext@0.10.46": {
+            "licenses": "ISC",
+            "repository": "https://github.com/medikoo/es5-ext",
+            "publisher": "Mariusz Nowak",
+            "email": "medyk@medikoo.com",
+            "url": "http://www.medikoo.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/es5-ext",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/es5-ext/LICENSE"
+        },
+        "es6-iterator@2.0.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/medikoo/es6-iterator",
+            "publisher": "Mariusz Nowak",
+            "email": "medyk@medikoo.com",
+            "url": "http://www.medikoo.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/es6-iterator",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/es6-iterator/LICENSE"
+        },
+        "es6-symbol@3.1.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/medikoo/es6-symbol",
+            "publisher": "Mariusz Nowak",
+            "email": "medyk@medikoo.com",
+            "url": "http://www.medikoo.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/es6-symbol",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/es6-symbol/LICENSE"
+        },
+        "es6-weak-map@2.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/medikoo/es6-weak-map",
+            "publisher": "Mariusz Nowak",
+            "email": "medyk@medikoo.com",
+            "url": "http://www.medikoo.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/es6-weak-map",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/es6-weak-map/LICENSE"
+        },
+        "escape-string-regexp@1.0.5": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/escape-string-regexp",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/escape-string-regexp",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/escape-string-regexp/license"
+        },
+        "esprima@4.0.1": {
+            "licenses": "BSD-2-Clause",
+            "repository": "https://github.com/jquery/esprima",
+            "publisher": "Ariya Hidayat",
+            "email": "ariya.hidayat@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/esprima",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/esprima/LICENSE.BSD"
+        },
+        "estree-walker@0.2.1": {
+            "licenses": "MIT",
+            "publisher": "Rich Harris",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/estree-walker"
+        },
+        "esutils@2.0.2": {
+            "licenses": "BSD",
+            "repository": "https://github.com/estools/esutils",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/esutils",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/esutils/LICENSE.BSD"
+        },
+        "event-emitter@0.3.5": {
+            "licenses": "MIT",
+            "repository": "https://github.com/medikoo/event-emitter",
+            "publisher": "Mariusz Nowak",
+            "email": "medyk@medikoo.com",
+            "url": "http://www.medikoo.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/event-emitter",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/event-emitter/LICENSE"
+        },
+        "event-stream@3.3.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/dominictarr/event-stream",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "http://bit.ly/dominictarr",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/event-stream",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/event-stream/LICENCE"
+        },
+        "fast-json-patch@2.0.7": {
+            "licenses": "MIT",
+            "repository": "https://github.com/Starcounter-Jack/JSON-Patch",
+            "publisher": "Joachim Wester",
+            "email": "joachimwester@me.com",
+            "url": "http://www.starcounter.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/fast-json-patch",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/fast-json-patch/LICENSE.txt"
+        },
+        "fbjs@0.8.17": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/fbjs",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/fbjs",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/fbjs/LICENSE"
+        },
+        "follow-redirects@1.5.10": {
+            "licenses": "MIT",
+            "repository": "https://github.com/follow-redirects/follow-redirects",
+            "publisher": "Ruben Verborgh",
+            "email": "ruben@verborgh.org",
+            "url": "https://ruben.verborgh.org/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/follow-redirects",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/follow-redirects/LICENSE"
+        },
+        "form-data@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/form-data/form-data",
+            "publisher": "Felix Geisendörfer",
+            "email": "felix@debuggable.com",
+            "url": "http://debuggable.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/form-data",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/form-data/License"
+        },
+        "format-util@1.0.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/tmpfs/format-util",
+            "publisher": "muji",
+            "email": "noop@xpm.io",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/format-util",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/format-util/LICENSE"
+        },
+        "from@0.1.7": {
+            "licenses": "MIT",
+            "repository": "https://github.com/dominictarr/from",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "dominictarr.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/from",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/from/LICENSE.APACHE2"
+        },
+        "globals@9.18.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/globals",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "http://sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/globals",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/globals/license"
+        },
+        "good-listener@1.2.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zenorocha/good-listener",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/good-listener",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/good-listener/readme.md"
+        },
+        "handlebars-utils@1.0.6": {
+            "licenses": "MIT",
+            "repository": "https://github.com/helpers/handlebars-utils",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/handlebars-utils",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/handlebars-utils/LICENSE"
+        },
+        "handlebars@4.0.11": {
+            "licenses": "MIT",
+            "repository": "https://github.com/wycats/handlebars.js",
+            "publisher": "Yehuda Katz",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/handlebars",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/handlebars/LICENSE"
+        },
+        "hardyhar@0.1.0": {
+            "licenses": "MIT",
+            "publisher": "Darren Jennings",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/hardyhar",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/hardyhar/README.md"
+        },
+        "has-ansi@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/has-ansi",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/has-ansi",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/has-ansi/license"
+        },
+        "helper-markdown@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/helpers/helper-markdown",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/helper-markdown",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/helper-markdown/LICENSE"
+        },
+        "highlight.js@9.13.1": {
+            "licenses": "BSD-3-Clause",
+            "repository": "https://github.com/highlightjs/highlight.js",
+            "publisher": "Ivan Sagalaev",
+            "email": "maniac@softwaremaniacs.org",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/highlight.js",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/highlight.js/LICENSE"
+        },
+        "hoist-non-react-statics@2.5.5": {
+            "licenses": "BSD-3-Clause",
+            "repository": "https://github.com/mridgway/hoist-non-react-statics",
+            "publisher": "Michael Ridgway",
+            "email": "mcridgway@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/hoist-non-react-statics",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/hoist-non-react-statics/LICENSE.md"
+        },
+        "home-or-tmp@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/home-or-tmp",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/home-or-tmp",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/home-or-tmp/license"
+        },
+        "iconv-lite@0.4.24": {
+            "licenses": "MIT",
+            "repository": "https://github.com/ashtuchkin/iconv-lite",
+            "publisher": "Alexander Shtuchkin",
+            "email": "ashtuchkin@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/iconv-lite",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/iconv-lite/LICENSE"
+        },
+        "ieee754@1.1.12": {
+            "licenses": "BSD-3-Clause",
+            "repository": "https://github.com/feross/ieee754",
+            "publisher": "Feross Aboukhadijeh",
+            "email": "feross@feross.org",
+            "url": "http://feross.org",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/ieee754",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/ieee754/LICENSE"
+        },
+        "immutable@3.8.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/immutable-js",
+            "publisher": "Lee Byron",
+            "url": "https://github.com/leebyron",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/immutable",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/immutable/LICENSE"
+        },
+        "invariant@2.2.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zertosh/invariant",
+            "publisher": "Andres Suarez",
+            "email": "zertosh@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/invariant",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/invariant/LICENSE"
+        },
+        "is-buffer@1.1.6": {
+            "licenses": "MIT",
+            "repository": "https://github.com/feross/is-buffer",
+            "publisher": "Feross Aboukhadijeh",
+            "email": "feross@feross.org",
+            "url": "http://feross.org/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/is-buffer",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/is-buffer/LICENSE"
+        },
+        "is-dom@1.0.9": {
+            "licenses": "MIT",
+            "repository": "https://github.com/npm-dom/is-dom",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/is-dom",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/is-dom/LICENSE"
+        },
+        "is-finite@1.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/is-finite",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/is-finite",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/is-finite/license"
+        },
+        "is-promise@2.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/then/is-promise",
+            "publisher": "ForbesLindesay",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/is-promise",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/is-promise/LICENSE"
+        },
+        "is-stream@1.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/is-stream",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/is-stream",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/is-stream/license"
+        },
+        "isomorphic-fetch@2.2.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/matthew-andrews/isomorphic-fetch",
+            "publisher": "Matt Andrews",
+            "email": "matt@mattandre.ws",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/isomorphic-fetch",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/isomorphic-fetch/LICENSE"
+        },
+        "isomorphic-form-data@0.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/form-data/isomorphic-form-data",
+            "publisher": "Dylan Piercey",
+            "email": "pierceydylan@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/isomorphic-form-data",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/isomorphic-form-data/License"
+        },
+        "js-file-download@0.4.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/kennethjiang/js-file-download",
+            "publisher": "Kenneth Jiang",
+            "email": "kenneth.jiang@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/js-file-download",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/js-file-download/LICENSE"
+        },
+        "js-tokens@3.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lydell/js-tokens",
+            "publisher": "Simon Lydell",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-code-frame/node_modules/js-tokens",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-code-frame/node_modules/js-tokens/LICENSE"
+        },
+        "js-tokens@4.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lydell/js-tokens",
+            "publisher": "Simon Lydell",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/js-tokens",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/js-tokens/LICENSE"
+        },
+        "js-yaml@3.12.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/nodeca/js-yaml",
+            "publisher": "Vladimir Zapparov",
+            "email": "dervus.grim@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/js-yaml",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/js-yaml/LICENSE"
+        },
+        "jsesc@1.3.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/mathiasbynens/jsesc",
+            "publisher": "Mathias Bynens",
+            "url": "https://mathiasbynens.be/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/jsesc",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/jsesc/LICENSE-MIT.txt"
+        },
+        "json-schema-instantiator@0.4.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/tomarad/JSON-Schema-Instantiator",
+            "publisher": "Tom Arad",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/json-schema-instantiator",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/json-schema-instantiator/LICENSE.md"
+        },
+        "json-schema-ref-parser@5.1.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/BigstickCarpet/json-schema-ref-parser",
+            "publisher": "James Messinger",
+            "url": "http://bigstickcarpet.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/json-schema-ref-parser",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/json-schema-ref-parser/LICENSE"
+        },
+        "json5@0.5.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/aseemk/json5",
+            "publisher": "Aseem Kishore",
+            "email": "aseem.kishore@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/json5",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/json5/LICENSE.md"
+        },
+        "jsonschema-draft4@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/kogosoftwarellc/jsonschema-draft4",
+            "publisher": "Joseph Spencer",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/jsonschema-draft4",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/jsonschema-draft4/README.md"
+        },
+        "jsonschema@1.2.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/tdegrunt/jsonschema",
+            "publisher": "Tom de Grunt",
+            "email": "tom@degrunt.nl",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/jsonschema",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/jsonschema/LICENSE"
+        },
+        "katex@0.6.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/Khan/KaTeX",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/katex",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/katex/LICENSE.txt"
+        },
+        "kind-of@3.2.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/kind-of",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/kind-of",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/kind-of/LICENSE"
+        },
+        "kind-of@6.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/kind-of",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/handlebars-utils/node_modules/kind-of",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/handlebars-utils/node_modules/kind-of/LICENSE"
+        },
+        "kong-developer-portal@0.34.1": {
+            "licenses": "UNLICENSED",
+            "private": true,
+            "repository": "https://github.com/Kong/kong-portal",
+            "publisher": "Kong",
+            "path": "/Users/tyler.ball/github/kong-portal",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/readme.md"
+        },
+        "lazy-cache@1.0.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/lazy-cache",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/lazy-cache",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/lazy-cache/LICENSE"
+        },
+        "linkify-it@1.2.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/linkify-it",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/linkify-it",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/linkify-it/LICENSE"
+        },
+        "lodash-es@4.17.11": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lodash/lodash",
+            "publisher": "John-David Dalton",
+            "email": "john.david.dalton@gmail.com",
+            "url": "http://allyoucanleet.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/lodash-es",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/lodash-es/LICENSE"
+        },
+        "lodash.assign@4.2.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lodash/lodash",
+            "publisher": "John-David Dalton",
+            "email": "john.david.dalton@gmail.com",
+            "url": "http://allyoucanleet.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.assign",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.assign/LICENSE"
+        },
+        "lodash.debounce@4.0.8": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lodash/lodash",
+            "publisher": "John-David Dalton",
+            "email": "john.david.dalton@gmail.com",
+            "url": "http://allyoucanleet.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.debounce",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.debounce/LICENSE"
+        },
+        "lodash.get@4.4.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lodash/lodash",
+            "publisher": "John-David Dalton",
+            "email": "john.david.dalton@gmail.com",
+            "url": "http://allyoucanleet.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.get",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.get/LICENSE"
+        },
+        "lodash.isequal@4.5.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lodash/lodash",
+            "publisher": "John-David Dalton",
+            "email": "john.david.dalton@gmail.com",
+            "url": "http://allyoucanleet.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.isequal",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.isequal/LICENSE"
+        },
+        "lodash.isplainobject@4.0.6": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lodash/lodash",
+            "publisher": "John-David Dalton",
+            "email": "john.david.dalton@gmail.com",
+            "url": "http://allyoucanleet.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.isplainobject",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.isplainobject/LICENSE"
+        },
+        "lodash.merge@4.6.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lodash/lodash",
+            "publisher": "John-David Dalton",
+            "email": "john.david.dalton@gmail.com",
+            "url": "http://allyoucanleet.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.merge",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/lodash.merge/LICENSE"
+        },
+        "lodash@4.17.11": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lodash/lodash",
+            "publisher": "John-David Dalton",
+            "email": "john.david.dalton@gmail.com",
+            "url": "http://allyoucanleet.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/async/node_modules/lodash",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/async/node_modules/lodash/LICENSE"
+        },
+        "longest@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/longest",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/longest",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/longest/LICENSE"
+        },
+        "loose-envify@1.4.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zertosh/loose-envify",
+            "publisher": "Andres Suarez",
+            "email": "zertosh@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/loose-envify",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/loose-envify/LICENSE"
+        },
+        "lru-queue@0.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/medikoo/lru-queue",
+            "publisher": "Mariusz Nowak",
+            "email": "medyk@medikoo.com",
+            "url": "http://www.medikoo.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/lru-queue",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/lru-queue/LICENCE"
+        },
+        "map-stream@0.1.0": {
+            "licenses": "Custom: https://github.com/dominictarr/event-stream",
+            "repository": "https://github.com/dominictarr/map-stream",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "http://dominictarr.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/map-stream",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/map-stream/LICENCE"
+        },
+        "markdown-it-abbr@1.0.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/markdown-it-abbr",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-abbr",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-abbr/LICENSE"
+        },
+        "markdown-it-deflist@2.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/markdown-it-deflist",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-deflist",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-deflist/LICENSE"
+        },
+        "markdown-it-emoji@1.4.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/markdown-it-emoji",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-emoji",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-emoji/LICENSE"
+        },
+        "markdown-it-footnote@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/markdown-it-footnote",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-footnote",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-footnote/LICENSE"
+        },
+        "markdown-it-ins@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/markdown-it-ins",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-ins",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-ins/LICENSE"
+        },
+        "markdown-it-katex@2.0.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/waylonflinn/markdown-it-katex",
+            "publisher": "waylonflinn@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-katex",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-katex/LICENSE"
+        },
+        "markdown-it-mark@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/markdown-it-mark",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-mark",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-mark/LICENSE"
+        },
+        "markdown-it-sub@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/markdown-it-sub",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-sub",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-sub/LICENSE"
+        },
+        "markdown-it-sup@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/markdown-it-sup",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-sup",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-sup/LICENSE"
+        },
+        "markdown-it-task-lists@2.1.1": {
+            "licenses": "ISC",
+            "repository": "https://github.com/revin/markdown-it-task-lists",
+            "publisher": "Revin Guillen",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-task-lists",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-task-lists/LICENSE"
+        },
+        "markdown-it-toc-and-anchor@4.2.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/medfreeman/markdown-it-toc-and-anchor",
+            "publisher": "Maxime Thirouin",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-toc-and-anchor",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it-toc-and-anchor/LICENSE"
+        },
+        "markdown-it@6.1.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/markdown-it",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/markdown-it/LICENSE"
+        },
+        "match-at@0.1.1": {
+            "licenses": "MIT*",
+            "repository": "https://github.com/sophiebits/match-at",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/match-at",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/match-at/LICENSE"
+        },
+        "mdurl@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/mdurl",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/mdurl",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/mdurl/LICENSE"
+        },
+        "memoizee@0.4.14": {
+            "licenses": "ISC",
+            "repository": "https://github.com/medikoo/memoizee",
+            "publisher": "Mariusz Nowak",
+            "email": "medikoo@medikoo.com",
+            "url": "http://www.medikoo.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/memoizee",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/memoizee/LICENSE"
+        },
+        "mime-db@1.37.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jshttp/mime-db",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/mime-db",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/mime-db/LICENSE"
+        },
+        "mime-types@2.1.21": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jshttp/mime-types",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/mime-types",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/mime-types/LICENSE"
+        },
+        "minimatch@3.0.4": {
+            "licenses": "ISC",
+            "repository": "https://github.com/isaacs/minimatch",
+            "publisher": "Isaac Z. Schlueter",
+            "email": "i@izs.me",
+            "url": "http://blog.izs.me",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/minimatch",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/minimatch/LICENSE"
+        },
+        "minimist@0.0.10": {
+            "licenses": "MIT",
+            "repository": "https://github.com/substack/minimist",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/minimist",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/minimist/LICENSE"
+        },
+        "minimist@0.0.8": {
+            "licenses": "MIT",
+            "repository": "https://github.com/substack/minimist",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/mkdirp/node_modules/minimist",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/mkdirp/node_modules/minimist/LICENSE"
+        },
+        "mkdirp@0.5.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/substack/node-mkdirp",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/mkdirp",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/mkdirp/LICENSE"
+        },
+        "moment@2.20.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/moment/moment",
+            "publisher": "Iskren Ivov Chernev",
+            "email": "iskren.chernev@gmail.com",
+            "url": "https://github.com/ichernev",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/moment",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/moment/LICENSE"
+        },
+        "ms@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zeit/ms",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/ms",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/ms/license.md"
+        },
+        "next-tick@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/medikoo/next-tick",
+            "publisher": "Mariusz Nowak",
+            "email": "medyk@medikoo.com",
+            "url": "http://www.medikoo.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/next-tick",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/next-tick/LICENSE"
+        },
+        "node-fetch@1.7.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/bitinn/node-fetch",
+            "publisher": "David Frank",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/node-fetch",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/node-fetch/LICENSE.md"
+        },
+        "number-is-nan@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/number-is-nan",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/number-is-nan",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/number-is-nan/license"
+        },
+        "object-assign@4.1.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/object-assign",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/object-assign",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/object-assign/license"
+        },
+        "ono@4.0.11": {
+            "licenses": "MIT",
+            "repository": "https://github.com/JS-DevTools/ono",
+            "publisher": "James Messinger",
+            "url": "https://jamesmessinger.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/ono",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/ono/LICENSE"
+        },
+        "openapi-schema-validation@0.4.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/kogosoftwarellc/open-api/tree/master/packages/openapi-schema-validation",
+            "publisher": "Joseph Spencer",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/openapi-schema-validation",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/openapi-schema-validation/LICENSE"
+        },
+        "optimist@0.6.1": {
+            "licenses": "MIT*",
+            "repository": "https://github.com/substack/node-optimist",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/optimist",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/optimist/LICENSE"
+        },
+        "os-homedir@1.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/os-homedir",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/os-homedir",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/os-homedir/license"
+        },
+        "os-tmpdir@1.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/os-tmpdir",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/os-tmpdir",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/os-tmpdir/license"
+        },
+        "pascalcase@0.1.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/pascalcase",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/pascalcase",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/pascalcase/LICENSE"
+        },
+        "path-is-absolute@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/path-is-absolute",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/path-is-absolute",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/path-is-absolute/license"
+        },
+        "pause-stream@0.0.11": {
+            "licenses": [
+                "MIT",
+                "Apache2"
+            ],
+            "repository": "https://github.com/dominictarr/pause-stream",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "dominictarr.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/pause-stream",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/pause-stream/LICENSE"
+        },
+        "performance-now@0.2.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/meryn/performance-now",
+            "publisher": "Meryn Stol",
+            "email": "merynstol@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/performance-now",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/performance-now/license.txt"
+        },
+        "performance-now@2.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/braveg1rl/performance-now",
+            "publisher": "Braveg1rl",
+            "email": "braveg1rl@outlook.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/raf/node_modules/performance-now",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/raf/node_modules/performance-now/license.txt"
+        },
+        "prismjs@1.15.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/LeaVerou/prism",
+            "publisher": "Lea Verou",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/prismjs",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/prismjs/LICENSE"
+        },
+        "private@0.1.8": {
+            "licenses": "MIT",
+            "repository": "https://github.com/benjamn/private",
+            "publisher": "Ben Newman",
+            "email": "bn@cs.stanford.edu",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/private",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/private/LICENSE"
+        },
+        "promise@7.3.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/then/promise",
+            "publisher": "ForbesLindesay",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/promise",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/promise/LICENSE"
+        },
+        "prop-types@15.6.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/prop-types",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/prop-types",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/prop-types/LICENSE"
+        },
+        "ps-tree@1.2.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/indexzero/ps-tree",
+            "publisher": "Charlie Robbins",
+            "email": "charlie.robbins@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/ps-tree",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/ps-tree/LICENSE"
+        },
+        "punycode@1.3.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/bestiejs/punycode.js",
+            "publisher": "Mathias Bynens",
+            "url": "https://mathiasbynens.be/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/punycode",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/punycode/LICENSE-MIT.txt"
+        },
+        "qs@6.6.0": {
+            "licenses": "BSD-3-Clause",
+            "repository": "https://github.com/ljharb/qs",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/qs",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/qs/LICENSE"
+        },
+        "querystring-browser@1.0.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/mathiasvr/querystring",
+            "publisher": "Mathias Rasmussen",
+            "email": "mathiasvr@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/querystring-browser",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/querystring-browser/LICENSE"
+        },
+        "querystring@0.2.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/Gozala/querystring",
+            "publisher": "Irakli Gozalishvili",
+            "email": "rfobic@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/querystring",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/querystring/License.md"
+        },
+        "querystringify@2.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/unshiftio/querystringify",
+            "publisher": "Arnout Kazemier",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/querystringify",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/querystringify/LICENSE"
+        },
+        "raf@3.4.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chrisdickinson/raf",
+            "publisher": "Chris Dickinson",
+            "email": "chris@neversaw.us",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/raf",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/raf/LICENSE"
+        },
+        "react-addons-perf@15.4.2": {
+            "licenses": "BSD-3-Clause",
+            "repository": "https://github.com/facebook/react",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-addons-perf",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-addons-perf/LICENSE"
+        },
+        "react-apiembed@0.1.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/kong/react-apiembed",
+            "publisher": "Darren Jennings",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-apiembed",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-apiembed/README.md"
+        },
+        "react-collapse@4.0.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/nkbt/react-collapse",
+            "publisher": "Nik Butenko",
+            "email": "nik@butenko.me",
+            "url": "http://butenko.me/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-collapse",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-collapse/LICENSE"
+        },
+        "react-debounce-input@3.2.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/nkbt/react-debounce-input",
+            "publisher": "Nik Butenko",
+            "email": "nik@butenko.me",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-debounce-input",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-debounce-input/LICENSE"
+        },
+        "react-dom@15.6.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/react",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-dom",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-dom/LICENSE"
+        },
+        "react-dom@16.7.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/react",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-apiembed/node_modules/react-dom",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-apiembed/node_modules/react-dom/LICENSE"
+        },
+        "react-immutable-proptypes@2.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/HurricaneJames/react-immutable-proptypes",
+            "publisher": "James Burnett",
+            "email": "HurricaneJamesEsq@gmail.com",
+            "url": "https://github.com/HurricaneJames/react-immutable-proptypes",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-immutable-proptypes",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-immutable-proptypes/LICENSE"
+        },
+        "react-immutable-pure-component@1.2.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/Monar/react-immutable-pure-component",
+            "publisher": "Piotr Tomasz Monarski",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-immutable-pure-component",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-immutable-pure-component/LICENSE"
+        },
+        "react-inspector@2.3.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/xyc/react-inspector",
+            "publisher": "Xiaoyi Chen",
+            "email": "cxychina@gmail.com",
+            "url": "http://github.com/xyc",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-inspector",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-inspector/LICENSE"
+        },
+        "react-lifecycles-compat@3.0.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/reactjs/react-lifecycles-compat",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-lifecycles-compat",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-lifecycles-compat/LICENSE.md"
+        },
+        "react-markdown@2.5.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/rexxars/react-markdown",
+            "publisher": "Espen Hovlandsdal",
+            "email": "rexxars@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-markdown",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-markdown/LICENSE"
+        },
+        "react-motion@0.5.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chenglou/react-motion",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-motion",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-motion/LICENSE"
+        },
+        "react-redux@4.4.9": {
+            "licenses": "MIT",
+            "repository": "https://github.com/reactjs/react-redux",
+            "publisher": "Dan Abramov",
+            "email": "dan.abramov@me.com",
+            "url": "http://github.com/gaearon",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-redux",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-redux/LICENSE.md"
+        },
+        "react-split-pane@0.1.85": {
+            "licenses": "MIT",
+            "repository": "https://github.com/tomkp/react-split-pane",
+            "publisher": "tomkp",
+            "email": "tom@tomkp.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-split-pane",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-split-pane/LICENSE"
+        },
+        "react-style-proptype@3.2.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/brigand/react-style-proptype",
+            "publisher": "Frankie Bagnardi",
+            "email": "f.bagnardi@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-style-proptype",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-style-proptype/LICENSE"
+        },
+        "react@15.6.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/react",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react/LICENSE"
+        },
+        "react@16.7.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/react",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/react-apiembed/node_modules/react",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/react-apiembed/node_modules/react/LICENSE"
+        },
+        "redux-immutable@3.0.8": {
+            "licenses": "BSD-3-Clause",
+            "repository": "https://github.com/gajus/redux-immutable",
+            "publisher": "Gajus Kuizinas",
+            "email": "gajus@anuary.com",
+            "url": "http://gajus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/redux-immutable",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/redux-immutable/LICENSE"
+        },
+        "redux@3.7.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/reactjs/redux",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/redux",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/redux/LICENSE.md"
+        },
+        "regenerator-runtime@0.11.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/regenerator/tree/master/packages/regenerator-runtime",
+            "publisher": "Ben Newman",
+            "email": "bn@cs.stanford.edu",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/regenerator-runtime",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/regenerator-runtime/README.md"
+        },
+        "remarkable@1.7.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/remarkable",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/remarkable",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/remarkable/LICENSE"
+        },
+        "repeat-string@1.6.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/repeat-string",
+            "publisher": "Jon Schlinkert",
+            "url": "http://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/repeat-string",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/repeat-string/LICENSE"
+        },
+        "repeating@2.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/repeating",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/repeating",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/repeating/license"
+        },
+        "requires-port@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/unshiftio/requires-port",
+            "publisher": "Arnout Kazemier",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/requires-port",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/requires-port/LICENSE"
+        },
+        "reselect@2.5.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/reactjs/reselect",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/reselect",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/reselect/LICENSE"
+        },
+        "right-align@0.1.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/right-align",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/right-align",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/right-align/LICENSE"
+        },
+        "rollup-plugin-babel@3.0.7": {
+            "licenses": "MIT",
+            "repository": "https://github.com/rollup/rollup-plugin-babel",
+            "publisher": "Rich Harris",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/rollup-plugin-babel",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/rollup-plugin-babel/LICENSE.md"
+        },
+        "rollup-pluginutils@1.5.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/rollup/rollup-pluginutils",
+            "publisher": "Rich Harris",
+            "email": "richard.a.harris@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/rollup-pluginutils",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/rollup-pluginutils/README.md"
+        },
+        "safe-buffer@5.1.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/feross/safe-buffer",
+            "publisher": "Feross Aboukhadijeh",
+            "email": "feross@feross.org",
+            "url": "http://feross.org",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/safe-buffer",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/safe-buffer/LICENSE"
+        },
+        "safer-buffer@2.1.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/ChALkeR/safer-buffer",
+            "publisher": "Nikita Skovoroda",
+            "email": "chalkerx@gmail.com",
+            "url": "https://github.com/ChALkeR",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/safer-buffer",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/safer-buffer/LICENSE"
+        },
+        "scheduler@0.12.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/react",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/scheduler",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/scheduler/LICENSE"
+        },
+        "select@1.1.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zenorocha/select",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/select",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/select/readme.md"
+        },
+        "serialize-error@2.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/serialize-error",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/serialize-error",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/serialize-error/license"
+        },
+        "setimmediate@1.0.5": {
+            "licenses": "MIT",
+            "repository": "https://github.com/YuzuJS/setImmediate",
+            "publisher": "YuzuJS",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/setimmediate",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/setimmediate/LICENSE.txt"
+        },
+        "slash@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/slash",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "http://sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/slash",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/slash/readme.md"
+        },
+        "source-map-support@0.4.18": {
+            "licenses": "MIT",
+            "repository": "https://github.com/evanw/node-source-map-support",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/source-map-support",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/source-map-support/LICENSE.md"
+        },
+        "source-map@0.4.4": {
+            "licenses": "BSD-3-Clause",
+            "repository": "https://github.com/mozilla/source-map",
+            "publisher": "Nick Fitzgerald",
+            "email": "nfitzgerald@mozilla.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/source-map",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/source-map/README.md"
+        },
+        "source-map@0.5.7": {
+            "licenses": "BSD-3-Clause",
+            "repository": "https://github.com/mozilla/source-map",
+            "publisher": "Nick Fitzgerald",
+            "email": "nfitzgerald@mozilla.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/babel-generator/node_modules/source-map",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/babel-generator/node_modules/source-map/LICENSE"
+        },
+        "split@0.3.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/dominictarr/split",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "http://bit.ly/dominictarr",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/split",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/split/LICENCE"
+        },
+        "sprintf-js@1.0.3": {
+            "licenses": "BSD-3-Clause",
+            "repository": "https://github.com/alexei/sprintf.js",
+            "publisher": "Alexandru Marasteanu",
+            "email": "hello@alexei.ro",
+            "url": "http://alexei.ro/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/sprintf-js",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/sprintf-js/LICENSE"
+        },
+        "stream-combiner@0.0.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/dominictarr/stream-combiner",
+            "publisher": "'Dominic Tarr'",
+            "email": "dominic.tarr@gmail.com",
+            "url": "http://dominictarr.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/stream-combiner",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/stream-combiner/LICENSE"
+        },
+        "stream@0.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/juliangruber/stream",
+            "publisher": "Julian Gruber",
+            "email": "julian@juliangruber.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/stream",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/stream/README.md"
+        },
+        "string.prototype.repeat@0.2.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/mathiasbynens/String.prototype.repeat",
+            "publisher": "Mathias Bynens",
+            "url": "http://mathiasbynens.be/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/string.prototype.repeat",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/string.prototype.repeat/LICENSE-MIT.txt"
+        },
+        "strip-ansi@3.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chalk/strip-ansi",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/strip-ansi",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/strip-ansi/license"
+        },
+        "supports-color@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chalk/supports-color",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/supports-color",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/supports-color/license"
+        },
+        "swagger-client@3.8.22": {
+            "licenses": "Apache-2.0",
+            "repository": "https://github.com/swagger-api/swagger-js",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/swagger-client",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/swagger-client/LICENSE"
+        },
+        "swagger-methods@1.0.6": {
+            "licenses": "MIT",
+            "repository": "https://github.com/APIDevTools/swagger-methods",
+            "publisher": "James Messinger",
+            "url": "https://jamesmessinger.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/swagger-methods",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/swagger-methods/LICENSE"
+        },
+        "swagger-parser@5.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/BigstickCarpet/swagger-parser",
+            "publisher": "James Messinger",
+            "url": "http://bigstickcarpet.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/swagger-parser",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/swagger-parser/LICENSE"
+        },
+        "swagger-schema-official@2.0.0-bab6bed": {
+            "licenses": "ISC",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/swagger-schema-official",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/swagger-schema-official/README.md"
+        },
+        "swagger-ui@3.20.1": {
+            "licenses": "Apache-2.0",
+            "repository": "https://github.com/swagger-api/swagger-ui",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/swagger-ui",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/swagger-ui/LICENSE"
+        },
+        "swagger2har@0.1.2": {
+            "licenses": "MIT",
+            "publisher": "Darren Jennings",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/swagger2har",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/swagger2har/README.md"
+        },
+        "symbol-observable@1.2.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/blesh/symbol-observable",
+            "publisher": "Ben Lesh",
+            "email": "ben@benlesh.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/symbol-observable",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/symbol-observable/license"
+        },
+        "terminate@2.1.0": {
+            "licenses": "GPL-2.0",
+            "repository": "https://github.com/dwyl/terminate",
+            "publisher": "@nelsonic",
+            "email": "contact.nelsonic@gmail.com",
+            "url": "https://github.com/nelsonic",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/terminate",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/terminate/README.md"
+        },
+        "through@2.3.8": {
+            "licenses": "MIT",
+            "repository": "https://github.com/dominictarr/through",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "dominictarr.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/through",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/through/LICENSE.APACHE2"
+        },
+        "timers-ext@0.1.7": {
+            "licenses": "ISC",
+            "repository": "https://github.com/medikoo/timers-ext",
+            "publisher": "Mariusz Nowak",
+            "email": "medyk@medikoo.com",
+            "url": "http://www.medikoo.com/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/timers-ext",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/timers-ext/LICENSE"
+        },
+        "tiny-emitter@2.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/scottcorgan/tiny-emitter",
+            "publisher": "Scott Corgan",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/tiny-emitter",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/tiny-emitter/LICENSE"
+        },
+        "to-fast-properties@1.0.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/to-fast-properties",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/to-fast-properties",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/to-fast-properties/license"
+        },
+        "trim-right@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/trim-right",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/trim-right",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/trim-right/license"
+        },
+        "typeof-article@0.1.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/typeof-article",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/typeof-article",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/typeof-article/LICENSE"
+        },
+        "ua-parser-js@0.7.19": {
+            "licenses": "(GPL-2.0 OR MIT)",
+            "repository": "https://github.com/faisalman/ua-parser-js",
+            "publisher": "Faisal Salman",
+            "email": "f@faisalman.com",
+            "url": "http://faisalman.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/ua-parser-js",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/ua-parser-js/license.md"
+        },
+        "uc.micro@1.0.6": {
+            "licenses": "MIT",
+            "repository": "https://github.com/markdown-it/uc.micro",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/uc.micro",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/uc.micro/LICENSE.txt"
+        },
+        "uglify-js@2.8.29": {
+            "licenses": "BSD-2-Clause",
+            "repository": "https://github.com/mishoo/UglifyJS2",
+            "publisher": "Mihai Bazon",
+            "email": "mihai.bazon@gmail.com",
+            "url": "http://lisperator.net/",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/uglify-js",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/uglify-js/LICENSE"
+        },
+        "uglify-to-browserify@1.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/ForbesLindesay/uglify-to-browserify",
+            "publisher": "ForbesLindesay",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/uglify-to-browserify",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/uglify-to-browserify/LICENSE"
+        },
+        "underscore.string@2.4.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/epeli/underscore.string",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/underscore.string",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/underscore.string/README.markdown"
+        },
+        "underscore@1.7.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jashkenas/underscore",
+            "publisher": "Jeremy Ashkenas",
+            "email": "jeremy@documentcloud.org",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/underscore",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/underscore/LICENSE"
+        },
+        "unorm@1.6.0": {
+            "licenses": "MIT*",
+            "repository": "https://github.com/walling/unorm",
+            "publisher": "Bjarke Walling",
+            "email": "bwp@bwp.dk",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/unorm",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/unorm/LICENSE.md"
+        },
+        "url-parse@1.4.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/unshiftio/url-parse",
+            "publisher": "Arnout Kazemier",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/url-parse",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/url-parse/LICENSE"
+        },
+        "url@0.11.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/defunctzombie/node-url",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/url",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/url/LICENSE"
+        },
+        "uslug@1.0.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jeremys/uslug",
+            "publisher": "Jeremy Selier",
+            "email": "jerem.selier@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/uslug",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/uslug/LICENSE"
+        },
+        "utf8-bytes@0.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/substack/utf8-bytes",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/utf8-bytes",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/utf8-bytes/LICENSE"
+        },
+        "utfstring@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/camertron/utfstring",
+            "publisher": "Cameron Dutro",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/utfstring",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/utfstring/LICENSE"
+        },
+        "validator@10.9.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chriso/validator.js",
+            "publisher": "Chris O'Hara",
+            "email": "cohara87@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/validator",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/validator/LICENSE"
+        },
+        "vue-chartjs@2.8.7": {
+            "licenses": "MIT",
+            "repository": "https://github.com/apertureless/vue-chartjs",
+            "publisher": "Jakub Juszczak",
+            "email": "jakub@posteo.de",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/vue-chartjs",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/vue-chartjs/LICENSE.txt"
+        },
+        "vue-markdown@2.2.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/miaolz123/vue-markdown",
+            "publisher": "miaolz123",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/vue-markdown",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/vue-markdown/LICENSE"
+        },
+        "vue@2.5.16": {
+            "licenses": "MIT",
+            "repository": "https://github.com/vuejs/vue",
+            "publisher": "Evan You",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/vue",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/vue/LICENSE"
+        },
+        "whatwg-fetch@2.0.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/github/fetch",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/cross-fetch/node_modules/whatwg-fetch",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/cross-fetch/node_modules/whatwg-fetch/LICENSE"
+        },
+        "whatwg-fetch@3.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/github/fetch",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/whatwg-fetch",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/whatwg-fetch/LICENSE"
+        },
+        "window-size@0.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jonschlinkert/window-size",
+            "publisher": "Jon Schlinkert",
+            "url": "https://github.com/jonschlinkert",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/window-size",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/window-size/LICENSE-MIT"
+        },
+        "wordwrap@0.0.2": {
+            "licenses": "MIT*",
+            "repository": "https://github.com/substack/node-wordwrap",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/cliui/node_modules/wordwrap",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/cliui/node_modules/wordwrap/README.markdown"
+        },
+        "wordwrap@0.0.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/substack/node-wordwrap",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/wordwrap",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/wordwrap/LICENSE"
+        },
+        "xml-but-prettier@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/shockey/xml-but-prettier",
+            "publisher": "Kyle Shockey",
+            "email": "kyleshockey@gmail.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/xml-but-prettier",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/xml-but-prettier/LICENSE"
+        },
+        "xss-filters@1.2.7": {
+            "licenses": "BSD",
+            "repository": "https://github.com/yahoo/xss-filters",
+            "publisher": "Adonis Fung",
+            "email": "adon@yahoo-inc.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/xss-filters",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/xss-filters/LICENSE"
+        },
+        "yaml-js@0.2.3": {
+            "licenses": "WTFPL",
+            "repository": "https://github.com/connec/yaml-js",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/yaml-js",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/yaml-js/README.md"
+        },
+        "yargs@3.10.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/bcoe/yargs",
+            "publisher": "Alex Ford",
+            "email": "Alex.Ford@CodeTunnel.com",
+            "url": "http://CodeTunnel.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/yargs",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/yargs/LICENSE"
+        },
+        "z-schema@3.24.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zaggino/z-schema",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/z-schema",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/z-schema/LICENSE"
+        },
+        "zenscroll@4.0.2": {
+            "licenses": "Unlicense",
+            "repository": "https://github.com/zengabor/zenscroll",
+            "publisher": "Gabor Lenard",
+            "url": "http://www.gaborlenard.com",
+            "path": "/Users/tyler.ball/github/kong-portal/node_modules/zenscroll",
+            "licenseFile": "/Users/tyler.ball/github/kong-portal/node_modules/zenscroll/LICENSE"
+        }
+    },
+    "swagger-ui-kong-theme": {
+        "@braintree/sanitize-url@2.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/braintree/sanitize-url",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/@braintree/sanitize-url",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/@braintree/sanitize-url/LICENSE"
+        },
+        "ajv@6.12.6": {
+            "licenses": "MIT",
+            "repository": "https://github.com/ajv-validator/ajv",
+            "publisher": "Evgeny Poberezkin",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/ajv",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/ajv/LICENSE"
+        },
+        "ansi-regex@2.1.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chalk/ansi-regex",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/ansi-regex",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/ansi-regex/license"
+        },
+        "ansi-styles@2.2.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chalk/ansi-styles",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame/node_modules/ansi-styles",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame/node_modules/ansi-styles/license"
+        },
+        "asap@2.0.6": {
+            "licenses": "MIT",
+            "repository": "https://github.com/kriskowal/asap",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/asap",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/asap/LICENSE.md"
+        },
+        "asynckit@0.4.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/alexindigo/asynckit",
+            "publisher": "Alex Indigo",
+            "email": "iam@alexindigo.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/asynckit",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/asynckit/LICENSE"
+        },
+        "babel-code-frame@6.26.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-code-frame",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame/README.md"
+        },
+        "babel-helper-function-name@6.24.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-helper-function-name",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-helper-function-name",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-helper-function-name/README.md"
+        },
+        "babel-helper-get-function-arity@6.24.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-helper-get-function-arity",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-helper-get-function-arity",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-helper-get-function-arity/README.md"
+        },
+        "babel-messages@6.23.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-messages",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-messages",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-messages/README.md"
+        },
+        "babel-plugin-syntax-class-properties@6.13.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-plugin-syntax-class-properties",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-plugin-syntax-class-properties",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-plugin-syntax-class-properties/README.md"
+        },
+        "babel-plugin-transform-class-properties@6.24.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-plugin-transform-class-properties",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-plugin-transform-class-properties",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-plugin-transform-class-properties/README.md"
+        },
+        "babel-runtime@6.26.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-runtime",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-runtime",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-runtime/README.md"
+        },
+        "babel-template@6.26.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-template",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-template",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-template/README.md"
+        },
+        "babel-traverse@6.26.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-traverse",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-traverse",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-traverse/README.md"
+        },
+        "babel-types@6.26.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babel/tree/master/packages/babel-types",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-types",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-types/README.md"
+        },
+        "babylon@6.18.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/babel/babylon",
+            "publisher": "Sebastian McKenzie",
+            "email": "sebmck@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babylon",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babylon/LICENSE"
+        },
+        "balanced-match@1.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/juliangruber/balanced-match",
+            "publisher": "Julian Gruber",
+            "email": "mail@juliangruber.com",
+            "url": "http://juliangruber.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/balanced-match",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/balanced-match/LICENSE.md"
+        },
+        "brace-expansion@1.1.11": {
+            "licenses": "MIT",
+            "repository": "https://github.com/juliangruber/brace-expansion",
+            "publisher": "Julian Gruber",
+            "email": "mail@juliangruber.com",
+            "url": "http://juliangruber.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/brace-expansion",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/brace-expansion/LICENSE"
+        },
+        "chalk@1.1.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chalk/chalk",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame/node_modules/chalk",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame/node_modules/chalk/license"
+        },
+        "combined-stream@1.0.8": {
+            "licenses": "MIT",
+            "repository": "https://github.com/felixge/node-combined-stream",
+            "publisher": "Felix Geisendörfer",
+            "email": "felix@debuggable.com",
+            "url": "http://debuggable.com/",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/combined-stream",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/combined-stream/License"
+        },
+        "commander@2.20.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/tj/commander.js",
+            "publisher": "TJ Holowaychuk",
+            "email": "tj@vision-media.ca",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/commander",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/commander/LICENSE"
+        },
+        "concat-map@0.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/substack/node-concat-map",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/concat-map",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/concat-map/LICENSE"
+        },
+        "core-js@1.2.7": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zloirock/core-js",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/core-js",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/core-js/LICENSE"
+        },
+        "core-js@2.6.12": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zloirock/core-js",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-runtime/node_modules/core-js",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-runtime/node_modules/core-js/LICENSE"
+        },
+        "create-react-class@15.7.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/react",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/create-react-class",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/create-react-class/LICENSE.txt"
+        },
+        "curl-to-har@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/Leventhan/curl-to-har",
+            "publisher": "Yos Riady",
+            "email": "yosriady@gmail.com",
+            "url": "http://yosriady.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/curl-to-har",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/curl-to-har/LICENSE"
+        },
+        "debug@2.6.9": {
+            "licenses": "MIT",
+            "repository": "https://github.com/visionmedia/debug",
+            "publisher": "TJ Holowaychuk",
+            "email": "tj@vision-media.ca",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/debug",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/debug/LICENSE"
+        },
+        "delayed-stream@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/felixge/node-delayed-stream",
+            "publisher": "Felix Geisendörfer",
+            "email": "felix@debuggable.com",
+            "url": "http://debuggable.com/",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/delayed-stream",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/delayed-stream/License"
+        },
+        "duplexer@0.1.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/Raynos/duplexer",
+            "publisher": "Raynos",
+            "email": "raynos2@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/duplexer",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/duplexer/LICENCE"
+        },
+        "encoding@0.1.13": {
+            "licenses": "MIT",
+            "repository": "https://github.com/andris9/encoding",
+            "publisher": "Andris Reinman",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/encoding",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/encoding/LICENSE"
+        },
+        "escape-string-regexp@1.0.5": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/escape-string-regexp",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/escape-string-regexp",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/escape-string-regexp/license"
+        },
+        "estree-walker@0.2.1": {
+            "licenses": "MIT",
+            "publisher": "Rich Harris",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/estree-walker"
+        },
+        "esutils@2.0.3": {
+            "licenses": "BSD-2-Clause",
+            "repository": "https://github.com/estools/esutils",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/esutils",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/esutils/LICENSE.BSD"
+        },
+        "event-stream@3.3.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/dominictarr/event-stream",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "http://bit.ly/dominictarr",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/event-stream",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/event-stream/LICENCE"
+        },
+        "fast-deep-equal@3.1.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/epoberezkin/fast-deep-equal",
+            "publisher": "Evgeny Poberezkin",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/fast-deep-equal",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/fast-deep-equal/LICENSE"
+        },
+        "fast-json-stable-stringify@2.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/epoberezkin/fast-json-stable-stringify",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/fast-json-stable-stringify",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/fast-json-stable-stringify/LICENSE"
+        },
+        "fbjs@0.8.17": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/fbjs",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/fbjs",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/fbjs/LICENSE"
+        },
+        "form-data@3.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/form-data/form-data",
+            "publisher": "Felix Geisendörfer",
+            "email": "felix@debuggable.com",
+            "url": "http://debuggable.com/",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/form-data",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/form-data/License"
+        },
+        "from@0.1.7": {
+            "licenses": "MIT",
+            "repository": "https://github.com/dominictarr/from",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "dominictarr.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/from",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/from/LICENSE.APACHE2"
+        },
+        "fs-readfile-promise@2.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/shinnn/fs-readfile-promise",
+            "publisher": "Shinnosuke Watanabe",
+            "url": "https://github.com/shinnn",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/fs-readfile-promise",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/fs-readfile-promise/LICENSE"
+        },
+        "fs-writefile-promise@1.0.3": {
+            "licenses": "ISC",
+            "repository": "https://github.com/ahmadnassri/fs-writefile-promise",
+            "publisher": "Ahmad Nassri",
+            "email": "ahmad@ahmadnassri.com",
+            "url": "https://www.ahmadnassri.com/",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/fs-writefile-promise",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/fs-writefile-promise/LICENSE"
+        },
+        "get-own-enumerable-property-symbols@3.0.2": {
+            "licenses": "ISC",
+            "repository": "https://github.com/mightyiam/get-own-enumerable-property-symbols",
+            "publisher": "Shahar Or",
+            "email": "mightyiampresence@gmail.com",
+            "url": "mightyiam",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/get-own-enumerable-property-symbols",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/get-own-enumerable-property-symbols/LICENSE"
+        },
+        "globals@9.18.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/globals",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "http://sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-traverse/node_modules/globals",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-traverse/node_modules/globals/license"
+        },
+        "graceful-fs@4.2.8": {
+            "licenses": "ISC",
+            "repository": "https://github.com/isaacs/node-graceful-fs",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/graceful-fs",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/graceful-fs/LICENSE"
+        },
+        "har-schema@2.0.0": {
+            "licenses": "ISC",
+            "repository": "https://github.com/ahmadnassri/har-schema",
+            "publisher": "Ahmad Nassri",
+            "email": "ahmad@ahmadnassri.com",
+            "url": "https://www.ahmadnassri.com/",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/har-schema",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/har-schema/LICENSE"
+        },
+        "har-validator@5.1.5": {
+            "licenses": "MIT",
+            "repository": "https://github.com/ahmadnassri/node-har-validator",
+            "publisher": "Ahmad Nassri",
+            "email": "ahmad@ahmadnassri.com",
+            "url": "https://www.ahmadnassri.com/",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/har-validator",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/har-validator/LICENSE"
+        },
+        "has-ansi@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/has-ansi",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/has-ansi",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/has-ansi/license"
+        },
+        "httpsnippet@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/Mashape/httpsnippet",
+            "publisher": "Ahmad Nassri",
+            "email": "ahmad@mashape.com",
+            "url": "https://www.mashape.com/",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/httpsnippet",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/httpsnippet/LICENSE"
+        },
+        "iconv-lite@0.6.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/ashtuchkin/iconv-lite",
+            "publisher": "Alexander Shtuchkin",
+            "email": "ashtuchkin@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/iconv-lite",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/iconv-lite/LICENSE"
+        },
+        "invariant@2.2.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zertosh/invariant",
+            "publisher": "Andres Suarez",
+            "email": "zertosh@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/invariant",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/invariant/LICENSE"
+        },
+        "is-obj@1.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/is-obj",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/is-obj",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/is-obj/license"
+        },
+        "is-regexp@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/is-regexp",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "http://sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/is-regexp",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/is-regexp/readme.md"
+        },
+        "is-stream@1.1.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/is-stream",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/is-stream",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/is-stream/license"
+        },
+        "isomorphic-fetch@2.2.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/matthew-andrews/isomorphic-fetch",
+            "publisher": "Matt Andrews",
+            "email": "matt@mattandre.ws",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/isomorphic-fetch",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/isomorphic-fetch/LICENSE"
+        },
+        "js-tokens@3.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lydell/js-tokens",
+            "publisher": "Simon Lydell",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame/node_modules/js-tokens",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame/node_modules/js-tokens/LICENSE"
+        },
+        "js-tokens@4.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lydell/js-tokens",
+            "publisher": "Simon Lydell",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/js-tokens",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/js-tokens/LICENSE"
+        },
+        "json-schema-instantiator@0.4.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/tomarad/JSON-Schema-Instantiator",
+            "publisher": "Tom Arad",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/json-schema-instantiator",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/json-schema-instantiator/LICENSE.md"
+        },
+        "json-schema-traverse@0.4.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/epoberezkin/json-schema-traverse",
+            "publisher": "Evgeny Poberezkin",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/json-schema-traverse",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/json-schema-traverse/LICENSE"
+        },
+        "lodash@4.17.21": {
+            "licenses": "MIT",
+            "repository": "https://github.com/lodash/lodash",
+            "publisher": "John-David Dalton",
+            "email": "john.david.dalton@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/lodash",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/lodash/LICENSE"
+        },
+        "loose-envify@1.4.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zertosh/loose-envify",
+            "publisher": "Andres Suarez",
+            "email": "zertosh@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/loose-envify",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/loose-envify/LICENSE"
+        },
+        "map-stream@0.1.0": {
+            "licenses": "Custom: https://github.com/dominictarr/event-stream",
+            "repository": "https://github.com/dominictarr/map-stream",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "http://dominictarr.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/map-stream",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/map-stream/LICENCE"
+        },
+        "mime-db@1.49.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jshttp/mime-db",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/mime-db",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/mime-db/LICENSE"
+        },
+        "mime-types@2.1.32": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jshttp/mime-types",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/mime-types",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/mime-types/LICENSE"
+        },
+        "minimatch@3.0.4": {
+            "licenses": "ISC",
+            "repository": "https://github.com/isaacs/minimatch",
+            "publisher": "Isaac Z. Schlueter",
+            "email": "i@izs.me",
+            "url": "http://blog.izs.me",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/minimatch",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/minimatch/LICENSE"
+        },
+        "minimist@1.2.5": {
+            "licenses": "MIT",
+            "repository": "https://github.com/substack/minimist",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/minimist",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/minimist/LICENSE"
+        },
+        "mkdirp-promise@1.1.0": {
+            "licenses": "ISC",
+            "repository": "https://github.com/ahmadnassri/mkdirp-promise",
+            "publisher": "Ahmad Nassri",
+            "email": "ahmad@ahmadnassri.com",
+            "url": "https://www.ahmadnassri.com/",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/mkdirp-promise",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/mkdirp-promise/LICENSE"
+        },
+        "mkdirp@0.5.5": {
+            "licenses": "MIT",
+            "repository": "https://github.com/substack/node-mkdirp",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/mkdirp",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/mkdirp/LICENSE"
+        },
+        "ms@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/zeit/ms",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/ms",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/ms/license.md"
+        },
+        "node-fetch@1.7.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/bitinn/node-fetch",
+            "publisher": "David Frank",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/node-fetch",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/node-fetch/LICENSE.md"
+        },
+        "object-assign@4.1.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/object-assign",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/object-assign",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/object-assign/license"
+        },
+        "pause-stream@0.0.11": {
+            "licenses": [
+                "MIT",
+                "Apache2"
+            ],
+            "repository": "https://github.com/dominictarr/pause-stream",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "dominictarr.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/pause-stream",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/pause-stream/LICENSE"
+        },
+        "pinkie-promise@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/floatdrop/pinkie-promise",
+            "publisher": "Vsevolod Strukchinsky",
+            "email": "floatdrop@gmail.com",
+            "url": "github.com/floatdrop",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/pinkie-promise",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/pinkie-promise/license"
+        },
+        "pinkie@1.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/floatdrop/pinkie",
+            "publisher": "Vsevolod Strukchinsky",
+            "email": "floatdrop@gmail.com",
+            "url": "github.com/floatdrop",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/pinkie",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/pinkie/license"
+        },
+        "prismjs@1.24.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/PrismJS/prism",
+            "publisher": "Lea Verou",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/prismjs",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/prismjs/LICENSE"
+        },
+        "promise@7.3.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/then/promise",
+            "publisher": "ForbesLindesay",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/promise",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/promise/LICENSE"
+        },
+        "prop-types@15.7.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/prop-types",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/prop-types",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/prop-types/LICENSE"
+        },
+        "punycode@2.1.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/bestiejs/punycode.js",
+            "publisher": "Mathias Bynens",
+            "url": "https://mathiasbynens.be/",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/uri-js/node_modules/punycode",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/uri-js/node_modules/punycode/LICENSE-MIT.txt"
+        },
+        "react-apiembed@0.1.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/kong/react-apiembed",
+            "publisher": "Darren Jennings",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/react-apiembed",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/react-apiembed/README.md"
+        },
+        "react-dom@15.6.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/react",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/react-dom",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/react-dom/LICENSE"
+        },
+        "react-is@16.13.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/react",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/react-is",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/react-is/LICENSE"
+        },
+        "react@15.6.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/react",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/react",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/react/LICENSE"
+        },
+        "regenerator-runtime@0.11.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/facebook/regenerator/tree/master/packages/regenerator-runtime",
+            "publisher": "Ben Newman",
+            "email": "bn@cs.stanford.edu",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/regenerator-runtime",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/regenerator-runtime/README.md"
+        },
+        "rollup-plugin-babel@3.0.7": {
+            "licenses": "MIT",
+            "repository": "https://github.com/rollup/rollup-plugin-babel",
+            "publisher": "Rich Harris",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/rollup-plugin-babel",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/rollup-plugin-babel/LICENSE.md"
+        },
+        "rollup-pluginutils@1.5.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/rollup/rollup-pluginutils",
+            "publisher": "Rich Harris",
+            "email": "richard.a.harris@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/rollup-pluginutils",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/rollup-pluginutils/README.md"
+        },
+        "safer-buffer@2.1.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/ChALkeR/safer-buffer",
+            "publisher": "Nikita Skovoroda",
+            "email": "chalkerx@gmail.com",
+            "url": "https://github.com/ChALkeR",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/safer-buffer",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/safer-buffer/LICENSE"
+        },
+        "setimmediate@1.0.5": {
+            "licenses": "MIT",
+            "repository": "https://github.com/YuzuJS/setImmediate",
+            "publisher": "YuzuJS",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/setimmediate",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/setimmediate/LICENSE.txt"
+        },
+        "shell-quote@1.7.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/substack/node-shell-quote",
+            "publisher": "James Halliday",
+            "email": "mail@substack.net",
+            "url": "http://substack.net",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/shell-quote",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/shell-quote/LICENSE"
+        },
+        "split@0.3.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/dominictarr/split",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "http://bit.ly/dominictarr",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/split",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/split/LICENCE"
+        },
+        "sprintf-js@1.1.2": {
+            "licenses": "BSD-3-Clause",
+            "repository": "https://github.com/alexei/sprintf.js",
+            "publisher": "Alexandru Mărășteanu",
+            "email": "hello@alexei.ro",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/sprintf-js",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/sprintf-js/LICENSE"
+        },
+        "stream-combiner@0.0.4": {
+            "licenses": "MIT",
+            "repository": "https://github.com/dominictarr/stream-combiner",
+            "publisher": "'Dominic Tarr'",
+            "email": "dominic.tarr@gmail.com",
+            "url": "http://dominictarr.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/stream-combiner",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/stream-combiner/LICENSE"
+        },
+        "stringify-object@3.3.0": {
+            "licenses": "BSD-2-Clause",
+            "repository": "https://github.com/yeoman/stringify-object",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/stringify-object",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/stringify-object/LICENSE"
+        },
+        "strip-ansi@3.0.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chalk/strip-ansi",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame/node_modules/strip-ansi",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame/node_modules/strip-ansi/license"
+        },
+        "supports-color@2.0.0": {
+            "licenses": "MIT",
+            "repository": "https://github.com/chalk/supports-color",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame/node_modules/supports-color",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-code-frame/node_modules/supports-color/license"
+        },
+        "swagger-ui-kong-theme@1.1.6": {
+            "licenses": "Apache-2.0",
+            "repository": "https://github.com/Kong/kong-portal-cli",
+            "publisher": "Henri Pietila @henripro",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/LICENSE"
+        },
+        "swagger2har@0.1.2": {
+            "licenses": "MIT",
+            "publisher": "Darren Jennings",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/swagger2har",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/swagger2har/README.md"
+        },
+        "through@2.3.8": {
+            "licenses": "MIT",
+            "repository": "https://github.com/dominictarr/through",
+            "publisher": "Dominic Tarr",
+            "email": "dominic.tarr@gmail.com",
+            "url": "dominictarr.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/through",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/through/LICENSE.APACHE2"
+        },
+        "to-fast-properties@1.0.3": {
+            "licenses": "MIT",
+            "repository": "https://github.com/sindresorhus/to-fast-properties",
+            "publisher": "Sindre Sorhus",
+            "email": "sindresorhus@gmail.com",
+            "url": "sindresorhus.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-types/node_modules/to-fast-properties",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/babel-types/node_modules/to-fast-properties/license"
+        },
+        "ua-parser-js@0.7.28": {
+            "licenses": "MIT",
+            "repository": "https://github.com/faisalman/ua-parser-js",
+            "publisher": "Faisal Salman",
+            "email": "f@faisalman.com",
+            "url": "http://faisalman.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/ua-parser-js",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/ua-parser-js/license.md"
+        },
+        "underscore.string@3.3.5": {
+            "licenses": "MIT",
+            "repository": "https://github.com/epeli/underscore.string",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/underscore.string",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/underscore.string/README.markdown"
+        },
+        "underscore@1.13.1": {
+            "licenses": "MIT",
+            "repository": "https://github.com/jashkenas/underscore",
+            "publisher": "Jeremy Ashkenas",
+            "email": "jeremy@documentcloud.org",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/underscore",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/underscore/LICENSE"
+        },
+        "uri-js@4.4.1": {
+            "licenses": "BSD-2-Clause",
+            "repository": "https://github.com/garycourt/uri-js",
+            "publisher": "Gary Court",
+            "email": "gary.court@gmail.com",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/uri-js",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/uri-js/LICENSE"
+        },
+        "util-deprecate@1.0.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/TooTallNate/util-deprecate",
+            "publisher": "Nathan Rajlich",
+            "email": "nathan@tootallnate.net",
+            "url": "http://n8.io/",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/util-deprecate",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/util-deprecate/LICENSE"
+        },
+        "whatwg-fetch@3.6.2": {
+            "licenses": "MIT",
+            "repository": "https://github.com/github/fetch",
+            "path": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/whatwg-fetch",
+            "licenseFile": "/Users/tyler.ball/github/swagger-ui-kong-theme/node_modules/whatwg-fetch/LICENSE"
+        }
+    }
+}

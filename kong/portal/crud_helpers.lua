@@ -13,8 +13,12 @@ local utils       = require "kong.tools.utils"
 local endpoints   = require "kong.api.endpoints"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local files       = require "kong.portal.migrations.01_initial_files"
-local constants    = require "kong.constants"
+local constants   = require "kong.constants"
 local workspace_config = require "kong.portal.workspace_config"
+local arguments   = require "kong.api.arguments"
+local permissions = require "kong.portal.permissions"
+local file_helpers = require "kong.portal.file_helpers"
+local app_auth_strategies = require "kong.portal.app_auth_strategies"
 
 
 local kong = kong
@@ -248,6 +252,32 @@ end
 
 function _M.get_credentials(self, db, helpers, opts)
   local credentials = setmetatable({}, cjson.empty_array_mt)
+  local search_fields = {}
+
+  local client_id_filter = self.req.params_get.client_id
+  if client_id_filter then
+    search_fields.client_id = { value = client_id_filter, field = { type = "string" }}
+  end
+
+  local username_filter = self.req.params_get.username
+  if username_filter then
+    search_fields.username = { value = username_filter, field = { type = "string" }}
+  end
+
+  local key_filter = self.req.params_get.key
+  if key_filter then
+    search_fields.key = { value = key_filter, field = { type = "string" }}
+  end
+
+  local matches_search_fields = function(row)
+    for k, search in pairs(search_fields) do
+      if row[k] and not _M.contains_substring(row[k], search.value) then
+        return false
+      end
+    end
+    return true
+  end
+
   local login_credentials, err = find_login_credentials(db, self.consumer.id)
   if err then
     return endpoints.handle_error(err)
@@ -258,7 +288,7 @@ function _M.get_credentials(self, db, helpers, opts)
       return endpoints.handle_error(err)
     end
 
-    if not is_login_credential(login_credentials, row) then
+    if not is_login_credential(login_credentials, row) and matches_search_fields(row) then
       credentials[#credentials + 1] = row
     end
   end
@@ -742,6 +772,282 @@ function _M.exit_if_external_oauth2()
   if kong.configuration.portal_app_auth == "external-oauth2" then
     return kong.response.exit(404, { message = "Not Found" })
   end
+end
+
+function _M.get_application_services(self, db, helpers)
+  local name_filter = self.req.params_get.name
+  local app_id = self.req.params_get.app_id
+  local status_filter = self.req.params_get.status
+
+  local application_services = setmetatable({}, cjson.empty_array_mt)
+  local application
+  local app_instances
+
+  local matches_plugin_filters = function(row)
+    if name_filter and not _M.contains_substring(row.config.display_name, name_filter) then
+      return false
+    end
+
+    return true
+  end
+
+  local matches_instance_filters = function(instance)
+    if status_filter == nil then return true end
+
+    local status = tonumber(status_filter)
+
+    if status == nil then
+      return false
+    elseif status == -1 then
+      return instance == nil
+    elseif instance then
+      return instance.status == status
+    end
+
+    return false
+  end
+
+  -- If query params contain an app_id, join with any
+  -- application_instances for each application_service.
+  -- In this case, also filter the joined instances by
+  -- their status if specified
+  if app_id then
+    local app, _, err_t = db.applications:select({ id = app_id })
+    if err_t or not app or app.developer.id ~= self.developer.id then
+      return kong.response.exit(404, { message = "Application not found" })
+    end
+
+    application = app
+  end
+
+  local app_reg_plugins = {}
+  for plugin, err in db.plugins:each() do
+    if err then
+      return kong.response.exit(500, { message = "An unexpected error occurred" })
+    end
+
+    if plugin.name == "application-registration" and matches_plugin_filters(plugin) then
+      table.insert(app_reg_plugins, plugin)
+    end
+  end
+
+  -- get all instances for the given application
+  if application then
+    app_instances = {}
+    for instance, err in db.application_instances:each_for_application({ id = application.id }) do
+      if err then
+        return endpoints.handle_error(err)
+      end
+
+      if instance then
+        app_instances[instance.service.id] = instance
+      end
+    end
+  end
+
+  local app_auth_type = kong.configuration.portal_app_auth
+  local app_auth_strategy = app_auth_strategies[app_auth_type]
+  local auth_config
+  for i, v in ipairs(app_reg_plugins) do
+    local service, _, err_t = db.services:select(v.service)
+    if err_t then
+      return endpoints.handle_error(err_t)
+    end
+
+    local instance = app_instances and app_instances[service.id]
+    if not matches_instance_filters(instance) then
+      goto continue
+    end
+
+    auth_config = app_auth_strategy.build_service_auth_config(service, v)
+
+    local document_object
+    for row, err in db.document_objects:each_for_service({ id = v.service.id }) do
+      if err then
+        return endpoints.handle_error(err)
+      end
+
+      document_object = row
+    end
+
+    local route
+
+    if document_object then
+      local file = db.files:select_by_path(document_object.path)
+      if file then
+        local file_meta = file_helpers.parse_content(file)
+        if file_meta then
+          local headmatter = file_meta.headmatter or {}
+          local readable_by = headmatter.readable_by
+          if type(readable_by) == "table" and #readable_by > 0 then
+            local ws = workspaces.get_workspace()
+            if not permissions.can_read(self.developer, ws.name, document_object.path) then
+              goto continue
+            end
+          end
+
+          route = file_meta.route
+        end
+      end
+    end
+
+    local application_service = {
+      id = service.id,
+      name = v.config.display_name,
+      document_route = route,
+      app_registration_config = v.config,
+      auth_plugin_config = auth_config,
+    }
+
+    if instance then
+      application_service.instance = instance
+    end
+
+    table.insert(application_services, application_service)
+
+    ::continue::
+  end
+
+  local res, _, err_t = _M.paginate(self, application_services)
+  if not res then
+    return endpoints.handle_error(err_t)
+  end
+
+  return kong.response.exit(200, res)
+end
+
+function _M.get_applications(self, db, helpers, include_instances)
+  local post_process_actions = include_instances and function (row)
+    if include_instances then
+      row.application_instances = setmetatable({}, cjson.empty_array_mt)
+      for instance, err in db.application_instances:each_for_application({ id = row.id }) do
+        if err then
+          return endpoints.handle_error(err)
+        end
+
+        if instance then
+          table.insert(row.application_instances, instance)
+        end
+      end
+    end
+    return row
+  end or nil
+
+  local endpoint = _M.page_by_foreign_key_endpoint(
+    db.applications.schema,
+    db.developers.schema,
+    "developer"
+  )
+
+  return endpoint(self, db, helpers, self.developer.id, post_process_actions)
+end
+
+function _M.page_by_foreign_key_endpoint(schema, foreign_schema, foreign_field_name)
+  return function (self, db, helpers, foreign_key, post_process)
+    local rows = setmetatable({}, cjson.empty_array_mt)
+    local search_fields = _M.get_search_fields(self.req, schema)
+
+    local dao = db[schema.name]
+
+    self.params[foreign_schema.name] =  { id = foreign_key }
+
+    for row, err in dao["each_for_" .. foreign_field_name](dao, { id = self.developer.id }) do
+      if err then
+        return endpoints.handle_error(err)
+      end
+      if _M.row_matches_search_fields(row, search_fields) then
+        local p_row = type(post_process) == "function" and post_process(row) or row
+        table.insert(rows, p_row)
+      end
+    end
+
+    local res, _, err_t = _M.paginate(self, rows)
+    if not res then
+      return endpoints.handle_error(err_t)
+    end
+    return kong.response.exit(200, res)
+  end
+end
+
+function _M.get_search_fields(req, schema)
+  local args = arguments.load({
+    schema  = schema,
+    request = req,
+  })
+
+  local search_fields = {}
+  for k, v in pairs(args.uri) do
+    if type(k) ~= "string" then
+      goto continue
+    end
+
+    v = type(v) == "table" and v[1] or v
+
+    -- date range params will come in as, e.g., created_at_from / created_at_to
+    for _, suffix in ipairs({"_from", "_to"}) do
+      if string.sub(k, #k - #suffix + 1, #k) == suffix then
+        local field_name = string.sub(k, 1, #k - #suffix)
+        local field = schema.fields[field_name]
+        if field and field.type and field.type == "integer" and field.timestamp then
+          search_fields[k] = { field = field, value = v, suffix = suffix, name = field_name }
+          goto continue
+        end
+      end
+    end
+
+    local field = schema.fields[k]
+    if field and field.type then
+        search_fields[k] = { field = field, value = v }
+    end
+
+    ::continue::
+  end
+
+  return search_fields
+end
+
+function _M.contains_substring(target, value)
+  if type(target) ~= "string" or type(value) ~= "string" then
+    return false
+  end
+
+  return not not string.find(
+    string.lower(target),
+    string.lower(value),
+    1, true
+  )
+end
+
+function _M.row_matches_search_fields(row, search_fields)
+  if not search_fields then
+    return true
+  end
+
+  -- simulates ANDing all the filters together (if 1 fails they all fail)
+  for k, search in pairs(search_fields) do
+    if search.field.type == "string" or search.field.type == "foreign" then
+      if not _M.contains_substring(row[k], search.value) then
+        return false
+      end
+    elseif search.field.type == 'integer' and
+      search.field.timestamp and search.suffix and search.name then
+
+      local valid = string.find(search.value, "^%d%d%d%d%-%d%d%-%d%d$")
+      if not valid then
+        return false
+      end
+
+      local row_date = os.date("!%Y-%m-%d", row[search.name])
+
+      if search.suffix == "_from" and row_date < search.value then
+        return false
+      elseif search.suffix == "_to" and row_date > search.value then
+        return false
+      end
+    end
+  end
+
+  return true
 end
 
 

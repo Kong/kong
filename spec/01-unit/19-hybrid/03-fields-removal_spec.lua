@@ -79,6 +79,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -107,6 +108,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -183,6 +185,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -211,6 +214,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -287,6 +291,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -315,6 +320,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -384,6 +390,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -412,6 +419,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -477,6 +485,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -505,6 +514,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -567,6 +577,7 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "hash_header",
+        "canary_by_header_name",
       },
       kafka_log = {
         "authentication",
@@ -595,6 +606,7 @@ describe("kong.clustering.control_plane", function()
         "userinfo_query_args_names",
         "userinfo_query_args_values",
         "session_redis_username",
+        "resolve_distributed_claims",
         auth_methods = {
           "userinfo",
         },
@@ -644,6 +656,9 @@ describe("kong.clustering.control_plane", function()
       acme = {
         "rsa_key_size",
       },
+      canary = {
+        "canary_by_header_name",
+      },
       forward_proxy = {
         "auth_username",
         "auth_password"
@@ -674,6 +689,7 @@ describe("kong.clustering.control_plane", function()
       },
       openid_connect = {
         "session_redis_username",
+        "resolve_distributed_claims",
       },
     }, cp._get_removed_fields(2006000000))
 
@@ -681,8 +697,12 @@ describe("kong.clustering.control_plane", function()
       acme = {
         "rsa_key_size",
       },
+      canary = {
+        "canary_by_header_name",
+      },
       openid_connect = {
         "session_redis_username",
+        "resolve_distributed_claims",
       },
     }, cp._get_removed_fields(2007000000))
 

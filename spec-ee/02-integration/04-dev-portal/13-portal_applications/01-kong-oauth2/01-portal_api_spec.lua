@@ -124,6 +124,10 @@ local function close_clients(portal_api_client)
   end
 end
 
+local function timestamp_to_date(ts)
+    return os.date("!%Y-%m-%d", ts)
+end
+
 local rbac_mode = {"off", "on"}
 
 for _, strategy in helpers.each_strategy() do
@@ -181,7 +185,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         describe("GET", function()
-          local devs = { "dale", "bob" }
+          local devs = { "dale", "bob", "ted" }
 
           lazy_setup(function()
             portal_api_client = assert(ee_helpers.portal_api_client())
@@ -200,25 +204,73 @@ for _, strategy in helpers.each_strategy() do
                 ["Authorization"] = "Basic " .. ngx.encode_base64(dev .. "@konghq.com:kong"),
               }, true)
 
-              for i = 1, 10, 1 do
-                res = assert(portal_api_client:send {
-                  method = "POST",
-                  path = "/applications",
-                  body = {
-                    name = dev .. "s_app_" .. i,
-                    redirect_uri = "http://dog.com",
-                    description = i % 2 == 0 and "something" or nil,
-                  },
-                  headers = {
-                    ["Content-Type"] = "application/json",
-                    ["Cookie"] = cookie
-                  }
-                })
+              if dev ~= "ted" then
+                for i = 1, 10, 1 do
+                  res = assert(portal_api_client:send {
+                    method = "POST",
+                    path = "/applications",
+                    body = {
+                      name = dev .. "s_app_" .. i,
+                      redirect_uri = "http://dog.com",
+                      description = i % 2 == 0 and "something" or nil,
+                    },
+                    headers = {
+                      ["Content-Type"] = "application/json",
+                      ["Cookie"] = cookie
+                    }
+                  })
 
-                assert.res_status(200, res)
+                  assert.res_status(200, res)
+                end
+              else
+                local make_name = function(i)
+                  if i == 3 or i == 8 then return dev .. "s_special_app_" .. i end
+                  return dev .. "s_app_" .. i
+                end
+                
+                local make_description = function(i)
+                  if i % 2 == 1 then return 'odd' end
+                  return 'even'
+                end
+
+                local make_created_at = function(i)
+                  return os.time({
+                    year = 2022, month = i, day = i
+                  })
+                end
+
+                for i = 1, 10, 1 do
+                  res = assert(portal_api_client:send {
+                    method = "POST",
+                    path = "/applications",
+                    body = {
+                      name = make_name(i),
+                      redirect_uri = "http://dog.com",
+                      description = make_description(i)
+                    },
+                    headers = {
+                      ["Content-Type"] = "application/json",
+                      ["Cookie"] = cookie
+                    }
+                  })
+
+                  local body = assert.res_status(200, res)
+                  local application = cjson.decode(body)
+
+                  local created_at = make_created_at(i)
+
+                  local updated = assert(db.applications:update({
+                    id = application.id
+                  }, {
+                      created_at = created_at,
+                  }))
+
+                  assert.equal(created_at, updated.created_at)
+                end
               end
             end
           end)
+
 
           lazy_teardown(function()
             assert(db:truncate('basicauth_credentials'))
@@ -601,6 +653,214 @@ for _, strategy in helpers.each_strategy() do
             local first_name_second_page = resp_body_json.data[1]
 
             verify_order({last_name_first_page, first_name_second_page}, "name", true)
+          end)
+
+          it("filters by id from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("ted@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            local id_param = resp_body_json.data[3].id
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?id=" .. id_param,
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            body = assert.res_status(200, res)
+            resp_body_json = cjson.decode(body)
+
+            assert.equal(1, resp_body_json.total)
+            assert.equal(id_param, resp_body_json.data[1].id)
+          end)
+
+          it("filters by name from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("ted@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?name=app_&sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(10, resp_body_json.total)
+
+            verify_order(resp_body_json.data, "name", false)
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?name=special_app&sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            body = assert.res_status(200, res)
+            resp_body_json = cjson.decode(body)
+
+            assert.equal(2, resp_body_json.total)
+            assert.equal("teds_special_app_3", resp_body_json.data[1].name)
+            assert.equal("teds_special_app_8", resp_body_json.data[2].name)
+          end)
+
+          it("filters by description from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("ted@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?description=odd&sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(5, resp_body_json.total)
+            assert.equal("odd", resp_body_json.data[1].description)
+            assert.equal("odd", resp_body_json.data[2].description)
+            assert.equal("odd", resp_body_json.data[3].description)
+            assert.equal("odd", resp_body_json.data[4].description)
+            assert.equal("odd", resp_body_json.data[5].description)
+
+            verify_order(resp_body_json.data, "name", false)
+          end)
+
+          it("filters by created_at_from from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("ted@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?created_at_from=2022-03-03&sort_by=created_at",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(8, resp_body_json.total)
+            assert.equal("2022-03-03", timestamp_to_date(resp_body_json.data[1].created_at))
+            assert.equal("2022-04-04", timestamp_to_date(resp_body_json.data[2].created_at))
+            assert.equal("2022-05-05", timestamp_to_date(resp_body_json.data[3].created_at))
+            assert.equal("2022-06-06", timestamp_to_date(resp_body_json.data[4].created_at))
+            assert.equal("2022-07-07", timestamp_to_date(resp_body_json.data[5].created_at))
+            assert.equal("2022-08-08", timestamp_to_date(resp_body_json.data[6].created_at))
+            assert.equal("2022-09-09", timestamp_to_date(resp_body_json.data[7].created_at))
+            assert.equal("2022-10-10", timestamp_to_date(resp_body_json.data[8].created_at))
+          end)
+
+          it("filters by created_at_to from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("ted@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?created_at_to=2022-06-06&sort_by=created_at",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(6, resp_body_json.total)
+            assert.equal("2022-01-01", timestamp_to_date(resp_body_json.data[1].created_at))
+            assert.equal("2022-02-02", timestamp_to_date(resp_body_json.data[2].created_at))
+            assert.equal("2022-03-03", timestamp_to_date(resp_body_json.data[3].created_at))
+            assert.equal("2022-04-04", timestamp_to_date(resp_body_json.data[4].created_at))
+            assert.equal("2022-05-05", timestamp_to_date(resp_body_json.data[5].created_at))
+            assert.equal("2022-06-06", timestamp_to_date(resp_body_json.data[6].created_at))
+          end)
+
+          it("filters between created_at_from and created_at_to from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("ted@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications?created_at_from=2022-03-03&created_at_to=2022-06-06&sort_by=created_at",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(4, resp_body_json.total)
+            assert.equal("2022-03-03", timestamp_to_date(resp_body_json.data[1].created_at))
+            assert.equal("2022-04-04", timestamp_to_date(resp_body_json.data[2].created_at))
+            assert.equal("2022-05-05", timestamp_to_date(resp_body_json.data[3].created_at))
+            assert.equal("2022-06-06", timestamp_to_date(resp_body_json.data[4].created_at))
+          end)
+
+          it("filters all rows out when invalid created_at_from or created_at_to from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("ted@konghq.com:kong"),
+            }, true)
+
+            local invalid_dates = { "", "yo", "2022-01-" }
+
+            for _, v in ipairs(invalid_dates) do
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/applications?created_at_from=" .. v .. "&sort_by=created_at",
+                headers = {
+                  ["Cookie"] = cookie
+                }
+              })
+
+              local body = assert.res_status(200, res)
+              local resp_body_json = cjson.decode(body)
+
+              assert.equal(0, resp_body_json.total)
+            end
+
+            for _, v in ipairs(invalid_dates) do
+              local res = assert(portal_api_client:send {
+                method = "GET",
+                path = "/applications?created_at_to=" .. v .. "&sort_by=created_at",
+                headers = {
+                  ["Cookie"] = cookie
+                }
+              })
+
+              local body = assert.res_status(200, res)
+              local resp_body_json = cjson.decode(body)
+
+              assert.equal(0, resp_body_json.total)
+            end
           end)
         end)
 
@@ -1654,6 +1914,42 @@ for _, strategy in helpers.each_strategy() do
 
             verify_order({last_name_first_page, first_name_second_page}, "client_id", true)
           end)
+
+          it("filters by client_id from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials?sort_by=client_id&size=5&sort_desc=true",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(5, resp_body_json.total)
+
+            local client_id_param = resp_body_json.data[4].client_id
+
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/applications/" .. application.id .. "/credentials?size=5&client_id=" .. client_id_param,
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(1, resp_body_json.total)
+            assert.equal(client_id_param, resp_body_json.data[1].client_id)
+          end)
         end)
 
         describe("POST", function()
@@ -2620,6 +2916,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("/application_services", function()
+        local application
+        local application_jim
+
         lazy_setup(function()
           helpers.stop_kong()
           assert(db:truncate())
@@ -2665,6 +2964,34 @@ for _, strategy in helpers.each_strategy() do
           lazy_setup(function()
             portal_api_client = assert(ee_helpers.portal_api_client())
             admin_client = assert(helpers.admin_client())
+
+            local res = register_developer(portal_api_client, {
+              email = "jim@konghq.com",
+              password = "kong",
+              meta = "{\"full_name\":\"1337\"}",
+            })
+
+            assert.res_status(200, res)
+
+            local cookie_jim = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("jim@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/applications",
+              body = {
+                name = "jim's app",
+                redirect_uri = "http://cat.com"
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie_jim
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            application_jim =  assert(cjson.decode(body))
 
             local res = assert(admin_client:send {
               method = "POST",
@@ -2715,6 +3042,22 @@ for _, strategy in helpers.each_strategy() do
               ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
             }, true)
 
+            local res = assert(portal_api_client:send {
+              method = "POST",
+              path = "/applications",
+              body = {
+                name = "myfirstapp",
+                redirect_uri = "http://dog.com"
+              },
+              headers = {
+                ["Content-Type"] = "application/json",
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            application =  assert(cjson.decode(body))
+
             for i=1, 10 do
               local res = assert(admin_client:send {
                 method = "POST",
@@ -2743,14 +3086,61 @@ for _, strategy in helpers.each_strategy() do
                   service = { id = service_id },
                 }))
 
+                local display_name = "" .. i
+                if i == 6 or i == 8 then
+                  display_name = "" .. i .. " : regular"
+                elseif i == 2 or i == 10 then
+                  display_name = "" .. i .. " : irregular"
+                end
+
                 assert(db.plugins:insert({
                   config = {
-                    display_name = "" .. i,
+                    display_name = display_name,
                   },
                   name = "application-registration",
                   service = { id = service_id },
                 }))
 
+                local function make_status(i)
+                  if i == 2 then return 0
+                  elseif i == 8 then return 1
+                  elseif i == 10 then return 3
+                  end
+                  return -1
+                end
+
+                local instance_status = make_status(i)
+
+                if instance_status ~= -1 then
+                  res = assert(portal_api_client:send {
+                    method = "POST",
+                    path = "/applications/" .. application.id .. "/application_instances",
+                    body = {
+                      service = {
+                        id = service_id,
+                      }
+                    },
+                    headers = {
+                      ["Cookie"] = cookie,
+                      ["Content-Type"] = "application/json",
+                    }
+                  })
+
+                  body = assert.res_status(201, res)
+                  local application_instance =  assert(cjson.decode(body))
+
+                  res = assert(admin_client:send {
+                    method = "PATCH",
+                    path = "/applications/" .. application.id .. "/application_instances/" .. application_instance.id,
+                    body = {
+                      status = instance_status
+                    },
+                    headers = {["Content-Type"] = "application/json"},
+                  })
+
+                  assert.res_status(200, res)
+                end
+  
                 local doc_config
 
                 if i == 2 then
@@ -2820,6 +3210,10 @@ for _, strategy in helpers.each_strategy() do
             assert(db:truncate('services'))
           end)
 
+          local function index_from_name(name)
+            return tonumber(string.sub(name, 1, (string.find(name, ":") or #name + 1) - 1))
+          end
+
           it("can GET a list of services with Application Registration applied", function()
             local res = assert(portal_api_client:send {
               method = "GET",
@@ -2836,8 +3230,8 @@ for _, strategy in helpers.each_strategy() do
 
             for i, v in ipairs(resp_body_json.data) do
               assert.equal(v.app_registration_config.display_name, v.name)
-              assert.equal(v.auth_plugin_config.enable_authorization_code, tonumber(v.name) % 4 == 0)
-              assert.equal(v.auth_plugin_config.enable_implicit_grant, tonumber(v.name) % 4 ~= 0)
+              assert.equal(v.auth_plugin_config.enable_authorization_code, index_from_name(v.name) % 4 == 0)
+              assert.equal(v.auth_plugin_config.enable_implicit_grant, index_from_name(v.name) % 4 ~= 0)
             end
           end)
 
@@ -2865,8 +3259,8 @@ for _, strategy in helpers.each_strategy() do
 
             for i, v in ipairs(resp_body_json.data) do
               assert.equal(v.app_registration_config.display_name, v.name)
-              assert.equal(v.auth_plugin_config.enable_authorization_code, tonumber(v.name) % 4 == 0)
-              assert.equal(v.auth_plugin_config.enable_implicit_grant, tonumber(v.name) % 4 ~= 0)
+              assert.equal(v.auth_plugin_config.enable_authorization_code, index_from_name(v.name) % 4 == 0)
+              assert.equal(v.auth_plugin_config.enable_implicit_grant, index_from_name(v.name) % 4 ~= 0)
             end
           end)
 
@@ -3109,6 +3503,195 @@ for _, strategy in helpers.each_strategy() do
             local first_name_second_page = resp_body_json.data[1]
 
             verify_order({last_name_first_page, first_name_second_page}, "name", true)
+          end)
+
+          it("filters by name from query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?name=regular&sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(4, resp_body_json.total)
+            assert.equal("10 : irregular", resp_body_json.data[1].name)
+            assert.equal("2 : irregular", resp_body_json.data[2].name)
+            assert.equal("6 : regular", resp_body_json.data[3].name)
+            assert.equal("8 : regular", resp_body_json.data[4].name)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?name=irreg&sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            body = assert.res_status(200, res)
+            resp_body_json = cjson.decode(body)
+
+            assert.equal(2, resp_body_json.total)
+            assert.equal("10 : irregular", resp_body_json.data[1].name)
+            assert.equal("2 : irregular", resp_body_json.data[2].name)
+          end)
+
+          it("returns 404 if given query param app_id for an app that doesn't belong to developer", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application_jim.id .. "&sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(404, res)
+            local resp_body_json = cjson.decode(body)
+            assert.equal("Application not found", resp_body_json.message)
+          end)
+
+          it("returns 404 if given query param app_id for an app that doesn't exist", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=c7558663-4929-45a1-acd8-fbf6b0c586be&sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(404, res)
+            local resp_body_json = cjson.decode(body)
+            assert.equal("Application not found", resp_body_json.message)
+          end)
+
+          it("returns application_instances if given query param app_id", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(4, resp_body_json.total)
+
+            assert.equal("10 : irregular", resp_body_json.data[1].name)
+            assert(resp_body_json.data[1].instance)
+            assert.equal("2 : irregular", resp_body_json.data[2].name)
+            assert(resp_body_json.data[2].instance)
+            assert.equal("6 : regular", resp_body_json.data[3].name)
+            assert.equal(nil, resp_body_json.data[3].instance)
+            assert.equal("8 : regular", resp_body_json.data[4].name)
+            assert(resp_body_json.data[4].instance)
+          end)
+
+          it("filters by query params status when app_id is present in query params", function()
+            local cookie = authenticate(portal_api_client, {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale@konghq.com:kong"),
+            }, true)
+
+            local res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name&status=-1",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local resp_body_json = cjson.decode(body)
+
+            assert.equal(1, resp_body_json.total)
+
+            assert.equal("6 : regular", resp_body_json.data[1].name)
+            assert.equal(nil, resp_body_json.data[1].instance)
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name&status=0",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            body = assert.res_status(200, res)
+            resp_body_json = cjson.decode(body)
+
+            assert.equal(1, resp_body_json.total)
+
+            assert.equal("2 : irregular", resp_body_json.data[1].name)
+            assert(resp_body_json.data[1].instance)
+            assert.equal(0, resp_body_json.data[1].instance.status)
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name&status=1",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            body = assert.res_status(200, res)
+            resp_body_json = cjson.decode(body)
+
+            assert.equal(1, resp_body_json.total)
+
+            assert.equal("8 : regular", resp_body_json.data[1].name)
+            assert(resp_body_json.data[1].instance)
+            assert.equal(1, resp_body_json.data[1].instance.status)
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name&status=2",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            body = assert.res_status(200, res)
+            resp_body_json = cjson.decode(body)
+
+            assert.equal(0, resp_body_json.total)
+
+            res = assert(portal_api_client:send {
+              method = "GET",
+              path = "/application_services?app_id=" .. application.id .. "&sort_by=name&status=3",
+              headers = {
+                ["Cookie"] = cookie
+              }
+            })
+
+            body = assert.res_status(200, res)
+            resp_body_json = cjson.decode(body)
+
+            assert.equal(1, resp_body_json.total)
+
+            assert.equal("10 : irregular", resp_body_json.data[1].name)
+            assert(resp_body_json.data[1].instance)
+            assert.equal(3, resp_body_json.data[1].instance.status)
+
           end)
 
           it("returns a permissioned service when the developer is assigned the proper role", function()

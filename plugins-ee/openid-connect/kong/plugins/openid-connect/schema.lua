@@ -1768,6 +1768,21 @@ local config = {
               default  = false,
             },
           },
+          -- Not yet implemented
+          -- {
+          --   resolve_aggregated_claims = {
+          --     required = false,
+          --     type     = "boolean",
+          --     default  = false,
+          --   },
+          -- },
+          {
+            resolve_distributed_claims = {
+              required = false,
+              type     = "boolean",
+              default  = false,
+            },
+          },
         },
         shorthands = {
           -- deprecated auth (e.g. password), to be removed in Kong 3.0

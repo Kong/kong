@@ -7,7 +7,8 @@
 
 local kong             = kong
 local utils            = require "kong.tools.utils"
-local counters_service = require"kong.counters"
+local counters_service = require "kong.counters"
+local workspace_counters = require "kong.workspaces.counters"
 
 
 local timer_at   = ngx.timer.at
@@ -22,6 +23,8 @@ local knode  = (kong and kong.node) and kong.node or
 
 local FLUSH_LOCK_KEY = "counters:sales:flush_lock"
 local _log_prefix = "[sales counters] "
+
+local EMPTY = {}
 
 
 local _M = {}
@@ -105,25 +108,13 @@ local function get_workspaces_count()
 end
 
 local function get_workspace_entity_counts()
-  local workspace_entity_counters_count = {
-    rbac_users = 0,
-    services = 0,
-  }
+  local counts, err = workspace_counters.entity_counts()
 
-  for entity, err in kong.db.workspace_entity_counters:each() do
-    if err then
-      log(ngx.WARN, "could not load workspace_entity_counters: ", err)
-      return nil
-    end
-
-    if workspace_entity_counters_count[entity.entity_type] then
-      local current_count = workspace_entity_counters_count[entity.entity_type]
-      workspace_entity_counters_count[entity.entity_type] = current_count + entity.count
-    end
+  if not counts then
+    log(ERR, _log_prefix, "failed to retrieve entity counts: ", err)
   end
 
-
-  return workspace_entity_counters_count
+  return counts or EMPTY
 end
 
 local function merge_counter(counter_data)
@@ -258,7 +249,7 @@ end
 function _M:get_license_report()
   local db = kong.db
   local sys_info = utils.get_system_infos()
-  local workspace_entity_counters_count = get_workspace_entity_counts()
+  local entity_counts = get_workspace_entity_counts()
   local license_data = get_license_data()
 
   local report = {
@@ -273,9 +264,9 @@ function _M:get_license_report()
     license_key = license_data and license_data.license_key or nil,
     -- counters
     counters = get_counters_data(self.strategy),
-    rbac_users = workspace_entity_counters_count.rbac_users,
+    rbac_users = entity_counts.rbac_users,
     workspaces_count = get_workspaces_count(),
-    services_count = workspace_entity_counters_count.services
+    services_count = entity_counts.services,
   }
 
   return report

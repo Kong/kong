@@ -385,16 +385,16 @@ describe("rate-limiting-advanced schema", function()
     assert.same({ "sync_rate cannot be configured when using a local strategy" }, err["@entity"])
   end)
 
-  it("does not accept a local strategy with sync_rate set to -1", function()
-    local ok, err = v({
+  it("accepts a local strategy with sync_rate set to -1", function()
+    local ok, _ = v({
       window_size = { 60 },
       limit = { 10 },
       strategy = "local",
       sync_rate = -1,
     }, rate_limiting_schema)
 
-    assert.is_falsy(ok)
-    assert.same({ "sync_rate cannot be configured when using a local strategy" }, err["@entity"])
+    assert.is_truthy(ok)
+    assert.same(-1, ok.config.sync_rate)
   end)
 
   it("sync_rate is required if not using a local strategy", function()

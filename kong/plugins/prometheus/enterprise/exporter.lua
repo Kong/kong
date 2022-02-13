@@ -7,9 +7,53 @@
 
 local kong = kong
 local sub = string.sub
+local timer_at = ngx.timer.at
 local split = require('kong.tools.utils').split
+local random = math.random
 
+local is_http = ngx.config.subsystem == "http"
 local metrics = {}
+
+
+local function refresh_entity_counts(premature, delay)
+  if premature then
+    return
+  end
+
+  if not metrics.db_entities then
+    return
+  end
+
+  local counters = require "kong.workspaces.counters"
+
+  local counts, err = counters.entity_counts()
+
+  if err then
+    kong.log.err("failed retrieving entity counts: ", err)
+
+    -- clear out existing metrics so that we aren't emitting any potentially
+    -- stale data
+    metrics.db_entities:reset()
+    metrics.db_entity_count_errors:inc()
+
+  elseif counts then
+    local total = 0
+    for _, count in pairs(counts) do
+      total = total + count
+    end
+    metrics.db_entities:set(total)
+  end
+
+  -- apply some jitter at each re-schedule to spread out DB load
+  local next_run = delay + random(10)
+
+  local ok
+  ok, err = timer_at(next_run, refresh_entity_counts, delay)
+  if not ok then
+    metrics.db_entity_count_errors:inc()
+    kong.log.alert("failed to schedule entity count metric refresh: ", err)
+  end
+end
 
 
 local function init(prometheus)
@@ -26,6 +70,25 @@ local function init(prometheus)
                                               { "feature" })
 
   prometheus.dict:set("enterprise_license_errors", 0)
+
+  local role = kong.configuration.role
+  local strategy = kong.configuration.database
+
+  -- Entity counts are "global" and not really specific to any subsystem,
+  -- so without this gate we would just be measuring the same metric twice
+  -- (once in http land, once in stream land).
+  --
+  -- We also don't initialize the entity counter hooks in db-less/data_plane
+  -- mode, so we cannot expose the entity counter metrics in that case.
+  if is_http and role ~= "data_plane" and strategy ~= "off" then
+    metrics.db_entities = prometheus:gauge("db_entities_total",
+                                           "Total number of Kong db entities")
+    metrics.db_entity_count_errors = prometheus:counter(
+      "db_entity_count_errors",
+      "Errors during entity count collection"
+    )
+    prometheus.dict:set("db_entity_count_errors", 0)
+  end
 end
 
 local function license_date_to_unix(yyyy_mm_dd)
@@ -96,8 +159,24 @@ local function metric_data()
                               { "write_admin_api" })
 end
 
+local function init_worker()
+  -- schedule the entity count refresh timer
+  --
+  -- The entity count metric is just a measurement of some db values, so
+  -- there's no reason to execute this recurring task on more than one NGINX
+  -- worker process.
+  if ngx.worker.id() == 0 and metrics.db_entities then
+    -- perform the initial refresh ASAP and once perminute after that
+    local ok, err = timer_at(0, refresh_entity_counts, 60)
+    if not ok then
+      metrics.db_entity_count_errors:inc()
+      kong.log.alert("failed to schedule entity count metric refresh: ", err)
+    end
+  end
+end
 
 return {
   init        = init,
   metric_data = metric_data,
+  init_worker = init_worker,
 }
