@@ -208,8 +208,9 @@ function ForwardProxyHandler:access(conf)
   end
 
   if conf.https_proxy_host then
+    -- lua-resty-http only support `http`
     proxy_opts.https_proxy =
-      str_format("https://%s:%d", conf.https_proxy_host, conf.https_proxy_port)
+      str_format("http://%s:%d", conf.https_proxy_host, conf.https_proxy_port)
   end
 
   local ssl_client_cert, ssl_client_priv_key, err
