@@ -1612,12 +1612,12 @@ describe("Configuration loader", function()
     end)
 
     it("cluster_max_payload < 4Mb rejected", function()
-          local conf, err = conf_loader(nil, {
-            cluster_max_payload = 1048576,
-          })
-          assert.is_nil(conf)
-          assert.equal("cluster_max_payload must be 4194304 (4MB) or greater", err)
-        end)
+      local conf, err = conf_loader(nil, {
+        cluster_max_payload = 1048576,
+      })
+      assert.is_nil(conf)
+      assert.equal("cluster_max_payload must be 4194304 (4MB) or greater", err)
+    end)
   end)
 
   describe("upstream keepalive properties", function()

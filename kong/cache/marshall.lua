@@ -16,6 +16,7 @@ local error = error
 local tostring = tostring
 local fmt = string.format
 local now = ngx.now
+local cjson_encode = cjson.encode
 
 
 local TYPES_LOOKUP = {
@@ -48,7 +49,7 @@ local marshallers = {
   end,
 
   [4] = function(t)      -- table
-      local json, err = cjson.encode(t)
+      local json, err = cjson_encode(t)
       if not json then
           return nil, "could not encode table value: " .. err
       end

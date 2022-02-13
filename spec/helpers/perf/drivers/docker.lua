@@ -19,7 +19,7 @@ function _M.new(opts)
     opts = opts,
     log = perf.new_logger("[docker]"),
     psql_ct_id = nil,
-    kong_ct_id = nil,
+    kong_ct_ids = {},
     worker_ct_id = nil,
   }, mt)
 end
@@ -28,7 +28,7 @@ local function start_container(cid)
   if not cid then
     return false, "container does not exist"
   end
-  
+
   local _, err = perf.execute("docker start " .. cid)
   if err then
     return false, "docker start:" .. err
@@ -74,7 +74,7 @@ end
 
 local function get_container_port(cid, ct_port)
   local out, err = perf.execute(
-    "docker inspect " .. 
+    "docker inspect " ..
     "--format='{{range $p, $conf := .NetworkSettings.Ports}}" ..
                 "{{if eq $p \"" .. ct_port .. "\" }}{{(index $conf 0).HostPort}}{{end}}" ..
               "{{end}}' " .. cid)
@@ -95,11 +95,17 @@ local function get_container_vip(cid)
 end
 
 function _M:teardown()
-  for _, cid in ipairs({"worker_ct_id", "kong_ct_id", "psql_ct_id" }) do
+  local ct_ids = {"worker_ct_id", "psql_ct_id" }
+  for _, cid in ipairs(ct_ids) do
     if self[cid] then
       perf.execute("docker rm -f " .. self[cid], { logger = self.log.log_exec })
       self[cid] = nil
     end
+  end
+
+  for conf_id, kong_ct_id in pairs(self.kong_ct_ids) do
+    perf.execute("docker rm -f " .. kong_ct_id, { logger = self.log.log_exec })
+    self.kong_ct_ids[conf_id] = nil
   end
 
   perf.git_restore()
@@ -151,7 +157,7 @@ function _M:setup()
 
   self.log.info("psql is started to listen at port ", psql_port)
   perf.setenv("KONG_PG_PORT", ""..psql_port)
-  
+
   ngx.sleep(3) -- TODO: less flaky
 
   -- reload the spec.helpers module, since it may have been loaded with
@@ -217,6 +223,7 @@ function _M:start_upstreams(conf, port_count)
   if not ok then
     return false, "worker is not running: " .. err
   end
+  ngx.sleep(3) -- TODO: less flaky
 
   local worker_vip, err = get_container_vip(self.worker_ct_id)
   if err then
@@ -232,81 +239,93 @@ function _M:start_upstreams(conf, port_count)
   return uris
 end
 
-function _M:start_kong(version, kong_conf)
+function _M:_hydrate_kong_configuration(kong_conf, driver_conf)
+  local config = ''
+  for k, v in pairs(kong_conf) do
+    config = string.format("%s -e KONG_%s=%s", config, k:upper(), v)
+  end
+  config = config .. " -e KONG_PROXY_ACCESS_LOG=/dev/null -p 8001 -e KONG_ADMIN_LISTEN=0.0.0.0:8001 "
+
+  -- adds database configuration
+  if kong_conf['database'] == nil then
+    config = config .. " --link " .. self.psql_ct_id .. ":postgres " ..
+    "-e KONG_PG_HOST=postgres " ..
+    "-e KONG_PG_DATABASE=kong_tests "
+  end
+
+  if driver_conf['dns'] ~= nil then
+    for name, address in pairs(driver_conf['dns']) do
+      config = string.format("%s --link %s:%s", config, address, name)
+    end
+  end
+
+  return config
+end
+
+function _M:start_kong(version, kong_conf, driver_conf)
   if not version then
     error("Kong version is not defined", 2)
   end
 
   local use_git
   local image = "kong"
+  local kong_conf_id = driver_conf['container_id'] or 'default'
 
   if version:startswith("git:") then
     perf.git_checkout(version:sub(#("git:")+1))
     use_git = true
-
     version = perf.get_kong_version()
     self.log.debug("current git hash resolves to docker version ", version)
   elseif version:match("rc") or version:match("beta") then
     image = "kong/kong"
   end
 
-  if not self.kong_ct_id then
-    local extra_config = ""
-    for k, v in pairs(kong_conf) do
-      extra_config = string.format("%s -e KONG_%s=%s", extra_config, k:upper(), v)
-    end
-    local cid, err = create_container(self,
-      "-p 8000 -p 8001 " ..
-      "--link " .. self.psql_ct_id .. ":postgres " ..
-      extra_config .. " " ..
-      "-e KONG_PG_HOST=postgres " ..
-      "-e KONG_PROXY_ACCESS_LOG=/dev/null " ..
-      "-e KONG_PG_DATABASE=kong_tests " ..
-      "-e KONG_ADMIN_LISTEN=0.0.0.0:8001 ",
-      image .. ":" .. version)
+  if self.kong_ct_ids[kong_conf_id] == nil then
+    local config = self:_hydrate_kong_configuration(kong_conf, driver_conf)
+    local cid, err = create_container(self, config, image .. ":" .. version)
     if err then
       return false, "error running docker create when creating kong container: " .. err
     end
-    self.kong_ct_id = cid
+    self.kong_ct_ids[kong_conf_id] = cid
+    perf.execute("docker cp ./spec/fixtures/kong_clustering.crt " .. cid .. ":/")
+    perf.execute("docker cp ./spec/fixtures/kong_clustering.key " .. cid .. ":/")
 
     if use_git then
-      perf.execute("docker cp ./kong " .. self.kong_ct_id .. ":/usr/local/share/lua/5.1/")
+      perf.execute("docker cp ./kong " .. cid .. ":/usr/local/share/lua/5.1/")
     end
   end
 
-  self.log.info("kong container ID is ", self.kong_ct_id)
-  local ok, err = start_container(self.kong_ct_id)
+  self.log.info("starting kong container with ID ", self.kong_ct_ids[kong_conf_id])
+  local ok, err = start_container(self.kong_ct_ids[kong_conf_id])
   if not ok then
     return false, "kong is not running: " .. err
   end
 
-  local proxy_port, err = get_container_port(self.kong_ct_id, "8000/tcp")
-  if not proxy_port then
-    return false, "failed to get kong port: " .. (err or "nil")
-  end
-
+  self.log.debug("docker logs -f " .. self.kong_ct_ids[kong_conf_id], " start worker process")
   -- wait
-  if not perf.wait_output("docker logs -f " .. self.kong_ct_id, " start worker process") then
+  if not perf.wait_output("docker logs -f " .. self.kong_ct_ids[kong_conf_id], " start worker process") then
     return false, "timeout waiting kong to start (5s)"
   end
-  
-  self.log.info("kong is started to listen at port ", proxy_port)
-  return true
+
+  return self.kong_ct_ids[kong_conf_id]
 end
 
 function _M:stop_kong()
-  if self.kong_ct_id then
-    return perf.execute("docker stop " .. self.kong_ct_id)
+  for conf_id, kong_ct_id in pairs(self.kong_ct_ids) do
+    if not perf.execute("docker stop " .. kong_ct_id) then
+      return false
+    end
   end
+
+  return true
 end
 
-function _M:get_start_load_cmd(stub, script, uri)
+function _M:get_start_load_cmd(stub, script, uri, kong_id)
   if not uri then
-    if not self.kong_ct_id then
-      return false, "kong container is not created yet"
+    if not kong_id then
+      kong_id = self.kong_ct_ids[next(self.kong_ct_ids)] -- pick the first one
     end
-
-    local kong_vip, err = get_container_vip(self.kong_ct_id)
+    local kong_vip, err = get_container_vip(kong_id)
     if err then
       return false, "unable to read kong container's private IP: " .. err
     end
@@ -345,8 +364,11 @@ function _M:generate_flamegraph()
 end
 
 function _M:save_error_log(path)
-  return perf.execute("docker logs " .. self.kong_ct_id .. " 2>'" .. path .. "'",
-                      { logger = self.log.log_exec })
+  for _, kong_ct_id in pairs(self.kong_ct_ids) do
+    perf.execute("docker logs " .. kong_ct_id .. " 2>'" .. path .. "-" .. kong_ct_id .. "'",
+                 { logger = self.log.log_exec })
+  end
+  return true
 end
 
 return _M

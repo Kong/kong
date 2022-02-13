@@ -18,12 +18,9 @@ local ee_api             = require "kong.enterprise_edition.api_helpers"
 local auth_helpers       = require "kong.enterprise_edition.auth_helpers"
 local secrets            = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local dao_helpers        = require "kong.portal.dao_helpers"
-local permissions        = require "kong.portal.permissions"
-local file_helpers = require "kong.portal.file_helpers"
 local workspace_config = require "kong.portal.workspace_config"
 local kong = kong
 
-local app_auth_strategies = require "kong.portal.app_auth_strategies"
 
 local PORTAL_DEVELOPER_META_FIELDS = constants.WORKSPACE_CONFIG.PORTAL_DEVELOPER_META_FIELDS
 local PORTAL_AUTH = constants.WORKSPACE_CONFIG.PORTAL_AUTH
@@ -806,77 +803,7 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      local application_services = setmetatable({}, cjson.empty_array_mt)
-
-      local rows = {}
-      for row, err in db.plugins:each() do
-        if err then
-          return kong.response.exit(500, { message = "An unexpected error occurred" })
-        end
-
-        if row.name == "application-registration" then
-          table.insert(rows, row)
-        end
-      end
-
-      local app_auth_type = kong.configuration.portal_app_auth
-      local app_auth_strategy = app_auth_strategies[app_auth_type]
-      local auth_config
-      for i, v in ipairs(rows) do
-        local service, _, err_t = db.services:select(v.service)
-        if err_t then
-          return endpoints.handle_error(err_t)
-        end
-
-        auth_config = app_auth_strategy.build_service_auth_config(service, v)
-
-        local document_object
-        for row, err in db.document_objects:each_for_service({ id = v.service.id }) do
-          if err then
-            return endpoints.handle_error(err)
-          end
-
-          document_object = row
-        end
-
-        local route
-
-        if document_object then
-          local file = db.files:select_by_path(document_object.path)
-          if file then
-            local file_meta = file_helpers.parse_content(file)
-            if file_meta then
-              local headmatter = file_meta.headmatter or {}
-              local readable_by = headmatter.readable_by
-              if type(readable_by) == "table" and #readable_by > 0 then
-                local ws = get_workspace()
-                if not permissions.can_read(self.developer, ws.name, document_object.path) then
-                  goto continue
-                end
-              end
-
-              route = file_meta.route
-            end
-          end
-        end
-
-        table.insert(application_services, {
-          id = service.id,
-          name = v.config.display_name,
-          document_route = route,
-          app_registration_config = v.config,
-          auth_plugin_config = auth_config,
-        })
-
-        ::continue::
-      end
-
-      local res, _, err_t = crud_helpers.paginate(self, application_services)
-      if not res then
-        return endpoints.handle_error(err_t)
-      end
-
-      return kong.response.exit(200, res)
+      return crud_helpers.get_application_services(self, db, helpers)
     end,
   },
 
@@ -886,36 +813,9 @@ return {
     end,
 
     GET = function(self, db, helpers)
-      local applications = setmetatable({}, cjson.empty_array_mt)
       local include_instances = self.req.params_get and self.req.params_get.include_instances == "true"
 
-      for application, err in db.applications:each_for_developer({ id = self.developer.id }) do
-        if err then
-          return endpoints.handle_error(err)
-        end
-
-        if include_instances then
-          application.application_instances = setmetatable({}, cjson.empty_array_mt)
-          for instance, err in db.application_instances:each_for_application({ id = application.id }) do
-            if err then
-              return endpoints.handle_error(err)
-            end
-
-            if instance then
-              table.insert(application.application_instances, instance)
-            end
-          end
-        end
-
-        table.insert(applications, application)
-      end
-
-      local res, _, err_t = crud_helpers.paginate(self, applications)
-      if not res then
-        return endpoints.handle_error(err_t)
-      end
-
-      return kong.response.exit(200, res)
+      return crud_helpers.get_applications(self, db, helpers, include_instances)
     end,
 
     POST = function(self, db, helpers)

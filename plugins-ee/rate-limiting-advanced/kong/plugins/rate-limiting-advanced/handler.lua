@@ -96,6 +96,10 @@ local function new_namespace(config, init_timer)
 
     local strategy_opts = strategy == "redis" and config.redis
 
+    if config.strategy == "local" then
+      config.sync_rate = -1
+    end
+
     -- no shm was specified, try the default value specified in the schema
     local dict_name = config.dictionary_name
     if dict_name == nil then

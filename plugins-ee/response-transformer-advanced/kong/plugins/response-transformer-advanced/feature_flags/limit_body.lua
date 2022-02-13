@@ -80,6 +80,12 @@ local function body_filter()
     return false
   end
 
+  -- Initializes context here in case this plugin's access phase
+  -- did not run - and hence `rt_body_chunks` and `rt_body_chunk_number`
+  -- were not initialized
+  ctx.rt_body_chunks = ctx.rt_body_chunks or {}
+  ctx.rt_body_chunk_number = ctx.rt_body_chunk_number or 1
+
   -- if feature_flag is enabled but no content-length is set, we calculate the body size ourself
   if ctx.rt_body_size_consumed ~= nil then
     ctx.rt_body_size_consumed = ngx.ctx.rt_body_size_consumed + #ngx.arg[1]

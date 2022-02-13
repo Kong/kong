@@ -1,3 +1,7 @@
+## Unreleased
+
+- fix(*) allow sync_rate -1 with local strategy [FT-2949](https://konghq.atlassian.net/browse/FTI-2949)
+
 ## 1.6.1
 
 - fix(consumer_groups) provide error message when consumer group is enforced but
