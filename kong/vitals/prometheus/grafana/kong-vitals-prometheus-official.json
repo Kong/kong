@@ -203,7 +203,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(kong_database_reachable)*100/count(kong_database_reachable)",
+          "expr": "sum(kong_datastore_reachable)*100/count(kong_datastore_reachable)",
           "format": "time_series",
           "intervalFactor": 2,
           "refId": "A"
