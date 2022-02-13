@@ -55,7 +55,8 @@ describe("forward-proxy schema", function()
     }, forward_proxy_schema)
 
     assert.is_nil(ok)
-    assert.same("required field missing", err.config.http_proxy_host)
+    assert.same("at least one of these fields must be non-empty: 'http_proxy_host', 'https_proxy_host'", err.config["@entity"][1])
+    assert.same("all or none of these fields must be set: 'http_proxy_host', 'http_proxy_port'", err.config["@entity"][2])
   end)
 
   it("errors with a missing port", function()
@@ -64,7 +65,8 @@ describe("forward-proxy schema", function()
     }, forward_proxy_schema)
 
     assert.is_nil(ok)
-    assert.same("required field missing", err.config.http_proxy_port)
+    assert.same("at least one of these fields must be non-empty: 'http_proxy_port', 'https_proxy_port'", err.config["@entity"][1])
+    assert.same("all or none of these fields must be set: 'http_proxy_host', 'http_proxy_port'", err.config["@entity"][2])
   end)
 
 end)
