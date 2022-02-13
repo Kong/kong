@@ -157,8 +157,8 @@ for _, strategy in strategies() do
         route = { id = route_mtls.id },
         name   = "forward-proxy",
         config = {
-          proxy_host = "127.0.0.1",
-          proxy_port = 16797,
+          https_proxy_host = "127.0.0.1",
+          https_proxy_port = 16797,
         },
       })
 
