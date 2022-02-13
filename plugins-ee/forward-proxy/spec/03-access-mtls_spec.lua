@@ -92,9 +92,9 @@ local fixtures = {
           server_name example.com;
           listen 16798 ssl;
 
-          ssl_certificate        ../spec/fixtures/mtls_certs/example.com.crt;
-          ssl_certificate_key    ../spec/fixtures/mtls_certs/example.com.key;
-          ssl_client_certificate ../spec/fixtures/mtls_certs/ca.crt;
+          ssl_certificate        /kong/spec/fixtures/mtls_certs/example.com.crt;
+          ssl_certificate_key    /kong/spec/fixtures/mtls_certs/example.com.key;
+          ssl_client_certificate /kong/spec/fixtures/mtls_certs/ca.crt;
           ssl_verify_client      on;
           ssl_session_tickets    off;
           ssl_session_cache      off;
@@ -180,7 +180,7 @@ for _, strategy in strategies() do
         proxy_client:close()
       end
 
-      helpers.stop_kong("servroot", true)
+      helpers.stop_kong()
     end)
 
     describe("mTLS authentication against upstream with Service object, via forward-proxy", function()
