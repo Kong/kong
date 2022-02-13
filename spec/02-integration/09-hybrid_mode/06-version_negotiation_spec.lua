@@ -1,6 +1,5 @@
 local ssl = require "ngx.ssl"
 
-local cjson = require "cjson.safe"
 local pl_file = require "pl.file"
 
 local helpers = require "spec.helpers"
@@ -23,8 +22,9 @@ local CLIENT_PRIV_KEY = assert(ssl.parse_pem_priv_key(assert(pl_file.read(CERT_K
 for _, strategy in helpers.each_strategy() do
   describe("[ #" .. strategy .. " backend]", function()
     describe("connect to endpoint", function()
+      local bp, db
       lazy_setup(function()
-        local bp = helpers.get_db_utils(strategy, {
+        bp, db = helpers.get_db_utils(strategy, {
           "routes",
           "services",
           "plugins",
@@ -48,6 +48,10 @@ for _, strategy in helpers.each_strategy() do
           nginx_conf = "spec/fixtures/custom_nginx.template",
           cluster_version_check = "major_minor",
         }))
+      end)
+
+      before_each(function()
+        db:truncate("clustering_data_planes")
       end)
 
       lazy_teardown(function()
@@ -164,20 +168,44 @@ for _, strategy in helpers.each_strategy() do
           client_priv_key = CLIENT_PRIV_KEY,
           server_name = SERVER_NAME,
         }
-        local res = assert(client:post(VNEG_ENDPOINT, {
-          headers = { ["Content-Type"] = "application/json"},
-          body = {
-            node = {
-              id = utils.uuid(),
-              type = "KONG",
-              version = KONG_VERSION,
-              hostname = "localhost",
+        do
+          local node_id = utils.uuid()
+          local res = assert(client:post(VNEG_ENDPOINT, {
+            headers = { ["Content-Type"] = "application/json"},
+            body = {
+              node = {
+                id = node_id,
+                type = "KONG",
+                version = KONG_VERSION,
+                hostname = "localhost",
+              },
+              services_requested = {
+                {
+                  name = "protocol",
+                  versions = { "json" },
+                },
+                {
+                  name = "infundibulum",
+                  versions = { "chronoscolastic", "kitchen" }
+                }
+              },
             },
-            services_requested = {},
-          },
-        }))
+          }))
 
-        assert.res_status(200, res)
+          assert.res_status(200, res)
+          local body = assert.response(res).jsonbody()
+          assert.is_string(body.node.id)
+          assert.same({
+            {
+              name = "protocol",
+              version = "json",
+              message = "current",
+            },
+          }, body.services_accepted)
+          assert.same({
+            { name = "infundibulum", message = "unknown service." },
+          }, body.services_rejected)
+        end
 
         helpers.wait_until(function()
           local admin_client = helpers.admin_client()
@@ -186,14 +214,15 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           local res = assert(admin_client:get("/clustering/data-planes"))
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
+          assert.res_status(200, res)
+          local body = assert.response(res).jsonbody()
 
-          for _, v in pairs(json.data) do
+          for _, v in pairs(body.data) do
             if v.ip == "127.0.0.1" then
               assert.near(14 * 86400, v.ttl, 3)
               assert.matches("^(%d+%.%d+)%.%d+", v.version)
               assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
+              assert.same({ protocol = "json" }, v.services_accepted)
 
               return true
             end
