@@ -45,13 +45,13 @@ return {
           { proxy_host = {
               type = "string",
               func = function(value)
-                return { http_host = value }
+                return { http_proxy_host = value }
               end,
           }, },
           { proxy_port = {
               type = "integer",
               func = function(value)
-                return { http_port = value }
+                return { http_proxy_port = value }
               end,
           }, },
         },
