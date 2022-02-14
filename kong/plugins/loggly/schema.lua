@@ -15,7 +15,7 @@ return {
         fields = {
           { host = typedefs.host({ default = "logs-01.loggly.com" }), },
           { port = typedefs.port({ default = 514 }), },
-          { key = { type = "string", required = true, encrypted = true }, }, -- encrypted = true is a Kong Enterprise Exclusive feature, it does nothing in Kong CE
+          { key = { type = "string", required = true, encrypted = true, referenceable = true }, }, -- encrypted = true is a Kong Enterprise Exclusive feature, it does nothing in Kong CE
           { tags = {
               type = "set",
               default = { "kong" },
