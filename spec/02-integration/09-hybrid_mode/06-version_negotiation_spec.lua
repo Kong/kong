@@ -231,17 +231,40 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("negotiation client", function()
+        -- (re)load client with special set of requested services
+        package.loaded["kong.clustering.version_negotiation.services_requested"] = {
+          {
+            name = "cluster_protocol",
+            versions = { "wrpc", "json" },
+          },
+          {
+            name = "infundibulum",
+            versions = { "chronoscolastic", "kitchen" }
+          },
+        }
+        package.loaded["kong.clustering.version_negotiation"] = nil
+        local version_negotiation = require "kong.clustering.version_negotiation"
+
         local conf = {
           cluster_control_plane = "127.0.0.1:9005",
           cluster_mtls = "shared",
         }
-        local data = assert(require "kong.clustering.version_negotiation".request_version_handshake(conf, CLIENT_CERT, CLIENT_PRIV_KEY))
-        assert.same({ cluster_protocol = "json" }, conf.services_accepted)
-        assert.same({}, conf.services_rejected)
+        local data = assert(version_negotiation.request_version_handshake(conf, CLIENT_CERT, CLIENT_PRIV_KEY))
+        -- returns data in standard form
         assert.same({
-            { name = "cluster_protocol", version = "json", message = "current" },
-          }, data.services_accepted)
-        assert.same({}, data.services_rejected)
+          { name = "cluster_protocol", version = "json", message = "current" },
+        }, data.services_accepted)
+        assert.same({
+          { name = "infundibulum", message = "unknown service." },
+        }, data.services_rejected)
+
+        -- stored node-wise as Lua-style values
+        -- accepted
+        assert.same({ "json", "current" }, { version_negotiation.get_negotiated_service("cluster_protocol") })
+        -- rejected
+        assert.same({ nil, "unknown service." }, { version_negotiation.get_negotiated_service("infundibulum") })
+        -- not even requested
+        assert.same({}, { version_negotiation.get_negotiated_service("thingamajig") })
       end)
 
     end)

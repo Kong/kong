@@ -264,22 +264,47 @@ function _M.request_version_handshake(conf, cert, cert_key)
     return nil, "invalid response"
   end
 
-  local services_accepted = {}
   for _, service in ipairs(response_data.services_accepted) do
     ngx_log(ngx_DEBUG, _log_prefix, "accepted: \"" .. service.name .. "\", version \"" .. service.version .. "\": ".. service.message)
-    services_accepted[service.name] = service.version
+
+    _M.set_negotiated_service(service.name, service.version, service.message)
   end
 
-  local services_rejected = {}
   for _, service in ipairs(response_data.services_rejected) do
     ngx_log(ngx_DEBUG, _log_prefix, "rejectec: \"" .. service.name .. "\": " .. service.message)
-    services_rejected[service.name] = service.message
+    _M.set_negotiated_service(service.name, nil, service.message)
   end
 
-  conf.services_accepted = services_accepted
-  conf.services_rejected = services_rejected
-
   return response_data, nil
+end
+
+
+local kong_shm = ngx.shared.kong
+local SERVICE_KEY_PREFIX = "version_negotiation:service:"
+
+function _M.set_negotiated_service(name, version, message)
+  local ok, err = kong_shm:set(SERVICE_KEY_PREFIX .. name, cjson.encode{
+    version = version,
+    message = message,
+  })
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, string.format("couldn't store negotiated service %q (%q): %s",
+      name, version, err))
+  end
+end
+
+function _M.get_negotiated_service(name)
+  local val, err = kong_shm:get(SERVICE_KEY_PREFIX .. name)
+  if not val then
+    return nil, err
+  end
+
+  val = cjson.decode(val)
+  if not val then
+    return nil, "corrupted dictionary"
+  end
+
+  return val.version, val.message
 end
 
 return _M
