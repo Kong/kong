@@ -52,7 +52,8 @@ return {
             }
           },
 
-          { cluster_name = { type = "string", required = true, auto = true } },
+          -- TODO change cluster_name to required in 3.0
+          { cluster_name = { type = "string", required = false, auto = true } },
 
           { producer_request_acks = { type = "integer", default = 1, one_of = { -1, 0, 1 }, }, },
           { producer_request_timeout = { type = "integer", default = 2000 }, },
