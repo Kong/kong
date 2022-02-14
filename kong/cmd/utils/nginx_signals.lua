@@ -8,11 +8,22 @@ local pl_stringx = require "pl.stringx"
 local fmt = string.format
 
 local nginx_bin_name = "nginx"
-local nginx_search_paths = {
-  "/usr/local/openresty/nginx/sbin",
-  "/opt/openresty/nginx/sbin",
-  ""
-}
+local nginx_search_paths
+do
+  local resty_prefix = os.getenv("KONG_OPENRESTY_PREFIX")
+  if resty_prefix then
+    log.debug("using custom OpenResty prefix: %s", resty_prefix)
+    nginx_search_paths = {
+      pl_path.join(resty_prefix, "nginx", "sbin")
+    }
+  else
+    nginx_search_paths = {
+      "/usr/local/openresty/nginx/sbin",
+      "/opt/openresty/nginx/sbin",
+      ""
+    }
+  end
+end
 local nginx_version_pattern = "^nginx.-openresty.-([%d%.]+)"
 local nginx_compatible = version.set(unpack(meta._DEPENDENCIES.nginx))
 
