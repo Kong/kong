@@ -20,10 +20,12 @@ return {
         { aws_key = {
           type = "string",
           encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
+          referenceable = true,
         } },
         { aws_secret = {
           type = "string",
           encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
+          referenceable = true,
         } },
         { aws_region = typedefs.host },
         { function_name = {
