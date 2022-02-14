@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local kong = kong
-local cert_utils = require "kong.enterprise_edition.kafka.plugins.cert_utils"
+local cert_utils = require "kong.enterprise_edition.cert_utils"
 local producers = require "kong.enterprise_edition.kafka.plugins.producers"
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local cjson_encode = require("cjson").encode

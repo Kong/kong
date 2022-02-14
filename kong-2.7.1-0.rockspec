@@ -104,6 +104,7 @@ build = {
     ["kong.enterprise_edition.audit_log"] = "kong/enterprise_edition/audit_log.lua",
     ["kong.enterprise_edition.auth_helpers"] = "kong/enterprise_edition/auth_helpers.lua",
     ["kong.enterprise_edition.auth_plugin_helpers"] = "kong/enterprise_edition/auth_plugin_helpers.lua",
+    ["kong.enterprise_edition.cert_utils"]  = "kong/enterprise_edition/cert_utils.lua",
     ["kong.enterprise_edition.clustering.data_plane"] = "kong/enterprise_edition/clustering/data_plane.lua",
     ["kong.enterprise_edition.conf_loader"] = "kong/enterprise_edition/conf_loader.lua",
     ["kong.enterprise_edition.constants"] = "kong/enterprise_edition/constants.lua",
@@ -698,7 +699,6 @@ build = {
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
 
-    ["kong.enterprise_edition.kafka.plugins.cert_utils"]  = "kong/enterprise_edition/kafka/plugins/cert_utils.lua",
     ["kong.enterprise_edition.kafka.plugins.producers"]  = "kong/enterprise_edition/kafka/plugins/producers.lua",
   }
 }
