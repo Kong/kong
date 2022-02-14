@@ -49,6 +49,7 @@ return {
               required = false,
               default = random_string(),
               encrypted = true, -- Kong Enterprise Exclusive. This does nothing in Kong CE
+              referenceable = true,
             },
           },
           { cookie_name = { type = "string", default = "session" } },

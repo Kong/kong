@@ -110,7 +110,8 @@ for _, strategy in helpers.each_strategy() do
       local results1 = server1:shutdown()
       local results2 = server2:shutdown()
       local ratio = results1.ok/results2.ok
-      assert.near(2, ratio, 0.8)
+      assert.near(2, ratio, 1)
+      assert.is_not(ratio, 0)
     end)
 
     if strategy ~= "off" then

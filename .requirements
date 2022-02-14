@@ -21,7 +21,7 @@ KONG_BUILD_TOOLS_VERSION=4.25.3
 # here go enterprise build specific ones which might or might not have the
 # same names as core for building the final package.
 
-KONG_NGINX_MODULE_BRANCH=0.1.0
+KONG_NGINX_MODULE_BRANCH=0.2.0
 
 KONG_DISTRIBUTIONS_VERSION=master
 

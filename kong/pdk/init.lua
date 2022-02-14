@@ -222,7 +222,7 @@ local setmetatable = setmetatable
 
 local MAJOR_VERSIONS = {
   [1] = {
-    version = "1.4.0",
+    version = "1.5.0",
     modules = {
       "table",
       "node",
@@ -238,6 +238,7 @@ local MAJOR_VERSIONS = {
       "router",
       "nginx",
       "cluster",
+      "vault",
     },
   },
 
