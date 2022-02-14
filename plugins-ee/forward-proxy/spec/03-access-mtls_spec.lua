@@ -202,6 +202,8 @@ for _, strategy in strategies() do
 
           local body = assert.res_status(400, res)
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
+
+          helpers.wait_until(forward_proxy_log_was_created, 5)
         end)
       end)
 
@@ -228,14 +230,7 @@ for _, strategy in strategies() do
           local body = assert.res_status(200, res)
           assert.equals("it works", body)
 
-          -- Ensure we actually went via the forward-proxy
-          local forward_proxy_log = helpers.test_conf.prefix ..
-                                    "/logs/naive_forward_proxy.log"
-
-          helpers.wait_until(function()
-            return pl_path.exists(forward_proxy_log) and
-                   pl_path.getsize(forward_proxy_log) > 0
-          end, 5)
+          helpers.wait_until(forward_proxy_log_was_created, 5)
         end)
 
         it("remove client_certificate removes access", function()
@@ -257,6 +252,8 @@ for _, strategy in strategies() do
 
           local body = assert.res_status(400, res)
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
+
+          helpers.wait_until(forward_proxy_log_was_created, 5)
         end)
       end)
     end)
