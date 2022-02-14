@@ -29,7 +29,7 @@ local REDIS_STORAGE_SCHEMA = {
   { host = typedefs.host, },
   { port = typedefs.port, },
   { database = { type = "number" }},
-  { auth = { type = "string" }}
+  { auth = { type = "string", referenceable = true, }}
 }
 
 local CONSUL_STORAGE_SCHEMA = {
@@ -38,7 +38,7 @@ local CONSUL_STORAGE_SCHEMA = {
   { port = typedefs.port, },
   { kv_path = { type = "string", }, },
   { timeout = { type = "number", }, },
-  { token = { type = "string", }, },
+  { token = { type = "string", referenceable = true, }, },
 }
 
 local VAULT_STORAGE_SCHEMA = {
@@ -47,7 +47,7 @@ local VAULT_STORAGE_SCHEMA = {
   { port = typedefs.port, },
   { kv_path = { type = "string", }, },
   { timeout = { type = "number", }, },
-  { token = { type = "string", }, },
+  { token = { type = "string", referenceable = true, }, },
   { tls_verify = { type = "boolean", default = true, }, },
   { tls_server_name = { type = "string" }, },
   -- TODO: add default = "token", one_of = { "token", "kubernetes" } in 2.8 or 3.0
@@ -74,6 +74,7 @@ local schema = {
           match = "%w*%p*@+%w*%.?%w*",
           required = true,
           encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
+          referenceable = true,
         }, },
         { api_uri = typedefs.url({ default = "https://acme-v02.api.letsencrypt.org/directory" }),
         },
@@ -84,10 +85,12 @@ local schema = {
         { eab_kid = {
           type = "string",
           encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
+          referenceable = true,
         }, },
         { eab_hmac_key = {
           type = "string",
           encrypted = true, -- Kong Enterprise-exclusive feature, does nothing in Kong CE
+          referenceable = true,
         }, },
         -- Kong doesn't support multiple certificate chains yet
         { cert_type = {

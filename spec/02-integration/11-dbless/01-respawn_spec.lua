@@ -15,6 +15,7 @@ describe("#off worker respawn", function()
   lazy_setup(function()
     assert(helpers.start_kong({
       database   = "off",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 
@@ -151,11 +152,14 @@ describe("#off worker respawn", function()
       method = "POST",
       path = "/config",
       body = {
-        config = [[
+        config = string.format([[
         _format_version: "1.1"
         services:
         - name: my-service
-          url: https://example.com
+          host: %s
+          port: %s
+          path: /
+          protocol: http
           plugins:
           - name: key-auth
           routes:
@@ -167,7 +171,7 @@ describe("#off worker respawn", function()
         - username: my-user
           keyauth_credentials:
           - key: my-key
-        ]],
+        ]], helpers.mock_upstream_host, helpers.mock_upstream_port),
       },
       headers = {
         ["Content-Type"] = "application/json"

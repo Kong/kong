@@ -11,6 +11,7 @@ local upstreams = require "kong.runloop.balancer.upstreams"
 local targets
 local healthcheckers
 local dns_utils = require "kong.resty.dns.utils"
+local constants = require "kong.constants"
 
 local ngx = ngx
 local log = ngx.log
@@ -32,6 +33,7 @@ local DEBUG = ngx.DEBUG
 local TTL_0_RETRY = 60      -- Maximum life-time for hosts added with ttl=0, requery after it expires
 local REQUERY_INTERVAL = 30 -- Interval for requerying failed dns queries
 local SRV_0_WEIGHT = 1      -- SRV record with weight 0 should be hit minimally, hence we replace by 1
+local CLEAR_HEALTH_STATUS_DELAY = constants.CLEAR_HEALTH_STATUS_DELAY
 
 
 local balancers_M = {}
@@ -96,6 +98,7 @@ local function wait(id)
   end
   return nil, "timeout"
 end
+
 
 ------------------------------------------------------------------------------
 -- The mutually-exclusive section used internally by the
@@ -183,7 +186,7 @@ function balancers_M.create_balancer(upstream, recreate)
   local existing_balancer = balancers_by_id[upstream.id]
   if existing_balancer then
     if recreate then
-      healthcheckers.stop_healthchecker(existing_balancer)
+      healthcheckers.stop_healthchecker(existing_balancer, CLEAR_HEALTH_STATUS_DELAY)
     else
       return existing_balancer
     end
@@ -438,10 +441,12 @@ function balancer_mt:deleteDisabledAddresses(target)
     local addr = addresses[i]
 
     if addr.disabled then
-    self:callback("removed", addr, addr.ip, addr.port,
-          target.name, addr.hostHeader)
-    dirty = true
-    table_remove(addresses, i)
+      if type(self.callback) == "function" then
+        self:callback("removed", addr, addr.ip, addr.port,
+                      target.name, addr.hostHeader)
+      end
+      dirty = true
+      table_remove(addresses, i)
     end
   end
 

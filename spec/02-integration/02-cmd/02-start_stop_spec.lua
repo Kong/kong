@@ -25,6 +25,55 @@ describe("kong start/stop #" .. strategy, function()
     helpers.clean_prefix()
   end)
 
+  it("fails with referenced values that are not initialized", function()
+    local ok, stderr, stdout = helpers.kong_exec("start", {
+      prefix = helpers.test_conf.prefix,
+      database = strategy,
+      nginx_proxy_real_ip_header = "{vault://env/ipheader}",
+      pg_database = helpers.test_conf.pg_database,
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace
+    })
+
+    assert.matches("Error: failed to dereference '{vault://env/ipheader}': unable to load value (ipheader) from vault (env): not found [{vault://env/ipheader}] for config option 'nginx_proxy_real_ip_header'", stderr, nil, true)
+    assert.is_nil(stdout)
+    assert.is_false(ok)
+
+    helpers.clean_logfile()
+  end)
+
+  it("fails to read referenced secrets when vault does not exist", function()
+    local ok, stderr, stdout = helpers.kong_exec("start", {
+      prefix = helpers.test_conf.prefix,
+      database = helpers.test_conf.database,
+      pg_password = "{vault://non-existent/pg_password}",
+      pg_database = helpers.test_conf.pg_database,
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace
+    })
+    assert.matches("failed to dereference '{vault://non-existent/pg_password}': could not find vault (non-existent)", stderr, nil, true)
+    assert.is_nil(stdout)
+    assert.is_false(ok)
+
+    helpers.clean_logfile()
+  end)
+
+  it("resolves referenced secrets", function()
+    helpers.setenv("PG_PASSWORD", "dummy")
+    local _, stderr, stdout = assert(helpers.kong_exec("start", {
+      prefix = helpers.test_conf.prefix,
+      database = helpers.test_conf.database,
+      pg_password = "{vault://env/pg_password}",
+      pg_database = helpers.test_conf.pg_database,
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace
+    }))
+    assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
+    assert.matches("Kong started", stdout, nil, true)
+    assert(helpers.kong_exec("stop", {
+      prefix = helpers.test_conf.prefix,
+    }))
+
+    helpers.clean_logfile()
+  end)
+
   it("start help", function()
     local _, stderr = helpers.kong_exec "start --help"
     assert.not_equal("", stderr)

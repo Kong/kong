@@ -9,8 +9,11 @@ local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
 local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
+local vault        = require "kong.pdk.vault".new()
 
 
+local is_reference = vault.is_reference
+local dereference  = vault.get
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local re_match     = ngx.re.match
@@ -33,6 +36,10 @@ local find         = string.find
 local null         = ngx.null
 local max          = math.max
 local sub          = string.sub
+
+
+local random_string = utils.random_string
+local uuid = utils.uuid
 
 
 local Schema       = {}
@@ -965,6 +972,10 @@ function Schema:validate_field(field, value)
       field.len_min = 1
     end
 
+    if field.referenceable and is_reference(value) then
+      return true
+    end
+
   elseif field.type == "function" then
     if type(value) ~= "function" then
       return nil, validation_errors.FUNCTION
@@ -1213,6 +1224,12 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
       end
     else
       all_nil = false
+
+      -- Don't run if any of the values is a reference in a referenceable field
+      local field = get_schema_field(self, fname)
+      if field.type == "string" and field.referenceable and is_reference(value) then
+        return
+      end
     end
     if errors[fname] then
       all_ok = false
@@ -1658,25 +1675,40 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
   local is_select = context == "select"
 
+  -- We don't want to resolve references on control planes
+  -- and and admin api requests, admin api request could be
+  -- detected with ngx.ctx.KONG_PHASE, but to limit context
+  -- access we use nulls that admin api sets to true.
+  local resolve_references
+  if is_select and not nulls then
+    if kong and kong.configuration then
+      resolve_references = kong.configuration.role ~= "control_plane"
+    else
+      resolve_references = true
+    end
+  end
+
   for key, field in self:each_field(data) do
-    if field.legacy and field.uuid and data[key] == "" then
-      data[key] = null
+    local ftype = field.type
+    local value = data[key]
+    if field.legacy and field.uuid and value == "" then
+      value = null
     end
 
     if not is_select and field.auto then
       local is_insert_or_upsert = context == "insert" or context == "upsert"
       if field.uuid then
-        if is_insert_or_upsert and data[key] == nil then
-          data[key] = utils.uuid()
+        if is_insert_or_upsert and value == nil then
+          value = uuid()
         end
 
-      elseif field.type == "string" then
-        if is_insert_or_upsert and data[key] == nil then
-          data[key] = utils.random_string()
+      elseif ftype == "string" then
+        if is_insert_or_upsert and value == nil then
+          value = random_string()
         end
 
-      elseif (key == "created_at" and is_insert_or_upsert and (data[key] == null or
-                                                               data[key] == nil))
+      elseif (key == "created_at" and is_insert_or_upsert and (value == null or
+                                                               value == nil))
       or
              (key == "updated_at" and (is_insert_or_upsert or context == "update") and
               not is_data_plane)
@@ -1684,35 +1716,77 @@ function Schema:process_auto_fields(data, context, nulls, opts)
              (field.timestamp == true and is_insert_or_upsert and (data[key] == null or
                                                                    data[key] == nil))
       then
-        if field.type == "number" then
+        if ftype == "number" then
           if not now_ms then
             update_time()
             now_ms = ngx_now()
           end
-          data[key] = now_ms
+          value = now_ms
 
-        elseif field.type == "integer" then
+        elseif ftype == "integer" then
           if not now_s then
             update_time()
             now_s = ngx_time()
           end
-          data[key] = now_s
+          value = now_s
         end
       end
     end
 
-    data[key] = adjust_field_for_context(field, data[key], context, nulls, opts)
+    value = adjust_field_for_context(field, value, context, nulls, opts)
 
     if is_select then
-      if data[key] == null and not nulls then
-        data[key] = nil
-      elseif field.type == "integer" and type(data[key]) == "number" then
-        data[key] = floor(data[key])
+      local vtype = type(value)
+      if value == null and not nulls then
+        value = nil
+      elseif ftype == "integer" and vtype == "number" then
+        value = floor(value)
+      end
+
+      if resolve_references then
+        if ftype == "string" and field.referenceable then
+          if is_reference(value) then
+            local deref, err = dereference(value)
+            if deref then
+              value = deref
+            else
+              if err then
+                kong.log.warn("unable to resolve reference ", value, "(", err, ")")
+              else
+                kong.log.warn("unable to resolve reference ", value)
+              end
+            end
+          end
+
+        elseif vtype == "table" and (ftype == "array" or ftype == "set") then
+          local subfield = field.elements
+          if subfield.type == "string" and subfield.referenceable then
+            local count = #value
+            if count > 0 then
+              for i = 1, count do
+                if is_reference(value[i]) then
+                  local deref, err = dereference(value)
+                  if deref then
+                    value = deref
+                  else
+                    if err then
+                      kong.log.warn("unable to resolve reference ", value, "(", err, ")")
+                    else
+                      kong.log.warn("unable to resolve reference ", value)
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
       end
 
     elseif context == "update" and field.immutable then
       check_immutable_fields = true
     end
+
+    data[key] = value
   end
 
   if not is_select then

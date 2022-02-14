@@ -78,6 +78,22 @@ for _, plugin in ipairs(deprecated_plugins) do
   deprecated_plugin_map[plugin] = true
 end
 
+local vaults = {
+  "env",
+}
+
+local vault_map = {}
+for i = 1, #vaults do
+  vault_map[vaults[i]] = true
+end
+
+local deprecated_vaults = {} -- no currently deprecated vaults
+
+local deprecated_vault_map = {}
+for _, vault in ipairs(deprecated_vaults) do
+  deprecated_vault_map[vault] = true
+end
+
 local protocols_with_subsystem = {
   http = "http",
   https = "http",
@@ -100,6 +116,8 @@ local constants = {
   EE_PLUGINS_MAP = ee_plugin_map,
   CE_PLUGINS_MAP = ce_plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
+  BUNDLED_VAULTS = vault_map,
+  DEPRECATED_VAULTS = deprecated_vault_map,
   -- non-standard headers, specific to Kong
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",
@@ -143,6 +161,7 @@ local constants = {
     "ca_certificates",
     "clustering_data_planes",
     "parameters",
+    "vaults_beta",
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
@@ -155,6 +174,7 @@ local constants = {
     plugins = "core_cache",
     tags = "cache",
     ca_certificates = "core_cache",
+    vaults_beta = "core_cache",
   }, {
     __index = function()
       return "cache"
@@ -213,6 +233,8 @@ local constants = {
   CLUSTERING_TIMEOUT = 5000, -- 5 seconds
   CLUSTERING_PING_INTERVAL = 30, -- 30 seconds
   CLUSTERING_OCSP_TIMEOUT = 5000, -- 5 seconds
+
+  CLEAR_HEALTH_STATUS_DELAY = 300, -- 300 seconds
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do

@@ -353,6 +353,110 @@ for _, strategy in helpers.each_strategy() do
       assert.equals("HEALTHCHECKS_OFF", health.data[1].data.addresses[1].health)
     end)
 
+    it("an upstream that is removed and readed keeps the health status", function()
+      -- configure healthchecks
+      bu.begin_testcase_setup(strategy, bp)
+      local upstream_name, upstream_id = bu.add_upstream(bp, {
+        healthchecks = bu.healthchecks_config {
+          passive = {
+            unhealthy = {
+              tcp_failures = 1,
+            }
+          }
+        }
+      })
+      -- the following port will not be used, will be overwritten by
+      -- the mocked SRV record.
+      bu.add_target(bp, upstream_id, "multiple-ips.test", 80)
+      local api_host = bu.add_api(bp, upstream_name, { connect_timeout = 100, })
+      bu.end_testcase_setup(strategy, bp)
+
+      -- we do not set up servers, since we want the connection to get refused
+      -- Go hit the api with requests
+      local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
+      assert.same(0, oks)
+      assert.same(bu.SLOTS, fails)
+      assert.same(503, last_status)
+
+      local health = bu.get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+      assert.equals("UNHEALTHY", health.data[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+
+      local status = bu.post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
+      assert.same(204, status)
+
+      health = bu.get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+      assert.equals("HEALTHY", health.data[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+      assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
+
+      local status = bu.post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
+      assert.same(204, status)
+
+      health = bu.get_upstream_health(upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+      assert.equals("UNHEALTHY", health.data[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+
+      -- remove the upstream
+      if strategy ~= "off" then
+        bu.remove_upstream(bp, upstream_id)
+      end
+
+      -- add the upstream again
+      bu.begin_testcase_setup_update(strategy, bp)
+      local new_upstream_name, new_upstream_id = bu.add_upstream(bp, {
+        name = upstream_name,
+        healthchecks = bu.healthchecks_config {
+          passive = {
+            unhealthy = {
+              tcp_failures = 1,
+            }
+          }
+        }
+      })
+
+
+      -- upstreams are different
+      assert.are_not.equals(upstream_id, new_upstream_id)
+
+      -- but new upstream name is the same as before
+      assert.are.equals(upstream_name, new_upstream_name)
+
+      -- also the target is the same
+      bu.add_target(bp, new_upstream_id, "multiple-ips.test", 80)
+      bu.add_api(bp, new_upstream_name, { connect_timeout = 100, })
+      bu.end_testcase_setup(strategy, bp)
+
+      -- so health must be same as before
+      health = bu.get_upstream_health(new_upstream_name)
+      assert.is.table(health)
+      assert.is.table(health.data)
+      assert.is.table(health.data[1])
+      assert.same("127.0.0.1", health.data[1].data.addresses[1].ip)
+      assert.same("127.0.0.2", health.data[1].data.addresses[2].ip)
+      assert.equals("UNHEALTHY", health.data[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
+      assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
+
+    end)
+
   end)
 
   describe("mTLS #" .. strategy, function()

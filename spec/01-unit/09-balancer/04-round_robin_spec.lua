@@ -397,7 +397,7 @@ describe("[round robin balancer]", function()
           dns = client,
           wheelSize = 15,
         })
-        assert(add_target(b, "really.really.really.does.not.exist.thijsschreijer.nl", 80, 10))
+        assert(add_target(b, "really.really.really.does.not.exist.hostname.test", 80, 10))
         check_balancer(b)
         assert.equals(0, b.totalWeight) -- has one failed host, so weight must be 0
         dnsA({
@@ -1051,7 +1051,7 @@ describe("[round robin balancer]", function()
     end)
     it("weight change for unresolved record, updates properly", function()
       local record = dnsA({
-        { name = "really.really.really.does.not.exist.thijsschreijer.nl", address = "1.2.3.4" },
+        { name = "really.really.really.does.not.exist.hostname.test", address = "1.2.3.4" },
       })
       dnsAAAA({
         { name = "getkong.test", address = "::1" },
@@ -1061,7 +1061,7 @@ describe("[round robin balancer]", function()
         wheelSize = 60,
         requery = 0.1,
       })
-      add_target(b, "really.really.really.does.not.exist.thijsschreijer.nl", 80, 10)
+      add_target(b, "really.really.really.does.not.exist.hostname.test", 80, 10)
       add_target(b, "getkong.test", 80, 10)
       local count = count_indices(b)
       assert.same({
@@ -1073,7 +1073,7 @@ describe("[round robin balancer]", function()
       record.expire = 0
       record.expired = true
       -- do a lookup to trigger the async lookup
-      client.resolve("really.really.really.does.not.exist.thijsschreijer.nl", {qtype = client.TYPE_A})
+      client.resolve("really.really.really.does.not.exist.hostname.test", {qtype = client.TYPE_A})
       sleep(0.5) -- provide time for async lookup to complete
 
       for _ = 1, b.wheelSize do b:getPeer() end -- hit them all to force renewal
@@ -1085,10 +1085,10 @@ describe("[round robin balancer]", function()
       }, count)
 
       -- update the failed record
-      add_target(b, "really.really.really.does.not.exist.thijsschreijer.nl", 80, 20)
+      add_target(b, "really.really.really.does.not.exist.hostname.test", 80, 20)
       -- reinsert a cache entry
       dnsA({
-        { name = "really.really.really.does.not.exist.thijsschreijer.nl", address = "1.2.3.4" },
+        { name = "really.really.really.does.not.exist.hostname.test", address = "1.2.3.4" },
       })
       sleep(2)  -- wait for timer to re-resolve the record
       targets.resolve_targets(b.targets)
@@ -1309,9 +1309,9 @@ describe("[round robin balancer]", function()
     end)
     it("renewed DNS A record; last host fails DNS resolution #slow", function()
       -- This test might show some error output similar to the lines below. This is expected and ok.
-      -- 2017/11/06 15:52:49 [warn] 5123#0: *2 [lua] balancer.lua:320: queryDns(): [ringbalancer] querying dns for really.really.really.does.not.exist.thijsschreijer.nl failed: dns server error: 3 name error, context: ngx.timer
+      -- 2017/11/06 15:52:49 [warn] 5123#0: *2 [lua] balancer.lua:320: queryDns(): [ringbalancer] querying dns for really.really.really.does.not.exist.hostname.test failed: dns server error: 3 name error, context: ngx.timer
 
-      local test_name = "really.really.really.does.not.exist.thijsschreijer.nl"
+      local test_name = "really.really.really.does.not.exist.hostname.test"
       local ttl = 0.1
       local staleTtl = 0   -- stale ttl = 0, force lookup upon expiring
       local record = dnsA({

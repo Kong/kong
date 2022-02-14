@@ -90,6 +90,7 @@ local field_schema = {
   { immutable = { type = "boolean" }, },
   { err = { type = "string" } },
   { encrypted = { type = "boolean" }, },
+  { referenceable = { type = "boolean" }, },
   { prefix_ws = { type = "boolean" }, },
   { db_export = { type = "boolean" }, },
   { indexed = { type = "boolean" }, },
