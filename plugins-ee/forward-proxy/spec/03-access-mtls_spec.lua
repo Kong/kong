@@ -171,7 +171,7 @@ for _, strategy in strategies() do
         stream_listen = "0.0.0.0:5555",
       }, nil, true, fixtures))
 
-      proxy_client = assert(helpers.proxy_ssl_client(200, "example.com"))
+      proxy_client = assert(helpers.proxy_ssl_client(1000, "example.com"))
       admin_client = assert(helpers.admin_client())
     end)
 
