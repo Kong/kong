@@ -80,7 +80,6 @@ local fixtures = {
           end
         until not req_data and not res_data -- request socket should be closed
 
-        req_sock:close()
         upstream_sock:close()
       }
     }
