@@ -85,6 +85,7 @@ local jwk = schema.define {
         type = "string",
         required = false,
         encrypted = true,
+        referenceable = true,
       },
     },
     {
@@ -122,6 +123,7 @@ local jwk = schema.define {
         type = "string",
         required = false,
         encrypted = true,
+        referenceable = true,
       },
     },
     {
@@ -129,6 +131,7 @@ local jwk = schema.define {
         type = "string",
         required = false,
         encrypted = true,
+        referenceable = true,
       },
     },
     {
@@ -136,6 +139,7 @@ local jwk = schema.define {
         type = "string",
         required = false,
         encrypted = true,
+        referenceable = true,
       },
     },
     {
@@ -143,6 +147,7 @@ local jwk = schema.define {
         type = "string",
         required = false,
         encrypted = true,
+        referenceable = true,
       },
     },
     {
@@ -150,6 +155,7 @@ local jwk = schema.define {
         type = "string",
         required = false,
         encrypted = true,
+        referenceable = true,
       },
     },
     {
@@ -157,6 +163,7 @@ local jwk = schema.define {
         type = "string",
         required = false,
         encrypted = true,
+        referenceable = true,
       },
     },
     {
@@ -164,6 +171,7 @@ local jwk = schema.define {
         type = "string",
         required = false,
         encrypted = true,
+        referenceable = true,
       },
     },
     {
@@ -171,6 +179,7 @@ local jwk = schema.define {
         type = "string",
         required = false,
         encrypted = true,
+        referenceable = true,
       },
     },
     {
@@ -178,6 +187,7 @@ local jwk = schema.define {
         type = "string",
         required = false,
         encrypted = true,
+        referenceable = true,
       },
     },
   },
