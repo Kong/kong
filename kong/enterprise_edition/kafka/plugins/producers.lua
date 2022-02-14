@@ -41,7 +41,12 @@ local function create(conf)
 
     ssl = conf.security.ssl,
   }
-  local cluster_name = conf.uuid
+  local cluster_name = conf.cluster_name
+
+  if not cluster_name then
+    kong.log.warn("no cluster_name provided in plugin configuration, using default cluster name. If more than one Kafka plugin " ..
+      "is configured without a cluster_name, these plugins will use the same cluster")
+  end
 
   -- set auth config if it is enabled
   if is_auth_enabled(conf.authentication) then
