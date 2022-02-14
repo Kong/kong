@@ -28,10 +28,12 @@ return {
           { auth_username = {
             type = "string",
             required = false,
+            referenceable = true,
           }},
           { auth_password = {
             type = "string",
             required = false,
+            referenceable = true,
           }},
           { https_verify = {
             type = "boolean",
