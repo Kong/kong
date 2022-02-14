@@ -43,13 +43,15 @@ return {
         { ldap_password = {
           type = "string",
           encrypted = true,
+          referenceable = true,
         }},
         { ldap_port = {
           type = "number",
           default = 389
         }},
         { bind_dn = {
-          type = "string"
+          type = "string",
+          referenceable = true,
         }},
         { ldaps = {
           type = "boolean",

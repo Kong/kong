@@ -26,7 +26,7 @@ return {
       { host          = typedefs.host { required = true } },
       { port          = typedefs.port { required = true, default = 8200, }, },
       { mount         = { type = "string", required = true, }, },
-      { vault_token   = { type = "string", required = true, encrypted = true }, },
+      { vault_token   = { type = "string", required = true, encrypted = true, referenceable = true }, },
     },
   }
 }

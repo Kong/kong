@@ -43,6 +43,7 @@ return {
           required = true,
           type     = "string",
           encrypted = true,
+          referenceable = true,
         },
       },
       {

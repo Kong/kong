@@ -124,6 +124,7 @@ local config = {
               encrypted = true,
               elements  = {
                 type    = "string",
+                referenceable = true,
               },
             },
           },
@@ -134,6 +135,7 @@ local config = {
               encrypted = true,
               elements  = {
                 type    = "string",
+                referenceable = true,
               },
             },
           },
@@ -809,6 +811,7 @@ local config = {
               required = false,
               type     = "string",
               encrypted = true,
+              referenceable = true,
             },
           },
           {
@@ -973,6 +976,7 @@ local config = {
             session_redis_username = {
               required = false,
               type     = "string",
+              referenceable = true,
             },
           },
           {
@@ -980,6 +984,7 @@ local config = {
               required = false,
               type     = "string",
               encrypted = true,
+              referenceable = true,
             },
           },
           {
