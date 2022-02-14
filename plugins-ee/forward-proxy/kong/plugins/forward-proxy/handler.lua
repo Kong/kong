@@ -23,6 +23,7 @@ local ngx_req_get_body    = ngx.req.get_body_data
 local ngx_now             = ngx.now
 local ngx_print           = ngx.print
 local str_lower           = string.lower
+local str_format          = string.format
 
 
 local _prefix_log = "[forward-proxy] "
@@ -199,7 +200,18 @@ function ForwardProxyHandler:access(conf)
 
   httpc:set_timeouts(addr.connect_timeout, addr.send_timeout, addr.read_timeout)
 
-  local proxy_uri = "http://"  .. conf.proxy_host .. ":" .. conf.proxy_port .. "/"
+  local proxy_opts = {}
+
+  if conf.http_proxy_host then
+    proxy_opts.http_proxy =
+      str_format("http://%s:%d", conf.http_proxy_host, conf.http_proxy_port)
+  end
+
+  if conf.https_proxy_host then
+    -- lua-resty-http only support `http`
+    proxy_opts.https_proxy =
+      str_format("http://%s:%d", conf.https_proxy_host, conf.https_proxy_port)
+  end
 
   local ssl_client_cert, ssl_client_priv_key, err
   if ctx.service.client_certificate then
@@ -213,10 +225,7 @@ function ForwardProxyHandler:access(conf)
     scheme = var.upstream_scheme,
     host = addr.host,
     port = addr.port,
-    proxy_opts = {
-      http_proxy = proxy_uri,
-      https_proxy = proxy_uri,
-    },
+    proxy_opts = proxy_opts,
     ssl_verify = conf.https_verify,
     ssl_server_name = addr.host,
     ssl_client_cert = ssl_client_cert,

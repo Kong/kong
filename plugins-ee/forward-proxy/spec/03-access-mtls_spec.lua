@@ -91,9 +91,9 @@ local fixtures = {
           server_name example.com;
           listen 16798 ssl;
 
-          ssl_certificate        ../spec/fixtures/mtls_certs/example.com.crt;
-          ssl_certificate_key    ../spec/fixtures/mtls_certs/example.com.key;
-          ssl_client_certificate ../spec/fixtures/mtls_certs/ca.crt;
+          ssl_certificate        /kong/spec/fixtures/mtls_certs/example.com.crt;
+          ssl_certificate_key    /kong/spec/fixtures/mtls_certs/example.com.key;
+          ssl_client_certificate /kong/spec/fixtures/mtls_certs/ca.crt;
           ssl_verify_client      on;
           ssl_session_tickets    off;
           ssl_session_cache      off;
@@ -156,8 +156,8 @@ for _, strategy in strategies() do
         route = { id = route_mtls.id },
         name   = "forward-proxy",
         config = {
-          proxy_host = "127.0.0.1",
-          proxy_port = 16797,
+          https_proxy_host = "127.0.0.1",
+          https_proxy_port = 16797,
         },
       })
 

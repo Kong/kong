@@ -38,8 +38,8 @@ for _, strategy in strategies() do
         route = { id = route1.id },
         name   = "forward-proxy",
         config = {
-          proxy_host = helpers.mock_upstream_host,
-          proxy_port = helpers.mock_upstream_port,
+          http_proxy_host = helpers.mock_upstream_host,
+          http_proxy_port = helpers.mock_upstream_port,
         },
       }
 
@@ -59,8 +59,8 @@ for _, strategy in strategies() do
         route = { id = route2.id },
         name   = "forward-proxy",
         config = {
-          proxy_host = helpers.mock_upstream_host,
-          proxy_port = helpers.mock_upstream_port -1,
+          http_proxy_host = helpers.mock_upstream_host,
+          http_proxy_port = helpers.mock_upstream_port -1,
         },
       }
 
@@ -80,8 +80,8 @@ for _, strategy in strategies() do
         route = { id = route3.id },
         name   = "forward-proxy",
         config = {
-          proxy_host = helpers.mock_upstream_host,
-          proxy_port = helpers.mock_upstream_port,
+          http_proxy_host = helpers.mock_upstream_host,
+          http_proxy_port = helpers.mock_upstream_port,
         },
       }
 
