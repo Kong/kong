@@ -53,6 +53,7 @@ dependencies = {
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.7.2",
   "lua-resty-session == 3.10",
+  "lua-resty-aws == 0.4.0",
 }
 build = {
   type = "builtin",
@@ -707,7 +708,12 @@ build = {
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
 
     ["kong.enterprise_edition.kafka.plugins.producers"]  = "kong/enterprise_edition/kafka/plugins/producers.lua",
+
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
+    ["kong.vaults.hcv"] = "kong/vaults/hcv/init.lua",
+    ["kong.vaults.hcv.schema"] = "kong/vaults/hcv/schema.lua",
+    ["kong.vaults.aws"] = "kong/vaults/aws/init.lua",
+    ["kong.vaults.aws.schema"]  = "kong/vaults/aws/schema.lua",
   }
 }

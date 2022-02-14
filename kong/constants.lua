@@ -80,6 +80,10 @@ end
 
 local vaults = {
   "env",
+  -- Vault EE [[
+  "aws",
+  "hcv",
+  -- ]]
 }
 
 local vault_map = {}
