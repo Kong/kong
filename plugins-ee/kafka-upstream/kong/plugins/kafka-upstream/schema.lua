@@ -36,8 +36,8 @@ return {
                 { strategy = { type = "string", required = false, one_of = { "sasl" }} },
                 { mechanism = { type = "string", required = false, one_of = { "PLAIN", "SCRAM-SHA-256" }} },
                 { tokenauth = { type = "boolean", required = false } },
-                { user = { type = "string", required = false, encrypted = true } },
-                { password = { type = "string", required = false, encrypted = true } },
+                { user = { type = "string", required = false, encrypted = true, referenceable = true } },
+                { password = { type = "string", required = false, encrypted = true, referenceable = true } },
               }
             }
           },
