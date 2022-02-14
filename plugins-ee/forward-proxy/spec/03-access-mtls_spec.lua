@@ -24,7 +24,7 @@ local fixtures = {
         local split = require("kong.tools.utils").split
 
         local req_sock = ngx.req.socket(true)
-        req_sock:settimeouts(100, 1000, 1000)
+        req_sock:settimeouts(1000, 1000, 1000)
 
         -- receive request line
         local req_line = req_sock:receive()
@@ -45,7 +45,7 @@ local fixtures = {
 
         -- Connect to requested upstream
         local upstream_sock = ngx.socket.tcp()
-        upstream_sock:settimeouts(100, 1000, 1000)
+        upstream_sock:settimeouts(1000, 1000, 1000)
         local ok, err = upstream_sock:connect(upstream_host, upstream_port)
         if not ok then
           return ngx.exit(504)
