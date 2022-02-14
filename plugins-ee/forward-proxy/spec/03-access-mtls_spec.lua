@@ -179,8 +179,16 @@ for _, strategy in strategies() do
         proxy_client:close()
       end
 
-      helpers.stop_kong("servroot", true)
+      helpers.stop_kong()
     end)
+
+    local function forward_proxy_log_was_created()
+      local forward_proxy_log = helpers.test_conf.prefix ..
+                                "/logs/naive_forward_proxy.log"
+
+      return pl_path.exists(forward_proxy_log) and
+             pl_path.getsize(forward_proxy_log) > 0
+    end
 
     describe("mTLS authentication against upstream with Service object, via forward-proxy", function()
       describe("no client certificate supplied", function()
