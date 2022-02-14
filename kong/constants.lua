@@ -200,6 +200,8 @@ local constants = {
   CLUSTERING_TIMEOUT = 5000, -- 5 seconds
   CLUSTERING_PING_INTERVAL = 30, -- 30 seconds
   CLUSTERING_OCSP_TIMEOUT = 5000, -- 5 seconds
+
+  CLEAR_HEALTH_STATUS_DELAY = 300, -- 300 seconds
 }
 
 for _, v in ipairs(constants.CLUSTERING_SYNC_STATUS) do

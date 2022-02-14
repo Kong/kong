@@ -66,6 +66,7 @@ local HOST_PORTS = {}
 
 
 local SUBSYSTEMS = constants.PROTOCOLS_WITH_SUBSYSTEM
+local CLEAR_HEALTH_STATUS_DELAY = constants.CLEAR_HEALTH_STATUS_DELAY
 local TTL_ZERO = { ttl = 0 }
 
 
@@ -366,7 +367,7 @@ local function register_events()
       end
 
       local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
-        balancer.stop_healthcheckers()
+        balancer.stop_healthcheckers(CLEAR_HEALTH_STATUS_DELAY)
 
         kong.cache:flip()
         core_cache:flip()

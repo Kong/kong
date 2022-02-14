@@ -184,11 +184,11 @@ for _, consistency in ipairs({"strict", "eventual"}) do
       passive_hc.passive.unhealthy.http_failures = 1
 
       UPSTREAMS_FIXTURES = {
-        [1] = { id = "a", ws_id = ws_id, name = "mashape", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+        [1] = { id = "a", ws_id = ws_id, name = "mashape", slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },
         [2] = { id = "b", ws_id = ws_id, name = "kong",    slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
         [3] = { id = "c", ws_id = ws_id, name = "gelato",  slots = 20, healthchecks = hc_defaults, algorithm = "round-robin" },
         [4] = { id = "d", ws_id = ws_id, name = "galileo", slots = 20, healthchecks = hc_defaults, algorithm = "round-robin" },
-        [5] = { id = "e", ws_id = ws_id, name = "upstream_e", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
+        [5] = { id = "e", ws_id = ws_id, name = "upstream_e", slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },
         [6] = { id = "f", ws_id = ws_id, name = "upstream_f", slots = 10, healthchecks = hc_defaults, algorithm = "round-robin" },
         [7] = { id = "hc_" .. consistency, ws_id = ws_id, name = "upstream_hc_" .. consistency, slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },
         [8] = { id = "ph", ws_id = ws_id, name = "upstream_ph", slots = 10, healthchecks = passive_hc, algorithm = "round-robin" },

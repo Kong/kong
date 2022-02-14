@@ -822,7 +822,7 @@ describe("[consistent_hashing]", function()
     end)
     it("weight change for unresolved record, updates properly", function()
       local record = dnsA({
-        { name = "really.really.really.does.not.exist.thijsschreijer.nl", address = "1.2.3.4" },
+        { name = "really.really.really.does.not.exist.host.test", address = "1.2.3.4" },
       })
       dnsAAAA({
         { name = "getkong.org", address = "::1" },
@@ -832,7 +832,7 @@ describe("[consistent_hashing]", function()
         wheelSize = 1000,
         requery = 1,
       })
-      add_target(b, "really.really.really.does.not.exist.thijsschreijer.nl", 80, 10)
+      add_target(b, "really.really.really.does.not.exist.host.test", 80, 10)
       add_target(b, "getkong.org", 80, 10)
       local count = count_indices(b)
       assert.same({
@@ -844,7 +844,7 @@ describe("[consistent_hashing]", function()
       record.expire = 0
       record.expired = true
       -- do a lookup to trigger the async lookup
-      client.resolve("really.really.really.does.not.exist.thijsschreijer.nl", {qtype = client.TYPE_A})
+      client.resolve("really.really.really.does.not.exist.host.test", {qtype = client.TYPE_A})
       sleep(1) -- provide time for async lookup to complete
 
       --b:_hit_all() -- hit them all to force renewal
@@ -857,10 +857,10 @@ describe("[consistent_hashing]", function()
       }, count)
 
       -- update the failed record
-      add_target(b, "really.really.really.does.not.exist.thijsschreijer.nl", 80, 20)
+      add_target(b, "really.really.really.does.not.exist.host.test", 80, 20)
       -- reinsert a cache entry
       dnsA({
-        { name = "really.really.really.does.not.exist.thijsschreijer.nl", address = "1.2.3.4" },
+        { name = "really.really.really.does.not.exist.host.test", address = "1.2.3.4" },
       })
       --sleep(2)  -- wait for timer to re-resolve the record
       targets.resolve_targets(b.targets)
