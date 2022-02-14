@@ -1,12 +1,15 @@
 
 local cjson = require "cjson.safe"
 local pl_file = require "pl.file"
+local http = require "resty.http"
 
 local constants = require "kong.constants"
 local clustering_utils = require "kong.clustering.utils"
 
+local ngx = ngx
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
+local ngx_DEBUG = ngx.DEBUG
 local _log_prefix = "[version-negotiation] "
 
 local KONG_VERSION
@@ -43,6 +46,10 @@ local function response(status, body)
   return ngx.exit(status)
 end
 
+local function response_err(msg)
+  return response(400, { message = msg })
+end
+
 local function verify_request(body)
   if type(body.node) ~= "table" then
     return false, "field \"node\" must be an object."
@@ -74,12 +81,26 @@ local function node_info()
   }
 end
 
-local all_known_services = {
-  ["protocol"] = {
-    ["json"] = { message = "current" },
-    ["wrpc"] = { message = "beta" },
-  },
-}
+local function cp_priority(name, req_versions, known_versions)
+  local versions_set = {}
+  for _, version in ipairs(req_versions) do
+    versions_set[version] = true
+  end
+
+  for _, v in ipairs(known_versions) do
+    if versions_set[v.version] then
+      return true, {
+        name = name,
+        version = v.version,
+        message = v.message,
+      }
+    end
+  end
+
+  return false, { name = name, message = "No valid version" }
+end
+
+local all_known_services = require "kong.clustering.version_negotiation.services_known"
 
 local function check_node_compatibility(client_node)
   if client_node.type ~= "KONG" then
@@ -122,24 +143,11 @@ local function do_negotiation(req_body)
       goto continue
     end
 
-    for j, version in ipairs(req_service.versions) do
-      if type(version) ~= "string" then
-        table.insert(services_rejected, {
-          name = name,
-          message = string.format("invalid version at position #d", j),
-        })
-        goto continue
-      end
-
-      local known_version = known_service[version]
-      if known_version then
-        table.insert(services_accepted, {
-          name = name,
-          version = version,
-          message = known_version.message,
-        })
-        break
-      end
+    local ok, service_response = cp_priority(name, req_service.versions, known_service)
+    if ok then
+      table.insert(services_accepted, service_response)
+    else
+      table.insert(services_rejected, service_response)
     end
 
     ::continue::
@@ -185,28 +193,93 @@ function _M.serve_version_handshake(conf)
 
   local body_in = cjson.decode(get_body())
   if not body_in then
-    return response(400, { message = "Not valid JSON data" })
+    return response_err("Not valid JSON data")
   end
 
   local ok, err = verify_request(body_in)
   if not ok then
-    return response(400, { message = err })
+    return response_err(err)
   end
 
   ok, err, body_in.node.sync_status = check_node_compatibility(body_in.node)
   if not ok then
-    return response(400, { message = err })
+    return response_err(err)
   end
 
   local body_out = do_negotiation(body_in)
 
   ok, err = register_client(conf, body_in.node, body_out.services_accepted)
   if not ok then
-    return response(400, { message = err })
+    return response_err(err)
   end
 
-
   return response(200, body_out)
+end
+
+
+function _M.request_version_handshake(conf, cert, cert_key)
+  local body = cjson.encode{
+    node = {
+      id = kong.node.get_id(),
+      type = "KONG",
+      version = kong.version,
+      hostname = kong.node.get_hostname(),
+    },
+    services_requested = require "kong.clustering.version_negotiation.services_requested",
+  }
+
+  local params = {
+    method = "POST",
+    headers = {
+      ["Content-Type"] = "application/json",
+    },
+    body = body,
+
+    ssl_verify = false,
+    client_cert = cert,
+    client_priv_key = cert_key,
+  }
+  if conf.cluster_mtls == "shared" then
+    params.ssl_server_name = "kong_clustering"
+  else
+    -- server_name will be set to the host if it is not explicitly defined here
+    if conf.cluster_server_name ~= "" then
+      params.ssl_server_name = conf.cluster_server_name
+    end
+  end
+
+  local c = http.new()
+  local res, err = c:request_uri("https://" .. conf.cluster_control_plane .. "/version-handshake", params)
+
+  if not res then
+    return nil, err
+  end
+
+  if res.status < 200 or res.status >= 300 then
+    return nil, res.status .. ": " .. res.reason
+  end
+
+  local response_data = cjson.decode(res.body)
+  if not response_data then
+    return nil, "invalid response"
+  end
+
+  local services_accepted = {}
+  for _, service in ipairs(response_data.services_accepted) do
+    ngx_log(ngx_DEBUG, _log_prefix, "accepted: \"" .. service.name .. "\", version \"" .. service.version .. "\": ".. service.message)
+    services_accepted[service.name] = service.version
+  end
+
+  local services_rejected = {}
+  for _, service in ipairs(response_data.services_rejected) do
+    ngx_log(ngx_DEBUG, _log_prefix, "rejectec: \"" .. service.name .. "\": " .. service.message)
+    services_rejected[service.name] = service.message
+  end
+
+  conf.services_accepted = services_accepted
+  conf.services_rejected = services_rejected
+
+  return response_data, nil
 end
 
 return _M

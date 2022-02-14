@@ -181,7 +181,7 @@ for _, strategy in helpers.each_strategy() do
               },
               services_requested = {
                 {
-                  name = "protocol",
+                  name = "cluster_protocol",
                   versions = { "json" },
                 },
                 {
@@ -197,7 +197,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_string(body.node.id)
           assert.same({
             {
-              name = "protocol",
+              name = "cluster_protocol",
               version = "json",
               message = "current",
             },
@@ -222,12 +222,26 @@ for _, strategy in helpers.each_strategy() do
               assert.near(14 * 86400, v.ttl, 3)
               assert.matches("^(%d+%.%d+)%.%d+", v.version)
               assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-              assert.same({ protocol = "json" }, v.services_accepted)
+              assert.same({ cluster_protocol = "json" }, v.services_accepted)
 
               return true
             end
           end
         end, 10)
+      end)
+
+      it("negotiation client", function()
+        local conf = {
+          cluster_control_plane = "127.0.0.1:9005",
+          cluster_mtls = "shared",
+        }
+        local data = assert(require "kong.clustering.version_negotiation".request_version_handshake(conf, CLIENT_CERT, CLIENT_PRIV_KEY))
+        assert.same({ cluster_protocol = "json" }, conf.services_accepted)
+        assert.same({}, conf.services_rejected)
+        assert.same({
+            { name = "cluster_protocol", version = "json", message = "current" },
+          }, data.services_accepted)
+        assert.same({}, data.services_rejected)
       end)
 
     end)
