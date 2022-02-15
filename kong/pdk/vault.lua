@@ -170,7 +170,6 @@ end
 
 
 local function config_secret(reference, opts)
-  local vault, strategy, err
   local kong = kong
   if not kong.db then
     return nil, "kong.db not yet loaded"
@@ -178,24 +177,27 @@ local function config_secret(reference, opts)
   local name = opts.name
   local vaults = kong.db.vaults_beta
   local cache = kong.core_cache
+  local vault
+  local err
   if cache then
     local cache_key = vaults:cache_key(name)
     vault, err = cache:get(cache_key, nil, vaults.select_by_prefix, vaults, name)
-    if not vault then
-      if err then
-        return nil, fmt("unable to load vault (%s): %s [%s]", name, err, reference)
-      end
-
-      return nil, fmt("vault not found (%s) [%s]", name, reference)
-    end
 
   else
-    vault = vaults:select_by_prefix(name)
+    vault, err = vaults:select_by_prefix(name)
+  end
+
+  if not vault then
+    if err then
+      return nil, fmt("unable to load vault (%s): %s [%s]", name, err, reference)
+    end
+
+    return nil, fmt("vault not found (%s) [%s]", name, reference)
   end
 
   local vname = vault.name
 
-  strategy = vaults.strategies[vname]
+  local strategy = vaults.strategies[vname]
   if not strategy then
     return nil, fmt("vault not installed (%s) [%s]", vname, reference)
   end
