@@ -430,3 +430,4 @@ return {
   --_load_targets_into_memory = _load_targets_into_memory,
   --_get_value_to_hash = get_value_to_hash,
 }
+2

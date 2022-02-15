@@ -937,3 +937,4 @@ return {
     return new_log("core", _DEFAULT_FORMAT)
   end,
 }
+4
