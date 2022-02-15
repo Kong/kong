@@ -18,7 +18,7 @@ core/db/migrations:
 - kong/db/migrations/**/*
 
 core/db:
-- kong/db/**/*
+- any: ['kong/db/**/*', '!kong/db/migrations/**/*']
 
 core/docs:
 - kong/autodoc/**/*
@@ -38,10 +38,10 @@ core/logs:
 - kong/pdk/log.lua
 
 core/pdk:
-- kong/pdk/**/*
+- any: ['kong/pdk/**/*', '!kong/pdk/log.lua']
 
 core/proxy:
-- kong/runloop/**/*
+- any: ['kong/runloop/**/*', '!kong/runloop/balancer/*', '!kong/runloop/plugin_servers/*']
 
 core/router:
 - kong/router.lua
