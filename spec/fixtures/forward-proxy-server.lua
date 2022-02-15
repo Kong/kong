@@ -14,7 +14,7 @@ function _M.connect()
   local req_line = req_sock:receive()
   ngx.log(ngx.DEBUG, "request line: ", req_line)
 
-  local method, host_port, version = unpack(split(req_line, " "))
+  local method, host_port = unpack(split(req_line, " "))
   if method ~= "CONNECT" then
     return ngx.exit(400)
   end
@@ -32,6 +32,8 @@ function _M.connect()
   upstream_sock:settimeouts(1000, 1000, 1000)
   local ok, err = upstream_sock:connect(upstream_host, upstream_port)
   if not ok then
+    ngx.log(ngx.ERR, "connect to upstream ", upstream_host, ":", upstream_port,
+            " failed: ", err)
     return ngx.exit(504)
   end
 
@@ -50,6 +52,8 @@ function _M.connect()
       local bytes, err = upstream_sock:send(req_data)
       if bytes then
         ngx.log(ngx.DEBUG, "upstream SND ", bytes, " bytes")
+      elseif err then
+        ngx.log(ngx.ERR, "upstream SND failed: ", err)
       end
     end
 
@@ -60,6 +64,8 @@ function _M.connect()
       local bytes, err = req_sock:send(res_data)
       if bytes then
         ngx.log(ngx.DEBUG, "client SND: ", bytes, " bytes")
+      elseif err then
+        ngx.log(ngx.ERR, "client SND failed: ", err)
       end
     end
   until not req_data and not res_data -- request socket should be closed
