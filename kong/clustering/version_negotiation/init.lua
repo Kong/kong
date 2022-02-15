@@ -145,8 +145,16 @@ local function do_negotiation(req_body)
 
     local ok, service_response = cp_priority(name, req_service.versions, known_service)
     if ok then
+      ngx_log(ngx_DEBUG, _log_prefix,
+        "accepted: \"" .. service_response.name ..
+        "\", version \"" .. service_response.version ..
+        "\": ".. service_response.message)
       table.insert(services_accepted, service_response)
     else
+
+      ngx_log(ngx_DEBUG, _log_prefix,
+        "rejected: \"" .. service_response.name ..
+        "\": " .. service_response.message)
       table.insert(services_rejected, service_response)
     end
 
@@ -255,6 +263,10 @@ function _M.request_version_handshake(conf, cert, cert_key)
     return nil, err
   end
 
+  if res.status == 404 then
+    return nil, "no version negotiation endpoint."
+  end
+
   if res.status < 200 or res.status >= 300 then
     return nil, res.status .. ": " .. res.reason
   end
@@ -271,7 +283,7 @@ function _M.request_version_handshake(conf, cert, cert_key)
   end
 
   for _, service in ipairs(response_data.services_rejected) do
-    ngx_log(ngx_DEBUG, _log_prefix, "rejectec: \"" .. service.name .. "\": " .. service.message)
+    ngx_log(ngx_DEBUG, _log_prefix, "rejected: \"" .. service.name .. "\": " .. service.message)
     _M.set_negotiated_service(service.name, nil, service.message)
   end
 

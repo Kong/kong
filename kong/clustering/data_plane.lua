@@ -8,6 +8,7 @@ local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local utils = require("kong.tools.utils")
 local system_constants = require("lua_system_constants")
+local version_negotiation = require("kong.clustering.version_negotiation")
 local ffi = require("ffi")
 local assert = assert
 local setmetatable = setmetatable
@@ -218,6 +219,13 @@ function _M:communicate(premature)
   end
 
   local conf = self.conf
+
+  do
+    local response_data, err = version_negotiation.request_version_handshake(conf, self.cert, self.cert_key)
+    if not response_data then
+      ngx_log(ngx_ERR, _log_prefix, "error while requesting version negotiation: " .. err)
+    end
+  end
 
   -- TODO: pick one random CP
   local address = conf.cluster_control_plane
