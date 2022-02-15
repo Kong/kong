@@ -17,6 +17,12 @@ services:
   - redis-server
   - docker
 
+branches:
+  except:
+    # must match "head-branch" input in copyright-generator repo
+    # https://github.com/Kong/copyright-generator
+    - actions/copyright
+
 addons:
   apt:
     packages:
