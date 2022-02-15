@@ -38,8 +38,6 @@ local function init_db(args)
   assert(db.vaults_beta:load_vault_schemas(conf.loaded_vaults))
 
   _G.kong.db = db
-
-  return db
 end
 
 
@@ -51,7 +49,7 @@ local function get(args)
       return error("the 'get' command needs a <reference> argument \nkong vault get <reference>")
     end
 
-    local db = init_db(args)
+    init_db(args)
 
     if not vault.is_reference(reference) then
       -- assuming short form: <name>/<resource>[/<key>]
@@ -63,21 +61,7 @@ local function get(args)
       return error(err)
     end
 
-    local name = opts.name
-    local res
-
-    local vaults = db.vaults_beta
-    if vaults.strategies[name] then
-      res, err = vault.get(reference)
-
-    elseif vaults:select_by_prefix(name) then
-      ngx.IS_CLI = false
-      res, err = vault.get(reference)
-      ngx.IS_CLI = true
-    else
-      error(fmt("vault '%s' was not found", name, name, args[1]))
-    end
-
+    local res, err = vault.get(reference)
     if err then
       return error(err)
     end

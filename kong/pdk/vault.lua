@@ -9,8 +9,11 @@
 local require = require
 
 
+local constants = require "kong.constants"
 local arguments = require "kong.api.arguments"
 local cjson = require("cjson.safe").new()
+local clone = require "table.clone"
+
 
 
 local ngx = ngx
@@ -36,6 +39,10 @@ local BRACE_START = byte("{")
 local BRACE_END = byte("}")
 local COLON = byte(":")
 local SLASH = byte("/")
+
+
+local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
+local VAULT_NAMES
 
 
 local LRU = require("resty.lrucache").new(1000)
@@ -93,8 +100,8 @@ end
 
 
 local function process_secret(reference, opts)
-  local kong = kong
   local name = opts.name
+  local kong = kong
   local vaults = kong and (kong.db and kong.db.vaults_beta)
   local strategy
   local field
@@ -170,11 +177,8 @@ end
 
 
 local function config_secret(reference, opts)
-  local kong = kong
-  if not kong.db then
-    return nil, "kong.db not yet loaded"
-  end
   local name = opts.name
+  local kong = kong
   local vaults = kong.db.vaults_beta
   local cache = kong.core_cache
   local vault
@@ -378,10 +382,10 @@ local function get(reference)
     return value
   end
 
-  if ngx.IS_CLI then
-    value, err = process_secret(reference, opts)
-  else
+  if kong and kong.db and VAULT_NAMES[opts.name] == nil then
     value, err = config_secret(reference, opts)
+  else
+    value, err = process_secret(reference, opts)
   end
 
   if not value then
@@ -394,7 +398,16 @@ local function get(reference)
 end
 
 
-local function new(_)
+local function new(self)
+  VAULT_NAMES = BUNDLED_VAULTS and clone(BUNDLED_VAULTS) or {}
+
+  local vaults = self and self.configuration and self.configuration.loaded_vaults
+  if vaults then
+    for name in pairs(vaults) do
+      VAULT_NAMES[name] = true
+    end
+  end
+
   return {
     is_reference = is_reference,
     parse_reference = parse_reference,
