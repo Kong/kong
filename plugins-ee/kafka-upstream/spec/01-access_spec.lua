@@ -28,7 +28,7 @@ local BOOTSTRAP_SASL_SSL_SERVERS = { { host = KAFKA_HOST, port = KAFKA_SASL_SSL_
 -- when they should not.
 local FLUSH_TIMEOUT_MS = 8000 -- milliseconds
 
-local FLUSH_BUFFER_SIZE = 3
+local FLUSH_BATCH_SIZE = 3
 
 for _, strategy in helpers.all_strategies() do
   describe("Plugin: kafka-upstream (access) [#" .. strategy .. "]", function()
@@ -227,7 +227,7 @@ for _, strategy in helpers.all_strategies() do
           bootstrap_servers = BOOTSTRAP_SERVERS,
           producer_async = true,
           producer_async_flush_timeout = FLUSH_TIMEOUT_MS * 1000, -- never timeout
-          producer_async_buffering_limits_messages_in_memory = FLUSH_BUFFER_SIZE,
+          producer_request_limits_messages_per_request = FLUSH_BATCH_SIZE,
           topic = 'async_size_topic',
         }
       }
@@ -435,7 +435,7 @@ for _, strategy in helpers.all_strategies() do
 
       it("sends batched data, after batching a certain number of messages", function()
         local uri = "/path?key1=value1&key2=value2"
-        for i = 1, FLUSH_BUFFER_SIZE + 1 do
+        for i = 1, FLUSH_BATCH_SIZE + 1 do
           local res = proxy_client:post(uri, {
             headers = {
               host = "async-size-host.test",
