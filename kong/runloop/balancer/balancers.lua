@@ -235,7 +235,7 @@ function balancers_M.get_balancer(balancer_data, no_create)
     if no_create then
       return nil, "balancer not found"
     else
-      log(ERR, "balancer not found for ", upstream.name, ", will create it")
+      log(DEBUG, "balancer not found for ", upstream.name, ", will create it")
       return balancers_M.create_balancer(upstream), upstream
     end
   end
