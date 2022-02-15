@@ -164,4 +164,5 @@ plugins/udp-log:
 plugins/zipkin:
 - kong/plugins/zipkin/**/*
 
-
+copyright:
+- COPYRIGHT
