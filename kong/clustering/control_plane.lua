@@ -3,15 +3,11 @@ local _M = {}
 
 local semaphore = require("ngx.semaphore")
 local ws_server = require("resty.websocket.server")
-local ssl = require("ngx.ssl")
-local ocsp = require("ngx.ocsp")
-local http = require("resty.http")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local constants = require("kong.constants")
-local openssl_x509 = require("resty.openssl.x509")
 local string = string
 local setmetatable = setmetatable
 local type = type
@@ -19,7 +15,6 @@ local pcall = pcall
 local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
-local tostring = tostring
 local ngx = ngx
 local ngx_log = ngx.log
 local cjson_decode = cjson.decode
@@ -55,7 +50,6 @@ local WS_OPTS = {
 }
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
-local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local PONG_TYPE = "PONG"
@@ -182,7 +176,7 @@ end
 _M._get_removed_fields = get_removed_fields
 
 -- returns has_update, modified_deflated_payload, err
-local function update_compatible_payload(payload, dp_version, log_suffix)
+local function update_compatible_payload(payload, dp_version)
   local fields = get_removed_fields(dp_version_num(dp_version))
   if fields then
     payload = utils.deep_copy(payload, false)
@@ -262,95 +256,6 @@ function _M:push_config()
   end
 
   ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " clients")
-end
-
-
-function _M:validate_shared_cert()
-  local cert = ngx_var.ssl_client_raw_cert
-
-  if not cert then
-    return nil, "data plane failed to present client certificate during handshake"
-  end
-
-  local err
-  cert, err = openssl_x509.new(cert, "PEM")
-  if not cert then
-    return nil, "unable to load data plane client certificate during handshake: " .. err
-  end
-
-  local digest, err = cert:digest("sha256")
-  if not digest then
-    return nil, "unable to retrieve data plane client certificate digest during handshake: " .. err
-  end
-
-  if digest ~= self.cert_digest then
-    return nil, "data plane presented incorrect client certificate during handshake (expected: " ..
-                self.cert_digest .. ", got: " .. digest .. ")"
-  end
-
-  return true
-end
-
-
-local check_for_revocation_status
-do
-  local get_full_client_certificate_chain = require("resty.kong.tls").get_full_client_certificate_chain
-  check_for_revocation_status = function()
-    local cert, err = get_full_client_certificate_chain()
-    if not cert then
-      return nil, err
-    end
-
-    local der_cert
-    der_cert, err = ssl.cert_pem_to_der(cert)
-    if not der_cert then
-      return nil, "failed to convert certificate chain from PEM to DER: " .. err
-    end
-
-    local ocsp_url
-    ocsp_url, err = ocsp.get_ocsp_responder_from_der_chain(der_cert)
-    if not ocsp_url then
-      return nil, err or "OCSP responder endpoint can not be determined, " ..
-                         "maybe the client certificate is missing the " ..
-                         "required extensions"
-    end
-
-    local ocsp_req
-    ocsp_req, err = ocsp.create_ocsp_request(der_cert)
-    if not ocsp_req then
-      return nil, "failed to create OCSP request: " .. err
-    end
-
-    local c = http.new()
-    local res
-    res, err = c:request_uri(ocsp_url, {
-      headers = {
-        ["Content-Type"] = "application/ocsp-request"
-      },
-      timeout = OCSP_TIMEOUT,
-      method = "POST",
-      body = ocsp_req,
-    })
-
-    if not res then
-      return nil, "failed sending request to OCSP responder: " .. tostring(err)
-    end
-    if res.status ~= 200 then
-      return nil, "OCSP responder returns bad HTTP status code: " .. res.status
-    end
-
-    local ocsp_resp = res.body
-    if not ocsp_resp or #ocsp_resp == 0 then
-      return nil, "unexpected response from OCSP responder: empty body"
-    end
-
-    res, err = ocsp.validate_ocsp_response(ocsp_resp, der_cert)
-    if not res then
-      return false, "failed to validate OCSP response: " .. err
-    end
-
-    return true
-  end
 end
 
 
@@ -466,32 +371,12 @@ function _M:handle_cp_websocket()
     log_suffix = ""
   end
 
-  local _, err
-
-  -- use mutual TLS authentication
-  if self.conf.cluster_mtls == "shared" then
-    _, err = self:validate_shared_cert()
-
-  elseif self.conf.cluster_ocsp ~= "off" then
-    local ok
-    ok, err = check_for_revocation_status()
-    if ok == false then
-      err = "data plane client certificate was revoked: " ..  err
-
-    elseif not ok then
-      if self.conf.cluster_ocsp == "on" then
-        err = "data plane client certificate revocation check failed: " .. err
-
-      else
-        ngx_log(ngx_WARN, _log_prefix, "data plane client certificate revocation check failed: ", err, log_suffix)
-        err = nil
-      end
+  do
+    local ok, err = clustering_utils.validate_connection_certs(self.conf, self.cert_digest)
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, err)
+      return ngx.exit(ngx.HTTP_CLOSE)
     end
-  end
-
-  if err then
-    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
-    return ngx_exit(ngx_CLOSE)
   end
 
   if not dp_id then
@@ -555,7 +440,8 @@ function _M:handle_cp_websocket()
   local sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
   local purge_delay = self.conf.cluster_data_plane_purge_delay
   local update_sync_status = function()
-    local ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
+    local ok
+    ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
       last_seen = last_seen,
       config_hash = config_hash ~= "" and config_hash or nil,
       hostname = dp_hostname,
@@ -568,6 +454,7 @@ function _M:handle_cp_websocket()
     end
   end
 
+  local _
   _, err, sync_status = self:check_version_compatibility(dp_version, dp_plugins_map, log_suffix)
   if err then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
@@ -598,6 +485,7 @@ function _M:handle_cp_websocket()
   end
 
   if self.deflated_reconfigure_payload then
+    local _
     -- initial configuration compatibility for sync status variable
     _, _, sync_status = self:check_configuration_compatibility(dp_plugins_map)
 

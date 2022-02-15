@@ -76,9 +76,9 @@ for _, strategy in helpers.each_strategy() do
             port = 9005,
             scheme = "https",
             ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-            client_cert = CLIENT_CERT,
-            client_priv_key = CLIENT_PRIV_KEY,
-            server_name = SERVER_NAME,
+            ssl_client_cert = CLIENT_CERT,
+            ssl_client_priv_key = CLIENT_PRIV_KEY,
+            ssl_server_name = SERVER_NAME,
           }
           local res = assert(client:send({ method = req_method, path = VNEG_ENDPOINT }))
           --assert(res.status >= 400 and res.status < 500)
@@ -92,9 +92,9 @@ for _, strategy in helpers.each_strategy() do
           port = 9005,
           scheme = "https",
           ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-          client_cert = CLIENT_CERT,
-          client_priv_key = CLIENT_PRIV_KEY,
-          server_name = SERVER_NAME,
+          ssl_client_cert = CLIENT_CERT,
+          ssl_client_priv_key = CLIENT_PRIV_KEY,
+          ssl_server_name = SERVER_NAME,
         }
         local res = assert(client:post(VNEG_ENDPOINT, {
           headers = { ["Content-Type"] = "text/html; charset=UTF-8"},
@@ -109,9 +109,9 @@ for _, strategy in helpers.each_strategy() do
           port = 9005,
           scheme = "https",
           ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-          client_cert = CLIENT_CERT,
-          client_priv_key = CLIENT_PRIV_KEY,
-          server_name = SERVER_NAME,
+          ssl_client_cert = CLIENT_CERT,
+          ssl_client_priv_key = CLIENT_PRIV_KEY,
+          ssl_server_name = SERVER_NAME,
         }
         local res = assert(client:post(VNEG_ENDPOINT, {
           headers = { ["Content-Type"] = "application/json"},
@@ -136,9 +136,9 @@ for _, strategy in helpers.each_strategy() do
           port = 9005,
           scheme = "https",
           ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-          client_cert = CLIENT_CERT,
-          client_priv_key = CLIENT_PRIV_KEY,
-          server_name = SERVER_NAME,
+          ssl_client_cert = CLIENT_CERT,
+          ssl_client_priv_key = CLIENT_PRIV_KEY,
+          ssl_server_name = SERVER_NAME,
         }
         local res = assert(client:post(VNEG_ENDPOINT, {
           headers = { ["Content-Type"] = "application/json"},
@@ -164,9 +164,9 @@ for _, strategy in helpers.each_strategy() do
           port = 9005,
           scheme = "https",
           ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-          client_cert = CLIENT_CERT,
-          client_priv_key = CLIENT_PRIV_KEY,
-          server_name = SERVER_NAME,
+          ssl_client_cert = CLIENT_CERT,
+          ssl_client_priv_key = CLIENT_PRIV_KEY,
+          ssl_server_name = SERVER_NAME,
         }
         do
           local node_id = utils.uuid()

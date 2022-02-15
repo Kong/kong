@@ -206,7 +206,7 @@ function _M:handle_wrpc_websocket()
 end
 
 function _M:serve_version_handshake()
-  return version_negotiation.serve_version_handshake(self.conf)
+  return version_negotiation.serve_version_handshake(self.conf, self.cert_digest)
 end
 
 function _M:init_worker()

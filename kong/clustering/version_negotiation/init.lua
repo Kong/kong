@@ -194,9 +194,15 @@ local function register_client(conf, client_node, services_accepted)
 end
 
 
-function _M.serve_version_handshake(conf)
+function _M.serve_version_handshake(conf, cert_digest)
   if KONG_VERSION == nil then
     KONG_VERSION = kong.version
+  end
+
+  local ok, err = clustering_utils.validate_connection_certs(conf, cert_digest)
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, err)
+    return ngx.exit(ngx.HTTP_CLOSE)
   end
 
   local body_in = cjson.decode(get_body())
@@ -204,7 +210,7 @@ function _M.serve_version_handshake(conf)
     return response_err("Not valid JSON data")
   end
 
-  local ok, err = verify_request(body_in)
+  ok, err = verify_request(body_in)
   if not ok then
     return response_err(err)
   end
@@ -237,6 +243,7 @@ function _M.request_version_handshake(conf, cert, cert_key)
   }
 
   local params = {
+    scheme = "https",
     method = "POST",
     headers = {
       ["Content-Type"] = "application/json",
@@ -244,8 +251,8 @@ function _M.request_version_handshake(conf, cert, cert_key)
     body = body,
 
     ssl_verify = false,
-    client_cert = cert,
-    client_priv_key = cert_key,
+    ssl_client_cert = cert,
+    ssl_client_priv_key = cert_key,
   }
   if conf.cluster_mtls == "shared" then
     params.ssl_server_name = "kong_clustering"
