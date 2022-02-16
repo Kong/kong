@@ -20,6 +20,7 @@ local ngx = ngx
 local fmt = string.format
 local sub = string.sub
 local byte = string.byte
+local gsub = string.gsub
 local type = type
 local next = next
 local pcall = pcall
@@ -157,10 +158,11 @@ local function process_secret(reference, opts)
   if kong and kong.configuration then
     local configuration = kong.configuration
     local fields = field.fields
+    local env_name = gsub(name, "-", "_")
     for i = 1, #fields do
       local k = next(fields[i])
       if config[k] == nil then
-        local n = lower(fmt("vault_%s_%s", name, k))
+        local n = lower(fmt("vault_%s_%s", env_name, k))
         local v = configuration[n]
         if v ~= nil then
           config[k] = v
