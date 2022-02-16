@@ -286,6 +286,7 @@ local MATCH_SUBRULES = {
 
 
 local EMPTY_T = {}
+local EMPTY_A = { [0] = 0 }
 local MAX_REQ_HEADERS = 100
 
 
@@ -372,13 +373,13 @@ local function marshall_route(r)
   local match_weight    = 0
   local submatch_weight = 0
   local max_uri_length  = 0
-  local hosts_t         = { [0] = 0 }
-  local headers_t       = { [0] = 0 }
-  local uris_t          = { [0] = 0 }
-  local methods_t       = {}
-  local sources_t       = { [0] = 0 }
-  local destinations_t  = { [0] = 0 }
-  local snis_t          = {}
+  local hosts_t         = EMPTY_A
+  local headers_t       = EMPTY_A
+  local uris_t          = EMPTY_A
+  local methods_t       = EMPTY_T
+  local sources_t       = EMPTY_A
+  local destinations_t  = EMPTY_A
+  local snis_t          = EMPTY_T
 
 
   -- hosts
@@ -388,6 +389,8 @@ local function marshall_route(r)
     if type(hosts) ~= "table" then
       return nil, "hosts field must be a table"
     end
+
+    hosts_t = { [0] = 0 }
 
     local has_host_wildcard
     local has_host_plain
@@ -452,6 +455,8 @@ local function marshall_route(r)
       return nil, "headers field must be a table"
     end
 
+    headers_t = { [0] = 0 }
+
     for header_name, header_values in pairs(headers) do
       if type(header_values) ~= "table" then
         return nil, "header values must be a table for header '" ..
@@ -496,6 +501,8 @@ local function marshall_route(r)
     if type(paths) ~= "table" then
       return nil, "paths field must be a table"
     end
+
+    uris_t = { [0] = 0 }
 
     local count = #paths
     if count > 0 then
@@ -546,6 +553,8 @@ local function marshall_route(r)
       return nil, "methods field must be a table"
     end
 
+    methods_t = {}
+
     local count = #methods
     if count > 0 then
       match_rules = bor(match_rules, MATCH_RULES.METHOD)
@@ -564,6 +573,8 @@ local function marshall_route(r)
     if type(snis) ~= "table" then
       return nil, "snis field must be a table"
     end
+
+    snis_t = {}
 
     local count = #snis
     if count > 0 then
@@ -595,6 +606,8 @@ local function marshall_route(r)
       return nil, "sources field must be a table"
     end
 
+    sources_t = { [0] = 0 }
+
     local count = #sources
     if count > 0 then
       match_rules = bor(match_rules, MATCH_RULES.SRC)
@@ -623,6 +636,8 @@ local function marshall_route(r)
     if type(destinations) ~= "table" then
       return nil, "destinations field must be a table"
     end
+
+    destinations_t = { [0] = 0 }
 
     local count = #destinations
     if count > 0 then
