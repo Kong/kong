@@ -23,6 +23,16 @@ for _, strategy in helpers.each_strategy() do
   describe("[ #" .. strategy .. " backend]", function()
     describe("connect to endpoint", function()
       local bp, db
+      local client_setup = {
+        host = "127.0.0.1",
+        port = 9005,
+        scheme = "https",
+        ssl_verify = false,
+        ssl_client_cert = CLIENT_CERT,
+        ssl_client_priv_key = CLIENT_PRIV_KEY,
+        ssl_server_name = SERVER_NAME,
+      }
+
       lazy_setup(function()
         bp, db = helpers.get_db_utils(strategy, {
           "routes",
@@ -71,31 +81,14 @@ for _, strategy in helpers.each_strategy() do
 
       for _, req_method in ipairs{"GET", "HEAD", "PUT", "DELETE", "PATCH"} do
         it(string.format("rejects HTTPS method %q", req_method), function()
-          local client = helpers.http_client{
-            host = "127.0.0.1",
-            port = 9005,
-            scheme = "https",
-            ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-            ssl_client_cert = CLIENT_CERT,
-            ssl_client_priv_key = CLIENT_PRIV_KEY,
-            ssl_server_name = SERVER_NAME,
-          }
+          local client = helpers.http_client(client_setup)
           local res = assert(client:send({ method = req_method, path = VNEG_ENDPOINT }))
-          --assert(res.status >= 400 and res.status < 500)
           assert.res_status(403, res)
         end)
       end
 
       it("rejects text body", function()
-        local client = helpers.http_client{
-          host = "127.0.0.1",
-          port = 9005,
-          scheme = "https",
-          ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-          ssl_client_cert = CLIENT_CERT,
-          ssl_client_priv_key = CLIENT_PRIV_KEY,
-          ssl_server_name = SERVER_NAME,
-        }
+        local client = helpers.http_client(client_setup)
         local res = assert(client:post(VNEG_ENDPOINT, {
           headers = { ["Content-Type"] = "text/html; charset=UTF-8"},
           body = "stuff",
@@ -104,15 +97,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("accepts HTTPS method \"POST\"", function()
-        local client = helpers.http_client{
-          host = "127.0.0.1",
-          port = 9005,
-          scheme = "https",
-          ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-          ssl_client_cert = CLIENT_CERT,
-          ssl_client_priv_key = CLIENT_PRIV_KEY,
-          ssl_server_name = SERVER_NAME,
-        }
+        local client = helpers.http_client(client_setup)
         local res = assert(client:post(VNEG_ENDPOINT, {
           headers = { ["Content-Type"] = "application/json"},
           body = {
@@ -127,19 +112,10 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(200, res)
         assert.response(res).jsonbody()
-
       end)
 
       it("rejects if missing fields", function()
-        local client = helpers.http_client{
-          host = "127.0.0.1",
-          port = 9005,
-          scheme = "https",
-          ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-          ssl_client_cert = CLIENT_CERT,
-          ssl_client_priv_key = CLIENT_PRIV_KEY,
-          ssl_server_name = SERVER_NAME,
-        }
+        local client = helpers.http_client(client_setup)
         local res = assert(client:post(VNEG_ENDPOINT, {
           headers = { ["Content-Type"] = "application/json"},
           body = {
@@ -156,18 +132,8 @@ for _, strategy in helpers.each_strategy() do
         assert.is_string(body.message)
       end)
 
-
       it("API shows DP status", function()
-
-        local client = helpers.http_client{
-          host = "127.0.0.1",
-          port = 9005,
-          scheme = "https",
-          ssl_verify = false, -- needed for busted tests as CP certs are not trusted by the CLI
-          ssl_client_cert = CLIENT_CERT,
-          ssl_client_priv_key = CLIENT_PRIV_KEY,
-          ssl_server_name = SERVER_NAME,
-        }
+        local client = helpers.http_client(client_setup)
         do
           local node_id = utils.uuid()
           local res = assert(client:post(VNEG_ENDPOINT, {
@@ -239,7 +205,7 @@ for _, strategy in helpers.each_strategy() do
           },
           {
             name = "infundibulum",
-            versions = { "chronoscolastic", "kitchen" }
+            versions = { "chrono-synclastic", "kitchen" }
           },
         }
         package.loaded["kong.clustering.version_negotiation"] = nil

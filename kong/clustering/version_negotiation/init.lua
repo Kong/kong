@@ -193,7 +193,10 @@ local function register_client(conf, client_node, services_accepted)
   return true
 end
 
-
+--- Handles a version negotiation request (CP side).
+--- Performs mTLS verification (as configured),
+--- validates request and Kong version compatibility,
+--- 
 function _M.serve_version_handshake(conf, cert_digest)
   if KONG_VERSION == nil then
     KONG_VERSION = kong.version
@@ -230,7 +233,9 @@ function _M.serve_version_handshake(conf, cert_digest)
   return response(200, body_out)
 end
 
-
+--- Performs version negotiation request (DP side).
+--- Stores the responses to be queried via get_negotiated_service(name)
+--- Returns the DP response as a Lua table.
 function _M.request_version_handshake(conf, cert, cert_key)
   local body = cjson.encode{
     node = {
@@ -301,6 +306,7 @@ end
 local kong_shm = ngx.shared.kong
 local SERVICE_KEY_PREFIX = "version_negotiation:service:"
 
+
 function _M.set_negotiated_service(name, version, message)
   local ok, err = kong_shm:set(SERVICE_KEY_PREFIX .. name, cjson.encode{
     version = version,
@@ -312,6 +318,10 @@ function _M.set_negotiated_service(name, version, message)
   end
 end
 
+--- result of an already-negotiated service.
+--- If it was accepted returns version, message.
+--- If it was rejected returns nil, message.
+--- If wasn't requested returns nil, nil
 function _M.get_negotiated_service(name)
   local val, err = kong_shm:get(SERVICE_KEY_PREFIX .. name)
   if not val then
