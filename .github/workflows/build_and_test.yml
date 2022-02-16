@@ -155,11 +155,6 @@ jobs:
           - 6379:6379
         options: --entrypoint redis-server
 
-      squid:
-        image: datadog/squid
-        ports:
-          - 3128:3128
-
       zipkin:
         image: openzipkin/zipkin:2.19
         ports:
@@ -282,11 +277,6 @@ jobs:
         ports:
           - 6379:6379
         options: --entrypoint redis-server
-
-      squid:
-        image: datadog/squid
-        ports:
-          - 3128:3128
 
       zipkin:
         image: openzipkin/zipkin:2.19
