@@ -373,13 +373,13 @@ local function marshall_route(r)
   local match_weight    = 0
   local submatch_weight = 0
   local max_uri_length  = 0
-  local hosts_t         = EMPTY_A
-  local headers_t       = EMPTY_A
-  local uris_t          = EMPTY_A
-  local methods_t       = EMPTY_T
-  local sources_t       = EMPTY_A
-  local destinations_t  = EMPTY_A
-  local snis_t          = EMPTY_T
+  local hosts_t         = nil
+  local headers_t       = nil
+  local uris_t          = nil
+  local methods_t       = nil
+  local sources_t       = nil
+  local destinations_t  = nil
+  local snis_t          = nil
 
 
   -- hosts
@@ -707,13 +707,13 @@ local function marshall_route(r)
     match_weight    = match_weight,
     submatch_weight = submatch_weight,
     max_uri_length  = max_uri_length,
-    hosts           = hosts_t,
-    headers         = headers_t,
-    uris            = uris_t,
-    methods         = methods_t,
-    sources         = sources_t,
-    destinations    = destinations_t,
-    snis            = snis_t,
+    hosts           = hosts_t or EMPTY_A,
+    headers         = headers_t or EMPTY_A,
+    uris            = uris_t or EMPTY_A,
+    methods         = methods_t or EMPTY_T,
+    sources         = sources_t or EMPTY_A,
+    destinations    = destinations_t or EMPTY_A,
+    snis            = snis_t or EMPTY_T,
     upstream_url_t  = {
       scheme = service_protocol,
       type = service_hostname_type or DEFAULT_HOSTNAME_TYPE,
