@@ -16,7 +16,7 @@ local CACHE = require "kong.plugins.jq.cache"
 
 
 local Jq = {
-  VERSION = "0.0.1",
+  VERSION = "0.0.2",
   PRIORITY = 811,
 }
 
