@@ -183,6 +183,9 @@ return {
       "session_redis_username",
       "resolve_distributed_claims",
     },
+    kafka_log = {
+      "cluster_name",
+    },
     kafka_upstream = {
       "cluster_name",
     },

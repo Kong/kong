@@ -85,6 +85,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
@@ -192,6 +193,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
@@ -299,6 +301,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
@@ -399,6 +402,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
@@ -495,6 +499,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
@@ -588,6 +593,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
@@ -697,6 +703,9 @@ describe("kong.clustering.control_plane", function()
         "session_redis_username",
         "resolve_distributed_claims",
       },
+      kafka_log = {
+        "cluster_name",
+      },
       kafka_upstream = {
         "cluster_name",
       },
@@ -712,6 +721,9 @@ describe("kong.clustering.control_plane", function()
       openid_connect = {
         "session_redis_username",
         "resolve_distributed_claims",
+      },
+      kafka_log = {
+        "cluster_name",
       },
       kafka_upstream = {
         "cluster_name",
@@ -803,6 +815,17 @@ describe("kong.clustering.control_plane", function()
           config = {
             session_redis_password = "test",
           }
+        }, {
+          name = "kafka-log",
+          config = {
+            cluster_name = "test",
+          }
+
+        }, {
+          name = "kafka-upstream",
+          config = {
+            cluster_name = "test",
+          }
         }, }
       }
     }
@@ -850,6 +873,12 @@ describe("kong.clustering.control_plane", function()
       config = {
         session_redis_auth = "test",
       }
+    }, {
+      name = "kafka-log",
+      config = {}
+    }, {
+      name = "kafka-upstream",
+      config = {}
     }, }, test_with(payload, "2.3.0").config_table.plugins)
 
     assert.same({ {
@@ -896,6 +925,12 @@ describe("kong.clustering.control_plane", function()
       config = {
         session_redis_auth = "test",
       }
+    }, {
+      name = "kafka-log",
+      config = {}
+    }, {
+      name = "kafka-upstream",
+      config = {}
     }, }, test_with(payload, "2.4.0").config_table.plugins)
 
     assert.same({ {
@@ -942,6 +977,12 @@ describe("kong.clustering.control_plane", function()
       config = {
         session_redis_auth = "test",
       }
+    }, {
+      name = "kafka-log",
+      config = {}
+    }, {
+      name = "kafka-upstream",
+      config = {}
     }, }, test_with(payload, "2.5.0").config_table.plugins)
 
     assert.same({ {
@@ -988,6 +1029,12 @@ describe("kong.clustering.control_plane", function()
       config = {
         session_redis_auth = "test",
       }
+    }, {
+      name = "kafka-log",
+      config = {}
+    }, {
+      name = "kafka-upstream",
+      config = {}
     }, }, test_with(payload, "2.6.0").config_table.plugins)
 
     assert.same({ {
@@ -1045,6 +1092,12 @@ describe("kong.clustering.control_plane", function()
       config = {
         session_redis_auth = "test",
       }
+    }, {
+      name = "kafka-log",
+      config = {}
+    }, {
+      name = "kafka-upstream",
+      config = {}
     }, }, test_with(payload, "2.7.0").config_table.plugins)
 
     -- nothing should be removed
