@@ -90,6 +90,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -196,6 +197,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -302,6 +304,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -401,6 +404,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -496,6 +500,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -588,6 +593,7 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -691,6 +697,9 @@ describe("kong.clustering.control_plane", function()
         "session_redis_username",
         "resolve_distributed_claims",
       },
+      kafka_upstream = {
+        "cluster_name",
+      },
     }, cp._get_removed_fields(2006000000))
 
     assert.same({
@@ -703,6 +712,9 @@ describe("kong.clustering.control_plane", function()
       openid_connect = {
         "session_redis_username",
         "resolve_distributed_claims",
+      },
+      kafka_upstream = {
+        "cluster_name",
       },
     }, cp._get_removed_fields(2007000000))
 
