@@ -10,6 +10,7 @@ local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local openssl_x509 = require("resty.openssl.x509")
+local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
 local string = string
 local setmetatable = setmetatable
@@ -54,14 +55,16 @@ local function get_config_service(self)
   if not wrpc_config_service then
     wrpc_config_service = wrpc.new_service()
     wrpc_config_service:add("kong.services.config.v1.config")
+
     wrpc_config_service:set_handler("ConfigService.PingCP", function(peer)
       local client = self.clients[peer.conn]
-      if client then
+      if client and client.update_sync_status then
         client.last_seen = ngx_time()
         client:update_sync_status()
         ngx_log(ngx_INFO, _log_prefix, "received ping frame from data plane")
       end
     end)
+
     wrpc_config_service:set_handler("ConfigService.ReportBasicInfo", function(peer, data)
       local client = self.clients[peer.conn]
       if client then
@@ -130,18 +133,6 @@ function _M.new(parent)
 end
 
 
-local ngx_null = ngx.null
-local function remove_nulls(tbl)
-  for k,v in pairs(tbl) do
-    if v == ngx_null then
-      tbl[k] = nil
-    elseif type(v) == "table" then
-      tbl[k] = remove_nulls(v)
-    end
-  end
-  return tbl
-end
-
 local config_version = 0
 
 function _M:export_deflated_reconfigure_payload()
@@ -155,6 +146,7 @@ function _M:export_deflated_reconfigure_payload()
   if config_table.plugins then
     for _, plugin in pairs(config_table.plugins) do
       self.plugins_configured[plugin.name] = true
+      plugin.config = protobuf.pbwrap_struct(plugin.config)
     end
   end
 
@@ -164,7 +156,7 @@ function _M:export_deflated_reconfigure_payload()
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
 
-  local payload = remove_nulls({
+  local payload = declarative.remove_nulls({
     format_version = config_table._format_version,
     services = config_table.services,
     routes = config_table.routes,
@@ -178,11 +170,6 @@ function _M:export_deflated_reconfigure_payload()
     plugin_data = config_table.plugin_data,
     workspaces = config_table.workspaces,
   })
-  if payload.plugins then
-    for _, plugin in ipairs(payload.plugins) do
-      plugin.config = wrpc.pbwrap_struct(plugin.config)
-    end
-  end
   local service = get_config_service(self)
   self.config_call_rpc, self.config_call_args = assert(service:encode_args("ConfigService.SyncConfig", {
     config = payload,

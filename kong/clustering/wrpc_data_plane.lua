@@ -5,6 +5,7 @@ local semaphore = require("ngx.semaphore")
 local ws_client = require("resty.websocket.client")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
+local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
 local constants = require("kong.constants")
 local utils = require("kong.tools.utils")
@@ -204,7 +205,7 @@ local function get_config_service()
     wrpc_config_service:set_handler("ConfigService.SyncConfig", function(peer, data)
       if peer.config_semaphore then
         for _, plugin in ipairs(data.config.plugins) do
-          plugin.config = wrpc.pbunwrap_struct(plugin.config)
+          plugin.config = protobuf.pbunwrap_struct(plugin.config)
         end
         data.config._format_version = data.config.format_version
         data.config.format_version = nil
