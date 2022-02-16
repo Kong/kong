@@ -129,8 +129,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -235,8 +237,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -341,8 +345,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -440,8 +446,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -535,8 +543,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -627,8 +637,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -660,8 +672,10 @@ describe("kong.clustering.control_plane", function()
         "canary_by_header_name",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -699,6 +713,10 @@ describe("kong.clustering.control_plane", function()
       },
       canary = {
         "canary_by_header_name",
+      },
+      forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
       },
       openid_connect = {
         "session_redis_username",
@@ -791,6 +809,12 @@ describe("kong.clustering.control_plane", function()
           config = {
             session_redis_password = "test",
           }
+        }, {
+          name = "forward-proxy",
+          config = {
+            http_proxy_host = "test.com",
+            http_proxy_port = "80",
+          }
         }, }
       }
     }
@@ -838,6 +862,12 @@ describe("kong.clustering.control_plane", function()
       config = {
         session_redis_auth = "test",
       }
+    }, {
+      name = "forward-proxy",
+      config = {
+        proxy_host = "test.com",
+        proxy_port = "80",
+      }
     }, }, test_with(payload, "2.3.0").config_table.plugins)
 
     assert.same({ {
@@ -883,6 +913,12 @@ describe("kong.clustering.control_plane", function()
       name = "openid-connect",
       config = {
         session_redis_auth = "test",
+      }
+    }, {
+      name = "forward-proxy",
+      config = {
+        proxy_host = "test.com",
+        proxy_port = "80",
       }
     }, }, test_with(payload, "2.4.0").config_table.plugins)
 
@@ -930,6 +966,12 @@ describe("kong.clustering.control_plane", function()
       config = {
         session_redis_auth = "test",
       }
+    }, {
+      name = "forward-proxy",
+      config = {
+        proxy_host = "test.com",
+        proxy_port = "80",
+      }
     }, }, test_with(payload, "2.5.0").config_table.plugins)
 
     assert.same({ {
@@ -975,6 +1017,12 @@ describe("kong.clustering.control_plane", function()
       name = "openid-connect",
       config = {
         session_redis_auth = "test",
+      }
+    }, {
+      name = "forward-proxy",
+      config = {
+        proxy_host = "test.com",
+        proxy_port = "80",
       }
     }, }, test_with(payload, "2.6.0").config_table.plugins)
 
@@ -1032,6 +1080,12 @@ describe("kong.clustering.control_plane", function()
       name = "openid-connect",
       config = {
         session_redis_auth = "test",
+      }
+    }, {
+      name = "forward-proxy",
+      config = {
+        proxy_host = "test.com",
+        proxy_port = "80",
       }
     }, }, test_with(payload, "2.7.0").config_table.plugins)
 

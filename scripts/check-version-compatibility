@@ -223,8 +223,10 @@ ENABLE_EXIT_TRANSFORMER=(
 
 ENABLE_FORWARD_PROXY=(
   --data "name=forward-proxy"
-  --data "config.proxy_host=example.com"
-  --data "config.proxy_port=80"
+  --data "config.http_proxy_host=example.com"
+  --data "config.http_proxy_port=80"
+  --data "config.https_proxy_host=example.com"
+  --data "config.https_proxy_port=80"
 )
 
 ENABLE_GRAPHQL_PROXY_CACHE_ADVANCED=(

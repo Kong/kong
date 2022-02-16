@@ -270,6 +270,24 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
                 has_update = true
               end
             end
+
+            if t["name"] == "forward-proxy" then
+              if config["http_proxy_host"] then
+                ngx_log(ngx_WARN, _log_prefix, "forward-proxy plugin for Kong Gateway v" .. KONG_VERSION ..
+                        " contains configuration http_proxy_host, which is incompatible with",
+                        " dataplane version " .. dp_version .. " and will be replaced with 'proxy_host'.", log_suffix)
+                config["proxy_host"] = config["http_proxy_host"]
+                config["http_proxy_host"] = nil
+                has_update = true
+              end
+              if config["http_proxy_port"] then
+                ngx_log(ngx_WARN, _log_prefix, "forward-proxy plugin for Kong Gateway v" .. KONG_VERSION ..
+                        " contains configuration http_proxy_port, which is incompatible with",
+                        " dataplane version " .. dp_version .. " and will be replaced with 'proxy_port'.", log_suffix)
+                config["proxy_port"] = config["http_proxy_port"]
+                config["http_proxy_port"] = nil
+              end
+            end
           end
         end
       end
