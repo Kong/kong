@@ -542,7 +542,7 @@ local function write_endpoint(outfd, endpoint, ep_data, dbless_methods)
              or not dbless_methods[endpoint][method])
       then
         write_title(outfd, 3, meth_data.title)
-        warning_message(outfd, "**Note**: Not available in DB-less mode.")
+        warning_message(outfd, "**Note**: This API is not available in DB-less mode.")
       else
         write_title(outfd, 3, meth_data.title, "{:.badge .dbless}")
       end
