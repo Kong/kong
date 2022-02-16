@@ -1665,6 +1665,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   -- and and admin api requests, admin api request could be
   -- detected with ngx.ctx.KONG_PHASE, but to limit context
   -- access we use nulls that admin api sets to true.
+  local kong = kong
   local resolve_references
   if is_select and not nulls then
     if kong and kong.configuration then
@@ -1733,10 +1734,12 @@ function Schema:process_auto_fields(data, context, nulls, opts)
               value = deref
             else
               if err then
-                kong.log.warn("unable to resolve reference ", value, "(", err, ")")
+                kong.log.warn("unable to resolve reference ", value, " (", err, ")")
               else
                 kong.log.warn("unable to resolve reference ", value)
               end
+
+              value = nil
             end
           end
 
@@ -1752,10 +1755,12 @@ function Schema:process_auto_fields(data, context, nulls, opts)
                     value = deref
                   else
                     if err then
-                      kong.log.warn("unable to resolve reference ", value, "(", err, ")")
+                      kong.log.warn("unable to resolve reference ", value, " (", err, ")")
                     else
                       kong.log.warn("unable to resolve reference ", value)
                     end
+
+                    value[i] = nil
                   end
                 end
               end
