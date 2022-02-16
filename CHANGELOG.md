@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [2.7.2](#272)
 - [2.7.1](#271)
 - [2.7.0](#270)
 - [2.6.0](#260)
@@ -60,6 +61,18 @@
 - [0.10.1](#0101---20170327)
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
+
+
+## [2.7.2] (UNRELEASED)
+
+### Fixes
+
+#### Plugins
+
+- **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
+    and deprecated the `proxy_scheme` config attribute for removal in 3.0
+    [#8406](https://github.com/Kong/kong/pull/8406)
+
 
 ## [2.7.1]
 
