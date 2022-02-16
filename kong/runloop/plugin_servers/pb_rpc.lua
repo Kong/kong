@@ -151,6 +151,18 @@ do
     [".kong_plugin_protocol.Number"] = wrap_val,
     [".kong_plugin_protocol.Int"] = wrap_val,
     [".kong_plugin_protocol.String"] = wrap_val,
+    [".kong_plugin_protocol.RawBodyResult"] = function(v, err)
+      if type(v) == "string" then
+        return {  content = v }
+      end
+
+      local path = ngx.req.get_body_file()
+      if path then
+        return { body_filepath = path }
+      end
+
+      return { error = err or "Can't read request body" }
+    end,
     --[".kong_plugin_protocol.MemoryStats"] = - function(v)
     --  return {
     --    lua_shared_dicts = {
