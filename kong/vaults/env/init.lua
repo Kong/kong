@@ -1,4 +1,5 @@
 local type = type
+local gsub = string.gsub
 local upper = string.upper
 local kong = kong
 
@@ -35,15 +36,20 @@ end
 
 local function get(conf, resource, version)
   local prefix = conf.prefix
+
+  resource = gsub(resource, "-", "_")
+
   if type(prefix) == "string" then
     resource = prefix .. resource
   end
+
+  resource = upper(resource)
 
   if version == 2 then
     resource = resource .. "_PREVIOUS"
   end
 
-  return ENV[upper(resource)]
+  return ENV[resource]
 end
 
 
