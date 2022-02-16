@@ -167,6 +167,9 @@
   the header `Access-Control-Allow-Origin` is set to `*`.
   Thanks, [@jkla-dr](https://github.com/jkla-dr)!
   [#8401](https://github.com/Kong/kong/pull/8401)
+- **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
+  and deprecated the `proxy_scheme` config attribute for removal in 3.0
+  [#8406](https://github.com/Kong/kong/pull/8406)
 
 
 ## [2.7.1]
