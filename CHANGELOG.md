@@ -154,6 +154,9 @@
 - **External Plugins**: Unwrap `ConsumerSpec` and `AuthenticateArgs`.
   Thanks, [@raptium](https://github.com/raptium)!
   [#8280](https://github.com/Kong/kong/pull/8280)
+- **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
+    and deprecated the `proxy_scheme` config attribute for removal in 3.0
+    [#8406](https://github.com/Kong/kong/pull/8406)
 
 
 ## [2.7.1]
