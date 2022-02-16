@@ -1606,8 +1606,7 @@ return {
         service. Every upstream can have many targets, and the targets can be
         dynamically added, modified, or deleted. Changes take effect on the fly.
 
-        Because the upstream maintains a history of target changes, the targets cannot
-        be deleted or modified. To disable a target, post a new one with `weight=0`;
+        To disable a target, post a new one with `weight=0`;
         alternatively, use the `DELETE` convenience method to accomplish the same.
 
         The current target object definition is the one with the latest `created_at`.
