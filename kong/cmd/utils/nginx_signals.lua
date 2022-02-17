@@ -8,22 +8,12 @@ local pl_stringx = require "pl.stringx"
 local fmt = string.format
 
 local nginx_bin_name = "nginx"
-local nginx_search_paths
-do
-  local resty_prefix = os.getenv("KONG_OPENRESTY_PREFIX")
-  if resty_prefix then
-    log.debug("using custom OpenResty prefix: %s", resty_prefix)
-    nginx_search_paths = {
-      pl_path.join(resty_prefix, "nginx", "sbin")
-    }
-  else
-    nginx_search_paths = {
-      "/usr/local/openresty/nginx/sbin",
-      "/opt/openresty/nginx/sbin",
-      ""
-    }
-  end
-end
+local nginx_search_paths = {
+  "/usr/local/openresty/nginx/sbin",
+  "/opt/openresty/nginx/sbin",
+  ""
+}
+
 local nginx_version_pattern = "^nginx.-openresty.-([%d%.]+)"
 local nginx_compatible = version.set(unpack(meta._DEPENDENCIES.nginx))
 
@@ -61,11 +51,19 @@ end
 
 local _M = {}
 
-function _M.find_nginx_bin()
+function _M.find_nginx_bin(kong_conf)
   log.debug("searching for OpenResty 'nginx' executable")
 
+  local search_paths = nginx_search_paths
+  if kong_conf and kong_conf.openresty_prefix then
+    log.debug("using custom OpenResty prefix: %s", kong_conf.openresty_prefix)
+    search_paths = {
+      pl_path.join(kong_conf.openresty_prefix, "nginx", "sbin"),
+    }
+  end
+
   local found
-  for _, path in ipairs(nginx_search_paths) do
+  for _, path in ipairs(search_paths) do
     local path_to_check = pl_path.join(path, nginx_bin_name)
     if is_openresty(path_to_check) then
       if path_to_check == "nginx" then
@@ -94,7 +92,7 @@ function _M.find_nginx_bin()
 end
 
 function _M.start(kong_conf)
-  local nginx_bin, err = _M.find_nginx_bin()
+  local nginx_bin, err = _M.find_nginx_bin(kong_conf)
   if not nginx_bin then
     return nil, err
   end
@@ -131,7 +129,7 @@ function _M.start(kong_conf)
 end
 
 function _M.check_conf(kong_conf)
-  local nginx_bin, err = _M.find_nginx_bin()
+  local nginx_bin, err = _M.find_nginx_bin(kong_conf)
   if not nginx_bin then
     return nil, err
   end
@@ -163,7 +161,7 @@ function _M.reload(kong_conf)
     return nil, "nginx not running in prefix: " .. kong_conf.prefix
   end
 
-  local nginx_bin, err = _M.find_nginx_bin()
+  local nginx_bin, err = _M.find_nginx_bin(kong_conf)
   if not nginx_bin then
     return nil, err
   end
