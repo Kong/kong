@@ -1,4 +1,4 @@
-## Unreleased
+## 1.6.2
 
 - fix(*) allow sync_rate -1 with local strategy [FT-2949](https://konghq.atlassian.net/browse/FTI-2949)
 

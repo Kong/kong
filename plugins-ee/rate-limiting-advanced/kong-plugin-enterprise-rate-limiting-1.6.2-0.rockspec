@@ -1,9 +1,9 @@
 package = "kong-plugin-enterprise-rate-limiting"
-version = "1.6.1-0"
+version = "1.6.2-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-enterprise-rate-limiting",
-  tag = "1.6.1"
+  tag = "1.6.2"
 }
 
 supported_platforms = {"linux", "macosx"}
