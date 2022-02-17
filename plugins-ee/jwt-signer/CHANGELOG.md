@@ -1,3 +1,7 @@
+## v1.9.1
+
+- Fix: define expiry early to avoid arithmetic on nil value
+
 ## v1.9.0
 
 - Encrypt config.channel_token_keyset
@@ -32,7 +36,7 @@
   for a better hybrid compatibility
 - Change Postgres column type for `previous` in `jwt_signer_jwks` table from `JSONB` to `JSONB[]`
   for a better hybrid compatibility
-- Change JWKS uris to return `application/jwk-set+json` instead of `application/json` 
+- Change JWKS uris to return `application/jwk-set+json` instead of `application/json`
 
 ## v1.5.0
 
@@ -93,7 +97,7 @@
   `config.access|channel_token_upstream_header` with `:Bearer` or `:Basic` (case-insensitive).
   For request headers it just means that we look from the header without the suffix,
   but for the upstream headers it means that you can force the prefix
- 
+
 ## v0.1.0
 
 ### Added
@@ -127,7 +131,7 @@
 - Change the checking of tokens to be ordered: `access token`, `channel token`
 - Change the priority of the plugin from `850` to `999`
 - Change `no_consumer` from `false` to `true`
-- Rename `config.access_token_introspection_claim` to `config.access_token_introspection_jwt_claim` 
+- Rename `config.access_token_introspection_claim` to `config.access_token_introspection_jwt_claim`
 - Rename `config.channel_token_introspection_claim` to `config.channel_token_introspection_jwt_claim`
 
 ### Added
