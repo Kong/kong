@@ -176,6 +176,10 @@ return {
     },
 
     -- Enterprise plugins
+    redis = {
+      "username",
+      "sentinel_username"
+    },
     canary = {
       "canary_by_header_name",
     },

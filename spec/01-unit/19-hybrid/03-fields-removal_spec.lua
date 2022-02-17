@@ -61,6 +61,8 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "username",
+        "sentinel_username",
         "keepalive_pool_size",
       },
       acme = {
@@ -159,6 +161,8 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "username",
+        "sentinel_username",
         "keepalive_pool_size",
       },
       prometheus = {
@@ -267,6 +271,8 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "username",
+        "sentinel_username",
         "keepalive_pool_size",
       },
       syslog = {
@@ -375,6 +381,8 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "username",
+        "sentinel_username",
         "keepalive_pool_size",
       },
       syslog = {
@@ -475,6 +483,8 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       redis = {
+        "username",
+        "sentinel_username",
         "keepalive_pool_size",
       },
       acme = {
@@ -662,6 +672,10 @@ describe("kong.clustering.control_plane", function()
       zipkin = {
         "local_service_name",
       },
+      redis = {
+        "username",
+        "sentinel_username",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -705,6 +719,10 @@ describe("kong.clustering.control_plane", function()
         "session_redis_username",
         "resolve_distributed_claims",
       },
+      redis = {
+        "username",
+        "sentinel_username",
+      },
     }, cp._get_removed_fields(2006000000))
 
     assert.same({
@@ -721,6 +739,10 @@ describe("kong.clustering.control_plane", function()
       openid_connect = {
         "session_redis_username",
         "resolve_distributed_claims",
+      },
+      redis = {
+        "username",
+        "sentinel_username",
       },
     }, cp._get_removed_fields(2007000000))
 
@@ -774,6 +796,8 @@ describe("kong.clustering.control_plane", function()
               "keepalive_pool_size",
               "read_timeout",
               "send_timeout",
+              "username",
+              "sentinel_username",
             },
           }
         }, {
@@ -838,6 +862,8 @@ describe("kong.clustering.control_plane", function()
           "keepalive_pool_size",
           "read_timeout",
           "send_timeout",
+          "username",
+          "sentinel_username",
         },
       }
     }, {
@@ -890,6 +916,8 @@ describe("kong.clustering.control_plane", function()
           "keepalive_pool_size",
           "read_timeout",
           "send_timeout",
+          "username",
+          "sentinel_username",
         },
       }
     }, {
@@ -942,6 +970,8 @@ describe("kong.clustering.control_plane", function()
           "keepalive_pool_size",
           "read_timeout",
           "send_timeout",
+          "username",
+          "sentinel_username",
         },
       }
     }, {
@@ -994,6 +1024,8 @@ describe("kong.clustering.control_plane", function()
           "keepalive_pool_size",
           "read_timeout",
           "send_timeout",
+          "username",
+          "sentinel_username",
         },
       }
     }, {
@@ -1046,6 +1078,8 @@ describe("kong.clustering.control_plane", function()
           "keepalive_pool_size",
           "read_timeout",
           "send_timeout",
+          "username",
+          "sentinel_username",
         },
       }
     }, {
