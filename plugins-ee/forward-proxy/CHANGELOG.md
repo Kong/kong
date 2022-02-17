@@ -1,3 +1,9 @@
+## 1.2.0
+
+* Add mTLS support
+* Add referenceable attribute to fields that could be stored in vaults
+* New http/https connection config properties
+
 ## 1.1.0
 
 * Added option for proxy authentication
