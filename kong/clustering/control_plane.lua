@@ -245,205 +245,146 @@ _M._get_removed_fields = get_removed_fields
 -- returns has_update, modified_deflated_payload, err
 local function update_compatible_payload(payload, dp_version, log_suffix)
   local dp_version_num = dp_version_num(dp_version)
+  local has_update = false
   local fields = get_removed_fields(dp_version_num)
 
+  payload = utils.deep_copy(payload, false)
+  local config_table = payload["config_table"]
+
   if fields then
-    payload = utils.deep_copy(payload, false)
-    local config_table = payload["config_table"]
-    local has_update = invalidate_items_from_config(config_table["plugins"], fields, log_suffix)
+    has_update = invalidate_items_from_config(config_table["plugins"], fields, log_suffix)
+  end
 
-    -- XXX EE: this should be moved in its own file (compat/config.lua). With a table
-    -- similar to compat/remove_fields, each plugin could register a function to handle
-    -- its compatibility issues.
-    if dp_version_num < 2008000000 --[[ 2.8.0.0 ]] then
-      if config_table["plugins"] then
-        for _, t in ipairs(config_table["plugins"]) do
-          local config = t and t["config"]
-          if config then
-            if t["name"] == "openid-connect" then
-              if config["session_redis_password"] then
-                ngx_log(ngx_WARN, _log_prefix, "openid-connect plugin for Kong Gateway v" .. KONG_VERSION ..
-                        " contains configuration session_redis_password, which is incompatible with",
-                        " dataplane version " .. dp_version .. " and will be replaced with 'session_redis_auth'.", log_suffix)
-                config["session_redis_auth"] = config["session_redis_password"]
-                config["session_redis_password"] = nil
-                has_update = true
-              end
+  -- XXX EE: this should be moved in its own file (compat/config.lua). With a table
+  -- similar to compat/remove_fields, each plugin could register a function to handle
+  -- its compatibility issues.
+  if dp_version_num < 2008000000 --[[ 2.8.0.0 ]] then
+    if config_table["plugins"] then
+      for _, t in ipairs(config_table["plugins"]) do
+        local config = t and t["config"]
+        if config then
+          if t["name"] == "openid-connect" then
+            if config["session_redis_password"] then
+              ngx_log(ngx_WARN, _log_prefix, "openid-connect plugin for Kong Gateway v" .. KONG_VERSION ..
+                      " contains configuration session_redis_password, which is incompatible with",
+                      " dataplane version " .. dp_version .. " and will be replaced with 'session_redis_auth'.", log_suffix)
+              config["session_redis_auth"] = config["session_redis_password"]
+              config["session_redis_password"] = nil
+              has_update = true
             end
+          end
 
-            if t["name"] == "forward-proxy" then
-              if config["http_proxy_host"] then
-                ngx_log(ngx_WARN, _log_prefix, "forward-proxy plugin for Kong Gateway v" .. KONG_VERSION ..
-                        " contains configuration http_proxy_host, which is incompatible with",
-                        " dataplane version " .. dp_version .. " and will be replaced with 'proxy_host'.", log_suffix)
-                config["proxy_host"] = config["http_proxy_host"]
-                config["http_proxy_host"] = nil
-                has_update = true
-              end
-              if config["http_proxy_port"] then
-                ngx_log(ngx_WARN, _log_prefix, "forward-proxy plugin for Kong Gateway v" .. KONG_VERSION ..
-                        " contains configuration http_proxy_port, which is incompatible with",
-                        " dataplane version " .. dp_version .. " and will be replaced with 'proxy_port'.", log_suffix)
-                config["proxy_port"] = config["http_proxy_port"]
-                config["http_proxy_port"] = nil
-              end
+          if t["name"] == "forward-proxy" then
+            if config["http_proxy_host"] then
+              ngx_log(ngx_WARN, _log_prefix, "forward-proxy plugin for Kong Gateway v" .. KONG_VERSION ..
+                      " contains configuration http_proxy_host, which is incompatible with",
+                      " dataplane version " .. dp_version .. " and will be replaced with 'proxy_host'.", log_suffix)
+              config["proxy_host"] = config["http_proxy_host"]
+              config["http_proxy_host"] = nil
+              has_update = true
+            end
+            if config["http_proxy_port"] then
+              ngx_log(ngx_WARN, _log_prefix, "forward-proxy plugin for Kong Gateway v" .. KONG_VERSION ..
+                      " contains configuration http_proxy_port, which is incompatible with",
+                      " dataplane version " .. dp_version .. " and will be replaced with 'proxy_port'.", log_suffix)
+              config["proxy_port"] = config["http_proxy_port"]
+              config["http_proxy_port"] = nil
             end
           end
         end
       end
     end
+  end
 
-    if dp_version_num < 2007000000 --[[ 2.7.0.0 ]] then
-      local entity_removal = {
-        "consumer_groups",
-        "consumer_group_consumers",
-        "consumer_group_plugins",
-      }
-      for _, entity in ipairs(entity_removal) do
-        if config_table[entity] then
+  if dp_version_num < 2007000000 --[[ 2.7.0.0 ]] then
+    local entity_removal = {
+      "consumer_groups",
+      "consumer_group_consumers",
+      "consumer_group_plugins",
+    }
+    for _, entity in ipairs(entity_removal) do
+      if config_table[entity] then
+        ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                " contains configuration '" .. entity .. "'",
+                " which is incompatible with dataplane version " .. dp_version .. " and will",
+                " be removed.", log_suffix)
+        config_table[entity] = nil
+        has_update = true
+      end
+    end
+
+    if config_table["services"] then
+      for _, t in ipairs(config_table["services"]) do
+        if t["enabled"] then
           ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                  " contains configuration '" .. entity .. "'",
+                  " contains configuration 'services.enabled'",
                   " which is incompatible with dataplane version " .. dp_version .. " and will",
                   " be removed.", log_suffix)
-          config_table[entity] = nil
+          t["enabled"] = nil
           has_update = true
         end
       end
-
-      if config_table["services"] then
-        for _, t in ipairs(config_table["services"]) do
-          if t["enabled"] then
-            ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                    " contains configuration 'services.enabled'",
-                    " which is incompatible with dataplane version " .. dp_version .. " and will",
-                    " be removed.", log_suffix)
-            t["enabled"] = nil
-            has_update = true
-          end
-        end
-      end
-
-      if config_table["plugins"] then
-        for _, t in ipairs(config_table["plugins"]) do
-          local config = t and t["config"]
-          if config then
-            -- TODO: Properly implemented nested field removal [datadog plugin]
-            --       Note: This is not as straightforward due to field element
-            --             removal implementation; this needs to be refactored
-            if t["name"] == "datadog" then
-              if config["metrics"] then
-                for i, m in ipairs(config["metrics"]) do
-                  if m["stat_type"] == "distribution" then
-                    ngx_log(ngx_WARN, _log_prefix, "datadog plugin for Kong Gateway v" .. KONG_VERSION ..
-                            " contains metric '" .. m["name"] .. "' of type 'distribution' which is incompatible with",
-                            " dataplane version " .. dp_version .. " and will be ignored.", log_suffix)
-                    config["metrics"][i] = nil
-                    has_update = true
-                  end
-                end
-              end
-            end
-
-            if t["name"] == "zipkin" then
-              if config["header_type"] and config["header_type"] == "ignore" then
-                ngx_log(ngx_WARN, _log_prefix, "zipkin plugin for Kong Gateway v" .. KONG_VERSION ..
-                        " contains header_type=ignore, which is incompatible with",
-                        " dataplane version " .. dp_version .. " and will be replaced with 'header_type=preserve'.", log_suffix)
-                config["header_type"] = "preserve"
-                has_update = true
-              end
-            end
-          end
-        end
-      end
     end
 
-    if dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
-      if config_table["consumers"] then
-        for _, t in ipairs(config_table["consumers"]) do
-          if t["username_lower"] then
-            ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                    " contains configuration 'consumer.username_lower'",
-                    " which is incompatible with dataplane version " .. dp_version .. " and will",
-                    " be removed.", log_suffix)
-            t["username_lower"] = nil
-            has_update = true
-          end
-        end
-      end
-      if config_table["oic_jwks"] then
-        for _, t in ipairs(config_table["oic_jwks"]) do
-          if t["jwks"] and t["jwks"].keys then
-            for _, k in ipairs(t["jwks"].keys) do
-              for _, e in ipairs({ "oth", "r", "t" }) do
-                if k[e] then
-                  ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
-                          " contains configuration 'oic_jwks.jwks.keys[\"" .. e .. "\"]'",
-                          " which is incompatible with dataplane version " .. dp_version .. " and will",
-                          " be removed.", log_suffix)
-                  k[e] = nil
+    if config_table["plugins"] then
+      for _, t in ipairs(config_table["plugins"]) do
+        local config = t and t["config"]
+        if config then
+          -- TODO: Properly implemented nested field removal [datadog plugin]
+          --       Note: This is not as straightforward due to field element
+          --             removal implementation; this needs to be refactored
+          if t["name"] == "datadog" then
+            if config["metrics"] then
+              for i, m in ipairs(config["metrics"]) do
+                if m["stat_type"] == "distribution" then
+                  ngx_log(ngx_WARN, _log_prefix, "datadog plugin for Kong Gateway v" .. KONG_VERSION ..
+                          " contains metric '" .. m["name"] .. "' of type 'distribution' which is incompatible with",
+                          " dataplane version " .. dp_version .. " and will be ignored.", log_suffix)
+                  config["metrics"][i] = nil
                   has_update = true
                 end
               end
             end
           end
+
+          if t["name"] == "zipkin" then
+            if config["header_type"] and config["header_type"] == "ignore" then
+              ngx_log(ngx_WARN, _log_prefix, "zipkin plugin for Kong Gateway v" .. KONG_VERSION ..
+                      " contains header_type=ignore, which is incompatible with",
+                      " dataplane version " .. dp_version .. " and will be replaced with 'header_type=preserve'.", log_suffix)
+              config["header_type"] = "preserve"
+              has_update = true
+            end
+          end
         end
       end
-      if config_table["plugins"] then
-        for _, t in ipairs(config_table["plugins"]) do
-          local config = t and t["config"]
-          if config then
-            -- TODO: Properly implemented nested field removal [acme plugin]
-            --       Note: This is not as straightforward due to field element
-            --             removal implementation; this needs to be refactored
-            if t["name"] == "acme" then
-              if config["storage_config"] and config["storage_config"].vault then
-                for _, i in ipairs({ "auth_method", "auth_path", "auth_role", "jwt_path" }) do
-                  if config["storage_config"].vault[i] ~= nil then
-                    ngx_log(ngx_WARN, _log_prefix, "acme plugin for Kong Gateway v" .. KONG_VERSION ..
-                            "contains vault storage configuration '", i, "' which is incompatible with",
-                            "dataplane version " .. dp_version .. " and will be ignored", log_suffix)
-                    config["storage_config"].vault[i] = nil
-                    has_update = true
-                  end
-                end
-              end
-            end
+    end
+  end
 
-            if t["name"] == "canary" then
-              if config["hash"] == "header" then
-                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
-                        " contains configuration 'hash=header'",
+  if dp_version_num < 2006000000 --[[ 2.6.0.0 ]] then
+    if config_table["consumers"] then
+      for _, t in ipairs(config_table["consumers"]) do
+        if t["username_lower"] then
+          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                  " contains configuration 'consumer.username_lower'",
+                  " which is incompatible with dataplane version " .. dp_version .. " and will",
+                  " be removed.", log_suffix)
+          t["username_lower"] = nil
+          has_update = true
+        end
+      end
+    end
+    if config_table["oic_jwks"] then
+      for _, t in ipairs(config_table["oic_jwks"]) do
+        if t["jwks"] and t["jwks"].keys then
+          for _, k in ipairs(t["jwks"].keys) do
+            for _, e in ipairs({ "oth", "r", "t" }) do
+              if k[e] then
+                ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v" .. KONG_VERSION ..
+                        " contains configuration 'oic_jwks.jwks.keys[\"" .. e .. "\"]'",
                         " which is incompatible with dataplane version " .. dp_version .. " and will",
-                        " be replaced by 'hash=consumer'.", log_suffix)
-                config["hash"] = "consumer" -- default
-                has_update = true
-              end
-            end
-            if t["name"] == "rate-limiting-advanced" then
-              if config["strategy"] == "local" then
-                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
-                        " contains configuration 'strategy=local'",
-                        " which is incompatible with dataplane version " .. dp_version .. " and will",
-                        " be replaced by 'strategy=redis' and 'sync_rate=-1'.", log_suffix)
-                config["strategy"] = "redis"
-                config["sync_rate"] = -1
-                has_update = true
-              elseif config["sync_rate"] and config["sync_rate"] > 0 and config["sync_rate"] < 1 then
-                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
-                        " contains configuration 'sync_rate < 1'",
-                        " which is incompatible with dataplane version " .. dp_version .. " and will",
-                        " be replaced by 'sync_rate=1'.", log_suffix)
-                config["sync_rate"] = 1
-                has_update = true
-              end
-
-              if config["identifier"] == "path" then
-                ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
-                        " contains configuration 'identifier=path'",
-                        " which is incompatible with dataplane version " .. dp_version .. " and will",
-                        " be replaced by 'identifier=consumer'.", log_suffix)
-                config["identifier"] = "consumer" -- default
+                        " be removed.", log_suffix)
+                k[e] = nil
                 has_update = true
               end
             end
@@ -451,14 +392,75 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
         end
       end
     end
+    if config_table["plugins"] then
+      for _, t in ipairs(config_table["plugins"]) do
+        local config = t and t["config"]
+        if config then
+          -- TODO: Properly implemented nested field removal [acme plugin]
+          --       Note: This is not as straightforward due to field element
+          --             removal implementation; this needs to be refactored
+          if t["name"] == "acme" then
+            if config["storage_config"] and config["storage_config"].vault then
+              for _, i in ipairs({ "auth_method", "auth_path", "auth_role", "jwt_path" }) do
+                if config["storage_config"].vault[i] ~= nil then
+                  ngx_log(ngx_WARN, _log_prefix, "acme plugin for Kong Gateway v" .. KONG_VERSION ..
+                          "contains vault storage configuration '", i, "' which is incompatible with",
+                          "dataplane version " .. dp_version .. " and will be ignored", log_suffix)
+                  config["storage_config"].vault[i] = nil
+                  has_update = true
+                end
+              end
+            end
+          end
 
-    if has_update then
-      local deflated_payload, err = deflate_gzip(cjson_encode(payload))
-      if deflated_payload then
-        return true, deflated_payload
-      else
-        return true, nil, err
+          if t["name"] == "canary" then
+            if config["hash"] == "header" then
+              ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
+                      " contains configuration 'hash=header'",
+                      " which is incompatible with dataplane version " .. dp_version .. " and will",
+                      " be replaced by 'hash=consumer'.", log_suffix)
+              config["hash"] = "consumer" -- default
+              has_update = true
+            end
+          end
+          if t["name"] == "rate-limiting-advanced" then
+            if config["strategy"] == "local" then
+              ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
+                      " contains configuration 'strategy=local'",
+                      " which is incompatible with dataplane version " .. dp_version .. " and will",
+                      " be replaced by 'strategy=redis' and 'sync_rate=-1'.", log_suffix)
+              config["strategy"] = "redis"
+              config["sync_rate"] = -1
+              has_update = true
+            elseif config["sync_rate"] and config["sync_rate"] > 0 and config["sync_rate"] < 1 then
+              ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
+                      " contains configuration 'sync_rate < 1'",
+                      " which is incompatible with dataplane version " .. dp_version .. " and will",
+                      " be replaced by 'sync_rate=1'.", log_suffix)
+              config["sync_rate"] = 1
+              has_update = true
+            end
+
+            if config["identifier"] == "path" then
+              ngx_log(ngx_WARN, _log_prefix, t["name"], " plugin for Kong Gateway v" .. KONG_VERSION ..
+                      " contains configuration 'identifier=path'",
+                      " which is incompatible with dataplane version " .. dp_version .. " and will",
+                      " be replaced by 'identifier=consumer'.", log_suffix)
+              config["identifier"] = "consumer" -- default
+              has_update = true
+            end
+          end
+        end
       end
+    end
+  end
+
+  if has_update then
+    local deflated_payload, err = deflate_gzip(cjson_encode(payload))
+    if deflated_payload then
+      return true, deflated_payload
+    else
+      return true, nil, err
     end
   end
 
