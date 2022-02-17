@@ -10,7 +10,6 @@ local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local openssl_x509 = require("resty.openssl.x509")
-local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
 local string = string
 local setmetatable = setmetatable
@@ -136,7 +135,7 @@ end
 local config_version = 0
 
 function _M:export_deflated_reconfigure_payload()
-  local config_table, err = declarative.export_config()
+  local config_table, err = declarative.export_config_proto()
   if not config_table then
     return nil, err
   end
@@ -146,7 +145,6 @@ function _M:export_deflated_reconfigure_payload()
   if config_table.plugins then
     for _, plugin in pairs(config_table.plugins) do
       self.plugins_configured[plugin.name] = true
-      plugin.config = protobuf.pbwrap_struct(plugin.config)
     end
   end
 
@@ -156,27 +154,13 @@ function _M:export_deflated_reconfigure_payload()
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
 
-  local payload = declarative.remove_nulls({
-    format_version = config_table._format_version,
-    services = config_table.services,
-    routes = config_table.routes,
-    consumers = config_table.consumers,
-    plugins = config_table.plugins,
-    upstreams = config_table.upstreams,
-    targets = config_table.targets,
-    certificates = config_table.certificates,
-    snis = config_table.snis,
-    ca_certificates = config_table.ca_certificates,
-    plugin_data = config_table.plugin_data,
-    workspaces = config_table.workspaces,
-  })
   local service = get_config_service(self)
   self.config_call_rpc, self.config_call_args = assert(service:encode_args("ConfigService.SyncConfig", {
-    config = payload,
+    config = config_table,
     version = config_version,
   }))
 
-  return payload, nil
+  return config_table, nil
 end
 
 
