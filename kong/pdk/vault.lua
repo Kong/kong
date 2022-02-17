@@ -160,12 +160,14 @@ local function process_secret(reference, opts)
     local fields = field.fields
     local env_name = gsub(name, "-", "_")
     for i = 1, #fields do
-      local k = next(fields[i])
+      local k, f = next(fields[i])
       if config[k] == nil then
         local n = lower(fmt("vault_%s_%s", env_name, k))
         local v = configuration[n]
         if v ~= nil then
           config[k] = v
+        elseif f.required and f.default ~= nil then
+          config[k] = f.default
         end
       end
     end
