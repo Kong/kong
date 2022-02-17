@@ -311,7 +311,7 @@ function _M:communicate(premature)
           ngx_log(ngx_INFO, _log_prefix, "received config #", self.next_config_version, log_suffix)
 
           local pok, res
-          pok, res, err = pcall(self.update_config, self, config_table, config_hash, true)
+          pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, true)
           if pok then
             last_config_version = self.next_config_version
             if not res then
@@ -335,7 +335,7 @@ function _M:communicate(premature)
     end
   end)
 
-  local write_thread = ngx.thread.spawn(function()
+  local ping_thread = ngx.thread.spawn(function()
     while not exiting() do
       assert(peer:call("ConfigService.PingCP", {}))
       ngx_log(ngx_INFO, _log_prefix, "sent ping", log_suffix)
@@ -354,9 +354,9 @@ function _M:communicate(premature)
   end)
 
 
-  local ok, err, perr = ngx.thread.wait(write_thread, config_thread)
+  local ok, err, perr = ngx.thread.wait(ping_thread, config_thread)
 
-  ngx.thread.kill(write_thread)
+  ngx.thread.kill(ping_thread)
   c:close()
 
   if not ok then
