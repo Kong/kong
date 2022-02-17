@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package wrpc;
 
-option go_package = "github.com/kong/go-wrpc/wrpc/internal/wrpc";
+option go_package = "github.com/kong/go-wrpc/wrpc";
 
 // PayloadVersion identifies the version of the payload.
 enum PayloadVersion {
@@ -23,25 +23,19 @@ enum MessageType {
   MESSAGE_TYPE_ERROR = 1;
   // RPC signals that the message contains a request or a response.
   MESSAGE_TYPE_RPC = 2;
-  // MESSAGE_TYPE_STREAM = n;   // TODO(hbagdi): introduce streaming when
-                                // when required and use-cases are more clear
+  // STREAM_BEGIN singals start of a stream.
+  MESSAGE_TYPE_STREAM_BEGIN = 3;
+  // STREAM_MESSAGE singals that the message belongs to a stream.
+  MESSAGE_TYPE_STREAM_MESSAGE = 4;
+  // STREAM_END singals end of a stream.
+  MESSAGE_TYPE_STREAM_END = 5;
 }
 
 // Error identifies serialization, network, and protocol errors.
 enum ErrorType {
   ERROR_TYPE_UNSPECIFIED = 0;
-  // INVALID_MESSAGE signals that the message received is invalid.
-  ERROR_TYPE_INVALID_MESSAGE = 1;
-  // INVALID_SERVICE signals that the service or RPC initiated by the sender
-  // is unknown to the receiver.
-  ERROR_TYPE_INVALID_SERVICE = 2;
-  // INVALID_SERVICE signals that the service or RPC initiated by the sender
-  // is unknown to the receiver.
-  ERROR_TYPE_INVALID_RPC = 3;
-  // INVALID_PAYLOAD signals that the payload within a received message is invalid.
-  // Use this error to signal incorrect number of arguments and incorrect
-  // serialization to the other side.
-  ERROR_TYPE_INVALID_PAYLOAD = 4;
+  // GENERIC signals a general error with the protocol.
+  ERROR_TYPE_GENERIC = 1;
 }
 
 // Error represents a protocol error.
@@ -78,7 +72,7 @@ message PayloadV1 {
   // We acknowledge that it is cumbersome to track these IDs manually
   // without any support for linting and programmatic access.
   // This may be defined within the proto file
-  // itself using proto3 custom options in future. 
+  // itself using proto3 custom options in future.
   // ID MUST be greater than 0.
   //
   // Receiver MUST return INVALID_SERVICE error when this field contains a
@@ -90,7 +84,7 @@ message PayloadV1 {
   // We acknowledge that it is cumbersome to track these IDs manually
   // without any support for linting and programmatic access.
   // This may be defined within the proto file
-  // itself using proto3 custom options in future. 
+  // itself using proto3 custom options in future.
   // ID MUST be greater than 0.
   //
   // Receiver MUST return INVALID_RPC error when this field contains an
@@ -105,7 +99,7 @@ message PayloadV1 {
   // There are no guarantees about the order in which requests will be
   // processed by the receiver. This field has no semantics outside the context
   // of a WebSocket connection. It is invalid to set this field to 0 and the
-  // receiver MUST drop the message if that is the case.
+  // receiver MUST drop the message and close the connection.
   uint32 seq = 5;
 
   // ack represents that the message contains a response or error for an RPC
@@ -119,7 +113,8 @@ message PayloadV1 {
   // of timeouts to account for network and TCP/HTTP buffer latencies. It is
   // assumed that out of band time synchronization solutions are deployed
   // already. This field MUST be set to a non-zero value for a request and MUST
-  // be set to 0 for a response.
+  // be set to 0 for a response, if not the reciever MUST drop the message and
+  // close the connection.
   uint32 deadline = 7;
 
   // payload_encoding identifies the encoding used for the payload.
@@ -138,8 +133,13 @@ message PayloadV1 {
   // Note: This results in double proto3 encoding. Once encoding of payloads,
   // and then encoding of the entire message. We acknowledge that there are
   // some overheads here and they will be addressed in a future iteration.
-  //
   repeated bytes payloads = 9;
+
+  // stream_id is the ID of a stream. stream_id is set to the sequence number
+  // of the STREAM_BEGIN controller message.
+  // This field MUST be set to zero for non-stream messages.
+  //
+  uint32 stream_id = 10;
 }
 
 // WebsocketPayload represents a protobuf-based encoded payload of a WebSocket

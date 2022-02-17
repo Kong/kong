@@ -21,7 +21,7 @@ service ConfigService {
 
   // ReportBasicInfo informs the software installed in the DP.  Currently
   // this is the list of plugins with respective version.  It's required
-  // that the CP send this information in order to receive configuration
+  // that the DP send this information in order to receive configuration
   // updates.
   //
   // Call direction: DP to CP
@@ -46,7 +46,7 @@ service ConfigService {
   // requests for configuration into a single SyncConfig().
   //
   // Configuration is always PUSHed to the DP and so configuration is not sent
-  // as part of the response to this call to simplify implementation. 
+  // as part of the response to this call to simplify implementation.
   //
   // Call direction:
   // - DP to CP
@@ -54,7 +54,7 @@ service ConfigService {
   rpc PingCP(PingCPRequest) returns (PingCPResponse);
 }
 
-enum Capability { 
+enum Capability {
   CAPABILITY_UNSPECIFIED = 0;
   CAPABILITY_BULK_UPDATE = 1;
   // Incremental configuration will be added in future and is considered out
@@ -75,8 +75,8 @@ message ReportBasicInfoRequest {
 
 message ReportBasicInfoResponse {
   oneof response {
-    string Ok = 1;
-    string Error = 2;
+    string ok = 1;
+    string error = 2;
   }
 }
 
@@ -130,4 +130,3 @@ message PingCPRequest {
 
 message PingCPResponse {
 }
-
