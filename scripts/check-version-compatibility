@@ -233,6 +233,11 @@ ENABLE_FORWARD_PROXY=(
 ENABLE_GRAPHQL_PROXY_CACHE_ADVANCED=(
   --data "name=graphql-proxy-cache-advanced"
   --data "config.strategy=memory"
+  --data "config.redis.username=user1"
+  --data "config.redis.password=pass1"
+  --data "config.redis.database=1"
+  --data "config.redis.sentinel_username=user1"
+  --data "config.redis.sentinel_password=pass1"
 )
 
 ENABLE_GRAPHQL_RATE_LIMITING_ADVANCED=(
