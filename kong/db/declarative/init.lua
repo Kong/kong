@@ -398,7 +398,7 @@ function declarative.load_into_db(entities, meta)
 end
 
 
-local function export_from_db(emitter, skip_ws, skip_disabled_entities)
+local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_foreigns)
   local schemas = {}
 
   local db = kong.db
@@ -460,7 +460,9 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities)
               if disabled_services[id] then
                 goto skip_emit
               end
-              row[foreign_name] = id
+              if not expand_foreigns then
+                row[foreign_name] = id
+              end
             end
           end
         end
@@ -604,7 +606,7 @@ function declarative.export_config_proto(skip_ws, skip_disabled_entities)
     skip_disabled_entities = true
   end
 
-  return export_from_db(proto_emitter.new(), skip_ws, skip_disabled_entities)
+  return export_from_db(proto_emitter.new(), skip_ws, skip_disabled_entities, true)
 end
 
 function declarative.get_current_hash()

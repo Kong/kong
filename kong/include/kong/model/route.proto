@@ -27,7 +27,7 @@ message Route {
   int32 https_redirect_status_code = 18;
   bool request_buffering = 19;
   bool response_buffering = 20;
-  string service = 21;
+  Service service = 21;
 }
 
 message HeaderValues {
