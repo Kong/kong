@@ -169,12 +169,8 @@ function _GqlCacheHandler:body_filter(conf)
     return
   end
 
-  local chunk = ngx.arg[1]
-  local eof   = ngx.arg[2]
-
-  ctx.res_body = (ctx.res_body or "") .. (chunk or "")
-
-  if eof then
+  local body = kong.response.get_raw_body()
+  if body then
     local strategy = require(STRATEGY_PATH)({
       strategy_name = conf.strategy,
       strategy_opts = conf[conf.strategy],
@@ -183,8 +179,8 @@ function _GqlCacheHandler:body_filter(conf)
     local res = {
       status    = ngx.status,
       headers   = ctx.res_headers,
-      body      = ctx.res_body,
-      body_len  = #ctx.res_body,
+      body      = body,
+      body_len  = #body,
       timestamp = time(),
       ttl       = ctx.res_ttl,
       version   = CACHE_VERSION,
