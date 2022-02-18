@@ -1043,7 +1043,7 @@ do
               break
             end
             -- fallback to regex check if exact match failed
-            if header_t.header_pattern and re_find(req_header_val, header_t.header_pattern) then
+            if header_t.header_pattern and re_find(req_header_val, header_t.header_pattern, "jo") then
               found_in_req = true
               ctx.matches.headers[header_t.name] = req_header_val
               break
@@ -1057,7 +1057,7 @@ do
             matches_headers[header_t.name] = req_header
           end
           -- fallback to regex check if exact match failed
-          if header_t.header_pattern and re_find(req_header, header_t.header_pattern) then
+          if header_t.header_pattern and re_find(req_header, header_t.header_pattern, "jo") then
             found_in_req = true
             ctx.matches.headers[header_t.name] = req_header
           end
