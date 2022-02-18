@@ -38,13 +38,12 @@ local PREFIX = ngx.config.prefix()
 local SUBSYS = ngx.config.subsystem
 local WORKER_COUNT = ngx.worker.count()
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
 local DECLARATIVE_LOCK_KEY = "declarative:lock"
 local DECLARATIVE_LOCK_TTL = 60
 local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null }
-
-local EMPTY_CONFIGURATION_HASH = string.rep("0", 32)
 
 
 local declarative = {}
@@ -608,6 +607,10 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
 
   assert(type(fallback_workspace) == "string")
 
+  if not hash or hash == "" then
+    hash = DECLARATIVE_EMPTY_CONFIG_HASH
+  end
+
   -- Keys: tag name, like "admin"
   -- Values: array of encoded tags, similar to the `tags` variable,
   -- but filtered for a given tag
@@ -845,11 +848,6 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
   local ok, err = core_cache:safe_set("tags||@list", tags, shadow)
   if not ok then
     return nil, err
-  end
-
-  -- mask any default hash to indicate no hash is available.
-  if hash == EMPTY_CONFIGURATION_HASH or hash == "" then
-    hash = null
   end
 
   -- set the value of the configuration hash. The value can be nil, which
