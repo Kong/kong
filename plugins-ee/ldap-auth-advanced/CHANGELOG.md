@@ -1,3 +1,7 @@
+## 1.3.0
+
+- Add referenceable attribute to fields that could be stored in vaults
+
 ## 1.2.0
 
 - Upgrade to lua_pack 2.0.0

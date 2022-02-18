@@ -1,3 +1,7 @@
+## 0.4.0
+
+- Add referenceable attribute to fields that could be stored in vaults
+
 ## 0.3.0
 
 - Encrypt config.vault_token and va_cred.secret_token

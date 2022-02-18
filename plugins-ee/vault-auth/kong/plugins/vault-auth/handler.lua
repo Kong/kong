@@ -14,7 +14,7 @@ local kong = kong
 
 local VaultAuthHandler = {
   PRIORITY = 1003,
-  VERSION = "0.3.0"
+  VERSION = "0.4.0"
 }
 
 

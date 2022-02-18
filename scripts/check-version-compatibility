@@ -264,11 +264,13 @@ ENABLE_KAFKA_LOG=(
   --data "config.bootstrap_servers[1].host=localhost"
   --data "config.bootstrap_servers[1].port=9092"
   --data "config.topic=kong"
+  --data "config.cluster_name=kong"
 )
 
 ENABLE_KAFKA_UPSTREAM=(
   --data "name=kafka-upstream"
   --data "config.topic=kong"
+  --data "config.cluster_name=kong"
 )
 
 ENABLE_KEY_AUTH_ENC=(

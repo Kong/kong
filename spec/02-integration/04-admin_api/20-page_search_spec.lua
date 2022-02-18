@@ -24,6 +24,7 @@ describe("Admin API - search", function()
       bp, db = helpers.get_db_utils(strategy, {
         "routes",
         "services",
+        "consumers",
       })
 
       for i = 1, test_entity_count do
@@ -44,6 +45,26 @@ describe("Admin API - search", function()
           path = fmt("/%s", i),
         }
         local _, err, err_t = bp.services:insert(service)
+        assert.is_nil(err)
+        assert.is_nil(err_t)
+      end
+
+      local consumers = {
+        {
+          username = "foo",
+          custom_id = "bar",
+        }, 
+        {
+          username = "foo2",
+          custom_id = "bar2",
+        },
+        {
+          username = "foo3",
+          custom_id = "bar3",
+        }
+      }
+      for _, consumer in pairs(consumers) do
+        local _, err, err_t = bp.consumers:insert(consumer)
         assert.is_nil(err)
         assert.is_nil(err_t)
       end
@@ -147,6 +168,42 @@ describe("Admin API - search", function()
       local json = cjson.decode(body)
       assert.same("route100", json.data[1].name)
     end)
+
+    it("consumers multiple fields", function()
+      local res
+      res = assert(client:send {
+        method = "GET",
+        path = "/consumers?username=foo"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.same(3, #json.data)
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/consumers?custom_id=bar"
+      })
+      body = assert.res_status(200, res)
+      json = cjson.decode(body)
+      assert.same("foo", json.data[1].username)
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/consumers?custom_id=bar3"
+      })
+      body = assert.res_status(200, res)
+      json = cjson.decode(body)
+      assert.same("foo3", json.data[1].username)
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/consumers?username=error&custom_id=bar3"
+      })
+      body = assert.res_status(200, res)
+      json = cjson.decode(body)
+      assert.same(0, #json.data)
+    end)
+
   end)
 
 end)
