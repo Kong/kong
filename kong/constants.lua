@@ -187,6 +187,7 @@ local constants = {
   DECLARATIVE_PAGE_KEY = "declarative:page",
   DECLARATIVE_LOAD_KEY = "declarative_config:loaded",
   DECLARATIVE_HASH_KEY = "declarative_config:hash",
+  DECLARATIVE_EMPTY_CONFIG_HASH = string.rep("0", 32),
 
   CLUSTER_ID_PARAM_KEY = "cluster_id",
 
