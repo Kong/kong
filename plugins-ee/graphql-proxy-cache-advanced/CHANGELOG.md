@@ -1,3 +1,7 @@
+## 0.2.3
+
+- Fix 'X-Cache-Status: Miss' on large files
+
 ## 0.2.2
 
 - chore(*) add copyright
