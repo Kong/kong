@@ -10,6 +10,7 @@ local wrpc = require("kong.tools.wrpc")
 local constants = require("kong.constants")
 local utils = require("kong.tools.utils")
 local system_constants = require("lua_system_constants")
+local bit = require("bit")
 local ffi = require("ffi")
 local assert = assert
 local setmetatable = setmetatable
@@ -72,7 +73,7 @@ function _M.new(parent)
   }
 
   return setmetatable(self, {
-    __index = function(tab, key)
+    __index = function(_, key)
       return _M[key] or parent[key]
     end,
   })
@@ -110,15 +111,16 @@ function _M:update_config(config_table, config_hash, update_cache)
 
   -- NOTE: no worker mutex needed as this code can only be
   -- executed by worker 0
-  local res, err =
-    declarative.load_into_cache_with_events(entities, meta, new_hash)
+  local res
+  res, err = declarative.load_into_cache_with_events(entities, meta, new_hash)
   if not res then
     return nil, err
   end
 
   if update_cache then
     -- local persistence only after load finishes without error
-    local f, err = io_open(CONFIG_CACHE, "w")
+    local f
+    f, err = io_open(CONFIG_CACHE, "w")
     if not f then
       ngx_log(ngx_ERR, _log_prefix, "unable to open config cache file: ", err)
 
@@ -260,15 +262,17 @@ function _M:communicate(premature)
   end
 
   local reconnection_delay = math.random(5, 10)
-  local res, err = c:connect(uri, opts)
-  if not res then
-    ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
-                 " (retrying after ", reconnection_delay, " seconds)", log_suffix)
+  do
+    local res, err = c:connect(uri, opts)
+    if not res then
+      ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
+        " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
-    assert(ngx.timer.at(reconnection_delay, function(premature)
-      self:communicate(premature)
-    end))
-    return
+      assert(ngx.timer.at(reconnection_delay, function(premature)
+        self:communicate(premature)
+      end))
+      return
+    end
   end
 
   local config_semaphore = semaphore.new(0)
@@ -278,24 +282,26 @@ function _M:communicate(premature)
   peer.config_obj = self
   peer:spawn_threads()
 
-  peer:call("ConfigService.ReportBasicInfo", { plugins = self.plugins_list })
+  do
+    local resp, err = peer:call_wait("ConfigService.ReportBasicInfo", { plugins = self.plugins_list })
+    if type(resp) == "table" then
+      err = err or resp.error
+      resp = resp.ok
+    end
+    if not resp then
+      ngx_log(ngx_ERR, _log_prefix, "Couldn't report basic info to CP: ", err)
+      assert(ngx.timer.at(reconnection_delay, function(premature)
+        self:communicate(premature)
+      end))
+    end
+  end
 
-
-  -- how DP connection management works:
-  -- three threads are spawned, when any of these threads exits,
-  -- it means a fatal error has occurred on the connection,
-  -- and the other threads are also killed
+  -- Here we spawn two threads:
   --
   -- * config_thread: it grabs a received declarative config and apply it
   --                  locally. In addition, this thread also persists the
   --                  config onto the local file system
-  -- * read_thread: it is the only thread that sends WS frames to the CP
-  --                by sending out periodic PING frames to CP that checks
-  --                for the healthiness of the WS connection. In addition,
-  --                PING messages also contains the current config hash
-  --                applied on the local Kong DP
-  -- * write_thread: it is the only thread that receives WS frames from the CP,
-  --                 and is also responsible for handling timeout detection
+  -- * ping_thread: performs a ConfigService.PingCP call periodically.
 
   local ping_immediately
   local config_exit

@@ -43,22 +43,28 @@ end
 
 local semaphore_waiter
 do
-  local function trigger(self, data)
+  local function handle(self, data)
     self.data = data
     self.smph:post()
   end
 
-  local function expire(self)
+  local function handle_error(self, etype, errdesc)
     self.data = nil
-    self.error = "timeout"
+    self.error = errdesc
+    self.etype = etype
     self.smph:post()
+  end
+
+  local function expire(self)
+    self:handle_error("timeout", "timeout")
   end
 
   function semaphore_waiter()
     return {
       smph = semaphore.new(),
       deadline = ngx.now() + DEFAULT_EXPIRATION_DELAY,
-      handle = trigger,
+      handle = handle,
+      handle_error = handle_error,
       expire = expire,
     }
   end
@@ -313,11 +319,13 @@ function wrpc_peer:call_wait(name, ...)
 
   local seq = self.seq
   self.response_queue[seq] = waiter
-  local new_seq = self:call(name, ...)
-  assert(new_seq == seq)
+  self:call(name, ...)
 
-  waiter.smph:wait()
-  return waiter.data
+  local ok, err = waiter.smph:wait(DEFAULT_EXPIRATION_DELAY)
+  if not ok then
+    return nil, err
+  end
+  return waiter.data, waiter.error
 end
 
 

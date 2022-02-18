@@ -71,7 +71,9 @@ local function get_config_service(self)
         client.basic_info = data
         client.basic_info_semaphore:post()
       end
-      -- TODO: add error handler to change client status
+      return {
+        ok = "done",
+      }
     end)
   end
 
