@@ -26,7 +26,7 @@ dependencies = {
   "lua-cassandra == 1.5.1",
   -- XXX EE: do not use pgmoon here
   -- XXX EE: we're using a special pgmoon branch in .ci/setup_env.sh and k-d
-  -- "pgmoon == 1.13.0",
+  -- "pgmoon == 1.14.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
