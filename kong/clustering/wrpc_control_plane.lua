@@ -64,10 +64,10 @@ local function get_config_service(self)
       end
     end)
 
-    wrpc_config_service:set_handler("ConfigService.ReportBasicInfo", function(peer, data)
+    wrpc_config_service:set_handler("ConfigService.ReportMetadata", function(peer, data)
       local client = self.clients[peer.conn]
       if client then
-        ngx_log(ngx_INFO, _log_prefix, "received BasicInfo package from client: ", client.dp_id)
+        ngx_log(ngx_INFO, _log_prefix, "received initial metadata package from client: ", client.dp_id)
         client.basic_info = data
         client.basic_info_semaphore:post()
       end

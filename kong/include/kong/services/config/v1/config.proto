@@ -26,7 +26,7 @@ service ConfigService {
   //
   // Call direction: DP to CP
   // +wrpc:rpc-id=4
-  rpc ReportBasicInfo(ReportBasicInfoRequest) returns (ReportBasicInfoResponse);
+  rpc ReportMetadata(ReportMetadataRequest) returns (ReportMetadataResponse);
 
   // SyncConfig is used by a CP to send a configuration request to the DP.
   // CP may make concurrent calls to DP to update configuration. To guard
@@ -69,11 +69,11 @@ message GetCapabilitiesResponse {
   repeated Capability capabilities = 1;
 }
 
-message ReportBasicInfoRequest {
+message ReportMetadataRequest {
   repeated PluginVersion plugins = 1;
 }
 
-message ReportBasicInfoResponse {
+message ReportMetadataResponse {
   oneof response {
     string ok = 1;
     string error = 2;
