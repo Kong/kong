@@ -39,7 +39,6 @@ local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
 
 
-
 local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
 local ngx_DEBUG = ngx.DEBUG
