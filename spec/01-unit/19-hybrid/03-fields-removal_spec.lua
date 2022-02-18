@@ -19,14 +19,18 @@ local cjson_decode = require("cjson").decode
 local inflate_gzip = require("kong.tools.utils").inflate_gzip
 
 describe("kong.clustering.control_plane", function()
-  it("calculating dp_version_num", function()
-    assert.equal(2003004000, cp._dp_version_num("2.3.4"))
-    assert.equal(2003004000, cp._dp_version_num("2.3.4-rc1"))
-    assert.equal(2003004000, cp._dp_version_num("2.3.4beta2"))
-    assert.equal(2003004001, cp._dp_version_num("2.3.4.1"))
-    assert.equal(2003004001, cp._dp_version_num("2.3.4.1-rc1"))
-    assert.equal(2003004001, cp._dp_version_num("2.3.4.1beta2"))
+  it("calculating version_num", function()
+    assert.equal(2003004000, cp._version_num("2.3.4"))
+    assert.equal(2003004000, cp._version_num("2.3.4-rc1"))
+    assert.equal(2003004000, cp._version_num("2.3.4beta2"))
+    assert.equal(2003004001, cp._version_num("2.3.4.1"))
+    assert.equal(2003004001, cp._version_num("2.3.4.1-rc1"))
+    assert.equal(2003004001, cp._version_num("2.3.4.1beta2"))
+    assert.equal(2007000000, cp._version_num("2.7.0.0"))
+    assert.equal(2007000001, cp._version_num("2.7.0.1"))
+    assert.equal(2008000000, cp._version_num("2.8.0.0"))
   end)
+
 
   it("merging get_removed_fields", function()
     assert.same({
@@ -61,6 +65,8 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "username",
+        "sentinel_username",
         "keepalive_pool_size",
       },
       acme = {
@@ -131,8 +137,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -159,6 +167,8 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "username",
+        "sentinel_username",
         "keepalive_pool_size",
       },
       prometheus = {
@@ -239,8 +249,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -267,6 +279,8 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "username",
+        "sentinel_username",
         "keepalive_pool_size",
       },
       syslog = {
@@ -347,8 +361,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -375,6 +391,8 @@ describe("kong.clustering.control_plane", function()
         "keepalive_backlog",
         "read_timeout",
         "send_timeout",
+        "username",
+        "sentinel_username",
         "keepalive_pool_size",
       },
       syslog = {
@@ -448,8 +466,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -475,6 +495,8 @@ describe("kong.clustering.control_plane", function()
 
     assert.same({
       redis = {
+        "username",
+        "sentinel_username",
         "keepalive_pool_size",
       },
       acme = {
@@ -545,8 +567,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -639,8 +663,10 @@ describe("kong.clustering.control_plane", function()
         "consumer_groups",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -662,6 +688,10 @@ describe("kong.clustering.control_plane", function()
       zipkin = {
         "local_service_name",
       },
+      redis = {
+        "username",
+        "sentinel_username",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -672,8 +702,10 @@ describe("kong.clustering.control_plane", function()
         "canary_by_header_name",
       },
       forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
         "auth_username",
-        "auth_password"
+        "auth_password",
       },
       mocking = {
         "random_examples",
@@ -703,6 +735,10 @@ describe("kong.clustering.control_plane", function()
         "session_redis_username",
         "resolve_distributed_claims",
       },
+      redis = {
+        "username",
+        "sentinel_username",
+      },
       kafka_log = {
         "cluster_name",
       },
@@ -718,9 +754,17 @@ describe("kong.clustering.control_plane", function()
       canary = {
         "canary_by_header_name",
       },
+      forward_proxy = {
+        "https_proxy_host",
+        "https_proxy_port",
+      },
       openid_connect = {
         "session_redis_username",
         "resolve_distributed_claims",
+      },
+      redis = {
+        "username",
+        "sentinel_username",
       },
       kafka_log = {
         "cluster_name",
@@ -780,6 +824,8 @@ describe("kong.clustering.control_plane", function()
               "keepalive_pool_size",
               "read_timeout",
               "send_timeout",
+              "username",
+              "sentinel_username",
             },
           }
         }, {
@@ -816,16 +862,21 @@ describe("kong.clustering.control_plane", function()
             session_redis_password = "test",
           }
         }, {
+          name = "forward-proxy",
+          config = {
+            http_proxy_host = "test.com",
+            http_proxy_port = "80",
+          },
+        }, {
           name = "kafka-log",
           config = {
             cluster_name = "test",
           }
-
         }, {
           name = "kafka-upstream",
           config = {
             cluster_name = "test",
-          }
+          },
         }, }
       }
     }
@@ -849,6 +900,8 @@ describe("kong.clustering.control_plane", function()
           "keepalive_pool_size",
           "read_timeout",
           "send_timeout",
+          "username",
+          "sentinel_username",
         },
       }
     }, {
@@ -872,6 +925,12 @@ describe("kong.clustering.control_plane", function()
       name = "openid-connect",
       config = {
         session_redis_auth = "test",
+      }
+    }, {
+      name = "forward-proxy",
+      config = {
+        proxy_host = "test.com",
+        proxy_port = "80",
       }
     }, {
       name = "kafka-log",
@@ -901,6 +960,8 @@ describe("kong.clustering.control_plane", function()
           "keepalive_pool_size",
           "read_timeout",
           "send_timeout",
+          "username",
+          "sentinel_username",
         },
       }
     }, {
@@ -924,6 +985,12 @@ describe("kong.clustering.control_plane", function()
       name = "openid-connect",
       config = {
         session_redis_auth = "test",
+      }
+    }, {
+      name = "forward-proxy",
+      config = {
+        proxy_host = "test.com",
+        proxy_port = "80",
       }
     }, {
       name = "kafka-log",
@@ -953,6 +1020,8 @@ describe("kong.clustering.control_plane", function()
           "keepalive_pool_size",
           "read_timeout",
           "send_timeout",
+          "username",
+          "sentinel_username",
         },
       }
     }, {
@@ -976,6 +1045,12 @@ describe("kong.clustering.control_plane", function()
       name = "openid-connect",
       config = {
         session_redis_auth = "test",
+      }
+    }, {
+      name = "forward-proxy",
+      config = {
+        proxy_host = "test.com",
+        proxy_port = "80",
       }
     }, {
       name = "kafka-log",
@@ -1005,6 +1080,8 @@ describe("kong.clustering.control_plane", function()
           "keepalive_pool_size",
           "read_timeout",
           "send_timeout",
+          "username",
+          "sentinel_username",
         },
       }
     }, {
@@ -1028,6 +1105,12 @@ describe("kong.clustering.control_plane", function()
       name = "openid-connect",
       config = {
         session_redis_auth = "test",
+      }
+    }, {
+      name = "forward-proxy",
+      config = {
+        proxy_host = "test.com",
+        proxy_port = "80",
       }
     }, {
       name = "kafka-log",
@@ -1057,6 +1140,8 @@ describe("kong.clustering.control_plane", function()
           "keepalive_pool_size",
           "read_timeout",
           "send_timeout",
+          "username",
+          "sentinel_username",
         },
       }
     }, {
@@ -1091,6 +1176,12 @@ describe("kong.clustering.control_plane", function()
       name = "openid-connect",
       config = {
         session_redis_auth = "test",
+      }
+    }, {
+      name = "forward-proxy",
+      config = {
+        proxy_host = "test.com",
+        proxy_port = "80",
       }
     }, {
       name = "kafka-log",

@@ -1,4 +1,4 @@
-## Unreleased
+## v2.3.0
 
 - Add Redis ACL support for session storage
   - Requires `lua-resty-session` >= 3.10
@@ -7,6 +7,7 @@
     - `session_redis_password` - Redis auth password or ACL password if username is present
 - Deprecate `session_redis_auth`; use `session_redis_password`
 - Add `resolve_distributed_claims` config option
+- Add referenceable attribute to fields that could be stored in vaults
 
 ## v2.2.1
 

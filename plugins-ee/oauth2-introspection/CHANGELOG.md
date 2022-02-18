@@ -1,3 +1,11 @@
+## 0.5.4
+
+- Add servername to establish TLS connection
+
+  When IDP is on a shared host (reverse proxy for example), current
+  implementation failed to establish TLS connection with
+  `sslv3 alert handshake failure:SSL alert number 40` error.
+
 ## 0.5.3
 
 - fix(*) use newer http connect syntax

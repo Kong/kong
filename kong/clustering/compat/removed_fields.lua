@@ -176,8 +176,16 @@ return {
     },
 
     -- Enterprise plugins
+    redis = {
+      "username",
+      "sentinel_username"
+    },
     canary = {
       "canary_by_header_name",
+    },
+    forward_proxy = {
+      "https_proxy_host",
+      "https_proxy_port",
     },
     openid_connect = {
       "session_redis_username",

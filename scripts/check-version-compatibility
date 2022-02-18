@@ -210,6 +210,7 @@ ENABLE_CANARY=(
   --data "name=canary"
   --data "config.percentage=50"
   --data "config.upstream_host=example.com"
+  --data "config.canary_by_header_name=CANARY-HEADER"
 )
 
 ENABLE_DEGRAPHQL=(
@@ -223,8 +224,10 @@ ENABLE_EXIT_TRANSFORMER=(
 
 ENABLE_FORWARD_PROXY=(
   --data "name=forward-proxy"
-  --data "config.proxy_host=example.com"
-  --data "config.proxy_port=80"
+  --data "config.http_proxy_host=example.com"
+  --data "config.http_proxy_port=80"
+  --data "config.https_proxy_host=example.com"
+  --data "config.https_proxy_port=80"
 )
 
 ENABLE_GRAPHQL_PROXY_CACHE_ADVANCED=(
@@ -235,8 +238,16 @@ ENABLE_GRAPHQL_PROXY_CACHE_ADVANCED=(
 ENABLE_GRAPHQL_RATE_LIMITING_ADVANCED=(
   --data "name=graphql-rate-limiting-advanced"
   --data "config.limit=5"
+  --data "config.sync_rate=10"
   --data "config.window_size=30"
-  --data "config.sync_rate=-1"
+  --data "config.strategy=redis"
+  --data "config.redis.host=redis.com"
+  --data "config.redis.port=8080"
+  --data "config.redis.username=user1"
+  --data "config.redis.password=pass1"
+  --data "config.redis.database=1"
+  --data "config.redis.sentinel_username=user1"
+  --data "config.redis.sentinel_password=pass1"
 )
 
 ENABLE_JQ=(
@@ -301,14 +312,29 @@ ENABLE_OPENID_CONNECT=(
 
 ENABLE_PROXY_CACHE_ADVANCED=(
   --data "name=proxy-cache-advanced"
-  --data "config.strategy=memory"
+  --data "config.strategy=redis"
+  --data "config.redis.host=host1"
+  --data "config.redis.port=8080"
+  --data "config.redis.username=user1"
+  --data "config.redis.password=pass1"
+  --data "config.redis.database=1"
+  --data "config.redis.sentinel_username=user1"
+  --data "config.redis.sentinel_password=pass1"
 )
 
 ENABLE_RATE_LIMITING_ADVANCED=(
   --data "name=rate-limiting-advanced"
   --data "config.limit=5"
   --data "config.window_size=30"
-  --data "config.sync_rate=-1"
+  --data "config.sync_rate=10"
+  --data "config.strategy=redis"
+  --data "config.redis.host=redis.com"
+  --data "config.redis.port=8080"
+  --data "config.redis.username=user1"
+  --data "config.redis.password=pass1"
+  --data "config.redis.database=1"
+  --data "config.redis.sentinel_username=user1"
+  --data "config.redis.sentinel_password=pass1"
 )
 
 ENABLE_RATE_LIMITING_ADVANCED_CONSUMER_GROUPS=(
