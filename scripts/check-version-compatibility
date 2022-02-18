@@ -734,8 +734,8 @@ function main() {
   if [[ $execute_enterprise -eq $TRUE ]]; then
     install_enterprise_plugins
   fi
-  local plugin_names=()
-  mapfile -t plugin_names < <(get_list_of_plugins)
+  local plugin_names=(rate-limiting-advanced)
+  #mapfile -t plugin_names < <(get_list_of_plugins)
 
   local start
   start="$(date -u +%s)"

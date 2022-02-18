@@ -14,6 +14,7 @@ local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
 local constants = require("kong.constants")
+local ee_meta = require("kong.enterprise_edition.meta")
 local string = string
 local setmetatable = setmetatable
 local type = type
@@ -36,6 +37,7 @@ local table_remove = table.remove
 local table_concat = table.concat
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
+
 
 
 local kong_dict = ngx.shared.kong
@@ -193,10 +195,10 @@ local function invalidate_items_from_config(config_plugins, keys, log_suffix)
   return has_update
 end
 
-local function dp_version_num(dp_version)
+local function version_num(version)
   local base = 1000000000
   local version_num = 0
-  for _, v in ipairs(utils.split(dp_version, ".", 4)) do
+  for _, v in ipairs(utils.split(version, ".", 4)) do
     v = v:match("^(%d+)")
     version_num = version_num + base * tonumber(v, 10) or 0
     base = base / 1000
@@ -205,7 +207,7 @@ local function dp_version_num(dp_version)
   return version_num
 end
 -- for test
-_M._dp_version_num = dp_version_num
+_M._version_num = version_num
 
 -- [[ XXX EE: TODO: Backport function changes and descriptive variable name change to OSS
 local function get_removed_fields(dp_version_number)
@@ -244,7 +246,15 @@ _M._get_removed_fields = get_removed_fields
 
 -- returns has_update, modified_deflated_payload, err
 local function update_compatible_payload(payload, dp_version, log_suffix)
-  local dp_version_num = dp_version_num(dp_version)
+  local cp_version_num = version_num(tostring(ee_meta.versions.package))
+  local dp_version_num = version_num(dp_version)
+
+  -- if the CP and DP have the same version, avoid the payload
+  -- copy and compatibility updates
+  if cp_version_num == dp_version_num then
+    return false
+  end
+
   local has_update = false
   local fields = get_removed_fields(dp_version_num)
 
@@ -630,7 +640,7 @@ function _M:check_configuration_compatibility(dp_plugin_map, dp_version)
       --            and was fixed during BasePlugin inheritance removal.
       --
       -- Note: These vault-auth plugins in the legacy dataplanes are compatible
-      local dp_version_num = dp_version_num(dp_version)
+      local dp_version_num = version_num(dp_version)
       if name == "vault-auth" and dp_plugin.version == "1.0.0" then
         ngx_log(ngx_DEBUG, _log_prefix, "data plane plugin vault-auth version ",
           "1.0.0 was incorrectly versioned, but is compatible")

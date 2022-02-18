@@ -19,14 +19,18 @@ local cjson_decode = require("cjson").decode
 local inflate_gzip = require("kong.tools.utils").inflate_gzip
 
 describe("kong.clustering.control_plane", function()
-  it("calculating dp_version_num", function()
-    assert.equal(2003004000, cp._dp_version_num("2.3.4"))
-    assert.equal(2003004000, cp._dp_version_num("2.3.4-rc1"))
-    assert.equal(2003004000, cp._dp_version_num("2.3.4beta2"))
-    assert.equal(2003004001, cp._dp_version_num("2.3.4.1"))
-    assert.equal(2003004001, cp._dp_version_num("2.3.4.1-rc1"))
-    assert.equal(2003004001, cp._dp_version_num("2.3.4.1beta2"))
+  it("calculating version_num", function()
+    assert.equal(2003004000, cp._version_num("2.3.4"))
+    assert.equal(2003004000, cp._version_num("2.3.4-rc1"))
+    assert.equal(2003004000, cp._version_num("2.3.4beta2"))
+    assert.equal(2003004001, cp._version_num("2.3.4.1"))
+    assert.equal(2003004001, cp._version_num("2.3.4.1-rc1"))
+    assert.equal(2003004001, cp._version_num("2.3.4.1beta2"))
+    assert.equal(2007000000, cp._version_num("2.7.0.0"))
+    assert.equal(2007000001, cp._version_num("2.7.0.1"))
+    assert.equal(2008000000, cp._version_num("2.8.0.0"))
   end)
+
 
   it("merging get_removed_fields", function()
     assert.same({
