@@ -118,6 +118,13 @@ the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
   Thanks, [@andrewgknew](https://github.com/andrewgknew)!
   [#8337](https://github.com/Kong/kong/pull/8337)
 
+#### Admin API
+
+- The current declarative configuration hash is now returned by the `status`
+  endpoint when Kong node is running in dbless or data-plane mode.
+  [#8214](https://github.com/Kong/kong/pull/8214)
+  [#8425](https://github.com/Kong/kong/pull/8425)
+
 ### Fixes
 
 #### Core

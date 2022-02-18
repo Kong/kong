@@ -43,6 +43,7 @@ local WS_OPTS = {
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local _log_prefix = "[clustering] "
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
 local function is_timeout(err)
@@ -187,7 +188,7 @@ local function send_ping(c, log_suffix)
   local hash = declarative.get_current_hash()
 
   if hash == true then
-    hash = string.rep("0", 32)
+    hash = DECLARATIVE_EMPTY_CONFIG_HASH
   end
 
   local _, err = c:send_ping(hash)

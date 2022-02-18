@@ -21,7 +21,7 @@ describe("Status API - with strategy #" .. strategy, function()
   end)
 
   describe("core", function()
-    it("/status returns status info without configuration_hash", function()
+    it("/status returns status info with blank configuration_hash (declarative config) or without it (db mode)", function()
       local res = assert(client:send {
         method = "GET",
         path = "/status"
@@ -40,7 +40,11 @@ describe("Status API - with strategy #" .. strategy, function()
       assert.is_number(json.server.connections_writing)
       assert.is_number(json.server.connections_waiting)
       assert.is_number(json.server.total_requests)
-      assert.is_nil(json.server.configuration_hash) -- no hash in DB mode, or in DBLESS mode until configuration has been applied
+      if strategy == "off" then
+        assert.is_equal(string.rep("0", 32), json.configuration_hash) -- all 0 in DBLESS mode until configuration is applied
+      else
+        assert.is_nil(json.configuration_hash) -- not present in DB mode
+      end
     end)
 
     it("/status starts providing a config_hash once an initial configuration has been pushed in dbless mode #off", function()
@@ -77,8 +81,8 @@ describe("Status API - with strategy #" .. strategy, function()
       assert.is_number(json.server.connections_writing)
       assert.is_number(json.server.connections_waiting)
       assert.is_number(json.server.total_requests)
-      assert.is_string(json.server.configuration_hash)
-      assert.equal(32, #json.server.configuration_hash)
+      assert.is_string(json.configuration_hash)
+      assert.equal(32, #json.configuration_hash)
     end)
 
   end)
