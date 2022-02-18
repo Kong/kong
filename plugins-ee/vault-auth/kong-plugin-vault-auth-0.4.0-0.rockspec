@@ -1,9 +1,9 @@
 package = "kong-plugin-vault-auth"
-version = "0.3.0-0"
+version = "0.4.0-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-vault-auth",
-  tag = "0.3.0"
+  tag = "0.4.0"
 }
 
 supported_platforms = {"linux", "macosx"}

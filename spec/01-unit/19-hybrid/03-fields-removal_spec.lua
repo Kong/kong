@@ -91,11 +91,13 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -201,11 +203,13 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -311,11 +315,13 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -414,11 +420,13 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -513,11 +521,13 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -607,11 +617,13 @@ describe("kong.clustering.control_plane", function()
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       kafka_upstream = {
         "authentication",
         "keepalive_enabled",
         "security",
+        "cluster_name",
       },
       openid_connect = {
         "by_username_ignore_case",
@@ -727,6 +739,12 @@ describe("kong.clustering.control_plane", function()
         "username",
         "sentinel_username",
       },
+      kafka_log = {
+        "cluster_name",
+      },
+      kafka_upstream = {
+        "cluster_name",
+      },
     }, cp._get_removed_fields(2006000000))
 
     assert.same({
@@ -747,6 +765,12 @@ describe("kong.clustering.control_plane", function()
       redis = {
         "username",
         "sentinel_username",
+      },
+      kafka_log = {
+        "cluster_name",
+      },
+      kafka_upstream = {
+        "cluster_name",
       },
     }, cp._get_removed_fields(2007000000))
 
@@ -842,7 +866,17 @@ describe("kong.clustering.control_plane", function()
           config = {
             http_proxy_host = "test.com",
             http_proxy_port = "80",
+          },
+        }, {
+          name = "kafka-log",
+          config = {
+            cluster_name = "test",
           }
+        }, {
+          name = "kafka-upstream",
+          config = {
+            cluster_name = "test",
+          },
         }, }
       }
     }
@@ -898,6 +932,12 @@ describe("kong.clustering.control_plane", function()
         proxy_host = "test.com",
         proxy_port = "80",
       }
+    }, {
+      name = "kafka-log",
+      config = {}
+    }, {
+      name = "kafka-upstream",
+      config = {}
     }, }, test_with(payload, "2.3.0").config_table.plugins)
 
     assert.same({ {
@@ -952,6 +992,12 @@ describe("kong.clustering.control_plane", function()
         proxy_host = "test.com",
         proxy_port = "80",
       }
+    }, {
+      name = "kafka-log",
+      config = {}
+    }, {
+      name = "kafka-upstream",
+      config = {}
     }, }, test_with(payload, "2.4.0").config_table.plugins)
 
     assert.same({ {
@@ -1006,6 +1052,12 @@ describe("kong.clustering.control_plane", function()
         proxy_host = "test.com",
         proxy_port = "80",
       }
+    }, {
+      name = "kafka-log",
+      config = {}
+    }, {
+      name = "kafka-upstream",
+      config = {}
     }, }, test_with(payload, "2.5.0").config_table.plugins)
 
     assert.same({ {
@@ -1060,6 +1112,12 @@ describe("kong.clustering.control_plane", function()
         proxy_host = "test.com",
         proxy_port = "80",
       }
+    }, {
+      name = "kafka-log",
+      config = {}
+    }, {
+      name = "kafka-upstream",
+      config = {}
     }, }, test_with(payload, "2.6.0").config_table.plugins)
 
     assert.same({ {
@@ -1125,6 +1183,12 @@ describe("kong.clustering.control_plane", function()
         proxy_host = "test.com",
         proxy_port = "80",
       }
+    }, {
+      name = "kafka-log",
+      config = {}
+    }, {
+      name = "kafka-upstream",
+      config = {}
     }, }, test_with(payload, "2.7.0").config_table.plugins)
 
     -- nothing should be removed

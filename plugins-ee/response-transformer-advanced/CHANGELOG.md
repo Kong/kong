@@ -1,3 +1,7 @@
+## 0.4.6
+
+- Refactor: use new pdk response buffering
+
 ## 0.4.5
 
 - Enable `config.dots_in_keys` by default

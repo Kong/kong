@@ -1189,8 +1189,27 @@ for _, strategy in strategies() do
           assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
         end)
 
-        it("local strategy works in hybrid mode", function()
-          for i = 1, 6 do
+        if strategy ~= "off" then
+          it("local strategy works in hybrid mode", function()
+            for i = 1, 6 do
+              local res = assert(helpers.proxy_client(nil, 9102):send {
+                method = "GET",
+                path = "/get",
+                headers = {
+                  ["Host"] = "test20.com",
+                }
+              })
+
+              assert.res_status(200, res)
+              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-10"]))
+              assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
+              assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-10"]))
+              assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
+              assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
+              assert.is_nil(res.headers["retry-after"])
+            end
+
+            -- Additonal request on DP 1, while limit is 6/window
             local res = assert(helpers.proxy_client(nil, 9102):send {
               method = "GET",
               path = "/get",
@@ -1198,41 +1217,24 @@ for _, strategy in strategies() do
                 ["Host"] = "test20.com",
               }
             })
+            local body = assert.res_status(429, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "API rate limit exceeded" }, json)
+            local retry_after = tonumber(res.headers["retry-after"])
+            assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
+            assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
 
+            -- Additonal request on DP 2, while limit is 6/window
+            local res = assert(helpers.proxy_client(nil, 9104):send {
+              method = "GET",
+              path = "/get",
+              headers = {
+                ["Host"] = "test20.com",
+              }
+            })
             assert.res_status(200, res)
-            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-10"]))
-            assert.are.same(6, tonumber(res.headers["ratelimit-limit"]))
-            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-10"]))
-            assert.are.same(6 - i, tonumber(res.headers["ratelimit-remaining"]))
-            assert.is_true(tonumber(res.headers["ratelimit-reset"]) > 0)
-            assert.is_nil(res.headers["retry-after"])
-          end
-
-          -- Additonal request on DP 1, while limit is 6/window
-          local res = assert(helpers.proxy_client(nil, 9102):send {
-            method = "GET",
-            path = "/get",
-            headers = {
-              ["Host"] = "test20.com",
-            }
-          })
-          local body = assert.res_status(429, res)
-          local json = cjson.decode(body)
-          assert.same({ message = "API rate limit exceeded" }, json)
-          local retry_after = tonumber(res.headers["retry-after"])
-          assert.is_true(retry_after >= 0) -- Uses sliding window and is executed in quick succession
-          assert.same(retry_after, tonumber(res.headers["ratelimit-reset"]))
-
-          -- Additonal request on DP 2, while limit is 6/window
-          local res = assert(helpers.proxy_client(nil, 9104):send {
-            method = "GET",
-            path = "/get",
-            headers = {
-              ["Host"] = "test20.com",
-            }
-          })
-          assert.res_status(200, res)
-        end)
+          end)
+        end
 
         it("#flaky sync counters in all DP nodes after PATCH", function()
           -- Hit DP 1

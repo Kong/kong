@@ -24,7 +24,7 @@ local PHASES = kong_global.phases
 
 local MtlsAuthHandler = {
   PRIORITY = 1006,
-  VERSION = "0.3.4"
+  VERSION = "0.3.5"
 }
 
 
