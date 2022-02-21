@@ -16,7 +16,6 @@ build = {
   modules = {
     ["kong.plugins.mtls-auth.daos"] = "kong/plugins/mtls-auth/daos.lua",
     ["kong.plugins.mtls-auth.handler"] = "kong/plugins/mtls-auth/handler.lua",
-    ["kong.plugins.mtls-auth.certificate"] = "kong/plugins/mtls-auth/certificate.lua",
     ["kong.plugins.mtls-auth.schema"] = "kong/plugins/mtls-auth/schema.lua",
     ["kong.plugins.mtls-auth.migrations"] = "kong/plugins/mtls-auth/migrations/init.lua",
     ["kong.plugins.mtls-auth.migrations.000_base_mtls_auth"] = "kong/plugins/mtls-auth/migrations/000_base_mtls_auth.lua",
@@ -28,7 +27,6 @@ build = {
     ["kong.plugins.mtls-auth.cache"] = "kong/plugins/mtls-auth/cache.lua",
     ["kong.plugins.mtls-auth.access"] = "kong/plugins/mtls-auth/access.lua",
     ["kong.plugins.mtls-auth.api"] = "kong/plugins/mtls-auth/api.lua",
-    ["kong.plugins.mtls-auth.filter"] = "kong/plugins/mtls-auth/filter.lua",
     ["kong.plugins.mtls-auth.ocsp_client"] = "kong/plugins/mtls-auth/ocsp_client.lua",
     ["kong.plugins.mtls-auth.crl_client"] = "kong/plugins/mtls-auth/crl_client.lua",
   }
