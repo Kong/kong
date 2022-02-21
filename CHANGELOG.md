@@ -163,6 +163,10 @@
 - **External Plugins**: Unwrap `ConsumerSpec` and `AuthenticateArgs`.
   Thanks, [@raptium](https://github.com/raptium)!
   [#8280](https://github.com/Kong/kong/pull/8280)
+- **CORS**: The CORS plugin does not send the `Vary: Origin` header any more when
+  the header `Access-Control-Allow-Origin` is set to `*`.
+  Thanks, [@jkla-dr](https://github.com/jkla-dr)!
+  [#8401](https://github.com/Kong/kong/pull/8401)
 
 
 ## [2.7.1]
