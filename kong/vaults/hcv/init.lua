@@ -35,27 +35,36 @@ local function request(conf, resource, version)
   end
 
   local mount = conf.mount
-  if byte(mount, 1, 1) == SLASH then
-    if byte(mount, -1) == SLASH then
-      mount = sub(mount, 2, -2)
-    else
-      mount = sub(mount, 2)
+  if mount then
+    if byte(mount, 1, 1) == SLASH then
+      if byte(mount, -1) == SLASH then
+        mount = sub(mount, 2, -2)
+      else
+        mount = sub(mount, 2)
+      end
+
+    elseif byte(mount, -1) == SLASH then
+      mount = sub(mount, 1, -2)
     end
 
-  elseif byte(mount, -1) == SLASH then
-    mount = sub(mount, 1, -2)
+  else
+    mount = "secret"
   end
+
+  local protocol = conf.protocol or "http"
+  local host = conf.host or "127.0.0.1"
+  local port = conf.port or 8200
 
   local path
   if conf.kv == "v2" then
     if version then
-      path = fmt("%s://%s:%d/v1/%s/data/%s?version=%d", conf.protocol, conf.host, conf.port, mount, resource, version)
+      path = fmt("%s://%s:%d/v1/%s/data/%s?version=%d", protocol, host, port, mount, resource, version)
     else
-      path = fmt("%s://%s:%d/v1/%s/data/%s", conf.protocol, conf.host, conf.port, mount, resource)
+      path = fmt("%s://%s:%d/v1/%s/data/%s", protocol, host, port, mount, resource)
     end
 
   else
-    path = fmt("%s://%s:%d/v1/%s/%s", conf.protocol, conf.host, conf.port, mount, resource)
+    path = fmt("%s://%s:%d/v1/%s/%s", protocol, host, port, mount, resource)
   end
 
   REQUEST_OPTS.headers["X-Vault-Token"] = conf.token

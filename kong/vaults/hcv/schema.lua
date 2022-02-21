@@ -16,9 +16,9 @@ return {
         type = "record",
         fields = {
           { protocol = { type = "string", one_of  = { "http", "https" }, default = "http" } },
-          { host     = typedefs.host { required = true } },
+          { host     = typedefs.host { required = true, default = "127.0.0.1" } },
           { port     = typedefs.port { required = true, default = 8200 } },
-          { mount    = { type = "string", required = true } },
+          { mount    = { type = "string", required = true, default = "secret" } },
           { kv       = { type = "string", one_of  = { "v1", "v2" }, default = "v1" } },
           { token    = { type = "string", required = true, encrypted = true } },
         },
