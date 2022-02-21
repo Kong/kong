@@ -570,7 +570,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(res.headers["Access-Control-Expose-Headers"])
         assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
         assert.is_nil(res.headers["Access-Control-Max-Age"])
-        assert.is_nul(res.headers["Vary"])
+        assert.is_nil(res.headers["Vary"])
       end)
 
       it("gives * wildcard when config.origins is empty", function()
