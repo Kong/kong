@@ -170,8 +170,12 @@ the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
   Thanks, [@raptium](https://github.com/raptium)!
   [#8280](https://github.com/Kong/kong/pull/8280)
 - **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
-    and deprecated the `proxy_scheme` config attribute for removal in 3.0
-    [#8406](https://github.com/Kong/kong/pull/8406)
+  and deprecated the `proxy_scheme` config attribute for removal in 3.0
+  [#8406](https://github.com/Kong/kong/pull/8406)
+- **CORS**: The CORS plugin does not send the `Vary: Origin` header any more when
+  the header `Access-Control-Allow-Origin` is set to `*`.
+  Thanks, [@jkla-dr](https://github.com/jkla-dr)!
+  [#8401](https://github.com/Kong/kong/pull/8401)
 
 
 ## [2.7.1]
