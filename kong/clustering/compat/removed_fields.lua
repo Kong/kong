@@ -175,6 +175,10 @@ return {
       "rsa_key_size",
     },
 
+    rate_limiting = {
+      "redis_username",
+    },
+
     -- Enterprise plugins
     redis = {
       "username",

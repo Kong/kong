@@ -155,6 +155,7 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -267,6 +268,7 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -379,6 +381,7 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -484,6 +487,7 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -585,6 +589,7 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -681,6 +686,7 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -724,6 +730,7 @@ describe("kong.clustering.control_plane", function()
         "message",
       },
       rate_limiting = {
+        "redis_username",
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
@@ -771,6 +778,9 @@ describe("kong.clustering.control_plane", function()
       },
       kafka_upstream = {
         "cluster_name",
+      },
+      rate_limiting = {
+        "redis_username",
       },
     }, cp._get_removed_fields(2007000000))
 

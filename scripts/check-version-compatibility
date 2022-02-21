@@ -152,6 +152,8 @@ ENABLE_RATE_LIMITING=(
   --data "config.redis_ssl=true"
   --data "config.redis_ssl_verify=true"
   --data "config.redis_server_name=test.com"
+  --data "config.redis_username=user1"
+  --data "config.redis_password=pass1"
 )
 
 ENABLE_REQUEST_SIZE_LIMITING=(
@@ -780,7 +782,7 @@ function main() {
   reset_kong
   http PUT $ADMIN_URL/vaults-beta/my-vault name=env description=test config.prefix=SECURE_ -f > /dev/null
   check_clustering_status "vaults_beta"
-  unset KONG_VAULTS KONG_VAULT_ENV_PREFIX=SECURE_
+  unset KONG_VAULTS KONG_VAULT_ENV_PREFIX
 
   for plugin_name in "${plugin_names[@]}"; do
     # Skipping application-registration - DevPortal plugin
