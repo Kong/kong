@@ -742,6 +742,8 @@ function main() {
   local start
   start="$(date -u +%s)"
 
+  curl -s -X POST "$ADMIN_URL/consumers" \
+    --data username=kongsumer > /dev/null
   # In Kong Gateway v2.6.0.0 consumer:username_lower was added
   printf "Validating consumers with simple route and service ... "
   reset_kong
@@ -770,6 +772,15 @@ function main() {
     --header "Content-Type: application/json" \
     --data '{"config": {"limit": [50], "window_size": [50]}}' > /dev/null
   check_clustering_status "consumer groups with rate-limiting-advanced"
+
+  # In Kong Gateway v2.8.0.0 vaults_beta was added
+  printf "Validating vaults_beta ... "
+  export KONG_VAULTS=bundled
+  export KONG_VAULT_ENV_PREFIX=SECURE_
+  reset_kong
+  http PUT $ADMIN_URL/vaults-beta/my-vault name=env description=test config.prefix=SECURE_ -f > /dev/null
+  check_clustering_status "vaults_beta"
+  unset KONG_VAULTS KONG_VAULT_ENV_PREFIX=SECURE_
 
   for plugin_name in "${plugin_names[@]}"; do
     # Skipping application-registration - DevPortal plugin
