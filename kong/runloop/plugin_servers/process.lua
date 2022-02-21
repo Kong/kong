@@ -70,7 +70,8 @@ local function get_server_defs()
       end
 
     elseif config.go_plugins_dir ~= "off" then
-      kong.log.info("old go_pluginserver style")
+      kong.log.deprecation("Properties go_pluginserver_exe and go_plugins_dir are deprecated. Please refer to https://docs.konghq.com/gateway/latest/reference/external-plugins/", {after = "2.8", removal = "3.0"})
+
       _servers[1] = {
         name = "go-pluginserver",
         socket = config.prefix .. "/go_pluginserver.sock",
