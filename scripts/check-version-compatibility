@@ -171,6 +171,7 @@ ENABLE_REQUEST_TRANSFORMER=(
 ENABLE_RESPONSE_RATELIMITING=(
   --data "name=response-ratelimiting"
   --data "config.limits.sms.minute=20"
+  --data "config.redis_username=user1"
 )
 
 ENABLE_RESPONSE_TRANSFORMER=(
@@ -744,8 +745,6 @@ function main() {
   local start
   start="$(date -u +%s)"
 
-  curl -s -X POST "$ADMIN_URL/consumers" \
-    --data username=kongsumer > /dev/null
   # In Kong Gateway v2.6.0.0 consumer:username_lower was added
   printf "Validating consumers with simple route and service ... "
   reset_kong

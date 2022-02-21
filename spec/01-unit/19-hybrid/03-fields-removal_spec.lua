@@ -160,6 +160,9 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      response_ratelimiting = {
+        "redis_username",
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -272,6 +275,9 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl",
         "redis_ssl_verify",
         "redis_server_name",
+      },
+      response_ratelimiting = {
+        "redis_username",
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -386,6 +392,9 @@ describe("kong.clustering.control_plane", function()
         "redis_ssl_verify",
         "redis_server_name",
       },
+      response_ratelimiting = {
+        "redis_username",
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -495,6 +504,9 @@ describe("kong.clustering.control_plane", function()
       zipkin = {
         "local_service_name",
       },
+      response_ratelimiting = {
+        "redis_username",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -597,6 +609,9 @@ describe("kong.clustering.control_plane", function()
       zipkin = {
         "local_service_name",
       },
+      response_ratelimiting = {
+        "redis_username",
+      },
     }, cp._get_removed_fields(2004001002))
 
     assert.same({
@@ -698,6 +713,9 @@ describe("kong.clustering.control_plane", function()
         "username",
         "sentinel_username",
       },
+      response_ratelimiting = {
+        "redis_username",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -752,6 +770,9 @@ describe("kong.clustering.control_plane", function()
       kafka_upstream = {
         "cluster_name",
       },
+      response_ratelimiting = {
+        "redis_username",
+      },
     }, cp._get_removed_fields(2006000000))
 
     assert.same({
@@ -780,6 +801,9 @@ describe("kong.clustering.control_plane", function()
         "cluster_name",
       },
       rate_limiting = {
+        "redis_username",
+      },
+      response_ratelimiting = {
         "redis_username",
       },
     }, cp._get_removed_fields(2007000000))
