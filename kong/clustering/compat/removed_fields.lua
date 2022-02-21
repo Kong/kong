@@ -174,6 +174,12 @@ return {
     acme = {
       "rsa_key_size",
     },
+    rate_limiting = {
+      "redis_username",
+    },
+    response_ratelimiting = {
+      "redis_username",
+    },
 
     -- Enterprise plugins
     redis = {
