@@ -196,7 +196,7 @@ end
 --- Handles a version negotiation request (CP side).
 --- Performs mTLS verification (as configured),
 --- validates request and Kong version compatibility,
---- 
+---
 function _M.serve_version_handshake(conf, cert_digest)
   if KONG_VERSION == nil then
     KONG_VERSION = kong.version
@@ -270,7 +270,6 @@ function _M.request_version_handshake(conf, cert, cert_key)
 
   local c = http.new()
   local res, err = c:request_uri("https://" .. conf.cluster_control_plane .. "/version-handshake", params)
-
   if not res then
     return nil, err
   end
@@ -280,6 +279,7 @@ function _M.request_version_handshake(conf, cert, cert_key)
   end
 
   if res.status < 200 or res.status >= 300 then
+    ngx_log(ngx_ERR, _log_prefix, "Version negotiation rejected: ", res.body)
     return nil, res.status .. ": " .. res.reason
   end
 
@@ -289,13 +289,14 @@ function _M.request_version_handshake(conf, cert, cert_key)
   end
 
   for _, service in ipairs(response_data.services_accepted) do
-    ngx_log(ngx_DEBUG, _log_prefix, "accepted: \"" .. service.name .. "\", version \"" .. service.version .. "\": ".. service.message)
+    ngx_log(ngx.NOTICE, _log_prefix, ("accepted: %q, version %q: %q"):format(
+        service.name, service.version, service.message or ""))
 
     _M.set_negotiated_service(service.name, service.version, service.message)
   end
 
   for _, service in ipairs(response_data.services_rejected) do
-    ngx_log(ngx_DEBUG, _log_prefix, "rejected: \"" .. service.name .. "\": " .. service.message)
+    ngx_log(ngx.NOTICE, _log_prefix, ("rejected: %q: %q"):format(service.name, service.message))
     _M.set_negotiated_service(service.name, nil, service.message)
   end
 

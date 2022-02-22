@@ -192,8 +192,6 @@ function clustering_utils.validate_connection_certs(conf, cert_digest)
     end
   end
 
-  print("final err: ", tostring(err))
-
   if err then
     return nil, err
   end

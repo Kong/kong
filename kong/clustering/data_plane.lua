@@ -224,6 +224,10 @@ function _M:communicate(premature)
     local response_data, err = version_negotiation.request_version_handshake(conf, self.cert, self.cert_key)
     if not response_data then
       ngx_log(ngx_ERR, _log_prefix, "error while requesting version negotiation: " .. err)
+      assert(ngx.timer.at(math.random(5, 10), function(premature)
+        self:communicate(premature)
+      end))
+      return
     end
   end
 
