@@ -238,6 +238,10 @@ jobs:
       if: type = cron
       script:
       - make test-upstream-timeout
+    - name: tls-handshake-modifier
+      if: type = cron
+      script:
+      - make test-tls-handshake-modifier
     - name: tls-metadata-headers
       if: type = cron
       script:

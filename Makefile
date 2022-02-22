@@ -286,6 +286,9 @@ test-vault-auth:
 test-rate-limiting-advanced:
 	scripts/enterprise_plugin.sh test rate-limiting-advanced
 
+test-tls-handshake-modifier:
+	scripts/enterprise_plugin.sh test tls-handshake-modifier
+
 test-tls-metadata-headers:
 	scripts/enterprise_plugin.sh test tls-metadata-headers
 
