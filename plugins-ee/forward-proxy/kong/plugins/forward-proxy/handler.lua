@@ -207,6 +207,12 @@ function ForwardProxyHandler:access(conf)
     port = addr.port,
     proxy_opts = {
       http_proxy = proxy_uri,
+      -- Kong <=2.7 doesn't support configuring a proxy for https requests.
+      -- This can cause timeout issues in some scenarios. With Kong 2.8+, we
+      -- can now configure the https proxy in the plugin configuration. As a
+      -- simple backport fix, setting the https_proxy to http_proxy is a good
+      -- workaround.
+      https_proxy = proxy_uri,
     },
     ssl_verify = conf.https_verify,
     ssl_server_name = addr.host,
