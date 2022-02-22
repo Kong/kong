@@ -840,10 +840,7 @@ function declarative.load_into_cache(entities, meta, hash)
       return nil, err
     end
 
-    local ok, err = t:set(key, tags)
-    if not ok then
-      return nil, err
-    end
+    t:set(key, tags)
   end
 
   -- tags||@list -> all tags, with no distinction of tag name or entity type.
