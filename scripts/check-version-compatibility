@@ -352,6 +352,14 @@ ENABLE_VAULT_AUTH=(
   --data "config.vault.id=abcdef12-3456-7890-abcd-ef1234567890"
 )
 
+ENABLE_TLS_HANDSHAKE_MODIFIER=(
+  --data "name=tls-handshake-modifier"
+)
+
+ENABLE_TLS_METADATA_HEADERS=(
+  --data "name=tls-metadata-headers"
+)
+
 function use_local_path {
   local path=${!1}
   if [[ -n $path ]] &&
