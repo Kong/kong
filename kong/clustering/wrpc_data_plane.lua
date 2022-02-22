@@ -42,31 +42,6 @@ local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local _log_prefix = "[wrpc-clustering] "
 
 
-local function remove_empty_tables(t)
-  -- TODO: either replace this with better decoding (where nil fields are not empty tables/strings)
-  -- or make the config ignore "zero" values
-  if type(t) ~= "table" then
-    if t == "" then
-      return nil
-    end
-    return t
-  end
-
-  local n = 0
-  for k, v in pairs(t) do
-    v = remove_empty_tables(v)
-    t[k] = v
-    if v ~= nil then
-      n = n + 1
-    end
-  end
-
-  if n > 0 then
-    return t
-  end
-end
-
-
 function _M.new(parent)
   local self = {
     declarative_config = declarative.new_config(parent.conf),
@@ -206,13 +181,15 @@ local function get_config_service()
     wrpc_config_service:add("kong.services.config.v1.config")
     wrpc_config_service:set_handler("ConfigService.SyncConfig", function(peer, data)
       if peer.config_semaphore then
-        for _, plugin in ipairs(data.config.plugins) do
-          plugin.config = protobuf.pbunwrap_struct(plugin.config)
+        if data.config.plugins then
+          for _, plugin in ipairs(data.config.plugins) do
+            plugin.config = protobuf.pbunwrap_struct(plugin.config)
+          end
         end
         data.config._format_version = data.config.format_version
         data.config.format_version = nil
 
-        peer.config_obj.next_config = remove_empty_tables(data.config)
+        peer.config_obj.next_config = data.config
         peer.config_obj.next_config_version = tonumber(data.version)
         if peer.config_semaphore:count() <= 0 then
           -- the following line always executes immediately after the `if` check
@@ -251,6 +228,7 @@ function _M:communicate(premature)
     ssl_verify = true,
     client_cert = self.cert,
     client_priv_key = self.cert_key,
+    protocols = "wrpc.konghq.com",
   }
   if conf.cluster_mtls == "shared" then
     opts.server_name = "kong_clustering"
@@ -286,8 +264,12 @@ function _M:communicate(premature)
     local resp, err = peer:call_wait("ConfigService.ReportMetadata", { plugins = self.plugins_list })
     if type(resp) == "table" then
       err = err or resp.error
-      resp = resp.ok
+      resp = resp[1] or resp.ok
     end
+    if type(resp) == "table" then
+      resp = resp.ok or resp
+    end
+
     if not resp then
       ngx_log(ngx_ERR, _log_prefix, "Couldn't report basic info to CP: ", err)
       assert(ngx.timer.at(reconnection_delay, function(premature)
@@ -324,8 +306,6 @@ function _M:communicate(premature)
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
             end
 
-            ping_immediately = true
-
           else
             ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", res)
           end
@@ -348,7 +328,7 @@ function _M:communicate(premature)
 
       for _ = 1, PING_INTERVAL do
         ngx_sleep(1)
-        if exiting() then
+        if exiting() or peer.closing then
           return
         end
         if ping_immediately then

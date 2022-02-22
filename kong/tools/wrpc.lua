@@ -15,8 +15,13 @@ local DEFAULT_EXPIRATION_DELAY = 90
 local CHANNEL_DICT_NAME = "wrpc_channel_dict"
 local CHANNEL_CLIENT_PREFIX = "wrpc_client_"
 
+pb.option("no_default_values")
+
 local wrpc = {}
 
+local function endswith(s, e) -- luacheck: ignore
+  return s and e and e ~= "" and s:sub(#s-#e+1, #s) == e
+end
 
 local Queue = {}
 Queue.__index = Queue
@@ -300,7 +305,7 @@ function wrpc_peer:receive()
     end
 
     if typ == "close" then
-      kong.log.notice("Received WebSocket \"close\" frame from peer")
+      kong.log.notice("Received WebSocket \"close\" frame from peer: ", err, ": ", data)
       return self:close()
     end
   end
@@ -378,7 +383,9 @@ function wrpc_peer:send_payload(payload)
   payload.seq = seq
   self.seq = seq + 1
 
-  payload.deadline = ngx.now() + DEFAULT_EXPIRATION_DELAY
+  if not payload.ack or payload.ack == 0 then
+    payload.deadline = ngx.now() + DEFAULT_EXPIRATION_DELAY
+  end
 
   self:send(self.encode("wrpc.WebsocketPayload", {
     version = "PAYLOAD_VERSION_V1",
@@ -517,7 +524,7 @@ end
 
 
 function wrpc_peer:step()
-  local msg = self:receive()
+  local msg, err = self:receive()
 
   while msg ~= nil do
     msg = assert(self.decode("wrpc.WebsocketPayload", msg))
@@ -528,14 +535,26 @@ function wrpc_peer:step()
       self:handle_error(payload)
 
     elseif payload.mtype == "MESSAGE_TYPE_RPC" then
-      if payload.deadline >= ngx.now() then
-        self:handle(payload)
+      local ack = payload.ack or 0
+      local deadline = payload.deadline or 0
+
+      if ack == 0 and deadline < ngx.now() then
+        ngx.log(ngx.NOTICE, "[wRPC] Expired message (", deadline, "<", ngx.now(), ") discarded")
+
+      elseif ack ~= 0 and deadline ~= 0 then
+        ngx.log(ngx.NOTICE, "[WRPC] Invalid deadline (", deadline, ") for response")
+
       else
-        ngx.log(ngx.NOTICE, "[wRPC] Expired message (", payload.deadline, "<", ngx.now(), ") discarded")
+        self:handle(payload)
       end
     end
 
-    msg = self:receive()
+    msg, err = self:receive()
+  end
+
+  if err ~= nil and not endswith(err, "timeout") then
+    ngx.log(ngx.NOTICE, "[wRPC] WebSocket frame: ", err)
+    self.closing = true
   end
 end
 
