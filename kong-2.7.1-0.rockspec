@@ -140,6 +140,8 @@ build = {
     ["kong.enterprise_edition.db.declarative"] = "kong/enterprise_edition/db/declarative/init.lua",
     ["kong.enterprise_edition.status"] = "kong/enterprise_edition/status/init.lua",
     ["kong.enterprise_edition.consumer_groups_helpers"] = "kong/enterprise_edition/consumer_groups_helpers.lua",
+    ["kong.enterprise_edition.tls.plugins.certificate"] = "kong/enterprise_edition/tls/plugins/certificate.lua",
+    ["kong.enterprise_edition.tls.plugins.sni_filter"] = "kong/enterprise_edition/tls/plugins/sni_filter.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
