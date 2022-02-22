@@ -672,11 +672,17 @@ function check_clustering_status() {
       sleep 1
     fi
   done
-  printf "%s\n" "$sync_status"
 
-  if [[ "$sync_status" != "normal" ]]; then
+  if [[ "$sync_status" == "plugin_set_incompatible" ]]; then
+    # CP to have extra plugins than DP is allowed, as long as it's not configured
+    # in this test we always trying to configure each plugin, so plugin_set_incompatible
+    # is also allowed
+    printf "(allowed)"
+  elif [[ "$sync_status" != "normal" ]]; then
     VERSION_COMPATIBLITY_FAILED_PLUGIN_NAMES+=("$1")
   fi
+
+  printf "%s\n" "$sync_status"
 }
 
 function get_list_of_plugins() {
