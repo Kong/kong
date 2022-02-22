@@ -188,6 +188,10 @@ local function send_ping(c, log_suffix)
 
   local hash = declarative.get_current_hash()
 
+  if hash == true then
+    hash = DECLARATIVE_EMPTY_CONFIG_HASH
+  end
+
   local _, err = c:send_ping(hash)
   if err then
     ngx_log(is_timeout(err) and ngx_NOTICE or ngx_WARN, _log_prefix,

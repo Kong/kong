@@ -37,8 +37,6 @@ local PREFIX = ngx.config.prefix()
 local SUBSYS = ngx.config.subsystem
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
-local DECLARATIVE_LOCK_KEY = "declarative:lock"
-local DECLARATIVE_LOCK_TTL = 60
 local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null }
 
 
@@ -851,11 +849,6 @@ function declarative.load_into_cache(entities, meta, hash)
   end
 
   t:set("tags||@list", tags)
-
-  hash, err = marshall(hash)
-  if not hash then
-    return nil, err
-  end
   t:set(DECLARATIVE_HASH_KEY, hash)
 
   kong.default_workspace = default_workspace
