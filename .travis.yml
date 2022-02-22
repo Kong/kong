@@ -238,6 +238,10 @@ jobs:
       if: type = cron
       script:
       - make test-upstream-timeout
+    - name: tls-metadata-headers
+      if: type = cron
+      script:
+      - make test-tls-metadata-headers
     #- name: vault-auth
     #  if: type = cron
     #  script:

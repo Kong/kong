@@ -286,6 +286,9 @@ test-vault-auth:
 test-rate-limiting-advanced:
 	scripts/enterprise_plugin.sh test rate-limiting-advanced
 
+test-tls-metadata-headers:
+	scripts/enterprise_plugin.sh test tls-metadata-headers
+
 pdk-phase-checks:
 	rm -f t/phase_checks.stats
 	rm -f t/phase_checks.report
