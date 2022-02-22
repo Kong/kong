@@ -1897,7 +1897,7 @@ return {
         Vaults are Environment Variables, Hashicorp Vault and AWS Secrets Manager.
 
         Configuring a Vault allows referencing the secrets with other entities. For
-        example a certificate entity can store a reference to certificate and key,
+        example a certificate entity can store a reference to a certificate and key,
         stored in a vault, instead of storing the certificate and key within the
         entity. This allows a proper separation of secrets and configuration and
         prevents secret sprawl.
@@ -1917,7 +1917,7 @@ return {
         prefix = {
           description = [[
             The unique prefix (or identifier) for this Vault configuration. The prefix
-            is used to load right Vault configuration and implementation when referencing
+            is used to load the right Vault configuration and implementation when referencing
             secrets with the other entities.
           ]],
           example = "env",
