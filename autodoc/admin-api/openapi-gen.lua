@@ -33,12 +33,14 @@ _KONG = require("kong.meta")          -- luacheck: ignore
 kong = require("kong.global").new()   -- luacheck: ignore
 kong.configuration = {                -- luacheck: ignore
   loaded_plugins = {},
+  loaded_vaults = {},
 }
 kong.db = require("kong.db").new({    -- luacheck: ignore
   database = "postgres",
 })
 kong.configuration = { -- luacheck: ignore
-  loaded_plugins = {}
+  loaded_plugins = {},
+  loaded_vaults = {},
 }
 
 
