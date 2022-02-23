@@ -181,19 +181,6 @@ local function job_timer(premature, self)
 end
 
 
-local function every_timer(_, self, delay)
-  local bucket = self.buckets[delay]
-  for i = 1, bucket.head do
-    local ok, err = bucket.jobs[i](self)
-    if not ok then
-      log(ERR, err)
-    end
-  end
-
-  return true
-end
-
-
 local function at_timer(premature, self)
 
   -- DO NOT YIELD IN THIS FUNCTION AS IT IS EXECUTED FREQUENTLY!
@@ -229,18 +216,32 @@ local function at_timer(premature, self)
       local err
       while bucket.head ~= bucket.tail do
         local bucket_tail = bucket.tail == bucket_size and 1 or bucket.tail + 1
-        local expiry = bucket.jobs[bucket_tail][1]
+        local job = bucket.jobs[bucket_tail]
+        local expiry = job[1]
         if expiry >= current_time then
           break
         end
 
-        ok, err = bucket.jobs[bucket_tail][2](self)
+        ok, err = job[2](self)
         if not ok then
           break
         end
 
         bucket.jobs[bucket_tail] = nil
         bucket.tail = bucket_tail
+
+        -- reschedule a recurring job
+        if not premature and job[3] then
+          local exp = now() + ttl
+          bucket.head = bucket.head == bucket_size and 1 or bucket.head + 1
+          bucket.jobs[bucket.head] = {
+            exp,
+            job[2],
+            true,
+          }
+
+          self.closest = min(self.closest, exp)
+        end
 
         if self.closest == 0 or self.closest > expiry then
           self.closest = expiry
@@ -396,6 +397,75 @@ local function get_stats(self, from, to)
 end
 
 
+local function schedule(self, delay, recurring, func, ...)
+  if exiting() then
+    return nil, "nginx worker is exiting"
+  end
+
+  delay = DELAYS[delay] or delay
+
+  if recurring then
+    assert(type(delay) == "number" and delay > 0, "invalid delay, must be a number greater than zero or " ..
+                                                  "'second', 'minute', 'hour', 'month' or 'year'")
+  else
+    assert(type(delay) == "number" and delay >= 0, "invalid delay, must be a positive number, zero or " ..
+                                                   "'second', 'minute', 'hour', 'month' or 'year'")
+  end
+
+  if delay == 0 then
+    return queue_job(self, false, func, ...)
+  end
+
+  local lawn = self.lawn
+  local lawn_size = self.opts.lawn_size
+  local bucket_size = self.opts.bucket_size
+  if get_pending(lawn, lawn_size) == lawn_size then
+    self.refused = self.refused + 1
+    return nil, "async lawn (" .. delay .. ") is full"
+  end
+
+  local bucket = lawn.buckets[delay]
+  if bucket then
+    if get_pending(bucket, bucket_size) == bucket_size then
+      self.refused = self.refused + 1
+      return nil, "async bucket (" .. delay .. ") is full"
+    end
+
+  else
+    lawn.head = lawn.head == lawn_size and 1 or lawn.head + 1
+    lawn.ttls[lawn.head] = delay
+
+    bucket = {
+      jobs = new_tab(bucket_size, 0),
+      head = 0,
+      tail = 0,
+    }
+
+    lawn.buckets[delay] = bucket
+  end
+
+  local job = create_job(func, ...)
+  if recurring then
+    job = create_recurring_job(job)
+  else
+    job = create_at_job(job)
+  end
+
+  local expiry = now() + delay
+
+  bucket.head = bucket.head == bucket_size and 1 or bucket.head + 1
+  bucket.jobs[bucket.head] = {
+    expiry,
+    job,
+    recurring
+  }
+
+  self.closest = min(self.closest, expiry)
+
+  return true
+end
+
+
 local async = {}
 async.__index = async
 
@@ -442,7 +512,6 @@ function async.new(options)
       buckets = {},
     },
     threads = new_tab(opts.threads, 0),
-    buckets = {},
     closest = 0,
     running = 0,
     errored = 0,
@@ -516,41 +585,7 @@ end
 -- @treturn true|nil      `true` on success, `nil` on error
 -- @treturn string|nil    `nil` on success, error message `string` on error
 function async:every(delay, func, ...)
-  if exiting() then
-    return nil, "nginx worker is exiting"
-  end
-
-  delay = DELAYS[delay] or delay
-
-  assert(type(delay) == "number" and delay > 0, "invalid delay, must be a number greater than zero or " ..
-                                                "'second', 'minute', 'hour', 'month' or 'year'")
-
-  local bucket = self.buckets[delay]
-  local bucket_size = self.opts.bucket_size
-  if bucket then
-    if bucket.head == bucket_size then
-      self.refused = self.refused + 1
-      return nil, "async bucket (" .. delay .. ") is full"
-    end
-
-  else
-    local ok, err = timer_every(delay, every_timer, self, delay)
-    if not ok then
-      return nil, err
-    end
-
-    bucket = {
-      jobs = new_tab(bucket_size, 0),
-      head = 0,
-    }
-
-    self.buckets[delay] = bucket
-  end
-
-  bucket.head = bucket.head + 1
-  bucket.jobs[bucket.head] = create_recurring_job(create_job(func, ...))
-
-  return true
+  return schedule(self, delay, true, func, ...)
 end
 
 
@@ -564,58 +599,7 @@ end
 -- @treturn true|nil      `true` on success, `nil` on error
 -- @treturn string|nil    `nil` on success, error message `string` on error
 function async:at(delay, func, ...)
-  if exiting() then
-    return nil, "nginx worker is exiting"
-  end
-
-  delay = DELAYS[delay] or delay
-
-  assert(type(delay) == "number" and delay >= 0, "invalid delay, must be a positive number or " ..
-                                                 "'second', 'minute', 'hour', 'month' or 'year'")
-
-  if delay == 0 then
-    return queue_job(self, false, func, ...)
-  end
-
-  local lawn = self.lawn
-  local lawn_size = self.opts.lawn_size
-  local bucket_size = self.opts.bucket_size
-  if get_pending(lawn, lawn_size) == lawn_size then
-    self.refused = self.refused + 1
-    return nil, "async lawn (" .. delay .. ") is full"
-  end
-
-  local bucket = lawn.buckets[delay]
-  if bucket then
-    if get_pending(bucket, bucket_size) == bucket_size then
-      self.refused = self.refused + 1
-      return nil, "async bucket (" .. delay .. ") is full"
-    end
-
-  else
-    lawn.head = lawn.head == lawn_size and 1 or lawn.head + 1
-    lawn.ttls[lawn.head] = delay
-
-    bucket = {
-      jobs = new_tab(bucket_size, 0),
-      head = 0,
-      tail = 0,
-    }
-
-    lawn.buckets[delay] = bucket
-  end
-
-  local expiry = now() + delay
-
-  bucket.head = bucket.head == bucket_size and 1 or bucket.head + 1
-  bucket.jobs[bucket.head] = {
-    expiry,
-    create_at_job(create_job(func, ...)),
-  }
-
-  self.closest = min(self.closest, expiry)
-
-  return true
+  return schedule(self, delay, false, func, ...)
 end
 
 
