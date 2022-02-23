@@ -6,9 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local pl_file = require "pl.file"
-local cjson   = require "cjson"
-local utils   = require "kong.tools.utils"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
@@ -20,8 +17,8 @@ local tls_fixtures = { http_mock = {
 
         location = /example_client {
             # Combined cert, contains client first and intermediate second
-            proxy_ssl_certificate ../spec/fixtures/client_example.com.crt;
-            proxy_ssl_certificate_key ../spec/fixtures/client_example.com.key;
+            proxy_ssl_certificate /kong/plugins-ee/tls-metadata-headers/spec/fixtures/good_tls_client.crt;
+            proxy_ssl_certificate_key /kong/plugins-ee/tls-metadata-headers/spec/fixtures/good_tls_client.key;
             proxy_ssl_name example.com;
             # enable send the SNI sent to server
             proxy_ssl_server_name on;
@@ -31,8 +28,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /bad_client {
-            proxy_ssl_certificate ../spec/fixtures/bad_client.crt;
-            proxy_ssl_certificate_key ../spec/fixtures/bad_client.key;
+          proxy_ssl_certificate /kong/plugins-ee/tls-metadata-headers/spec/fixtures/bad_tls_client.crt;
+            proxy_ssl_certificate_key /kong/plugins-ee/tls-metadata-headers/spec/fixtures/bad_tls_client.key;
             proxy_ssl_name example.com;
             proxy_set_header Host example.com;
 

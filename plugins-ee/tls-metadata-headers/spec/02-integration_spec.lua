@@ -20,8 +20,8 @@ local tls_fixtures = { http_mock = {
         listen 10121;
 
         location = /good_client {
-            proxy_ssl_certificate /kong/spec-ee/fixtures/good_tls_client.crt;
-            proxy_ssl_certificate_key /kong/spec-ee/fixtures/good_tls_client.key;
+            proxy_ssl_certificate /kong/plugins-ee/tls-metadata-headers/spec/fixtures/good_tls_client.crt;
+            proxy_ssl_certificate_key /kong/plugins-ee/tls-metadata-headers/spec/fixtures/good_tls_client.key;
             proxy_ssl_name example.com;
             # enable send the SNI sent to server
             proxy_ssl_server_name on;
@@ -31,8 +31,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /bad_client {
-            proxy_ssl_certificate /kong/spec-ee/fixtures/bad_tls_client.crt;
-            proxy_ssl_certificate_key /kong/spec-ee/fixtures/bad_tls_client.key;
+            proxy_ssl_certificate /kong/plugins-ee/tls-metadata-headers/spec/fixtures/bad_tls_client.crt;
+            proxy_ssl_certificate_key /kong/plugins-ee/tls-metadata-headers/spec/fixtures/bad_tls_client.key;
             proxy_ssl_name example.com;
             proxy_set_header Host example.com;
 
@@ -40,8 +40,8 @@ local tls_fixtures = { http_mock = {
         }
 
         location = /another {
-          proxy_ssl_certificate /kong/spec-ee/fixtures/good_tls_client.crt;
-          proxy_ssl_certificate_key /kong/spec-ee/fixtures/good_tls_client.key;
+          proxy_ssl_certificate /kong/plugins-ee/tls-metadata-headers/spec/fixtures/good_tls_client.crt;
+          proxy_ssl_certificate_key /kong/plugins-ee/tls-metadata-headers/spec/fixtures/good_tls_client.key;
           proxy_ssl_name example.com;
           proxy_set_header Host example.com;
 
