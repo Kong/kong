@@ -325,6 +325,7 @@ return {
         gui_auth_conf = utils.shallow_copy(singletons.configuration.admin_gui_auth_conf)
         gui_auth_conf.admin_claim = nil
         gui_auth_conf.admin_by = nil
+        gui_auth_conf.admin_auto_create_rbac_token_disabled = nil
       end
 
       local admin
@@ -448,7 +449,8 @@ return {
                     admin_claim_value,
                     admin_by == "custom_id" and admin_claim_value or nil,
                     true,
-                    true
+                    true,
+                    not (gui_auth_conf_origin and gui_auth_conf_origin.admin_auto_create_rbac_token_disabled)
                   )
 
           -- role mapping
