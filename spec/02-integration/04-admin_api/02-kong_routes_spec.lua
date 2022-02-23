@@ -37,11 +37,66 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
               ngx.shared.kong:safe_set(key, true)
             elseif val == "false" then
               ngx.shared.kong:safe_set(key, false)
+            elseif val == "null" then
+              ngx.shared.kong:safe_set(key, ngx.null)
             else
               ngx.shared.kong:safe_set(key, val)
             end
             ngx.exit(ngx.HTTP_OK)
+          elseif ngx.var.request_method == "DELETE" then
+            ngx.shared.kong:delete(key, ngx.null)
           end
+        }
+      }
+
+      location /pids_ready {
+        content_by_lua_block {
+          local constants    = require "kong.constants"
+          do
+            local kong_shm = ngx.shared.kong
+            local worker_count = ngx.worker.count() - 1
+            for i = 0, worker_count do
+              local worker_pid, err = kong_shm:get("pids:" .. i)
+              if not worker_pid then
+                err = err or "not found"
+                ngx.log(ngx.ERR, "could not get worker process id for worker #", i , ": ", err)
+                ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+
+              else
+                local ok, err = ngx.shared.kong:safe_set(constants.DECLARATIVE_CONFIG_READY_KEY .. worker_pid, true)
+                if not ok then
+                    ngx_log(ngx_ERR, "failed to initialize config ready for ", worker_pid, " in SHM: ", err)
+                    ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+                end
+              end
+            end
+          end
+          ngx.exit(ngx.HTTP_OK)
+        }
+      }
+      location /pids_unready {
+        content_by_lua_block {
+          local constants    = require "kong.constants"
+          do
+            local kong_shm = ngx.shared.kong
+            local worker_count = ngx.worker.count() - 1
+            for i = 0, worker_count do
+              local worker_pid, err = kong_shm:get("pids:" .. i)
+              if not worker_pid then
+                err = err or "not found"
+                ngx.log(ngx.ERR, "could not get worker process id for worker #", i , ": ", err)
+                ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+
+              else
+                local ok, err = ngx.shared.kong:safe_set(constants.DECLARATIVE_CONFIG_READY_KEY .. worker_pid, false)
+                if not ok then
+                    ngx_log(ngx_ERR, "failed to initialize config ready for ", worker_pid, " in SHM: ", err)
+                    ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+                end
+              end
+            end
+          end
+          ngx.exit(ngx.HTTP_OK)
         }
       }
     }
@@ -231,46 +286,64 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       local status_client = helpers.http_client("localhost", 9100, 30)
       -- during the test, the config SHM isn't initialized as usual, and will be nil unless set
       -- stuff a "hash" into it to simulate a non-initialized value
-      assert(shm_client:send {
+      local res = assert(shm_client:send {
         method = "PUT",
         path = "/shm?key=" .. constants.DECLARATIVE_HASH_KEY,
         body = "lkdjglkjdkgjfdlkgjdj"
       })
-      -- for some reason, this request "fails" with a nil response, but nil error
-      -- tcpdump shows it sent successfully
-      shm_client:send {
+      res:read_body()
+
+      local res = assert(shm_client:send {
         method = "PUT",
-        path = "/shm?key=" .. constants.DECLARATIVE_CONFIG_READY_KEY,
+        path = "/pids_ready",
         body = "true"
-      }
+      })
+      res:read_body()
 
       local res = assert(status_client:send {
         method = "GET",
         path = "/status/config"
       })
-      assert.res_status(200, res)
+      local body = assert.res_status(200, res)
+      if strategy == "off" then
+        assert.equals("lkdjglkjdkgjfdlkgjdj", body)
+      else
+        assert.equals("", body)
+      end
     end)
     it("returns 503 when config is not ready", function()
       if strategy == "off" then
         local shm_client = helpers.http_client("localhost", 32765, 30)
         local status_client = helpers.http_client("localhost", 9100, 30)
         -- similarly, we need to force the config SHM into its normal init state
-        assert(shm_client:send {
+
+        local res = assert(shm_client:send {
           method = "PUT",
           path = "/shm?key=" .. constants.DECLARATIVE_HASH_KEY,
-          body = tostring(constants.DECLARATIVE_HASH_EMPTY_VALUE)
+          body = tostring(constants.DECLARATIVE_EMPTY_CONFIG_HASH)
         })
-        shm_client:send {
+        res:read_body()
+
+        local res = assert(shm_client:send {
+          method = "GET",
+          path = "/shm?key=" .. constants.DECLARATIVE_HASH_KEY,
+        })
+        local body = assert.res_status(ngx.HTTP_OK, res)
+        assert.equals(tostring(constants.DECLARATIVE_EMPTY_CONFIG_HASH), body)
+        
+        local res = shm_client:send {
           method = "PUT",
-          path = "/shm?key=" .. constants.DECLARATIVE_CONFIG_READY_KEY,
+          path = "/pids_ready",
           body = "false"
         }
+        res:read_body()
 
         local res = assert(status_client:send {
           method = "GET",
           path = "/status/config"
         })
-        assert.res_status(503, res)
+        local body = assert.res_status(503, res)
+        assert.equals(tostring(constants.DECLARATIVE_EMPTY_CONFIG_HASH), body)
       end
     end)
   end)

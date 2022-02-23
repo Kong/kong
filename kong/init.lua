@@ -549,10 +549,7 @@ function Kong.init()
   end
 
   if config.database == "off" then
-    local ok, err = ngx.shared.kong:safe_set(constants.DECLARATIVE_CONFIG_READY_KEY, false)
-    if not ok then
-        ngx_log(ngx_ERR, "failed to initialize config ready in SHM: ", err)
-    end
+    local err
     declarative_entities, err, declarative_meta, declarative_hash = parse_declarative_config(kong.configuration)
     if not declarative_entities then
       error(err)

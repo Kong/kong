@@ -574,9 +574,31 @@ end
 
 
 function declarative.has_config()
-  if declarative.get_current_hash() ~= DECLARATIVE_HASH_EMPTY_VALUE then
-    return ngx.shared.kong:get(DECLARATIVE_CONFIG_READY_KEY)
+  if declarative.get_current_hash() ~= DECLARATIVE_EMPTY_CONFIG_HASH then
+    local ready = true
+    do
+      local kong_shm = ngx.shared.kong
+      local worker_count = ngx.worker.count() - 1
+      for i = 0, worker_count do
+        local worker_pid, err = kong_shm:get("pids:" .. i)
+        if not worker_pid then
+          err = err or "not found"
+          ngx.log(ngx.ERR, "could not get worker process id for worker #", i , ": ", err)
+
+        else
+          local pid_ready, err = ngx.shared.kong:get(DECLARATIVE_CONFIG_READY_KEY .. worker_pid)
+          if err then
+              ngx.log(ngx.ERR, "failed to retrieve config ready for ", worker_pid, " : ", err)
+          end
+          if not pid_ready then
+            ready = false
+          end
+        end
+      end
+    end
+    return ready, declarative.get_current_hash()
   end
+  return false, declarative.get_current_hash()
 end
 
 

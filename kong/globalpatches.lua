@@ -332,6 +332,11 @@ return function(options)
           if not ok then
             ngx.log(ngx.WARN, "could not store process id in kong shm: ", err)
           end
+          local constants = require "kong.constants"
+          local ok, err = ngx.shared.kong:safe_set(constants.DECLARATIVE_CONFIG_READY_KEY .. pid, false)
+          if not ok then
+              ngx.log(ngx.WARN, "failed to initialize config ready for ", pid, " in SHM: ", err)
+          end
 
           seeded[pid] = true
         end

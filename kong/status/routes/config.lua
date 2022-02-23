@@ -8,13 +8,12 @@ return {
       if kong.db.strategy ~= "off" then
         return kong.response.exit(200)
       end
-    -- unintuitively, "true" is unitialized. we do always initialize the shdict key
-    -- after a config loads, this returns the hash string
-    if not declarative.has_config() then
-      return kong.response.exit(503)
+    local ready, hash = declarative.has_config()
+    if not ready then
+      return kong.response.exit(503, hash)
     end
 
-    return kong.response.exit(200)
+    return kong.response.exit(200, hash)
     end
   },
 }

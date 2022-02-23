@@ -390,9 +390,15 @@ local function register_events()
         log(ERR, "config flip failed: ", err)
       end
 
-      local ok, err = ngx.shared.kong:safe_set(DECLARATIVE_CONFIG_READY_KEY, true)
-      if not ok then
-        log(ERR, "failed to set config ready in SHM: ", err)
+      local ready, err = ngx.shared.kong:get(DECLARATIVE_CONFIG_READY_KEY .. ngx.worker.pid())
+      if err then
+        log(ERR, "failed to get config status from SHM: ", err)
+      end
+      if not ready then
+        local ok, err = ngx.shared.kong:safe_set(DECLARATIVE_CONFIG_READY_KEY .. ngx.worker.pid(), true)
+        if not ok then
+          log(ERR, "failed to set config status in SHM: ", err)
+        end
       end
     end, "declarative", "flip_config")
 
