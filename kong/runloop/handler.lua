@@ -519,10 +519,7 @@ local function register_events()
     end
   end, "crud", "certificates")
 
-
-  if kong.configuration.role ~= "control_plane" then
-    register_balancer_events(core_cache, worker_events, cluster_events)
-  end
+  register_balancer_events(core_cache, worker_events, cluster_events)
 end
 
 
@@ -1058,11 +1055,11 @@ return {
 
       update_lua_mem(true)
 
-      register_events()
-
       if kong.configuration.role == "control_plane" then
         return
       end
+
+      register_events()
 
       -- initialize balancers for active healthchecks
       timer_at(0, function()
