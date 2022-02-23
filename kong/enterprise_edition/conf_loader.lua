@@ -275,6 +275,13 @@ local function validate_admin_gui_authentication(conf, errors)
         then
           errors[#errors+1] = "authenticated_groups_claim only supports 1 claim"
         end
+        
+        -- admin_auto_create_rbac_token_disabled type checking
+        if auth_config.admin_auto_create_rbac_token_disabled and
+          type(auth_config.admin_auto_create_rbac_token_disabled) ~= "boolean"
+        then
+          errors[#errors+1] = "admin_auto_create_rbac_token_disabled must be a boolean"
+        end
 
       end
 

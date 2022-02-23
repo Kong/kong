@@ -66,6 +66,7 @@ for _, strategy in helpers.each_strategy() do
           username,
           nil,
           true,
+          true,
           true
         ))
 
@@ -90,6 +91,60 @@ for _, strategy in helpers.each_strategy() do
           admin.consumer.id,
           ngx.ctx.authenticated_credential.consumer_id
         )
+
+        assert.same(true, admin.rbac_token_enabled)
+
+        stub_validate_admin:revert()
+        stub_attach:revert()
+      end)
+
+      it("creates admin with rbac token disabled", function()
+        local stub_validate_admin = stub(ee_api, "validate_admin")
+        local stub_attach = stub(ee_api, "attach_consumer_and_workspaces")
+
+        local self = {}
+        local username = "not_exists@email.com"
+
+        local admin = db.admins:select_by_username(
+          username,
+          {skip_rbac = true}
+        )
+
+        assert.is_nil(admin)
+
+        assert(auth_plugin_helpers.validate_admin_and_attach_ctx(
+          self,
+          false,
+          username,
+          nil,
+          true,
+          true,
+          false
+        ))
+
+        admin = db.admins:select_by_username(
+          username,
+          {skip_rbac = true}
+        )
+
+        assert.same(username, admin.username)
+
+        assert.stub(ee_api.attach_consumer_and_workspaces).was.called_with(
+          self,
+          admin.consumer.id
+        )
+
+        assert.same(
+          username .. ADMIN_CONSUMER_USERNAME_SUFFIX,
+          ngx.ctx.authenticated_consumer.username
+        )
+
+        assert.same(
+          admin.consumer.id,
+          ngx.ctx.authenticated_credential.consumer_id
+        )
+
+        assert.same(false, admin.rbac_token_enabled)
 
         stub_validate_admin:revert()
         stub_attach:revert()
