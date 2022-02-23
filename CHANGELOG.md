@@ -64,6 +64,12 @@
 
 ## [2.8.0] (UNRELEASED)
 
+### Deprecations
+
+- The external [go-pluginserver](https://github.com/Kong/go-pluginserver) project
+is considered deprecated in favor of the embedded server approach described in
+the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
+
 ### Dependencies
 
 - OpenSSL bumped to 1.1.1m
