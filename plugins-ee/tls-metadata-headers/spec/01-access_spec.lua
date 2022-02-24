@@ -6,8 +6,11 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
+local cjson   = require "cjson"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
+
+local PLUGIN_NAME = "tls-metadata-headers"
 
 local tls_fixtures = { http_mock = {
   tls_server_block = [[
@@ -101,8 +104,8 @@ for _, strategy in strategies() do
 
 
 
-    describe("valid certificate", function()
-      it("returns HTTP 200 on https request if certificate validation passed", function()
+    describe(PLUGIN_NAME .. " test", function()
+      it("returns HTTP 200 on https request", function()
         local res = assert(tls_client:send {
           method  = "GET",
           path    = "/example_client",
@@ -112,7 +115,7 @@ for _, strategy in strategies() do
         assert.is_nil(json.headers["X-Client-Cert"])
       end)
 
-      it("returns HTTP 200 on https request if certificate validation passed - plugin does not effect request", function()
+      it("returns HTTP 200 on https request if certificate validation passed", function()
         local res = assert(tls_client:send {
           method  = "GET",
           path    = "/bad_client",
