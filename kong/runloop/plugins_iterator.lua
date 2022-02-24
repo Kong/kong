@@ -70,7 +70,7 @@ end
 -- @param[type=string] name Name of the plugin being tested for configuration.
 -- @param[type=string] route_id Id of the route being proxied.
 -- @param[type=string] service_id Id of the service being proxied.
--- @param[type=string] consumer_id Id of the donsumer making the request (if any).
+-- @param[type=string] consumer_id Id of the consumer making the request (if any).
 -- @treturn table Plugin configuration, if retrieved.
 local function load_configuration(ctx,
                                   name,
