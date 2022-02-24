@@ -13,7 +13,7 @@ local ACMEHandler = {}
 -- otherwise acme-challenges endpoints may be blocked by auth plugins
 -- causing validation failures
 ACMEHandler.PRIORITY = 1007
-ACMEHandler.VERSION = "0.3.0"
+ACMEHandler.VERSION = "0.4.0"
 
 local function build_domain_matcher(domains)
   local domains_plain = {}
