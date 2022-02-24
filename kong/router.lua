@@ -375,10 +375,10 @@ local function marshall_route(r)
   local hosts_t         = { [0] = 0 }
   local headers_t       = { [0] = 0 }
   local uris_t          = { [0] = 0 }
-  local methods_t       = { [0] = 0 }
+  local methods_t       = {}
   local sources_t       = { [0] = 0 }
   local destinations_t  = { [0] = 0 }
-  local snis_t          = { [0] = 0 }
+  local snis_t          = {}
 
 
   -- hosts
