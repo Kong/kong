@@ -13,6 +13,8 @@ local pl_stringx = require "pl.stringx"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local cjson = require "cjson.safe"
+local openssl = require "resty.openssl"
+local openssl_version = require "resty.openssl.version"
 
 
 local re_match = ngx.re.match
@@ -180,6 +182,8 @@ local EE_CONF_INFERENCES = {
 
   admin_gui_login_banner_title = { typ = "string" },
   admin_gui_login_banner_body = { typ = "string" },
+
+  fips = { typ = "boolean" },
 }
 
 
@@ -670,6 +674,25 @@ local function validate_enforce_rbac(conf)
   return true
 end
 
+local function validate_fips(conf, errors)
+  if not conf.fips then
+    return
+  end
+
+  log.debug("enabling FIPS mode on %s (%s)",
+            openssl_version.version_text,
+            openssl_version.version(openssl_version.CFLAGS))
+
+  local ok, err = openssl.set_fips_mode(true)
+  if not ok or not openssl.get_fips_mode() then
+    errors[#errors + 1] = "cannot enable FIPS mode: " .. (err or "nil")
+  else
+    conf.ssl_cipher_suite = "fips"
+  end
+
+  return errors
+end
+
 local function validate(conf, errors)
   validate_admin_gui_authentication(conf, errors)
   validate_admin_gui_ssl(conf, errors)
@@ -792,6 +815,7 @@ local function validate(conf, errors)
     end
   end
 
+  validate_fips(conf, errors)
 end
 
 local function load_ssl_cert_abs_paths(prefix, conf)
@@ -877,5 +901,6 @@ return {
   validate_portal_cors_origins = validate_portal_cors_origins,
   validate_tracing = validate_tracing,
   validate_route_path_pattern = validate_route_path_pattern,
-  validate_portal_app_auth = validate_portal_app_auth
+  validate_portal_app_auth = validate_portal_app_auth,
+  validate_fips = validate_fips,
 }
