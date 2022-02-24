@@ -314,6 +314,8 @@ keyring_recovery_public_key =
 
 event_hooks_enabled = true
 
+fips = off
+
 role = traditional
 kic = off
 pluginserver_names = NONE

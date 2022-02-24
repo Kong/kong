@@ -9,6 +9,13 @@ local conf_loader = require "kong.conf_loader"
 local ee_conf_loader = require("kong.enterprise_edition.conf_loader")
 local helpers = require "spec.helpers"
 
+local openssl = require "resty.openssl"
+
+local fips_test, non_fips_test = pending, it
+if openssl.set_fips_mode(true) and openssl.get_fips_mode() then
+  fips_test, non_fips_test = it, pending
+end
+
 describe("Configuration loader - enterprise", function()
   it("loads the defaults", function()
     local conf = assert(conf_loader())
@@ -621,6 +628,34 @@ describe("ee conf loader", function()
       }
 
       assert.same(expected, msgs)
+    end)
+  end)
+
+  describe("fips", function()
+    fips_test("with fips: validates correctly", function()
+      local conf = {
+        fips = true,
+      }
+      ee_conf_loader.validate_fips(conf, msgs)
+
+      assert.same({}, msgs)
+      assert.equal(conf.ssl_cipher_suite, "fips")
+    end)
+
+    non_fips_test("without fips: validates correctly", function()
+      local conf = {
+        fips = false,
+      }
+      ee_conf_loader.validate_fips(conf, msgs)
+
+      assert.same({}, msgs)
+
+      local conf = {
+        fips = true,
+      }
+      ee_conf_loader.validate_fips(conf, msgs)
+
+      assert.match("cannot enable FIPS mode: openssl.set_fips_mod", msgs[1])
     end)
   end)
 end)
