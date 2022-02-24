@@ -147,9 +147,9 @@ for _, strategy in helpers.each_strategy() do
               assert.same({
                 name = "schema violation",
                 code = 2,
-                message = "schema violation (prefix: must not be one of: env)",
+                message = "schema violation (prefix: must not be one of: env, aws, hcv)",
                 fields = {
-                  prefix = "must not be one of: env",
+                  prefix = "must not be one of: env, aws, hcv",
                 },
               }, json)
             end)
@@ -168,7 +168,7 @@ for _, strategy in helpers.each_strategy() do
                 assert.same({
                   name = "invalid unique prefix",
                   code = 10,
-                  message = "must not be one of: env",
+                  message = "must not be one of: env, aws, hcv",
                 }, json)
               end)
             end
@@ -222,9 +222,9 @@ for _, strategy in helpers.each_strategy() do
               assert.same({
                 name = "schema violation",
                 code = 2,
-                message = "schema violation (prefix: must not be one of: env)",
+                message = "schema violation (prefix: must not be one of: env, aws, hcv)",
                 fields = {
-                  prefix = "must not be one of: env",
+                  prefix = "must not be one of: env, aws, hcv",
                 },
               }, json)
             end)
@@ -241,9 +241,9 @@ for _, strategy in helpers.each_strategy() do
                 assert.same({
                   name = "schema violation",
                   code = 2,
-                  message = "schema violation (prefix: must not be one of: env)",
+                  message = "schema violation (prefix: must not be one of: env, aws, hcv)",
                   fields = {
-                    prefix = "must not be one of: env",
+                    prefix = "must not be one of: env, aws, hcv",
                   },
                 }, json)
               end)
