@@ -38,6 +38,7 @@ return {
       "snis",
       "upstreams",
       "targets",
+      "vaults_beta",
     },
     nodoc_entities = {
     },
@@ -1631,8 +1632,7 @@ return {
         service. Every upstream can have many targets, and the targets can be
         dynamically added, modified, or deleted. Changes take effect on the fly.
 
-        Because the upstream maintains a history of target changes, the targets cannot
-        be deleted or modified. To disable a target, post a new one with `weight=0`;
+        To disable a target, post a new one with `weight=0`;
         alternatively, use the `DELETE` convenience method to accomplish the same.
 
         The current target object definition is the one with the latest `created_at`.
@@ -1910,7 +1910,66 @@ return {
           },
         },
       },
-    }
+    },
+
+    vaults_beta = {
+      title = "Vaults Beta Entity",
+      entity_title = "Vault",
+      entity_title_plural = "Vaults",
+      description = [[
+        Vault entities are used to configure different Vault connectors. Examples of
+        Vaults are Environment Variables, Hashicorp Vault and AWS Secrets Manager.
+
+        Configuring a Vault allows referencing the secrets with other entities. For
+        example a certificate entity can store a reference to a certificate and key,
+        stored in a vault, instead of storing the certificate and key within the
+        entity. This allows a proper separation of secrets and configuration and
+        prevents secret sprawl.
+      ]],
+
+      fields = {
+        id = { skip = true },
+        created_at = { skip = true },
+        updated_at = { skip = true },
+        name = {
+          description = [[
+            The name of the Vault that's going to be added. Currently, the Vault implementation
+            must be installed in every Kong instance.
+          ]],
+          example = "env",
+        },
+        prefix = {
+          description = [[
+            The unique prefix (or identifier) for this Vault configuration. The prefix
+            is used to load the right Vault configuration and implementation when referencing
+            secrets with the other entities.
+          ]],
+          example = "env",
+        },
+        description = {
+          description = [[
+            The description of the Vault entity.
+          ]],
+          example = "This vault is used to retrieve redis database access credentials",
+        },
+        config = {
+          description = [[
+            The configuration properties for the Vault which can be found on
+            the vaults' documentation page.
+          ]],
+          example = { prefix = "SSL_" },
+        },
+        tags = {
+          description = [[
+            An optional set of strings associated with the Vault for grouping and filtering.
+          ]],
+          examples = {
+            { "database-credentials", "data-plane" },
+            { "certificates", "critical" },
+          },
+        },
+      },
+    },
   },
 
 --------------------------------------------------------------------------------
