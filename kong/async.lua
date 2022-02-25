@@ -6,6 +6,7 @@ local log = ngx.log
 local now = ngx.now
 local wait = ngx.thread.wait
 local kill = ngx.thread.kill
+local sleep = ngx.sleep
 local spawn = ngx.thread.spawn
 local exiting = ngx.worker.exiting
 local timer_at = ngx.timer.at
@@ -15,6 +16,7 @@ local math = math
 local min = math.min
 local max = math.max
 local huge = math.huge
+local ceil = math.ceil
 local floor = math.floor
 local type = type
 local traceback = debug.traceback
@@ -35,6 +37,7 @@ local CRIT   = ngx.CRIT
 
 local TIMER_INTERVAL = 0.1
 local WAIT_INTERVAL  = 0.5
+local LOG_STEP       = 0.5
 local LOG_INTERVAL   = 60
 local THREADS        = 100
 local BUCKET_SIZE    = 1000
@@ -130,40 +133,59 @@ local function log_timer(premature, self)
     return true
   end
 
-  local queue_size = self.opts.queue_size
+  local log_interval = self.opts.log_interval
+  local log_step     = self.opts.log_step
+  local queue_size   = self.opts.queue_size
 
-  local dbg = queue_size / 10000
-  local nfo = queue_size / 1000
-  local ntc = queue_size / 100
-  local wrn = queue_size / 10
-  local err = queue_size
+  local round  = 0
+  local rounds = ceil(log_interval / log_step)
 
-  local pending = get_pending(self, queue_size)
+  while true do
+    if self.started == nil or exiting() then
+      break
+    end
 
-  local msg = fmt("async jobs: %u running, %u pending, %u errored, %u refused, %u aborted, %u done",
-                  self.running, pending, self.errored, self.refused, self.aborted, self.done)
-  if pending <= dbg then
-    log(DEBUG, msg)
-  elseif pending <= nfo then
-    log(INFO, msg)
-  elseif pending <= ntc then
-    log(NOTICE, msg)
-  elseif pending < wrn then
-    log(WARN, msg)
-  elseif pending < err then
-    log(ERR, msg)
-  else
-    log(CRIT, msg)
+    round = round + 1
+
+    if round == rounds then
+      round = 0
+
+      local dbg = queue_size / 10000
+      local nfo = queue_size / 1000
+      local ntc = queue_size / 100
+      local wrn = queue_size / 10
+      local err = queue_size
+
+      local pending = get_pending(self, queue_size)
+
+      local msg = fmt("async jobs: %u running, %u pending, %u errored, %u refused, %u aborted, %u done",
+                      self.running, pending, self.errored, self.refused, self.aborted, self.done)
+      if pending <= dbg then
+        log(DEBUG, msg)
+      elseif pending <= nfo then
+        log(INFO, msg)
+      elseif pending <= ntc then
+        log(NOTICE, msg)
+      elseif pending < wrn then
+        log(WARN, msg)
+      elseif pending < err then
+        log(ERR, msg)
+      else
+        log(CRIT, msg)
+      end
+    end
+
+    sleep(log_step)
   end
 
-  local hdl, crit = timer_at(self.opts.log_interval, log_timer, self)
-  if hdl then
-    return true
+  if self.started and not exiting() then
+    log(CRIT, "async log timer aborted")
+    return
   end
-
-  log(CRIT, crit)
 
   release_timer(self)
+
+  return true
 end
 
 
@@ -174,18 +196,19 @@ local function job_timer(premature, self)
   end
 
   local t = self.threads
+  local c = self.opts.threads
 
-  for i = 1, self.opts.threads do
+  for i = 1, c do
     t[i] = spawn(job_thread, self, i)
   end
 
-  for i = 1, self.opts.threads do
+  for i = 1, c do
     local ok, err = wait(t[i])
     if not ok then
       log(ERR, "async thread error: ", err)
     end
 
-    if not exiting() then
+    if self.started and not exiting() then
       log(CRIT, "async thread #", i, " aborted")
     end
 
@@ -197,8 +220,8 @@ local function job_timer(premature, self)
 
   release_timer(self)
 
-  if not exiting() then
-    log(CRIT, "async threads aborted")
+  if self.started and not exiting() then
+    log(CRIT, "async job timer aborted")
     return
   end
 
@@ -206,96 +229,101 @@ local function job_timer(premature, self)
 end
 
 
-local function at_timer(premature, self)
+local function queue_timer(premature, self)
 
   -- DO NOT YIELD IN THIS FUNCTION AS IT IS EXECUTED FREQUENTLY!
 
-  premature = premature or self.started == nil
+  local timer_interval = self.opts.timer_interval
+  local lawn_size      = self.opts.lawn_size
+  local bucket_size    = self.opts.bucket_size
 
-  local ok = true
+  while true do
+    premature = premature or self.started == nil or exiting()
 
-  if self.lawn.head ~= self.lawn.tail then
-    local current_time = premature and huge or now()
-    if self.closest <= current_time then
-      local lawn        = self.lawn
-      local lawn_size   = self.opts.lawn_size
-      local bucket_size = self.opts.bucket_size
-      local ttls        = lawn.ttls
-      local buckets     = lawn.buckets
+    local ok = true
 
-      local head = lawn.head
-      local tail = lawn.tail
-      while head ~= tail do
-        tail = tail == lawn_size and 1 or tail + 1
-        local ttl = ttls[tail]
-        local bucket = buckets[ttl]
-        if bucket.head == bucket.tail then
-          lawn.tail = lawn.tail == lawn_size and 1 or lawn.tail + 1
-          buckets[ttl] = nil
-          ttls[tail] = nil
+    if self.lawn.head ~= self.lawn.tail then
+      local current_time = premature and huge or now()
+      if self.closest <= current_time then
+        local lawn    = self.lawn
+        local ttls    = lawn.ttls
+        local buckets = lawn.buckets
+        local head    = lawn.head
+        local tail    = lawn.tail
+        while head ~= tail do
+          tail = tail == lawn_size and 1 or tail + 1
+          local ttl = ttls[tail]
+          local bucket = buckets[ttl]
+          if bucket.head == bucket.tail then
+            lawn.tail = lawn.tail == lawn_size and 1 or lawn.tail + 1
+            buckets[ttl] = nil
+            ttls[tail] = nil
 
-        else
-          while bucket.head ~= bucket.tail do
-            local bucket_tail = bucket.tail == bucket_size and 1 or bucket.tail + 1
-            local job = bucket.jobs[bucket_tail]
-            local expiry = job[1]
-            if expiry >= current_time then
-              break
+          else
+            while bucket.head ~= bucket.tail do
+              local bucket_tail = bucket.tail == bucket_size and 1 or bucket.tail + 1
+              local job = bucket.jobs[bucket_tail]
+              local expiry = job[1]
+              if expiry >= current_time then
+                break
+              end
+
+              local err
+              ok, err = job[2](self)
+              if not ok then
+                log(ERR, err)
+                break
+              end
+
+              bucket.jobs[bucket_tail] = nil
+              bucket.tail = bucket_tail
+
+              -- reschedule a recurring job
+              if not premature and job[3] then
+                local exp = now() + ttl
+                bucket.head = bucket.head == bucket_size and 1 or bucket.head + 1
+                bucket.jobs[bucket.head] = {
+                  exp,
+                  job[2],
+                  true,
+                }
+
+                self.closest = min(self.closest, exp)
+              end
+
+              if self.closest == 0 or self.closest > expiry then
+                self.closest = expiry
+              end
             end
 
-            local err
-            ok, err = job[2](self)
+            lawn.tail = lawn.tail == lawn_size and 1 or lawn.tail + 1
+            lawn.head = lawn.head == lawn_size and 1 or lawn.head + 1
+            ttls[lawn.head] = ttl
+            ttls[tail] = nil
+
             if not ok then
-              log(ERR, err)
               break
             end
-
-            bucket.jobs[bucket_tail] = nil
-            bucket.tail = bucket_tail
-
-            -- reschedule a recurring job
-            if not premature and job[3] then
-              local exp = now() + ttl
-              bucket.head = bucket.head == bucket_size and 1 or bucket.head + 1
-              bucket.jobs[bucket.head] = {
-                exp,
-                job[2],
-                true,
-              }
-
-              self.closest = min(self.closest, exp)
-            end
-
-            if self.closest == 0 or self.closest > expiry then
-              self.closest = expiry
-            end
-          end
-
-          lawn.tail = lawn.tail == lawn_size and 1 or lawn.tail + 1
-          lawn.head = lawn.head == lawn_size and 1 or lawn.head + 1
-          ttls[lawn.head] = ttl
-          ttls[tail] = nil
-
-          if not ok then
-            break
           end
         end
       end
     end
-  end
 
-  if not premature then
-    local hdl, crit = timer_at(self.opts.timer_interval, at_timer, self)
-    if hdl then
-      return true
+    if premature then
+      break
     end
 
-    log(CRIT, crit)
+    sleep(timer_interval)
   end
 
   release_timer(self)
 
-  return ok
+  if self.started and not exiting() then
+    log(CRIT, "async queue timer aborted")
+    return
+  end
+
+  return true
 end
 
 
@@ -524,6 +552,7 @@ function async.new(options)
     timer_interval = options and options.timer_interval or TIMER_INTERVAL,
     wait_interval  = options and options.wait_interval  or WAIT_INTERVAL,
     log_interval   = options and options.log_interval   or LOG_INTERVAL,
+    log_step       = options and options.log_step       or LOG_STEP,
     threads        = options and options.threads        or THREADS,
     bucket_size    = options and options.bucket_size    or BUCKET_SIZE,
     lawn_size      = options and options.lawn_size      or LAWN_SIZE,
@@ -584,7 +613,7 @@ function async:start()
 
   self.timers = self.timers + 1
 
-  ok, err = timer_at(self.opts.timer_interval, at_timer, self)
+  ok, err = timer_at(self.opts.timer_interval, queue_timer, self)
   if not ok then
     return nil, err
   end
@@ -592,12 +621,12 @@ function async:start()
   self.timers = self.timers + 1
 
   if self.opts.log_interval > 0 then
-    ok, err = timer_at(self.opts.log_interval, log_timer, self)
+    ok, err = timer_at(self.opts.log_step, log_timer, self)
     if not ok then
       return nil, err
     end
 
-    --self.timers = self.timers + 1
+    self.timers = self.timers + 1
   end
 
   return true
