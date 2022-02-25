@@ -84,6 +84,7 @@ return {
           type = "boolean",
           default = false,
         } },
+        -- TODO: remove proxy_scheme in Kong 3.0
         { proxy_scheme = {
           type = "string",
           one_of = { "http", "https" }
@@ -102,7 +103,23 @@ return {
   } },
   entity_checks = {
     { mutually_required = { "config.aws_key", "config.aws_secret" } },
-    { mutually_required = { "config.proxy_scheme", "config.proxy_url" } },
     { mutually_exclusive = { "config.aws_region", "config.host" } },
+    { custom_entity_check = {
+        field_sources = { "config.proxy_url" },
+        fn = function(entity)
+          local proxy_url = entity.config and entity.config.proxy_url
+
+          if type(proxy_url) == "string" then
+            local scheme = proxy_url:match("^([^:]+)://")
+
+            if scheme and scheme ~= "http" then
+              return nil, "proxy_url scheme must be http"
+            end
+          end
+
+          return true
+        end,
+      }
+    },
   }
 }
