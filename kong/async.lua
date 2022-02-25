@@ -9,7 +9,6 @@ local kill = ngx.thread.kill
 local spawn = ngx.thread.spawn
 local exiting = ngx.worker.exiting
 local timer_at = ngx.timer.at
-local timer_every = ngx.timer.every
 local fmt = string.format
 local sort = table.sort
 local math = math
@@ -141,6 +140,13 @@ local function log_timer(premature, self)
     log(CRIT, msg)
   end
 
+  local ok
+  ok, err = timer_at(self.opts.log_interval, log_timer, self)
+  if not ok then
+    log(ERR, err)
+    return
+  end
+
   return true
 end
 
@@ -185,82 +191,87 @@ local function at_timer(premature, self)
 
   -- DO NOT YIELD IN THIS FUNCTION AS IT IS EXECUTED FREQUENTLY!
 
-  if self.lawn.head == self.lawn.tail then
-    return true
-  end
+  local ok = true
 
-  local current_time = premature and huge or now()
-  if self.closest > current_time then
-    return true
-  end
+  if self.lawn.head ~= self.lawn.tail then
+    local current_time = premature and huge or now()
+    if self.closest <= current_time then
+      local lawn        = self.lawn
+      local lawn_size   = self.opts.lawn_size
+      local bucket_size = self.opts.bucket_size
+      local ttls        = lawn.ttls
+      local buckets     = lawn.buckets
 
-  local lawn        = self.lawn
-  local lawn_size   = self.opts.lawn_size
-  local bucket_size = self.opts.bucket_size
-  local ttls        = lawn.ttls
-  local buckets     = lawn.buckets
+      local head = lawn.head
+      local tail = lawn.tail
+      while head ~= tail do
+        tail = tail == lawn_size and 1 or tail + 1
+        local ttl = ttls[tail]
+        local bucket = buckets[ttl]
+        if bucket.head == bucket.tail then
+          lawn.tail = lawn.tail == lawn_size and 1 or lawn.tail + 1
+          buckets[ttl] = nil
+          ttls[tail] = nil
 
-  local head = lawn.head
-  local tail = lawn.tail
-  while head ~= tail do
-    tail = tail == lawn_size and 1 or tail + 1
-    local ttl = ttls[tail]
-    local bucket = buckets[ttl]
-    if bucket.head == bucket.tail then
-      lawn.tail = lawn.tail == lawn_size and 1 or lawn.tail + 1
-      buckets[ttl] = nil
-      ttls[tail] = nil
+        else
+          while bucket.head ~= bucket.tail do
+            local bucket_tail = bucket.tail == bucket_size and 1 or bucket.tail + 1
+            local job = bucket.jobs[bucket_tail]
+            local expiry = job[1]
+            if expiry >= current_time then
+              break
+            end
 
-    else
-      local ok = true
-      local err
-      while bucket.head ~= bucket.tail do
-        local bucket_tail = bucket.tail == bucket_size and 1 or bucket.tail + 1
-        local job = bucket.jobs[bucket_tail]
-        local expiry = job[1]
-        if expiry >= current_time then
-          break
+            local err
+            ok, err = job[2](self)
+            if not ok then
+              log(ERR, err)
+              break
+            end
+
+            bucket.jobs[bucket_tail] = nil
+            bucket.tail = bucket_tail
+
+            -- reschedule a recurring job
+            if not premature and job[3] then
+              local exp = now() + ttl
+              bucket.head = bucket.head == bucket_size and 1 or bucket.head + 1
+              bucket.jobs[bucket.head] = {
+                exp,
+                job[2],
+                true,
+              }
+
+              self.closest = min(self.closest, exp)
+            end
+
+            if self.closest == 0 or self.closest > expiry then
+              self.closest = expiry
+            end
+          end
+
+          lawn.tail = lawn.tail == lawn_size and 1 or lawn.tail + 1
+          lawn.head = lawn.head == lawn_size and 1 or lawn.head + 1
+          ttls[lawn.head] = ttl
+          ttls[tail] = nil
+
+          if not ok then
+            break
+          end
         end
-
-        ok, err = job[2](self)
-        if not ok then
-          break
-        end
-
-        bucket.jobs[bucket_tail] = nil
-        bucket.tail = bucket_tail
-
-        -- reschedule a recurring job
-        if not premature and job[3] then
-          local exp = now() + ttl
-          bucket.head = bucket.head == bucket_size and 1 or bucket.head + 1
-          bucket.jobs[bucket.head] = {
-            exp,
-            job[2],
-            true,
-          }
-
-          self.closest = min(self.closest, exp)
-        end
-
-        if self.closest == 0 or self.closest > expiry then
-          self.closest = expiry
-        end
-      end
-
-      lawn.tail = lawn.tail == lawn_size and 1 or lawn.tail + 1
-      lawn.head = lawn.head == lawn_size and 1 or lawn.head + 1
-      ttls[lawn.head] = ttl
-      ttls[tail] = nil
-
-      if not ok then
-        log(ERR, err)
-        return
       end
     end
   end
 
-  return true
+  if not premature then
+    local hdl, crit = timer_at(self.opts.timer_interval, at_timer, self)
+    if not hdl then
+      log(CRIT, crit)
+      return
+    end
+  end
+
+  return ok
 end
 
 
@@ -545,13 +556,13 @@ function async:start()
     return nil, err
   end
 
-  ok, err = timer_every(self.opts.timer_interval, at_timer, self)
+  ok, err = timer_at(self.opts.timer_interval, at_timer, self)
   if not ok then
     return nil, err
   end
 
   if self.opts.log_interval > 0 then
-    ok, err = timer_every(self.opts.log_interval, log_timer, self)
+    ok, err = timer_at(self.opts.log_interval, log_timer, self)
     if not ok then
       return nil, err
     end
