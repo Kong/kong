@@ -100,7 +100,7 @@ local function job_thread(self, index)
       log(ERR, "async thread #", index, " wait error: ", err)
     end
 
-    if self.head == self.tail and (self.aborted > 0 or exiting()) then
+    if self.head == self.tail and (self.started == nil or self.aborted > 0 or exiting()) then
       break
     end
   end
@@ -109,8 +109,24 @@ local function job_thread(self, index)
 end
 
 
+local function release_timer(self)
+  local timers = self.timers
+  if timers > 0 then
+    timers = timers - 1
+  end
+
+  if timers > 0 then
+    self.timers = timers
+  else
+    self.timers = 0
+    self.quit:post()
+  end
+end
+
+
 local function log_timer(premature, self)
-  if premature then
+  if premature or self.started == nil then
+    release_timer(self)
     return true
   end
 
@@ -140,19 +156,20 @@ local function log_timer(premature, self)
     log(CRIT, msg)
   end
 
-  local ok
-  ok, err = timer_at(self.opts.log_interval, log_timer, self)
-  if not ok then
-    log(ERR, err)
-    return
+  local hdl, crit = timer_at(self.opts.log_interval, log_timer, self)
+  if hdl then
+    return true
   end
 
-  return true
+  log(CRIT, crit)
+
+  release_timer(self)
 end
 
 
 local function job_timer(premature, self)
-  if premature then
+  if premature or self.started == nil then
+    release_timer(self)
     return true
   end
 
@@ -178,6 +195,8 @@ local function job_timer(premature, self)
     self.aborted = self.aborted + 1
   end
 
+  release_timer(self)
+
   if not exiting() then
     log(CRIT, "async threads aborted")
     return
@@ -190,6 +209,8 @@ end
 local function at_timer(premature, self)
 
   -- DO NOT YIELD IN THIS FUNCTION AS IT IS EXECUTED FREQUENTLY!
+
+  premature = premature or self.started == nil
 
   local ok = true
 
@@ -265,11 +286,14 @@ local function at_timer(premature, self)
 
   if not premature then
     local hdl, crit = timer_at(self.opts.timer_interval, at_timer, self)
-    if not hdl then
-      log(CRIT, crit)
-      return
+    if hdl then
+      return true
     end
+
+    log(CRIT, crit)
   end
+
+  release_timer(self)
 
   return ok
 end
@@ -515,6 +539,7 @@ function async.new(options)
     opts = opts,
     jobs = new_tab(opts.queue_size, 0),
     time = time,
+    quit = semaphore.new(),
     work = semaphore.new(),
     lawn = {
       head    = 0,
@@ -522,6 +547,7 @@ function async.new(options)
       ttls    = new_tab(opts.lawn_size, 0),
       buckets = {},
     },
+    timers = 0,
     threads = new_tab(opts.threads, 0),
     closest = 0,
     running = 0,
@@ -556,16 +582,48 @@ function async:start()
     return nil, err
   end
 
+  self.timers = self.timers + 1
+
   ok, err = timer_at(self.opts.timer_interval, at_timer, self)
   if not ok then
     return nil, err
   end
+
+  self.timers = self.timers + 1
 
   if self.opts.log_interval > 0 then
     ok, err = timer_at(self.opts.log_interval, log_timer, self)
     if not ok then
       return nil, err
     end
+
+    --self.timers = self.timers + 1
+  end
+
+  return true
+end
+
+
+---
+-- Stop `resty.async` timers
+--
+-- @tparam  number[opt]|nil   specifies the maximum time this function call should wait for (in seconds)
+--                            everything to be stopped
+-- @treturn boolean|nil       `true` on success, `nil` on error
+-- @treturn string|nil        `nil` on success, error message `string` on error
+function async:stop(wait)
+  if exiting() then
+    return nil, "nginx worker is exiting"
+  end
+
+  if not self.started then
+    return nil, "not started"
+  end
+
+  self.started = nil
+
+  if wait then
+    return self.quit:wait(wait)
   end
 
   return true
