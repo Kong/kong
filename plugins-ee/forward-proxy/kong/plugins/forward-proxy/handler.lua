@@ -255,12 +255,6 @@ function ForwardProxyHandler:access(conf)
     headers["Host"] = var.upstream_host
   end
 
-  -- TODO: should we omit this header when the request is plain http?
-  -- lua-resty-http should be setting it for us
-  if auth_header then
-    headers["Proxy-Authorization"] = auth_header
-  end
-
   res, err = httpc:request({
     method  = ngx_req_get_method(),
     path    = var.upstream_uri,
