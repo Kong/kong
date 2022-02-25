@@ -36,7 +36,7 @@ local fixtures = {
 
     server {
       listen 16796;
-      error_log logs/proxy.log debug;
+      error_log logs/proxy_auth.log debug;
 
       content_by_lua_block {
         require("spec.fixtures.forward-proxy-server").connect({
@@ -48,14 +48,14 @@ local fixtures = {
     ]],
   },
   http_mock = {
-    upstream_mtls = string.format([[
+    upstreams_mtls = string.format([[
       server {
           server_name example.com;
           listen 16798 ssl;
 
-          ssl_certificate        %s/../spec/fixtures/mtls_certs/example.com.crt;
-          ssl_certificate_key    %s/../spec/fixtures/mtls_certs/example.com.key;
-          ssl_client_certificate %s/../spec/fixtures/mtls_certs/ca.crt;
+          ssl_certificate        /kong/spec/fixtures/mtls_certs/example.com.crt;
+          ssl_certificate_key    /kong/spec/fixtures/mtls_certs/example.com.key;
+          ssl_client_certificate /kong/spec/fixtures/mtls_certs/ca.crt;
           ssl_verify_client      on;
           ssl_session_tickets    off;
           ssl_session_cache      off;
@@ -94,7 +94,6 @@ for _, strategy in strategies() do
       }, {
         "forward-proxy",
       })
-
 
       local mtls = bp.services:insert {
         url                = "https://127.0.0.1:16798/",
@@ -252,7 +251,7 @@ for _, strategy in strategies() do
           local res = client:get(case.path, params)
 
           assert.res_status(case.status, res)
-          helpers.wait_until(log_match("proxy.log", case.proxy_log), 5)
+          helpers.wait_until(log_match("proxy_auth.log", case.proxy_log), 5)
           if case.error_log then
             helpers.wait_until(log_match("error.log", case.error_log), 5)
           end
