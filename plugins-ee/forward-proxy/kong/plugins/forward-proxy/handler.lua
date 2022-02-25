@@ -24,6 +24,7 @@ local ngx_now             = ngx.now
 local ngx_print           = ngx.print
 local str_lower           = string.lower
 local str_format          = string.format
+local base64_encode       = base64.encode_base64url
 
 
 local _prefix_log = "[forward-proxy] "
@@ -202,6 +203,14 @@ function ForwardProxyHandler:access(conf)
 
   local proxy_opts = {}
 
+  local auth_header
+  if conf.auth_username and conf.auth_password then
+    auth_header = "Basic " .. base64_encode(conf.auth_username .. ":" .. conf.auth_password)
+
+    proxy_opts.https_proxy_authorization = auth_header
+    proxy_opts.http_proxy_authorization = auth_header
+  end
+
   if conf.http_proxy_host then
     proxy_opts.http_proxy =
       str_format("http://%s:%d", conf.http_proxy_host, conf.http_proxy_port)
@@ -258,8 +267,9 @@ function ForwardProxyHandler:access(conf)
     headers["Host"] = var.upstream_host
   end
 
-  if conf.auth_username ~= nil and conf.auth_password ~= nil then
-    local auth_header = "Basic " .. base64.encode_base64url(conf.auth_username .. ":" .. conf.auth_password)
+  -- TODO: should we omit this header when the request is plain http?
+  -- lua-resty-http should be setting it for us
+  if auth_header then
     headers["Proxy-Authorization"] = auth_header
   end
 
