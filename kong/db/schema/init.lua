@@ -1768,14 +1768,14 @@ function Schema:process_auto_fields(data, context, nulls, opts)
             if count > 0 then
               for i = 1, count do
                 if is_reference(value[i]) then
-                  local deref, err = dereference(value)
+                  local deref, err = dereference(value[i])
                   if deref then
-                    value = deref
+                    value[i] = deref
                   else
                     if err then
-                      kong.log.warn("unable to resolve reference ", value, " (", err, ")")
+                      kong.log.warn("unable to resolve reference ", value[i], " (", err, ")")
                     else
-                      kong.log.warn("unable to resolve reference ", value)
+                      kong.log.warn("unable to resolve reference ", value[i])
                     end
 
                     value[i] = nil
