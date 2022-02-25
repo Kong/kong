@@ -216,8 +216,8 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
     local target = data.entity
     -- => to worker_events node handler
     local ok, err = worker_events.post("balancer", "targets", {
-        operation = data.operation,
-        entity = data.entity,
+        operation = operation,
+        entity = target,
       })
     if not ok then
       log(ERR, "failed broadcasting target ",
@@ -288,15 +288,15 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
     local operation = data.operation
     local upstream = data.entity
     local ws_id = workspaces.get_workspace_id()
-    if not data.entity.ws_id then
+    if not upstream.ws_id then
       log(DEBUG, "Event crud ", operation, " for upstream ", upstream.id,
           " received without ws_id, adding.")
-      data.entity.ws_id = ws_id
+      upstream.ws_id = ws_id
     end
     -- => to worker_events node handler
     local ok, err = worker_events.post("balancer", "upstreams", {
-        operation = data.operation,
-        entity = data.entity,
+        operation = operation,
+        entity = upstream,
       })
     if not ok then
       log(ERR, "failed broadcasting upstream ",
@@ -316,8 +316,8 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
     local operation = data.operation
     local upstream = data.entity
 
-    if not data.entity.ws_id then
-      log(CRIT, "Operation ", operation, " for upstream ", data.entity.id,
+    if not upstream.ws_id then
+      log(CRIT, "Operation ", operation, " for upstream ", upstream.id,
           " received without workspace, discarding.")
       return
     end
