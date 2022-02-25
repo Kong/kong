@@ -272,5 +272,44 @@ for _, strategy in helpers.each_strategy() do
       end)
     end
 
+    -- [[ EE
+    it("reports with API signal contains the EE infos", function()
+
+      local status, service
+      status, service = assert(admin_send({
+        method = "POST",
+        path = "/services",
+        body = {
+          protocol = "http",
+          host = "example.com",
+        },
+      }))
+      assert.same(201, status)
+      assert.string(service.id)
+
+      local plugin
+      status, plugin = assert(admin_send({
+        method = "POST",
+        path = "/plugins",
+        body = {
+          service = { id = service.id },
+          name = "tcp-log",
+          config = {
+            host = "dummy",
+            port = 666,
+          },
+        },
+      }))
+      assert.same(201, status)
+      assert.string(plugin.id)
+
+      local _, reports_data = assert(reports_server:join())
+
+      assert.match("signal=api", reports_data)
+      assert.match("license_key=", reports_data)
+      assert.match("rbac_enforced=", reports_data)
+    end)
+    -- EE ]]
+
   end)
 end
