@@ -550,9 +550,11 @@ function async:start()
     return nil, err
   end
 
-  ok, err = timer_every(self.opts.log_interval, log_timer, self)
-  if not ok then
-    return nil, err
+  if self.opts.log_interval > 0 then
+    ok, err = timer_every(self.opts.log_interval, log_timer, self)
+    if not ok then
+      return nil, err
+    end
   end
 
   return true
