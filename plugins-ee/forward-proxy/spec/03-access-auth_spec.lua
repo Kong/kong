@@ -33,6 +33,18 @@ local fixtures = {
         require("spec.fixtures.forward-proxy-server").connect()
       }
     }
+
+    server {
+      listen 16796;
+      error_log logs/proxy.log debug;
+
+      content_by_lua_block {
+        require("spec.fixtures.forward-proxy-server").connect({
+          basic_auth = require("ngx.base64").encode_base64url("test:kong"),
+        })
+      }
+    }
+
     ]],
   },
   http_mock = {
@@ -124,6 +136,53 @@ for _, strategy in strategies() do
         },
       }
 
+      -- no auth
+      bp.plugins:insert {
+        name   = "forward-proxy",
+        config = {
+          https_proxy_host = "127.0.0.1",
+          https_proxy_port = 16796,
+        },
+        route = bp.routes:insert {
+          hosts   = { "proxy.test" },
+          paths   = { "/no-auth" },
+          service = mtls,
+        },
+      }
+
+      -- incorrect auth
+      bp.plugins:insert {
+        name   = "forward-proxy",
+        config = {
+          https_proxy_host = "127.0.0.1",
+          https_proxy_port = 16796,
+          auth_username    = "test",
+          auth_password    = "wrong!",
+        },
+        route = bp.routes:insert {
+          hosts   = { "proxy.test" },
+          paths   = { "/wrong-auth" },
+          service = mtls,
+        },
+      }
+
+      -- correct auth
+      bp.plugins:insert {
+        name   = "forward-proxy",
+        config = {
+          https_proxy_host = "127.0.0.1",
+          https_proxy_port = 16796,
+          auth_username    = "test",
+          auth_password    = "kong",
+        },
+        route = bp.routes:insert {
+          hosts   = { "proxy.test" },
+          paths   = { "/correct-auth" },
+          service = mtls,
+        },
+      }
+
+
       assert(helpers.start_kong({
         database   = strategy,
         plugins = "forward-proxy",
@@ -161,6 +220,44 @@ for _, strategy in strategies() do
 
         helpers.wait_until(log_match("proxy.log", "CONNECT 127.0.0.1:16798"), 5)
       end)
+    end)
+
+    describe("proxy-authorization header", function()
+      local cases = {
+        {
+          name = "no auth",
+          path = "/no-auth",
+          status = 500,
+          proxy_log = "client did not send proxy-authorization header",
+          error_log = "failed to establish a tunnel through a proxy: 401",
+        },
+        {
+          name = "incorrect auth",
+          path = "/wrong-auth",
+          status = 500,
+          proxy_log = "client sent incorrect proxy-authorization",
+          error_log = "failed to establish a tunnel through a proxy: 403",
+        },
+        {
+          name = "correct auth",
+          path = "/correct-auth",
+          status = 200,
+          proxy_log = "accepted basic proxy-authorization",
+        },
+      }
+
+      for _, case in ipairs(cases) do
+        it(case.name, function()
+          local client = assert(helpers.proxy_ssl_client(1000, "proxy.test"))
+          local res = client:get(case.path, params)
+
+          assert.res_status(case.status, res)
+          helpers.wait_until(log_match("proxy.log", case.proxy_log), 5)
+          if case.error_log then
+            helpers.wait_until(log_match("error.log", case.error_log), 5)
+          end
+        end)
+      end
     end)
   end)
 end
