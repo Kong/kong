@@ -40,6 +40,7 @@ local WAIT_INTERVAL  = 0.5
 local LOG_STEP       = 0.5
 local LOG_INTERVAL   = 60
 local THREADS        = 100
+local RESPAWN_LIMIT  = 1000
 local BUCKET_SIZE    = 1000
 local LAWN_SIZE      = 10000
 local QUEUE_SIZE     = 100000
@@ -78,9 +79,27 @@ do
 end
 
 
+local function release_timer(self)
+  local timers = self.timers
+  if timers > 0 then
+    timers = timers - 1
+  end
+
+  if timers > 0 then
+    self.timers = timers
+  else
+    self.timers = 0
+    self.quit:post()
+  end
+end
+
+
 local function job_thread(self, index)
   local wait_interval = self.opts.wait_interval
   local queue_size = self.opts.queue_size
+  local respawn_limit = self.opts.respawn_limit
+  local jobs_executed = 0
+
   while true do
     local ok, err = self.work:wait(wait_interval)
     if ok then
@@ -99,6 +118,8 @@ local function job_thread(self, index)
         log(ERR, "async thread #", index, " job error: ", err)
       end
 
+      jobs_executed = jobs_executed + 1
+
     elseif err ~= "timeout" then
       log(ERR, "async thread #", index, " wait error: ", err)
     end
@@ -106,86 +127,13 @@ local function job_thread(self, index)
     if self.head == self.tail and (self.started == nil or self.aborted > 0 or exiting()) then
       break
     end
-  end
 
-  return true
-end
-
-
-local function release_timer(self)
-  local timers = self.timers
-  if timers > 0 then
-    timers = timers - 1
-  end
-
-  if timers > 0 then
-    self.timers = timers
-  else
-    self.timers = 0
-    self.quit:post()
-  end
-end
-
-
-local function log_timer(premature, self)
-  if premature or self.started == nil then
-    release_timer(self)
-    return true
-  end
-
-  local log_interval = self.opts.log_interval
-  local log_step     = self.opts.log_step
-  local queue_size   = self.opts.queue_size
-
-  local round  = 0
-  local rounds = ceil(log_interval / log_step)
-
-  while true do
-    if self.started == nil or exiting() then
-      break
+    if jobs_executed == respawn_limit then
+      return index, true
     end
-
-    round = round + 1
-
-    if round == rounds then
-      round = 0
-
-      local dbg = queue_size / 10000
-      local nfo = queue_size / 1000
-      local ntc = queue_size / 100
-      local wrn = queue_size / 10
-      local err = queue_size
-
-      local pending = get_pending(self, queue_size)
-
-      local msg = fmt("async jobs: %u running, %u pending, %u errored, %u refused, %u aborted, %u done",
-                      self.running, pending, self.errored, self.refused, self.aborted, self.done)
-      if pending <= dbg then
-        log(DEBUG, msg)
-      elseif pending <= nfo then
-        log(INFO, msg)
-      elseif pending <= ntc then
-        log(NOTICE, msg)
-      elseif pending < wrn then
-        log(WARN, msg)
-      elseif pending < err then
-        log(ERR, msg)
-      else
-        log(CRIT, msg)
-      end
-    end
-
-    sleep(log_step)
   end
 
-  if self.started and not exiting() then
-    log(CRIT, "async log timer aborted")
-    return
-  end
-
-  release_timer(self)
-
-  return true
+  return index
 end
 
 
@@ -202,25 +150,46 @@ local function job_timer(premature, self)
     t[i] = spawn(job_thread, self, i)
   end
 
+  while true do
+    local ok, err, respawn = wait(unpack(t, 1, c))
+    if respawn then
+      log(DEBUG, "async respawning thread #", err)
+      t[err] = spawn(job_thread, self, err)
+
+    else
+      if not ok then
+        log(ERR, "async thread error: ", err)
+      elseif self.started and not exiting() then
+        log(ERR, "async thread #", err, " aborted")
+      end
+
+      self.aborted = self.aborted + 1
+      t[err] = nil
+
+      break
+    end
+  end
+
   for i = 1, c do
-    local ok, err = wait(t[i])
-    if not ok then
-      log(ERR, "async thread error: ", err)
+    if t[i] then
+      local ok, err = wait(t[i])
+      if not ok then
+        log(ERR, "async thread error: ", err)
+      elseif self.started and not exiting() then
+        log(ERR, "async thread #", i, " aborted")
+      end
+
+      kill(t[i])
+      t[i] = nil
+
+      self.aborted = self.aborted + 1
     end
-
-    if self.started and not exiting() then
-      log(CRIT, "async thread #", i, " aborted")
-    end
-
-    kill(t[i])
-    t[i] = nil
-
-    self.aborted = self.aborted + 1
   end
 
   release_timer(self)
 
   if self.started and not exiting() then
+    -- TODO: restart?
     log(CRIT, "async job timer aborted")
     return
   end
@@ -319,7 +288,71 @@ local function queue_timer(premature, self)
   release_timer(self)
 
   if self.started and not exiting() then
+    -- TODO: restart?
     log(CRIT, "async queue timer aborted")
+    return
+  end
+
+  return true
+end
+
+
+local function log_timer(premature, self)
+  if premature or self.started == nil then
+    release_timer(self)
+    return true
+  end
+
+  local log_interval = self.opts.log_interval
+  local log_step     = self.opts.log_step
+  local queue_size   = self.opts.queue_size
+
+  local round  = 0
+  local rounds = ceil(log_interval / log_step)
+
+  while true do
+    if self.started == nil or exiting() then
+      break
+    end
+
+    round = round + 1
+
+    if round == rounds then
+      round = 0
+
+      local dbg = queue_size / 10000
+      local nfo = queue_size / 1000
+      local ntc = queue_size / 100
+      local wrn = queue_size / 10
+      local err = queue_size
+
+      local pending = get_pending(self, queue_size)
+
+      local msg = fmt("async jobs: %u running, %u pending, %u errored, %u refused, %u aborted, %u done",
+        self.running, pending, self.errored, self.refused, self.aborted, self.done)
+      if pending <= dbg then
+        log(DEBUG, msg)
+      elseif pending <= nfo then
+        log(INFO, msg)
+      elseif pending <= ntc then
+        log(NOTICE, msg)
+      elseif pending < wrn then
+        log(WARN, msg)
+      elseif pending < err then
+        log(ERR, msg)
+      else
+        log(CRIT, msg)
+      end
+    end
+
+    sleep(log_step)
+  end
+
+  release_timer(self)
+
+  if self.started and not exiting() then
+    -- TODO: restart?
+    log(CRIT, "async log timer aborted")
     return
   end
 
@@ -539,8 +572,10 @@ async.__index = async
 -- @tparam  options[opt] a table containing options, the following options can be used:
 --                       - `timer_interval` (the default is `0.1`)
 --                       - `wait_interval`  (the default is `0.5`)
+--                       - `log_step`       (the default is `0.5`)
 --                       - `log_interval`   (the default is `60`)
 --                       - `threads`        (the default is `100`)
+--                       - `respawn_limit`  (the default is `1000`)
 --                       - `bucket_size`    (the default is `1000`)
 --                       - `lawn_size`      (the default is `10000`)
 --                       - `queue_size`     (the default is `100000`)
@@ -554,6 +589,7 @@ function async.new(options)
     log_interval   = options and options.log_interval   or LOG_INTERVAL,
     log_step       = options and options.log_step       or LOG_STEP,
     threads        = options and options.threads        or THREADS,
+    respawn_limit  = options and options.respawn_limit  or RESPAWN_LIMIT,
     bucket_size    = options and options.bucket_size    or BUCKET_SIZE,
     lawn_size      = options and options.lawn_size      or LAWN_SIZE,
     queue_size     = options and options.query_size     or QUEUE_SIZE,
