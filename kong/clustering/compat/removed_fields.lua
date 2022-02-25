@@ -174,14 +174,34 @@ return {
     acme = {
       "rsa_key_size",
     },
+    rate_limiting = {
+      "redis_username",
+    },
+    response_ratelimiting = {
+      "redis_username",
+    },
 
     -- Enterprise plugins
+    redis = {
+      "username",
+      "sentinel_username"
+    },
     canary = {
       "canary_by_header_name",
+    },
+    forward_proxy = {
+      "https_proxy_host",
+      "https_proxy_port",
     },
     openid_connect = {
       "session_redis_username",
       "resolve_distributed_claims",
+    },
+    kafka_log = {
+      "cluster_name",
+    },
+    kafka_upstream = {
+      "cluster_name",
     },
   },
 }

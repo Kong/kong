@@ -1,3 +1,7 @@
+## 0.5.8
+
+- Fix 'X-Cache-Status: Miss' on large files
+
 ## 0.5.7
 
 - fix(phases) simulate log phase for prometheus vitals (FTI-2850)

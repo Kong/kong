@@ -1,6 +1,7 @@
 ## 0.6.0
-- Added a new configuration `config.canary_by_header_name` that allows clients to pick whether they want to use the original or the canary upstream
 
+- Added a new configuration `canary_by_header_name` that allows clients
+  to pick whether they want to use the original or the canary upstream
 
 ## 0.5.0
 

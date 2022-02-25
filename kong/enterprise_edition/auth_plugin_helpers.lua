@@ -24,11 +24,11 @@ local _log_prefix = "[auth_plugin_helpers] "
 
 local _M = {}
 
--- ignore_case, user_name, custom_id, create_if_not_existed, set_consumer_ctx
+-- ignore_case, user_name, custom_id, create_if_not_existed, set_consumer_ctx, rbac_token_enabled
 -- are optional.
 function _M.validate_admin_and_attach_ctx(
   self, ignore_case, user_name, custom_id,
-  create_if_not_exists, set_consumer_ctx
+  create_if_not_exists, set_consumer_ctx, rbac_token_enabled
 )
   local admin, err = ee_api.validate_admin(ignore_case, user_name, custom_id)
 
@@ -39,6 +39,7 @@ function _M.validate_admin_and_attach_ctx(
     admin, err = ee_admins.create({
       username = user_name,
       custom_id = custom_id,
+      rbac_token_enabled = rbac_token_enabled,
     }, {
       token_optional = token_optional,
       workspace = { id = default_ws },

@@ -1,9 +1,9 @@
 package = "kong-plugin-enterprise-ldap-auth"
-version = "1.2.0-0"
+version = "1.3.0-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-enterprise-ldap-auth",
-  tag = "1.2.0"
+  tag = "1.3.0"
 }
 
 supported_platforms = {"linux", "macosx"}
