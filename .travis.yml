@@ -43,12 +43,12 @@ env:
     - JOBS=2
     - DOCKER_MACHINE_ARM64_NAME=travis-ci-kong-${TRAVIS_JOB_ID}
     # Related to packaging and master build
-    - KONG_DISTRIBUTIONS_VERSION=master
+    - KONG_DISTRIBUTIONS_VERSION=next/2.8.x.x
     - CACHE_DIR=$HOME/distributions-cache
     - ENABLE_OPENTRACING=0
     # EE Plugins
     - KONG_REVISION=${TRAVIS_COMMIT}
-    - KONG_VERSION=nightly-ee
+    - KONG_VERSION=2.8-nightly
     - DOCKER_IMAGE_NAME=kong-ee-test
   matrix:
     # enterprise matrix begin
