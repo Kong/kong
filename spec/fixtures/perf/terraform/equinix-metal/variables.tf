@@ -11,13 +11,13 @@ variable "metal_project_id" {
 variable "metal_plan" {
   type        = string
   description = "The Metal device plan on which to create the kong and worker devices"
-  default     = "baremetal_1"
+  default     = "c3.small.x86"
 }
 
 variable "metal_region" {
   type        = string
   description = "The Metal region in which to create the devices"
-  default     = "sjc1"
+  default     = "sv15"
 }
 
 variable "metal_os" {
