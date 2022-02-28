@@ -16,20 +16,19 @@ local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or h
 
 for _, strategy in strategies() do
   describe("forward-proxy access (#" .. strategy .. ")", function()
-    local client, bp, db
-    local db_strategy = strategy ~= "off" and strategy or nil
+    local client
 
     setup(function()
-      bp, db = helpers.get_db_utils(db_strategy, nil, {"forward-proxy"})
+      local bp = helpers.get_db_utils(strategy, nil, {"forward-proxy"})
 
-      local service = db.services:insert {
+      local service = assert(bp.services:insert {
         name = "service-1",
         host = "example.com",
         protocol = "http",
         port = 80,
-      }
+      })
 
-      local route1 = db.routes:insert {
+      local route1 = bp.routes:insert {
         hosts = { "service-1.com" },
         service   = service,
       }
@@ -43,14 +42,14 @@ for _, strategy in strategies() do
         },
       }
 
-      local service2 = db.services:insert {
+      local service2 = bp.services:insert {
         name = "service-2",
         host = "dne.com",
         protocol = "http",
         port = 80,
       }
 
-      local route2 = db.routes:insert {
+      local route2 = bp.routes:insert {
         hosts = { "service-2.com" },
         service   = service2,
       }
@@ -64,14 +63,14 @@ for _, strategy in strategies() do
         },
       }
 
-      local service3 = db.services:insert {
+      local service3 = bp.services:insert {
         name = "service-3",
         host = "example.com",
         protocol = "http",
         port = 8090,
       }
 
-      local route3 = db.routes:insert {
+      local route3 = bp.routes:insert {
         hosts = { "service-3.com" },
         service   = service3,
       }
@@ -86,7 +85,7 @@ for _, strategy in strategies() do
       }
 
       assert(helpers.start_kong({
-        database = db_strategy,
+        database = strategy,
         plugins = "forward-proxy",
         nginx_conf     = "spec/fixtures/custom_nginx.template",
       }))
@@ -234,11 +233,11 @@ for _, strategy in strategies() do
           helpers.stop_kong(nil, true, true)
 
           assert(helpers.start_kong({
-            database = db_strategy,
+            database = strategy,
             plugins = "forward-proxy",
             nginx_conf = "spec/fixtures/custom_nginx.template",
             trusted_ips = "",
-          }))
+          }, nil, true))
 
           client = helpers.proxy_client()
         end)
@@ -250,10 +249,10 @@ for _, strategy in strategies() do
           helpers.stop_kong(nil, true, true)
 
           assert(helpers.start_kong({
-            database = db_strategy,
+            database = strategy,
             plugins = "forward-proxy",
             nginx_conf     = "spec/fixtures/custom_nginx.template",
-          }))
+          }, nil, true))
 
           client = helpers.proxy_client()
         end)
@@ -308,11 +307,11 @@ for _, strategy in strategies() do
           helpers.stop_kong(nil, true, true)
 
           assert(helpers.start_kong({
-            database = db_strategy,
+            database = strategy,
             plugins = "forward-proxy",
             nginx_conf = "spec/fixtures/custom_nginx.template",
             trusted_ips = "127.0.0.1,::1",
-          }))
+          }, nil, true))
 
           client = helpers.proxy_client()
         end)
@@ -324,10 +323,10 @@ for _, strategy in strategies() do
           helpers.stop_kong(nil, true, true)
 
           assert(helpers.start_kong({
-            database = db_strategy,
+            database = strategy,
             plugins = "forward-proxy",
             nginx_conf     = "spec/fixtures/custom_nginx.template",
-          }))
+          }, nil, true))
 
           client = helpers.proxy_client()
         end)

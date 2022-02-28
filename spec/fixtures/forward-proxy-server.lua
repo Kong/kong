@@ -9,11 +9,25 @@ local _M = {}
 
 local split = require("kong.tools.utils").split
 
+local header_mt = {
+  __index = function(self, name)
+    name = name:lower():gsub("_", "-")
+    return rawget(self, name)
+  end,
+
+  __newindex = function(self, name, value)
+    name = name:lower():gsub("_", "-")
+    rawset(self, name, value)
+  end,
+}
+
+local function new_headers()
+  return setmetatable({}, header_mt)
+end
 
 -- This is a very naive forward proxy, which accepts a CONNECT over HTTP, and
 -- then starts tunnelling the bytes blind (for end-to-end SSL).
-function _M.connect()
-
+function _M.connect(opts)
   local req_sock = ngx.req.socket(true)
   req_sock:settimeouts(1000, 1000, 1000)
 
@@ -28,11 +42,41 @@ function _M.connect()
 
   local upstream_host, upstream_port = unpack(split(host_port, ":"))
 
-  -- receive and discard any headers
+  local headers = new_headers()
+
+  -- receive headers
   repeat
     local line = req_sock:receive("*l")
-    ngx.log(ngx.DEBUG, "request header: ", line)
+    local name, value = line:match("^([^:]+):%s*(.+)$")
+    if name and value then
+      ngx.log(ngx.DEBUG, "header: ", name, " => ", value)
+      headers[name] = value
+    end
   until ngx.re.find(line, "^\\s*$", "jo")
+
+
+  local basic_auth = opts and opts.basic_auth
+  if basic_auth then
+    ngx.log(ngx.DEBUG, "checking proxy-authorization...")
+
+    local found = headers["proxy-authorization"]
+    if not found then
+      ngx.log(ngx.NOTICE, "client did not send proxy-authorization header")
+      ngx.print("HTTP/1.1 401 Unauthorized\r\n\r\n")
+      return ngx.exit(ngx.OK)
+    end
+
+    local auth = ngx.re.gsub(found, [[^Basic\s*]], "", "oji")
+
+    if auth ~= basic_auth then
+      ngx.log(ngx.NOTICE, "client sent incorrect proxy-authorization")
+      ngx.print("HTTP/1.1 403 Forbidden\r\n\r\n")
+      return ngx.exit(ngx.OK)
+    end
+
+    ngx.log(ngx.DEBUG, "accepted basic proxy-authorization")
+  end
+
 
   -- Connect to requested upstream
   local upstream_sock = ngx.socket.tcp()
