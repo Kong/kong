@@ -10,6 +10,7 @@ resource "metal_device" "kong" {
   operating_system = var.metal_os
   billing_cycle    = "hourly"
   project_id       = var.metal_project_id
+  tags             = []
   depends_on = [
     metal_ssh_key.key,
     null_resource.key_chown,
@@ -23,6 +24,7 @@ resource "metal_device" "worker" {
   operating_system = var.metal_os
   billing_cycle    = "hourly"
   project_id       = var.metal_project_id
+  tags             = []
   depends_on = [
     metal_ssh_key.key,
     null_resource.key_chown,

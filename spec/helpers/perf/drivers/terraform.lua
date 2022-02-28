@@ -241,7 +241,9 @@ function _M:start_kong(version, kong_conf)
   kong_conf['proxy_error_log'] = KONG_ERROR_LOG_PATH
   kong_conf['admin_error_log'] = KONG_ERROR_LOG_PATH
 
-  KONG_ADMIN_PORT = math.floor(math.random()*50000+10240)
+  -- we set ip_local_port_range='10240 65535' make sure the random
+  -- port doesn't fall into that range
+  KONG_ADMIN_PORT = math.floor(math.random()*9000+1024)
   kong_conf['admin_listen'] = "0.0.0.0:" .. KONG_ADMIN_PORT
   kong_conf['anonymous_reports'] = "off"
 
@@ -284,6 +286,8 @@ function _M:start_kong(version, kong_conf)
     -- stop and remove kong if installed
     "dpkg -l kong && (sudo kong stop; sudo dpkg -r kong) || true",
     -- have to do the pkill sometimes, because kong stop allow the process to linger for a while
+    "ps aux | grep nginx",
+    "sudo lsof -i -P | grep LIST",
     "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
     -- remove all lua files, not only those installed by package
     "rm -rf /usr/local/share/lua/5.1/kong",
