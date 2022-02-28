@@ -1485,30 +1485,30 @@ load_rbac_ctx = function(rbac_user)
     for _, role in pairs(roles) do
       _roles[#_roles + 1] = role
     end
+  end
 
-    local entities_perms = {}
-    if kong.configuration and
-      (kong.configuration.rbac == "both" or
-      kong.configuration.rbac == "entity") then
-      local err
-      entities_perms, _, err = resolve_role_entity_permissions(_roles)
-      if err then
-        return nil, err
-      end
-    end
-
-    for id, perm in pairs(entities_perms) do
-      _entities_perms[id] = perm
-    end
-
-    local endpoints_perms, _, err = resolve_role_endpoint_permissions(_roles)
+  local entities_perms = {}
+  if kong.configuration and
+    (kong.configuration.rbac == "both" or
+    kong.configuration.rbac == "entity") then
+    local err, _
+    entities_perms, _, err = resolve_role_entity_permissions(_roles)
     if err then
       return nil, err
     end
+  end
 
-    for id, perm in pairs(endpoints_perms) do
-      _endpoints_perms[id] = perm
-    end
+  for id, perm in pairs(entities_perms) do
+    _entities_perms[id] = perm
+  end
+
+  local endpoints_perms, _, err = resolve_role_endpoint_permissions(_roles)
+  if err then
+    return nil, err
+  end
+
+  for id, perm in pairs(endpoints_perms) do
+    _endpoints_perms[id] = perm
   end
 
   local default_role
