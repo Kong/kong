@@ -1057,6 +1057,7 @@ function OICHandler.access(_, conf)
       if auth_methods.kong_oauth2 then
         log("trying to find matching kong oauth2 token")
         introspection_data, err, credential, consumer = cache.kong_oauth2.load(ctx, access_token, ttl, true)
+        introspected = true
         if type(introspection_data) == "table" then
           log("authenticated using kong oauth2")
           introspection_data.active = true
@@ -1545,7 +1546,7 @@ function OICHandler.access(_, conf)
           introspection_data, err, introspection_jwt = introspect_token(tokens_encoded.access_token, ttl)
           introspected = true
           if err then
-            log("error introspecting token to verify required ", name " (", err, ")")
+            log("error introspecting token to verify required ", name, " (", err, ")")
           end
         end
 
