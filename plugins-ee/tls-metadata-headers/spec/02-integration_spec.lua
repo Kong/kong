@@ -171,7 +171,7 @@ for _, strategy in strategies() do
         assert.equal("88b74971771571c618e6c6215ba4f6ef71ccc2c7", json.headers["X-Client-Cert-Fingerprint"])
       end)
 
-       it("returns HTTP 200 on https request if certificate validation passed - plugin does not validate certificate", function()
+       it("returns HTTP 200 on https request if certificate is provided by client - plugin does not validate certificate", function()
         local res = assert(tls_client:send {
           method  = "GET",
           path    = "/bad_client",
