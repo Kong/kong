@@ -78,8 +78,6 @@ the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
   [#8294](https://github.com/Kong/kong/pull/8294)
 - Bumped lua-resty-openssl to 0.8.5
   [#8368](https://github.com/Kong/kong/pull/8368)
-- Bumped pgmoon from 1.13.0 to 1.14.0
-  [#8429](https://github.com/Kong/kong/pull/8429)
 
 ### Additions
 
