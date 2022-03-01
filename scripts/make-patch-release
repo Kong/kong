@@ -34,6 +34,15 @@ function usage() {
    step "merge_vagrant"        "humans approve and merge machine PR to kong-vagrant"
    step "merge_pongo"          "humans approve and merge machine PR to kong-pongo"
    step "announce"             "Get announcement messages for Kong Nation and Slack #general"
+
+   #----------------------------------------------------------------------------------------
+   # The following steps are run by Jenkins, they should not be run by a human
+   # However we need to keep them here because Jenkins expects them to be here
+   step "update_docker" "(ran by Jenkins now) update and submit a PR to Kong's docker-kong repo"
+   step "homebrew" "(ran by Jenkins now) bump version and submit a PR to homebrew-kong"
+   step "vagrant" "(ran by Jenkins now) bump version and submit a PR to kong-vagrant"
+   step "pongo" "(ran by Jenkins now) bump version and submit a PR to kong-pongo"
+
    exit 0
 }
 
@@ -181,6 +190,95 @@ case "$step" in
    merge_vagrant) merge_vagrant ;;
    upload_luarock) upload_luarock "$rockspec" "$3" ;;
    announce) announce "$major" "$minor" "$patch" ;;
+
+   # JENKINS-ONLY STEPS: -----------------------------------------------------
+
+   update_docker)
+     update_docker "$version"
+
+     SUCCESS "Make sure you get the PR above approved and merged" \
+             "before continuing to the step 'merge_docker'."
+     ;;
+
+   homebrew)
+     if [ -d ../homebrew-kong ]
+     then
+       cd ../homebrew-kong
+     else
+       cd ..
+       git clone git@github.com:Kong/homebrew-kong.git
+       cd homebrew-kong
+     fi
+
+     git checkout master
+     git pull
+     git checkout -B "$branch"
+     bump_homebrew
+
+     git diff
+
+     CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:Kong/homebrew-kong" \
+       "or Ctrl-C to cancel."
+
+     set -e
+     git add Formula/kong.rb
+     git commit -m "chore(kong) bump kong to $version"
+
+     git push --set-upstream origin "$branch"
+     hub pull-request -b master -h "$branch" -m "Release: $version"
+
+     SUCCESS "Make sure you get the PR above approved and merged."
+     ;;
+
+    pongo)
+      if [ -d ../kong-pongo ]
+      then
+         cd ../kong-pongo
+      else
+         cd ..
+         git clone git@github.com:Kong/kong-pongo.git
+         cd kong-pongo
+      fi
+
+      git checkout master
+      git pull
+      ./assets/add_version.sh CE "$version"
+      if [[ ! $? -eq 0 ]]; then
+         exit 1
+      fi
+      SUCCESS "Make sure you get the PR above approved and merged."
+      ;;
+
+    vagrant)
+      if [ -d ../kong-vagrant ]
+      then
+         cd ../kong-vagrant
+      else
+         cd ..
+         git clone git@github.com:Kong/kong-vagrant.git
+         cd kong-vagrant
+      fi
+
+      git checkout master
+      git pull
+      git checkout -B "$branch"
+      bump_vagrant
+
+      git diff
+
+      CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:Kong/kong-vagrant" \
+              "or Ctrl-C to cancel."
+
+      set -e
+      git add README.md Vagrantfile
+      git commit -m "chore(*) bump Kong to $version"
+
+      git push --set-upstream origin "$branch"
+      hub pull-request -b master -h "$branch" -m "Release: $version"
+
+      SUCCESS "Make sure you get the PR above approved and merged."
+      ;;
+
    *)
       die "Unknown step!"
       ;;
