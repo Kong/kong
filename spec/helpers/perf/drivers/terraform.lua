@@ -286,8 +286,6 @@ function _M:start_kong(version, kong_conf)
     -- stop and remove kong if installed
     "dpkg -l kong && (sudo kong stop; sudo dpkg -r kong) || true",
     -- have to do the pkill sometimes, because kong stop allow the process to linger for a while
-    "ps aux | grep nginx",
-    "sudo lsof -i -P | grep LIST",
     "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
     -- remove all lua files, not only those installed by package
     "rm -rf /usr/local/share/lua/5.1/kong",
@@ -364,8 +362,24 @@ function _M:get_start_load_cmd(stub, script, uri)
 end
 
 local function check_systemtap_sanity(self)
+  local _, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "which stap"))
+  if err then
+    local ok, err = execute_batch(self, self.kong_ip, {
+      "apt-get install g++ libelf-dev libdw-dev libssl-dev libsqlite3-dev libnss3-dev pkg-config python3 make -y --force-yes",
+      "wget https://sourceware.org/systemtap/ftp/releases/systemtap-4.6.tar.gz -O systemtap.tar.gz",
+      "tar xf systemtap.tar.gz",
+      "cd systemtap-*/ && " .. 
+        "./configure --enable-sqlite --enable-bpf --enable-nls --enable-nss --enable-avahi && " ..
+        "make PREFIX=/usr -j$(nproc) && "..
+        "make install"
+    })
+    if not ok then
+      return false, "failed to build systemtap: " .. err
+    end
+  end
+
   local ok, err = execute_batch(self, self.kong_ip, {
-    "apt-get install systemtap gcc linux-headers-$(uname -r) -y --force-yes",
+    "apt-get install gcc linux-headers-$(uname -r) -y --force-yes",
     "which stap",
     "stat /tmp/stapxx || git clone https://github.com/Kong/stapxx /tmp/stapxx",
     "stat /tmp/perf-ost || git clone https://github.com/openresty/openresty-systemtap-toolkit /tmp/perf-ost",
