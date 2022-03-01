@@ -97,7 +97,7 @@ jobs:
 
     - name: Run Tests
       env:
-        PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
+        PERF_TEST_VERSIONS: git:${{ github.sha }},2.7.0,2.6.0
         PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
