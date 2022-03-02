@@ -22,7 +22,7 @@ KONG_NGINX_MODULE_BRANCH=0.2.0
 # here go enterprise build specific ones which might or might not have the
 # same names as core for building the final package.
 
-KONG_DISTRIBUTIONS_VERSION=next/2.8.x.x
+KONG_DISTRIBUTIONS_VERSION=master
 
 KONG_DEP_NETTLE_VERSION=3.7.3
 KONG_DEP_LIBYAML_VERSION=0.2.5
