@@ -38,6 +38,7 @@ describe("Plugin: response-rate-limiting (schema)", function()
       local config = {limits = {video = {second = null, minute = 1}}}
       local ok, err = v(config, schema_def)
       assert.truthy(ok)
+      assert.falsy(err)
     end)
     it("limits: smaller unit is less than bigger unit", function()
       local config = {limits = {video = {second = 2, minute = 1}}}
