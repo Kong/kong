@@ -33,7 +33,7 @@ describe("Plugin: response-rate-limiting (schema)", function()
       assert.falsy(ok)
       assert.equal("unknown field", err.config.limits.seco)
     end)
-    it("limits: \'null\' value", function()
+    it("limits: \'null\' value does not cause 500, issue #8314", function()
       -- https://github.com/Kong/kong/issues/8314
       local config = {limits = {video = {second = null, minute = 1}}}
       local ok, err = v(config, schema_def)
