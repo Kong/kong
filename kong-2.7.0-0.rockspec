@@ -245,6 +245,7 @@ build = {
     ["kong.pdk.nginx"] = "kong/pdk/nginx.lua",
     ["kong.pdk.cluster"] = "kong/pdk/cluster.lua",
     ["kong.pdk.vault"] = "kong/pdk/vault.lua",
+    ["kong.pdk.tracer"] = "kong/pdk/tracer.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
@@ -469,6 +470,9 @@ build = {
 
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
+
+    ["kong.plugins.opentelemetry.handler"] = "kong/plugins/opentelemetry/handler.lua",
+    ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",

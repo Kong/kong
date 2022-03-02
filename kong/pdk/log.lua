@@ -930,7 +930,7 @@ end
 
 _log_mt.__index = _log_mt
 _log_mt.new = new_log
-
+ 
 
 return {
   new = function()

@@ -232,6 +232,7 @@ local MAJOR_VERSIONS = {
       "nginx",
       "cluster",
       "vault",
+      "tracer",
     },
   },
 
