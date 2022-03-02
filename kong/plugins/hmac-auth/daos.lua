@@ -17,6 +17,7 @@ return {
       { consumer = { type = "foreign", reference = "consumers", required = true, on_delete = "cascade", }, },
       { username = { type = "string", required = true, unique = true }, },
       { secret = { type = "string", auto = true }, },
+      { public_key = { type = "string" }, },
       { tags   = typedefs.tags },
     },
   },
