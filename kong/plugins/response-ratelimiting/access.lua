@@ -9,6 +9,9 @@ local error = error
 local tostring = tostring
 
 
+local null = ngx.null
+
+
 local EMPTY = {}
 local HTTP_TOO_MANY_REQUESTS = 429
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
@@ -36,7 +39,7 @@ local function get_usage(conf, identifier, limits, current_timestamp)
 
   for k, v in pairs(limits) do -- Iterate over limit names
     for lk, lv in pairs(v) do -- Iterare over periods
-      if lv ~= ngx.null then
+      if lv ~= null then
         local current_usage, err = policies[conf.policy].usage(conf, identifier, k, lk, current_timestamp)
         if err then
           return nil, err
