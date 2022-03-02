@@ -279,6 +279,24 @@ local function get_next_init_worker(self)
 end
 
 
+local function get_next_exit_worker(self)
+  local i = self.i + 1
+  local plugin = self.loaded[i]
+  if not plugin then
+    return nil
+  end
+
+  self.i = i
+
+  local phase_handler = plugin.handler.exit_worker
+  if phase_handler and phase_handler ~= BasePlugin.exit_worker then
+    return plugin
+  end
+
+  return get_next_exit_worker(self)
+end
+
+
 local function get_next(self)
   local i = self.i + 1
   local plugin = self.plugins[i]
@@ -378,6 +396,16 @@ end
 -- @treturn function iterator
 local function iterate_init_worker(self)
   return get_next_init_worker, {
+    loaded = self.loaded,
+    i = 0,
+  }
+end
+
+
+-- Iterate over the loaded plugins that implement `exit_worker`.
+-- @treturn function iterator
+local function iterate_exit_worker(self)
+  return get_next_exit_worker, {
     loaded = self.loaded,
     i = 0,
   }
@@ -614,6 +642,7 @@ function PluginsIterator.new(version)
     iterate = iterate,
     iterate_collected_plugins = iterate_collected_plugins,
     iterate_init_worker = iterate_init_worker,
+    iterate_exit_worker = iterate_exit_worker,
   }
 end
 

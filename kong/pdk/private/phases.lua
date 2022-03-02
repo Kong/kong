@@ -9,6 +9,7 @@ local ngx_get_phase = ngx.get_phase
 local PHASES = {
   --init            = 0x00000001,
   init_worker       = 0x00000001,
+  exit_worker       = 0x00100000,
   certificate       = 0x00000002,
   --set             = 0x00000004,
   rewrite           = 0x00000010,
@@ -23,7 +24,6 @@ local PHASES = {
   preread           = 0x00004000,
   error             = 0x01000000,
   admin_api         = 0x10000000,
-  cluster_listener  = 0x00000100,
 }
 
 

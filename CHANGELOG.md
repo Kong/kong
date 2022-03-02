@@ -64,6 +64,12 @@
 
 ## Unreleased
 
+### Additions
+
+#### Core
+
+- Plugins can now implement `exit_worker` handler.
+
 ### Dependencies
 
 - Bumped pgmoon from 1.13.0 to 1.14.0

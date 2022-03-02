@@ -1605,5 +1605,9 @@ return {
         end
       end
     end
-  }
+  },
+  exit_worker = {
+    before = NOOP,
+    after = NOOP,
+  },
 }

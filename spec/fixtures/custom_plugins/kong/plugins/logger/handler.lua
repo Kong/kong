@@ -68,4 +68,11 @@ function LoggerHandler:log(conf)
 end
 
 
+function LoggerHandler:exit_worker(conf)
+  LoggerHandler.super.exit_worker(self)
+
+  kong.log("exit_worker phase")
+end
+
+
 return LoggerHandler

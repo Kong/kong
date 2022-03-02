@@ -282,6 +282,28 @@ local function execute_init_worker_plugins_iterator(plugins_iterator, ctx)
 end
 
 
+local function execute_exit_worker_plugins_iterator(plugins_iterator, ctx)
+  local errors
+
+  for plugin in plugins_iterator:iterate_exit_worker() do
+    kong_global.set_namespaced_log(kong, plugin.name, ctx)
+    local ok, err = pcall(plugin.handler.exit_worker, plugin.handler)
+    if not ok then
+      errors = errors or {}
+      errors[#errors + 1] = {
+        plugin = plugin.name,
+        err = err,
+      }
+    end
+
+    kong_global.reset_log(kong, ctx)
+  end
+
+  return errors
+end
+
+
+
 local function execute_access_plugins_iterator(plugins_iterator, ctx)
   local old_ws = ctx.workspace
 
@@ -1383,6 +1405,26 @@ function Kong.log()
   -- this is not used for now, but perhaps we need it later?
   --ctx.KONG_LOG_ENDED_AT = get_now_ms()
   --ctx.KONG_LOG_TIME = ctx.KONG_LOG_ENDED_AT - ctx.KONG_LOG_START
+end
+
+
+function Kong.exit_worker()
+  local ctx = ngx.ctx
+
+  ctx.KONG_PHASE = PHASES.init_worker
+
+  runloop.exit_worker.before()
+
+  local plugins_iterator = runloop.get_plugins_iterator()
+  local errors = execute_exit_worker_plugins_iterator(plugins_iterator, ctx)
+  if errors then
+    for _, e in ipairs(errors) do
+      ngx_log(ngx_ERR, 'failed to execute the "exit_worker handler for plugin "',
+                       e.plugin, '": ', e.err)
+    end
+  end
+
+  runloop.init_worker.after()
 end
 
 

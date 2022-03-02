@@ -20,6 +20,7 @@ LoggerLastHandler.access        = LoggerHandler.access
 LoggerLastHandler.header_filter = LoggerHandler.header_filter
 LoggerLastHandler.body_filter   = LoggerHandler.body_filter
 LoggerLastHandler.log           = LoggerHandler.log
+LoggerLastHandler.exit_worker   = LoggerHandler.exit_worker
 
 
 return LoggerLastHandler

@@ -37,6 +37,11 @@ if subsystem == "http" then
   function BasePlugin:body_filter()
     ngx_log(DEBUG, "executing plugin \"", self._name, "\": body_filter")
   end
+
+  function BasePlugin:exit_worker()
+    ngx_log(DEBUG, "executing plugin \"", self._name, "\": exit_worker")
+  end
+
 elseif subsystem == "stream" then
   function BasePlugin:preread()
     ngx_log(DEBUG, "executing plugin \"", self._name, "\": preread")
