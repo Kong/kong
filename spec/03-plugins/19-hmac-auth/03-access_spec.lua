@@ -1,5 +1,6 @@
 local cjson = require "cjson"
 local openssl_hmac = require "resty.openssl.hmac"
+local openssl_pkey = require "resty.openssl.pkey"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local resty_sha256 = require "resty.sha256"
@@ -20,6 +21,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local consumer
     local credential
+    local rsa_key_pair
 
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
@@ -68,6 +70,19 @@ for _, strategy in helpers.each_strategy() do
         username = "bob",
         secret   = "secret",
         consumer = { id = consumer.id },
+      }
+
+      rsa_key_pair = openssl_pkey.new()
+
+      local consumer2 = bp.consumers:insert {
+        username  = "alice",
+        custom_id = "123456"
+      }
+
+      bp.hmacauth_credentials:insert {
+        username   = "alice",
+        public_key = rsa_key_pair:to_PEM("public"),
+        consumer   = { id = consumer2.id },
       }
 
       local anonymous_user = bp.consumers:insert {
@@ -152,6 +167,19 @@ for _, strategy in helpers.each_strategy() do
         config   = {
           anonymous  = anonymous_user.username,
           clock_skew = 3000
+        }
+      }
+
+      local route8 = bp.routes:insert {
+        hosts = { "hmacauth8.com" },
+      }
+
+      bp.plugins:insert {
+        name     = "hmac-auth",
+        route = { id = route8.id },
+        config   = {
+          enforce_headers = {"date"},
+          algorithms      = {"rsa-sha256", "rsa-sha512"},
         }
       }
 
@@ -1685,6 +1713,66 @@ for _, strategy in helpers.each_strategy() do
             date                    = date,
             ["proxy-authorization"] = hmacAuth,
             ["content-md5"]         = "md5",
+          },
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("should not pass with GET with rsa-sha256 when signing with wrong key", function()
+        local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+        local signature = openssl_pkey.new():sign("date: " .. date .. "\nGET /request HTTP/1.1", "sha256")
+        local encodedSignature = ngx.encode_base64(signature)
+        local hmacAuth = [[username="alice",  algorithm="rsa-sha256", ]]
+          .. [[headers="date request-line", signature="]]
+          .. encodedSignature .. [["]]
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          body    = {},
+          headers = {
+            ["HOST"]                = "hmacauth8.com",
+            date                    = date,
+            ["proxy-authorization"] = hmacAuth,
+          },
+        })
+        assert.res_status(401, res)
+      end)
+
+      it("should pass with GET with rsa-sha256", function()
+        local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+        local signature = rsa_key_pair:sign("date: " .. date .. "\nGET /request HTTP/1.1", "sha256")
+        local encodedSignature = ngx.encode_base64(signature)
+        local hmacAuth = [[username="alice",  algorithm="rsa-sha256", ]]
+                .. [[headers="date request-line", signature="]]
+                .. encodedSignature .. [["]]
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          body    = {},
+          headers = {
+            ["HOST"]                = "hmacauth8.com",
+            date                    = date,
+            ["proxy-authorization"] = hmacAuth,
+          },
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("should pass with GET with rsa-sha512", function()
+        local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+        local signature = rsa_key_pair:sign("date: " .. date .. "\nGET /request HTTP/1.1", "sha512")
+        local encodedSignature = ngx.encode_base64(signature)
+        local hmacAuth = [[username="alice",  algorithm="rsa-sha512", ]]
+                .. [[headers="date request-line", signature="]]
+                .. encodedSignature .. [["]]
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          body    = {},
+          headers = {
+            ["HOST"]                = "hmacauth8.com",
+            date                    = date,
+            ["proxy-authorization"] = hmacAuth,
           },
         })
         assert.res_status(200, res)

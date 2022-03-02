@@ -6,6 +6,8 @@ local ALGORITHMS = {
   "hmac-sha256",
   "hmac-sha384",
   "hmac-sha512",
+  "rsa-sha256",
+  "rsa-sha512",
 }
 
 
