@@ -46,7 +46,7 @@ local function reports_timer(premature, data)
     r_data.e = "c"
   end
 
-  reports.send("api", r_data)
+  reports.send_ee("api", r_data)
 end
 
 
