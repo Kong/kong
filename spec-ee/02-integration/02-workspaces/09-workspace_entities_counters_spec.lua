@@ -88,6 +88,7 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
         portal_auth = "basic-auth",  -- useful only for admin test
         mock_smtp = true,
+        plugins = "oauth2",
       })
       client = assert(helpers.admin_client())
     end)
@@ -135,5 +136,34 @@ for _, strategy in helpers.each_strategy() do
       res = get("/default/workspaces/default/meta")
       assert.equals(2, res.counts.services)
     end)
+
+    it("does not count oauth2_tokens", function()
+      local service = post("/services", {
+        name = "oauth2",
+        url  = "http://test/"
+      })
+
+      post("/consumers", { username = "bob" })
+
+      local credential = post("/consumers/bob/oauth2", {
+        name          = "test",
+        redirect_uris = { "http://superduper.test/" },
+      })
+
+      post("/oauth2_tokens", {
+        credential = { id = credential.id },
+        service    = { id = service.id },
+        expires_in = 30,
+      })
+
+      local counts = get("/default/workspaces/default/meta").counts
+      assert.is_nil(counts.oauth2_tokens)
+
+      assert.equals(1, counts.consumers)
+      assert.equals(1, counts.oauth2_credentials)
+      assert.equals(1, counts.services)
+    end)
+
+
   end)
 end

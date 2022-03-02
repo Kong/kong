@@ -38,7 +38,7 @@ return {
       end
 
       -- Search by custom_id: /consumers?custom_id=xxx
-      if args.custom_id then
+      if args.custom_id and not args.username then
         local opts = endpoints.extract_options(args, db.consumers.schema, "select")
         local consumer, _, err_t = db.consumers:select_by_custom_id(args.custom_id, opts)
         if err_t then

@@ -1,8 +1,8 @@
 package = "kong-plugin-jwt-signer"
-version = "1.9.0-1"
+version = "1.9.1-1"
 source = {
   url = "git://github.com/Kong/kong-plugin-jwt-signer.git",
-  tag = "v1.9.0"
+  tag = "v1.9.1"
 }
 description = {
   summary    = "Kong JWT Signer Plugin",

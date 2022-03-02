@@ -28,7 +28,7 @@ local SNI_CACHE_KEY = require("kong.plugins.mtls-auth.cache").SNI_CACHE_KEY
 
 local MtlsAuthHandler = {
   PRIORITY = 1006,
-  VERSION = "0.3.4"
+  VERSION = "0.3.5"
 }
 
 local plugin_name = "mtls-auth"

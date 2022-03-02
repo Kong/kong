@@ -1,3 +1,7 @@
+## 0.3.5
+
+- fix(handler) catch error in workspace_iter
+
 ## 0.3.4
 
 - fix(handler) ensure certificate phase is set with ngx.ctx.KONG_PHASE
