@@ -1,10 +1,10 @@
 package = "kong-plugin-aws-lambda"
-version = "3.5.4-1"
+version = "3.6.3-1"
 
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/kong/kong-plugin-aws-lambda",
-  tag = "3.5.4",
+  tag = "3.6.3",
 }
 
 description = {
@@ -26,7 +26,6 @@ build = {
     ["kong.plugins.aws-lambda.iam-ecs-credentials"]  = "kong/plugins/aws-lambda/iam-ecs-credentials.lua",
     ["kong.plugins.aws-lambda.schema"]               = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.v4"]                   = "kong/plugins/aws-lambda/v4.lua",
-    ["kong.plugins.aws-lambda.http.connect-better"]  = "kong/plugins/aws-lambda/http/connect-better.lua",
     ["kong.plugins.aws-lambda.request-util"]         = "kong/plugins/aws-lambda/request-util.lua",
   }
 }

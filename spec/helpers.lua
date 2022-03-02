@@ -202,16 +202,19 @@ _G.kong = kong_global.new()
 kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
 ngx.ctx.KONG_PHASE = kong_global.phases.access
 _G.kong.core_cache = {
-  get = function(self, key)
+  get = function(self, key, opts, func, ...)
     if key == constants.CLUSTER_ID_PARAM_KEY then
       return "123e4567-e89b-12d3-a456-426655440000"
     end
+
+    return func(...)
   end
 }
 
 local db = assert(DB.new(conf))
 assert(db:init_connector())
 db.plugins:load_plugin_schemas(conf.loaded_plugins)
+db.vaults_beta:load_vault_schemas(conf.loaded_vaults)
 local blueprints = assert(Blueprints.new(db))
 local dcbp
 local config_yml
@@ -423,6 +426,7 @@ local function get_db_utils(strategy, tables, plugins)
 
   db:truncate("plugins")
   assert(db.plugins:load_plugin_schemas(conf.loaded_plugins))
+  assert(db.vaults_beta:load_vault_schemas(conf.loaded_vaults))
 
   -- XXX EE
   singletons.invoke_plugin = invoke_plugin.new {

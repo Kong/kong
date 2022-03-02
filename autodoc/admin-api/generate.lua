@@ -124,12 +124,14 @@ _KONG = require("kong.meta")          -- luacheck: ignore
 kong = require("kong.global").new()   -- luacheck: ignore
 kong.configuration = {                -- luacheck: ignore
   loaded_plugins = {},
+  loaded_vaults = {},
 }
 kong.db = require("kong.db").new({    -- luacheck: ignore
   database = "postgres",
 })
 kong.configuration = { -- luacheck: ignore
-  loaded_plugins = {}
+  loaded_plugins = {},
+  loaded_vaults = {},
 }
 
 --------------------------------------------------------------------------------
@@ -227,6 +229,9 @@ do
     "0c61e164-6171-4837-8836-8f5298726d53",
     "5027BBC1-508C-41F8-87F2-AB1801E9D5C3",
     "68FDB05B-7B08-47E9-9727-AF7F897CFF1A",
+    "B2A30E8F-C542-49CF-8015-FB674987D1A5",
+    "518BBE43-2454-4559-99B0-8E7D1CD3E8C8",
+    "7C4747E9-E831-4ED8-9377-83A6F8A37603",
   }
 
   local ctr = 0
@@ -573,7 +578,7 @@ local function write_endpoint(outfd, endpoint, ep_data, dbless_methods)
              or not dbless_methods[endpoint][method])
       then
         write_title(outfd, 3, meth_data.title)
-        warning_message(outfd, "**Note**: Not available in DB-less mode.")
+        warning_message(outfd, "**Note**: This API is not available in DB-less mode.")
       else
         write_title(outfd, 3, meth_data.title, "{:.badge .dbless}")
       end

@@ -10,6 +10,8 @@ local helpers = require "spec.helpers"
 local utils   = require "kong.tools.utils"
 local admin_api = require "spec.fixtures.admin_api"
 local sha256 = require "resty.sha256"
+local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
+
 
 local math_random = math.random
 local string_char = string.char
@@ -18,6 +20,14 @@ local string_rep = string.rep
 
 
 local ngx_encode_base64 = ngx.encode_base64
+
+
+local PAYLOAD = {
+  iss = nil,
+  nbf = os.time(),
+  iat = os.time(),
+  exp = os.time() + 3600
+}
 
 
 local kong = {
@@ -148,6 +158,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       "consumers",
       "plugins",
       "keyauth_credentials",
+      "jwt_secrets",
       "oauth2_credentials",
       "oauth2_authorization_codes",
       "oauth2_tokens",
@@ -3631,6 +3642,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
     local user2
     local anonymous
     local keyauth
+    local jwt_secret
 
     lazy_setup(function()
       local service1 = admin_api.services:insert({
@@ -3675,8 +3687,22 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         service    = service2
       }))
 
+      local route3 = assert(admin_api.routes:insert({
+        hosts      = { "logical-or-jwt.com" },
+        protocols  = { "http", "https" },
+        service    = service2
+      }))
+
       admin_api.oauth2_plugins:insert({
         route = { id = route2.id },
+        config   = {
+          scopes    = { "email", "profile", "user.email" },
+          anonymous = anonymous.id,
+        },
+      })
+
+      admin_api.oauth2_plugins:insert({
+        route = { id = route3.id },
         config   = {
           scopes    = { "email", "profile", "user.email" },
           anonymous = anonymous.id,
@@ -3691,9 +3717,21 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         },
       }
 
+      admin_api.plugins:insert {
+        name     = "jwt",
+        route = { id = route3.id },
+        config   = {
+          anonymous = anonymous.id,
+        },
+      }
+
       keyauth = admin_api.keyauth_credentials:insert({
         key      = "Mouse",
         consumer = { id = user1.id },
+      })
+
+      jwt_secret = admin_api.jwt_secrets:insert({
+        consumer = { id = user1.id }
       })
 
       admin_api.oauth2_credentials:insert {
@@ -3805,15 +3843,18 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.request(res).has.no.header("x-credential-username")
       end)
 
-      it("passes with only the first credential provided", function()
+      it("passes with only the first credential provided (higher priority)", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path = "/request",
           headers = {
             ["Host"] = "logical-or.com",
             ["apikey"] = "Mouse",
+            ["X-Authenticated-Scope"] = "all-access",
+            ["X-Authenticated-UserId"] = "admin",
           }
         })
+
         assert.response(res).has.status(200)
         assert.request(res).has.no.header("x-anonymous-consumer")
         local id = assert.request(res).has.header("x-consumer-id")
@@ -3822,6 +3863,35 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         local client_id = assert.request(res).has.header("x-credential-identifier")
         assert.equal(keyauth.id, client_id)
         assert.request(res).has.no.header("x-credential-username")
+        assert.request(res).has.no.header("x-authenticated-scope")
+        assert.request(res).has.no.header("x-authenticated-userid")
+      end)
+
+      it("passes with only the first credential provided (lower priority)", function()
+        PAYLOAD.iss = jwt_secret.key
+        local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+        local authorization = "Bearer " .. jwt
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path = "/request",
+          headers = {
+            ["Host"] = "logical-or-jwt.com",
+            ["Authorization"] = authorization,
+            ["X-Authenticated-Scope"] = "all-access",
+            ["X-Authenticated-UserId"] = "admin",
+          }
+        })
+
+        assert.response(res).has.status(200)
+        assert.request(res).has.no.header("x-anonymous-consumer")
+        local id = assert.request(res).has.header("x-consumer-id")
+        assert.not_equal(id, anonymous.id)
+        assert.equal(user1.id, id)
+        local client_id = assert.request(res).has.header("x-credential-identifier")
+        assert.equal(jwt_secret.key, client_id)
+        assert.request(res).has.no.header("x-credential-username")
+        assert.request(res).has.no.header("x-authenticated-scope")
+        assert.request(res).has.no.header("x-authenticated-userid")
       end)
 
       it("passes with only the second credential provided", function()
