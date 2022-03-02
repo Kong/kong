@@ -8,9 +8,11 @@
 local access = require "kong.plugins.oauth2.access"
 
 
+-- TODO version differs from CE and should be fixed in 3.0
+-- https://github.com/Kong/kong-ee/commit/0bcc424bee6553bbc3cd41452d807a20027afb56
 local OAuthHandler = {
   PRIORITY = 1004,
-  VERSION = "2.2.0",
+  VERSION = "2.2.1",
 }
 
 

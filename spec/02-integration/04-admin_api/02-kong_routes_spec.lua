@@ -220,7 +220,11 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.is_number(json.server.connections_writing)
       assert.is_number(json.server.connections_waiting)
       assert.is_number(json.server.total_requests)
-      assert.is_nil(json.server.configuration_hash) -- not present in DB mode, or in DBLESS mode until configuration is applied
+      if strategy == "off" then
+        assert.is_equal(string.rep("0", 32), json.configuration_hash) -- all 0 in DBLESS mode until configuration is applied
+      else
+        assert.is_nil(json.configuration_hash) -- not present in DB mode
+      end
     end)
 
     it("returns status info including a configuration_hash in DBLESS mode if an initial configuration has been provided #off", function()

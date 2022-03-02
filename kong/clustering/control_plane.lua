@@ -56,6 +56,7 @@ local WS_OPTS = {
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local PONG_TYPE = "PONG"
 local RECONFIGURE_TYPE = "RECONFIGURE"
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
@@ -792,7 +793,7 @@ function _M:handle_cp_websocket()
   end
 
   local dp_plugins_map = plugins_list_to_map(data.plugins)
-  local config_hash = string.rep("0", 32) -- initial hash
+  local config_hash = DECLARATIVE_EMPTY_CONFIG_HASH -- initial hash
   local last_seen = ngx_time()
   local sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
   local purge_delay = self.conf.cluster_data_plane_purge_delay

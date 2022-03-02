@@ -438,12 +438,8 @@ function ProxyCacheHandler:body_filter(conf)
     return
   end
 
-  local chunk = ngx.arg[1]
-  local eof   = ngx.arg[2]
-
-  proxy_cache.res_body = (proxy_cache.res_body or "") .. (chunk or "")
-
-  if eof then
+  local body = kong.response.get_raw_body()
+  if body then
     local strategy = require(STRATEGY_PATH)({
       strategy_name = conf.strategy,
       strategy_opts = conf[conf.strategy],
@@ -452,8 +448,8 @@ function ProxyCacheHandler:body_filter(conf)
     local res = {
       status    = kong.response.get_status(),
       headers   = proxy_cache.res_headers,
-      body      = proxy_cache.res_body,
-      body_len  = #proxy_cache.res_body,
+      body      = body,
+      body_len  = #body,
       timestamp = time(),
       ttl       = proxy_cache.res_ttl,
       version   = CACHE_VERSION,

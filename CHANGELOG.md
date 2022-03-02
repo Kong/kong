@@ -64,13 +64,19 @@
 
 ## [2.8.0] (UNRELEASED)
 
+### Deprecations
+
+- The external [go-pluginserver](https://github.com/Kong/go-pluginserver) project
+is considered deprecated in favor of the embedded server approach described in
+the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
+
 ### Dependencies
 
 - OpenSSL bumped to 1.1.1m
   [#8191](https://github.com/Kong/kong/pull/8191)
 - Bumped resty.session from 3.8 to 3.10
   [#8294](https://github.com/Kong/kong/pull/8294)
-- Bump lua-resty-openssl to 0.8.5
+- Bumped lua-resty-openssl to 0.8.5
   [#8368](https://github.com/Kong/kong/pull/8368)
 
 ### Additions
@@ -83,16 +89,26 @@
 - Routes now support matching headers with regular expressions
   Thanks, [@vanhtuan0409](https://github.com/vanhtuan0409)!
   [#6079](https://github.com/Kong/kong/pull/6079)
-- Targets keep their health status when upstreams are updated.
-  [#8394](https://github.com/Kong/kong/pull/8394)
+
+#### Beta
+
+- Secrets Management and Vault support as been introduced as a Beta feature.
+  This means it is intended for testing in staging environments. It not intended
+  for use in Production environments.
+  You can read more about Secrets Management in
+  [our docs page](https://docs.konghq.com/gateway/latest/plan-and-deploy/security/secrets-management/backends-overview).
+  [#8403](https://github.com/Kong/kong/pull/8403)
 
 #### Performance
 
 - Improved the calculation of declarative configuration hash for big configurations
   The new method is faster and uses less memory
   [#8204](https://github.com/Kong/kong/pull/8204)
-- Several improvements in the Router decreased routing time and rebuild time. This should be
-  particularly noticeable when rebuilding on db-less environments
+- Multiple improvements in the Router. Amongst others:
+  - The router builds twice as faster
+  - Failures are cached and discarded faster (negative caching)
+  - Routes with header matching are cached
+  These changes should be particularly noticeable when rebuilding on db-less environments
   [#8087](https://github.com/Kong/kong/pull/8087)
   [#8010](https://github.com/Kong/kong/pull/8010)
 
@@ -100,17 +116,27 @@
 
 - **Response-ratelimiting**: Redis ACL support,
   and genenarized Redis connection support for usernames.
-  Thanks, [@27ascii](https://github.com/27ascii) for the origina contribution!
+  Thanks, [@27ascii](https://github.com/27ascii) for the original contribution!
   [#8213](https://github.com/Kong/kong/pull/8213)
 - **ACME**: Add rsa_key_size config option
   Thanks, [lodrantl](https://github.com/lodrantl)!
   [#8114](https://github.com/Kong/kong/pull/8114)
+- **Prometheus**: Added gauges to track `ngx.timer.running_count()` and
+  `ngx.timer.pending_count()`
+  [#8387](https://github.com/Kong/kong/pull/8387)
 
 #### Clustering
 
 - `CLUSTERING_MAX_PAYLOAD` is now configurable in kong.conf
   Thanks, [@andrewgknew](https://github.com/andrewgknew)!
   [#8337](https://github.com/Kong/kong/pull/8337)
+
+#### Admin API
+
+- The current declarative configuration hash is now returned by the `status`
+  endpoint when Kong node is running in dbless or data-plane mode.
+  [#8214](https://github.com/Kong/kong/pull/8214)
+  [#8425](https://github.com/Kong/kong/pull/8425)
 
 ### Fixes
 
@@ -132,6 +158,14 @@
   Thanks, [@mpenick](https://github.com/mpenick)!
   [#8226](https://github.com/Kong/kong/pull/8226)
 
+#### Balancer
+
+- Targets keep their health status when upstreams are updated.
+  [#8394](https://github.com/Kong/kong/pull/8394)
+- One debug message which was erroneously using the `error` log level
+  has been downgraded to the appropiate `debug` log level.
+  [#8410](https://github.com/Kong/kong/pull/8410)
+
 #### Clustering
 
 - Replaced cryptic error message with more useful one when
@@ -147,6 +181,10 @@
 
 - Phase names are correctly selected when performing phase checks
   [#8208](https://github.com/Kong/kong/pull/8208)
+- Fixed a bug in the go-PDK where if `kong.request.getrawbody` was
+  big enough to be buffered into a temporary file, it would return an
+  an empty string.
+  [#8390](https://github.com/Kong/kong/pull/8390)
 
 #### Plugins
 
@@ -156,6 +194,24 @@
 - **External Plugins**: Unwrap `ConsumerSpec` and `AuthenticateArgs`.
   Thanks, [@raptium](https://github.com/raptium)!
   [#8280](https://github.com/Kong/kong/pull/8280)
+- **External Plugins**: Fixed a problem in the stream subsystem would attempt to load
+  HTTP headers.
+  [#8414](https://github.com/Kong/kong/pull/8414)
+- **CORS**: The CORS plugin does not send the `Vary: Origin` header any more when
+  the header `Access-Control-Allow-Origin` is set to `*`.
+  Thanks, [@jkla-dr](https://github.com/jkla-dr)!
+  [#8401](https://github.com/Kong/kong/pull/8401)
+- **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
+  and deprecated the `proxy_scheme` config attribute for removal in 3.0
+  [#8406](https://github.com/Kong/kong/pull/8406)
+- **oauth2**: The plugin clears the `X-Authenticated-UserId` and
+  `X-Authenticated-Scope` headers when it configured in logical OR and
+  is used in conjunction with another authentication plugin.
+  [#8422](https://github.com/Kong/kong/pull/8422)
+- **Datadog**: The plugin schema now lists the default values
+  for configuration options in a single place instead of in two
+  separate places.
+  [#8315](https://github.com/Kong/kong/pull/8315)
 
 
 ## [2.7.1]
