@@ -605,6 +605,24 @@ function merge_docker() {
 }
 
 #-------------------------------------------------------------------------------
+function update_docker {
+    if [ -d ../docker-kong ]
+    then
+        cd ../docker-kong
+    else
+        cd ..
+        git clone https://github.com/kong/docker-kong
+        cd docker-kong
+    fi
+
+    git pull
+    git checkout -B "release/$1"
+
+    set -e
+    ./update.sh "$1"
+}
+
+#-------------------------------------------------------------------------------
 function submit_docker() {
   version=$1
 
