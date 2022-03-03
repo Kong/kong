@@ -130,7 +130,7 @@ the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
 #### Clustering
 
 - `CLUSTERING_MAX_PAYLOAD` is now configurable in kong.conf
-  Thanks, [@andrewgknew](https://github.com/andrewgknew)!
+  Thanks, [@andrewgkew](https://github.com/andrewgknew)!
   [#8337](https://github.com/Kong/kong/pull/8337)
 
 #### Admin API
