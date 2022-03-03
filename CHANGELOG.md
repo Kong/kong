@@ -62,6 +62,14 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## Unreleased
+
+### Dependencies
+
+- Bumped pgmoon from 1.13.0 to 1.14.0
+  [#8429](https://github.com/Kong/kong/pull/8429)
+
+
 ## [2.8.0]
 
 ### Deprecations
