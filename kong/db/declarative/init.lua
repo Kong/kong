@@ -865,7 +865,7 @@ end
 do
   local DECLARATIVE_PAGE_KEY = constants.DECLARATIVE_PAGE_KEY
 
-  function declarative.load_into_cache_with_events(entities, meta, hash)
+  function declarative.load_into_cache_with_events(entities, meta, hash, hashes)
     if exiting() then
       return nil, "exiting"
     end
@@ -926,7 +926,31 @@ do
     local default_ws
     ok, err, default_ws = declarative.load_into_cache(entities, meta, hash, SHADOW)
     if ok then
-      ok, err = worker_events.post("declarative", "flip_config", default_ws)
+      local router_hash
+      local plugins_hash
+      local balancer_hash
+      if hashes then
+        if hashes.routes ~= DECLARATIVE_EMPTY_CONFIG_HASH then
+          router_hash = md5(hashes.services .. hashes.routes)
+        else
+          router_hash = DECLARATIVE_EMPTY_CONFIG_HASH
+        end
+
+        plugins_hash = hashes.plugins
+
+        if hashes.upstreams ~= DECLARATIVE_EMPTY_CONFIG_HASH or hashes.targets ~= DECLARATIVE_EMPTY_CONFIG_HASH then
+          balancer_hash = md5(hashes.upstreams .. hashes.targets)
+        else
+          balancer_hash = DECLARATIVE_EMPTY_CONFIG_HASH
+        end
+      end
+
+      ok, err = worker_events.post("declarative", "flip_config", {
+        default_ws,
+        router_hash,
+        plugins_hash,
+        balancer_hash
+      })
       if ok ~= "done" then
         kong_shm:delete(DECLARATIVE_LOCK_KEY)
         return nil, "failed to flip declarative config cache pages: " .. (err or ok)
@@ -983,7 +1007,7 @@ do
 end
 
 
--- prevent POST /config (declarative.load_into_cache_with_events eary-exits)
+-- prevent POST /config (declarative.load_into_cache_with_events early-exits)
 -- only "succeeds" the first time it gets called.
 -- successive calls return nil, "exists"
 function declarative.try_lock()
