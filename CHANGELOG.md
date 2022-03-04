@@ -65,6 +65,11 @@
 
 ### Fixes
 
+#### Core
+
+- Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
+  [#8142](https://github.com/Kong/kong/pull/8142)
+
 #### Plugins
 
 - **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
