@@ -315,7 +315,8 @@ In this release we continued our work on better performance:
 - Fixed intermittent botting error which happened when a custom plugin had inter-dependent entity schemas
   on its custom DAO and they were loaded in an incorrect order
   [#7911](https://github.com/Kong/kong/pull/7911)
-
+- Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
+  [#8141](https://github.com/Kong/kong/pull/8141)
 
 #### PDK
 
