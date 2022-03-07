@@ -39,23 +39,21 @@ local function get_usage(conf, identifier, limits, current_timestamp)
 
   for k, v in pairs(limits) do -- Iterate over limit names
     for lk, lv in pairs(v) do -- Iterare over periods
-      if lv ~= null then
-        local current_usage, err = policies[conf.policy].usage(conf, identifier, k, lk, current_timestamp)
-        if err then
-          return nil, err
-        end
-  
-        if not usage[k] then
-          usage[k] = {}
-        end
-  
-        if not usage[k][lk] then
-          usage[k][lk] = {}
-        end
-
-        usage[k][lk].limit = lv
-        usage[k][lk].remaining = lv - current_usage
+      local current_usage, err = policies[conf.policy].usage(conf, identifier, k, lk, current_timestamp)
+      if err then
+        return nil, err
       end
+
+      if not usage[k] then
+        usage[k] = {}
+      end
+
+      if not usage[k][lk] then
+        usage[k][lk] = {}
+      end
+
+      usage[k][lk].limit = lv
+      usage[k][lk].remaining = lv - current_usage
     end
   end
 

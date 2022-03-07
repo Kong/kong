@@ -26,7 +26,6 @@ local update_time  = ngx.update_time
 local ngx_time     = ngx.time
 local ngx_now      = ngx.now
 local find         = string.find
-local null         = ngx.null
 local max          = math.max
 local sub          = string.sub
 
@@ -1578,8 +1577,15 @@ local function adjust_field_for_context(field, value, context, nulls, opts)
     end
 
     if subfield then
-      for i = 1, #value do
-        value[i] = adjust_field_for_context(subfield, value[i], context, nulls, opts)
+      if field.type ~= "map" then
+        for i = 1, #value do
+          value[i] = adjust_field_for_context(subfield, value[i], context, nulls, opts)
+        end
+
+      else
+        for k, _ in pairs(value) do
+          value[k] = adjust_field_for_context(subfield, value[k], context, nulls, opts)
+        end
       end
     end
   end
