@@ -9,9 +9,6 @@ local error = error
 local tostring = tostring
 
 
-local null = ngx.null
-
-
 local EMPTY = {}
 local HTTP_TOO_MANY_REQUESTS = 429
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
