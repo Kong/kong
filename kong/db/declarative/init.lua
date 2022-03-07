@@ -870,7 +870,7 @@ do
     if exiting() then
       return nil, "exiting"
     end
-    
+
     local worker_events = kong.worker_events
 
     local ok, err, default_ws = declarative.load_into_cache(entities, meta, hash)
