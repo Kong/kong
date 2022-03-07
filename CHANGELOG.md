@@ -113,7 +113,7 @@ the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
   The new method is faster and uses less memory
   [#8204](https://github.com/Kong/kong/pull/8204)
 - Multiple improvements in the Router. Amongst others:
-  - The router builds twice as faster
+  - The router builds twice as fast compared to prior Kong versions
   - Failures are cached and discarded faster (negative caching)
   - Routes with header matching are cached
   These changes should be particularly noticeable when rebuilding on db-less environments
