@@ -1231,6 +1231,11 @@ return {
       -- While these endpoints actually support DELETE (deleting the entity and
       -- cascade-deleting the plugin), we do not document them, as this operation
       -- is somewhat odd.
+      ["/routes/:routes/service"] = {
+        DELETE = {
+             endpoint = false,
+        }
+      },
       ["/plugins/:plugins/route"] = {
         DELETE = {
           endpoint = false,
