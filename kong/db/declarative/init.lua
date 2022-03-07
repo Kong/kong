@@ -912,6 +912,7 @@ do
     if exiting() then
       return nil, "exiting"
     end
+
     return true
   end
 
