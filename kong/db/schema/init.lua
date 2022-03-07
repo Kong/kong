@@ -26,6 +26,7 @@ local update_time  = ngx.update_time
 local ngx_time     = ngx.time
 local ngx_now      = ngx.now
 local find         = string.find
+local null         = ngx.null
 local max          = math.max
 local sub          = string.sub
 
