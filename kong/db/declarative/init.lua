@@ -867,6 +867,10 @@ end
 
 do
   local function load_into_cache_with_events_no_lock(entities, meta, hash)
+    if exiting() then
+      return nil, "exiting"
+    end
+    
     local worker_events = kong.worker_events
 
     local ok, err, default_ws = declarative.load_into_cache(entities, meta, hash)
@@ -904,6 +908,10 @@ do
              "incomplete default workspace id sent to the stream subsystem")
     end
 
+
+    if exiting() then
+      return nil, "exiting"
+    end
     return true
   end
 
@@ -912,21 +920,17 @@ do
   -- Let's paste the error message here in case someday we try to search it.
   -- Should we handle this case specially?
   local DECLARATIVE_LOCK_TTL = 60
-  local DECLARATIVE_MAX_RETRT = 10
+  local DECLARATIVE_RETRY_TTL_MAX = 10
   local DECLARATIVE_LOCK_KEY = "declarative:lock"
 
   -- make sure no matter which path it exits, we released the lock.
   function declarative.load_into_cache_with_events(entities, meta, hash)
-    if exiting() then
-      return nil, "exiting"
-    end
-
     local kong_shm = ngx.shared.kong
 
     local ok, err = kong_shm:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
     if not ok then
       if err == "exists" then
-        local ttl = math.min(ngx.shared.kong:ttl(DECLARATIVE_LOCK_KEY), DECLARATIVE_MAX_RETRT)
+        local ttl = math.min(ngx.shared.kong:ttl(DECLARATIVE_LOCK_KEY), DECLARATIVE_RETRY_TTL_MAX)
         return nil, "busy", ttl
       end
 
@@ -937,11 +941,6 @@ do
     ok, err = load_into_cache_with_events_no_lock(entities, meta, hash)
 
     kong_shm:delete(DECLARATIVE_LOCK_KEY)
-
-
-    if exiting() then
-      return nil, "exiting"
-    end
 
     return ok, err
   end
