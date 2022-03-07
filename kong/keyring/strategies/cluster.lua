@@ -172,7 +172,7 @@ function _M.init(config)
     error(err)
   end
 
-  if r() ~= nil and config.keyring_blob_path then
+  if r() ~= nil then
     return local_keyring_read(config)
   end
 
