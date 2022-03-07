@@ -166,7 +166,7 @@ In this release we continued our work on better performance:
   [#7911](https://github.com/Kong/kong/pull/7911)
 - Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
   [#8141](https://github.com/Kong/kong/pull/8141)
-- Fixed `ssl_cert` and `ssl_session_fetch` phases fail to resolve unexpectedly.
+- Fixed DNS client fails to resolve unexpectedly in `ssl_cert` and `ssl_session_fetch` phases.
   [#8161](https://github.com/Kong/kong/pull/8161)
 
 #### PDK
