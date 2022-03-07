@@ -866,11 +866,7 @@ end
 
 
 do
-  function declarative.load_into_cache_with_events(entities, meta, hash)
-    if exiting() then
-      return nil, "exiting"
-    end
-
+  local function load_into_cache_with_events_no_lock(entities, meta, hash)
     local worker_events = kong.worker_events
 
     local ok, err, default_ws = declarative.load_into_cache(entities, meta, hash)
@@ -908,12 +904,46 @@ do
              "incomplete default workspace id sent to the stream subsystem")
     end
 
+    return true
+  end
+
+  -- If it takes more than 60s it is very likely to be an internal error.
+  -- However it will be reported as: "failed to broadcast reconfigure event: recursive".
+  -- Let's paste the error message here in case someday we try to search it.
+  -- Should we handle this case specially?
+  local DECLARATIVE_LOCK_TTL = 60
+  local DECLARATIVE_MAX_RETRT = 10
+  local DECLARATIVE_LOCK_KEY = "declarative:lock"
+
+  -- make sure no matter which path it exits, we released the lock.
+  function declarative.load_into_cache_with_events(entities, meta, hash)
+    if exiting() then
+      return nil, "exiting"
+    end
+
+    local kong_shm = ngx.shared.kong
+
+    local ok, err = kong_shm:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
+    if not ok then
+      if err == "exists" then
+        local ttl = math.min(ngx.shared.kong:ttl(DECLARATIVE_LOCK_KEY), DECLARATIVE_MAX_RETRT)
+        return nil, "busy", ttl
+      end
+
+      kong_shm:delete(DECLARATIVE_LOCK_KEY)
+      return nil, err
+    end
+
+    ok, err = load_into_cache_with_events_no_lock(entities, meta, hash)
+
+    kong_shm:delete(DECLARATIVE_LOCK_KEY)
+
 
     if exiting() then
       return nil, "exiting"
     end
 
-    return true
+    return ok, err
   end
 end
 
