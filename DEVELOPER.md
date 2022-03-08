@@ -118,9 +118,10 @@ RESTY_PCRE_VERSION=$(grep -oP 'RESTY_PCRE_VERSION=\K.*' .requirements)
 
 cd ../kong-build-tools/openresty-build-tools
 
-# before we run the script, make sure curl and unzip is installed
+# before we run the script, make sure curl and unzip is installed.
+# also, to build we need gcc/g++ and m4 installed.
 # here is an example for ubuntu
-sudo apt install curl unzip
+sudo apt install curl unzip g++ m4
 
 # you might want to add also --debug
 ./kong-ngx-build -p ${BUILDROOT} --openresty ${RESTY_VERSION} --openssl ${RESTY_OPENSSL_VERSION} --luarocks ${RESTY_LUAROCKS_VERSION} --pcre ${RESTY_PCRE_VERSION}
