@@ -30,7 +30,7 @@ local pairs = pairs
 local ngx_socket_tcp = ngx.socket.tcp
 local yield = require("kong.tools.utils").yield
 local marshall = require("kong.db.declarative.marshaller").marshall
-loacl min = math.min
+local min = math.min
 
 
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
