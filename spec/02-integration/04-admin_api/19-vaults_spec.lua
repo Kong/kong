@@ -12,6 +12,7 @@ local cjson = require "cjson"
 
 local HEADERS = { ["Content-Type"] = "application/json" }
 
+
 for _, strategy in helpers.each_strategy() do
   describe("Admin API #" .. strategy, function()
     local client
@@ -143,7 +144,14 @@ for _, strategy in helpers.each_strategy() do
               })
               local body = assert.res_status(400, res)
               local json = cjson.decode(body)
-              assert.equal("schema violation", json.name)
+              assert.same({
+                name = "schema violation",
+                code = 2,
+                message = "schema violation (prefix: must not be one of: env)",
+                fields = {
+                  prefix = "must not be one of: env",
+                },
+              }, json)
             end)
 
             -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
@@ -157,7 +165,11 @@ for _, strategy in helpers.each_strategy() do
                 })
                 local body = assert.res_status(400, res)
                 local json = cjson.decode(body)
-                assert.equal("invalid unique prefix", json.name)
+                assert.same({
+                  name = "invalid unique prefix",
+                  code = 10,
+                  message = "must not be one of: env",
+                }, json)
               end)
             end
           end)
@@ -207,7 +219,14 @@ for _, strategy in helpers.each_strategy() do
               })
               local body = assert.res_status(400, res)
               local json = cjson.decode(body)
-              assert.equal("schema violation", json.name)
+              assert.same({
+                name = "schema violation",
+                code = 2,
+                message = "schema violation (prefix: must not be one of: env)",
+                fields = {
+                  prefix = "must not be one of: env",
+                },
+              }, json)
             end)
 
             -- TODO: `unique_across_ws=true` doesn't seem to work with Cassandra
@@ -219,7 +238,14 @@ for _, strategy in helpers.each_strategy() do
                 })
                 local body = assert.res_status(400, res)
                 local json = cjson.decode(body)
-                assert.equal("schema violation", json.name)
+                assert.same({
+                  name = "schema violation",
+                  code = 2,
+                  message = "schema violation (prefix: must not be one of: env)",
+                  fields = {
+                    prefix = "must not be one of: env",
+                  },
+                }, json)
               end)
             end
 

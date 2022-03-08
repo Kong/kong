@@ -35,6 +35,7 @@ local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
 local table_concat = table.concat
+local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
 
@@ -104,7 +105,7 @@ end
 
 
 local function is_timeout(err)
-  return err and string.sub(err, -7) == "timeout"
+  return err and sub(err, -7) == "timeout"
 end
 
 

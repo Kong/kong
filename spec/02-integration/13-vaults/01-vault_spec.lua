@@ -88,6 +88,16 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("{vault://test-vault/key}", certificate.key)
       assert.equal("{vault://unknown/cert}", certificate.cert_alt)
       assert.equal("{vault://unknown/missing-key}", certificate.key_alt)
+
+      -- verify that certificate attributes are of type reference when querying
+      local gres = client:get("/certificates/"..certificate.id)
+      local gbody = assert.res_status(200, gres)
+      local gcertificate = cjson.decode(gbody)
+      assert.is_equal("{vault://test-vault/cert}", gcertificate.cert)
+      assert.is_equal("{vault://test-vault/key}", gcertificate.key)
+      assert.is_equal("{vault://unknown/cert}", gcertificate.cert_alt)
+      assert.is_equal("{vault://unknown/missing-key}", gcertificate.key_alt)
     end)
+
   end)
 end

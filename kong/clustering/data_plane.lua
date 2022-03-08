@@ -25,6 +25,7 @@ local type = type
 local math = math
 local pcall = pcall
 local tostring = tostring
+local sub = string.sub
 local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
@@ -60,7 +61,7 @@ local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
 local function is_timeout(err)
-  return err and string.sub(err, -7) == "timeout"
+  return err and sub(err, -7) == "timeout"
 end
 
 

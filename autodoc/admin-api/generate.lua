@@ -570,7 +570,7 @@ local function write_endpoint(outfd, endpoint, ep_data, dbless_methods)
   -- check for endpoint-specific overrides (useful for db-less)
   for i, method in ipairs(method_array) do
     local meth_data = ep_data[method]
-    if meth_data then
+    if meth_data and meth_data.endpoint ~= false then
       assert_data(meth_data.title, "info for " .. method .. " " .. endpoint)
       if dbless_methods
         and not dbless_methods[method]

@@ -21,6 +21,10 @@ local function to_hex_ids(arr)
            arr[5] }
 end
 
+local function left_pad_zero(str, count)
+  return ('0'):rep(count-#str) .. str
+end
+
 local parse = tracing_headers.parse
 local set = tracing_headers.set
 local from_hex = tracing_headers.from_hex
@@ -356,14 +360,14 @@ describe("tracing_headers.parse", function()
     it("valid uber-trace-id with sampling", function()
       local ubertraceid = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "1")
       local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
-      assert.same({ "jaeger", trace_id, span_id, parent_id, true }, to_hex_ids(t))
+      assert.same({ "jaeger", left_pad_zero(trace_id, 32), span_id, parent_id, true }, to_hex_ids(t))
       assert.spy(warn).not_called()
     end)
 
     it("valid uber-trace-id without sampling", function()
       local ubertraceid = fmt("%s:%s:%s:%s", trace_id, span_id, parent_id, "0")
       local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
-      assert.same({ "jaeger", trace_id, span_id, parent_id, false }, to_hex_ids(t))
+      assert.same({ "jaeger", left_pad_zero(trace_id, 32), span_id, parent_id, false }, to_hex_ids(t))
       assert.spy(warn).not_called()
     end)
 
@@ -378,6 +382,13 @@ describe("tracing_headers.parse", function()
       local ubertraceid = fmt("%s:%s:%s:%s", trace_id_32, span_id, parent_id, "0")
       local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
       assert.same({ "jaeger", trace_id_32, span_id, parent_id, false }, to_hex_ids(t))
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid uber-trace-id with parent_id 0", function()
+      local ubertraceid = fmt("%s:%s:%s:%s", trace_id, span_id, "0", "1")
+      local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+      assert.same({ "jaeger", left_pad_zero(trace_id, 32), span_id, to_hex("0"), true }, to_hex_ids(t))
       assert.spy(warn).not_called()
     end)
 
@@ -405,13 +416,8 @@ describe("tracing_headers.parse", function()
       end)
 
       it("rejects invalid trace IDs", function()
-        local ubertraceid = fmt("%s:%s:%s:%s", too_short_id, span_id, parent_id, "1")
+        local ubertraceid = fmt("%s:%s:%s:%s", too_long_id, span_id, parent_id, "1")
         local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
-        assert.same({ "jaeger" }, t)
-        assert.spy(warn).was_called_with("invalid jaeger trace ID; ignoring.")
-
-        ubertraceid = fmt("%s:%s:%s:%s", too_long_id, span_id, parent_id, "1")
-        t = { parse({ ["uber-trace-id"] = ubertraceid }) }
         assert.same({ "jaeger" }, t)
         assert.spy(warn).was_called_with("invalid jaeger trace ID; ignoring.")
 
@@ -423,25 +429,23 @@ describe("tracing_headers.parse", function()
       end)
 
       it("rejects invalid parent IDs", function()
+        -- Ignores invalid parent id and logs
         local ubertraceid = fmt("%s:%s:%s:%s", trace_id, span_id, too_short_id, "1")
         local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
-        assert.same({ "jaeger" }, t)
+        -- Note: to_hex(from_hex()) for too_short_id as the binary conversion from hex is resulting in a different number
+        assert.same({ "jaeger", left_pad_zero(trace_id, 32), span_id, to_hex(from_hex(too_short_id)), true }, to_hex_ids(t))
         assert.spy(warn).was_called_with("invalid jaeger parent ID; ignoring.")
 
+        -- Ignores invalid parent id and logs
         ubertraceid = fmt("%s:%s:%s:%s", trace_id, span_id, too_long_id, "1")
         t = { parse({ ["uber-trace-id"] = ubertraceid }) }
-        assert.same({ "jaeger" }, t)
+        assert.same({ "jaeger", left_pad_zero(trace_id, 32), span_id, too_long_id, true }, to_hex_ids(t))
         assert.spy(warn).was_called_with("invalid jaeger parent ID; ignoring.")
       end)
 
       it("rejects invalid span IDs", function()
-        local ubertraceid = fmt("%s:%s:%s:%s", trace_id, too_short_id, parent_id, "1")
+        local ubertraceid = fmt("%s:%s:%s:%s", trace_id, too_long_id, parent_id, "1")
         local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
-        assert.same({ "jaeger" }, t)
-        assert.spy(warn).was_called_with("invalid jaeger span ID; ignoring.")
-
-        ubertraceid = fmt("%s:%s:%s:%s", trace_id, too_long_id, parent_id, "1")
-        t = { parse({ ["uber-trace-id"] = ubertraceid }) }
         assert.same({ "jaeger" }, t)
         assert.spy(warn).was_called_with("invalid jaeger span ID; ignoring.")
 
@@ -457,6 +461,18 @@ describe("tracing_headers.parse", function()
         local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
         assert.same({ "jaeger" }, t)
         assert.spy(warn).was_called_with("invalid jaeger flags; ignoring.")
+      end)
+
+      it("0-pad shorter span IDs", function()
+        local ubertraceid = fmt("%s:%s:%s:%s", trace_id, too_short_id, parent_id, "1")
+        local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger", left_pad_zero(trace_id, 32), left_pad_zero(too_short_id, 16), parent_id, true }, to_hex_ids(t))
+      end)
+
+      it("0-pad shorter trace IDs", function()
+        local ubertraceid = fmt("%s:%s:%s:%s", too_short_id, span_id, parent_id, "1")
+        local t = { parse({ ["uber-trace-id"] = ubertraceid }) }
+        assert.same({ "jaeger", left_pad_zero(too_short_id, 32), span_id, parent_id, true }, to_hex_ids(t))
       end)
     end)
   end)
