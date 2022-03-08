@@ -89,21 +89,60 @@ You can use a Vagrant box running Kong and Postgres that you can find at
 #### Source Install
 
 Kong is mostly an OpenResty application made of Lua source files, but also
-requires some additional third-party dependencies. We recommend installing
-those by following the [source install instructions](https://docs.konghq.com/install/source/).
+requires some additional third-party dependencies, some of which compiled
+with tweaked options, and runs on a modified version of OpenResty with patches.
 
-Instead of following the second step (Install Kong), clone this repository
-and install the latest Lua sources instead of the currently released ones:
+You can build OpenResty, OpenSSL and Luarocks with [Kong/kong-ngx-build](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools), which we will utilize for the following process.
 
 ```shell
+# Clone this repository and Kong/kong-ngx-build.
+git clone https://github.com/Kong/kong-build-tools.git
 git clone https://github.com/Kong/kong
-cd kong/
 
+cd kong
 # you might want to switch to the development branch. See CONTRIBUTING.md
 git checkout master
 
+# To build dependencies we need to inspect sources versions that is requireed from
+# `.requirements`, and use that as arguments to call a build sciprt. Following is
+# a example of how you likely can do this.
+
+# somewhere you're able or prefer to build
+BUILDROOT=$(realpath ~/kong-dep)
+mkdir ${BUILDROOT}
+
+RESTY_VERSION=$(grep -oP 'RESTY_VERSION=\K.*' .requirements)
+RESTY_OPENSSL_VERSION=$(grep -oP 'RESTY_OPENSSL_VERSION=\K.*' .requirements)
+RESTY_LUAROCKS_VERSION=$(grep -oP 'RESTY_LUAROCKS_VERSION=\K.*' .requirements)
+RESTY_PCRE_VERSION=$(grep -oP 'RESTY_PCRE_VERSION=\K.*' .requirements)
+
+cd ../kong-build-tools/openresty-build-tools
+
+# before we run the script, make sure curl and unzip is installed
+# here is an example for ubuntu
+sudo apt install curl unzip
+
+# you might want to add also --debug
+./kong-ngx-build -p ${BUILDROOT} --openresty ${RESTY_VERSION} --openssl ${RESTY_OPENSSL_VERSION} --luarocks ${RESTY_LUAROCKS_VERSION} --pcre ${RESTY_PCRE_VERSION}
+
+# than you should add those paths for later use
+OPENSSL_DIR=${BUILDROOT}/openssl
+CRYPTO_DIR=${BUILDROOT}/openssl
+PATH=${BUILDROOT}/luarocks/bin:${BUILDROOT}/openresty/bin:${PATH}
+eval $(luarocks path)
+
+# and maybe you want to set it permanently
+echo PATH=${BUILDROOT}/luarocks/bin:${BUILDROOT}/openresty/bin:\${PATH} >> ~/.profile
+echo eval \$\(luarocks path\) >> ~/.profile
+
+cd ../..
+
+# before we build and install rocks, make sure libyaml and libz install
+# here is an example for ubuntu
+sudo apt install libyaml-dev zlib1g-dev
+
 # install the Lua sources
-luarocks make
+sudo luarocks make
 ```
 
 #### Running for development
