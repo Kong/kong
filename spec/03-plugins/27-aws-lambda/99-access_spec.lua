@@ -136,6 +136,13 @@ for _, strategy in helpers.each_strategy() do
         service     = null,
       }
 
+      local route20 = bp.routes:insert {
+        hosts       = { "lambda20.test" },
+        protocols   = { "http", "https" },
+        service     = null,
+      }
+
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route    = { id = route1.id },
@@ -396,6 +403,20 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route    = { id = route20.id },
+        config                 = {
+          port                 = 10001,
+          aws_key              = "mock-key",
+          aws_secret           = "mock-secret",
+          function_name        = "functionEcho",
+          proxy_url            = "http://127.0.0.1:13128",
+          keepalive            = 1,
+        }
+      }
+
+
       fixtures.dns_mock:A({
         name = "lambda18.test",
         address = helpers.mock_upstream_host,
@@ -407,6 +428,10 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         plugins = "aws-lambda",
         nginx_conf = "spec/fixtures/custom_nginx.template",
+
+        -- we don't actually use any stream proxy features in this test suite,
+        -- but this is needed in order to load our forward-proxy stream_mock fixture
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000",
       }, nil, nil, fixtures))
     end)
 
@@ -1007,6 +1032,20 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
         assert.is_string(res.headers.age)
         assert.is_array(res.headers["Access-Control-Allow-Origin"])
+      end)
+
+      it("works with a forward proxy", function()
+        local res = assert(proxy_client:send({
+          method  = "GET",
+          path    = "/get?a=1&b=2",
+          headers = {
+            ["Host"] = "lambda20.test"
+          }
+        }))
+
+        assert.res_status(200, res)
+        local req = assert.response(res).has.jsonbody()
+        assert.equals("https", req.vars.scheme)
       end)
     end)
   end)
