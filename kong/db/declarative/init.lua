@@ -30,6 +30,7 @@ local pairs = pairs
 local ngx_socket_tcp = ngx.socket.tcp
 local yield = require("kong.tools.utils").yield
 local marshall = require("kong.db.declarative.marshaller").marshall
+loacl min = math.min
 
 
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
@@ -931,7 +932,7 @@ do
     local ok, err = kong_shm:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
     if not ok then
       if err == "exists" then
-        local ttl = math.min(ngx.shared.kong:ttl(DECLARATIVE_LOCK_KEY), DECLARATIVE_RETRY_TTL_MAX)
+        local ttl = min(kong_shm:ttl(DECLARATIVE_LOCK_KEY), DECLARATIVE_RETRY_TTL_MAX)
         return nil, "busy", ttl
       end
 
