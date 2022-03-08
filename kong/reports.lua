@@ -117,6 +117,10 @@ local function add_ee_info(infos)
     kong.license.license.payload.license_key or
     nil
   infos.license_key = l
+  infos.license_level = "free"
+  if l then
+    infos.license_level = "enterprise"
+  end
   infos.rbac_enforced = kong.configuration.rbac ~= "off"
 end
 --- EE ]]
