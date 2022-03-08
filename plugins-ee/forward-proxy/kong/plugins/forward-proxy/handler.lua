@@ -262,9 +262,9 @@ function ForwardProxyHandler:access(conf)
                                   -- encoding being used subsequently)
 
   if var.upstream_host == "" then
-    headers["Host"] = nil
+    headers["host"] = nil
   else
-    headers["Host"] = var.upstream_host
+    headers["host"] = var.upstream_host
   end
 
   res, err = httpc:request({
