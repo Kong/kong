@@ -92,7 +92,9 @@ Kong is mostly an OpenResty application made of Lua source files, but also
 requires some additional third-party dependencies, some of which compiled
 with tweaked options, and runs on a modified version of OpenResty with patches.
 
-You can build OpenResty, OpenSSL and Luarocks with [Kong/kong-ngx-build](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools), which we will utilize for the following process.
+You can build OpenResty, OpenSSL, PCRE and Luarocks with [Kong/kong-ngx-build](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools), which we will utilize for the following process.
+
+Below is a template for how can install from the source.
 
 ```shell
 # Clone this repository and Kong/kong-ngx-build.
@@ -100,14 +102,14 @@ git clone https://github.com/Kong/kong-build-tools.git
 git clone https://github.com/Kong/kong
 
 cd kong
-# you might want to switch to the development branch. See CONTRIBUTING.md
+# You might want to switch to the development branch. See CONTRIBUTING.md
 git checkout master
 
 # To build dependencies we need to inspect sources versions that is requireed from
-# `.requirements`, and use that as arguments to call a build sciprt. Following is
-# a example of how you likely can do this.
+# `.requirements`, and use that as arguments to call a build sciprt. 
+# You can mannually do this, or follow the steps below.
 
-# somewhere you're able or prefer to build
+# Somewhere you're able or prefer to build
 BUILDROOT=$(realpath ~/kong-dep)
 mkdir ${BUILDROOT}
 
@@ -118,31 +120,31 @@ RESTY_PCRE_VERSION=$(grep -oP 'RESTY_PCRE_VERSION=\K.*' .requirements)
 
 cd ../kong-build-tools/openresty-build-tools
 
-# before we run the script, make sure curl and unzip is installed.
-# also, to build we need gcc/g++ and m4 installed.
-# here is an example for ubuntu
+# Before we run the script, make sure curl and unzip is installed.
+# Also, to build we need gcc/g++ and m4 installed.
+# Here is an example for ubuntu:
 sudo apt install curl unzip g++ m4
 
-# you might want to add also --debug
+# You might want to add also --debug
 ./kong-ngx-build -p ${BUILDROOT} --openresty ${RESTY_VERSION} --openssl ${RESTY_OPENSSL_VERSION} --luarocks ${RESTY_LUAROCKS_VERSION} --pcre ${RESTY_PCRE_VERSION}
 
-# than you should add those paths for later use
+# Than you should add those paths for later use
 OPENSSL_DIR=${BUILDROOT}/openssl
 CRYPTO_DIR=${BUILDROOT}/openssl
 PATH=${BUILDROOT}/luarocks/bin:${BUILDROOT}/openresty/bin:${PATH}
 eval $(luarocks path)
 
-# and maybe you want to set it permanently
+# And maybe you want to set it permanently
 echo PATH=${BUILDROOT}/luarocks/bin:${BUILDROOT}/openresty/bin:\${PATH} >> ~/.profile
 echo eval \$\(luarocks path\) >> ~/.profile
 
 cd ../..
 
-# before we build and install rocks, make sure libyaml and libz install
-# here is an example for ubuntu
+# Before we build and install rocks, make sure libyaml and libz install.
+# Here is an example for ubuntu.
 sudo apt install libyaml-dev zlib1g-dev
 
-# install the Lua sources
+# Install the Lua sources
 sudo luarocks make
 ```
 
