@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.6.1](#261)
 - [2.6.0](#260)
 - [2.5.1](#251)
 - [2.5.0](#250)
@@ -60,9 +61,24 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## [2.6.1]
+
+### Fixes
+
+#### Core
+
+- Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
+  [#8142](https://github.com/Kong/kong/pull/8142)
+
+#### Plugins
+
+- **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
+    and deprecated the `proxy_scheme` config attribute for removal in 3.0
+    [#8406](https://github.com/Kong/kong/pull/8406)
+
 ## [2.6.0]
 
-> Release date: TBA
+> Release date: 2021/10/04
 
 ### Dependencies
 
