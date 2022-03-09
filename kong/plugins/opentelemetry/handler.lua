@@ -1,9 +1,11 @@
 local subsystem = ngx.config.subsystem
-local pb = require "pb"
-local protoc = require "protoc"
-local readfile = require "pl.utils".readfile
+local load_pb = require("kong.plugins.opentelemetry.otlp").load_pb
+local to_pb = require("kong.plugins.opentelemetry.otlp").to_pb
+local to_otlp_span = require("kong.plugins.opentelemetry.otlp").to_otlp_span
+local otlp_export_request = require("kong.plugins.opentelemetry.otlp").otlp_export_request
 local new_tab = require "table.new"
 local insert = table.insert
+
 
 local OpenTelemetryHandler = {
   VERSION = "0.0.1",
@@ -16,30 +18,9 @@ local OpenTelemetryHandler = {
 local exporter_cache = setmetatable({}, { __mode = "k" })
 
 function OpenTelemetryHandler:init_worker()
-  local p = protoc.new()
-  -- TODO: rel path
-  local otlp_proto = assert(readfile("/kong/kong/plugins/opentelemetry/otlp.proto"))
-  assert(p:load(otlp_proto))
-end
+  assert(load_pb())
 
--- different instruments based on Nginx subsystem
-if subsystem == "http" then
-
-  function OpenTelemetryHandler:access(conf) -- luacheck: ignore 212
-    
-  end
-
-
-  function OpenTelemetryHandler:header_filter(conf) -- luacheck: ignore 212
-    
-  end
-
-
-  function OpenTelemetryHandler:body_filter(conf) -- luacheck: ignore 212
-  end
-
-elseif subsystem == "stream" then
--- TODO:
+  -- patch db query
 end
 
 

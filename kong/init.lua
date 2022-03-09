@@ -85,6 +85,7 @@ local balancer = require "kong.runloop.balancer"
 local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
+local connector_query_wrap = require "kong.pdk.tracing".connector_query_wrap
 
 local kong             = kong
 local ngx              = ngx
@@ -500,6 +501,7 @@ function Kong.init()
   kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
 
   local db = assert(DB.new(config))
+  connector_query_wrap()
   assert(db:init_connector())
 
   schema_state = assert(db:schema_state())

@@ -6,6 +6,8 @@ local atoi = require "resty.string".atoi
 local random_bytes = require "resty.random".bytes
 local new_tab = require "table.new"
 local insert = table.insert
+local pack = table.pack
+local unpack = table.unpack
 
 local NOOP = "noop"
 
@@ -224,8 +226,30 @@ end
 
 tracer_mt.new = new_tracer
 
+
+-- kong.db connector overwrite
+local function connector_query_wrap(connector)
+  local query_orig = connector.query
+
+  local function query(self, sql, ...)
+
+    local span = kong.tracer:start_span(ngx.ctx, "query", nil)
+    span:set_attribute("query", sql) -- TODO: skip noop span
+
+    local r = pack(query_orig(self, sql, ...))
+
+    span:finish()
+
+    return unpack(r)
+  end
+
+  connector.query = query
+end
+
 return {
   new = function()
     return new_tracer("noop") -- create noop global tracer by default
   end,
+  -- helpers
+  connector_query_wrap = connector_query_wrap,
 }
