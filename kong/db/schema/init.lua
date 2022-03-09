@@ -1584,8 +1584,8 @@ local function adjust_field_for_context(field, value, context, nulls, opts)
         end
 
       else
-        for k, _ in pairs(value) do
-          value[k] = adjust_field_for_context(subfield, value[k], context, nulls, opts)
+        for k, v in pairs(value) do
+          value[k] = adjust_field_for_context(subfield, v, context, nulls, opts)
         end
       end
     end
