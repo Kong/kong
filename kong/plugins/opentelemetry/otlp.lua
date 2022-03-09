@@ -3,6 +3,7 @@ local protoc = require "protoc"
 local readfile = require "pl.utils".readfile
 local new_tab = require "table.new"
 local insert = table.insert
+local nkeys = require("table.nkeys")
 
 
 local function load_pb()
@@ -10,6 +11,32 @@ local function load_pb()
   -- TODO: rel path
   local otlp_proto = assert(readfile("/kong/kong/plugins/opentelemetry/otlp.proto"))
   assert(p:load(otlp_proto))
+
+  return true
+end
+
+
+local function _to_otlp_attributes(tab)
+  local attributes = new_tab(nkeys(tab), 0)
+  for k, v in pairs(tab) do
+    insert(attributes, {
+      key = k,
+      value = v,
+    })
+  end
+  return attributes
+end
+
+
+local function _to_otlp_events(arr)
+  local events = new_tab(#arr, 0)
+  for _, evt in ipairs(arr) do
+    insert(events, {
+      name = evt.name,
+      time_unix_nano = evt.timestamp * 1000000,
+    })
+  end
+  return events
 end
 
 
@@ -26,9 +53,9 @@ local function to_otlp_span(span)
     kind = span.kind,
     start_time_unix_nano = span.start_timestamp_ms * 1000000,
     end_time_unix_nano = span.end_timestamp_ms * 1000000,
-    -- attributes = {},
+    attributes = _to_otlp_attributes(span.attributes),
     -- dropped_attributes_count = {},
-    -- events = {},
+    events = _to_otlp_events(span.events),
     -- dropped_events_count = 1,
     -- links = {},
     -- dropped_links_count = 1,

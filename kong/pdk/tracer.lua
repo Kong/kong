@@ -168,13 +168,39 @@ end
 
 -- Set an attribute to a Span
 function span_mt:set_attribute(key, value)
-  
+  assert(type(key) == "string", "invalid key type")
+  assert(type(value) ~= "table", "invalid value type")
+
+  if self.attributes == nil then
+    self.attributes = new_tab(0, 1)
+  end
+
+  self.attributes[key] = value
+
+  return true
 end
 
 
 -- Adds an event to a Span
-function span_mt:add_event(name)
+function span_mt:add_event(name, timestamp)
+  assert(type(name) == "string", "invalid name type")
   
+  if timestamp ~= nil then
+    assert(type(timestamp) ~= "number" and timestamp >= 0, "invalid timestamp")    
+  else
+    timestamp = timestamp_ms()
+  end
+
+  if self.events == nil then
+    self.events = new_tab(1, 0)
+  end
+
+  insert(self.events, {
+    name = name,
+    timestamp_ms = timestamp,
+  })
+
+  return true
 end
 
 
