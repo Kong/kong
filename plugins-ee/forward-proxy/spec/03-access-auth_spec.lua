@@ -26,15 +26,6 @@ local fixtures = {
   stream_mock = {
     forward_proxy = [[
     server {
-      listen 16797;
-      error_log logs/proxy.log debug;
-
-      content_by_lua_block {
-        require("spec.fixtures.forward-proxy-server").connect()
-      }
-    }
-
-    server {
       listen 16796;
       error_log logs/proxy_auth.log debug;
 
@@ -56,7 +47,8 @@ local fixtures = {
           ssl_certificate        /kong/spec/fixtures/mtls_certs/example.com.crt;
           ssl_certificate_key    /kong/spec/fixtures/mtls_certs/example.com.key;
           ssl_client_certificate /kong/spec/fixtures/mtls_certs/ca.crt;
-          ssl_verify_client      on;
+          # kong <=2.7 doesn't support mtls
+          ssl_verify_client      off;
           ssl_session_tickets    off;
           ssl_session_cache      off;
           keepalive_requests     0;
@@ -96,51 +88,19 @@ for _, strategy in strategies() do
       })
 
       local mtls = bp.services:insert {
-        url                = "https://127.0.0.1:16798/",
+        url = "https://127.0.0.1:16798/",
         client_certificate = bp.certificates:insert {
           cert = ssl_fixtures.cert_client,
-          key  = ssl_fixtures.key_client,
+          key = ssl_fixtures.key_client,
         }
-      }
-
-      local non_mtls = bp.services:insert {
-        url = "https://127.0.0.1:16798/",
-      }
-
-      -- the happy path
-      bp.plugins:insert {
-        name   = "forward-proxy",
-        config = {
-          https_proxy_host = "127.0.0.1",
-          https_proxy_port = 16797,
-        },
-        route = bp.routes:insert {
-          hosts   = { "proxy.test" },
-          paths   = { "/mtls" },
-          service = mtls,
-        },
-      }
-
-      -- service without mtls cert
-      bp.plugins:insert {
-        name   = "forward-proxy",
-        config = {
-          https_proxy_host = "127.0.0.1",
-          https_proxy_port = 16797,
-        },
-        route = bp.routes:insert {
-          hosts   = { "proxy.test" },
-          paths   = { "/no-mtls" },
-          service = non_mtls,
-        },
       }
 
       -- no auth
       bp.plugins:insert {
         name   = "forward-proxy",
         config = {
-          https_proxy_host = "127.0.0.1",
-          https_proxy_port = 16796,
+          proxy_host = "127.0.0.1",
+          proxy_port = 16796,
         },
         route = bp.routes:insert {
           hosts   = { "proxy.test" },
@@ -153,8 +113,8 @@ for _, strategy in strategies() do
       bp.plugins:insert {
         name   = "forward-proxy",
         config = {
-          https_proxy_host = "127.0.0.1",
-          https_proxy_port = 16796,
+          proxy_host = "127.0.0.1",
+          proxy_port = 16796,
           auth_username    = "test",
           auth_password    = "wrong!",
         },
@@ -169,8 +129,8 @@ for _, strategy in strategies() do
       bp.plugins:insert {
         name   = "forward-proxy",
         config = {
-          https_proxy_host = "127.0.0.1",
-          https_proxy_port = 16796,
+          proxy_host = "127.0.0.1",
+          proxy_port = 16796,
           auth_username    = "test",
           auth_password    = "kong",
         },
@@ -199,26 +159,6 @@ for _, strategy in strategies() do
         proxy_client:close()
       end
       helpers.stop_kong(nil, true)
-    end)
-
-    describe("mTLS authentication against upstream with Service object, via forward-proxy", function()
-      it("no client certificate supplied", function()
-        local res = proxy_client:get("/no-mtls", params)
-
-        local body = assert.res_status(400, res)
-        assert.matches("400 No required SSL certificate was sent", body, nil, true)
-
-        helpers.wait_until(log_match("proxy.log", "CONNECT 127.0.0.1:16798"), 5)
-      end)
-
-      it("client certificate supplied via service.client_certificate", function()
-        local res = proxy_client:get("/mtls", params)
-
-        local body = assert.res_status(200, res)
-        assert.equals("it works", body)
-
-        helpers.wait_until(log_match("proxy.log", "CONNECT 127.0.0.1:16798"), 5)
-      end)
     end)
 
     describe("proxy-authorization header", function()

@@ -23,7 +23,6 @@ local ngx_req_get_body    = ngx.req.get_body_data
 local ngx_now             = ngx.now
 local ngx_print           = ngx.print
 local str_lower           = string.lower
-local str_format          = string.format
 local base64_encode       = base64.encode_base64url
 
 
