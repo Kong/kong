@@ -48,7 +48,7 @@ code, other repos are also under active development:
   Instaclustr manage your Cassandra cluster.
 - [Master Builds](https://hub.docker.com/r/kong/kong): Docker images for each commit in the `master` branch.
 
-You can find every supported distribution at the [official installation page](https://konghq.com/install/#kong-community).
+You can find every supported distribution on the [official installation page](https://konghq.com/install/#kong-community).
 
 #### Docker
 
@@ -89,10 +89,11 @@ You can use a Vagrant box running Kong and Postgres that you can find at
 #### Source Install
 
 Kong is mostly an OpenResty application made of Lua source files, but also
-requires some additional third-party dependencies, some of which compiled
-with tweaked options, and runs on a modified version of OpenResty with patches.
+requires some additional third-party dependencies, some of which are compiled
+with tweaked options, and kong runs on a modified version of OpenResty with
+patches.
 
-To install from the source, first we clone the repository:
+To install from the source, first, we clone the repository:
 
 ```shell
 git clone https://github.com/Kong/kong
@@ -102,12 +103,12 @@ cd kong
 git checkout master
 ```
 
-Before continue you should go through [this section](#dependencies-build-from-source) to set up dependencies.
+Before continuing you should go through [this section](#dependencies-build-from-source) to set up dependencies.
 
-Then you can install the lua source:
+Then you can install the Lua source:
 
 ```shell
-# go back to where kong source locates after dependencies set up
+# go back to where the kong source locates after dependencies are set up
 cd ../../kong
 
 sudo luarocks make
@@ -141,7 +142,8 @@ make test
 ```
 
 However, the integration and plugins tests will spawn a Kong instance and
-perform their tests against it. Because these test suites perform their tests against the Kong instance, you may need to edit the `spec/kong_tests.conf`
+perform their tests against it. Because these test suites perform their tests
+against the Kong instance, you may need to edit the `spec/kong_tests.conf`
 configuration file to make your test instance point to your Postgres/Cassandra
 servers, depending on your needs.
 
@@ -164,7 +166,7 @@ Finally, all suites can be run at once by simply using:
 make test-all
 ```
 
-Consult the [run_tests.sh](.ci/run_tests.sh) script for a more advanced example
+Consult the [run_tests.sh](.ci/run_tests.sh) script for more advanced example
 usage of the test suites and the Makefile.
 
 Finally, a very useful tool in Lua development (as with many other dynamic
@@ -193,12 +195,16 @@ These are the steps we follow at Kong to set up a development environment.
 
 ## Dev on Docker
 
-[Gojira](https://github.com/Kong/gojira) is a multi-purpose tool to ease development and testing of Kong by using Docker containers.
-It's built on the top of Docker and Docker Compose, it separate multiple Kong development environments into different Docker Compose stacks.
-It also auto-manage the network configuration between Kong and PostgreSQL (if required) by configure the containers' environment variables.
+[Gojira](https://github.com/Kong/gojira) is a multi-purpose tool to ease the
+development and testing of Kong by using Docker containers.  It's built on
+the top of Docker and Docker Compose, and separates multiple Kong development
+environments into different Docker Compose stacks.  It also auto-manages the
+network configuration between Kong and PostgreSQL (if required) by configuring
+the containers' environment variables.
 
 It's fully compatible with all platforms (even Apple Silicon).
-You can setup your development environment with Gojira in a couple of seconds (depends on your network speed). 
+You can set up your development environment with Gojira in a couple of seconds
+(depending on your network speed). 
 
 See below links to install the dependencies: 
 
@@ -222,7 +228,8 @@ git clone git@github.com:Kong/kong.git
 cd kong
 ```
 
-Within the `kong` folder run following Gojira commands to start a development version of the Kong Gateway using PostgreSQL:
+Within the `kong` folder run the following Gojira commands to start a development
+version of the Kong Gateway using PostgreSQL:
 
 ```bash
 gojira up -pp 8000:8000 -pp 8001:8001
@@ -242,19 +249,22 @@ Tips:
 
 If you have a Linux development environment (either virtual or bare metal), the build is done in four separate steps:
 
-1. Development dependencies and runtime libraries, include:
-   1. Prerequisite packages.  Mostly compilers, tools and libraries needed to compile everything else.
+1. Development dependencies and runtime libraries, including:
+   1. Prerequisite packages.  Mostly compilers, tools, and libraries required to compile everything else.
    2. OpenResty system, including Nginx, LuaJIT, PCRE, etc.
-2. Databases. Kong uses Postgres, Cassandra and Redis.  We have a handy setup with docker-compose to keep each on its container.
+2. Databases. Kong uses Postgres, Cassandra, and Redis.  We have a handy setup with docker-compose to keep each on its container.
 3. Kong itself.
 
 ### Virtual Machine (Optional)
 
-Final deployments are typically on a Linux machine or container, so even if all components are multiplatform, it's easier to use it for development too.  If you use MacOS or Windows machines, setting a virtual machine is easy enough now.  Most of us use the freely available VirtualBox without any trouble.
+Final deployments are typically on a Linux machine or container,so even if all components are multiplatform,
+it's easier to use it for development too.  If you use macOS or Windows machines, setting up a virtual machine
+is easy enough now.  Most of us use the freely available VirtualBox without any trouble.
 
 If you use Linux for your desktop, you can skip this section.
 
-There are no "hard" requirements on any Linux distro, but RHEL and CentOS can be more of a challenge to get recent versions of many packages; Fedora, Debian or Ubuntu are easier for this.
+There are no "hard" requirements on any Linux distro, but RHEL and CentOS can be more of a challenge
+to get recent versions of many packages; Fedora, Debian, or Ubuntu are easier for this.
 
 To avoid long compilation times, give the VM plenty of RAM (8GB recommended) and all the CPU cores you can.
 
@@ -263,13 +273,13 @@ To avoid long compilation times, give the VM plenty of RAM (8GB recommended) and
 You will need to setup port forwarding on VirtualBox to be able to ssh into the box which can be done as follows:
 
 1. Select the virtual machine you want to use and click "Settings"
-1. Click "Network" tab
-1. Click "Advanced" dropdown
+1. Click the "Network" tab
+1. Click the "Advanced" dropdown
 1. Click "Port Forwarding"
 1. Add a new rule in the popup. The only thing you will need is "Host Port" to be 22222 and "Guest Port" to be 22. Everything else can be left default (see screenshot below)
 1. Click "Ok"
 
-Now you should be able to `ssh <your_name>@127.1 -p 22222` to get SSH prompt. However, this requires us to type a long command and password every time we sign in. It is recommended you setup a public key and SSH alias to make this process simpler:
+Now you should be able to `ssh <your_name>@127.1 -p 22222` to get SSH prompt. However, this requires us to type a long command and password every time we sign in. It is recommended you set up a public key and SSH alias to make this process simpler:
 
 1. On your host machine, generate a keypair for SSH into the guest: `ssh-keygen -t ed25519`.
 Just keep hitting Enter until the key is generated. You do not need a password for this key file since it is only used for SSH into your guest
@@ -293,9 +303,9 @@ Now try `ssh dev` on your host, you should be able to get into the guest directl
 
 ### Dependencies (Binary release)
 
-For your convenience and to be more efficiently, we recommended install dependencies including OpenResty, OpenSSL, LuaRocks and PCRE by downloading and installing Kong's latest Linux package release (`.deb` or `.rpm`). 
+For your convenience and to be more efficient, we recommended installing dependencies including OpenResty, OpenSSL, LuaRocks, and PCRE by downloading and installing Kong's latest Linux package release (`.deb` or `.rpm`). 
 
-Follow below steps to install download and install Kong package. And you can find all downloadable Linux packages [here](https://download.konghq.com/).
+Follow the below steps to install download and install the Kong package. And you can find all downloadable Linux packages [here](https://download.konghq.com/).
 
 Ubuntu/Debian:
 
@@ -311,11 +321,11 @@ curl -Lo kong-2.7.0.rpm $(rpm --eval "https://download.konghq.com/gateway-2.x-ce
 sudo yum install kong-2.7.0.rpm
 ```
 
-Now you have meet all the requirements before install Kong.
+Now you have met all the requirements before installing Kong.
 
 ### Dependencies (Build from source)
 
-The-hard-way to build development environment and also a good start for beginners to understand how everything fits together.
+This is the hard way to build a development environment, and also a good start for beginners to understand how everything fits together.
 
 #### Prerequisites
 
@@ -364,9 +374,9 @@ dnf install \
 
 We have a build script from [Kong/kong-ngx-build](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools) that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.
 
-To run the script we need to find out what versions of them current build of kong requires and use that as arguments. <span class="x x-first x-last">Their </span>exact versions can be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file.
+To run the script we need to find out what versions of them the current build of Kong requires, and use that as arguments. <span class="x x-first x-last">Their </span>exact versions can be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file.
 
-You can mannually fill in the versions, or follow the steps below.
+You can manually fill in the versions, or follow the steps below.
 
 ```shell
 # if you are not in the directory 
@@ -407,7 +417,7 @@ eval $(luarocks path)
 
 The `$OPENSSL_DIR` variable is needed when compiling Kong, to make sure it uses the correct version of OpenSSL.
 
-You can add these lines to your `.profile` or `.bashrc` file.  Otherwise you could find yourself wondering where is everything!.
+You can add these lines to your `.profile` or `.bashrc` file.  Otherwise, you could find yourself wondering where is everything!.
 
 ```shell
 # If you want to set it permanently
