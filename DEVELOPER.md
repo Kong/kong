@@ -92,59 +92,24 @@ Kong is mostly an OpenResty application made of Lua source files, but also
 requires some additional third-party dependencies, some of which compiled
 with tweaked options, and runs on a modified version of OpenResty with patches.
 
-You can build OpenResty, OpenSSL, PCRE and Luarocks with [Kong/kong-ngx-build](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools), which we will utilize for the following process.
-
-Below is a template for how can install from the source.
+To install from the source, first we clone the repository:
 
 ```shell
-# Clone this repository and Kong/kong-ngx-build.
-git clone https://github.com/Kong/kong-build-tools.git
 git clone https://github.com/Kong/kong
 
 cd kong
 # You might want to switch to the development branch. See CONTRIBUTING.md
 git checkout master
+```
 
-# To build dependencies we need to inspect sources versions that is requireed from
-# `.requirements`, and use that as arguments to call a build sciprt. 
-# You can mannually do this, or follow the steps below.
+Before continue you should go through [this section](#dependencies-build-from-source) to set up dependencies.
 
-# Somewhere you're able or prefer to build
-BUILDROOT=$(realpath ~/kong-dep)
-mkdir ${BUILDROOT}
+Then you can install the lua source:
 
-RESTY_VERSION=$(grep -oP 'RESTY_VERSION=\K.*' .requirements)
-RESTY_OPENSSL_VERSION=$(grep -oP 'RESTY_OPENSSL_VERSION=\K.*' .requirements)
-RESTY_LUAROCKS_VERSION=$(grep -oP 'RESTY_LUAROCKS_VERSION=\K.*' .requirements)
-RESTY_PCRE_VERSION=$(grep -oP 'RESTY_PCRE_VERSION=\K.*' .requirements)
+```shell
+# go back to where kong source locates after dependencies set up
+cd ../../kong
 
-cd ../kong-build-tools/openresty-build-tools
-
-# Before we run the script, make sure curl and unzip is installed.
-# Also, to build we need gcc/g++ and m4 installed.
-# Here is an example for ubuntu:
-sudo apt install curl unzip g++ m4
-
-# You might want to add also --debug
-./kong-ngx-build -p ${BUILDROOT} --openresty ${RESTY_VERSION} --openssl ${RESTY_OPENSSL_VERSION} --luarocks ${RESTY_LUAROCKS_VERSION} --pcre ${RESTY_PCRE_VERSION}
-
-# Than you should add those paths for later use
-OPENSSL_DIR=${BUILDROOT}/openssl
-CRYPTO_DIR=${BUILDROOT}/openssl
-PATH=${BUILDROOT}/luarocks/bin:${BUILDROOT}/openresty/bin:${PATH}
-eval $(luarocks path)
-
-# And maybe you want to set it permanently
-echo PATH=${BUILDROOT}/luarocks/bin:${BUILDROOT}/openresty/bin:\${PATH} >> ~/.profile
-echo eval \$\(luarocks path\) >> ~/.profile
-
-cd ../..
-
-# Before we build and install rocks, make sure libyaml and libz install.
-# Here is an example for ubuntu.
-sudo apt install libyaml-dev zlib1g-dev
-
-# Install the Lua sources
 sudo luarocks make
 ```
 
@@ -397,37 +362,59 @@ dnf install \
 
 #### OpenResty
 
-We have a build script that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.  <span class="x x-first x-last">Their </span>exact versions can be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file.
+We have a build script from [Kong/kong-ngx-build](https://github.com/Kong/kong-build-tools/tree/master/openresty-build-tools) that makes it easy to pull and compile specific versions of the needed components of the OpenResty system.
+
+To run the script we need to find out what versions of them current build of kong requires and use that as arguments. <span class="x x-first x-last">Their </span>exact versions can be found on the [`.requirements`](https://github.com/Kong/kong/blob/master/.requirements) file.
+
+You can mannually fill in the versions, or follow the steps below.
+
+```shell
+# if you are not in the directory 
+# cd kong
+
+export RESTY_VERSION=$(grep -oP 'RESTY_VERSION=\K.*' .requirements)
+export RESTY_OPENSSL_VERSION=$(grep -oP 'RESTY_OPENSSL_VERSION=\K.*' .requirements)
+export RESTY_LUAROCKS_VERSION=$(grep -oP 'RESTY_LUAROCKS_VERSION=\K.*' .requirements)
+export RESTY_PCRE_VERSION=$(grep -oP 'RESTY_PCRE_VERSION=\K.*' .requirements)
+```
 
 These commands don't have to be performed as root, since all compilation is done within a subdirectory, and installs everything in the target specified by the `-p` argument (here the `build` directory).
 
-```
+```shell
+# Somewhere you're able or prefer to build
+export BUILDROOT=$(realpath ~/kong-dep)
+mkdir ${BUILDROOT} -p
+
+# clone the repository
+cd ..
 git clone https://github.com/kong/kong-build-tools
 
 cd kong-build-tools/openresty-build-tools
 
-./kong-ngx-build -p build \
-    --openresty 1.19.9.1 \
-    --openssl 1.1.1m \
-    --luarocks 3.8.0 \
-    --pcre 8.45
+# You might want to add also --debug
+./kong-ngx-build -p ${BUILDROOT} --openresty ${RESTY_VERSION} --openssl ${RESTY_OPENSSL_VERSION} --luarocks ${RESTY_LUAROCKS_VERSION} --pcre ${RESTY_PCRE_VERSION}
 ```
 
 After this task, we'd like to have the next steps use the built packages and for LuaRocks to install new packages inside this `build` directory.  For that, it's important to set the `$PATH` variable accordingly:
 
-```
-cd $HOME/path/to/kong-build-tools/openresty-build-tools/build
-export PATH=$PATH:$(pwd)/openresty/bin:$(pwd)/openresty/nginx/sbin:$(pwd)/luarocks/bin
-export OPENSSL_DIR=$(pwd)/openssl
-
-eval `luarocks path`
+```shell
+# Add those paths for later use
+export OPENSSL_DIR=${BUILDROOT}/openssl
+export CRYPTO_DIR=${BUILDROOT}/openssl
+export PATH=${BUILDROOT}/luarocks/bin:${BUILDROOT}/openresty/bin:${PATH}
+eval $(luarocks path)
 ```
 
 The `$OPENSSL_DIR` variable is needed when compiling Kong, to make sure it uses the correct version of OpenSSL.
 
 You can add these lines to your `.profile` or `.bashrc` file.  Otherwise you could find yourself wondering where is everything!.
 
-
+```shell
+# If you want to set it permanently
+echo export OPENSSL_DIR=${BUILDROOT}/openssl >> ~/.profile
+echo export PATH=${BUILDROOT}/luarocks/bin:${BUILDROOT}/openresty/bin:\${PATH} >> ~/.profile
+echo eval \$\(luarocks path\) >> ~/.profile
+```
 ### Databases
 
 The easiest way to handle these as a single group is via docker-compose.  It's also recommended to set your user as a [docker manager](https://docs.docker.com/install/linux/linux-postinstall/#manage-docker-as-a-non-root-user) to simplify the next steps.
