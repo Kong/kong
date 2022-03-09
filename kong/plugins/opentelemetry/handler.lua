@@ -2,6 +2,8 @@ local subsystem = ngx.config.subsystem
 local pb = require "pb"
 local protoc = require "protoc"
 local readfile = require "pl.utils".readfile
+local new_tab = require "table.new"
+local insert = table.insert
 
 local OpenTelemetryHandler = {
   VERSION = "0.0.1",
@@ -10,11 +12,14 @@ local OpenTelemetryHandler = {
   PRIORITY = 100000,
 }
 
+-- cache exporter instances
+local exporter_cache = setmetatable({}, { __mode = "k" })
+
 function OpenTelemetryHandler:init_worker()
   local p = protoc.new()
   -- TODO: rel path
-  local trace_proto = assert(readfile("/kong/kong/pdk/tracer/trace.proto"))
-  assert(p:load(trace_proto))
+  local otlp_proto = assert(readfile("/kong/kong/plugins/opentelemetry/otlp.proto"))
+  assert(p:load(otlp_proto))
 end
 
 -- different instruments based on Nginx subsystem

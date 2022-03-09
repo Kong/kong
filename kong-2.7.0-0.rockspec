@@ -471,6 +471,7 @@ build = {
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
 
+    ["kong.plugins.opentelemetry.otlp"]  = "kong/plugins/opentelemetry/otlp.lua",
     ["kong.plugins.opentelemetry.handler"] = "kong/plugins/opentelemetry/handler.lua",
     ["kong.plugins.opentelemetry.schema"]  = "kong/plugins/opentelemetry/schema.lua",
 

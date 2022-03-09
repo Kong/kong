@@ -5,26 +5,33 @@ local to_hex = require "resty.string".to_hex
 local atoi = require "resty.string".atoi
 local random_bytes = require "resty.random".bytes
 local new_tab = require "table.new"
+local insert = table.insert
+
+local NOOP = "noop"
 
 -- The Unix timestamp in minimal precision
 local function timestamp_ms()
   return ngx.now() * 1000
 end
 
+
 -- 16 bytes array identifier. All zeroes forbidden
 local function generate_trace_id()
   return random_bytes(16)
 end
+
 
 -- 8 bytes array identifier. All zeroes forbidden
 local function generate_span_id()
   return random_bytes(8)
 end
 
+
 -- adds `count` number of zeros to the left of the str
 local function left_pad_zero(str, count)
   return ('0'):rep(count-#str) .. str
 end
+
 
 local FLAG_SAMPLED = 0x0000001
 
@@ -37,10 +44,26 @@ local SPAN_KIND_CLIENT = 3
 local SPAN_KIND_PRODUCER = 4
 local SPAN_KIND_CONSUMER = 5
 
+
+local span_kind_tab
+do
+  local tab = new_tab(0, 5)
+  insert(tab, SPAN_KIND_UNSPECIFIED)
+  insert(tab, SPAN_KIND_INTERNAL)
+  insert(tab, SPAN_KIND_SERVER)
+  insert(tab, SPAN_KIND_CLIENT)
+  insert(tab, SPAN_KIND_PRODUCER)
+  insert(tab, SPAN_KIND_CONSUMER)
+  
+  span_kind_tab = tab
+end
+
+
 -- Build-in simple sampler
 local function ratio_based_should_sample(sample_ratio)
   return math_random() < sample_ratio
 end
+
 
 local function get_tracing_ctx(ctx)
   if not ctx then
@@ -48,12 +71,13 @@ local function get_tracing_ctx(ctx)
   end
 
   if not ctx.tracing then
-    ctx.tracing = new_tab(2, 0)
-    ctx.tracing.spans = new_tab(0, 5)
+    ctx.tracing = new_tab(2, 0) -- narr
+    ctx.tracing.spans = new_tab(0, 5) -- nrec
   end
 
   return ctx.tracing
 end
+
 
 -- Extract span from ctx
 local function extract_span_from_ctx(ctx)
@@ -68,8 +92,10 @@ local function extract_span_from_ctx(ctx)
   return nil
 end
 
+
 local span_mt = {}
 span_mt.__index = span_mt
+
 
 -- create a new span
 -- * kind, start_timestamp are optional
@@ -82,15 +108,16 @@ local function new_span(tracer, ctx, name, kind, start_timestamp_ms)
 
   assert(type(name) == "string" and name ~= "", "invalid span name")
   
-  -- TODO: more span kind types
   if kind ~= nil then
-    assert(kind == "SERVER" or kind == "CLIENT", "invalid span kind")    
+    assert(span_kind_tab[kind] ~= nil, "invalid span kind")
   end
 
   -- check start timestamp if sepecfiec
   if start_timestamp_ms ~= nil then
     assert(type(start_timestamp_ms) == "number" and start_timestamp_ms >= 0,
     "invalid span start_timestamp")
+  else
+    start_timestamp_ms = timestamp_ms()
   end
 
   local parent_span = extract_span_from_ctx(ctx)
@@ -121,6 +148,7 @@ local function new_span(tracer, ctx, name, kind, start_timestamp_ms)
   return span
 end
 
+
 -- Ends a Span
 function span_mt:finish(end_timestamp_ms)
   assert(self.end_timestamp_ms == nil, "span already ended")
@@ -137,18 +165,22 @@ function span_mt:finish(end_timestamp_ms)
   return true
 end
 
+
 -- Set an attribute to a Span
 function span_mt:set_attribute(key, value)
   
 end
+
 
 -- Adds an event to a Span
 function span_mt:add_event(name)
   
 end
 
+
 local tracer_mt = {}
 tracer_mt.__index = tracer_mt
+
 
 -- Creates a new child Span or root Span
 function tracer_mt:start_span(...)
@@ -159,7 +191,7 @@ end
 -- TODO namespace scope
 local function new_tracer(name, config)
   return setmetatable({ 
-    noop = name == "noop",
+    noop = name == NOOP,
     config = config,
   }, tracer_mt)
 end
