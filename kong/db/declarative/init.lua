@@ -887,6 +887,8 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
   local ok, err = core_cache:safe_set("tags||@list", tags, shadow)
   if not ok then
     return nil, err
+  end
+
   -- set the value of the configuration hash. The value can be nil, which
   -- indicates that no configuration has been applied yet to the Gateway.
   local ok, err = ngx.shared.kong:safe_set(DECLARATIVE_HASH_KEY, hash)
