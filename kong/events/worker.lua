@@ -39,36 +39,24 @@ local function is_timeout(err)
   return err and str_sub(err, -7) == "timeout"
 end
 
+local function create_sema_queue()
+  local queue_semaphore = semaphore.new()
+
+  return {
+    wait = function(...)
+      return queue_semaphore:wait(...)
+    end,
+    post = function(...)
+      return queue_semaphore:post(...)
+    end
+  }
+end
+
+local _queue = create_sema_queue()
+local _queue_local = create_sema_queue()
+
 local _configured
 local _opts
-
-local _queue
-do
-  local queue_semaphore = semaphore.new()
-
-  _queue = {
-    wait = function(...)
-      return queue_semaphore:wait(...)
-    end,
-    post = function(...)
-      return queue_semaphore:post(...)
-    end
-  }
-end
-
-local _queue_local
-do
-  local queue_semaphore = semaphore.new()
-
-  _queue_local = {
-    wait = function(...)
-      return queue_semaphore:wait(...)
-    end,
-    post = function(...)
-      return queue_semaphore:post(...)
-    end
-  }
-end
 
 local communicate
 
