@@ -21,9 +21,8 @@ core/db:
 - any: ['kong/db/**/*', '!kong/db/migrations/**/*']
 
 core/docs:
-- kong/autodoc/**/*
-- ./**/*.md
-- ./*.md
+- '**/*.md'
+- 'kong/autodoc/**/*'
 
 core/language/go:
 - kong/runloop/plugin_servers/*
