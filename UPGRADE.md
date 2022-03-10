@@ -35,7 +35,7 @@ starts new workers, which take over from old workers before those old workers
 are terminated. In this way, Kong will serve new requests via the new
 configuration, without dropping existing in-flight connections.
 
-## Upgrade to `2.8.x`
+## Upgrade to 2.8.x
 
 Kong adheres to [semantic versioning](https://semver.org/), which makes a
 distinction between "major", "minor", and "patch" versions. The upgrade path
@@ -121,7 +121,7 @@ which you can use to migrate legacy `apis` configurations.
 Once you migrated to 1.5.x, you can follow the instructions in the section
 below to migrate to 2.8.x.
 
-### Upgrade from `1.0.x` - `2.2.x` to `2.8.x`
+### Upgrade from 1.0.x - 2.2.x to 2.8.x
 
 **Postgres**
 
@@ -224,7 +224,7 @@ starts new workers, which take over from old workers before those old workers
 are terminated. In this way, Kong will serve new requests via the new
 configuration, without dropping existing in-flight connections.
 
-## Upgrade to `2.7.x`
+## Upgrade to 2.7.x
 
 Kong adheres to [semantic versioning](https://semver.org/), which makes a
 distinction between "major", "minor", and "patch" versions. The upgrade path
@@ -310,7 +310,7 @@ which you can use to migrate legacy `apis` configurations.
 Once you migrated to 1.5.x, you can follow the instructions in the section
 below to migrate to 2.7.x.
 
-### Upgrade from `1.0.x` - `2.2.x` to `2.7.x`
+### Upgrade from 1.0.x - 2.2.x to 2.7.x
 
 **Postgres**
 
@@ -413,7 +413,7 @@ starts new workers, which take over from old workers before those old workers
 are terminated. In this way, Kong will serve new requests via the new
 configuration, without dropping existing in-flight connections.
 
-## Upgrade to `2.6.x`
+## Upgrade to 2.6.x
 
 Kong adheres to [semantic versioning](https://semver.org/), which makes a
 distinction between "major", "minor", and "patch" versions. The upgrade path
@@ -499,7 +499,7 @@ which you can use to migrate legacy `apis` configurations.
 Once you migrated to 1.5.x, you can follow the instructions in the section
 below to migrate to 2.6.x.
 
-### Upgrade from `1.0.x` - `2.2.x` to `2.6.x`
+### Upgrade from 1.0.x - 2.2.x to 2.6.x
 
 **Postgres**
 
