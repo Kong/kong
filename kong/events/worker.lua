@@ -56,6 +56,20 @@ do
   }
 end
 
+local _queue_local
+do
+  local queue_semaphore = semaphore.new()
+
+  _queue_local = {
+    wait = function(...)
+      return queue_semaphore:wait(...)
+    end,
+    post = function(...)
+      return queue_semaphore:post(...)
+    end
+  }
+end
+
 local communicate
 
 communicate = function(premature)
@@ -102,7 +116,7 @@ communicate = function(premature)
       end
 
       -- got an event data, callback
-      callback.run(data)
+      callback.do_event_json(data)
 
       ::continue::
     end -- while not exiting
@@ -145,10 +159,40 @@ communicate = function(premature)
     end -- while not exiting
   end)  -- write_thread
 
-  local ok, err, perr = wait(write_thread, read_thread)
+  local local_thread = spawn(function()
+    while not exiting() do
+      local ok, err = _queue_local.wait(5)
+
+      if exiting() then
+        return
+      end
+
+      if not ok then
+        if not is_timeout(err) then
+          return nil, "semaphore wait error: " .. err
+        end
+
+        -- timeout
+        goto continue
+      end
+
+      local data = table_remove(_queue_local, 1)
+      if not data then
+        return nil, "queue can not be empty after semaphore returns"
+      end
+
+      -- got an event data, callback
+      callback.do_event(data)
+
+      ::continue::
+    end -- while not exiting
+  end)  -- local_thread
+
+  local ok, err, perr = wait(write_thread, read_thread, local_thread)
 
   kill(write_thread)
   kill(read_thread)
+  kill(local_thread)
 
   _configured = nil
 
@@ -181,18 +225,6 @@ end
 
 -- posts a new event
 local function post_event(source, event, data, typ)
-  if not _configured then
-    return nil, "not initialized yet"
-  end
-
-  if type(source) ~= "string" or source == "" then
-    return nil, "source is required"
-  end
-
-  if type(event) ~= "string" or event == "" then
-    return nil, "event is required"
-  end
-
   local json, err
 
   -- encode event info
@@ -225,7 +257,19 @@ local function post_event(source, event, data, typ)
 end
 
 function _M.post(source, event, data, unique)
-  local ok, err = post_event(source, event, data, {["unique"] = unique})
+  if not _configured then
+    return nil, "not initialized yet"
+  end
+
+  if type(source) ~= "string" or source == "" then
+    return nil, "source is required"
+  end
+
+  if type(event) ~= "string" or event == "" then
+    return nil, "event is required"
+  end
+
+  local ok, err = post_event(source, event, data, {unique = unique})
   if not ok then
     log(ERR, "post event: ", err)
     return nil, err
@@ -235,11 +279,25 @@ function _M.post(source, event, data, unique)
 end
 
 function _M.post_local(source, event, data)
-  local ok, err = post_event(source, event, data, {["local"] = true})
-  if not ok then
-    log(ERR, "post event: ", err)
-    return nil, err
+  if not _configured then
+    return nil, "not initialized yet"
   end
+
+  if type(source) ~= "string" or source == "" then
+    return nil, "source is required"
+  end
+
+  if type(event) ~= "string" or event == "" then
+    return nil, "event is required"
+  end
+
+  table_insert(_queue_local, {
+    source = source,
+    event = event,
+    data = data,
+  })
+
+  _queue_local:post()
 
   return true
 end
