@@ -136,7 +136,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local route21 = bp.routes:insert {
-        hosts       = { "lambda21.test" },
+        hosts       = { "lambda21.com" },
         protocols   = { "http", "https" },
         service     = null,
       }
@@ -422,6 +422,7 @@ for _, strategy in helpers.each_strategy() do
           port                 = 10001,
           aws_key              = "mock-key",
           aws_secret           = "mock-secret",
+          aws_region           = "us-east-1",
           function_name        = "functionEcho",
           proxy_url            = "http://127.0.0.1:13128",
           keepalive            = 1,
@@ -1080,7 +1081,7 @@ for _, strategy in helpers.each_strategy() do
           method  = "GET",
           path    = "/get?a=1&b=2",
           headers = {
-            ["Host"] = "lambda21.test"
+            ["Host"] = "lambda21.com"
           }
         }))
 
