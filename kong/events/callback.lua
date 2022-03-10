@@ -125,7 +125,7 @@ local function do_event(source, event, data, pid)
 end
 
 -- Handle incoming json based event
-local function do_event_json(json)
+function _M.do_event_json(json)
   local d, err
   d, err = cjson.decode(json)
   if not d then
@@ -134,7 +134,10 @@ local function do_event_json(json)
 
   return do_event(d.source, d.event, d.data, d.pid)
 end
-_M.run = do_event_json
+
+function _M.do_event(d)
+  return do_event(d.source, d.event, d.data, nil)
+end
 
 -- @param mode either "weak" or "strong"
 local register = function(callback, mode, source, ...)

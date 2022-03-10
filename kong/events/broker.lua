@@ -134,16 +134,8 @@ function _M.run()
 
       local typ = d.typ
 
-      -- local event, send back
-      if typ["local"] == true then
-        table_insert(queue, d.data)
-        queue.post()
-
-        goto continue
-      end
-
       -- unique event
-      local unique = typ["unique"]
+      local unique = typ.unique
       if unique then
         if _uniques:get(unique) then
           --log(DEBUG, "unique event is duplicate: ", unique)
