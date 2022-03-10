@@ -1,4 +1,3 @@
-local bit = require "bit"
 local frame = require "kong.events.frame"
 
 local _recv_frame = frame.recv
@@ -127,7 +126,7 @@ function _Client.connect(self, unix)
         return nil, "failed to receive response header: " .. err
     end
 
-    local m, err = re_match(header, [[^\s*HTTP/1\.1\s+]], "jo")
+    local m, _ = re_match(header, [[^\s*HTTP/1\.1\s+]], "jo")
     if not m then
         return nil, "bad HTTP response status line: " .. header
     end

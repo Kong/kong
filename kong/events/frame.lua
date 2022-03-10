@@ -1,5 +1,4 @@
 local bit = require "bit"
-local ffi = require "ffi"
 
 
 local byte = string.byte
