@@ -204,7 +204,7 @@ function _M.run()
   end
 
   if perr then
-    log(ERR, "event broker failed: ", err)
+    log(ERR, "event broker failed: ", perr)
     return exit(ngx.ERROR)
   end
 
