@@ -9,6 +9,7 @@ local table_insert = table.insert
 local table_remove = table.remove
 
 local ngx = ngx
+local sleep = ngx.sleep
 local log = ngx.log
 local exiting = ngx.worker.exiting
 local ERR = ngx.ERR
@@ -28,6 +29,7 @@ local _worker_pid = worker_pid()
 
 local EMPTY_T = {}
 local CONNECTION_DELAY = 0.1
+local POST_RETRY_DELAY = 0.1
 
 local _M = {
     _VERSION = '0.0.1',
@@ -130,7 +132,13 @@ communicate = function(premature)
 
       local _, err = conn:send_frame(payload)
       if err then
-          log(ERR, "failed to send: ", err)
+        log(ERR, "failed to send: ", err)
+
+        -- try to post it again
+        sleep(POST_RETRY_DELAY)
+
+        table_insert(_queue, payload)
+        _queue:post()
       end
 
       ::continue::
@@ -234,6 +242,10 @@ function _M.post_local(source, event, data)
   end
 
   return true
+end
+
+-- compatible for lua-resty-worker-events
+function _M.poll()
 end
 
 _M.register = callback.register
