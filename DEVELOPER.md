@@ -18,10 +18,6 @@ For a quick start with custom plugin development, check out [Pongo](https://gith
 and the [plugin template](https://github.com/Kong/kong-plugin) explained in detail below.
 
 
-
-
-
-
 ## Distributions
 
 Kong comes in many shapes. While this repository contains its core's source
