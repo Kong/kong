@@ -423,7 +423,7 @@ You can add these lines to your `.profile` or `.bashrc` file.  Otherwise, you co
 # If you want to set it permanently
 echo export OPENSSL_DIR=${BUILDROOT}/openssl >> ~/.profile
 echo export PATH=${BUILDROOT}/luarocks/bin:${BUILDROOT}/openresty/bin:\${PATH} >> ~/.profile
-echo eval \$\(luarocks path\) >> ~/.profile
+echo eval "\$(luarocks path)" >> ~/.profile
 ```
 ### Databases
 
