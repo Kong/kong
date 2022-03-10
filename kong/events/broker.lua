@@ -30,6 +30,9 @@ local _worker_id = ngx.worker.id()
 --local _worker_pid = worker_pid()
 --local _worker_count = worker_count()
 
+local DEFAULT_SERVER_ID = 0
+local DEFAULT_UNIX_SOCK = "unix:" .. ngx.config.prefix() ..
+                          "worker_events.sock"
 local DEFAULT_UNIQUE_TIMEOUT = 5
 local MAX_UNIQUE_EVENTS = 1024
 
@@ -55,13 +58,21 @@ end
 function _M.configure(opts)
   assert(type(opts) == "table", "Expected a table, got "..type(opts))
 
-  -- only enable listening on special worker id
-  if _worker_id ~= opts.server_id then
-      kong_sock.close_listening(opts.listening)
-      return
+  _opts = opts
+
+  if not _opts.server_id then
+    _opts.server_id = DEFAULT_SERVER_ID
   end
 
-  _opts = opts
+  if not _opts.listening then
+    _opts.listening = DEFAULT_UNIX_SOCK
+  end
+
+  -- only enable listening on special worker id
+  if _worker_id ~= _opts.server_id then
+      kong_sock.close_listening(_opts.listening)
+      return
+  end
 
   return true
 end
