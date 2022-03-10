@@ -292,6 +292,7 @@ end
 
 -- compatible for lua-resty-worker-events
 function _M.poll()
+  return "done"
 end
 
 _M.register = callback.register
