@@ -8,12 +8,33 @@ local new_tab = require "table.new"
 local insert = table.insert
 local pack = table.pack
 local unpack = table.unpack
+local ffi = require "ffi"
+local C = ffi.C
 
-local NOOP = "noop"
 
--- The Unix timestamp in minimal precision
-local function timestamp_ms()
-  return ngx.now() * 1000
+ffi.cdef[[
+    typedef long time_t;
+    typedef int clockid_t;
+
+    typedef struct timespec {
+            time_t   tv_sec;        /* seconds */
+            long     tv_nsec;       /* nanoseconds */
+    } nanotime;
+    int clock_gettime(clockid_t clk_id, struct timespec *tp);
+]]
+
+
+local function ffi_clock_gettime()
+  local pnano = assert(ffi.new("nanotime[?]", 1))
+  -- CLOCK_REALTIME -> 0
+  C.clock_gettime(0, pnano)
+  return pnano[0]
+end
+
+
+local function ffi_time_unix_nano()
+  local t = ffi_clock_gettime()
+  return tonumber(t.tv_sec) * 100000000 + tonumber(t.tv_nsec)
 end
 
 
@@ -35,7 +56,9 @@ local function left_pad_zero(str, count)
 end
 
 
+local NOOP = "noop"
 local FLAG_SAMPLED = 0x0000001
+
 
 -- SpanKind is the type of span. Can be used to specify additional relationships between spans
 -- in addition to a parent/child relationship.
@@ -100,8 +123,8 @@ span_mt.__index = span_mt
 
 
 -- create a new span
--- * kind, start_timestamp are optional
-local function new_span(tracer, ctx, name, kind, start_timestamp_ms)
+-- * kind, start_time_unix_nano are optional
+local function new_span(tracer, ctx, name, kind, start_time_unix_nano)
   assert(tracer ~= nil, "invalid tracer")
 
   if ctx ~= nil then
@@ -114,12 +137,12 @@ local function new_span(tracer, ctx, name, kind, start_timestamp_ms)
     assert(span_kind_tab[kind] ~= nil, "invalid span kind")
   end
 
-  -- check start timestamp if sepecfiec
-  if start_timestamp_ms ~= nil then
-    assert(type(start_timestamp_ms) == "number" and start_timestamp_ms >= 0,
+  -- check start_time_unix_nano if sepecfiec
+  if start_time_unix_nano ~= nil then
+    assert(type(start_time_unix_nano) == "number" and start_time_unix_nano >= 0,
     "invalid span start_timestamp")
   else
-    start_timestamp_ms = timestamp_ms()
+    start_time_unix_nano = ffi_time_unix_nano()
   end
 
   local parent_span = extract_span_from_ctx(ctx)
@@ -132,7 +155,7 @@ local function new_span(tracer, ctx, name, kind, start_timestamp_ms)
     parent_span_id = parent_span and parent_span.span_id or nil,
     name = name,
     kind = kind,
-    start_timestamp_ms = start_timestamp_ms,
+    start_time_unix_nano = start_time_unix_nano,
     is_recording = true, -- recording span if not sampeld
   }, span_mt)
 
@@ -152,16 +175,16 @@ end
 
 
 -- Ends a Span
-function span_mt:finish(end_timestamp_ms)
-  assert(self.end_timestamp_ms == nil, "span already ended")
-  if end_timestamp_ms ~= nil then
-    assert(type(end_timestamp_ms) == "number" and end_timestamp_ms >= 0,
+function span_mt:finish(end_time_unix_nano)
+  assert(self.end_time_unix_nano == nil, "span already ended")
+  if end_time_unix_nano ~= nil then
+    assert(type(end_time_unix_nano) == "number" and end_time_unix_nano >= 0,
     "invalid span finish timestamp")
-    assert(end_timestamp_ms - self.start_timestamp_ms >= 0, "invalid span duration")
+    assert(end_time_unix_nano - self.end_time_unix_nano >= 0, "invalid span duration")
   else
-    end_timestamp_ms = timestamp_ms()
+    end_time_unix_nano = ffi_time_unix_nano()
   end
-  self.end_timestamp_ms = end_timestamp_ms
+  self.end_time_unix_nano = end_time_unix_nano
   self.is_recording = false
   
   return true
@@ -184,13 +207,13 @@ end
 
 
 -- Adds an event to a Span
-function span_mt:add_event(name, timestamp)
+function span_mt:add_event(name, time_unix_nano)
   assert(type(name) == "string", "invalid name type")
   
-  if timestamp ~= nil then
-    assert(type(timestamp) ~= "number" and timestamp >= 0, "invalid timestamp")    
+  if time_unix_nano ~= nil then
+    assert(type(time_unix_nano) ~= "number" and time_unix_nano >= 0, "invalid timestamp")    
   else
-    timestamp = timestamp_ms()
+    time_unix_nano = ffi_time_unix_nano()
   end
 
   if self.events == nil then
@@ -199,7 +222,7 @@ function span_mt:add_event(name, timestamp)
 
   insert(self.events, {
     name = name,
-    timestamp_ms = timestamp,
+    time_unix_nano = time_unix_nano,
   })
 
   return true
@@ -214,6 +237,7 @@ tracer_mt.__index = tracer_mt
 function tracer_mt:start_span(...)
   return new_span(self, ...)
 end
+
 
 -- Create new Tracer instance
 -- TODO namespace scope
@@ -245,6 +269,7 @@ local function connector_query_wrap(connector)
 
   connector.query = query
 end
+
 
 return {
   new = function()

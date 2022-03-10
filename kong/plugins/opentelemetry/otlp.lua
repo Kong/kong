@@ -10,9 +10,7 @@ local function load_pb()
   local p = protoc.new()
   -- TODO: rel path
   local otlp_proto = assert(readfile("/kong/kong/plugins/opentelemetry/otlp.proto"))
-  assert(p:load(otlp_proto))
-
-  return true
+  return assert(p:load(otlp_proto))
 end
 
 
@@ -33,7 +31,7 @@ local function _to_otlp_events(arr)
   for _, evt in ipairs(arr) do
     insert(events, {
       name = evt.name,
-      time_unix_nano = evt.timestamp * 1000000,
+      time_unix_nano = evt.time_unix_nano,
     })
   end
   return events
@@ -51,8 +49,8 @@ local function to_otlp_span(span)
     parent_span_id = span.parent_span_id,
     name = span.name,
     kind = span.kind,
-    start_time_unix_nano = span.start_timestamp_ms * 1000000,
-    end_time_unix_nano = span.end_timestamp_ms * 1000000,
+    start_time_unix_nano = span.start_time_unix_nano,
+    end_time_unix_nano = span.end_time_unix_nano,
     attributes = _to_otlp_attributes(span.attributes),
     -- dropped_attributes_count = {},
     events = _to_otlp_events(span.events),
