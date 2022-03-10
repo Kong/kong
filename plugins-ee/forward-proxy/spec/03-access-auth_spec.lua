@@ -62,7 +62,9 @@ local fixtures = {
           keepalive_requests     0;
 
           location = / {
-              echo 'it works';
+              content_by_lua_block {
+                  ngx.say('host=' .. ngx.var.http_host)
+              }
           }
       }
     ]], prefix, prefix, prefix)
@@ -215,7 +217,7 @@ for _, strategy in strategies() do
         local res = proxy_client:get("/mtls", params)
 
         local body = assert.res_status(200, res)
-        assert.equals("it works", body)
+        assert.equals("host=proxy.test", body)
 
         helpers.wait_until(log_match("proxy.log", "CONNECT 127.0.0.1:16798"), 5)
       end)
