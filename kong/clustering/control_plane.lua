@@ -45,6 +45,7 @@ local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
 local ngx_ERR = ngx.ERR
 local ngx_OK = ngx.OK
+local ngx_ERROR = ngx.ERROR
 local ngx_CLOSE = ngx.HTTP_CLOSE
 local MAX_PAYLOAD = kong.configuration.cluster_max_payload
 local WS_OPTS = {
@@ -799,12 +800,12 @@ function _M:handle_cp_websocket()
 
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
-    return ngx_exit(ngx_ERR)
+    return ngx_exit(ngx_ERROR)
   end
 
   if perr then
     ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
-    return ngx_exit(ngx_ERR)
+    return ngx_exit(ngx_ERROR)
   end
 
   return ngx_exit(ngx_OK)
