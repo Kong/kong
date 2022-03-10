@@ -1,5 +1,6 @@
 local utils = require "kong.tools.utils"
 local declarative = require "kong.db.declarative"
+local http = require "resty.http"
 
 local find = string.find
 local select = select
@@ -41,10 +42,23 @@ return {
       end
 
       -- nginx stats
-
-      local r = ngx.location.capture "/nginx_status"
-      if r.status ~= 200 then
-        kong.log.err(r.body)
+      local admin_listeners = kong.configuration.admin_listeners
+      if #admin_listeners == 0 then
+         kong.log.err("no admin_listener found, /status needs at least a configured admin_listener")
+         return kong.response.exit(500, { message = "An unexpected error happened" })
+      end
+      local scheme = admin_listeners[1].ssl and "https" or "http"
+      local ip = admin_listeners[1].ip
+      local port = admin_listeners[1].port
+      local uri = scheme .. "://" .. ip .. ":" .. port .. "/nginx_status"
+      local httpc = http.new()
+      local r, e = httpc:request_uri(uri, {
+            method = "GET",
+            ssl_verify = false
+      })
+      httpc:close()
+      if not r then
+        kong.log.err(e)
         return kong.response.exit(500, { message = "An unexpected error happened" })
       end
 
