@@ -239,6 +239,22 @@ function tracer_mt:start_span(...)
 end
 
 
+local _empty_tab = {}
+
+
+-- get spans from context
+function tracer_mt:spans_from_ctx(ctx)
+  return get_tracing_ctx(ctx).spans or _empty_tab
+end
+
+
+-- get current running span (usually parent span)
+function tracer_mt:get_current_span(ctx)
+  local tracing_ctx = get_tracing_ctx(ctx)
+  return tracing_ctx.current_span
+end
+
+
 -- Create new Tracer instance
 -- TODO namespace scope
 local function new_tracer(name, config)

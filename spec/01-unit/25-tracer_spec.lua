@@ -43,4 +43,25 @@ describe("Tracer PDK", function()
     assert.is_same(false, span.is_recording)
   end)
 
+  it("sub spans", function()
+    local span = assert(tracer_global:start_span(ngx.ctx, "test"))
+    assert.is_same(true, span.is_recording)
+    assert(span:finish())
+    assert.is_same(false, span.is_recording)
+  end)
+
+  it("tracing ctx", function()
+    local span = assert(tracer_global:start_span(ngx.ctx, "test"))
+    assert.is_same(true, span.is_recording)
+
+    assert(#ngx.ctx.tracing.spans > 0)
+    assert(ngx.ctx.tracing.current_span ~= nil)
+
+    local current_span = tracer_global:get_current_span(ngx.ctx)
+    assert(current_span ~= nil)
+
+    assert(current_span:finish())
+    assert.is_same(false, span.is_recording)
+  end)
+
 end)

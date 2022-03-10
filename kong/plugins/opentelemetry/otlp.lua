@@ -15,6 +15,10 @@ end
 
 
 local function _to_otlp_attributes(tab)
+  if type(tab) ~= "table" then
+    return nil
+  end
+
   local attributes = new_tab(nkeys(tab), 0)
   for k, v in pairs(tab) do
     insert(attributes, {
@@ -27,6 +31,10 @@ end
 
 
 local function _to_otlp_events(arr)
+  if type(arr) ~= "table" then
+    return nil
+  end
+
   local events = new_tab(#arr, 0)
   for _, evt in ipairs(arr) do
     insert(events, {
