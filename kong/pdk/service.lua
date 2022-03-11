@@ -72,8 +72,8 @@ local function new()
   -- Load-balancing components such as retries and health-checks will also be
   -- ignored for this request.
   --
-  -- The `host` and `port` arguments expect the values as set on a Service
-  -- entity.
+  -- The `host` argument expects the hostname or IP address of the upstream 
+  -- server, and the `port` expects a port number.
   --
   -- @function kong.service.set_target
   -- @phases access
