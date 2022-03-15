@@ -37,13 +37,8 @@ local DEFAULT_UNIQUE_TIMEOUT = 5
 local MAX_UNIQUE_EVENTS = 1024
 
 local _opts
-
-local _clients = setmetatable({}, { __mode = "k", })
-
-local _uniques, err = lrucache.new(MAX_UNIQUE_EVENTS)
-if not _uniques then
-  error("failed to create the events cache: " .. (err or "unknown"))
-end
+local _clients
+local _uniques
 
 local _M = {
     _VERSION = '0.0.1',
@@ -71,8 +66,17 @@ function _M.configure(opts)
   -- only enable listening on special worker id
   if _worker_id ~= _opts.server_id then
       kong_sock.close_listening(_opts.listening)
-      return
+      return true
   end
+
+  local err
+
+  _uniques, err = lrucache.new(MAX_UNIQUE_EVENTS)
+  if not _uniques then
+    error("failed to create the events cache: " .. (err or "unknown"))
+  end
+
+  _clients = setmetatable({}, { __mode = "k", })
 
   return true
 end
