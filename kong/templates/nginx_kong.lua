@@ -461,6 +461,7 @@ server {
 }
 > end -- role == "control_plane"
 
+> if event_mechanism == "unix_socket" then
 server {
     server_name kong_worker_events;
     listen unix:${{PREFIX}}/worker_events.sock;
@@ -471,4 +472,5 @@ server {
         }
     }
 }
+> end -- event_mechanism == "unix_socket"
 ]]
