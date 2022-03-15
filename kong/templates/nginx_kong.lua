@@ -18,7 +18,9 @@ lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE_COMBINED}}';
 lua_shared_dict kong                        5m;
 lua_shared_dict kong_locks                  8m;
 lua_shared_dict kong_healthchecks           5m;
+> if event_mechanism ~= "unix_socket" then
 lua_shared_dict kong_process_events         5m;
+> end
 lua_shared_dict kong_cluster_events         5m;
 lua_shared_dict kong_rate_limiting_counters 12m;
 lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
