@@ -1781,10 +1781,38 @@ for _, strategy in helpers.each_strategy() do
         consumer = { id = user1.id },
       }
 
+      bp.keyauth_credentials:insert {
+        key      = "Sesame",
+        consumer = { id = user2.id },
+      }
+
       local credential = bp.hmacauth_credentials:insert {
         username = "Aladdin",
         secret   = "OpenSesame",
         consumer = { id = user2.id },
+      }
+
+      local service3 = bp.services:insert({
+        path = "/request"
+      })
+
+      local route3 = bp.routes:insert {
+        hosts      = { "logical-and-unique-consumer.com" },
+        protocols  = { "http", "https" },
+        service    = service3
+      }
+
+      bp.plugins:insert {
+        name   = "hmac-auth",
+        route  = { id = route3.id },
+        config = {
+          enforce_unique_consumer = true
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth",
+        route = { id = route3.id }
       }
 
       hmacDate = os.date("!%a, %d %b %Y %H:%M:%S GMT")
@@ -1930,6 +1958,43 @@ for _, strategy in helpers.each_strategy() do
         assert.request(res).has.header("x-anonymous-consumer")
         local id = assert.request(res).has.header("x-consumer-id")
         assert.equal(id, anonymous.id)
+      end)
+
+    end)
+
+    describe("multiple auth with enforce_unique_consumer", function()
+
+      it("passes with all credentials provided from unique consumer", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]          = "logical-and-unique-consumer.com",
+            ["apikey"]        = "Sesame",
+            ["Authorization"] = hmacAuth,
+            ["date"]          = hmacDate,
+          },
+        })
+        assert.response(res).has.status(200)
+        assert.request(res).has.no.header("x-anonymous-consumer")
+        local id = assert.request(res).has.header("x-consumer-id")
+        assert.not_equal(id, anonymous.id)
+        assert(id == user1.id or id == user2.id,
+               string.format("expected %s or %s, got %s", user1.id, user2.id, id))
+      end)
+
+      it("fails 401, with all credentials provided from different consumers", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]          = "logical-and-unique-consumer.com",
+            ["apikey"]        = "Mouse",
+            ["Authorization"] = hmacAuth,
+            ["date"]          = hmacDate,
+          },
+        })
+        assert.response(res).has.status(401)
       end)
 
     end)

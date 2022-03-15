@@ -363,7 +363,8 @@ local _M = {}
 
 
 function _M.execute(conf)
-  if conf.anonymous and kong_client.get_credential() then
+  local credential = kong_client.get_credential()
+  if conf.anonymous and credential then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
@@ -385,6 +386,12 @@ function _M.execute(conf)
 
     else
       return kong.response.error(err.status, err.message, err.headers)
+    end
+  elseif conf.enforce_unique_consumer and credential then
+    local consumer = kong_client.get_consumer()
+    if credential.consumer.id ~= consumer.id then
+      kong.log.warn("multiple authentications from different consumers")
+      return kong.response.error(401, SIGNATURE_NOT_VALID)
     end
   end
 end

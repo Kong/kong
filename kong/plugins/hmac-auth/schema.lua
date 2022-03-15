@@ -20,6 +20,7 @@ return {
           { hide_credentials = { type = "boolean", required = true, default = false }, },
           { clock_skew = { type = "number", default = 300, gt = 0 }, },
           { anonymous = { type = "string" }, },
+          { enforce_unique_consumer = { type = "boolean", required = true, default = false }, },
           { validate_request_body = { type = "boolean", required = true, default = false }, },
           { enforce_headers = {
               type = "array",
