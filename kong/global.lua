@@ -170,10 +170,7 @@ end
 function _GLOBAL.init_worker_events()
   -- Note: worker_events will not work correctly if required at the top of the file.
   --       It must be required right here, inside the init function
-
-  --local worker_events = require "resty.worker.events"
-  local broker = require "kong.events.broker"
-  local worker_events = require "kong.events.worker"
+  local worker_events
 
   -- compatible for lua-resty-worker-events
   local opts = {
@@ -189,9 +186,19 @@ function _GLOBAL.init_worker_events()
                 ngx.config.prefix() .. "worker_events.sock",
   }
 
-  local ok, err = broker.configure(opts)
-  if not ok then
-    return nil, err
+  local singletons = require "kong.singletons"
+
+  if singletons.configuration.event_mechanism == "unix_socket" then
+    local broker = require "kong.events.broker"
+
+    local ok, err = broker.configure(opts)
+    if not ok then
+      return nil, err
+    end
+
+    worker_events = require "kong.events.worker"
+  else
+    worker_events = require "resty.worker.events"
   end
 
   local ok, err = worker_events.configure(opts)
