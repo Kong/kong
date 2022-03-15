@@ -170,16 +170,31 @@ end
 function _GLOBAL.init_worker_events()
   -- Note: worker_events will not work correctly if required at the top of the file.
   --       It must be required right here, inside the init function
-  local worker_events = require "resty.worker.events"
 
-  local ok, err = worker_events.configure {
+  --local worker_events = require "resty.worker.events"
+  local broker = require "kong.events.broker"
+  local worker_events = require "kong.events.worker"
+
+  -- compatible for lua-resty-worker-events
+  local opts = {
     shm = "kong_process_events", -- defined by "lua_shared_dict"
     timeout = 5,            -- life time of event data in shm
     interval = 1,           -- poll interval (seconds)
 
     wait_interval = 0.010,  -- wait before retry fetching event data
     wait_max = 0.5,         -- max wait time before discarding event
+
+    server_id = 0,          -- broker server runs in nginx worker #0
+    listening = 'unix:' ..  -- unix socket for broker listening
+                ngx.config.prefix() .. "worker_events.sock",
   }
+
+  local ok, err = broker.configure(opts)
+  if not ok then
+    return nil, err
+  end
+
+  local ok, err = worker_events.configure(opts)
   if not ok then
     return nil, err
   end
