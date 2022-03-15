@@ -460,4 +460,15 @@ server {
     }
 }
 > end -- role == "control_plane"
+
+server {
+    server_name kong_worker_events;
+    listen unix:${{PREFIX}}/worker_events.sock;
+    access_log off;
+    location / {
+        content_by_lua_block {
+          require("kong.events.broker").run()
+        }
+    }
+}
 ]]
