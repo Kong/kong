@@ -58,6 +58,7 @@ describe("kong start/stop #" .. strategy, function()
 
   it("resolves referenced secrets", function()
     helpers.setenv("PG_PASSWORD", "dummy")
+    finally(function() helpers.unsetenv("PG_PASSWORD") end)
     local _, stderr, stdout = assert(helpers.kong_exec("start", {
       prefix = helpers.test_conf.prefix,
       database = helpers.test_conf.database,
