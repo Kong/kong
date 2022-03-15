@@ -185,11 +185,11 @@ communicate = function(premature)
   _configured = nil
 
   if not ok then
-    log(ERR, "event client failed: ", err)
+    log(ERR, "event worker failed: ", err)
   end
 
   if perr then
-    log(ERR, "event client failed: ", perr)
+    log(ERR, "event worker failed: ", perr)
   end
 
   if not exiting() then
