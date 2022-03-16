@@ -660,6 +660,8 @@ local CONF_INFERENCES = {
 
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
+
+  event_mechanism = { typ = "string" },
 }
 
 

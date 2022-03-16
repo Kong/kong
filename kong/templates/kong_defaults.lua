@@ -180,4 +180,6 @@ untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
 
 openresty_path =
+
+event_mechanism = shared_dict
 ]]
