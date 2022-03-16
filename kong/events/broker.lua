@@ -5,6 +5,7 @@ local server = require("kong.events.protocol").server
 local kong_sock = require "resty.kong.socket"
 
 local type = type
+local assert = assert
 local pairs = pairs
 local setmetatable = setmetatable
 local str_sub  = string.sub
