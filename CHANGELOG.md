@@ -70,6 +70,8 @@
   [#8429](https://github.com/Kong/kong/pull/8429)
 - OpenSSL bumped to 1.1.1n
   [#8544](https://github.com/Kong/kong/pull/8544)
+- Bumped resty.openssl from 0.8.5 to 0.8.6
+  [#8545](https://github.com/Kong/kong/pull/8545)
 
 
 ## [2.8.0]
