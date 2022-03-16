@@ -68,6 +68,8 @@
 
 - Bumped pgmoon from 1.13.0 to 1.14.0
   [#8429](https://github.com/Kong/kong/pull/8429)
+- OpenSSL bumped to 1.1.1n
+  [#8544](https://github.com/Kong/kong/pull/8544)
 
 
 ## [2.8.0]
