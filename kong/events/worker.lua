@@ -4,6 +4,7 @@ local callback = require "kong.events.callback"
 local client = require("kong.events.protocol").client
 
 local type = type
+local assert = assert
 local str_sub  = string.sub
 local table_insert = table.insert
 local table_remove = table.remove
