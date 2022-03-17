@@ -256,7 +256,7 @@ function SSL:receive(pattern)
 end
 
 function SSL:send(s)
-  local buf = ffi.new("char[?]", #s, s)
+  local buf = ffi.new("char[?]", #s+1, s)
   local ok, err = handle_ssl_io(self, C.SSL_write, ffi.cast("void *", buf), #s)
   if err then
     return ok, err
