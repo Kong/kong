@@ -178,19 +178,19 @@ function _GLOBAL.init_worker_events()
   if singletons.configuration.event_mechanism == "unix_socket" then
     opts = {
       timeout   = 5,          -- life time of event data in lrucache
-      server_id = 0,          -- broker server runs in nginx worker #0
+      worker_id = 0,          -- broker server runs in nginx worker #0
       listening = "unix:" ..  -- unix socket for broker listening
                   ngx.config.prefix() .. "worker_events.sock",
     }
 
-    local broker = require "kong.events.broker"
+    local broker = require "resty.events.broker"
 
     local ok, err = broker.configure(opts)
     if not ok then
       return nil, err
     end
 
-    worker_events = require "kong.events.worker"
+    worker_events = require "resty.events.worker"
   else
     opts = {
       shm = "kong_process_events", -- defined by "lua_shared_dict"

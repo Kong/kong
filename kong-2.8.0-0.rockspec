@@ -477,11 +477,5 @@ build = {
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
-
-    ["kong.events.broker"] = "kong/events/broker.lua",
-    ["kong.events.worker"] = "kong/events/worker.lua",
-    ["kong.events.frame"] = "kong/events/frame.lua",
-    ["kong.events.protocol"] = "kong/events/protocol.lua",
-    ["kong.events.callback"] = "kong/events/callback.lua",
   }
 }
