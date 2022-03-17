@@ -79,7 +79,7 @@
 
 - The schema validator now correctly 
 converts `null` from declarative configurations to `nil`
-[#8483](https://github.com/Kong/kong/pull/8483) .
+[#8483](https://github.com/Kong/kong/pull/8483).
 
 ## [2.8.0]
 
