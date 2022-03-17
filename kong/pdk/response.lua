@@ -640,21 +640,22 @@ local function new(self, major_version)
     ngx.status = status
 
     local has_content_type
-    local has_content_length
+    local has_content_length_or_chunked
     if headers ~= nil then
       for name, value in pairs(headers) do
         ngx.header[name] = normalize_multi_header(value)
-        if not has_content_type or not has_content_length then
+        if not has_content_type or not has_content_length_or_chunked then
           local lower_name = lower(name)
           if lower_name == "content-type"
-          or lower_name == "content_type"
+            or lower_name == "content_type"
           then
             has_content_type = true
           elseif lower_name == "content-length"
-              or lower_name == "content_length"
-              or lower_name == "transfer-encoding"
-              or lower_name == "transfer_encoding" then
-            has_content_length = true
+            or lower_name == "content_length"
+            or ((lower_name == "transfer-encoding" or
+                  lower_name == "transfer_encoding") and
+                  value == 'chunked')  then
+            has_content_length_or_chunked = true
           end
         end
       end
@@ -722,7 +723,7 @@ local function new(self, major_version)
         ngx.header[CONTENT_TYPE_NAME] = CONTENT_TYPE_JSON
       end
 
-      if not has_content_length then
+      if not has_content_length_or_chunked then
         ngx.header[CONTENT_LENGTH_NAME] = #json
       end
 
@@ -746,7 +747,7 @@ local function new(self, major_version)
         end
 
       else
-        if not has_content_length then
+        if not has_content_length_or_chunked then
           ngx.header[CONTENT_LENGTH_NAME] = #body
         end
 
@@ -763,7 +764,7 @@ local function new(self, major_version)
       end
 
     else
-      if not has_content_length then
+      if not has_content_length_or_chunked then
         ngx.header[CONTENT_LENGTH_NAME] = 0
       end
 
