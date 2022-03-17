@@ -73,6 +73,13 @@
 - Bumped resty.openssl from 0.8.5 to 0.8.6
   [#8545](https://github.com/Kong/kong/pull/8545)
 
+### Fixes
+
+#### Core
+
+- The schema validator now correctly 
+converts `null` from declarative configurations to `nil`
+[#8483](https://github.com/Kong/kong/pull/8483).
 
 ## [2.8.0]
 
