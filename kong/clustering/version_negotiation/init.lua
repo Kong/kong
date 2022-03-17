@@ -179,7 +179,7 @@ local function register_client(conf, client_node, services_accepted)
     last_seen = ngx.time(),
     config_hash = "00000000000000000000000000000000",
     hostname = client_node.hostname,
-    ip = ngx.var.realip_remote_addr or ngx.var.remote_addr,
+    ip = ngx.var.remote_addr,
     version = client_node.version,
     sync_status = client_node.sync_status,
     services_accepted = services_map,
