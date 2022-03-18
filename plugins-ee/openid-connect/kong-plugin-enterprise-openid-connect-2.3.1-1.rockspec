@@ -1,9 +1,9 @@
 package = "kong-plugin-enterprise-openid-connect"
-version = "2.3.0-1"
+version = "2.3.1-1"
 
 source = {
   url = "git://github.com/Kong/kong-plugin-enterprise-openid-connect.git",
-  tag = "v2.3.0",
+  tag = "v2.3.1",
 }
 
 description = {
