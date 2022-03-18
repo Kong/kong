@@ -1,7 +1,6 @@
 local cjson = require "cjson.safe"
 local pl_path = require "pl.path"
 local raw_log = require "ngx.errlog".raw_log
-local msgpack = require "MessagePack"
 
 local _, ngx_pipe = pcall(require, "ngx.pipe")
 
