@@ -31,7 +31,7 @@ jobs:
       with:
         repository: Kong/kong-build-tools
         path: kong-build-tools
-        ref: master
+        ref: feat/new_resty_events
 
     - name: Checkout go-pluginserver
       if: steps.cache-deps.outputs.cache-hit != 'true'
