@@ -76,8 +76,8 @@ function _GLOBAL.new()
     version = KONG_VERSION,
     version_num = KONG_VERSION_NUM,
 
-    pdk_major_version = nil,
-    pdk_version = nil,
+    --pdk_major_version = nil,
+    --pdk_version = nil,
 
     configuration = nil,
   }

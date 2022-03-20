@@ -213,10 +213,10 @@ local ipairs = ipairs
 local setmetatable = setmetatable
 
 
-local MAJOR_VERSIONS = {
-  [1] = {
-    version = "1.5.0",
-    modules = {
+local MAJOR_MODULES = {
+  --[1] = {
+  --  version = "1.5.0",
+  --  modules = {
       "table",
       "node",
       "log",
@@ -232,18 +232,18 @@ local MAJOR_VERSIONS = {
       "nginx",
       "cluster",
       "vault",
-    },
-  },
+  --  },
+  --},
 
-  latest = 1,
+  --latest = 1,
 }
 
 if ngx.config.subsystem == 'http' then
-  table.insert(MAJOR_VERSIONS[1].modules, 'client.tls')
+  table.insert(MAJOR_MODULES, 'client.tls')
 end
 
 local _PDK = {
-  major_versions = MAJOR_VERSIONS,
+  --major_versions = MAJOR_VERSIONS,
 }
 
 
@@ -257,21 +257,21 @@ function _PDK.new(kong_config, major_version, self)
     kong_config = {}
   end
 
-  if major_version then
-    if type(major_version) ~= "number" then
-      error("major_version must be a number", 2)
-    end
+  --if major_version then
+  --  if type(major_version) ~= "number" then
+  --    error("major_version must be a number", 2)
+  --  end
 
-  else
-    major_version = MAJOR_VERSIONS.latest
-  end
+  --else
+  --  major_version = MAJOR_VERSIONS.latest
+  --end
 
-  local version_meta = MAJOR_VERSIONS[major_version]
+  --local version_meta = MAJOR_VERSIONS[major_version]
 
   self = self or {}
 
-  self.pdk_major_version = major_version
-  self.pdk_version = version_meta.version
+  --self.pdk_major_version = major_version
+  --self.pdk_version = version_meta.version
 
   self.configuration = setmetatable({}, {
     __index = function(_, v)
@@ -283,7 +283,7 @@ function _PDK.new(kong_config, major_version, self)
     end,
   })
 
-  for _, module_name in ipairs(version_meta.modules) do
+  for _, module_name in ipairs(MAJOR_MODULES) do
     local parent = self
     for part in module_name:gmatch("([^.]+)%.") do
       if not parent[part] then
