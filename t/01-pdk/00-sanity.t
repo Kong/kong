@@ -18,22 +18,19 @@ __DATA__
         content_by_lua_block {
             local PDK = require "kong.pdk"
 
-            ngx.say("major_versions: ", type(PDK.major_versions))
+            --ngx.say("major_versions: ", type(PDK.major_versions))
             ngx.say("instantiating pdk")
 
             local pdk = PDK.new()
-            ngx.say("pdk.pdk_major_version: ", pdk.pdk_major_version)
+            --ngx.say("pdk.pdk_major_version: ", pdk.pdk_major_version)
 
-            ngx.say("is latest: ", pdk.pdk_major_version == PDK.major_versions.latest)
+            --ngx.say("is latest: ", pdk.pdk_major_version == PDK.major_versions.latest)
         }
     }
 --- request
 GET /t
 --- response_body_like chomp
-major_versions: table
 instantiating pdk
-pdk\.pdk_major_version: \d+
-is latest: true
 --- no_error_log
 [error]
 
