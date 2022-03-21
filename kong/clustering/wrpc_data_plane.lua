@@ -294,6 +294,10 @@ function _M:communicate(premature)
     while not exiting() and not config_exit do
       local ok, err = config_semaphore:wait(1)
       if ok then
+        if peer.semaphore == config_semaphore then
+          peer.semaphore = nil
+          config_semaphore = nil
+        end
         local config_table = self.next_config
         local config_hash  = false
         if config_table and self.next_config_version > last_config_version then
