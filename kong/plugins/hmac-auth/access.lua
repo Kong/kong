@@ -168,13 +168,7 @@ end
 local function validate_signature(hmac_params)
   local signature_1 = create_hash(kong_request.get_path_with_query(), hmac_params)
   local signature_2 = decode_base64(hmac_params.signature)
-  if signature_1 == signature_2 then
-    return true
-  end
-
-  -- DEPRECATED BY: https://github.com/Kong/kong/pull/3339
-  local signature_1_deprecated = create_hash(ngx.var.uri, hmac_params)
-  return signature_1_deprecated == signature_2
+  return signature_1 == signature_2
 end
 
 
