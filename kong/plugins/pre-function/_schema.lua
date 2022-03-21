@@ -49,7 +49,6 @@ return function(plugin_name)
     },
     entity_checks = {
       { at_least_one_of = {
-        "config.functions",
         "config.certificate",
         "config.rewrite",
         "config.access",
