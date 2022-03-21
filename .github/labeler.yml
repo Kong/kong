@@ -115,10 +115,8 @@ plugins/loggly:
 plugins/oauth2:
 - kong/plugins/oauth2/**/*
 
-plugins/post-function:
+plugins/serverless-functions:
 - kong/plugins/post-function/**/*
-
-plugins/pre-function:
 - kong/plugins/pre-function/**/*
 
 plugins/prometheus:
