@@ -165,6 +165,18 @@ function _M:export_deflated_reconfigure_payload()
   return config_table, nil
 end
 
+function _M:push_config_one_client(client)
+  if not self.config_call_rpc or not self.config_call_args then
+    local payload, err = self:export_deflated_reconfigure_payload()
+    if not payload then
+      ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
+      return
+    end
+  end
+
+  client.peer:send_encoded_call(self.config_call_rpc, self.config_call_args)
+  ngx_log(ngx_DEBUG, _log_prefix, "config version #", config_version, " pushed.  ", client.log_suffix)
+end
 
 function _M:push_config()
   local payload, err = self:export_deflated_reconfigure_payload()
@@ -525,7 +537,7 @@ function _M:handle_cp_websocket()
     end
   end
 
-  self:push_config()    -- first config push
+  self:push_config_one_client(client)    -- first config push
 
   ngx_log(ngx_NOTICE, _log_prefix, "data plane connected", log_suffix)
   w_peer:wait_threads()
