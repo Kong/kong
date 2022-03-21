@@ -32,6 +32,7 @@ local deflate_gzip = utils.deflate_gzip
 local KONG_VERSION = kong.version
 local CONFIG_CACHE = ngx.config.prefix() .. "/config.cache.json.gz"
 local ngx_ERR = ngx.ERR
+local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local MAX_PAYLOAD = constants.CLUSTERING_MAX_PAYLOAD
 local WS_OPTS = {
@@ -79,7 +80,7 @@ function _M:update_config(config_table, config_hash, update_cache)
   end
 
   if declarative.get_current_hash() == new_hash then
-    ngx_log(ngx_INFO, _log_prefix, "same config received from control plane, ",
+    ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
                                     "no need to reload")
     return true
   end

@@ -180,7 +180,7 @@ function _M:push_config()
     n = n + 1
   end
 
-  ngx_log(ngx_NOTICE, _log_prefix, "config version #", config_version, " pushed to ", n, " clients")
+  ngx_log(ngx_DEBUG, _log_prefix, "config version #", config_version, " pushed to ", n, " clients")
 end
 
 
