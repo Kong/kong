@@ -217,6 +217,16 @@ server {        # ignore (and close }, to ignore content)
         Kong.stream_api()
     }
 }
-
 > end -- #stream_listeners > 0
+
+> if event_mechanism == "unix_socket" then
+server {
+    listen unix:${{PREFIX}}/stream_worker_events.sock;
+    error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
+    access_log off;
+    content_by_lua_block {
+      require("resty.events.broker").run()
+    }
+}
+> end -- event_mechanism == "unix_socket"
 ]]

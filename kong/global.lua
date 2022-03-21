@@ -176,11 +176,16 @@ function _GLOBAL.init_worker_events()
   local singletons = require "kong.singletons"
 
   if singletons.configuration.event_mechanism == "unix_socket" then
+    local sock_name = "worker_events.sock"
+    if ngx.config.subsystem == "stream" then
+      sock_name = "stream_" .. sock_name
+    end
+
     opts = {
       timeout   = 5,          -- life time of event data in lrucache
       worker_id = 0,          -- broker server runs in nginx worker #0
       listening = "unix:" ..  -- unix socket for broker listening
-                  ngx.config.prefix() .. "worker_events.sock",
+                  ngx.config.prefix() .. sock_name
     }
 
     local broker = require "resty.events.broker"
