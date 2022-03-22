@@ -286,7 +286,6 @@ function _M:communicate(premature)
   --                  config onto the local file system
   -- * ping_thread: performs a ConfigService.PingCP call periodically.
 
-  local ping_immediately
   local config_exit
   local last_config_version = -1
 
@@ -336,14 +335,9 @@ function _M:communicate(premature)
         if exiting() or peer.closing then
           return
         end
-        if ping_immediately then
-          ping_immediately = nil
-          break
-        end
       end
     end
   end)
-
 
   local ok, err, perr = ngx.thread.wait(ping_thread, config_thread)
 
