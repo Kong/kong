@@ -191,6 +191,7 @@ When developing, you can use the `Makefile` for doing the following operations:
 | `test-plugins`     | Run the plugins test suite                             |
 | `test-all`         | Run all unit + integration + plugins tests at once     |
 
+
 These are the steps we follow at Kong to set up a development environment.
 
 ## Dev on Docker
@@ -268,7 +269,7 @@ to get recent versions of many packages; Fedora, Debian, or Ubuntu are easier fo
 
 To avoid long compilation times, give the VM plenty of RAM (8GB recommended) and all the CPU cores you can.
 
-#### Virtual Box setup
+### Virtual Box setup
 
 You will need to setup port forwarding on VirtualBox to be able to ssh into the box which can be done as follows:
 
