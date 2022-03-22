@@ -36,7 +36,6 @@ local exit         = ngx.exit
 local exec         = ngx.exec
 local header       = ngx.header
 local timer_at     = ngx.timer.at
-local timer_every  = ngx.timer.every
 local subsystem    = ngx.config.subsystem
 local clear_header = ngx.req.clear_header
 local http_version = ngx.req.http_version
@@ -1113,7 +1112,7 @@ return {
           on_timeout = "return_true",
         }
 
-        timer_every(worker_state_update_frequency, function(premature)
+        local function rebuild_router_timer(premature)
           if premature then
             return
           end
@@ -1126,7 +1125,17 @@ return {
           if not ok then
             log(ERR, "could not rebuild router via timer: ", err)
           end
-        end)
+
+          local _, err = timer_at(worker_state_update_frequency, rebuild_router_timer)
+          if err then
+            log(ERR, "could not schedule timer to rebuild router: ", err)
+          end
+        end
+
+        local _, err = timer_at(worker_state_update_frequency, rebuild_router_timer)
+        if err then
+          log(ERR, "could not schedule timer to rebuild router: ", err)
+        end
 
         local plugins_iterator_async_opts = {
           name = "plugins_iterator",
@@ -1134,16 +1143,27 @@ return {
           on_timeout = "return_true",
         }
 
-        timer_every(worker_state_update_frequency, function(premature)
+        local function rebuild_plugins_iterator_timer(premature)
           if premature then
             return
           end
 
-          local ok, err = rebuild_plugins_iterator(plugins_iterator_async_opts)
-          if not ok then
+          local _, err = rebuild_plugins_iterator(plugins_iterator_async_opts)
+          if err then
             log(ERR, "could not rebuild plugins iterator via timer: ", err)
           end
-        end)
+
+          local _, err = timer_at(worker_state_update_frequency, rebuild_plugins_iterator_timer)
+          if err then
+            log(ERR, "could not schedule timer to rebuild plugins iterator: ", err)
+          end
+        end
+
+        local _, err = timer_at(worker_state_update_frequency, rebuild_plugins_iterator_timer)
+        if err then
+          log(ERR, "could not schedule timer to rebuild plugins iterator: ", err)
+        end
+
       end
     end,
     after = NOOP,
