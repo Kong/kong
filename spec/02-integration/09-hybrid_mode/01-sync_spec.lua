@@ -297,20 +297,20 @@ for _, strategy in helpers.each_strategy() do
     -- for these tests, we do not need a real DP, but rather use the fake DP
     -- client so we can mock various values (e.g. node_version)
     describe("relaxed compatibility check:", function()
-      lazy_setup(function()
-        local bp = helpers.get_db_utils(strategy, {
-          "routes",
-          "services",
-          "plugins",
-          "upstreams",
-          "targets",
-          "certificates",
-          "clustering_data_planes",
-        }) -- runs migrations
+      local bp = helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "upstreams",
+        "targets",
+        "certificates",
+        "clustering_data_planes",
+      }) -- runs migrations
 
-        bp.plugins:insert {
-          name = "key-auth",
-        }
+      bp.plugins:insert {
+        name = "key-auth",
+      }
+      lazy_setup(function()
 
         assert(helpers.start_kong({
           role = "control_plane",
