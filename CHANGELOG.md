@@ -81,6 +81,12 @@
 converts `null` from declarative configurations to `nil`
 [#8483](https://github.com/Kong/kong/pull/8483).
 
+### Additions
+
+#### Performance
+- Do not reigister unnecessary event handlers on Hybrid mode Control Plane
+nodes [#8452](https://github.com/Kong/kong/pull/8452).
+
 ## [2.8.0]
 
 ### Deprecations
