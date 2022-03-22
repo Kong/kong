@@ -77,9 +77,12 @@
 
 #### Core
 
-- The schema validator now correctly 
-converts `null` from declarative configurations to `nil`
-[#8483](https://github.com/Kong/kong/pull/8483).
+- The schema validator now correctly converts `null` from declarative
+  configurations to `nil`. [#8483](https://github.com/Kong/kong/pull/8483)
+- Only reschedule router and plugin iterator timers after finishing previous
+  execution, avoiding unnecessary concurrent executions.
+  [#8567](https://github.com/Kong/kong/pull/8567)
+
 
 ## [2.8.0]
 
