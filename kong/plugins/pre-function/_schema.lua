@@ -6,8 +6,6 @@ return function(plugin_name)
 
   local loadstring = loadstring
 
-  local functions_deprecated = "[%s] 'config.functions' will be deprecated in favour of 'config.access'"
-
 
   local function validate_function(fun)
     local _, err = loadstring(fun)
@@ -38,16 +36,6 @@ return function(plugin_name)
         config = {
           type = "record",
           fields = {
-            -- old interface. functions are always on access phase
-            { functions = phase_functions {
-              custom_validator = function(v)
-                if #v > 0 then
-                  kong.log.warn(functions_deprecated:format(plugin_name))
-                end
-
-                return true
-              end,
-            } },
             -- new interface
             { certificate = phase_functions },
             { rewrite = phase_functions },
@@ -60,12 +48,7 @@ return function(plugin_name)
       },
     },
     entity_checks = {
-      { mutually_exclusive_sets = {
-        set1 = { "config.functions" },
-        set2 = { "config.access" },
-      } },
       { at_least_one_of = {
-        "config.functions",
         "config.certificate",
         "config.rewrite",
         "config.access",
