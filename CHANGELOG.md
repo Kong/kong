@@ -85,7 +85,7 @@ converts `null` from declarative configurations to `nil`
 
 - **ACME**: `auth_method` default value is set to `token`
 [#8565](https://github.com/Kong/kong/pull/8565)
-- **hmac-auth**: Removed deprecated signature `ngx.var.uri`
+- **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
 [#8558](https://github.com/Kong/kong/pull/8558)
 
 ## [2.8.0]
