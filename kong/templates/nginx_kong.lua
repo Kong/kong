@@ -468,7 +468,7 @@ server {
     access_log off;
     location / {
         content_by_lua_block {
-          require("resty.events.broker").run()
+          require("resty.events").run()
         }
     }
 }
