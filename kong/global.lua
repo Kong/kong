@@ -188,14 +188,7 @@ function _GLOBAL.init_worker_events()
                   ngx.config.prefix() .. sock_name
     }
 
-    local broker = require "resty.events.broker"
-
-    local ok, err = broker.configure(opts)
-    if not ok then
-      return nil, err
-    end
-
-    worker_events = require "resty.events.worker"
+    worker_events = require "resty.events"
   else
     opts = {
       shm = "kong_process_events", -- defined by "lua_shared_dict"

@@ -225,7 +225,7 @@ server {
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
     access_log off;
     content_by_lua_block {
-      require("resty.events.broker").run()
+      require("resty.events").run()
     }
 }
 > end -- event_mechanism == "unix_socket"
