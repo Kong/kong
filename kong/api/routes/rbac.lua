@@ -33,17 +33,21 @@ local PORTAL_PREFIX = constants.PORTAL_PREFIX
 local PORTAL_PREFIX_LEN = #PORTAL_PREFIX
 
 
-local function rbac_operation_allowed(kong_conf, rbac_ctx, current_ws, dest_ws)
+local function rbac_operation_allowed(kong_conf, rbac_ctx, current_ws_id, dest_ws)
   if kong_conf.rbac == "off" then
     return true
   end
 
-  if current_ws == dest_ws then
+  if dest_ws and current_ws_id == dest_ws.id then
     return true
   end
 
   -- dest is different from current
-  if rbac.user_can_manage_endpoints_from(rbac_ctx, dest_ws) then
+  local dest_ws_name
+  if dest_ws then
+    dest_ws_name = dest_ws.name
+  end
+  if rbac.user_can_manage_endpoints_from(rbac_ctx, dest_ws_name) then
     return true
   end
 
@@ -650,7 +654,7 @@ return {
 
         local request_ws_id = workspaces.get_workspace_id()
 
-        local ws_name
+        local param_ws
         if self.params.workspace ~= "*" then
           local w, err
           if self.params.workspace then
@@ -672,11 +676,11 @@ return {
             self.params.workspace = w.name
           end
 
-          ws_name = w.name
+          param_ws = w
         end
 
         if not rbac_operation_allowed(singletons.configuration,
-          ngx.ctx.rbac, request_ws_id, ws_name) then
+          ngx.ctx.rbac, request_ws_id, param_ws) then
           local err_str = fmt(
             "%s is not allowed to create cross workspace permissions",
             ngx.ctx.rbac.user.name)

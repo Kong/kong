@@ -67,7 +67,7 @@ _M.handlers = {
         local slash_handler = require "kong.api.routes.kong"["/"]
         -- EE add support for HEAD calls (GET without body)
         slash_handler["HEAD"] = slash_handler["GET"]
-        app:match("ws_root" .. "/", "/:workspace_name/kong",
+        app:match("/:workspace_name/kong", "/:workspace_name/kong",
                   app_helpers.respond_to(slash_handler))
 
         return true
