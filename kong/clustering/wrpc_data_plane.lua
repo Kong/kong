@@ -1,5 +1,3 @@
-local _M = {}
-
 
 local semaphore = require("ngx.semaphore")
 local ws_client = require("resty.websocket.client")
@@ -42,6 +40,9 @@ local WS_OPTS = {
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local _log_prefix = "[wrpc-clustering] "
 
+local _M = {
+  DPCP_CHANNEL_NAME = "DP-CP_config",
+}
 
 function _M.new(parent)
   local self = {
@@ -255,7 +256,7 @@ function _M:communicate(premature)
   end
 
   local config_semaphore = semaphore.new(0)
-  local peer = wrpc.new_peer(c, get_config_service(), { channel = true })
+  local peer = wrpc.new_peer(c, get_config_service(), { channel = self.DPCP_CHANNEL_NAME })
 
   peer.config_semaphore = config_semaphore
   peer.config_obj = self

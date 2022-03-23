@@ -12,7 +12,6 @@ local table_remove = table.remove
 local exiting = ngx.worker.exiting
 
 local DEFAULT_EXPIRATION_DELAY = 90
-local CHANNEL_DICT_NAME = "wrpc_channel_dict"
 local CHANNEL_CLIENT_PREFIX = "wrpc_client_"
 
 pb.option("no_default_values")
@@ -270,7 +269,7 @@ function wrpc.new_peer(conn, service, opts)
     request_queue = is_wsclient(conn) and Queue.new(),
     response_queue = {},
     closing = false,
-    channel_dict = opts.channel and ngx.shared[CHANNEL_DICT_NAME],
+    channel_dict = opts.channel and ngx.shared["wrpc_channel_" .. opts.channel],
     _receiving_thread = nil,
   }, opts), wrpc_peer)
 end
@@ -672,9 +671,9 @@ local function remote_close(self)
   self.closing = true
 end
 
-function wrpc.new_remote_client(service)
+function wrpc.new_remote_client(service, channel_name)
   local self = wrpc.new_peer(nil, service, {
-    channel = channel.new(CHANNEL_DICT_NAME, CHANNEL_CLIENT_PREFIX .. ngx.worker.pid()),
+    channel = channel.new("wrpc_channel_" .. channel_name, CHANNEL_CLIENT_PREFIX .. ngx.worker.pid()),
     send_payload = send_payload_to_channel,
     close = remote_close,
     remote_call = remote_call,
