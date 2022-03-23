@@ -139,6 +139,9 @@ if [ "$TEST_SUITE" == "plugins" ]; then
         luarocks make
         popd
 
+        # Pin luarocks 0.3.3, after the plugin deps installation
+        luarocks install lua-protobuf 0.3.3
+
         $TEST_CMD /tmp/test-$REPOSITORY/spec/ || echo "* $REPOSITORY" >> .failed
 
     done
