@@ -167,16 +167,13 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
         assert.is_string(hash)
-        assert.equal("99914b932bd37a50b983c5e7c90ae93b", hash)
+        assert.equal("aaf38faf0b5851d711027bb4d812d50d", hash)
       end
-
-      local correct = ngx.md5("{}")
-      assert.equal("99914b932bd37a50b983c5e7c90ae93b", correct)
 
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
         assert.is_string(hash)
-        assert.equal(correct, hash)
+        assert.equal("aaf38faf0b5851d711027bb4d812d50d", hash)
       end
     end)
 
@@ -207,7 +204,7 @@ describe("kong.clustering", function()
       for _ = 1, 10 do
         local hash = clustering.calculate_config_hash(clustering, value)
         assert.is_string(hash)
-        assert.equal("e287bdd83a30b3c83c498e6e524f619b", hash)
+        assert.equal("cb83c48d5b2932d1bc9d13672b433365", hash)
         assert.equal(h, hash)
       end
     end)
