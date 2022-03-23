@@ -1074,7 +1074,7 @@ local function tcp_server(port, opts)
         end
 
         if opts.tls and handshake_done then
-          local _, ssl = pcall(require, "spec.helpers.ssl")
+          local ssl = require "spec.helpers.ssl"
 
           local params = {
             mode = "server",
