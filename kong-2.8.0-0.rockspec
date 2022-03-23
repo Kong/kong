@@ -399,6 +399,8 @@ build = {
     ["kong.plugins.aws-lambda.schema"]               = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.v4"]                   = "kong/plugins/aws-lambda/v4.lua",
     ["kong.plugins.aws-lambda.request-util"]         = "kong/plugins/aws-lambda/request-util.lua",
+    ["kong.plugins.aws-lambda.migrations"]           = "kong/plugins/aws-lambda/migrations/init.lua",
+    ["kong.plugins.aws-lambda.migrations.001_280_to_300"] = "kong/plugins/aws-lambda/migrations/001_280_to_300.lua",
 
     ["kong.plugins.grpc-gateway.deco"] = "kong/plugins/grpc-gateway/deco.lua",
     ["kong.plugins.grpc-gateway.handler"] = "kong/plugins/grpc-gateway/handler.lua",
