@@ -81,6 +81,25 @@
 converts `null` from declarative configurations to `nil`
 [#8483](https://github.com/Kong/kong/pull/8483).
 
+#### Plugins
+
+- Removed deprecated signatures from hmac-auth plugin
+[#8558](https://github.com/Kong/kong/pull/8558).
+
+- Removed `config.functions` from serverless plugin schema
+[#8559](https://github.com/Kong/kong/pull/8559).
+
+- Removed deprecated blacklists / whitelist etc. 
+config fields from bot-detection, ip-restriction and ACL plugins
+[#8560](https://github.com/Kong/kong/pull/8560).
+
+- Changed `conf.facility` default value to "user" in Syslog plugin
+[#8564](https://github.com/Kong/kong/pull/8564).
+
+- Removed `proxy_scheme` property from Aws-lambda plugin 
+[#8566](https://github.com/Kong/kong/pull/8566).
+
+
 ## [2.8.0]
 
 ### Deprecations
