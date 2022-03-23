@@ -83,8 +83,7 @@ converts `null` from declarative configurations to `nil`
 
 #### Plugins
 
-- Acme auth_method schema will gain 
-default = "token", one_of = { "token", "kubernetes" }
+- **ACME**: `auth_method` default value is set to `token`
 [#8565](https://github.com/Kong/kong/pull/8565)
 
 ## [2.8.0]
