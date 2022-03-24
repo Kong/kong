@@ -1139,8 +1139,8 @@ for _, strategy in helpers.all_strategies() do
 
             client:close()
 
-            local client = helpers.proxy_ssl_client()
-            local res = client:post("/auth/oauth2/token", {
+            client = helpers.proxy_ssl_client()
+            res = client:post("/auth/oauth2/token", {
               headers = {
                 ["Content-Type"] = "application/x-www-form-urlencoded",
               },
@@ -1151,15 +1151,9 @@ for _, strategy in helpers.all_strategies() do
               },
             })
             assert.response(res).has.status(200)
-            local json = assert.response(res).has.jsonbody()
+            json = assert.response(res).has.jsonbody()
 
             token2 = json.access_token
-
-            if sub(token, -4) == "7oig" then
-              invalid_token2 = sub(token, 1, -5) .. "cYe8"
-            else
-              invalid_token2 = sub(token, 1, -5) .. "7oig"
-            end
 
             client:close()
           end)
@@ -1187,8 +1181,8 @@ for _, strategy in helpers.all_strategies() do
             local json = assert.response(res).has.jsonbody()
             assert.is_not_nil(json.headers.authorization)
             assert.equal(token, sub(json.headers.authorization, 8))
-            assert.equal(jane.id, json.headers["X-Consumer-Id"])
-            assert.equal(jane.username, json.headers["X-Consumer-Username"])
+            assert.equal(jane.id, json.headers["x-consumer-id"])
+            assert.equal(jane.username, json.headers["x-consumer-username"])
           end)
 
           it("maps to correct user credentials", function()
@@ -1202,21 +1196,21 @@ for _, strategy in helpers.all_strategies() do
             local json = assert.response(res).has.jsonbody()
             assert.is_not_nil(json.headers.authorization)
             assert.equal(token, sub(json.headers.authorization, 8))
-            assert.equal(jane.id, json.headers["X-Consumer-Id"])
-            assert.equal(jane.username, json.headers["X-Consumer-Username"])
+            assert.equal(jane.id, json.headers["x-consumer-id"])
+            assert.equal(jane.username, json.headers["x-consumer-username"])
 
-            local res = proxy_client:get("/kong-oauth2", {
+            res = proxy_client:get("/kong-oauth2", {
               headers = {
                 Authorization = "Bearer " .. token2,
               },
             })
 
             assert.response(res).has.status(200)
-            local json = assert.response(res).has.jsonbody()
+            json = assert.response(res).has.jsonbody()
             assert.is_not_nil(json.headers.authorization)
-            assert.equal(token, sub(json.headers.authorization, 8))
-            assert.equal(jack.id, json.headers["X-Consumer-Id"])
-            assert.equal(jack.username, json.headers["X-Consumer-Username"])
+            assert.equal(token2, sub(json.headers.authorization, 8))
+            assert.equal(jack.id, json.headers["x-consumer-id"])
+            assert.equal(jack.username, json.headers["x-consumer-username"])
           end)
         end)
       end
