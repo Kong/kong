@@ -125,9 +125,9 @@ local function do_negotiation(req_body)
   local services_accepted = {}
   local services_rejected = {}
 
-  for _, req_service in ipairs(req_body.services_requested) do
+  for i, req_service in ipairs(req_body.services_requested) do
     if type(req_service) ~= "table" or type(req_service.name) ~= "string" then
-      goto continue
+      return nil, "Malformed service requested item #" .. tostring(i)
     end
 
     local name = req_service.name
@@ -234,7 +234,11 @@ function _M.serve_version_handshake(conf, cert_digest)
     return response_err(err)
   end
 
-  local body_out = do_negotiation(body_in)
+  local body_out
+  body_out, err = do_negotiation(body_in)
+  if not body_out then
+    return response_err(err)
+  end
 
   ok, err = register_client(conf, body_in.node, body_out.services_accepted)
   if not ok then

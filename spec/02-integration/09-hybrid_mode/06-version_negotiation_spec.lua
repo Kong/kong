@@ -114,6 +114,23 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).jsonbody()
       end)
 
+      it("rejects if there's something weird in the services_requested array", function()
+        local client = helpers.http_client(client_setup)
+        local res = assert(client:post(VNEG_ENDPOINT, {
+          headers = { ["Content-Type"] = "application/json"},
+          body = {
+            node = {
+              id = utils.uuid(),
+              type = "KONG",
+              version = KONG_VERSION,
+              hostname = "localhost",
+            },
+            services_requested = { "hi" },
+          },
+        }))
+        assert.res_status(400, res)
+      end)
+
       it("rejects if missing fields", function()
         local client = helpers.http_client(client_setup)
         local res = assert(client:post(VNEG_ENDPOINT, {
