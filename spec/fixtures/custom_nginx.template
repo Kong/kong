@@ -451,6 +451,7 @@ http {
 > end
 
         access_log ${{ADMIN_ACCESS_LOG}};
+        error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
         ssl_verify_client   optional_no_ca;
         ssl_certificate     ${{CLUSTER_CERT}};

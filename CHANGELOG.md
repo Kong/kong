@@ -91,6 +91,11 @@
 - **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
 [#8558](https://github.com/Kong/kong/pull/8558)
 
+#### Clustering
+
+- The cluster listener now uses the value of `admin_error_log` for its log file
+  instead of `proxy_error_log` [8583](https://github.com/Kong/kong/pull/8583)
+
 ## [2.8.0]
 
 ### Deprecations

@@ -431,6 +431,7 @@ server {
 > end
 
     access_log ${{ADMIN_ACCESS_LOG}};
+    error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if cluster_mtls == "shared" then
     ssl_verify_client   optional_no_ca;
