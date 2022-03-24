@@ -77,9 +77,12 @@
 
 #### Core
 
-- The schema validator now correctly 
-converts `null` from declarative configurations to `nil`
-[#8483](https://github.com/Kong/kong/pull/8483).
+- The schema validator now correctly converts `null` from declarative
+  configurations to `nil`. [#8483](https://github.com/Kong/kong/pull/8483)
+- Only reschedule router and plugin iterator timers after finishing previous
+  execution, avoiding unnecessary concurrent executions.
+  [#8567](https://github.com/Kong/kong/pull/8567)
+
 
 #### Plugins
 
@@ -87,6 +90,8 @@ converts `null` from declarative configurations to `nil`
 [#8565](https://github.com/Kong/kong/pull/8565)
 - **AWS-Lambda**: Removed `proxy_scheme` field from schema
 [#8566](https://github.com/Kong/kong/pull/8566)
+- **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
+[#8558](https://github.com/Kong/kong/pull/8558)
 
 ## [2.8.0]
 
