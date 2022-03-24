@@ -72,7 +72,28 @@
 
 - Bumped pgmoon from 1.13.0 to 1.14.0
   [#8429](https://github.com/Kong/kong/pull/8429)
+- OpenSSL bumped to 1.1.1n
+  [#8544](https://github.com/Kong/kong/pull/8544)
+- Bumped resty.openssl from 0.8.5 to 0.8.6
+  [#8545](https://github.com/Kong/kong/pull/8545)
 
+### Fixes
+
+#### Core
+
+- The schema validator now correctly converts `null` from declarative
+  configurations to `nil`. [#8483](https://github.com/Kong/kong/pull/8483)
+- Only reschedule router and plugin iterator timers after finishing previous
+  execution, avoiding unnecessary concurrent executions.
+  [#8567](https://github.com/Kong/kong/pull/8567)
+
+
+#### Plugins
+
+- **ACME**: `auth_method` default value is set to `token`
+[#8565](https://github.com/Kong/kong/pull/8565)
+- **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
+[#8558](https://github.com/Kong/kong/pull/8558)
 
 ## [2.8.0]
 

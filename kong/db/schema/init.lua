@@ -1589,8 +1589,15 @@ local function adjust_field_for_context(field, value, context, nulls, opts)
     end
 
     if subfield then
-      for i = 1, #value do
-        value[i] = adjust_field_for_context(subfield, value[i], context, nulls, opts)
+      if field.type ~= "map" then
+        for i = 1, #value do
+          value[i] = adjust_field_for_context(subfield, value[i], context, nulls, opts)
+        end
+
+      else
+        for k, v in pairs(value) do
+          value[k] = adjust_field_for_context(subfield, v, context, nulls, opts)
+        end
       end
     end
   end

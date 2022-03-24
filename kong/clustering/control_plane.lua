@@ -48,6 +48,7 @@ local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
 local ngx_ERR = ngx.ERR
 local ngx_OK = ngx.OK
+local ngx_ERROR = ngx.ERROR
 local ngx_CLOSE = ngx.HTTP_CLOSE
 local MAX_PAYLOAD = kong.configuration.cluster_max_payload
 local WS_OPTS = {
@@ -230,10 +231,10 @@ local function get_removed_fields(dp_version_number)
             end
 
             for _, e in pairs(f) do
-              table.insert(unknown_fields_and_elements[plugin][k], e)
+              table_insert(unknown_fields_and_elements[plugin][k], e)
             end
           else
-            table.insert(unknown_fields_and_elements[plugin], f)
+            table_insert(unknown_fields_and_elements[plugin], f)
           end
         end
       end
@@ -513,18 +514,16 @@ function _M:export_deflated_reconfigure_payload()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
   ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
-  local config_hash = self:calculate_config_hash(config_table)
+  local config_hash, hashes = self:calculate_config_hash(config_table)
 
   local payload = {
     type = "reconfigure",
     timestamp = ngx_now(),
     config_table = config_table,
     config_hash = config_hash,
+    hashes = hashes,
   }
 
-  if not payload then
-    return nil, err
-  end
   self.reconfigure_payload = payload
 
   payload, err = deflate_gzip(cjson_encode(payload))
@@ -532,6 +531,7 @@ function _M:export_deflated_reconfigure_payload()
     return nil, err
   end
 
+  self.current_hashes = hashes
   self.current_config_hash = config_hash
   self.deflated_reconfigure_payload = payload
 
@@ -947,7 +947,7 @@ function _M:handle_cp_websocket()
               deflated_payload = self.deflated_reconfigure_payload
             elseif err then
               ngx_log(ngx_WARN, "unable to update compatible payload: ", err, ", the unmodified config ",
-                      "is returned", log_suffix)
+                                "is returned", log_suffix)
               deflated_payload = self.deflated_reconfigure_payload
             end
 
@@ -993,12 +993,12 @@ function _M:handle_cp_websocket()
 
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
-    return ngx_exit(ngx_ERR)
+    return ngx_exit(ngx_ERROR)
   end
 
   if perr then
     ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
-    return ngx_exit(ngx_ERR)
+    return ngx_exit(ngx_ERROR)
   end
 
   return ngx_exit(ngx_OK)

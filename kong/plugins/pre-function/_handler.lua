@@ -72,8 +72,7 @@ local config_cache do
 
 
   local phases = { "certificate", "rewrite", "access",
-                   "header_filter", "body_filter", "log",
-                   "functions" } -- <-- this one being legacy
+                   "header_filter", "body_filter", "log" }
 
 
   config_cache = setmetatable({}, {
@@ -83,17 +82,6 @@ local config_cache do
       local runtime_funcs = {}
       for _, phase in ipairs(phases) do
         local func = compile_phase_array(config[phase])
-
-        if phase == "functions" then
-          if func == no_op then
-            func = nil -- do not set a "functions" key, since we won't run it anyway
-          else
-            -- functions, which is legacy is specified, so inject as "access". The
-            -- schema already prevents "access" and "functions" to co-exist, so
-            -- this should be safe.
-            phase = "access"
-          end
-        end
 
         runtime_funcs[phase] = func
       end

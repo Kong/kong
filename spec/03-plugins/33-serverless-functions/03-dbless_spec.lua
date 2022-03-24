@@ -53,7 +53,7 @@ for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
               plugins:
               - name: "pre-function"
                 config:
-                  functions:
+                  access:
                   - | 
                       kong.log.err("foo")
                       kong.response.exit(418)

@@ -532,5 +532,15 @@ describe("DAO", function()
       local cache_key = dao:cache_key(data)
       assert.equals("Foo:foo:::::", cache_key)
     end)
+
+    it("fallbacks to primary_key if nothing in cache_key is found", function()
+      local schema = assert(Schema.new(optional_cache_key_fields_schema))
+      local dao = DAO.new(mock_db, schema, {}, errors)
+
+      local data = { a = 42 }
+      local cache_key = dao:cache_key(data)
+      assert.equals("Foo:42:::::", cache_key)
+    end)
+
   end)
 end)
