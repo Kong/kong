@@ -159,12 +159,12 @@ do
 end
 
 
-function _GLOBAL.init_pdk(self, kong_config, pdk_major_version)
+function _GLOBAL.init_pdk(self, kong_config)
   if not self then
     error("arg #1 cannot be nil", 2)
   end
 
-  PDK.new(kong_config, pdk_major_version, self)
+  PDK.new(kong_config, self)
 end
 
 

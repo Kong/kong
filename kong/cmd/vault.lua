@@ -30,7 +30,7 @@ local function init_db(args)
   package.path = conf.lua_package_path .. ";" .. package.path
 
   _G.kong = kong_global.new()
-  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+  kong_global.init_pdk(_G.kong, conf) -- latest PDK
 
   local db = assert(DB.new(conf))
   assert(db:init_connector())

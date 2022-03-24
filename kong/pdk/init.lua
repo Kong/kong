@@ -219,7 +219,7 @@ end
 local _PDK = { }
 
 
-function _PDK.new(kong_config, major_version, self)
+function _PDK.new(kong_config, self)
   if kong_config then
     if type(kong_config) ~= "table" then
       error("kong_config must be a table", 2)

@@ -42,7 +42,7 @@ describe("Vault PDK", function()
 
     local kong_global = require "kong.global"
     _G.kong = kong_global.new()
-    kong_global.init_pdk(kong, conf, nil)
+    kong_global.init_pdk(kong, conf)
 
     is_reference = _G.kong.vault.is_reference
     parse_reference = _G.kong.vault.parse_reference
