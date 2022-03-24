@@ -988,8 +988,8 @@ return {
             match if present in the request.
             The `Host` header cannot be used with this attribute: hosts should be specified
             using the `hosts` attribute.
-            Since version 2.8.0, when `headers` contains only one value and that value starts with
-            the special prefix `~*`, the value will be interpreted as a regular expression.
+            When `headers` contains only one value and that value starts with
+            the special prefix `~*`, the value is interpreted as a regular expression.
           ]],
           examples = { { ["x-my-header"] = {"foo", "bar"}, ["x-another-header"] = {"bla"} }, nil },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
