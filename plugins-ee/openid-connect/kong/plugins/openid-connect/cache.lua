@@ -814,7 +814,6 @@ end
 local function kong_oauth2_load(access_token, ttl)
   log.notice("loading kong oauth2 token from database")
   local token, err = kong.db.oauth2_tokens:select_by_access_token(access_token)
-
   if err then
     return nil, err
   end
@@ -898,14 +897,14 @@ function kong_oauth2.load(ctx, access_token, ttl, use_cache)
     ttl_new = ttl
   end
 
-  local credential_cache_key = cache_key(token.credential, "oauth2_credentials")
+  local credential_cache_key = cache_key(token.credential.id, "oauth2_credentials")
   local credential
   credential, err = cache_get(credential_cache_key, ttl_new, kong_oauth2_credential, token.credential)
   if not credential then
     return nil, err
   end
 
-  local consumer_cache_key = cache_key(credential.consumer, "consumers")
+  local consumer_cache_key = cache_key(credential.consumer.id, "consumers")
   local consumer
   consumer, err = cache_get(consumer_cache_key, ttl_new, kong_oauth2_consumer, credential.consumer)
   if not consumer then
