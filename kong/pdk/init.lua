@@ -38,25 +38,6 @@
 
 
 ---
--- A number representing the major version of the current PDK (e.g.
--- `1`). Useful for feature-existence checks or backwards-compatible behavior
--- as users of the PDK.
---
--- @field kong.pdk_major_version
--- @usage
--- if kong.pdk_version_num < 2 then
---   -- PDK is below version 2
--- end
-
-
----
--- A human-readable string containing the version number of the current PDK.
---
--- @field kong.pdk_version
--- @usage print(kong.pdk_version) -- "1.0.0"
-
-
----
 -- A read-only table containing the configuration of the current Kong node,
 -- based on the configuration file and environment variables.
 --
@@ -214,9 +195,6 @@ local setmetatable = setmetatable
 
 
 local MAJOR_MODULES = {
-  --[1] = {
-  --  version = "1.5.0",
-  --  modules = {
       "table",
       "node",
       "log",
@@ -232,19 +210,13 @@ local MAJOR_MODULES = {
       "nginx",
       "cluster",
       "vault",
-  --  },
-  --},
-
-  --latest = 1,
 }
 
 if ngx.config.subsystem == 'http' then
   table.insert(MAJOR_MODULES, 'client.tls')
 end
 
-local _PDK = {
-  --major_versions = MAJOR_VERSIONS,
-}
+local _PDK = { }
 
 
 function _PDK.new(kong_config, major_version, self)
@@ -257,21 +229,7 @@ function _PDK.new(kong_config, major_version, self)
     kong_config = {}
   end
 
-  --if major_version then
-  --  if type(major_version) ~= "number" then
-  --    error("major_version must be a number", 2)
-  --  end
-
-  --else
-  --  major_version = MAJOR_VERSIONS.latest
-  --end
-
-  --local version_meta = MAJOR_VERSIONS[major_version]
-
   self = self or {}
-
-  --self.pdk_major_version = major_version
-  --self.pdk_version = version_meta.version
 
   self.configuration = setmetatable({}, {
     __index = function(_, v)
