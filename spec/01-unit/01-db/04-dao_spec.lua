@@ -459,7 +459,7 @@ describe("DAO", function()
   describe("delete", function()
 
     lazy_setup(function()
- 
+
       local kong_global = require "kong.global"
       _G.kong = kong_global.new()
 
@@ -496,7 +496,7 @@ describe("DAO", function()
         end
       }
       local parent_dao = DAO.new(mock_db, parent_schema, parent_strategy, errors)
-      
+
       local _, err = parent_dao:delete({ a = 42 })
       assert.falsy(err)
     end)
@@ -522,5 +522,15 @@ describe("DAO", function()
       local cache_key = dao:cache_key(data)
       assert.equals("Foo:foo:::::", cache_key)
     end)
+
+    it("fallbacks to primary_key if nothing in cache_key is found", function()
+      local schema = assert(Schema.new(optional_cache_key_fields_schema))
+      local dao = DAO.new(mock_db, schema, {}, errors)
+
+      local data = { a = 42 }
+      local cache_key = dao:cache_key(data)
+      assert.equals("Foo:42:::::", cache_key)
+    end)
+
   end)
 end)
