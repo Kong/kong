@@ -22,8 +22,8 @@ if driver == "terraform" then
       metal_project_id = os.getenv("PERF_TEST_METAL_PROJECT_ID"),
       -- TODO: use an org token
       metal_auth_token = os.getenv("PERF_TEST_METAL_AUTH_TOKEN"),
-      -- metal_plan = "baremetal_1",
-      -- metal_region = "sjc1",
+      -- metal_plan = "c3.small.x86",
+      -- metal_region = "sv15",
       -- metal_os = "ubuntu_20_04",
     }
   })

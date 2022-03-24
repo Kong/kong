@@ -381,10 +381,10 @@ local function marshall_route(r)
   local hosts_t         = { [0] = 0 }
   local headers_t       = { [0] = 0 }
   local uris_t          = { [0] = 0 }
-  local methods_t       = { [0] = 0 }
+  local methods_t       = {}
   local sources_t       = { [0] = 0 }
   local destinations_t  = { [0] = 0 }
-  local snis_t          = { [0] = 0 }
+  local snis_t          = {}
 
 
   -- hosts
@@ -1049,7 +1049,7 @@ do
               break
             end
             -- fallback to regex check if exact match failed
-            if header_t.header_pattern and re_find(req_header_val, header_t.header_pattern) then
+            if header_t.header_pattern and re_find(req_header_val, header_t.header_pattern, "jo") then
               found_in_req = true
               ctx.matches.headers[header_t.name] = req_header_val
               break
@@ -1063,7 +1063,7 @@ do
             matches_headers[header_t.name] = req_header
           end
           -- fallback to regex check if exact match failed
-          if header_t.header_pattern and re_find(req_header, header_t.header_pattern) then
+          if header_t.header_pattern and re_find(req_header, header_t.header_pattern, "jo") then
             found_in_req = true
             ctx.matches.headers[header_t.name] = req_header
           end

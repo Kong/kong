@@ -14,6 +14,12 @@ perf.set_log_level(ngx.DEBUG)
 local driver = os.getenv("PERF_TEST_DRIVER") or "docker"
 perf.use_driver(driver)
 
+-- currently this suite can only run in docker driver
+local describe = describe
+if driver ~= "docker" then
+  describe = pending
+end
+
 local versions = {}
 
 local env_versions = os.getenv("PERF_TEST_VERSIONS")

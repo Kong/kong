@@ -62,6 +62,15 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+
+## Unreleased
+
+### Dependencies
+
+- Bumped pgmoon from 1.13.0 to 1.14.0
+  [#8429](https://github.com/Kong/kong/pull/8429)
+
+
 ## [2.8.0]
 
 ### Deprecations
@@ -128,7 +137,7 @@ the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
 #### Clustering
 
 - `CLUSTERING_MAX_PAYLOAD` is now configurable in kong.conf
-  Thanks, [@andrewgknew](https://github.com/andrewgknew)!
+  Thanks, [@andrewgkew](https://github.com/andrewgkew)!
   [#8337](https://github.com/Kong/kong/pull/8337)
 
 #### Admin API
@@ -305,7 +314,10 @@ In this release we continued our work on better performance:
 - Fixed intermittent botting error which happened when a custom plugin had inter-dependent entity schemas
   on its custom DAO and they were loaded in an incorrect order
   [#7911](https://github.com/Kong/kong/pull/7911)
-
+- Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
+  [#8141](https://github.com/Kong/kong/pull/8141)
+- Fixed DNS client fails to resolve unexpectedly in `ssl_cert` and `ssl_session_fetch` phases.
+  [#8161](https://github.com/Kong/kong/pull/8161)
 
 #### PDK
 

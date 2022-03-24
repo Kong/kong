@@ -878,7 +878,7 @@ describe("http integration tests with zipkin server [#"
       })
       local body = assert.response(r).has.status(200)
       local json = cjson.decode(body)
-      assert.matches(trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
+      assert.matches(('0'):rep(32-#trace_id) .. trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
 
       local balancer_span, proxy_span, request_span =
       wait_for_spans(zipkin_client, 3, nil, trace_id)

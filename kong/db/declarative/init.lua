@@ -54,7 +54,6 @@ local DECLARATIVE_LOCK_KEY = "declarative:lock"
 local DECLARATIVE_LOCK_TTL = 60
 local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null, show_ws_id = true}
 
-
 local declarative = {}
 
 

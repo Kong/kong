@@ -540,7 +540,8 @@ return {
                     "connections_reading": 0,
                     "connections_writing": 1,
                     "connections_waiting": 0
-                }
+                },
+                "configuration_hash": "779742c3d7afee2e38f977044d2ed96b"
             }
             ```
 
@@ -591,6 +592,9 @@ return {
                 * `reachable`: A boolean value reflecting the state of the
                   database connection. Please note that this flag **does not**
                   reflect the health of the database itself.
+            * `configuration_hash`: The hash of the current configuration. This
+              field is only returned when the Kong node is running in DB-less
+              or data-plane mode.
           ]],
         },
       }
@@ -1248,6 +1252,11 @@ return {
       -- While these endpoints actually support DELETE (deleting the entity and
       -- cascade-deleting the plugin), we do not document them, as this operation
       -- is somewhat odd.
+      ["/routes/:routes/service"] = {
+        DELETE = {
+             endpoint = false,
+        }
+      },
       ["/plugins/:plugins/route"] = {
         DELETE = {
           endpoint = false,
@@ -1597,6 +1606,7 @@ return {
         ["healthchecks.active.http_path"] = { description = [[Path to use in GET HTTP request to run as a probe on active health checks.]] },
         ["healthchecks.active.https_verify_certificate"] = { description = [[Whether to check the validity of the SSL certificate of the remote host when performing active health checks using HTTPS.]] },
         ["healthchecks.active.https_sni"] = { description = [[The hostname to use as an SNI (Server Name Identification) when performing active health checks using HTTPS. This is particularly useful when Targets are configured using IPs, so that the target host's certificate can be verified with the proper SNI.]], example = "example.com", },
+        ["healthchecks.active.headers"] = { description = [[One or more lists of values indexed by header name to use in GET HTTP request to run as a probe on active health checks. Values must be pre-formatted.]], example = { { ["x-my-header"] = {"foo", "bar"}, ["x-another-header"] = {"bla"} }, nil }, },
         ["healthchecks.active.healthy.interval"] = { description = [[Interval between active health checks for healthy targets (in seconds). A value of zero indicates that active probes for healthy targets should not be performed.]] },
         ["healthchecks.active.healthy.http_statuses"] = { description = [[An array of HTTP statuses to consider a success, indicating healthiness, when returned by a probe in active health checks.]] },
         ["healthchecks.active.healthy.successes"] = { description = [[Number of successes in active probes (as defined by `healthchecks.active.healthy.http_statuses`) to consider a target healthy.]] },

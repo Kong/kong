@@ -640,6 +640,7 @@ for _, strategy in helpers.each_strategy() do
                   active = {
                     type = "http",
                     concurrency = 10,
+                    headers = cjson.null,
                     healthy = {
                       http_statuses = { 200, 302 },
                       interval = 0,

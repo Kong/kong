@@ -39,6 +39,10 @@ local function from_hex(str)
   return str
 end
 
+-- adds `count` number of zeros to the left of the str
+local function left_pad_zero(str, count)
+  return ('0'):rep(count-#str) .. str
+end
 
 local function parse_baggage_headers(headers, header_pattern)
   -- account for both ot and uber baggage headers
@@ -273,21 +277,31 @@ local function parse_jaeger_trace_context_headers(jaeger_header)
   end
 
   -- valid trace_id is required.
-  if (#trace_id ~= 16 and #trace_id ~= 32) or tonumber(trace_id, 16) == 0 then
+  if #trace_id > 32 or tonumber(trace_id, 16) == 0 then
     warn("invalid jaeger trace ID; ignoring.")
     return nil, nil, nil, nil
   end
 
+  -- if trace_id is not of length 32 chars then 0-pad to left
+  if #trace_id < 32 then
+    trace_id = left_pad_zero(trace_id, 32)
+  end
+
+  -- validating parent_id. If it is invalid just logging, as it can be ignored
+  -- https://www.jaegertracing.io/docs/1.29/client-libraries/#tracespan-identity
+  if #parent_id ~= 16 and tonumber(parent_id, 16) ~= 0 then
+    warn("invalid jaeger parent ID; ignoring.")
+  end
+
   -- valid span_id is required.
-  if #span_id ~= 16 or tonumber(parent_id, 16) == 0 then
+  if #span_id > 16 or tonumber(span_id, 16) == 0 then
     warn("invalid jaeger span ID; ignoring.")
     return nil, nil, nil, nil
   end
 
-  -- valid parent_id is required.
-  if #parent_id ~= 16 then
-    warn("invalid jaeger parent ID; ignoring.")
-    return nil, nil, nil, nil
+  -- if span id length is less than 16 then 0-pad left
+  if #span_id < 16 then
+    span_id = left_pad_zero(span_id, 16)
   end
 
   -- valid flags are required
