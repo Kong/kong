@@ -64,6 +64,8 @@ for _, strategy in helpers.all_strategies() do
 
     describe("authentication", function()
       local proxy_client
+      local jane
+      local jack
       lazy_setup(function()
         local bp = helpers.get_db_utils(strategy, {
           "routes",
@@ -300,7 +302,7 @@ for _, strategy in helpers.all_strategies() do
           },
         }
 
-        local jane = bp.consumers:insert {
+        jane = bp.consumers:insert {
           username = "jane",
         }
 
@@ -310,6 +312,18 @@ for _, strategy in helpers.all_strategies() do
           client_secret = "secret",
           hash_secret   = true,
           consumer      = jane
+        }
+
+        jack = bp.consumers:insert {
+          username = "jack",
+        }
+
+        bp.oauth2_credentials:insert {
+          name          = "demo-2",
+          client_id     = "client-2",
+          client_secret = "secret-2",
+          hash_secret   = true,
+          consumer      = jack
         }
 
         local auth = bp.routes:insert {
@@ -967,6 +981,7 @@ for _, strategy in helpers.all_strategies() do
         -- disable off strategy for oauth2 tokens, they do not support db-less mode
         describe("kong oauth2", function()
           local token
+          local token2
           local invalid_token
 
           lazy_setup(function()
@@ -993,6 +1008,24 @@ for _, strategy in helpers.all_strategies() do
             end
 
             client:close()
+
+            client = helpers.proxy_ssl_client()
+            res = client:post("/auth/oauth2/token", {
+              headers = {
+                ["Content-Type"] = "application/x-www-form-urlencoded",
+              },
+              body = {
+                client_id     = "client-2",
+                client_secret = "secret-2",
+                grant_type    = "client_credentials",
+              },
+            })
+            assert.response(res).has.status(200)
+            json = assert.response(res).has.jsonbody()
+
+            token2 = json.access_token
+
+            client:close()
           end)
 
           it("is not allowed with invalid token", function()
@@ -1007,7 +1040,6 @@ for _, strategy in helpers.all_strategies() do
             assert.same("Unauthorized", json.message)
           end)
 
-
           it("is allowed with valid token", function()
             local res = proxy_client:get("/kong-oauth2", {
               headers = {
@@ -1019,6 +1051,36 @@ for _, strategy in helpers.all_strategies() do
             local json = assert.response(res).has.jsonbody()
             assert.is_not_nil(json.headers.authorization)
             assert.equal(token, sub(json.headers.authorization, 8))
+            assert.equal(jane.id, json.headers["x-consumer-id"])
+            assert.equal(jane.username, json.headers["x-consumer-username"])
+          end)
+
+          it("maps to correct user credentials", function()
+            local res = proxy_client:get("/kong-oauth2", {
+              headers = {
+                Authorization = "Bearer " .. token,
+              },
+            })
+
+            assert.response(res).has.status(200)
+            local json = assert.response(res).has.jsonbody()
+            assert.is_not_nil(json.headers.authorization)
+            assert.equal(token, sub(json.headers.authorization, 8))
+            assert.equal(jane.id, json.headers["x-consumer-id"])
+            assert.equal(jane.username, json.headers["x-consumer-username"])
+
+            res = proxy_client:get("/kong-oauth2", {
+              headers = {
+                Authorization = "Bearer " .. token2,
+              },
+            })
+
+            assert.response(res).has.status(200)
+            json = assert.response(res).has.jsonbody()
+            assert.is_not_nil(json.headers.authorization)
+            assert.equal(token2, sub(json.headers.authorization, 8))
+            assert.equal(jack.id, json.headers["x-consumer-id"])
+            assert.equal(jack.username, json.headers["x-consumer-username"])
           end)
         end)
       end
