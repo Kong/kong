@@ -1505,25 +1505,39 @@ return {
       end
 
       -- clear hop-by-hop request headers:
-      for _, header_name in csv(var.http_connection) do
-        -- some of these are already handled by the proxy module,
-        -- upgrade being an exception that is handled below with
-        -- special semantics.
-        if header_name == "upgrade" then
-          if var.upstream_connection == "keep-alive" then
+      local http_connection = var.http_connection
+      if http_connection ~= "keep-alive" and
+         http_connection ~= "close"      and
+         http_connection ~= "upgrade"
+      then
+        for _, header_name in csv(http_connection) do
+          -- some of these are already handled by the proxy module,
+          -- upgrade being an exception that is handled below with
+          -- special semantics.
+          if header_name == "upgrade" then
+            if var.upstream_connection == "keep-alive" then
+              clear_header(header_name)
+            end
+
+          else
             clear_header(header_name)
           end
-
-        else
-          clear_header(header_name)
         end
       end
 
       -- add te header only when client requests trailers (proxy removes it)
-      for _, header_name in csv(var.http_te) do
-        if header_name == "trailers" then
+      local http_te = var.http_te
+      if http_te then
+        if http_te == "trailers" then
           var.upstream_te = "trailers"
-          break
+
+        else
+          for _, header_name in csv(http_te) do
+            if header_name == "trailers" then
+              var.upstream_te = "trailers"
+              break
+            end
+          end
         end
       end
 
@@ -1547,9 +1561,15 @@ return {
       end
 
       -- clear hop-by-hop response headers:
-      for _, header_name in csv(var.upstream_http_connection) do
-        if header_name ~= "close" and header_name ~= "upgrade" and header_name ~= "keep-alive" then
-          header[header_name] = nil
+      local upstream_http_connection = var.upstream_http_connection
+      if upstream_http_connection ~= "keep-alive" and
+         upstream_http_connection ~= "close"      and
+         upstream_http_connection ~= "upgrade"
+      then
+        for _, header_name in csv(upstream_http_connection) do
+          if header_name ~= "close" and header_name ~= "upgrade" and header_name ~= "keep-alive" then
+            header[header_name] = nil
+          end
         end
       end
 
