@@ -85,7 +85,7 @@ converts `null` from declarative configurations to `nil`
 
 - **ACME**: `auth_method` default value is set to `token`
 [#8565](https://github.com/Kong/kong/pull/8565)
-- **serverless-functions**: Removed `config.functions` from schema
+- **serverless-functions**: Removed deprecated `config.functions` from schema
 [#8559](https://github.com/Kong/kong/pull/8559)
 
 ## [2.8.0]
