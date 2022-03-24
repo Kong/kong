@@ -454,12 +454,6 @@ server {
     }
 
     location = /version-handshake {
-        limit_except POST {
-            deny all;
-        }
-        if ($content_type != "application/json") {
-            return 400;
-        }
         content_by_lua_block {
             Kong.serve_version_handshake()
         }

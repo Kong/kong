@@ -83,7 +83,7 @@ for _, strategy in helpers.each_strategy() do
         it(string.format("rejects HTTPS method %q", req_method), function()
           local client = helpers.http_client(client_setup)
           local res = assert(client:send({ method = req_method, path = VNEG_ENDPOINT }))
-          assert.res_status(403, res)
+          assert.res_status(400, res)
         end)
       end
 

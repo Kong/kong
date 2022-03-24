@@ -18,6 +18,17 @@ local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 
 local _M = {}
 
+local function validate_connection_type()
+  if ngx.req.get_method() ~= "POST" then
+    return nil, "INVALID METHOD"
+  end
+
+  if ngx.var.http_content_type ~= "application/json" then
+    return nil, "Invalid Content-Type"
+  end
+
+  return true
+end
 
 local function get_body()
   ngx.req.read_body()
@@ -201,6 +212,11 @@ function _M.serve_version_handshake(conf, cert_digest)
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err)
     return ngx.exit(ngx.HTTP_CLOSE)
+  end
+
+  ok, err = validate_connection_type()
+  if not ok then
+    return response_err(err)
   end
 
   local body_in = cjson.decode(get_body())
