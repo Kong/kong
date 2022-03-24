@@ -107,12 +107,7 @@ local function check_node_compatibility(client_node)
     return nil, ("unknown node type %q"):format(client_node.type), CLUSTERING_SYNC_STATUS.UNKNOWN
   end
 
-  local ok, msg, status = clustering_utils.check_kong_version_compatibility(KONG_VERSION, client_node.version)
-  if not ok then
-    return ok, msg, status
-  end
-
-  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
+  return clustering_utils.check_kong_version_compatibility(KONG_VERSION, client_node.version)
 end
 
 local function do_negotiation(req_body)
