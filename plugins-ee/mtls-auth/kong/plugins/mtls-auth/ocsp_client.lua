@@ -26,6 +26,14 @@ function _M.validate_cert(conf, cert_chain)
   if not ocsp_req then
     return nil, "failed to create OCSP request: " .. err
   end
+  
+  local proxy_opts = {}
+  if conf.http_proxy then
+    kong.log.debug("http_proxy is enabled - setting to ", conf.http_proxy)
+    proxy_opts.http_proxy = conf.http_proxy
+    proxy_opts.https_proxy = conf.http_proxy
+  end
+  
   local c = http.new()
   local res, err = c:request_uri(ocsp_url, {
     headers = {
@@ -34,6 +42,7 @@ function _M.validate_cert(conf, cert_chain)
     timeout = conf.http_timeout,
     method = "POST",
     body = ocsp_req,
+    proxy_opts = proxy_opts,
   })
 
   if not res then

@@ -57,6 +57,9 @@ return {
             type = "number",
             default = 60000,
           }, },
+          { http_proxy = typedefs.url {
+              required = false,
+          }, },
         },
     }, },
   },
