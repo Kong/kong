@@ -3,6 +3,8 @@
 - [2.7.2](#272)
 - [2.7.1](#271)
 - [2.7.0](#270)
+
+- [2.6.1](#261)
 - [2.6.0](#260)
 - [2.5.1](#251)
 - [2.5.0](#250)
@@ -150,6 +152,8 @@ In this release we continued our work on better performance:
 - Old `BasePlugin` is deprecated and will be removed in a future version of Kong.
   Porting tips in the [documentation](https://docs.konghq.com/gateway-oss/2.3.x/plugin-development/custom-logic/#porting-from-old-baseplugin-style)
 
+## [2.6.1]
+
 ### Fixes
 
 #### Core
@@ -187,6 +191,14 @@ In this release we continued our work on better performance:
 
 [Back to TOC](#table-of-contents)
 
+- Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
+  [#8142](https://github.com/Kong/kong/pull/8142)
+
+#### Plugins
+
+- **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
+    and deprecated the `proxy_scheme` config attribute for removal in 3.0
+    [#8406](https://github.com/Kong/kong/pull/8406)
 
 ## [2.6.0]
 
