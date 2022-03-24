@@ -15,6 +15,7 @@ local function init()
   local e = ffi.C.environ
   if not e then
     kong.log.warn("could not access environment variables")
+    return
   end
 
   local find = string.find
