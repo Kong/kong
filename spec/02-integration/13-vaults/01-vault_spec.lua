@@ -40,14 +40,18 @@ for _, strategy in helpers.each_strategy() do
       })
 
       assert.res_status(200, res)
+    end)
 
-      helpers.unsetenv("CERT")
-      helpers.unsetenv("KEY")
+    after_each(function()
+      if client then
+        client:close()
+      end
     end)
 
     lazy_teardown(function()
-    client:close()
-    helpers.stop_kong()
+      helpers.stop_kong()
+      helpers.unsetenv("CERT")
+      helpers.unsetenv("KEY")
     end)
 
     it("create certificates with cert and key as secret", function()

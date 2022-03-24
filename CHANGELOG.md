@@ -1,8 +1,11 @@
 # Table of Contents
 
 - [2.8.0](#280)
+- [2.7.2](#272)
 - [2.7.1](#271)
 - [2.7.0](#270)
+
+- [2.6.1](#261)
 - [2.6.0](#260)
 - [2.5.1](#251)
 - [2.5.0](#250)
@@ -213,6 +216,16 @@ the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
   separate places.
   [#8315](https://github.com/Kong/kong/pull/8315)
 
+## [2.7.2] (UNRELEASED)
+
+### Fixes
+
+#### Plugins
+
+- **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
+    and deprecated the `proxy_scheme` config attribute for removal in 3.0
+    [#8406](https://github.com/Kong/kong/pull/8406)
+
 
 ## [2.7.1]
 
@@ -255,7 +268,6 @@ In this release we continued our work on better performance:
   hash-like table is now **deprecated**.
   [#7942](https://github.com/Kong/kong/pull/7942)
 
-
 #### PDK
 
 - New functions: `kong.response.get_raw_body` and `kong.response.set_raw_body`
@@ -291,6 +303,8 @@ In this release we continued our work on better performance:
 - Old `BasePlugin` is deprecated and will be removed in a future version of Kong.
   Porting tips in the [documentation](https://docs.konghq.com/gateway-oss/2.3.x/plugin-development/custom-logic/#porting-from-old-baseplugin-style)
 
+## [2.6.1]
+
 ### Fixes
 
 #### Core
@@ -305,7 +319,10 @@ In this release we continued our work on better performance:
 - Fixed intermittent botting error which happened when a custom plugin had inter-dependent entity schemas
   on its custom DAO and they were loaded in an incorrect order
   [#7911](https://github.com/Kong/kong/pull/7911)
-
+- Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
+  [#8141](https://github.com/Kong/kong/pull/8141)
+- Fixed DNS client fails to resolve unexpectedly in `ssl_cert` and `ssl_session_fetch` phases.
+  [#8161](https://github.com/Kong/kong/pull/8161)
 
 #### PDK
 
@@ -325,6 +342,14 @@ In this release we continued our work on better performance:
 
 [Back to TOC](#table-of-contents)
 
+- Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
+  [#8142](https://github.com/Kong/kong/pull/8142)
+
+#### Plugins
+
+- **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
+    and deprecated the `proxy_scheme` config attribute for removal in 3.0
+    [#8406](https://github.com/Kong/kong/pull/8406)
 
 ## [2.6.0]
 
