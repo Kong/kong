@@ -242,7 +242,7 @@ function _M.serve_version_handshake(conf, cert_digest)
 
   ok, err = register_client(conf, body_in.node, body_out.services_accepted)
   if not ok then
-    return response_err(err)
+    return response(500, { message = err })
   end
 
   return response(200, body_out)
