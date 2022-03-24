@@ -85,7 +85,7 @@ converts `null` from declarative configurations to `nil`
 
 - **ACME**: `auth_method` default value is set to `token`
 [#8565](https://github.com/Kong/kong/pull/8565)
-- **syslog**: `conf.facility` default value is set to `user`
+- **syslog**: `conf.facility` default value is now set to `user`
 [#8564](https://github.com/Kong/kong/pull/8564)
 
 ## [2.8.0]
