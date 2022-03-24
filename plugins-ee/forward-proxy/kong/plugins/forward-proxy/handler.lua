@@ -23,6 +23,7 @@ local ngx_req_get_body    = ngx.req.get_body_data
 local ngx_now             = ngx.now
 local ngx_print           = ngx.print
 local str_lower           = string.lower
+local base64_encode       = base64.encode_base64url
 
 
 local _prefix_log = "[forward-proxy] "
@@ -200,14 +201,29 @@ function ForwardProxyHandler:access(conf)
   httpc:set_timeouts(addr.connect_timeout, addr.send_timeout, addr.read_timeout)
 
   local proxy_uri = "http://"  .. conf.proxy_host .. ":" .. conf.proxy_port .. "/"
+  -- Kong <=2.7 doesn't support configuring a proxy for https requests.
+  -- This can cause timeout issues in some scenarios. With Kong 2.8+, we
+  -- can now configure the https proxy in the plugin configuration. As a
+  -- simple backport fix, setting the https_proxy to http_proxy is a good
+  -- workaround.
+  local proxy_opts = {
+    http_proxy = proxy_uri,
+    https_proxy = proxy_uri,
+  }
+
+  local auth_header
+  if conf.auth_username and conf.auth_password then
+    auth_header = "Basic " .. base64_encode(conf.auth_username .. ":" .. conf.auth_password)
+
+    proxy_opts.https_proxy_authorization = auth_header
+    proxy_opts.http_proxy_authorization = auth_header
+  end
 
   local ok, err = httpc:connect {
     scheme = var.upstream_scheme,
     host = addr.host,
     port = addr.port,
-    proxy_opts = {
-      http_proxy = proxy_uri,
-    },
+    proxy_opts = proxy_opts,
     ssl_verify = conf.https_verify,
     ssl_server_name = addr.host,
   }
@@ -233,14 +249,9 @@ function ForwardProxyHandler:access(conf)
                                   -- encoding being used subsequently)
 
   if var.upstream_host == "" then
-    headers["Host"] = nil
+    headers["host"] = nil
   else
-    headers["Host"] = var.upstream_host
-  end
-
-  if conf.auth_username ~= nil and conf.auth_password ~= nil then
-    local auth_header = "Basic " .. base64.encode_base64url(conf.auth_username .. ":" .. conf.auth_password)
-    headers["Proxy-Authorization"] = auth_header
+    headers["host"] = var.upstream_host
   end
 
   res, err = httpc:request({
