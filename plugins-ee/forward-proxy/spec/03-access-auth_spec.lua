@@ -98,7 +98,7 @@ for _, strategy in strategies() do
       })
 
       local mtls = bp.services:insert {
-        url                = "https://127.0.0.1:16798/",
+        url                = "https://proxy.test:16798/",
         client_certificate = bp.certificates:insert {
           cert = ssl_fixtures.cert_client,
           key  = ssl_fixtures.key_client,
@@ -106,7 +106,7 @@ for _, strategy in strategies() do
       }
 
       local non_mtls = bp.services:insert {
-        url = "https://127.0.0.1:16798/",
+        url = "https://proxy.test:16798/",
       }
 
       -- the happy path
@@ -210,16 +210,16 @@ for _, strategy in strategies() do
         local body = assert.res_status(400, res)
         assert.matches("400 No required SSL certificate was sent", body, nil, true)
 
-        helpers.wait_until(log_match("proxy.log", "CONNECT 127.0.0.1:16798"), 5)
+        helpers.wait_until(log_match("proxy.log", "CONNECT proxy.test:16798"), 5)
       end)
 
       it("client certificate supplied via service.client_certificate", function()
         local res = proxy_client:get("/mtls", params)
 
         local body = assert.res_status(200, res)
-        assert.equals("host=proxy.test", body)
+        assert.equals("host=proxy.test:16798", body)
 
-        helpers.wait_until(log_match("proxy.log", "CONNECT 127.0.0.1:16798"), 5)
+        helpers.wait_until(log_match("proxy.log", "CONNECT proxy.test:16798"), 5)
       end)
     end)
 
