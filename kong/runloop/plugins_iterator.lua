@@ -466,7 +466,10 @@ function PluginsIterator.new(version)
       end
 
       if new_version ~= version then
-        return nil, "plugins iterator was changed while rebuilding it"
+        -- the plugins iterator rebuild is being done by a different process at
+        -- the same time, stop here and let the other one go for it
+        kong.log.info("plugins iterator was changed while rebuilding it")
+        return
       end
     end
 

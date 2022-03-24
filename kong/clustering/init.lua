@@ -1,6 +1,6 @@
 local _M = {}
 
-
+local constants = require("kong.constants")
 local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local ssl = require("ngx.ssl")
@@ -19,6 +19,9 @@ local concat = table.concat
 local pairs = pairs
 local sort = table.sort
 local type = type
+
+
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
 local MT = { __index = _M, }
@@ -104,7 +107,7 @@ local function to_sorted_string(value)
     end
 
   else
-    error("invalid type to be sorted (JSON types are supported")
+    error("invalid type to be sorted (JSON types are supported)")
   end
 end
 
@@ -134,7 +137,49 @@ end
 
 
 function _M:calculate_config_hash(config_table)
-  return ngx_md5(to_sorted_string(config_table))
+  if type(config_table) ~= "table" then
+    local config_hash = ngx_md5(to_sorted_string(config_table))
+    return config_hash, { config = config_hash }
+  end
+
+  local routes    = config_table.routes
+  local services  = config_table.services
+  local plugins   = config_table.plugins
+  local upstreams = config_table.upstreams
+  local targets   = config_table.targets
+
+  local routes_hash    = routes    and ngx_md5(to_sorted_string(routes))    or DECLARATIVE_EMPTY_CONFIG_HASH
+  local services_hash  = services  and ngx_md5(to_sorted_string(services))  or DECLARATIVE_EMPTY_CONFIG_HASH
+  local plugins_hash   = plugins   and ngx_md5(to_sorted_string(plugins))   or DECLARATIVE_EMPTY_CONFIG_HASH
+  local upstreams_hash = upstreams and ngx_md5(to_sorted_string(upstreams)) or DECLARATIVE_EMPTY_CONFIG_HASH
+  local targets_hash   = targets   and ngx_md5(to_sorted_string(targets))   or DECLARATIVE_EMPTY_CONFIG_HASH
+
+  config_table.routes    = nil
+  config_table.services  = nil
+  config_table.plugins   = nil
+  config_table.upstreams = nil
+  config_table.targets   = nil
+
+  local config_hash = ngx_md5(to_sorted_string(config_table) .. routes_hash
+                                                             .. services_hash
+                                                             .. plugins_hash
+                                                             .. upstreams_hash
+                                                             .. targets_hash)
+
+  config_table.routes    = routes
+  config_table.services  = services
+  config_table.plugins   = plugins
+  config_table.upstreams = upstreams
+  config_table.targets   = targets
+
+  return config_hash, {
+    config    = config_hash,
+    routes    = routes_hash,
+    services  = services_hash,
+    plugins   = plugins_hash,
+    upstreams = upstreams_hash,
+    targets   = targets_hash,
+  }
 end
 
 
