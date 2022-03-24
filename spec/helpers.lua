@@ -1174,7 +1174,8 @@ local function http_server(port, ...)
     function(port)
       local socket = require "socket"
       local server = assert(socket.tcp())
-      assert(server:setoption('reuseaddr', true))
+      --TODO: Commented out, see https://github.com/lunarmodules/luasocket/issues/371
+      --assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
       local client = assert(server:accept())
@@ -1231,7 +1232,8 @@ local function udp_server(port, n, timeout)
       local socket = require "socket"
       local server = assert(socket.udp())
       server:settimeout(timeout or 360)
-      server:setoption("reuseaddr", true)
+      --TODO: Commented out, see https://github.com/lunarmodules/luasocket/issues/371
+      --assert(server:setoption('reuseaddr', true))
       server:setsockname("127.0.0.1", port)
       local err
       local data = {}
