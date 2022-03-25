@@ -106,6 +106,12 @@
 - The cluster listener now uses the value of `admin_error_log` for its log file
   instead of `proxy_error_log` [8583](https://github.com/Kong/kong/pull/8583)
 
+### Additions
+
+#### Performance
+- Do not register unnecessary event handlers on Hybrid mode Control Plane
+nodes [#8452](https://github.com/Kong/kong/pull/8452).
+
 ## [2.8.0]
 
 ### Deprecations
