@@ -98,6 +98,8 @@
 [#8566](https://github.com/Kong/kong/pull/8566)
 - **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
 [#8558](https://github.com/Kong/kong/pull/8558)
+- Remove deprecated `blacklist`/`whitelist` config fields from bot-detection, ip-restriction and ACL plugins.
+[#8560](https://github.com/Kong/kong/pull/8560)
 
 #### Clustering
 
