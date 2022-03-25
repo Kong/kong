@@ -1089,7 +1089,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route1.id },
         config   = {
-          blacklist = { "::1", "::2" }
+          deny = { "::1", "::2" }
         },
       }
 
@@ -1097,7 +1097,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route2.id },
         config   = {
-          blacklist = { "::2" },
+          deny = { "::2" },
         },
       })
 
@@ -1105,7 +1105,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route3.id },
         config   = {
-          blacklist = { "fe80::/8" },
+          deny = { "fe80::/8" },
         },
       })
 
@@ -1114,7 +1114,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route4.id },
         config   = {
-          whitelist = { "::2" },
+          allow = { "::2" },
         },
       })
 
@@ -1122,7 +1122,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route5.id },
         config   = {
-          whitelist = { "::1" },
+          allow = { "::1" },
         },
       })
 
@@ -1130,7 +1130,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route6.id },
         config   = {
-          whitelist = { "::/0" },
+          allow = { "::/0" },
         },
       })
 
@@ -1138,8 +1138,8 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route7.id },
         config   = {
-          whitelist = { "::1" },
-          blacklist = { "::1" },
+          allow = { "::1" },
+          deny = { "::1" },
         },
       })
 
@@ -1147,8 +1147,8 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route8.id },
         config   = {
-          whitelist = { "::1/128" },
-          blacklist = { "::1" },
+          allow = { "::1/128" },
+          deny = { "::1" },
         },
       })
 
@@ -1156,8 +1156,8 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route9.id },
         config   = {
-          whitelist = { "::1/128" },
-          blacklist = { "::1/128" },
+          allow = { "::1/128" },
+          deny = { "::1/128" },
         },
       })
 
@@ -1181,8 +1181,8 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    describe("blacklist", function()
-      it("blocks a request when the IPv6 is blacklisted", function()
+    describe("deny", function()
+      it("blocks a request when the IPv6 is denyed", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -1195,7 +1195,7 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "Your IP address is not allowed" }, json)
       end)
-      it("allows a request when the IPv6 is not blacklisted", function()
+      it("allows a request when the IPv6 is not denyed", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -1221,7 +1221,7 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "Your IP address is not allowed" }, json)
       end)
-      it("blocks an IPv6 on a whitelisted IPv6 CIDR range", function()
+      it("blocks an IPv6 on a allowed IPv6 CIDR range", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -1234,7 +1234,7 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "Your IP address is not allowed" }, json)
       end)
-      it("takes precedence over an whitelisted IPv6", function()
+      it("takes precedence over an allowed IPv6", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -1247,7 +1247,7 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "Your IP address is not allowed" }, json)
       end)
-      it("takes precedence over an whitelisted IPv6 CIDR range", function()
+      it("takes precedence over an allowed IPv6 CIDR range", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -1261,8 +1261,8 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("whitelist", function()
-      it("blocks a request when the IPv6 is not whitelisted", function()
+    describe("allow", function()
+      it("blocks a request when the IPv6 is not allowed", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -1275,7 +1275,7 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ message = "Your IP address is not allowed" }, json)
       end)
-      it("allows a whitelisted IPv6", function()
+      it("allows a allowed IPv6", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/status/200",
@@ -1307,7 +1307,7 @@ for _, strategy in helpers.each_strategy() do
         method  = "PATCH",
         path    = "/plugins/" .. plugin.id,
         body    = {
-          config = { blacklist = { "::1", "::2" } },
+          config = { deny = { "::1", "::2" } },
         },
         headers = {
           ["Content-Type"] = "application/json"
@@ -1380,7 +1380,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route1.id },
         config   = {
-          blacklist = { "::4" }
+          deny = { "::4" }
         },
       }
 
@@ -1388,7 +1388,7 @@ for _, strategy in helpers.each_strategy() do
         name     = "ip-restriction",
         route = { id = route2.id },
         config   = {
-          whitelist = { "::4" }
+          allow = { "::4" }
         },
       }
 
@@ -1413,7 +1413,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    describe("blacklist", function()
+    describe("deny", function()
       it("allows with allowed X-Forwarded-For header", function()
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1468,7 +1468,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("whitelist", function()
+    describe("allow", function()
       it("block with not allowed X-Forwarded-For header", function()
         local res = assert(proxy_client:send {
           method  = "GET",
