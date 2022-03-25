@@ -110,6 +110,12 @@
 - Insert and update operations on target entities are done using the PUT HTTP
   method now. [#8596](https://github.com/Kong/kong/pull/8596)
 
+### Additions
+
+#### Performance
+- Do not register unnecessary event handlers on Hybrid mode Control Plane
+nodes [#8452](https://github.com/Kong/kong/pull/8452).
+
 ## [2.8.0]
 
 ### Deprecations
