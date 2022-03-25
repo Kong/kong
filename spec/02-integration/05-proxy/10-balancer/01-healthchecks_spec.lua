@@ -167,7 +167,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
       assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
 
-      local status = bu.post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
       assert.same(204, status)
 
       health = bu.get_upstream_health(upstream_name)
@@ -180,7 +180,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
       assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
 
-      local status = bu.post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
       assert.same(204, status)
 
       health = bu.get_upstream_health(upstream_name)
@@ -233,7 +233,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
       assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
 
-      local status = bu.post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
       assert.same(204, status)
 
       health = bu.get_upstream_health(upstream_name)
@@ -246,7 +246,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
       assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
 
-      local status = bu.post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
       assert.same(204, status)
 
       health = bu.get_upstream_health(upstream_name)
@@ -298,7 +298,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equals("UNHEALTHY", health.data[1].health)
       assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
 
-      local status = bu.post_target_address_health(upstream_id, "srv-changes-port.test:80", "a-changes-port.test:90", "healthy")
+      local status = bu.put_target_address_health(upstream_id, "srv-changes-port.test:80", "a-changes-port.test:90", "healthy")
       assert.same(204, status)
 
       health = bu.get_upstream_health(upstream_name)
@@ -381,7 +381,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
       assert.equals("UNHEALTHY", health.data[1].data.addresses[2].health)
 
-      local status = bu.post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "healthy")
       assert.same(204, status)
 
       health = bu.get_upstream_health(upstream_name)
@@ -394,7 +394,7 @@ for _, strategy in helpers.each_strategy() do
       assert.equals("UNHEALTHY", health.data[1].data.addresses[1].health)
       assert.equals("HEALTHY", health.data[1].data.addresses[2].health)
 
-      local status = bu.post_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
+      local status = bu.put_target_address_health(upstream_id, "multiple-ips.test:80", "127.0.0.2:80", "unhealthy")
       assert.same(204, status)
 
       health = bu.get_upstream_health(upstream_name)
@@ -697,11 +697,11 @@ for _, strategy in helpers.each_strategy() do
 
             if mode == "ipv6" then
               -- TODO /upstreams does not understand shortened IPv6 addresses
-              bu.post_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port, "unhealthy")
+              bu.put_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port, "unhealthy")
               bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port, "UNHEALTHY", admin_port_1)
               bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port, "UNHEALTHY", admin_port_2)
             else
-              bu.post_target_endpoint(upstream_id, localhost, port, "unhealthy")
+              bu.put_target_endpoint(upstream_id, localhost, port, "unhealthy")
               bu.poll_wait_health(upstream_id, localhost, port, "UNHEALTHY", admin_port_1)
               bu.poll_wait_health(upstream_id, localhost, port, "UNHEALTHY", admin_port_2)
             end
@@ -1181,10 +1181,10 @@ for _, strategy in helpers.each_strategy() do
                 bu.end_testcase_setup(strategy, bp)
 
                 -- 100% healthy
-                bu.post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.1:80", "healthy")
-                bu.post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.2:80", "healthy")
-                bu.post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "healthy")
-                bu.post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "healthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.1:80", "healthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.2:80", "healthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "healthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "healthy")
 
                 local health = bu.get_balancer_health(upstream_name)
                 assert.is.table(health)
@@ -1203,7 +1203,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- 75% healthy
-                bu.post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.1:80", "unhealthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.1:80", "unhealthy")
                 health = bu.get_balancer_health(upstream_name)
 
                 assert.same({
@@ -1219,7 +1219,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- 50% healthy
-                bu.post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.2:80", "unhealthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.2:80", "unhealthy")
                 health = bu.get_balancer_health(upstream_name)
 
                 assert.same({
@@ -1235,7 +1235,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- 25% healthy
-                bu.post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "unhealthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "unhealthy")
                 health = bu.get_balancer_health(upstream_name)
 
                 assert.same({
@@ -1251,7 +1251,7 @@ for _, strategy in helpers.each_strategy() do
                 end
 
                 -- 0% healthy
-                bu.post_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "unhealthy")
+                bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "unhealthy")
                 health = bu.get_balancer_health(upstream_name)
 
                 assert.same({
@@ -1996,10 +1996,10 @@ for _, strategy in helpers.each_strategy() do
                 -- manually bring it back using the endpoint
                 if mode == "ipv6" then
                   -- TODO /upstreams does not understand shortened IPv6 addresses
-                  bu.post_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "healthy")
+                  bu.put_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "healthy")
                   bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "HEALTHY")
                 else
-                  bu.post_target_endpoint(upstream_id, localhost, port2, "healthy")
+                  bu.put_target_endpoint(upstream_id, localhost, port2, "healthy")
                   bu.poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
                 end
 
@@ -2058,10 +2058,10 @@ for _, strategy in helpers.each_strategy() do
               -- manually bring it down using the endpoint
               if mode == "ipv6" then
                 -- TODO /upstreams does not understand shortened IPv6 addresses
-                bu.post_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "unhealthy")
+                bu.put_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "unhealthy")
                 bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "UNHEALTHY")
               else
-                bu.post_target_endpoint(upstream_id, localhost, port2, "unhealthy")
+                bu.put_target_endpoint(upstream_id, localhost, port2, "unhealthy")
                 bu.poll_wait_health(upstream_id, localhost, port2, "UNHEALTHY")
               end
 
@@ -2075,10 +2075,10 @@ for _, strategy in helpers.each_strategy() do
               -- manually bring it back using the endpoint
               if mode == "ipv6" then
                 -- TODO /upstreams does not understand shortened IPv6 addresses
-                bu.post_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "healthy")
+                bu.put_target_endpoint(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "healthy")
                 bu.poll_wait_health(upstream_id, "[0000:0000:0000:0000:0000:0000:0000:0001]", port2, "HEALTHY")
               else
-                bu.post_target_endpoint(upstream_id, localhost, port2, "healthy")
+                bu.put_target_endpoint(upstream_id, localhost, port2, "healthy")
                 bu.poll_wait_health(upstream_id, localhost, port2, "HEALTHY")
               end
 
