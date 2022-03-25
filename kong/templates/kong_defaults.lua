@@ -40,6 +40,12 @@ vitals_tsdb_user = NONE
 vitals_tsdb_password = NONE
 vitals_prometheus_scrape_interval = 5
 
+analytics_konnect = on
+analytics_flush_interval = 1
+analytics_buffer_size_limit = 100000
+
+konnect_mode = off
+
 portal = off
 portal_is_legacy = off
 portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl

@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package kong.services.analytics.v1;
+
+option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/service/analytics/v1;v1";
+
+import "kong/model/analytics/payload.proto";
+
+// RequestsLogService is used by a DP to send per request log to the CP.
+// +wrpc:service-id=4
+service RequestsLogService {
+  // GetCapabilities fetches the capabilities offered within the context of the
+  // service from the CP. A capability could span multiple RPCs within a Service,
+  // a single RPC. Capabilities are meant to introduce larger features
+  // without the need of a version upgrade.
+  // TODO(hbagdi): document that this RPC MUST be present in every service.
+  //
+  // Call direction: TODO(hbagdi)
+  // +wrpc:rpc-id=1
+  rpc GetCapabilities(GetCapabilitiesRequest) returns (GetCapabilitiesResponse);
+
+  // uncomment this once wrpc implements client side stream.
+  // StreamLogs is used to send per request log data to CP.
+  // DP CAN make concurrent requests.
+  //
+  // Call direction:
+  // - DP to CP
+  // +wrpc:rpc-id=4
+  // rpc StreamLogs(stream StreamLogsRequest) returns (StreamLogsResponse);
+
+  // SendLogs is used to send per request log data to CP.
+  // DP CAN make concurrent requests.
+  //
+  // Call direction:
+  // - DP to CP
+  // +wrpc:rpc-id=2
+  rpc SendLogs(SendLogsRequest) returns (SendLogsResponse);
+
+
+  // Send pings to keep the connection open in case the dp is idle.
+  //
+  // Call direction:
+  // - DP to CP
+  // +wrpc:rpc-id=3
+  rpc PingCP(PingCPRequest) returns (PingCPResponse);
+}
+
+// uncomment this once wrpc implements client side stream.
+//message StreamLogsRequest {
+//  repeated model.analytics.RequestMetadata request_metadata = 1;
+//}
+//
+//message StreamLogsResponse {
+//}
+
+message SendLogsRequest {
+  repeated model.analytics.RequestMetadata request_metadata = 1;
+}
+
+message SendLogsResponse {
+}
+
+enum Capability {
+  CAPABILITY_UNSPECIFIED = 0;
+  CAPABILITY_BULK_UPDATE = 1;
+  // Incremental configuration will be added in future and is considered out
+  // of scope at the moment.
+  // CAPABILITY_INCREMENTAL = 2;
+}
+
+message GetCapabilitiesRequest {
+}
+
+message GetCapabilitiesResponse {
+  repeated Capability capabilities = 1;
+}
+
+message PingCPRequest {
+}
+
+message PingCPResponse {
+}
+

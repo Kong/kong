@@ -97,6 +97,7 @@ local instrumentation = require "kong.tracing.instrumentation"
 
 local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
+local analytics = require "kong.analytics"
 local sales_counters = require "kong.counters.sales"
 local ee = require "kong.enterprise_edition"
 local portal_auth = require "kong.portal.auth"
@@ -603,6 +604,8 @@ function Kong.init()
       ttl_days       = config.vitals_ttl_days,
   }
 
+  kong.analytics = analytics.new(config)
+
   local counters_strategy = require("kong.counters.sales.strategies." .. kong.db.strategy):new(kong.db)
   kong.sales_counters = sales_counters.new({ strategy = counters_strategy })
   -- ]]
@@ -722,6 +725,12 @@ function Kong.init_worker()
   local ok, err = kong.vitals:init()
   if not ok then
     ngx.log(ngx.CRIT, "could not initialize vitals: ", err)
+  end
+
+  kong.analytics:register_config_change(worker_events)
+  local ok = kong.analytics:init_worker()
+  if not ok then
+    ngx.log(ngx.INFO, "analytics feature is not initialized")
   end
 
   -- sales counters functions require a timer, so must start in worker context
@@ -1541,7 +1550,7 @@ function Kong.log()
   runloop.log.after(ctx)
   ee.handlers.log.after(ctx, ngx.status)
 
-
+  kong.analytics:log_request()
   -- this is not used for now, but perhaps we need it later?
   --ctx.KONG_LOG_ENDED_AT = get_now_ms()
   --ctx.KONG_LOG_TIME = ctx.KONG_LOG_ENDED_AT - ctx.KONG_LOG_START

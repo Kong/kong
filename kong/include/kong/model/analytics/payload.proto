@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package kong.model.analytics;
+
+option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/model/analytics;analytics";
+
+message Payload {
+  repeated RequestMetadata data = 1;
+}
+
+message RequestMetadata {
+  string client_ip = 1;
+  uint64 started_at = 2; // a UNIX epoch
+  UpstreamInfo upstream = 3;
+  RequestInfo request = 4;
+  ResponseInfo response = 5;
+  RouteInfo route = 6;
+  ServiceInfo service = 7;
+  LatencyInfo latencies = 8;
+  repeated BalancerInfo tries = 9;
+  ConsumerInfo consumer = 10;
+}
+
+message RequestInfo {
+  string header_user_agent = 1;
+  string header_host = 2;
+  string http_method = 3;
+  uint32 body_size = 4;
+  string uri = 5;
+}
+
+message ResponseInfo {
+  // there are other protocols flowing through Kong
+  uint32 http_status = 1;
+  uint32 body_size = 2;
+  uint32 header_content_length = 3;
+  string header_content_type = 4;
+}
+
+message RouteInfo {
+  string id = 1;
+  string name = 2;
+}
+
+message ServiceInfo {
+  string id = 1;
+  string name = 2;
+  uint32 port = 3;
+  string protocol = 4;
+}
+
+message LatencyInfo {
+  uint32 kong_gateway_ms = 1;
+  uint32 upstream_ms = 2;
+  uint32 response_ms = 3;
+}
+
+message BalancerInfo {
+  uint32 balancer_latency = 1;
+  string ip = 2;
+  uint32 port = 3;
+}
+
+message ConsumerInfo {
+  string id = 1;
+  string name = 2;
+}
+
+message UpstreamInfo {
+  string upstream_uri = 1;
+}
+

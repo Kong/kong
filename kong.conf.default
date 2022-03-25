@@ -1889,6 +1889,30 @@
                                         # Prometheus server.
 
 #------------------------------------------------------------------------------
+# Konnect
+#------------------------------------------------------------------------------
+
+#konnect_mode = off           # When enabled, the dataplace is connected to Konnect
+
+
+#------------------------------------------------------------------------------
+# Analytics for Konnect
+#------------------------------------------------------------------------------
+
+#analytics_konnect = on            # When enabled, Kong will store and report
+                                   # request analytics
+                                   #
+                                   # The feature is only enabled when
+                                   # konnect_mode is on
+
+#analytics_flush_interval = 1      # Determine the frequency of flushing local data
+                                   # to Konnect in seconds.
+
+#analytics_buffer_size_limit = 100000      # Max number of messages can be buffered locally
+                                           # before dropping data in case there is no
+                                           # network connection to Konnect.
+
+#------------------------------------------------------------------------------
 # DEVELOPER PORTAL
 #------------------------------------------------------------------------------
 

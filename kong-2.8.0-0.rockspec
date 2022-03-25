@@ -345,6 +345,9 @@ build = {
     ["kong.vitals.prometheus.statsd.handler"] = "kong/vitals/prometheus/statsd/handler.lua",
     ["kong.vitals.clustering.strategy"] = "kong/vitals/clustering/strategy.lua",
     ["kong.vitals.influxdb.strategy"] = "kong/vitals/influxdb/strategy.lua",
+
+    ["kong.analytics"] = "kong/analytics/init.lua",
+
     ["kong.db"] = "kong/db/init.lua",
     ["kong.db.errors"] = "kong/db/errors.lua",
     ["kong.db.iteration"] = "kong/db/iteration.lua",
