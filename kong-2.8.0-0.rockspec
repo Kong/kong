@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.6.0-0"
+version = "2.8.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.6.0"
+  tag = "2.8.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -15,7 +15,7 @@ dependencies = {
   "inspect == 3.1.2",
   "luasec == 1.0.2",
   "luasocket == 3.0-rc1",
-  "penlight == 1.11.0",
+  "penlight == 1.12.0",
   "lua-resty-http == 0.16.1",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
@@ -23,7 +23,7 @@ dependencies = {
   "version == 1.0.1",
   "kong-lapis == 1.8.3.1",
   "lua-cassandra == 1.5.1",
-  "pgmoon == 1.13.0",
+  "pgmoon == 1.14.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
   "lyaml == 6.2.7",
@@ -33,14 +33,14 @@ dependencies = {
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.3.3",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.4.2",
+  "lua-resty-healthcheck == 1.5.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.2",
+  "lua-resty-openssl == 0.8.6",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
   "lua-resty-acme == 0.7.2",
-  "lua-resty-session == 3.8",
+  "lua-resty-session == 3.10",
 }
 build = {
   type = "builtin",
@@ -97,6 +97,7 @@ build = {
     ["kong.cmd.prepare"] = "kong/cmd/prepare.lua",
     ["kong.cmd.migrations"] = "kong/cmd/migrations.lua",
     ["kong.cmd.health"] = "kong/cmd/health.lua",
+    ["kong.cmd.vault"] = "kong/cmd/vault.lua",
     ["kong.cmd.version"] = "kong/cmd/version.lua",
     ["kong.cmd.hybrid"] = "kong/cmd/hybrid.lua",
     ["kong.cmd.utils.log"] = "kong/cmd/utils/log.lua",
@@ -162,8 +163,8 @@ build = {
     ["kong.db.dao.snis"] = "kong/db/dao/snis.lua",
     ["kong.db.dao.targets"] = "kong/db/dao/targets.lua",
     ["kong.db.dao.plugins"] = "kong/db/dao/plugins.lua",
-    ["kong.db.dao.plugins.go"] = "kong/db/dao/plugins/go.lua",
     ["kong.db.dao.tags"] = "kong/db/dao/tags.lua",
+    ["kong.db.dao.vaults"] = "kong/db/dao/vaults.lua",
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
@@ -178,6 +179,7 @@ build = {
     ["kong.db.schema.entities.plugins"] = "kong/db/schema/entities/plugins.lua",
     ["kong.db.schema.entities.tags"] = "kong/db/schema/entities/tags.lua",
     ["kong.db.schema.entities.ca_certificates"] = "kong/db/schema/entities/ca_certificates.lua",
+    ["kong.db.schema.entities.vaults_beta"] = "kong/db/schema/entities/vaults_beta.lua",
     ["kong.db.schema.entities.workspaces"] = "kong/db/schema/entities/workspaces.lua",
     ["kong.db.schema.entities.clustering_data_planes"] = "kong/db/schema/entities/clustering_data_planes.lua",
     ["kong.db.schema.entities.parameters"] = "kong/db/schema/entities/parameters.lua",
@@ -187,6 +189,7 @@ build = {
     ["kong.db.schema.metaschema"] = "kong/db/schema/metaschema.lua",
     ["kong.db.schema.typedefs"] = "kong/db/schema/typedefs.lua",
     ["kong.db.schema.plugin_loader"] = "kong/db/schema/plugin_loader.lua",
+    ["kong.db.schema.vault_loader"] = "kong/db/schema/vault_loader.lua",
     ["kong.db.schema.topological_sort"] = "kong/db/schema/topological_sort.lua",
     ["kong.db.strategies"] = "kong/db/strategies/init.lua",
     ["kong.db.strategies.connector"] = "kong/db/strategies/connector.lua",
@@ -217,6 +220,7 @@ build = {
     ["kong.db.migrations.core.012_213_to_220"] = "kong/db/migrations/core/012_213_to_220.lua",
     ["kong.db.migrations.core.013_220_to_230"] = "kong/db/migrations/core/013_220_to_230.lua",
     ["kong.db.migrations.core.014_230_to_270"] = "kong/db/migrations/core/014_230_to_270.lua",
+    ["kong.db.migrations.core.015_270_to_280"] = "kong/db/migrations/core/015_270_to_280.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
@@ -239,6 +243,7 @@ build = {
     ["kong.pdk.node"] = "kong/pdk/node.lua",
     ["kong.pdk.nginx"] = "kong/pdk/nginx.lua",
     ["kong.pdk.cluster"] = "kong/pdk/cluster.lua",
+    ["kong.pdk.vault"] = "kong/pdk/vault.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
@@ -463,5 +468,8 @@ build = {
 
     ["kong.plugins.azure-functions.handler"] = "kong/plugins/azure-functions/handler.lua",
     ["kong.plugins.azure-functions.schema"]  = "kong/plugins/azure-functions/schema.lua",
+
+    ["kong.vaults.env"] = "kong/vaults/env/init.lua",
+    ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
   }
 }

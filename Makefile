@@ -14,6 +14,12 @@ OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
 endif
 
+ifeq ($(MACHINE), aarch64)
+GRPCURL_MACHINE ?= arm64
+else
+GRPCURL_MACHINE ?= $(MACHINE)
+endif
+
 .PHONY: install dependencies dev remove grpcurl \
 	setup-ci setup-kong-build-tools \
 	lint test test-integration test-plugins test-all \
@@ -119,13 +125,13 @@ dependencies: bin/grpcurl
 	    echo $$rock already installed, skipping ; \
 	  else \
 	    echo $$rock not found, installing via luarocks... ; \
-	    luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR); \
+	    luarocks install $$rock OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR) || exit 1; \
 	  fi \
 	done;
 
 bin/grpcurl:
 	@curl -s -S -L \
-		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(MACHINE).tar.gz | tar xz -C bin;
+		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(GRPCURL_MACHINE).tar.gz | tar xz -C bin;
 	@rm bin/LICENSE
 
 dev: remove install dependencies

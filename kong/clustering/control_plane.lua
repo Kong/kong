@@ -32,6 +32,7 @@ local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
 local table_concat = table.concat
+local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
 
@@ -44,8 +45,9 @@ local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
 local ngx_ERR = ngx.ERR
 local ngx_OK = ngx.OK
+local ngx_ERROR = ngx.ERROR
 local ngx_CLOSE = ngx.HTTP_CLOSE
-local MAX_PAYLOAD = constants.CLUSTERING_MAX_PAYLOAD
+local MAX_PAYLOAD = kong.configuration.cluster_max_payload
 local WS_OPTS = {
   timeout = constants.CLUSTERING_TIMEOUT,
   max_payload_len = MAX_PAYLOAD,
@@ -54,6 +56,7 @@ local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local PONG_TYPE = "PONG"
 local RECONFIGURE_TYPE = "RECONFIGURE"
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
@@ -101,7 +104,7 @@ end
 
 
 local function is_timeout(err)
-  return err and string.sub(err, -7) == "timeout"
+  return err and sub(err, -7) == "timeout"
 end
 
 
@@ -184,7 +187,7 @@ local function get_removed_fields(dp_version_number)
           unknown_fields[plugin] = {}
         end
         for _, k in ipairs(fields) do
-          table.insert(unknown_fields[plugin], k)
+          table_insert(unknown_fields[plugin], k)
         end
       end
     end
@@ -198,12 +201,10 @@ _M._get_removed_fields = get_removed_fields
 -- returns has_update, modified_deflated_payload, err
 local function update_compatible_payload(payload, dp_version, log_suffix)
   local fields = get_removed_fields(dp_version_num(dp_version))
-
   if fields then
     payload = utils.deep_copy(payload, false)
     local config_table = payload["config_table"]
     local has_update = invalidate_keys_from_config(config_table["plugins"], fields)
-
     if has_update then
       local deflated_payload, err = deflate_gzip(cjson_encode(payload))
       if deflated_payload then
@@ -233,24 +234,21 @@ function _M:export_deflated_reconfigure_payload()
     end
   end
 
-
   -- store serialized plugins map for troubleshooting purposes
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
   ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
-  local config_hash = self:calculate_config_hash(config_table)
+  local config_hash, hashes = self:calculate_config_hash(config_table)
 
   local payload = {
     type = "reconfigure",
     timestamp = ngx_now(),
     config_table = config_table,
     config_hash = config_hash,
+    hashes = hashes,
   }
 
-  if not payload then
-    return nil, err
-  end
   self.reconfigure_payload = payload
 
   payload, err = deflate_gzip(cjson_encode(payload))
@@ -258,6 +256,7 @@ function _M:export_deflated_reconfigure_payload()
     return nil, err
   end
 
+  self.current_hashes = hashes
   self.current_config_hash = config_hash
   self.deflated_reconfigure_payload = payload
 
@@ -598,7 +597,7 @@ function _M:handle_cp_websocket()
   end
 
   local dp_plugins_map = plugins_list_to_map(data.plugins)
-  local config_hash = string.rep("0", 32) -- initial hash
+  local config_hash = DECLARATIVE_EMPTY_CONFIG_HASH -- initial hash
   local last_seen = ngx_time()
   local sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
   local purge_delay = self.conf.cluster_data_plane_purge_delay
@@ -751,7 +750,7 @@ function _M:handle_cp_websocket()
               deflated_payload = self.deflated_reconfigure_payload
             elseif err then
               ngx_log(ngx_WARN, "unable to update compatible payload: ", err, ", the unmodified config ",
-                      "is returned", log_suffix)
+                                "is returned", log_suffix)
               deflated_payload = self.deflated_reconfigure_payload
             end
 
@@ -797,12 +796,12 @@ function _M:handle_cp_websocket()
 
   if not ok then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
-    return ngx_exit(ngx_ERR)
+    return ngx_exit(ngx_ERROR)
   end
 
   if perr then
     ngx_log(ngx_ERR, _log_prefix, perr, log_suffix)
-    return ngx_exit(ngx_ERR)
+    return ngx_exit(ngx_ERROR)
   end
 
   return ngx_exit(ngx_OK)

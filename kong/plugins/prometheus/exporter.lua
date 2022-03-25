@@ -4,6 +4,8 @@ local find = string.find
 local lower = string.lower
 local concat = table.concat
 local select = select
+local ngx_timer_pending_count = ngx.timer.pending_count
+local ngx_timer_running_count = ngx.timer.running_count
 local balancer = require("kong.runloop.balancer")
 local get_all_upstreams = balancer.get_all_upstreams
 if not balancer.get_all_upstreams then -- API changed since after Kong 2.5
@@ -48,6 +50,9 @@ local function init()
       "Number of Stream connections",
       {"state"})
   end
+  metrics.timers = prometheus:gauge("nginx_timers",
+                                    "Number of nginx timers",
+                                    {"state"})
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
                                           "Datastore reachable from Kong, " ..
                                           "0 is unreachable")
@@ -101,7 +106,6 @@ local function init()
   metrics.consumer_status = prometheus:counter("http_consumer_status",
                                           "HTTP status codes for customer per service/route in Kong",
                                           {"service", "route", "code", "consumer"})
-
 
   -- Hybrid mode status
   if role == "control_plane" then
@@ -313,6 +317,9 @@ local function metric_data()
   metrics.connections:set(ngx.var.connections_reading or 0, { "reading" })
   metrics.connections:set(ngx.var.connections_writing or 0, { "writing" })
   metrics.connections:set(ngx.var.connections_waiting or 0, { "waiting" })
+
+  metrics.timers:set(ngx_timer_running_count(), {"running"})
+  metrics.timers:set(ngx_timer_pending_count(), {"pending"})
 
   -- db reachable?
   local ok, err = kong.db.connector:connect()

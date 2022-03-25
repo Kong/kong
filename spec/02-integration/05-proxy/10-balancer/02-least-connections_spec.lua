@@ -64,7 +64,7 @@ for _, strategy in helpers.each_strategy() do
     it("balances by least-connections", function()
       server1:start()
       server2:start()
-      local thread_max = 50 -- maximum number of threads to use
+      local thread_max = 100 -- maximum number of threads to use
       local done = false
       local threads = {}
 
@@ -91,7 +91,7 @@ for _, strategy in helpers.each_strategy() do
       -- wait while we're executing
       local finish_at = ngx.now() + 1.5
       repeat
-        ngx.sleep(0.1)
+        ngx.sleep(0.01)
       until ngx.now() >= finish_at
 
       -- finish up
@@ -103,7 +103,8 @@ for _, strategy in helpers.each_strategy() do
       local results1 = server1:shutdown()
       local results2 = server2:shutdown()
       local ratio = results1.ok/results2.ok
-      assert.near(2, ratio, 0.8)
+      assert.near(2, ratio, 1)
+      assert.is_not(ratio, 0)
     end)
 
     if strategy ~= "off" then

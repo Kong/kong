@@ -22,6 +22,10 @@ do
   local structpb_value, structpb_list, structpb_struct
 
   function structpb_value(v)
+    if type(v) ~= "table" then
+      return v
+    end
+
     if v.list_value then
       return structpb_list(v.list_value)
     end
@@ -35,14 +39,24 @@ do
 
   function structpb_list(l)
     local out = {}
-    for i, v in ipairs(l.values or l) do
-      out[i] = structpb_value(v)
+    if type(l) == "table" then
+      for i, v in ipairs(l.values or l) do
+        out[i] = structpb_value(v)
+      end
     end
     return out
   end
 
-  function structpb_struct(v)
-    return v.fields or v
+  function structpb_struct(struct)
+    if type(struct) ~= "table" then
+      return struct
+    end
+
+    local out = {}
+    for k, v in pairs(struct.fields or struct) do
+      out[k] = structpb_value(v)
+    end
+    return out
   end
 
   local function unwrap_val(d) return d.v end
@@ -67,6 +81,12 @@ do
     end,
     [".kong_plugin_protocol.ExitArgs"] = function (d)
       return d.status, d.body, structpb_struct(d.headers)
+    end,
+    [".kong_plugin_protocol.ConsumerSpec"] = function (d)
+      return d.id, d.by_username
+    end,
+    [".kong_plugin_protocol.AuthenticateArgs"] = function (d)
+      return d.consumer, d.credential
     end,
   }
 end
@@ -95,7 +115,7 @@ do
     end
 
     return {
-      null_value = t == "nil" or nil,
+      null_value = t == "nil" and 1 or nil,
       bool_value = bool_v,
       number_value = t == "number" and v or nil,
       string_value = t == "string" and v or nil,
@@ -131,6 +151,18 @@ do
     [".kong_plugin_protocol.Number"] = wrap_val,
     [".kong_plugin_protocol.Int"] = wrap_val,
     [".kong_plugin_protocol.String"] = wrap_val,
+    [".kong_plugin_protocol.RawBodyResult"] = function(v, err)
+      if type(v) == "string" then
+        return {  content = v }
+      end
+
+      local path = ngx.req.get_body_file()
+      if path then
+        return { body_filepath = path }
+      end
+
+      return { error = err or "Can't read request body" }
+    end,
     --[".kong_plugin_protocol.MemoryStats"] = - function(v)
     --  return {
     --    lua_shared_dicts = {

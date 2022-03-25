@@ -11,6 +11,8 @@ utils.register_busted_hook()
 -- how many times for each "driver" operation
 local RETRY_COUNT = 3
 local DRIVER
+local DRIVER_NAME
+local DATA_PLANE
 
 -- Real user facing functions
 local driver_functions = {
@@ -55,8 +57,9 @@ local function use_driver(name, opts)
   end
 
   check_driver_sanity(mod)
-  
+
   DRIVER = mod.new(opts)
+  DRIVER_NAME = name
 end
 
 --- Set driver operation retry count
@@ -111,7 +114,7 @@ local _M = {
 --- Start the upstream (nginx) with given conf
 -- @function start_upstream
 -- @param conf string the Nginx nginx snippet under server{} context
--- @return upstream_uri as string or table if port_count is more than 1
+-- @return upstream_uri as string
 function _M.start_upstream(conf)
   return invoke_driver("start_upstreams", conf, 1)[1]
 end
@@ -125,13 +128,51 @@ function _M.start_upstreams(conf, port_count)
   return invoke_driver("start_upstreams", conf, port_count)
 end
 
+local function dp_conf_from_cp_conf(kong_conf)
+  local dp_conf = {}
+  for k, v in pairs(kong_conf) do
+    dp_conf[k] = v
+  end
+  dp_conf['role'] = 'data_plane'
+  dp_conf['database'] = 'off'
+  dp_conf['cluster_control_plane'] = 'kong-cp:8005'
+  dp_conf['cluster_telemetry_endpoint'] = 'kong-cp:8006'
+
+  return dp_conf
+end
+
+--- Start Kong in hybrid mode with given version and conf
+-- @function start_hybrid_kong
+-- @param version string Kong version
+-- @param kong_confs table Kong configuration as a lua table
+-- @return nothing. Throws an error if any.
+function _M.start_hybrid_kong(version, kong_confs)
+  if DRIVER_NAME ~= 'docker' then
+    error("Hybrid support only availabe in Docker driver")
+  end
+  local kong_confs = kong_confs or {}
+
+  kong_confs['cluster_cert'] = '/kong_clustering.crt'
+  kong_confs['cluster_cert_key'] = '/kong_clustering.key'
+  kong_confs['role'] = 'control_plane'
+
+  local control_plane = _M.start_kong(version, kong_confs, { container_id = 'cp'})
+  local driver_confs = { dns = { ['kong-cp'] = control_plane }, container_id = 'dp' }
+  DATA_PLANE = _M.start_kong(version, dp_conf_from_cp_conf(kong_confs), driver_confs)
+
+  if not utils.wait_output("docker logs -f " .. DATA_PLANE, " [DB cache] purging (local) cache") then
+    return false, "timeout waiting for DP having it's entities ready (5s)"
+  end
+end
+
 --- Start Kong with given version and conf
 -- @function start_kong
 -- @param version string Kong version
 -- @param kong_confs table Kong configuration as a lua table
+-- @param driver_confs table driver configuration as a lua table
 -- @return nothing. Throws an error if any.
-function _M.start_kong(version, kong_confs)
-  return invoke_driver("start_kong", version, kong_confs)
+function _M.start_kong(version, kong_confs, driver_confs)
+  return invoke_driver("start_kong", version, kong_confs or {}, driver_confs or {})
 end
 
 --- Stop Kong
@@ -186,7 +227,7 @@ function _M.start_load(opts)
                         " %s " .. -- script place holder
                         " %s/" .. path
 
-  local load_cmd = invoke_driver("get_start_load_cmd", load_cmd_stub, opts.script, opts.uri)
+  local load_cmd = invoke_driver("get_start_load_cmd", load_cmd_stub, opts.script, opts.uri, DATA_PLANE)
   load_should_stop = false
 
   load_thread = ngx.thread.spawn(function()
@@ -201,7 +242,7 @@ local stapxx_thread
 local stapxx_should_stop
 
 --- Start to send load to Kong
--- @function start_load
+-- @function start_stapxx
 -- @param sample_name string stapxx sample name
 -- @param ... string extra arguments passed to stapxx script
 -- @return nothing. Throws an error if any.
@@ -233,7 +274,7 @@ end
 -- @return string the test report text
 function _M.wait_result(opts)
   if not load_thread then
-    error("load haven't been started or already collected, " .. 
+    error("load haven't been started or already collected, " ..
           "start it using start_load() first", 2)
   end
 
@@ -345,15 +386,17 @@ end
 
 --- Generate the flamegraph and return SVG
 -- @function generate_flamegraph
+-- @param title the title for flamegraph
+-- @param opts the command line options string(not table) for flamegraph.pl
 -- @return Nothing. Throws an error if any.
-function _M.generate_flamegraph(filename, title)
+function _M.generate_flamegraph(filename, title, opts)
   if not filename then
     error("filename must be specified for generate_flamegraph")
   end
   if string.sub(filename, #filename-3, #filename):lower() ~= ".svg" then
     filename = filename .. ".svg"
   end
-  
+
   if not title then
     title = "Flame graph"
   end
@@ -364,7 +407,7 @@ function _M.generate_flamegraph(filename, title)
     title = title .. " (based on " .. git.get_kong_version() .. ")"
   end
 
-  local out = invoke_driver("generate_flamegraph", title)
+  local out = invoke_driver("generate_flamegraph", title, opts)
 
   local f, err = io.open(filename, "w")
   if not f then

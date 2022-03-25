@@ -232,7 +232,7 @@ function _M:start_upstreams(conf, port_count)
   return uris
 end
 
-function _M:start_kong(version, kong_conf)
+function _M:start_kong(version, kong_conf, driver_conf)
   kong_conf = kong_conf or {}
   kong_conf["pg_password"] = PG_PASSWORD
   kong_conf["pg_database"] = "kong_tests"
@@ -241,7 +241,9 @@ function _M:start_kong(version, kong_conf)
   kong_conf['proxy_error_log'] = KONG_ERROR_LOG_PATH
   kong_conf['admin_error_log'] = KONG_ERROR_LOG_PATH
 
-  KONG_ADMIN_PORT = math.floor(math.random()*50000+10240)
+  -- we set ip_local_port_range='10240 65535' make sure the random
+  -- port doesn't fall into that range
+  KONG_ADMIN_PORT = math.floor(math.random()*9000+1024)
   kong_conf['admin_listen'] = "0.0.0.0:" .. KONG_ADMIN_PORT
   kong_conf['anonymous_reports'] = "off"
 
@@ -360,8 +362,24 @@ function _M:get_start_load_cmd(stub, script, uri)
 end
 
 local function check_systemtap_sanity(self)
+  local _, err = perf.execute(ssh_execute_wrap(self, self.kong_ip, "which stap"))
+  if err then
+    local ok, err = execute_batch(self, self.kong_ip, {
+      "apt-get install g++ libelf-dev libdw-dev libssl-dev libsqlite3-dev libnss3-dev pkg-config python3 make -y --force-yes",
+      "wget https://sourceware.org/systemtap/ftp/releases/systemtap-4.6.tar.gz -O systemtap.tar.gz",
+      "tar xf systemtap.tar.gz",
+      "cd systemtap-*/ && " .. 
+        "./configure --enable-sqlite --enable-bpf --enable-nls --enable-nss --enable-avahi && " ..
+        "make PREFIX=/usr -j$(nproc) && "..
+        "make install"
+    })
+    if not ok then
+      return false, "failed to build systemtap: " .. err
+    end
+  end
+
   local ok, err = execute_batch(self, self.kong_ip, {
-    "apt-get install systemtap gcc linux-headers-$(uname -r) -y --force-yes",
+    "apt-get install gcc linux-headers-$(uname -r) -y --force-yes",
     "which stap",
     "stat /tmp/stapxx || git clone https://github.com/Kong/stapxx /tmp/stapxx",
     "stat /tmp/perf-ost || git clone https://github.com/openresty/openresty-systemtap-toolkit /tmp/perf-ost",
@@ -415,7 +433,7 @@ function _M:get_wait_stapxx_cmd(timeout)
   return ssh_execute_wrap(self, self.kong_ip, "lsmod | grep stap_")
 end
 
-function _M:generate_flamegraph(title)
+function _M:generate_flamegraph(title, opts)
   local path = self.systemtap_dest_path
   self.systemtap_dest_path = nil
 
@@ -427,7 +445,7 @@ function _M:generate_flamegraph(title)
   local ok, err = execute_batch(self, self.kong_ip, {
     "/tmp/perf-ost/fix-lua-bt " .. path .. ".bt > " .. path .. ".fbt",
     "/tmp/perf-fg/stackcollapse-stap.pl " .. path .. ".fbt > " .. path .. ".cbt",
-    "/tmp/perf-fg/flamegraph.pl --title='" .. title .. "' " .. path .. ".cbt > " .. path .. ".svg",
+    "/tmp/perf-fg/flamegraph.pl --title='" .. title .. "' " .. (opts or "") .. " " .. path .. ".cbt > " .. path .. ".svg",
   })
   if not ok then
     return false, err

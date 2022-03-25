@@ -1083,8 +1083,12 @@ function _M.execute(conf)
   if conf.anonymous and kong.client.get_credential() then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
+    local clear_header = kong.service.request.clear_header
+    clear_header("X-Authenticated-Scope")
+    clear_header("X-Authenticated-UserId")
     return
   end
+
 
   local ok, err = do_authentication(conf)
   if not ok then

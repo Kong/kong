@@ -9,12 +9,11 @@ admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
 status_access_log = off
 status_error_log = logs/status_error.log
+vaults = off
 plugins = bundled
 port_maps = NONE
 host_ports = NONE
 anonymous_reports = on
-go_pluginserver_exe = /usr/local/bin/go-pluginserver
-go_plugins_dir = off
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
@@ -29,6 +28,7 @@ cluster_ca_cert = NONE
 cluster_server_name = NONE
 cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
+cluster_max_payload = 4194304
 
 mem_cache_size = 128m
 ssl_cert = NONE

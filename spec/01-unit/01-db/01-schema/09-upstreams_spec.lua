@@ -67,6 +67,12 @@ describe("load upstreams", function()
     assert.truthy(errs.healthchecks.active.concurrency)
   end)
 
+  it("invalid healthckecks.active.headers produces error", function()
+    local ok, errs = validate({ healthchecks = { active = { headers = { 114514 } } } } )
+    assert.falsy(ok)
+    assert.truthy(errs.healthchecks.active.headers)
+  end)
+
   it("invalid healthckecks.active.http_path produces error", function()
     local ok, errs = validate({ healthchecks = { active = { http_path = "potato" } } } )
     assert.falsy(ok)
@@ -273,6 +279,10 @@ describe("load upstreams", function()
       local integer = "expected an integer"
       local boolean = "expected a boolean"
       local number = "expected a number"
+      local array = "expected an array"
+      local string = "expected a string"
+      local map = "expected a map"
+      local len_min_default = "length must be at least 1"
       local invalid_host = "invalid value: "
       local invalid_host_port = "must not have a port"
       local invalid_ip = "must not be an IP"
@@ -283,7 +293,7 @@ describe("load upstreams", function()
         {{ active = { concurrency = 0.5 }}, integer },
         {{ active = { concurrency = 0 }}, pos_integer },
         {{ active = { concurrency = -10 }}, pos_integer },
-        {{ active = { http_path = "" }}, "length must be at least 1" },
+        {{ active = { http_path = "" }}, len_min_default },
         {{ active = { http_path = "ovo" }}, "should start with: /" },
         {{ active = { https_sni = "127.0.0.1", }}, invalid_ip },
         {{ active = { https_sni = "127.0.0.1:8080", }}, invalid_ip },
@@ -298,9 +308,13 @@ describe("load upstreams", function()
         {{ active = { https_sni = "hello-.example.com", }}, invalid_host },
         {{ active = { https_sni = "example.com:1234", }}, invalid_host_port },
         {{ active = { https_verify_certificate = "ovo", }}, boolean },
+        {{ active = { headers = 0, }}, map },
+        {{ active = { headers = { 0 }, }}, string },
+        {{ active = { headers = { "" }, }}, string },
+        {{ active = { headers = { ["x-header"] = 123 }, }}, array },
         {{ active = { healthy = { interval = -1 }}}, seconds },
         {{ active = { healthy = { interval = 1e+42 }}}, seconds },
-        {{ active = { healthy = { http_statuses = 404 }}}, "expected an array" },
+        {{ active = { healthy = { http_statuses = 404 }}}, array },
         {{ active = { healthy = { http_statuses = { "ovo" }}}}, integer },
         {{ active = { healthy = { http_statuses = { -1 }}}}, status_code },
         {{ active = { healthy = { http_statuses = { 99 }}}}, status_code },
@@ -316,7 +330,7 @@ describe("load upstreams", function()
         {{ active = { healthy = { successes = 256 }}}, zero_integer },
         {{ active = { unhealthy = { interval = -1 }}}, seconds },
         {{ active = { unhealthy = { interval = 1e+42 }}}, seconds },
-        {{ active = { unhealthy = { http_statuses = 404 }}}, "expected an array" },
+        {{ active = { unhealthy = { http_statuses = 404 }}}, array },
         {{ active = { unhealthy = { http_statuses = { "ovo" }}}}, integer },
         {{ active = { unhealthy = { http_statuses = { -1 }}}}, status_code },
         {{ active = { unhealthy = { http_statuses = { 99 }}}}, status_code },
@@ -332,7 +346,7 @@ describe("load upstreams", function()
         {{ active = { unhealthy = { http_failures = 0.5 }}}, integer},
         {{ active = { unhealthy = { http_failures = -1 }}}, zero_integer },
         {{ active = { unhealthy = { http_failures = 256 }}}, zero_integer },
-        {{ passive = { healthy = { http_statuses = 404 }}}, "expected an array" },
+        {{ passive = { healthy = { http_statuses = 404 }}}, array },
         {{ passive = { healthy = { http_statuses = { "ovo" }}}}, integer },
         {{ passive = { healthy = { http_statuses = { -1 }}}}, status_code },
         {{ passive = { healthy = { http_statuses = { 99 }}}}, status_code },
@@ -340,7 +354,7 @@ describe("load upstreams", function()
         {{ passive = { healthy = { successes = 0.5 }}}, integer },
         --{{ passive = { healthy = { successes = 0 }}}, integer },
         {{ passive = { healthy = { successes = -1 }}}, zero_integer },
-        {{ passive = { unhealthy = { http_statuses = 404 }}}, "expected an array" },
+        {{ passive = { unhealthy = { http_statuses = 404 }}}, array },
         {{ passive = { unhealthy = { http_statuses = { "ovo" }}}}, integer },
         {{ passive = { unhealthy = { http_statuses = { -1 }}}}, status_code },
         {{ passive = { unhealthy = { http_statuses = { 99 }}}}, status_code },

@@ -17,14 +17,8 @@ for _, strategy in helpers.each_strategy() do
       admin_client:close()
     end
 
-    local OLD_STATS_PORT = constants.REPORTS.STATS_PORT
-    local NEW_STATS_PORT
-
     lazy_setup(function()
-      NEW_STATS_PORT = OLD_STATS_PORT + math.random(1, 50)
-      constants.REPORTS.STATS_PORT = NEW_STATS_PORT
-
-      dns_hostsfile = assert(os.tmpname())
+      dns_hostsfile = assert(os.tmpname() .. ".hosts")
       local fd = assert(io.open(dns_hostsfile, "w"))
       assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
       assert(fd:close())
@@ -82,23 +76,18 @@ for _, strategy in helpers.each_strategy() do
 
     lazy_teardown(function()
       os.remove(dns_hostsfile)
-      constants.REPORTS.STATS_PORT = OLD_STATS_PORT
 
       helpers.stop_kong()
     end)
 
     before_each(function()
-      reports_server = helpers.mock_reports_server()
-    end)
-
-    after_each(function()
-      reports_server:stop() -- stop the reports server if it was not already stopped
+      reports_server = helpers.tcp_server(constants.REPORTS.STATS_TLS_PORT, {tls=true})
     end)
 
     it("logs number of enabled go plugins", function()
-      reports_send_ping(NEW_STATS_PORT)
+      reports_send_ping(constants.REPORTS.STATS_TLS_PORT)
 
-      local _, reports_data = assert(reports_server:stop())
+      local _, reports_data = assert(reports_server:join())
       reports_data = cjson.encode(reports_data)
 
       assert.match("go_plugins_cnt=1", reports_data)
@@ -111,9 +100,9 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(200, res)
 
-      reports_send_ping(NEW_STATS_PORT)
+      reports_send_ping(constants.REPORTS.STATS_TLS_PORT)
 
-      local _, reports_data = assert(reports_server:stop())
+      local _, reports_data = assert(reports_server:join())
       reports_data = cjson.encode(reports_data)
 
       assert.match("go_plugin_reqs=1", reports_data)
@@ -126,9 +115,13 @@ for _, strategy in helpers.each_strategy() do
       local res = proxy_client:get("/", {
         headers = { host  = "http-service.test" }
       })
+
+      -- send a ping so the tcp server shutdown cleanly and not with a timeout.
+      reports_send_ping(constants.REPORTS.STATS_TLS_PORT)
+
       assert.res_status(200, res)
       assert.equal("got from server 'mock-upstream/1.0.0'", res.headers['x-hello-from-go-at-response'])
-
+      proxy_client:close()
     end)
 
     describe("log phase has access to stuff", function()
@@ -140,6 +133,10 @@ for _, strategy in helpers.each_strategy() do
             ["X-Loose-Data"] = "this",
           }
         })
+
+        -- send a ping so the tcp server shutdown cleanly and not with a timeout.
+        reports_send_ping(constants.REPORTS.STATS_TLS_PORT)
+
         assert.res_status(200, res)
         proxy_client:close()
 

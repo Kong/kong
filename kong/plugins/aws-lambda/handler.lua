@@ -17,6 +17,7 @@ local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
 
+
 local fetch_credentials do
   local credential_sources = {
     require "kong.plugins.aws-lambda.iam-ecs-credentials",
@@ -44,7 +45,6 @@ local error = error
 local pairs = pairs
 local kong = kong
 local type = type
-local find = string.find
 local fmt = string.format
 
 
@@ -246,15 +246,10 @@ function AWSLambdaHandler:access(conf)
 
   local proxy_opts
   if conf.proxy_url then
-    if find(conf.proxy_url, "https", 1, true) == 1 then
-      proxy_opts = {
-        https_proxy = conf.proxy_url,
-      }
-    else
-      proxy_opts = {
-        http_proxy = conf.proxy_url,
-      }
-    end
+    -- lua-resty-http uses the request scheme to determine which of
+    -- http_proxy/https_proxy it will use, and from this plugin's POV, the
+    -- request scheme is always https
+    proxy_opts = { https_proxy = conf.proxy_url }
   end
 
   -- Trigger request
@@ -326,6 +321,6 @@ function AWSLambdaHandler:access(conf)
 end
 
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = "3.6.2"
+AWSLambdaHandler.VERSION = "3.6.3"
 
 return AWSLambdaHandler

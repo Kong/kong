@@ -776,7 +776,13 @@ describe("Admin API #off", function()
         upstreams:
         - name: "foo"
           targets:
-          - target: 10.20.30.40
+            - target: 10.20.30.40
+          healthchecks:
+            passive:
+              healthy:
+                successes: 1
+              unhealthy:
+                http_failures: 1
       ]]
 
       local res = assert(client:send {

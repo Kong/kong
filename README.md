@@ -1,6 +1,6 @@
 [![][kong-logo]][kong-url]
 
-![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/Kong/kong?style=flat-square) ![Docker Pulls](https://img.shields.io/docker/pulls/_/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![Version](https://img.shields.io/github/v/release/Kong/kong?color=green&label=Version&style=flat-square)  ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)
+![Stars](https://img.shields.io/github/stars/Kong/kong?style=flat-square) ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/Kong/kong?style=flat-square) ![Docker Pulls](https://img.shields.io/docker/pulls/_/kong?style=flat-square) [![Build Status][badge-action-image]][badge-action-url] ![Version](https://img.shields.io/github/v/release/Kong/kong?color=green&label=Version&style=flat-square)  ![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)  ![Twitter Follow](https://img.shields.io/twitter/follow/thekonginc?style=social)
 
 
 **Kong** or **Kong API Gateway** is a cloud-native, platform-agnostic, scalable API Gateway distinguished for its high performance and extensibility via plugins.
@@ -11,7 +11,7 @@ Kong runs natively on Kubernetes thanks to its official [Kubernetes Ingress Cont
 
 ---
 
-[Installation](https://konghq.com/install/#kong-community) | [Documentation](https://docs.konghq.com) | [Forum](https://discuss.konghq.com) | [Blog](https://konghq.com/blog) | [Builds][kong-master-builds]
+[Installation](https://konghq.com/install/#kong-community) | [Documentation](https://docs.konghq.com) | [Discussions](https://github.com/Kong/kong/discussions) | [Forum](https://discuss.konghq.com) | [Blog](https://konghq.com/blog) | [Builds][kong-master-builds]
 
 ---
 
@@ -21,7 +21,7 @@ Let’s test drive Kong by adding authentication to an API in under 5 minutes.
 
 We suggest using the docker-compose distribution via the instructions below, but there is also a [docker installation](https://docs.konghq.com/install/docker/) procedure if you’d prefer to run the Kong API Gateway in DB-less mode. 
 
-Whether you’re running in the cloud, on bare metal or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
+Whether you’re running in the cloud, on bare metal, or using containers, you can find every supported distribution on our [official installation](https://konghq.com/install/#kong-community) page.
 
 1) To start, clone the Docker repository and navigate to the compose folder.
 ```cmd
@@ -40,7 +40,7 @@ The Gateway will be available on the following ports on localhost:
 `:8001` on which the Admin API used to configure Kong listens.
 
 Next, follow the [quick start guide](https://docs.konghq.com/gateway-oss/latest/getting-started/configuring-a-service/
-) to tour the Gateway features
+) to tour the Gateway features.
 
 ## Features
 
@@ -48,9 +48,9 @@ By centralizing common API functionality across all your organization's services
 
 The top Kong features include:
 - Advanced routing, load balancing, health checking - all configurable via an admin API or declarative configuration.
-- Authentication and Authorization for APIs using methods like JWT, basic auth, ACLs and more.
+- Authentication and Authorization for APIs using methods like JWT, basic auth, ACLs, and more.
 - Proxy, SSL/TLS termination, and connectivity support for L4 or L7 traffic.
-- Plugins for enforcing traffic controls, req/res transformations, logging, monitoring and including a plugin developer hub.
+- Plugins for enforcing traffic controls, req/res transformations, logging, monitoring, and including a plugin developer hub.
 - Sophisticated deployment models like Declarative Databaseless Deployment and Hybrid Deployment (control plane/data plane separation) without any vendor lock-in.
 - Native ingress controller support for serving Kubernetes.
 
@@ -63,9 +63,9 @@ Contribute to the Plugin Hub and ensure your next innovative idea is published a
 
 ## Contributing
 
-We ❤️  pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong API Gateway, please familiarize yourself with the following developer resources:
-- [CONTRIBUTING](CONTRIBUTING.md)
-- [DEVELOPER](DEVELOPER.md)
+We ❤️ pull requests, and we’re continually working hard to make it as easy as possible for developers to contribute. Before beginning development with the Kong API Gateway, please familiarize yourself with the following developer resources:
+- Contributor Guide ([CONTRIBUTING.md](CONTRIBUTING.md)) to learn about how to contribute to Kong.
+- Development Guide ([DEVELOPER.md](DEVELOPER.md)): Setting up your development environment.
 - [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) and [COPYRIGHT](COPYRIGHT)
 
 Use the [Plugin Development Guide](https://docs.konghq.com/latest/plugin-development/) for building new and creative plugins, or browse the online version of Kong's source code documentation in the [Plugin Development Kit (PDK) Reference](https://docs.konghq.com/latest/pdk/). Developers can build plugins in [Lua](https://docs.konghq.com/gateway-oss/latest/plugin-development/), [Go](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-go-plugins) or [JavaScript](https://docs.konghq.com/gateway-oss/latest/external-plugins/#developing-javascript-plugins).
@@ -89,7 +89,7 @@ Kong Inc. offers commercial subscriptions that enhance the Kong API Gateway in a
 ## License
 
 ```
-Copyright 2016-2021 Kong Inc.
+Copyright 2016-2022 Kong Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

@@ -70,7 +70,7 @@ end
 -- @param[type=string] name Name of the plugin being tested for configuration.
 -- @param[type=string] route_id Id of the route being proxied.
 -- @param[type=string] service_id Id of the service being proxied.
--- @param[type=string] consumer_id Id of the donsumer making the request (if any).
+-- @param[type=string] consumer_id Id of the consumer making the request (if any).
 -- @treturn table Plugin configuration, if retrieved.
 local function load_configuration(ctx,
                                   name,
@@ -466,7 +466,10 @@ function PluginsIterator.new(version)
       end
 
       if new_version ~= version then
-        return nil, "plugins iterator was changed while rebuilding it"
+        -- the plugins iterator rebuild is being done by a different process at
+        -- the same time, stop here and let the other one go for it
+        kong.log.info("plugins iterator was changed while rebuilding it")
+        return
       end
     end
 

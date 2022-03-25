@@ -1,4 +1,8 @@
-_G.kong = {}
+_G.kong = {
+  configuration = {
+    cluster_max_payload = 4194304
+  }
+}
 
 local cp = require("kong.clustering.control_plane")
 local cjson_decode = require("cjson").decode
@@ -58,6 +62,11 @@ describe("kong.clustering.control_plane", function()
         "echo",
         "trigger",
       },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -80,6 +89,11 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
         "trigger",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -104,6 +118,11 @@ describe("kong.clustering.control_plane", function()
         "echo",
         "trigger",
       },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -127,6 +146,11 @@ describe("kong.clustering.control_plane", function()
         "echo",
         "trigger",
       },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -139,6 +163,11 @@ describe("kong.clustering.control_plane", function()
       request_termination = {
         "echo",
         "trigger",
+      },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
       },
     }, cp._get_removed_fields(2004001002))
 
@@ -153,9 +182,22 @@ describe("kong.clustering.control_plane", function()
         "echo",
         "trigger",
       },
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
     }, cp._get_removed_fields(2005000000))
 
-    assert.same(nil, cp._get_removed_fields(2006000000))
+    assert.same({
+      rate_limiting = {
+        "redis_ssl",
+        "redis_ssl_verify",
+        "redis_server_name",
+      },
+    }, cp._get_removed_fields(2006000000))
+
+    assert.same(nil, cp._get_removed_fields(2007000000))
   end)
 
   it("removing unknown fields", function()

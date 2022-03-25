@@ -31,6 +31,7 @@ return {
       "snis",
       "upstreams",
       "targets",
+      "vaults_beta",
     },
     nodoc_entities = {
     },
@@ -60,7 +61,7 @@ return {
     { title = [[DB-less mode]],
       text = [[
 
-        In [DB-less mode](../db-less-and-declarative-config), the Admin API can be used to load a new declarative
+        In [DB-less mode](../reference/db-less-and-declarative-config), the Admin API can be used to load a new declarative
         configuration, and for inspecting the current configuration. In DB-less mode,
         the Admin API for each Kong node functions independently, reflecting the memory state
         of that particular Kong node. This is the case because there is no database
@@ -106,7 +107,7 @@ return {
         given file take their place.
 
         To learn more about the file format, see the
-        [declarative configuration](../db-less-and-declarative-config) documentation.
+        [declarative configuration](../reference/db-less-and-declarative-config) documentation.
 
 
         <div class="endpoint post indent">/config</div>
@@ -229,12 +230,12 @@ return {
   },
 
   footer = [[
-    [clustering]: /gateway-oss/{{page.kong_version}}/clustering
-    [cli]: /gateway-oss/{{page.kong_version}}/cli
-    [active]: /gateway-oss/{{page.kong_version}}/health-checks-circuit-breakers/#active-health-checks
-    [healthchecks]: /gateway-oss/{{page.kong_version}}/health-checks-circuit-breakers
-    [secure-admin-api]: /gateway-oss/{{page.kong_version}}/secure-admin-api
-    [proxy-reference]: /gateway-oss/{{page.kong_version}}/proxy
+    [clustering]: /gateway/{{page.kong_version}}/reference/clustering
+    [cli]: /gateway/{{page.kong_version}}/reference/cli
+    [active]: /gateway/{{page.kong_version}}/reference/health-checks-circuit-breakers/#active-health-checks
+    [healthchecks]: /gateway/{{page.kong_version}}/reference/health-checks-circuit-breakers
+    [secure-admin-api]: /gateway/{{page.kong_version}}/admin-api/secure-admin-api
+    [proxy-reference]: /gateway/{{page.kong_version}}/reference/proxy
   ]],
 
   general = {
@@ -530,7 +531,8 @@ return {
                     "connections_reading": 0,
                     "connections_writing": 1,
                     "connections_waiting": 0
-                }
+                },
+                "configuration_hash": "779742c3d7afee2e38f977044d2ed96b"
             }
             ```
 
@@ -581,6 +583,9 @@ return {
                 * `reachable`: A boolean value reflecting the state of the
                   database connection. Please note that this flag **does not**
                   reflect the health of the database itself.
+            * `configuration_hash`: The hash of the current configuration. This
+              field is only returned when the Kong node is running in DB-less
+              or data-plane mode.
           ]],
         },
       }
@@ -819,6 +824,12 @@ return {
             If set to `null`, then the Nginx default is respected.
           ]],
         },
+        enabled = {
+          description = [[
+            Whether the Service is active. If set to `false`, the proxy behavior
+            will be as if any routes attached to it do not exist (404). Default: `true`.
+          ]],
+        },
         ca_certificates = {
           description = [[
             Array of `CA Certificate` object UUIDs that are used to build the trust store
@@ -923,7 +934,7 @@ return {
         updated_at = { skip = true },
         name = {
           description = [[The name of the Route. Route names must be unique, and they are
-          case sensitive. For example, there can be two different Routes named "test" and 
+          case sensitive. For example, there can be two different Routes named "test" and
           "Test".]]
         },
         regex_priority = {
@@ -1220,6 +1231,11 @@ return {
       -- While these endpoints actually support DELETE (deleting the entity and
       -- cascade-deleting the plugin), we do not document them, as this operation
       -- is somewhat odd.
+      ["/routes/:routes/service"] = {
+        DELETE = {
+             endpoint = false,
+        }
+      },
       ["/plugins/:plugins/route"] = {
         DELETE = {
           endpoint = false,
@@ -1565,6 +1581,7 @@ return {
         ["healthchecks.active.http_path"] = { description = [[Path to use in GET HTTP request to run as a probe on active health checks.]] },
         ["healthchecks.active.https_verify_certificate"] = { description = [[Whether to check the validity of the SSL certificate of the remote host when performing active health checks using HTTPS.]] },
         ["healthchecks.active.https_sni"] = { description = [[The hostname to use as an SNI (Server Name Identification) when performing active health checks using HTTPS. This is particularly useful when Targets are configured using IPs, so that the target host's certificate can be verified with the proper SNI.]], example = "example.com", },
+        ["healthchecks.active.headers"] = { description = [[One or more lists of values indexed by header name to use in GET HTTP request to run as a probe on active health checks. Values must be pre-formatted.]], example = { { ["x-my-header"] = {"foo", "bar"}, ["x-another-header"] = {"bla"} }, nil }, },
         ["healthchecks.active.healthy.interval"] = { description = [[Interval between active health checks for healthy targets (in seconds). A value of zero indicates that active probes for healthy targets should not be performed.]] },
         ["healthchecks.active.healthy.http_statuses"] = { description = [[An array of HTTP statuses to consider a success, indicating healthiness, when returned by a probe in active health checks.]] },
         ["healthchecks.active.healthy.successes"] = { description = [[Number of successes in active probes (as defined by `healthchecks.active.healthy.http_statuses`) to consider a target healthy.]] },
@@ -1600,8 +1617,7 @@ return {
         service. Every upstream can have many targets, and the targets can be
         dynamically added, modified, or deleted. Changes take effect on the fly.
 
-        Because the upstream maintains a history of target changes, the targets cannot
-        be deleted or modified. To disable a target, post a new one with `weight=0`;
+        To disable a target, post a new one with `weight=0`;
         alternatively, use the `DELETE` convenience method to accomplish the same.
 
         The current target object definition is the one with the latest `created_at`.
@@ -1879,7 +1895,66 @@ return {
           },
         },
       },
-    }
+    },
+
+    vaults_beta = {
+      title = "Vaults Beta Entity",
+      entity_title = "Vault",
+      entity_title_plural = "Vaults",
+      description = [[
+        Vault entities are used to configure different Vault connectors. Examples of
+        Vaults are Environment Variables, Hashicorp Vault and AWS Secrets Manager.
+
+        Configuring a Vault allows referencing the secrets with other entities. For
+        example a certificate entity can store a reference to a certificate and key,
+        stored in a vault, instead of storing the certificate and key within the
+        entity. This allows a proper separation of secrets and configuration and
+        prevents secret sprawl.
+      ]],
+
+      fields = {
+        id = { skip = true },
+        created_at = { skip = true },
+        updated_at = { skip = true },
+        name = {
+          description = [[
+            The name of the Vault that's going to be added. Currently, the Vault implementation
+            must be installed in every Kong instance.
+          ]],
+          example = "env",
+        },
+        prefix = {
+          description = [[
+            The unique prefix (or identifier) for this Vault configuration. The prefix
+            is used to load the right Vault configuration and implementation when referencing
+            secrets with the other entities.
+          ]],
+          example = "env",
+        },
+        description = {
+          description = [[
+            The description of the Vault entity.
+          ]],
+          example = "This vault is used to retrieve redis database access credentials",
+        },
+        config = {
+          description = [[
+            The configuration properties for the Vault which can be found on
+            the vaults' documentation page.
+          ]],
+          example = { prefix = "SSL_" },
+        },
+        tags = {
+          description = [[
+            An optional set of strings associated with the Vault for grouping and filtering.
+          ]],
+          examples = {
+            { "database-credentials", "data-plane" },
+            { "certificates", "critical" },
+          },
+        },
+      },
+    },
   },
 
 --------------------------------------------------------------------------------

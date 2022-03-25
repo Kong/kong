@@ -2,17 +2,21 @@ local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
 local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
+local vault        = require "kong.pdk.vault".new()
 
 
+local is_reference = vault.is_reference
+local dereference  = vault.get
 local setmetatable = setmetatable
+local getmetatable = getmetatable
 local re_match     = ngx.re.match
 local re_find      = ngx.re.find
+local tostring     = tostring
 local concat       = table.concat
 local insert       = table.insert
 local format       = string.format
 local unpack       = unpack
 local assert       = assert
-local ipairs       = ipairs
 local pairs        = pairs
 local pcall        = pcall
 local floor        = math.floor
@@ -25,6 +29,10 @@ local find         = string.find
 local null         = ngx.null
 local max          = math.max
 local sub          = string.sub
+
+
+local random_string = utils.random_string
+local uuid = utils.uuid
 
 
 local Schema       = {}
@@ -163,7 +171,8 @@ end
 -- @return The string of quoted words and/or arrays.
 local function quoted_list(words)
   local msg = {}
-  for _, word in ipairs(words) do
+  for i = 1, #words do
+    local word = words[i]
     if type(word) == "table" then
       insert(msg, ("(%s)"):format(quoted_list(word)))
     else
@@ -273,8 +282,9 @@ Schema.validators = {
   end,
 
   match_any = function(value, arg)
-    for _, pattern in ipairs(arg.patterns) do
-      local m = value:match(pattern)
+    local patterns = arg.patterns
+    for i = 1, #patterns do
+      local m = value:match(patterns[i])
       if m then
         return true
       end
@@ -291,8 +301,8 @@ Schema.validators = {
   end,
 
   one_of = function(value, options)
-    for _, option in ipairs(options) do
-      if value == option then
+    for i = 1, #options do
+      if value == options[i] then
         return true
       end
     end
@@ -300,8 +310,8 @@ Schema.validators = {
   end,
 
   not_one_of = function(value, options)
-    for _, option in ipairs(options) do
-      if value == option then
+    for i = 1, #options do
+      if value == options[i] then
         return nil, validation_errors.NOT_ONE_OF:format(concat(options, ", "))
       end
     end
@@ -320,8 +330,8 @@ Schema.validators = {
   end,
 
   contains = function(array, wanted)
-    for _, item in ipairs(array) do
-      if item == wanted then
+    for i = 1, #array do
+      if array[i] == wanted then
         return true
       end
     end
@@ -331,15 +341,17 @@ Schema.validators = {
 
   mutually_exclusive_subsets = function(value, subsets)
     local subset_union = {} -- union of all subsets; key is an element, value is the
-    for _, subset in ipairs(subsets) do -- the subset the element is part of
-      for _, el in ipairs(subset) do
-        subset_union[el] = subset
+    for i = 1, #subsets do -- the subset the element is part of
+      local subset = subsets[i]
+      for j = 1, #subset do
+        subset_union[subset[j]] = subset
       end
     end
 
     local member_of = {}
 
-    for _, val in ipairs(value) do -- for each value, add the set it's part of
+    for i = 1, #value do -- for each value, add the set it's part of
+      local val = value[i]
       if subset_union[val] and not member_of[subset_union[val]] then -- to member_of, iff it hasn't already
         member_of[subset_union[val]] = true
         member_of[#member_of+1] = subset_union[val]
@@ -495,7 +507,8 @@ end
 local function mutually_required(entity, field_names)
   local nonempty = {}
 
-  for _, name in ipairs(field_names) do
+  for i = 1, #field_names do
+    local name = field_names[i]
     if is_nonempty(get_field(entity, name)) then
       insert(nonempty, name)
     end
@@ -512,7 +525,8 @@ end
 local function mutually_exclusive(entity, field_names)
   local nonempty = {}
 
-  for _, name in ipairs(field_names) do
+  for i = 1, #field_names do
+    local name = field_names[i]
     if is_nonempty(get_field(entity, name)) then
       insert(nonempty, name)
     end
@@ -566,7 +580,8 @@ Schema.entity_checkers = {
     run_with_missing_fields = true,
     run_with_invalid_fields = true,
     fn = function(entity, field_names)
-      for _, name in ipairs(field_names) do
+      for i = 1, #field_names do
+        local name = field_names[i]
         if is_nonempty(get_field(entity, name)) then
           return true
         end
@@ -609,8 +624,9 @@ Schema.entity_checkers = {
           return true
         end
 
-        for _, name in ipairs(arg.else_then_at_least_one_of) do
-          if is_nonempty(get_field(entity, name)) then
+        local names = arg.else_then_at_least_one_of
+        for i = 1, #names do
+          if is_nonempty(get_field(entity, names[i])) then
             return true
           end
         end
@@ -625,8 +641,9 @@ Schema.entity_checkers = {
       end
 
       -- run 'if'
-      for _, name in ipairs(arg.then_at_least_one_of) do
-        if is_nonempty(get_field(entity, name)) then
+      local names = arg.then_at_least_one_of
+      for i = 1, #names do
+        if is_nonempty(get_field(entity, names[i])) then
           return true
         end
       end
@@ -647,8 +664,8 @@ Schema.entity_checkers = {
     fn = function(entity, field_names)
       local found = false
       local ok = false
-      for _, name in ipairs(field_names) do
-        if is_nonempty(get_field(entity, name)) then
+      for i = 1, #field_names do
+        if is_nonempty(get_field(entity, field_names[i])) then
           if not found then
             found = true
             ok = true
@@ -670,8 +687,8 @@ Schema.entity_checkers = {
     run_with_invalid_fields = true,
     fn = function(entity, field_names)
       local seen = {}
-      for _, name in ipairs(field_names) do
-        local value = get_field(entity, name)
+      for i = 1, #field_names do
+        local value = get_field(entity, field_names[i])
         if is_nonempty(value) then
           if seen[value] then
             return nil, quoted_list(field_names)
@@ -767,13 +784,15 @@ Schema.entity_checkers = {
       local nonempty1 = {}
       local nonempty2 = {}
 
-      for _, name in ipairs(args.set1) do
+      for i = 1, #args.set1 do
+        local name = args.set1[i]
         if is_nonempty(get_field(entity, name)) then
           insert(nonempty1, name)
         end
       end
 
-      for _, name in ipairs(args.set2) do
+      for i = 1, #args.set2 do
+        local name = args.set2[i]
         if is_nonempty(get_field(entity, name)) then
           insert(nonempty2, name)
         end
@@ -807,8 +826,8 @@ local function validate_elements(self, field, value)
   field.elements.required = true
   local errs = {}
   local all_ok = true
-  for i, v in ipairs(value) do
-    local ok, err = self:validate_field(field.elements, v)
+  for i = 1, #value do
+    local ok, err = self:validate_field(field.elements, value[i])
     if not ok then
       errs[i] = err
       all_ok = false
@@ -840,7 +859,6 @@ local validate_fields
 -- @return true if the field validates correctly;
 -- nil and an error message on failure.
 function Schema:validate_field(field, value)
-
   if value == null then
     if field.ne == null then
       return nil, field.err or validation_errors.NE:format("null")
@@ -947,6 +965,10 @@ function Schema:validate_field(field, value)
       field.len_min = 1
     end
 
+    if field.referenceable and is_reference(value) then
+      return true
+    end
+
   elseif field.type == "function" then
     if type(value) ~= "function" then
       return nil, validation_errors.FUNCTION
@@ -962,7 +984,9 @@ function Schema:validate_field(field, value)
     return nil, validation_errors.SCHEMA_TYPE:format(field.type)
   end
 
-  for _, k in ipairs(Schema.validators_order) do
+  local validators = Schema.validators_order
+  for i = 1, #validators do
+    local k = validators[i]
     if field[k] ~= nil then
       local ok, err = self.validators[k](value, field[k], field)
       if not ok then
@@ -1051,8 +1075,8 @@ local function get_subschema(self, input)
     end
 
     if type(input_key) == "table" then  -- if subschema key is a set, return
-      for _, v in ipairs(input_key) do  -- subschema for first key
-        local subschema = self.subschemas[v]
+      for i = 1, #input_key do  -- subschema for first key
+        local subschema = self.subschemas[input_key[i]]
         if subschema then
           return subschema
         end
@@ -1153,7 +1177,8 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
 
   local required_fields = {}
   if checker.field_sources then
-    for _, source in ipairs(checker.field_sources) do
+    for i = 1, #checker.field_sources do
+      local source = checker.field_sources[i]
       local v = arg[source]
       if type(v) == "string" then
         insert(fields_to_check, v)
@@ -1161,7 +1186,8 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
           required_fields[v] = true
         end
       elseif type(v) == "table" then
-        for _, fname in ipairs(v) do
+        for j = 1, #v do
+          local fname = v[j]
           insert(fields_to_check, fname)
           if checker.required_fields[source] then
             required_fields[fname] = true
@@ -1171,15 +1197,16 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
     end
   else
     fields_to_check = arg
-    for _, fname in ipairs(arg) do
-      required_fields[fname] = true
+    for i = 1, #arg do
+      required_fields[arg[i]] = true
     end
   end
 
   local missing
   local all_nil = true
   local all_ok = true
-  for _, fname in ipairs(fields_to_check) do
+  for i = 1, #fields_to_check do
+    local fname = fields_to_check[i]
     local value = get_field(input, fname)
     if value == nil then
       if (not checker.run_with_missing_fields) and
@@ -1190,6 +1217,12 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
       end
     else
       all_nil = false
+
+      -- Don't run if any of the values is a reference in a referenceable field
+      local field = get_schema_field(self, fname)
+      if field.type == "string" and field.referenceable and is_reference(value) then
+        return
+      end
     end
     if errors[fname] then
       all_ok = false
@@ -1209,8 +1242,8 @@ local function run_entity_check(self, name, input, arg, full_check, errors)
 
   -- Don't run check if a required field is missing
   if missing then
-    for _, fname in ipairs(missing) do
-      set_field(errors, fname, validation_errors.REQUIRED_FOR_ENTITY_CHECK)
+    for i = 1, #missing do
+      set_field(errors, missing[i], validation_errors.REQUIRED_FOR_ENTITY_CHECK)
     end
     return
   end
@@ -1287,7 +1320,8 @@ do
     if not checks then
       return
     end
-    for _, check in ipairs(checks) do
+    for i = 1, #checks do
+      local check = checks[i]
       local check_name = next(check)
       local arg = check[check_name]
       if arg and arg ~= null then
@@ -1335,52 +1369,59 @@ do
 end
 
 
-local function run_transformation_checks(self, input, original_input, rbw_entity, errors)
-  if not self.transformations then
-    return
-  end
-
-  for _, transformation in ipairs(self.transformations) do
-    local args = {}
-    local argc = 0
-    local none_set = true
-    for _, input_field_name in ipairs(transformation.input) do
-      if is_nonempty(get_field(original_input or input, input_field_name)) then
-        none_set = false
-      end
-
-      argc = argc + 1
-      args[argc] = input_field_name
-    end
-
-    local needs_changed = false
-    if transformation.needs then
-      for _, input_field_name in ipairs(transformation.needs) do
-        if rbw_entity and not needs_changed then
-          local value = get_field(original_input or input, input_field_name)
-          local rbw_value = get_field(rbw_entity, input_field_name)
-          if value ~= rbw_value then
-            needs_changed = true
-          end
+local function run_transformation_checks(schema_or_subschema, input, original_input, rbw_entity, errors)
+  local transformations = schema_or_subschema.transformations
+  if transformations then
+    for i = 1, #transformations do
+      local transformation = transformations[i]
+      local args = {}
+      local argc = 0
+      local none_set = true
+      for j = 1, #transformation.input do
+        local input_field_name = transformation.input[j]
+        if is_nonempty(get_field(original_input or input, input_field_name)) then
+          none_set = false
         end
 
         argc = argc + 1
         args[argc] = input_field_name
       end
-    end
 
-    if needs_changed or (not none_set) then
-      local ok, err = mutually_required(needs_changed and original_input or input, args)
-      if not ok then
-        insert_entity_error(errors, validation_errors.MUTUALLY_REQUIRED:format(err))
+      local needs_changed = false
+      if transformation.needs then
+        for j = 1, #transformation.needs do
+          local input_field_name = transformation.needs[j]
+          if rbw_entity and not needs_changed then
+            local value = get_field(original_input or input, input_field_name)
+            local rbw_value = get_field(rbw_entity, input_field_name)
+            if value ~= rbw_value then
+              needs_changed = true
+            end
+          end
 
-      else
-        ok, err = mutually_required(original_input or input, transformation.input)
+          argc = argc + 1
+          args[argc] = input_field_name
+        end
+      end
+
+      if needs_changed or (not none_set) then
+        local ok, err = mutually_required(needs_changed and original_input or input, args)
         if not ok then
           insert_entity_error(errors, validation_errors.MUTUALLY_REQUIRED:format(err))
+
+        else
+          ok, err = mutually_required(original_input or input, transformation.input)
+          if not ok then
+            insert_entity_error(errors, validation_errors.MUTUALLY_REQUIRED:format(err))
+          end
         end
       end
     end
+  end
+
+  local subschema = get_subschema(schema_or_subschema, input)
+  if subschema then
+    run_transformation_checks(subschema, input, original_input, rbw_entity, errors)
   end
 end
 
@@ -1395,7 +1436,9 @@ function Schema:validate_primary_key(pk, ignore_others)
   local pk_set = {}
   local errors = {}
 
-  for _, k in ipairs(self.primary_key) do
+  local primary_key = self.primary_key
+  for i = 1, #primary_key do
+    local k = primary_key[i]
     pk_set[k] = true
     local field = self.fields[k]
     local v = pk[k]
@@ -1535,8 +1578,15 @@ local function adjust_field_for_context(field, value, context, nulls, opts)
     end
 
     if subfield then
-      for i, e in ipairs(value) do
-        value[i] = adjust_field_for_context(subfield, e, context, nulls, opts)
+      if field.type ~= "map" then
+        for i = 1, #value do
+          value[i] = adjust_field_for_context(subfield, value[i], context, nulls, opts)
+        end
+
+      else
+        for k, v in pairs(value) do
+          value[k] = adjust_field_for_context(subfield, v, context, nulls, opts)
+        end
       end
     end
   end
@@ -1567,15 +1617,18 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
   data = tablex.deepcopy(data)
 
-  if self.shorthand_fields then
+  local shorthand_fields = self.shorthand_fields
+  if shorthand_fields then
     local errs = {}
-    for _, shorthand in ipairs(self.shorthand_fields) do
-      local sname, sdata = next(shorthand)
+    local has_errs
+    for i = 1, #shorthand_fields do
+      local sname, sdata = next(shorthand_fields[i])
       local value = data[sname]
       if value ~= nil then
         local _, err = self:validate_field(sdata, value)
         if err then
           errs[sname] = err
+          has_errs = true
         else
           data[sname] = nil
           local new_values = sdata.func(value)
@@ -1587,15 +1640,16 @@ function Schema:process_auto_fields(data, context, nulls, opts)
         end
       end
     end
-    if next(errs) then
+    if has_errs then
       return nil, errs
     end
   end
 
   -- deprecated
-  if self.shorthands then
-    for _, shorthand in ipairs(self.shorthands) do
-      local sname, sfunc = next(shorthand)
+  local shorthands = self.shorthands
+  if shorthands then
+    for i = 1, #shorthands do
+      local sname, sfunc = next(shorthands[i])
       local value = data[sname]
       if value ~= nil then
         data[sname] = nil
@@ -1612,100 +1666,150 @@ function Schema:process_auto_fields(data, context, nulls, opts)
   local now_s
   local now_ms
 
-  for key, field in self:each_field(data) do
+  local is_select = context == "select"
 
-    if field.legacy and field.uuid and data[key] == "" then
-      data[key] = null
+  -- We don't want to resolve references on control planes
+  -- and and admin api requests, admin api request could be
+  -- detected with ngx.ctx.KONG_PHASE, but to limit context
+  -- access we use nulls that admin api sets to true.
+  local kong = kong
+  local resolve_references
+  if is_select and not nulls then
+    if kong and kong.configuration then
+      resolve_references = kong.configuration.role ~= "control_plane"
+    else
+      resolve_references = true
+    end
+  end
+
+  for key, field in self:each_field(data) do
+    local ftype = field.type
+    local value = data[key]
+    if field.legacy and field.uuid and value == "" then
+      value = null
     end
 
-    if field.auto then
+    if not is_select and field.auto then
+      local is_insert_or_upsert = context == "insert" or context == "upsert"
       if field.uuid then
-        if (context == "insert" or context == "upsert") and data[key] == nil then
-          data[key] = utils.uuid()
+        if is_insert_or_upsert and value == nil then
+          value = uuid()
         end
 
-      elseif field.type == "string" then
-        if (context == "insert" or context == "upsert") and data[key] == nil then
-          data[key] = utils.random_string()
+      elseif ftype == "string" then
+        if is_insert_or_upsert and value == nil then
+          value = random_string()
         end
 
-      elseif key == "created_at"
-             and (context == "insert" or context == "upsert")
-             and (data[key] == null or data[key] == nil) then
-        if field.type == "number" then
+      elseif (key == "created_at" and is_insert_or_upsert and (value == null or
+                                                               value == nil))
+      or
+             (key == "updated_at" and (is_insert_or_upsert or context == "update"))
+      then
+        if ftype == "number" then
           if not now_ms then
             update_time()
             now_ms = ngx_now()
           end
-          data[key] = now_ms
+          value = now_ms
 
-        elseif field.type == "integer" then
+        elseif ftype == "integer" then
           if not now_s then
             update_time()
             now_s = ngx_time()
           end
-          data[key] = now_s
-        end
-
-      elseif key == "updated_at" and (context == "insert" or
-                                      context == "upsert" or
-                                      context == "update") then
-        if field.type == "number" then
-          if not now_ms then
-            update_time()
-            now_ms = ngx_now()
-          end
-          data[key] = now_ms
-
-        elseif field.type == "integer" then
-          if not now_s then
-            update_time()
-            now_s = ngx_time()
-          end
-          data[key] = now_s
+          value = now_s
         end
       end
     end
 
-    data[key] = adjust_field_for_context(field, data[key], context, nulls, opts)
+    value = adjust_field_for_context(field, value, context, nulls, opts)
 
-    if context == "select" and data[key] == null and not nulls then
-      data[key] = nil
-    end
+    if is_select then
+      local vtype = type(value)
+      if value == null and not nulls then
+        value = nil
+      elseif ftype == "integer" and vtype == "number" then
+        value = floor(value)
+      end
 
-    if context == "select" and field.type == "integer" and type(data[key]) == "number" then
-      data[key] = floor(data[key])
-    end
+      if resolve_references then
+        if ftype == "string" and field.referenceable then
+          if is_reference(value) then
+            local deref, err = dereference(value)
+            if deref then
+              value = deref
+            else
+              if err then
+                kong.log.warn("unable to resolve reference ", value, " (", err, ")")
+              else
+                kong.log.warn("unable to resolve reference ", value)
+              end
 
-    if context == 'update' and field.immutable then
+              value = nil
+            end
+          end
+
+        elseif vtype == "table" and (ftype == "array" or ftype == "set") then
+          local subfield = field.elements
+          if subfield.type == "string" and subfield.referenceable then
+            local count = #value
+            if count > 0 then
+              for i = 1, count do
+                if is_reference(value[i]) then
+                  local deref, err = dereference(value[i])
+                  if deref then
+                    value[i] = deref
+                  else
+                    if err then
+                      kong.log.warn("unable to resolve reference ", value[i], " (", err, ")")
+                    else
+                      kong.log.warn("unable to resolve reference ", value[i])
+                    end
+
+                    value[i] = nil
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+
+    elseif context == "update" and field.immutable then
       check_immutable_fields = true
     end
+
+    data[key] = value
   end
 
-  if context == "select" then
-    if self.ttl and data.ttl == null and not nulls then
-      data.ttl = nil
-    end
+  if not is_select then
+    return data, nil, check_immutable_fields
+  end
 
-    for key in pairs(data) do
-      local field = self.fields[key]
-      if field then
-        if not field.legacy
-           and field.type == "string"
-           and (field.len_min or 1) > 0
-           and data[key] == ""
-        then
-          data[key] = nulls and null or nil
-        end
+  if self.ttl and data.ttl == null and not nulls then
+    data.ttl = nil
+  end
 
-      elseif not ((key == "ttl" and self.ttl) or
-                  (key == "ws_id" and opts and opts.show_ws_id)) then
-        data[key] = nil
+  local show_ws = opts and opts.show_ws_id
+  for key in pairs(data) do
+    local field = self.fields[key]
+    if field then
+      if not field.legacy
+         and field.type == "string"
+         and (field.len_min or 1) > 0
+         and data[key] == ""
+      then
+        data[key] = nulls and null or nil
       end
+
+    elseif not ((key == "ttl"   and self.ttl) or
+                (key == "ws_id" and show_ws)) then
+      data[key] = nil
     end
   end
 
-  return data, nil, check_immutable_fields
+  return data
 end
 
 
@@ -1965,8 +2069,8 @@ function Schema:errors_to_string(errors)
     end
   end
 
-  for _, err in ipairs(errors) do
-    insert(msgs, err)
+  for i = 1, #errors do
+    insert(msgs, errors[i])
   end
 
   -- Field-specific errors
@@ -2044,14 +2148,14 @@ function Schema:get_constraints()
     -- merge explicit and implicit constraints for workspaces
     for _, e in pairs(_cache["workspaces"].constraints) do
       local found = false
-      for _, w in ipairs(_workspaceable) do
-        if w == e then
+      for i = 1, #_workspaceable do
+        if _workspaceable[i] == e then
           found = true
           break
         end
       end
       if not found then
-        table.insert(_workspaceable, e)
+        insert(_workspaceable, e)
       end
     end
     return _workspaceable
@@ -2059,7 +2163,7 @@ function Schema:get_constraints()
 
   local constraints = {}
   for _, c in pairs(_cache[self.name].constraints) do
-    table.insert(constraints, c)
+    insert(constraints, c)
   end
   return constraints
 end
@@ -2083,7 +2187,8 @@ end
 local function get_transform_args(input, original_input, output, transformation)
   local args = {}
   local argc = 0
-  for _, input_field_name in ipairs(transformation.input) do
+  for i = 1, #transformation.input do
+    local input_field_name = transformation.input[i]
     local value = get_field(output or original_input or input, input_field_name)
     if is_nonempty(value) then
       argc = argc + 1
@@ -2099,7 +2204,8 @@ local function get_transform_args(input, original_input, output, transformation)
   end
 
   if transformation.needs then
-    for _, need in ipairs(transformation.needs) do
+    for i = 1, #transformation.needs do
+      local need = transformation.needs[i]
       local value = get_field(output or input, need)
       if is_nonempty(value) then
         argc = argc + 1
@@ -2113,19 +2219,11 @@ local function get_transform_args(input, original_input, output, transformation)
   return args
 end
 
---- Run transformations on fields.
--- @param input The input table.
--- @param original_input The original input for transformation detection.
--- @param context a string describing the CRUD context:
--- valid values are: "insert", "update", "upsert", "select"
--- @return the transformed entity
-function Schema:transform(input, original_input, context)
-  if not self.transformations then
-    return input
-  end
 
-  local output = nil
-  for _, transformation in ipairs(self.transformations) do
+local function run_transformations(self, transformations, input, original_input, context)
+  local output
+  for i = 1, #transformations do
+    local transformation = transformations[i]
     local transform
     if context == "select" then
       transform = transformation.on_read
@@ -2136,7 +2234,6 @@ function Schema:transform(input, original_input, context)
 
     if transform then
       local args = get_transform_args(input, original_input, output, transformation)
-
       if args then
         local data, err = transform(unpack(args))
         if err then
@@ -2152,6 +2249,32 @@ function Schema:transform(input, original_input, context)
   return output or input
 end
 
+
+--- Run transformations on fields.
+-- @param input The input table.
+-- @param original_input The original input for transformation detection.
+-- @param context a string describing the CRUD context:
+-- valid values are: "insert", "update", "upsert", "select"
+-- @return the transformed entity
+function Schema:transform(input, original_input, context)
+  local output, err
+  if self.transformations then
+    output, err = run_transformations(self, self.transformations, input, original_input, context)
+    if not output then
+      return nil, err
+    end
+  end
+
+  local subschema = get_subschema(self, input)
+  if subschema and subschema.transformations then
+    output, err = run_transformations(subschema, subschema.transformations, output or input, original_input, context)
+    if not output then
+      return nil, err
+    end
+  end
+
+  return output or input
+end
 
 --- Instatiate a new schema from a definition.
 -- @param definition A table with attributes describing
@@ -2172,10 +2295,11 @@ function Schema.new(definition, is_subschema)
   local self = copy(definition)
   setmetatable(self, Schema)
 
-  if self.cache_key then
+  local cache_key = self.cache_key
+  if cache_key then
     self.cache_key_set = {}
-    for _, name in ipairs(self.cache_key) do
-      self.cache_key_set[name] = true
+    for i = 1, #cache_key do
+      self.cache_key_set[cache_key[i]] = true
     end
   end
 
@@ -2211,7 +2335,7 @@ function Schema.new(definition, is_subschema)
   if self.workspaceable and self.name then
     if not _workspaceable[self.name] then
       _workspaceable[self.name] = true
-      table.insert(_workspaceable, { schema = self })
+      insert(_workspaceable, { schema = self })
     end
   end
 
@@ -2244,8 +2368,8 @@ function Schema.new_subschema(self, key, definition)
   end
 
   local parent_by_name = {}
-  for _, f in ipairs(self.fields) do
-    local fname, fdata = next(f)
+  for i = 1, #self.fields do
+    local fname, fdata = next(self.fields[i])
     parent_by_name[fname] = fdata
   end
 

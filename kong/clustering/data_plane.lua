@@ -15,6 +15,7 @@ local type = type
 local math = math
 local pcall = pcall
 local tostring = tostring
+local sub = string.sub
 local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
@@ -35,7 +36,7 @@ local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local ngx_WARN = ngx.WARN
 local ngx_NOTICE = ngx.NOTICE
-local MAX_PAYLOAD = constants.CLUSTERING_MAX_PAYLOAD
+local MAX_PAYLOAD = kong.configuration.cluster_max_payload
 local WS_OPTS = {
   timeout = constants.CLUSTERING_TIMEOUT,
   max_payload_len = MAX_PAYLOAD,
@@ -43,10 +44,11 @@ local WS_OPTS = {
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local _log_prefix = "[clustering] "
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
 local function is_timeout(err)
-  return err and string.sub(err, -7) == "timeout"
+  return err and sub(err, -7) == "timeout"
 end
 
 
@@ -73,20 +75,27 @@ function _M:decode_config(config)
 end
 
 
-function _M:update_config(config_table, config_hash, update_cache)
+function _M:update_config(config_table, config_hash, update_cache, hashes)
   assert(type(config_table) == "table")
 
   if not config_hash then
-    config_hash = self:calculate_config_hash(config_table)
+    config_hash, hashes = self:calculate_config_hash(config_table)
+  end
+
+  local current_hash = declarative.get_current_hash()
+  if current_hash == config_hash then
+    ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
+                                    "no need to reload")
+    return true
   end
 
   local entities, err, _, meta, new_hash =
-              self.declarative_config:parse_table(config_table, config_hash)
+    self.declarative_config:parse_table(config_table, config_hash)
   if not entities then
     return nil, "bad config received from control plane " .. err
   end
 
-  if declarative.get_current_hash() == new_hash then
+  if current_hash == new_hash then
     ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
                                     "no need to reload")
     return true
@@ -94,8 +103,9 @@ function _M:update_config(config_table, config_hash, update_cache)
 
   -- NOTE: no worker mutex needed as this code can only be
   -- executed by worker 0
+
   local res, err =
-    declarative.load_into_cache_with_events(entities, meta, new_hash)
+    declarative.load_into_cache_with_events(entities, meta, new_hash, hashes)
   if not res then
     return nil, err
   end
@@ -158,10 +168,13 @@ function _M:init_worker()
 
     else
       -- CONFIG_CACHE does not exist, pre create one with 0600 permission
-      local fd = ffi.C.open(CONFIG_CACHE, bit.bor(system_constants.O_RDONLY(),
-                                                  system_constants.O_CREAT()),
-                                          bit.bor(system_constants.S_IRUSR(),
-                                                  system_constants.S_IWUSR()))
+      local flags = bit.bor(system_constants.O_RDONLY(),
+                            system_constants.O_CREAT())
+
+      local mode = ffi.new("int", bit.bor(system_constants.S_IRUSR(),
+                                          system_constants.S_IWUSR()))
+
+      local fd = ffi.C.open(CONFIG_CACHE, flags, mode)
       if fd == -1 then
         ngx_log(ngx_ERR, _log_prefix, "unable to pre-create cached config file: ",
                 ffi.string(ffi.C.strerror(ffi.errno())))
@@ -184,7 +197,7 @@ local function send_ping(c, log_suffix)
   local hash = declarative.get_current_hash()
 
   if hash == true then
-    hash = string.rep("0", 32)
+    hash = DECLARATIVE_EMPTY_CONFIG_HASH
   end
 
   local _, err = c:send_ping(hash)
@@ -285,10 +298,12 @@ function _M:communicate(premature)
       local ok, err = config_semaphore:wait(1)
       if ok then
         local config_table = self.next_config
-        local config_hash  = self.next_hash
         if config_table then
+          local config_hash  = self.next_hash
+          local hashes = self.next_hashes
+
           local pok, res
-          pok, res, err = pcall(self.update_config, self, config_table, config_hash, true)
+          pok, res, err = pcall(self.update_config, self, config_table, config_hash, true, hashes)
           if pok then
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
@@ -366,6 +381,7 @@ function _M:communicate(premature)
 
             self.next_config = assert(msg.config_table)
             self.next_hash = msg.config_hash
+            self.next_hashes = msg.hashes
 
             if config_semaphore:count() <= 0 then
               -- the following line always executes immediately after the `if` check

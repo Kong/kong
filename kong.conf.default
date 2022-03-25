@@ -95,6 +95,14 @@
                                           # is adjusted by the `log_level`
                                           # property.
 
+#vaults = off                    # Comma-separated list of vaults this node
+                                 # should load. By default, no vaults are
+                                 # enabled.
+                                 #
+                                 # The specified name(s) will be substituted as
+                                 # such in the Lua namespace:
+                                 # `kong.vaults.{name}.*`.
+
 #plugins = bundled               # Comma-separated list of plugins this node
                                  # should load. By default, only plugins
                                  # bundled in official distributions are
@@ -270,6 +278,11 @@
                                  # address of the control plane node from
                                  # which configuration updates will be fetched,
                                  # in `host:port` format.
+
+#cluster_max_payload = 4194304
+                                 # This sets the maximum payload size allowed
+                                 # to be sent across from CP to DP in Hybrid mode
+                                 # Default is 4Mb - 4 * 1024 * 1024 due to historical reasons
 
 #------------------------------------------------------------------------------
 # HYBRID MODE CONTROL PLANE
@@ -1294,9 +1307,9 @@
 
 #dns_cache_size = 10000          # Defines the maximum allowed number of
                                  # DNS records stored in memory cache.
-                                 # Least recently used DNS records are discarded 
-                                 # from cache if it is full. Both errors and 
-                                 # data are cached, therefore a single name query 
+                                 # Least recently used DNS records are discarded
+                                 # from cache if it is full. Both errors and
+                                 # data are cached, therefore a single name query
                                  # can easily take up 10-15 slots.
 
 #dns_not_found_ttl = 30          # TTL in seconds for empty DNS responses and

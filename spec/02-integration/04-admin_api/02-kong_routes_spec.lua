@@ -16,6 +16,7 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
   lazy_setup(function()
     helpers.get_db_utils(nil, {}) -- runs migrations
     assert(helpers.start_kong {
+      database = strategy,
       plugins = "bundled,reports-api",
       pg_password = "hide_me"
     })
@@ -206,6 +207,51 @@ describe("Admin API - Kong routes with strategy #" .. strategy, function()
       assert.is_number(json.server.connections_writing)
       assert.is_number(json.server.connections_waiting)
       assert.is_number(json.server.total_requests)
+      if strategy == "off" then
+        assert.is_equal(string.rep("0", 32), json.configuration_hash) -- all 0 in DBLESS mode until configuration is applied
+      else
+        assert.is_nil(json.configuration_hash) -- not present in DB mode
+      end
+    end)
+
+    it("returns status info including a configuration_hash in DBLESS mode if an initial configuration has been provided #off", function()
+      -- push an initial configuration so that a configuration_hash will be present
+      local postres = assert(client:send {
+        method = "POST",
+        path = "/config",
+        body = {
+          config = [[
+          _format_version: "1.1"
+          services:
+          - host: "konghq.com"
+          ]],
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(201, postres)
+
+      -- verify the status endpoint now includes a value (other than the default) for the configuration_hash
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.is_table(json.database)
+      assert.is_table(json.server)
+      assert.is_boolean(json.database.reachable)
+      assert.is_number(json.server.connections_accepted)
+      assert.is_number(json.server.connections_active)
+      assert.is_number(json.server.connections_handled)
+      assert.is_number(json.server.connections_reading)
+      assert.is_number(json.server.connections_writing)
+      assert.is_number(json.server.connections_waiting)
+      assert.is_number(json.server.total_requests)
+      assert.is_string(json.configuration_hash)
+      assert.equal(32, #json.configuration_hash)
+
     end)
 
     it("database.reachable is `true` when DB connection is healthy", function()

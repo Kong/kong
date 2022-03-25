@@ -126,7 +126,7 @@ local function new(conf)
   })
 end
 
-local function order(acme_client, host, key, cert_type)
+local function order(acme_client, host, key, cert_type, rsa_key_size)
   local err = acme_client:init()
   if err then
     return nil, nil, err
@@ -140,7 +140,7 @@ local function order(acme_client, host, key, cert_type)
   if not key then
     -- FIXME: this might block worker for several seconds in some virtualization env
     if cert_type == "rsa" then
-      key = util.create_pkey(4096, 'RSA')
+      key = util.create_pkey(rsa_key_size, 'RSA')
     else
       key = util.create_pkey(nil, 'EC', 'prime256v1')
     end
@@ -270,7 +270,7 @@ local function update_certificate(conf, host, key)
   if err then
     goto update_certificate_error
   end
-  cert, key, err = order(acme_client, host, key, conf.cert_type)
+  cert, key, err = order(acme_client, host, key, conf.cert_type, conf.rsa_key_size)
   if not err then
     if dbless or hybrid_mode then
       -- in dbless mode, we don't actively release lock
