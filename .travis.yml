@@ -118,6 +118,7 @@ jobs:
       - scripts/autodoc
       env:
         - KONG_DATABASE=none
+        - KONG_VERSION=
     - stage: Kong Enterprise Plugins (Building Docker Image)
       if: type = cron
       script:
