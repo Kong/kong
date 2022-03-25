@@ -1452,10 +1452,29 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
 end
 
 
-function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
+local function get_cache_key_value(name, key, fields)
+  local value = key[name]
+  if value == null or value == nil then
+    return
+  end
 
-  if self.schema.workspaceable then
-    ws_id = ws_id or workspaces.get_workspace_id()
+  if type(value) == "table" and fields[name].type == "foreign" then
+    value = value.id -- FIXME extract foreign key, do not assume `id`
+    if value == null or value == nil then
+      return
+    end
+  end
+
+  return tostring(value)
+end
+
+
+function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
+  local schema = self.schema
+  local name = schema.name
+
+  if (ws_id == nil or ws_id == null) and schema.workspaceable then
+    ws_id = workspaces.get_workspace_id()
   end
 
   -- Fast path: passing the cache_key/primary_key entries in
@@ -1463,13 +1482,13 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
   -- the generic code below, but building the cache key
   -- becomes a single string.format operation
   if type(key) == "string" then
-    return fmt("%s:%s:%s:%s:%s:%s:%s", self.schema.name,
-               key == nil and "" or key,
-               arg2 == nil and "" or arg2,
-               arg3 == nil and "" or arg3,
-               arg4 == nil and "" or arg4,
-               arg5 == nil and "" or arg5,
-               ws_id == nil and "" or ws_id)
+    return fmt("%s:%s:%s:%s:%s:%s:%s", name,
+              (key   == nil or key   == null) and "" or key,
+              (arg2  == nil or arg2  == null) and "" or arg2,
+              (arg3  == nil or arg3  == null) and "" or arg3,
+              (arg4  == nil or arg4  == null) and "" or arg4,
+              (arg5  == nil or arg5  == null) and "" or arg5,
+              (ws_id == nil or ws_id == null) and "" or ws_id)
   end
 
   -- Generic path: build the cache key from the fields
@@ -1479,28 +1498,38 @@ function DAO:cache_key(key, arg2, arg3, arg4, arg5, ws_id)
     error("key must be a string or an entity table", 2)
   end
 
-  if key.ws_id then
+  if key.ws_id ~= nil and key.ws_id ~= null then
     ws_id = key.ws_id
   end
 
   local values = new_tab(7, 0)
-  values[1] = self.schema.name
-  local source = self.schema.cache_key or self.schema.primary_key
+  values[1] = name
 
   local i = 2
-  for j = 1, #source do
-    local name = source[j]
-    local field = self.schema.fields[name]
-    local value = key[name]
-    if value == null or value == nil then
-      value = ""
-    elseif field.type == "foreign" then
-      -- FIXME extract foreign key, do not assume `id`
-      value = value.id
+
+  local fields = schema.fields
+  local source = schema.cache_key
+  local use_pk = true
+  if source then
+    for j = 1, #source do
+      local value = get_cache_key_value(source[j], key, fields)
+      if value ~= nil then
+        use_pk = false
+      end
+      values[i] = value or ""
+      i = i + 1
     end
-    values[i] = tostring(value)
-    i = i + 1
   end
+
+  if use_pk then
+    i = 2
+    source = schema.primary_key
+    for j = 1, #source do
+      values[i] = get_cache_key_value(source[j], key, fields) or ""
+      i = i + 1
+    end
+  end
+
   for n = i, 6 do
     values[n] = ""
   end

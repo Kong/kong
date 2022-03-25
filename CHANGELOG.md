@@ -77,16 +77,32 @@
 
 #### Core
 
-- The schema validator now correctly 
-converts `null` from declarative configurations to `nil`
-[#8483](https://github.com/Kong/kong/pull/8483).
+- The schema validator now correctly converts `null` from declarative
+  configurations to `nil`. [#8483](https://github.com/Kong/kong/pull/8483)
+- Only reschedule router and plugin iterator timers after finishing previous
+  execution, avoiding unnecessary concurrent executions.
+  [#8567](https://github.com/Kong/kong/pull/8567)
+
 
 #### Plugins
 
 - **ACME**: `auth_method` default value is set to `token`
 [#8565](https://github.com/Kong/kong/pull/8565)
+- **serverless-functions**: Removed deprecated `config.functions` from schema
+[#8559](https://github.com/Kong/kong/pull/8559)
+- **syslog**: `conf.facility` default value is now set to `user`
+[#8564](https://github.com/Kong/kong/pull/8564)
+- **AWS-Lambda**: Removed `proxy_scheme` field from schema
+[#8566](https://github.com/Kong/kong/pull/8566)
+- **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
+[#8558](https://github.com/Kong/kong/pull/8558)
 - Remove deprecated `blacklist`/`whitelist` config fields from bot-detection, ip-restriction and ACL plugins.
 [#8560](https://github.com/Kong/kong/pull/8560)
+
+#### Clustering
+
+- The cluster listener now uses the value of `admin_error_log` for its log file
+  instead of `proxy_error_log` [8583](https://github.com/Kong/kong/pull/8583)
 
 ## [2.8.0]
 
