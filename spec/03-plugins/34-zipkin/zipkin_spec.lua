@@ -281,7 +281,7 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("span_include_path configuration", function()
+  describe("http_span_name configuration", function()
     local proxy_client, zipkin_client, service
 
     setup(function()
@@ -306,7 +306,7 @@ for _, strategy in helpers.each_strategy() do
           sample_ratio = 1,
           http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
           default_header_type = "b3-single",
-          span_include_path = true,
+          http_span_name = "method_path",
         }
       })
 
@@ -324,7 +324,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    it("span_include_path = 'true' includes path to span name", function()
+    it("http_span_name = 'method_path' includes path to span name", function()
       local start_s = ngx.now()
 
       local r = proxy_client:get("/", {
