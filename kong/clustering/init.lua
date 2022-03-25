@@ -34,7 +34,6 @@ local type = type
 local semaphore = require("ngx.semaphore")
 local cjson = require("cjson.safe")
 local utils = require("kong.tools.utils")
-local constants = require("kong.constants")
 local declarative = require("kong.db.declarative")
 local assert = assert
 local setmetatable = setmetatable
