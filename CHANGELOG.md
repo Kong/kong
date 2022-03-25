@@ -86,6 +86,7 @@ converts `null` from declarative configurations to `nil`
 - **ACME**: `auth_method` default value is set to `token`
 [#8565](https://github.com/Kong/kong/pull/8565)
 - Remove deprecated `blacklist`/`whitelist` config fields from bot-detection, ip-restriction and ACL plugins.
+[#8560](https://github.com/Kong/kong/pull/8560)
 
 ## [2.8.0]
 
