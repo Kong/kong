@@ -90,8 +90,15 @@
 [#8565](https://github.com/Kong/kong/pull/8565)
 - **syslog**: `conf.facility` default value is now set to `user`
 [#8564](https://github.com/Kong/kong/pull/8564)
+- **AWS-Lambda**: Removed `proxy_scheme` field from schema
+[#8566](https://github.com/Kong/kong/pull/8566)
 - **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
 [#8558](https://github.com/Kong/kong/pull/8558)
+
+#### Clustering
+
+- The cluster listener now uses the value of `admin_error_log` for its log file
+  instead of `proxy_error_log` [8583](https://github.com/Kong/kong/pull/8583)
 
 ## [2.8.0]
 
