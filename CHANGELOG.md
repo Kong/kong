@@ -88,6 +88,8 @@
 
 - **ACME**: `auth_method` default value is set to `token`
 [#8565](https://github.com/Kong/kong/pull/8565)
+- **syslog**: `conf.facility` default value is now set to `user`
+[#8564](https://github.com/Kong/kong/pull/8564)
 - **AWS-Lambda**: Removed `proxy_scheme` field from schema
 [#8566](https://github.com/Kong/kong/pull/8566)
 - **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
