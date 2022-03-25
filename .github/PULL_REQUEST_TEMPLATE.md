@@ -8,13 +8,9 @@ https://github.com/Kong/kong/blob/master/CONTRIBUTING.md#contributing
 
 <!--- Why is this change required? What problem does it solve? -->
 
-### Full changelog
+### Changelog
 
-* [Implement ...]
-* [Add related tests]
-* ...
+<!--- Changelog in one line summary -->
 
-### Issue reference
 
-<!--- If it fixes an open issue, please link to the issue here. -->
-Fix #_[issue number]_
+Fix #[issue_number]
