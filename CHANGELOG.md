@@ -107,7 +107,7 @@
 
 #### Admin API
 
-- Insert and update operations on target entities are done using the PUT HTTP
+- Insert and update operations on target entities require using the `PUT` HTTP
   method now. [#8596](https://github.com/Kong/kong/pull/8596)
 
 ### Additions
