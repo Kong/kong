@@ -1,6 +1,6 @@
 return {
   cluster_protocol = {
-    { version = "json", message = "current" },
-    { version = "wrpc", message = "beta" },
+    { version = "v0", message = "JSON over WebSocket" },
+    { version = "v1", message = "wRPC" },
   },
 }
