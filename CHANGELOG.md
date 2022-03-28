@@ -66,6 +66,10 @@
 
 ### Breaking Changes
 
+#### Admin API
+
+- Insert and update operations on target entities require using the `PUT` HTTP
+  method now. [#8596](https://github.com/Kong/kong/pull/8596)
 
 ### Dependencies
 
@@ -108,10 +112,6 @@
 - The cluster listener now uses the value of `admin_error_log` for its log file
   instead of `proxy_error_log` [8583](https://github.com/Kong/kong/pull/8583)
 
-#### Admin API
-
-- Insert and update operations on target entities require using the `PUT` HTTP
-  method now. [#8596](https://github.com/Kong/kong/pull/8596)
 
 ### Additions
 
