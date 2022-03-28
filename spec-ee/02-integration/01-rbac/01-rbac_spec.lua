@@ -29,6 +29,19 @@ describe("(#" .. strategy .. ")", function()
   end)
 
 
+  lazy_setup(function ()
+    local store = {}
+    _G.kong.cache = {
+      get = function(_, key, _, f, ...)
+        store[key] = store[key] or f(...)
+        return store[key]
+      end,
+      invalidate = function(key)
+        store[key] = nil
+      end,
+    }
+  end)
+
   describe("RBAC", function()
     setup(function()
       math.randomseed(ngx.now())
@@ -911,19 +924,6 @@ describe("(#" .. strategy .. ")", function()
     end
 
     setup(function()
-      local cache = {
-        get = function(self, x, y, f, ...) return f(...) end,
-      }
-
-      if _G.kong then
-        _G.kong.db = db
-        _G.kong.cache =  cache
-      else
-        _G.kong = { db = db,
-          cache = cache
-        }
-      end
-
       default_ws = assert(db.workspaces:select_by_name("default"))
       another_ws = assert(db.workspaces:insert({ name = "ws1" }))
 
