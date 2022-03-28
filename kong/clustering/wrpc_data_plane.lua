@@ -32,11 +32,6 @@ local CONFIG_CACHE = ngx.config.prefix() .. "/config.cache.json.gz"
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
-local MAX_PAYLOAD = constants.CLUSTERING_MAX_PAYLOAD
-local WS_OPTS = {
-  timeout = constants.CLUSTERING_TIMEOUT,
-  max_payload_len = MAX_PAYLOAD,
-}
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local _log_prefix = "[wrpc-clustering] "
 
@@ -220,7 +215,10 @@ function _M:communicate(premature)
   local address = conf.cluster_control_plane
   local log_suffix = " [" .. address .. "]"
 
-  local c = assert(ws_client:new(WS_OPTS))
+  local c = assert(ws_client:new({
+    timeout = constants.CLUSTERING_TIMEOUT,
+    max_payload_len = conf.cluster_max_payload,
+  }))
   local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
               kong.node.get_id() ..
               "&node_hostname=" .. kong.node.get_hostname() ..
