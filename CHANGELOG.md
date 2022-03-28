@@ -69,7 +69,9 @@
 #### Admin API
 
 - Insert and update operations on target entities require using the `PUT` HTTP
-  method now. [#8596](https://github.com/Kong/kong/pull/8596)
+  method now. [#8596](https://github.com/Kong/kong/pull/8596). If you have
+  scripts that depend on it being `POST`, these scripts will need to be updated
+  when updating to Kong 3.0.
 
 ### Dependencies
 
