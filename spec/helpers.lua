@@ -1109,7 +1109,8 @@ local function tcp_server(port, opts)
         end
 
         if opts.tls and handshake_done then
-          local ssl = require "ssl"
+          local ssl = require "spec.helpers.ssl"
+
           local params = {
             mode = "server",
             protocol = "any",

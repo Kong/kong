@@ -20,23 +20,6 @@ return {
           { status = { type = "number", required = false } },
           { message = { type = "string", required = false } },
         },
-        shorthand_fields = {
-          -- deprecated forms, to be removed in Kong 3.0
-          { blacklist = {
-              type = "array",
-              elements = { type = "string", is_regex = true },
-              func = function(value)
-                return { deny = value }
-              end,
-          }, },
-          { whitelist = {
-              type = "array",
-              elements = { type = "string", is_regex = true },
-              func = function(value)
-                return { allow = value }
-              end,
-          }, },
-        },
       },
     },
   },

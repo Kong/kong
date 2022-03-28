@@ -9,7 +9,6 @@ YQ_VERSION=v4.5.0
 OPENRESTY=$(dep_version RESTY_VERSION)
 LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
-GO_PLUGINSERVER=$(dep_version KONG_GO_PLUGINSERVER_VERSION)
 KONG_DEP_LUA_RESTY_OPENSSL_AUX_MODULE_VERSION=$(dep_version KONG_DEP_LUA_RESTY_OPENSSL_AUX_MODULE_VERSION)
 
 DEPS_HASH=$({ cat .ci/setup_env.sh .travis.yml .requirements Makefile; cat kong-*.rockspec | awk '/dependencies/,/}/'; } | md5sum | awk '{ print $1 }')
@@ -34,7 +33,6 @@ fi
 DOWNLOAD_ROOT=${DOWNLOAD_ROOT:=/download-root}
 
 BUILD_TOOLS_DOWNLOAD=$INSTALL_ROOT/kong-build-tools
-GO_PLUGINSERVER_DOWNLOAD=$INSTALL_ROOT/go-pluginserver
 LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD=$INSTALL_ROOT/lua-resty-openssl-aux-module
 PONGO_DOWNLOAD=$INSTALL_ROOT/kong-pongo
 
@@ -62,23 +60,6 @@ pushd $BUILD_TOOLS_DOWNLOAD
     git reset --hard $KONG_BUILD_TOOLS_BRANCH || git reset --hard origin/$KONG_BUILD_TOOLS_BRANCH
 popd
 export PATH=$BUILD_TOOLS_DOWNLOAD/openresty-build-tools:$PATH
-
-if [ ! -d $GO_PLUGINSERVER_DOWNLOAD ]; then
-  git clone -b $GO_PLUGINSERVER https://github.com/Kong/go-pluginserver $GO_PLUGINSERVER_DOWNLOAD
-else
-  pushd $GO_PLUGINSERVER_DOWNLOAD
-    git fetch
-    git checkout $GO_PLUGINSERVER
-  popd
-fi
-
-pushd $GO_PLUGINSERVER_DOWNLOAD
-  go get ./...
-  make
-popd
-
-export GO_PLUGINSERVER_DOWNLOAD
-export PATH=$GO_PLUGINSERVER_DOWNLOAD:$PATH
 
 # XXX EE:
 # Gather license

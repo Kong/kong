@@ -84,11 +84,6 @@ return {
           type = "boolean",
           default = false,
         } },
-        -- TODO: remove proxy_scheme in Kong 3.0
-        { proxy_scheme = {
-          type = "string",
-          one_of = { "http", "https" }
-        } },
         { proxy_url = typedefs.url },
         { skip_large_bodies = {
           type = "boolean",

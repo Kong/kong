@@ -1342,11 +1342,8 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
       end)
 
-      it("should pass with GET with request-line having query param but signed without query param", function()
-        -- hmac-auth needs to validate signatures created both with and without
-        -- query params for a supported deprecation period.
-        --
-        -- Regression for https://github.com/Kong/kong/issues/3672
+      it("should fail with GET with request-line having query param but signed without query param", function()
+        -- hmac-auth signature must include the same query param in request-line: https://github.com/Kong/kong/pull/3339
         local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
         local encodedSignature = ngx.encode_base64(
           hmac_sha1_binary("secret", "date: "
@@ -1365,7 +1362,7 @@ for _, strategy in helpers.each_strategy() do
             ["content-md5"]         = "md5",
           },
         })
-        assert.res_status(200, res)
+        assert.res_status(401, res)
 
         encodedSignature = ngx.encode_base64(
           hmac_sha1_binary("secret", "date: "
@@ -1384,7 +1381,7 @@ for _, strategy in helpers.each_strategy() do
             ["content-md5"]         = "md5",
           },
         })
-        assert.res_status(200, res)
+        assert.res_status(401, res)
       end)
 
       it("should pass with GET with request-line having query param", function()

@@ -50,8 +50,7 @@ local VAULT_STORAGE_SCHEMA = {
   { token = { type = "string", referenceable = true, }, },
   { tls_verify = { type = "boolean", default = true, }, },
   { tls_server_name = { type = "string" }, },
-  -- TODO: add default = "token", one_of = { "token", "kubernetes" } in 2.8 or 3.0
-  { auth_method = { type = "string" } },
+  { auth_method = { type = "string", default = "token", one_of = { "token", "kubernetes" } } },
   { auth_path =  { type = "string" }, },
   { auth_role =  { type = "string" }, },
   { jwt_path =  { type = "string" }, },

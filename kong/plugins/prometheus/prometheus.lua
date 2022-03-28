@@ -313,7 +313,7 @@ local function lookup_or_create(self, label_values)
   -- error here as well.
   local cnt = label_values and #label_values or 0
   -- specially, if first element is nil, # will treat it as "non-empty"
-  if cnt ~= self.label_count or (self.label_count > 0 and not label_values[1]) then
+  if cnt ~= self.label_count or (self.label_count > 0 and label_values[1] == nil) then
     return nil, string.format("inconsistent labels count, expected %d, got %d",
                               self.label_count, cnt)
   end

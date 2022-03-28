@@ -21,8 +21,6 @@ plugins = bundled
 port_maps = NONE
 host_ports = NONE
 anonymous_reports = on
-go_pluginserver_exe = /usr/local/bin/go-pluginserver
-go_plugins_dir = off
 
 enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token
