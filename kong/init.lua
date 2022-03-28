@@ -277,6 +277,9 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
           status_code = 500,
           content = { message  = "An unexpected error occurred" },
         }
+
+        -- plugin that throws runtime exception should be marked as `error`
+        ctx.KONG_UNEXPECTED = true
       end
 
       reset_plugin_context(ctx, old_ws)
