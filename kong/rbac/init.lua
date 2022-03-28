@@ -388,11 +388,13 @@ local function bitfield_check(map, key, bit)
 end
 
 
-local function get_role_entities(db, role, opts)
+local function retrieve_role_relations(db, entity_name, role, opts)
   opts = opts or {}
+  opts.show_ws_id = true
   opts.skip_rbac = true
+
   local res = {}
-  for role, err in db.rbac_role_entities:each_for_role({id = role.id}, nil, opts) do
+  for role, err in db[entity_name]:each_for_role({id = role.id}, nil, opts) do
     if err then
       return nil, err
     end
@@ -404,19 +406,38 @@ local function get_role_entities(db, role, opts)
 end
 
 
-local function get_role_endpoints(db, role, opts)
-  opts = opts or {}
-  opts.skip_rbac = true
-  local res = {}
-  for role, err in db.rbac_role_endpoints:each_for_role({id = role.id}, nil, opts) do
-    if err then
-      return nil, err
-    end
+local function get_role_relations_cache(db, entity_name, role, opts)
+  local cache = kong.cache
 
-    table.insert(res, role)
+  local relationship_cache_key = db[entity_name]:cache_key(role.id)
+  local res, err = cache:get(relationship_cache_key, nil,
+                                          retrieve_role_relations,
+                                          db,
+                                          entity_name,
+                                          role,
+                                          opts)
+
+  if err then
+    return nil, err
   end
 
   return res
+end
+
+
+local function get_role_entities(db, role, opts)
+  -- only cache when rbac entity is enabled to avoid unnecessary memory increase
+  if kong.configuration and
+    (kong.configuration.rbac == "both" or
+    kong.configuration.rbac == "entity") then
+    return get_role_relations_cache(db, "rbac_role_entities", role, opts)
+  end
+
+  return retrieve_role_relations(db, "rbac_role_entities", role, opts)
+end
+
+local function get_role_endpoints(db, role, opts)
+  return get_role_relations_cache(db, "rbac_role_endpoints", role, opts)
 end
 _M.get_role_endpoints = get_role_endpoints
 

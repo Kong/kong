@@ -9,6 +9,7 @@ local typedefs = require "kong.db.schema.typedefs"
 
 return {
   name = "rbac_role_entities",
+  dao = "kong.db.dao.rbac_role_entities",
   generate_admin_api = false,
   admin_api_nested_name = "entities",
   primary_key = { "role", "entity_id" },
