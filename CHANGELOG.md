@@ -75,6 +75,13 @@
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
 
+
+### Changes
+##### Configuration
+
+- Change the default of `lua_ssl_trusted_certificate` to `system`.
+  [#8602](https://github.com/Kong/kong/pull/8602)
+
 ### Fixes
 
 #### Core
