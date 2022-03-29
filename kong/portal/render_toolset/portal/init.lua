@@ -35,7 +35,7 @@ end
 
 
 local function get_all_specs()
-  local render_ctx = singletons.render_ctx
+  local render_ctx = ngx.ctx.render_ctx
   local developer = render_ctx.developer
   local ok, router_info = pcall(singletons.portal_router.introspect)
   if not ok then
@@ -111,7 +111,7 @@ end
 
 return function()
   local conf = singletons.configuration
-  local render_ctx = singletons.render_ctx
+  local render_ctx = ngx.ctx.render_ctx
   local workspace = workspaces.get_workspace()
   local workspace_conf = ee.prepare_portal(render_ctx, singletons.configuration)
   local portal_gui_url = workspace_config.build_ws_portal_gui_url(conf, workspace)

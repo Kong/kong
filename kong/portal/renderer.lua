@@ -59,7 +59,7 @@ end
 
 template.load = function(path)
   -- look into alternative ways of passing info
-  local ctx = singletons.render_ctx or {}
+  local ctx = ngx.ctx.render_ctx or {}
   local theme = ctx.theme or { name = "" }
 
   if type(path) == 'table' and path.contents then
@@ -410,7 +410,7 @@ local function set_render_ctx(self, email_tokens)
     route_config = set_route_config(updated_path)
   end
 
-  singletons.render_ctx = {
+  ngx.ctx.render_ctx = {
     route_config         = route_config,
     portal               = portal_config,
     theme                = theme_config,
@@ -424,7 +424,7 @@ end
 
 
 local function compile_layout()
-  local ctx = singletons.render_ctx
+  local ctx = ngx.ctx.render_ctx
   local layout = set_layout(ctx)
   if not layout then
     return FALLBACK_404
@@ -442,7 +442,7 @@ end
 
 
 local function compile_asset()
-  local ctx = singletons.render_ctx
+  local ctx = ngx.ctx.render_ctx
   local asset = set_asset(ctx)
   if not asset then
     return

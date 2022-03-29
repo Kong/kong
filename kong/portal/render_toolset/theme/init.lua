@@ -36,7 +36,7 @@ local function get_map_value_fn(tbl)
 end
 
 return function()
-  local render_ctx = singletons.render_ctx
+  local render_ctx = ngx.ctx.render_ctx
   local theme = {}
   looper.set_node(theme)
 
