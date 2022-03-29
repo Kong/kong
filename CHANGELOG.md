@@ -73,6 +73,12 @@
   scripts that depend on it being `POST`, these scripts will need to be updated
   when updating to Kong 3.0.
 
+#### PDK
+
+- The PDK is no longer versioned
+  [#8585](https://github.com/Kong/kong/pull/8585)
+
+
 ### Dependencies
 
 - Bumped pgmoon from 1.13.0 to 1.14.0
@@ -93,12 +99,6 @@
 - Only reschedule router and plugin iterator timers after finishing previous
   execution, avoiding unnecessary concurrent executions.
   [#8567](https://github.com/Kong/kong/pull/8567)
-
-#### PDK
-
-- The PDK is no longer versioned
-  [#8585](https://github.com/Kong/kong/pull/8585)
-
 
 #### Plugins
 
