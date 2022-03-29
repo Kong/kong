@@ -35,27 +35,19 @@ local exposed_api = {
   ["kong.nginx.get_tls1_version_str"] = ngx_ssl.get_tls1_version_str,
 
   ["kong.nginx.get_ctx"] = function(k)
-    local saved = save_for_later[coroutine_running()]
-    local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
-    return ngx_ctx[k]
+    return ngx.ctx
   end,
 
   ["kong.nginx.set_ctx"] = function(k, v)
-    local saved = save_for_later[coroutine_running()]
-    local ngx_ctx = saved and saved.ngx_ctx or ngx.ctx
-    ngx_ctx[k] = v
+    ngx.ctx[k] = v
   end,
 
   ["kong.ctx.shared.get"] = function(k)
-    local saved = save_for_later[coroutine_running()]
-    local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
-    return ctx_shared[k]
+    return kong.ctx.shared[k]
   end,
 
   ["kong.ctx.shared.set"] = function(k, v)
-    local saved = save_for_later[coroutine_running()]
-    local ctx_shared = saved and saved.ctx_shared or kong.ctx.shared
-    ctx_shared[k] = v
+    kong.ctx.shared[k] = v
   end,
 
   ["kong.request.get_headers"] = function(max)
@@ -99,11 +91,6 @@ local exposed_api = {
     end
 
     return header_value
-  end,
-
-  ["kong.response.get_source"] = function()
-    local saved = save_for_later[coroutine_running()]
-    return kong.response.get_source(saved and saved.ngx_ctx or nil)
   end,
 
   ["kong.nginx.req_start_time"] = ngx.req.start_time,

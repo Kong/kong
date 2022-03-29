@@ -122,6 +122,8 @@ local function call_pdk_method(cmd, args)
 
   local saved = Rpc.save_for_later[coroutine.running()]
   if saved and saved.plugin_name then
+    ngx.ctx = saved.ngx_ctx
+    kong.ctx.shared = saved.ctx_shared
     kong_global.set_namespaced_log(kong, saved.plugin_name)
   end
 
