@@ -73,6 +73,14 @@
 - Bumped resty.openssl from 0.8.5 to 0.8.6
   [#8545](https://github.com/Kong/kong/pull/8545)
 
+### Additions
+
+#### Plugins
+
+- **Zipkin**: add support for including HTTP path in span name 
+  through configuration property `http_span_name`.
+  [#8150](https://github.com/Kong/kong/pull/8150)
+
 ### Fixes
 
 #### Core
