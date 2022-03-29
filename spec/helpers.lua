@@ -1910,7 +1910,14 @@ luassert:register("assertion", "cn", assert_cn,
                   "assertion.cn.positive")
 
 
-
+--- Assertions to check whether a value exists in a table
+-- @function has_value
+-- @param table
+-- @param value
+-- @return exists?
+-- @usage
+-- assert.has_value({"foo"}, "foo") -- true
+-- assert.not_has_value({"foo"}, "bar") -- true
 local function assert_has_value(state, args)
     assert(type(args[1]) == "table",
       "Expected first argument to be a table")
