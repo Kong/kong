@@ -1910,6 +1910,40 @@ luassert:register("assertion", "cn", assert_cn,
                   "assertion.cn.positive")
 
 
+
+local function assert_has_value(state, args)
+    assert(type(args[1]) == "table",
+      "Expected first argument to be a table")
+
+    for _, v in pairs(args[1]) do
+      if v == args[2] then
+        return true
+      end
+    end
+    
+    return false
+end
+
+say:set("assertion.has_value.negative", [[
+Expected table to have the given value.
+Passed in
+%s
+Expected value
+%s
+]])
+say:set("assertion.has_value.positive", [[
+Expected table to not have the given value.
+Passed in
+%s
+Expected value
+%s
+]])
+
+luassert:register("assertion", "has_value", assert_has_value,
+                  "assertion.has_value.negative",
+                  "assertion.has_value.positive")
+
+
 do
   --- Generic modifier "logfile"
   -- Will set an "errlog_path" value in the assertion state.
