@@ -23,7 +23,7 @@ local compare_no_order = require "pl.tablex".compare_no_order
 local client
 
 
-local function post(path, body, headers, expected_status)
+local function post(path, body, headers, expected_status, expected_body)
   headers = headers or {}
   headers["Content-Type"] = "application/json"
   local res = assert(client:send{
@@ -32,6 +32,9 @@ local function post(path, body, headers, expected_status)
     body = body or {},
     headers = headers
   })
+  if expected_body then
+    assert.matches(expected_body, res:read_body(), nil, true)
+  end
   return cjson.decode(assert.res_status(expected_status or 201, res))
 end
 
@@ -3864,6 +3867,18 @@ for _, strategy in helpers.each_strategy() do
     post("/ws1/rbac/roles/ws1-admin/endpoints", {endpoint = "*", actions = "read,create,update,delete", workspace = "ws1"})
     post("/ws1/rbac/users/bob/roles", {roles = "ws1-admin"})
 
+    -- user charlie (has read access to /kong endpoint)
+    post("/ws1/rbac/users", {name = "charlie", user_token = "charlie"})
+    post("/ws1/rbac/roles" , {name = "kong-role"})
+    post("/ws1/rbac/roles/kong-role/endpoints", {endpoint = "/kong", actions = "read", workspace = "*"})
+    post("/ws1/rbac/users/charlie/roles", {roles = "kong-role"})
+
+    -- user diane (has permissions to /rbac endpoint so can create more roles ONLY for her workspace)
+    post("/ws1/rbac/users", {name = "diane", user_token = "diane"})
+    post("/ws1/rbac/roles" , {name = "ws1-limited"})
+    post("/ws1/rbac/roles/ws1-limited/endpoints", {endpoint = "/rbac/roles", actions = "read,create,update,delete", workspace = "ws1"})
+    post("/ws1/rbac/roles/ws1-limited/endpoints", {endpoint = "/rbac/roles/*/endpoints", actions = "read,create,update,delete", workspace = "ws1"})
+    post("/ws1/rbac/users/diane/roles", {roles = "ws1-limited"})
 
     -- user god (all access)
     post("/ws1/rbac/users", {name = "god", user_token = "god"})
@@ -3894,7 +3909,7 @@ for _, strategy in helpers.each_strategy() do
       endpoint = "*",
       workspace = "ws2",
       actions = "read,create,update,delete"},
-        {["Kong-Admin-Token"] = "bob"}, 403)
+        {["Kong-Admin-Token"] = "bob"}, 403, "not allowed to create cross workspace permissions")
   end)
 
   it("can give permissions to the same workspace of the request", function()
@@ -3922,7 +3937,28 @@ for _, strategy in helpers.each_strategy() do
   it("user can't add a new role in another workspace with admin role", function()
     post("/ws3/rbac/roles", {
       name = "another-new-ws3-role"
-    },{["Kong-Admin-Token"] = "bob"}, 403)
+    },{["Kong-Admin-Token"] = "bob"}, 403, "do not have permissions to create this resource")
+  end)
+
+  it("user can access wildcard workspace kong endpoint", function()
+    get("/ws1/kong",{ ["Kong-Admin-Token"] = "charlie" }, 200)
+    get("/ws2/kong",{ ["Kong-Admin-Token"] = "charlie" }, 200)
+  end)
+
+  -- 
+  it("diane can only manage endpoints in ws1 workspace", function()
+    post("/ws1/rbac/roles", { name = "diane-test1" },
+      {["Kong-Admin-Token"] = "diane"}, 201)
+    post("/ws1/rbac/roles/diane-test1/endpoints", { endpoint = "/1", actions = "*" },
+      {["Kong-Admin-Token"] = "diane"}, 201)
+    post("/ws1/rbac/roles/diane-test1/endpoints", { endpoint = "/2", actions = "*", workspace="ws1" },
+      {["Kong-Admin-Token"] = "diane"}, 201)
+    post("/ws1/rbac/roles/diane-test1/endpoints", { endpoint = "/3", actions = "*", workspace="ws2" },
+      {["Kong-Admin-Token"] = "diane"}, 403, "not allowed to create cross workspace permissions")
+    post("/ws1/rbac/roles/diane-test1/endpoints", { endpoint = "/4", actions = "*", workspace="*" },
+      {["Kong-Admin-Token"] = "diane"}, 403, "not allowed to create cross workspace permissions")
+      post("/ws2/rbac/roles", { name = "diane-test1" },
+      {["Kong-Admin-Token"] = "diane"}, 403, "do not have permissions to create this resource")
   end)
 
 end)
