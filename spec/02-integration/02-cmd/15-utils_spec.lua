@@ -40,28 +40,28 @@ echo 'nginx version: openresty/%s' >&2]], version
         assert.truthy(pl_path.exists(bin))
       end)
 
-      it("works when openresty_prefix is unset", function()
+      it("works when openresty_path is unset", function()
         local bin, err = signals.find_nginx_bin({})
         assert.is_nil(err)
         assert.matches("sbin/nginx", bin)
         assert.truthy(pl_path.exists(bin))
       end)
 
-      it("prefers `openresty_prefix` when supplied", function()
+      it("prefers `openresty_path` when supplied", function()
         local meta = require "kong.meta"
         local version = meta._DEPENDENCIES.nginx[1]
 
         local nginx = fake_nginx_binary(version)
 
-        local bin, err = signals.find_nginx_bin({ openresty_prefix = tmpdir })
+        local bin, err = signals.find_nginx_bin({ openresty_path = tmpdir })
 
         assert.is_nil(err)
         assert.equals(nginx, bin)
       end)
 
-      it("returns nil+error if a compatible nginx bin is not found in `openresty_prefix`", function()
+      it("returns nil+error if a compatible nginx bin is not found in `openresty_path`", function()
         fake_nginx_binary("1.0.1")
-        local bin, err = signals.find_nginx_bin({ openresty_prefix = tmpdir })
+        local bin, err = signals.find_nginx_bin({ openresty_path = tmpdir })
         assert.is_nil(bin)
         assert.not_nil(err)
         assert.matches("could not find OpenResty", err)

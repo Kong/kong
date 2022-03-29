@@ -1545,7 +1545,7 @@
                                      # available, may create opportunities to
                                      # escape the sandbox.
 
-#openresty_prefix =               # Path to the OpenResty installation that Kong
+#openresty_path =                 # Path to the OpenResty installation that Kong
                                   # will use. When this is empty (the default),
                                   # Kong determines the OpenResty installation
                                   # by searching for a system-installed OpenResty

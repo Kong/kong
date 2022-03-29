@@ -55,10 +55,10 @@ function _M.find_nginx_bin(kong_conf)
   log.debug("searching for OpenResty 'nginx' executable")
 
   local search_paths = nginx_search_paths
-  if kong_conf and kong_conf.openresty_prefix then
-    log.debug("using custom OpenResty prefix: %s", kong_conf.openresty_prefix)
+  if kong_conf and kong_conf.openresty_path then
+    log.debug("using custom OpenResty path: %s", kong_conf.openresty_path)
     search_paths = {
-      pl_path.join(kong_conf.openresty_prefix, "nginx", "sbin"),
+      pl_path.join(kong_conf.openresty_path, "nginx", "sbin"),
     }
   end
 
