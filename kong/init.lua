@@ -497,7 +497,7 @@ function Kong.init()
   -- duplicated seeds.
   math.randomseed()
 
-  kong_global.init_pdk(kong, config) -- latest PDK
+  kong_global.init_pdk(kong, config)
 
   local db = assert(DB.new(config))
   assert(db:init_connector())
