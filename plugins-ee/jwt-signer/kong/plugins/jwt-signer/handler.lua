@@ -95,6 +95,7 @@ do
       cache_introspection            = "cache_%s_introspection",
       trust_introspection            = "trust_%s_introspection",
       enable_introspection           = "enable_%s_introspection",
+      enable_hs_signatures           = "enable_hs_signatures"
     } do
       CONF[token_type][key] = fmt(value, token_type)
     end
@@ -165,7 +166,7 @@ do
       scopes_claim                   = "the %s scopes claim was not specified",
       signing                        = "the %s could not be signed",
       keys_load                      = "the %s signing keyset could not be loaded",
-      key_not_found                  = "the %s signing key could not be found"
+      key_not_found                  = "the %s signing key could not be found",
     } do
       ERRS[token_type][key] = fmt(value, token_name)
     end
