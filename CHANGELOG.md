@@ -94,6 +94,12 @@
   execution, avoiding unnecessary concurrent executions.
   [#8567](https://github.com/Kong/kong/pull/8567)
 
+#### PDK
+
+- The PDK is no longer versioned
+  [#8585](https://github.com/Kong/kong/pull/8585)
+
+
 #### Plugins
 
 - **ACME**: `auth_method` default value is set to `token`
