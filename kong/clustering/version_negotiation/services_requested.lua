@@ -1,6 +1,6 @@
 return {
   {
-    name = "cluster_protocol",
-    versions = { "wrpc", "json" },
+    name = "Config",
+    versions = { "v1", "v0" },
   },
 }

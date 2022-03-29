@@ -164,8 +164,8 @@ for _, strategy in helpers.each_strategy() do
               },
               services_requested = {
                 {
-                  name = "cluster_protocol",
-                  versions = { "json" },
+                  name = "Config",
+                  versions = { "v0" },
                 },
                 {
                   name = "infundibulum",
@@ -180,9 +180,9 @@ for _, strategy in helpers.each_strategy() do
           assert.is_string(body.node.id)
           assert.same({
             {
-              name = "cluster_protocol",
-              version = "json",
-              message = "current",
+              name = "Config",
+              version = "v0",
+              message = "JSON over WebSocket",
             },
           }, body.services_accepted)
           assert.same({
@@ -205,7 +205,7 @@ for _, strategy in helpers.each_strategy() do
               assert.near(14 * 86400, v.ttl, 3)
               assert.matches("^(%d+%.%d+)%.%d+", v.version)
               assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-              assert.same({ cluster_protocol = "json" }, v.services_accepted)
+              assert.same({ Config = "v0" }, v.services_accepted)
 
               return true
             end
@@ -217,8 +217,8 @@ for _, strategy in helpers.each_strategy() do
         -- (re)load client with special set of requested services
         package.loaded["kong.clustering.version_negotiation.services_requested"] = {
           {
-            name = "cluster_protocol",
-            versions = { "wrpc", "json" },
+            name = "Config",
+            versions = { "v1", "v0" },
           },
           {
             name = "infundibulum",
@@ -235,7 +235,7 @@ for _, strategy in helpers.each_strategy() do
         local data = assert(version_negotiation.request_version_handshake(conf, CLIENT_CERT, CLIENT_PRIV_KEY))
         -- returns data in standard form
         assert.same({
-          { name = "cluster_protocol", version = "json", message = "current" },
+          { name = "Config", version = "v0", message = "JSON over WebSocket" },
         }, data.services_accepted)
         assert.same({
           { name = "infundibulum", message = "unknown service." },
@@ -243,7 +243,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- stored node-wise as Lua-style values
         -- accepted
-        assert.same({ "json", "current" }, { version_negotiation.get_negotiated_service("cluster_protocol") })
+        assert.same({ "v0", "JSON over WebSocket" }, { version_negotiation.get_negotiated_service("Config") })
         -- rejected
         assert.same({ nil, "unknown service." }, { version_negotiation.get_negotiated_service("infundibulum") })
         -- not even requested

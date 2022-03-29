@@ -1,4 +1,3 @@
-
 local cjson = require "cjson.safe"
 local pl_file = require "pl.file"
 local http = require "resty.http"
@@ -14,11 +13,12 @@ local _log_prefix = "[version-negotiation] "
 
 local KONG_VERSION
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
 local _M = {}
 
-local function validate_connection_type()
+local function validate_request_type()
   if ngx.req.get_method() ~= "POST" then
     return nil, "INVALID METHOD"
   end
@@ -127,17 +127,13 @@ local function do_negotiation(req_body)
 
   for i, req_service in ipairs(req_body.services_requested) do
     if type(req_service) ~= "table" or type(req_service.name) ~= "string" then
-      return nil, "Malformed service requested item #" .. tostring(i)
+      return nil, "malformed service requested item #" .. tostring(i)
     end
 
     local name = req_service.name
 
     if type(req_service.versions) ~= "table" then
-      table.insert(services_rejected, {
-        name = name,
-        message = "invalid \"versions\" table.",
-      })
-      goto continue
+      return nil, "invalid versions array for service " .. req_service.name
     end
 
     local known_service = all_known_services[name]
@@ -183,7 +179,7 @@ local function register_client(conf, client_node, services_accepted)
 
   local ok, err = kong.db.clustering_data_planes:upsert({ id = client_node.id, }, {
     last_seen = ngx.time(),
-    config_hash = "00000000000000000000000000000000",
+    config_hash = DECLARATIVE_EMPTY_CONFIG_HASH,
     hostname = client_node.hostname,
     ip = ngx.var.remote_addr,
     version = client_node.version,
@@ -214,34 +210,41 @@ function _M.serve_version_handshake(conf, cert_digest)
     return ngx.exit(ngx.HTTP_CLOSE)
   end
 
-  ok, err = validate_connection_type()
+  ok, err = validate_request_type()
   if not ok then
+    ngx_log(ngx_ERR, _log_prefix, "Request validation error: ", err)
     return response_err(err)
   end
 
   local body_in = cjson.decode(get_body())
   if not body_in then
-    return response_err("Not valid JSON data")
+    err = "not valid JSON data"
+    ngx_log(ngx_ERR, _log_prefix, err)
+    return response_err(err)
   end
 
   ok, err = verify_request(body_in)
   if not ok then
+    ngx_log(ngx_ERR, _log_prefix, err)
     return response_err(err)
   end
 
   ok, err, body_in.node.sync_status = check_node_compatibility(body_in.node)
   if not ok then
+    ngx_log(ngx_ERR, _log_prefix, err)
     return response_err(err)
   end
 
   local body_out
   body_out, err = do_negotiation(body_in)
   if not body_out then
+    ngx_log(ngx_ERR, _log_prefix, err)
     return response_err(err)
   end
 
   ok, err = register_client(conf, body_in.node, body_out.services_accepted)
   if not ok then
+    ngx_log(ngx_ERR, _log_prefix, err)
     return response(500, { message = err })
   end
 
