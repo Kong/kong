@@ -1,6 +1,6 @@
 return {
   {
-    name = "Config",
+    name = "config",
     versions = { "v1", "v0" },
   },
 }

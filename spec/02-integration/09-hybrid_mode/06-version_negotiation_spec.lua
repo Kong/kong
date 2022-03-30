@@ -180,7 +180,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_string(body.node.id)
           assert.same({
             {
-              name = "Config",
+              name = "config",
               version = "v0",
               message = "JSON over WebSocket",
             },
@@ -205,7 +205,7 @@ for _, strategy in helpers.each_strategy() do
               assert.near(14 * 86400, v.ttl, 3)
               assert.matches("^(%d+%.%d+)%.%d+", v.version)
               assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-              assert.same({ Config = "v0" }, v.services_accepted)
+              assert.same({ config = "v0" }, v.services_accepted)
 
               return true
             end
@@ -235,7 +235,7 @@ for _, strategy in helpers.each_strategy() do
         local data = assert(version_negotiation.request_version_handshake(conf, CLIENT_CERT, CLIENT_PRIV_KEY))
         -- returns data in standard form
         assert.same({
-          { name = "Config", version = "v0", message = "JSON over WebSocket" },
+          { name = "config", version = "v0", message = "JSON over WebSocket" },
         }, data.services_accepted)
         assert.same({
           { name = "infundibulum", message = "unknown service." },

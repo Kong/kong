@@ -5,6 +5,7 @@ local http = require "resty.http"
 local constants = require "kong.constants"
 local clustering_utils = require "kong.clustering.utils"
 
+local str_lower = string.lower
 local ngx = ngx
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
@@ -95,14 +96,15 @@ end
 local function cp_priority(name, req_versions, known_versions)
   local versions_set = {}
   for _, version in ipairs(req_versions) do
-    versions_set[version] = true
+    versions_set[str_lower(version)] = true
   end
 
   for _, v in ipairs(known_versions) do
-    if versions_set[v.version] then
+    local version = str_lower(v.version)
+    if versions_set[version] then
       return true, {
         name = name,
-        version = v.version,
+        version = version,
         message = v.message,
       }
     end
@@ -130,7 +132,7 @@ local function do_negotiation(req_body)
       return nil, "malformed service requested item #" .. tostring(i)
     end
 
-    local name = req_service.name
+    local name = str_lower(req_service.name)
 
     if type(req_service.versions) ~= "table" then
       return nil, "invalid versions array for service " .. req_service.name
@@ -327,6 +329,8 @@ local SERVICE_KEY_PREFIX = "version_negotiation:service:"
 
 
 function _M.set_negotiated_service(name, version, message)
+  name = str_lower(name)
+  version = version and str_lower(version)
   local ok, err = kong_shm:set(SERVICE_KEY_PREFIX .. name, cjson.encode{
     version = version,
     message = message,
@@ -342,6 +346,7 @@ end
 --- If it was rejected returns nil, message.
 --- If wasn't requested returns nil, nil
 function _M.get_negotiated_service(name)
+  name = str_lower(name)
   local val, err = kong_shm:get(SERVICE_KEY_PREFIX .. name)
   if not val then
     return nil, err
