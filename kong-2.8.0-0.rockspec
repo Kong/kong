@@ -445,12 +445,17 @@ build = {
 
     ["kong.plugins.pre-function._handler"] = "kong/plugins/pre-function/_handler.lua",
     ["kong.plugins.pre-function._schema"] = "kong/plugins/pre-function/_schema.lua",
+    ["kong.plugins.pre-function.migrations._001_280_to_300"] = "kong/plugins/pre-function/migrations/_001_280_to_300.lua",
 
     ["kong.plugins.pre-function.handler"] = "kong/plugins/pre-function/handler.lua",
     ["kong.plugins.pre-function.schema"] = "kong/plugins/pre-function/schema.lua",
+    ["kong.plugins.pre-function.migrations"] = "kong/plugins/pre-function/migrations/init.lua",
+    ["kong.plugins.pre-function.migrations.001_280_to_300"] = "kong/plugins/pre-function/migrations/001_280_to_300.lua",
 
     ["kong.plugins.post-function.handler"] = "kong/plugins/post-function/handler.lua",
     ["kong.plugins.post-function.schema"] = "kong/plugins/post-function/schema.lua",
+    ["kong.plugins.post-function.migrations"] = "kong/plugins/post-function/migrations/init.lua",
+    ["kong.plugins.post-function.migrations.001_280_to_300"] = "kong/plugins/post-function/migrations/001_280_to_300.lua",
 
     ["kong.plugins.zipkin.handler"] = "kong/plugins/zipkin/handler.lua",
     ["kong.plugins.zipkin.reporter"] = "kong/plugins/zipkin/reporter.lua",
