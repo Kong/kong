@@ -629,7 +629,7 @@ for _, strategy in helpers.each_strategy() do
             if res and res.status == 503 then
               return true
             end
-          end, 2)
+          end, 10)
 
           for i = 2, 5 do
             res = admin_client:put("/routes/" .. i, {
