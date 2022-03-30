@@ -446,6 +446,12 @@ server {
             Kong.serve_cluster_listener()
         }
     }
+
+    location = /v1/wrpc {
+        content_by_lua_block {
+            Kong.serve_wrpc_listener()
+        }
+    }
 }
 > end -- role == "control_plane"
 ]]

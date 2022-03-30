@@ -33,7 +33,6 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           database = strategy,
@@ -575,7 +574,6 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           database = strategy,
@@ -682,4 +680,162 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end
+
+  describe("CP/DP sync works with #" .. strategy .. " backend, two DPs via different protocols on the same CP", function()
+    lazy_setup(function()
+      helpers.get_db_utils(strategy, {
+        "routes",
+        "services",
+        "plugins",
+        "upstreams",
+        "targets",
+        "certificates",
+        "clustering_data_planes",
+      }) -- runs migrations
+
+      assert(helpers.start_kong({
+        role = "control_plane",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        database = strategy,
+        db_update_frequency = 3,
+        cluster_listen = "127.0.0.1:9005",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      assert(helpers.start_kong({
+        role = "data_plane",
+        cluster_protocol = "json",
+        database = "off",
+        prefix = "servroot2",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_control_plane = "127.0.0.1:9005",
+        proxy_listen = "0.0.0.0:9002",
+      }))
+
+      assert(helpers.start_kong({
+        role = "data_plane",
+        cluster_protocol = "wrpc",
+        database = "off",
+        prefix = "servroot3",
+        cluster_cert = "spec/fixtures/kong_clustering.crt",
+        cluster_cert_key = "spec/fixtures/kong_clustering.key",
+        cluster_control_plane = "127.0.0.1:9005",
+        proxy_listen = "0.0.0.0:9003",
+      }))
+    end)
+
+    lazy_teardown(function()
+      helpers.stop_kong("servroot3")
+      helpers.stop_kong("servroot2")
+      helpers.stop_kong()
+    end)
+
+    it("pushes first change asap and following changes in a batch", function()
+      local admin_client = helpers.admin_client(10000)
+      local proxy_client_A = helpers.http_client("127.0.0.1", 9002)
+      local proxy_client_B = helpers.http_client("127.0.0.1", 9003)
+      finally(function()
+        admin_client:close()
+        proxy_client_A:close()
+        proxy_client_B:close()
+      end)
+
+      local res = admin_client:put("/routes/1", {
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          paths = { "/1" },
+        },
+      })
+
+      assert.res_status(200, res)
+
+      -- first CP got it
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+        -- serviceless route should return 503 instead of 404
+        res = proxy_client:get("/1")
+        proxy_client:close()
+        if res and res.status == 503 then
+          return true
+        end
+      end, 10)
+
+      -- second CP got it
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9003)
+        -- serviceless route should return 503 instead of 404
+        res = proxy_client:get("/1")
+        proxy_client:close()
+        if res and res.status == 503 then
+          return true
+        end
+      end, 10)
+
+      for i = 2, 5 do
+        res = admin_client:put("/routes/" .. i, {
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            paths = { "/" .. i },
+          },
+        })
+
+        assert.res_status(200, res)
+      end
+
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+        -- serviceless route should return 503 instead of 404
+        res = proxy_client:get("/2")
+        proxy_client:close()
+        if res and res.status == 503 then
+          return true
+        end
+      end, 5)
+
+      for i = 5, 3, -1 do
+        assert.res_status(503, proxy_client_A:get("/" .. i))
+        assert.res_status(503, proxy_client_B:get("/" .. i))
+      end
+
+      for i = 1, 5 do
+        assert.res_status(204, admin_client:delete("/routes/" .. i))
+      end
+
+      -- first CP no longer sees them
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9002)
+        -- deleted route should return 404
+        res = proxy_client:get("/1")
+        proxy_client:close()
+        if res and res.status == 404 then
+          return true
+        end
+      end, 5)
+
+      for i = 5, 2, -1 do
+        assert.res_status(404, proxy_client_A:get("/" .. i))
+      end
+
+      -- second CP
+      helpers.wait_until(function()
+        local proxy_client = helpers.http_client("127.0.0.1", 9003)
+        -- deleted route should return 404
+        res = proxy_client:get("/1")
+        proxy_client:close()
+        if res and res.status == 404 then
+          return true
+        end
+      end, 5)
+
+      for i = 5, 2, -1 do
+        assert.res_status(404, proxy_client_B:get("/" .. i))
+      end
+    end)
+  end)
 end

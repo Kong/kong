@@ -132,12 +132,18 @@ function _M.new(conf)
 
   print("role: ", conf.role, "  protocol: ", conf.cluster_protocol)
 
-  local clustering_submodule = conf.role
-  if conf.cluster_protocol == "wrpc" then
-    clustering_submodule = "wrpc_" .. clustering_submodule
-  end
+  if conf.role == "control_plane" then
+    self.json_handler = require("kong.clustering.control_plane").new(self)
+    self.wrpc_handler = require("kong.clustering.wrpc_control_plane").new(self)
 
-  self.child = require("kong.clustering." .. clustering_submodule).new(self)
+  else
+    local clustering_submodule = conf.role
+    if conf.cluster_protocol == "wrpc" then
+      clustering_submodule = "wrpc_" .. clustering_submodule
+    end
+
+    self.child = require("kong.clustering." .. clustering_submodule).new(self)
+  end
 
   return self
 end
@@ -191,7 +197,11 @@ end
 
 
 function _M:handle_cp_websocket()
-  return self.child:handle_cp_websocket()
+  return self.json_handler:handle_cp_websocket()
+end
+
+function _M:handle_wrpc_websocket()
+  return self.wrpc_handler:handle_cp_websocket()
 end
 
 
@@ -205,7 +215,13 @@ function _M:init_worker()
     return { name = p.name, version = p.handler.VERSION, }
   end, self.plugins_list)
 
-  self.child:init_worker()
+  for _, ch in ipairs{"child", "json_handler", "wrpc_handler"} do
+    local child = self[ch]
+    if child then
+      child:init_worker()
+    end
+  end
+  --self.child:init_worker()
 end
 
 

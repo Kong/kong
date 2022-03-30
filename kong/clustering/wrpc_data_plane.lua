@@ -219,7 +219,7 @@ function _M:communicate(premature)
     timeout = constants.CLUSTERING_TIMEOUT,
     max_payload_len = conf.cluster_max_payload,
   }))
-  local uri = "wss://" .. address .. "/v1/outlet?node_id=" ..
+  local uri = "wss://" .. address .. "/v1/wrpc?node_id=" ..
               kong.node.get_id() ..
               "&node_hostname=" .. kong.node.get_hostname() ..
               "&node_version=" .. KONG_VERSION
