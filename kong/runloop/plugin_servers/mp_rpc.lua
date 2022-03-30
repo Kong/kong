@@ -146,7 +146,6 @@ local function call_pdk_method(cmd, args)
 
   local saved = Rpc.save_for_later[coroutine.running()]
   if saved and saved.plugin_name then
-    ngx.ctx.KONG_PHASE = saved.ngx_ctx.KONG_PHASE
     kong_global.set_namespaced_log(kong, saved.plugin_name)
   end
 
