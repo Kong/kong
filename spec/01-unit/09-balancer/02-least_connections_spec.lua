@@ -454,12 +454,10 @@ describe("[least-connections]", function()
       })
       local b = validate_lcb(new_balancer({ "konghq.com" }))
 
-      local counts = {}
       local handle -- define outside loop, so it gets reused and released
       for i = 1,70 do
-        local ip, _
-        ip, _, _, handle = b:getPeer(nil, handle)
-        counts[ip] = (counts[ip] or 0) + 1
+        local _
+        _, _, _, handle = b:getPeer(nil, handle)
       end
 
       validate_lcb(b)
