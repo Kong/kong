@@ -75,9 +75,9 @@ else
 endif
 
 release:
-#ifeq ($(ISTAG),false)
-#	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua
-#endif
+ifeq ($(ISTAG),false)
+	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua
+endif
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	$(MAKE) \
 	KONG_VERSION=${KONG_VERSION} \
