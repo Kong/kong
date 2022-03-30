@@ -13,6 +13,7 @@ local utils = require "kong.tools.utils"
 local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 
 local compare_no_order = require "pl.tablex".compare_no_order
+local kong_vitals = require "kong.vitals"
 
 local client
 local db, dao
@@ -116,6 +117,26 @@ for _, strategy in helpers.each_strategy() do
 
         lazy_setup(function()
           truncate_tables(db)
+
+          if _G.kong then
+            _G.kong.cache = _G.kong.cache or helpers.get_cache(db)
+            _G.kong.vitals = kong_vitals.new({
+              db = db,
+              ttl_seconds = 3600,
+              ttl_minutes = 24 * 60,
+              ttl_days = 30,
+            })
+          else
+            _G.kong = {
+              cache = _G.kong.cache or helpers.get_cache(db),
+              vitals = kong_vitals.new({
+                db = db,
+                ttl_seconds = 3600,
+                ttl_minutes = 24 * 60,
+                ttl_days = 30,
+              })
+            }
+          end
 
           assert(helpers.start_kong({
             database   = strategy,
