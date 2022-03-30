@@ -75,7 +75,7 @@
 
 #### Plugins
 
-- The proxy-cache plugin does not share the response data in
+- The proxy-cache plugin does not store the response data in
   `ngx.ctx.proxy_cache_hit` anymore. Logging plugins that need the response data
   must read it from `kong.ctx.shared.proxy_cache_hit` from Kong 3.0 on.
   [#8607](https://github.com/Kong/kong/pull/8607)
