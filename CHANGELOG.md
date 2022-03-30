@@ -73,6 +73,11 @@
   scripts that depend on it being `POST`, these scripts will need to be updated
   when updating to Kong 3.0.
 
+### Deprecations
+
+- The external [go-pluginserver](https://github.com/Kong/go-pluginserver) project
+is no longer suppored.
+
 ### Dependencies
 
 - Bumped pgmoon from 1.13.0 to 1.14.0
