@@ -16,6 +16,7 @@ local secrets = require "kong.enterprise_edition.consumer_reset_secret_helpers"
 local ee_utils = require "kong.enterprise_edition.utils"
 local escape = require("socket.url").escape
 local scope = require "kong.enterprise_edition.workspaces.scope"
+local kong_vitals = require "kong.vitals"
 
 local post = ee_helpers.post
 local get_admin_cookie = ee_helpers.get_admin_cookie_basic_auth
@@ -24,13 +25,33 @@ local get_admin_cookie = ee_helpers.get_admin_cookie_basic_auth
 for _, strategy in helpers.each_strategy() do
   describe("Admin API - Admins - kong_admin #" .. strategy, function()
     lazy_setup(function()
-      helpers.get_db_utils(strategy, {
+      local _, db = helpers.get_db_utils(strategy, {
         "consumers",
         "rbac_users",
         "rbac_roles",
         "rbac_user_roles",
         "admins",
       })
+
+      if _G.kong then
+        _G.kong.cache = helpers.get_cache(db)
+        _G.kong.vitals = kong_vitals.new({
+          db = db,
+          ttl_seconds = 3600,
+          ttl_minutes = 24 * 60,
+          ttl_days = 30,
+        })
+      else
+        _G.kong = {
+          cache = helpers.get_cache(db),
+          vitals = kong_vitals.new({
+            db = db,
+            ttl_seconds = 3600,
+            ttl_minutes = 24 * 60,
+            ttl_days = 30,
+          })
+        }
+      end
 
       assert(helpers.start_kong({ database = strategy }))
     end)

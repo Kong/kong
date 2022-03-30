@@ -11,6 +11,7 @@ local enums = require "kong.enterprise_edition.dao.enums"
 local admins = require "kong.enterprise_edition.admins_helpers"
 local ee_helpers = require "spec-ee.helpers"
 local rbac = require "kong.rbac"
+local kong_vitals = require "kong.vitals"
 
 local compare_no_order = require "pl.tablex".compare_no_order
 
@@ -54,6 +55,27 @@ for _, strategy in helpers.each_strategy() do
 
       lazy_setup(function()
         db = select(2, helpers.get_db_utils(strategy))
+
+        if _G.kong then
+          _G.kong.cache = helpers.get_cache(db)
+          _G.kong.vitals = kong_vitals.new({
+            db = db,
+            ttl_seconds = 3600,
+            ttl_minutes = 24 * 60,
+            ttl_days = 30,
+          })
+        else
+          _G.kong = {
+            cache = helpers.get_cache(db),
+            vitals = kong_vitals.new({
+              db = db,
+              ttl_seconds = 3600,
+              ttl_minutes = 24 * 60,
+              ttl_days = 30,
+            })
+          }
+        end
+
       end)
 
       lazy_teardown(function()
