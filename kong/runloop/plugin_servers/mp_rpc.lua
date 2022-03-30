@@ -1,6 +1,17 @@
 local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
-local msgpack = require "MessagePack"
+local msgpack do
+  msgpack = require "MessagePack"
+  local nil_pack = msgpack.packers["nil"]
+  -- let msgpack encode cjson.null
+  function msgpack.packers.userdata (buffer, userdata)
+    if userdata == cjson.null then
+      return nil_pack(buffer)
+    else
+      error "pack 'userdata' is unimplemented"
+    end
+  end
+end
 
 local ngx = ngx
 local kong = kong
@@ -122,6 +133,9 @@ local function call_pdk_method(cmd, args)
 
   local saved = Rpc.save_for_later[coroutine.running()]
   if saved and saved.plugin_name then
+    if ngx.ctx ~= nil then
+      ngx.ctx.KONG_PHASE = saved.ngx_ctx.KONG_PHASE
+    end
     kong_global.set_namespaced_log(kong, saved.plugin_name)
   end
 
