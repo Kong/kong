@@ -264,14 +264,14 @@ local function cacheShortInsert(entry, qname, qtype)
   return cacheinsert(entry, "short:" .. qname, qtype or "none")
 end
 
--- Lookup the last succesful query type.
+-- Lookup the last successful query type.
 -- @param qname name to resolve
 -- @return query/record type constant, or ˋnilˋ if not found
 local function cachegetsuccess(qname)
   return dnscache:get(qname)
 end
 
--- Sets the last succesful query type.
+-- Sets the last successful query type.
 -- Only if the type provided is in the list of types to try.
 -- @param qname name resolved
 -- @param qtype query/record type to set, or ˋnilˋ to clear
@@ -1106,7 +1106,7 @@ end
 -- `r_opts.qtype` is not provided, then it will try to resolve
 -- the name using the record types, in the order as provided to `init`.
 --
--- Note that unless explictly requesting a CNAME record (by setting `r_opts.qtype`) this
+-- Note that unless explicitly requesting a CNAME record (by setting `r_opts.qtype`) this
 -- function will dereference the CNAME records.
 --
 -- So requesting `my.domain.com` (assuming to be an AAAA record, and default `order`) will try to resolve

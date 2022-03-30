@@ -142,7 +142,7 @@ describe("tracing_headers.parse", function()
       assert.spy(warn).not_called()
     end)
 
-    it("sample 0 overriden by x-b3-sampled", function()
+    it("sample 0 overridden by x-b3-sampled", function()
       local b3 = fmt("%s-%s-%s-%s", trace_id, span_id, "0", parent_id)
       local t  = { parse({ b3 = b3, ["x-b3-sampled"] = "1" }) }
       assert.same({ "b3-single", trace_id, span_id, parent_id, true }, to_hex_ids(t))

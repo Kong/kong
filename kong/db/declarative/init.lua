@@ -1016,7 +1016,7 @@ end
 
 
 -- increments the counter inside the lock - each worker does this while reading new declarative config
--- can (is expected to) be called multiple times, suceeding every time
+-- can (is expected to) be called multiple times, succeeding every time
 function declarative.lock()
   return ngx.shared.kong:incr(DECLARATIVE_LOCK_KEY, 1, 0, DECLARATIVE_LOCK_TTL)
 end

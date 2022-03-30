@@ -337,7 +337,7 @@ end
 --   into the resulting B3-single field. If they present contradictory information (i.e.
 --   different TraceIds) then B3-single will "win".
 --
--- * The erroneous formatting on *any* header (even those overriden by B3 single) results
+-- * The erroneous formatting on *any* header (even those overridden by B3 single) results
 --   in rejection (ignoring) of all headers. This rejection is logged.
 local function find_header_type(headers)
   local b3_single_header = headers["b3"]
