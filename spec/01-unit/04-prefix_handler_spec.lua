@@ -780,7 +780,6 @@ describe("NGINX conf compiler", function()
       local config = assert(conf_loader(helpers.test_conf_path, {
         prefix = "inexistent"
       }))
-      prefix_handler.prepare_prefix(config)
       assert(prefix_handler.prepare_prefix(config))
       assert.truthy(exists("inexistent"))
     end)
