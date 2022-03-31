@@ -65,6 +65,15 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## Unreleased
+
+### Dependencies
+
+- Bumped lua-resty-healthcheck from 1.5.0 to 1.5.1
+  [#8584](https://github.com/Kong/kong/pull/8584)
+
+### Fixes
+
 ## [2.8.0]
 
 ### Deprecations
