@@ -67,6 +67,8 @@ build = {
     ["kong.clustering"] = "kong/clustering/init.lua",
     ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
     ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
+    ["kong.clustering.wrpc_data_plane"] = "kong/clustering/wrpc_data_plane.lua",
+    ["kong.clustering.wrpc_control_plane"] = "kong/clustering/wrpc_control_plane.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
@@ -136,6 +138,9 @@ build = {
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
     ["kong.tools.uri"] = "kong/tools/uri.lua",
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
+    ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
+    ["kong.tools.wrpc"] = "kong/tools/wrpc.lua",
+    ["kong.tools.channel"] = "kong/tools/channel.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",

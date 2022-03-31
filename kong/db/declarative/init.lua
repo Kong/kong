@@ -1,5 +1,6 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local schema_topological_sort = require "kong.db.schema.topological_sort"
+local protobuf = require "kong.tools.protobuf"
 local workspaces = require "kong.workspaces"
 local pl_file = require "pl.file"
 local lyaml = require "lyaml"
@@ -397,7 +398,7 @@ function declarative.load_into_db(entities, meta)
 end
 
 
-local function export_from_db(emitter, skip_ws, skip_disabled_entities)
+local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_foreigns)
   local schemas = {}
 
   local db = kong.db
@@ -459,7 +460,9 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities)
               if disabled_services[id] then
                 goto skip_emit
               end
-              row[foreign_name] = id
+              if not expand_foreigns then
+                row[foreign_name] = id
+              end
             end
           end
         end
@@ -565,6 +568,46 @@ local function remove_nulls(tbl)
   return tbl
 end
 
+local proto_emitter = {
+  emit_toplevel = function(self, tbl)
+    self.out = {
+      format_version = tbl._format_version,
+    }
+  end,
+
+  emit_entity = function(self, entity_name, entity_data)
+    if entity_name == "plugins" then
+      entity_data.config = protobuf.pbwrap_struct(entity_data.config)
+    end
+
+    if not self.out[entity_name] then
+      self.out[entity_name] = { entity_data }
+    else
+      insert(self.out[entity_name], entity_data)
+    end
+  end,
+
+  done = function(self)
+    return remove_nulls(self.out)
+  end,
+}
+
+function proto_emitter.new()
+  return setmetatable({}, { __index = proto_emitter })
+end
+
+function declarative.export_config_proto(skip_ws, skip_disabled_entities)
+  -- default skip_ws=false and skip_disabled_services=true
+  if skip_ws == nil then
+    skip_ws = false
+  end
+
+  if skip_disabled_entities == nil then
+    skip_disabled_entities = true
+  end
+
+  return export_from_db(proto_emitter.new(), skip_ws, skip_disabled_entities, true)
+end
 
 function declarative.get_current_hash()
   return lmdb.get(DECLARATIVE_HASH_KEY)
