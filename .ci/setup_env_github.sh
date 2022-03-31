@@ -34,11 +34,8 @@ kong-ngx-build \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
-<<<<<<< HEAD
     --resty-lmdb $RESTY_LMDB \
-=======
     --resty-events $RESTY_EVENTS \
->>>>>>> 5dd7d8f8d (add resty events in requirements)
     --pcre $PCRE \
     --debug
 
