@@ -87,7 +87,7 @@ local function direct_request(host, port, path, protocol, host_header)
 end
 
 
-local function post_target_endpoint(upstream_id, host, port, endpoint)
+local function put_target_endpoint(upstream_id, host, port, endpoint)
   if host == "[::1]" then
     host = "[0000:0000:0000:0000:0000:0000:0000:0001]"
   end
@@ -97,7 +97,7 @@ local function post_target_endpoint(upstream_id, host, port, endpoint)
                              .. "/" .. endpoint
   local api_client = helpers.admin_client()
   local res, err = assert(api_client:send {
-    method = "POST",
+    method = "PUT",
     path = prefix .. path,
     headers = {
       ["Content-Type"] = "application/json",
@@ -166,7 +166,7 @@ local patch_upstream
 local get_upstream
 local get_upstream_health
 local get_balancer_health
-local post_target_address_health
+local put_target_address_health
 local get_router_version
 local add_target
 local update_target
@@ -248,9 +248,9 @@ do
     end
   end
 
-  post_target_address_health = function(upstream_id, target_id, address, mode, forced_port)
+  put_target_address_health = function(upstream_id, target_id, address, mode, forced_port)
     local path = "/upstreams/" .. upstream_id .. "/targets/" .. target_id .. "/" .. address .. "/" .. mode
-    return api_send("POST", path, {}, forced_port)
+    return api_send("PUT", path, {}, forced_port)
   end
 
   get_router_version = function(forced_port)
@@ -517,15 +517,15 @@ local function teardown_prefix()
 end
 
 
-local function test_with_prefixes(_it, strategy, prefixes)
+local function test_with_prefixes(itt, strategy, prefixes)
   return function(description, fn)
     if strategy == "off" then
-      _it(description, fn)
+      itt(description, fn)
       return
     end
 
     for _, name in ipairs(prefixes) do
-      _it(name .. ": " .. description, function()
+      itt(name .. ": " .. description, function()
         setup_prefix("/" .. name)
         local ok = fn()
         teardown_prefix()
@@ -574,8 +574,8 @@ balancer_utils.patch_api = patch_api
 balancer_utils.patch_upstream = patch_upstream
 balancer_utils.poll_wait_address_health = poll_wait_address_health
 balancer_utils.poll_wait_health = poll_wait_health
-balancer_utils.post_target_address_health = post_target_address_health
-balancer_utils.post_target_endpoint = post_target_endpoint
+balancer_utils.put_target_address_health = put_target_address_health
+balancer_utils.put_target_endpoint = put_target_endpoint
 balancer_utils.SLOTS = SLOTS
 balancer_utils.tcp_client_requests = tcp_client_requests
 balancer_utils.wait_for_router_update = wait_for_router_update

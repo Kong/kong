@@ -76,7 +76,7 @@ admin_api_as_db["basicauth_credentials"] = {
 
 admin_api_as_db["targets"] = {
   insert = function(_, tbl)
-    return api_send("POST", "/upstreams/" .. tbl.upstream.id .. "/targets", tbl)
+    return api_send("PUT", "/upstreams/" .. tbl.upstream.id .. "/targets", tbl)
   end,
   remove = function(_, tbl)
     return api_send("DELETE", "/upstreams/" .. tbl.upstream.id .. "/targets/" .. tbl.id)

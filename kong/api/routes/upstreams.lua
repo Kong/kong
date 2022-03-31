@@ -17,10 +17,7 @@ local tostring = tostring
 local fmt = string.format
 
 
--- XXX merge: previous post_health implementation added an `id` field in the
--- broadcast packet, so routes with the same name in different workspaces would
--- not interfere with each other
-local function post_health(self, db, is_healthy)
+local function set_target_health(self, db, is_healthy)
   local upstream, _, err_t = endpoints.select_entity(self, db, db.upstreams.schema)
   if err_t then
     return endpoints.handle_error(err_t)
@@ -190,9 +187,7 @@ return {
                                             kong.db.upstreams.schema,
                                             "upstream",
                                             "page_for_upstream"),
-    POST = function(self, db)
-      -- updating a target using POST is a compatibility with existent API and
-      -- should be deprecated in next major version
+    PUT = function(self, db)
       local entity, _, err_t = update_existent_target(self, db)
       if err_t then
         return endpoints.handle_error(err_t)
@@ -204,7 +199,10 @@ return {
       local create = endpoints.post_collection_endpoint(kong.db.targets.schema,
                         kong.db.upstreams.schema, "upstream")
       return create(self, db)
-    end
+    end,
+    POST = function(self, db)
+      return kong.response.exit(405)
+    end,
   },
 
   ["/upstreams/:upstreams/targets/all"] = {
@@ -242,26 +240,26 @@ return {
   },
 
   ["/upstreams/:upstreams/targets/:targets/healthy"] = {
-    POST = function(self, db)
-      return post_health(self, db, true)
+    PUT = function(self, db)
+      return set_target_health(self, db, true)
     end,
   },
 
   ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
-    POST = function(self, db)
-      return post_health(self, db, false)
+    PUT = function(self, db)
+      return set_target_health(self, db, false)
     end,
   },
 
   ["/upstreams/:upstreams/targets/:targets/:address/healthy"] = {
-    POST = function(self, db)
-      return post_health(self, db, true)
+    PUT = function(self, db)
+      return set_target_health(self, db, true)
     end,
   },
 
   ["/upstreams/:upstreams/targets/:targets/:address/unhealthy"] = {
-    POST = function(self, db)
-      return post_health(self, db, false)
+    PUT = function(self, db)
+      return set_target_health(self, db, false)
     end,
   },
 

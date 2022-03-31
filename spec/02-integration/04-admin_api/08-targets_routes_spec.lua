@@ -81,12 +81,12 @@ describe("Admin API #" .. strategy, function()
   end)
 
   describe("/upstreams/{upstream}/targets/", function()
-    describe("POST", function()
+    describe("PUT", function()
       it_content_types("creates a target with defaults", function(content_type)
         return function()
           local upstream = bp.upstreams:insert { slots = 10 }
           local res = assert(client:send {
-            method = "POST",
+            method = "PUT",
             path = "/upstreams/" .. upstream.name .. "/targets/",
             body = {
               target = "mashape.com",
@@ -105,7 +105,7 @@ describe("Admin API #" .. strategy, function()
         return function()
           local upstream = bp.upstreams:insert { slots = 10 }
           local res = assert(client:send {
-            method = "POST",
+            method = "PUT",
             path = "/upstreams/" .. upstream.name .. "/targets/",
             body = {
               target = "mashape.com:123",
@@ -126,7 +126,7 @@ describe("Admin API #" .. strategy, function()
         return function()
           local upstream = bp.upstreams:insert { slots = 10 }
           local res = assert(client:send {
-            method = "POST",
+            method = "PUT",
             path = "/upstreams/" .. upstream.name .. "/targets/",
             body = {
               target = "zero.weight.test:8080",
@@ -153,7 +153,7 @@ describe("Admin API #" .. strategy, function()
         return function()
           local upstream = bp.upstreams:insert { slots = 10 }
           local res = assert(client:send {
-            method = "POST",
+            method = "PUT",
             path = "/upstreams/" .. upstream.name .. "/targets/",
             body = {
               target = "single-target.test:8080",
@@ -170,7 +170,7 @@ describe("Admin API #" .. strategy, function()
           assert.are.equal(1, json.weight)
 
           local res = assert(client:send {
-            method = "POST",
+            method = "PUT",
             path = "/upstreams/" .. upstream.name .. "/targets/",
             body = {
               target = "single-target.test:8080",
@@ -190,7 +190,7 @@ describe("Admin API #" .. strategy, function()
         it("handles malformed JSON body", function()
           local upstream = bp.upstreams:insert { slots = 10 }
           local res = assert(client:request {
-            method = "POST",
+            method = "PUT",
             path = "/upstreams/" .. upstream.name .. "/targets/",
             body = '{"hello": "world"',
             headers = {["Content-Type"] = "application/json"}
@@ -204,7 +204,7 @@ describe("Admin API #" .. strategy, function()
             local upstream = bp.upstreams:insert { slots = 10 }
             -- Missing parameter
             local res = assert(client:send {
-              method = "POST",
+              method = "PUT",
               path = "/upstreams/" .. upstream.name .. "/targets/",
               body = {
                 weight = weight_min,
@@ -218,7 +218,7 @@ describe("Admin API #" .. strategy, function()
 
             -- Invalid target parameter
             res = assert(client:send {
-              method = "POST",
+              method = "PUT",
               path = "/upstreams/" .. upstream.name .. "/targets/",
               body = {
                 target = "some invalid host name",
@@ -232,7 +232,7 @@ describe("Admin API #" .. strategy, function()
 
             -- Invalid weight parameter
             res = assert(client:send {
-              method = "POST",
+              method = "PUT",
               path = "/upstreams/" .. upstream.name .. "/targets/",
               body = {
                 target = "mashape.com",
@@ -247,7 +247,7 @@ describe("Admin API #" .. strategy, function()
           end
         end)
 
-        for _, method in ipairs({"PUT", "PATCH", "DELETE"}) do
+        for _, method in ipairs({"POST", "PATCH", "DELETE"}) do
           it_content_types("returns 405 on " .. method, function(content_type)
             return function()
               local upstream = bp.upstreams:insert { slots = 10 }
@@ -344,7 +344,7 @@ describe("Admin API #" .. strategy, function()
 
         for i = 1, #weights do
           local status, body = client_send({
-            method = "POST",
+            method = "PUT",
             path = "/upstreams/" .. upstream.name .. "/targets",
             headers = {
               ["Content-Type"] = "application/json",
@@ -676,7 +676,7 @@ describe("Admin API #" .. strategy, function()
           local json = assert(cjson.decode(body))
 
           status, body = assert(client_send({
-            method = "POST",
+            method = "PUT",
             path = "/upstreams/" .. upstream.id .. "/targets",
             headers = {["Content-Type"] = "application/json"},
             body = {
@@ -699,7 +699,7 @@ describe("Admin API #" .. strategy, function()
                 local expected = (i >= 3 and j >= 4) and 204 or 404
                 local path = "/upstreams/" .. u .. "/targets/" .. t .. "/" .. e
                 local status = assert(client_send {
-                  method = "POST",
+                  method = "PUT",
                   path = "/upstreams/" .. u .. "/targets/" .. t .. "/" .. e
                 })
                 assert.same(expected, status, "bad status for path " .. path)
@@ -711,7 +711,7 @@ describe("Admin API #" .. strategy, function()
         it("flips the target status from UNHEALTHY to HEALTHY", function()
           local status, body, json
           status, body = assert(client_send {
-            method = "POST",
+            method = "PUT",
             path = target_path .. "/unhealthy"
           })
           assert.same(204, status, body)
@@ -724,7 +724,7 @@ describe("Admin API #" .. strategy, function()
           assert.same(target.target, json.data[1].target)
           assert.same("UNHEALTHY", json.data[1].health)
           status = assert(client_send {
-            method = "POST",
+            method = "PUT",
             path = target_path .. "/healthy"
           })
           assert.same(204, status)
@@ -741,7 +741,7 @@ describe("Admin API #" .. strategy, function()
         it("flips the target status from HEALTHY to UNHEALTHY", function()
           local status, body, json
           status = assert(client_send {
-            method = "POST",
+            method = "PUT",
             path = target_path .. "/healthy"
           })
           assert.same(204, status)
@@ -754,7 +754,7 @@ describe("Admin API #" .. strategy, function()
           assert.same(target.target, json.data[1].target)
           assert.same("HEALTHY", json.data[1].health)
           status = assert(client_send {
-            method = "POST",
+            method = "PUT",
             path = target_path .. "/unhealthy"
           })
           assert.same(204, status)

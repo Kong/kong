@@ -594,7 +594,8 @@ return {
                   reflect the health of the database itself.
             * `configuration_hash`: The hash of the current configuration. This
               field is only returned when the Kong node is running in DB-less
-              or data-plane mode.
+              or data-plane mode. The special return value "00000000000000000000000000000000"
+              means Kong does not currently have a valid configuration loaded.
           ]],
         },
       }
@@ -1001,6 +1002,8 @@ return {
             match if present in the request.
             The `Host` header cannot be used with this attribute: hosts should be specified
             using the `hosts` attribute.
+            When `headers` contains only one value and that value starts with
+            the special prefix `~*`, the value is interpreted as a regular expression.
           ]],
           examples = { { ["x-my-header"] = {"foo", "bar"}, ["x-another-header"] = {"bla"} }, nil },
           skip_in_example = true, -- hack so we get HTTP fields in the first example and Stream fields in the second
