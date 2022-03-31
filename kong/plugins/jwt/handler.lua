@@ -27,7 +27,6 @@ local JwtHandler = {
 --- Retrieve a JWT in a request.
 -- Checks for the JWT in URI parameters, then in cookies, and finally
 -- in the configured header_names (defaults to `[Authorization]`).
--- @param request ngx request object
 -- @param conf Plugin configuration
 -- @return token JWT token contained in request (can be a table) or nil
 -- @return err

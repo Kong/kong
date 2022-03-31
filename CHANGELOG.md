@@ -68,14 +68,32 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Admin API
+
+- Insert and update operations on target entities require using the `PUT` HTTP
+  method now. [#8596](https://github.com/Kong/kong/pull/8596). If you have
+  scripts that depend on it being `POST`, these scripts will need to be updated
+  when updating to Kong 3.0.
+
+#### Plugins
+
+- The proxy-cache plugin does not store the response data in
+  `ngx.ctx.proxy_cache_hit` anymore. Logging plugins that need the response data
+  must read it from `kong.ctx.shared.proxy_cache_hit` from Kong 3.0 on.
+  [#8607](https://github.com/Kong/kong/pull/8607)
+
 ### Dependencies
 
 - Bumped pgmoon from 1.13.0 to 1.14.0
   [#8429](https://github.com/Kong/kong/pull/8429)
 - OpenSSL bumped to 1.1.1n
   [#8544](https://github.com/Kong/kong/pull/8544)
-- Bumped resty.openssl from 0.8.5 to 0.8.6
-  [#8545](https://github.com/Kong/kong/pull/8545)
+- Bumped resty.openssl from 0.8.5 to 0.8.7
+  [#8592](https://github.com/Kong/kong/pull/8592)
+- Bumped inspect from 3.1.2 to 3.1.3
+  [#8589](https://github.com/Kong/kong/pull/8589)
 
 ### Fixes
 
@@ -87,13 +105,32 @@
   execution, avoiding unnecessary concurrent executions.
   [#8567](https://github.com/Kong/kong/pull/8567)
 
-
 #### Plugins
 
 - **ACME**: `auth_method` default value is set to `token`
 [#8565](https://github.com/Kong/kong/pull/8565)
+- **serverless-functions**: Removed deprecated `config.functions` from schema
+[#8559](https://github.com/Kong/kong/pull/8559)
+- **syslog**: `conf.facility` default value is now set to `user`
+[#8564](https://github.com/Kong/kong/pull/8564)
+- **AWS-Lambda**: Removed `proxy_scheme` field from schema
+[#8566](https://github.com/Kong/kong/pull/8566)
 - **hmac-auth**: Removed deprecated signature format using `ngx.var.uri`
 [#8558](https://github.com/Kong/kong/pull/8558)
+- Remove deprecated `blacklist`/`whitelist` config fields from bot-detection, ip-restriction and ACL plugins.
+[#8560](https://github.com/Kong/kong/pull/8560)
+
+#### Clustering
+
+- The cluster listener now uses the value of `admin_error_log` for its log file
+  instead of `proxy_error_log` [8583](https://github.com/Kong/kong/pull/8583)
+
+
+### Additions
+
+#### Performance
+- Do not register unnecessary event handlers on Hybrid mode Control Plane
+nodes [#8452](https://github.com/Kong/kong/pull/8452).
 
 ## [2.8.0]
 

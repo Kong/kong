@@ -12,7 +12,7 @@ description = {
   license = "Apache 2.0"
 }
 dependencies = {
-  "inspect == 3.1.2",
+  "inspect == 3.1.3",
   "luasec == 1.0.2",
   "luasocket == 3.0-rc1",
   "penlight == 1.12.0",
@@ -46,7 +46,7 @@ dependencies = {
   "lua-resty-healthcheck == 1.5.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.6",
+  "lua-resty-openssl == 0.8.7",
   "lua-resty-counter == 0.2.1",
   "lua-resty-template == 1.9",
   "lua-resty-passwdqc == 1.1",
@@ -348,6 +348,7 @@ build = {
     ["kong.db.dao.vaults"] = "kong/db/dao/vaults.lua",
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
+    ["kong.db.declarative.marshaller"] = "kong/db/declarative/marshaller.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.schema.entities.admins"] = "kong/db/schema/entities/admins.lua",
     ["kong.db.schema.entities.applications"] = "kong/db/schema/entities/applications.lua",
@@ -688,12 +689,17 @@ build = {
     ["kong.plugins.grpc-web.schema"] = "kong/plugins/grpc-web/schema.lua",
     ["kong.plugins.pre-function._handler"] = "kong/plugins/pre-function/_handler.lua",
     ["kong.plugins.pre-function._schema"] = "kong/plugins/pre-function/_schema.lua",
+    ["kong.plugins.pre-function.migrations._001_280_to_300"] = "kong/plugins/pre-function/migrations/_001_280_to_300.lua",
 
     ["kong.plugins.pre-function.handler"] = "kong/plugins/pre-function/handler.lua",
     ["kong.plugins.pre-function.schema"] = "kong/plugins/pre-function/schema.lua",
+    ["kong.plugins.pre-function.migrations"] = "kong/plugins/pre-function/migrations/init.lua",
+    ["kong.plugins.pre-function.migrations.001_280_to_300"] = "kong/plugins/pre-function/migrations/001_280_to_300.lua",
 
     ["kong.plugins.post-function.handler"] = "kong/plugins/post-function/handler.lua",
     ["kong.plugins.post-function.schema"] = "kong/plugins/post-function/schema.lua",
+    ["kong.plugins.post-function.migrations"] = "kong/plugins/post-function/migrations/init.lua",
+    ["kong.plugins.post-function.migrations.001_280_to_300"] = "kong/plugins/post-function/migrations/001_280_to_300.lua",
 
     ["kong.plugins.zipkin.handler"] = "kong/plugins/zipkin/handler.lua",
     ["kong.plugins.zipkin.reporter"] = "kong/plugins/zipkin/reporter.lua",

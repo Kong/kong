@@ -278,12 +278,12 @@ for _, strategy in helpers.each_strategy() do
       describe("POST", function()
         local consumer_group, consumer
 
-        local function check_create(res_code, key, _consumer_group, _consumer)
+        local function check_create(res_code, key, consumer_group, consumer)
           local json = assert.res_status(res_code, assert(client:send {
             method = "POST",
             path = "/consumer_groups/" .. key .."/consumers",
             body = {
-              consumer = { _consumer.id },
+              consumer = { consumer.id },
             },
             headers = {
               ["Content-Type"] = "application/json",
@@ -296,7 +296,7 @@ for _, strategy in helpers.each_strategy() do
 
           local res = cjson.decode(json)
 
-          assert.same(res.consumer_group.id, _consumer_group.id)
+          assert.same(res.consumer_group.id, consumer_group.id)
         end
 
         lazy_setup(function()
@@ -422,12 +422,12 @@ for _, strategy in helpers.each_strategy() do
         return consumer_group
       end
 
-      local function check_create(res_code, key, _plugin, _config)
+      local function check_create(res_code, key, plugin, config)
         local json = assert.res_status(res_code, assert(client:send {
           method = "PUT",
-          path = "/consumer_groups/" .. key .. "/overrides/plugins/" .. _plugin,
+          path = "/consumer_groups/" .. key .. "/overrides/plugins/" .. plugin,
           body = {
-            config = _config,
+            config = config,
           },
           headers = {
             ["Content-Type"] = "application/json",

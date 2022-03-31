@@ -313,13 +313,13 @@ for _, strategy in helpers.each_strategy() do
       describe("POST", function()
         local group, role, workspace, token
 
-        local function check_create(res_code, key, _group, _role, _workspace)
+        local function check_create(res_code, key, group, role, workspace)
           local json = assert.res_status(res_code, assert(client:send {
             method = "POST",
             path = "/groups/" .. key .. "/roles",
             body = {
-              rbac_role_id = _role.id,
-              workspace_id = _workspace.id,
+              rbac_role_id = role.id,
+              workspace_id = workspace.id,
             },
             headers = {
               ["Content-Type"] = "application/json",
@@ -333,9 +333,9 @@ for _, strategy in helpers.each_strategy() do
 
           local res = cjson.decode(json)
 
-          assert.same(res.group.id, _group.id)
-          assert.same(res.workspace.id, _workspace.id)
-          assert.same(res.rbac_role.id, _role.id)
+          assert.same(res.group.id, group.id)
+          assert.same(res.workspace.id, workspace.id)
+          assert.same(res.rbac_role.id, role.id)
         end
 
         lazy_setup(function()

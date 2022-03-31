@@ -254,7 +254,7 @@ function _M.license_can_proceed(self)
   end
 
   if not license_utils.license_validation_can_proceed()
-    and not (method == "GET") then
+    and method ~= "GET" then
     -- Force a 400 (Bad Request) and attach the error message
     local msg = "license library cannot be loaded"
     ngx.log(ngx.ERR, msg)

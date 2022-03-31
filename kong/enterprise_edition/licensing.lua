@@ -190,7 +190,7 @@ end
 -- boolean shortcut
 -- licensing:can("ee_plugins") always true | false
 function _M:can(what)
-  return not (_M.features[what] == false)
+  return _M.features[what] ~= false
 end
 
 

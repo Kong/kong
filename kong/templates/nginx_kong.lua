@@ -32,12 +32,6 @@ lua_shared_dict kong_core_db_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_core_db_cache_miss     12m;
 lua_shared_dict kong_db_cache               ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss          12m;
-> if database == "off" then
-lua_shared_dict kong_core_db_cache_2        ${{MEM_CACHE_SIZE}};
-lua_shared_dict kong_core_db_cache_miss_2   12m;
-lua_shared_dict kong_db_cache_2             ${{MEM_CACHE_SIZE}};
-lua_shared_dict kong_db_cache_miss_2        12m;
-> end
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra              5m;
 > end
@@ -693,6 +687,7 @@ server {
 > end
 
     access_log ${{ADMIN_ACCESS_LOG}};
+    error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
 > if cluster_mtls == "shared" then
     ssl_verify_client   optional_no_ca;
