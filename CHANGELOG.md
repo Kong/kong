@@ -73,6 +73,10 @@
     and deprecated the `proxy_scheme` config attribute for removal in 3.0
     [#8406](https://github.com/Kong/kong/pull/8406)
 
+### Dependencies
+
+- Bumped `lua-resty-healthcheck` from 1.4.2 to 1.4.3
+  [#8620](https://github.com/Kong/kong/pull/8620)
 
 ## [2.7.1]
 
