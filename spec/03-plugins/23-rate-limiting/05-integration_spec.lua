@@ -116,7 +116,7 @@ describe("Plugin: rate-limiting (integration)", function()
             redis_ssl_verify  = config.redis_ssl_verify,
             redis_server_name = config.redis_server_name,
             fault_tolerant    = false,
-            redis_timeout     = 10000
+            redis_timeout     = 10000,
           },
         })
   
@@ -136,8 +136,8 @@ describe("Plugin: rate-limiting (integration)", function()
             redis_ssl_verify  = config.redis_ssl_verify,
             redis_server_name = config.redis_server_name,
             fault_tolerant    = false,
-            redis_timeout     = 10000
-          }
+            redis_timeout     = 10000,
+          },
         })
   
         if red_version >= version("6.0.0") then
@@ -159,8 +159,8 @@ describe("Plugin: rate-limiting (integration)", function()
               redis_ssl_verify  = config.redis_ssl_verify,
               redis_server_name = config.redis_server_name,
               fault_tolerant    = false,
-              redis_timeout     = 10000
-            }
+              redis_timeout     = 10000,
+            },
           })
   
           local route4 = assert(bp.routes:insert {
@@ -181,8 +181,8 @@ describe("Plugin: rate-limiting (integration)", function()
               redis_ssl_verify  = config.redis_ssl_verify,
               redis_server_name = config.redis_server_name,
               fault_tolerant    = false,
-              redis_timeout     = 10000
-            }
+              redis_timeout     = 10000,
+            },
           })
         end
   

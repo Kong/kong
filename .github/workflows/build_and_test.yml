@@ -154,6 +154,14 @@ jobs:
         ports:
           - 9411:9411
 
+      redis:
+        image: redis:6.2.6-alpine
+        ports:
+          - 6379:6379
+          - 6380:6380
+        options: >-
+          --name kong_redis
+
     steps:
     - name: Set environment variables
       run: |
@@ -179,9 +187,11 @@ jobs:
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
-    - name: Start Redis with SSL
+    - name: Enable SSL for Redis
       run: |
-          docker run -itd -v ${{ github.workspace }}:/workspace -p 6379:6379 -p 6380:6380 --name=kong_redis redis redis-server /workspace/spec/fixtures/redis/redis.conf
+          docker cp ${{ github.workspace }} kong_redis:/workspace
+          docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
+          docker restart kong_redis
           docker logs kong_redis
 
     - name: Tests
@@ -233,11 +243,6 @@ jobs:
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
-    - name: Start Redis with SSL
-      run: |
-          docker run -itd -v ${{ github.workspace }}:/workspace -p 6379:6379 -p 6380:6380 --name=kong_redis redis redis-server /workspace/spec/fixtures/redis/redis.conf
-          docker logs kong_redis
-
     - name: Tests
       run: |
           eval `luarocks path`
@@ -281,6 +286,14 @@ jobs:
         ports:
           - 9411:9411
 
+      redis:
+        image: redis:6.2.6-alpine
+        ports:
+          - 6379:6379
+          - 6380:6380
+        options: >-
+          --name kong_redis
+
     steps:
     - name: Set environment variables
       run: |
@@ -306,9 +319,11 @@ jobs:
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
     
-    - name: Start Redis with SSL
+    - name: Enable SSL for Redis
       run: |
-          docker run -itd -v ${{ github.workspace }}:/workspace -p 6379:6379 -p 6380:6380 --name=kong_redis redis redis-server /workspace/spec/fixtures/redis/redis.conf
+          docker cp ${{ github.workspace }} kong_redis:/workspace
+          docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
+          docker restart kong_redis
           docker logs kong_redis
 
     - name: Tests
