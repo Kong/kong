@@ -9,6 +9,7 @@ YQ_VERSION=v4.5.0
 OPENRESTY=$(dep_version RESTY_VERSION)
 LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
+RESTY_LMDB=$(dep_version RESTY_LMDB_VERSION)
 KONG_DEP_LUA_RESTY_OPENSSL_AUX_MODULE_VERSION=$(dep_version KONG_DEP_LUA_RESTY_OPENSSL_AUX_MODULE_VERSION)
 
 DEPS_HASH=$({ cat .ci/setup_env.sh .travis.yml .requirements Makefile; cat kong-*.rockspec | awk '/dependencies/,/}/'; } | md5sum | awk '{ print $1 }')
@@ -98,6 +99,7 @@ echo kong-ngx-build \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
+    --resty-lmdb $RESTY_LMDB \
     --debug \
     --add-module $LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD \
     -j $JOBS
@@ -112,6 +114,7 @@ kong-ngx-build \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
+    --resty-lmdb $RESTY_LMDB \
     --debug \
     --add-module $LUA_RESTY_OPENSSL_AUX_MODULE_DOWNLOAD \
     -j $JOBS
