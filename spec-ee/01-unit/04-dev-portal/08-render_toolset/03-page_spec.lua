@@ -14,7 +14,7 @@ describe("page", function()
     singletons = require "kong.singletons"
     workspaces = require "kong.workspaces"
 
-    singletons.render_ctx = {
+    ngx.ctx.render_ctx = {
       path = "/default/hello-world",
       route_config = {
         headmatter = {
@@ -98,7 +98,7 @@ describe("page", function()
     end)
 
     it("can parse body from .txt file", function()
-      singletons.render_ctx = {
+      ngx.ctx.render_ctx = {
         path = "/default/hello-world",
         content = {},
         route_config = {

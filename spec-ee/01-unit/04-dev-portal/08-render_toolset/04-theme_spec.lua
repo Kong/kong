@@ -24,7 +24,7 @@ describe("page", function()
       portal_auth = "basic-auth",
     }
 
-    singletons.render_ctx = {
+    ngx.ctx.render_ctx = {
       path = "/default/hello-world",
       content = {
         title = "Hello World",
@@ -56,7 +56,7 @@ describe("page", function()
 
   describe("empty color/font declerations", function()
     lazy_setup(function()
-      singletons.render_ctx.theme = {}
+      ngx.ctx.render_ctx.theme = {}
     end)
 
     it('returns nil with no theme set', function()
@@ -82,7 +82,7 @@ describe("page", function()
 
   describe("non-empty color/font declerations", function()
     lazy_setup(function()
-      singletons.render_ctx.theme = {
+      ngx.ctx.render_ctx.theme = {
         colors = {
           green = "#abcdef",
           blue  = {
