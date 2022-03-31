@@ -16,7 +16,7 @@ do
     local struct_v = nil
 
     if t == "table" then
-      if t[1] ~= nil then
+      if v[1] ~= nil then
         list_v = structpb_list(v)
       else
         struct_v = structpb_struct(v)
