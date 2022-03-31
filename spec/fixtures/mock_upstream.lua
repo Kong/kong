@@ -329,11 +329,13 @@ local function store_log(logname)
   end
 
   local log_req_headers = ngx.req.get_headers()
+  local log_req_params = ngx.req.get_uri_args()
 
   for i = 1, #entries do
     local store = {
       entry = entries[i],
       log_req_headers = log_req_headers,
+      log_req_params = log_req_params,
     }
 
     assert(logger:rpush(logname, cjson.encode(store)))
@@ -354,6 +356,7 @@ local function retrieve_log(logname)
     local stored = cjson.decode(encoded_stored)
     entries[i] = stored.entry
     entries[i].log_req_headers = stored.log_req_headers
+    entries[i].log_req_params = stored.log_req_params
     assert(logger:rpush(logname, encoded_stored))
   end
 
