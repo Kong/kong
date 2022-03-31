@@ -851,8 +851,10 @@ describe("Configuration loader", function()
             cluster_cert_key = "spec/fixtures/kong_clustering.key",
           })
           assert.is_nil(errors)
-          assert.has_value(conf.lua_ssl_trusted_certificate,
-            pl_path.abspath("spec/fixtures/kong_clustering.crt"))
+          assert.contains(
+            pl_path.abspath("spec/fixtures/kong_clustering.crt"),
+            conf.lua_ssl_trusted_certificate
+          )
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
 
           local conf, _, errors = conf_loader(nil, {
@@ -864,8 +866,10 @@ describe("Configuration loader", function()
             cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
           })
           assert.is_nil(errors)
-          assert.has_value(conf.lua_ssl_trusted_certificate,
-            pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"))
+          assert.contains(
+            pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"),
+            conf.lua_ssl_trusted_certificate
+          )
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
         it("doen't overwrite lua_ssl_trusted_certificate when autoload cluster_cert or cluster_ca_cert", function()
@@ -909,8 +913,10 @@ describe("Configuration loader", function()
             cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
           })
           assert.is_nil(errors)
-          assert.not_has_value(conf.lua_ssl_trusted_certificate,
-            pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"))
+          assert.not_contains(
+            pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"),
+            conf.lua_ssl_trusted_certificate
+          )
         end)
         it("resolves SSL cert/key to absolute path", function()
           local conf, err = conf_loader(nil, {
