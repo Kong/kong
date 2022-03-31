@@ -166,7 +166,7 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(201, res)
 
-      res = admin_client:post("/ws1/upstreams/upstream1/targets", {
+      res = admin_client:put("/ws1/upstreams/upstream1/targets", {
         headers = headers,
         body = {
           target = "httpbin.org:80"
