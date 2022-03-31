@@ -149,12 +149,6 @@ jobs:
           - 15002:9000
           - 15003:9001
 
-      redis:
-        image: redis
-        ports:
-          - 6379:6379
-        options: --entrypoint redis-server
-
       zipkin:
         image: openzipkin/zipkin:2.19
         ports:
@@ -184,6 +178,11 @@ jobs:
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
+
+    - name: Start Redis with SSL
+      run: |
+          docker run -itd -v ${{ github.workspace }}:/workspace -p 6379:6379 -p 6380:6380 --name=kong_redis redis redis-server /workspace/spec/fixtures/redis/redis.conf
+          docker logs kong_redis
 
     - name: Tests
       run: |
@@ -234,6 +233,11 @@ jobs:
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
+    - name: Start Redis with SSL
+      run: |
+          docker run -itd -v ${{ github.workspace }}:/workspace -p 6379:6379 -p 6380:6380 --name=kong_redis redis redis-server /workspace/spec/fixtures/redis/redis.conf
+          docker logs kong_redis
+
     - name: Tests
       run: |
           eval `luarocks path`
@@ -272,12 +276,6 @@ jobs:
           - 15002:9000
           - 15003:9001
 
-      redis:
-        image: redis
-        ports:
-          - 6379:6379
-        options: --entrypoint redis-server
-
       zipkin:
         image: openzipkin/zipkin:2.19
         ports:
@@ -307,6 +305,11 @@ jobs:
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
+    
+    - name: Start Redis with SSL
+      run: |
+          docker run -itd -v ${{ github.workspace }}:/workspace -p 6379:6379 -p 6380:6380 --name=kong_redis redis redis-server /workspace/spec/fixtures/redis/redis.conf
+          docker logs kong_redis
 
     - name: Tests
       run: |
