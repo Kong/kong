@@ -83,9 +83,9 @@ local function get_all_specs()
 end
 
 
-local function get_specs_by_tag(_tag)
+local function get_specs_by_tag(tag)
   local specs = get_all_specs()
-    if not _tag then
+    if not tag then
       return specs
     end
 
@@ -99,7 +99,7 @@ local function get_specs_by_tag(_tag)
           tag = tag.name
         end
 
-        if  string.lower(tag) == string.lower(_tag) then
+        if  string.lower(tag) == string.lower(tag) then
           table.insert(filtered, spec)
         end
       end

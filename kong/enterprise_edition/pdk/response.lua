@@ -15,9 +15,9 @@ local function new(self, module, major_version)
 
   local hooks = {}
   local response = {
-    register_hook = function(method, _hook, ctx)
+    register_hook = function(method, hook_method, ctx)
       check_phase(PHASES.init_worker)
-      local hook = { method = _hook, ctx = ctx }
+      local hook = { method = hook_method, ctx = ctx }
       if hooks[method] then
         table.insert(hooks[method], hook)
       else

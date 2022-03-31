@@ -25,7 +25,7 @@ local function set_node(item)
   
         return value
       end,
-      __newindex = function(_item, key, value)
+      __newindex = function(item, key, value)
         -- if type is function and no arguments are
         -- present in table, treat function as a getter
         -- by assigning value to proxy table, forcing
@@ -55,7 +55,7 @@ local function set_node(item)
         end
   
         -- set table without retriggering __newindex
-        rawset(_item, key, value)
+        rawset(item, key, value)
       end
     })
   end
