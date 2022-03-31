@@ -331,6 +331,15 @@ for _, strategy in helpers.each_strategy() do
 
       end)
 
+      it("404s on non-conformant custom workspace", function()
+        local res = gui_client_request({
+          method = "GET",
+          path = "/&&&",
+        })
+        assert.equals(res.status, 404)
+
+      end)
+
       it("correctly identifies custom workspace", function()
         local res = gui_client_request({
           method = "GET",
@@ -522,7 +531,7 @@ for _, strategy in helpers.each_strategy() do
         assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
       end)
 
-      it("returns 500 if subdomain is invalid", function()
+      it("returns 404 if subdomain doesn't match existing portal", function()
         local res = gui_client_request({
           method = "GET",
           path = "/",
@@ -531,8 +540,7 @@ for _, strategy in helpers.each_strategy() do
             ['Host'] = 'wrong_workspace,' .. portal_gui_host,
           },
         })
-        assert.equals(500, res.status)
-        assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
+        assert.equals(404, res.status)
       end)
     end)
 

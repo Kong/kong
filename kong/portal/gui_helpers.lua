@@ -11,12 +11,24 @@ local workspaces  = require "kong.workspaces"
 local singletons  = require "kong.singletons"
 local ee          = require "kong.enterprise_edition"
 local legacy_renderer = require "kong.portal.legacy_renderer"
+local constants       = require "kong.constants"
+local typedefs        = require "kong.db.schema.typedefs"
 
 
 local kong = kong
 local _M = {}
 local config = singletons.configuration
 local unescape_uri = ngx.unescape_uri
+
+
+-- TDX-1822
+local function validate_workspace_name(workspace_name)
+  local name_ok = typedefs.utf8_name.custom_validator(workspace_name)
+  if not name_ok then
+    ngx.log(ngx.INFO, "request contains invalid workspace name: '", workspace_name, "'")
+    return kong.response.exit(404, constants.PORTAL_RENDERER.FALLBACK_404)
+  end
+end
 
 
 local function send_workspace_not_found_error(err)
@@ -56,6 +68,9 @@ function _M.set_workspace_by_subdomain(self)
 
   local ws_name = split_host[1]
 
+  -- TDX-1822
+  validate_workspace_name(ws_name)
+
   local workspace, err = kong.db.workspaces:select_by_name(ws_name)
   if err then
     ngx.log(ngx.ERR, err)
@@ -77,8 +92,11 @@ function _M.set_workspace_by_path(self)
     workspace_name = unescape_uri(self.params.workspace_name)
   end
 
+  validate_workspace_name(workspace_name)
+
   local workspace, err = kong.db.workspaces:select_by_name(workspace_name)
 
+  -- In this error handler, the db query has exploded somehow
   if err then
     ngx.log(ngx.ERR, err)
     return kong.response.exit(500, { message = "An unexpected error occurred" })

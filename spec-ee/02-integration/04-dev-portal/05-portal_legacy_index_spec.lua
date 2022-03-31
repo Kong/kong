@@ -360,10 +360,9 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         assert.equals(500, res.status)
-        assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
       end)
 
-      it("returns 500 if subdomain is invalid", function()
+      it("returns 404 if subdomain does not match workspace", function()
         local res = gui_client_request({
           method = "GET",
           path = "/",
@@ -372,8 +371,19 @@ for _, strategy in helpers.each_strategy() do
             ['Host'] = 'wrong_workspace,' .. portal_gui_host,
           },
         })
-        assert.equals(500, res.status)
-        assert.not_nil(string.match(res.body, '{"message":"An unexpected error occurred"}'))
+        assert.equals(404, res.status)
+      end)
+
+      it("returns 404 if workspace name is non-conformant", function()
+        local res = gui_client_request({
+          method = "GET",
+          path = "/",
+          headers = {
+            ['Origin'] = portal_gui_protocol .. '://&&&,' .. portal_gui_host,
+            ['Host'] = '&&&,' .. portal_gui_host,
+          },
+        })
+        assert.equals(404, res.status)
       end)
     end)
   end)
