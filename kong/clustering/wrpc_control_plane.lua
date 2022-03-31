@@ -55,10 +55,11 @@ local function get_config_service(self)
     wrpc_config_service = wrpc.new_service()
     wrpc_config_service:add("kong.services.config.v1.config")
 
-    wrpc_config_service:set_handler("ConfigService.PingCP", function(peer)
+    wrpc_config_service:set_handler("ConfigService.PingCP", function(peer, data)
       local client = self.clients[peer.conn]
       if client and client.update_sync_status then
         client.last_seen = ngx_time()
+        client.config_hash = data.hash
         client:update_sync_status()
         ngx_log(ngx_INFO, _log_prefix, "received ping frame from data plane")
       end
@@ -150,6 +151,7 @@ function _M:export_deflated_reconfigure_payload()
     end
   end
 
+  local config_hash = self:calculate_config_hash(config_table)
   config_version = config_version + 1
 
   -- store serialized plugins map for troubleshooting purposes
@@ -160,6 +162,7 @@ function _M:export_deflated_reconfigure_payload()
   self.config_call_rpc, self.config_call_args = assert(service:encode_args("ConfigService.SyncConfig", {
     config = config_table,
     version = config_version,
+    hash = config_hash,
   }))
 
   return config_table, nil

@@ -7,7 +7,7 @@ package kong.model;
 import "kong/model/upstream.proto";
 
 message Target {
-  double created_at = 1;
+  int32 created_at = 1;
   string id = 2;
   string target = 3;
   int32 weight = 4;

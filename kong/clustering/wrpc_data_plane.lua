@@ -34,6 +34,7 @@ local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local _log_prefix = "[wrpc-clustering] "
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 local _M = {
   DPCP_CHANNEL_NAME = "DP-CP_config",
@@ -187,6 +188,7 @@ local function get_config_service()
         data.config.format_version = nil
 
         peer.config_obj.next_config = data.config
+        peer.config_obj.next_hash = data.hash
         peer.config_obj.next_config_version = tonumber(data.version)
         if peer.config_semaphore:count() <= 0 then
           -- the following line always executes immediately after the `if` check
@@ -297,7 +299,7 @@ function _M:communicate(premature)
           config_semaphore = nil
         end
         local config_table = self.next_config
-        local config_hash  = false
+        local config_hash  = self.next_hash
         if config_table and self.next_config_version > last_config_version then
           ngx_log(ngx_INFO, _log_prefix, "received config #", self.next_config_version, log_suffix)
 
@@ -315,6 +317,7 @@ function _M:communicate(premature)
 
           if self.next_config == config_table then
             self.next_config = nil
+            self.next_hash = nil
           end
         end
 
@@ -326,7 +329,12 @@ function _M:communicate(premature)
 
   local ping_thread = ngx.thread.spawn(function()
     while not exiting() do
-      assert(peer:call("ConfigService.PingCP", {}))
+      local hash = declarative.get_current_hash()
+
+      if hash == true then
+        hash = DECLARATIVE_EMPTY_CONFIG_HASH
+      end
+      assert(peer:call("ConfigService.PingCP", { hash = hash }))
       ngx_log(ngx_INFO, _log_prefix, "sent ping", log_suffix)
 
       for _ = 1, PING_INTERVAL do

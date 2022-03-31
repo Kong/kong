@@ -99,6 +99,9 @@ message SyncConfigRequest {
   // connection between a DP node and a CP node.
   //
   uint64 version = 2;
+
+  // raw binary hash of the config data.
+  string hash = 3;
 }
 
 message SyncConfigResponse {
@@ -126,6 +129,7 @@ message SyncConfigError {
 }
 
 message PingCPRequest {
+  string hash = 1;
 }
 
 message PingCPResponse {
