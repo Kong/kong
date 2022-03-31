@@ -179,5 +179,5 @@ untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
 
-event_mechanism = shared_dict
+events_mechanism = shared_dict
 ]]

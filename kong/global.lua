@@ -175,7 +175,7 @@ function _GLOBAL.init_worker_events()
 
   local singletons = require "kong.singletons"
 
-  if singletons.configuration.event_mechanism == "unix_socket" then
+  if singletons.configuration.events_mechanism == "unix_socket" then
     local sock_name = "worker_events.sock"
     if ngx.config.subsystem == "stream" then
       sock_name = "stream_" .. sock_name
