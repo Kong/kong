@@ -4,7 +4,6 @@ local PDK = require "kong.pdk"
 local phase_checker = require "kong.pdk.private.phases"
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
-local kong_constants = require "kong.constants"
 
 local ngx = ngx
 local type = type
@@ -208,9 +207,7 @@ function _GLOBAL.init_cache(kong_config, cluster_events, worker_events)
   if kong_config.database == "off" then
     db_cache_ttl = 0
     db_cache_neg_ttl = 0
-    cache_pages = 2
-    page = ngx.shared.kong:get(kong_constants.DECLARATIVE_PAGE_KEY) or page
-  end
+   end
 
   return kong_cache.new {
     shm_name        = "kong_db_cache",
@@ -231,11 +228,10 @@ function _GLOBAL.init_core_cache(kong_config, cluster_events, worker_events)
   local db_cache_neg_ttl = kong_config.db_cache_neg_ttl
   local page = 1
   local cache_pages = 1
+
   if kong_config.database == "off" then
     db_cache_ttl = 0
     db_cache_neg_ttl = 0
-    cache_pages = 2
-    page = ngx.shared.kong:get(kong_constants.DECLARATIVE_PAGE_KEY) or page
   end
 
   return kong_cache.new {
