@@ -5,7 +5,6 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons = require "kong.singletons"
 local looper     = require "kong.portal.render_toolset.looper"
 
 local function get_conf_attr_value(attr)

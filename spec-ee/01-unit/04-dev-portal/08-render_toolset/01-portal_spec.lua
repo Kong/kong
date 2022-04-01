@@ -25,7 +25,7 @@ describe("portal", function()
 
     singletons.configuration = kong_conf
 
-    singletons.render_ctx = {
+    ngx.ctx.render_ctx = {
       path = "default/hello-world",
       content = {
         layout = "hello-world.html",
