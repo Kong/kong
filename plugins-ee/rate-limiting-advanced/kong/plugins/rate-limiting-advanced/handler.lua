@@ -87,6 +87,11 @@ local id_lookup = {
 
 
 local function new_namespace(config, init_timer)
+  if not config then
+    kong.log.debug("[rate-limiting-advanced] no config was specified.",
+      " Skipping the namespace creation.")
+    return false
+  end
   kong.log.debug("attempting to add namespace ", config.namespace)
 
   local ok, err = pcall(function()
@@ -100,8 +105,14 @@ local function new_namespace(config, init_timer)
     local dict_name = config.dictionary_name
     if dict_name == nil then
       dict_name = schema.fields.dictionary_name.default
-      kong.log.warn("[rate-limiting-advanced] no shared dictionary was specified.",
-        " Trying the default value '", dict_name, "'...")
+      if dict_name then
+        kong.log.warn("[rate-limiting-advanced] no shared dictionary was specified.",
+          " Trying the default value '", dict_name, "'...")
+      else
+        dict_name = "kong"
+        kong.log.notice("[rate-limiting-advanced] no shared dictionary was specified.",
+        " Falling back to the 'kong' shared dictionary")
+      end
     end
 
     -- if dictionary name was passed but doesn't exist, fallback to kong
@@ -110,7 +121,6 @@ local function new_namespace(config, init_timer)
         "' doesn't exist. Falling back to the 'kong' shared dictionary")
       dict_name = "kong"
     end
-
     kong.log.notice("[rate-limiting-advanced] using shared dictionary '"
                          .. dict_name .. "'")
 
