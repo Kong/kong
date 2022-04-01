@@ -287,11 +287,11 @@ function _M:init_worker()
 
       local config_proto = version_negotiation.get_negotiated_service("config")
       ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto)
-      if config_proto == "v0" then
-        self.child = require "kong.clustering.data_plane".new(self)
-
-      elseif config_proto == "v1" then
+      if config_proto == "v1" then
         self.child = require "kong.clustering.wrpc_data_plane".new(self)
+
+      elseif config_proto == "v0" or config_proto == nil then
+        self.child = require "kong.clustering.data_plane".new(self)
 
       end
 
