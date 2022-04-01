@@ -30,10 +30,5 @@ return {
                       default = "unknown",
                     }
     },
-    { services_accepted = { type = "map",
-                            keys = { type = "string" },
-                            values = { type = "string" },
-                          }
-    },
   },
 }

@@ -205,7 +205,6 @@ for _, strategy in helpers.each_strategy() do
               assert.near(14 * 86400, v.ttl, 3)
               assert.matches("^(%d+%.%d+)%.%d+", v.version)
               assert.equal(CLUSTERING_SYNC_STATUS.NORMAL, v.sync_status)
-              assert.same({ config = "v0" }, v.services_accepted)
 
               return true
             end

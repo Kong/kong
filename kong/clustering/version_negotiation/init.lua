@@ -174,11 +174,6 @@ end
 
 
 local function register_client(conf, client_node, services_accepted)
-  local services_map = {}
-  for _, service in ipairs(services_accepted) do
-    services_map[service.name] = service.version
-  end
-
   local ok, err = kong.db.clustering_data_planes:upsert({ id = client_node.id, }, {
     last_seen = ngx.time(),
     config_hash = DECLARATIVE_EMPTY_CONFIG_HASH,
@@ -186,7 +181,6 @@ local function register_client(conf, client_node, services_accepted)
     ip = ngx.var.remote_addr,
     version = client_node.version,
     sync_status = client_node.sync_status,
-    services_accepted = services_map,
   }, { ttl = conf.cluster_data_plane_purge_delay })
 
   if not ok then
