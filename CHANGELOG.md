@@ -91,6 +91,14 @@
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
 
+### Additions
+
+#### Plugins
+
+- **Zipkin**: add support for including HTTP path in span name 
+  through configuration property `http_span_name`.
+  [#8150](https://github.com/Kong/kong/pull/8150)
+
 ### Fixes
 
 #### Core
