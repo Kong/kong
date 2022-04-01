@@ -217,7 +217,7 @@ for _, strategy in helpers.each_strategy() do
         package.loaded["kong.clustering.version_negotiation.services_requested"] = {
           {
             name = "Config",
-            versions = { "v1", "v0" },
+            versions = { "v0", "v1" },
           },
           {
             name = "infundibulum",
@@ -234,7 +234,7 @@ for _, strategy in helpers.each_strategy() do
         local data = assert(version_negotiation.request_version_handshake(conf, CLIENT_CERT, CLIENT_PRIV_KEY))
         -- returns data in standard form
         assert.same({
-          { name = "config", version = "v0", message = "JSON over WebSocket" },
+          { name = "config", version = "v1", message = "wRPC" },
         }, data.services_accepted)
         assert.same({
           { name = "infundibulum", message = "unknown service." },
@@ -242,7 +242,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- stored node-wise as Lua-style values
         -- accepted
-        assert.same({ "v0", "JSON over WebSocket" }, { version_negotiation.get_negotiated_service("Config") })
+        assert.same({ "v1", "wRPC" }, { version_negotiation.get_negotiated_service("Config") })
         -- rejected
         assert.same({ nil, "unknown service." }, { version_negotiation.get_negotiated_service("infundibulum") })
         -- not even requested
