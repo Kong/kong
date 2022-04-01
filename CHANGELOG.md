@@ -93,6 +93,8 @@
 - Only reschedule router and plugin iterator timers after finishing previous
   execution, avoiding unnecessary concurrent executions.
   [#8567](https://github.com/Kong/kong/pull/8567)
+- External plugins now handle returned JSON with null member correctly.
+  [#8610](https://github.com/Kong/kong/pull/8610)
 
 #### Plugins
 
