@@ -67,6 +67,8 @@ build = {
     ["kong.clustering"] = "kong/clustering/init.lua",
     ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
     ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
+    ["kong.clustering.wrpc_data_plane"] = "kong/clustering/wrpc_data_plane.lua",
+    ["kong.clustering.wrpc_control_plane"] = "kong/clustering/wrpc_control_plane.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
@@ -136,6 +138,9 @@ build = {
     ["kong.tools.sandbox"] = "kong/tools/sandbox.lua",
     ["kong.tools.uri"] = "kong/tools/uri.lua",
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
+    ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
+    ["kong.tools.wrpc"] = "kong/tools/wrpc.lua",
+    ["kong.tools.channel"] = "kong/tools/channel.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
@@ -167,6 +172,7 @@ build = {
     ["kong.db.dao.vaults"] = "kong/db/dao/vaults.lua",
     ["kong.db.dao.workspaces"] = "kong/db/dao/workspaces.lua",
     ["kong.db.declarative"] = "kong/db/declarative/init.lua",
+    ["kong.db.declarative.marshaller"] = "kong/db/declarative/marshaller.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
     ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
@@ -445,12 +451,17 @@ build = {
 
     ["kong.plugins.pre-function._handler"] = "kong/plugins/pre-function/_handler.lua",
     ["kong.plugins.pre-function._schema"] = "kong/plugins/pre-function/_schema.lua",
+    ["kong.plugins.pre-function.migrations._001_280_to_300"] = "kong/plugins/pre-function/migrations/_001_280_to_300.lua",
 
     ["kong.plugins.pre-function.handler"] = "kong/plugins/pre-function/handler.lua",
     ["kong.plugins.pre-function.schema"] = "kong/plugins/pre-function/schema.lua",
+    ["kong.plugins.pre-function.migrations"] = "kong/plugins/pre-function/migrations/init.lua",
+    ["kong.plugins.pre-function.migrations.001_280_to_300"] = "kong/plugins/pre-function/migrations/001_280_to_300.lua",
 
     ["kong.plugins.post-function.handler"] = "kong/plugins/post-function/handler.lua",
     ["kong.plugins.post-function.schema"] = "kong/plugins/post-function/schema.lua",
+    ["kong.plugins.post-function.migrations"] = "kong/plugins/post-function/migrations/init.lua",
+    ["kong.plugins.post-function.migrations.001_280_to_300"] = "kong/plugins/post-function/migrations/001_280_to_300.lua",
 
     ["kong.plugins.zipkin.handler"] = "kong/plugins/zipkin/handler.lua",
     ["kong.plugins.zipkin.reporter"] = "kong/plugins/zipkin/reporter.lua",

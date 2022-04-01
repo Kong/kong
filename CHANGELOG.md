@@ -78,6 +78,13 @@
 - The external [go-pluginserver](https://github.com/Kong/go-pluginserver) project
 is no longer suppored.
 
+#### Plugins
+
+- The proxy-cache plugin does not store the response data in
+  `ngx.ctx.proxy_cache_hit` anymore. Logging plugins that need the response data
+  must read it from `kong.ctx.shared.proxy_cache_hit` from Kong 3.0 on.
+  [#8607](https://github.com/Kong/kong/pull/8607)
+
 ### Dependencies
 
 - Bumped pgmoon from 1.13.0 to 1.14.0
@@ -88,6 +95,14 @@ is no longer suppored.
   [#8592](https://github.com/Kong/kong/pull/8592)
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
+
+### Additions
+
+#### Plugins
+
+- **Zipkin**: add support for including HTTP path in span name 
+  through configuration property `http_span_name`.
+  [#8150](https://github.com/Kong/kong/pull/8150)
 
 ### Fixes
 
