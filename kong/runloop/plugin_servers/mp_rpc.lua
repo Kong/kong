@@ -64,11 +64,20 @@ local function fix_mmap(t)
   return o
 end
 
+local function fix_raw(bin)
+  local function mp_raw(buffer)
+    msgpack.packers['binary'](buffer, bin)
+  end
+  return mp_raw
+end
+
 local must_fix = {
-  ["kong.request.get_query"] = true,
-  ["kong.request.get_headers"] = true,
-  ["kong.response.get_headers"] = true,
-  ["kong.service.response.get_headers"] = true,
+  ["kong.request.get_query"] = fix_mmap,
+  ["kong.request.get_headers"] = fix_mmap,
+  ["kong.response.get_headers"] = fix_mmap,
+  ["kong.service.response.get_headers"] = fix_mmap,
+  ["kong.request.get_raw_body"] = fix_raw,
+  ["kong.response.get_raw_body"] = fix_raw,
 }
 
 
@@ -125,19 +134,19 @@ local function call_pdk_method(cmd, args)
     kong_global.set_namespaced_log(kong, saved.plugin_name)
   end
 
+  local ret
   if type(args) == "table" then
-    if must_fix[cmd] then
-      return fix_mmap(method(unpack(args)))
-    end
-
-    return method(unpack(args))
+    ret = method(unpack(args))
+  else
+    ret = method(args)
   end
 
-  if must_fix[cmd] then
-    return fix_mmap(method(args))
+  local fix = must_fix[cmd]
+  if fix then
+    ret = fix(ret)
   end
 
-  return method(args)
+  return ret
 end
 
 
