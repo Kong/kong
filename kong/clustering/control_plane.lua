@@ -229,10 +229,10 @@ local function get_removed_fields(dp_version_number)
             end
 
             for _, e in pairs(f) do
-              table.insert(unknown_fields_and_elements[plugin][k], e)
+              table_insert(unknown_fields_and_elements[plugin][k], e)
             end
           else
-            table.insert(unknown_fields_and_elements[plugin], f)
+            table_insert(unknown_fields_and_elements[plugin], f)
           end
         end
       end
@@ -257,14 +257,11 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
 
   local has_update = false
   local fields = get_removed_fields(dp_version_num)
-
   payload = utils.deep_copy(payload, false)
   local config_table = payload["config_table"]
-
   if fields then
     has_update = invalidate_items_from_config(config_table["plugins"], fields, log_suffix)
   end
-
   -- XXX EE: this should be moved in its own file (compat/config.lua). With a table
   -- similar to compat/remove_fields, each plugin could register a function to handle
   -- its compatibility issues.
@@ -512,18 +509,16 @@ function _M:export_deflated_reconfigure_payload()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
   ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
-  local config_hash = self:calculate_config_hash(config_table)
+  local config_hash, hashes = self:calculate_config_hash(config_table)
 
   local payload = {
     type = "reconfigure",
     timestamp = ngx_now(),
     config_table = config_table,
     config_hash = config_hash,
+    hashes = hashes,
   }
 
-  if not payload then
-    return nil, err
-  end
   self.reconfigure_payload = payload
 
   payload, err = deflate_gzip(cjson_encode(payload))
@@ -531,6 +526,7 @@ function _M:export_deflated_reconfigure_payload()
     return nil, err
   end
 
+  self.current_hashes = hashes
   self.current_config_hash = config_hash
   self.deflated_reconfigure_payload = payload
 
@@ -946,7 +942,7 @@ function _M:handle_cp_websocket()
               deflated_payload = self.deflated_reconfigure_payload
             elseif err then
               ngx_log(ngx_WARN, "unable to update compatible payload: ", err, ", the unmodified config ",
-                      "is returned", log_suffix)
+                                "is returned", log_suffix)
               deflated_payload = self.deflated_reconfigure_payload
             end
 
