@@ -377,6 +377,19 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           assert.response(res).has.status(200)
         end)
 
+        it("passes if password contains a colon", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/get",
+            body    = {},
+            headers = {
+              host             = "ldap7.com",
+              authorization    = "ldap " .. ngx.encode_base64("i.like.colons:pass:word"),
+            }
+          })
+          assert.response(res).has.status(200)
+        end)
+
         it("returns forbidden if user cannot be found with valid bind_dn", function()
           local res = assert(proxy_client:send {
             method  = "GET",
