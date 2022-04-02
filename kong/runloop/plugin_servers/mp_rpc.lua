@@ -78,6 +78,7 @@ local must_fix = {
   ["kong.service.response.get_headers"] = fix_mmap,
   ["kong.request.get_raw_body"] = fix_raw,
   ["kong.response.get_raw_body"] = fix_raw,
+  ["kong.service.response.get_raw_body"] = fix_raw,
 }
 
 
