@@ -93,6 +93,10 @@ local function send_payload(self, conf, payload)
   params_cache.keepalive_timeout = keepalive
 
   local url = fmt("%s://%s:%d%s", parsed_url.scheme, parsed_url.host, parsed_url.port, parsed_url.path)
+  
+  if parsed_url.query then
+    url = url .. "? ".. parsed_url.query
+  end
 
   -- note: `httpc:request` makes a deep copy of `params_cache`, so it will be
   -- fine to reuse the table here
