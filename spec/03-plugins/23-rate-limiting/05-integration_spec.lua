@@ -3,13 +3,14 @@ local redis = require "resty.redis"
 local version = require "version"
 
 
-local REDIS_HOST = helpers.redis_host
-local REDIS_PORT = 6379
-local REDIS_PORT_SSL = 6380
-local REDIS_DB_1 = 1
-local REDIS_DB_2 = 2
-local REDIS_DB_3 = 3
-local REDIS_DB_4 = 4
+local REDIS_HOST      = helpers.redis_host
+local REDIS_PORT      = helpers.redis_port
+local REDIS_PORT_SSL  = helpers.redis_ssl_port
+local REDIS_SSL_SNI   = helpers.redis_ssl_sni
+local REDIS_DB_1      = 1
+local REDIS_DB_2      = 2
+local REDIS_DB_3      = 3
+local REDIS_DB_4      = 4
 
 local REDIS_USER_VALID = "ratelimit-user"
 local REDIS_USER_INVALID = "some-user"
@@ -75,7 +76,7 @@ describe("Plugin: rate-limiting (integration)", function()
     ssl_verify = {
       redis_ssl = true,
       redis_ssl_verify = true,
-      redis_server_name = "test-redis.example.com",
+      redis_server_name = REDIS_SSL_SNI,
       lua_ssl_trusted_certificate = "spec/fixtures/redis/ca.crt",
       REDIS_PORT = REDIS_PORT_SSL,
     },

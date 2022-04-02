@@ -3,7 +3,7 @@ local cjson          = require "cjson"
 
 
 local REDIS_HOST     = helpers.redis_host
-local REDIS_PORT     = 6379
+local REDIS_PORT     = helpers.redis_port
 local REDIS_PASSWORD = ""
 local REDIS_DATABASE = 1
 
