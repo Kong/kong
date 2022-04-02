@@ -81,6 +81,9 @@ local must_fix = {
   ["kong.service.response.get_raw_body"] = fix_raw,
 }
 
+-- for unit-testing purposes only
+Rpc.must_fix = must_fix
+
 
 --[[
 
