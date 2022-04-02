@@ -64,6 +64,22 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+#### Admin API
+
+- Insert and update operations on target entities require using the `PUT` HTTP
+  method now. [#8596](https://github.com/Kong/kong/pull/8596). If you have
+  scripts that depend on it being `POST`, these scripts will need to be updated
+  when updating to Kong 3.0.
+
+#### Plugins
+
+- The proxy-cache plugin does not store the response data in
+  `ngx.ctx.proxy_cache_hit` anymore. Logging plugins that need the response data
+  must read it from `kong.ctx.shared.proxy_cache_hit` from Kong 3.0 on.
+  [#8607](https://github.com/Kong/kong/pull/8607)
+
 ### Dependencies
 
 - Bumped pgmoon from 1.13.0 to 1.14.0
@@ -77,11 +93,20 @@
 
 
 ### Breaking Changes
+
 ##### Configuration
 
 - Change the default of `lua_ssl_trusted_certificate` to `system`
   [#8602](https://github.com/Kong/kong/pull/8602). If you are upgrading from 2.x and want this variable to keep
   working as before, please manually set it to `NONE` before upgrading. 
+
+### Additions
+
+#### Plugins
+
+- **Zipkin**: add support for including HTTP path in span name 
+  through configuration property `http_span_name`.
+  [#8150](https://github.com/Kong/kong/pull/8150)
 
 ### Fixes
 
@@ -113,10 +138,6 @@
 - The cluster listener now uses the value of `admin_error_log` for its log file
   instead of `proxy_error_log` [8583](https://github.com/Kong/kong/pull/8583)
 
-#### Admin API
-
-- Insert and update operations on target entities require using the `PUT` HTTP
-  method now. [#8596](https://github.com/Kong/kong/pull/8596)
 
 ### Additions
 

@@ -127,9 +127,15 @@ if subsystem == "http" then
       trace_id = rand_bytes(conf.traceid_byte_count)
     end
 
+    local span_name = method
+    local path = req.get_path()
+    if conf.http_span_name == "method_path" then
+      span_name = method .. ' ' .. path
+    end
+
     local request_span = new_span(
       "SERVER",
-      method,
+      span_name,
       ngx_req_start_time_mu(),
       should_sample,
       trace_id,
@@ -146,7 +152,7 @@ if subsystem == "http" then
     request_span:set_tag("lc", "kong")
     request_span:set_tag("http.method", method)
     request_span:set_tag("http.host", req.get_host())
-    request_span:set_tag("http.path", req.get_path())
+    request_span:set_tag("http.path", path)
     if protocol then
       request_span:set_tag("http.protocol", protocol)
     end

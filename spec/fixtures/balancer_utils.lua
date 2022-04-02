@@ -510,15 +510,15 @@ local function teardown_prefix()
 end
 
 
-local function test_with_prefixes(_it, strategy, prefixes)
+local function test_with_prefixes(itt, strategy, prefixes)
   return function(description, fn)
     if strategy == "off" then
-      _it(description, fn)
+      itt(description, fn)
       return
     end
 
     for _, name in ipairs(prefixes) do
-      _it(name .. ": " .. description, function()
+      itt(name .. ": " .. description, function()
         setup_prefix("/" .. name)
         local ok = fn()
         teardown_prefix()

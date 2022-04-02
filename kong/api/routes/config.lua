@@ -118,10 +118,11 @@ return {
           })
         end
 
-        if err == "no memory" then
-          kong.log.err("not enough cache space for declarative config")
+        if err == "map full" then
+          kong.log.err("not enough space for declarative config")
           return kong.response.exit(413, {
-            message = "Configuration does not fit in Kong cache"
+            message = "Configuration does not fit in LMDB database, " ..
+                      "consider raising the \"lmdb_map_size\" config for Kong"
           })
         end
 

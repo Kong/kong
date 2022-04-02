@@ -21,6 +21,7 @@ admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl 
 status_listen = off
 cluster_listen = 0.0.0.0:8005
 cluster_control_plane = 127.0.0.1:8005
+cluster_protocol = wrpc
 cluster_cert = NONE
 cluster_cert_key = NONE
 cluster_mtls = shared
@@ -30,6 +31,8 @@ cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
 cluster_max_payload = 4194304
 
+lmdb_environment_path = dbless.lmdb
+lmdb_map_size = 128m
 mem_cache_size = 128m
 ssl_cert = NONE
 ssl_cert_key = NONE

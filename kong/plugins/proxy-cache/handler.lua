@@ -347,7 +347,6 @@ function ProxyCacheHandler:access(conf)
   kong.ctx.shared.proxy_cache_hit = response_data
 
   local nctx = ngx.ctx
-  nctx.proxy_cache_hit = response_data -- TODO: deprecated
   nctx.KONG_PROXIED = true
 
   for k in pairs(res.headers) do
