@@ -5,7 +5,7 @@ local version = require "version"
 
 local REDIS_HOST      = helpers.redis_host
 local REDIS_PORT      = helpers.redis_port
-local REDIS_PORT_SSL  = helpers.redis_ssl_port
+local REDIS_SSL_PORT  = helpers.redis_ssl_port
 local REDIS_SSL_SNI   = helpers.redis_ssl_sni
 local REDIS_DB_1      = 1
 local REDIS_DB_2      = 2
@@ -71,20 +71,20 @@ describe("Plugin: rate-limiting (integration)", function()
 
   local strategies = {
     no_ssl = { 
-      REDIS_PORT = REDIS_PORT,
+      redis_port = REDIS_PORT,
     },
     ssl_verify = {
       redis_ssl = true,
       redis_ssl_verify = true,
       redis_server_name = REDIS_SSL_SNI,
       lua_ssl_trusted_certificate = "spec/fixtures/redis/ca.crt",
-      REDIS_PORT = REDIS_PORT_SSL,
+      redis_port = REDIS_SSL_PORT,
     },
     ssl_no_verify = {
       redis_ssl = true,
       redis_ssl_verify = false,
       redis_server_name = "really.really.really.does.not.exist.host.test",
-      REDIS_PORT = REDIS_PORT_SSL,
+      redis_port = REDIS_SSL_PORT,
     },
   }
 
@@ -111,7 +111,7 @@ describe("Plugin: rate-limiting (integration)", function()
             minute            = 1,
             policy            = "redis",
             redis_host        = REDIS_HOST,
-            redis_port        = config.REDIS_PORT,
+            redis_port        = config.redis_port,
             redis_database    = REDIS_DB_1,
             redis_ssl         = config.redis_ssl,
             redis_ssl_verify  = config.redis_ssl_verify,
@@ -131,7 +131,7 @@ describe("Plugin: rate-limiting (integration)", function()
             minute            = 1,
             policy            = "redis",
             redis_host        = REDIS_HOST,
-            redis_port        = config.REDIS_PORT,
+            redis_port        = config.redis_port,
             redis_database    = REDIS_DB_2,
             redis_ssl         = config.redis_ssl,
             redis_ssl_verify  = config.redis_ssl_verify,
@@ -152,7 +152,7 @@ describe("Plugin: rate-limiting (integration)", function()
               minute            = 2, -- Handle multiple tests
               policy            = "redis",
               redis_host        = REDIS_HOST,
-              redis_port        = config.REDIS_PORT,
+              redis_port        = config.redis_port,
               redis_username    = REDIS_USER_VALID,
               redis_password    = REDIS_PASSWORD,
               redis_database    = REDIS_DB_3, -- ensure to not get a pooled authenticated connection by using a different db
@@ -174,7 +174,7 @@ describe("Plugin: rate-limiting (integration)", function()
               minute            = 1,
               policy            = "redis",
               redis_host        = REDIS_HOST,
-              redis_port        = config.REDIS_PORT,
+              redis_port        = config.redis_port,
               redis_username    = REDIS_USER_INVALID,
               redis_password    = REDIS_PASSWORD,
               redis_database    = REDIS_DB_4, -- ensure to not get a pooled authenticated connection by using a different db
