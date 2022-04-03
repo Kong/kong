@@ -13,7 +13,7 @@ local grpc = {}
 
 local function safe_set_type_hook(type, dec, enc)
   if not pcall(pb.hook, type) then
-    ngx.log(ngx.NOTICE, "no type '" .. type .. "' defined")
+    ngx.log(ngx.DEBUG, "no type '" .. type .. "' defined")
     return
   end
 

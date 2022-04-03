@@ -1,16 +1,17 @@
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local schema_topological_sort = require "kong.db.schema.topological_sort"
+local protobuf = require "kong.tools.protobuf"
 local workspaces = require "kong.workspaces"
 local pl_file = require "pl.file"
 local lyaml = require "lyaml"
 local cjson = require "cjson.safe"
 local tablex = require "pl.tablex"
 local constants = require "kong.constants"
-
+local txn = require "resty.lmdb.transaction"
+local lmdb = require "resty.lmdb"
 
 local setmetatable = setmetatable
 local loadstring = loadstring
-local get_phase = ngx.get_phase
 local tostring = tostring
 local exiting = ngx.worker.exiting
 local setfenv = setfenv
@@ -18,7 +19,6 @@ local io_open = io.open
 local insert = table.insert
 local concat = table.concat
 local assert = assert
-local sleep = ngx.sleep
 local error = error
 local pcall = pcall
 local sort = table.sort
@@ -30,19 +30,15 @@ local md5 = ngx.md5
 local pairs = pairs
 local ngx_socket_tcp = ngx.socket.tcp
 local yield = require("kong.tools.utils").yield
+local marshall = require("kong.db.declarative.marshaller").marshall
+local min = math.min
 
 
-local SHADOW = true
 local REMOVE_FIRST_LINE_PATTERN = "^[^\n]+\n(.+)$"
 local PREFIX = ngx.config.prefix()
 local SUBSYS = ngx.config.subsystem
-local WORKER_COUNT = ngx.worker.count()
 local DECLARATIVE_HASH_KEY = constants.DECLARATIVE_HASH_KEY
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
-
-
-local DECLARATIVE_LOCK_KEY = "declarative:lock"
-local DECLARATIVE_LOCK_TTL = 60
 local GLOBAL_QUERY_OPTS = { nulls = true, workspace = null }
 
 
@@ -402,7 +398,7 @@ function declarative.load_into_db(entities, meta)
 end
 
 
-local function export_from_db(emitter, skip_ws, skip_disabled_entities)
+local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_foreigns)
   local schemas = {}
 
   local db = kong.db
@@ -437,7 +433,10 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities)
       end
     end
 
-    local page_size = db[name].pagination.max_page_size
+    local page_size
+    if db[name].pagination then
+      page_size = db[name].pagination.max_page_size
+    end
     for row, err in db[name]:each(page_size, GLOBAL_QUERY_OPTS) do
       if not row then
         kong.log.err(err)
@@ -448,10 +447,11 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities)
       -- as well do not export plugins and routes of dsiabled services
       if skip_disabled_entities and name == "services" and not row.enabled then
         disabled_services[row.id] = true
+
       elseif skip_disabled_entities and name == "plugins" and not row.enabled then
         goto skip_emit
-      else
 
+      else
         for j = 1, #fks do
           local foreign_name = fks[j]
           if type(row[foreign_name]) == "table" then
@@ -460,7 +460,9 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities)
               if disabled_services[id] then
                 goto skip_emit
               end
-              row[foreign_name] = id
+              if not expand_foreigns then
+                row[foreign_name] = id
+              end
             end
           end
         end
@@ -566,9 +568,49 @@ local function remove_nulls(tbl)
   return tbl
 end
 
+local proto_emitter = {
+  emit_toplevel = function(self, tbl)
+    self.out = {
+      format_version = tbl._format_version,
+    }
+  end,
+
+  emit_entity = function(self, entity_name, entity_data)
+    if entity_name == "plugins" then
+      entity_data.config = protobuf.pbwrap_struct(entity_data.config)
+    end
+
+    if not self.out[entity_name] then
+      self.out[entity_name] = { entity_data }
+    else
+      insert(self.out[entity_name], entity_data)
+    end
+  end,
+
+  done = function(self)
+    return remove_nulls(self.out)
+  end,
+}
+
+function proto_emitter.new()
+  return setmetatable({}, { __index = proto_emitter })
+end
+
+function declarative.export_config_proto(skip_ws, skip_disabled_entities)
+  -- default skip_ws=false and skip_disabled_services=true
+  if skip_ws == nil then
+    skip_ws = false
+  end
+
+  if skip_disabled_entities == nil then
+    skip_disabled_entities = true
+  end
+
+  return export_from_db(proto_emitter.new(), skip_ws, skip_disabled_entities, true)
+end
 
 function declarative.get_current_hash()
-  return ngx.shared.kong:get(DECLARATIVE_HASH_KEY)
+  return lmdb.get(DECLARATIVE_HASH_KEY)
 end
 
 
@@ -594,7 +636,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-function declarative.load_into_cache(entities, meta, hash, shadow)
+function declarative.load_into_cache(entities, meta, hash)
   -- Array of strings with this format:
   -- "<tag_name>|<entity_name>|<uuid>".
   -- For example, a service tagged "admin" would produce
@@ -618,11 +660,8 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
 
   local db = kong.db
 
-  local core_cache = kong.core_cache
-  local cache = kong.cache
-
-  core_cache:purge(shadow)
-  cache:purge(shadow)
+  local t = txn.begin(128)
+  t:db_drop(false)
 
   local transform = meta._transform == nil and true or meta._transform
 
@@ -700,16 +739,15 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
         end
       end
 
-      local ok, err = core_cache:safe_set(cache_key, item, shadow)
-      if not ok then
+      local item_marshalled, err = marshall(item)
+      if not item_marshalled then
         return nil, err
       end
 
+      t:set(cache_key, item_marshalled)
+
       local global_query_cache_key = dao:cache_key(id, nil, nil, nil, nil, "*")
-      local ok, err = core_cache:safe_set(global_query_cache_key, item, shadow)
-      if not ok then
-        return nil, err
-      end
+      t:set(global_query_cache_key, item_marshalled)
 
       -- insert individual entry for global query
       insert(keys_by_ws["*"], cache_key)
@@ -723,10 +761,7 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
 
       if schema.cache_key then
         local cache_key = dao:cache_key(item)
-        ok, err = core_cache:safe_set(cache_key, item, shadow)
-        if not ok then
-          return nil, err
-        end
+        t:set(cache_key, item_marshalled)
       end
 
       for i = 1, #uniques do
@@ -745,10 +780,7 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
           end
 
           local unique_cache_key = prefix .. "|" .. unique .. ":" .. unique_key
-          ok, err = core_cache:safe_set(unique_cache_key, item, shadow)
-          if not ok then
-            return nil, err
-          end
+          t:set(unique_cache_key, item_marshalled)
         end
       end
 
@@ -790,20 +822,25 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
     for ws_id, keys in pairs(keys_by_ws) do
       local entity_prefix = entity_name .. "|" .. (schema.workspaceable and ws_id or "")
 
-      local ok, err = core_cache:safe_set(entity_prefix .. "|@list", keys, shadow)
-      if not ok then
+      local keys, err = marshall(keys)
+      if not keys then
         return nil, err
       end
+
+      t:set(entity_prefix .. "|@list", keys)
 
       for ref, wss in pairs(page_for) do
         local fids = wss[ws_id]
         if fids then
           for fid, entries in pairs(fids) do
             local key = entity_prefix .. "|" .. ref .. "|" .. fid .. "|@list"
-            local ok, err = core_cache:safe_set(key, entries, shadow)
-            if not ok then
+
+            local entries, err = marshall(entries)
+            if not entries then
               return nil, err
             end
+
+            t:set(key, entries)
           end
         end
       end
@@ -823,10 +860,13 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
         end
         -- stay consistent with pagination
         sort(arr)
-        local ok, err = core_cache:safe_set(key, arr, shadow)
-        if not ok then
+
+        local arr, err = marshall(arr)
+        if not arr then
           return nil, err
         end
+
+        t:set(key, arr)
       end
     end
   end
@@ -837,94 +877,47 @@ function declarative.load_into_cache(entities, meta, hash, shadow)
     -- tags:admin|@list -> all tags tagged "admin", regardless of the entity type
     -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
     local key = "tags:" .. tag_name .. "|@list"
-    local ok, err = core_cache:safe_set(key, tags, shadow)
-    if not ok then
+    local tags, err = marshall(tags)
+    if not tags then
       return nil, err
     end
+
+    t:set(key, tags)
   end
 
   -- tags||@list -> all tags, with no distinction of tag name or entity type.
   -- each tag is encoded as a string with the format "admin|services|uuid", where uuid is the service uuid
-  local ok, err = core_cache:safe_set("tags||@list", tags, shadow)
+  local tags, err = marshall(tags)
+  if not tags then
+    return nil, err
+  end
+
+  t:set("tags||@list", tags)
+  t:set(DECLARATIVE_HASH_KEY, hash)
+
+  kong.default_workspace = default_workspace
+
+  local ok, err = t:commit()
   if not ok then
     return nil, err
   end
 
-  -- set the value of the configuration hash. The value can be nil, which
-  -- indicates that no configuration has been applied yet to the Gateway.
-  local ok, err = ngx.shared.kong:safe_set(DECLARATIVE_HASH_KEY, hash)
-  if not ok then
-    return nil, "failed to set " .. DECLARATIVE_HASH_KEY .. " in shm: " .. err
-  end
+  kong.core_cache:purge()
+  kong.cache:purge()
 
-  kong.default_workspace = default_workspace
   return true, nil, default_workspace
 end
 
 
 do
-  local DECLARATIVE_PAGE_KEY = constants.DECLARATIVE_PAGE_KEY
-
-  function declarative.load_into_cache_with_events(entities, meta, hash, hashes)
+  local function load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
     if exiting() then
       return nil, "exiting"
-    end
-
-    local kong_shm = ngx.shared.kong
-
-    local ok, err = declarative.try_lock()
-    if not ok then
-      if err == "exists" then
-        local ttl = math.min(ngx.shared.kong:ttl(DECLARATIVE_LOCK_KEY), 10)
-        return nil, "busy", ttl
-      end
-
-      kong_shm:delete(DECLARATIVE_LOCK_KEY)
-      return nil, err
     end
 
     local worker_events = kong.worker_events
 
-    -- ensure any previous update finished (we're flipped to the latest page)
-    ok, err = worker_events.poll()
-    if not ok then
-      kong_shm:delete(DECLARATIVE_LOCK_KEY)
-      return nil, err
-    end
-
-    if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 and
-       get_phase() ~= "init_worker"
-    then
-      -- update stream if necessary
-      -- TODO: remove this once shdict can be shared between subsystems
-
-      local sock = ngx_socket_tcp()
-      ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
-      if not ok then
-        kong_shm:delete(DECLARATIVE_LOCK_KEY)
-        return nil, err
-      end
-
-      local json = cjson.encode({ entities, meta, hash, })
-      local bytes
-      bytes, err = sock:send(json)
-      sock:close()
-
-      if not bytes then
-        kong_shm:delete(DECLARATIVE_LOCK_KEY)
-        return nil, err
-      end
-
-      assert(bytes == #json, "incomplete config sent to the stream subsystem")
-    end
-
-    if exiting() then
-      kong_shm:delete(DECLARATIVE_LOCK_KEY)
-      return nil, "exiting"
-    end
-
-    local default_ws
-    ok, err, default_ws = declarative.load_into_cache(entities, meta, hash, SHADOW)
+    local ok, err, default_ws = declarative.load_into_cache(entities, meta, hash)
     if ok then
       local router_hash
       local plugins_hash
@@ -945,91 +938,79 @@ do
         end
       end
 
-      ok, err = worker_events.post("declarative", "flip_config", {
+      ok, err = worker_events.post("declarative", "reconfigure", {
         default_ws,
         router_hash,
         plugins_hash,
         balancer_hash
       })
       if ok ~= "done" then
-        kong_shm:delete(DECLARATIVE_LOCK_KEY)
-        return nil, "failed to flip declarative config cache pages: " .. (err or ok)
+        return nil, "failed to broadcast reconfigure event: " .. (err or ok)
       end
 
+    elseif err:find("MDB_MAP_FULL", nil, true) then
+      return nil, "map full"
+
     else
-      kong_shm:delete(DECLARATIVE_LOCK_KEY)
       return nil, err
     end
 
-    ok, err = kong_shm:set(DECLARATIVE_PAGE_KEY, kong.cache:get_page())
-    if not ok then
-      kong_shm:delete(DECLARATIVE_LOCK_KEY)
-      return nil, "failed to persist cache page number: " .. err
+    if SUBSYS == "http" and #kong.configuration.stream_listeners > 0 then
+      -- update stream if necessary
+
+      local sock = ngx_socket_tcp()
+      ok, err = sock:connect("unix:" .. PREFIX .. "/stream_config.sock")
+      if not ok then
+        return nil, err
+      end
+
+      local bytes
+      bytes, err = sock:send(default_ws)
+      sock:close()
+
+      if not bytes then
+        return nil, err
+      end
+
+      assert(bytes == #default_ws,
+             "incomplete default workspace id sent to the stream subsystem")
     end
+
 
     if exiting() then
-      kong_shm:delete(DECLARATIVE_LOCK_KEY)
       return nil, "exiting"
-    end
-
-    local sleep_left = DECLARATIVE_LOCK_TTL
-    local sleep_time = 0.0375
-
-    while sleep_left > 0 do
-      local flips = kong_shm:get(DECLARATIVE_LOCK_KEY)
-      if flips == nil or flips >= WORKER_COUNT then
-        break
-      end
-
-      sleep_time = sleep_time * 2
-      if sleep_time > sleep_left then
-        sleep_time = sleep_left
-      end
-
-      sleep(sleep_time)
-
-      if exiting() then
-        kong_shm:delete(DECLARATIVE_LOCK_KEY)
-        return nil, "exiting"
-      end
-
-      sleep_left = sleep_left - sleep_time
-    end
-
-    kong_shm:delete(DECLARATIVE_LOCK_KEY)
-
-    if sleep_left <= 0 then
-      return nil, "timeout"
     end
 
     return true
   end
-end
 
+  -- If it takes more than 60s it is very likely to be an internal error.
+  -- However it will be reported as: "failed to broadcast reconfigure event: recursive".
+  -- Let's paste the error message here in case someday we try to search it.
+  -- Should we handle this case specially?
+  local DECLARATIVE_LOCK_TTL = 60
+  local DECLARATIVE_RETRY_TTL_MAX = 10
+  local DECLARATIVE_LOCK_KEY = "declarative:lock"
 
--- prevent POST /config (declarative.load_into_cache_with_events early-exits)
--- only "succeeds" the first time it gets called.
--- successive calls return nil, "exists"
-function declarative.try_lock()
-  return ngx.shared.kong:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
-end
+  -- make sure no matter which path it exits, we released the lock.
+  function declarative.load_into_cache_with_events(entities, meta, hash)
+    local kong_shm = ngx.shared.kong
 
+    local ok, err = kong_shm:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
+    if not ok then
+      if err == "exists" then
+        local ttl = min(kong_shm:ttl(DECLARATIVE_LOCK_KEY), DECLARATIVE_RETRY_TTL_MAX)
+        return nil, "busy", ttl
+      end
 
--- increments the counter inside the lock - each worker does this while reading new declarative config
--- can (is expected to) be called multiple times, succeeding every time
-function declarative.lock()
-  return ngx.shared.kong:incr(DECLARATIVE_LOCK_KEY, 1, 0, DECLARATIVE_LOCK_TTL)
-end
-
-
--- prevent POST, but release if all workers have finished updating
-function declarative.try_unlock()
-  local kong_shm = ngx.shared.kong
-  if kong_shm:get(DECLARATIVE_LOCK_KEY) then
-    local count = kong_shm:incr(DECLARATIVE_LOCK_KEY, 1)
-    if count and count >= WORKER_COUNT then
       kong_shm:delete(DECLARATIVE_LOCK_KEY)
+      return nil, err
     end
+
+    ok, err = load_into_cache_with_events_no_lock(entities, meta, hash)
+    kong_shm:delete(DECLARATIVE_LOCK_KEY)
+
+    return ok, err
   end
 end
 

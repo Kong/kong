@@ -245,7 +245,7 @@ function DB:set_events_handler(events)
 end
 
 
-function DB:check_version_compat(_min, _deprecated)
+function DB:check_version_compat(min, deprecated)
   local _major_minor = self.connector.major_minor_version
 
   if not _major_minor then
@@ -253,17 +253,17 @@ function DB:check_version_compat(_min, _deprecated)
   end
 
   local major_minor = version(_major_minor)
-  local min = version(_min)
-  local deprecated = _deprecated and version(_deprecated)
+  local min_version = version(min)
+  local deprecated = deprecated and version(deprecated)
 
-  if major_minor < min then
+  if major_minor < min_version then
     -- Deprecated is "ok"
     if deprecated and major_minor >= deprecated then
       log.warn("Currently using %s %s which is considered deprecated, " ..
-               "please use %s or greater", self.strategy, _major_minor, _min)
+               "please use %s or greater", self.strategy, _major_minor, min)
     else
       return false, fmt("Kong requires %s %s or greater (currently using %s)",
-                        self.strategy, _min, _major_minor)
+                        self.strategy, min, _major_minor)
     end
   end
 
