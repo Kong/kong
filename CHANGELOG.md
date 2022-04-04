@@ -1,7 +1,5 @@
 # Table of Contents
 
-
-
 - [2.4.2](#242)
 - [2.4.1](#241)
 - [2.4.0](#240)
@@ -6119,7 +6117,13 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+<<<<<<< HEAD
 [2.4.2]: https://github.com/Kong/kong/compare/2.4.1...2.4.2
+=======
+[2.5.2]: https://github.com/Kong/kong/compare/2.5.1...2.5.2
+[2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
+[2.5.0]: https://github.com/Kong/kong/compare/2.4.1...2.5.0
+>>>>>>> e1449789c (chore(deps) bump OpenSSL and Luarocks)
 [2.4.1]: https://github.com/Kong/kong/compare/2.4.0...2.4.1
 [2.4.0]: https://github.com/Kong/kong/compare/2.3.3...2.4.0
 [2.3.3]: https://github.com/Kong/kong/compare/2.3.2...2.3.3
