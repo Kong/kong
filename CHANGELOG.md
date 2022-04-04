@@ -1,6 +1,7 @@
 # Table of Contents
 
 
+- [2.5.2](#252)
 - [2.5.1](#251)
 - [2.5.0](#250)
 - [2.4.1](#241)
@@ -59,6 +60,12 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## [2.5.2]
+
+### Dependencies
+
+- Bumped `OpenSSL` from `1.1.1l` to `1.1.1n`
+  [#8630](https://github.com/Kong/kong/pull/8630)
 
 ## [2.5.1]
 
@@ -6378,6 +6385,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.5.2]: https://github.com/Kong/kong/compare/2.5.1...2.5.2
 [2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Kong/kong/compare/2.4.1...2.5.0
 [2.4.1]: https://github.com/Kong/kong/compare/2.4.0...2.4.1
