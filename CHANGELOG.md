@@ -71,6 +71,12 @@
 
 ### Fixes
 
+#### Core
+
+- Only reschedule router and plugin iterator timers after finishing previous
+  execution, avoiding unnecessary concurrent executions.
+  [#8634](https://github.com/Kong/kong/pull/8634)
+
 ## [2.8.0]
 
 ### Deprecations
