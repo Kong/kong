@@ -63,6 +63,13 @@
 
 ## [2.6.1]
 
+### Dependencies
+
+- Bumped `OpenSSL` from `1.1.1l` to `1.1.1n`
+  [#8630](https://github.com/Kong/kong/pull/8630)
+- Bumped `Luarocks` from `3.7.0` to `3.8.0`
+  [#8630](https://github.com/Kong/kong/pull/8630)
+
 ### Fixes
 
 #### Core
