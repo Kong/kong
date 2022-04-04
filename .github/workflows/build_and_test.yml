@@ -23,7 +23,7 @@ jobs:
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Checkout kong-build-tools
       if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -89,7 +89,7 @@ jobs:
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
@@ -175,7 +175,7 @@ jobs:
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -224,7 +224,7 @@ jobs:
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -298,7 +298,7 @@ jobs:
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -337,7 +337,7 @@ jobs:
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$DOWNLOAD_ROOT/cpanm" >> $GITHUB_PATH

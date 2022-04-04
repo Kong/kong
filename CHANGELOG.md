@@ -69,6 +69,8 @@
 
 - Bumped `OpenSSL` from 1.1.1l to 1.1.1n 
   [#8624](https://github.com/Kong/kong/pull/8624)
+- Bumped `lua-resty-healthcheck` from 1.4.2 to 1.4.3
+  [#8620](https://github.com/Kong/kong/pull/8620)
 
 ### Fixes
 
