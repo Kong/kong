@@ -63,7 +63,7 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.7.2] (UNRELEASED)
+## [2.7.2]
 
 ### Dependencies
 
@@ -6711,6 +6711,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.7.2]: https://github.com/Kong/kong/compare/2.7.1...2.7.2
 [2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1
 [2.7.0]: https://github.com/Kong/kong/compare/2.6.0...2.7.0
 [2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
