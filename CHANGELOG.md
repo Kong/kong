@@ -2,6 +2,7 @@
 
 
 - [2.3.4](#234)
+- [2.3.3](#233)
 - [2.3.2](#232)
 - [2.3.1](#231)
 - [2.3.0](#230)
@@ -5840,7 +5841,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.3.4]: https://github.com/Kong/kong/compare/2.3.2...2.3.4
+[2.3.4]: https://github.com/Kong/kong/compare/2.3.3...2.3.4
 [2.3.3]: https://github.com/Kong/kong/compare/2.3.2...2.3.3
 [2.3.2]: https://github.com/Kong/kong/compare/2.3.1...2.3.2
 [2.3.1]: https://github.com/Kong/kong/compare/2.3.0...2.3.1
