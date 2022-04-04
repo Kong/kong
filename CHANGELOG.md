@@ -74,6 +74,12 @@
 
 ### Fixes
 
+#### Core
+
+- Only reschedule router and plugin iterator timers after finishing previous
+  execution, avoiding unnecessary concurrent executions.
+  [#8633](https://github.com/Kong/kong/pull/8633)
+
 #### Plugins
 
 - **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
