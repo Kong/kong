@@ -65,6 +65,13 @@
 
 ## [2.7.2] (UNRELEASED)
 
+### Dependencies
+
+- Bumped `OpenSSL` from 1.1.1l to 1.1.1n 
+  [#8624](https://github.com/Kong/kong/pull/8624)
+- Bumped `lua-resty-healthcheck` from 1.4.2 to 1.4.3
+  [#8620](https://github.com/Kong/kong/pull/8620)
+
 ### Fixes
 
 #### Plugins
@@ -72,11 +79,6 @@
 - **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
     and deprecated the `proxy_scheme` config attribute for removal in 3.0
     [#8406](https://github.com/Kong/kong/pull/8406)
-
-### Dependencies
-
-- Bumped `lua-resty-healthcheck` from 1.4.2 to 1.4.3
-  [#8620](https://github.com/Kong/kong/pull/8620)
 
 ## [2.7.1]
 
