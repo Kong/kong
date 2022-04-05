@@ -321,8 +321,8 @@ local function register_balancer_events(core_cache, worker_events, cluster_event
       return
     end
 
-    singletons.core_cache:invalidate_local("balancer:upstreams")
-    singletons.core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
+    core_cache:invalidate_local("balancer:upstreams")
+    core_cache:invalidate_local("balancer:upstreams:" .. upstream.id)
 
     -- => to balancer update
     balancer.on_upstream_event(operation, upstream)
@@ -359,14 +359,33 @@ local function register_events()
 
     -- declarative config updates
 
-    worker_events.register(function(default_ws)
+    local current_router_hash
+    local current_plugins_hash
+    local current_balancer_hash
+
+    worker_events.register(function(data)
       if ngx.worker.exiting() then
         log(NOTICE, "declarative flip config canceled: process exiting")
         return true
       end
 
+      local default_ws
+      local router_hash
+      local plugins_hash
+      local balancer_hash
+
+      if type(data) == "table" then
+        default_ws = data[1]
+        router_hash = data[2]
+        plugins_hash = data[3]
+        balancer_hash = data[4]
+      end
+
       local ok, err = concurrency.with_coroutine_mutex(FLIP_CONFIG_OPTS, function()
-        balancer.stop_healthcheckers(CLEAR_HEALTH_STATUS_DELAY)
+        local rebuild_balancer = balancer_hash == nil or balancer_hash ~= current_balancer_hash
+        if rebuild_balancer then
+          balancer.stop_healthcheckers(CLEAR_HEALTH_STATUS_DELAY)
+        end
 
         kong.cache:flip()
         core_cache:flip()
@@ -374,10 +393,20 @@ local function register_events()
         kong.default_workspace = default_ws
         ngx.ctx.workspace = kong.default_workspace
 
-        rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
-        rebuild_router(ROUTER_SYNC_OPTS)
+        if plugins_hash == nil or plugins_hash ~= current_plugins_hash then
+          rebuild_plugins_iterator(PLUGINS_ITERATOR_SYNC_OPTS)
+          current_plugins_hash = plugins_hash
+        end
 
-        balancer.init()
+        if router_hash == nil or router_hash ~= current_router_hash then
+          rebuild_router(ROUTER_SYNC_OPTS)
+          current_router_hash = router_hash
+        end
+
+        if rebuild_balancer then
+          balancer.init()
+          current_balancer_hash = balancer_hash
+        end
 
         declarative.lock()
 
