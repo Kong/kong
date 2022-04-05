@@ -11,6 +11,7 @@ local singletons  = require "kong.singletons"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local ee_helpers  = require "spec-ee.helpers"
 local constants   = require "kong.constants"
+local fmt = string.format
 
 
 local PORTAL_SESSION_CONF = "{ \"secret\": \"super-secret\", \"cookie_secure\": false }"
@@ -1831,12 +1832,15 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         assert.same({}, json.permissions)
         assert.is_nil(json.is_default)
 
-        assert(db.rbac_role_endpoints:insert({
-          role = { id = role.id },
-          workspace = "default",
-          endpoint = "/foo",
-          actions = 0x1,
-        }))
+        local res = client:post(fmt("/rbac/roles/%s/endpoints", role.id), {
+          body = {
+            endpoint = "/foo",
+            workspace = "default",
+            actions = "read",
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        assert.res_status(201, res)
 
         local res = client:get("/developers/roles/red")
         local body = assert.res_status(200, res)

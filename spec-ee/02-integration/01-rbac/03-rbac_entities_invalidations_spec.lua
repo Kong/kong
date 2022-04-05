@@ -8,6 +8,8 @@
 local cjson        = require "cjson"
 local helpers      = require "spec.helpers"
 local ee_helpers   = require "spec-ee.helpers"
+local kong_vitals = require "kong.vitals"
+
 
 local POLL_INTERVAL = 0.3
 
@@ -98,6 +100,26 @@ describe("rbac entities are invalidated with db: #" .. strategy, function()
       local action_bits_all = 0x0
       for k, v in pairs(rbac.actions_bitfields) do
         action_bits_all = bxor(action_bits_all, rbac.actions_bitfields[k])
+      end
+
+      if _G.kong then
+        _G.kong.cache = helpers.get_cache(db)
+        _G.kong.vitals = kong_vitals.new({
+          db = db,
+          ttl_seconds = 3600,
+          ttl_minutes = 24 * 60,
+          ttl_days = 30,
+        })
+      else
+        _G.kong = {
+          cache = helpers.get_cache(db),
+          vitals = kong_vitals.new({
+            db = db,
+            ttl_seconds = 3600,
+            ttl_minutes = 24 * 60,
+            ttl_days = 30,
+          })
+        }
       end
 
       service = bp.services:insert()

@@ -8,6 +8,7 @@
 local helpers    = require "spec.helpers"
 local cjson      = require "cjson"
 local ee_helpers = require "spec-ee.helpers"
+local kong_vitals = require "kong.vitals"
 
 for _, strategy in helpers.each_strategy({"postgres"}) do
   describe("Admin API Filter - RBAC #" .. strategy, function()
@@ -35,6 +36,26 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
         database  = strategy,
         enforce_rbac = "on",
       }))
+
+      if _G.kong then
+        _G.kong.cache = helpers.get_cache(db)
+        _G.kong.vitals = kong_vitals.new({
+          db = db,
+          ttl_seconds = 3600,
+          ttl_minutes = 24 * 60,
+          ttl_days = 30,
+        })
+      else
+        _G.kong = {
+          cache = helpers.get_cache(db),
+          vitals = kong_vitals.new({
+            db = db,
+            ttl_seconds = 3600,
+            ttl_minutes = 24 * 60,
+            ttl_days = 30,
+          })
+        }
+      end
 
       ee_helpers.register_rbac_resources(db)
 
