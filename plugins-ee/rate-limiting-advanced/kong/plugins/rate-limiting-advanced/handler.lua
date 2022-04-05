@@ -88,7 +88,7 @@ local id_lookup = {
 
 local function new_namespace(config, init_timer)
   if not config then
-    kong.log.debug("[rate-limiting-advanced] no config was specified.",
+    kong.log.warn("[rate-limiting-advanced] no config was specified.",
       " Skipping the namespace creation.")
     return false
   end
@@ -109,9 +109,9 @@ local function new_namespace(config, init_timer)
         kong.log.warn("[rate-limiting-advanced] no shared dictionary was specified.",
           " Trying the default value '", dict_name, "'...")
       else
-        dict_name = "kong"
-        kong.log.notice("[rate-limiting-advanced] no shared dictionary was specified.",
-        " Falling back to the 'kong' shared dictionary")
+        kong.log.warn("[rate-limiting-advanced] no schema default was specified.",
+          " Skipping the namespace creation.")
+        return false
       end
     end
 
