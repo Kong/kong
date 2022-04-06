@@ -6601,6 +6601,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.6.1]: https://github.com/Kong/kong/compare/2.6.0...2.6.1
 [2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
 [2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Kong/kong/compare/2.4.1...2.5.0
