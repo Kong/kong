@@ -256,7 +256,7 @@ local function build_phases(plugin)
 
           -- recover KONG_PHASE so check phase works properly
           -- for functions not supported by log phase
-          if ngx.ctx ~= nil then
+          if ngx.ctx then
             ngx.ctx.KONG_PHASE = saved.ngx_ctx.KONG_PHASE
           end
           server_rpc:handle_event(self.name, conf, phase)
