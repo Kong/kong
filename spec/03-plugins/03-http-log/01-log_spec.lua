@@ -240,7 +240,7 @@ for _, strategy in helpers.each_strategy() do
     it("logs to HTTP", function()
       local res = assert(proxy_client:send({
         method = "GET",
-        path = "/status/200",
+        path = "/status/200?test0=test0&test1=test1",
         headers = {
           ["Host"] = "http_logging.test"
         }
@@ -262,6 +262,10 @@ for _, strategy in helpers.each_strategy() do
 
         if #body.entries == 1 then
           assert.same("127.0.0.1", body.entries[1].client_ip)
+          assert.same({
+            test0 = "test0",
+            test1 = "test1",
+          }, body.entries[1].request.querystring)
           return true
         end
       end, 10)
