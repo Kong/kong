@@ -1,6 +1,17 @@
 local kong_global = require "kong.global"
 local cjson = require "cjson.safe"
-local msgpack = require "MessagePack"
+local msgpack do
+  msgpack = require "MessagePack"
+  local nil_pack = msgpack.packers["nil"]
+  -- let msgpack encode cjson.null
+  function msgpack.packers.userdata (buffer, userdata)
+    if userdata == cjson.null then
+      return nil_pack(buffer)
+    else
+      error "pack 'userdata' is unimplemented"
+    end
+  end
+end
 
 local ngx = ngx
 local kong = kong
