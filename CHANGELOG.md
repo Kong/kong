@@ -75,8 +75,10 @@
 
 ### Deprecations
 
-- The external [go-pluginserver](https://github.com/Kong/go-pluginserver) project
-is no longer suppored.
+- The `go_pluginserver_exe` and `go_plugins_dir` directives are no longer supported.
+  [#8552](https://github.com/Kong/kong/pull/8552). If you are using 
+  [Go plugin server](https://github.com/Kong/go-pluginserver), You can migrate to use
+  [Go PDK](https://github.com/Kong/go-pdk).
 
 #### Plugins
 
