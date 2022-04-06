@@ -98,7 +98,8 @@
 
 - Change the default of `lua_ssl_trusted_certificate` to `system`
   [#8602](https://github.com/Kong/kong/pull/8602). If you are upgrading from 2.x and want this variable to keep
-  working as before, please manually set it to `NONE` before upgrading. 
+  working as before, please manually set it to empty
+  (`lua_ssl_trusted_certificate = [nothing in here]`) before upgrading. 
 
 ### Additions
 
