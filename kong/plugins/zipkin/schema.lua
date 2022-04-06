@@ -61,6 +61,7 @@ return {
           { tags_header = { type = "string", required = true, default = "Zipkin-Tags" } },
           { static_tags = { type = "array", elements = static_tag,
                             custom_validator = validate_static_tags } },
+          { http_span_name = { type = "string", required = true, default = "method", one_of = { "method", "method_path" } } },
         },
     }, },
   },

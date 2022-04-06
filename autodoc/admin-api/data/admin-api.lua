@@ -585,7 +585,8 @@ return {
                   reflect the health of the database itself.
             * `configuration_hash`: The hash of the current configuration. This
               field is only returned when the Kong node is running in DB-less
-              or data-plane mode.
+              or data-plane mode. The special return value "00000000000000000000000000000000"
+              means Kong does not currently have a valid configuration loaded.
           ]],
         },
       }

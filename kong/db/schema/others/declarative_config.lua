@@ -354,7 +354,11 @@ local function validate_references(self, input)
   for a, as in pairs(expected) do
     for b, bs in pairs(as) do
       for _, k in ipairs(bs) do
-        local found = find_entity(k.value, b, by_key, by_id)
+        local key = k.value
+        if type(key) == "table" then
+          key = key.id or key
+        end
+        local found = find_entity(key, b, by_key, by_id)
 
         if not found then
           errors[a] = errors[a] or {}

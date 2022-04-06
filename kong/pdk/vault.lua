@@ -197,7 +197,7 @@ local function config_secret(reference, opts)
 
   if not vault then
     if err then
-      return nil, fmt("unable to load vault (%s): %s [%s]", name, err, reference)
+      return nil, fmt("vault not found (%s): %s [%s]", name, err, reference)
     end
 
     return nil, fmt("vault not found (%s) [%s]", name, reference)

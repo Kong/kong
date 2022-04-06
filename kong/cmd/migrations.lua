@@ -96,7 +96,7 @@ local function execute(args)
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, true))
 
   _G.kong = kong_global.new()
-  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+  kong_global.init_pdk(_G.kong, conf)
 
   local db = assert(DB.new(conf))
   assert(db:init_connector())
