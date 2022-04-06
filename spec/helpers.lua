@@ -1909,7 +1909,6 @@ luassert:register("assertion", "cn", assert_cn,
                   "assertion.cn.negative",
                   "assertion.cn.positive")
 
-
 do
   --- Generic modifier "logfile"
   -- Will set an "errlog_path" value in the assertion state.
