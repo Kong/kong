@@ -73,6 +73,11 @@
   scripts that depend on it being `POST`, these scripts will need to be updated
   when updating to Kong 3.0.
 
+#### PDK
+
+- The PDK is no longer versioned
+  [#8585](https://github.com/Kong/kong/pull/8585)
+
 #### Plugins
 
 - The proxy-cache plugin does not store the response data in
