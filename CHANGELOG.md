@@ -65,16 +65,28 @@
 - [0.9.9 and prior](#099---20170202)
 
 
-## [2.7.2] (UNRELEASED)
+## [2.7.2]
+
+### Dependencies
+
+- Bumped `OpenSSL` from 1.1.1l to 1.1.1n 
+  [#8624](https://github.com/Kong/kong/pull/8624)
+- Bumped `lua-resty-healthcheck` from 1.4.2 to 1.4.3
+  [#8620](https://github.com/Kong/kong/pull/8620)
 
 ### Fixes
+
+#### Core
+
+- Only reschedule router and plugin iterator timers after finishing previous
+  execution, avoiding unnecessary concurrent executions.
+  [#8633](https://github.com/Kong/kong/pull/8633)
 
 #### Plugins
 
 - **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
     and deprecated the `proxy_scheme` config attribute for removal in 3.0
     [#8406](https://github.com/Kong/kong/pull/8406)
-
 
 ## [2.7.1]
 
@@ -6712,6 +6724,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.7.2]: https://github.com/Kong/kong/compare/2.7.1...2.7.2
 [2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1
 [2.7.0]: https://github.com/Kong/kong/compare/2.6.0...2.7.0
 [2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
