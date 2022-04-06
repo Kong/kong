@@ -388,13 +388,18 @@ return {
       -- apply auth plugin
       local plugin_auth_response
       local id_token_claim_name = "id_token"
+      local userinfo_claim_name = "user_info"
 
       if not ngx.ctx.authenticated_consumer then
         -- Before Auth Plugin execution. 
         if gui_auth == "openid-connect" then
           gui_auth_conf.consumer_optional = true
-          -- change to upstream_id_token_header to avoid calling user info endpoint.
+          -- by default id_token contains data the auth flow required
           gui_auth_conf.upstream_id_token_header = id_token_claim_name
+          -- fallback to fetch admin_claim from 'user_info'
+          if gui_auth_conf.search_user_info then
+            gui_auth_conf.upstream_user_info_header = userinfo_claim_name
+          end
         end
 
         if gui_auth == "ldap-auth-advanced" then
@@ -419,14 +424,37 @@ return {
 
         -- After Auth Plugin execution.
         if gui_auth == "openid-connect" then
-          local id_token_header = ngx.req.get_headers()[id_token_claim_name]
-          -- decode id_token
-          local jwt, err = jwt_decoder:new(id_token_header)
-          if err then
-            log(ERR, _log_prefix, "failed to decode id token.", err)
-            return kong.response.exit(401, { message = "Unauthorized" })
+          local id_token_claims = function ()
+            local id_token_header = ngx.req.get_headers()[id_token_claim_name]
+            if not id_token_header then
+              log(DEBUG, _log_prefix, "failed to get id_token from upstream header")
+              return nil
+            end
+            -- decode id_token
+            local jwt, err = jwt_decoder:new(id_token_header)
+            if err then
+              log(ERR, _log_prefix, "failed to decode id token.", err)
+              return nil
+            end
+
+            return jwt.claims
           end
-          local claims = jwt.claims
+
+          local user_info_claims = function ()
+            local userinfo_header = ngx.req.get_headers()[userinfo_claim_name]
+            if not userinfo_header then
+              log(DEBUG, _log_prefix, "failed to get user_info from upstream header")
+              return nil
+            end
+            local userinfo_json, base64_err = ngx.decode_base64(userinfo_header)
+            local userinfo, json_err = cjson.decode(userinfo_json)
+            if base64_err or json_err then
+              log(ERR, _log_prefix, "failed to decode userinfo.", base64_err or json_err)
+              return nil
+            end
+
+            return userinfo
+          end
 
           local default_admin_by = "username"
           local gui_auth_conf_origin = singletons.configuration.admin_gui_auth_conf
@@ -435,11 +463,17 @@ return {
 
           local admin_by = gui_auth_conf_origin and gui_auth_conf_origin.admin_by
                            or default_admin_by
-          -- use claims in id_token to map kong admin
-          local admin_claim_value = claims[admin_claim]
+          local search_user_info = gui_auth_conf_origin and gui_auth_conf_origin.search_user_info
 
+          -- use claims to map kong admin
+          local claims = id_token_claims()
+          if search_user_info and not (claims and claims[admin_claim]) then
+            claims = user_info_claims()
+          end
+
+          local admin_claim_value = claims and claims[admin_claim]
           if not admin_claim_value then
-            log(ERR, _log_prefix, "the 'admin_claim' not found from the id_token claims.", gui_auth)
+            log(ERR, _log_prefix, "the 'admin_claim' not found from the claims.", gui_auth)
             return kong.response.exit(401, { message = "Unauthorized" })
           end
  
