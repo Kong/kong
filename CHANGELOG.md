@@ -79,6 +79,10 @@
   `ngx.ctx.proxy_cache_hit` anymore. Logging plugins that need the response data
   must read it from `kong.ctx.shared.proxy_cache_hit` from Kong 3.0 on.
   [#8607](https://github.com/Kong/kong/pull/8607)
+- PDK now return `Uint8Array` and `bytes` for JavaScript's `kong.request.getRawBody`, 
+  `kong.response.getRawBody`, `kong.service.response.getRawBody` and Python's `kong.request.get_raw_body`, 
+  `kong.response.get_raw_body`, `kong.service.response.get_raw_body` respectively.
+  [#8623](https://github.com/Kong/kong/pull/8623)
 
 ### Dependencies
 
