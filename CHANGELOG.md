@@ -63,12 +63,24 @@
 
 ## [2.6.1]
 
+### Dependencies
+
+- Bumped `OpenSSL` from `1.1.1l` to `1.1.1n`
+  [#8630](https://github.com/Kong/kong/pull/8630)
+- Bumped `Luarocks` from `3.7.0` to `3.8.0`
+  [#8630](https://github.com/Kong/kong/pull/8630)
+
 ### Fixes
 
 #### Core
 
-- Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
-  [#8142](https://github.com/Kong/kong/pull/8142)
+- Target entities using hostnames were resolved when they were not needed. Now
+  when a target is removed or updated, the DNS record associated with it is
+  removed from the list of hostnames to be resolved.
+  [#8497](https://github.com/Kong/kong/pull/8497)
+- Fixed an issue where using the consistent-hashing load-balancing algorithm
+  and the header set in the `hash_on_header` property was not found in the
+  request, proxying would fail. [#8142](https://github.com/Kong/kong/pull/8142)
 
 #### Plugins
 
@@ -6588,6 +6600,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.6.1]: https://github.com/Kong/kong/compare/2.6.0...2.6.1
 [2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
 [2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Kong/kong/compare/2.4.1...2.5.0
