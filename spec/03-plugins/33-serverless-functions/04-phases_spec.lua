@@ -14,6 +14,10 @@ local mock_one_fn = [[
     end
 ]]
 
+local mock_two_fn = [[
+  local nilValue = nil
+  kong.log.info('test' .. nilValue)
+]]
 
 for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
 
@@ -147,6 +151,72 @@ phase: 'log', index: 'first', plugin: 'pre-function'
 phase: 'log', index: 'second', plugin: 'pre-function'
 phase: 'log', index: 'third', plugin: 'pre-function'
 ]]):gsub("pre%-function", plugin_name),content)
+    end)
+  end)
+
+
+  describe("Plugin: " .. plugin_name .. " (pdk get_source())", function()
+    local client, admin_client
+
+    setup(function()
+      local bp, db = helpers.get_db_utils()
+
+      assert(db:truncate())
+
+      local service = bp.services:insert {
+        name     = "service-1",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+
+      local route1 = bp.routes:insert {
+        service = { id = service.id },
+        hosts   = { "one." .. plugin_name .. ".com" },
+      }
+
+      bp.plugins:insert {
+        name    = plugin_name,
+        route   = { id = route1.id },
+        config  = {
+          ["access"] = { mock_two_fn },
+          ["header_filter"] = { "ngx.header['X-Source'] = kong.response.get_source()" },
+        },
+      }
+
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    after_each(function()
+      if client and admin_client then
+        client:close()
+        admin_client:close()
+      end
+    end)
+
+    describe("request termination", function()
+      it("runtime error aborts with a 500", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "one." .. plugin_name .. ".com"
+          }
+        })
+        local body = assert.res_status(500, res)
+        assert.same('{"message":"An unexpected error occurred"}', body)
+        assert.equal("error", res.headers["X-Source"])
+      end)
     end)
   end)
 end
