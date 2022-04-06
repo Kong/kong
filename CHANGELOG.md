@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [2.8.1](#281)
 - [2.8.0](#280)
 - [2.7.2](#272)
 - [2.7.1](#271)
@@ -65,14 +66,28 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
-## Unreleased
+## [2.8.1]
 
 ### Dependencies
 
 - Bumped lua-resty-healthcheck from 1.5.0 to 1.5.1
   [#8584](https://github.com/Kong/kong/pull/8584)
+- Bumped `OpenSSL` from 1.1.1l to 1.1.1n 
+  [#8635](https://github.com/Kong/kong/pull/8635)
 
 ### Fixes
+
+#### Core
+
+- Only reschedule router and plugin iterator timers after finishing previous
+  execution, avoiding unnecessary concurrent executions.
+  [#8634](https://github.com/Kong/kong/pull/8634)
+- Implements conditional rebuilding of router, plugins iterator and balancer on
+  data planes. This means that DPs will not rebuild router if there were no
+  changes in routes or services. Similarly, the plugins iterator will not be
+  rebuilt if there were no changes to plugins, and, finally, the balancer will not be
+  reinitialized if there are no changes to upstreams or targets.
+  [#8639](https://github.com/Kong/kong/pull/8639)
 
 ## [2.8.0]
 
@@ -6872,6 +6887,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
 [2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1
 [2.7.0]: https://github.com/Kong/kong/compare/2.6.0...2.7.0
