@@ -9,6 +9,7 @@ OPENRESTY=$(dep_version RESTY_VERSION)
 LUAROCKS=$(dep_version RESTY_LUAROCKS_VERSION)
 OPENSSL=$(dep_version RESTY_OPENSSL_VERSION)
 PCRE=$(dep_version RESTY_PCRE_VERSION)
+RESTY_LMDB=$(dep_version RESTY_LMDB_VERSION)
 
 
 #---------
@@ -32,6 +33,7 @@ kong-ngx-build \
     --kong-nginx-module $KONG_NGINX_MODULE_BRANCH \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
+    --resty-lmdb $RESTY_LMDB \
     --pcre $PCRE \
     --debug
 

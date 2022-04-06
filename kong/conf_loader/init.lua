@@ -641,6 +641,7 @@ local CONF_INFERENCES = {
   lua_socket_pool_size = { typ = "number" },
 
   role = { enum = { "data_plane", "control_plane", "traditional", }, },
+  cluster_protocol = { enum = { "json", "wrpc" }, },
   cluster_control_plane = { typ = "string", },
   cluster_cert = { typ = "string" },
   cluster_cert_key = { typ = "string" },
@@ -657,6 +658,9 @@ local CONF_INFERENCES = {
   untrusted_lua = { enum = { "on", "off", "sandbox" } },
   untrusted_lua_sandbox_requires = { typ = "array" },
   untrusted_lua_sandbox_environment = { typ = "array" },
+
+  lmdb_environment_path = { typ = "string" },
+  lmdb_map_size = { typ = "string" },
 }
 
 
