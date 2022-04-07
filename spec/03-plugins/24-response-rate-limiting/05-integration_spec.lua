@@ -4,8 +4,9 @@ local version = require "version"
 local tostring = tostring
 
 
-local REDIS_HOST = helpers.redis_host
-local REDIS_PORT = 6379
+local REDIS_HOST      = helpers.redis_host
+local REDIS_PORT      = helpers.redis_port
+
 local REDIS_DB_1 = 1
 local REDIS_DB_2 = 2
 local REDIS_DB_3 = 3
