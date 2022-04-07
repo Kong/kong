@@ -1054,7 +1054,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("timeout", res.headers["Log-Plugin-Service-Matched"])
       end)
 
-      it("sees pdk get_source() error on plugin runtime exception aborts with a 500", function()
+      it("kong.response.get_source() returns \"error\" if plugin runtime exception occurs, FTI-3200", function()
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/status/200",
