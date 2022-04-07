@@ -248,7 +248,6 @@ _M._get_removed_fields = get_removed_fields
 local function update_compatible_payload(payload, dp_version, log_suffix)
   local cp_version_num = version_num(tostring(ee_meta.versions.package))
   local dp_version_num = version_num(dp_version)
-
   -- if the CP and DP have the same version, avoid the payload
   -- copy and compatibility updates
   if cp_version_num == dp_version_num then
@@ -279,7 +278,6 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
         has_update = true
       end
     end
-
     if config_table["plugins"] then
       for _, t in ipairs(config_table["plugins"]) do
         local config = t and t["config"]
