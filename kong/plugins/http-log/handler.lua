@@ -101,6 +101,10 @@ local function send_payload(self, conf, payload)
 
   local url = fmt("%s://%s:%d%s", parsed_url.scheme, parsed_url.host, parsed_url.port, parsed_url.path)
 
+  if parsed_url.query then
+    url = url .. "?" .. parsed_url.query
+  end
+
   -- note: `httpc:request` makes a deep copy of `params_cache`, so it will be
   -- fine to reuse the table here
   local res, err = httpc:request_uri(url, params_cache)

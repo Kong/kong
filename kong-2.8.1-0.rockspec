@@ -1,10 +1,18 @@
 package = "kong"
+<<<<<<<< HEAD:kong-2.8.1-0.rockspec
 version = "2.8.1-0"
+========
+version = "2.7.2-0"
+>>>>>>>> kong-ee/next/2.7.x.x:kong-2.7.2-0.rockspec
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
+<<<<<<<< HEAD:kong-2.8.1-0.rockspec
   tag = "2.8.1"
+========
+  tag = "2.7.2"
+>>>>>>>> kong-ee/next/2.7.x.x:kong-2.7.2-0.rockspec
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -42,6 +50,10 @@ dependencies = {
   "lpeg_patterns == 0.5",
   "http == 0.3",
   "lua-resty-worker-events == 1.0.0",
+<<<<<<<< HEAD:kong-2.8.1-0.rockspec
+========
+  "lua-resty-healthcheck == 1.4.3",
+>>>>>>>> kong-ee/next/2.7.x.x:kong-2.7.2-0.rockspec
   "lua-resty-cookie == 0.1.0",
   "lua-resty-healthcheck == 1.5.1",
   "lua-resty-mlcache == 2.5.0",
