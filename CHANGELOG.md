@@ -89,6 +89,11 @@
   `kong.response.get_raw_body`, `kong.service.response.get_raw_body` respectively.
   [#8623](https://github.com/Kong/kong/pull/8623)
 
+#### Configuration
+
+- Change the default of `lua_ssl_trusted_certificate` to `system`
+  [#8602](https://github.com/Kong/kong/pull/8602) to automatically load trusted CA list from system CA store.
+
 ### Dependencies
 
 - Bumped pgmoon from 1.13.0 to 1.14.0
@@ -99,14 +104,6 @@
   [#8592](https://github.com/Kong/kong/pull/8592)
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
-
-
-### Breaking Changes
-
-##### Configuration
-
-- Change the default of `lua_ssl_trusted_certificate` to `system`
-  [#8602](https://github.com/Kong/kong/pull/8602) to automatically load trusted CA list from system CA store.
 
 ### Additions
 
