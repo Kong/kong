@@ -418,7 +418,7 @@ local function collect(with_stream)
 
   ngx.print(metric_data())
 
-  -- only gather stream metrics if stream_api module is avaiable
+  -- only gather stream metrics if stream_api module is available
   -- and user has configured at least one stream listeners
   if stream_available and #kong.configuration.stream_listeners > 0 then
     local res, err = stream_api.request("prometheus", "")

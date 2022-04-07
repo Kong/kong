@@ -211,7 +211,7 @@ server {
 > end -- database == "off"
 
 server {        # ignore (and close }, to ignore content)
-    listen unix:${{PREFIX}}/stream_rpc.sock udp;
+    listen unix:${{PREFIX}}/stream_rpc.sock;
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
     content_by_lua_block {
         Kong.stream_api()

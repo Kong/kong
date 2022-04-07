@@ -73,12 +73,18 @@
   scripts that depend on it being `POST`, these scripts will need to be updated
   when updating to Kong 3.0.
 
+#### PDK
+
+- The PDK is no longer versioned
+  [#8585](https://github.com/Kong/kong/pull/8585)
+
 ### Deprecations
 
 - The `go_pluginserver_exe` and `go_plugins_dir` directives are no longer supported.
   [#8552](https://github.com/Kong/kong/pull/8552). If you are using 
   [Go plugin server](https://github.com/Kong/go-pluginserver), You can migrate to use
   [Go PDK](https://github.com/Kong/go-pdk).
+=======
 
 #### Plugins
 
@@ -86,6 +92,10 @@
   `ngx.ctx.proxy_cache_hit` anymore. Logging plugins that need the response data
   must read it from `kong.ctx.shared.proxy_cache_hit` from Kong 3.0 on.
   [#8607](https://github.com/Kong/kong/pull/8607)
+- PDK now return `Uint8Array` and `bytes` for JavaScript's `kong.request.getRawBody`, 
+  `kong.response.getRawBody`, `kong.service.response.getRawBody` and Python's `kong.request.get_raw_body`, 
+  `kong.response.get_raw_body`, `kong.service.response.get_raw_body` respectively.
+  [#8623](https://github.com/Kong/kong/pull/8623)
 
 ### Dependencies
 
@@ -97,6 +107,14 @@
   [#8592](https://github.com/Kong/kong/pull/8592)
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
+
+
+### Breaking Changes
+
+##### Configuration
+
+- Change the default of `lua_ssl_trusted_certificate` to `system`
+  [#8602](https://github.com/Kong/kong/pull/8602) to automatically load trusted CA list from system CA store.
 
 ### Additions
 
@@ -115,6 +133,8 @@
 - Only reschedule router and plugin iterator timers after finishing previous
   execution, avoiding unnecessary concurrent executions.
   [#8567](https://github.com/Kong/kong/pull/8567)
+- External plugins now handle returned JSON with null member correctly.
+  [#8610](https://github.com/Kong/kong/pull/8610)
 
 #### Plugins
 
