@@ -1,10 +1,11 @@
+local signals = require "kong.cmd.utils.nginx_signals"
+local pl_path = require "pl.path"
+local pl_file = require "pl.file"
+local pl_dir = require "pl.dir"
+
 describe("kong cli utils", function()
 
   describe("nginx_signals", function()
-    local signals = require "kong.cmd.utils.nginx_signals"
-    local pl_path = require "pl.path"
-    local pl_file = require "pl.file"
-    local pl_dir = require "pl.dir"
 
     describe("find_nginx_bin()", function()
       local tmpdir
@@ -68,5 +69,7 @@ echo 'nginx version: openresty/%s' >&2]], version
       end)
 
     end)
+
   end)
+
 end)
