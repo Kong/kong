@@ -31,7 +31,7 @@ local stat_types = {
 }
 
 local uuid_pattern = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-4%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
-
+local workspace_name_pattern = "default"
 
 -- All tests that test the extra metrics and feature of statsd-advanced compared to statsd CE go here
 
@@ -56,7 +56,6 @@ for _, strategy in helpers.each_strategy() do
 
     setup(function()
       local bp = helpers.get_db_utils(strategy, nil, { "statsd-advanced" })
-
       local consumer = bp.consumers:insert {
         username  = "bob",
         custom_id = "robert",
@@ -68,7 +67,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       local routes = {}
-      for i = 1, 12 do
+      for i = 1, 13 do
         local service = bp.services:insert {
           protocol = helpers.mock_upstream_protocol,
           host     = helpers.mock_upstream_host,
@@ -149,6 +148,23 @@ for _, strategy in helpers.each_strategy() do
               stat_type            = "counter",
               sample_rate          = 1,
               workspace_identifier = "workspace_id",
+            }
+          },
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "statsd-advanced",
+        route      = { id = routes[13].id },
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name                 = "status_count_per_workspace",
+              stat_type            = "counter",
+              sample_rate          = 1,
+              workspace_identifier = "workspace_name",
             }
           },
         },
@@ -586,6 +602,23 @@ for _, strategy in helpers.each_strategy() do
         assert(ok, res)
         assert(res, err)
         assert.matches("kong.service.statsdadvanced12.workspace." .. uuid_pattern .. ".status.200:1|c", res)
+      end)
+
+      it("status_count_per_workspace", function()
+        local thread = helpers.udp_server(UDP_PORT, 1, 2)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging13.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res, err = thread:join()
+        assert(ok, res)
+        assert(res, err)
+        assert.matches("kong.service.statsdadvanced13.workspace." .. workspace_name_pattern .. ".status.200:1|c", res)
       end)
       it("vitals logging_metrics", function()
         local packet_count = 0
