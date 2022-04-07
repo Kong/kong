@@ -285,14 +285,17 @@ function _M:init_worker()
 
       self:request_version_negotiation()
 
-      local config_proto = version_negotiation.get_negotiated_service("config")
-      ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto)
+      local config_proto, msg = version_negotiation.get_negotiated_service("config")
+      if not config_proto and msg then
+        ngx_log(ngx_ERR, _log_prefix, "error reading negotiated \"config\" service: ", msg)
+      end
+
+      ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
       if config_proto == "v1" then
         self.child = require "kong.clustering.wrpc_data_plane".new(self)
 
       elseif config_proto == "v0" or config_proto == nil then
         self.child = require "kong.clustering.data_plane".new(self)
-
       end
 
       if self.child then
