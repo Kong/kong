@@ -14,10 +14,6 @@ local mock_one_fn = [[
     end
 ]]
 
-local mock_two_fn = [[
-  local nilValue = nil
-  kong.log.info('test' .. nilValue)
-]]
 
 for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
 
