@@ -329,7 +329,7 @@ function Rpc:handle_event(plugin_name, conf, phase)
   local _, err = bridge_loop(self, instance_id, phase)
 
   if err then
-    kong.log.err(err)
+    kong.log.info(err)
 
     if string.match(err:lower(), "no plugin instance") then
       self.reset_instance(plugin_name, conf)
