@@ -256,7 +256,7 @@
           "title": "RPS per route/service ($service)",
           "tooltip": {
             "shared": true,
-            "sort": 0,
+            "sort": 2,
             "value_type": "individual"
           },
           "type": "graph",
@@ -361,7 +361,7 @@
           "title": "RPS per route/service by status code",
           "tooltip": {
             "shared": true,
-            "sort": 0,
+            "sort": 2,
             "value_type": "individual"
           },
           "type": "graph",
