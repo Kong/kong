@@ -82,9 +82,9 @@
 
 - The `go_pluginserver_exe` and `go_plugins_dir` directives are no longer supported.
   [#8552](https://github.com/Kong/kong/pull/8552). If you are using 
-  [Go plugin server](https://github.com/Kong/go-pluginserver), You can migrate to use
-  [Go PDK](https://github.com/Kong/go-pdk).
-=======
+  [Go plugin server](https://github.com/Kong/go-pluginserver), please migrate your plugins to use the
+  [Go PDK](https://github.com/Kong/go-pdk) before upgrading.
+
 
 #### Plugins
 
