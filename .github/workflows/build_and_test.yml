@@ -149,18 +149,16 @@ jobs:
           - 15002:9000
           - 15003:9001
 
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: --entrypoint redis-server
+
       zipkin:
         image: openzipkin/zipkin:2.19
         ports:
           - 9411:9411
-
-      redis:
-        image: redis:6.2.6-alpine
-        ports:
-          - 6379:6379
-          - 6380:6380
-        options: >-
-          --name kong_redis
 
     steps:
     - name: Set environment variables
@@ -186,13 +184,6 @@ jobs:
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
-
-    - name: Enable SSL for Redis
-      run: |
-          docker cp ${{ github.workspace }} kong_redis:/workspace
-          docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
-          docker restart kong_redis
-          docker logs kong_redis
 
     - name: Tests
       run: |
@@ -281,18 +272,16 @@ jobs:
           - 15002:9000
           - 15003:9001
 
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: --entrypoint redis-server
+
       zipkin:
         image: openzipkin/zipkin:2.19
         ports:
           - 9411:9411
-
-      redis:
-        image: redis:6.2.6-alpine
-        ports:
-          - 6379:6379
-          - 6380:6380
-        options: >-
-          --name kong_redis
 
     steps:
     - name: Set environment variables
@@ -318,13 +307,6 @@ jobs:
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
-    
-    - name: Enable SSL for Redis
-      run: |
-          docker cp ${{ github.workspace }} kong_redis:/workspace
-          docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
-          docker restart kong_redis
-          docker logs kong_redis
 
     - name: Tests
       run: |
