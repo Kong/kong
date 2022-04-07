@@ -319,6 +319,9 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
           status_code = 500,
           content = { message  = "An unexpected error occurred" },
         }
+
+        -- plugin that throws runtime exception should be marked as `error`
+        ctx.KONG_UNEXPECTED = true
       end
 
       local ok, err = portal_auth.verify_developer_status(ctx.authenticated_consumer)
