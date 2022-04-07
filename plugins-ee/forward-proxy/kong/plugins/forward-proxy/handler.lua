@@ -8,7 +8,6 @@
 local meta       = require "kong.meta"
 local http       = require "resty.http"
 local ee         = require "kong.enterprise_edition"
-local base64     = require "ngx.base64"
 local cert_utils = require "kong.enterprise_edition.cert_utils"
 
 local kong                = kong
@@ -24,7 +23,7 @@ local ngx_now             = ngx.now
 local ngx_print           = ngx.print
 local str_lower           = string.lower
 local str_format          = string.format
-local base64_encode       = base64.encode_base64url
+local base64_encode       = ngx.encode_base64
 
 
 local _prefix_log = "[forward-proxy] "
@@ -211,6 +210,8 @@ function ForwardProxyHandler:access(conf)
     proxy_opts.http_proxy_authorization = auth_header
   end
 
+  -- Should we check http_proxy_port?
+  -- Should we check if http_proxy_host contains schema?
   if conf.http_proxy_host then
     proxy_opts.http_proxy =
       str_format("http://%s:%d", conf.http_proxy_host, conf.http_proxy_port)
