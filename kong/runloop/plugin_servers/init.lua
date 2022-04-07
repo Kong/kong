@@ -254,6 +254,11 @@ local function build_phases(plugin)
           local co = coroutine_running()
           save_for_later[co] = saved
 
+          -- recover KONG_PHASE so check phase works properly
+          -- for functions not supported by log phase
+          if ngx.ctx then
+            ngx.ctx.KONG_PHASE = saved.ngx_ctx.KONG_PHASE
+          end
           server_rpc:handle_event(self.name, conf, phase)
 
           save_for_later[co] = nil
