@@ -13,6 +13,7 @@ local nginx_search_paths = {
   "/opt/openresty/nginx/sbin",
   ""
 }
+
 local nginx_version_pattern = "^nginx.-openresty.-([%d%.]+)"
 local nginx_compatible = version.set(unpack(meta._DEPENDENCIES.nginx))
 
@@ -50,11 +51,19 @@ end
 
 local _M = {}
 
-function _M.find_nginx_bin()
+function _M.find_nginx_bin(kong_conf)
   log.debug("searching for OpenResty 'nginx' executable")
 
+  local search_paths = nginx_search_paths
+  if kong_conf and kong_conf.openresty_path then
+    log.debug("using custom OpenResty path: %s", kong_conf.openresty_path)
+    search_paths = {
+      pl_path.join(kong_conf.openresty_path, "nginx", "sbin"),
+    }
+  end
+
   local found
-  for _, path in ipairs(nginx_search_paths) do
+  for _, path in ipairs(search_paths) do
     local path_to_check = pl_path.join(path, nginx_bin_name)
     if is_openresty(path_to_check) then
       if path_to_check == "nginx" then
@@ -83,7 +92,7 @@ function _M.find_nginx_bin()
 end
 
 function _M.start(kong_conf)
-  local nginx_bin, err = _M.find_nginx_bin()
+  local nginx_bin, err = _M.find_nginx_bin(kong_conf)
   if not nginx_bin then
     return nil, err
   end
@@ -120,7 +129,7 @@ function _M.start(kong_conf)
 end
 
 function _M.check_conf(kong_conf)
-  local nginx_bin, err = _M.find_nginx_bin()
+  local nginx_bin, err = _M.find_nginx_bin(kong_conf)
   if not nginx_bin then
     return nil, err
   end
@@ -152,7 +161,7 @@ function _M.reload(kong_conf)
     return nil, "nginx not running in prefix: " .. kong_conf.prefix
   end
 
-  local nginx_bin, err = _M.find_nginx_bin()
+  local nginx_bin, err = _M.find_nginx_bin(kong_conf)
   if not nginx_bin then
     return nil, err
   end
