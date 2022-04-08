@@ -224,6 +224,10 @@ local PREFIX_PATHS = {
 }
 
 
+local MIN_PORT = 1
+local MAX_PORT = 65535
+
+
 local function is_predefined_dhgroup(group)
   if type(group) ~= "string" then
     return false
@@ -660,6 +664,9 @@ local CONF_INFERENCES = {
 
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
+
+  proxy_restricted_hosts = { typ = "array" },
+  proxy_restricted_ports = { typ = "array" },
 }
 
 
@@ -773,9 +780,6 @@ local function check_and_infer(conf, opts)
 
   conf.host_ports = {}
   if conf.port_maps then
-    local MIN_PORT = 1
-    local MAX_PORT = 65535
-
     for _, port_map in ipairs(conf.port_maps) do
       local colpos = string.find(port_map, ":", nil, true)
       if not colpos then
@@ -1135,6 +1139,25 @@ local function check_and_infer(conf, opts)
 
   if conf.upstream_keepalive_idle_timeout < 0 then
     errors[#errors + 1] = "upstream_keepalive_idle_timeout must be 0 or greater"
+  end
+
+  if conf.proxy_restricted_hosts then
+    for _, restricted_host in ipairs(conf.proxy_restricted_hosts) do
+      if not utils.check_hostname(restricted_host) then
+        errors[#errors + 1] = "proxy_restricted_hosts contains invalid hostname: " ..
+                              restricted_host
+      end
+    end
+  end
+
+  if conf.proxy_restricted_ports then
+    for _, restricted_port_str in ipairs(conf.proxy_restricted_ports) do
+      local restricted_port = tonumber(restricted_port_str)
+      if restricted_port < MIN_PORT or restricted_port > MAX_PORT then
+        errors[#errors + 1] = "proxy_restricted_ports contains invalid port: " ..
+                              restricted_port
+      end
+    end
   end
 
   return #errors == 0, errors[1], errors

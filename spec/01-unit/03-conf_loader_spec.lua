@@ -1411,6 +1411,31 @@ describe("Configuration loader", function()
     end)
   end)
 
+  describe("proxy_restricted_* properties", function()
+    it("are accepted", function()
+      local conf = assert(conf_loader(nil, {
+        proxy_denied_hosts = "localhost, 127.0.0.1",
+        proxy_denied_ports = "22, 1000",
+      }))
+      assert.same({"localhost", "127.0.0.1"}, conf.proxy_denied_hosts)
+      assert.same({"22", "1000"}, conf.proxy_denied_ports)
+    end)
+
+    it("reject invalid values", function()
+      local conf, err = conf_loader(nil, {
+        proxy_denied_hosts = "-.ohno",
+      })
+      assert.is_nil(conf)
+      assert.equal("proxy_denied_hosts contains invalid hostname: -.ohno", err)
+
+      conf, err = conf_loader(nil, {
+        proxy_denied_ports = "22, 65536",
+      })
+      assert.is_nil(conf)
+      assert.equal("proxy_denied_ports contains invalid port: 65536", err)
+    end)
+  end)
+
   describe("errors", function()
     it("returns inexistent file", function()
       local conf, err = conf_loader "inexistent"
