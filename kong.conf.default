@@ -1395,9 +1395,6 @@
                                         # - /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem (CentOS/RHEL 7)
                                         # - /etc/ssl/cert.pem (OpenBSD, Alpine)
                                         #
-                                        # If no file is found on any of these paths, an error will
-                                        # be raised.
-                                        #
                                         # `system` can be used by itself or in conjunction with other
                                         # CA filepaths.
                                         #

@@ -903,25 +903,28 @@ local function check_and_infer(conf, opts)
   if conf.lua_ssl_trusted_certificate then
     local new_paths = {}
 
-    for i, path in ipairs(conf.lua_ssl_trusted_certificate) do
+    for _, path in ipairs(conf.lua_ssl_trusted_certificate) do
       if path == "system" then
         local system_path, err = utils.get_system_trusted_certs_filepath()
         if system_path then
           path = system_path
 
         else
-          errors[#errors + 1] =
-            "lua_ssl_trusted_certificate: unable to locate system bundle - " ..
-            err
+
+          log.info("lua_ssl_trusted_certificate: unable to locate system bundle: " ..
+                     err ..
+                     ". Please set lua_ssl_trusted_certificate to a path with certificates" ..
+                     " in order to remove this message")
         end
       end
 
-      if not pl_path.exists(path) then
-        errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " ..
-                               path
+      if path ~= "system" then
+        if not pl_path.exists(path) then
+          errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " ..
+                                 path
+        end
+        new_paths[#new_paths + 1] = path
       end
-
-      new_paths[i] = path
     end
 
     conf.lua_ssl_trusted_certificate = new_paths
