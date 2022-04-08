@@ -1481,6 +1481,7 @@ local function load(path, custom_conf, opts)
   ---------------------------------
 
   local loaded_vaults
+  local refs
   do
     -- validation
     local vaults_array = infer_value(conf.vaults, CONF_INFERENCES["vaults"].typ, opts)
@@ -1507,6 +1508,12 @@ local function load(path, custom_conf, opts)
     local vault = require "kong.pdk.vault".new()
     for k, v in pairs(conf) do
       if vault.is_reference(v) then
+        if refs then
+          refs[k] = v
+        else
+          refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+        end
+
         local deref, deref_err = vault.get(v)
         if deref == nil or deref_err then
           return nil, fmt("failed to dereference '%s': %s for config option '%s'", v, deref_err, k)
@@ -1531,7 +1538,9 @@ local function load(path, custom_conf, opts)
   end
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
+
   conf.loaded_vaults = loaded_vaults
+  conf["$refs"] = refs
 
   local default_nginx_main_user = false
   local default_nginx_user = false
