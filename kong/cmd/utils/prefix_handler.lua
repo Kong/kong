@@ -485,7 +485,13 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     "",
   }
 
+  local refs = kong_config["$refs"]
+
   for k, v in pairs(kong_config) do
+    if refs and refs[k] then
+      v = refs[k]
+    end
+
     if type(v) == "table" then
       if (getmetatable(v) or {}).__tostring then
         -- the 'tostring' meta-method knows how to serialize
