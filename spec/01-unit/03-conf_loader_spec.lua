@@ -1719,4 +1719,34 @@ describe("Configuration loader", function()
       assert.equal("2m", conf.nginx_http_client_body_buffer_size)
     end)
   end)
+  describe("vault references", function()
+    it("are collected under $refs property", function()
+      finally(function()
+        helpers.unsetenv("PG_DATABASE")
+      end)
+
+      helpers.setenv("PG_DATABASE", "resolved-kong-database")
+
+      local conf = assert(conf_loader(nil, {
+        pg_database = "{vault://env/pg-database}"
+      }))
+
+      assert.equal("resolved-kong-database", conf.pg_database)
+      assert.equal("{vault://env/pg-database}", conf["$refs"].pg_database)
+    end)
+    it("are inferred and collected under $refs property", function()
+      finally(function()
+        helpers.unsetenv("PG_PORT")
+      end)
+
+      helpers.setenv("PG_PORT", "5000")
+
+      local conf = assert(conf_loader(nil, {
+        pg_port = "{vault://env/pg-port}"
+      }))
+
+      assert.equal(5000, conf.pg_port)
+      assert.equal("{vault://env/pg-port}", conf["$refs"].pg_port)
+    end)
+  end)
 end)
