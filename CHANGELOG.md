@@ -121,6 +121,13 @@
   through configuration property `http_span_name`.
   [#8150](https://github.com/Kong/kong/pull/8150)
 
+#### Configuration
+
+- A new configuration item (`openresty_path`) has been added to allow
+  developers/operators to specify the OpenResty installation to use when
+  running Kong (instead of using the system-installed OpenResty)
+  [#8412](https://github.com/Kong/kong/pull/8412)
+
 ### Fixes
 
 #### Core
