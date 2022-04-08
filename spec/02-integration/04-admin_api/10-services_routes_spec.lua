@@ -148,6 +148,27 @@ for _, strategy in helpers.each_strategy() do
             assert.res_status(400, res)
           end
         end)
+
+        it_content_types("client error with restricted url", function(content_type)
+          return function()
+            local res = client:post("/services", {
+              body = {
+                url = "http://169.254.169.254:80",
+              },
+              headers = { ["Content-Type"] = content_type },
+            })
+            assert.res_status(400, res)
+
+            res = client:post("/services", {
+              body = {
+                url = "http://example.hostname.test:2375",
+              },
+              headers = { ["Content-Type"] = content_type },
+            })
+            assert.res_status(400, res)
+          end
+        end)
+
       end)
 
       describe("GET", function()

@@ -237,6 +237,34 @@ describe("Admin API #" .. strategy, function()
             local json = cjson.decode(body)
             assert.equal("schema violation", json.name)
             assert.same({ weight = "value should be between 0 and " .. weight_max }, json.fields)
+
+            -- Invalid port
+            res = assert(client:send {
+              method = "PUT",
+              path = "/upstreams/" .. upstream.name .. "/targets/",
+              body = {
+                target = "konghq.com:22",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.response(res).has.status(400)
+            local json = cjson.decode(body)
+            assert.equal("schema violation", json.name)
+            assert.same({ target = "proxying to port 22 is disabled" }, json.fields)
+
+            -- Invalid address
+            res = assert(client:send {
+              method = "PUT",
+              path = "/upstreams/" .. upstream.name .. "/targets/",
+              body = {
+                target = "169.254.169.254",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.response(res).has.status(400)
+            local json = cjson.decode(body)
+            assert.equal("schema violation", json.name)
+            assert.same({ target = "proxying to host 169.254.169.254 is disabled" }, json.fields)
           end
         end)
 
