@@ -15,6 +15,10 @@ local null = ngx.null
 local type = type
 
 
+local denied_hosts
+local denied_ports
+
+
 local function validate_host(host)
   local res, err_or_port = utils.normalize_ip(host)
   if type(err_or_port) == "string" and err_or_port ~= "invalid port number" then
@@ -235,6 +239,88 @@ local function validate_key(key)
 end
 
 
+local function load_proxy_restrictions()
+  denied_hosts = {}
+  denied_ports = {}
+
+  if not kong or not kong.configuration then
+    return
+  end
+
+  for _, denied_host in ipairs(kong.configuration.proxy_denied_hosts) do
+    denied_hosts[denied_host] = true
+  end
+
+  for _, denied_port in ipairs(kong.configuration.proxy_denied_ports) do
+    denied_ports[tonumber(denied_port)] = true
+  end
+end
+
+
+local function validate_proxy_port(port)
+  if not port then
+    return true
+  end
+
+  if not denied_hosts or not denied_ports then
+    load_proxy_restrictions()
+  end
+
+  if denied_ports[port] then
+    return nil, "proxying to port " .. port .. " is disabled"
+  end
+
+  return true
+end
+
+
+local function validate_proxy_host(host)
+  local _, err = validate_host(host)
+  if err then
+    return nil, err
+  end
+
+  if not denied_hosts or not denied_ports then
+    load_proxy_restrictions()
+  end
+
+  if denied_hosts[host] then
+    return nil, "proxying to host " .. host .. " is disabled"
+  end
+
+  return true
+end
+
+
+local function validate_proxy_target(target)
+  local p = utils.normalize_ip(target)
+  if not p then
+    local ok = utils.validate_utf8(target)
+    if not ok then
+      return nil, "Invalid target; not a valid hostname or ip address"
+    end
+
+    return nil, "Invalid target ('" .. target .. "'); not a valid hostname or ip address"
+  end
+
+  if p then
+    local _, err = validate_proxy_port(p.port)
+    if err then
+      return nil, err
+    end
+
+    local _, err = validate_proxy_host(p.host)
+    if err then
+      return nil, err
+    end
+
+    return true
+  end
+
+  return nil, "empty target"
+end
+
+
 local typedefs = {}
 
 
@@ -256,6 +342,25 @@ typedefs.host = Schema.define {
 }
 
 
+typedefs.proxy_host = Schema.define {
+  type = "string",
+  custom_validator = validate_proxy_host,
+}
+
+
+typedefs.proxy_port = Schema.define {
+  type = "integer",
+  between =  { 0, 65535 },
+  custom_validator = validate_proxy_port,
+}
+
+
+typedefs.proxy_target = Schema.define {
+  type = "string",
+  custom_validator = validate_proxy_target,
+}
+
+
 typedefs.host_with_optional_port = Schema.define {
   type = "string",
   custom_validator = validate_host_with_optional_port,
@@ -272,6 +377,7 @@ typedefs.ip = Schema.define {
   type = "string",
   custom_validator = validate_ip,
 }
+
 
 typedefs.ip_or_cidr = Schema.define {
   type = "string",

@@ -14,8 +14,8 @@ local nonzero_timeout = Schema.define {
 }
 
 
-local default_protocol = "http"
-local default_port = 80
+local DEFAULT_PROTOCOL = "http"
+local DEFAULT_PORT = 80
 
 
 return {
@@ -31,9 +31,9 @@ return {
     { name               = typedefs.utf8_name },
     { retries            = { type = "integer", default = 5, between = { 0, 32767 } }, },
     -- { tags             = { type = "array", array = { type = "string" } }, },
-    { protocol           = typedefs.protocol { required = true, default = default_protocol } },
-    { host               = typedefs.host { required = true } },
-    { port               = typedefs.port { required = true, default = default_port }, },
+    { protocol           = typedefs.protocol { required = true, default = DEFAULT_PROTOCOL } },
+    { host               = typedefs.proxy_host { required = true } },
+    { port               = typedefs.proxy_port { required = true, default = DEFAULT_PORT }, },
     { path               = typedefs.path },
     { connect_timeout    = nonzero_timeout { default = 60000 }, },
     { write_timeout      = nonzero_timeout { default = 60000 }, },
@@ -88,7 +88,7 @@ return {
           prot = "https"
         end
 
-        local protocol = parsed_url.scheme or prot or default_protocol
+        local protocol = parsed_url.scheme or prot or DEFAULT_PROTOCOL
 
         return {
           protocol = protocol,
@@ -97,7 +97,7 @@ return {
                  parsed_url.port or
                  (protocol == "http"  and 80)  or
                  (protocol == "https" and 443) or
-                 default_port,
+                 DEFAULT_PORT,
           path = parsed_url.path or null,
         }
       end

@@ -181,6 +181,6 @@ untrusted_lua_sandbox_environment =
 
 openresty_path =
 
-proxy_restricted_hosts = 169.254.169.254
-proxy_restricted_ports = 22, 2375, 3389
+proxy_denied_hosts = 169.254.169.254
+proxy_denied_ports = 22, 2375, 3389
 ]]
