@@ -1682,6 +1682,8 @@ function Schema:process_auto_fields(data, context, nulls, opts)
     end
   end
 
+  local refs
+
   for key, field in self:each_field(data) do
     local ftype = field.type
     local value = data[key]
@@ -1736,9 +1738,16 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       if resolve_references then
         if ftype == "string" and field.referenceable then
           if is_reference(value) then
+            if refs then
+              refs[key] = value
+            else
+              refs = { [key] = value }
+            end
+
             local deref, err = dereference(value)
             if deref then
               value = deref
+
             else
               if err then
                 kong.log.warn("unable to resolve reference ", value, " (", err, ")")
@@ -1755,8 +1764,10 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           if subfield.type == "string" and subfield.referenceable then
             local count = #value
             if count > 0 then
+              refs[key] = new_tab(count, 0)
               for i = 1, count do
                 if is_reference(value[i]) then
+                  refs[key][i] = value[i]
                   local deref, err = dereference(value[i])
                   if deref then
                     value[i] = deref
@@ -1808,6 +1819,8 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       data[key] = nil
     end
   end
+
+  data["$refs"] = refs
 
   return data
 end
