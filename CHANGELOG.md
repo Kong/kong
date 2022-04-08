@@ -5,7 +5,6 @@
 - [2.7.2](#272)
 - [2.7.1](#271)
 - [2.7.0](#270)
-
 - [2.6.1](#261)
 - [2.6.0](#260)
 - [2.5.1](#251)
@@ -240,16 +239,28 @@ the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
   separate places.
   [#8315](https://github.com/Kong/kong/pull/8315)
 
-## [2.7.2] (UNRELEASED)
+## [2.7.2]
+
+### Dependencies
+
+- Bumped `OpenSSL` from 1.1.1l to 1.1.1n 
+  [#8624](https://github.com/Kong/kong/pull/8624)
+- Bumped `lua-resty-healthcheck` from 1.4.2 to 1.4.3
+  [#8620](https://github.com/Kong/kong/pull/8620)
 
 ### Fixes
+
+#### Core
+
+- Only reschedule router and plugin iterator timers after finishing previous
+  execution, avoiding unnecessary concurrent executions.
+  [#8633](https://github.com/Kong/kong/pull/8633)
 
 #### Plugins
 
 - **AWS-Lambda**: Fixed incorrect behavior when configured to use an http proxy
     and deprecated the `proxy_scheme` config attribute for removal in 3.0
     [#8406](https://github.com/Kong/kong/pull/8406)
-
 
 ## [2.7.1]
 
@@ -329,45 +340,31 @@ In this release we continued our work on better performance:
 
 ## [2.6.1]
 
+### Dependencies
+
+- Bumped `OpenSSL` from `1.1.1l` to `1.1.1n`
+  [#8630](https://github.com/Kong/kong/pull/8630)
+- Bumped `Luarocks` from `3.7.0` to `3.8.0`
+  [#8630](https://github.com/Kong/kong/pull/8630)
+
 ### Fixes
 
 #### Core
 
-- Balancer caches are now reset on configuration reload.
-  [#7924](https://github.com/Kong/kong/pull/7924)
-- Configuration reload no longer causes a new DNS-resolving timer to be started.
-  [#7943](https://github.com/Kong/kong/pull/7943)
-- Fixed problem when bootstrapping multi-node Cassandra clusters, where migrations could attempt
-  insertions before schema agreement occurred.
-  [#7667](https://github.com/Kong/kong/pull/7667)
-- Fixed intermittent botting error which happened when a custom plugin had inter-dependent entity schemas
-  on its custom DAO and they were loaded in an incorrect order
-  [#7911](https://github.com/Kong/kong/pull/7911)
-- Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
-  [#8141](https://github.com/Kong/kong/pull/8141)
-- Fixed DNS client fails to resolve unexpectedly in `ssl_cert` and `ssl_session_fetch` phases.
-  [#8161](https://github.com/Kong/kong/pull/8161)
-
-#### PDK
-
-- `kong.log.inspect` log level is now debug instead of warn. It also renders text
-  boxes more cleanly now [#7815](https://github.com/Kong/kong/pull/7815)
-
-#### Plugins
-
-- **Prometheus**: Control Plane does not show Upstream Target health metrics
-  [#7992](https://github.com/Kong/kong/pull/7922)
 
 
-### Dependencies
 
-- Bumped `lua-pack` from 1.0.5 to 2.0.0
-  [#8004](https://github.com/Kong/kong/pull/8004)
 
-[Back to TOC](#table-of-contents)
 
-- Fixed problem when the consistent hash header is not found, the balancer tries to hash a nil value.
-  [#8142](https://github.com/Kong/kong/pull/8142)
+
+
+- Target entities using hostnames were resolved when they were not needed. Now
+  when a target is removed or updated, the DNS record associated with it is
+  removed from the list of hostnames to be resolved.
+  [#8497](https://github.com/Kong/kong/pull/8497)
+- Fixed an issue where using the consistent-hashing load-balancing algorithm
+  and the header set in the `hash_on_header` property was not found in the
+  request, proxying would fail. [#8142](https://github.com/Kong/kong/pull/8142)
 
 #### Plugins
 
@@ -6887,10 +6884,10 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[2.8.1]: https://github.com/Kong/kong/compare/2.8.0...2.8.1
 [2.8.0]: https://github.com/Kong/kong/compare/2.7.0...2.8.0
 [2.7.1]: https://github.com/Kong/kong/compare/2.7.0...2.7.1
 [2.7.0]: https://github.com/Kong/kong/compare/2.6.0...2.7.0
+[2.6.1]: https://github.com/Kong/kong/compare/2.6.0...2.6.1
 [2.6.0]: https://github.com/Kong/kong/compare/2.5.1...2.6.0
 [2.5.1]: https://github.com/Kong/kong/compare/2.5.0...2.5.1
 [2.5.0]: https://github.com/Kong/kong/compare/2.4.1...2.5.0

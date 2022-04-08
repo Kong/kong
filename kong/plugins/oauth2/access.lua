@@ -545,7 +545,7 @@ local function issue_token(conf)
 
     -- Check client_id and redirect_uri
     local allowed_redirect_uris, client = get_redirect_uris(client_id)
-    if not (grant_type == GRANT_CLIENT_CREDENTIALS) then
+    if grant_type ~= GRANT_CLIENT_CREDENTIALS then
       if allowed_redirect_uris then
         local redirect_uri = parameters[REDIRECT_URI] and
           parameters[REDIRECT_URI] or
