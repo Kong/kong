@@ -844,6 +844,31 @@ describe("NGINX conf compiler", function()
       assert.True(in_prefix_kong_conf.loaded_plugins.bar)
     end)
 
+    describe("vault references", function()
+      it("are kept as references in .kong_env", function()
+        finally(function()
+          helpers.unsetenv("PG_DATABASE")
+        end)
+
+        helpers.setenv("PG_DATABASE", "resolved-kong-database")
+
+        local conf = assert(conf_loader(nil, {
+          prefix = tmp_config.prefix,
+          pg_database = "{vault://env/pg-database}",
+        }))
+
+        assert.equal("resolved-kong-database", conf.pg_database)
+        assert.equal("{vault://env/pg-database}", conf["$refs"].pg_database)
+
+        assert(prefix_handler.prepare_prefix(conf))
+
+        local contents = helpers.file.read(tmp_config.kong_env)
+
+        assert.matches("pg_database = {vault://env/pg-database}", contents, nil, true)
+        assert.not_matches("resolved-kong-database", contents, nil, true)
+      end)
+    end)
+
     describe("ssl", function()
       it("does not create SSL dir if disabled", function()
         local conf = conf_loader(nil, {
