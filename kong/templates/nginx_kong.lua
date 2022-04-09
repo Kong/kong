@@ -468,6 +468,7 @@ server {
     access_log off;
     location / {
         content_by_lua_block {
+          --Kong.worker_events.run()
           require("resty.events").run()
         }
     }

@@ -225,6 +225,7 @@ server {
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
     access_log off;
     content_by_lua_block {
+      --Kong.worker_events.run()
       require("resty.events").run()
     }
 }
