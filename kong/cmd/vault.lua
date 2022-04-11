@@ -42,7 +42,6 @@ end
 
 
 local function get(args)
-  local vault = require "kong.pdk.vault".new()
   if args.command == "get" then
     local reference = args[1]
     if not reference then
@@ -50,6 +49,8 @@ local function get(args)
     end
 
     init_db(args)
+
+    local vault = kong.vault
 
     if not vault.is_reference(reference) then
       -- assuming short form: <name>/<resource>[/<key>]

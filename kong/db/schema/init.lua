@@ -2,11 +2,9 @@ local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
 local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
-local vault        = require "kong.pdk.vault".new()
+local is_reference = require "kong.pdk.vault".new().is_reference
 
 
-local is_reference = vault.is_reference
-local dereference  = vault.get
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local re_match     = ngx.re.match
@@ -1744,7 +1742,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
               refs = { [key] = value }
             end
 
-            local deref, err = dereference(value)
+            local deref, err = kong.vault.get(value)
             if deref then
               value = deref
 
@@ -1768,7 +1766,7 @@ function Schema:process_auto_fields(data, context, nulls, opts)
               for i = 1, count do
                 if is_reference(value[i]) then
                   refs[key][i] = value[i]
-                  local deref, err = dereference(value[i])
+                  local deref, err = kong.vault.get(value[i])
                   if deref then
                     value[i] = deref
                   else
