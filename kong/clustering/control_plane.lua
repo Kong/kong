@@ -481,7 +481,10 @@ function _M:handle_cp_websocket()
   self.clients[wb] = queue
 
   if not self.deflated_reconfigure_payload then
-    _, err = self:export_deflated_reconfigure_payload()
+    local ok, _, err = pcall(self.export_deflated_reconfigure_payload, self)
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, "unable to export initial config from database: ", err, log_suffix)
+    end
   end
 
   if self.deflated_reconfigure_payload then
@@ -654,8 +657,8 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     return
   end
 
-  local _, err = self:export_deflated_reconfigure_payload()
-  if err then
+  local ok, err = pcall(self.export_deflated_reconfigure_payload, self)
+  if not ok then
     ngx_log(ngx_ERR, _log_prefix, "unable to export initial config from database: ", err)
   end
 
