@@ -1505,7 +1505,15 @@ local function load(path, custom_conf, opts)
 
     loaded_vaults = setmetatable(vaults, _nop_tostring_mt)
 
-    local vault = require "kong.pdk.vault".new()
+    local vault_conf = { loaded_vaults = loaded_vaults }
+    for k, v in pairs(conf) do
+      if string.sub(k, 1, 6) == "vault_" then
+        vault_conf[k] = v
+      end
+    end
+
+    local vault = require("kong.pdk.vault").new({ configuration = vault_conf })
+
     for k, v in pairs(conf) do
       if vault.is_reference(v) then
         if refs then

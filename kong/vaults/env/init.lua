@@ -37,14 +37,11 @@ end
 
 local function get(conf, resource, version)
   local prefix = conf.prefix
-
-  resource = gsub(resource, "-", "_")
-
   if type(prefix) == "string" then
     resource = prefix .. resource
   end
 
-  resource = upper(resource)
+  resource = upper(gsub(resource, "-", "_"))
 
   if version == 2 then
     resource = resource .. "_PREVIOUS"
