@@ -182,7 +182,7 @@ vegeta -version
 # Run gRPC server
 # ---------------
 if [[ "$TEST_SUITE" =~ integration|dbless|plugins ]]; then
-  docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 moul/grpcbin
+  docker run -d --name grpcbin -p 15002:9000 -p 15003:9001 kong/grpcbin
 fi
 
 # -----------------
