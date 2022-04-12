@@ -106,6 +106,14 @@ describe("Plugin: rate-limiting (integration)", function()
           add_redis_user(red)
         end
 
+bp = helpers.get_db_utils(nil, {
+      "routes",
+      "services",
+      "plugins",
+    }, {
+      "response-ratelimiting",
+    })
+
         local route1 = assert(bp.routes:insert {
           hosts        = { "redistest1.com" },
         })
