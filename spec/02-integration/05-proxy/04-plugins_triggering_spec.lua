@@ -676,6 +676,37 @@ for _, strategy in helpers.each_strategy() do
         end
 
         do
+          -- plugin to mock runtime exception
+          local mock_one_fn = [[
+            local nilValue = nil
+            kong.log.info('test' .. nilValue)
+          ]]
+
+          local mock_two_fn = [[
+            ngx.header['X-Source'] = kong.response.get_source()
+          ]]
+
+          local mock_service = bp.services:insert {
+            name = "runtime_exception",
+          }
+
+          bp.routes:insert {
+            hosts     = { "runtime_exception" },
+            protocols = { "http" },
+            service   = mock_service,
+          }
+
+          bp.plugins:insert {
+            name     = "pre-function",
+            service  = { id = mock_service.id },
+            config  = {
+              ["access"] = { mock_one_fn },
+              ["header_filter"] = { mock_two_fn },
+            },
+          }
+        end
+
+        do
           -- global plugin to catch Nginx-produced client errors
           bp.plugins:insert {
             name = "file-log",
@@ -1021,6 +1052,19 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(504, res) -- Gateway Timeout
         assert.equal("timeout", res.headers["Log-Plugin-Service-Matched"])
+      end)
+
+      it("kong.response.get_source() returns \"error\" if plugin runtime exception occurs, FTI-3200", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "runtime_exception"
+          }
+        })
+        local body = assert.res_status(500, res)
+        assert.same("body_filter", body)
+        assert.equal("error", res.headers["X-Source"])
       end)
     end)
 

@@ -78,6 +78,14 @@
 - The PDK is no longer versioned
   [#8585](https://github.com/Kong/kong/pull/8585)
 
+### Deprecations
+
+- The `go_pluginserver_exe` and `go_plugins_dir` directives are no longer supported.
+  [#8552](https://github.com/Kong/kong/pull/8552). If you are using 
+  [Go plugin server](https://github.com/Kong/go-pluginserver), please migrate your plugins to use the
+  [Go PDK](https://github.com/Kong/go-pdk) before upgrading.
+
+
 #### Plugins
 
 - The proxy-cache plugin does not store the response data in
@@ -88,6 +96,11 @@
   `kong.response.getRawBody`, `kong.service.response.getRawBody` and Python's `kong.request.get_raw_body`, 
   `kong.response.get_raw_body`, `kong.service.response.get_raw_body` respectively.
   [#8623](https://github.com/Kong/kong/pull/8623)
+
+#### Configuration
+
+- Change the default of `lua_ssl_trusted_certificate` to `system`
+  [#8602](https://github.com/Kong/kong/pull/8602) to automatically load trusted CA list from system CA store.
 
 ### Dependencies
 
@@ -100,14 +113,6 @@
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
 
-
-### Breaking Changes
-
-##### Configuration
-
-- Change the default of `lua_ssl_trusted_certificate` to `system`
-  [#8602](https://github.com/Kong/kong/pull/8602) to automatically load trusted CA list from system CA store.
-
 ### Additions
 
 #### Plugins
@@ -115,6 +120,13 @@
 - **Zipkin**: add support for including HTTP path in span name 
   through configuration property `http_span_name`.
   [#8150](https://github.com/Kong/kong/pull/8150)
+
+#### Configuration
+
+- A new configuration item (`openresty_path`) has been added to allow
+  developers/operators to specify the OpenResty installation to use when
+  running Kong (instead of using the system-installed OpenResty)
+  [#8412](https://github.com/Kong/kong/pull/8412)
 
 ### Fixes
 
