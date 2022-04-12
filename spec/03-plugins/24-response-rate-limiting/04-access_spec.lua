@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
             config   = {
               fault_tolerant    = false,
               policy            = policy,
-              redis_host        ^= REDIS_HOST,
+              redis_host        = REDIS_HOST,
               redis_port        = redis_conf.redis_port,
               redis_ssl         = redis_conf.redis_ssl,
               redis_ssl_verify  = redis_conf.redis_ssl_verify,
