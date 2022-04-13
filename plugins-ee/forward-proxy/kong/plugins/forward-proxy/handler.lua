@@ -8,7 +8,6 @@
 local meta       = require "kong.meta"
 local http       = require "resty.http"
 local ee         = require "kong.enterprise_edition"
-local base64     = require "ngx.base64"
 
 
 local kong                = kong
@@ -23,7 +22,7 @@ local ngx_req_get_body    = ngx.req.get_body_data
 local ngx_now             = ngx.now
 local ngx_print           = ngx.print
 local str_lower           = string.lower
-local base64_encode       = base64.encode_base64url
+local base64_encode       = ngx.encode_base64
 
 
 local _prefix_log = "[forward-proxy] "
