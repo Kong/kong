@@ -84,7 +84,8 @@ local function get_config_service()
         data.config.format_version = nil
 
         peer.config_obj.next_config = data.config
-        peer.config_obj.next_hash = data.hash
+        peer.config_obj.next_hash = data.config_hash
+        peer.config_obj.next_hashes = data.hashes
         peer.config_obj.next_config_version = tonumber(data.version)
         if peer.config_semaphore:count() <= 0 then
           -- the following line always executes immediately after the `if` check
@@ -196,11 +197,12 @@ function _M:communicate(premature)
         end
         local config_table = self.next_config
         local config_hash  = self.next_hash
+        local hashes = self.next_hashes
         if config_table and self.next_config_version > last_config_version then
           ngx_log(ngx_INFO, _log_prefix, "received config #", self.next_config_version, log_suffix)
 
           local pok, res
-          pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, true)
+          pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, true, hashes)
           if pok then
             last_config_version = self.next_config_version
             if not res then
@@ -214,6 +216,7 @@ function _M:communicate(premature)
           if self.next_config == config_table then
             self.next_config = nil
             self.next_hash = nil
+            self.next_hashes = nil
           end
         end
 

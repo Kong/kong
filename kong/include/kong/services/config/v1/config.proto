@@ -85,6 +85,15 @@ message PluginVersion {
   string version = 2;
 }
 
+message GranularHashes {
+  string config = 1;
+  string routes = 2;
+  string services = 3;
+  string plugins = 4;
+  string upstreams = 5;
+  string targets = 6;
+}
+
 message SyncConfigRequest {
   // Config represents a configuration of Kong Gateway.
   // This is same as the declarative configuration of Kong.
@@ -101,7 +110,8 @@ message SyncConfigRequest {
   uint64 version = 2;
 
   // raw binary hash of the config data.
-  string hash = 3;
+  string config_hash = 3;
+  GranularHashes hashes = 4;
 }
 
 message SyncConfigResponse {
