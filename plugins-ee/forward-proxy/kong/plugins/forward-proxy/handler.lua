@@ -210,8 +210,6 @@ function ForwardProxyHandler:access(conf)
     proxy_opts.http_proxy_authorization = auth_header
   end
 
-  -- Should we check http_proxy_port?
-  -- Should we check if http_proxy_host contains schema?
   if conf.http_proxy_host then
     proxy_opts.http_proxy =
       str_format("http://%s:%d", conf.http_proxy_host, conf.http_proxy_port)
