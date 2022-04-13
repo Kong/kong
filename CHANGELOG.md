@@ -81,7 +81,7 @@
 ### Deprecations
 
 - The `go_pluginserver_exe` and `go_plugins_dir` directives are no longer supported.
-  [#8552](https://github.com/Kong/kong/pull/8552). If you are using 
+  [#8552](https://github.com/Kong/kong/pull/8552). If you are using
   [Go plugin server](https://github.com/Kong/go-pluginserver), please migrate your plugins to use the
   [Go PDK](https://github.com/Kong/go-pdk) before upgrading.
 
@@ -92,8 +92,8 @@
   `ngx.ctx.proxy_cache_hit` anymore. Logging plugins that need the response data
   must read it from `kong.ctx.shared.proxy_cache_hit` from Kong 3.0 on.
   [#8607](https://github.com/Kong/kong/pull/8607)
-- PDK now return `Uint8Array` and `bytes` for JavaScript's `kong.request.getRawBody`, 
-  `kong.response.getRawBody`, `kong.service.response.getRawBody` and Python's `kong.request.get_raw_body`, 
+- PDK now return `Uint8Array` and `bytes` for JavaScript's `kong.request.getRawBody`,
+  `kong.response.getRawBody`, `kong.service.response.getRawBody` and Python's `kong.request.get_raw_body`,
   `kong.response.get_raw_body`, `kong.service.response.get_raw_body` respectively.
   [#8623](https://github.com/Kong/kong/pull/8623)
 
@@ -112,12 +112,14 @@
   [#8592](https://github.com/Kong/kong/pull/8592)
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
+- Bumped resty.acme from 0.7.2 to 0.8.0
+  [#8680](https://github.com/Kong/kong/pull/8680
 
 ### Additions
 
 #### Plugins
 
-- **Zipkin**: add support for including HTTP path in span name 
+- **Zipkin**: add support for including HTTP path in span name
   through configuration property `http_span_name`.
   [#8150](https://github.com/Kong/kong/pull/8150)
 
