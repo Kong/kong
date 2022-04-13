@@ -209,5 +209,71 @@ describe("kong.clustering", function()
       end
     end)
 
+    describe("granular hashes", function()
+      local DECLARATIVE_EMPTY_CONFIG_HASH = require("kong.constants").DECLARATIVE_EMPTY_CONFIG_HASH
+
+      it("filled with empty hash values for missing config fields", function()
+        local value = {}
+
+        for _ = 1, 10 do
+          local hash, hashes = clustering.calculate_config_hash(clustering, value)
+          assert.is_string(hash)
+          assert.equal("aaf38faf0b5851d711027bb4d812d50d", hash)
+          assert.is_table(hashes)
+          assert.same({
+            config = "aaf38faf0b5851d711027bb4d812d50d",
+            routes = DECLARATIVE_EMPTY_CONFIG_HASH,
+            services = DECLARATIVE_EMPTY_CONFIG_HASH,
+            plugins = DECLARATIVE_EMPTY_CONFIG_HASH,
+            upstreams = DECLARATIVE_EMPTY_CONFIG_HASH,
+            targets = DECLARATIVE_EMPTY_CONFIG_HASH,
+          }, hashes)
+        end
+      end)
+
+      it("has sensible values for existing fields", function()
+        local value = {
+          routes = {},
+          services = {},
+          plugins = {},
+        }
+
+        for _ = 1, 10 do
+          local hash, hashes = clustering.calculate_config_hash(clustering, value)
+          assert.is_string(hash)
+          assert.equal("768533baebe6e0d46de8d5f8a0c05bf0", hash)
+          assert.is_table(hashes)
+          assert.same({
+            config = "768533baebe6e0d46de8d5f8a0c05bf0",
+            routes = "99914b932bd37a50b983c5e7c90ae93b",
+            services = "99914b932bd37a50b983c5e7c90ae93b",
+            plugins = "99914b932bd37a50b983c5e7c90ae93b",
+            upstreams = DECLARATIVE_EMPTY_CONFIG_HASH,
+            targets = DECLARATIVE_EMPTY_CONFIG_HASH,
+          }, hashes)
+        end
+
+        value = {
+          upstreams = {},
+          targets = {},
+        }
+
+        for _ = 1, 10 do
+          local hash, hashes = clustering.calculate_config_hash(clustering, value)
+          assert.is_string(hash)
+          assert.equal("6c5fb69169a0fabb24dcfa3a5d7a14b0", hash)
+          assert.is_table(hashes)
+          assert.same({
+            config = "6c5fb69169a0fabb24dcfa3a5d7a14b0",
+            routes = DECLARATIVE_EMPTY_CONFIG_HASH,
+            services = DECLARATIVE_EMPTY_CONFIG_HASH,
+            plugins = DECLARATIVE_EMPTY_CONFIG_HASH,
+            upstreams = "99914b932bd37a50b983c5e7c90ae93b",
+            targets = "99914b932bd37a50b983c5e7c90ae93b",
+          }, hashes)
+        end
+      end)
+    end)
+
   end)
 end)
