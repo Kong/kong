@@ -171,8 +171,8 @@ end
 
 function _M:push_config_one_client(client)
   if not self.config_call_rpc or not self.config_call_args then
-    local payload, err = self:export_deflated_reconfigure_payload()
-    if not payload then
+    local ok, err = pcall(self.export_deflated_reconfigure_payload, self)
+    if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
       return
     end
@@ -558,8 +558,8 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
   end
 
   do
-    local _, err = self:export_deflated_reconfigure_payload()
-    if err then
+    local ok, err = pcall(self.export_deflated_reconfigure_payload, self)
+    if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to export initial config from database: ", err)
     end
   end
