@@ -152,6 +152,45 @@ pipeline {
         )
       }
     }
+
+    stage('next/2.6.x.x to here') {
+      steps {
+        parallel (
+          "Kong EE next/2.6.x.x to here (pg)": {
+            sh "sealy --from kong/kong-gateway-internal:2.6-nightly --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path"
+          },
+          "Kong EE next/2.6.x.x to here (c*)": {
+            sh "sealy --from kong/kong-gateway-internal:2.6-nightly --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path --cassandra"
+          }
+        )
+      }
+    }
+
+    stage('next/2.7.x.x to here') {
+      steps {
+        parallel (
+          "Kong EE next/2.7.x.x to here (pg)": {
+            sh "sealy --from kong/kong-gateway-internal:2.7-nightly --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path"
+          },
+          "Kong EE next/2.7.x.x to here (c*)": {
+            sh "sealy --from kong/kong-gateway-internal:2.7-nightly --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path --cassandra"
+          }
+        )
+      }
+    }
+
+    stage('next/2.8.x.x to here') {
+      steps {
+        parallel (
+          "Kong EE next/2.8.x.x to here (pg)": {
+            sh "sealy --from kong/kong-gateway-internal:2.8-nightly --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path"
+          },
+          "Kong EE next/2.8.x.x to here (c*)": {
+            sh "sealy --from kong/kong-gateway-internal:2.8-nightly --to ${env.DOCKER_IMAGE_NAME} --seeds paths/2.1.x_happy_path --cassandra"
+          }
+        )
+      }
+    }
   }
 
   post {
