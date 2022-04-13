@@ -1539,13 +1539,14 @@ local function load(path, custom_conf, opts)
     local vault_conf = { loaded_vaults = loaded_vaults }
     for k, v in pairs(conf) do
       if sub(k, 1, 6) == "vault_" then
-        vault_conf[k] = v
+        vault_conf[k] = infer_value(v, "string", opts)
       end
     end
 
     local vault = require("kong.pdk.vault").new({ configuration = vault_conf })
 
     for k, v in pairs(conf) do
+      v = infer_value(v, "string", opts)
       if vault.is_reference(v) then
         if refs then
           refs[k] = v
