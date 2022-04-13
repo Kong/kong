@@ -40,7 +40,7 @@ local fixtures = {
 
       content_by_lua_block {
         require("spec.fixtures.forward-proxy-server").connect({
-          basic_auth = require("ngx.base64").encode_base64url("test:kong"),
+          basic_auth = ngx.encode_base64("test:konghq"),
         })
       }
     }
@@ -174,7 +174,7 @@ for _, strategy in strategies() do
           https_proxy_host = "127.0.0.1",
           https_proxy_port = 16796,
           auth_username    = "test",
-          auth_password    = "kong",
+          auth_password    = "konghq",
         },
         route = bp.routes:insert {
           hosts   = { "proxy.test" },
