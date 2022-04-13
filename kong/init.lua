@@ -372,10 +372,15 @@ local function flush_delayed_response(ctx)
 end
 
 
+local function has_declarative_config(kong_config)
+  return kong_config.declarative_config or kong_config.declarative_config_string
+end
+
+
 local function parse_declarative_config(kong_config)
   local dc = declarative.new_config(kong_config)
 
-  if not kong_config.declarative_config and not kong_config.declarative_config_string then
+  if not has_declarative_config(kong_config) then
     -- return an empty configuration,
     -- including only the default workspace
     local entities, _, _, meta = dc:parse_table({ _format_version = "2.1" })
@@ -676,7 +681,13 @@ function Kong.init_worker()
       return
     end
 
-    if declarative_entities then
+    if not has_declarative_config(kong.configuration) and
+      declarative.get_current_hash() ~= nil then
+      -- if there is no declarative config set and a config is present in LMDB,
+      -- just build the router and plugins iterator
+      ngx_log(ngx_INFO, "found persisted lmdb config, loading...")
+      declarative_init_build()
+    elseif declarative_entities then
       ok, err = load_declarative_config(kong.configuration,
                                         declarative_entities,
                                         declarative_meta)
