@@ -1742,11 +1742,11 @@ describe("Configuration loader", function()
       helpers.setenv("PG_PORT", "5000")
 
       local conf = assert(conf_loader(nil, {
-        pg_port = "{vault://env/pg-port}"
+        pg_port = "{vault://env/pg-port#0}"
       }))
 
       assert.equal(5000, conf.pg_port)
-      assert.equal("{vault://env/pg-port}", conf["$refs"].pg_port)
+      assert.equal("{vault://env/pg-port#0}", conf["$refs"].pg_port)
     end)
   end)
 end)
