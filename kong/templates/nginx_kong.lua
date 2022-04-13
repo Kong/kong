@@ -463,12 +463,10 @@ server {
 
 > if events_mechanism == "unix_socket" then
 server {
-    server_name kong_worker_events;
     listen unix:${{PREFIX}}/worker_events.sock;
     access_log off;
     location / {
         content_by_lua_block {
-          --Kong.worker_events.run()
           require("resty.events").run()
         }
     }
