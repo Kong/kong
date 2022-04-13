@@ -285,7 +285,11 @@ function _M:init_worker()
 
       self:request_version_negotiation()
 
-      local config_proto, msg = version_negotiation.get_negotiated_service("config")
+      local config_proto, msg = self.conf.cluster_protocol, "set by configuration"
+      if not config_proto then
+        config_proto, msg = version_negotiation.get_negotiated_service("config")
+      end
+
       if not config_proto and msg then
         ngx_log(ngx_ERR, _log_prefix, "error reading negotiated \"config\" service: ", msg)
       end

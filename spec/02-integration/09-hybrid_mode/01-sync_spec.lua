@@ -17,7 +17,7 @@ local KEY_AUTH_PLUGIN
 
 
 for _, strategy in helpers.each_strategy() do
-  for _, cluster_protocol in ipairs{"json", "wrpc"} do
+  for _, cluster_protocol in ipairs{"v0", "v1"} do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
 
       lazy_setup(function()
@@ -559,7 +559,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  for _, cluster_protocol in ipairs{"json", "wrpc"} do
+  for _, cluster_protocol in ipairs{"v0", "v1"} do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
       lazy_setup(function()
         helpers.get_db_utils(strategy, {
@@ -705,7 +705,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         role = "data_plane",
-        cluster_protocol = "json",
+        cluster_protocol = "v0",
         database = "off",
         prefix = "servroot2",
         cluster_cert = "spec/fixtures/kong_clustering.crt",
@@ -716,7 +716,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         role = "data_plane",
-        cluster_protocol = "wrpc",
+        cluster_protocol = "v1",
         database = "off",
         prefix = "servroot3",
         cluster_cert = "spec/fixtures/kong_clustering.crt",

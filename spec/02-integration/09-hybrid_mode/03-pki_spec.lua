@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 
 
-for _, cluster_protocol in ipairs{"json", "wrpc"} do
+for _, cluster_protocol in ipairs{"v0", "v1"} do
   for _, strategy in helpers.each_strategy() do
     describe("CP/DP PKI sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
 
