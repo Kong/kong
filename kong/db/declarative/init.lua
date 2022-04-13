@@ -993,7 +993,7 @@ do
   local DECLARATIVE_LOCK_KEY = "declarative:lock"
 
   -- make sure no matter which path it exits, we released the lock.
-  function declarative.load_into_cache_with_events(entities, meta, hash)
+  function declarative.load_into_cache_with_events(entities, meta, hash, hashes)
     local kong_shm = ngx.shared.kong
 
     local ok, err = kong_shm:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
@@ -1007,7 +1007,7 @@ do
       return nil, err
     end
 
-    ok, err = load_into_cache_with_events_no_lock(entities, meta, hash)
+    ok, err = load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
     kong_shm:delete(DECLARATIVE_LOCK_KEY)
 
     return ok, err
