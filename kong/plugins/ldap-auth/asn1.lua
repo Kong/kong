@@ -1,12 +1,17 @@
+require "resty.openssl.include.ossl_typ"
+local asn1_macro = require "resty.openssl.include.asn1"
+local ffi = require "ffi"
+local C = ffi.C
+local ffi_new = ffi.new
+local ffi_string = ffi.string
+
 local lpack = require "lua_pack"
 local bpack = lpack.pack
 local bunpack = lpack.unpack
 
-
 local setmetatable = setmetatable
 local tonumber = tonumber
 local reverse = string.reverse
-local ipairs = ipairs
 local concat = table.concat
 local insert = table.insert
 local pairs = pairs
@@ -15,6 +20,13 @@ local type = type
 local char = string.char
 local bit = bit
 
+asn1_macro.declare_asn1_functions("ASN1_TYPE")
+
+ffi.cdef [[
+	int i2d_ASN1_OCTET_STRING(const ASN1_STRING *a, unsigned char **pp);
+	int i2d_ASN1_INTEGER(const ASN1_INTEGER *a, unsigned char **pp);
+	ASN1_STRING *ASN1_OCTET_STRING_new();
+]]
 
 local _M = {}
 
@@ -236,14 +248,8 @@ _M.ASN1Encoder = {
   registerBaseEncoders = function(self)
     self.encoder = {}
 
+    -- TODO(mayo) replace ldapop
     self.encoder["table"] = function(self, val)
-      if val._ldap == "0A" then
-        local ival = self.encodeInt(val[1])
-        local len = self.encodeLength(#ival)
-
-        return bpack("XAA", "0A", len, ival)
-      end
-
       if val._ldaptype then
         local len
 
@@ -254,101 +260,34 @@ _M.ASN1Encoder = {
         len = self.encodeLength(#val[1])
         return bpack("XAA", val._ldaptype, len, val[1])
       end
-
-      local encVal = ""
-      for _, v in ipairs(val) do
-        encVal = encVal .. self.encode(v) -- todo: buffer?
-      end
-
-      local tableType = "\x30"
-      if val["_snmp"] then
-        tableType = bpack("X", val["_snmp"])
-      end
-
-      return bpack("AAA", tableType, self.encodeLength(#encVal), encVal)
-    end
-
-    -- Boolean encoder
-    self.encoder["boolean"] = function(self, val)
-      if val then
-        return bpack("X", "01 01 FF")
-      else
-        return bpack("X", "01 01 00")
-      end
     end
 
     -- Integer encoder
     self.encoder["number"] = function(self, val)
-      local ival = self.encodeInt(val)
-      local len = self.encodeLength(#ival)
-
-      return bpack("XAA", "02", len, ival)
+      local typ = C.ASN1_INTEGER_new()
+      C.ASN1_INTEGER_set(typ, val)
+      local pp = ffi_new("char*[1]")
+      local ret = C.i2d_ASN1_INTEGER(typ, pp)
+      C.ASN1_INTEGER_free(typ)
+      if ret <= 0 then
+        return nil, "failed to call i2d_ASN1_UTF8STRING"
+      end
+      return ffi_string(pp[0], ret)
     end
 
     -- Octet String encoder
     self.encoder["string"] = function(self, val)
-      local len = self.encodeLength(#val)
-      return bpack("XAA", "04", len, val)
+      local typ = C.ASN1_OCTET_STRING_new()
+      C.ASN1_STRING_set(typ, val, #val)
+      local pp = ffi_new("char*[1]")
+      local ret = C.i2d_ASN1_OCTET_STRING(typ, pp)
+      C.ASN1_STRING_free(typ)
+      if ret <= 0 then
+        return nil, "failed to call i2d_ASN1_UTF8STRING"
+      end
+      return ffi_string(pp[0], ret)
     end
 
-    -- Null encoder
-    self.encoder["nil"] = function(self, val)
-      return bpack("X", "05 00")
-    end
-  end,
-
-  encode_oid_component = function(n)
-    local parts = {}
-
-    parts[1] = char(n % 128)
-    while n >= 128 do
-      n = bit.rshift(n, 7)
-      parts[#parts + 1] = char(n % 128 + 0x80)
-    end
-
-    return reverse(concat(parts))
-  end,
-
-  encodeInt = function(val)
-    local lsb = 0
-
-    if val > 0 then
-      local valStr = ""
-
-      while (val > 0) do
-        lsb = math.fmod(val, 256)
-        valStr = valStr .. bpack("C", lsb)
-        val = math.floor(val/256)
-      end
-
-      if lsb > 127 then
-        valStr = valStr .. "\0"
-      end
-
-      return reverse(valStr)
-
-    elseif val < 0 then
-      local i = 1
-      local tcval = val + 256
-
-      while tcval <= 127 do
-        tcval = tcval + (math.pow(256, i) * 255)
-        i = i+1
-      end
-
-      local valStr = ""
-
-      while (tcval > 0) do
-        lsb = math.fmod(tcval, 256)
-        valStr = valStr .. bpack("C", lsb)
-        tcval = math.floor(tcval/256)
-      end
-
-      return reverse(valStr)
-
-    else -- val == 0
-      return bpack("x")
-    end
   end,
 
   encodeLength = function(len)
