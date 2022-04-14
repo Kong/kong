@@ -363,12 +363,6 @@ server {
         }
     }
 
-    location /nginx_status {
-        internal;
-        access_log off;
-        stub_status;
-    }
-
     location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
     }
@@ -408,17 +402,23 @@ server {
         }
     }
 
-    location /nginx_status {
-        internal;
-        access_log off;
-        stub_status;
-    }
-
     location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
     }
 }
 > end
+
+> if #status_listeners > 0 or (#admin_listeners > 0 and (role == "control_plane" or role == "traditional")) then
+server {
+    server_name nginx_status;
+    listen unix:${{PREFIX}}/nginx_status.sock;
+    error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
+    location /nginx_status {
+        access_log off;
+        stub_status;
+    }
+}
+> end -- #status_listeners > 0 or (#admin_listeners > 0 and (role == "control_plane" or role == "traditional"))
 
 > if role == "control_plane" then
 server {

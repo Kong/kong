@@ -55,7 +55,7 @@ describe("Admin API listeners", function()
       admin_listen = "127.0.0.1:9001, 127.0.0.1:9002",
     }))
 
-    assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_conf))
+    assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.same({
       ["127.0.0.1:9001"] = 1,
       ["127.0.0.1:9002"] = 2,

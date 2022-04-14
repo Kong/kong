@@ -4,6 +4,7 @@ local find = string.find
 local lower = string.lower
 local concat = table.concat
 local select = select
+local http = require "resty.http"
 local ngx_timer_pending_count = ngx.timer.pending_count
 local ngx_timer_running_count = ngx.timer.running_count
 local balancer = require("kong.runloop.balancer")
@@ -11,6 +12,8 @@ local get_all_upstreams = balancer.get_all_upstreams
 if not balancer.get_all_upstreams then -- API changed since after Kong 2.5
   get_all_upstreams = require("kong.runloop.balancer.upstreams").get_all_upstreams
 end
+
+local nginx_status_sock = "unix:" .. ngx.config.prefix() .. "nginx_status.sock"
 
 local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 
@@ -298,18 +301,31 @@ local function metric_data()
   end
 
   if ngx.location then
-    local r = ngx.location.capture "/nginx_status"
-
-    if r.status ~= 200 then
+    local httpc = http.new()
+    local _, err = httpc:connect(nginx_status_sock)
+    if err ~= nil then
       kong.log.warn("prometheus: failed to retrieve /nginx_status ",
-        "while processing /metrics endpoint")
-
+        "while processing /metrics endpoint: ", err)
     else
-      local accepted, handled, total = select(3, find(r.body,
-        "accepts handled requests\n (%d*) (%d*) (%d*)"))
-      metrics.connections:set(accepted, { "accepted" })
-      metrics.connections:set(handled, { "handled" })
-      metrics.connections:set(total, { "total" })
+      local r, err = httpc:request({ method = "GET", path = "/nginx_status",
+          headers = { ["Host"] = "localhost" } })
+      local nginx_status_body = r:read_body()
+      httpc:close()
+      if err ~= nil then
+        kong.log.warn("prometheus: failed to retrieve /nginx_status ",
+          "while processing /metrics endpoint: ", err)
+
+      elseif r.status ~= 200 then
+        kong.log.warn("prometheus: failed to retrieve /nginx_status ",
+          "while processing /metrics endpoint")
+
+      else
+        local accepted, handled, total = select(3, find(nginx_status_body,
+          "accepts handled requests\n (%d*) (%d*) (%d*)"))
+        metrics.connections:set(accepted, { "accepted" })
+        metrics.connections:set(handled, { "handled" })
+        metrics.connections:set(total, { "total" })
+      end
     end
   end
 

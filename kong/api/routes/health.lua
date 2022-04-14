@@ -1,5 +1,6 @@
 local utils = require "kong.tools.utils"
 local declarative = require "kong.db.declarative"
+local http = require "resty.http"
 
 local find = string.find
 local select = select
@@ -14,6 +15,7 @@ local tonumber = tonumber
 local kong = kong
 local dbless = kong.configuration.database == "off"
 local data_plane_role = kong.configuration.role == "data_plane"
+local nginx_status_sock = "unix:" .. ngx.config.prefix() .. "nginx_status.sock"
 
 
 return {
@@ -42,14 +44,27 @@ return {
 
       -- nginx stats
 
-      local r = ngx.location.capture "/nginx_status"
+      local httpc = http.new()
+      local _, err = httpc:connect(nginx_status_sock)
+      if err ~= nil then
+        kong.log.err("failed to retrieve status: ", err)
+        return kong.response.exit(500, { message = "An unexpected error happened" })
+      end
+      local r, err = httpc:request({ method = "GET", path = "/nginx_status",
+          headers = { ["Host"] = "localhost" } })
+      local nginx_status_body = r:read_body()
+      httpc:close()
+      if err ~= nil then
+        kong.log.err("failed to retrieve status: ", err)
+        return kong.response.exit(500, { message = "An unexpected error happened" })
+      end
       if r.status ~= 200 then
-        kong.log.err(r.body)
+        kong.log.err("failed to retrieve status: ", nginx_status_body)
         return kong.response.exit(500, { message = "An unexpected error happened" })
       end
 
       local var = ngx.var
-      local accepted, handled, total = select(3, find(r.body, "accepts handled requests\n (%d*) (%d*) (%d*)"))
+      local accepted, handled, total = select(3, find(nginx_status_body, "accepts handled requests\n (%d*) (%d*) (%d*)"))
 
       local status_response = {
         memory = knode.get_memory_stats(unit, scale),
