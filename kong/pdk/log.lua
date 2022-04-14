@@ -747,7 +747,6 @@ do
 
       local ctx = ongx.ctx
       local var = ongx.var
-      local req = ongx.req
 
       local authenticated_entity
       if ctx.authenticated_credential ~= nil then
@@ -809,7 +808,7 @@ do
         service = ctx.service,
         consumer = ctx.authenticated_consumer,
         client_ip = var.remote_addr,
-        started_at = ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
+        started_at = okong.request.get_start_time(),
       })
     end
 
@@ -818,10 +817,10 @@ do
       check_phase(PHASES_LOG)
 
       local ongx = (options or {}).ngx or ngx
+      local okong = (options or {}).kong or kong
 
       local ctx = ongx.ctx
       local var = ongx.var
-      local req = ongx.req
 
       local authenticated_entity
       if ctx.authenticated_credential ~= nil then
@@ -865,7 +864,7 @@ do
         service = ctx.service,
         consumer = ctx.authenticated_consumer,
         client_ip = var.remote_addr,
-        started_at = ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
+        started_at = okong.request.get_start_time(),
       })
     end
   end
