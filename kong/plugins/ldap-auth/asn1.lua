@@ -1,5 +1,3 @@
-require "resty.openssl.include.ossl_typ"
-local asn1_macro = require "resty.openssl.include.asn1"
 local ffi = require "ffi"
 local C = ffi.C
 local ffi_new = ffi.new
@@ -17,15 +15,13 @@ local tonumber = tonumber
 local reverse = string.reverse
 local concat = table.concat
 local pairs = pairs
-local math = math
 local type = type
 local char = string.char
 local bit = bit
+local band = bit.band
 
-
-asn1_macro.declare_asn1_functions("ASN1_TYPE")
-asn1_macro.declare_asn1_functions("ASN1_ENUMERATED")
-
+local cucharpp = ffi_new("const unsigned char*[1]")
+local charpp = ffi_new("char*[1]")
 
 ffi.cdef [[
   ASN1_STRING *ASN1_OCTET_STRING_new();
@@ -71,18 +67,18 @@ end
 function _M.intToBER(i)
   local ber = {}
 
-  if bit.band(i, _M.BERCLASS.Application) == _M.BERCLASS.Application then
+  if band(i, _M.BERCLASS.Application) == _M.BERCLASS.Application then
     ber.class = _M.BERCLASS.Application
-  elseif bit.band(i, _M.BERCLASS.ContextSpecific) == _M.BERCLASS.ContextSpecific then
+  elseif band(i, _M.BERCLASS.ContextSpecific) == _M.BERCLASS.ContextSpecific then
     ber.class = _M.BERCLASS.ContextSpecific
-  elseif bit.band(i, _M.BERCLASS.Private) == _M.BERCLASS.Private then
+  elseif band(i, _M.BERCLASS.Private) == _M.BERCLASS.Private then
     ber.class = _M.BERCLASS.Private
   else
     ber.class = _M.BERCLASS.Universal
   end
 
   -- constructed  0x20
-  if bit.band(i, 0x20) == 0x20 then
+  if band(i, 0x20) == 0x20 then
     ber.constructed = true
     ber.number = i - ber.class - 32
 
@@ -95,30 +91,34 @@ function _M.intToBER(i)
 end
 
 
-local function asn1_get_object(der, start, stop)
-  start = start or 0
-  stop = stop or #der
-  assert(stop >= start, fmt("invalid offset '%s', start: %s", stop, start))
-  assert(stop <= #der, "stop offset must less than length")
+local asn1_get_object
+do
+  local lenp = ffi_new("long[1]")
+  local tagp = ffi_new("int[1]")
+  local classp = ffi_new("int[1]")
+  local strpp = ffi_new("const unsigned char*[1]")
 
-  local len = ffi_new("long[1]")
-  local tag = ffi_new("int[1]")
-  local class = ffi_new("int[1]")
-  local s_der = ffi_cast("const unsigned char *", der)
-  local p = s_der + start
-  local c_str = ffi_new("const unsigned char*[1]", p)
+  function asn1_get_object(der, start, stop)
+    start = start or 0
+    stop = stop or #der
+    assert(stop >= start, fmt("invalid offset '%s', start: %s", stop, start))
+    assert(stop <= #der, "stop offset must less than length")
 
-  local ret = C.ASN1_get_object(c_str, len, tag, class, stop - start + 1)
-  if bit.band(ret, 0x80) == 0x80 then
-      error("der with error encoding", ret)
+    local s_der = ffi_cast("const unsigned char *", der)
+    strpp[0] = s_der + start
+
+    local ret = C.ASN1_get_object(strpp, lenp, tagp, classp, stop - start + 1)
+    if band(ret, 0x80) == 0x80 then
+        error("der with error encoding", ret)
+    end
+
+    local constructed = false
+    if band(ret, 0x20) == 0x20 then
+        constructed = true
+    end
+
+    return tagp[0], classp[0], tonumber(lenp[0]), strpp[0] - s_der, constructed
   end
-
-  local constructed = false
-  if bit.band(ret, 0x20) == 0x20 then
-      constructed = true
-  end
-
-  return tag[0], class[0], tonumber(len[0]), c_str[0] - s_der, constructed
 end
 _M.asn1_get_object = asn1_get_object
 
@@ -136,11 +136,11 @@ Encoded LDAP Result: https://ldap.com/ldapv3-wire-protocol-reference-ldap-result
 
 local function parse_ldap_result(der)
   local p = ffi_cast("const unsigned char *", der)
-  local pp = ffi_new("const unsigned char *[1]", p)
+  cucharpp[0] = p
   local _, _, len, offset = asn1_get_object(der)
 
   -- message ID (integer)
-  local asn1_int = C.d2i_ASN1_INTEGER(nil, pp, #der)
+  local asn1_int = C.d2i_ASN1_INTEGER(nil, cucharpp, #der)
   local id = C.ASN1_INTEGER_get(asn1_int)
 
   _, _, len, offset = asn1_get_object(der, offset + len)
@@ -149,21 +149,21 @@ local function parse_ldap_result(der)
   local op = _M.intToBER(op_int)
 
   -- success result code
-  pp[0] = p + offset
-  asn1_int = C.d2i_ASN1_ENUMERATED(nil, pp, len)
+  cucharpp[0] = p + offset
+  asn1_int = C.d2i_ASN1_ENUMERATED(nil, cucharpp, len)
   local res = C.ASN1_ENUMERATED_get(asn1_int)
 
   -- No matched DN (octet string)
-  local asn1_str = C.d2i_ASN1_OCTET_STRING(nil, pp, #der)
+  local asn1_str = C.d2i_ASN1_OCTET_STRING(nil, cucharpp, #der)
   local err1 = C.ASN1_STRING_get0_data(asn1_str)
 
   -- No diagnostic message (octet string)
-  asn1_str = C.d2i_ASN1_OCTET_STRING(nil, pp, #der)
+  asn1_str = C.d2i_ASN1_OCTET_STRING(nil, cucharpp, #der)
   local err2 = C.ASN1_STRING_get0_data(asn1_str)
 
   -- free
-  C.ASN1_STRING_free(asn1_str)
-  C.ASN1_INTEGER_free(asn1_int)
+  ffi.gc(asn1_str, C.ASN1_STRING_free)
+  ffi.gc(asn1_int, C.ASN1_INTEGER_free)
 
   return tonumber(id), op, tonumber(res), err1, err2
 end
@@ -196,20 +196,20 @@ _M.ASN1Decoder = {
     -- Integer
     self.decoder[2] = function(self, encStr, elen, pos)
       local p = ffi_cast("const unsigned char *", encStr) + pos
-      local pp = ffi_new("const unsigned char *[1]", p)
-      local asn1_int = C.d2i_ASN1_INTEGER(nil, pp, elen)
+      cucharpp[0] = p
+      local asn1_int = C.d2i_ASN1_INTEGER(nil, cucharpp, elen)
       local ret = C.ASN1_INTEGER_get(asn1_int)
-      C.ASN1_INTEGER_free(asn1_int)
+      ffi.gc(asn1_int, C.ASN1_INTEGER_free)
       return tonumber(ret)
     end
 
     -- Octet String
     self.decoder[4] = function(self, encStr, elen, pos)
       local p = ffi_cast("const unsigned char *", encStr) + pos
-      local pp = ffi_new("const unsigned char *[1]", p)
-      local asn1_int = C.d2i_ASN1_OCTET_STRING(nil, pp, elen)
-      local ret = C.ASN1_STRING_get0_data(asn1_int)
-      C.ASN1_INTEGER_free(asn1_int)
+      cucharpp[0] = p
+      local asn1_str = C.d2i_ASN1_OCTET_STRING(nil, cucharpp, elen)
+      local ret = C.ASN1_STRING_get0_data(asn1_str)
+      ffi.gc(asn1_str, C.ASN1_STRING_free)
       return ret
     end
   end
@@ -266,26 +266,20 @@ _M.ASN1Encoder = {
     self.encoder["number"] = function(self, val)
       local typ = C.ASN1_INTEGER_new()
       C.ASN1_INTEGER_set(typ, val)
-      local pp = ffi_new("char*[1]")
-      local ret = C.i2d_ASN1_INTEGER(typ, pp)
-      C.ASN1_INTEGER_free(typ)
-      if ret <= 0 then
-        return nil, "failed to call i2d_ASN1_UTF8STRING"
-      end
-      return ffi_string(pp[0], ret)
+      charpp[0] = nil
+      local ret = C.i2d_ASN1_INTEGER(typ, charpp)
+      ffi.gc(typ, C.ASN1_INTEGER_free)
+      return ffi_string(charpp[0], ret)
     end
 
     -- Octet String encoder
     self.encoder["string"] = function(self, val)
       local typ = C.ASN1_OCTET_STRING_new()
       C.ASN1_STRING_set(typ, val, #val)
-      local pp = ffi_new("char*[1]")
-      local ret = C.i2d_ASN1_OCTET_STRING(typ, pp)
-      C.ASN1_STRING_free(typ)
-      if ret <= 0 then
-        return nil, "failed to call i2d_ASN1_UTF8STRING"
-      end
-      return ffi_string(pp[0], ret)
+      charpp[0] = nil
+      local ret = C.i2d_ASN1_OCTET_STRING(typ, charpp)
+      ffi.gc(typ, C.ASN1_STRING_free)
+      return ffi_string(charpp[0], ret)
     end
 
   end,
