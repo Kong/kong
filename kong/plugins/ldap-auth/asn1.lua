@@ -4,6 +4,9 @@ local ffi = require "ffi"
 local C = ffi.C
 local ffi_new = ffi.new
 local ffi_string = ffi.string
+local ffi_cast = ffi.cast
+local assert = assert
+local fmt = string.format
 
 local lpack = require "lua_pack"
 local bpack = lpack.pack
@@ -26,7 +29,38 @@ ffi.cdef [[
 	int i2d_ASN1_OCTET_STRING(const ASN1_STRING *a, unsigned char **pp);
 	int i2d_ASN1_INTEGER(const ASN1_INTEGER *a, unsigned char **pp);
 	ASN1_STRING *ASN1_OCTET_STRING_new();
+  int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
+                      int *pclass, long omax);
+  int ASN1_object_size(int constructed, int length, int tag);
 ]]
+
+
+local function asn1_get_object(der, start, stop)
+  start = start or 0
+  stop = stop or #der
+  assert(stop >= start, fmt("invalid offset '%s', start: %s", stop, start))
+  assert(stop <= #der, "stop offset must less than length")
+
+  local len = ffi_new("long[1]")
+  local tag = ffi_new("int[1]")
+  local class = ffi_new("int[1]")
+  local s_der = ffi_cast("const unsigned char *", der)
+  local p = s_der + start
+  local c_str = ffi_new("const unsigned char*[1]", p)
+
+  local ret = C.ASN1_get_object(c_str, len, tag, class, stop - start + 1)
+  if bit.band(ret, 0x80) == 0x80 then
+      error("der with error encoding", ret)
+  end
+
+  local constructed = false
+  if bit.band(ret, 0x20) == 0x20 then
+      constructed = true
+  end
+
+  return tag[0], class[0], tonumber(len[0]), c_str[0] - s_der, constructed
+end
+
 
 local _M = {}
 
@@ -49,21 +83,20 @@ _M.ASN1Decoder = {
   end,
 
   decode = function(self, encStr, pos)
-    local etype, elen
-    local newpos = pos
+    local tag, _class, len, offset, _constructed = asn1_get_object(encStr, pos - 1)
+    local newpos = offset + 1
 
-    newpos, etype = bunpack(encStr, "X1", newpos)
-    newpos, elen = self.decodeLength(encStr, newpos)
+
+    local etype = "02"
+    if tag == 4 then
+      etype = "04"
+    end
 
     if self.decoder[etype] then
-      return self.decoder[etype](self, encStr, elen, newpos)
+      return self.decoder[etype](self, encStr, len, newpos)
     else
       return newpos, nil
     end
-  end,
-
-  setStopOnError = function(self, val)
-    self.stoponerror = val
   end,
 
   registerBaseDecoders = function(self)
@@ -72,25 +105,7 @@ _M.ASN1Decoder = {
     self.decoder["0A"] = function(self, encStr, elen, pos)
       return self.decodeInt(encStr, elen, pos)
     end
-
-    self.decoder["8A"] = function(self, encStr, elen, pos)
-      return bunpack(encStr, "A" .. elen, pos)
-    end
-
-    self.decoder["31"] = function(self, encStr, elen, pos)
-      return pos, nil
-    end
-
-    -- Boolean
-    self.decoder["01"] = function(self, encStr, elen, pos)
-      local val = bunpack(encStr, "X", pos)
-      if val ~= "FF" then
-        return pos, true
-      else
-        return pos, false
-      end
-    end
-
+  
     -- Integer
     self.decoder["02"] = function(self, encStr, elen, pos)
       return self.decodeInt(encStr, elen, pos)
@@ -99,29 +114,6 @@ _M.ASN1Decoder = {
     -- Octet String
     self.decoder["04"] = function(self, encStr, elen, pos)
       return bunpack(encStr, "A" .. elen, pos)
-    end
-
-    -- Null
-    self.decoder["05"] = function(self, encStr, elen, pos)
-      return pos, false
-    end
-
-    -- Object Identifier
-    self.decoder["06"] = function(self, encStr, elen, pos)
-      return self:decodeOID(encStr, elen, pos)
-    end
-
-    -- Context specific tags
-    self.decoder["30"] = function(self, encStr, elen, pos)
-      return self:decodeSeq(encStr, elen, pos)
-    end
-  end,
-
-  registerTagDecoders = function(self, tagDecoders)
-    self:registerBaseDecoders()
-
-    for k, v in pairs(tagDecoders) do
-      self.decoder[k] = v
     end
   end,
 
@@ -144,62 +136,6 @@ _M.ASN1Decoder = {
     end
 
     return pos, elen
-  end,
-
-  decodeSeq = function(self, encStr, len, pos)
-    local seq = {}
-    local sPos = 1
-    local sStr
-
-    pos, sStr = bunpack(encStr, "A" .. len, pos)
-
-    while (sPos < len) do
-      local newSeq
-
-      sPos, newSeq = self:decode(sStr, sPos)
-      if not newSeq and self.stoponerror then
-        break
-      end
-
-      insert(seq, newSeq)
-    end
-
-    return pos, seq
-  end,
-
-  decode_oid_component = function(encStr, pos)
-    local octet
-    local n = 0
-
-    repeat
-      pos, octet = bunpack(encStr, "b", pos)
-      n = n * 128 + bit.band(0x7F, octet)
-    until octet < 128
-
-    return pos, n
-  end,
-
-  decodeOID = function(self, encStr, len, pos)
-    local last
-    local oid = {}
-    local octet
-
-    last = pos + len - 1
-    if pos <= last then
-      oid._snmp = "06"
-      pos, octet = bunpack(encStr, "C", pos)
-      oid[2] = math.fmod(octet, 40)
-      octet = octet - oid[2]
-      oid[1] = octet/40
-    end
-
-    while pos <= last do
-      local c
-      pos, c = self.decode_oid_component(encStr, pos)
-      oid[#oid + 1] = c
-    end
-
-    return pos, oid
   end,
 
   decodeInt = function(encStr, len, pos)
