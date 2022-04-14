@@ -249,7 +249,7 @@ pipeline {
                         sh 'make setup-kong-build-tools'
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
                         sh 'RESTY_IMAGE_TAG=7 make release'
-                        sh 'RESTY_IMAGE_TAG=8 make release'
+                        // sh 'RESTY_IMAGE_TAG=8 make release'
                     }
                 }
                 stage('RedHat Releases') {
@@ -274,7 +274,7 @@ pipeline {
                         sh 'make setup-kong-build-tools'
                         sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
                         sh 'RESTY_IMAGE_TAG=7 make release'
-                        sh 'RESTY_IMAGE_TAG=8 make release'
+                        // sh 'RESTY_IMAGE_TAG=8 make release'
                     }
                 }
                 stage('Debian Releases') {
