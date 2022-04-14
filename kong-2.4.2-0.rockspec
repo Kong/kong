@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.4.1-0"
+version = "2.4.2-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.4.1"
+  tag = "2.4.2"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
