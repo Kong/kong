@@ -37,8 +37,8 @@ ffi.cdef [[
   ASN1_INTEGER *d2i_ASN1_INTEGER(ASN1_INTEGER **a, const unsigned char **ppin, long length);
   ASN1_ENUMERATED *d2i_ASN1_ENUMERATED(ASN1_ENUMERATED **a, const unsigned char **ppin, long length);
 
-	int i2d_ASN1_OCTET_STRING(const ASN1_STRING *a, unsigned char **pp);
-	int i2d_ASN1_INTEGER(const ASN1_INTEGER *a, unsigned char **pp);
+  int i2d_ASN1_OCTET_STRING(const ASN1_STRING *a, unsigned char **pp);
+  int i2d_ASN1_INTEGER(const ASN1_INTEGER *a, unsigned char **pp);
 
   int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
                       int *pclass, long omax);
@@ -180,7 +180,7 @@ _M.ASN1Decoder = {
   end,
 
   decode = function(self, encStr, pos)
-    local tag, _class, len, offset, _constructed = asn1_get_object(encStr, pos - 1)
+    local tag, _, len, offset, _ = asn1_get_object(encStr, pos - 1)
     local newpos = offset + 1
 
     local etype = "02"

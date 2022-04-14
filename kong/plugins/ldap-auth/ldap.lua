@@ -60,18 +60,13 @@ end
 
 function _M.bind_request(socket, username, password)
   local encoder = asn1.ASN1Encoder:new()
-  local decoder = asn1.ASN1Decoder:new()
 
   local ldapAuth = encoder:encode({ _ldaptype = 80, password })
   local bindReq = encoder:encode(3) .. encoder:encode(username) .. ldapAuth
   local ldapMsg = encoder:encode(ldapMessageId) ..
                     encodeLDAPOp(encoder, APPNO.BindRequest, true, bindReq)
 
-  local packet
-  local pos
-  local packet_len
-  local tmp
-  local _
+  local packet, packet_len, _
 
   local response = {}
 
@@ -126,10 +121,9 @@ end
 
 
 function _M.start_tls(socket)
-  local ldapMsg, pos, packet, packet_len, tmp, _
+  local ldapMsg, packet, packet_len, _
   local response = {}
   local encoder = asn1.ASN1Encoder:new()
-  local decoder = asn1.ASN1Decoder:new()
 
   local method_name = encoder:encode({ _ldaptype = 80, "1.3.6.1.4.1.1466.20037" })
 
