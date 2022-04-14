@@ -86,23 +86,17 @@ function _M.bind_request(socket, username, password)
   _, packet_len = calculate_payload_length(packet, 2, socket)
 
   packet = socket:receive(packet_len)
-  pos, response.messageID = decoder:decode(packet, 1)
-  pos, tmp = bunpack(packet, "C", pos)
-  pos = decoder.decodeLength(packet, pos)
-  response.protocolOp = asn1.intToBER(tmp)
+
+  response.messageID, response.protocolOp, response.resultCode,
+    response.matchedDN, response.errorMessage = asn1.parse_ldap_result(packet)
 
   if response.protocolOp.number ~= APPNO.BindResponse then
     return false, fmt("Received incorrect Op in packet: %d, expected %d",
                       response.protocolOp.number, APPNO.BindResponse)
   end
 
-  pos, response.resultCode = decoder:decode(packet, pos)
-
   if response.resultCode ~= 0 then
-    local error_msg
-    pos, response.matchedDN = decoder:decode(packet, pos)
-    _, response.errorMessage = decoder:decode(packet, pos)
-    error_msg = ERROR_MSG[response.resultCode]
+    local error_msg = ERROR_MSG[response.resultCode]
 
     return false, fmt("\n  Error: %s\n  Details: %s",
                       error_msg or "Unknown error occurred (code: " ..
@@ -151,24 +145,17 @@ function _M.start_tls(socket)
   _, packet_len = calculate_payload_length(packet, 2, socket)
 
   packet = socket:receive(packet_len)
-  pos, response.messageID = decoder:decode(packet, 1)
-  pos, tmp = bunpack(packet, "C", pos)
-  pos = decoder.decodeLength(packet, pos)
-  response.protocolOp = asn1.intToBER(tmp)
+
+  response.messageID, response.protocolOp, response.resultCode,
+    response.matchedDN, response.errorMessage = asn1.parse_ldap_result(packet)
 
   if response.protocolOp.number ~= APPNO.ExtendedResponse then
     return false, fmt("Received incorrect Op in packet: %d, expected %d",
                       response.protocolOp.number, APPNO.ExtendedResponse)
   end
 
-  pos, response.resultCode = decoder:decode(packet, pos)
-
   if response.resultCode ~= 0 then
-    local error_msg
-
-    pos, response.matchedDN = decoder:decode(packet, pos)
-    _, response.errorMessage = decoder:decode(packet, pos)
-    error_msg = ERROR_MSG[response.resultCode]
+    local error_msg = ERROR_MSG[response.resultCode]
 
     return false, fmt("\n  Error: %s\n  Details: %s",
                       error_msg or "Unknown error occurred (code: " ..

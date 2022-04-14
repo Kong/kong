@@ -16,23 +16,83 @@ local setmetatable = setmetatable
 local tonumber = tonumber
 local reverse = string.reverse
 local concat = table.concat
-local insert = table.insert
 local pairs = pairs
 local math = math
 local type = type
 local char = string.char
 local bit = bit
 
+
 asn1_macro.declare_asn1_functions("ASN1_TYPE")
+asn1_macro.declare_asn1_functions("ASN1_ENUMERATED")
+
 
 ffi.cdef [[
+  ASN1_STRING *ASN1_OCTET_STRING_new();
+
+  long ASN1_ENUMERATED_get(const ASN1_ENUMERATED *a);
+
+  ASN1_TYPE *d2i_ASN1_TYPE(ASN1_TYPE **a, const unsigned char **ppin, long length);
+  ASN1_STRING *d2i_ASN1_OCTET_STRING(ASN1_STRING **a, const unsigned char **ppin, long length);
+  ASN1_INTEGER *d2i_ASN1_INTEGER(ASN1_INTEGER **a, const unsigned char **ppin, long length);
+  ASN1_ENUMERATED *d2i_ASN1_ENUMERATED(ASN1_ENUMERATED **a, const unsigned char **ppin, long length);
+
 	int i2d_ASN1_OCTET_STRING(const ASN1_STRING *a, unsigned char **pp);
 	int i2d_ASN1_INTEGER(const ASN1_INTEGER *a, unsigned char **pp);
-	ASN1_STRING *ASN1_OCTET_STRING_new();
+
   int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
                       int *pclass, long omax);
   int ASN1_object_size(int constructed, int length, int tag);
 ]]
+
+
+local _M = {}
+
+
+_M.BERCLASS = {
+  Universal = 0,
+  Application = 64,
+  ContextSpecific = 128,
+  Private = 192
+}
+
+
+function _M.BERtoInt(class, constructed, num)
+  local asn1_type = class + num
+
+  if constructed == true then
+    asn1_type = asn1_type + 32
+  end
+
+  return asn1_type
+end
+
+
+function _M.intToBER(i)
+  local ber = {}
+
+  if bit.band(i, _M.BERCLASS.Application) == _M.BERCLASS.Application then
+    ber.class = _M.BERCLASS.Application
+  elseif bit.band(i, _M.BERCLASS.ContextSpecific) == _M.BERCLASS.ContextSpecific then
+    ber.class = _M.BERCLASS.ContextSpecific
+  elseif bit.band(i, _M.BERCLASS.Private) == _M.BERCLASS.Private then
+    ber.class = _M.BERCLASS.Private
+  else
+    ber.class = _M.BERCLASS.Universal
+  end
+
+  -- constructed  0x20
+  if bit.band(i, 0x20) == 0x20 then
+    ber.constructed = true
+    ber.number = i - ber.class - 32
+
+  else
+    ber.primitive = true
+    ber.number = i - ber.class
+  end
+
+  return ber
+end
 
 
 local function asn1_get_object(der, start, stop)
@@ -60,17 +120,54 @@ local function asn1_get_object(der, start, stop)
 
   return tag[0], class[0], tonumber(len[0]), c_str[0] - s_der, constructed
 end
+_M.asn1_get_object = asn1_get_object
 
 
-local _M = {}
+--[[
+Encoded LDAP Result: https://ldap.com/ldapv3-wire-protocol-reference-ldap-result/
 
+30 0c -- Begin the LDAPMessage sequence
+   02 01 03 -- The message ID (integer value 3)
+   69 07 -- Begin the add response protocol op
+      0a 01 00 -- success result code (enumerated value 0)
+      04 00 -- No matched DN (0-byte octet string)
+      04 00 -- No diagnostic message (0-byte octet string)
+--]]
 
-_M.BERCLASS = {
-  Universal = 0,
-  Application = 64,
-  ContextSpecific = 128,
-  Private = 192
-}
+local function parse_ldap_result(der)
+  local p = ffi_cast("const unsigned char *", der)
+  local pp = ffi_new("const unsigned char *[1]", p)
+  local _, _, len, offset = asn1_get_object(der)
+
+  -- message ID (integer)
+  local asn1_int = C.d2i_ASN1_INTEGER(nil, pp, #der)
+  local id = C.ASN1_INTEGER_get(asn1_int)
+
+  _, _, len, offset = asn1_get_object(der, offset + len)
+  local _, op_int = bunpack(der, "C", offset - 1)
+
+  local op = _M.intToBER(op_int)
+
+  -- success result code
+  pp[0] = p + offset
+  asn1_int = C.d2i_ASN1_ENUMERATED(nil, pp, len)
+  local res = C.ASN1_ENUMERATED_get(asn1_int)
+
+  -- No matched DN (octet string)
+  local asn1_str = C.d2i_ASN1_OCTET_STRING(nil, pp, #der)
+  local err1 = C.ASN1_STRING_get0_data(asn1_str)
+
+  -- No diagnostic message (octet string)
+  asn1_str = C.d2i_ASN1_OCTET_STRING(nil, pp, #der)
+  local err2 = C.ASN1_STRING_get0_data(asn1_str)
+
+  -- free
+  C.ASN1_STRING_free(asn1_str)
+  C.ASN1_INTEGER_free(asn1_int)
+
+  return tonumber(id), op, tonumber(res), err1, err2
+end
+_M.parse_ldap_result = parse_ldap_result
 
 
 _M.ASN1Decoder = {
@@ -85,7 +182,6 @@ _M.ASN1Decoder = {
   decode = function(self, encStr, pos)
     local tag, _class, len, offset, _constructed = asn1_get_object(encStr, pos - 1)
     local newpos = offset + 1
-
 
     local etype = "02"
     if tag == 4 then
@@ -151,6 +247,7 @@ _M.ASN1Decoder = {
     return pos, value
   end
 }
+
 
 _M.ASN1Encoder = {
   new = function(self)
@@ -242,42 +339,6 @@ _M.ASN1Encoder = {
     end
   end
 }
-
-function _M.BERtoInt(class, constructed, number)
-  local asn1_type = class + number
-
-  if constructed == true then
-    asn1_type = asn1_type + 32
-  end
-
-  return asn1_type
-end
-
-
-function _M.intToBER(i)
-  local ber = {}
-
-  if bit.band(i, _M.BERCLASS.Application) == _M.BERCLASS.Application then
-    ber.class = _M.BERCLASS.Application
-  elseif bit.band(i, _M.BERCLASS.ContextSpecific) == _M.BERCLASS.ContextSpecific then
-    ber.class = _M.BERCLASS.ContextSpecific
-  elseif bit.band(i, _M.BERCLASS.Private) == _M.BERCLASS.Private then
-    ber.class = _M.BERCLASS.Private
-  else
-    ber.class = _M.BERCLASS.Universal
-  end
-
-  if bit.band(i, 32) == 32 then
-    ber.constructed = true
-    ber.number = i - ber.class - 32
-
-  else
-    ber.primitive = true
-    ber.number = i - ber.class
-  end
-
-  return ber
-end
 
 
 return _M
