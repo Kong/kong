@@ -183,68 +183,35 @@ _M.ASN1Decoder = {
     local tag, _, len, offset, _ = asn1_get_object(encStr, pos - 1)
     local newpos = offset + 1
 
-    local etype = "02"
-    if tag == 4 then
-      etype = "04"
+    if self.decoder[tag] then
+      return self.decoder[tag](self, encStr, len, pos - 1)
     end
-
-    if self.decoder[etype] then
-      return self.decoder[etype](self, encStr, len, newpos)
-    else
-      return newpos, nil
-    end
+    
+    return newpos, nil
   end,
 
   registerBaseDecoders = function(self)
     self.decoder = {}
-
-    self.decoder["0A"] = function(self, encStr, elen, pos)
-      return self.decodeInt(encStr, elen, pos)
-    end
   
     -- Integer
-    self.decoder["02"] = function(self, encStr, elen, pos)
-      return self.decodeInt(encStr, elen, pos)
+    self.decoder[2] = function(self, encStr, elen, pos)
+      local p = ffi_cast("const unsigned char *", encStr) + pos
+      local pp = ffi_new("const unsigned char *[1]", p)
+      local asn1_int = C.d2i_ASN1_INTEGER(nil, pp, elen)
+      local ret = C.ASN1_INTEGER_get(asn1_int)
+      C.ASN1_INTEGER_free(asn1_int)
+      return tonumber(ret)
     end
 
     -- Octet String
-    self.decoder["04"] = function(self, encStr, elen, pos)
-      return bunpack(encStr, "A" .. elen, pos)
+    self.decoder[4] = function(self, encStr, elen, pos)
+      local p = ffi_cast("const unsigned char *", encStr) + pos
+      local pp = ffi_new("const unsigned char *[1]", p)
+      local asn1_int = C.d2i_ASN1_OCTET_STRING(nil, pp, elen)
+      local ret = C.ASN1_STRING_get0_data(asn1_int)
+      C.ASN1_INTEGER_free(asn1_int)
+      return ret
     end
-  end,
-
-  decodeLength = function(encStr, pos)
-    local elen
-
-    pos, elen = bunpack(encStr, "C", pos)
-    if elen > 128 then
-      elen = elen - 128
-      local elenCalc = 0
-      local elenNext
-
-      for i = 1, elen do
-        elenCalc = elenCalc * 256
-        pos, elenNext = bunpack(encStr, "C", pos)
-        elenCalc = elenCalc + elenNext
-      end
-
-      elen = elenCalc
-    end
-
-    return pos, elen
-  end,
-
-  decodeInt = function(encStr, len, pos)
-    local hexStr
-
-    pos, hexStr = bunpack(encStr, "X" .. len, pos)
-
-    local value = tonumber(hexStr, 16)
-    if value >= math.pow(256, len)/2 then
-      value = value - math.pow(256, len)
-    end
-
-    return pos, value
   end
 }
 
