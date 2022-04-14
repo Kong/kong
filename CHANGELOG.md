@@ -1,7 +1,7 @@
 # Table of Contents
 
 
-- [2.3.3](#233)
+- [2.3.4](#234)
 - [2.3.2](#232)
 - [2.3.1](#231)
 - [2.3.0](#230)
@@ -54,6 +54,10 @@
 - [0.10.0](#0100---20170307)
 - [0.9.9 and prior](#099---20170202)
 
+## [2.3.4]
+
+- Bumped `OpenSSL` from to 1.1.1n
+  [#8624](https://github.com/Kong/kong/pull/8624)
 
 ## [2.3.3]
 
@@ -153,7 +157,7 @@ strictly contains bugfixes. The are no new features or breaking changes.
 ##### Core
 
 - lua-resty-dns-client was bumped to 5.2.1, which fixes an issue that could
-  lead to a busy loop when renewing addresses. 
+  lead to a busy loop when renewing addresses.
   [#6760](https://github.com/Kong/kong/pull/6760)
 - Fixed an issue that made Kong return HTTP 500 Internal Server Error instead
   of HTTP 502 Bad Gateway on upstream connection errors when using buffered
@@ -5836,6 +5840,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[2.3.4]: https://github.com/Kong/kong/compare/2.3.2...2.3.4
 [2.3.3]: https://github.com/Kong/kong/compare/2.3.2...2.3.3
 [2.3.2]: https://github.com/Kong/kong/compare/2.3.1...2.3.2
 [2.3.1]: https://github.com/Kong/kong/compare/2.3.0...2.3.1
