@@ -1,6 +1,9 @@
 local asn1 = require "kong.plugins.ldap-auth.asn1"
 local bunpack = require "lua_pack".unpack
 local fmt = string.format
+local asn1_parse_ldap_result = asn1.parse_ldap_result
+local asn1_put_object = asn1.put_object
+local asn1_encode = asn1.encode
 
 
 local _M = {}
@@ -28,12 +31,6 @@ local APPNO = {
 }
 
 
-local function encodeLDAPOp(encoder, appno, isConstructed, data)
-  local asn1_type = asn1.BERtoInt(asn1.BERCLASS.Application, isConstructed, appno)
-  return encoder:encode({ _ldaptype = fmt("%X", asn1_type), data })
-end
-
-
 local function calculate_payload_length(encStr, pos, socket)
   local elen
 
@@ -59,16 +56,14 @@ end
 
 
 function _M.bind_request(socket, username, password)
-  local encoder = asn1.ASN1Encoder:new()
-
-  local ldapAuth = encoder:encode({ _ldaptype = 80, password })
-  local bindReq = encoder:encode(3) .. encoder:encode(username) .. ldapAuth
-  local ldapMsg = encoder:encode(ldapMessageId) ..
-                    encodeLDAPOp(encoder, APPNO.BindRequest, true, bindReq)
+  local ldapAuth = asn1_put_object(0, asn1.CLASS.CONTEXT_SPECIFIC, 0, password)
+  local bindReq = asn1_encode(3) ..asn1_encode(username) .. ldapAuth
+  local ldapMsg = asn1_encode(ldapMessageId) ..
+                    asn1_put_object(APPNO.BindRequest, asn1.CLASS.APPLICATION, 1, bindReq)
 
   local packet, packet_len, _
 
-  packet = encoder:encodeSeq(ldapMsg)
+  packet = asn1_encode(ldapMsg, asn1.TAG.SEQUENCE)
 
   ldapMessageId = ldapMessageId + 1
 
@@ -80,7 +75,7 @@ function _M.bind_request(socket, username, password)
 
   packet = socket:receive(packet_len)
 
-  local res = asn1.parse_ldap_result(packet)
+  local res = asn1_parse_ldap_result(packet)
 
   if res.protocol_op ~= APPNO.BindResponse then
     return false, fmt("Received incorrect Op in packet: %d, expected %d",
@@ -102,14 +97,12 @@ end
 
 function _M.unbind_request(socket)
   local ldapMsg, packet
-  local encoder = asn1.ASN1Encoder:new()
 
   ldapMessageId = ldapMessageId + 1
 
-  ldapMsg = encoder:encode(ldapMessageId) ..
-                           encodeLDAPOp(encoder, APPNO.UnbindRequest,
-                                        false, nil)
-  packet = encoder:encodeSeq(ldapMsg)
+  ldapMsg = asn1_encode(ldapMessageId) ..
+              asn1_put_object(APPNO.UnbindRequest, asn1.CLASS.APPLICATION, 0)
+  packet = asn1_encode(ldapMsg, asn1.TAG.SEQUENCE)
 
   socket:send(packet)
 
@@ -119,16 +112,15 @@ end
 
 function _M.start_tls(socket)
   local ldapMsg, packet, packet_len, _
-  local encoder = asn1.ASN1Encoder:new()
 
-  local method_name = encoder:encode({ _ldaptype = 80, "1.3.6.1.4.1.1466.20037" })
+  local method_name = asn1_put_object(0, asn1.CLASS.CONTEXT_SPECIFIC, 0, "1.3.6.1.4.1.1466.20037")
 
   ldapMessageId = ldapMessageId + 1
 
-  ldapMsg = encoder:encode(ldapMessageId) ..
-                           encodeLDAPOp(encoder, APPNO.ExtendedRequest, true, method_name)
+  ldapMsg = asn1_encode(ldapMessageId) ..
+              asn1_put_object(APPNO.ExtendedRequest, asn1.CLASS.APPLICATION, 1, method_name)
 
-  packet = encoder:encodeSeq(ldapMsg)
+  packet = asn1_encode(ldapMsg, asn1.TAG.SEQUENCE)
   socket:send(packet)
   packet = socket:receive(2)
 
@@ -136,7 +128,7 @@ function _M.start_tls(socket)
 
   packet = socket:receive(packet_len)
 
-  local res = asn1.parse_ldap_result(packet)
+  local res = asn1_parse_ldap_result(packet)
 
   if res.protocol_op ~= APPNO.ExtendedResponse then
     return false, fmt("Received incorrect Op in packet: %d, expected %d",
