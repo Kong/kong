@@ -3,17 +3,12 @@ local C = ffi.C
 local utils = require "kong.tools.utils"
 local declarative = require "kong.db.declarative"
 
-local find = string.find
-local select = select
 local tonumber = tonumber
 local kong = kong
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
 
 
-local select = select
-local tonumber = tonumber
-local kong = kong
 local dbless = kong.configuration.database == "off"
 local data_plane_role = kong.configuration.role == "data_plane"
 
