@@ -225,7 +225,8 @@ server {
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
     access_log off;
     content_by_lua_block {
-      require("resty.events").run()
+      --require("resty.events").run()
+      require("resty.events.compat").run()
     }
 }
 > end -- events_mechanism ~= "shared_dict"
