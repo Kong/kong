@@ -173,8 +173,20 @@ function _GLOBAL.init_worker_events()
   local singletons = require "kong.singletons"
 
   if singletons.configuration and
-     singletons.configuration.events_mechanism == "unix_socket" then
+     singletons.configuration.events_mechanism == "shared_dict" then
 
+    opts = {
+      shm = "kong_process_events", -- defined by "lua_shared_dict"
+      timeout = 5,            -- life time of event data in shm
+      interval = 1,           -- poll interval (seconds)
+
+      wait_interval = 0.010,  -- wait before retry fetching event data
+      wait_max = 0.5,         -- max wait time before discarding event
+    }
+
+    worker_events = require "resty.worker.events"
+
+  else
     local sock_name = "worker_events.sock"
     if ngx.config.subsystem == "stream" then
       sock_name = "stream_" .. sock_name
@@ -188,17 +200,6 @@ function _GLOBAL.init_worker_events()
     }
 
     worker_events = require "resty.events"
-  else
-    opts = {
-      shm = "kong_process_events", -- defined by "lua_shared_dict"
-      timeout = 5,            -- life time of event data in shm
-      interval = 1,           -- poll interval (seconds)
-
-      wait_interval = 0.010,  -- wait before retry fetching event data
-      wait_max = 0.5,         -- max wait time before discarding event
-    }
-
-    worker_events = require "resty.worker.events"
   end
 
   local ok, err = worker_events.configure(opts)

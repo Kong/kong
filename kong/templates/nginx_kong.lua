@@ -461,7 +461,7 @@ server {
 }
 > end -- role == "control_plane"
 
-> if events_mechanism == "unix_socket" then
+> if events_mechanism ~= "shared_dict" then
 server {
     listen unix:${{PREFIX}}/worker_events.sock;
     access_log off;
@@ -471,5 +471,5 @@ server {
         }
     }
 }
-> end -- events_mechanism == "unix_socket"
+> end -- events_mechanism ~= "shared_dict"
 ]]

@@ -968,7 +968,7 @@ server {
         }
     }
 
-> if events_mechanism == "unix_socket" then
+> if events_mechanism ~= "shared_dict" then
     server {
         server_name kong_worker_events;
         listen unix:${{PREFIX}}/worker_events.sock;
@@ -979,7 +979,7 @@ server {
             }
         }
     }
-> end -- events_mechanism == "unix_socket"
+> end -- events_mechanism ~= "shared_dict"
 
 }
 > end
