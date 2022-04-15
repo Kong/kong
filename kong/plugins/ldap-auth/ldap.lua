@@ -68,8 +68,6 @@ function _M.bind_request(socket, username, password)
 
   local packet, packet_len, _
 
-  local response = {}
-
   packet = encoder:encodeSeq(ldapMsg)
 
   ldapMessageId = ldapMessageId + 1
@@ -82,20 +80,19 @@ function _M.bind_request(socket, username, password)
 
   packet = socket:receive(packet_len)
 
-  response.messageID, response.protocolOp, response.resultCode,
-    response.matchedDN, response.errorMessage = asn1.parse_ldap_result(packet)
+  local res = asn1.parse_ldap_result(packet)
 
-  if response.protocolOp.number ~= APPNO.BindResponse then
+  if res.protocol_op ~= APPNO.BindResponse then
     return false, fmt("Received incorrect Op in packet: %d, expected %d",
-                      response.protocolOp.number, APPNO.BindResponse)
+                      res.protocol_op, APPNO.BindResponse)
   end
 
-  if response.resultCode ~= 0 then
-    local error_msg = ERROR_MSG[response.resultCode]
+  if res.result_code ~= 0 then
+    local error_msg = ERROR_MSG[res.result_code]
 
     return false, fmt("\n  Error: %s\n  Details: %s",
-                      error_msg or "Unknown error occurred (code: " ..
-                      response.resultCode .. ")", response.errorMessage or "")
+                      error_msg or "Unknown error occurred (code: " .. 
+                      res.result_code .. ")", res.diagnostic_msg or "")
 
   else
     return true
@@ -122,7 +119,6 @@ end
 
 function _M.start_tls(socket)
   local ldapMsg, packet, packet_len, _
-  local response = {}
   local encoder = asn1.ASN1Encoder:new()
 
   local method_name = encoder:encode({ _ldaptype = 80, "1.3.6.1.4.1.1466.20037" })
@@ -140,20 +136,19 @@ function _M.start_tls(socket)
 
   packet = socket:receive(packet_len)
 
-  response.messageID, response.protocolOp, response.resultCode,
-    response.matchedDN, response.errorMessage = asn1.parse_ldap_result(packet)
+  local res = asn1.parse_ldap_result(packet)
 
-  if response.protocolOp.number ~= APPNO.ExtendedResponse then
+  if res.protocol_op ~= APPNO.ExtendedResponse then
     return false, fmt("Received incorrect Op in packet: %d, expected %d",
-                      response.protocolOp.number, APPNO.ExtendedResponse)
+                      res.protocol_op, APPNO.ExtendedResponse)
   end
 
-  if response.resultCode ~= 0 then
-    local error_msg = ERROR_MSG[response.resultCode]
+  if res.result_code ~= 0 then
+    local error_msg = ERROR_MSG[res.result_code]
 
     return false, fmt("\n  Error: %s\n  Details: %s",
                       error_msg or "Unknown error occurred (code: " ..
-                      response.resultCode .. ")", response.errorMessage or "")
+                      res.result_code .. ")", res.diagnostic_msg or "")
 
   else
     return true
