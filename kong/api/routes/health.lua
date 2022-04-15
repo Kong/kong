@@ -1,3 +1,5 @@
+local ffi = require("ffi")
+local C = ffi.C
 local utils = require "kong.tools.utils"
 local declarative = require "kong.db.declarative"
 
@@ -42,15 +44,35 @@ return {
 
       -- nginx stats
 
-      local r = ngx.location.capture "/nginx_status"
-      if r.status ~= 200 then
-        kong.log.err(r.body)
-        return kong.response.exit(500, { message = "An unexpected error happened" })
+      if ffi.arch == "x64" or ffi.arch == "arm64" then
+        ffi.cdef[[
+        uint64_t *ngx_stat_requests;
+        uint64_t *ngx_stat_accepted;
+        uint64_t *ngx_stat_handled;
+        uint64_t *ngx_stat_active;
+        uint64_t *ngx_stat_reading;
+        uint64_t *ngx_stat_writing;
+        uint64_t *ngx_stat_waiting;
+        ]]
+      elseif ffi.arch == "x86" or ffi.arch == "arm" then
+        ffi.cdef[[
+        uint32_t *ngx_stat_requests;
+        uint32_t *ngx_stat_accepted;
+        uint32_t *ngx_stat_handled;
+        uint32_t *ngx_stat_active;
+        uint32_t *ngx_stat_reading;
+        uint32_t *ngx_stat_writing;
+        uint32_t *ngx_stat_waiting;
+        ]]
+      else
+        kong.log.err("Unsupported arch: " .. ffi.arch)
       end
 
-      local var = ngx.var
-      local accepted, handled, total = select(3, find(r.body, "accepts handled requests\n (%d*) (%d*) (%d*)"))
+      local accepted = C.ngx_stat_accepted[0]
+      local handled = C.ngx_stat_handled[0]
+      local total = C.ngx_stat_requests[0]
 
+      local var = ngx.var
       local status_response = {
         memory = knode.get_memory_stats(unit, scale),
         server = {
