@@ -199,7 +199,8 @@ function _GLOBAL.init_worker_events()
                   ngx.config.prefix() .. sock_name
     }
 
-    worker_events = require "resty.events"
+    --worker_events = require "resty.events"
+    worker_events = require "resty.events.compat"
   end
 
   local ok, err = worker_events.configure(opts)
