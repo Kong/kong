@@ -33,8 +33,6 @@ local ipairs = ipairs
 local cjson = require("cjson.safe").new()
 local table_insert = table.insert
 local table_remove = table.remove
---local worker_events = require("resty.worker.events")
-local worker_events = require("resty.events.compat")
 local resty_lock = require ("resty.lock")
 local re_find = ngx.re.find
 local bit = require("bit")
@@ -43,6 +41,13 @@ local ngx_worker_id = ngx.worker.id
 local ngx_worker_pid = ngx.worker.pid
 local ssl = require("ngx.ssl")
 local resty_timer = require "resty.timer"
+
+local worker_events
+if package.loaded["resty.events.compat"] then
+    worker_events = require("resty.events.compat")
+else
+    worker_events = require("resty.worker.events")
+end
 
 local new_tab
 local nkeys
