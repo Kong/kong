@@ -731,6 +731,18 @@ http {
 > end -- role ~= "data_plane"
 
     include '*.http_mock';
+
+> if events_mechanism ~= "shared_dict" then
+    server {
+        listen unix:${{PREFIX}}/worker_events.sock;
+        access_log off;
+        location / {
+            content_by_lua_block {
+              require("resty.events.compat").run()
+            }
+        }
+    }
+> end -- events_mechanism ~= "shared_dict"
 }
 > end
 
@@ -970,14 +982,10 @@ server {
 
 > if events_mechanism ~= "shared_dict" then
     server {
-        server_name kong_worker_events;
-        listen unix:${{PREFIX}}/worker_events.sock;
+        listen unix:${{PREFIX}}/stream_worker_events.sock;
         access_log off;
-        location / {
-            content_by_lua_block {
-              --require("resty.events").run()
-              require("resty.events.compat").run()
-            }
+        content_by_lua_block {
+          require("resty.events.compat").run()
         }
     }
 > end -- events_mechanism ~= "shared_dict"
