@@ -196,7 +196,7 @@ function _GLOBAL.init_worker_events()
       unique_timeout = 5,     -- life time of unique event data in lrucache
       broker_id = 0,          -- broker server runs in nginx worker #0
       listening = "unix:" ..  -- unix socket for broker listening
-                  ngx.config.prefix() .. sock_name
+                  ngx.config.prefix() .. sock_name,
     }
 
     --worker_events = require "resty.events"
