@@ -463,6 +463,7 @@ server {
 
 > if events_mechanism ~= "shared_dict" then
 server {
+    server_name kong_worker_events;
     listen unix:${{PREFIX}}/worker_events.sock;
     access_log off;
     location / {
