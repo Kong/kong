@@ -629,6 +629,21 @@ for _, ldap_strategy in pairs(ldap_strategies) do
           })
           assert.response(r).has.status(401)
         end)
+        it("fails if neither authorization nor proxy-authorization header is provided", function()
+          local r = assert(proxy_client:send{
+            method = "GET",
+            path = "/basic",
+            body = {},
+            headers = {
+              host = "ldap5.com",
+            }
+          })
+          assert.response(r).has.status(401)
+          local value = assert.response(r).has.header("www-authenticate")
+          assert.are.equal('Basic realm="kong"', value)
+          local json = assert.response(r).has.jsonbody()
+          assert.equal("Unauthorized", json.message)
+        end)
         it("passes if credential is valid in get request using global plugin", function()
           local res = assert(proxy_client:send {
             method  = "GET",
