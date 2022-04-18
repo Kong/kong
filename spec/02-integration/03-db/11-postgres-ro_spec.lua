@@ -71,6 +71,8 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(204, res)
 
+        ngx.sleep(0.01) -- wait events unix socket connect
+
         res = assert(proxy_client:send({
           method  = "GET",
           path    = "/",
