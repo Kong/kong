@@ -271,7 +271,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
               ldaps     = ldap_strategy.ldaps,
               base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
               attribute = "uid",
-              header_type = "basic",
+              header_type = "Basic",
             }
           }
 

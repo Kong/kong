@@ -334,9 +334,9 @@ local function do_authentication(conf)
   if not (authorization_value or proxy_authorization_value) then
     local scheme = conf.header_type
     if scheme == "ldap" then
+      -- ensure backwards compatibility (see GH PR #3656)
+      -- TODO: provide migration to capitalize older configurations
       scheme = upper(scheme)
-    elseif scheme == "basic" then
-      scheme = scheme:gsub('^%l', upper, 1)
     end
     ngx.header["WWW-Authenticate"] = scheme .. ' realm="kong"'
 
