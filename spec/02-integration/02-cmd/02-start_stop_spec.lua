@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local pl_path = require "pl.path"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -10,6 +11,14 @@ describe("kong start/stop #" .. strategy, function()
       "services",
     }) -- runs migrations
     helpers.prepare_prefix()
+  end)
+  before_each(function()
+    helpers.wait_until(function()
+      if pl_path.exists(helpers.test_conf.prefix .. "/nginx_status.sock") then
+        return false
+      end
+      return true
+    end, 10)
   end)
   after_each(function()
     helpers.kill_all()
