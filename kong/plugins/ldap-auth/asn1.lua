@@ -130,6 +130,10 @@ _M.get_object = asn1_get_object
 
 local function asn1_put_object(tag, class, constructed, data, len)
   len = type(data) == "string" and #data or len or 0
+  if len < 0 then
+    return nil, "invalid object length"
+  end
+
   local outbuf = ffi.new("unsigned char[?]", len)
   ucharpp[0] = outbuf
 
@@ -144,7 +148,7 @@ _M.put_object = asn1_put_object
 
 local encode
 do
-  local encoder = new_tab(0, 2)
+  local encoder = new_tab(0, 3)
 
   -- Integer
   encoder[TAG.INTEGER] = function(val)
@@ -199,9 +203,10 @@ _M.encode = encode
 
 local decode
 do
-  local decoder = new_tab(0, 2)
+  local decoder = new_tab(0, 3)
 
   decoder[TAG.OCTET_STRING] = function(der, offset, len)
+    assert(offset < #der)
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
     local typ = C.d2i_ASN1_OCTET_STRING(nil, cucharpp, len)
     local ret = ASN1_STRING_get0_data(typ)
@@ -210,6 +215,7 @@ do
   end
 
   decoder[TAG.INTEGER] = function(der, offset, len)
+    assert(offset < #der)
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
     local typ = C.d2i_ASN1_INTEGER(nil, cucharpp, len)
     local ret = C.ASN1_INTEGER_get(typ)
@@ -218,6 +224,7 @@ do
   end
 
   decoder[TAG.ENUMERATED] = function(der, offset, len)
+    assert(offset < #der)
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
     local typ = C.d2i_ASN1_INTEGER(nil, cucharpp, len)
     local ret = C.ASN1_INTEGER_get(typ)
