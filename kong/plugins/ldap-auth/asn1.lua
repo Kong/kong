@@ -213,9 +213,9 @@ do
     if typ == nil then
       return nil
     end
-    local ret = ASN1_STRING_get0_data(typ)
+    local ret = ffi_string(ASN1_STRING_get0_data(typ))
     C.ASN1_STRING_free(typ)
-    return ffi_string(ret)
+    return ret
   end
 
   decoder[TAG.INTEGER] = function(der, offset, len)
