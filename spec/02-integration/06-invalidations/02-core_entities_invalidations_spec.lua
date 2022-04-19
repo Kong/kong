@@ -159,6 +159,8 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
+        ngx.sleep(0.01)
+
         do
           local res = assert(proxy_client_1:send {
             method  = "GET",
@@ -196,6 +198,8 @@ for _, strategy in helpers.each_strategy() do
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
+
+        ngx.sleep(0.01)
 
         -- TEST: ensure new host value maps to our Service
 
@@ -250,6 +254,8 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
+        ngx.sleep(0.01)
+
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
           path    = "/",
@@ -294,6 +300,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(201, admin_res)
 
         -- populate cache on both nodes
+        ngx.sleep(0.01)
 
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
@@ -328,6 +335,8 @@ for _, strategy in helpers.each_strategy() do
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
+
+        ngx.sleep(0.01)
 
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
@@ -813,6 +822,8 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
+        ngx.sleep(0.01)
+
         -- populate cache with a miss on
         -- both nodes
 
@@ -861,6 +872,9 @@ for _, strategy in helpers.each_strategy() do
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
+
+        ngx.sleep(0.01)
+
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
           path    = "/status/200",
@@ -898,6 +912,8 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
+        ngx.sleep(0.01)
+
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
           path    = "/status/200",
@@ -926,6 +942,8 @@ for _, strategy in helpers.each_strategy() do
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
+
+        ngx.sleep(0.01)
 
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
@@ -994,6 +1012,8 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
+        ngx.sleep(0.01)
+
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
           path    = "/status/200",
@@ -1032,6 +1052,8 @@ for _, strategy in helpers.each_strategy() do
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
+
+        ngx.sleep(0.01)
 
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
@@ -1171,6 +1193,8 @@ for _, strategy in helpers.each_strategy() do
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
+
+        ngx.sleep(0.01)
 
         local res_1 = assert(proxy_client_1:send {
           method  = "GET",
