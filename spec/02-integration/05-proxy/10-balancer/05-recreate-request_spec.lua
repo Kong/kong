@@ -90,6 +90,8 @@ for _, strategy in helpers.each_strategy() do
       })
       bu.end_testcase_setup(strategy, bp, "strict")
 
+      ngx.sleep(0.1)
+
       local res = assert(proxy_client:send {
         method  = "GET",
         path = "/recreate_test",
@@ -117,6 +119,8 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "test.com" }
       })
       bu.end_testcase_setup(strategy, bp, "strict")
+
+      ngx.sleep(0.1)
 
       local res = assert(proxy_client:send {
         method  = "GET",
