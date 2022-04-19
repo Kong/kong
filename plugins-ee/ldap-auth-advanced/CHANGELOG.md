@@ -1,3 +1,7 @@
+## 1.3.1
+
+- Refactored ASN.1 decoder/encoder
+
 ## 1.3.0
 
 - Add referenceable attribute to fields that could be stored in vaults

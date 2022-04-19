@@ -5,397 +5,360 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local ffi = require "ffi"
+local C = ffi.C
+local ffi_new = ffi.new
+local ffi_string = ffi.string
+local ffi_cast = ffi.cast
+local band = bit.band
+local base = require "resty.core.base"
+local new_tab = base.new_tab
 local lpack = require "lua_pack"
 local bpack = lpack.pack
-local bunpack = lpack.unpack
+local insert = table.insert
 
-local math = math
-local bit = bit
-local setmetatable = setmetatable
-local table = table
-local string_reverse = string.reverse
-local string_char = string.char
-local pairs = pairs
+local cucharpp = ffi_new("const unsigned char*[1]")
+local ucharpp = ffi_new("unsigned char*[1]")
+local charpp = ffi_new("char*[1]")
 
-local _M = { bunpack = bunpack, bpack = bpack }
 
-_M.BERCLASS = {
-  Universal = 0,
-  Application = 64,
-  ContextSpecific = 128,
-  Private = 192
+ffi.cdef [[
+  typedef struct asn1_string_st ASN1_OCTET_STRING;
+  typedef struct asn1_string_st ASN1_INTEGER;
+  typedef struct asn1_string_st ASN1_ENUMERATED;
+  typedef struct asn1_string_st ASN1_STRING;
+
+  ASN1_OCTET_STRING *ASN1_OCTET_STRING_new();
+  ASN1_INTEGER *ASN1_INTEGER_new();
+  ASN1_ENUMERATED *ASN1_ENUMERATED_new();
+
+  void ASN1_INTEGER_free(ASN1_INTEGER *a);
+  void ASN1_STRING_free(ASN1_STRING *a);
+
+  long ASN1_INTEGER_get(const ASN1_INTEGER *a);
+  long ASN1_ENUMERATED_get(const ASN1_ENUMERATED *a);
+
+  int ASN1_INTEGER_set(ASN1_INTEGER *a, long v);
+  int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v);
+  int ASN1_STRING_set(ASN1_STRING *str, const void *data, int len);
+
+  const unsigned char *ASN1_STRING_get0_data(const ASN1_STRING *x);
+  // openssl 1.1.0
+  unsigned char *ASN1_STRING_data(ASN1_STRING *x);
+
+  ASN1_OCTET_STRING *d2i_ASN1_OCTET_STRING(ASN1_OCTET_STRING **a, const unsigned char **ppin, long length);
+  ASN1_INTEGER *d2i_ASN1_INTEGER(ASN1_INTEGER **a, const unsigned char **ppin, long length);
+  ASN1_ENUMERATED *d2i_ASN1_ENUMERATED(ASN1_ENUMERATED **a, const unsigned char **ppin, long length);
+
+  int i2d_ASN1_OCTET_STRING(const ASN1_OCTET_STRING *a, unsigned char **pp);
+  int i2d_ASN1_INTEGER(const ASN1_INTEGER *a, unsigned char **pp);
+  int i2d_ASN1_ENUMERATED(const ASN1_ENUMERATED *a, unsigned char **pp);
+
+  int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
+                      int *pclass, long omax);
+  int ASN1_object_size(int constructed, int length, int tag);
+
+  void ASN1_put_object(unsigned char **pp, int constructed, int length,
+                      int tag, int xclass);
+]]
+
+
+local ASN1_STRING_get0_data
+if not pcall(function() return C.ASN1_STRING_get0_data end) then
+  ASN1_STRING_get0_data = C.ASN1_STRING_data
+else
+  ASN1_STRING_get0_data = C.ASN1_STRING_get0_data
+end
+
+
+local _M = new_tab(0, 7)
+
+
+local CLASS = {
+  UNIVERSAL = 0x00,
+  APPLICATION = 0x40,
+  CONTEXT_SPECIFIC = 0x80,
+  PRIVATE = 0xc0
 }
+_M.CLASS = CLASS
 
-_M.ASN1Decoder = {
 
-  new = function(self,o)
-    o = o or {}
-    setmetatable(o, self)
-    self.__index = self
-    o:registerBaseDecoders()
-    return o
-  end,
+local TAG = {
+  -- ASN.1 tag values
+  EOC = 0,
+  BOOLEAN = 1,
+  INTEGER = 2,
+  OCTET_STRING = 4,
+  NULL = 5,
+  ENUMERATED = 10,
+  SEQUENCE = 16,
+  SET = 17,
+}
+_M.TAG = TAG
 
-  decode = function(self, encStr, pos)
-    local etype, elen
-    local newpos = pos
-    newpos, etype = bunpack(encStr, "X1", newpos)
-    newpos, elen = self.decodeLength(encStr, newpos)
-    if self.decoder[etype] then
-      return self.decoder[etype](self, encStr, elen, newpos)
+
+local asn1_get_object
+do
+  local lenp = ffi_new("long[1]")
+  local tagp = ffi_new("int[1]")
+  local classp = ffi_new("int[1]")
+  local strpp = ffi_new("const unsigned char*[1]")
+
+  function asn1_get_object(der, start, stop)
+    start = start or 0
+    stop = stop or #der
+    if stop <= start or stop > #der then
+      return nil, "invalid offset"
+    end
+
+    local s_der = ffi_cast("const unsigned char *", der)
+    strpp[0] = s_der + start
+
+    local ret = C.ASN1_get_object(strpp, lenp, tagp, classp, stop - start)
+    if band(ret, 0x80) == 0x80 then
+      return nil, "der with error encoding: " .. ret
+    end
+
+    local cons = false
+    if band(ret, 0x20) == 0x20 then
+      cons = true
+    end
+
+    local obj = {
+      tag = tagp[0],
+      class = classp[0],
+      len = tonumber(lenp[0]),
+      offset = strpp[0] - s_der,
+      hl = strpp[0] - s_der - start, -- header length
+      cons = cons,
+    }
+
+    return obj
+  end
+end
+_M.get_object = asn1_get_object
+
+
+local function asn1_put_object(tag, class, constructed, data, len)
+  len = type(data) == "string" and #data or len or 0
+  if len <= 0 then
+    return nil, "invalid object length"
+  end
+
+  local outbuf = ffi_new("unsigned char[?]", len)
+  ucharpp[0] = outbuf
+
+  C.ASN1_put_object(ucharpp, constructed, len, tag, class)
+  if not data then
+    return ffi_string(outbuf)
+  end
+  return ffi_string(outbuf) .. data
+end
+_M.put_object = asn1_put_object
+
+
+local encode
+do
+  local encoder = new_tab(0, 3)
+
+  -- Integer
+  encoder[TAG.INTEGER] = function(val)
+    local typ = C.ASN1_INTEGER_new()
+    C.ASN1_INTEGER_set(typ, val)
+    charpp[0] = nil
+    local ret = C.i2d_ASN1_INTEGER(typ, charpp)
+    C.ASN1_INTEGER_free(typ)
+    return ffi_string(charpp[0], ret)
+  end
+
+  -- Octet String
+  encoder[TAG.OCTET_STRING] = function(val)
+    local typ = C.ASN1_OCTET_STRING_new()
+    C.ASN1_STRING_set(typ, val, #val)
+    charpp[0] = nil
+    local ret = C.i2d_ASN1_OCTET_STRING(typ, charpp)
+    C.ASN1_STRING_free(typ)
+    return ffi_string(charpp[0], ret)
+  end
+
+  encoder[TAG.ENUMERATED] = function(val)
+    local typ = C.ASN1_ENUMERATED_new()
+    C.ASN1_ENUMERATED_set(typ, val)
+    charpp[0] = nil
+    local ret = C.i2d_ASN1_ENUMERATED(typ, charpp)
+    C.ASN1_INTEGER_free(typ)
+    return ffi_string(charpp[0], ret)
+  end
+
+  encoder[TAG.SEQUENCE] = function(val)
+    if val == "" then
+      return bpack("X", "30 00")
+    end
+    return asn1_put_object(TAG.SEQUENCE, CLASS.UNIVERSAL, 1, val)
+  end
+
+  encoder[TAG.BOOLEAN] = function(val)
+    if val then
+      return bpack('X','01 01 FF')
     else
-      return newpos, nil
+      return bpack('X', '01 01 00')
     end
-  end,
+  end
 
-  setStopOnError = function(self, val)
-    self.stoponerror = val
-  end,
-
-  registerBaseDecoders = function(self)
-    self.decoder = {}
-
-    self.decoder["0A"] = function(self, encStr, elen, pos)
-      return self.decodeInt(encStr, elen, pos)
-    end
-
-    self.decoder["8A"] = function(self, encStr, elen, pos)
-      return bunpack(encStr, "A" .. elen, pos)
-    end
-
-    self.decoder["31"] = function(self, encStr, elen, pos)
-      return pos, nil
-    end
-
-    -- Boolean
-    self.decoder["01"] = function(self, encStr, elen, pos)
-      local val = bunpack(encStr, "X", pos)
-      if val ~= "FF" then
-        return pos, true
-      else
-        return pos, false
+  function encode(val, tag)
+    if tag == nil then
+      local typ = type(val)
+      if typ == "string" then
+        tag = TAG.OCTET_STRING
+      elseif typ == "number" then
+        tag = TAG.INTEGER
+      elseif typ == "boolean" then
+        tag = TAG.BOOLEAN
       end
     end
 
-    -- Integer
-    self.decoder["02"] = function(self, encStr, elen, pos)
-      return self.decodeInt(encStr, elen, pos)
+    if encoder[tag] then
+      return encoder[tag](val)
+    end
+  end
+end
+_M.encode = encode
+
+
+local decode
+do
+  local decoder = new_tab(0, 3)
+
+  decoder[TAG.OCTET_STRING] = function(der, offset, len)
+    assert(offset < #der)
+    cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
+    local typ = C.d2i_ASN1_OCTET_STRING(nil, cucharpp, len)
+    if typ == nil then
+      return nil
+    end
+    local ret = ffi_string(ASN1_STRING_get0_data(typ))
+    C.ASN1_STRING_free(typ)
+    return ret
+  end
+
+  decoder[TAG.INTEGER] = function(der, offset, len)
+    assert(offset < #der)
+    cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
+    local typ = C.d2i_ASN1_INTEGER(nil, cucharpp, len)
+    if typ == nil then
+      return nil
+    end
+    local ret = C.ASN1_INTEGER_get(typ)
+    C.ASN1_INTEGER_free(typ)
+    return tonumber(ret)
+  end
+
+  decoder[TAG.ENUMERATED] = function(der, offset, len)
+    assert(offset < #der)
+    cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
+    local typ = C.d2i_ASN1_ENUMERATED(nil, cucharpp, len)
+    if typ == nil then
+      return nil
+    end
+    local ret = C.ASN1_ENUMERATED_get(typ)
+    C.ASN1_INTEGER_free(typ)
+    return tonumber(ret)
+  end
+
+  decoder[TAG.SET] = function(der, offset, len)
+    local obj, err = asn1_get_object(der, offset)
+    if err then
+      return nil
     end
 
-    -- Octet String
-    self.decoder["04"] = function(self, encStr, elen, pos)
-      return bunpack(encStr, "A" .. elen, pos)
-    end
+    offset = obj.offset
+    local last = offset + obj.len
 
-    -- Null
-    self.decoder["05"] = function(self, encStr, elen, pos)
-      return pos, false
-    end
-
-    -- Object Identifier
-    self.decoder["06"] = function(self, encStr, elen, pos)
-      return self:decodeOID(encStr, elen, pos)
-    end
-
-    -- Context specific tags
-    self.decoder["30"] = function(self, encStr, elen, pos)
-      return self:decodeSeq(encStr, elen, pos)
-    end
-  end,
-
-  registerTagDecoders = function(self, tagDecoders)
-    self:registerBaseDecoders()
-    for k, v in pairs(tagDecoders) do
-      self.decoder[k] = v
-    end
-  end,
-
-  decodeLength = function(encStr, pos)
-    local elen
-    pos, elen = bunpack(encStr, 'C', pos)
-    if elen > 128 then
-      elen = elen - 128
-      local elenCalc = 0
-      local elenNext
-      for i = 1, elen do
-        elenCalc = elenCalc * 256
-        pos, elenNext = bunpack(encStr, 'C', pos)
-        elenCalc = elenCalc + elenNext
-      end
-      elen = elenCalc
-    end
-    return pos, elen
-  end,
-
-  decodeSeq = function(self, encStr, len, pos)
-    local seq = {}
-    local sPos = 1
-    local sStr
-    pos, sStr = bunpack(encStr, "A" .. len, pos)
-    while (sPos < len) do
-      local newSeq
-      sPos, newSeq = self:decode(sStr, sPos)
-      if not newSeq and self.stoponerror then
+    local set = {}
+    while (offset < last) do
+      local ret
+      offset, ret = decode(der, offset)
+      if not ret then
         break
       end
-      table.insert(seq, newSeq)
-    end
-    return pos, seq
-  end,
-
-  decode_oid_component = function(encStr, pos)
-    local octet
-    local n = 0
-
-    repeat
-      pos, octet = bunpack(encStr, "b", pos)
-      n = n * 128 + bit.band(0x7F, octet)
-    until octet < 128
-
-    return pos, n
-  end,
-
-  decodeOID = function(self, encStr, len, pos)
-    local last
-    local oid = {}
-    local octet
-
-    last = pos + len - 1
-    if pos <= last then
-      oid._snmp = '06'
-      pos, octet = bunpack(encStr, "C", pos)
-      oid[2] = math.fmod(octet, 40)
-      octet = octet - oid[2]
-      oid[1] = octet/40
+      insert(set, ret)
     end
 
-    while pos <= last do
-      local c
-      pos, c = self.decode_oid_component(encStr, pos)
-      oid[#oid + 1] = c
-    end
-
-    return pos, oid
-  end,
-
-  decodeInt = function(encStr, len, pos)
-    local hexStr
-    pos, hexStr = bunpack(encStr, "X" .. len, pos)
-    local value = tonumber(hexStr, 16)
-    if value >= math.pow(256, len)/2 then
-      value = value - math.pow(256, len)
-    end
-    return pos, value
-  end
-}
-
-_M.ASN1Encoder = {
-
-  new = function(self)
-    local o = {}
-    setmetatable(o, self)
-    self.__index = self
-    o:registerBaseEncoders()
-    return o
-  end,
-
-  encodeSeq = function(self, seqData)
-    return bpack('XAA' , '30', self.encodeLength(#seqData), seqData)
-  end,
-
-  encodeEnum = function(self, data)
-    local ival = self.encodeInt(data)
-    local len = self.encodeLength(#ival)
-    return bpack('cAA', 10, len, ival)
-  end,
-
-  encodeTag = function(self, class, constructed, tagn, data)
-    local o1
-    if class == "universal" then
-      o1 = 0
-    elseif class == "application" then
-      o1 = 0x40
-    elseif class == "context" then
-      o1 = 0x80
-    elseif class == "private" then
-      o1 = 0xC0
-    else
-      error("invalid")
-    end
-    if constructed then
-      o1 = o1 + 0x20
-    end
-    if tagn < 0x20 then
-      o1 = o1 + tagn
-    else
-      error("NYI")
-    end
-
-    return bpack('cAA', o1, self.encodeLength(#data), data)
-  end,
-
-  encode = function(self, val)
-    local vtype = type(val)
-
-    if self.encoder[vtype] then
-      return self.encoder[vtype](self,val)
-    end
-  end,
-
-  registerTagEncoders = function(self, tagEncoders)
-    self:registerBaseEncoders()
-    for k, v in pairs(tagEncoders) do
-      self.encoder[k] = v
-    end
-  end,
-
-  registerBaseEncoders = function(self)
-    self.encoder = {}
-
-    self.encoder['table'] = function(self, val)
-      if val._ldap == '0A' then
-        local ival = self.encodeInt(val[1])
-        local len = self.encodeLength(#ival)
-        return bpack('XAA', '0A', len, ival)
-      end
-      if val._ldaptype then
-        local len
-        if val[1] == nil or #val[1] == 0 then
-          return bpack('XC', val._ldaptype, 0)
-        else
-          len = self.encodeLength(#val[1])
-          return bpack('XAA', val._ldaptype, len, val[1])
-        end
-      end
-
-      local encVal = ""
-      for _, v in ipairs(val) do
-        encVal = encVal .. self.encode(v) -- todo: buffer?
-      end
-      local tableType = "\x30"
-      if val["_snmp"] then
-        tableType = bpack("X", val["_snmp"])
-      end
-      return bpack('AAA', tableType, self.encodeLength(#encVal), encVal)
-    end
-
-    -- Boolean encoder
-    self.encoder['boolean'] = function(self, val)
-      if val then
-        return bpack('X','01 01 FF')
-      else
-        return bpack('X', '01 01 00')
-      end
-    end
-
-    -- Integer encoder
-    self.encoder['number'] = function(self, val)
-      local ival = self.encodeInt(val)
-      local len = self.encodeLength(#ival)
-      return bpack('XAA', '02', len, ival)
-    end
-
-    -- Octet String encoder
-    self.encoder['string'] = function(self, val)
-      local len = self.encodeLength(#val)
-      return bpack('XAA', '04', len, val)
-    end
-
-    -- Null encoder
-    self.encoder['nil'] = function(self, val)
-      return bpack('X', '05 00')
-    end
-
-  end,
-
-  encode_oid_component = function(n)
-    local parts = {}
-    parts[1] = string_char(n % 128)
-    while n >= 128 do
-      n = bit.rshift(n, 7)
-      parts[#parts + 1] = string_char(n % 128 + 0x80)
-    end
-    return string_reverse(table.concat(parts))
-  end,
-
-  encodeInt = function(val)
-    local lsb = 0
-    if val > 0 then
-      local valStr = ""
-      while (val > 0) do
-        lsb = math.fmod(val, 256)
-        valStr = valStr .. bpack('C', lsb)
-        val = math.floor(val/256)
-      end
-      if lsb > 127 then
-        valStr = valStr .. "\0"
-      end
-
-      return string_reverse(valStr)
-    elseif val < 0 then
-      local i = 1
-      local tcval = val + 256
-      while tcval <= 127 do
-        tcval = tcval + (math.pow(256, i) * 255)
-        i = i+1
-      end
-      local valStr = ""
-      while (tcval > 0) do
-        lsb = math.fmod(tcval, 256)
-        valStr = valStr .. bpack("C", lsb)
-        tcval = math.floor(tcval/256)
-      end
-      return string_reverse(valStr)
-    else -- val == 0
-      return bpack("x")
-    end
-  end,
-
-  encodeLength = function(len)
-    if len < 128 then
-      return string_char(len)
-    else
-      local parts = {}
-
-      while len > 0 do
-        parts[#parts + 1] = string_char(len % 256)
-        len = bit.rshift(len, 8)
-      end
-
-      return string_char(#parts + 0x80) .. string_reverse(table.concat(parts))
-    end
-  end
-}
-
-function _M.BERtoInt(class, constructed, number)
-  local asn1_type = class + number
-
-  if constructed == true then
-    asn1_type = asn1_type + 32
+    return set
   end
 
-  return asn1_type
+  decoder[TAG.SEQUENCE] = function(der, offset, len)
+    local obj, _ = asn1_get_object(der, offset)
+    if not obj then
+      return nil
+    end
+
+    offset = obj.offset
+    local last = offset + obj.len
+
+    local seq = {}
+    while (offset < last) do
+      local ret
+      offset, ret = decode(der, offset)
+      if not ret then
+        break
+      end
+      insert(seq, ret)
+    end
+    return seq
+  end
+
+  -- offset starts from 0
+  function decode(der, offset)
+    offset = offset or 0
+    local obj, err = asn1_get_object(der, offset)
+    if not obj then
+      return nil, nil, err
+    end
+
+    local ret
+    if decoder[obj.tag] then
+      ret = decoder[obj.tag](der, offset, obj.hl + obj.len)
+    end
+    return obj.offset + obj.len, ret
+  end
 end
+_M.decode = decode
 
-function _M.intToBER(i)
-  local ber = {}
-  if bit.band(i, _M.BERCLASS.Application) == _M.BERCLASS.Application then
-    ber.class = _M.BERCLASS.Application
-  elseif bit.band(i, _M.BERCLASS.ContextSpecific) == _M.BERCLASS.ContextSpecific then
-    ber.class = _M.BERCLASS.ContextSpecific
-  elseif bit.band(i, _M.BERCLASS.Private) == _M.BERCLASS.Private then
-    ber.class = _M.BERCLASS.Private
-  else
-    ber.class = _M.BERCLASS.Universal
+
+--[[
+Encoded LDAP Result: https://ldap.com/ldapv3-wire-protocol-reference-ldap-result/
+
+   02 01 03 -- The message ID (integer value 3)
+   69 07 -- Begin the add response protocol op
+      0a 01 00 -- success result code (enumerated value 0)
+--]]
+local function parse_ldap_op(der)
+  local offset, err
+  -- message ID (integer)
+  local id
+  offset, id, err = decode(der)
+  if err then
+    return nil, err
   end
-  if bit.band(i, 32) == 32 then
-    ber.constructed = true
-    ber.number = i - ber.class - 32
-  else
-    ber.primitive = true
-    ber.number = i - ber.class
+
+  -- response protocol op
+  local obj
+  obj, err = asn1_get_object(der, offset)
+  if err then
+    return nil, err
   end
-  return ber
+  local op = obj.tag
+
+  local res = {
+    message_id = id,
+    protocol_op = op,
+    offset = obj.offset,
+  }
+
+  return res
 end
+_M.parse_ldap_op = parse_ldap_op
+
 
 return _M

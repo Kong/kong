@@ -5,10 +5,13 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local bunpack = require "lua_pack".unpack
 local asn1 = require "kong.plugins.ldap-auth-advanced.asn1"
-local bunpack = asn1.bunpack
-
-local string_format = string.format
+local asn1_put_object = asn1.put_object
+local asn1_parse_ldap_op = asn1.parse_ldap_op
+local asn1_encode = asn1.encode
+local asn1_decode = asn1.decode
+local fmt = string.format
 
 local _M = {}
 
@@ -33,14 +36,6 @@ local APPNO = {
   ExtendedRequest = 23,
   ExtendedResponse = 24
 }
-
-local encoder = asn1.ASN1Encoder:new()
-local decoder = asn1.ASN1Decoder:new()
-
-local function encodeLDAPOp(encoder, appno, isConstructed, data)
-  local asn1_type = asn1.BERtoInt(asn1.BERCLASS.Application, isConstructed, appno)
-  return encoder:encode({ _ldaptype = string_format("%X", asn1_type), data })
-end
 
 local function calculate_payload_length(encStr, pos, socket)
   local elen
@@ -74,44 +69,45 @@ local function receive_ldap_message(socket)
   if err then
     return nil, nil, nil, nil, err
   end
-  local pos, messageID = decoder:decode(packet, 1)
-  local protocolOp
-  pos, protocolOp = bunpack(packet, "C", pos)
-  pos = decoder.decodeLength(packet, pos)
-  protocolOp = asn1.intToBER(protocolOp)
-  return messageID, protocolOp, packet, pos
+
+  local res
+  res, err = asn1_parse_ldap_op(packet)
+  if err then
+    return nil, nil, nil, nil, err
+  end
+
+  return res.message_id, res.protocol_op, packet, res.offset
 end
 
 function _M.bind_request(socket, username, password)
-  local ldapAuth = encoder:encode({ _ldaptype = 80, password })
-  local bindReq = encoder:encode(3) .. encoder:encode(username) .. ldapAuth
-  local ldapMsg = encoder:encode(ldapMessageId) ..
-    encodeLDAPOp(encoder, APPNO.BindRequest, true, bindReq)
+  local ldapAuth = asn1_put_object(0, asn1.CLASS.CONTEXT_SPECIFIC, 0, password)
+  local bindReq = asn1_encode(3) .. asn1_encode(username) .. ldapAuth
+  local ldapMsg = asn1_encode(ldapMessageId) ..
+    asn1_put_object(APPNO.BindRequest, asn1.CLASS.APPLICATION, 1, bindReq)
 
-  local send_packet = encoder:encodeSeq(ldapMsg)
-  ldapMessageId = ldapMessageId +1
+  local send_packet = asn1_encode(ldapMsg, asn1.TAG.SEQUENCE)
+  ldapMessageId = ldapMessageId + 1
   socket:send(send_packet)
 
-  local _, protocolOp, packet, pos, err = receive_ldap_message(socket)
-
+  local _, protocol_op, packet, pos, err = receive_ldap_message(socket)
   if err then
     return false, err
   end
 
-  if protocolOp.number ~= APPNO.BindResponse then
-    return false, string_format("Received incorrect Op in packet: %d, expected %d",
-                                protocolOp.number, APPNO.BindResponse)
+  if protocol_op ~= APPNO.BindResponse then
+    return false, fmt("Received incorrect Op in packet: %d, expected %d",
+                                protocol_op, APPNO.BindResponse)
   end
 
   local resultCode
-  pos, resultCode = decoder:decode(packet, pos)
+  pos, resultCode = asn1_decode(packet, pos)
 
   if resultCode ~= 0 then
     local _, errorMessage
-    pos, _ = decoder:decode(packet, pos)
-    _, errorMessage = decoder:decode(packet, pos)
+    pos, _ = asn1_decode(packet, pos)
+    _, errorMessage = asn1_decode(packet, pos)
     local error_msg = ERROR_MSG[resultCode]
-    return false, string_format("\n  Error: %s\n  Details: %s",
+    return false, fmt("\n  Error: %s\n  Details: %s",
       error_msg or "Unknown error occurred (code: " .. resultCode ..
       ")", errorMessage or "")
   else
@@ -121,14 +117,15 @@ end
 
 function _M.unbind_request(socket)
   local ldapMsg, packet
-  local encoder = asn1.ASN1Encoder:new()
 
-  ldapMessageId = ldapMessageId +1
-  ldapMsg = encoder:encode(ldapMessageId) ..
-            encodeLDAPOp(encoder, APPNO.UnbindRequest,
-                         false, nil)
-  packet = encoder:encodeSeq(ldapMsg)
+  ldapMessageId = ldapMessageId + 1
+
+  ldapMsg = asn1_encode(ldapMessageId) ..
+              asn1_put_object(APPNO.UnbindRequest, asn1.CLASS.APPLICATION, 0)
+  packet = asn1_encode(ldapMsg, asn1.TAG.SEQUENCE)
+
   socket:send(packet)
+
   return true, ""
 end
 
@@ -153,92 +150,98 @@ function _M.search_request(socket, query)
   end
   local filter = query.filter
   if filter == nil then
-    filter = encoder:encodeTag("context", false, 7, "objectclass")
+    filter = asn1_put_object(7, asn1.CLASS.CONTEXT_SPECIFIC, 0, "objectclass")
   else
     local field, value = filter:match("(%g+)=([%s%g]+)")
     if field then
-      filter = encoder:encodeTag("context", true, 3, encoder:encode(field)..encoder:encode(value))
+      filter = asn1_put_object(3, asn1.CLASS.CONTEXT_SPECIFIC, 1, asn1_encode(field)..asn1_encode(value))
     else
       error "NYI"
     end
   end
   local attributes = query.attrs
   if attributes == nil then
-    attributes = encoder:encodeSeq("")
+    attributes = asn1_encode("", asn1.TAG.SEQUENCE)
   elseif type(attributes) == "string" then
-    attributes = encoder:encodeSeq(encoder:encode(attributes))
+    attributes = asn1_encode(asn1_encode(attributes), asn1.TAG.SEQUENCE)
   elseif type(attributes) == "table" then
     local a = {}
     for i, v in ipairs(attributes) do
       assert(type(v) == "string")
-      a[i] = encoder:encode(v)
+      a[i] = asn1_encode(v)
     end
-    attributes = encoder:encodeSeq(table.concat(a))
+    attributes = asn1_encode(table.concat(a), asn1.TAG.SEQUENCE)
   else
     error "invalid attrs field"
   end
 
-  local data = encoder:encode(base)
-    .. encoder:encodeEnum(scope) -- scope
-    .. encoder:encodeEnum(0) -- derefAliases
-    .. encoder:encode(0) -- sizeLimit
-    .. encoder:encode(0) -- timeLimit
-    .. encoder:encode(false) -- typesOnly
+  local data = asn1_encode(base)
+    .. asn1_encode(scope, asn1.TAG.ENUMERATED) -- scope
+    .. asn1_encode(0, asn1.TAG.ENUMERATED) -- derefAliases
+    .. asn1_encode(0) -- sizeLimit
+    .. asn1_encode(0) -- timeLimit
+    .. asn1_encode(false) -- typesOnly
     .. filter -- filter
     .. attributes -- attributes
-  ldapMessageId = ldapMessageId +1
-  local ldapMsg = encoder:encode(ldapMessageId) .. encodeLDAPOp(encoder, 3, true, data)
-  local packet = encoder:encodeSeq(ldapMsg)
+  ldapMessageId = ldapMessageId + 1
+  local ldapMsg = asn1_encode(ldapMessageId) .. asn1_put_object(3, asn1.CLASS.APPLICATION, 1, data)
+  local packet = asn1_encode(ldapMsg, asn1.TAG.SEQUENCE)
   socket:send(packet)
 
   local response = {}
 
-  local _, protocolOp, packet, pos = receive_ldap_message(socket)
+  local _, protocol_op, packet, pos, err = receive_ldap_message(socket)
+  if err then
+    return false, err
+  end
 
-  while protocolOp.number == APPNO.SearchResult do
+  while protocol_op == APPNO.SearchResult do
     local key
-    pos, key = decoder:decode(packet, pos)
-    local _, seq = decoder:decode(packet, pos)
+    pos, key = asn1_decode(packet, pos)
+    local _, seq = asn1_decode(packet, pos)
     local val = {}
-    for i,v in ipairs(seq) do
-      if v[3] ~= nil then
-        local k = table.remove(v, 1)
-        val[k] = v
-      else
-        val[v[1]] = v[2]
+    for _, v in ipairs(seq) do
+      local k = v[1]
+      local vv = v[2]
+      if type(vv) == "table" and #vv == 1 then
+        vv = vv[1]
       end
+      val[k] = vv
     end
     response[key] = val
 
     -- Read next packet
-    _, protocolOp, packet, pos = receive_ldap_message(socket)
+    _, protocol_op, packet, pos, err = receive_ldap_message(socket)
+    if err then
+      return false, err
+    end
   end
 
-  if protocolOp.number ~= APPNO.SearchResultDone then
-    if protocolOp.number == APPNO.ExtendedResponse then
+  if protocol_op ~= APPNO.SearchResultDone then
+    if protocol_op == APPNO.ExtendedResponse then
       local resultCode
-      pos, resultCode = decoder:decode(packet, pos)
+      pos, resultCode = asn1_decode(packet, pos)
       local error_msg, _
-      pos, response.matchedDN = decoder:decode(packet, pos)
-      _, response.errorMessage = decoder:decode(packet, pos)
+      pos, response.matchedDN = asn1_decode(packet, pos)
+      _, response.errorMessage = asn1_decode(packet, pos)
       error_msg = ERROR_MSG[resultCode]
-      return false, string_format("\n  Error: %s\n  Details: %s",
+      return false, fmt("\n  Error: %s\n  Details: %s",
         error_msg or "Unknown error occurred (code: " .. resultCode ..
         ")", response.errorMessage or "")
     end
-    return false, string_format("Received incorrect Op in packet: %d, expected %d", protocolOp.number, APPNO.SearchResultDone)
+    return false, fmt("Received incorrect Op in packet: %d, expected %d", protocol_op, APPNO.SearchResultDone)
   end
 
   local resultCode
-  pos, resultCode = decoder:decode(packet, pos)
+  pos, resultCode = asn1_decode(packet, pos)
 
   if resultCode ~= 0 then
     local _, errorMessage
-    pos, _ = decoder:decode(packet, pos)
-    _, errorMessage = decoder:decode(packet, pos)
+    pos, _ = asn1_decode(packet, pos)
+    _, errorMessage = asn1_decode(packet, pos)
     local error_msg = ERROR_MSG[resultCode]
 
-    return false, string_format("\n  Error: %s\n  Details: %s",
+    return false, fmt("\n  Error: %s\n  Details: %s",
       error_msg or "Unknown error occurred (code: " .. resultCode ..
       ")", errorMessage or "")
   else
@@ -247,29 +250,32 @@ function _M.search_request(socket, query)
 end
 
 function _M.start_tls(socket)
-  local method_name = encoder:encode({_ldaptype = 80, "1.3.6.1.4.1.1466.20037"})
-  ldapMessageId = ldapMessageId +1
-  local ldapMsg = encoder:encode(ldapMessageId) ..
-    encodeLDAPOp(encoder, APPNO.ExtendedRequest, true, method_name)
-  local send_packet = encoder:encodeSeq(ldapMsg)
+  local method_name = asn1_put_object(0, asn1.CLASS.CONTEXT_SPECIFIC, 0, "1.3.6.1.4.1.1466.20037")
+  ldapMessageId = ldapMessageId + 1
+  local ldapMsg = asn1_encode(ldapMessageId) ..
+                  asn1_put_object(APPNO.ExtendedRequest, asn1.CLASS.APPLICATION, 1, method_name)
+  local send_packet = asn1_encode(ldapMsg, asn1.TAG.SEQUENCE)
   socket:send(send_packet)
 
-  local _, protocolOp, packet, pos = receive_ldap_message(socket)
+  local _, protocol_op, packet, pos, err = receive_ldap_message(socket)
+  if err then
+    return false, err
+  end
 
-  if protocolOp.number ~= APPNO.ExtendedResponse then
-    return false, string_format("Received incorrect Op in packet: %d, expected %d",
-                                protocolOp.number, APPNO.ExtendedResponse)
+  if protocol_op ~= APPNO.ExtendedResponse then
+    return false, fmt("Received incorrect Op in packet: %d, expected %d",
+                                protocol_op, APPNO.ExtendedResponse)
   end
 
   local resultCode
-  pos, resultCode = decoder:decode(packet, pos)
+  pos, resultCode = asn1_decode(packet, pos)
 
   if resultCode ~= 0 then
     local _, errorMessage
-    pos, _ = decoder:decode(packet, pos)
-    _, errorMessage = decoder:decode(packet, pos)
+    pos, _ = asn1_decode(packet, pos)
+    _, errorMessage = asn1_decode(packet, pos)
     local error_msg = ERROR_MSG[resultCode]
-    return false, string_format("\n  Error: %s\n  Details: %s",
+    return false, fmt("\n  Error: %s\n  Details: %s",
       error_msg or "Unknown error occurred (code: " .. resultCode ..
       ")", errorMessage or "")
   else
