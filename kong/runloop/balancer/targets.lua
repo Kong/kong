@@ -229,7 +229,11 @@ end
 
 
 -- Timer invoked to update DNS records
-function resolve_timer_callback()
+function resolve_timer_callback(premature)
+  if premature then
+    return
+  end
+
   local now = ngx_now()
 
   while (renewal_heap:peekValue() or math.huge) < now do
