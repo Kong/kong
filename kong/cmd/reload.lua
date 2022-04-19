@@ -33,7 +33,7 @@ local function execute(args)
     conf.declarative_config = nil
   end
 
-  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf, nil, true))
   assert(nginx_signals.reload(conf))
 
   log("Kong reloaded")
