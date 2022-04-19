@@ -11,11 +11,14 @@ local msgpack = require "MessagePack"
 local mp_pack = msgpack.pack
 local mp_unpack = msgpack.unpack
 local cjson_encode = require "cjson".encode
+local kong = kong
 local knode  = (kong and kong.node) and kong.node or
                require "kong.pdk.node".new()
-
 local new_tab = require("table.new")
 local clear_tab = require("table.clear")
+local KONG_VERSION = kong.version
+local KONG_NODE_ID = knode.get_id()
+local KONG_HOSTNAME = knode.get_hostname()
 
 local BUFFER_SIZE = 64
 
@@ -103,7 +106,8 @@ end
 
 local function start_ws_client(self, server_name)
   local uri = "wss://" .. self.cluster_endpoint .. "/v1/ingest?node_id=" ..
-    kong.node.get_id() .. "&node_hostname=" .. knode.get_hostname()
+    KONG_NODE_ID .. "&node_hostname=" .. KONG_HOSTNAME ..
+    "&node_version=" .. KONG_VERSION
 
   local log_prefix = get_log_prefix(self)
   assert(ngx.timer.at(0, kong.clustering.telemetry_communicate, kong.clustering, uri, server_name, function(connected, send_func)
