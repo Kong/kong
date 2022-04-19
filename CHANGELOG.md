@@ -72,6 +72,8 @@
   method now. [#8596](https://github.com/Kong/kong/pull/8596). If you have
   scripts that depend on it being `POST`, these scripts will need to be updated
   when updating to Kong 3.0.
+- Insert and update operations on duplicated target entities returns 409. 
+  [#8179](https://github.com/Kong/kong/pull/8179)
 
 #### Plugins
 
@@ -92,6 +94,11 @@
   [#8589](https://github.com/Kong/kong/pull/8589)
 
 ### Additions
+
+#### Core
+
+- Added `cache_key` on target entity for uniqueness detection.
+  [#8179](https://github.com/Kong/kong/pull/8179)
 
 #### Plugins
 
