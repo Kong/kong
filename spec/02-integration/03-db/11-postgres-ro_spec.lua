@@ -54,7 +54,7 @@ for _, strategy in helpers.each_strategy() do
 
         route_id = json.id
 
-        ngx.sleep(0.01) -- wait events unix socket connect
+        ngx.sleep(0.002)  -- wait events unix socket connect
 
         res = assert(proxy_client:send({
           method  = "GET",
@@ -71,7 +71,7 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(204, res)
 
-        ngx.sleep(0.01) -- wait events unix socket connect
+        ngx.sleep(0.002)  -- wait events unix socket connect
 
         res = assert(proxy_client:send({
           method  = "GET",
@@ -126,6 +126,8 @@ for _, strategy in helpers.each_strategy() do
           headers = {["Content-Type"] = "application/json"}
         }))
         assert.res_status(201, res)
+
+        ngx.sleep(0.002)  -- wait events unix socket connect
 
         res = assert(proxy_client:send({
           method  = "GET",
