@@ -47,15 +47,6 @@ function _TARGETS:insert(entity, options)
     entity.target = formatted_target
   end
 
-  local workspace = workspaces.get_workspace_id()
-  local opts = { nulls = true, workspace = workspace }
-  for existent in self:each_for_upstream(entity.upstream, nil, opts) do
-    if existent.target == entity.target then
-      local err_t = self.errors:unique_violation({ target = existent.target })
-      return nil, tostring(err_t), err_t
-    end
-  end
-
   return self.super.insert(self, entity, options)
 end
 
