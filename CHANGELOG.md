@@ -80,6 +80,7 @@
 - The PDK is no longer versioned
   [#8585](https://github.com/Kong/kong/pull/8585)
 - `pdk.response.set_header()`, `pdk.response.set_headers()`, `pdk.response.exit()` now ignore and emit warnings for mannually set `Transfer-Encoding` headers.
+  [#8698](https://github.com/Kong/kong/pull/8698)
 
 ### Deprecations
 
