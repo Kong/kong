@@ -408,6 +408,11 @@ local function new(self, major_version)
     end
 
     validate_header(name, value)
+    local lower_name = lower(name)
+    if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
+      self.log.warn("mannually setting Transfer-Encoding. Ignored.")
+      return
+    end
 
     ngx.header[name] = normalize_header(value)
   end
@@ -514,7 +519,12 @@ local function new(self, major_version)
     validate_headers(headers)
 
     for name, value in pairs(headers) do
-      ngx.header[name] = normalize_multi_header(value)
+      local lower_name = lower(name)
+      if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
+        self.log.warn("mannually setting Transfer-Encoding. Ignored.")
+      else
+        ngx.header[name] = normalize_multi_header(value)
+      end
     end
   end
 
@@ -645,8 +655,13 @@ local function new(self, major_version)
     if headers ~= nil then
       for name, value in pairs(headers) do
         ngx.header[name] = normalize_multi_header(value)
+        local lower_name = lower(name)
+        if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
+          self.log.warn("mannually setting Transfer-Encoding. Ignored.")
+        else
+          ngx.header[name] = normalize_multi_header(value)
+        end
         if not has_content_type or not has_content_length then
-          local lower_name = lower(name)
           if lower_name == "content-type"
           or lower_name == "content_type"
           then
