@@ -1770,6 +1770,10 @@ describe("declarative config: flatten", function()
                 hash_on_cookie = null,
                 hash_on_cookie_path = "/",
                 hash_on_header = null,
+                hash_on_query_arg = null,
+                hash_fallback_query_arg = null,
+                hash_on_uri_capture = null,
+                hash_fallback_uri_capture = null,
                 healthchecks = {
                   active = {
                     concurrency = 10,
@@ -1822,6 +1826,10 @@ describe("declarative config: flatten", function()
                 hash_on_cookie = null,
                 hash_on_cookie_path = "/",
                 hash_on_header = null,
+                hash_on_query_arg = null,
+                hash_fallback_query_arg = null,
+                hash_on_uri_capture = null,
+                hash_fallback_uri_capture = null,
                 healthchecks = {
                   active = {
                     concurrency = 10,
