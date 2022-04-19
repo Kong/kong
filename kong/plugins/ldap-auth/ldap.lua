@@ -75,7 +75,10 @@ function _M.bind_request(socket, username, password)
 
   packet = socket:receive(packet_len)
 
-  local res = asn1_parse_ldap_result(packet)
+  local res, err = asn1_parse_ldap_result(packet)
+  if err then
+    return false, "Invalid LDAP message encoding: " .. err
+  end
 
   if res.protocol_op ~= APPNO.BindResponse then
     return false, fmt("Received incorrect Op in packet: %d, expected %d",
@@ -128,7 +131,10 @@ function _M.start_tls(socket)
 
   packet = socket:receive(packet_len)
 
-  local res = asn1_parse_ldap_result(packet)
+  local res, err = asn1_parse_ldap_result(packet)
+  if err then
+    return false, "Invalid LDAP message encoding: " .. err
+  end
 
   if res.protocol_op ~= APPNO.ExtendedResponse then
     return false, fmt("Received incorrect Op in packet: %d, expected %d",

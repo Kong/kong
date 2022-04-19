@@ -96,14 +96,14 @@ do
   function asn1_get_object(der, start, stop)
     start = start or 0
     stop = stop or #der
-    if stop < start or stop > #der then
+    if stop <= start or stop > #der then
       return nil, "invalid offset"
     end
 
     local s_der = ffi_cast("const unsigned char *", der)
     strpp[0] = s_der + start
 
-    local ret = C.ASN1_get_object(strpp, lenp, tagp, classp, stop - start + 1)
+    local ret = C.ASN1_get_object(strpp, lenp, tagp, classp, stop - start)
     if band(ret, 0x80) == 0x80 then
       return nil, "der with error encoding: " .. ret
     end
@@ -118,7 +118,7 @@ do
       class = classp[0],
       len = tonumber(lenp[0]),
       offset = strpp[0] - s_der,
-      hl = strpp[0] - s_der - start,
+      hl = strpp[0] - s_der - start, -- header length
       cons = cons,
     }
 
@@ -130,11 +130,11 @@ _M.get_object = asn1_get_object
 
 local function asn1_put_object(tag, class, constructed, data, len)
   len = type(data) == "string" and #data or len or 0
-  if len < 0 then
+  if len <= 0 then
     return nil, "invalid object length"
   end
 
-  local outbuf = ffi.new("unsigned char[?]", len)
+  local outbuf = ffi_new("unsigned char[?]", len)
   ucharpp[0] = outbuf
 
   C.ASN1_put_object(ucharpp, constructed, len, tag, class)
@@ -143,6 +143,7 @@ local function asn1_put_object(tag, class, constructed, data, len)
   end
   return ffi_string(outbuf) .. data
 end
+
 _M.put_object = asn1_put_object
 
 
@@ -209,6 +210,9 @@ do
     assert(offset < #der)
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
     local typ = C.d2i_ASN1_OCTET_STRING(nil, cucharpp, len)
+    if typ == nil then
+      return nil
+    end
     local ret = ASN1_STRING_get0_data(typ)
     C.ASN1_STRING_free(typ)
     return ffi_string(ret)
@@ -218,6 +222,9 @@ do
     assert(offset < #der)
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
     local typ = C.d2i_ASN1_INTEGER(nil, cucharpp, len)
+    if typ == nil then
+      return nil
+    end
     local ret = C.ASN1_INTEGER_get(typ)
     C.ASN1_INTEGER_free(typ)
     return tonumber(ret)
@@ -226,14 +233,18 @@ do
   decoder[TAG.ENUMERATED] = function(der, offset, len)
     assert(offset < #der)
     cucharpp[0] = ffi_cast("const unsigned char *", der) + offset
-    local typ = C.d2i_ASN1_INTEGER(nil, cucharpp, len)
-    local ret = C.ASN1_INTEGER_get(typ)
+    local typ = C.d2i_ASN1_ENUMERATED(nil, cucharpp, len)
+    if typ == nil then
+      return nil
+    end
+    local ret = C.ASN1_ENUMERATED_get(typ)
     C.ASN1_INTEGER_free(typ)
     return tonumber(ret)
   end
 
   -- offset starts from 0
   function decode(der, offset)
+    offset = offset or 0
     local obj, err = asn1_get_object(der, offset)
     if not obj then
       return nil, nil, err
@@ -241,7 +252,7 @@ do
 
     local ret
     if decoder[obj.tag] then
-      ret = decoder[obj.tag](der, offset, obj.len)
+      ret = decoder[obj.tag](der, offset, obj.hl + obj.len)
     end
     return obj.offset + obj.len, ret
   end
@@ -259,53 +270,55 @@ Encoded LDAP Result: https://ldap.com/ldapv3-wire-protocol-reference-ldap-result
       04 00 -- No matched DN (0-byte octet string)
       04 00 -- No diagnostic message (0-byte octet string)
 --]]
-
 local function parse_ldap_result(der)
-  local p = ffi_cast("const unsigned char *", der)
-  cucharpp[0] = p
-  local obj, err = asn1_get_object(der)
-  if not obj then
+  local offset, err, _
+  -- message ID (integer)
+  local id
+  offset, id, err = decode(der)
+  if err then
     return nil, err
   end
 
-  -- message ID (integer)
-  local asn1_int = C.d2i_ASN1_INTEGER(nil, cucharpp, #der)
-  local id = C.ASN1_INTEGER_get(asn1_int)
-  C.ASN1_INTEGER_free(asn1_int)
-
   -- response protocol op
-  obj = asn1_get_object(der, obj.offset + obj.len)
-  if not obj then
+  local obj
+  obj, err = asn1_get_object(der, offset)
+  if err then
     return nil, err
   end
   local op = obj.tag
 
   -- success result code
-  cucharpp[0] = p + obj.offset
-  local asn1_enum = C.d2i_ASN1_ENUMERATED(nil, cucharpp, obj.len)
-  local code = C.ASN1_ENUMERATED_get(asn1_enum)
-  C.ASN1_INTEGER_free(asn1_enum)
+  local code
+  offset, code, err = decode(der, obj.offset)
+  if err then
+    return nil, err
+  end
 
   -- matched DN (octet string)
-  local asn1_str = C.d2i_ASN1_OCTET_STRING(nil, cucharpp, #der)
-  local matched_dn = ASN1_STRING_get0_data(asn1_str)
-  C.ASN1_STRING_free(asn1_str)
+  local matched_dn
+  offset, matched_dn, err = decode(der, offset)
+  if err then
+    return nil, err
+  end
 
   -- diagnostic message (octet string)
-  local asn1_str1 = C.d2i_ASN1_OCTET_STRING(nil, cucharpp, #der)
-  local diagnostic_msg = ASN1_STRING_get0_data(asn1_str1)
-  C.ASN1_STRING_free(asn1_str1)
+  local diagnostic_msg
+  _, diagnostic_msg, err = decode(der, offset)
+  if err then
+    return nil, err
+  end
 
   local res = {
-    message_id = tonumber(id),
+    message_id = id,
     protocol_op = op,
-    result_code = tonumber(code),
-    matched_dn = ffi_string(matched_dn),
-    diagnostic_msg = ffi_string(diagnostic_msg),
+    result_code = code,
+    matched_dn = matched_dn,
+    diagnostic_msg = diagnostic_msg,
   }
 
   return res
 end
+
 _M.parse_ldap_result = parse_ldap_result
 
 
