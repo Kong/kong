@@ -470,6 +470,8 @@ describe("headers [#" .. strategy .. "]", function()
           assert.res_status(200, res)
           admin_client:close()
 
+          ngx.sleep(0.01)
+
           local res = assert(proxy_client:send {
             method  = "GET",
             path    = "/get",
