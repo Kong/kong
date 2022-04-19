@@ -173,6 +173,8 @@ describe("worker respawn", function()
 
     assert.response(res).has.status(201)
 
+    ngx.sleep(1) -- XXX: wait for something, why?
+
     local res = assert(proxy_client:get("/"))
     assert.res_status(401, res)
 
