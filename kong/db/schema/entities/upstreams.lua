@@ -32,7 +32,7 @@ end
 local hash_on = Schema.define {
   type = "string",
   default = "none",
-  one_of = { "none", "consumer", "ip", "header", "cookie" }
+  one_of = { "none", "consumer", "ip", "header", "cookie", "path", "query_arg", "uri_capture" }
 }
 
 
@@ -79,6 +79,10 @@ local health_threshold = Schema.define {
   between = { 0, 100 },
 }
 
+local simple_param = Schema.define {
+  type = "string",
+  len_min = 1,
+}
 
 local NO_DEFAULT = {}
 
@@ -186,6 +190,10 @@ local r =  {
     { hash_fallback_header = typedefs.header_name, },
     { hash_on_cookie = { type = "string",  custom_validator = utils.validate_cookie_name }, },
     { hash_on_cookie_path = typedefs.path{ default = "/", }, },
+    { hash_on_query_arg = simple_param },
+    { hash_fallback_query_arg = simple_param },
+    { hash_on_uri_capture = simple_param },
+    { hash_fallback_uri_capture = simple_param },
     { slots = { type = "integer", default = 10000, between = { 10, 2^16 }, }, },
     { healthchecks = { type = "record",
         default = healthchecks_defaults,
@@ -228,18 +236,62 @@ local r =  {
       then_field = "hash_fallback", then_match = { one_of = { "none" }, },
     }, },
 
-    -- hash_fallback must not equal hash_on (headers are allowed)
+    -- hash_fallback must not equal hash_on (headers and query args are allowed)
     { conditional = {
       if_field = "hash_on", if_match = { match = "^consumer$" },
-      then_field = "hash_fallback", then_match = { one_of = { "none", "ip", "header", "cookie" }, },
+      then_field = "hash_fallback", then_match = { one_of = { "none", "ip",
+                                                              "header", "cookie",
+                                                              "path", "query_arg",
+                                                              "uri_capture",
+                                                            }, },
     }, },
     { conditional = {
       if_field = "hash_on", if_match = { match = "^ip$" },
-      then_field = "hash_fallback", then_match = { one_of = { "none", "consumer", "header", "cookie" }, },
+      then_field = "hash_fallback", then_match = { one_of = { "none", "consumer",
+                                                              "header", "cookie",
+                                                              "path", "query_arg",
+                                                              "uri_capture",
+                                                            }, },
     }, },
+    { conditional = {
+      if_field = "hash_on", if_match = { match = "^path$" },
+      then_field = "hash_fallback", then_match = { one_of = { "none", "consumer",
+                                                              "header", "cookie",
+                                                              "query_arg", "ip",
+                                                              "uri_capture",
+                                                            }, },
+    }, },
+
 
     -- different headers
     { distinct = { "hash_on_header", "hash_fallback_header" }, },
+
+    -- hash_on_query_arg must be present when hashing on query_arg
+    { conditional = {
+      if_field = "hash_on", if_match = { match = "^query_arg$" },
+      then_field = "hash_on_query_arg", then_match = { required = true },
+    }, },
+    { conditional = {
+      if_field = "hash_fallback", if_match = { match = "^query_arg$" },
+      then_field = "hash_fallback_query_arg", then_match = { required = true },
+    }, },
+
+    -- query arg and fallback must be different
+    { distinct = { "hash_on_query_arg" , "hash_fallback_query_arg" }, },
+
+    -- hash_on_uri_capture must be present when hashing on uri_capture
+    { conditional = {
+      if_field = "hash_on", if_match = { match = "^uri_capture$" },
+      then_field = "hash_on_uri_capture", then_match = { required = true },
+    }, },
+    { conditional = {
+      if_field = "hash_fallback", if_match = { match = "^uri_capture$" },
+      then_field = "hash_fallback_uri_capture", then_match = { required = true },
+    }, },
+
+    -- uri capture and fallback must be different
+    { distinct = { "hash_on_uri_capture" , "hash_fallback_uri_capture" }, },
+
   },
 
   -- This is a hack to preserve backwards compatibility with regard to the
