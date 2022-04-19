@@ -72,7 +72,7 @@
   method now. [#8596](https://github.com/Kong/kong/pull/8596). If you have
   scripts that depend on it being `POST`, these scripts will need to be updated
   when updating to Kong 3.0.
-- Insert and update operations on duplicated target entities returns 409. 
+- Insert and update operations on duplicated target entities returns 409.
   [#8179](https://github.com/Kong/kong/pull/8179)
 
 #### PDK
@@ -115,7 +115,9 @@
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
 - Bumped resty.acme from 0.7.2 to 0.8.0
-  [#8680](https://github.com/Kong/kong/pull/8680
+  [#8680](https://github.com/Kong/kong/pull/8680)
+- Bumped luarocks from 3.8.0 to 3.9.0
+  [#8700](https://github.com/Kong/kong/pull/8700)
 
 ### Additions
 
