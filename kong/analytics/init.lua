@@ -44,6 +44,8 @@ p.include_imports = true
 -- the file is uploaded by the build job
 -- https://github.com/Kong/kong-distributions/blob/99d49c5c79399e4b0700ed7f7ea220efcd39c771/kong-images/build-kong.sh#L759
 p:addpath("/usr/local/kong/lib/kong/model/analytics")
+-- path for unit tests
+p:addpath("kong/include/kong/model/analytics")
 p:loadfile("payload.proto")
 
 
