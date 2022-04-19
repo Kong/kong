@@ -1132,15 +1132,15 @@ finalize stream session: 200
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
-        header_filter_by_lua_block {
+        access_by_lua_block {
             ngx.header.content_length = nil
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            pdk.response.exit(200, "test", {
+            pdk.response.exit(200, "test\n", {
                 ["Transfer-Encoding"] = "gzip",
                 ["X-test"] = "test",
-            }
+            })
         }
     }
 --- request
@@ -1148,7 +1148,9 @@ GET /t
 --- response_body
 test
 --- response_headers
-Content-Length: 4
+Content-Length: 5
 X-test: test
 --- error_log
 mannually setting Transfer-Encoding. Ignored.
+
+
