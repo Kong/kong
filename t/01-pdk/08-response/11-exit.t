@@ -4,7 +4,7 @@ use Test::Nginx::Socket::Lua;
 use Test::Nginx::Socket::Lua::Stream;
 do "./t/Util.pm";
 
-plan tests => repeat_each() * (blocks() * 4) + 10;
+plan tests => repeat_each() * (blocks() * 4) + 11;
 
 run_tests();
 
