@@ -353,6 +353,8 @@ describe("kong start/stop #" .. strategy, function()
       assert.res_status(404, res) -- no Route configured
       assert(helpers.stop_kong(helpers.test_conf.prefix))
 
+      ngx.sleep(1)  -- XXX: why?
+
       -- TEST: since nginx started in the foreground, the 'kong start' command
       -- stdout should receive all of nginx's stdout as well.
       local stdout = pl_file.read(stdout_path)

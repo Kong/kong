@@ -799,6 +799,8 @@ describe("Admin API #off", function()
 
       assert.response(res).has.status(201)
 
+      ngx.sleep(0.02)
+
       local res = assert(client:send {
         method = "PUT",
         path = "/upstreams/foo/targets/c830b59e-59cc-5392-adfd-b414d13adfc4/10.20.30.40/unhealthy",
