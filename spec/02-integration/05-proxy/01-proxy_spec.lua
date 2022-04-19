@@ -43,7 +43,7 @@ describe("Proxy interface listeners", function()
       proxy_listen = "off",
       admin_listen = "0.0.0.0:9001",
     }))
-    assert.equals(1, count_server_blocks(helpers.test_conf.nginx_kong_conf))
+    assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.is_nil(get_listeners(helpers.test_conf.nginx_kong_conf).kong)
   end)
 
@@ -53,7 +53,7 @@ describe("Proxy interface listeners", function()
       admin_listen = "0.0.0.0:9000",
     }))
 
-    assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_conf))
+    assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.same({
       ["127.0.0.1:9001"] = 1,
       ["127.0.0.1:9002"] = 2,
@@ -89,7 +89,7 @@ describe("#stream proxy interface listeners", function()
     assert(helpers.start_kong({
       stream_listen = "off",
     }))
-    assert.equals(0, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
+    assert.equals(1, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
     assert.is_nil(get_listeners(helpers.test_conf.nginx_kong_stream_conf).kong)
   end)
 
@@ -98,26 +98,32 @@ describe("#stream proxy interface listeners", function()
       stream_listen = "127.0.0.1:9011, 127.0.0.1:9012",
     }))
 
+    local stream_events_sock_path = "unix:" .. helpers.test_conf.prefix .. "/stream_worker_events.sock"
+
     if helpers.test_conf.database == "off" then
       local stream_config_sock_path = "unix:" .. helpers.test_conf.prefix .. "/stream_config.sock"
 
-      assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
+      assert.equals(3, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
       assert.same({
         ["127.0.0.1:9011"] = 1,
         ["127.0.0.1:9012"] = 2,
         [stream_config_sock_path] = 3,
+        [stream_events_sock_path] = 4,
         [1] = "127.0.0.1:9011",
         [2] = "127.0.0.1:9012",
         [3] = stream_config_sock_path,
+        [4] = stream_events_sock_path,
       }, get_listeners(helpers.test_conf.nginx_kong_stream_conf).stream)
 
     else
-      assert.equals(1, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
+      assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_stream_conf))
       assert.same({
         ["127.0.0.1:9011"] = 1,
         ["127.0.0.1:9012"] = 2,
+        [stream_events_sock_path] = 3,
         [1] = "127.0.0.1:9011",
         [2] = "127.0.0.1:9012",
+        [3] = stream_events_sock_path,
       }, get_listeners(helpers.test_conf.nginx_kong_stream_conf).stream)
     end
 
