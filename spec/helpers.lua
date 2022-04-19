@@ -8,6 +8,7 @@
 local BIN_PATH = "bin/kong"
 local TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests.conf"
 local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
+local CUSTOM_VAULT_PATH = "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua"
 local DNS_MOCK_LUA_PATH = "./spec/fixtures/mocks/lua-resty-dns/?.lua"
 local GO_PLUGIN_PATH = "./spec/fixtures/go"
 local GRPC_TARGET_SRC_PATH = "./spec/fixtures/grpc/target/"
@@ -79,6 +80,7 @@ do
   local paths = {}
   table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
   table.insert(paths, CUSTOM_PLUGIN_PATH)
+  table.insert(paths, CUSTOM_VAULT_PATH)
   table.insert(paths, package.path)
   package.path = table.concat(paths, ";")
 end
@@ -371,7 +373,7 @@ end
 --   route = { id = route1.id },
 --   config = {},
 -- }
-local function get_db_utils(strategy, tables, plugins)
+local function get_db_utils(strategy, tables, plugins, vaults)
   strategy = strategy or conf.database
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate", 2)
@@ -383,6 +385,16 @@ local function get_db_utils(strategy, tables, plugins)
   if plugins then
     for _, plugin in ipairs(plugins) do
       conf.loaded_plugins[plugin] = true
+    end
+  end
+
+  if vaults ~= nil and type(vaults) ~= "table" then
+    error("arg #4 must be a list of vaults to enable", 2)
+  end
+
+  if vaults then
+    for _, vault in ipairs(vaults) do
+      conf.loaded_vaults[vault] = true
     end
   end
 
@@ -436,6 +448,12 @@ local function get_db_utils(strategy, tables, plugins)
   if plugins then
     for _, plugin in ipairs(plugins) do
       conf.loaded_plugins[plugin] = false
+    end
+  end
+
+  if vaults then
+    for _, vault in ipairs(vaults) do
+      conf.loaded_vaults[vault] = false
     end
   end
 
@@ -2285,6 +2303,7 @@ function kong_exec(cmd, env, pl_returns, env_vars)
     end
     local paths = {}
     table.insert(paths, cleanup(CUSTOM_PLUGIN_PATH))
+    table.insert(paths, cleanup(CUSTOM_VAULT_PATH))
     table.insert(paths, cleanup(env.lua_package_path))
     table.insert(paths, cleanup(conf.lua_package_path))
     env.lua_package_path = table.concat(paths, ";")

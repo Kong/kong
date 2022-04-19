@@ -2,6 +2,7 @@ local require = require
 
 
 local kong_default_conf = require "kong.templates.kong_defaults"
+local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_pkey = require "resty.openssl.pkey"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
@@ -44,12 +45,24 @@ local tonumber = tonumber
 local setmetatable = setmetatable
 
 
+local get_phase do
+  if ngx and ngx.get_phase then
+    get_phase = ngx.get_phase
+  else
+    get_phase = function()
+      return "timer"
+    end
+  end
+end
+
+
 local C = ffi.C
 
 
 ffi.cdef([[
   struct group *getgrnam(const char *name);
   struct passwd *getpwnam(const char *name);
+  int unsetenv(const char *name);
 ]])
 
 
@@ -230,6 +243,7 @@ local PREFIX_PATHS = {
   nginx_kong_stream_conf = {"nginx-kong-stream.conf"},
 
   kong_env = {".kong_env"},
+  kong_process_secrets = {".kong_process_secrets"},
 
   ssl_cert_csr_default = {"ssl", "kong-default.csr"},
   ssl_cert_default = {"ssl", "kong-default.crt"},
@@ -1536,31 +1550,67 @@ local function load(path, custom_conf, opts)
 
     loaded_vaults = setmetatable(vaults, _nop_tostring_mt)
 
-    local vault_conf = { loaded_vaults = loaded_vaults }
-    for k, v in pairs(conf) do
-      if sub(k, 1, 6) == "vault_" then
-        vault_conf[k] = infer_value(v, "string", opts)
+    if get_phase() == "init" then
+      local secrets = getenv("KONG_PROCESS_SECRETS")
+      if secrets then
+        C.unsetenv("KONG_PROCESS_SECRETS")
+
+      else
+        local path = pl_path.join(abspath(ngx.config.prefix()), unpack(PREFIX_PATHS.kong_process_secrets))
+        if exists(path) then
+          secrets, err = pl_file.read(path, true)
+          pl_file.delete(path)
+          if not secrets then
+            return nil, fmt("failed to read process secrets file: %s", err)
+          end
+        end
       end
-    end
 
-    local vault = require("kong.pdk.vault").new({ configuration = vault_conf })
-
-    for k, v in pairs(conf) do
-      v = infer_value(v, "string", opts)
-      if vault.is_reference(v) then
-        if refs then
-          refs[k] = v
-        else
-          refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+      if secrets then
+        secrets, err = process_secrets.deserialize(secrets, path)
+        if not secrets then
+          return nil, err
         end
 
-        local deref, deref_err = vault.get(v)
-        if deref == nil or deref_err then
-          return nil, fmt("failed to dereference '%s': %s for config option '%s'", v, deref_err, k)
-        end
+        for k, deref in pairs(secrets) do
+          local v = infer_value(conf[k], "string", opts)
+          if refs then
+            refs[k] = v
+          else
+            refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+          end
 
-        if deref ~= nil then
           conf[k] = deref
+        end
+      end
+
+    else
+      local vault_conf = { loaded_vaults = loaded_vaults }
+      for k, v in pairs(conf) do
+        if sub(k, 1, 6) == "vault_" then
+          vault_conf[k] = infer_value(v, "string", opts)
+        end
+      end
+
+      local vault = require("kong.pdk.vault").new({ configuration = vault_conf })
+
+      for k, v in pairs(conf) do
+        v = infer_value(v, "string", opts)
+        if vault.is_reference(v) then
+          if refs then
+            refs[k] = v
+          else
+            refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+          end
+
+          local deref, deref_err = vault.get(v)
+          if deref == nil or deref_err then
+            return nil, fmt("failed to dereference '%s': %s for config option '%s'", v, deref_err, k)
+          end
+
+          if deref ~= nil then
+            conf[k] = deref
+          end
         end
       end
     end
