@@ -1211,6 +1211,8 @@ for _, strategy in helpers.each_strategy() do
 
             assert.res_status(201, res)
 
+            ngx.sleep(0.01)
+
             local res = assert(proxy_client:get("/status/400", {
               headers = {
                 ["Host"] = "runs-init-worker.org",
