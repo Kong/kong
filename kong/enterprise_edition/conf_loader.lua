@@ -69,7 +69,7 @@ local EE_CONF_INFERENCES = {
 
   analytics_konnect = {typ = "boolean"},
   analytics_flush_interval = {typ = "number"},
-  analytics_buffer_size_limit = { typ = "number" },
+  analytics_buffer_size_limit = {typ = "number"},
 
   konnect_mode = {typ = "boolean"},
 

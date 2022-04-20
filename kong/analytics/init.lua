@@ -16,6 +16,7 @@ local WARN = ngx.WARN
 local kong = kong
 local ngx = ngx
 local timer_at = ngx.timer.at
+local re_gmatch = ngx.re.gmatch
 local ipairs = ipairs
 local assert = assert
 local _log_prefix = "[analytics] "
@@ -137,7 +138,6 @@ end
 
 function _M:register_config_change(events_handler)
   events_handler.register(function(data, event, source, pid)
-
     log(INFO, _log_prefix, "config change event, incoming analytics: ",
       kong.configuration.analytics_konnect)
 
@@ -331,9 +331,11 @@ function _M:split(str, sep)
   if sep == nil then
     sep = "%s"
   end
-  local t = {}
-  for str in string.gmatch(str, "([^" .. sep .. "]+)") do
-    table.insert(t, str)
+  local t = new_tab(2, 0)
+  local i = 1
+  for m, _ in re_gmatch(str, "([^" .. sep .. "]+)") do
+    t[i] = m[0]
+    i = i + 1
   end
   return t
 end
