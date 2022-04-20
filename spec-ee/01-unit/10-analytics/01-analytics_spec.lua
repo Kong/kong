@@ -187,6 +187,20 @@ describe("filter keywords from uri properly", function()
     local expected = "/log"
     assert.are.same(expected, payload.request.uri)
   end)
+  it("verify the extraction works properly for upstream_uri with query parameters", function()
+    local request_log_one = request_log
+    request_log_one.upstream_uri = "/status/200?apikey=123"
+    local payload = analytics:create_payload(request_log_one)
+    local expected = "/status/200"
+    assert.are.same(expected, payload.upstream.upstream_uri)
+  end)
+  it("verify the extraction works properly for upstream_uri without query parameters", function()
+    local request_log_one = request_log
+    request_log_one.upstream_uri = "/status/200"
+    local payload = analytics:create_payload(request_log_one)
+    local expected = "/status/200"
+    assert.are.same(expected, payload.upstream.upstream_uri)
+  end)
 end)
 
 describe("proto buffer", function()
