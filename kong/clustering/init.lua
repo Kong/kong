@@ -315,7 +315,6 @@ function _M:init_worker()
       end
 
       if self.child then
-        clustering_utils.load_config_cache(self.child)
         self.child:communicate()
       end
     end))

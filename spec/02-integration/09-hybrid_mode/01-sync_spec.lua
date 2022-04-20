@@ -218,14 +218,6 @@ for _, strategy in helpers.each_strategy() do
           end, 5)
         end)
 
-        it("local cached config file has correct permission", function()
-          local handle = io.popen("ls -l servroot2/config.cache.json.gz")
-          local result = handle:read("*a")
-          handle:close()
-
-          assert.matches("-rw-------", result, nil, true)
-        end)
-
         it('does not sync services where enabled == false', function()
           local admin_client = helpers.admin_client(10000)
           finally(function()

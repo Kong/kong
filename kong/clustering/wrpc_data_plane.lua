@@ -5,7 +5,6 @@ local declarative = require("kong.db.declarative")
 local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
 local constants = require("kong.constants")
-local clustering_utils = require("kong.clustering.utils")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
@@ -46,8 +45,6 @@ function _M:init_worker()
   -- ROLE = "data_plane"
 
   if ngx.worker.id() == 0 then
-    clustering_utils.load_config_cache(self)
-
     assert(ngx.timer.at(0, function(premature)
       self:communicate(premature)
     end))
