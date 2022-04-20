@@ -2803,6 +2803,8 @@ end
 -- @field redis_port The port (SSL disabled) for Redis
 -- @field redis_ssl_port The port (SSL enabled) for Redis
 -- @field redis_ssl_sni The server name for Redis
+-- @field zipkin_host The host for Zipkin service
+-- @field zipkin_port the port for Zipkin service
 
 ----------
 -- Exposed
