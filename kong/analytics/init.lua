@@ -81,6 +81,7 @@ local function get_server_name()
   local server_name
   if conf.cluster_mtls == "shared" then
     server_name = "kong_clustering"
+
   else
     -- server_name will be set to the host if it is not explicitly defined here
     if conf.cluster_telemetry_server_name ~= "" then
@@ -116,6 +117,7 @@ function _M:init_worker()
     if connected then
       ngx.log(ngx.INFO, _log_prefix, "worker id: " .. ngx.worker.id() .. ". analytics websocket is connected: " .. uri)
       self.ws_send_func = send_func
+
     else
       ngx.log(ngx.INFO, _log_prefix, "worker id: " .. ngx.worker.id() .. ". analytics websocket is disconnected: " .. uri)
       self.ws_send_func = nil
@@ -128,6 +130,7 @@ function _M:init_worker()
   if ngx.worker.id() == 0 then
     reports.add_ping_value("konnect_analytics", true)
   end
+  
   return true
 end
 
@@ -164,6 +167,7 @@ function _M:start()
   if ok then
     log(INFO, _log_prefix, "initial analytics timers started.")
     self.running = true
+
   else
     log(ERR, _log_prefix, "failed to start the initial analytics timer ", err)
   end
@@ -344,6 +348,7 @@ function _M:log_request()
   if not self:enabled() then
     return
   end
+
   if #self.requests_buffer > self.buffer_size_limit then
     log(WARN, _log_prefix, "Local buffer size limit reached for the analytics request log. " ..
       "The current limit is " .. self.buffer_size_limit)
