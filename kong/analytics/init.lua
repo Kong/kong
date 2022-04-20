@@ -19,7 +19,7 @@ local timer_at = ngx.timer.at
 local ipairs = ipairs
 local assert = assert
 local _log_prefix = "[analytics] "
-local knode  = (kong and kong.node) and kong.node or
+local knode = (kong and kong.node) and kong.node or
   require "kong.pdk.node".new()
 local persistence_handler
 local DELAY_LOWER_BOUND = 0
@@ -47,7 +47,6 @@ p:addpath("/usr/local/kong/lib/kong/model/analytics")
 -- path for unit tests
 p:addpath("kong/include/kong/model/analytics")
 p:loadfile("payload.proto")
-
 
 function _M.new(config)
   assert(config, "conf can not be nil", 2)
@@ -114,10 +113,10 @@ function _M:init_worker()
 
   assert(ngx.timer.at(0, kong.clustering.telemetry_communicate, kong.clustering, uri, server_name, function(connected, send_func)
     if connected then
-      ngx.log(ngx.INFO, _log_prefix, "worker id: "..ngx.worker.id()..". analytics websocket is connected: " .. uri)
+      ngx.log(ngx.INFO, _log_prefix, "worker id: " .. ngx.worker.id() .. ". analytics websocket is connected: " .. uri)
       self.ws_send_func = send_func
     else
-      ngx.log(ngx.INFO, _log_prefix, "worker id: "..ngx.worker.id()..". analytics websocket is disconnected: " .. uri)
+      ngx.log(ngx.INFO, _log_prefix, "worker id: " .. ngx.worker.id() .. ". analytics websocket is disconnected: " .. uri)
       self.ws_send_func = nil
     end
   end), nil)
@@ -206,7 +205,7 @@ function _M:flush_data()
     self.ws_send_func({})
     return
   end
-  log(DEBUG, _log_prefix, "flushing analytics request log data: "..#self.requests_buffer..". worker id: "..ngx.worker.id())
+  log(DEBUG, _log_prefix, "flushing analytics request log data: " .. #self.requests_buffer .. ". worker id: " .. ngx.worker.id())
 
   local payload = {}
   payload.data = self.requests_buffer
@@ -345,7 +344,7 @@ function _M:log_request()
   end
   if #self.requests_buffer > self.buffer_size_limit then
     log(WARN, _log_prefix, "Local buffer size limit reached for the analytics request log. " ..
-    "The current limit is " .. self.buffer_size_limit)
+      "The current limit is " .. self.buffer_size_limit)
     table_remove(self.requests_buffer, 1)
   end
   local message = kong.log.serialize()
