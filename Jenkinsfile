@@ -68,10 +68,13 @@ pipeline {
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                         PACKAGE_TYPE = "rpm"
+                        PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
+                        PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                         sh 'make setup-kong-build-tools'
+                        sh 'cp $PRIVATE_KEY_FILE ../kong-build-tools/kong.private.gpg-key.asc'
                         sh 'make RESTY_IMAGE_BASE=amazonlinux RESTY_IMAGE_TAG=2 release'
                         sh 'make RESTY_IMAGE_BASE=centos      RESTY_IMAGE_TAG=7 release'
                         sh 'make RESTY_IMAGE_BASE=centos      RESTY_IMAGE_TAG=8 release'
@@ -89,7 +92,7 @@ pipeline {
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
-                        PACKAGE_TYPE = "rpm"
+                        PACKAGE_TYPE = "deb"
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
