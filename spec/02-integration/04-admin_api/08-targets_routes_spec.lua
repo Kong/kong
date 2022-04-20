@@ -142,7 +142,7 @@ describe("Admin API #" .. strategy, function()
         end
       end)
 
-      it_content_types("refuses to create duplicated targets", function(content_type)
+      it_content_types("updates and does not create duplicated targets (#deprecated)", function(content_type)
         return function()
           local upstream = bp.upstreams:insert { slots = 10 }
           local res = assert(client:send {
@@ -159,9 +159,10 @@ describe("Admin API #" .. strategy, function()
           assert.equal("single-target.test:8080", json.target)
           assert.is_number(json.created_at)
           assert.is_string(json.id)
+          local id = json.id
           assert.are.equal(1, json.weight)
 
-          local res2 = assert(client:send {
+          local res = assert(client:send {
             method = "PUT",
             path = "/upstreams/" .. upstream.name .. "/targets/",
             body = {
@@ -170,7 +171,11 @@ describe("Admin API #" .. strategy, function()
             },
             headers = {["Content-Type"] = content_type}
           })
-          assert.response(res2).has.status(409)
+          local body = assert.response(res).has.status(200)
+          local json = cjson.decode(body)
+          assert.are.equal(100, json.weight)
+          assert.are.equal(id, json.id)
+          assert.equal("true", res.headers["Deprecation"])
         end
       end)
 
