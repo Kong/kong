@@ -121,11 +121,6 @@
 
 ### Additions
 
-#### Core
-
-- Added `cache_key` on target entity for uniqueness detection.
-  [#8179](https://github.com/Kong/kong/pull/8179)
-
 #### Plugins
 
 - **Zipkin**: add support for including HTTP path in span name
