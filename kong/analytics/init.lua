@@ -130,7 +130,7 @@ function _M:init_worker()
   if ngx.worker.id() == 0 then
     reports.add_ping_value("konnect_analytics", true)
   end
-  
+
   return true
 end
 
@@ -263,9 +263,10 @@ function _M:create_payload(message)
 
   payload.client_ip = message.client_ip
   payload.started_at = message.started_at
+  log(INFO, _log_prefix, "client ip type: "..type(message.client_ip))
 
   if message.upstream_uri ~= nil then
-    payload.upstream.upstream_uri = message.upstream_uri
+    payload.upstream.upstream_uri = self:split(message.upstream_uri, "?")[1]
   end
 
   if message.request ~= nil then
