@@ -392,6 +392,7 @@ local function new(self, major_version)
   --
   -- Be aware that changing this setting might break any plugins that
   -- rely on the automatic underscore conversion.
+  -- You cannot set Transfer-Encoding header with this function. It will be ignored.
   --
   -- @function kong.response.set_header
   -- @phases rewrite, access, header_filter, response, admin_api
@@ -410,7 +411,7 @@ local function new(self, major_version)
     validate_header(name, value)
     local lower_name = lower(name)
     if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
-      self.log.warn("mannually setting Transfer-Encoding. Ignored.")
+      self.log.warn("manually setting Transfer-Encoding. Ignored.")
       return
     end
 
@@ -492,6 +493,8 @@ local function new(self, major_version)
   -- This function overrides any existing header bearing the same name as those
   -- specified in the `headers` argument. Other headers remain unchanged.
   --
+  -- You cannot set Transfer-Encoding header with this function. It will be ignored.
+  --
   -- @function kong.response.set_headers
   -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam table headers
@@ -521,7 +524,7 @@ local function new(self, major_version)
     for name, value in pairs(headers) do
       local lower_name = lower(name)
       if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
-        self.log.warn("mannually setting Transfer-Encoding. Ignored.")
+        self.log.warn("manually setting Transfer-Encoding. Ignored.")
       else
         ngx.header[name] = normalize_multi_header(value)
       end
@@ -657,7 +660,7 @@ local function new(self, major_version)
         ngx.header[name] = normalize_multi_header(value)
         local lower_name = lower(name)
         if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
-          self.log.warn("mannually setting Transfer-Encoding. Ignored.")
+          self.log.warn("manually setting Transfer-Encoding. Ignored.")
         else
           ngx.header[name] = normalize_multi_header(value)
         end

@@ -1151,6 +1151,6 @@ test
 Content-Length: 5
 X-test: test
 --- error_log
-mannually setting Transfer-Encoding. Ignored.
+manually setting Transfer-Encoding. Ignored.
 
 

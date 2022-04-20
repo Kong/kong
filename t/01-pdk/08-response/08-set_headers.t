@@ -731,4 +731,4 @@ GET /t
 Transfer-Encoding: chunked
 X-test: test
 --- error_log
-mannually setting Transfer-Encoding. Ignored.
+manually setting Transfer-Encoding. Ignored.

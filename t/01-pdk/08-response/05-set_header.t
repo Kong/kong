@@ -276,4 +276,4 @@ GET /t
 --- response_body chop
 Transfer-Encoding: chunked
 --- error_log
-mannually setting Transfer-Encoding. Ignored.
+manually setting Transfer-Encoding. Ignored.
