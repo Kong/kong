@@ -842,6 +842,27 @@ describe("Configuration loader", function()
             pl_path.abspath(system_path),
           }, conf.lua_ssl_trusted_certificate)
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
+
+          -- test default
+          local conf, _, errors = conf_loader(nil, {})
+          assert.is_nil(errors)
+          assert.same({
+            pl_path.abspath(system_path),
+          }, conf.lua_ssl_trusted_certificate)
+          assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
+        end)
+        it("does not throw errors if the host doesn't have system certificates", function()
+          local old_exists = pl_path.exists
+          finally(function()
+            pl_path.exists = old_exists
+          end)
+          pl_path.exists = function(path)
+            return false
+          end
+          local _, _, errors = conf_loader(nil, {
+            lua_ssl_trusted_certificate = "system",
+          })
+          assert.is_nil(errors)
         end)
         it("autoload cluster_cert or cluster_ca_cert for data plane in lua_ssl_trusted_certificate", function()
           local conf, _, errors = conf_loader(nil, {
@@ -851,9 +872,10 @@ describe("Configuration loader", function()
             cluster_cert_key = "spec/fixtures/kong_clustering.key",
           })
           assert.is_nil(errors)
-          assert.same({
+          assert.contains(
             pl_path.abspath("spec/fixtures/kong_clustering.crt"),
-          }, conf.lua_ssl_trusted_certificate)
+            conf.lua_ssl_trusted_certificate
+          )
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
 
           local conf, _, errors = conf_loader(nil, {
@@ -865,9 +887,10 @@ describe("Configuration loader", function()
             cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
           })
           assert.is_nil(errors)
-          assert.same({
+          assert.contains(
             pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"),
-          }, conf.lua_ssl_trusted_certificate)
+            conf.lua_ssl_trusted_certificate
+          )
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
         it("doen't overwrite lua_ssl_trusted_certificate when autoload cluster_cert or cluster_ca_cert", function()
@@ -911,7 +934,10 @@ describe("Configuration loader", function()
             cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
           })
           assert.is_nil(errors)
-          assert.same({}, conf.lua_ssl_trusted_certificate)
+          assert.not_contains(
+            pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"),
+            conf.lua_ssl_trusted_certificate
+          )
         end)
         it("resolves SSL cert/key to absolute path", function()
           local conf, err = conf_loader(nil, {
@@ -1691,6 +1717,36 @@ describe("Configuration loader", function()
       assert.equal(100, conf.upstream_keepalive_max_requests)
       assert.equal("2m", conf.nginx_http_client_max_body_size)
       assert.equal("2m", conf.nginx_http_client_body_buffer_size)
+    end)
+  end)
+  describe("vault references", function()
+    it("are collected under $refs property", function()
+      finally(function()
+        helpers.unsetenv("PG_DATABASE")
+      end)
+
+      helpers.setenv("PG_DATABASE", "resolved-kong-database")
+
+      local conf = assert(conf_loader(nil, {
+        pg_database = "{vault://env/pg-database}"
+      }))
+
+      assert.equal("resolved-kong-database", conf.pg_database)
+      assert.equal("{vault://env/pg-database}", conf["$refs"].pg_database)
+    end)
+    it("are inferred and collected under $refs property", function()
+      finally(function()
+        helpers.unsetenv("PG_PORT")
+      end)
+
+      helpers.setenv("PG_PORT", "5000")
+
+      local conf = assert(conf_loader(nil, {
+        pg_port = "{vault://env/pg-port}"
+      }))
+
+      assert.equal(5000, conf.pg_port)
+      assert.equal("{vault://env/pg-port}", conf["$refs"].pg_port)
     end)
   end)
 end)

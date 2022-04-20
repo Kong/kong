@@ -16,7 +16,7 @@ dependencies = {
   "luasec == 1.0.2",
   "luasocket == 3.0-rc1",
   "penlight == 1.12.0",
-  "lua-resty-http == 0.16.1",
+  "lua-resty-http ~> 0.17",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
   "multipart == 0.5.9",
@@ -39,7 +39,7 @@ dependencies = {
   "lua-resty-openssl == 0.8.7",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
-  "lua-resty-acme == 0.7.2",
+  "lua-resty-acme == 0.8.0",
   "lua-resty-session == 3.10",
 }
 build = {
@@ -65,10 +65,14 @@ build = {
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
 
     ["kong.clustering"] = "kong/clustering/init.lua",
+    ["kong.clustering.version_negotiation"] = "kong/clustering/version_negotiation/init.lua",
+    ["kong.clustering.version_negotiation.services_known"] = "kong/clustering/version_negotiation/services_known.lua",
+    ["kong.clustering.version_negotiation.services_requested"] = "kong/clustering/version_negotiation/services_requested.lua",
     ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
     ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
     ["kong.clustering.wrpc_data_plane"] = "kong/clustering/wrpc_data_plane.lua",
     ["kong.clustering.wrpc_control_plane"] = "kong/clustering/wrpc_control_plane.lua",
+    ["kong.clustering.utils"] = "kong/clustering/utils.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",

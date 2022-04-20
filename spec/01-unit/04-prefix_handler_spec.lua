@@ -108,7 +108,7 @@ describe("NGINX conf compiler", function()
       assert.matches("listen%s+127%.0%.0%.1:9001;", kong_nginx_conf)
       assert.matches("server_name%s+kong;", kong_nginx_conf)
       assert.matches("server_name%s+kong_admin;", kong_nginx_conf)
-      assert.not_matches("lua_ssl_trusted_certificate", kong_nginx_conf, nil, true)
+      assert.matches("lua_ssl_trusted_certificate.+;", kong_nginx_conf)
     end)
     it("compiles with custom conf", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
@@ -235,10 +235,10 @@ describe("NGINX conf compiler", function()
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("lua_ssl_verify_depth%s+1;", kong_nginx_conf)
     end)
-    it("does not include lua_ssl_trusted_certificate by default", function()
+    it("includes default lua_ssl_trusted_certificate", function()
       local conf = assert(conf_loader(helpers.test_conf_path))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.not_matches("lua_ssl_trusted_certificate", kong_nginx_conf, nil, true)
+      assert.matches("lua_ssl_trusted_certificate.+;", kong_nginx_conf)
     end)
     it("sets lua_ssl_trusted_certificate to a combined file (single entry)", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
@@ -842,6 +842,31 @@ describe("NGINX conf compiler", function()
       local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_env))
       assert.True(in_prefix_kong_conf.loaded_plugins.foo)
       assert.True(in_prefix_kong_conf.loaded_plugins.bar)
+    end)
+
+    describe("vault references", function()
+      it("are kept as references in .kong_env", function()
+        finally(function()
+          helpers.unsetenv("PG_DATABASE")
+        end)
+
+        helpers.setenv("PG_DATABASE", "resolved-kong-database")
+
+        local conf = assert(conf_loader(nil, {
+          prefix = tmp_config.prefix,
+          pg_database = "{vault://env/pg-database}",
+        }))
+
+        assert.equal("resolved-kong-database", conf.pg_database)
+        assert.equal("{vault://env/pg-database}", conf["$refs"].pg_database)
+
+        assert(prefix_handler.prepare_prefix(conf))
+
+        local contents = helpers.file.read(tmp_config.kong_env)
+
+        assert.matches("pg_database = {vault://env/pg-database}", contents, nil, true)
+        assert.not_matches("resolved-kong-database", contents, nil, true)
+      end)
     end)
 
     describe("ssl", function()

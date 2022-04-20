@@ -277,6 +277,9 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
           status_code = 500,
           content = { message  = "An unexpected error occurred" },
         }
+
+        -- plugin that throws runtime exception should be marked as `error`
+        ctx.KONG_UNEXPECTED = true
       end
 
       reset_plugin_context(ctx, old_ws)
@@ -472,7 +475,7 @@ function Kong.init()
   -- duplicated seeds.
   math.randomseed()
 
-  kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
+  kong_global.init_pdk(kong, config)
 
   local db = assert(DB.new(config))
   assert(db:init_connector())
@@ -1507,6 +1510,11 @@ function Kong.serve_wrpc_listener(options)
   ngx.ctx.KONG_PHASE = PHASES.cluster_listener
 
   return kong.clustering:handle_wrpc_websocket()
+end
+
+
+function Kong.serve_version_handshake()
+  return kong.clustering:serve_version_handshake()
 end
 
 

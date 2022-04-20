@@ -21,7 +21,6 @@ admin_listen = 127.0.0.1:8001 reuseport backlog=16384, 127.0.0.1:8444 http2 ssl 
 status_listen = off
 cluster_listen = 0.0.0.0:8005
 cluster_control_plane = 127.0.0.1:8005
-cluster_protocol = wrpc
 cluster_cert = NONE
 cluster_cert_key = NONE
 cluster_mtls = shared
@@ -166,7 +165,7 @@ worker_consistency = strict
 worker_state_update_frequency = 5
 
 lua_socket_pool_size = 30
-lua_ssl_trusted_certificate = NONE
+lua_ssl_trusted_certificate = system
 lua_ssl_verify_depth = 1
 lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 lua_package_path = ./?.lua;./?/init.lua;
@@ -179,4 +178,6 @@ pluginserver_names = NONE
 untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
+
+openresty_path =
 ]]

@@ -48,7 +48,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     it("create certificates with cert and key as secret", function()
-      local res, err  = client:post("/certificates", {
+      local res, err = client:post("/certificates", {
         headers = { ["Content-Type"] = "application/json" },
         body = {
           cert     = "{vault://test-vault/cert}",
@@ -64,11 +64,16 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("{vault://test-vault/key}", certificate.key)
       assert.equal("{vault://unknown/cert}", certificate.cert_alt)
       assert.equal("{vault://unknown/missing-key}", certificate.key_alt)
+      assert.is_nil(certificate["$refs"])
 
       certificate, err = db.certificates:select({ id = certificate.id })
       assert.is_nil(err)
       assert.equal(ssl_fixtures.cert, certificate.cert)
       assert.equal(ssl_fixtures.key, certificate.key)
+      assert.equal("{vault://test-vault/cert}", certificate["$refs"].cert)
+      assert.equal("{vault://test-vault/key}", certificate["$refs"].key)
+      assert.equal("{vault://unknown/cert}", certificate["$refs"].cert_alt)
+      assert.equal("{vault://unknown/missing-key}", certificate["$refs"].key_alt)
       assert.is_nil(certificate.cert_alt)
       assert.is_nil(certificate.key_alt)
 
@@ -81,16 +86,18 @@ for _, strategy in helpers.each_strategy() do
       assert.equal("{vault://test-vault/key}", certificate.key)
       assert.equal("{vault://unknown/cert}", certificate.cert_alt)
       assert.equal("{vault://unknown/missing-key}", certificate.key_alt)
+      assert.is_nil(certificate["$refs"])
 
       -- verify that certificate attributes are of type reference when querying
-      local gres = client:get("/certificates/"..certificate.id)
-      local gbody = assert.res_status(200, gres)
-      local gcertificate = cjson.decode(gbody)
-      assert.is_equal("{vault://test-vault/cert}", gcertificate.cert)
-      assert.is_equal("{vault://test-vault/key}", gcertificate.key)
-      assert.is_equal("{vault://unknown/cert}", gcertificate.cert_alt)
-      assert.is_equal("{vault://unknown/missing-key}", gcertificate.key_alt)
+      res, err = client:get("/certificates/"..certificate.id)
+      assert.is_nil(err)
+      body = assert.res_status(200, res)
+      certificate = cjson.decode(body)
+      assert.is_equal("{vault://test-vault/cert}", certificate.cert)
+      assert.is_equal("{vault://test-vault/key}", certificate.key)
+      assert.is_equal("{vault://unknown/cert}", certificate.cert_alt)
+      assert.is_equal("{vault://unknown/missing-key}", certificate.key_alt)
+      assert.is_nil(certificate["$refs"])
     end)
-
   end)
 end

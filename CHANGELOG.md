@@ -72,6 +72,21 @@
   method now. [#8596](https://github.com/Kong/kong/pull/8596). If you have
   scripts that depend on it being `POST`, these scripts will need to be updated
   when updating to Kong 3.0.
+- Insert and update operations on duplicated target entities returns 409.
+  [#8179](https://github.com/Kong/kong/pull/8179)
+
+#### PDK
+
+- The PDK is no longer versioned
+  [#8585](https://github.com/Kong/kong/pull/8585)
+
+### Deprecations
+
+- The `go_pluginserver_exe` and `go_plugins_dir` directives are no longer supported.
+  [#8552](https://github.com/Kong/kong/pull/8552). If you are using
+  [Go plugin server](https://github.com/Kong/go-pluginserver), please migrate your plugins to use the
+  [Go PDK](https://github.com/Kong/go-pdk) before upgrading.
+
 
 #### Plugins
 
@@ -79,6 +94,15 @@
   `ngx.ctx.proxy_cache_hit` anymore. Logging plugins that need the response data
   must read it from `kong.ctx.shared.proxy_cache_hit` from Kong 3.0 on.
   [#8607](https://github.com/Kong/kong/pull/8607)
+- PDK now return `Uint8Array` and `bytes` for JavaScript's `kong.request.getRawBody`,
+  `kong.response.getRawBody`, `kong.service.response.getRawBody` and Python's `kong.request.get_raw_body`,
+  `kong.response.get_raw_body`, `kong.service.response.get_raw_body` respectively.
+  [#8623](https://github.com/Kong/kong/pull/8623)
+
+#### Configuration
+
+- Change the default of `lua_ssl_trusted_certificate` to `system`
+  [#8602](https://github.com/Kong/kong/pull/8602) to automatically load trusted CA list from system CA store.
 
 ### Dependencies
 
@@ -90,14 +114,30 @@
   [#8592](https://github.com/Kong/kong/pull/8592)
 - Bumped inspect from 3.1.2 to 3.1.3
   [#8589](https://github.com/Kong/kong/pull/8589)
+- Bumped resty.acme from 0.7.2 to 0.8.0
+  [#8680](https://github.com/Kong/kong/pull/8680)
+- Bumped luarocks from 3.8.0 to 3.9.0
+  [#8700](https://github.com/Kong/kong/pull/8700)
 
 ### Additions
 
+#### Core
+
+- Added `cache_key` on target entity for uniqueness detection.
+  [#8179](https://github.com/Kong/kong/pull/8179)
+
 #### Plugins
 
-- **Zipkin**: add support for including HTTP path in span name 
+- **Zipkin**: add support for including HTTP path in span name
   through configuration property `http_span_name`.
   [#8150](https://github.com/Kong/kong/pull/8150)
+
+#### Configuration
+
+- A new configuration item (`openresty_path`) has been added to allow
+  developers/operators to specify the OpenResty installation to use when
+  running Kong (instead of using the system-installed OpenResty)
+  [#8412](https://github.com/Kong/kong/pull/8412)
 
 ### Fixes
 
@@ -108,6 +148,13 @@
 - Only reschedule router and plugin iterator timers after finishing previous
   execution, avoiding unnecessary concurrent executions.
   [#8567](https://github.com/Kong/kong/pull/8567)
+- External plugins now handle returned JSON with null member correctly.
+  [#8610](https://github.com/Kong/kong/pull/8610)
+- Fix issue where the Go plugin server instance would not be updated after
+a restart (e.g., upon a plugin server crash).
+  [#8547](https://github.com/Kong/kong/pull/8547)
+- Fixed an issue on trying to reschedule the DNS resolving timer when Kong was
+  being reloaded. [#8702](https://github.com/Kong/kong/pull/8702)
 
 #### Plugins
 

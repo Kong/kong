@@ -30,7 +30,7 @@ local function init_db(args)
   package.path = conf.lua_package_path .. ";" .. package.path
 
   _G.kong = kong_global.new()
-  kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+  kong_global.init_pdk(_G.kong, conf)
 
   local db = assert(DB.new(conf))
   assert(db:init_connector())
@@ -42,7 +42,6 @@ end
 
 
 local function get(args)
-  local vault = require "kong.pdk.vault".new()
   if args.command == "get" then
     local reference = args[1]
     if not reference then
@@ -50,6 +49,8 @@ local function get(args)
     end
 
     init_db(args)
+
+    local vault = kong.vault
 
     if not vault.is_reference(reference) then
       -- assuming short form: <name>/<resource>[/<key>]

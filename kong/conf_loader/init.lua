@@ -1,3 +1,6 @@
+local require = require
+
+
 local kong_default_conf = require "kong.templates.kong_defaults"
 local openssl_pkey = require "resty.openssl.pkey"
 local pl_stringio = require "pl.stringio"
@@ -16,8 +19,33 @@ local ffi = require "ffi"
 
 
 local fmt = string.format
+local sub = string.sub
+local type = type
+local sort = table.sort
+local find = string.find
+local gsub = string.gsub
+local strip = pl_stringx.strip
+local floor = math.floor
+local lower = string.lower
+local upper = string.upper
+local match = string.match
+local pairs = pairs
+local assert = assert
+local unpack = unpack
+local ipairs = ipairs
+local insert = table.insert
+local remove = table.remove
 local concat = table.concat
+local getenv = os.getenv
+local exists = pl_path.exists
+local abspath = pl_path.abspath
+local tostring = tostring
+local tonumber = tonumber
+local setmetatable = setmetatable
+
+
 local C = ffi.C
+
 
 ffi.cdef([[
   struct group *getgrnam(const char *name);
@@ -100,13 +128,13 @@ local HEADERS = constants.HEADERS
 local HEADER_KEY_TO_NAME = {
   ["server_tokens"] = "server_tokens",
   ["latency_tokens"] = "latency_tokens",
-  [string.lower(HEADERS.VIA)] = HEADERS.VIA,
-  [string.lower(HEADERS.SERVER)] = HEADERS.SERVER,
-  [string.lower(HEADERS.PROXY_LATENCY)] = HEADERS.PROXY_LATENCY,
-  [string.lower(HEADERS.RESPONSE_LATENCY)] = HEADERS.RESPONSE_LATENCY,
-  [string.lower(HEADERS.ADMIN_LATENCY)] = HEADERS.ADMIN_LATENCY,
-  [string.lower(HEADERS.UPSTREAM_LATENCY)] = HEADERS.UPSTREAM_LATENCY,
-  [string.lower(HEADERS.UPSTREAM_STATUS)] = HEADERS.UPSTREAM_STATUS,
+  [lower(HEADERS.VIA)] = HEADERS.VIA,
+  [lower(HEADERS.SERVER)] = HEADERS.SERVER,
+  [lower(HEADERS.PROXY_LATENCY)] = HEADERS.PROXY_LATENCY,
+  [lower(HEADERS.RESPONSE_LATENCY)] = HEADERS.RESPONSE_LATENCY,
+  [lower(HEADERS.ADMIN_LATENCY)] = HEADERS.ADMIN_LATENCY,
+  [lower(HEADERS.UPSTREAM_LATENCY)] = HEADERS.UPSTREAM_LATENCY,
+  [lower(HEADERS.UPSTREAM_STATUS)] = HEADERS.UPSTREAM_STATUS,
 }
 
 
@@ -641,7 +669,6 @@ local CONF_INFERENCES = {
   lua_socket_pool_size = { typ = "number" },
 
   role = { enum = { "data_plane", "control_plane", "traditional", }, },
-  cluster_protocol = { enum = { "json", "wrpc" }, },
   cluster_control_plane = { typ = "string", },
   cluster_cert = { typ = "string" },
   cluster_cert_key = { typ = "string" },
@@ -701,11 +728,11 @@ local function infer_value(value, typ, opts)
     if not opts.from_kong_env then
       -- remove trailing comment, if any
       -- and remove escape chars from octothorpes
-      value = string.gsub(value, "[^\\]#.-$", "")
-      value = string.gsub(value, "\\#", "#")
+      value = gsub(value, "[^\\]#.-$", "")
+      value = gsub(value, "\\#", "#")
     end
 
-    value = pl_stringx.strip(value)
+    value = strip(value)
   end
 
   -- transform {boolean} values ("on"/"off" aliasing to true/false)
@@ -731,7 +758,7 @@ local function infer_value(value, typ, opts)
     value = setmetatable(pl_stringx.split(value, ","), nil) -- remove List mt
 
     for i = 1, #value do
-      value[i] = pl_stringx.strip(value[i])
+      value[i] = strip(value[i])
     end
   end
 
@@ -778,14 +805,14 @@ local function check_and_infer(conf, opts)
     local MAX_PORT = 65535
 
     for _, port_map in ipairs(conf.port_maps) do
-      local colpos = string.find(port_map, ":", nil, true)
+      local colpos = find(port_map, ":", nil, true)
       if not colpos then
         errors[#errors + 1] = "invalid port mapping (`port_maps`): " .. port_map
 
       else
-        local host_port_str = string.sub(port_map, 1, colpos - 1)
+        local host_port_str = sub(port_map, 1, colpos - 1)
         local host_port_num = tonumber(host_port_str, 10)
-        local kong_port_str = string.sub(port_map, colpos + 1)
+        local kong_port_str = sub(port_map, colpos + 1)
         local kong_port_num = tonumber(kong_port_str, 10)
 
         if  (host_port_num and host_port_num >= MIN_PORT and host_port_num <= MAX_PORT)
@@ -801,8 +828,13 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.database == "cassandra" then
-    log.deprecation("Support for Cassandra is deprecated. Please refer to https://konghq.com/blog/cassandra-support-deprecated", {after = "2.7", removal = "4.0"})
-    if string.find(conf.cassandra_lb_policy, "DCAware", nil, true)
+    log.deprecation("Support for Cassandra is deprecated. Please refer to " ..
+                    "https://konghq.com/blog/cassandra-support-deprecated", {
+      after   = "2.7",
+      removal = "4.0"
+    })
+
+    if find(conf.cassandra_lb_policy, "DCAware", nil, true)
        and not conf.cassandra_local_datacenter
     then
       errors[#errors + 1] = "must specify 'cassandra_local_datacenter' when " ..
@@ -838,9 +870,9 @@ local function check_and_infer(conf, opts)
   for _, prefix in ipairs({ "proxy_", "admin_", "status_" }) do
     local listen = conf[prefix .. "listen"]
 
-    local ssl_enabled = (concat(listen, ",") .. " "):find("%sssl[%s,]") ~= nil
+    local ssl_enabled = find(concat(listen, ",") .. " ", "%sssl[%s,]") ~= nil
     if not ssl_enabled and prefix == "proxy_" then
-      ssl_enabled = (concat(conf.stream_listen, ",") .. " "):find("%sssl[%s,]") ~= nil
+      ssl_enabled = find(concat(conf.stream_listen, ",") .. " ", "%sssl[%s,]") ~= nil
     end
 
     if prefix == "proxy_" then
@@ -866,7 +898,7 @@ local function check_and_infer(conf, opts)
 
       if ssl_cert then
         for _, cert in ipairs(ssl_cert) do
-          if not pl_path.exists(cert) then
+          if not exists(cert) then
             errors[#errors + 1] = prefix .. "ssl_cert: no such file at " .. cert
           end
         end
@@ -874,7 +906,7 @@ local function check_and_infer(conf, opts)
 
       if ssl_cert_key then
         for _, cert_key in ipairs(ssl_cert_key) do
-          if not pl_path.exists(cert_key) then
+          if not exists(cert_key) then
             errors[#errors + 1] = prefix .. "ssl_cert_key: no such file at " .. cert_key
           end
         end
@@ -890,12 +922,12 @@ local function check_and_infer(conf, opts)
       errors[#errors + 1] = "client_ssl_cert must be specified"
     end
 
-    if conf.client_ssl_cert and not pl_path.exists(conf.client_ssl_cert) then
+    if conf.client_ssl_cert and not exists(conf.client_ssl_cert) then
       errors[#errors + 1] = "client_ssl_cert: no such file at " ..
                           conf.client_ssl_cert
     end
 
-    if conf.client_ssl_cert_key and not pl_path.exists(conf.client_ssl_cert_key) then
+    if conf.client_ssl_cert_key and not exists(conf.client_ssl_cert_key) then
       errors[#errors + 1] = "client_ssl_cert_key: no such file at " ..
                           conf.client_ssl_cert_key
     end
@@ -904,25 +936,26 @@ local function check_and_infer(conf, opts)
   if conf.lua_ssl_trusted_certificate then
     local new_paths = {}
 
-    for i, path in ipairs(conf.lua_ssl_trusted_certificate) do
+    for _, path in ipairs(conf.lua_ssl_trusted_certificate) do
       if path == "system" then
         local system_path, err = utils.get_system_trusted_certs_filepath()
         if system_path then
           path = system_path
 
         else
-          errors[#errors + 1] =
-            "lua_ssl_trusted_certificate: unable to locate system bundle - " ..
-            err
+          log.info("lua_ssl_trusted_certificate: unable to locate system bundle: " .. err ..
+                   ". Please set lua_ssl_trusted_certificate to a path with certificates " ..
+                   "in order to remove this message")
         end
       end
 
-      if not pl_path.exists(path) then
-        errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " ..
-                               path
-      end
+      if path ~= "system" then
+        if not exists(path) then
+          errors[#errors + 1] = "lua_ssl_trusted_certificate: no such file at " .. path
+        end
 
-      new_paths[i] = path
+        new_paths[#new_paths + 1] = path
+      end
     end
 
     conf.lua_ssl_trusted_certificate = new_paths
@@ -952,14 +985,14 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.ssl_dhparam then
-    if not is_predefined_dhgroup(conf.ssl_dhparam) and not pl_path.exists(conf.ssl_dhparam) then
+    if not is_predefined_dhgroup(conf.ssl_dhparam) and not exists(conf.ssl_dhparam) then
       errors[#errors + 1] = "ssl_dhparam: no such file at " .. conf.ssl_dhparam
     end
 
   else
     for _, key in ipairs({ "nginx_http_ssl_dhparam", "nginx_stream_ssl_dhparam" }) do
       local file = conf[key]
-      if file and not is_predefined_dhgroup(file) and not pl_path.exists(file) then
+      if file and not is_predefined_dhgroup(file) and not exists(file) then
         errors[#errors + 1] = key .. ": no such file at " .. file
       end
     end
@@ -967,7 +1000,7 @@ local function check_and_infer(conf, opts)
 
   if conf.headers then
     for _, token in ipairs(conf.headers) do
-      if token ~= "off" and not HEADER_KEY_TO_NAME[string.lower(token)] then
+      if token ~= "off" and not HEADER_KEY_TO_NAME[lower(token)] then
         errors[#errors + 1] = fmt("headers: invalid entry '%s'",
                                   tostring(token))
       end
@@ -997,11 +1030,11 @@ local function check_and_infer(conf, opts)
                       SRV = true, AAAA = true }
 
     for _, name in ipairs(conf.dns_order) do
-      if not allowed[name:upper()] then
+      if not allowed[upper(name)] then
         errors[#errors + 1] = fmt("dns_order: invalid entry '%s'",
                                   tostring(name))
       end
-      if name:upper() == "AAAA" then
+      if upper(name) == "AAAA" then
         log.warn("the 'dns_order' configuration property specifies the " ..
                  "experimental IPv6 entry 'AAAA'")
 
@@ -1026,7 +1059,7 @@ local function check_and_infer(conf, opts)
     errors[#errors + 1] = "pg_max_concurrent_queries must be greater than 0"
   end
 
-  if conf.pg_max_concurrent_queries ~= math.floor(conf.pg_max_concurrent_queries) then
+  if conf.pg_max_concurrent_queries ~= floor(conf.pg_max_concurrent_queries) then
     errors[#errors + 1] = "pg_max_concurrent_queries must be an integer greater than 0"
   end
 
@@ -1034,7 +1067,7 @@ local function check_and_infer(conf, opts)
     errors[#errors + 1] = "pg_semaphore_timeout must be greater than 0"
   end
 
-  if conf.pg_semaphore_timeout ~= math.floor(conf.pg_semaphore_timeout) then
+  if conf.pg_semaphore_timeout ~= floor(conf.pg_semaphore_timeout) then
     errors[#errors + 1] = "pg_semaphore_timeout must be an integer greater than 0"
   end
 
@@ -1043,7 +1076,7 @@ local function check_and_infer(conf, opts)
       errors[#errors + 1] = "pg_ro_max_concurrent_queries must be greater than 0"
     end
 
-    if conf.pg_ro_max_concurrent_queries ~= math.floor(conf.pg_ro_max_concurrent_queries) then
+    if conf.pg_ro_max_concurrent_queries ~= floor(conf.pg_ro_max_concurrent_queries) then
       errors[#errors + 1] = "pg_ro_max_concurrent_queries must be an integer greater than 0"
     end
   end
@@ -1053,7 +1086,7 @@ local function check_and_infer(conf, opts)
       errors[#errors + 1] = "pg_ro_semaphore_timeout must be greater than 0"
     end
 
-    if conf.pg_ro_semaphore_timeout ~= math.floor(conf.pg_ro_semaphore_timeout) then
+    if conf.pg_ro_semaphore_timeout ~= floor(conf.pg_ro_semaphore_timeout) then
       errors[#errors + 1] = "pg_ro_semaphore_timeout must be an integer greater than 0"
     end
   end
@@ -1063,7 +1096,7 @@ local function check_and_infer(conf, opts)
   end
 
   if conf.role == "control_plane" then
-    if #conf.admin_listen < 1 or pl_stringx.strip(conf.admin_listen[1]) == "off" then
+    if #conf.admin_listen < 1 or strip(conf.admin_listen[1]) == "off" then
       errors[#errors + 1] = "admin_listen must be specified when role = \"control_plane\""
     end
 
@@ -1071,7 +1104,7 @@ local function check_and_infer(conf, opts)
       errors[#errors + 1] = "cluster_ca_cert must be specified when cluster_mtls = \"pki\""
     end
 
-    if #conf.cluster_listen < 1 or pl_stringx.strip(conf.cluster_listen[1]) == "off" then
+    if #conf.cluster_listen < 1 or strip(conf.cluster_listen[1]) == "off" then
       errors[#errors + 1] = "cluster_listen must be specified when role = \"control_plane\""
     end
 
@@ -1080,7 +1113,7 @@ local function check_and_infer(conf, opts)
     end
 
   elseif conf.role == "data_plane" then
-    if #conf.proxy_listen < 1 or pl_stringx.strip(conf.proxy_listen[1]) == "off" then
+    if #conf.proxy_listen < 1 or strip(conf.proxy_listen[1]) == "off" then
       errors[#errors + 1] = "proxy_listen must be specified when role = \"data_plane\""
     end
 
@@ -1094,10 +1127,10 @@ local function check_and_infer(conf, opts)
     end
 
     if conf.cluster_mtls == "shared" then
-      table.insert(conf.lua_ssl_trusted_certificate, conf.cluster_cert)
+      insert(conf.lua_ssl_trusted_certificate, conf.cluster_cert)
 
     elseif conf.cluster_mtls == "pki" then
-      table.insert(conf.lua_ssl_trusted_certificate, conf.cluster_ca_cert)
+      insert(conf.lua_ssl_trusted_certificate, conf.cluster_ca_cert)
     end
   end
 
@@ -1114,12 +1147,12 @@ local function check_and_infer(conf, opts)
       errors[#errors + 1] = "cluster certificate and key must be provided to use Hybrid mode"
 
     else
-      if not pl_path.exists(conf.cluster_cert) then
+      if not exists(conf.cluster_cert) then
         errors[#errors + 1] = "cluster_cert: no such file at " ..
                               conf.cluster_cert
       end
 
-      if not pl_path.exists(conf.cluster_cert_key) then
+      if not exists(conf.cluster_cert_key) then
         errors[#errors + 1] = "cluster_cert_key: no such file at " ..
                               conf.cluster_cert_key
       end
@@ -1165,8 +1198,8 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
   if not opts.from_kong_env then
     -- environment variables have higher priority
 
-    local env_name = "KONG_" .. string.upper(k)
-    local env = os.getenv(env_name)
+    local env_name = "KONG_" .. upper(k)
+    local env = getenv(env_name)
     if env ~= nil then
       local to_print = env
 
@@ -1191,7 +1224,7 @@ local function overrides(k, default_v, opts, file_conf, arg_conf)
     -- Escape "#" in env vars or overrides to avoid them being mangled by
     -- comments stripping logic.
     repeat
-      local s, n = string.gsub(value, [[([^\])#]], [[%1\#]])
+      local s, n = gsub(value, [[([^\])#]], [[%1\#]])
       value = s
     until n == 0
   end
@@ -1206,10 +1239,10 @@ local function parse_nginx_directives(dyn_namespace, conf, injected_in_namespace
 
   for k, v in pairs(conf) do
     if type(k) == "string" and not injected_in_namespace[k] then
-      local directive = string.match(k, dyn_namespace.prefix .. "(.+)")
+      local directive = match(k, dyn_namespace.prefix .. "(.+)")
       if directive then
         if v ~= "NONE" and not dyn_namespace.ignore[directive] then
-          table.insert(directives, { name = directive, value = v })
+          insert(directives, { name = directive, value = v })
         end
 
         injected_in_namespace[k] = true
@@ -1342,7 +1375,7 @@ local function load(path, custom_conf, opts)
   ---------------------
 
   local from_file_conf = {}
-  if path and not pl_path.exists(path) then
+  if path and not exists(path) then
     -- file conf has been specified and must exist
     return nil, "no file at: " .. path
   end
@@ -1351,7 +1384,7 @@ local function load(path, custom_conf, opts)
     -- try to look for a conf in default locations, but no big
     -- deal if none is found: we will use our defaults.
     for _, default_path in ipairs(DEFAULT_PATHS) do
-      if pl_path.exists(default_path) then
+      if exists(default_path) then
         path = default_path
         break
       end
@@ -1408,7 +1441,7 @@ local function load(path, custom_conf, opts)
       t = t or {}
 
       for k, v in pairs(t) do
-        local directive = string.match(k, "^(" .. dyn_prefix .. ".+)")
+        local directive = match(k, "^(" .. dyn_prefix .. ".+)")
         if directive then
           dynamic_keys[directive] = true
 
@@ -1431,7 +1464,7 @@ local function load(path, custom_conf, opts)
       end
 
       for k, v in pairs(env_vars) do
-        local kong_var = string.match(string.lower(k), "^kong_(.+)")
+        local kong_var = match(lower(k), "^kong_(.+)")
         if kong_var then
           -- the value will be read in `overrides()`
           kong_env_vars[kong_var] = true
@@ -1479,6 +1512,7 @@ local function load(path, custom_conf, opts)
   ---------------------------------
 
   local loaded_vaults
+  local refs
   do
     -- validation
     local vaults_array = infer_value(conf.vaults, CONF_INFERENCES["vaults"].typ, opts)
@@ -1488,7 +1522,7 @@ local function load(path, custom_conf, opts)
 
     if #vaults_array > 0 and vaults_array[1] ~= "off" then
       for i = 1, #vaults_array do
-        local vault_name = pl_stringx.strip(vaults_array[i])
+        local vault_name = strip(vaults_array[i])
         if vault_name ~= "off" then
           if vault_name == "bundled" then
             vaults = tablex.merge(constants.BUNDLED_VAULTS, vaults, true)
@@ -1502,9 +1536,23 @@ local function load(path, custom_conf, opts)
 
     loaded_vaults = setmetatable(vaults, _nop_tostring_mt)
 
-    local vault = require "kong.pdk.vault".new()
+    local vault_conf = { loaded_vaults = loaded_vaults }
+    for k, v in pairs(conf) do
+      if sub(k, 1, 6) == "vault_" then
+        vault_conf[k] = v
+      end
+    end
+
+    local vault = require("kong.pdk.vault").new({ configuration = vault_conf })
+
     for k, v in pairs(conf) do
       if vault.is_reference(v) then
+        if refs then
+          refs[k] = v
+        else
+          refs = setmetatable({ [k] = v }, _nop_tostring_mt)
+        end
+
         local deref, deref_err = vault.get(v)
         if deref == nil or deref_err then
           return nil, fmt("failed to dereference '%s': %s for config option '%s'", v, deref_err, k)
@@ -1529,14 +1577,16 @@ local function load(path, custom_conf, opts)
   end
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
+
   conf.loaded_vaults = loaded_vaults
+  conf["$refs"] = refs
 
   local default_nginx_main_user = false
   local default_nginx_user = false
 
   do
     -- nginx 'user' directive
-    local user = utils.strip(conf.nginx_main_user):gsub("%s+", " ")
+    local user = gsub(strip(conf.nginx_main_user), "%s+", " ")
     if user == "nobody" or user == "nobody nobody" then
       conf.nginx_main_user = nil
 
@@ -1544,7 +1594,7 @@ local function load(path, custom_conf, opts)
       default_nginx_main_user = true
     end
 
-    local user = utils.strip(conf.nginx_user):gsub("%s+", " ")
+    local user = gsub(strip(conf.nginx_user), "%s+", " ")
     if user == "nobody" or user == "nobody nobody" then
       conf.nginx_user = nil
 
@@ -1596,7 +1646,7 @@ local function load(path, custom_conf, opts)
       conf_arr[#conf_arr+1] = k .. " = " .. pl_pretty.write(to_print, "")
     end
 
-    table.sort(conf_arr)
+    sort(conf_arr)
 
     for i = 1, #conf_arr do
       log.debug(conf_arr[i])
@@ -1613,8 +1663,7 @@ local function load(path, custom_conf, opts)
 
     if #conf.plugins > 0 and conf.plugins[1] ~= "off" then
       for i = 1, #conf.plugins do
-        local plugin_name = pl_stringx.strip(conf.plugins[i])
-
+        local plugin_name = strip(conf.plugins[i])
         if plugin_name ~= "off" then
           if plugin_name == "bundled" then
             plugins = tablex.merge(constants.BUNDLED_PLUGINS, plugins, true)
@@ -1638,7 +1687,7 @@ local function load(path, custom_conf, opts)
 
     for _, directive in pairs(http_directives) do
       if directive.name == "lua_shared_dict"
-         and string.find(directive.value, "prometheus_metrics", nil, true)
+         and find(directive.value, "prometheus_metrics", nil, true)
       then
          found = true
          break
@@ -1646,7 +1695,7 @@ local function load(path, custom_conf, opts)
     end
 
     if not found then
-      table.insert(http_directives, {
+      insert(http_directives, {
         name  = "lua_shared_dict",
         value = "prometheus_metrics 5m",
       })
@@ -1657,7 +1706,7 @@ local function load(path, custom_conf, opts)
 
     for _, directive in pairs(stream_directives) do
       if directive.name == "lua_shared_dict"
-        and string.find(directive.value, "stream_prometheus_metrics", nil, true)
+        and find(directive.value, "stream_prometheus_metrics", nil, true)
       then
         found = true
         break
@@ -1665,7 +1714,7 @@ local function load(path, custom_conf, opts)
     end
 
     if not found then
-      table.insert(stream_directives, {
+      insert(stream_directives, {
         name  = "lua_shared_dict",
         value = "stream_prometheus_metrics 5m",
       })
@@ -1674,7 +1723,7 @@ local function load(path, custom_conf, opts)
 
   for _, dyn_namespace in ipairs(DYNAMIC_KEY_NAMESPACES) do
     if dyn_namespace.injected_conf_name then
-      table.sort(conf[dyn_namespace.injected_conf_name], function(a, b)
+      sort(conf[dyn_namespace.injected_conf_name], function(a, b)
         return a.name < b.name
       end)
     end
@@ -1702,7 +1751,7 @@ local function load(path, custom_conf, opts)
     if #conf.headers > 0 and conf.headers[1] ~= "off" then
       for _, token in ipairs(conf.headers) do
         if token ~= "off" then
-          enabled_headers[HEADER_KEY_TO_NAME[string.lower(token)]] = true
+          enabled_headers[HEADER_KEY_TO_NAME[lower(token)]] = true
         end
       end
     end
@@ -1723,7 +1772,7 @@ local function load(path, custom_conf, opts)
   end
 
   -- load absolute paths
-  conf.prefix = pl_path.abspath(conf.prefix)
+  conf.prefix = abspath(conf.prefix)
 
   for _, prefix in ipairs({ "ssl", "admin_ssl", "status_ssl", "client_ssl", "cluster" }) do
     local ssl_cert = conf[prefix .. "_cert"]
@@ -1732,26 +1781,26 @@ local function load(path, custom_conf, opts)
     if ssl_cert and ssl_cert_key then
       if type(ssl_cert) == "table" then
         for i, cert in ipairs(ssl_cert) do
-          ssl_cert[i] = pl_path.abspath(cert)
+          ssl_cert[i] = abspath(cert)
         end
 
       else
-        conf[prefix .. "_cert"] = pl_path.abspath(ssl_cert)
+        conf[prefix .. "_cert"] = abspath(ssl_cert)
       end
 
       if type(ssl_cert) == "table" then
         for i, key in ipairs(ssl_cert_key) do
-          ssl_cert_key[i] = pl_path.abspath(key)
+          ssl_cert_key[i] = abspath(key)
         end
 
       else
-        conf[prefix .. "_cert_key"] = pl_path.abspath(ssl_cert_key)
+        conf[prefix .. "_cert_key"] = abspath(ssl_cert_key)
       end
     end
   end
 
   if conf.cluster_ca_cert then
-    conf.cluster_ca_cert = pl_path.abspath(conf.cluster_ca_cert)
+    conf.cluster_ca_cert = abspath(conf.cluster_ca_cert)
   end
 
   local ssl_enabled = conf.proxy_ssl_enabled or
@@ -1764,14 +1813,14 @@ local function load(path, custom_conf, opts)
       if directive.name == "ssl_dhparam" then
         if is_predefined_dhgroup(directive.value) then
           if ssl_enabled then
-            directive.value = pl_path.abspath(pl_path.join(conf.prefix, "ssl", directive.value .. ".pem"))
+            directive.value = abspath(pl_path.join(conf.prefix, "ssl", directive.value .. ".pem"))
 
           else
-            table.remove(conf[name], i)
+            remove(conf[name], i)
           end
 
         else
-          directive.value = pl_path.abspath(directive.value)
+          directive.value = abspath(directive.value)
         end
 
         break
@@ -1785,7 +1834,7 @@ local function load(path, custom_conf, opts)
       tablex.map(pl_path.abspath, conf.lua_ssl_trusted_certificate)
 
     conf.lua_ssl_trusted_certificate_combined =
-      pl_path.abspath(pl_path.join(conf.prefix, ".ca_combined"))
+      abspath(pl_path.join(conf.prefix, ".ca_combined"))
   end
 
   -- attach prefix files paths
