@@ -13,23 +13,21 @@ local INFO = ngx.INFO
 local DEBUG = ngx.DEBUG
 local ERR = ngx.ERR
 local WARN = ngx.WARN
-local kong = kong
 local ngx = ngx
+local kong = kong
+local knode = (kong and kong.node) and kong.node or
+  require "kong.pdk.node".new()
 local timer_at = ngx.timer.at
 local re_gmatch = ngx.re.gmatch
 local ipairs = ipairs
 local assert = assert
 local _log_prefix = "[analytics] "
-local knode = (kong and kong.node) and kong.node or
-  require "kong.pdk.node".new()
 local persistence_handler
 local DELAY_LOWER_BOUND = 0
 local DELAY_UPPER_BOUND = 3
 local DEFAULT_ANALYTICS_FLUSH_INTERVAL = 1
 local DEFAULT_ANALYTICS_BUFFER_SIZE_LIMIT = 100000
 local KONG_VERSION = kong.version
-local KONG_NODE_ID = knode.get_id()
-local KONG_HOSTNAME = knode.get_hostname()
 
 local table_insert = table.insert
 local table_remove = table.remove
@@ -106,9 +104,11 @@ function _M:init_worker()
 
   log(INFO, _log_prefix, "init analytics workers.")
 
+  -- can't define constant for node_id and node_hostname
+  -- they will cause rbac integration tests to fail
   local uri = "wss://" .. self.cluster_endpoint .. "/v1/" .. self.path ..
-    "?node_id=" .. KONG_NODE_ID ..
-    "&node_hostname=" .. KONG_HOSTNAME ..
+    "?node_id=" .. knode.get_id() ..
+    "&node_hostname=" .. knode.get_hostname() ..
     "&node_version=" .. KONG_VERSION
 
   local server_name = get_server_name()
