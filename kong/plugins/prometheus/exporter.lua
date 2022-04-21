@@ -1,9 +1,10 @@
+local ffi = require("ffi")
+local C = ffi.C
+
 local kong = kong
 local ngx = ngx
-local find = string.find
 local lower = string.lower
 local concat = table.concat
-local select = select
 local ngx_timer_pending_count = ngx.timer.pending_count
 local ngx_timer_running_count = ngx.timer.running_count
 local balancer = require("kong.runloop.balancer")
@@ -289,6 +290,23 @@ else
   end
 end
 
+if ffi.arch == "x64" or ffi.arch == "arm64" then
+  ffi.cdef[[
+  uint64_t *ngx_stat_requests;
+  uint64_t *ngx_stat_accepted;
+  uint64_t *ngx_stat_handled;
+  ]]
+
+elseif ffi.arch == "x86" or ffi.arch == "arm" then
+  ffi.cdef[[
+  uint32_t *ngx_stat_requests;
+  uint32_t *ngx_stat_accepted;
+  uint32_t *ngx_stat_handled;
+  ]]
+
+else
+  kong.log.err("Unsupported arch: " .. ffi.arch)
+end
 
 local function metric_data()
   if not prometheus or not metrics then
@@ -298,19 +316,9 @@ local function metric_data()
   end
 
   if ngx.location then
-    local r = ngx.location.capture "/nginx_status"
-
-    if r.status ~= 200 then
-      kong.log.warn("prometheus: failed to retrieve /nginx_status ",
-        "while processing /metrics endpoint")
-
-    else
-      local accepted, handled, total = select(3, find(r.body,
-        "accepts handled requests\n (%d*) (%d*) (%d*)"))
-      metrics.connections:set(accepted, { "accepted" })
-      metrics.connections:set(handled, { "handled" })
-      metrics.connections:set(total, { "total" })
-    end
+    metrics.connections:set(tonumber(C.ngx_stat_accepted[0]), { "accepted" })
+    metrics.connections:set(tonumber(C.ngx_stat_handled[0]), { "handled" })
+    metrics.connections:set(tonumber(C.ngx_stat_requests[0]), { "total" })
   end
 
   metrics.connections:set(ngx.var.connections_active or 0, { "active" })
