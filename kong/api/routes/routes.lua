@@ -14,9 +14,9 @@ local uuid = require("kong.tools.utils").uuid
 local kong = kong
 
 
-local function rebuild_routes(db)
+local function rebuild_routes()
   if kong.configuration.route_validation_strategy == 'smart'  then
-    core_handler.build_router(db, uuid())
+    core_handler.build_router(uuid())
   end
 end
 
@@ -24,7 +24,7 @@ end
 return {
   ["/routes"] = {
     POST = function(self, db, helpers, parent)
-      rebuild_routes(db)
+      rebuild_routes()
 
       local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
       if not ok then
@@ -34,18 +34,16 @@ return {
       return parent()
     end,
     GET = function(self, db, helpers, parent)
-      rebuild_routes(db)
       return parent()
     end
   },
 
   ["/routes/:routes"] = {
     GET = function(self, db, helpers, parent)
-      rebuild_routes(db)
       return parent()
     end,
     PUT = function(self, db, helpers, parent)
-      rebuild_routes(db)
+      rebuild_routes()
 
       local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
       if not ok then
@@ -55,15 +53,15 @@ return {
       return parent()
     end,
     DELETE = function(self, db, helpers, parent)
-      rebuild_routes(db)
+      rebuild_routes()
       return parent()
     end,
 
     PATCH = function(self, db, helpers, parent)
       -- create temporary router
-      rebuild_routes(db)
+      rebuild_routes()
 
-      local ok, err = route_collision.is_route_crud_allowed(self, singletons.router)
+      local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
       end

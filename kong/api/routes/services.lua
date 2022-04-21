@@ -16,32 +16,31 @@ local portal_crud = require "kong.portal.crud_helpers"
 local kong = kong
 
 
+local function rebuild_routes(self, db, helpers)
+  if kong.configuration.route_validation_strategy == 'smart'  then
+    core_handler.build_router(uuid())
+  end
+
+  -- check for the service existence
+  local id = self.params.services
+  local entity, _, err_t
+  if not utils.is_valid_uuid(id) then
+    entity, _, err_t = db.services:select_by_name(id)
+  else
+    entity, _, err_t = db.services:select({ id = id })
+  end
+
+  if not entity or err_t then
+    return kong.response.exit(404, {message = "Not found" })
+  end
+end
+
+
 return {
   ["/services/:services/routes"] = {
-    before = function(self, db, helpers)
-      if kong.configuration.route_validation_strategy == 'smart'  then
-        -- XXXCORE is this flipping still necessary?
-        local old_ws = ngx.ctx.workspace
-        ngx.ctx.workspace = nil
-        core_handler.build_router(db, uuid())
-        ngx.ctx.workspace = old_ws
-      end
+    POST = function(self, db, helpers, parent)
+      rebuild_routes(self, db, helpers)
 
-      -- check for the service existence
-      local id = self.params.services
-      local entity, _, err_t
-      if not utils.is_valid_uuid(id) then
-        entity, _, err_t = db.services:select_by_name(id)
-      else
-        entity, _, err_t = db.services:select({ id = id })
-      end
-
-      if not entity or err_t then
-        return kong.response.exit(404, {message = "Not found" })
-      end
-    end,
-
-    POST = function(self, _, _, parent)
       local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
@@ -56,7 +55,9 @@ return {
   },
 
   ["/services/:services/routes/:routes"] = {
-    PATCH = function(self, _, _, parent)
+    PATCH = function(self, db, helpers, parent)
+      rebuild_routes(self, db, helpers)
+
       local ok, err = route_collision.is_route_crud_allowed(self, singletons.router, true)
       if not ok then
         return kong.response.exit(err.code, {message = err.message})
