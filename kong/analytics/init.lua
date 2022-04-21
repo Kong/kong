@@ -44,10 +44,10 @@ local p = protoc.new()
 p.include_imports = true
 -- the file is uploaded by the build job
 -- https://github.com/Kong/kong-distributions/blob/99d49c5c79399e4b0700ed7f7ea220efcd39c771/kong-images/build-kong.sh#L759
-p:addpath("/usr/local/kong/lib/kong/model/analytics")
+p:addpath("/usr/local/kong/lib")
 -- path for unit tests
-p:addpath("kong/include/kong/model/analytics")
-p:loadfile("payload.proto")
+p:addpath("kong/include")
+p:loadfile("kong/model/analytics/payload.proto")
 
 function _M.new(config)
   assert(config, "conf can not be nil", 2)
