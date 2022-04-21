@@ -240,13 +240,13 @@ case "$step" in
       ;;
    #---------------------------------------------------------------------------
    merge)
-      CONFIRM "Press Enter to merge the PR into master and push the tag and Github release" \
+      CONFIRM "Press Enter to merge the PR into $base and push the tag and Github release" \
               "or Ctrl-C to cancel."
 
       set -e
       git checkout "$branch"
       git pull
-      git checkout master
+      git checkout "$base"
       git pull
       git merge "$branch"
       git push
