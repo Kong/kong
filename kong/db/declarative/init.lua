@@ -398,6 +398,33 @@ function declarative.load_into_db(entities, meta)
 end
 
 
+local function begin_transaction(db)
+  if db.strategy == "postgres" then
+    local ok, err = db.connector:connect("read")
+    if not ok then
+      return nil, err
+    end
+
+    ok, err = db.connector:query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;", "read")
+    if not ok then
+      return nil, err
+    end
+  end
+
+  return true
+end
+
+
+local function end_transaction(db)
+  if db.strategy == "postgres" then
+    -- just finish up the read-only transaction,
+    -- either COMMIT or ROLLBACK is fine.
+    db.connector:query("ROLLBACK;", "read")
+    db.connector:setkeepalive()
+  end
+end
+
+
 local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_foreigns)
   local schemas = {}
 
@@ -408,8 +435,15 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
       insert(schemas, dao.schema)
     end
   end
+
   local sorted_schemas, err = schema_topological_sort(schemas)
   if not sorted_schemas then
+    return nil, err
+  end
+
+  local ok
+  ok, err = begin_transaction(db)
+  if not ok then
     return nil, err
   end
 
@@ -439,6 +473,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
     end
     for row, err in db[name]:each(page_size, GLOBAL_QUERY_OPTS) do
       if not row then
+        end_transaction(db)
         kong.log.err(err)
         return nil, err
       end
@@ -474,6 +509,8 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
 
     ::continue::
   end
+
+  end_transaction(db)
 
   return emitter:done()
 end
