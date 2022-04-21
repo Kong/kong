@@ -39,6 +39,7 @@ local _DEFAULT_FORMAT = "%file_src:%line_src %message"
 local _DEFAULT_NAMESPACED_FORMAT = "%file_src:%line_src [%namespace] %message"
 local PHASES = phase_checker.phases
 local PHASES_LOG = PHASES.log
+local ARRAY_MT = require("cjson.safe").array_mt
 
 local phases_with_ctx =
     phase_checker.new(PHASES.rewrite,
@@ -781,6 +782,11 @@ do
         response_size = tonumber(response_size, 10)
       end
 
+      local tries = utils.deep_copy((ctx.balancer_data or {}).tries)
+      if type(tries) == "table" then
+        setmetatable(tries, ARRAY_MT)
+      end
+
       return edit_result(ctx, {
         request = {
           uri = request_uri,
@@ -797,7 +803,7 @@ do
           headers = ongx.resp.get_headers(),
           size = response_size,
         },
-        tries = (ctx.balancer_data or {}).tries,
+        tries = tries,
         latencies = {
           kong = (ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0) +
                  (ctx.KONG_RECEIVE_TIME or 0),
@@ -805,9 +811,9 @@ do
           request = var.request_time * 1000
         },
         authenticated_entity = authenticated_entity,
-        route = ctx.route,
-        service = ctx.service,
-        consumer = ctx.authenticated_consumer,
+        route = utils.deep_copy(ctx.route),
+        service = utils.deep_copy(ctx.service),
+        consumer = utils.deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
       })
@@ -843,6 +849,11 @@ do
 
       local host_port = ctx.host_port or var.server_port
 
+      local tries = utils.deep_copy((ctx.balancer_data or {}).tries)
+      if type(tries) == "table" then
+        setmetatable(tries, ARRAY_MT)
+      end
+
       return edit_result(ctx, {
         session = {
           tls = session_tls,
@@ -855,15 +866,15 @@ do
           received = tonumber(var.upstream_bytes_received, 10),
           sent = tonumber(var.upstream_bytes_sent, 10),
         },
-        tries = (ctx.balancer_data or {}).tries,
+        tries = tries,
         latencies = {
           kong = ctx.KONG_PROXY_LATENCY or ctx.KONG_RESPONSE_LATENCY or 0,
           session = var.session_time * 1000,
         },
         authenticated_entity = authenticated_entity,
-        route = ctx.route,
-        service = ctx.service,
-        consumer = ctx.authenticated_consumer,
+        route = utils.deep_copy(ctx.route),
+        service = utils.deep_copy(ctx.service),
+        consumer = utils.deep_copy(ctx.authenticated_consumer),
         client_ip = var.remote_addr,
         started_at = ctx.KONG_PROCESSING_START or (req.start_time() * 1000)
       })
