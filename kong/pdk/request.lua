@@ -28,6 +28,33 @@ local PHASES = phase_checker.phases
 cjson.decode_array_with_array_mt(true)
 
 
+do -- add patch for faster ngx.req.get_header
+  local req_get_headers = ngx.req.get_headers
+  -- use ngx.ctx as weak cache key
+  local req_get_headers_cache = setmetatable({}, {__mode="k"})
+  local function req_get_headers_cached()
+    local ctx = ngx.ctx
+    local cache = req_get_headers_cache[ctx]
+    if not cache then
+      cache = req_get_headers()
+      req_get_headers_cache[ctx] = cache
+    end
+    return cache
+  end
+
+  -- clear the cache if header changed
+  local origin_set_header = ngx.req.set_header
+  function ngx.req.set_header(header_name, header_value)
+    req_get_headers_cache[ngx.ctx] = nil
+    return origin_set_header(header_name, header_value)
+  end
+
+  function ngx.req.get_header(name)
+    return req_get_headers_cached()[name]
+  end
+end
+
+
 local function new(self)
   local _REQUEST = {}
 
@@ -568,7 +595,7 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    local header_value = _REQUEST.get_headers()[name]
+    local header_value = ngx.req.get_header(name)
     if type(header_value) == "table" then
       return header_value[1]
     end
