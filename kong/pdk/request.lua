@@ -44,12 +44,12 @@ do -- add patch for faster ngx.req.get_header
 
   -- clear the cache if header changed
   local origin_set_header = ngx.req.set_header
-  function ngx.req.set_header(header_name, header_value)
+  function ngx.req.set_header(header_name, header_value) -- luacheck: ignore
     req_get_headers_cache[ngx.ctx] = nil
     return origin_set_header(header_name, header_value)
   end
 
-  function ngx.req.get_header(name)
+  function ngx.req.get_header(name) -- luacheck: ignore
     return req_get_headers_cached()[name]
   end
 end
