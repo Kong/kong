@@ -64,6 +64,13 @@
 
 ## Unreleased
 
+### Fixes
+
+#### PDK
+
+- `pdk.response.set_header()`, `pdk.response.set_headers()`, `pdk.response.exit()` now ignore and emit warnings for manually set `Transfer-Encoding` headers.
+  [#8698](https://github.com/Kong/kong/pull/8698)
+
 ### Breaking Changes
 
 #### Admin API
