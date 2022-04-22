@@ -53,7 +53,7 @@ local function new(self)
   ---
   -- Returns various connection and request metrics exposed by
   -- Nginx, similar to those reported by the
-  -- [ngx_http_stub_status_module](https://nginx.org/en/docs/http/ngx_http_stub_status_module.html#data)
+  -- [ngx_http_stub_status_module](https://nginx.org/en/docs/http/ngx_http_stub_status_module.html#data).
   --
   -- The following fields are included in the returned table:
   -- * `connections_active` - the current number of active client connections including `connections_waiting`.
@@ -61,7 +61,8 @@ local function new(self)
   -- * `connections_writing` - the current number of connections where nginx is writing the response back to the client.
   -- * `connections_waiting` - the current number of idle client connections waiting for a request.
   -- * `connections_accepted` - the total number of accepted client connections.
-  -- * `connections_handled` - the total number of handled connections. Same as `connections_accepted` unless resources limited (e.g. `worker_connections`)
+  -- * `connections_handled` - the total number of handled connections. Same as `connections_accepted` unless some resource limits have been reached
+  --   (for example, the [`worker_connections`](https://nginx.org/en/docs/ngx_core_module.html#worker_connections) limit).
   -- * `total_requests` - the total number of client requests.
   --
   -- @function kong.nginx.get_statistics
