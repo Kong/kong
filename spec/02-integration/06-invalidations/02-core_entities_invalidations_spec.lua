@@ -162,6 +162,7 @@ for _, strategy in helpers.each_strategy() do
         ngx.sleep(0.01)
 
         do
+        helpers.wait_until(function()
           local res = assert(proxy_client_1:send {
             method  = "GET",
             path    = "/status/200",
@@ -169,7 +170,8 @@ for _, strategy in helpers.each_strategy() do
               host = "example.com",
             }
           })
-          assert.res_status(200, res)
+          return res.status == 200
+        end, 10)
         end
 
         assert_proxy_2_wait({
