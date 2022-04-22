@@ -265,6 +265,7 @@ for _, strategy in helpers.each_strategy() do
           },
         })
         first_service_name = routes[1].service.name
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -752,6 +753,7 @@ for _, strategy in helpers.each_strategy() do
             },
           }
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -833,6 +835,7 @@ for _, strategy in helpers.each_strategy() do
             regex_priority = 0,
           },
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -869,6 +872,7 @@ for _, strategy in helpers.each_strategy() do
             hosts = { "mock_upstream" },
           },
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -941,6 +945,7 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/anything/world" },
           },
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -1070,6 +1075,7 @@ for _, strategy in helpers.each_strategy() do
             strip_path = true,
           },
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -1147,6 +1153,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
 
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -1246,6 +1253,7 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/foobar" },
           },
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -1300,6 +1308,7 @@ for _, strategy in helpers.each_strategy() do
             },
           },
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -1384,6 +1393,7 @@ for _, strategy in helpers.each_strategy() do
             },
           },
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -1463,6 +1473,7 @@ for _, strategy in helpers.each_strategy() do
             headers = { version = { "v3" } },
           },
         })
+        ngx.sleep(0.01)
 
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1506,6 +1517,7 @@ for _, strategy in helpers.each_strategy() do
             headers = { version = { "V3" } },
           },
         })
+        ngx.sleep(0.01)
 
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1559,6 +1571,7 @@ for _, strategy in helpers.each_strategy() do
             },
           },
         })
+        ngx.sleep(0.01)
 
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1612,6 +1625,7 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/test" },
           },
         })
+        ngx.sleep(0.01)
 
         local res = assert(proxy_client:send {
           method  = "GET",
@@ -1688,6 +1702,7 @@ for _, strategy in helpers.each_strategy() do
             paths = { "/root" },
           },
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -1754,6 +1769,7 @@ for _, strategy in helpers.each_strategy() do
             },
           },
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -1897,6 +1913,7 @@ for _, strategy in helpers.each_strategy() do
           },
 
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -2028,6 +2045,7 @@ for _, strategy in helpers.each_strategy() do
             paths      = { "/root/fixture/get" },
           },
         })
+        ngx.sleep(0.1)
       end)
 
       lazy_teardown(function()
@@ -2075,6 +2093,7 @@ for _, strategy in helpers.each_strategy() do
           end
 
           routes = insert_routes(bp, routes)
+          ngx.sleep(0.1)
         end)
 
         lazy_teardown(function()
@@ -2138,6 +2157,7 @@ for _, strategy in helpers.each_strategy() do
           end
 
           routes = insert_routes(bp, routes)
+          ngx.sleep(0.1)
         end)
 
         lazy_teardown(function()
@@ -2185,6 +2205,7 @@ for _, strategy in helpers.each_strategy() do
               regex_priority = ngx.null,
             },
           })
+          ngx.sleep(0.01)
 
           local res = assert(proxy_client:send {
             method  = "GET",
@@ -2228,6 +2249,7 @@ for _, strategy in helpers.each_strategy() do
         plugins = "bundled,enable-buffering",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+      ngx.sleep(0.1)
     end)
 
     lazy_teardown(function()
