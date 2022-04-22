@@ -7,18 +7,20 @@
 local ffi = require "ffi"
 
 
-local C   = ffi.C
-local ngx = ngx
-local var = ngx.var
+local C    = ffi.C
+local arch = ffi.arch
+local ngx  = ngx
+local var  = ngx.var
+local tonumber = tonumber
 
-if ffi.arch == "x64" or ffi.arch == "arm64" then
+if arch == "x64" or arch == "arm64" then
   ffi.cdef[[
     uint64_t *ngx_stat_requests;
     uint64_t *ngx_stat_accepted;
     uint64_t *ngx_stat_handled;
   ]]
 
-elseif ffi.arch == "x86" or ffi.arch == "arm" then
+elseif arch == "x86" or arch == "arm" then
   ffi.cdef[[
     uint32_t *ngx_stat_requests;
     uint32_t *ngx_stat_accepted;
@@ -26,7 +28,7 @@ elseif ffi.arch == "x86" or ffi.arch == "arm" then
   ]]
 
 else
-  kong.log.err("Unsupported arch: " .. ffi.arch)
+  kong.log.err("Unsupported arch: " .. arch)
 end
 
 
@@ -49,8 +51,19 @@ local function new(self)
 
 
   ---
-  -- @function kong.nginx.get_statistics
+  -- Returns various connection and request metrics exposed by
+  -- Nginx ngx_http_stub_status_module
   --
+  -- The following fields are included in the returned table:
+  -- * `connections_active` - the current number of active client connections including `connections_waiting`.
+  -- * `connections_reading` - the current number of connections where nginx is reading the request header.
+  -- * `connections_writing` - the current number of connections where nginx is writing the response back to the client.
+  -- * `connections_waiting` - the current number of idle client connections waiting for a request.
+  -- * `connections_accepted` - the total number of accepted client connections.
+  -- * `connections_handled` - the total number of handled connections. Same as `connections_accepted` unless resources limited (e.g. `worker_connections`)
+  -- * `total_requests` - the total number of client requests.
+  --
+  -- @function kong.nginx.get_statistics
   -- @treturn table Nginx connections and requests statistics
   -- @usage
   -- local nginx_statistics = kong.nginx.get_statistics()
