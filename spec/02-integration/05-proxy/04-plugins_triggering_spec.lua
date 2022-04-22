@@ -1211,15 +1211,16 @@ for _, strategy in helpers.each_strategy() do
 
             assert.res_status(201, res)
 
-            ngx.sleep(0.01)
+            local res
+            helpers.wait_until(function()
+              res = assert(proxy_client:get("/status/400", {
+                headers = {
+                  ["Host"] = "runs-init-worker.org",
+                }
+              }))
 
-            local res = assert(proxy_client:get("/status/400", {
-              headers = {
-                ["Host"] = "runs-init-worker.org",
-              }
-            }))
-
-            assert.equal("true", res.headers["Kong-Init-Worker-Called"])
+              return res.headers["Kong-Init-Worker-Called"] == "true"
+            end, 10)
 
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
