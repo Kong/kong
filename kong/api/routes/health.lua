@@ -1,9 +1,6 @@
-local ffi = require("ffi")
 local utils = require "kong.tools.utils"
 local declarative = require "kong.db.declarative"
 
-local C = ffi.C
-local var = ngx.var
 local tonumber = tonumber
 local kong = kong
 local knode  = (kong and kong.node) and kong.node or
@@ -13,23 +10,6 @@ local knode  = (kong and kong.node) and kong.node or
 local dbless = kong.configuration.database == "off"
 local data_plane_role = kong.configuration.role == "data_plane"
 
-if ffi.arch == "x64" or ffi.arch == "arm64" then
-  ffi.cdef[[
-  uint64_t *ngx_stat_requests;
-  uint64_t *ngx_stat_accepted;
-  uint64_t *ngx_stat_handled;
-  ]]
-
-elseif ffi.arch == "x86" or ffi.arch == "arm" then
-  ffi.cdef[[
-  uint32_t *ngx_stat_requests;
-  uint32_t *ngx_stat_accepted;
-  uint32_t *ngx_stat_handled;
-  ]]
-
-else
-  kong.log.err("Unsupported arch: " .. ffi.arch)
-end
 
 return {
   ["/status"] = {
@@ -58,15 +38,7 @@ return {
       -- nginx stats
       local status_response = {
         memory = knode.get_memory_stats(unit, scale),
-        server = {
-          connections_active = tonumber(var.connections_active),
-          connections_reading = tonumber(var.connections_reading),
-          connections_writing = tonumber(var.connections_writing),
-          connections_waiting = tonumber(var.connections_waiting),
-          connections_accepted = tonumber(C.ngx_stat_accepted[0]),
-          connections_handled = tonumber(C.ngx_stat_handled[0]),
-          total_requests = tonumber(C.ngx_stat_requests[0])
-        },
+        server = kong.nginx.get_statistics(),
         database = {
           reachable = true,
         },

@@ -1,6 +1,3 @@
-local ffi = require("ffi")
-local C = ffi.C
-
 local kong = kong
 local ngx = ngx
 local lower = string.lower
@@ -290,23 +287,6 @@ else
   end
 end
 
-if ffi.arch == "x64" or ffi.arch == "arm64" then
-  ffi.cdef[[
-  uint64_t *ngx_stat_requests;
-  uint64_t *ngx_stat_accepted;
-  uint64_t *ngx_stat_handled;
-  ]]
-
-elseif ffi.arch == "x86" or ffi.arch == "arm" then
-  ffi.cdef[[
-  uint32_t *ngx_stat_requests;
-  uint32_t *ngx_stat_accepted;
-  uint32_t *ngx_stat_handled;
-  ]]
-
-else
-  kong.log.err("Unsupported arch: " .. ffi.arch)
-end
 
 local function metric_data()
   if not prometheus or not metrics then
@@ -315,16 +295,14 @@ local function metric_data()
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
-  if ngx.location then
-    metrics.connections:set(tonumber(C.ngx_stat_accepted[0]), { "accepted" })
-    metrics.connections:set(tonumber(C.ngx_stat_handled[0]), { "handled" })
-    metrics.connections:set(tonumber(C.ngx_stat_requests[0]), { "total" })
-  end
-
-  metrics.connections:set(ngx.var.connections_active or 0, { "active" })
-  metrics.connections:set(ngx.var.connections_reading or 0, { "reading" })
-  metrics.connections:set(ngx.var.connections_writing or 0, { "writing" })
-  metrics.connections:set(ngx.var.connections_waiting or 0, { "waiting" })
+  local nginx_statistics = kong.nginx.get_statistics()
+  metrics.connections:set(nginx_statistics['connections_accepted'], { "accepted" })
+  metrics.connections:set(nginx_statistics['connections_handled'], { "handled" })
+  metrics.connections:set(nginx_statistics['total_requests'], { "total" })
+  metrics.connections:set(nginx_statistics['connections_active'], { "active" })
+  metrics.connections:set(nginx_statistics['connections_reading'], { "reading" })
+  metrics.connections:set(nginx_statistics['connections_writing'], { "writing" })
+  metrics.connections:set(nginx_statistics['connections_waiting'], { "waiting" })
 
   metrics.timers:set(ngx_timer_running_count(), {"running"})
   metrics.timers:set(ngx_timer_pending_count(), {"pending"})
