@@ -159,8 +159,6 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
-        ngx.sleep(0.01)
-
         do
         helpers.wait_until(function()
           local res = assert(proxy_client_1:send {
