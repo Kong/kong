@@ -1147,6 +1147,7 @@ for _, strategy in helpers.each_strategy() do
             paths         = { "/request" },
           }
         })
+
       end)
 
       lazy_teardown(function()
@@ -2228,7 +2229,6 @@ for _, strategy in helpers.each_strategy() do
         plugins = "bundled,enable-buffering",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
-      ngx.sleep(0.1)
     end)
 
     lazy_teardown(function()
