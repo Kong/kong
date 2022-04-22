@@ -626,6 +626,8 @@ describe("kong start/stop #" .. strategy, function()
         local _, stderr, stdout = assert(helpers.kong_exec("stop", kopts))
         assert.matches("Kong stopped", stdout, nil, true)
         assert.equal("", stderr)
+
+        ngx.sleep(0.5)
       end
 
       it("nginx_optimizations", function()
