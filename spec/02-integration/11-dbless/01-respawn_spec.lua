@@ -173,10 +173,12 @@ describe("worker respawn", function()
 
     assert.response(res).has.status(201)
 
-    ngx.sleep(1) -- XXX: wait for something, why?
+    helpers.wait_until(function()
+      res = assert(proxy_client:get("/"))
+      local body, err = res:read_body()
 
-    local res = assert(proxy_client:get("/"))
-    assert.res_status(401, res)
+      return res.status == 401
+    end, 10)
 
     res = assert(proxy_client:get("/", {
       headers = {
