@@ -175,7 +175,7 @@ describe("worker respawn", function()
 
     helpers.wait_until(function()
       res = assert(proxy_client:get("/"))
-      local body, err = res:read_body()
+      local _,_ = res:read_body()
 
       return res.status == 401
     end, 10)
