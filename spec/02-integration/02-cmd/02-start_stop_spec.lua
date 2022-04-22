@@ -24,7 +24,8 @@ describe("kong start/stop #" .. strategy, function()
       database = strategy,
       nginx_proxy_real_ip_header = "{vault://env/ipheader}",
       pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      vaults = "env",
     })
 
     assert.matches("Error: failed to dereference '{vault://env/ipheader}': unable to load value (ipheader) from vault (env): not found [{vault://env/ipheader}] for config option 'nginx_proxy_real_ip_header'", stderr, nil, true)
@@ -40,9 +41,9 @@ describe("kong start/stop #" .. strategy, function()
       database = helpers.test_conf.database,
       pg_password = "{vault://non-existent/pg_password}",
       pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
     })
-    assert.matches("failed to dereference '{vault://non-existent/pg_password}': could not find vault (non-existent)", stderr, nil, true)
+    assert.matches("failed to dereference '{vault://non-existent/pg_password}': vault not found (non-existent)", stderr, nil, true)
     assert.is_nil(stdout)
     assert.is_false(ok)
 
@@ -56,7 +57,8 @@ describe("kong start/stop #" .. strategy, function()
       database = helpers.test_conf.database,
       pg_password = "{vault://env/pg_password}",
       pg_database = helpers.test_conf.pg_database,
-      cassandra_keyspace = helpers.test_conf.cassandra_keyspace
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
+      vaults = "env",
     }))
     assert.not_matches("failed to dereference {vault://env/pg_password}", stderr, nil, true)
     assert.matches("Kong started", stdout, nil, true)

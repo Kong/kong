@@ -40,19 +40,25 @@ local function new(self)
   local _VAULT = {}
 
   local LRU = lrucache.new(1000)
-  local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
-  local VAULT_NAMES = BUNDLED_VAULTS and clone(BUNDLED_VAULTS) or {}
+
 
   local BRACE_START = byte("{")
   local BRACE_END = byte("}")
   local COLON = byte(":")
   local SLASH = byte("/")
 
+  local BUNDLED_VAULTS = constants.BUNDLED_VAULTS
+  local VAULT_NAMES
   local vaults = self and self.configuration and self.configuration.loaded_vaults
   if vaults then
+    VAULT_NAMES = {}
+
     for name in pairs(vaults) do
       VAULT_NAMES[name] = true
     end
+
+  else
+    VAULT_NAMES = BUNDLED_VAULTS and clone(BUNDLED_VAULTS) or {}
   end
 
   local function build_cache_key(name, resource, version)
@@ -106,6 +112,9 @@ local function new(self)
 
   local function process_secret(reference, opts)
     local name = opts.name
+    if not VAULT_NAMES[name] then
+      return nil, fmt("vault not found (%s) [%s]", name, reference)
+    end
     local vaults = self and (self.db and self.db.vaults_beta)
     local strategy
     local field

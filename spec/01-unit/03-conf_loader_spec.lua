@@ -1728,7 +1728,8 @@ describe("Configuration loader", function()
       helpers.setenv("PG_DATABASE", "resolved-kong-database")
 
       local conf = assert(conf_loader(nil, {
-        pg_database = "{vault://env/pg-database}"
+        pg_database = "{vault://env/pg-database}",
+        vaults = "env",
       }))
 
       assert.equal("resolved-kong-database", conf.pg_database)
@@ -1742,7 +1743,8 @@ describe("Configuration loader", function()
       helpers.setenv("PG_PORT", "5000")
 
       local conf = assert(conf_loader(nil, {
-        pg_port = "{vault://env/pg-port#0}"
+        pg_port = "{vault://env/pg-port#0}",
+        vaults = "env",
       }))
 
       assert.equal(5000, conf.pg_port)
