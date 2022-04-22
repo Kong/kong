@@ -6,20 +6,6 @@ local VAULTS do
   local pairs = pairs
   local names = {}
   local constants = require "kong.constants"
-  local bundled = constants and constants.BUNDLED_VAULTS
-  if bundled then
-    for name in pairs(bundled) do
-      if not names[name] then
-        names[name] = true
-        i = i + 1
-        if i == 1 then
-          VAULTS = { name }
-        else
-          VAULTS[i] = name
-        end
-      end
-    end
-  end
 
   local loaded_vaults = kong and kong.configuration and kong.configuration.loaded_vaults
   if loaded_vaults then
@@ -31,6 +17,22 @@ local VAULTS do
           VAULTS = { name }
         else
           VAULTS[i] = name
+        end
+      end
+    end
+
+  else
+    local bundled = constants and constants.BUNDLED_VAULTS
+    if bundled then
+      for name in pairs(bundled) do
+        if not names[name] then
+          names[name] = true
+          i = i + 1
+          if i == 1 then
+            VAULTS = { name }
+          else
+            VAULTS[i] = name
+          end
         end
       end
     end
