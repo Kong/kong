@@ -86,7 +86,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
         end)
       end)
 
-      describe("sync works", function()
+      describe("#flaky sync works", function()
         local route_id
 
         it("proxy on DP follows CP config", function()
