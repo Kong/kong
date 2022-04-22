@@ -52,7 +52,8 @@ local function new(self)
 
   ---
   -- Returns various connection and request metrics exposed by
-  -- Nginx ngx_http_stub_status_module
+  -- Nginx, similar to those reported by the
+  -- [ngx_http_stub_status_module](https://nginx.org/en/docs/http/ngx_http_stub_status_module.html#data)
   --
   -- The following fields are included in the returned table:
   -- * `connections_active` - the current number of active client connections including `connections_waiting`.
