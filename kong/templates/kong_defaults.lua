@@ -181,6 +181,6 @@ untrusted_lua_sandbox_environment =
 
 openresty_path =
 
-events_mechanism =
---events_mechanism = shared_dict
+--events_mechanism =
+events_mechanism = shared_dict
 ]]
