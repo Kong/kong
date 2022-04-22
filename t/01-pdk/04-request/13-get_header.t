@@ -104,7 +104,7 @@ X-Foo-Header: ''
 
 
 
-=== TEST 5: request.get_header() have no limit header numbers
+=== TEST 5: request.get_header() have no limit on header numbers
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
