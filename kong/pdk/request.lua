@@ -27,6 +27,104 @@ local PHASES = phase_checker.phases
 
 cjson.decode_array_with_array_mt(true)
 
+local req_get_header do
+  local ffi = require("ffi")
+  local C = ffi.C
+  local base = require "resty.core.base"
+  local get_request = base.get_request
+
+  ffi.cdef [[
+    typedef struct {
+      unsigned len:28;
+      unsigned valid:1;
+      unsigned no_cacheable:1;
+      unsigned not_found:1;
+      unsigned escape:1;
+      unsigned char *data;
+    } ngx_http_variable_value_t;
+
+    typedef struct {
+      size_t len;
+      unsigned char *data;
+    } ngx_str_t;
+
+    typedef struct ngx_list_part_s ngx_list_part_t;
+
+    struct ngx_list_part_s {
+        void *elts;
+        uintptr_t nelts;
+        ngx_list_part_t *next;
+    };
+
+    typedef struct {
+      ngx_list_part_t *last;
+      ngx_list_part_t part;
+      size_t size;
+      uintptr_t nalloc;
+      struct ngx_pool_t *pool;
+    } ngx_list_t;
+
+    typedef struct {
+      ngx_list_t headers;
+    } ngx_http_headers_in_t;
+
+    typedef void (*ngx_http_event_handler_pt)(struct ngx_http_request_t *r);
+    struct ngx_http_request_s{
+      uint32_t signature;
+      struct ngx_connection_t *connection;
+      void **ctx;
+      void **main_conf;
+      void **srv_conf;
+      void **loc_conf;
+  
+      ngx_http_event_handler_pt read_event_handler;
+      ngx_http_event_handler_pt write_event_handler;
+  
+      // if NGX_HTTP_CACHE
+      struct ngx_http_cache_t *cache;
+  
+      struct ngx_http_upstream_t *upstream;
+      struct ngx_array_t *upstream_states;
+  
+      struct ngx_pool_t *pool;
+      struct ngx_buf_t *header_in;
+  
+      ngx_http_headers_in_t headers_in;
+      // other fields that we don't care
+    };
+    typedef struct ngx_http_request_s ngx_http_request_t;
+
+    uintptr_t ngx_http_variable_unknown_header(ngx_http_variable_value_t *v, ngx_str_t *var, ngx_list_part_t *part, size_t prefix);
+  ]]
+
+
+  -- all those definitions are for this offset, so we can get &r->headers_in.headers.part
+  local request_in_header_part_offset = ffi.offsetof("ngx_http_request_t", "headers_in")+ ffi.offsetof("ngx_http_headers_in_t", "headers") + ffi.offsetof("ngx_list_t", "part")
+  local ffi_string = ffi.string
+  local ffi_cast = ffi.cast
+  local puchar_t = ffi.typeof("unsigned char*")
+  local ppart_t = ffi.typeof("ngx_list_part_t *")
+
+  local req_get_header_result = ffi.new("ngx_http_variable_value_t[1]")
+  local req_get_header_var = ffi.new("ngx_str_t[1]")
+
+  function req_get_header(key)
+    req_get_header_var[0].data = key
+    req_get_header_var[0].len = key:len()
+    local r = get_request()
+    -- it will always return NGX_OK so just ignore the return value
+    C.ngx_http_variable_unknown_header(req_get_header_result, req_get_header_var,
+      ffi_cast(ppart_t, puchar_t(r) + request_in_header_part_offset), 0)
+    if req_get_header_result[0].not_found > 0 then
+      return nil
+    elseif req_get_header_result[0].data == nil then
+      return ""
+    else
+      return ffi_string(req_get_header_result[0].data, req_get_header_result[0].len)
+    end
+  end
+end
+
 
 local function new(self)
   local _REQUEST = {}
@@ -568,7 +666,8 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    local header_value = _REQUEST.get_headers()[name]
+    name = name:gsub("-", "_"):lower()
+    local header_value = req_get_header(name)
     if type(header_value) == "table" then
       return header_value[1]
     end
