@@ -54,8 +54,6 @@ for _, strategy in helpers.each_strategy() do
 
         route_id = json.id
 
-        ngx.sleep(0.002)  -- wait events unix socket connect
-
         res = assert(proxy_client:send({
           method  = "GET",
           path    = "/",
@@ -71,14 +69,14 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(204, res)
 
-        ngx.sleep(0.002)  -- wait events unix socket connect
+        helpers.wait_until(function()
+          res = assert(proxy_client:send({
+            method  = "GET",
+            path    = "/",
+          }))
 
-        res = assert(proxy_client:send({
-          method  = "GET",
-          path    = "/",
-        }))
-
-        assert.res_status(404, res)
+          return res.status == 404
+        end, 10)
       end)
     end)
   end)
@@ -127,14 +125,14 @@ for _, strategy in helpers.each_strategy() do
         }))
         assert.res_status(201, res)
 
-        ngx.sleep(0.002)  -- wait events unix socket connect
+        helpers.wait_until(function()
+          res = assert(proxy_client:send({
+            method  = "GET",
+            path    = "/",
+          }))
 
-        res = assert(proxy_client:send({
-          method  = "GET",
-          path    = "/",
-        }))
-
-        assert.res_status(404, res)
+          return res.status == 404
+        end, 10)
         assert.logfile().has.line("get_updated_router(): could not rebuild router: " ..
                                   "could not load routes: [postgres] connection " ..
                                   "refused (stale router will be used)", true)
