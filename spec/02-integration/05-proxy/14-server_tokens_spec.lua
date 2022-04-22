@@ -470,19 +470,19 @@ describe("headers [#" .. strategy .. "]", function()
           assert.res_status(200, res)
           admin_client:close()
 
-          ngx.sleep(0.01)
-
-          local res = assert(proxy_client:send {
-            method  = "GET",
-            path    = "/get",
-            headers = {
-              host  = "error-rewrite.test",
-            }
-          })
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              method  = "GET",
+              path    = "/get",
+              headers = {
+                host  = "error-rewrite.test",
+              }
+            })
+            return res.status == 500
+          end, 10)
 
           db.plugins:delete({ id = uuid })
 
-          assert.res_status(500, res)
           assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
           assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
           assert.is_not_nil(res.headers[constants.HEADERS.RESPONSE_LATENCY])
