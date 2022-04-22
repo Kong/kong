@@ -35,7 +35,7 @@ kong-ngx-build \
     --luarocks $LUAROCKS \
     --openssl $OPENSSL \
     --resty-lmdb $RESTY_LMDB \
-    --resty-events feat/rebased_new_apis \
+    --resty-events $RESTY_EVENTS \
     --pcre $PCRE \
     --debug
 
