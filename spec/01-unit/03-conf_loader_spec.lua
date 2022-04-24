@@ -1461,6 +1461,36 @@ describe("Configuration loader", function()
       assert.not_equal("hide_me", purged_conf.pg_password)
       assert.not_equal("hide_me", purged_conf.cassandra_password)
     end)
+
+    it("replaces sensitive vault resolved settings", function()
+      finally(function()
+        helpers.unsetenv("PG_PASSWORD")
+        helpers.unsetenv("PG_DATABASE")
+        helpers.unsetenv("CASSANDRA_PASSWORD")
+        helpers.unsetenv("CASSANDRA_KEYSPACE")
+      end)
+
+      helpers.setenv("PG_PASSWORD", "pg-password")
+      helpers.setenv("PG_DATABASE", "pg-database")
+      helpers.setenv("CASSANDRA_PASSWORD", "cassandra-password")
+      helpers.setenv("CASSANDRA_KEYSPACE", "cassandra-keyspace")
+
+      local conf = assert(conf_loader(nil, {
+        pg_password = "{vault://env/pg-password}",
+        pg_database = "{vault://env/pg-database}",
+        cassandra_password = "{vault://env/cassandra-password}",
+        cassandra_keyspace = "{vault://env/cassandra-keyspace}",
+        vaults = "env",
+      }))
+
+      local purged_conf = conf_loader.remove_sensitive(conf)
+      assert.equal("******", purged_conf.pg_password)
+      assert.equal("{vault://env/pg-database}", purged_conf.pg_database)
+      assert.equal("******", purged_conf.cassandra_password)
+      assert.equal("{vault://env/cassandra-keyspace}", purged_conf.cassandra_keyspace)
+      assert.is_nil(purged_conf["$refs"])
+    end)
+
     it("does not insert placeholder if no value", function()
       local conf = assert(conf_loader())
       local purged_conf = conf_loader.remove_sensitive(conf)

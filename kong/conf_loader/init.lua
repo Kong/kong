@@ -1915,6 +1915,16 @@ return setmetatable({
   remove_sensitive = function(conf)
     local purged_conf = tablex.deepcopy(conf)
 
+    local refs = purged_conf["$refs"]
+    if type(refs) == "table" then
+      for k, v in pairs(refs) do
+        if not CONF_SENSITIVE[k] then
+          purged_conf[k] = v
+        end
+      end
+      purged_conf["$refs"] = nil
+    end
+
     for k in pairs(CONF_SENSITIVE) do
       if purged_conf[k] then
         purged_conf[k] = CONF_SENSITIVE_PLACEHOLDER
