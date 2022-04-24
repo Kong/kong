@@ -113,25 +113,38 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(meta._VERSION, json.version)
+        assert.equal("{vault://mock/admin-listen}", json.configuration.admin_listen)
         assert.falsy(exists(join(helpers.test_conf.prefix, ".kong_process_secrets")))
       end)
     end)
 
     describe("Kong Reload", function()
       it("can use co-sockets and resolved referenced are passed to Kong server", function()
+        finally(function()
+          helpers.unsetenv("KONG_ADMIN_LISTEN")
+        end)
+
+        helpers.setenv("KONG_ADMIN_LISTEN", "{vault://mock/listen?prefix=admin_}")
+
         local workers = get_kong_workers()
 
         assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path ..
-                                 " --nginx-conf spec/fixtures/custom_nginx.template"))
+                                 " --nginx-conf spec/fixtures/custom_nginx.template", {
+          vaults = "env,mock"
+        }))
 
         wait_until_no_common_workers(workers, 1)
 
         assert.falsy(exists(join(helpers.test_conf.prefix, ".kong_process_secrets")))
 
-        local res = client:get("/")
+        ngx.sleep(0.1)
+
+        local http = assert(helpers.admin_client(10000))
+        local res = http:get("/")
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(meta._VERSION, json.version)
+        assert.equal("{vault://mock/listen?prefix=admin_}", json.configuration.admin_listen)
       end)
     end)
   end)
