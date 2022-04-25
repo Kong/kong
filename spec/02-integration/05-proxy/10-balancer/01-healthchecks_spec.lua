@@ -1215,12 +1215,11 @@ for _, strategy in helpers.each_strategy() do
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "healthy")
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "healthy")
 
-                --local health = bu.get_balancer_health(upstream_name)
                 local health
                 helpers.wait_until(function()
-                  health = bu.get_upstream_health(upstream_name)
-                  return health.data.details ~= nil
-                end, 8)
+                  health = bu.get_balancer_health(upstream_name)
+                  return health.data.details.weight.available == 100
+                end, 5)
                 assert.is.table(health)
                 assert.is.table(health.data)
 
