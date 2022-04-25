@@ -478,6 +478,7 @@ describe("headers [#" .. strategy .. "]", function()
                 host  = "error-rewrite.test",
               }
             })
+            local _,_ = res:read_body()
             return res.status == 500
           end, 10)
 
