@@ -2170,6 +2170,8 @@ for _, strategy in helpers.each_strategy() do
               server1:start()
               server2:start()
 
+              ngx.sleep(bu.CONSISTENCY_FREQ) -- wait for proxy state consistency timer
+
               -- 1) server1 and server2 take requests
               local oks, fails = bu.client_requests(bu.SLOTS, api_host)
 
