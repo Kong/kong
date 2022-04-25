@@ -138,25 +138,6 @@ pipeline {
                         // sh 'RESTY_IMAGE_TAG=8 make release'
                     }
                 }
-                stage('Debian OldStable') {
-                    agent {
-                        node {
-                            label 'bionic'
-                        }
-                    }
-                    environment {
-                        PACKAGE_TYPE = 'deb'
-                        RESTY_IMAGE_BASE = 'debian'
-                        KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
-                        KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
-                    }
-                    steps {
-                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
-                        sh 'make setup-kong-build-tools'
-                        sh 'RESTY_IMAGE_TAG=jessie make release'
-                        sh 'RESTY_IMAGE_TAG=stretch make release'
-                    }
-                }
                 stage('Debian Stable & Testing') {
                     agent {
                         node {
