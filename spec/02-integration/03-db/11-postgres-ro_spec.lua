@@ -74,6 +74,7 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/",
           }))
+          local _,_ = res:read_body()
 
           return res.status == 404
         end, 10)
