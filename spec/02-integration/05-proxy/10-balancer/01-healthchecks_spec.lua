@@ -444,7 +444,11 @@ for _, strategy in helpers.each_strategy() do
       bu.end_testcase_setup(strategy, bp)
 
       -- so health must be same as before
-      health = bu.get_upstream_health(new_upstream_name)
+      local health
+      helpers.wait_until(function()
+        health = bu.get_upstream_health(new_upstream_name)
+        return health.data[1].data ~= nil
+      end, 10)
       assert.is.table(health)
       assert.is.table(health.data)
       assert.is.table(health.data[1])
