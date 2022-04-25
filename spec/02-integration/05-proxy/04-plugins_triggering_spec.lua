@@ -1218,6 +1218,7 @@ for _, strategy in helpers.each_strategy() do
                   ["Host"] = "runs-init-worker.org",
                 }
               }))
+              local _,_ = res:read_body()
 
               return res.headers["Kong-Init-Worker-Called"] == "true"
             end, 10)
