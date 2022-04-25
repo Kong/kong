@@ -1081,7 +1081,11 @@ for _, strategy in helpers.each_strategy() do
               server1:start()
               server2:start()
 
-              oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
+              helpers.wait_until(function()
+                oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
+                return oks == bu.SLOTS * 2
+              end, 10)
+              --oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
               assert.same(bu.SLOTS * 2, oks)
               assert.same(0, fails)
 
@@ -1211,12 +1215,12 @@ for _, strategy in helpers.each_strategy() do
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.3:80", "healthy")
                 bu.put_target_address_health(upstream_id, "health-threshold.test:80", "127.0.0.4:80", "healthy")
 
-                local health = bu.get_balancer_health(upstream_name)
-                --local health
-                --helpers.wait_until(function()
-                --  health = bu.get_upstream_health(upstream_name)
-                --  return health.data.details ~= nil
-                --end, 5)
+                --local health = bu.get_balancer_health(upstream_name)
+                local health
+                helpers.wait_until(function()
+                  health = bu.get_upstream_health(upstream_name)
+                  return health.data.details ~= nil
+                end, 5)
                 assert.is.table(health)
                 assert.is.table(health.data)
 
