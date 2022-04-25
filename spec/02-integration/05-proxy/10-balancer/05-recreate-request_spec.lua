@@ -90,15 +90,17 @@ for _, strategy in helpers.each_strategy() do
       })
       bu.end_testcase_setup(strategy, bp, "strict")
 
-      ngx.sleep(0.1)
+      local body
+      helpers.wait_until(function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path = "/recreate_test",
+        })
+        body, _ = res:read_body()
+        return res.status == 200
+      end, 10)
 
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path = "/recreate_test",
-      })
-
-      local body = assert.response(res).has_status(200)
-      assert.equal("host is: upstream.example.com:10002", body)
+      assert.equal("host is: upstream.example.com:10002\n", body)
     end)
 
     it("balancer retry doesn't update Host if preserve_host is true", function()
