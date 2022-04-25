@@ -122,16 +122,18 @@ for _, strategy in helpers.each_strategy() do
       })
       bu.end_testcase_setup(strategy, bp, "strict")
 
-      ngx.sleep(0.1)
+      local body
+      helpers.wait_until(function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path = "/recreate_test",
+          headers = { ["Host"] = "test.com" },
+        })
+        body, _ = res:read_body()
+        return res.status == 200
+      end, 10)
 
-      local res = assert(proxy_client:send {
-        method  = "GET",
-        path = "/recreate_test",
-        headers = { ["Host"] = "test.com" },
-      })
-
-      local body = assert.response(res).has_status(200)
-      assert.equal("host is: test.com", body)
+      assert.equal("host is: test.com\n", body)
     end)
   end)
 end
