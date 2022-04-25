@@ -804,6 +804,7 @@ describe("Admin API #off", function()
           method = "PUT",
           path = "/upstreams/foo/targets/c830b59e-59cc-5392-adfd-b414d13adfc4/10.20.30.40/unhealthy",
         })
+        local _,_ = res:read_body()
 
         return res.status == 204
       end, 10)
