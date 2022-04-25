@@ -298,15 +298,17 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("access is allowed because Service.client_certificate overrides Upstream.client_certificate", function()
-          local res = assert(proxy_client:send {
-            path    = "/mtls-upstream",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          helpers.wait_until(function()
+            local res = assert(proxy_client:send {
+              path    = "/mtls-upstream",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
 
-          local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+            local body = assert.res_status(200, res)
+            return body == "it works"
+          end, 10)
         end)
       end)
     end)
