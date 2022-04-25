@@ -168,6 +168,7 @@ for _, strategy in helpers.each_strategy() do
                 host = "example.com",
               }
             })
+            local _,_ = res:read_body()
             return res.status == 200
           end, 10)
         end
