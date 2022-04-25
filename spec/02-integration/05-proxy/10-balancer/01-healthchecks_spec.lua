@@ -1219,7 +1219,7 @@ for _, strategy in helpers.each_strategy() do
                 local health
                 helpers.wait_until(function()
                   health = bu.get_balancer_health(upstream_name)
-                  return health.data.details.weight.available == 100
+                  return health.data and health.data.details.weight.available == 100
                 end, 5)
                 assert.is.table(health)
                 assert.is.table(health.data)
