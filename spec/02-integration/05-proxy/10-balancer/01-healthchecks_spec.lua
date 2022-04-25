@@ -531,7 +531,11 @@ for _, strategy in helpers.each_strategy() do
       bu.add_target(bp, upstream_id, "notlocalhost.test", 15555)
       bu.end_testcase_setup(strategy, bp)
 
-      local health = bu.get_balancer_health(upstream_name)
+      local health
+      helpers.wait_until(function()
+        health = bu.get_upstream_health(upstream_name)
+        return health.data ~= nil
+      end, 10)
       assert.is.table(health)
       assert.is.table(health.data)
       bu.poll_wait_health(upstream_id, "notlocalhost.test", "15555", "UNHEALTHY")
@@ -573,7 +577,11 @@ for _, strategy in helpers.each_strategy() do
       bu.add_target(bp, upstream_id, "notlocalhost.test", 15555)
       bu.end_testcase_setup(strategy, bp)
 
-      local health = bu.get_balancer_health(upstream_name)
+      local health
+      helpers.wait_until(function()
+        health = bu.get_upstream_health(upstream_name)
+        return health.data ~= nil
+      end, 10)
       assert.is.table(health)
       assert.is.table(health.data)
       bu.poll_wait_health(upstream_id, "notlocalhost.test", "15555", "UNHEALTHY")
