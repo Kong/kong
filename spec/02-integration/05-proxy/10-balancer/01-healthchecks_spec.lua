@@ -533,7 +533,7 @@ for _, strategy in helpers.each_strategy() do
 
       local health
       helpers.wait_until(function()
-        health = bu.get_upstream_health(upstream_name)
+        health = bu.get_balancer_health(upstream_name)
         return health.data ~= nil
       end, 10)
       assert.is.table(health)
@@ -579,7 +579,7 @@ for _, strategy in helpers.each_strategy() do
 
       local health
       helpers.wait_until(function()
-        health = bu.get_upstream_health(upstream_name)
+        health = bu.get_balancer_health(upstream_name)
         return health.data ~= nil
       end, 10)
       assert.is.table(health)
