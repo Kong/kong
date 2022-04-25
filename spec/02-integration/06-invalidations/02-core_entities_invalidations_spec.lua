@@ -892,7 +892,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local _,_ = res_1:read_body()
-          return res_1.status == 200
+          return res_1.status == 200 and res_1.headers["Dummy-Plugin"] == "1"
         end, 10)
         assert.equal("1", res_1.headers["Dummy-Plugin"])
 
@@ -1037,7 +1037,7 @@ for _, strategy in helpers.each_strategy() do
             }
           })
           local _,_ = res_1:read_body()
-          return res_1.status == 200
+          return res_1.status == 200 and res_1.headers["Dummy-Plugin"] == "1"
         end, 10)
         assert.equal("1", res_1.headers["Dummy-Plugin"])
 
