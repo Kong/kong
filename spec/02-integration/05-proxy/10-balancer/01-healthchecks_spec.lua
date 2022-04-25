@@ -1219,7 +1219,7 @@ for _, strategy in helpers.each_strategy() do
                 local health
                 helpers.wait_until(function()
                   health = bu.get_upstream_health(upstream_name)
-                  return health.data.details ~= nil
+                  return health.data.details.weight.total == 100
                 end, 5)
                 assert.is.table(health)
                 assert.is.table(health.data)
