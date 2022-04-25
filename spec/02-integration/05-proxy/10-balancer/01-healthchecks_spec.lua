@@ -917,9 +917,9 @@ for _, strategy in helpers.each_strategy() do
                   name = upstreams[2].name,
                 })
 
-                if consistency == "eventual" then
+                --if consistency == "eventual" then
                   ngx.sleep(bu.CONSISTENCY_FREQ) -- wait for proxy state consistency timer
-                end
+                --end
 
                 -- hit a request through upstream 1 using the new name
                 local oks, fails, last_status = bu.client_requests(1, upstreams[2].api_host)
@@ -932,11 +932,9 @@ for _, strategy in helpers.each_strategy() do
                   name = upstreams[1].name,
                 })
 
-                if consistency == "eventual" then
+                --if consistency == "eventual" then
                   ngx.sleep(bu.CONSISTENCY_FREQ) -- wait for proxy state consistency timer
-                end
-
-                ngx.sleep(0.05)
+                --end
 
                 -- a single request to upstream 2 just to make server 2 shutdown
                 bu.client_requests(1, upstreams[1].api_host)
