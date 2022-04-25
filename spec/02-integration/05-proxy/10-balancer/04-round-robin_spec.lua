@@ -317,8 +317,10 @@ for _, consistency in ipairs(bu.consistencies) do
         -- now go and hit the same balancer again
         -----------------------------------------
 
-        local _, _, status = bu.client_requests(1, api_host)
-        assert.same(503, status)
+        helpers.wait_until(function()
+          local _, _, status = bu.client_requests(1, api_host)
+          return status == 503
+        end, 10)
       end)
 
       it("failure due to targets all 0 weight #off", function()
