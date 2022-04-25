@@ -130,7 +130,7 @@ for _, strategy in helpers.each_strategy() do
           headers = { ["Host"] = "test.com" },
         })
         body, _ = res:read_body()
-        return res.status == 200
+        return res.status == 200 and string.find(body, "test.com", 1, true)
       end, 10)
 
       assert.equal("host is: test.com\n", body)
