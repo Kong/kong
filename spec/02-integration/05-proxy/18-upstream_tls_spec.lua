@@ -169,15 +169,17 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("accessing protected upstream", function()
-          local res = assert(proxy_client:send {
-            path    = "/mtls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          helpers.wait_until(function()
+            local res = assert(proxy_client:send {
+              path    = "/mtls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
 
-          local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+            local body = res:read_body()
+            return res.status == 200 and body == "it works\n"
+          end, 10)
         end)
 
         it("remove client_certificate removes access", function()
