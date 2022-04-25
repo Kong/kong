@@ -129,6 +129,7 @@ for _, strategy in helpers.each_strategy() do
           cluster_control_plane = "127.0.0.1:9005",
           proxy_listen = "0.0.0.0:9002",
         }))
+        ngx.sleep(0.01)   -- wait
       end)
 
       lazy_teardown(function()
