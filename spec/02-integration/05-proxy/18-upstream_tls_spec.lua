@@ -190,14 +190,18 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/mtls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/mtls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
+            body = res:read_body()
+            return res.status == 400
+          end, 10)
 
-          local body = assert.res_status(400, res)
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
         end)
       end)
