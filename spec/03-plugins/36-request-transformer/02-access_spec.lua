@@ -1453,13 +1453,8 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
             host = "test_append_hash.test"
           }
         })
-        local _,_ = r:read_body()
-        for k,v in pairs(r.headers) do
-          if k == "h1" then
-            return true
-          end
-        end
-        return nil
+        local body,_ = r:read_body()
+        return string.find(body, "h1", 1, true)
       end, 10)
       assert.response(r).has.status(200)
       assert.response(r).has.jsonbody()
