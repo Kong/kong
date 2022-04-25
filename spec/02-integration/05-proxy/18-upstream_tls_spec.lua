@@ -256,14 +256,18 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/mtls-upstream",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/mtls-upstream",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
+            body = res:read_body()
+            return res.status == 400
+          end, 10)
 
-          local body = assert.res_status(400, res)
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
         end)
       end)
@@ -327,15 +331,19 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/tls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/tls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
+            body = res:read_body()
+            return res.status == 502
+          end, 10)
 
-          local body = assert.res_status(502, res)
-          assert.equals("An invalid response was received from the upstream server", body)
+          assert.equals("An invalid response was received from the upstream server\n", body)
         end)
       end)
 
@@ -351,15 +359,19 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/tls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/tls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
+            body = res:read_body()
+            return res.status == 200
+          end, 10)
 
-          local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+          assert.equals("it works\n", body)
         end)
       end)
 
@@ -386,15 +398,19 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/tls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/tls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
+            body = res:read_body()
+            return res.status == 502
+          end, 10)
 
-          local body = assert.res_status(502, res)
-          assert.equals("An invalid response was received from the upstream server", body)
+          assert.equals("An invalid response was received from the upstream server\n", body)
         end)
 
         it("request is allowed through if depth limit is sufficient", function()
@@ -407,15 +423,19 @@ for _, strategy in helpers.each_strategy() do
 
           assert.res_status(200, res)
 
-          res = assert(proxy_client:send {
-            path    = "/tls",
-            headers = {
-              ["Host"] = "example.com",
-            }
-          })
+          local body
+          helpers.wait_until(function()
+            res = assert(proxy_client:send {
+              path    = "/tls",
+              headers = {
+                ["Host"] = "example.com",
+              }
+            })
+            body = res:read_body()
+            return res.status == 200
+          end, 10)
 
-          local body = assert.res_status(200, res)
-          assert.equals("it works", body)
+          assert.equals("it works\n", body)
         end)
       end)
     end)
