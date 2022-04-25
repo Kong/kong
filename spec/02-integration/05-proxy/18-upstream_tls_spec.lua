@@ -306,8 +306,8 @@ for _, strategy in helpers.each_strategy() do
               }
             })
 
-            local body = assert.res_status(200, res)
-            return body == "it works"
+            local body = res:read_body()
+            return res.status == 200 and body == "it works\n"
           end, 10)
         end)
       end)
