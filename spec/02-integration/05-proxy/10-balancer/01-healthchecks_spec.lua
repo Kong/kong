@@ -1083,7 +1083,8 @@ for _, strategy in helpers.each_strategy() do
 
               helpers.wait_until(function()
                 oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
-                return oks == bu.SLOTS * 2
+                --return oks == bu.SLOTS * 2
+                return fails == 0
               end, 10)
               --oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
               assert.same(bu.SLOTS * 2, oks)
