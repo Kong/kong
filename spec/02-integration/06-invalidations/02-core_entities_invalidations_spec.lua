@@ -520,6 +520,8 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
+        ngx.sleep(0.01)   -- wait events sync
+
         local cert_1 = get_cert(8443, "new-ssl-example.com")
         assert.certificate(cert_1).has.cn("ssl-alt.com")
 
