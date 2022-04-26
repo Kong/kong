@@ -1619,15 +1619,20 @@ for _, strategy in helpers.each_strategy() do
           },
         })
 
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = routes[1].paths[1],
-          headers = {
-            ["Host"]       = routes[1].hosts[1],
-            ["headertest"] = "itsatest",
-            ["kong-debug"] = 1,
-          }
-        })
+        local res
+        helpers.wait_until(function()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = routes[1].paths[1],
+            headers = {
+              ["Host"]       = routes[1].hosts[1],
+              ["headertest"] = "itsatest",
+              ["kong-debug"] = 1,
+            }
+          })
+          res:read_body()
+          return res.status == 200
+        end, 10)
 
         assert.res_status(200, res)
         assert.equal(routes[1].id,           res.headers["kong-route-id"])
