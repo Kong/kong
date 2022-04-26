@@ -1079,24 +1079,24 @@ for _, strategy in helpers.each_strategy() do
               server1:start()
               server2:start()
 
-              -- XXX: temprary pass
+              ngx.sleep(0.2)  -- wait nginx server
 
-              --helpers.wait_until(function()
-              --  oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
-              --  --return oks == bu.SLOTS * 2
-              --  return fails == 0
-              --end, 10)
+              helpers.wait_until(function()
+                oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
+                --return oks == bu.SLOTS * 2
+                return fails == 0
+              end, 5)
               --oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
-              --assert.same(bu.SLOTS * 2, oks)
-              --assert.same(0, fails)
+              assert.same(bu.SLOTS * 2, oks)
+              assert.same(0, fails)
 
               -- collect server results
               local count1 = server1:shutdown()
               local count2 = server2:shutdown()
 
               -- both servers were fully operational
-              --assert.same(bu.SLOTS, count1.ok)
-              --assert.same(bu.SLOTS, count2.ok)
+              assert.same(bu.SLOTS, count1.ok)
+              assert.same(bu.SLOTS, count2.ok)
               assert.same(0, count1.fail)
               assert.same(0, count2.fail)
 
