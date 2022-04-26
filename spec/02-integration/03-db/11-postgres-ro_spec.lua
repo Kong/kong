@@ -134,7 +134,7 @@ for _, strategy in helpers.each_strategy() do
 
           return res.status == 404
         end, 10)
-        ngx.sleep(0.01)   -- wait log
+        ngx.sleep(0.1)   -- wait log
         assert.logfile().has.line("get_updated_router(): could not rebuild router: " ..
                                   "could not load routes: [postgres] connection " ..
                                   "refused (stale router will be used)", true)
