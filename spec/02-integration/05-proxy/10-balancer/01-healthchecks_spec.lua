@@ -1081,14 +1081,12 @@ for _, strategy in helpers.each_strategy() do
 
               ngx.sleep(0.2)  -- wait nginx server
 
-              --helpers.wait_until(function()
-              --  oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
-              --  --return oks == bu.SLOTS * 2
-              --  return fails == 0
-              --end, 5)
+              helpers.wait_until(function()
+                oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
+                --return fails == 0
+                return last_status == 200
+              end, 5)
               --oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
-              oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
-              print(oks, "|", fails, "|", last_status)
               assert.same(bu.SLOTS * 2, oks)
               assert.same(0, fails)
 
