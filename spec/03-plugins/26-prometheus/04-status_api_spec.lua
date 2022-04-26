@@ -412,8 +412,9 @@ describe("Plugin: prometheus (access via status API)", function()
         method  = "GET",
         path    = "/metrics",
       })
-      body = assert.res_status(200, res)
-      return not body:find('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80"', nil, true)
+      body = res:read_body()
+      return res.status == 200 and
+             not body:find('kong_upstream_target_health{upstream="mock-upstream",target="some-random-dns:80"', nil, true)
     end, 15)
   end)
 
