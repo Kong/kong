@@ -273,11 +273,16 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("responds 503 if no service found", function()
-        local res = assert(proxy_client:get("/", {
-          headers = {
-            Host = "serviceless-route-http.test",
-          },
-        }))
+        local res, body
+        helpers.wait_until(function()
+          res = assert(proxy_client:get("/", {
+            headers = {
+              Host = "serviceless-route-http.test",
+            },
+          }))
+          body = res:read_body()
+          return res.status == 503
+        end, 10)
         local body = assert.response(res).has_status(503)
         local json = cjson.decode(body)
 
