@@ -283,7 +283,7 @@ for _, strategy in helpers.each_strategy() do
           body = res:read_body()
           return res.status == 503
         end, 10)
-        local body = assert.response(res).has_status(503)
+        body = assert.response(res).has_status(503)
         local json = cjson.decode(body)
 
         assert.equal("no Service found with those values", json.message)
