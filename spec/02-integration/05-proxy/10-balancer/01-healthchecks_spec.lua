@@ -152,7 +152,11 @@ for _, strategy in helpers.each_strategy() do
 
       -- we do not set up servers, since we want the connection to get refused
       -- Go hit the api with requests
-      local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
+      local oks, fails, last_status
+      helpers.wait_until(function()
+        oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
+        return last_status == 503
+      end, 10)
       assert.same(0, oks)
       assert.same(bu.SLOTS, fails)
       assert.same(503, last_status)
