@@ -1086,7 +1086,9 @@ for _, strategy in helpers.each_strategy() do
               --  --return oks == bu.SLOTS * 2
               --  return fails == 0
               --end, 5)
-              oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
+              --oks, fails = bu.client_requests(bu.SLOTS * 2, api_host)
+              oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
+              print(oks, "|", fails, "|", last_status)
               assert.same(bu.SLOTS * 2, oks)
               assert.same(0, fails)
 
