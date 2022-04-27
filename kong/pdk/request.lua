@@ -31,7 +31,7 @@ cjson.decode_array_with_array_mt(true)
 do -- add patch for faster ngx.req.get_header
   local req_get_headers = ngx.req.get_headers
   -- use ngx.ctx as weak cache key
-  local req_get_headers_cache = setmetatable({}, {__mode="k"})
+  local req_get_headers_cache = setmetatable({}, {__mode = "k",})
   local function req_get_headers_cached()
     local ctx = ngx.ctx
     local cache = req_get_headers_cache[ctx]
@@ -55,6 +55,7 @@ do -- add patch for faster ngx.req.get_header
 end
 
 
+local ngx_req_get_header = ngx.req.get_header
 local function new(self)
   local _REQUEST = {}
 
@@ -595,7 +596,7 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    local header_value = ngx.req.get_header(name)
+    local header_value = ngx_req_get_header(name)
     if type(header_value) == "table" then
       return header_value[1]
     end
