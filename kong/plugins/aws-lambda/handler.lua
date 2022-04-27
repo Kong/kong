@@ -20,6 +20,7 @@ end
 
 local fetch_credentials do
   local credential_sources = {
+    require "kong.plugins.aws-lambda.iam-eks-credentials",
     require "kong.plugins.aws-lambda.iam-ecs-credentials",
     -- The EC2 one will always return `configured == true`, so must be the last!
     require "kong.plugins.aws-lambda.iam-ec2-credentials",

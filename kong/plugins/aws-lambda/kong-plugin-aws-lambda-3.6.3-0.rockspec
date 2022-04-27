@@ -23,6 +23,7 @@ build = {
     ["kong.plugins.aws-lambda.aws-serializer"]       = "kong/plugins/aws-lambda/aws-serializer.lua",
     ["kong.plugins.aws-lambda.handler"]              = "kong/plugins/aws-lambda/handler.lua",
     ["kong.plugins.aws-lambda.iam-ec2-credentials"]  = "kong/plugins/aws-lambda/iam-ec2-credentials.lua",
+    ["kong.plugins.aws-lambda.iam-eks-credentials"]  = "kong/plugins/aws-lambda/iam-eks-credentials.lua",
     ["kong.plugins.aws-lambda.iam-ecs-credentials"]  = "kong/plugins/aws-lambda/iam-ecs-credentials.lua",
     ["kong.plugins.aws-lambda.schema"]               = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.v4"]                   = "kong/plugins/aws-lambda/v4.lua",
