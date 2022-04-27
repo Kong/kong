@@ -55,7 +55,7 @@ do -- add patch for faster ngx.req.get_header
 end
 
 
-local ngx_req_get_header = ngx.req.get_header
+local ngx_req_get_header = ngx.req.get_header -- luacheck: ignore
 local function new(self)
   local _REQUEST = {}
 
