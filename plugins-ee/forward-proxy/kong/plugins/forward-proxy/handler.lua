@@ -155,11 +155,13 @@ local function send_proxied_response(response)
   kong.response.set_status(response.status)
 
   -- Set headers, filtering out hop-by-hop.
+  local cached_headers = {}
   for k, v in pairs(response.headers) do
     if not HOP_BY_HOP_HEADERS[str_lower(k)] then
-      kong.response.set_header(k, v)
+      cached_headers[k] = v
     end
   end
+  kong.response.set_headers(cached_headers)
 
   local reader = response.body_reader
 
