@@ -1566,16 +1566,20 @@ for _, strategy in helpers.each_strategy() do
           },
         })
 
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            ["Host"]       = "domain.org",
-            ["version"]    = "v3",
-            ["location"]   = "us-east",
-            ["kong-debug"] = 1,
-          }
-        })
+        local res
+        helpers.wait_until(function()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              ["Host"]       = "domain.org",
+              ["version"]    = "v3",
+              ["location"]   = "us-east",
+              ["kong-debug"] = 1,
+            }
+          })
+          return res.headers["kong-route-id"] == routes[2].id
+        end, 5)
 
         assert.res_status(200, res)
 
