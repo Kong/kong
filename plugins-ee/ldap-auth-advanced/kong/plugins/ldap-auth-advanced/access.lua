@@ -334,8 +334,8 @@ local function do_authentication(conf)
   if not (authorization_value or proxy_authorization_value) then
     local scheme = conf.header_type
     if scheme == "ldap" then
-      -- ensure backwards compatibility (see GH PR #3656)
-      -- TODO: provide migration to capitalize older configurations
+       -- RFC 7617 says auth-scheme is case-insentitive
+       -- ensure backwards compatibility (see GH PR #3656)
       scheme = upper(scheme)
     end
     ngx.header["WWW-Authenticate"] = scheme .. ' realm="kong"'
