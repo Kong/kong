@@ -139,6 +139,11 @@
 - **Zipkin**: add support for including HTTP path in span name
   through configuration property `http_span_name`.
   [#8150](https://github.com/Kong/kong/pull/8150)
+- **Zipkin**: add support for socket connect and send/rev timeouts
+  through configuration properties `connect_timeout` and `byte_timeout`.
+  This can help mitigate `ngx.timer` saturation when upstream collectors
+  are unavailable or slow.
+  [#8735](https://github.com/Kong/kong/pull/8735)
 
 #### Configuration
 
