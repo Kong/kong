@@ -1081,23 +1081,27 @@ for _, strategy in helpers.each_strategy() do
               local server1 = https_server.new(port1, localhost)
               local server2 = https_server.new(port2, localhost)
               server1:start()
+              ngx.sleep(0.01)
               server2:start()
+              ngx.sleep(0.01)
 
               -- XXX: flaky
               --helpers.wait_until(function()
               --  oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
               --  return last_status == 200
               --end, 5)
-              --assert.same(bu.SLOTS * 2, oks)
-              --assert.same(0, fails)
+              oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
+              assert.same(200, last_status)
+              assert.same(bu.SLOTS * 2, oks)
+              assert.same(0, fails)
 
               -- collect server results
               local count1 = server1:shutdown()
               local count2 = server2:shutdown()
 
               -- both servers were fully operational
-              --assert.same(bu.SLOTS, count1.ok)
-              --assert.same(bu.SLOTS, count2.ok)
+              assert.same(bu.SLOTS, count1.ok)
+              assert.same(bu.SLOTS, count2.ok)
               assert.same(0, count1.fail)
               assert.same(0, count2.fail)
 
