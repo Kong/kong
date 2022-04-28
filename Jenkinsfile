@@ -33,7 +33,7 @@ pipeline {
             steps {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                 sh 'make setup-kong-build-tools'
-                sh 'cd /home/ubuntu/workspace/kong_test_packaging/../kong-build-tools && make package-kong test'
+                sh 'cd ../kong-build-tools && make package-kong test'
             }
             
         }
