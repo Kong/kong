@@ -112,21 +112,6 @@ local function target_endpoint(self, db, callback)
 end
 
 
-local function update_existent_target(self, db)
-  local upstream = endpoints.select_entity(self, db, db.upstreams.schema)
-  local filter = { target = unescape_uri(self.params.target) }
-  local opts = endpoints.extract_options(self.args.uri, db.targets.schema, "select")
-  local target = db.targets:select_by_upstream_filter(upstream, filter, opts)
-
-  if target then
-    self.params.targets = db.targets.schema:extract_pk_values(target)
-    return endpoints.update_entity(self, db, db.targets.schema)
-  end
-
-  return nil
-end
-
-
 return {
   ["/upstreams/:upstreams/health"] = {
     GET = function(self, db)
@@ -181,14 +166,6 @@ return {
                                             "upstream",
                                             "page_for_upstream"),
     PUT = function(self, db)
-      local entity, _, err_t = update_existent_target(self, db)
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-      if entity then
-        return kong.response.exit(200, entity, { ["Deprecation"] = "true" })
-      end
-
       local create = endpoints.post_collection_endpoint(kong.db.targets.schema,
                         kong.db.upstreams.schema, "upstream")
       return create(self, db)
