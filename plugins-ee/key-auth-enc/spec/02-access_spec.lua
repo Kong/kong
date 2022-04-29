@@ -74,6 +74,14 @@ for _, strategy in strategies() do
         hosts = { "key-auth-enc8.com" },
       }
 
+      -- FTI-3288
+      local route9 = bp.routes:insert {
+        hosts = { "key-auth-enc9.com" },
+      }
+      local route10 = bp.routes:insert {
+        hosts = { "key-auth-enc10.com" },
+      }
+
       bp.plugins:insert {
         name     = "key-auth-enc",
         route = { id = route1.id },
@@ -138,6 +146,22 @@ for _, strategy in strategies() do
         config   = {
           key_in_query = true,
           key_in_header = true,
+        },
+      }
+
+      -- FTI-3288
+      bp.plugins:insert {
+        name     = "key-auth-enc",
+        route = { id = route9.id },
+        config   = {
+          anonymous = anonymous_user.username,  -- 200 OK
+        },
+      }
+      bp.plugins:insert {
+        name     = "key-auth-enc",
+        route = { id = route10.id },
+        config   = {
+          anonymous = "not-exist",  -- user not created yet, 500
         },
       }
 
@@ -557,6 +581,59 @@ for _, strategy in strategies() do
         })
         assert.response(res).has.status(500)
       end)
+      -- FTI-3288
+      it("works with right credentials with anonymous username exists", function()
+        local res = proxy_client:get("/request", {
+          headers = {
+            ["Host"] = "key-auth-enc9.com",
+            ["apikey"] = "kong",
+          },
+        })
+        assert.response(res).has.status(200)
+        assert.request(res).has.header('x-consumer-username')
+        assert.request(res).has.no.header('x-anonymous-consumer')
+      end)
+      it("works with wrong credentials with anonymous username exists", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            ["Host"] = "key-auth-enc9.com",
+            ["apikey"] = "konghq",
+          },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal('true', json.headers['x-anonymous-consumer'])
+        assert.equal('no-body', json.headers['x-consumer-username'])
+      end)
+      it("works with right credentials with anonymous username not existing", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            ["Host"] = "key-auth-enc10.com",
+            ["apikey"] = "kong",
+          },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal('bob', json.headers['x-consumer-username'])
+        assert.is_nil(json.headers['x-anonymous-consumer'])
+      end)
+      it("fails with wrong credentials with anonymous username not existing", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            ["Host"] = "key-auth-enc10.com",
+            ["apikey"] = "konghq",
+          },
+        })
+        local body = assert.res_status(500, res)
+        local json = cjson.decode(body)
+        assert.equal('An unexpected error occurred', json.message)
+      end)
     end)
   end)
 
@@ -587,6 +664,12 @@ for _, strategy in strategies() do
 
       local route2 = bp.routes:insert {
         hosts   = { "logical-or.com" },
+        service = service,
+      }
+
+      -- FTI-3288
+      local route3 = bp.routes:insert {
+        hosts   = { "anonymous-username.com" },
         service = service,
       }
 
@@ -623,6 +706,23 @@ for _, strategy in strategies() do
       bp.plugins:insert {
         name     = "key-auth-enc",
         route = { id = route2.id },
+        config   = {
+          anonymous = anonymous.id,
+        },
+      }
+
+      -- FTI-3288
+      bp.plugins:insert {
+        name     = "basic-auth",
+        route = { id = route3.id },
+        config   = {
+          anonymous = anonymous.id,
+        },
+      }
+
+      bp.plugins:insert {
+        name     = "key-auth-enc",
+        route = { id = route3.id },
         config   = {
           anonymous = anonymous.id,
         },
@@ -779,6 +879,75 @@ for _, strategy in strategies() do
       end)
 
     end)
+
+    -- FTI-3288
+    describe("multiple auth with anonymous username", function()
+      it("passes with all credentials provided", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request",
+          headers = {
+            ["Host"] = "anonymous-username.com",
+            ["apikey"] = "Mouse",
+            ["Authorization"] = "Basic QWxhZGRpbjpPcGVuU2VzYW1l",
+          }
+        })
+        assert.response(res).has.status(200)
+        assert.request(res).has.no.header("x-anonymous-consumer")
+        local id = assert.request(res).has.header("x-consumer-id")
+        assert.not_equal(id, anonymous.id)
+        assert(id == user1.id or id == user2.id)
+      end)
+
+      it("passes with only the first credential provided", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]   = "anonymous-username.com",
+            ["apikey"] = "Mouse",
+          }
+        })
+        assert.response(res).has.status(200)
+        assert.request(res).has.no.header("x-anonymous-consumer")
+        local id = assert.request(res).has.header("x-consumer-id")
+        assert.not_equal(id, anonymous.id)
+        assert.equal(user1.id, id)
+      end)
+
+      it("passes with only the second credential provided", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]          = "anonymous-username.com",
+            ["Authorization"] = "Basic QWxhZGRpbjpPcGVuU2VzYW1l",
+          }
+        })
+        assert.response(res).has.status(200)
+        assert.request(res).has.no.header("x-anonymous-consumer")
+        local id = assert.request(res).has.header("x-consumer-id")
+        assert.not_equal(id, anonymous.id)
+        assert.equal(user2.id, id)
+      end)
+
+      it("passes with no credential provided", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"] = "anonymous-username.com",
+          }
+        })
+        assert.response(res).has.status(200)
+        local value = assert.request(res).has.header("x-anonymous-consumer")
+        assert.equal('true', value)
+        local id = assert.request(res).has.header("x-consumer-id")
+        assert.equal(id, anonymous.id)
+      end)
+
+    end)
+
   end)
 end
 
