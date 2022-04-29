@@ -94,7 +94,7 @@ local function init()
                                         {"service", "route", "code"})
   end
   metrics.latency = prometheus:histogram("latency",
-                                         "Latency added by Kong, total " ..
+                                         "Latency added by Kong in ms, total " ..
                                          "request time and upstream latency " ..
                                          "for each service/route in Kong",
                                          {"service", "route", "type"},
