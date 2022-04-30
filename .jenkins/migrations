@@ -35,6 +35,9 @@ pipeline {
 
   stages {
     stage('prepare environment') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         sh """
           echo "${env.DOCKERHUB_KONGCLOUD_PULL_PSW}" | docker login -u "${env.DOCKERHUB_KONGCLOUD_PULL_USR}" --password-stdin
@@ -68,6 +71,9 @@ pipeline {
     }
 
     stage('build dist image') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         sh "./dist/dist.sh build alpine"
         sh "./dist/dist.sh test alpine"
@@ -76,6 +82,9 @@ pipeline {
     }
 
     stage('2.1 to here') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         parallel (
           "Kong EE 2.1 to here (pg)": {
@@ -89,6 +98,9 @@ pipeline {
     }
 
     stage('next/2.2.x.x to here') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         parallel (
           "Kong EE next/2.2.x.x to here (pg)": {
@@ -102,6 +114,9 @@ pipeline {
     }
 
     stage('Kong EE < 1.5 to here') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         parallel (
           "Kong EE < 1.5 to here should err on upgrade! (pg)": {
@@ -115,6 +130,9 @@ pipeline {
     }
 
     stage('Kong CE 2.3 to here') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         parallel (
           "Kong CE 2.3 to here (pg)": {
@@ -128,6 +146,9 @@ pipeline {
     }
 
     stage('next/2.4.x.x to here') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         parallel (
           "Kong EE next/2.4.x.x to here (pg)": {
@@ -141,6 +162,9 @@ pipeline {
     }
 
     stage('next/2.5.x.x to here') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         parallel (
           "Kong EE next/2.5.x.x to here (pg)": {

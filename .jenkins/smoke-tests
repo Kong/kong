@@ -76,6 +76,9 @@ pipeline {
   }
   stages {
     stage('Login to Docker Hub') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         // Login to Docker Hub (better limits on rate-limiting)
         sh label: 'Login to Docker Hub',
@@ -86,6 +89,9 @@ pipeline {
       }
     }
     stage('Install Gojira Enterprise') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         sh label: 'Prepare bin and tool directories',
            script: """
@@ -107,6 +113,9 @@ pipeline {
       }
     }
     stage('Build Kong Gateway') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         sh label: 'Start Kong Gateway',
            script: 'gojira up'
@@ -116,6 +125,7 @@ pipeline {
     }
     stage('Version Compatibility') {
       when {
+        not {branch 'actions/copyright'}
         anyOf {
           triggeredBy cause: "UserIdCause"
           allOf {
@@ -177,6 +187,9 @@ pipeline {
       }
     }
     stage('Apache Cassandra Migrations') {
+      when {
+        not {branch 'actions/copyright'}
+      }
       steps {
         sh label: 'Start Kong Gateway instance',
            script: 'gojira up --cassandra'
