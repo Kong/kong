@@ -850,3 +850,5 @@ end
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)
+
+*TOC: Table of content
