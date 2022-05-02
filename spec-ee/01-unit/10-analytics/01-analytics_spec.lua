@@ -102,7 +102,6 @@ local request_log = {
   },
   consumer = {
     id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
-    username = "foo"
   },
   started_at = 1614232668342
 }
@@ -153,7 +152,6 @@ describe("extract request log properly", function()
       },
       consumer = {
         id = "54baa5a9-23d6-41e0-9c9a-02434b010b25",
-        name = "foo"
       },
     }
     assert.are.same(expected, payload)

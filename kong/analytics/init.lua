@@ -257,7 +257,6 @@ function _M:create_payload(message)
     tries = {},
     consumer = {
       id = "",
-      name = ""
     },
   }
 
