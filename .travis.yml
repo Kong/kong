@@ -99,6 +99,9 @@ before_cache:
   # completely possible that travis user would not have full permissions
   - sudo chown -R travis:travis $HOME/distributions-cache
   - sudo chown -R travis:travis $HOME/docker-cache
+  # ensure the config log (generated during build) doesn't dirty cache
+  - sudo find $HOME/distributions-cache/ -name config.log -delete
+  - sudo find $HOME/docker-cache/ -name config.log -delete
 
 stages:
   - lint and unit
