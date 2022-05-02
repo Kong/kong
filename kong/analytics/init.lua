@@ -327,7 +327,6 @@ function _M:create_payload(message)
   if message.consumer ~= nil then
     local consumer = payload.consumer
     consumer.id = message.consumer.id
-    consumer.name = message.consumer.username
   end
   return payload
 end

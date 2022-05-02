@@ -63,7 +63,6 @@ message BalancerInfo {
 
 message ConsumerInfo {
   string id = 1;
-  string name = 2;
 }
 
 message UpstreamInfo {
