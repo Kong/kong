@@ -622,6 +622,22 @@ describe("kong reload #" .. strategy, function()
       assert.False(ok)
       assert.matches("Error: nginx not running in prefix: " .. helpers.test_conf.prefix, err, nil, true)
     end)
+
+    if strategy ~= "off" then
+      it("complains when database connection is invalid", function()
+        assert(helpers.start_kong({
+          proxy_listen = "0.0.0.0:9002"
+        }, nil, true))
+
+        local ok = helpers.kong_exec("reload --conf " .. helpers.test_conf_path, {
+          database = strategy,
+          pg_port = 1234,
+          cassandra_port = 1234,
+        })
+
+        assert.False(ok)
+      end)
+    end
   end)
 end)
 
