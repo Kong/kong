@@ -15,6 +15,10 @@ local tonumber = tonumber
 
 if arch == "x64" or arch == "arm64" then
   ffi.cdef[[
+    uint64_t *ngx_stat_active;
+    uint64_t *ngx_stat_reading;
+    uint64_t *ngx_stat_writing;
+    uint64_t *ngx_stat_waiting;
     uint64_t *ngx_stat_requests;
     uint64_t *ngx_stat_accepted;
     uint64_t *ngx_stat_handled;
@@ -22,6 +26,10 @@ if arch == "x64" or arch == "arm64" then
 
 elseif arch == "x86" or arch == "arm" then
   ffi.cdef[[
+    uint32_t *ngx_stat_active;
+    uint32_t *ngx_stat_reading;
+    uint32_t *ngx_stat_writing;
+    uint32_t *ngx_stat_waiting;
     uint32_t *ngx_stat_requests;
     uint32_t *ngx_stat_accepted;
     uint32_t *ngx_stat_handled;
@@ -71,10 +79,10 @@ local function new(self)
   -- local nginx_statistics = kong.nginx.get_statistics()
   function _NGINX.get_statistics()
     return {
-      connections_active = tonumber(var.connections_active),
-      connections_reading = tonumber(var.connections_reading),
-      connections_writing = tonumber(var.connections_writing),
-      connections_waiting = tonumber(var.connections_waiting),
+      connections_active = tonumber(C.ngx_stat_active[0]),
+      connections_reading = tonumber(C.ngx_stat_reading[0]),
+      connections_writing = tonumber(C.ngx_stat_writing[0]),
+      connections_waiting = tonumber(C.ngx_stat_waiting[0]),
       connections_accepted = tonumber(C.ngx_stat_accepted[0]),
       connections_handled = tonumber(C.ngx_stat_handled[0]),
       total_requests = tonumber(C.ngx_stat_requests[0])
