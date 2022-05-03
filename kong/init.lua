@@ -109,7 +109,6 @@ local error            = error
 local ipairs           = ipairs
 local assert           = assert
 local tostring         = tostring
-local coroutine        = coroutine
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
@@ -290,17 +289,7 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
   for plugin, configuration in plugins_iterator:iterate("access", ctx) do
     if not ctx.delayed_response then
       setup_plugin_context(ctx, plugin)
-
-      local co = coroutine.create(plugin.handler.access)
-      local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
-      if not cok then
-        kong.log.err(cerr)
-        ctx.delayed_response = {
-          status_code = 500,
-          content = { message  = "An unexpected error occurred" },
-        }
-      end
-
+      plugin.handler.access(plugin.handler, configuration)
       reset_plugin_context(ctx, old_ws)
     end
   end
