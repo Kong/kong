@@ -288,4 +288,88 @@ for _, version in ipairs(versions) do
       perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
     end)
   end)
+
+    describe("perf test for Kong " .. version .. " #simple #lots-of #key-auth", function()
+    local bp
+    lazy_setup(function()
+      local helpers = perf.setup()
+
+      bp = helpers.get_db_utils("postgres", {
+        "routes",
+        "services",
+        "plugins",
+        "consumers",
+        "keyauth_credentials",
+      })
+
+      local upstream_uri = perf.start_upstream([[
+        location = /test {
+          return 200;
+        }
+      ]])
+
+      local consumer = bp.consumers:insert {
+        username = "test",
+      }
+
+      local service = bp.services:insert {
+        url = upstream_uri .. "/test",
+      }
+
+      bp.routes:insert {
+        paths = { "/s1-r1" },
+        service = service,
+        strip_path = true,
+      }
+
+      for i=1, SERVICE_COUNT do
+        bp.plugins:insert {
+          name = "key-auth",
+          service = service,
+          config = {
+            anonymous = consumer.id,
+          }
+        }
+      end
+    end)
+
+    before_each(function()
+      perf.start_kong(version, {
+        --kong configs
+      })
+    end)
+
+    after_each(function()
+      perf.stop_kong()
+    end)
+
+    lazy_teardown(function()
+      perf.teardown(os.getenv("PERF_TEST_TEARDOWN_ALL") or false)
+    end)
+
+    it("single service and route with 100 key-auth", function()
+
+      print_and_save("### Test Suite: " .. utils.get_test_descriptor())
+
+      local results = {}
+      for i=1,3 do
+        perf.start_load({
+          path = "/s1-r1",
+          connections = 100,
+          threads = 5,
+          duration = LOAD_DURATION,
+        })
+
+
+        local result = assert(perf.wait_result())
+
+        print_and_save(("### Result for Kong %s (run %d):\n%s"):format(version, i, result))
+        results[i] = result
+      end
+
+      print_and_save(("### Combined result for Kong %s:\n%s"):format(version, assert(perf.combine_results(results))))
+
+      perf.save_error_log("output/" .. utils.get_test_output_filename() .. ".log")
+    end)
+  end)
 end
