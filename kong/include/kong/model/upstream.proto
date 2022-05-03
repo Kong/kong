@@ -1,4 +1,4 @@
-syntax = "proto3";
+syntax = "proto3";//syntax
 
 option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/model;model";
 
