@@ -10,7 +10,7 @@ local RbacRoleEntities = {}
 
 function RbacRoleEntities:cache_key(id)
   if type(id) == "table" then
-    id = id.id
+    id = id.role.id
   end
 
   -- Always return the cache_key without a workspace
