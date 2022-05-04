@@ -66,6 +66,11 @@
 
 ### Fixes
 
+#### Plugins
+
+- **rate-limiting**: Perform atomic redis increments
+  [#8751](https://github.com/Kong/kong/pull/8751).
+
 #### PDK
 
 - `pdk.response.set_header()`, `pdk.response.set_headers()`, `pdk.response.exit()` now ignore and emit warnings for manually set `Transfer-Encoding` headers.
