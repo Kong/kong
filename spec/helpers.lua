@@ -1339,6 +1339,7 @@ local function wait_until(f, timeout, step)
   elseif not res and err then
     -- report a failure for `f` to meet its condition
     -- and eventually an error return value which could be the cause
+    os.execute("cat servroot/logs/error.log")
     error("wait_until() timeout: " .. tostring(err) .. " (after delay: " .. timeout .. "s)", 2)
   elseif not res then
     -- report a failure for `f` to meet its condition
