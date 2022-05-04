@@ -126,6 +126,8 @@
   [#8680](https://github.com/Kong/kong/pull/8680)
 - Bumped luarocks from 3.8.0 to 3.9.0
   [#8700](https://github.com/Kong/kong/pull/8700)
+- Bumped luasec from 1.0.2 to 1.1.0
+  [#8754](https://github.com/Kong/kong/pull/8754)
 
 ### Additions
 
