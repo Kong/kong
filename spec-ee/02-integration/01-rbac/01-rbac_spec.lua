@@ -1038,5 +1038,28 @@ describe("(#" .. strategy .. ")", function()
       assert.is_true(includes(wss, { name = "*" }, "name"))
     end)
   end)
+
+  describe("cache", function ()
+
+    teardown(function()
+      db:truncate()
+    end)
+
+    it("role_entity cache_key", function ()
+      local u = utils.uuid
+      local role_id = bp.rbac_roles:insert().id
+      local entity_id = u()
+
+      local entity = assert(db.rbac_role_entities:insert({
+        role = { id = role_id },
+        entity_id = entity_id,
+        entity_type = "entity",
+        actions = 0x1,
+        negative = false,
+      }))
+
+      assert(db.rbac_role_entities:cache_key(entity))
+    end)
+  end)
 end)
 end
