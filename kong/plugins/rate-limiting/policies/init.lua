@@ -184,32 +184,22 @@ return {
         return nil, err
       end
 
-      local keys = {}
-      local expiration = {}
-      local idx = 0
       local periods = timestamp.get_timestamps(current_timestamp)
+
+      red:init_pipeline()
+
       for period, period_date in pairs(periods) do
         if limits[period] then
           local cache_key = get_local_key(conf, identifier, period, period_date)
-          local exists, err = red:exists(cache_key)
-          if err then
-            kong.log.err("failed to query Redis: ", err)
-            return nil, err
-          end
 
-          idx = idx + 1
-          keys[idx] = cache_key
-          if not exists or exists == 0 then
-            expiration[idx] = EXPIRATION[period]
-          end
-
-          red:init_pipeline()
-          for i = 1, idx do
-            red:incrby(keys[i], value)
-            if expiration[i] then
-              red:expire(keys[i], expiration[i])
+          -- use scripts to perform incr and expire operations atomically
+          -- please see https://github.com/Kong/kong/issues/5763
+          red:eval([[
+            local key, value, expiration = KEYS[1], tonumber(ARGV[1]), ARGV[2]
+            if redis.call("incrby", key, value) == value then
+              redis.call("expire", key, expiration)
             end
-          end
+          ]], 1, cache_key, value, EXPIRATION[period])
         end
       end
 
