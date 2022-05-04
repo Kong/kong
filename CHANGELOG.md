@@ -129,6 +129,8 @@
   [#8700](https://github.com/Kong/kong/pull/8700)
 - Bumped luasec from 1.0.2 to 1.1.0
   [#8754](https://github.com/Kong/kong/pull/8754)
+- Bumped resty.healthcheck from 1.5.0 to 1.5.1
+  [#8755](https://github.com/Kong/kong/pull/8755)
 
 ### Additions
 
