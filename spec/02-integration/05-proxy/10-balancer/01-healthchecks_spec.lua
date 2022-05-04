@@ -1098,6 +1098,19 @@ for _, strategy in helpers.each_strategy() do
               --assert.same(200, last_status)
               --assert.same(bu.SLOTS * 2, oks)
               --assert.same(0, fails)
+              helpers.wait_until(function()
+                oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
+                local ok, err = pcall(function()
+                  assert.same(200, last_status)
+                  assert.same(bu.SLOTS * 2, oks)
+                  assert.same(0, fails)
+                end)
+                if not ok then
+                  return false, err
+                end
+
+                return true
+              end, 5)
 
               -- collect server results
               local count1 = server1:shutdown()
