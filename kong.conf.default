@@ -95,9 +95,9 @@
                                           # is adjusted by the `log_level`
                                           # property.
 
-#vaults = off                    # Comma-separated list of vaults this node
-                                 # should load. By default, no vaults are
-                                 # enabled.
+#vaults = bundled                # Comma-separated list of vaults this node
+                                 # should load. By default, all the bundled
+                                 # vaults are enabled.
                                  #
                                  # The specified name(s) will be substituted as
                                  # such in the Lua namespace:

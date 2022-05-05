@@ -1480,7 +1480,6 @@ describe("Configuration loader", function()
         pg_database = "{vault://env/pg-database}",
         cassandra_password = "{vault://env/cassandra-password}",
         cassandra_keyspace = "{vault://env/cassandra-keyspace}",
-        vaults = "env",
       }))
 
       local purged_conf = conf_loader.remove_sensitive(conf)
@@ -1521,7 +1520,6 @@ describe("Configuration loader", function()
 
       local conf = assert(conf_loader(nil, {
         pg_database = "{vault://env/pg-database}",
-        vaults = "env",
       }))
 
       assert.equal("resolved-kong-database", conf.pg_database)
@@ -1536,7 +1534,6 @@ describe("Configuration loader", function()
 
       local conf = assert(conf_loader(nil, {
         pg_port = "{vault://env/pg-port#0}",
-        vaults = "env",
       }))
 
       assert.equal(5000, conf.pg_port)

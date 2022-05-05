@@ -829,7 +829,6 @@ describe("NGINX conf compiler", function()
         local conf = assert(conf_loader(nil, {
           prefix = tmp_config.prefix,
           pg_database = "{vault://env/pg-database}",
-          vaults = "env",
         }))
 
         assert.equal("resolved-kong-database", conf.pg_database)
