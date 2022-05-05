@@ -338,7 +338,7 @@ local function parse_datadog_headers(headers)
 
   local parent_id = headers["x-datadog-parent-id"]
   if parent_id and not parent_id:match("%d") then
-    warn("x-datadog-trace-id header invalid; ignoring.")
+    warn("x-datadog-parent-id header invalid; ignoring.")
     had_invalid_id = true
   end
 
