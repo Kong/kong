@@ -328,21 +328,15 @@ local function parse_datadog_headers(headers)
     warn("x-datadog-sampling-priority header invalid; ignoring.")
   end
 
-  local had_invalid_id = false
-
   local trace_id = headers["x-datadog-trace-id"]
   if trace_id and not trace_id:match("%d") then
     warn("x-datadog-trace-id header invalid; ignoring.")
-    had_invalid_id = true
+    return nil, nil, should_sample
   end
 
   local parent_id = headers["x-datadog-parent-id"]
   if parent_id and not parent_id:match("%d") then
     warn("x-datadog-parent-id header invalid; ignoring.")
-    had_invalid_id = true
-  end
-
-  if had_invalid_id then
     return nil, nil, should_sample
   end
 
