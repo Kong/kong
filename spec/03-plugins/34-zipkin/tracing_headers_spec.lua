@@ -954,7 +954,7 @@ describe("tracing_headers.set", function()
     end)
   end)
 
-  describe("conf.header_type = 'datadog' #dd", function()
+  describe("conf.header_type = 'datadog'", function()
     it("sets headers to datadog when conf.header_type = datadog", function()
       set("datadog", "datadog", proxy_span)
       assert.same(datadog_headers, headers)
