@@ -15,7 +15,7 @@ for _, strategy in helpers.each_strategy() do
       local _
       _, db = helpers.get_db_utils(strategy, {
         "certificates",
-        "vaults_beta",
+        "vaults",
       },
       nil, {
         "env",
@@ -31,7 +31,7 @@ for _, strategy in helpers.each_strategy() do
 
       client = assert(helpers.admin_client(10000))
 
-      local res = client:put("/vaults-beta/test-vault", {
+      local res = client:put("/vaults/test-vault", {
         headers = { ["Content-Type"] = "application/json" },
         body = {
           name = "env",
@@ -40,7 +40,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert.res_status(200, res)
 
-      local res = client:put("/vaults-beta/mock-vault", {
+      local res = client:put("/vaults/mock-vault", {
         headers = { ["Content-Type"] = "application/json" },
         body = {
           name = "mock",

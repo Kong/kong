@@ -31,7 +31,7 @@ return {
       "snis",
       "upstreams",
       "targets",
-      "vaults_beta",
+      "vaults",
     },
     nodoc_entities = {
     },
@@ -1900,8 +1900,8 @@ return {
       },
     },
 
-    vaults_beta = {
-      title = "Vaults Beta Entity",
+    vaults = {
+      title = "Vaults Entity",
       entity_title = "Vault",
       entity_title_plural = "Vaults",
       description = [[
