@@ -316,7 +316,6 @@ end
 
 
 local function parse_datadog_headers(headers)
-  -- allow testing to spy on this.
   local warn = kong.log.warn
 
   local should_sample = headers["x-datadog-sampling-priority"]
