@@ -1,9 +1,7 @@
 local kong = kong
 local ngx = ngx
-local find = string.find
 local lower = string.lower
 local concat = table.concat
-local select = select
 local ngx_timer_pending_count = ngx.timer.pending_count
 local ngx_timer_running_count = ngx.timer.running_count
 local balancer = require("kong.runloop.balancer")
@@ -297,26 +295,14 @@ local function metric_data()
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
-  if ngx.location then
-    local r = ngx.location.capture "/nginx_status"
-
-    if r.status ~= 200 then
-      kong.log.warn("prometheus: failed to retrieve /nginx_status ",
-        "while processing /metrics endpoint")
-
-    else
-      local accepted, handled, total = select(3, find(r.body,
-        "accepts handled requests\n (%d*) (%d*) (%d*)"))
-      metrics.connections:set(accepted, { "accepted" })
-      metrics.connections:set(handled, { "handled" })
-      metrics.connections:set(total, { "total" })
-    end
-  end
-
-  metrics.connections:set(ngx.var.connections_active or 0, { "active" })
-  metrics.connections:set(ngx.var.connections_reading or 0, { "reading" })
-  metrics.connections:set(ngx.var.connections_writing or 0, { "writing" })
-  metrics.connections:set(ngx.var.connections_waiting or 0, { "waiting" })
+  local nginx_statistics = kong.nginx.get_statistics()
+  metrics.connections:set(nginx_statistics['connections_accepted'], { "accepted" })
+  metrics.connections:set(nginx_statistics['connections_handled'], { "handled" })
+  metrics.connections:set(nginx_statistics['total_requests'], { "total" })
+  metrics.connections:set(nginx_statistics['connections_active'], { "active" })
+  metrics.connections:set(nginx_statistics['connections_reading'], { "reading" })
+  metrics.connections:set(nginx_statistics['connections_writing'], { "writing" })
+  metrics.connections:set(nginx_statistics['connections_waiting'], { "waiting" })
 
   metrics.timers:set(ngx_timer_running_count(), {"running"})
   metrics.timers:set(ngx_timer_pending_count(), {"pending"})
