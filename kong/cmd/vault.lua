@@ -35,7 +35,7 @@ local function init_db(args)
   local db = assert(DB.new(conf))
   assert(db:init_connector())
   assert(db:connect())
-  assert(db.vaults_beta:load_vault_schemas(conf.loaded_vaults))
+  assert(db.vaults:load_vault_schemas(conf.loaded_vaults))
 
   _G.kong.db = db
 end

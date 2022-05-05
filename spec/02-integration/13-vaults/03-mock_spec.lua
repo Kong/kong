@@ -75,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.setenv("ADMIN_LISTEN", "127.0.0.1:9001")
       helpers.setenv("KONG_LUA_PATH_OVERRIDE", "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua;;")
       helpers.get_db_utils(strategy, {
-        "vaults_beta",
+        "vaults",
       },
       nil, {
         "env",

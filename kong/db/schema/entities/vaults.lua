@@ -41,14 +41,14 @@ end
 
 
 return {
-  name = "vaults_beta",
+  name = "vaults",
   primary_key = { "id" },
   cache_key = { "prefix" },
   endpoint_key = "prefix",
   workspaceable = true,
   subschema_key = "name",
   subschema_error = "vault '%s' is not installed",
-  admin_api_name = "vaults-beta",
+  admin_api_name = "vaults",
   dao = "kong.db.dao.vaults",
   fields = {
     { id = typedefs.uuid },

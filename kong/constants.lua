@@ -128,7 +128,7 @@ local constants = {
     "ca_certificates",
     "clustering_data_planes",
     "parameters",
-    "vaults_beta",
+    "vaults",
   },
   ENTITY_CACHE_STORE = setmetatable({
     consumers = "cache",
@@ -141,7 +141,7 @@ local constants = {
     plugins = "core_cache",
     tags = "cache",
     ca_certificates = "core_cache",
-    vaults_beta = "core_cache",
+    vaults = "core_cache",
   }, {
     __index = function()
       return "cache"

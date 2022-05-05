@@ -115,7 +115,7 @@ local function new(self)
     if not VAULT_NAMES[name] then
       return nil, fmt("vault not found (%s) [%s]", name, reference)
     end
-    local vaults = self and (self.db and self.db.vaults_beta)
+    local vaults = self and (self.db and self.db.vaults)
     local strategy
     local field
     if vaults and vaults.strategies then
@@ -144,7 +144,7 @@ local function new(self)
         return nil, fmt("could not find vault schema (%s): %s [%s]", name, def, reference)
       end
 
-      local schema = require("kong.db.schema").new(require("kong.db.schema.entities.vaults_beta"))
+      local schema = require("kong.db.schema").new(require("kong.db.schema.entities.vaults"))
 
       local err
       ok, err = schema:new_subschema(name, def)
@@ -194,7 +194,7 @@ local function new(self)
 
   local function config_secret(reference, opts)
     local name = opts.name
-    local vaults = self.db.vaults_beta
+    local vaults = self.db.vaults
     local cache = self.core_cache
     local vault
     local err

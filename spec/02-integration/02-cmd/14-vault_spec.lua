@@ -92,7 +92,7 @@ describe("kong vault", function()
       local admin_client
       lazy_setup(function()
         helpers.get_db_utils(strategy, {
-          "vaults_beta"
+          "vaults"
         })
 
         assert(helpers.start_kong({
@@ -102,7 +102,7 @@ describe("kong vault", function()
         }))
 
         admin_client = helpers.admin_client()
-        local res = admin_client:put("/vaults-beta/test-env", {
+        local res = admin_client:put("/vaults/test-env", {
           headers = {
             ["Content-Type"] = "application/json"
           },
