@@ -550,6 +550,86 @@ describe("tracing_headers.parse", function()
       assert.spy(warn).not_called()
     end)
   end)
+
+  describe("DataDog header parsing", function()
+    local warn
+    setup(function()
+      warn = spy.on(kong.log, "warn")
+    end)
+    before_each(function()
+      warn:clear()
+    end)
+    teardown(function()
+      warn:revert()
+    end)
+
+    it("valid trace_id, valid span_id, sampled", function()
+      local t = { parse({
+        ["x-datadog-trace-id"] = trace_id,
+        ["x-datadog-parent-id"] = span_id,
+        ["x-datadog-sampling-priority"] = "1",
+      })}
+      assert.same({ "datadog", trace_id, nil, span_id, true }, t)
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid big trace_id, valid big span_id, sampled", function()
+      local t = { parse({
+        ["x-datadog-trace-id"] = big_trace_id,
+        ["x-datadog-parent-id"] = big_span_id,
+        ["x-datadog-sampling-priority"] = "1",
+      })}
+      assert.same({ "datadog", big_trace_id, nil, big_span_id, true }, t)
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid trace_id, valid span_id, not sampled", function()
+      local t = { parse({
+        ["x-datadog-trace-id"] = trace_id,
+        ["x-datadog-parent-id"] = span_id,
+        ["x-datadog-sampling-priority"] = "0",
+      })}
+      assert.same({ "datadog", trace_id, nil, span_id, false }, t)
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid trace_id, valid span_id, sampled", function()
+      local t = { parse({
+        ["x-datadog-trace-id"] = trace_id,
+        ["x-datadog-parent-id"] = span_id,
+        ["x-datadog-sampling-priority"] = "1",
+      })}
+      assert.same({ "datadog", trace_id, nil, span_id, true }, t)
+      assert.spy(warn).not_called()
+    end)
+
+    it("valid trace_id, valid span_id, no sampled flag", function()
+      local t = { parse({
+        ["x-datadog-trace-id"] = trace_id,
+        ["x-datadog-parent-id"] = span_id,
+      })}
+      assert.same({ "datadog", trace_id, nil, span_id }, t)
+      assert.spy(warn).not_called()
+    end)
+
+    it("32 trace_id, valid span_id, no sampled flag", function()
+      local t = { parse({
+        ["x-datadog-trace-id"] = trace_id_32,
+        ["x-datadog-parent-id"] = span_id,
+      })}
+      assert.same({ "datadog", trace_id_32, nil, span_id }, t)
+      assert.spy(warn).not_called()
+    end)
+
+    it("big 32 trace_id, valid big_span_id, no sampled flag", function()
+      local t = { parse({
+        ["x-datadog-trace-id"] = big_trace_id_32,
+        ["x-datadog-parent-id"] = big_span_id,
+      })}
+      assert.same({ "datadog", big_trace_id_32, nil, big_span_id }, t)
+      assert.spy(warn).not_called()
+    end)
+  end)
 end)
 
 
@@ -608,6 +688,12 @@ describe("tracing_headers.set", function()
     ["ot-tracer-traceid"] = trace_id,
     ["ot-tracer-spanid"] = span_id,
     ["ot-tracer-sampled"] = "1"
+  }
+
+  local datadog_headers = {
+    ["x-datadog-trace-id"] = tonumber(trace_id, 16),
+    ["x-datadog-parent-id"] = tonumber(span_id, 16),
+    ["x-datadog-sampling-priority"] = "1"
   }
 
   before_each(function()
@@ -861,6 +947,50 @@ describe("tracing_headers.set", function()
     it("sets both the ot and jaeger headers when a jaeger header is encountered.", function()
       set("ot", "jaeger", proxy_span)
       assert.same(table_merge(ot_headers, jaeger_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+  end)
+
+  describe("conf.header_type = 'datadog' #dd", function()
+    it("sets headers to datadog when conf.header_type = datadog", function()
+      set("datadog", "datadog", proxy_span)
+      assert.same(datadog_headers, headers)
+      assert.same({}, warnings)
+    end)
+
+    it("sets both the b3 and datadog headers when a datadog header is encountered.", function()
+      set("datadog", "b3", proxy_span)
+      assert.same(table_merge(b3_headers, datadog_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+
+    it("sets both the b3-single and datadog headers when a datadog header is encountered.", function()
+      set("datadog", "b3-single", proxy_span)
+      assert.same(table_merge(b3_single_headers, datadog_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+
+    it("sets both the w3c and datadog headers when a datadog header is encountered.", function()
+      set("datadog", "w3c", proxy_span)
+      assert.same(table_merge(w3c_headers, datadog_headers), headers)
+
+      -- but it generates a warning
+      assert.equals(1, #warnings)
+      assert.matches("Mismatched header types", warnings[1])
+    end)
+
+    it("sets both the datadog and jaeger headers when a jaeger header is encountered.", function()
+      set("datadog", "jaeger", proxy_span)
+      assert.same(table_merge(datadog_headers, jaeger_headers), headers)
 
       -- but it generates a warning
       assert.equals(1, #warnings)
