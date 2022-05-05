@@ -325,6 +325,7 @@ local function parse_datadog_headers(headers)
     should_sample = false
   elseif should_sample ~= nil then
     warn("x-datadog-sampling-priority header invalid; ignoring.")
+    return nil, nil, nil
   end
 
   local trace_id = headers["x-datadog-trace-id"]
