@@ -336,7 +336,8 @@ function Plugins:select_by_cache_key(key)
 
     -- if migration is complete, disable this translator function and return
     if schema_state:is_migration_executed("core", "009_200_to_210") then
-      Plugins.select_by_cache_key = self.super.select_by_cache_key
+      self.select_by_cache_key = self.super.select_by_cache_key
+      Plugins.select_by_cache_key = nil
       return entity
     end
   end
