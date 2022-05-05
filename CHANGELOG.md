@@ -139,6 +139,9 @@
 - **Zipkin**: add support for including HTTP path in span name
   through configuration property `http_span_name`.
   [#8150](https://github.com/Kong/kong/pull/8150)
+- **Zipkin**: add support for DataDog headers
+  through configuration header_type `datadog`.
+  [#8759](https://github.com/Kong/kong/pull/8759)
 
 #### Configuration
 
