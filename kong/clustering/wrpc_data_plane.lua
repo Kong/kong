@@ -142,16 +142,19 @@ function _M:communicate(premature)
   do
     local res, err = c:connect(uri, opts)
     if not res then
+      -- this is a connection error, should retry negotiation
       ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
         " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
       assert(ngx.timer.at(reconnection_delay, function(premature)
-        self:communicate(premature)
+        self:call_control_plane(premature)
       end))
       return
     end
   end
 
+  -- connection established
+  -- any error from now on should reconnect, not renegotiate.
   local config_semaphore = semaphore.new(0)
   local peer = wrpc.new_peer(c, get_config_service(), { channel = self.DPCP_CHANNEL_NAME })
 

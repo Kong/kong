@@ -138,11 +138,12 @@ function _M:communicate(premature)
   local reconnection_delay = math.random(5, 10)
   local res, err = c:connect(uri, opts)
   if not res then
+    -- this is a connection error, should retry negotiation
     ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
                  " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
     assert(ngx.timer.at(reconnection_delay, function(premature)
-      self:communicate(premature)
+      self:call_control_plane(premature)
     end))
     return
   end
@@ -150,6 +151,7 @@ function _M:communicate(premature)
   -- connection established
   -- first, send out the plugin list to CP so it can make decision on whether
   -- sync will be allowed later
+  -- Any error from now on will reconnect, not renegotiate
   local _
   _, err = c:send_binary(cjson_encode({ type = "basic_info",
                                         plugins = self.plugins_list, }))

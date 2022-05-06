@@ -205,14 +205,34 @@ local function fill_empty_hashes(hashes)
   end
 end
 
-function _M:request_version_negotiation()
+
+function _M:call_control_plane(premature)
+  if premature then
+    return
+  end
+
   local response_data, err = version_negotiation.request_version_handshake(self.conf, self.cert, self.cert_key)
   if not response_data then
-    ngx_log(ngx_ERR, _log_prefix, "error while requesting version negotiation: " .. err)
-    assert(ngx.timer.at(math.random(5, 10), function(premature)
-      self:communicate(premature)
-    end))
-    return
+    ngx_log(ngx_ERR, _log_prefix, "error while requesting version negotiation: ", err)
+    ngx_log(ngx_ERR, _log_prefix, "Assuming old JSON protocol.")
+  end
+
+  local config_proto, msg = version_negotiation.get_negotiated_service("config")
+  if not config_proto and msg then
+    ngx_log(ngx_ERR, _log_prefix, "error reading negotiated \"config\" service: ", msg)
+  end
+
+  ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", tostring(config_proto), " / ", tostring(msg))
+  if config_proto == "v1" then
+    self.child = require "kong.clustering.wrpc_data_plane".new(self)
+
+  elseif config_proto == "v0" or config_proto == nil then
+    self.child = require "kong.clustering.data_plane".new(self)
+  end
+
+  if self.child then
+    clustering_utils.load_config_cache(self.child)
+    self.child:communicate(premature, config_proto)
   end
 end
 
@@ -295,29 +315,7 @@ function _M:init_worker()
 
   if role == "data_plane" and ngx.worker.id() == 0 then
     assert(ngx.timer.at(0, function(premature)
-      if premature then
-        return
-      end
-
-      self:request_version_negotiation()
-
-      local config_proto, msg = version_negotiation.get_negotiated_service("config")
-      if not config_proto and msg then
-        ngx_log(ngx_ERR, _log_prefix, "error reading negotiated \"config\" service: ", msg)
-      end
-
-      ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
-      if config_proto == "v1" then
-        self.child = require "kong.clustering.wrpc_data_plane".new(self)
-
-      elseif config_proto == "v0" or config_proto == nil then
-        self.child = require "kong.clustering.data_plane".new(self)
-      end
-
-      if self.child then
-        clustering_utils.load_config_cache(self.child)
-        self.child:communicate()
-      end
+      self:call_control_plane(premature)
     end))
   end
 end
