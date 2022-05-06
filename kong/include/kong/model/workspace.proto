@@ -9,4 +9,11 @@ message Workspace {
   string name = 2;
   string comment = 3;
   int32 created_at = 4;
+  // EE fields
+  WorkspaceConfig config = 30;
+}
+
+message WorkspaceConfig {
+  bool portal = 1;
+  string portal_developer_meta_fields = 2;
 }

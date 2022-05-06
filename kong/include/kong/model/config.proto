@@ -32,4 +32,6 @@ message Config {
 
   repeated Workspace workspaces = 12;
   repeated Parameter parameters = 13;
+
+  repeated KeyAuth keyauth_credentials = 14;
 }

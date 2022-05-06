@@ -20,4 +20,7 @@ message Plugin {
   Route route = 8;
   Service service = 9;
   Consumer consumer = 10;
+
+  // EE fields
+  string ws_id = 30;
 }
