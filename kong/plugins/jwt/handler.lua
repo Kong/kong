@@ -19,7 +19,7 @@ local re_gmatch = ngx.re.gmatch
 
 
 local JwtHandler = {
-  PRIORITY = 1005,
+  PRIORITY = 1450,
   VERSION = "2.2.0",
 }
 

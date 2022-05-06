@@ -53,7 +53,7 @@ local X_RATELIMIT_REMAINING = {
 local RateLimitingHandler = {}
 
 
-RateLimitingHandler.PRIORITY = 901
+RateLimitingHandler.PRIORITY = 910
 RateLimitingHandler.VERSION = "2.4.0"
 
 

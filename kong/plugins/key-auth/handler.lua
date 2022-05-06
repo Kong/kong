@@ -14,7 +14,7 @@ local error = error
 
 
 local KeyAuthHandler = {
-  PRIORITY = 1003,
+  PRIORITY = 1250,
   VERSION = "2.4.0",
 }
 

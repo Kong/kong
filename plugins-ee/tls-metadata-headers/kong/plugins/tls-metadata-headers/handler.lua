@@ -14,7 +14,7 @@ local ngx_var = ngx.var
 
 local TLSMetadataHandler = {
   -- execute after the tls-handshake-modifier plugin which requests the client cert
-  PRIORITY = 995,
+  PRIORITY = 996,
   VERSION = "0.1.0"
 }
 
@@ -24,12 +24,12 @@ function TLSMetadataHandler:access(conf)
 
     if ngx.var.ssl_client_escaped_cert then
       -- add http headers
-      set_header(conf.client_cert_header_name, 
+      set_header(conf.client_cert_header_name,
         ngx_var.ssl_client_escaped_cert)
 
-      set_header(conf.client_serial_header_name, 
+      set_header(conf.client_serial_header_name,
         ngx_var.ssl_client_serial)
-    
+
       set_header(conf.client_cert_issuer_dn_header_name,
         ngx_var.ssl_client_i_dn)
 

@@ -13,7 +13,7 @@ local Router = require("lapis.router").Router
 local arguments  = require "kong.api.arguments"
 
 local DeGraphQLHandler = {
-  PRIORITY = 1005,
+  PRIORITY = 1500,
   VERSION = "0.1.2"
 }
 

@@ -6,7 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local JwtSignerHandler = {
-  PRIORITY = 999,
+  PRIORITY = 1020,
   VERSION  = "1.9.1",
 }
 

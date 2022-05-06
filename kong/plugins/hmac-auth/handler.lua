@@ -10,7 +10,7 @@ local access = require "kong.plugins.hmac-auth.access"
 
 
 local HMACAuthHandler = {
-  PRIORITY = 1000,
+  PRIORITY = 1030,
   VERSION = "2.4.0",
 }
 

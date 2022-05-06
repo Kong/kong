@@ -60,7 +60,7 @@ end
 local _GqlCacheHandler = {}
 
 
-_GqlCacheHandler.PRIORITY = 100
+_GqlCacheHandler.PRIORITY = 99
 _GqlCacheHandler.VERSION = "0.2.3"
 
 

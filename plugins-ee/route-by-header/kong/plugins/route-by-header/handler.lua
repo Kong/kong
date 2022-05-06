@@ -14,7 +14,7 @@ local lower = string.lower
 
 
 local RouteByHeaderHandler = {
-  PRIORITY = 2000,
+  PRIORITY = 850,
   VERSION  = "0.3.2"
 }
 
@@ -71,4 +71,3 @@ end
 
 
 return RouteByHeaderHandler
-

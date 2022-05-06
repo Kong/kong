@@ -67,7 +67,7 @@ end
 
 local plugin = {
   VERSION  = "0.2.1",
-  PRIORITY = 800,
+  PRIORITY = 780,
 }
 
 local conf_cache = setmetatable({}, {

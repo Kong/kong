@@ -9,7 +9,7 @@ local access = require "kong.plugins.ldap-auth.access"
 
 
 local LdapAuthHandler = {
-  PRIORITY = 1002,
+  PRIORITY = 1200,
   VERSION = "2.2.0",
 }
 

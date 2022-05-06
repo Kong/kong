@@ -18,7 +18,7 @@ local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 local KeyAuthHandler = {}
 
 
-KeyAuthHandler.PRIORITY = 1003
+KeyAuthHandler.PRIORITY = 1250
 KeyAuthHandler.VERSION = "2.0.0"
 
 

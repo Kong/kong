@@ -28,7 +28,7 @@ local CANARY_BY_HEADER_NEVER = "never" -- never go to canary
 local CANARY_BY_HEADER_ALWAYS = "always" -- always go to canary
 
 local Canary = {
-  PRIORITY = 13,
+  PRIORITY = 20,
   VERSION  = "0.6.0"
 }
 

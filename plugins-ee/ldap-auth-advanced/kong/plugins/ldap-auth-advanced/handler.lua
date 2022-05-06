@@ -22,7 +22,7 @@ function LdapAuthHandler:init_worker()
 end
 
 
-LdapAuthHandler.PRIORITY = 1002
+LdapAuthHandler.PRIORITY = 1200
 LdapAuthHandler.VERSION = "1.3.0"
 
 
