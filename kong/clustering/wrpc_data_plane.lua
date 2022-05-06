@@ -1,3 +1,13 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
+-- XXX EE
+local ee = require "kong.enterprise_edition.clustering.data_plane"
+-- EE
 
 local semaphore = require("ngx.semaphore")
 local ws_client = require("resty.websocket.client")
@@ -28,6 +38,11 @@ local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local _log_prefix = "[wrpc-clustering] "
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
+local CONFIG_CACHE = ngx.config.prefix() .. "/config.cache.json.gz"
+--- XXX EE
+local CONFIG_CACHE_ENCRYPTED = ngx.config.prefix() .. "/.config.cache.jwt"
+--- EE
+
 local _M = {
   DPCP_CHANNEL_NAME = "DP-CP_config",
 }
@@ -36,6 +51,19 @@ function _M.new(parent)
   local self = {
     declarative_config = declarative.new_config(parent.conf),
   }
+
+  --- XXX EE
+  local config_cache_path = parent.conf.data_plane_config_cache_path
+  local config_cache_mode = parent.conf.data_plane_config_cache_mode
+  if config_cache_mode == "unencrypted" then
+    self.config_cache = config_cache_path or CONFIG_CACHE
+
+  elseif config_cache_mode == "encrypted" then
+    self.config_cache = config_cache_path or CONFIG_CACHE_ENCRYPTED
+    self.encode_config = ee.encode_config
+    self.decode_config = ee.decode_config
+  end
+  --- EE
 
   return setmetatable(self, {
     __index = function(_, key)
@@ -59,7 +87,9 @@ function _M:init_worker()
   -- ROLE = "data_plane"
 
   if ngx.worker.id() == 0 then
-    clustering_utils.load_config_cache(self)
+    if self.child.config_cache then
+      clustering_utils.load_config_cache(self.child)
+    end
 
     assert(ngx.timer.at(0, function(premature)
       self:communicate(premature)

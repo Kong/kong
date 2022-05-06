@@ -1,9 +1,13 @@
-
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local constants = require("kong.constants")
 local openssl_x509 = require("resty.openssl.x509")
 local ssl = require("ngx.ssl")
-local ocsp = require("ngx.ocsp")
 local http = require("resty.http")
 local system_constants = require("lua_system_constants")
 local bit = require("bit")
@@ -19,8 +23,6 @@ local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
 local ngx_WARN = ngx.WARN
 local _log_prefix = "[clustering] "
-
-local CONFIG_CACHE = ngx.config.prefix() .. "/config.cache.json.gz"
 
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
@@ -179,6 +181,8 @@ do
   end
 end
 
+clustering_utils.check_for_revocation_status = check_for_revocation_status
+
 
 function clustering_utils.validate_connection_certs(conf, cert_digest)
   local _, err
@@ -212,7 +216,7 @@ function clustering_utils.validate_connection_certs(conf, cert_digest)
 end
 
 function clustering_utils.load_config_cache(self)
-  local f = io_open(CONFIG_CACHE, "r")
+  local f = io_open(self.config_cache, "r")
   if f then
     local config, err = f:read("*a")
     if not config then
@@ -243,14 +247,14 @@ function clustering_utils.load_config_cache(self)
     end
 
   else
-    -- CONFIG_CACHE does not exist, pre create one with 0600 permission
+    -- self.config_cache does not exist, pre create one with 0600 permission
     local flags = bit.bor(system_constants.O_RDONLY(),
       system_constants.O_CREAT())
 
     local mode = ffi.new("int", bit.bor(system_constants.S_IRUSR(),
       system_constants.S_IWUSR()))
 
-    local fd = ffi.C.open(CONFIG_CACHE, flags, mode)
+    local fd = ffi.C.open(self.config_cache, flags, mode)
     if fd == -1 then
       ngx_log(ngx_ERR, _log_prefix, "unable to pre-create cached config file: ",
         ffi.string(ffi.C.strerror(ffi.errno())))
@@ -263,7 +267,7 @@ end
 
 
 function clustering_utils.save_config_cache(self, config_table)
-  local f, err = io_open(CONFIG_CACHE, "w")
+  local f, err = io_open(self.config_cache, "w")
   if not f then
     ngx_log(ngx_ERR, _log_prefix, "unable to open config cache file: ", err)
 

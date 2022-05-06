@@ -1,11 +1,15 @@
+-- This software is copyright Kong Inc. and its licensors.
+-- Use of the software is subject to the agreement between your organization
+-- and Kong Inc. If there is no such agreement, use is governed by and
+-- subject to the terms of the Kong Master Software License Agreement found
+-- at https://konghq.com/enterprisesoftwarelicense/.
+-- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
+
 local _M = {}
 
 
 local semaphore = require("ngx.semaphore")
 local ws_server = require("resty.websocket.server")
-local ssl = require("ngx.ssl")
-local ocsp = require("ngx.ocsp")
-local http = require("resty.http")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
@@ -18,7 +22,6 @@ local pcall = pcall
 local pairs = pairs
 local ipairs = ipairs
 local tonumber = tonumber
-local tostring = tostring
 local ngx = ngx
 local ngx_log = ngx.log
 local cjson_encode = cjson.encode
@@ -29,6 +32,8 @@ local ngx_time = ngx.time
 local ngx_var = ngx.var
 local table_insert = table.insert
 local table_concat = table.concat
+local clustering_utils = require("kong.clustering.utils")
+local check_for_revocation_status = clustering_utils.check_for_revocation_status
 
 local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
@@ -43,7 +48,6 @@ local WS_OPTS = {
   timeout = constants.CLUSTERING_TIMEOUT,
   max_payload_len = MAX_PAYLOAD,
 }
-local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 local _log_prefix = "[wrpc-clustering] "
@@ -232,68 +236,6 @@ function _M:validate_shared_cert()
   end
 
   return true
-end
-
-
-local check_for_revocation_status
-do
-  local get_full_client_certificate_chain = require("resty.kong.tls").get_full_client_certificate_chain
-  check_for_revocation_status = function()
-    local cert, err = get_full_client_certificate_chain()
-    if not cert then
-      return nil, err
-    end
-
-    local der_cert
-    der_cert, err = ssl.cert_pem_to_der(cert)
-    if not der_cert then
-      return nil, "failed to convert certificate chain from PEM to DER: " .. err
-    end
-
-    local ocsp_url
-    ocsp_url, err = ocsp.get_ocsp_responder_from_der_chain(der_cert)
-    if not ocsp_url then
-      return nil, err or "OCSP responder endpoint can not be determined, " ..
-                         "maybe the client certificate is missing the " ..
-                         "required extensions"
-    end
-
-    local ocsp_req
-    ocsp_req, err = ocsp.create_ocsp_request(der_cert)
-    if not ocsp_req then
-      return nil, "failed to create OCSP request: " .. err
-    end
-
-    local c = http.new()
-    local res
-    res, err = c:request_uri(ocsp_url, {
-      headers = {
-        ["Content-Type"] = "application/ocsp-request"
-      },
-      timeout = OCSP_TIMEOUT,
-      method = "POST",
-      body = ocsp_req,
-    })
-
-    if not res then
-      return nil, "failed sending request to OCSP responder: " .. tostring(err)
-    end
-    if res.status ~= 200 then
-      return nil, "OCSP responder returns bad HTTP status code: " .. res.status
-    end
-
-    local ocsp_resp = res.body
-    if not ocsp_resp or #ocsp_resp == 0 then
-      return nil, "unexpected response from OCSP responder: empty body"
-    end
-
-    res, err = ocsp.validate_ocsp_response(ocsp_resp, der_cert)
-    if not res then
-      return false, "failed to validate OCSP response: " .. err
-    end
-
-    return true
-  end
 end
 
 

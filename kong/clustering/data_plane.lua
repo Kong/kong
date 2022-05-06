@@ -104,7 +104,9 @@ function _M:init_worker()
     return
   end
 
-  clustering_utils.load_config_cache(self)
+  if self.child.config_cache then
+    clustering_utils.load_config_cache(self.child)
+  end
 
   assert(ngx.timer.at(0, function(premature)
     self:communicate(premature)

@@ -8,7 +8,6 @@
 local _M = {}
 
 local constants = require("kong.constants")
-local declarative = require("kong.db.declarative")
 local clustering_utils = require("kong.clustering.utils")
 local version_negotiation = require("kong.clustering.version_negotiation")
 local pl_file = require("pl.file")
@@ -16,13 +15,11 @@ local pl_tablex = require("pl.tablex")
 local ws_server = require("resty.websocket.server")
 local ws_client = require("resty.websocket.client")
 local ssl = require("ngx.ssl")
-local http = require("resty.http")
 local openssl_x509 = require("resty.openssl.x509")
 local isempty = require("table.isempty")
 local isarray = require("table.isarray")
 local nkeys = require("table.nkeys")
 local new_tab = require("table.new")
-local ngx_log = ngx.log
 local ngx_null = ngx.null
 local ngx_md5 = ngx.md5
 local ngx_md5_bin = ngx.md5_bin
@@ -33,6 +30,9 @@ local concat = table.concat
 local pairs = pairs
 local sort = table.sort
 local type = type
+local sub = string.sub
+
+local check_for_revocation_status = clustering_utils.check_for_revocation_status
 
 -- XXX EE
 local semaphore = require("ngx.semaphore")
@@ -44,8 +44,8 @@ local setmetatable = setmetatable
 local ngx = ngx
 local ngx_log = ngx.log
 local ngx_WARN = ngx.WARN
-local ngx_var = ngx.var
 local ngx_NOTICE = ngx.NOTICE
+local ngx_var = ngx.var
 local cjson_decode = cjson.decode
 local kong = kong
 local ngx_exit = ngx.exit
@@ -63,7 +63,6 @@ local WS_OPTS = {
   timeout = constants.CLUSTERING_TIMEOUT,
   max_payload_len = MAX_PAYLOAD,
 }
-local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local _log_prefix = "[clustering] "
@@ -319,7 +318,7 @@ function _M:update_config(config_table, config_hash, update_cache, hashes)
     return nil, err
   end
 
-  if update_cache then
+  if update_cache and self.config_cache then
     -- local persistence only after load finishes without error
     clustering_utils.save_config_cache(self, config_table)
   end
@@ -394,6 +393,33 @@ function _M:validate_client_cert(cert, log_prefix, log_suffix)
 end
 
 
+-- XXX EE telemetry_communicate is written for hybrid mode over websocket.
+-- It should be migrated to wRPC later.
+-- ws_event_loop, is_timeout, and send_ping is for handle_cp_telemetry_websocket only.
+-- is_timeout and send_ping is copied here to keep the code functioning.
+
+local function is_timeout(err)
+  return err and sub(err, -7) == "timeout"
+end
+
+local function send_ping(c, log_suffix)
+  log_suffix = log_suffix or ""
+
+  local hash = declarative.get_current_hash()
+
+  if hash == true then
+    hash = DECLARATIVE_EMPTY_CONFIG_HASH
+  end
+
+  local _, err = c:send_ping(hash)
+  if err then
+    ngx_log(is_timeout(err) and ngx_NOTICE or ngx_WARN, _log_prefix,
+            "unable to send ping frame to control plane: ", err, log_suffix)
+
+  else
+    ngx_log(ngx_DEBUG, _log_prefix, "sent ping frame to control plane", log_suffix)
+  end
+end
 
 -- XXX EE only used for telemetry, remove cruft
 local function ws_event_loop(ws, on_connection, on_error, on_message)
@@ -639,7 +665,9 @@ function _M:init_worker()
       --- EE
 
       if self.child then
-        clustering_utils.load_config_cache(self.child)
+        if self.child.config_cache then
+          clustering_utils.load_config_cache(self.child)
+        end
         self.child:communicate()
       end
 
