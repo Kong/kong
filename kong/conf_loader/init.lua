@@ -205,6 +205,10 @@ local DYNAMIC_KEY_NAMESPACES = {
     prefix = "vault_",
     ignore = EMPTY,
   },
+  {
+    prefix = "plugin_file_log_",
+    ignore = EMPTY,
+  },
 }
 
 

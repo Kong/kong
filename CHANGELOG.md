@@ -73,6 +73,19 @@
 
 ### Breaking Changes
 
+#### Configuration
+
+- Add a new configuration `plugin_file_log_path_prefix`
+  to restrict access to the file system for `File-log` plugins.
+  [#8758](https://github.com/Kong/kong/pull/8758)
+
+#### Plugins
+
+- **File-log**: Restrict the prefix of log filename by 
+  environment variable `KONG_PLUGIN_FILE_LOG_PATH_PREFIX`
+  and configureation `plugin_file_log_path_prefix`.
+  [#8758](https://github.com/Kong/kong/pull/8758)
+
 #### Admin API
 
 - Insert and update operations on target entities require using the `PUT` HTTP
