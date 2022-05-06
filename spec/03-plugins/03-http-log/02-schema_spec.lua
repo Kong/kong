@@ -46,6 +46,19 @@ describe(PLUGIN_NAME .. ": (schema)", function()
     assert.is_truthy(ok)
   end)
 
+  it("does not accept empty header values", function()
+    local ok, err = validate({
+      http_endpoint = "http://myservice.com/path",
+      headers = {
+        ["X-My-Header"] = "",
+      }
+    })
+    assert.same({
+      config = {
+        headers = "length must be at least 1"
+      } }, err)
+    assert.is_falsy(ok)
+  end)
 
   it("does not accept Host header", function()
     local ok, err = validate({
