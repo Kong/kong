@@ -888,11 +888,20 @@ for _, strategy in helpers.each_strategy() do
 
     describe("sync works", function()
       it("local cached config file has correct permission", function()
-        local handle = io.popen("ls -l servroot2/.config.cache.jwt")
-        local result = handle:read("*a")
-        handle:close()
+        -- The cache file is created by a zero-delay timer,
+        -- so it is not always created immediately
+        -- after Kong starts and we need to wait, especially on slow CI.
+        helpers.wait_until(function()
+          local handle = io.popen("ls -l servroot2/.config.cache.jwt")
+          local result = handle:read("*a")
+          handle:close()
 
-        assert.matches("-rw-------", result, nil, true)
+          if pcall(assert.matches, "-rw-------", result, nil, true) then
+            return true
+          end
+
+          return false
+        end, 15)
       end)
 
       it("pushes first change asap and following changes in a batch", function()
@@ -1040,7 +1049,7 @@ for _, strategy in helpers.each_strategy() do
             paths = { "/1" },
           },
         })
-
+        
         assert.res_status(200, res)
 
         helpers.wait_until(function()
