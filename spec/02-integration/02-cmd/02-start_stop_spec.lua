@@ -134,7 +134,7 @@ describe("kong start/stop #" .. strategy, function()
         stream_listen = "127.0.0.1:9022",
         status_listen = "0.0.0.0:8100",
       }))
-      ngx.sleep(0.05)   -- wait unix domain socket
+      ngx.sleep(0.1)   -- wait unix domain socket
       assert(helpers.kong_exec("stop", {
         prefix = helpers.test_conf.prefix
       }))
