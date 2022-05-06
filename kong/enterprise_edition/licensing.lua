@@ -149,6 +149,8 @@ function _M:register_events(events_handler)
     if _l_type == _M.l_type then
       ngx.log(ngx.DEBUG, "[licensing] license type has not changed")
       return
+    else
+      ngx.log(ngx.INFO, "[licensing] license type: ", _M.l_type)
     end
 
     events_handler.post_local("kong:configuration", "change", {
@@ -182,8 +184,6 @@ function _M:update(license)
   _M.configuration:clear()
   _M.configuration:update(tx_deepcopy(_M.kong_conf))
   _M.configuration:update(_M.features.conf or {}, true)
-
-  ngx.log(ngx.DEBUG, "[licensing] license type: ", _M.l_type)
 end
 
 
@@ -196,6 +196,8 @@ end
 
 function _M:new(kong_conf)
   local license = license_helpers.read_license_info()
+  local license_type = license_helpers.get_type(license)
+  ngx.log(ngx.INFO, "[licensing] license type: ", license_type)
 
   _M.kong_conf = kong_conf
   _M:update(license)
