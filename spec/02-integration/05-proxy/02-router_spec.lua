@@ -1470,15 +1470,20 @@ for _, strategy in helpers.each_strategy() do
           },
         })
 
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            ["Host"]       = "domain.org",
-            ["version"]    = "v1",
-            ["kong-debug"] = 1,
-          }
-        })
+        local res
+        helpers.wait_until(function()
+          res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              ["Host"]       = "domain.org",
+              ["version"]    = "v1",
+              ["kong-debug"] = 1,
+            }
+          })
+          res:read_body()
+          return res.status == 200
+        end, 10)
 
         assert.res_status(200, res)
 
