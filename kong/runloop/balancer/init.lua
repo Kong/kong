@@ -293,7 +293,8 @@ local function execute(balancer_data, ctx)
     if not ip and
       (port == "No peers are available" or port == "Balancer is unhealthy")
     then
-      return nil, "failure to get a peer from the ring-balancer", 503
+      --return nil, "failure to get a peer from the ring-balancer", 503
+      return nil, "failure to get a peer from the ring-balancer"..port, 503
     end
     hostname = hostname or ip
     balancer_data.hash_value = hash_value
