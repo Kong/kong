@@ -1090,27 +1090,14 @@ for _, strategy in helpers.each_strategy() do
               server2:start()
 
               -- XXX: flaky
-              helpers.wait_until(function()
-                oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
-                return last_status == 200
-              end, 5)
-              --oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
-              assert.same(200, last_status)
-              assert.same(bu.SLOTS * 2, oks)
-              assert.same(0, fails)
               --helpers.wait_until(function()
               --  oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
-              --  local ok, err = pcall(function()
-              --    assert.same(200, last_status)
-              --    assert.same(bu.SLOTS * 2, oks)
-              --    assert.same(0, fails)
-              --  end)
-              --  if not ok then
-              --    return false, err
-              --  end
-
-              --  return true
+              --  return last_status == 200
               --end, 5)
+              --oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
+              --assert.same(200, last_status)
+              --assert.same(bu.SLOTS * 2, oks)
+              --assert.same(0, fails)
 
               -- collect server results
               local count1 = server1:shutdown()
