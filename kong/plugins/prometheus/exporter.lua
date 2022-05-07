@@ -43,10 +43,14 @@ local function init()
     metrics.connections = prometheus:gauge("nginx_http_current_connections",
       "Number of HTTP connections",
       {"state"})
+    metrics.total_requests = prometheus:gauge("nginx_http_total_requests",
+      "Number of HTTP requests")
   else
     metrics.connections = prometheus:gauge("nginx_stream_current_connections",
       "Number of Stream connections",
       {"state"})
+    metrics.total_requests = prometheus:gauge("nginx_stream_total_requests",
+      "Number of Stream requests")
   end
   metrics.timers = prometheus:gauge("nginx_timers",
                                     "Number of nginx timers",
@@ -298,11 +302,12 @@ local function metric_data()
   local nginx_statistics = kong.nginx.get_statistics()
   metrics.connections:set(nginx_statistics['connections_accepted'], { "accepted" })
   metrics.connections:set(nginx_statistics['connections_handled'], { "handled" })
-  metrics.connections:set(nginx_statistics['total_requests'], { "total" })
   metrics.connections:set(nginx_statistics['connections_active'], { "active" })
   metrics.connections:set(nginx_statistics['connections_reading'], { "reading" })
   metrics.connections:set(nginx_statistics['connections_writing'], { "writing" })
   metrics.connections:set(nginx_statistics['connections_waiting'], { "waiting" })
+
+  metrics.total_requests:set(nginx_statistics['total_requests'])
 
   metrics.timers:set(ngx_timer_running_count(), {"running"})
   metrics.timers:set(ngx_timer_pending_count(), {"pending"})
