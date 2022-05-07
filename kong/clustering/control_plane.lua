@@ -24,6 +24,7 @@ local ngx_exit = ngx.exit
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
 local ngx_now = ngx.now
+local ngx_update_time = ngx.update_time
 local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
@@ -248,6 +249,9 @@ end
 
 
 function _M:push_config()
+  ngx_update_time()
+  local start = ngx_now()
+
   local payload, err = self:export_deflated_reconfigure_payload()
   if not payload then
     ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
@@ -261,7 +265,9 @@ function _M:push_config()
     n = n + 1
   end
 
-  ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " clients")
+  ngx_update_time()
+  local duration = ngx_now() - start
+  ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " clients in " .. duration .. "s")
 end
 
 
