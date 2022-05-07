@@ -67,7 +67,7 @@ end
 
 local function validate_http_status_code(status_code)
   if not status_code then
-    return false, "statusCode not found"
+    return false
   end
   local status_code_str = tostring(status_code)
   local m, err = re_match(status_code_str, VALID_HTTP_STATUS_CODE_REG, 'jo')
