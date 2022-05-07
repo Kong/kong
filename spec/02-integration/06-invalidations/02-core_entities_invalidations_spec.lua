@@ -449,6 +449,13 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
+        helpers.wait_until(function()
+          local cert_1 = get_cert(8443, "ssl-example.com")
+          return pcall(function()
+            assert.certificate(cert_1).has.cn("ssl-example.com")
+          end)
+        end)
+
         local cert_1 = get_cert(8443, "ssl-example.com")
         assert.certificate(cert_1).has.cn("ssl-example.com")
 
@@ -674,6 +681,13 @@ for _, strategy in helpers.each_strategy() do
 
           -- no need to wait for workers propagation (lua-resty-worker-events)
           -- because our test instance only has 1 worker
+
+          helpers.wait_until(function()
+            local cert = get_cert(8443, "test.wildcard.com")
+            return pcall(function()
+              assert.certificate(cert).has.cn("ssl-alt-alt.com")
+            end)
+          end)
 
           local cert = get_cert(8443, "test.wildcard.com")
           assert.certificate(cert).has.cn("ssl-alt-alt.com")
