@@ -7,7 +7,7 @@ local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 local constants = require "kong.constants"
 local request_util = require "kong.plugins.aws-lambda.request-util"
-
+local kong = kong
 
 local VIA_HEADER = constants.HEADERS.VIA
 local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
@@ -16,6 +16,8 @@ local AWS_PORT = 443
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
+
+local VALID_HTTP_STATUS_CODE_REG = "^[1-5][0-9][0-9]$"
 
 
 local fetch_credentials do
@@ -41,6 +43,7 @@ local tostring = tostring
 local tonumber = tonumber
 local ngx_now = ngx.now
 local ngx_var = ngx.var
+local re_match = ngx.re.match
 local error = error
 local pairs = pairs
 local kong = kong
@@ -62,6 +65,21 @@ local function get_now()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
 
+local function validate_http_status_code(status_code)
+  if not status_code then
+    return false, "statusCode not found"
+  end
+  local status_code_str = tostring(status_code)
+  local m, err = re_match(status_code_str, VALID_HTTP_STATUS_CODE_REG, 'jo')
+  if err then
+    kong.log.err(err)
+    return false
+  end
+  if not m then
+    return false
+  end
+  return true
+end
 
 --[[
   Response format should be
@@ -72,8 +90,8 @@ end
   }
 --]]
 local function validate_custom_response(response)
-  if type(response.statusCode) ~= "number" then
-    return nil, "statusCode must be a number"
+  if not validate_http_status_code(response.statusCode) then
+    return nil, "statusCode validation failed"
   end
 
   if response.headers ~= nil and type(response.headers) ~= "table" then
