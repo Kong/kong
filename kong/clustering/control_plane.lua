@@ -249,7 +249,6 @@ end
 
 
 function _M:push_config()
-  ngx_update_time()
   local start = ngx_now()
 
   local payload, err = self:export_deflated_reconfigure_payload()
