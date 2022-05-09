@@ -9,7 +9,6 @@ pipeline {
         DOCKER_CREDENTIALS = credentials('dockerhub')
         DOCKER_USERNAME = "${env.DOCKER_CREDENTIALS_USR}"
         DOCKER_PASSWORD = "${env.DOCKER_CREDENTIALS_PSW}"
-        KONG_PACKAGE_NAME = "kong"
         DOCKER_CLI_EXPERIMENTAL = "enabled"
         PULP_HOST_PROD = "https://api.pulp.konnect-prod.konghq.com"
         PULP_PROD = credentials('PULP')
@@ -48,7 +47,6 @@ pipeline {
                 }
             }
             environment {
-                KONG_PACKAGE_NAME = "kong"
                 KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                 KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                 AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
@@ -63,7 +61,7 @@ pipeline {
             steps {
                 sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
                 sh 'make setup-kong-build-tools'
-                sh 'KONG_VERSION=`git rev-parse --short HEAD` DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` make release'
+                sh 'KONG_VERSION=`date \'+%Y%m%d-%H%M\'` DOCKER_MACHINE_ARM64_NAME="jenkins-kong-"`cat /proc/sys/kernel/random/uuid` make release'
             }
         }
         stage('Release') {
