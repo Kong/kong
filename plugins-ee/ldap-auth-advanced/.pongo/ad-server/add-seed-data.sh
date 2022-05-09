@@ -20,7 +20,7 @@ samba-tool user create "Nikola Tesla" --uid tesla --surname Tesla --mail-address
 samba-tool user create einstein --surname einstein --uid einstein --userou OU=scientists passw2rd1111A$
 samba-tool user create "Andrei Sakharov" --surname Andrei --uid andrei.sakharov --userou OU=scientists --mail-address asakharov@ras.ru --uid-number 88287 --gid-number 99999 --unix-home home passw2rd1111A$
 
-users=(User1 User2 Ophelia Desdemona Katherina Hamlet Othello Petruchio MacBeth)
+users=(User1 User2 Ophelia Desdemona Katherina Hamlet Othello Petruchio MacBeth Kipp)
 for i in "${users[@]}"
 do
     samba-tool user create $i passw2rd1111A$

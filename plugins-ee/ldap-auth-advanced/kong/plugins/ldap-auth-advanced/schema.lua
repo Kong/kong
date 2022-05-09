@@ -129,6 +129,10 @@ return {
           required = false,
           default = false,
         }},
+        { group_required = {
+          type = "string",
+          required = false,
+        }},
       }
     }}
   },

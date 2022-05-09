@@ -50,6 +50,18 @@ local function retrieve_credentials(authorization_header_value, conf)
 end
 
 
+local function check_group_membership(conf, groups)
+  if conf.group_required then
+    for _, group in ipairs(groups) do
+      if group == conf.group_required then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+
 local function ldap_authenticate(given_username, given_password, conf)
   local is_authenticated
   local groups = nil
@@ -147,9 +159,24 @@ local function ldap_authenticate(given_username, given_password, conf)
             kong.log.debug("user has groups, but they are invalid. " ..
                    "group must include group_base_dn with group_name_attribute")
           end
+
+          if conf.group_required then
+            local ok = check_group_membership(conf, groups)
+            if not ok then
+              return kong.response.exit(401, {
+                message = "User not in authorized LDAP Group: " .. conf.group_required
+              })
+            end
+          end
         else
           kong.log.debug("did not find groups for ldap search result")
           clear_header(constants.HEADERS.AUTHENTICATED_GROUPS)
+
+          if conf.group_required then
+            return kong.response.exit(401, {
+              message = "User not in authorized LDAP Group: " .. conf.group_required
+            })
+          end
         end
 
         user_dn = dn
