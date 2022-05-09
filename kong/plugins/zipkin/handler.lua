@@ -96,7 +96,7 @@ local function timer_log(premature, reporter)
 
   local ok, err = reporter:flush()
   if not ok then
-    kong.log.err("reporter flush ", err)
+    kong.log.err("zipkin reporter flush ", err)
     return
   end
 end
