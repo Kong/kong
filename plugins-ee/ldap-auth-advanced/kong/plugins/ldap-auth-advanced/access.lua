@@ -51,11 +51,9 @@ end
 
 
 local function check_group_membership(conf, groups)
-  if conf.group_required then
-    for _, group in ipairs(groups) do
-      if group == conf.group_required then
-        return true
-      end
+  for _, group in ipairs(groups) do
+    if group == conf.group_required then
+      return true
     end
   end
   return false
