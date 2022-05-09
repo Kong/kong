@@ -732,7 +732,7 @@ http {
 
     include '*.http_mock';
 
-> if legacy_worker_events ~= "off" then
+> if not legacy_worker_events then
     server {
         server_name kong_worker_events;
         listen unix:${{PREFIX}}/worker_events.sock;
@@ -743,7 +743,7 @@ http {
             }
         }
     }
-> end -- legacy_worker_events ~= "off"
+> end -- not legacy_worker_events
 }
 > end
 
@@ -981,7 +981,7 @@ server {
         }
     }
 
-> if legacy_worker_events ~= "off" then
+> if not legacy_worker_events then
     server {
         listen unix:${{PREFIX}}/stream_worker_events.sock;
         access_log off;
@@ -989,7 +989,7 @@ server {
           require("resty.events.compat").run()
         }
     }
-> end -- legacy_worker_events ~= "off"
+> end -- not legacy_worker_events
 
 }
 > end

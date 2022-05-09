@@ -219,7 +219,7 @@ server {        # ignore (and close }, to ignore content)
 }
 > end -- #stream_listeners > 0
 
-> if legacy_worker_events ~= "off" then
+> if not legacy_worker_events then
 server {
     listen unix:${{PREFIX}}/stream_worker_events.sock;
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
@@ -229,5 +229,5 @@ server {
       require("resty.events.compat").run()
     }
 }
-> end -- legacy_worker_events ~= "off"
+> end -- not legacy_worker_events
 ]]

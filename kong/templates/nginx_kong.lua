@@ -461,7 +461,7 @@ server {
 }
 > end -- role == "control_plane"
 
-> if legacy_worker_events ~= "off" then
+> if not legacy_worker_events then
 server {
     server_name kong_worker_events;
     listen unix:${{PREFIX}}/worker_events.sock;
@@ -473,5 +473,5 @@ server {
         }
     }
 }
-> end -- legacy_worker_events ~= "off"
+> end -- not legacy_worker_events
 ]]
