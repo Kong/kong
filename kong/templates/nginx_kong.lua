@@ -461,7 +461,7 @@ server {
 }
 > end -- role == "control_plane"
 
-> if events_mechanism ~= "shared_dict" then
+> if legacy_worker_events ~= "off" then
 server {
     server_name kong_worker_events;
     listen unix:${{PREFIX}}/worker_events.sock;
@@ -473,5 +473,5 @@ server {
         }
     }
 }
-> end -- events_mechanism ~= "shared_dict"
+> end -- legacy_worker_events ~= "off"
 ]]

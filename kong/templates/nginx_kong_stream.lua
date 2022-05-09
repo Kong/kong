@@ -219,7 +219,7 @@ server {        # ignore (and close }, to ignore content)
 }
 > end -- #stream_listeners > 0
 
-> if events_mechanism ~= "shared_dict" then
+> if legacy_worker_events ~= "off" then
 server {
     listen unix:${{PREFIX}}/stream_worker_events.sock;
     error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
@@ -229,5 +229,5 @@ server {
       require("resty.events.compat").run()
     }
 }
-> end -- events_mechanism ~= "shared_dict"
+> end -- legacy_worker_events ~= "off"
 ]]

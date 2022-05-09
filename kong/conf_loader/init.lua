@@ -661,7 +661,7 @@ local CONF_INFERENCES = {
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
 
-  events_mechanism = { typ = "string" },
+  legacy_worker_events = { typ = "boolean" },
 }
 
 

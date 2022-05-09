@@ -732,7 +732,7 @@ http {
 
     include '*.http_mock';
 
-> if events_mechanism ~= "shared_dict" then
+> if legacy_worker_events ~= "off" then
     server {
         server_name kong_worker_events;
         listen unix:${{PREFIX}}/worker_events.sock;
@@ -743,7 +743,7 @@ http {
             }
         }
     }
-> end -- events_mechanism ~= "shared_dict"
+> end -- legacy_worker_events ~= "off"
 }
 > end
 
@@ -981,7 +981,7 @@ server {
         }
     }
 
-> if events_mechanism ~= "shared_dict" then
+> if legacy_worker_events ~= "off" then
     server {
         listen unix:${{PREFIX}}/stream_worker_events.sock;
         access_log off;
@@ -989,7 +989,7 @@ server {
           require("resty.events.compat").run()
         }
     }
-> end -- events_mechanism ~= "shared_dict"
+> end -- legacy_worker_events ~= "off"
 
 }
 > end
