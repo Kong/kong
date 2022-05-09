@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/model;model";
+
+package kong.model;
+
+import "google/protobuf/struct.proto";
+
+message NegotiateServicesRequest {
+  DPNodeDescription node = 1;
+  repeated ServiceRequest services_requested = 2;
+  google.protobuf.Struct metadata = 3;
+}
+
+message DPNodeDescription {
+  string id = 1;
+  string type = 2;
+  string version = 3;
+  string hostname = 4;
+}
+
+message ServiceRequest {
+  string name = 1;
+  repeated string versions = 2;
+}
+
+message NegotiateServicesResponse {
+  string error_message = 1;
+  CPNodeDescription node = 2;
+  repeated AcceptedService services_accepted = 3;
+  repeated RejectedService services_rejected = 4;
+}
+
+message CPNodeDescription {
+  string id = 1;
+}
+
+message AcceptedService {
+  string name = 1;
+  string version = 2;
+  string message = 3;
+}
+
+message RejectedService {
+  string name = 1;
+  string message = 3;
+}

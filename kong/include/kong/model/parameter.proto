@@ -4,6 +4,8 @@ option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/model;model";
 
 package kong.model;
 
+// the `parameters` field in the config hold cluster level information
+// currently it's only the cluster_id
 message Parameter {
   string key = 1;
   string value = 2;
