@@ -1,6 +1,7 @@
 local kong_certificate = require "kong.runloop.certificate"
 local client = require "kong.plugins.acme.client"
 local ngx_ssl = require "ngx.ssl"
+local kong_meta = require "kong.meta"
 
 local acme_challenge_path = [[^/\.well-known/acme-challenge/(.+)]]
 
@@ -13,7 +14,7 @@ local ACMEHandler = {}
 -- otherwise acme-challenges endpoints may be blocked by auth plugins
 -- causing validation failures
 ACMEHandler.PRIORITY = 1007
-ACMEHandler.VERSION = "0.4.0"
+ACMEHandler.VERSION = kong_meta._VERSION
 
 local function build_domain_matcher(domains)
   local domains_plain = {}

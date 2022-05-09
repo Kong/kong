@@ -1,6 +1,7 @@
 local lsyslog = require "lsyslog"
 local cjson = require "cjson"
 local sandbox = require "kong.tools.sandbox".sandbox
+local kong_meta = require "kong.meta"
 
 
 local kong = kong
@@ -85,7 +86,7 @@ end
 
 local SysLogHandler = {
   PRIORITY = 4,
-  VERSION = "2.2.0",
+  VERSION = kong_meta._VERSION,
 }
 
 

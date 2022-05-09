@@ -1,5 +1,6 @@
 -- Copyright (C) Kong Inc.
 require "kong.tools.utils" -- ffi.cdefs
+local kong_meta = require "kong.meta"
 
 
 local ffi = require "ffi"
@@ -65,7 +66,7 @@ end
 
 local FileLogHandler = {
   PRIORITY = 9,
-  VERSION = "2.1.0",
+  VERSION = kong_meta._VERSION,
 }
 
 

@@ -1,6 +1,7 @@
 local constants     = require "kong.constants"
 local meta          = require "kong.meta"
 local http          = require "resty.http"
+local kong_meta     = require "kong.meta"
 
 
 local kong          = kong
@@ -23,7 +24,7 @@ end
 
 local azure = {
   PRIORITY = 749,
-  VERSION  = "1.0.1",
+  VERSION = kong_meta._VERSION,
 }
 
 

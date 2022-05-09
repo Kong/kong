@@ -1,4 +1,5 @@
 local statsd_logger = require "kong.plugins.datadog.statsd_logger"
+local kong_meta = require "kong.meta"
 
 
 local kong     = kong
@@ -95,7 +96,7 @@ end
 
 local DatadogHandler = {
   PRIORITY = 10,
-  VERSION = "3.1.1",
+  VERSION = kong_meta._VERSION,
 }
 
 

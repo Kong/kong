@@ -1,4 +1,5 @@
 local sandbox = require "kong.tools.sandbox"
+local kong_meta = require "kong.meta"
 
 -- handler file for both the pre-function and post-function plugin
 
@@ -91,7 +92,7 @@ return function(priority)
 
   local ServerlessFunction = {
     PRIORITY = priority,
-    VERSION = "2.1.0",
+    VERSION = kong_meta._VERSION,
   }
 
   function ServerlessFunction:certificate(config)
