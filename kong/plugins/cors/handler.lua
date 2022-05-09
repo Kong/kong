@@ -1,5 +1,6 @@
 local lrucache   = require "resty.lrucache"
 local url        = require "socket.url"
+local kong_meta = require "kong.meta"
 
 
 local kong     = kong
@@ -17,7 +18,7 @@ local CorsHandler = {}
 
 
 CorsHandler.PRIORITY = 2000
-CorsHandler.VERSION = "2.1.1"
+CorsHandler.VERSION = kong_meta._VERSION
 
 
 -- per-plugin cache of normalized origins for runtime comparison

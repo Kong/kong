@@ -1,4 +1,5 @@
 local constants = require "kong.constants"
+local kong_meta = require "kong.meta"
 
 
 local kong = kong
@@ -8,7 +9,7 @@ local error = error
 
 local KeyAuthHandler = {
   PRIORITY = 1003,
-  VERSION = "2.4.0",
+  VERSION = kong_meta._VERSION,
 }
 
 

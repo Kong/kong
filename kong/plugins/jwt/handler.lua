@@ -1,5 +1,6 @@
 local constants = require "kong.constants"
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
+local kong_meta = require "kong.meta"
 
 
 local fmt = string.format
@@ -13,7 +14,7 @@ local re_gmatch = ngx.re.gmatch
 
 local JwtHandler = {
   PRIORITY = 1005,
-  VERSION = "2.2.0",
+  VERSION = kong_meta._VERSION,
 }
 
 

@@ -1,4 +1,5 @@
 local ipmatcher = require "resty.ipmatcher"
+local kong_meta = require "kong.meta"
 
 
 local ngx = ngx
@@ -8,7 +9,7 @@ local error = error
 
 local IpRestrictionHandler = {
   PRIORITY = 990,
-  VERSION = "2.0.0",
+  VERSION = kong_meta._VERSION,
 }
 
 

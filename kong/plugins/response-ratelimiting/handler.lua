@@ -3,6 +3,7 @@
 local access = require "kong.plugins.response-ratelimiting.access"
 local log = require "kong.plugins.response-ratelimiting.log"
 local header_filter = require "kong.plugins.response-ratelimiting.header_filter"
+local kong_meta = require "kong.meta"
 
 
 local ResponseRateLimitingHandler = {}
@@ -27,7 +28,7 @@ end
 
 
 ResponseRateLimitingHandler.PRIORITY = 900
-ResponseRateLimitingHandler.VERSION = "2.1.0"
+ResponseRateLimitingHandler.VERSION = kong_meta._VERSION
 
 
 return ResponseRateLimitingHandler
