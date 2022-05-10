@@ -11,7 +11,6 @@ local version_negotiation = require("kong.clustering.version_negotiation")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
-local math = math
 local xpcall = xpcall
 local ngx = ngx
 local ngx_log = ngx.log
@@ -137,18 +136,25 @@ function _M:open_connection()
   do
     local res, err = c:connect(uri, opts)
     if not res then
-      ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err)
+      ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err, log_suffix)
       return nil, err
     end
   end
+
+  self.log_suffix = log_suffix
 
   return c
 end
 
 function _M:communicate(c)
+  local log_suffix = self.log_suffix
 
   local config_semaphore = semaphore.new(0)
   local peer = wrpc.new_peer(c, get_config_service(), { channel = self.DPCP_CHANNEL_NAME })
+
+  peer.config_semaphore = config_semaphore
+  peer.config_obj = self
+  peer:spawn_threads()
 
   do
     local response_data, err = version_negotiation.call_wrpc_negotiation(peer, self.conf)
@@ -157,10 +163,6 @@ function _M:communicate(c)
       return self:random_delay_call_CP()
     end
   end
-
-  peer.config_semaphore = config_semaphore
-  peer.config_obj = self
-  peer:spawn_threads()
 
   do
     local resp, err = peer:call_wait("ConfigService.ReportMetadata", { plugins = self.plugins_list })
@@ -174,7 +176,7 @@ function _M:communicate(c)
 
     if not resp then
       ngx_log(ngx_ERR, _log_prefix, "Couldn't report basic info to CP: ", err)
-      return random_delay_call_CP()
+      return self:random_delay_call_CP()
       --assert(ngx.timer.at(reconnection_delay, function(premature)
       --  self:communicate(premature)
       --end))
@@ -274,7 +276,7 @@ function _M:communicate(c)
   end
 
   if not exiting() then
-    return random_delay_call_CP()
+    return self:random_delay_call_CP()
     --assert(ngx.timer.at(reconnection_delay, function(premature)
     --  self:communicate(premature)
     --end))

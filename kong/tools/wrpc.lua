@@ -541,7 +541,7 @@ function wrpc_peer:step()
         ngx.log(ngx.NOTICE, "[wRPC] Expired message (", deadline, "<", ngx.now(), ") discarded")
 
       elseif ack ~= 0 and deadline ~= 0 then
-        ngx.log(ngx.NOTICE, "[WRPC] Invalid deadline (", deadline, ") for response")
+        ngx.log(ngx.NOTICE, "[wRPC] Invalid deadline (", deadline, ") for response")
 
       else
         self:handle(payload)

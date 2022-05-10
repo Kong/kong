@@ -61,7 +61,7 @@ end
 local function get_config_service(self)
   if not wrpc_config_service then
     wrpc_config_service = wrpc.new_service()
-    version_negotiation.add_negotiation_service(wrpc_config_service)
+    version_negotiation.add_negotiation_service(wrpc_config_service, self.conf)
     wrpc_config_service:add("kong.services.config.v1.config")
 
     wrpc_config_service:set_handler("ConfigService.PingCP", function(peer, data)

@@ -120,6 +120,10 @@ local function check_node_compatibility(client_node)
     return nil, ("unknown node type %q"):format(client_node.type), CLUSTERING_SYNC_STATUS.UNKNOWN
   end
 
+  if KONG_VERSION == nil then
+    KONG_VERSION = kong.version
+  end
+
   return clustering_utils.check_kong_version_compatibility(KONG_VERSION, client_node.version)
 end
 
@@ -192,9 +196,36 @@ local function register_client(conf, client_node, services_accepted)
 end
 
 
-function _M.add_negotiation_service(service)
+function _M.add_negotiation_service(service, conf)
+  service:add("kong.services.negotiation.v1.negotiation")
   service:set_handler("NegotiationService.NegotiateServices", function(peer, data)
-    require("pl.pretty").dump(peer, data)
+    local body_in = data
+    local ok, err = verify_request(body_in)
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, err)
+      return {message = err}
+    end
+
+    ok, err, body_in.node.sync_status = check_node_compatibility(body_in.node)
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, err)
+      return {message = err}
+    end
+
+    local body_out
+    body_out, err = do_negotiation(body_in)
+    if not body_out then
+      ngx_log(ngx_ERR, _log_prefix, err)
+      return {message = err}
+    end
+
+    ok, err = register_client(conf, body_in.node, body_out.services_accepted)
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, err)
+      return { message = err }
+    end
+
+    return body_out
   end)
 end
 
@@ -356,6 +387,9 @@ end
 
 function _M.call_wrpc_negotiation(peer, conf)
   local response_data, err = peer:call_wait("NegotiationService.NegotiateServices", get_request_body(conf))
+  if response_data[1] then
+    response_data = response_data[1]
+  end
   if not response_data then
     return nil, err
   end
@@ -364,14 +398,14 @@ function _M.call_wrpc_negotiation(peer, conf)
     return nil, response_data.message
   end
 
-  for _, service in ipairs(response_data.services_accepted) do
+  for _, service in ipairs(response_data.services_accepted or {}) do
     ngx_log(ngx.NOTICE, _log_prefix, ("accepted: %q, version %q: %q"):format(
       service.name, service.version, service.message or ""))
 
     _M.set_negotiated_service(service.name, service.version, service.message)
   end
 
-  for _, service in ipairs(response_data.services_rejected) do
+  for _, service in ipairs(response_data.services_rejected or {}) do
     ngx_log(ngx.NOTICE, _log_prefix, ("rejected: %q: %q"):format(service.name, service.message))
     _M.set_negotiated_service(service.name, nil, service.message)
   end

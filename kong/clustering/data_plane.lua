@@ -10,7 +10,6 @@ local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local assert = assert
 local setmetatable = setmetatable
-local math = math
 local pcall = pcall
 local tostring = tostring
 local sub = string.sub
@@ -132,24 +131,27 @@ function _M:open_connection()
 
   local res, err = c:connect(uri, opts)
   if not res then
-    ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err)
+    ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err, log_suffix)
     return nil, err
   end
+
+  self.uri = uri
+  self.log_suffix = log_suffix
 
   return c
 end
 
 
 function _M:communicate(c)
+  local uri, log_suffix = self.uri, self.log_suffix
   -- connection established
   -- first, send out the plugin list to CP so it can make decision on whether
   -- sync will be allowed later
-  local _
-  _, err = c:send_binary(cjson_encode({ type = "basic_info",
+  local _, err = c:send_binary(cjson_encode({ type = "basic_info",
                                         plugins = self.plugins_list, }))
   if err then
     ngx_log(ngx_ERR, _log_prefix, "unable to send basic information to control plane: ", uri,
-                     " err: ", err, " (retrying after ", reconnection_delay, " seconds)", log_suffix)
+                     " err: ", err, ".", log_suffix)
 
     c:close()
     return self:random_delay_call_CP()
