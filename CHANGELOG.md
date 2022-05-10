@@ -419,6 +419,7 @@ In this release we continued our work on better performance:
   Thanks [beldahanit](https://github.com/beldahanit) for reporting the issue!
 - Old `BasePlugin` is deprecated and will be removed in a future version of Kong.
   Porting tips in the [documentation](https://docs.konghq.com/gateway-oss/2.3.x/plugin-development/custom-logic/#porting-from-old-baseplugin-style)
+- The deprecated **BasePlugin** has been removed. [#7961](https://github.com/Kong/kong/pull/7961)
 
 ### Fixes
 
@@ -904,6 +905,7 @@ grpc-gateway plugin first:
 
 #### Plugins
 
+- All custom plugins that are using the deprecated `BasePlugin` class have to remove this inheritance.
 - **LDAP-auth**: The LDAP Authentication schema now includes a default value for the `config.ldap_port` parameter
   that matches the documentation. Before the plugin documentation [Parameters](https://docs.konghq.com/hub/kong-inc/ldap-auth/#parameters)
   section included a reference to a default value for the LDAP port; however, the default value was not included in the plugin schema.

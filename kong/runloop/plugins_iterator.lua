@@ -1,4 +1,3 @@
-local BasePlugin   = require "kong.plugins.base_plugin"
 local workspaces   = require "kong.workspaces"
 local constants    = require "kong.constants"
 local warmup       = require "kong.cache.warmup"
@@ -270,8 +269,7 @@ local function get_next_init_worker(self)
 
   self.i = i
 
-  local phase_handler = plugin.handler.init_worker
-  if phase_handler and phase_handler ~= BasePlugin.init_worker then
+  if plugin.handler.init_worker then
     return plugin
   end
 
@@ -301,8 +299,7 @@ local function get_next(self)
       plugins[0] = n
       plugins[n] = cfg
       plugins[n-1] = plugin
-      if not ctx.buffered_proxying and plugin.handler.response and
-                                       plugin.handler.response ~= BasePlugin.response then
+      if not ctx.buffered_proxying and plugin.handler.response then
         ctx.buffered_proxying = true
       end
     end
@@ -325,10 +322,7 @@ local function get_next_configured_plugin(self)
 
   self.i = i
 
-  local phase = self.phase
-  local phase_handler = plugin.handler[phase]
-
-  if phase_handler and phase_handler ~= BasePlugin[phase] then
+  if plugin.handler[self.phase] then
     return plugin, self.plugins[i]
   end
 
@@ -551,7 +545,8 @@ function PluginsIterator.new(version)
 
       else
         if version == "init" and not cache_full then
-          local ok, err = warmup.single_entity(kong.db.plugins, plugin)
+          local ok
+          ok, err = warmup.single_entity(kong.db.plugins, plugin)
           if not ok then
             if err ~= "no memory" then
               return nil, err
@@ -593,8 +588,7 @@ function PluginsIterator.new(version)
     for _, data in pairs(ws) do
       for phase_name, phase in pairs(data.phases) do
         if data.combos[name] then
-          local phase_handler = plugin.handler[phase_name]
-          if phase_handler and phase_handler ~= BasePlugin[phase_name] then
+          if plugin.handler[phase_name] then
             phase[name] = true
           end
         end
