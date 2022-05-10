@@ -1219,9 +1219,11 @@ for _, strategy in helpers.each_strategy() do
                 }
               }))
 
-              return pcall(function()
-                assert.equal("true", res.headers["Kong-Init-Worker-Called"])
-              end)
+              res:read_body()
+              return res.headers["Kong-Init-Worker-Called"] == "true"
+              --return pcall(function()
+              --  assert.equal("true", res.headers["Kong-Init-Worker-Called"])
+              --end)
             end, 10)
 
             local body = assert.res_status(200, res)
