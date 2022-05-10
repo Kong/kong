@@ -103,12 +103,7 @@ local function send_ping(c, log_suffix)
 end
 
 
-function _M:communicate(premature)
-  if premature then
-    -- worker wants to exit
-    return
-  end
-
+function _M:open_connection()
   local conf = self.conf
 
   -- TODO: pick one random CP
@@ -135,18 +130,17 @@ function _M:communicate(premature)
     end
   end
 
-  local reconnection_delay = math.random(5, 10)
   local res, err = c:connect(uri, opts)
   if not res then
-    ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
-                 " (retrying after ", reconnection_delay, " seconds)", log_suffix)
-
-    assert(ngx.timer.at(reconnection_delay, function(premature)
-      self:communicate(premature)
-    end))
-    return
+    ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err)
+    return nil, err
   end
 
+  return c
+end
+
+
+function _M:communicate(c)
   -- connection established
   -- first, send out the plugin list to CP so it can make decision on whether
   -- sync will be allowed later
@@ -158,10 +152,7 @@ function _M:communicate(premature)
                      " err: ", err, " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
     c:close()
-    assert(ngx.timer.at(reconnection_delay, function(premature)
-      self:communicate(premature)
-    end))
-    return
+    return self:random_delay_call_CP()
   end
 
   local config_semaphore = semaphore.new(0)
@@ -320,9 +311,7 @@ function _M:communicate(premature)
   end
 
   if not exiting() then
-    assert(ngx.timer.at(reconnection_delay, function(premature)
-      self:communicate(premature)
-    end))
+    return self:random_delay_call_CP()
   end
 end
 
