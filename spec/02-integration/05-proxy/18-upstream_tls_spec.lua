@@ -177,8 +177,10 @@ for _, strategy in helpers.each_strategy() do
               }
             })
 
-            local body = res:read_body()
-            return res.status == 200 and body == "it works\n"
+            return pcall(function()
+              local body = assert.res_status(200, res)
+              assert.equals("it works", body)
+            end)
           end, 10)
         end)
 
@@ -200,8 +202,10 @@ for _, strategy in helpers.each_strategy() do
                 ["Host"] = "example.com",
               }
             })
-            body = res:read_body()
-            return res.status == 400
+
+            return pcall(function()
+              body = assert.res_status(400, res)
+            end)
           end, 10)
 
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
@@ -246,10 +250,11 @@ for _, strategy in helpers.each_strategy() do
               }
             })
 
-            body = res:read_body()
-            return res.status == 200
+            return pcall(function()
+              local body = assert.res_status(200, res)
+              assert.equals("it works", body)
+            end)
           end, 10)
-          assert.equals("it works\n", body)
         end)
 
         it("remove client_certificate removes access", function()
@@ -270,8 +275,10 @@ for _, strategy in helpers.each_strategy() do
                 ["Host"] = "example.com",
               }
             })
-            body = res:read_body()
-            return res.status == 400
+
+            return pcall(function()
+              body = assert.res_status(400, res)
+            end)
           end, 10)
 
           assert.matches("400 No required SSL certificate was sent", body, nil, true)
@@ -308,8 +315,10 @@ for _, strategy in helpers.each_strategy() do
               }
             })
 
-            local body = res:read_body()
-            return res.status == 200 and body == "it works\n"
+            return pcall(function()
+              local body = assert.res_status(200, res)
+              assert.equals("it works", body)
+            end)
           end, 10)
         end)
       end)
@@ -347,11 +356,13 @@ for _, strategy in helpers.each_strategy() do
                 ["Host"] = "example.com",
               }
             })
-            body = res:read_body()
-            return res.status == 502
+
+            return pcall(function()
+              body = assert.res_status(502, res)
+            end)
           end, 10)
 
-          assert.equals("An invalid response was received from the upstream server\n", body)
+          assert.equals("An invalid response was received from the upstream server", body)
         end)
       end)
 
@@ -375,11 +386,13 @@ for _, strategy in helpers.each_strategy() do
                 ["Host"] = "example.com",
               }
             })
-            body = res:read_body()
-            return res.status == 200
+
+            return pcall(function()
+              body = assert.res_status(200, res)
+            end)
           end, 10)
 
-          assert.equals("it works\n", body)
+          assert.equals("it works", body)
         end)
       end)
 
@@ -414,11 +427,13 @@ for _, strategy in helpers.each_strategy() do
                 ["Host"] = "example.com",
               }
             })
-            body = res:read_body()
-            return res.status == 502
+
+            return pcall(function()
+              body = assert.res_status(502, res)
+            end)
           end, 10)
 
-          assert.equals("An invalid response was received from the upstream server\n", body)
+          assert.equals("An invalid response was received from the upstream server", body)
         end)
 
         it("request is allowed through if depth limit is sufficient", function()
@@ -439,11 +454,13 @@ for _, strategy in helpers.each_strategy() do
                 ["Host"] = "example.com",
               }
             })
-            body = res:read_body()
-            return res.status == 200
+
+            return pcall(function()
+              body = assert.res_status(200, res)
+            end)
           end, 10)
 
-          assert.equals("it works\n", body)
+          assert.equals("it works", body)
         end)
       end)
     end)
