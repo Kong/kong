@@ -241,7 +241,6 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("accessing protected upstream", function()
-          local body
           helpers.wait_until(function()
             local res = assert(proxy_client:send {
               path    = "/mtls-upstream",
