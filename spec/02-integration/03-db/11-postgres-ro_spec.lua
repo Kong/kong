@@ -54,12 +54,16 @@ for _, strategy in helpers.each_strategy() do
 
         route_id = json.id
 
-        res = assert(proxy_client:send({
-          method  = "GET",
-          path    = "/",
-        }))
+        helpers.wait_until(function()
+          res = assert(proxy_client:send({
+            method  = "GET",
+            path    = "/",
+          }))
 
-        assert.res_status(200, res)
+          return pcall(function()
+            assert.res_status(200, res)
+          end)
+        end, 10)
       end)
 
       it("cache invalidation works on config change", function()
@@ -74,9 +78,10 @@ for _, strategy in helpers.each_strategy() do
             method  = "GET",
             path    = "/",
           }))
-          local _,_ = res:read_body()
 
-          return res.status == 404
+          return pcall(function()
+            assert.res_status(404, res)
+          end)
         end, 10)
       end)
     end)
