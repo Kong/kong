@@ -407,7 +407,7 @@ function wrpc_peer:handle(payload)
     self:send_payload({
       mtype = "MESSAGE_TYPE_ERROR",
       error = {
-        etype = "ERROR_TYPE_INVALID_SERVICE",
+        etype = "ERROR_TYPE_GENERIC",
         description = "Invalid service (or rpc)",
       },
       srvc_id = payload.svc_id,

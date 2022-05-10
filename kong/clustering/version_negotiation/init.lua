@@ -191,6 +191,13 @@ local function register_client(conf, client_node, services_accepted)
   return true
 end
 
+
+function _M.add_negotiation_service(service)
+  service:set_handler("NegotiationService.NegotiateServices", function(peer, data)
+    require("pl.pretty").dump(peer, data)
+  end)
+end
+
 --- Handles a version negotiation request (CP side).
 --- Performs mTLS verification (as configured),
 --- validates request and Kong version compatibility,
@@ -247,11 +254,8 @@ function _M.serve_version_handshake(conf, cert_digest)
   return response(200, body_out)
 end
 
---- Performs version negotiation request (DP side).
---- Stores the responses to be queried via get_negotiated_service(name)
---- Returns the DP response as a Lua table.
-function _M.request_version_handshake(conf, cert, cert_key)
-  local body = cjson.encode{
+local function get_request_body(conf)
+  local body = {
     node = {
       id = kong.node.get_id(),
       type = "KONG",
@@ -260,6 +264,38 @@ function _M.request_version_handshake(conf, cert, cert_key)
     },
     services_requested = require "kong.clustering.version_negotiation.services_requested",
   }
+
+  if conf.disable_service_version then
+    for _, dsv in ipairs(conf.disable_service_version) do
+      local srv, vers = dsv:match("^([^.]+)%.([^.]+)$")
+      if srv and vers then
+        for _, req_srv in ipairs(body.services_requested) do
+          if req_srv.name == srv then
+            for i = #req_srv.versions, 1, -1 do
+              if req_srv.versions[i] == vers then
+                table.remove(req_srv.versions, i)
+              end
+            end
+          end
+        end
+      else
+        for i = #body.services_requested, 1, -1 do
+          if body.services_requested[i].name == dsv then
+            table.remove(body.services_requested, i)
+          end
+        end
+      end
+    end
+  end
+
+  return body
+end
+
+--- Performs version negotiation request (DP side).
+--- Stores the responses to be queried via get_negotiated_service(name)
+--- Returns the DP response as a Lua table.
+function _M.request_version_handshake(conf, cert, cert_key)
+  local body = cjson.encode(get_request_body(conf))
 
   local params = {
     scheme = "https",
@@ -305,6 +341,32 @@ function _M.request_version_handshake(conf, cert, cert_key)
   for _, service in ipairs(response_data.services_accepted) do
     ngx_log(ngx.NOTICE, _log_prefix, ("accepted: %q, version %q: %q"):format(
         service.name, service.version, service.message or ""))
+
+    _M.set_negotiated_service(service.name, service.version, service.message)
+  end
+
+  for _, service in ipairs(response_data.services_rejected) do
+    ngx_log(ngx.NOTICE, _log_prefix, ("rejected: %q: %q"):format(service.name, service.message))
+    _M.set_negotiated_service(service.name, nil, service.message)
+  end
+
+  return response_data, nil
+end
+
+
+function _M.call_wrpc_negotiation(peer, conf)
+  local response_data, err = peer:call_wait("NegotiationService.NegotiateServices", get_request_body(conf))
+  if not response_data then
+    return nil, err
+  end
+
+  if response_data.message and not response_data.node then
+    return nil, response_data.message
+  end
+
+  for _, service in ipairs(response_data.services_accepted) do
+    ngx_log(ngx.NOTICE, _log_prefix, ("accepted: %q, version %q: %q"):format(
+      service.name, service.version, service.message or ""))
 
     _M.set_negotiated_service(service.name, service.version, service.message)
   end
