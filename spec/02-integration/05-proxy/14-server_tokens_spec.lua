@@ -478,8 +478,10 @@ describe("headers [#" .. strategy .. "]", function()
                 host  = "error-rewrite.test",
               }
             })
-            local _,_ = res:read_body()
-            return res.status == 500
+
+            return pcall(function()
+              assert.res_status(500, res)
+            end)
           end, 10)
 
           db.plugins:delete({ id = uuid })
