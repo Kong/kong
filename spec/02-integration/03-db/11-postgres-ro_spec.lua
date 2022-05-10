@@ -137,7 +137,9 @@ for _, strategy in helpers.each_strategy() do
             path    = "/",
           }))
 
-          return res.status == 404
+          return pcall(function()
+            assert.res_status(404, res)
+          end)
         end, 10)
         ngx.sleep(0.1)   -- wait log
         assert.logfile().has.line("get_updated_router(): could not rebuild router: " ..
