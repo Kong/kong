@@ -280,8 +280,9 @@ for _, strategy in helpers.each_strategy() do
               Host = "serviceless-route-http.test",
             },
           }))
-          body = res:read_body()
-          return res.status == 503
+          return pcall(function()
+            body = assert.response(res).has_status(503)
+          end)
         end, 10)
         body = assert.response(res).has_status(503)
         local json = cjson.decode(body)
@@ -1481,11 +1482,10 @@ for _, strategy in helpers.each_strategy() do
               ["kong-debug"] = 1,
             }
           })
-          res:read_body()
-          return res.status == 200
+          return pcall(function()
+            assert.res_status(200, res)
+          end)
         end, 10)
-
-        assert.res_status(200, res)
 
         assert.equal(routes[1].id,           res.headers["kong-route-id"])
         assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
@@ -1639,11 +1639,11 @@ for _, strategy in helpers.each_strategy() do
               ["kong-debug"] = 1,
             }
           })
-          res:read_body()
-          return res.status == 200
+          return pcall(function()
+            assert.res_status(200, res)
+          end)
         end, 10)
 
-        assert.res_status(200, res)
         assert.equal(routes[1].id,           res.headers["kong-route-id"])
         assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[1].service.name, res.headers["kong-service-name"])
