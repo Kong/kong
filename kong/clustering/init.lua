@@ -216,6 +216,45 @@ function _M:request_version_negotiation()
   end
 end
 
+local function call_control_plane(premature, self)
+  if premature then
+    return
+  end
+
+  local wsjs_dp = require "kong.clustering.data_plane"
+  local wrpc_dp = require "kong.clustering.wrpc_data_plane"
+
+  ngx_log(ngx_DEBUG, _log_prefix, "will try wrpc first")
+
+  local implementation = wrpc_dp
+  local ws_conn, err = implementation.open_connection(self)
+  ngx_log(ngx_DEBUG, _log_prefix, "got conn: ", tostring(ws_conn), ", err: ", tostring(err))
+
+  -- TODO: find how to detect a 404 response
+  if not ws_conn and err == "404" then
+    ngx_log(ngx_DEBUG, _log_prefix, "retrying on wsjs")
+    implementation = wsjs_dp
+    ws_conn, err = implementation.open_connection(self)
+    ngx_log(ngx_DEBUG, _log_prefix, "got conn: ", tostring(ws_conn), ", err: ", tostring(err))
+  end
+
+  if not ws_conn then
+    ngx_log(ngx_DEBUG, _log_prefix, "ugh retrying from the start")
+    return self:random_delay_call_CP()
+  end
+
+  self.child = implementation.new(self)
+  clustering_utils.load_config_cache(self.child)
+  self.child:communicate(ws_conn)
+end
+
+function _M:random_delay_call_CP()
+  local reconnection_delay = math.random(5, 10)
+  ngx_log(ngx_ERR, _log_prefix, "Retrying after ", reconnection_delay, " seconds)")
+
+  assert(ngx.timer.at(reconnection_delay, call_control_plane, self))
+end
+
 
 function _M:update_config(config_table, config_hash, update_cache, hashes)
   assert(type(config_table) == "table")
@@ -273,10 +312,6 @@ function _M:handle_wrpc_websocket()
   return self.wrpc_handler:handle_cp_websocket()
 end
 
-function _M:serve_version_handshake()
-  return version_negotiation.serve_version_handshake(self.conf, self.cert_digest)
-end
-
 function _M:init_worker()
   self.plugins_list = assert(kong.db.plugins:get_handlers())
   sort(self.plugins_list, function(a, b)
@@ -294,31 +329,7 @@ function _M:init_worker()
   end
 
   if role == "data_plane" and ngx.worker.id() == 0 then
-    assert(ngx.timer.at(0, function(premature)
-      if premature then
-        return
-      end
-
-      self:request_version_negotiation()
-
-      local config_proto, msg = version_negotiation.get_negotiated_service("config")
-      if not config_proto and msg then
-        ngx_log(ngx_ERR, _log_prefix, "error reading negotiated \"config\" service: ", msg)
-      end
-
-      ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
-      if config_proto == "v1" then
-        self.child = require "kong.clustering.wrpc_data_plane".new(self)
-
-      elseif config_proto == "v0" or config_proto == nil then
-        self.child = require "kong.clustering.data_plane".new(self)
-      end
-
-      if self.child then
-        clustering_utils.load_config_cache(self.child)
-        self.child:communicate()
-      end
-    end))
+    assert(ngx.timer.at(0, call_control_plane, self))
   end
 end
 
