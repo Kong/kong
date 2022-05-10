@@ -319,7 +319,9 @@ for _, consistency in ipairs(bu.consistencies) do
 
         helpers.wait_until(function()
           local _, _, status = bu.client_requests(1, api_host)
-          return status == 503
+          return pcall(function()
+            assert.same(503, status)
+          end)
         end, 10)
       end)
 
@@ -378,7 +380,9 @@ for _, consistency in ipairs(bu.consistencies) do
         -- Go hit it with a request
         helpers.wait_until(function()
           local _, _, status = bu.client_requests(1, api_host)
-          return status == 503
+          return pcall(function()
+            assert.same(503, status)
+          end)
         end, 10)
       end)
 
