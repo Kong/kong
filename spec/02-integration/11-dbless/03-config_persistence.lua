@@ -85,7 +85,7 @@ describe("dbless persistence with a declarative config #off", function()
         database   = "off",
         declarative_config = yaml_file,
     }))
-  
+
     admin_client = assert(helpers.admin_client())
     proxy_client = assert(helpers.proxy_client())
 
@@ -105,10 +105,10 @@ describe("dbless persistence with a declarative config #off", function()
     assert.res_status(201, res)
     res = assert(proxy_client:get("/500", { headers = { host = "example1.dev" } }))
     assert.res_status(401, res)
-    
+
     proxy_client:close()
   end)
-    
+
   after_each(function()
     if admin_client then
       admin_client:close()
@@ -118,7 +118,7 @@ describe("dbless persistence with a declarative config #off", function()
     end
     helpers.stop_kong(nil, true)
   end)
-  
+
   lazy_teardown(function()
     os.remove(yaml_file)
   end)
@@ -141,7 +141,7 @@ describe("dbless persistence with a declarative config #off", function()
       database   = "off",
       declarative_config = yaml_file,
     }))
-    
+
     local res
     helpers.wait_until(function()
       proxy_client = assert(helpers.proxy_client())

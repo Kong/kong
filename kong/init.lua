@@ -686,7 +686,11 @@ function Kong.init_worker()
       -- if there is no declarative config set and a config is present in LMDB,
       -- just build the router and plugins iterator
       ngx_log(ngx_INFO, "found persisted lmdb config, loading...")
-      declarative_init_build()
+      local ok, err = declarative_init_build()
+      if not ok then
+        stash_init_worker_error("failed to initialize declarative config: " .. err)
+        return
+      end
     elseif declarative_entities then
       ok, err = load_declarative_config(kong.configuration,
                                         declarative_entities,
@@ -699,7 +703,11 @@ function Kong.init_worker()
     else
       -- stream does not need to load declarative config again, just build
       -- the router and plugins iterator
-      declarative_init_build()
+      local ok, err = declarative_init_build()
+      if not ok then
+        stash_init_worker_error("failed to initialize declarative config: " .. err)
+        return
+      end
     end
   end
 
