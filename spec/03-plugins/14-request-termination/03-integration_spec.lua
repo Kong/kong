@@ -75,8 +75,9 @@ for _, strategy in helpers.each_strategy() do
             ["apikey"] = "kong",
           },
         })
-        local _,_ = res:read_body()
-        return res.status == 503
+        return pcall(function()
+          assert.response(res).has.status(503)
+        end)
       end, 10)
       local body = assert.response(res).has.jsonbody()
       assert.same({ message = "Service unavailable" }, body)
