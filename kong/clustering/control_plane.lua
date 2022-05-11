@@ -266,7 +266,7 @@ function _M:push_config()
 
   ngx_update_time()
   local duration = ngx_now() - start
-  ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " clients in " .. duration .. "s")
+  ngx_log(ngx_DEBUG, _log_prefix, "config pushed to ", n, " data-plane nodes in " .. duration .. " seconds")
 end
 
 
