@@ -904,9 +904,8 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
-        local res_1
         helpers.wait_until(function()
-          res_1 = assert(proxy_client_1:send {
+          local res_1 = assert(proxy_client_1:send {
             method  = "GET",
             path    = "/status/200",
             headers = {
@@ -946,9 +945,8 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
-        local res_1
         helpers.wait_until(function()
-          res_1 = assert(proxy_client_1:send {
+          local res_1 = assert(proxy_client_1:send {
             method  = "GET",
             path    = "/status/200",
             headers = {
@@ -980,9 +978,8 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
-        local res_1
         helpers.wait_until(function()
-          res_1 = assert(proxy_client_1:send {
+          local res_1 = assert(proxy_client_1:send {
             method  = "GET",
             path    = "/status/200",
             headers = {
@@ -1052,9 +1049,8 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
-        local res_1
         helpers.wait_until(function()
-          res_1 = assert(proxy_client_1:send {
+          local res_1 = assert(proxy_client_1:send {
             method  = "GET",
             path    = "/status/200",
             headers = {
@@ -1096,9 +1092,8 @@ for _, strategy in helpers.each_strategy() do
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
-        local res_1
         helpers.wait_until(function()
-          res_1 = assert(proxy_client_1:send {
+          local res_1 = assert(proxy_client_1:send {
             method  = "GET",
             path    = "/status/200",
             headers = {
