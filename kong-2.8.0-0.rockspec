@@ -234,6 +234,7 @@ build = {
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
+    ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -296,6 +297,8 @@ build = {
 
     ["kong.plugins.http-log.handler"] = "kong/plugins/http-log/handler.lua",
     ["kong.plugins.http-log.schema"] = "kong/plugins/http-log/schema.lua",
+    ["kong.plugins.http-log.migrations"] = "kong/plugins/http-log/migrations/init.lua",
+    ["kong.plugins.http-log.migrations.001_280_to_300"] = "kong/plugins/http-log/migrations/001_280_to_300.lua",
 
     ["kong.plugins.file-log.handler"] = "kong/plugins/file-log/handler.lua",
     ["kong.plugins.file-log.schema"] = "kong/plugins/file-log/schema.lua",

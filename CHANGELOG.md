@@ -87,6 +87,12 @@
 - The PDK is no longer versioned
   [#8585](https://github.com/Kong/kong/pull/8585)
 
+#### Plugins
+
+- The HTTP-log plugin `headers` field now only takes a single string per header name,
+  where it previously took an array of values
+  [#6992](https://github.com/Kong/kong/pull/6992)
+
 ### Deprecations
 
 - The `go_pluginserver_exe` and `go_plugins_dir` directives are no longer supported.
