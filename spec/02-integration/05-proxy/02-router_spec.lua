@@ -284,9 +284,8 @@ for _, strategy in helpers.each_strategy() do
             body = assert.response(res).has_status(503)
           end)
         end, 10)
-        body = assert.response(res).has_status(503)
-        local json = cjson.decode(body)
 
+        local json = cjson.decode(body)
         assert.equal("no Service found with those values", json.message)
 
         local res = assert(proxy_ssl_client:get("/", {

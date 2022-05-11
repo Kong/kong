@@ -168,8 +168,9 @@ for _, strategy in helpers.each_strategy() do
                 host = "example.com",
               }
             })
-            local _,_ = res:read_body()
-            return res.status == 200
+            return pcall(function()
+              assert.res_status(200, res)
+            end)
           end, 10)
         end
 
@@ -210,8 +211,9 @@ for _, strategy in helpers.each_strategy() do
               host = "updated-example.com",
             }
           })
-          local _,_ = res_1:read_body()
-          return res_1.status == 200
+          return pcall(function()
+            assert.res_status(200, res_1)
+          end)
         end, 10)
 
         -- TEST: ensure old host value does not map anywhere
@@ -264,8 +266,9 @@ for _, strategy in helpers.each_strategy() do
               host = "updated-example.com",
             }
           })
-          local _,_ = res_1:read_body()
-          return res_1.status == 404
+          return pcall(function()
+            assert.res_status(404, res_1)
+          end)
         end, 10)
 
         assert_proxy_2_wait({
@@ -312,8 +315,9 @@ for _, strategy in helpers.each_strategy() do
               host = "service.com",
             }
           })
-          local _,_ = res_1:read_body()
-          return res_1.status == 200
+          return pcall(function()
+            assert.res_status(200, res_1)
+          end)
         end, 10)
 
         assert_proxy_2_wait({
@@ -349,8 +353,9 @@ for _, strategy in helpers.each_strategy() do
               host = "service.com",
             }
           })
-          local _,_ = res_1:read_body()
-          return res_1.status == 418
+          return pcall(function()
+            assert.res_status(418, res_1)
+          end)
         end, 10)
 
         assert_proxy_2_wait({
@@ -856,8 +861,9 @@ for _, strategy in helpers.each_strategy() do
               host = "dummy.com",
             }
           })
-          local _,_ = res_1:read_body()
-          return res_1.status == 200
+          return pcall(function()
+            assert.res_status(200, res_1)
+          end)
         end, 10)
 
         assert.is_nil(res_1.headers["Dummy-Plugin"])
@@ -907,10 +913,11 @@ for _, strategy in helpers.each_strategy() do
               host = "dummy.com",
             }
           })
-          local _,_ = res_1:read_body()
-          return res_1.status == 200 and res_1.headers["Dummy-Plugin"] == "1"
+          return pcall(function()
+            assert.res_status(200, res_1)
+            assert.equal("1", res_1.headers["Dummy-Plugin"])
+          end)
         end, 10)
-        assert.equal("1", res_1.headers["Dummy-Plugin"])
 
         assert_proxy_2_wait({
           method  = "GET",
@@ -948,10 +955,11 @@ for _, strategy in helpers.each_strategy() do
               host = "dummy.com",
             }
           })
-          local _,_ = res_1:read_body()
-          return res_1.status == 200
+          return pcall(function()
+            assert.res_status(200, res_1)
+            assert.equal("2", res_1.headers["Dummy-Plugin"])
+          end)
         end, 10)
-        assert.equal("2", res_1.headers["Dummy-Plugin"])
 
         assert_proxy_2_wait({
           method  = "GET",
@@ -981,10 +989,11 @@ for _, strategy in helpers.each_strategy() do
               host = "dummy.com",
             }
           })
-          local _,_ = res_1:read_body()
-          return res_1.status == 200
+          return pcall(function()
+            assert.res_status(200, res_1)
+            assert.is_nil(res_1.headers["Dummy-Plugin"])
+          end)
         end, 10)
-        assert.is_nil(res_1.headers["Dummy-Plugin"])
 
         assert_proxy_2_wait({
           method  = "GET",
@@ -1052,10 +1061,11 @@ for _, strategy in helpers.each_strategy() do
               host = "dummy.com",
             }
           })
-          local _,_ = res_1:read_body()
-          return res_1.status == 200 and res_1.headers["Dummy-Plugin"] == "1"
+          return pcall(function()
+            assert.res_status(200, res_1)
+            assert.equal("1", res_1.headers["Dummy-Plugin"])
+          end)
         end, 10)
-        assert.equal("1", res_1.headers["Dummy-Plugin"])
 
         assert_proxy_2_wait({
           method  = "GET",
@@ -1095,10 +1105,11 @@ for _, strategy in helpers.each_strategy() do
               host = "dummy.com",
             }
           })
-          local _,_ = res_1:read_body()
-          return res_1.status == 200
+          return pcall(function()
+            assert.res_status(200, res_1)
+            assert.is_nil(res_1.headers["Dummy-Plugin"])
+          end)
         end, 10)
-        assert.is_nil(res_1.headers["Dummy-Plugin"])
 
         assert_proxy_2_wait({
           method  = "GET",
@@ -1237,8 +1248,9 @@ for _, strategy in helpers.each_strategy() do
               host = "propagation.test",
             }
           })
-          local _,_ = res_1:read_body()
-          return res_1.status == 200
+          return pcall(function()
+            assert.res_status(200, res_1)
+          end)
         end, 10)
 
         assert_proxy_2_wait({
