@@ -1211,7 +1211,7 @@ for _, strategy in helpers.each_strategy() do
 
             assert.res_status(201, res)
 
-            local res
+            local res, body
             helpers.wait_until(function()
               res = assert(proxy_client:get("/status/400", {
                 headers = {
@@ -1219,14 +1219,12 @@ for _, strategy in helpers.each_strategy() do
                 }
               }))
 
-              res:read_body()
-              return res.headers["Kong-Init-Worker-Called"] == "true"
-              --return pcall(function()
-              --  assert.equal("true", res.headers["Kong-Init-Worker-Called"])
-              --end)
+              return pcall(function()
+                body = assert.res_status(200, res)
+                assert.equal("true", res.headers["Kong-Init-Worker-Called"])
+              end)
             end, 10)
 
-            local body = assert.res_status(200, res)
             local json = cjson.decode(body)
             assert.same({
               status  = 200,
