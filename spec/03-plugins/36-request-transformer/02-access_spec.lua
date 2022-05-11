@@ -1453,7 +1453,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
             host = "test_append_hash.test"
           }
         })
-        local body,_ = r:read_body()
+        local body = r:read_body()
         return string.find(body, "h1", 1, true)
       end, 10)
       assert.response(r).has.status(200)
