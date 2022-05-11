@@ -227,10 +227,9 @@ local function call_control_plane(premature, self)
   ngx_log(ngx_DEBUG, _log_prefix, "Attempting wRPC connection.")
 
   local implementation = wrpc_dp
-  local ws_conn, err = implementation.open_connection(self)
-  ngx_log(ngx_DEBUG, _log_prefix, "got conn: ", tostring(ws_conn), ", err: ", tostring(err))
+  local ws_conn, err, reason = implementation.open_connection(self)
+  ngx_log(ngx_DEBUG, _log_prefix, "got conn: ", tostring(ws_conn), ", err: ", tostring(err), " / ", tostring(reason))
 
-  -- TODO: find how to detect a 404 response
   if not ws_conn and err == "404" then
     ngx_log(ngx_DEBUG, _log_prefix, "wRPC not available, falling back to vanilla websocket")
     implementation = wsjs_dp

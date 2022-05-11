@@ -102,12 +102,35 @@ local function get_config_service()
   return wrpc_config_service
 end
 
+local function peek_until(sock, ...)
+  local reader = sock:old_receiveuntil(...)
+
+  return function(...)
+    local data, err, partial = reader(...)
+    sock.peek_last_read = data
+    return data, err, partial
+  end
+end
+
+local function peek_sock(sock)
+  sock.old_receiveuntil = sock.receiveuntil
+  sock.receiveuntil = peek_until
+end
+
+local function unpeek_sock(sock)
+  sock.receiveuntil = sock.old_receiveuntil or sock.receiveuntil
+  sock.old_receiveuntil = nil
+  local last_read = sock.peek_last_read
+  sock.peek_last_read = nil
+  return last_read
+end
+
 function _M:open_connection()
   local conf = self.conf
 
   -- TODO: pick one random CP
   local address = conf.cluster_control_plane
-  local log_suffix = " [" .. address .. "]"
+  self.log_suffix = " [" .. address .. "]"
 
   local c = assert(ws_client:new({
     timeout = constants.CLUSTERING_TIMEOUT,
@@ -134,14 +157,20 @@ function _M:open_connection()
   end
 
   do
+    peek_sock(c.sock)
     local res, err = c:connect(uri, opts)
     if not res then
-      ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err, log_suffix)
+      ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err, self.log_suffix)
       return nil, err
     end
+    local header = unpeek_sock(c.sock)
+    if type(header) == "string" then
+      local rescode, restext = header:match("^%s*HTTP/1%.1%s+(%d+)%s+(.*)\r\n")
+      if rescode and rescode:match("^[45]") then
+        return nil, rescode, restext
+      end
+    end
   end
-
-  self.log_suffix = log_suffix
 
   return c
 end
