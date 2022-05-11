@@ -152,14 +152,14 @@ for _, strategy in helpers.each_strategy() do
 
       -- we do not set up servers, since we want the connection to get refused
       -- Go hit the api with requests
-      local oks, fails, last_status
       helpers.wait_until(function()
-        oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
-        return last_status == 503
+        local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
+        return pcall(function()
+          assert.same(0, oks)
+          assert.same(bu.SLOTS, fails)
+          assert.same(503, last_status)
+        end)
       end, 10)
-      assert.same(0, oks)
-      assert.same(bu.SLOTS, fails)
-      assert.same(503, last_status)
 
       local health = bu.get_upstream_health(upstream_name)
       assert.is.table(health)
@@ -221,16 +221,14 @@ for _, strategy in helpers.each_strategy() do
 
       -- we do not set up servers, since we want the connection to get refused
       -- Go hit the api with requests, 1x round the balancer
-      local oks, fails, last_status
       helpers.wait_until(function()
-        oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
-        return last_status == 503
-        --return bu.SLOTS == fails
+        local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
+        return pcall(function()
+          assert.same(0, oks)
+          assert.same(bu.SLOTS, fails)
+          assert.same(503, last_status)
+        end)
       end, 10)
-      --local oks, fails, last_status = bu.client_requests(bu.SLOTS, api_host)
-      assert.same(0, oks)
-      assert.same(bu.SLOTS, fails)
-      assert.same(503, last_status)
 
       local health = bu.get_upstream_health(upstream_name)
       assert.is.table(health)
