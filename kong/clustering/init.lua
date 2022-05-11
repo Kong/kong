@@ -224,7 +224,7 @@ local function call_control_plane(premature, self)
   local wsjs_dp = require "kong.clustering.data_plane"
   local wrpc_dp = require "kong.clustering.wrpc_data_plane"
 
-  ngx_log(ngx_DEBUG, _log_prefix, "will try wrpc first")
+  ngx_log(ngx_DEBUG, _log_prefix, "Attempting wRPC connection.")
 
   local implementation = wrpc_dp
   local ws_conn, err = implementation.open_connection(self)
@@ -232,14 +232,14 @@ local function call_control_plane(premature, self)
 
   -- TODO: find how to detect a 404 response
   if not ws_conn and err == "404" then
-    ngx_log(ngx_DEBUG, _log_prefix, "retrying on wsjs")
+    ngx_log(ngx_DEBUG, _log_prefix, "wRPC not available, falling back to vanilla websocket")
     implementation = wsjs_dp
     ws_conn, err = implementation.open_connection(self)
     ngx_log(ngx_DEBUG, _log_prefix, "got conn: ", tostring(ws_conn), ", err: ", tostring(err))
   end
 
   if not ws_conn then
-    ngx_log(ngx_DEBUG, _log_prefix, "ugh retrying from the start")
+    ngx_log(ngx_DEBUG, _log_prefix, "Failed to connect to CP node.")
     return self:random_delay_call_CP()
   end
 
