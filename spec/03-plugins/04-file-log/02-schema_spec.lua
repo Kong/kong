@@ -2,7 +2,7 @@ local Schema = require("kong.db.schema")
 
 local IMMUTABLE_PATH = "/tmp/"
 
-local ERR_MSG_INVLID_FILENAME =
+local ERR_MSG_INVALID_FILENAME =
   string.format("not a valid file name, "
               .. "or the prefix is not [%s], "
               .. "or contains `..`, "
@@ -35,7 +35,7 @@ insulate("Plugin: file-log (schema)", function()
       output = nil,
       error = {
         config = {
-          path = ERR_MSG_INVLID_FILENAME,
+          path = ERR_MSG_INVALID_FILENAME,
         },
       },
     },
@@ -49,7 +49,7 @@ insulate("Plugin: file-log (schema)", function()
       output = nil,
       error = {
         config = {
-          path = ERR_MSG_INVLID_FILENAME,
+          path = ERR_MSG_INVALID_FILENAME,
         },
       },
     },
@@ -63,7 +63,7 @@ insulate("Plugin: file-log (schema)", function()
       output = nil,
       error = {
         config = {
-          path = ERR_MSG_INVLID_FILENAME,
+          path = ERR_MSG_INVALID_FILENAME,
         },
       },
     },
