@@ -36,7 +36,7 @@ describe("rockspec/meta", function()
 
     it("has a _VERSION field", function()
       assert.is_string(meta._VERSION)
-      assert.matches("%d+%.%d+%.%d+", meta._VERSION)
+      assert.matches("%d+%.%d+%.%d+", meta.version)
     end)
 
     it("has a _VERSION_TABLE field", function()

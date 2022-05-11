@@ -10,7 +10,7 @@ local pl_utils   = require "pl.utils"
 local pl_path    = require "pl.path"
 
 local log        = require "kong.cmd.utils.log"
-local meta       = require "kong.enterprise_edition.meta"
+local meta       = require "kong.meta"
 local constants  = require "kong.constants"
 local workspaces = require "kong.workspaces"
 local feature_flags   = require "kong.enterprise_edition.feature_flags"
@@ -374,7 +374,7 @@ function _M.prepare_admin(kong_config)
     RBAC_ENFORCED = prepare_variable(rbac_enforced),
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
     RBAC_USER_HEADER = prepare_variable(kong_config.admin_gui_auth_header),
-    KONG_VERSION = prepare_variable(meta.versions.package),
+    KONG_VERSION = prepare_variable(meta.version),
     FEATURE_FLAGS = prepare_variable(kong_config.admin_gui_flags),
     PORTAL = prepare_variable(kong_config.portal),
     PORTAL_GUI_PROTOCOL = prepare_variable(kong_config.portal_gui_protocol),
@@ -425,7 +425,7 @@ function _M.prepare_portal(self, kong_config)
     PORTAL_DEVELOPER_META_FIELDS = prepare_variable(portal_developer_meta_fields),
     RBAC_ENFORCED = prepare_variable(rbac_enforced),
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
-    KONG_VERSION = prepare_variable(meta.versions.package),
+    KONG_VERSION = prepare_variable(meta.version),
     WORKSPACE = prepare_variable(workspace.name)
   }
 end

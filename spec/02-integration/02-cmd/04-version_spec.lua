@@ -7,10 +7,10 @@
 
 local pl_stringx = require "pl.stringx"
 local helpers = require "spec.helpers"
-local ee_meta = require "kong.enterprise_edition.meta"
+local meta = require "kong.meta"
 
 describe("kong version", function()
-  local package = tostring(ee_meta.versions.package)
+  local package = tostring(meta.version)
 
   it("outputs Kong version", function()
     local _, _, stdout = assert(helpers.kong_exec("version"))

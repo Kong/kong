@@ -9,7 +9,7 @@ local helpers        = require "spec.helpers"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader    = require "kong.conf_loader"
 local ee             = require "kong.enterprise_edition"
-local meta           = require "kong.enterprise_edition.meta"
+local meta           = require "kong.meta"
 local workspaces = require "kong.workspaces"
 
 local exists = helpers.path.exists
@@ -161,7 +161,7 @@ describe("portal_gui", function()
         PORTAL_DEVELOPER_META_FIELDS = "[]",
         RBAC_ENFORCED = 'false',
         RBAC_HEADER = "Kong-Admin-Token",
-        KONG_VERSION = tostring(meta.versions.package),
+        KONG_VERSION = tostring(meta.version),
         WORKSPACE = 'default',
       }, index_conf)
     end)
@@ -187,7 +187,7 @@ describe("portal_gui", function()
         PORTAL_DEVELOPER_META_FIELDS = "[]",
         RBAC_ENFORCED = 'false',
         RBAC_HEADER = "Kong-Admin-Token",
-        KONG_VERSION = tostring(meta.versions.package),
+        KONG_VERSION = tostring(meta.version),
         WORKSPACE = 'gruce'
       }, index_conf)
     end)
@@ -218,7 +218,7 @@ describe("portal_gui", function()
         PORTAL_DEVELOPER_META_FIELDS = '[{"dog": "cat"}]',
         RBAC_ENFORCED = 'false',
         RBAC_HEADER = "Kong-Admin-Token",
-        KONG_VERSION = tostring(meta.versions.package),
+        KONG_VERSION = tostring(meta.version),
         WORKSPACE = 'default'
       }, index_conf)
     end)
