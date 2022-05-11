@@ -1071,15 +1071,14 @@ for _, strategy in helpers.each_strategy() do
               bu.end_testcase_setup(strategy, bp)
 
               -- run request: fails with 401, but doesn't hit the 1-error threshold
-              local oks, fails, last_status
               helpers.wait_until(function()
-                oks, fails, last_status = bu.client_requests(1, api_host)
-                return last_status == 401
+                local oks, fails, last_status = bu.client_requests(1, api_host)
+                return pcall(function()
+                  assert.same(0, oks)
+                  assert.same(1, fails)
+                  assert.same(401, last_status)
+                end)
               end, 10)
-              --local oks, fails, last_status = bu.client_requests(1, api_host)
-              assert.same(0, oks)
-              assert.same(1, fails)
-              assert.same(401, last_status)
 
               -- start servers, they are unaffected by the failure above
               local server1 = https_server.new(port1, localhost)
