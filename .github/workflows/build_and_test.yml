@@ -109,6 +109,11 @@ jobs:
           eval `luarocks path`
           luacheck -q .
 
+    - name: Validate rockspec file
+      run: |
+          eval `luarocks path`
+          scripts/validate-rockspec
+
     - name: Unit tests
       run: |
           eval `luarocks path`
@@ -318,7 +323,7 @@ jobs:
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
-    
+
     - name: Enable SSL for Redis
       run: |
           docker cp ${{ github.workspace }} kong_redis:/workspace
