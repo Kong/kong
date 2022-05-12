@@ -722,14 +722,12 @@ describe("Admin API: #" .. strategy, function()
         client = assert(helpers.admin_client())
 
         -- create the target
-        local res = assert(client:send {
-          method = "PUT",
-          path = "/upstreams/my-upstream/targets",
+        local res = assert(client:post("/upstreams/my-upstream/targets", {
           body = {
             target = "127.0.0.1:8000",
           },
           headers = { ["Content-Type"] = "application/json" }
-        })
+        }))
 
         assert.response(res).has.status(201)
 
@@ -790,14 +788,12 @@ describe("Admin API: #" .. strategy, function()
         client = assert(helpers.admin_client())
 
         -- create the target
-        local res = assert(client:send {
-          method = "PUT",
-          path = "/upstreams/my-upstream/targets",
+        local res = assert(client:post("/upstreams/my-upstream/targets", {
           body = {
             target = "127.0.0.1:8000",
           },
           headers = { ["Content-Type"] = "application/json" }
-        })
+        }))
 
         assert.response(res).has.status(201)
 
