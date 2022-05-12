@@ -105,6 +105,9 @@
   `kong.response.getRawBody`, `kong.service.response.getRawBody` and Python's `kong.request.get_raw_body`,
   `kong.response.get_raw_body`, `kong.service.response.get_raw_body` respectively.
   [#8623](https://github.com/Kong/kong/pull/8623)
+- Datadog will use the `KONG_DATADOG_AGENT_HOST` or `KONG_DATADOG_AGENT_PORT` environment variable if set
+  rather then the repsected `config.*` setting from the configurations. 
+  [#8773](https://github.com/Kong/kong/pull/8773)
 
 #### Configuration
 
