@@ -1,11 +1,10 @@
 local cjson = require "cjson.safe"
-local pl_file = require "pl.file"
-local http = require "resty.http"
 
 local constants = require "kong.constants"
 local clustering_utils = require "kong.clustering.utils"
 
 local str_lower = string.lower
+local table_insert = table.insert
 local ngx = ngx
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
@@ -87,6 +86,7 @@ end
 local function do_negotiation(req_body)
   local services_accepted = {}
   local services_rejected = {}
+  local accepted_map = {}
 
   for i, req_service in ipairs(req_body.services_requested) do
     if type(req_service) ~= "table" or type(req_service.name) ~= "string" then
@@ -101,7 +101,7 @@ local function do_negotiation(req_body)
 
     local known_service = all_known_services[name]
     if not known_service then
-      table.insert(services_rejected, {
+      table_insert(services_rejected, {
         name = name,
         message = "unknown service.",
       })
@@ -114,13 +114,14 @@ local function do_negotiation(req_body)
         "accepted: \"" .. service_response.name ..
         "\", version \"" .. service_response.version ..
         "\": ".. service_response.message)
-      table.insert(services_accepted, service_response)
+      table_insert(services_accepted, service_response)
+      accepted_map[service_response.name] = service_response.version
     else
 
       ngx_log(ngx_DEBUG, _log_prefix,
         "rejected: \"" .. service_response.name ..
         "\": " .. service_response.message)
-      table.insert(services_rejected, service_response)
+      table_insert(services_rejected, service_response)
     end
 
     ::continue::
@@ -130,11 +131,12 @@ local function do_negotiation(req_body)
     node = node_info(),
     services_accepted = services_accepted,
     services_rejected = services_rejected,
+    accepted_map = accepted_map,
   }
 end
 
 
-local function register_client(conf, client_node, services_accepted)
+local function register_client(conf, client_node)
   local ok, err = kong.db.clustering_data_planes:upsert({ id = client_node.id, }, {
     last_seen = ngx.time(),
     config_hash = DECLARATIVE_EMPTY_CONFIG_HASH,
@@ -176,7 +178,9 @@ function _M.add_negotiation_service(service, conf)
       return {message = err}
     end
 
-    ok, err = register_client(conf, body_in.node, body_out.services_accepted)
+    peer.services_accepted = body_out.accepted_map
+
+    ok, err = register_client(conf, body_in.node)
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, err)
       return { message = err }
@@ -186,45 +190,56 @@ function _M.add_negotiation_service(service, conf)
   end)
 end
 
-local function get_request_body(conf)
-  local body = {
+local function get_service_override(conf)
+  if conf.cached_service_override then
+    return conf.cached_service_override
+  end
+
+  local override_sets = {}
+  for _, over in ipairs(conf.service_override or {}) do
+    local srv, vers = over:match("^([^.]+)%.([^.]+)$")
+    override_sets[srv] = override_sets[srv] or {}
+    override_sets[srv][vers] = true
+  end
+
+  conf.cached_service_override = override_sets
+  return override_sets
+end
+
+local function set_to_list(set)
+  local list = {}
+
+  for k in pairs(set) do
+    table_insert(set, k)
+  end
+
+  return list
+end
+
+function _M.get_request_body(conf, services_requested)
+  local override_sets = get_service_override(conf)
+
+  services_requested = services_requested or require "kong.clustering.version_negotiation.services_requested"
+  for _, srv in ipairs(services_requested) do
+    local override_service = override_sets[srv.name]
+    if override_service then
+      srv.versions = set_to_list(override_service)
+    end
+  end
+
+  return {
     node = {
       id = kong.node.get_id(),
       type = "KONG",
       version = kong.version,
       hostname = kong.node.get_hostname(),
     },
-    services_requested = require "kong.clustering.version_negotiation.services_requested",
+    services_requested = services_requested,
   }
-
-  if conf.disable_service_version then
-    for _, dsv in ipairs(conf.disable_service_version) do
-      local srv, vers = dsv:match("^([^.]+)%.([^.]+)$")
-      if srv and vers then
-        for _, req_srv in ipairs(body.services_requested) do
-          if req_srv.name == srv then
-            for i = #req_srv.versions, 1, -1 do
-              if req_srv.versions[i] == vers then
-                table.remove(req_srv.versions, i)
-              end
-            end
-          end
-        end
-      else
-        for i = #body.services_requested, 1, -1 do
-          if body.services_requested[i].name == dsv then
-            table.remove(body.services_requested, i)
-          end
-        end
-      end
-    end
-  end
-
-  return body
 end
 
 function _M.call_wrpc_negotiation(peer, conf)
-  local response_data, err = peer:call_wait("NegotiationService.NegotiateServices", get_request_body(conf))
+  local response_data, err = peer:call_wait("NegotiationService.NegotiateServices", _M.get_request_body(conf))
   if response_data[1] then
     response_data = response_data[1]
   end
