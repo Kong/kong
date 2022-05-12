@@ -351,7 +351,7 @@ local function post_health(upstream, hostname, ip, port, is_healthy)
   end
 
   local ok, err
-  if ip then
+  if ip and (utils.hostname_type(ip) ~= "name") then
     ok, err = healthchecker:set_target_status(ip, port, hostname, is_healthy)
   else
     ok, err = healthchecker:set_all_target_statuses_for_hostname(hostname, port, is_healthy)
