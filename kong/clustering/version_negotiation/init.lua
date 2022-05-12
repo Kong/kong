@@ -19,49 +19,6 @@ local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 local _M = {}
 
-local function validate_request_type()
-  if ngx.req.get_method() ~= "POST" then
-    return nil, "INVALID METHOD"
-  end
-
-  if ngx.var.http_content_type ~= "application/json" then
-    return nil, "Invalid Content-Type"
-  end
-
-  return true
-end
-
-local function get_body()
-  ngx.req.read_body()
-  local body = ngx.req.get_body_data()
-  if body then
-    return body
-  end
-
-  local fname = ngx.req.get_body_file()
-  if fname then
-    return pl_file.read(fname)
-  end
-
-  return ""
-end
-
-local function response(status, body)
-  ngx.status = status
-
-  if type(body) == "table" then
-    ngx.header["Content-Type"] = "application/json"
-    body = cjson.encode(body)
-  end
-
-  ngx.say(body)
-  return ngx.exit(status)
-end
-
-local function response_err(msg)
-  return response(400, { message = msg })
-end
-
 local function verify_request(body)
   if type(body.node) ~= "table" then
     return false, "field \"node\" must be an object."
@@ -229,62 +186,6 @@ function _M.add_negotiation_service(service, conf)
   end)
 end
 
---- Handles a version negotiation request (CP side).
---- Performs mTLS verification (as configured),
---- validates request and Kong version compatibility,
----
-function _M.serve_version_handshake(conf, cert_digest)
-  if KONG_VERSION == nil then
-    KONG_VERSION = kong.version
-  end
-
-  local ok, err = clustering_utils.validate_connection_certs(conf, cert_digest)
-  if not ok then
-    ngx_log(ngx_ERR, _log_prefix, err)
-    return ngx.exit(ngx.HTTP_CLOSE)
-  end
-
-  ok, err = validate_request_type()
-  if not ok then
-    ngx_log(ngx_ERR, _log_prefix, "Request validation error: ", err)
-    return response_err(err)
-  end
-
-  local body_in = cjson.decode(get_body())
-  if not body_in then
-    err = "not valid JSON data"
-    ngx_log(ngx_ERR, _log_prefix, err)
-    return response_err(err)
-  end
-
-  ok, err = verify_request(body_in)
-  if not ok then
-    ngx_log(ngx_ERR, _log_prefix, err)
-    return response_err(err)
-  end
-
-  ok, err, body_in.node.sync_status = check_node_compatibility(body_in.node)
-  if not ok then
-    ngx_log(ngx_ERR, _log_prefix, err)
-    return response_err(err)
-  end
-
-  local body_out
-  body_out, err = do_negotiation(body_in)
-  if not body_out then
-    ngx_log(ngx_ERR, _log_prefix, err)
-    return response_err(err)
-  end
-
-  ok, err = register_client(conf, body_in.node, body_out.services_accepted)
-  if not ok then
-    ngx_log(ngx_ERR, _log_prefix, err)
-    return response(500, { message = err })
-  end
-
-  return response(200, body_out)
-end
-
 local function get_request_body(conf)
   local body = {
     node = {
@@ -321,69 +222,6 @@ local function get_request_body(conf)
 
   return body
 end
-
---- Performs version negotiation request (DP side).
---- Stores the responses to be queried via get_negotiated_service(name)
---- Returns the DP response as a Lua table.
-function _M.request_version_handshake(conf, cert, cert_key)
-  local body = cjson.encode(get_request_body(conf))
-
-  local params = {
-    scheme = "https",
-    method = "POST",
-    headers = {
-      ["Content-Type"] = "application/json",
-    },
-    body = body,
-
-    ssl_verify = false,
-    ssl_client_cert = cert,
-    ssl_client_priv_key = cert_key,
-  }
-  if conf.cluster_mtls == "shared" then
-    params.ssl_server_name = "kong_clustering"
-  else
-    -- server_name will be set to the host if it is not explicitly defined here
-    if conf.cluster_server_name ~= "" then
-      params.ssl_server_name = conf.cluster_server_name
-    end
-  end
-
-  local c = http.new()
-  local res, err = c:request_uri("https://" .. conf.cluster_control_plane .. "/version-handshake", params)
-  if not res then
-    return nil, err
-  end
-
-  if res.status == 404 then
-    return nil, "no version negotiation endpoint."
-  end
-
-  if res.status < 200 or res.status >= 300 then
-    ngx_log(ngx_ERR, _log_prefix, "Version negotiation rejected: ", res.body)
-    return nil, res.status .. ": " .. res.reason
-  end
-
-  local response_data = cjson.decode(res.body)
-  if not response_data then
-    return nil, "invalid response"
-  end
-
-  for _, service in ipairs(response_data.services_accepted) do
-    ngx_log(ngx.NOTICE, _log_prefix, ("accepted: %q, version %q: %q"):format(
-        service.name, service.version, service.message or ""))
-
-    _M.set_negotiated_service(service.name, service.version, service.message)
-  end
-
-  for _, service in ipairs(response_data.services_rejected) do
-    ngx_log(ngx.NOTICE, _log_prefix, ("rejected: %q: %q"):format(service.name, service.message))
-    _M.set_negotiated_service(service.name, nil, service.message)
-  end
-
-  return response_data, nil
-end
-
 
 function _M.call_wrpc_negotiation(peer, conf)
   local response_data, err = peer:call_wait("NegotiationService.NegotiateServices", get_request_body(conf))
