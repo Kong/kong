@@ -5,6 +5,12 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+------------------------------------------------------------------
+-- Collection of utilities to help testing Kong-Enterprise features and plugins.
+--
+-- @copyright Copyright 2016-2022 Kong Inc. All rights reserved.
+-- @module spec-ee.helpers
+
 local helpers     = require "spec.helpers"
 local listeners = require "kong.conf_loader.listeners"
 local cjson = require "cjson.safe"
@@ -15,7 +21,12 @@ local admins_helpers = require "kong.enterprise_edition.admins_helpers"
 
 local _M = {}
 
-
+--- Registers RBAC resources.
+-- @function register_rbac_resources
+-- @param db db object (see `get_db_utils`)
+-- @param ws_name (optional)
+-- @param ws_table (optional)
+-- @return `super_admin + super_user_role` or `nil + nil + err` on failure
 function _M.register_rbac_resources(db, ws_name, ws_table)
   local bit   = require "bit"
   local rbac  = require "kong.rbac"
@@ -154,8 +165,11 @@ function _M.register_rbac_resources(db, ws_name, ws_table)
 end
 
 
---- returns a pre-configured `http_client` for the Kong admin gui.
--- @name admin_gui_client
+--- returns a pre-configured `http_client` for the Kong Admin GUI.
+-- @function admin_gui_client
+-- @param timeout (optional, number) the timeout to use
+-- @param forced_port (optional, number) if provided will override the port in
+-- the Kong configuration with this port
 function _M.admin_gui_client(timeout, forced_port)
   local admin_ip, admin_port
   for _, entry in ipairs(_M.admin_gui_listeners) do
@@ -169,6 +183,7 @@ function _M.admin_gui_client(timeout, forced_port)
 end
 
 --- Returns the Dev Portal port.
+-- @function get_portal_api_port
 -- @param ssl (boolean) if `true` returns the ssl port
 local function get_portal_api_port(ssl)
   if ssl == nil then ssl = false end
@@ -182,6 +197,7 @@ end
 
 
 --- Returns the Dev Portal ip.
+-- @function get_portal_api_ip
 -- @param ssl (boolean) if `true` returns the ssl ip address
 local function get_portal_api_ip(ssl)
   if ssl == nil then ssl = false end
@@ -195,6 +211,7 @@ end
 
 
 --- Returns the Dev Portal port.
+-- @function get_portal_gui_port
 -- @param ssl (boolean) if `true` returns the ssl port
 local function get_portal_gui_port(ssl)
   if ssl == nil then ssl = false end
@@ -208,6 +225,7 @@ end
 
 
 --- Returns the Dev Portal ip.
+-- @function get_portal_gui_ip
 -- @param ssl (boolean) if `true` returns the ssl ip address
 local function get_portal_gui_ip(ssl)
   if ssl == nil then ssl = false end
@@ -220,8 +238,9 @@ local function get_portal_gui_ip(ssl)
 end
 
 
---- returns a pre-configured `http_client` for the Dev Portal.
--- @name portal_client
+--- returns a pre-configured `http_client` for the Dev Portal API.
+-- @function portal_api_client
+-- @param timeout (optional, number) the timeout to use
 function _M.portal_api_client(timeout)
   local portal_ip = get_portal_api_ip()
   local portal_port = get_portal_api_port()
@@ -230,6 +249,9 @@ function _M.portal_api_client(timeout)
 end
 
 
+--- returns a pre-configured `http_client` for the Dev Portal GUI.
+-- @function portal_gui_client
+-- @param timeout (optional, number) the timeout to use
 function _M.portal_gui_client(timeout)
   local portal_ip = get_portal_gui_ip()
   local portal_port = get_portal_gui_port()
@@ -237,7 +259,7 @@ function _M.portal_gui_client(timeout)
   return helpers.http_client(portal_ip, portal_port, timeout)
 end
 
-
+-- TODO: remove this, the clients already have a post helper method...
 function _M.post(client, path, body, headers, expected_status)
   headers = headers or {}
   headers["Content-Type"] = "application/json"
@@ -251,6 +273,17 @@ function _M.post(client, path, body, headers, expected_status)
 end
 
 
+--- Creates a new Admin user.
+-- The returned admin will have the rbac token set in field `rbac_user.raw_user_token`. This
+-- is only for test purposes and should never be done outside the test environment.
+-- @param email
+-- @param custom_id
+-- @param status
+-- @param db db object (see `get_db_utils`)
+-- @param username
+-- @param workspace
+-- @function create_admin
+-- @return The admin object created, or `nil + err` on failure
 function _M.create_admin(email, custom_id, status, db, username, workspace)
   local opts = workspace and { workspace = workspace.id }
 
@@ -274,6 +307,12 @@ function _M.create_admin(email, custom_id, status, db, username, workspace)
 end
 
 
+--- returns the cookie for the admin.
+-- @function get_admin_cookie_basic_auth
+-- @param client the http-client to use to make the auth request
+-- @param username the admin user name to get the cookie for
+-- @param password the password for the admin user
+-- @return the cookie value, as returned in the `Set-Cookie` response header.
 function _M.get_admin_cookie_basic_auth(client, username, password)
   local res = assert(client:send {
     method = "GET",
@@ -288,6 +327,19 @@ function _M.get_admin_cookie_basic_auth(client, username, password)
   assert.res_status(200, res)
   return res.headers["Set-Cookie"]
 end
+
+
+
+----------------
+-- Variables/constants
+-- @section exported-fields
+
+
+--- Below is a list of fields/constants exported on the `spec-ee.helpers` module table:
+-- @table helpers
+-- @field portal_api_listeners the listener configuration for the Portal API
+-- @field portal_gui_listeners the listener configuration for the Portal GUI
+-- @field admin_gui_listeners the listener configuration for the Admin GUI
 
 
 local http_flags = { "ssl", "http2", "proxy_protocol", "transparent" }
