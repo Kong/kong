@@ -25,7 +25,8 @@ endif
 	lint test test-integration test-plugins test-all \
 	pdk-phase-check functional-tests \
 	fix-windows \
-	nightly-release release
+	nightly-release release \
+	bump-dev-version
 
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 KONG_SOURCE_LOCATION ?= $(ROOT_DIR)
@@ -72,12 +73,18 @@ else
 	REPOSITORY_OS_NAME = ${BRANCH}
 	KONG_PACKAGE_NAME ?= kong-${BRANCH}
 	KONG_VERSION ?= `date +%Y-%m-%d`
+	COMMIT_SHA ?= $(shell git rev-parse --short HEAD)
+	DATE_TIME_VERSION ?= $(shell date '+%Y%m%d%H%M')
 endif
 
-release:
+bump-dev-version:
 ifeq ($(ISTAG),false)
-	sed -i -e '/return string\.format/,/\"\")/c\return "$(KONG_VERSION)\"' kong/meta.lua
+	@sed -i -E "s/minor[[:space:]]*=[[:space:]]*[0-9]+/minor = $(shell lua -e 'print(require("kong.meta")._VERSION_TABLE.minor + 1)')/" kong/meta.lua
+	@sed -i -E "s/patch[[:space:]]*=[[:space:]]*[0-9]+/patch = 0/" kong/meta.lua
+	@sed -i -E "s/--[[:space:]]*suffix[[:space:]]*=.*/suffix = \"-dev+$(COMMIT_SHA).$(DATE_TIME_VERSION)\"/" kong/meta.lua
 endif
+
+release: bump-dev-version
 	cd $(KONG_BUILD_TOOLS_LOCATION); \
 	$(MAKE) \
 	KONG_VERSION=${KONG_VERSION} \
@@ -92,6 +99,9 @@ endif
 	KONG_VERSION=${KONG_VERSION} \
 	OFFICIAL_RELEASE=$(OFFICIAL_RELEASE) \
 	release-kong
+ifeq ($(ISTAG),false)
+	@git checkout -- kong/meta.lua
+endif
 
 setup-ci:
 	OPENRESTY=$(RESTY_VERSION) \
