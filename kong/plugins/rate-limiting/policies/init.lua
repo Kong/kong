@@ -196,7 +196,9 @@ return {
           -- please see https://github.com/Kong/kong/issues/5763
           red:eval([[
             local key, value, expiration = KEYS[1], tonumber(ARGV[1]), ARGV[2]
-            if redis.call("incrby", key, value) == 1 then
+            local exists = redis.call("exists", key)
+            redis.call("incrby", key, value) == value
+            if not exists or exists == 0 then
               redis.call("expire", key, expiration)
             end
           ]], 1, cache_key, value, EXPIRATION[period])
