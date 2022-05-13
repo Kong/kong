@@ -197,7 +197,7 @@ return {
           red:eval([[
             local key, value, expiration = KEYS[1], tonumber(ARGV[1]), ARGV[2]
             local exists = redis.call("exists", key)
-            redis.call("incrby", key, value) == value
+            redis.call("incrby", key, value)
             if not exists or exists == 0 then
               redis.call("expire", key, expiration)
             end
