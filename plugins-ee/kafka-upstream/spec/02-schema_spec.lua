@@ -48,11 +48,24 @@ describe("Plugin: kafka-upstream (schema)", function()
 	assert.is_nil(err)
 	assert.is_truthy(ok)
 	end)
-	it("validates authentication SASL/SCRAM", function()
+	it("validates authentication SASL/SCRAM sha-256", function()
 	-- authentication requires 4 entries. constraints apply
 	local auth_config = {
 		strategy = "sasl",
 		mechanism = "SCRAM-SHA-256",
+		user = "admin",
+		password = "pwd"
+	}
+	base_config['authentication'] = auth_config
+	local ok, err = v(base_config, schema_def)
+	assert.is_nil(err)
+	assert.is_truthy(ok)
+	end)
+	it("validates authentication SASL/SCRAM sha-512", function()
+	-- authentication requires 4 entries. constraints apply
+	local auth_config = {
+		strategy = "sasl",
+		mechanism = "SCRAM-SHA-512",
 		user = "admin",
 		password = "pwd"
 	}
@@ -85,7 +98,7 @@ describe("Plugin: kafka-upstream (schema)", function()
 	}
 	base_config['authentication'] = auth_config
 	local ok, err = v(base_config, schema_def)
-	assert.same({ mechanism = "expected one of: PLAIN, SCRAM-SHA-256" }, err.config.authentication)
+	assert.same({ mechanism = "expected one of: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512" }, err.config.authentication)
 	assert.is_not_nil(err)
 	assert.is_not_truthy(ok)
 	end)

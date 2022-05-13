@@ -34,7 +34,7 @@ return {
               type = "record",
               fields = {
                 { strategy = { type = "string", required = false, one_of = { "sasl" }} },
-                { mechanism = { type = "string", required = false, one_of = { "PLAIN", "SCRAM-SHA-256" }} },
+                { mechanism = { type = "string", required = false, one_of = { "PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512" }} },
                 { tokenauth = { type = "boolean", required = false } },
                 { user = { type = "string", required = false, encrypted = true, referenceable = true } },
                 { password = { type = "string", required = false, encrypted = true, referenceable = true } },
