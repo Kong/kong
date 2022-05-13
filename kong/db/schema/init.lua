@@ -1609,11 +1609,15 @@ end
 -- valid values are: "insert", "update", "upsert", "select"
 -- @param nulls boolean: return nulls as explicit ngx.null values
 -- @return A new table, with the auto fields containing
--- appropriate updated values.
+-- appropriate updated values (except for "select" context
+-- it does it in place by modifying the data directly).
 function Schema:process_auto_fields(data, context, nulls, opts)
   local check_immutable_fields = false
 
-  data = tablex.deepcopy(data)
+  local is_select = context == "select"
+  if not is_select then
+    data = tablex.deepcopy(data)
+  end
 
   local shorthand_fields = self.shorthand_fields
   if shorthand_fields then
@@ -1663,8 +1667,6 @@ function Schema:process_auto_fields(data, context, nulls, opts)
 
   local now_s
   local now_ms
-
-  local is_select = context == "select"
 
   -- We don't want to resolve references on control planes
   -- and and admin api requests, admin api request could be

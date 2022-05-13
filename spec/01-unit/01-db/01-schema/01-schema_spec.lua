@@ -2745,6 +2745,41 @@ describe("schema", function()
   end)
 
   describe("process_auto_fields", function()
+    for _, context in ipairs({ "insert", "update", "upsert"}) do
+      it('returns new table when called with "' .. context .. '" context', function()
+        local Test = Schema.new({
+          fields = {
+            { f = { type = "string", default = "test" } },
+          }
+        })
+
+        local original = {}
+        local data, err = Test:process_auto_fields(original, context)
+        assert.is_nil(err)
+        assert.not_equal(original, data)
+        if context == "update" then
+          assert.is_nil(data.f)
+        else
+          assert.equal("test", data.f)
+        end
+        assert.is_nil(original.f)
+      end)
+    end
+
+    it('modifies table in place when called with "select" context', function()
+      local Test = Schema.new({
+        fields = {
+          { f = { type = "string", default = "test" } },
+        }
+      })
+
+      local original = {}
+      local data, err = Test:process_auto_fields(original, "select")
+      assert.is_nil(err)
+      assert.equal(original, data)
+      assert.equal("test", data.f)
+      assert.equal("test", original.f)
+    end)
 
     it("produces ngx.null for non-required fields", function()
       local Test = Schema.new({
