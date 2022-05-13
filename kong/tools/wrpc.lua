@@ -488,6 +488,15 @@ function wrpc_peer:handle(payload)
 end
 
 
+function wrpc_peer:expire_pending()
+  for k, resp in pairs(self.response_queue) do
+    if resp.expire then
+      resp:expire()
+    end
+  end
+end
+
+
 --- Handle incoming error message (mtype == MESSAGE_TYPE_ERROR).
 function wrpc_peer:handle_error(payload)
   local etype = payload.error and payload.error.etype or "--"
@@ -563,6 +572,7 @@ function wrpc_peer:spawn_threads()
       self:step()
       ngx.sleep(0)
     end
+    self:expire_pending()
   end))
 
   if self.request_queue then
@@ -611,8 +621,8 @@ local function safe_args(...)
 end
 
 
-function wrpc_peer:wait_threads()
-  local ok, err, perr = ngx.thread.wait(safe_args(self._receiving_thread, self._transmit_thread, self._channel_thread))
+function wrpc_peer:wait_threads(...)
+  local ok, err, perr = ngx.thread.wait(safe_args(self._receiving_thread, self._transmit_thread, self._channel_thread, ...))
 
   if self._receiving_thread then
     ngx.thread.kill(self._receiving_thread)

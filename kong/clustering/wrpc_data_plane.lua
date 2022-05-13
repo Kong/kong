@@ -206,9 +206,6 @@ function _M:communicate(c)
     if not resp then
       ngx_log(ngx_ERR, _log_prefix, "Couldn't report basic info to CP: ", err)
       return self:random_delay_call_CP()
-      --assert(ngx.timer.at(reconnection_delay, function(premature)
-      --  self:communicate(premature)
-      --end))
     end
   end
 
@@ -280,7 +277,7 @@ function _M:communicate(c)
     end
   end)
 
-  local ok, err, perr = ngx.thread.wait(ping_thread, config_thread)
+  local ok, err, perr = peer:wait_threads(ping_thread, config_thread)
 
   ngx.thread.kill(ping_thread)
   c:close()
@@ -306,9 +303,6 @@ function _M:communicate(c)
 
   if not exiting() then
     return self:random_delay_call_CP()
-    --assert(ngx.timer.at(reconnection_delay, function(premature)
-    --  self:communicate(premature)
-    --end))
   end
 end
 
