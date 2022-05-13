@@ -43,7 +43,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(helpers.start_kong({
           role = "data_plane",
-          cluster_protocol = cluster_protocol,
+          cluster_services_override = "protocol." .. cluster_protocol,
           database = "off",
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",

@@ -14,7 +14,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
 
         assert(helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
+          --cluster_protocol = cluster_protocol,
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
           db_update_frequency = 0.1,
@@ -28,7 +28,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
 
         assert(helpers.start_kong({
           role = "data_plane",
-          cluster_protocol = cluster_protocol,
+          cluster_services_override = "protocol." .. cluster_protocol,
           database = "off",
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering_client.crt",
