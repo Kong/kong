@@ -9,6 +9,30 @@ _G.kong = {}
 local emails     = require "kong.portal.emails"
 local singletons  = require "kong.singletons"
 
+local function mock_cache(cache_table, limit)
+  return {
+    safe_set = function(self, k, v)
+      if limit then
+        local n = 0
+        for _, _ in pairs(cache_table) do
+          n = n + 1
+        end
+        if n >= limit then
+          return nil, "no memory"
+        end
+      end
+      cache_table[k] = v
+      return true
+    end,
+    get = function(self, k, _, fn, arg)
+      if cache_table[k] == nil then
+        cache_table[k] = fn(arg)
+      end
+      return cache_table[k]
+    end,
+  }
+end
+
 describe("ee portal emails", function()
   local portal_emails
   local snapshot
@@ -32,16 +56,20 @@ describe("ee portal emails", function()
         select_by_path = function(self, path)
           return _files[path]
         end,
-      }
+      },
     }
     ngx.ctx.workspace = "mock_uuid"
     kong.db = {
       workspaces = {
         select = function()
           return { id = ngx.ctx.workspace }
-        end
+        end,
+        cache_key = function()
+          return "cache_key"
+        end,
       }
     }
+    kong.cache = mock_cache({})
   end)
 
   after_each(function()

@@ -584,7 +584,11 @@ function _M.find_by_username_or_id(username_or_id, raw, require_workspace_ctx)
     return raw and admin or transmogrify(admin)
   end
 
-  local ws = kong.db.workspaces:select({ id = c_ws_id })
+  local ws, err = kong.db.workspaces:select({ id = c_ws_id })
+  if not ws then
+    return nil, err
+  end
+
   local c_ws_name = ws and ws.name
   if not c_ws_name or not require_workspace_ctx then
     return raw and admin or transmogrify(admin)

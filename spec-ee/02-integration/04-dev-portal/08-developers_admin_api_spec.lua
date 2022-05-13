@@ -27,17 +27,12 @@ local function configure_portal(config)
     }
   end
 
-  singletons.db.workspaces:upsert_by_name("default", {
+  assert.res_status(204, (helpers.admin_client():delete("/cache")))
+
+  assert(kong.db.workspaces:upsert_by_name("default", {
     name = "default",
     config = config
-  })
-end
-
-
-local function close_clients(clients)
-  for idx, client in ipairs(clients) do
-    client:close()
-  end
+  }))
 end
 
 
@@ -45,8 +40,8 @@ local function client_request(params)
   local client = assert(helpers.admin_client())
   local res = assert(client:send(params))
   res.body = res.body_reader()
+  client:close()
 
-  close_clients({ client })
   return res
 end
 
@@ -509,7 +504,7 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         assert.equals("friendo", json.custom_id)
 
         -- checking that consumer custom_id is set as well
-        local consumer = singletons.db.consumers:select({
+        local consumer = kong.db.consumers:select({
           id = json.consumer.id
         })
 
@@ -672,7 +667,7 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
         local body = assert.res_status(200, res)
         local resp_body_json = cjson.decode(body)
 
-        local consumer = singletons.db.consumers:select({
+        local consumer = kong.db.consumers:select({
           id = resp_body_json.developer.consumer.id
         })
 
@@ -1934,6 +1929,7 @@ describe("Admin API - Developer Portal - #" .. strategy, function()
     end)
 
     describe("DELETE", function()
+
       it("deletes an existing rbac role", function()
         bp.rbac_roles:insert({ name = PORTAL_PREFIX .. "red" })
         local res = client:delete("/developers/roles/red")

@@ -295,7 +295,7 @@ end
 
 
 local function create_consumer(entity)
-  return singletons.db.consumers:insert({
+  return kong.db.consumers:insert({
     username = entity.email,
     custom_id = entity.custom_id,
     type = enums.CONSUMERS.TYPE.DEVELOPER,
@@ -582,15 +582,15 @@ local function create_developer(self, entity, options)
   if not ok then
    local code = Errors.codes.SCHEMA_VIOLATION
    local err_t = { code = code, fields = { meta = err,}, }
-   local err = "developer update: error in validating developer meta fields "
+   local err = "developer update: error in validating developer meta fields: "
    return nil, err, err_t
   end
 
   -- create developers consumer
-  local consumer = create_consumer(entity)
+  local consumer, err = create_consumer(entity)
   if not consumer then
     local code = Errors.codes.UNIQUE_VIOLATION
-    local err = "developer insert: could not create consumer mapping for " .. entity.email
+    err = "developer insert: could not create consumer mapping for " .. entity.email .. ": " .. err
     local err_t = { code = code, fields = { email = "developer already exists with email: " .. entity.email } }
     return nil, err, err_t
   end

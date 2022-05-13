@@ -9,6 +9,7 @@ local pl_string      = require "pl.stringx"
 local ee_api         = require "kong.enterprise_edition.api_helpers"
 local ee_admins      = require "kong.enterprise_edition.admins_helpers"
 local rbac           = require "kong.rbac"
+local workspaces     = require "kong.workspaces"
 
 local kong = kong
 local log = ngx.log
@@ -102,10 +103,17 @@ function _M.map_admin_roles_by_idp_claim(admin, claim_values)
   -- table
   for _, claim_value in ipairs(claim_values) do
     if type(claim_value) == "string" then
-      
+
       local claim_arr = pl_string.split(claim_value, delimiter)
       local ws_name = #claim_arr > 1 and claim_arr[1]
-      local ws = ws_name and kong.db.workspaces:select_by_name(ws_name)
+
+      local ws, err
+      if ws_name then
+        ws, err = workspaces.select_workspace_by_name_with_cache(ws_name)
+        if not ws then
+          kong.log.err("failed fetching workspace ", ws_name, ": ", err)
+        end
+      end
 
       if ws then
         table.remove(claim_arr, 1)

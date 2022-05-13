@@ -311,6 +311,8 @@ do
 
     return kong.cache:get(cache_key, nil, get_with_cache_fn, dao, id, workspace)
   end
+
+  _M.get_with_cache = get_with_cache
 end
 
 
@@ -499,7 +501,7 @@ local function get_user_roles(db, user, workspace)
     "workspace must be an id (string uuid) or ngx.null to mean global")
 
   if type(workspace) == "string" and not utils.is_valid_uuid(workspace) then
-    local ws, err = db.workspaces:select_by_name(workspace)
+    local ws, err = workspaces.select_workspace_by_name_with_cache(workspace)
     if not ws then
       return nil, err
     end
@@ -1703,14 +1705,17 @@ function _M.find_all_ws_for_rbac_user(rbac_user, workspace)
       else
         if not wsNameMap[wsName] then
           wsNameMap[wsName] = true
-          wss[#wss + 1] = kong.db.workspaces:select_by_name(wsName)
+          wss[#wss + 1] = workspaces.select_workspace_by_name_with_cache(wsName)
         end
       end
     end
   end
 
   local rbac_user_ws_id = assert(rbac_user.ws_id)
-  local ws = kong.db.workspaces:select({ id = rbac_user_ws_id })
+  local ws, err = workspaces.select_workspace_by_id_with_cache(rbac_user_ws_id)
+  if not ws then
+    return nil, err
+  end
 
   -- hide the workspace associated with the admin's rbac_user most of the time,
   -- but if there is no known workspace or the only workspace is '*', mark it as

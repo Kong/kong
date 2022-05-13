@@ -73,6 +73,7 @@ local resty_signal = require "resty.signal"
 
 -- XXX EE
 local dist_constants = require "kong.enterprise_edition.distributions_constants"
+local vitals = require "kong.vitals"
 -- EE
 
 ffi.cdef [[
@@ -222,6 +223,39 @@ local config_yml
 
 kong.db = db
 singletons.db = db
+
+
+local cache
+
+--- Gets the ml_cache instance.
+-- @function get_cache
+-- @param db the database object
+-- @return ml_cache instance
+local function get_cache(db)
+  if not cache then
+    local worker_events = assert(kong_global.init_worker_events())
+    local cluster_events = assert(kong_global.init_cluster_events(conf, db))
+    cache = assert(kong_global.init_cache(conf,
+                                          cluster_events,
+                                          worker_events
+                                          ))
+  end
+
+  return cache
+end
+
+
+kong.cache = get_cache(db)
+singletons.cache = kong.cache
+
+
+kong.vitals = vitals.new({
+  db = db,
+  ttl_seconds = 3600,
+  ttl_minutes = 24 * 60,
+  ttl_days = 30,
+})
+singletons.vitals = kong.vitals
 
 
 --- Iterator over DB strategies.
@@ -487,20 +521,6 @@ local function get_db_utils(strategy, tables, plugins)
   end, PLUGINS_LIST)
 
   return bp, db
-end
-
---- Gets the ml_cache instance.
--- @function get_cache
--- @param db the database object
--- @return ml_cache instance
-local function get_cache(db)
-  local worker_events = assert(kong_global.init_worker_events())
-  local cluster_events = assert(kong_global.init_cluster_events(conf, db))
-  local cache = assert(kong_global.init_cache(conf,
-                                              cluster_events,
-                                              worker_events
-                                              ))
-  return cache
 end
 
 -----------------
