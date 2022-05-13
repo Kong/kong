@@ -190,13 +190,13 @@ function _M.add_negotiation_service(service, conf)
   end)
 end
 
-local function get_service_override(conf)
+function _M.get_service_override(conf)
   if conf.cached_service_override then
     return conf.cached_service_override
   end
 
   local override_sets = {}
-  for _, over in ipairs(conf.service_override or {}) do
+  for _, over in ipairs(conf.cluster_services_override or {}) do
     local srv, vers = over:match("^([^.]+)%.([^.]+)$")
     override_sets[srv] = override_sets[srv] or {}
     override_sets[srv][vers] = true
@@ -217,7 +217,7 @@ local function set_to_list(set)
 end
 
 function _M.get_request_body(conf, services_requested)
-  local override_sets = get_service_override(conf)
+  local override_sets = _M.get_service_override(conf)
 
   services_requested = services_requested or require "kong.clustering.version_negotiation.services_requested"
   for _, srv in ipairs(services_requested) do

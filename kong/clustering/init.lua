@@ -221,24 +221,30 @@ local function call_control_plane(premature, self)
     return
   end
 
-  local wsjs_dp = require "kong.clustering.data_plane"
-  local wrpc_dp = require "kong.clustering.wrpc_data_plane"
+  local override = version_negotiation.get_service_override(self.conf)
+  local try_wrpc = not override.protocol or override.protocol.wrpc
+  local try_wsjs = not override.protocol or override.protocol.json
 
-  ngx_log(ngx_DEBUG, _log_prefix, "Attempting wRPC connection.")
+  local wsjs_dp = try_wsjs and require "kong.clustering.data_plane"
+  local wrpc_dp = try_wrpc and require "kong.clustering.wrpc_data_plane"
 
-  local implementation = wrpc_dp
-  local ws_conn, err, reason = implementation.open_connection(self)
-  ngx_log(ngx_DEBUG, _log_prefix, "got conn: ", tostring(ws_conn), ", err: ", tostring(err), " / ", tostring(reason))
+  local ws_conn, err, implementation
 
-  if not ws_conn and err == "404" then
+  if try_wrpc then
+    ngx_log(ngx_DEBUG, _log_prefix, "Attempting wRPC connection.")
+
+    implementation = wrpc_dp
+    ws_conn, err = implementation.open_connection(self)
+  end
+
+  if try_wsjs and not ws_conn then
     ngx_log(ngx_DEBUG, _log_prefix, "wRPC not available, falling back to vanilla websocket")
     implementation = wsjs_dp
     ws_conn, err = implementation.open_connection(self)
-    ngx_log(ngx_DEBUG, _log_prefix, "got conn: ", tostring(ws_conn), ", err: ", tostring(err))
   end
 
   if not ws_conn then
-    ngx_log(ngx_DEBUG, _log_prefix, "Failed to connect to CP node.")
+    ngx_log(ngx_DEBUG, _log_prefix, "Failed to connect to CP node. ", err or "")
     return self:random_delay_call_CP()
   end
 
