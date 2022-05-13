@@ -52,23 +52,30 @@ check_modules() {
 
     echo "Checking modules..."
 
+    local failed=0
+
     for line in $(read_modules "$spec"); do
         fname=${line%|*}
         module=${line#*|}
+
         files[$fname]="$module"
 
         if [[ ! -f $fname ]]; then
-            fail "module ($module) file ($fname) is missing"
+            : $(( failed++ ))
+            echo "Module ($module) file ($fname) is missing"
         fi
     done
 
     for fname in $(git ls-files 'kong/*.lua'); do
-        mod="${files[$fname]:-}"
-
-        if [[ -z ${mod:-} ]]; then
-            fail "file ($fname) not found in rockspec ($spec)"
+        if [[ -z ${files[$fname]:-} ]]; then
+            : $(( failed++ ))
+            echo "File ($fname) not found in rockspec ($spec)"
         fi
     done
+
+    if (( failed > 0 )); then
+        fail "rockspec build.modules is invalid"
+    fi
 }
 
 
