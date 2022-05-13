@@ -10,9 +10,26 @@ fail() {
 }
 
 lint() {
-    echo "Linting..."
+    local spec=$1
 
-    luarocks lint "$1"
+    echo "Linting (luarocks)..."
+
+    if ! luarocks lint "$spec"; then
+        fail "luarocks lint returned error"
+    fi
+
+    echo "Linting (luacheck)..."
+
+    # luacheck helps to point out some semantic issues (like duplicate
+    # table keys)
+    if ! luacheck \
+        --quiet \
+        --no-global \
+        -- - \
+        < "$spec";
+    then
+        fail "luacheck returned error"
+    fi
 }
 
 read_modules() {
