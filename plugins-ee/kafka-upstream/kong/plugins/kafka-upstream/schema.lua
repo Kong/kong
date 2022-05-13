@@ -34,7 +34,9 @@ return {
               type = "record",
               fields = {
                 { strategy = { type = "string", required = false, one_of = { "sasl" }} },
-                { mechanism = { type = "string", required = false, one_of = { "PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512" }} },
+                { mechanism = { type = "string", required = false, one_of = { "PLAIN",
+                                                                              "SCRAM-SHA-256",
+                                                                              "SCRAM-SHA-512" }}},
                 { tokenauth = { type = "boolean", required = false } },
                 { user = { type = "string", required = false, encrypted = true, referenceable = true } },
                 { password = { type = "string", required = false, encrypted = true, referenceable = true } },
@@ -88,7 +90,8 @@ return {
             fn = function(entity)
               if entity.authentication.strategy == "sasl" then
                 -- SASL PLAIN
-                if (entity.authentication.mechanism == "PLAIN" or entity.authentication.mechanism == "SCRAM-SHA-256") and
+                if (entity.authentication.mechanism == "PLAIN" or entity.authentication.mechanism == "SCRAM-SHA-256"
+                     or entity.authentication.mechanism == "SCRAM-SHA-512") and
                     (entity.authentication.user == ngx_null or entity.authentication.password == ngx_null) then
                   return nil, "if authentication strategy is SASL and mechanism is PLAIN you have to set user and password"
                 end
