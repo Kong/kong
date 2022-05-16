@@ -99,6 +99,9 @@
   [#8552](https://github.com/Kong/kong/pull/8552). If you are using
   [Go plugin server](https://github.com/Kong/go-pluginserver), please migrate your plugins to use the
   [Go PDK](https://github.com/Kong/go-pdk) before upgrading.
+- The migration helper library is no longer supplied with Kong (we didn't use it for anything,
+  and the only function it had, was for the deprecated Cassandra).
+  [#8781](https://github.com/Kong/kong/pull/8781)
 
 
 #### Plugins
