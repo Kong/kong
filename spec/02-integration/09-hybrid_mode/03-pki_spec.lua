@@ -6,7 +6,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
   for _, strategy in helpers.each_strategy() do
     describe("CP/DP PKI sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
 
-      lazy_setup(function()
+      before_each(function()
         helpers.get_db_utils(strategy, {
           "routes",
           "services",
@@ -42,7 +42,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
         }))
       end)
 
-      lazy_teardown(function()
+      after_each(function()
         helpers.stop_kong("servroot2")
         helpers.stop_kong()
       end)
