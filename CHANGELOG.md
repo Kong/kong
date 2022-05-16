@@ -73,6 +73,10 @@
 
 ### Breaking Changes
 
+- Deprecate/stop producing Debian 8 "Jessie" containers and packages (EOLed June 2020)
+  [Kong/kong-build-tools #448](https://github.com/Kong/kong-build-tools/pull/448)
+  [Kong/kong-distributions #766](https://github.com/Kong/kong-distributions/pull/766)
+
 #### Admin API
 
 - Insert and update operations on target entities require using the `PUT` HTTP
