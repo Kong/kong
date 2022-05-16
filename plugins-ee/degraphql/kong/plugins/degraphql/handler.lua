@@ -14,7 +14,7 @@ local arguments  = require "kong.api.arguments"
 
 local DeGraphQLHandler = {
   PRIORITY = 1500,
-  VERSION = "0.1.2"
+  VERSION = "0.2.0"
 }
 
 local string_gsub = string.gsub

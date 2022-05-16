@@ -1,3 +1,7 @@
+## 0.2.0
+
+- feat: make the graphql path configurable
+
 ## 0.1.2
 
 - fix(*) BasePlugin inheritance removal (FT-1701)

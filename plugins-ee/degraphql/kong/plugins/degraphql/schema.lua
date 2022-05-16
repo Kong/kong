@@ -5,13 +5,21 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local typedefs = require "kong.db.schema.typedefs"
+
 return {
-  no_consumer = false, -- this plugin is available on APIs as well as on Consumers,
+  name = "degraphql",
   fields = {
-    -- Describe your plugin's configuration's schema here.
+    { consumer = typedefs.no_consumer },  -- this plugin cannot be configured on a consumer (typical for auth plugins)
+    { protocols = typedefs.protocols_http },
+    { config = {
+      type = "record",
+      fields = {
+        { graphql_server_path = typedefs.path {
+          required = true,
+          default = "/graphql",
+        }},
+      },
+    }},
   },
-  self_check = function(schema, plugin_t, dao, is_updating)
-    -- perform any custom verification
-    return true
-  end
 }
