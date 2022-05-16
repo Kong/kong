@@ -21,6 +21,8 @@ local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
 local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
+local ZIPKIN_HOST = os.getenv("KONG_SPEC_TEST_ZIPKIN_HOST") or "localhost"
+local ZIPKIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_ZIPKIN_PORT")) or 9411
 local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_HOST") or "localhost"
 local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_PORT") or 6379)
 local REDIS_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_SSL_PORT") or 6380)
@@ -2816,7 +2818,12 @@ end
 -- @field mock_upstream_stream_port
 -- @field mock_upstream_stream_ssl_port
 -- @field mock_grpc_upstream_proto_path
--- @field redis_host The hostname for a Redis instance if available. Port should be `6379`.
+-- @field redis_host The host for Redis, it can be set by env KONG_SPEC_TEST_REDIS_HOST.
+-- @field redis_port The port (SSL disabled) for Redis, it can be set by env KONG_SPEC_TEST_REDIS_PORT.
+-- @field redis_ssl_port The port (SSL enabled) for Redis, it can be set by env KONG_SPEC_TEST_REDIS_SSL_PORT.
+-- @field redis_ssl_sni The server name for Redis, it can be set by env KONG_SPEC_TEST_REDIS_SSL_SNI.
+-- @field zipkin_host The host for Zipkin service, it can be set by env KONG_SPEC_TEST_ZIPKIN_HOST.
+-- @field zipkin_port the port for Zipkin service, it can be set by env KONG_SPEC_TEST_ZIPKIN_PORT.
 
 ----------
 -- Exposed
@@ -2857,6 +2864,9 @@ end
   mock_upstream_stream_port     = MOCK_UPSTREAM_STREAM_PORT,
   mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,
   mock_grpc_upstream_proto_path = MOCK_GRPC_UPSTREAM_PROTO_PATH,
+
+  zipkin_host = ZIPKIN_HOST,
+  zipkin_port = ZIPKIN_PORT,
 
   redis_host      = REDIS_HOST,
   redis_port      = REDIS_PORT,
