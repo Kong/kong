@@ -17,8 +17,6 @@ local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
 
-local VALID_HTTP_STATUS_CODE_REG = "^[1-5][0-9][0-9]$"
-
 
 local fetch_credentials do
   local credential_sources = {
@@ -43,7 +41,6 @@ local tostring = tostring
 local tonumber = tonumber
 local ngx_now = ngx.now
 local ngx_var = ngx.var
-local re_match = ngx.re.match
 local error = error
 local pairs = pairs
 local kong = kong
@@ -65,21 +62,27 @@ local function get_now()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
 
+
 local function validate_http_status_code(status_code)
   if not status_code then
     return false
   end
-  local status_code_str = tostring(status_code)
-  local m, err = re_match(status_code_str, VALID_HTTP_STATUS_CODE_REG, 'jo')
-  if err then
-    kong.log.err(err)
+
+  if type(status_code) == "string" then
+    status_code = tonumber(status_code)
+  end
+
+  if not status_code then
     return false
   end
-  if not m then
-    return false
+
+  if status_code >= 100 and status_code <= 599 then
+    return status_code
   end
-  return true
+
+  return false
 end
+
 
 --[[
   Response format should be
