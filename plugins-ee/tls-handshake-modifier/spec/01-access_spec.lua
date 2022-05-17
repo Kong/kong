@@ -6,9 +6,6 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local helpers = require "spec.helpers"
-local pl_file = require "pl.file"
-local cjson   = require "cjson"
-local utils   = require "kong.tools.utils"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
@@ -46,13 +43,12 @@ local tls_fixtures = { http_mock = {
 for _, strategy in strategies() do
   describe("Plugin: tls-handshake-modifier (access) [#" .. strategy .. "]", function()
     local proxy_client, proxy_ssl_client, tls_client
-    local bp, db
+    local bp
     local service_https, route_https
-    local plugin_https
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(db_strategy, {
+      bp = helpers.get_db_utils(db_strategy, {
         "routes",
         "services",
         "plugins",
@@ -69,7 +65,7 @@ for _, strategy in strategies() do
         service = { id = service_https.id, },
       }
 
-      plugin_https = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "tls-handshake-modifier",
         route = { id = route_https.id },
       })

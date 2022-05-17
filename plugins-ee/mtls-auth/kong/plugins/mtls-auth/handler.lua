@@ -42,8 +42,8 @@ end
 function MtlsAuthHandler:init_worker()
   -- TODO: remove nasty hacks once we have singleton phases support in core
 
-  local orig_ssl_certificate = Kong.ssl_certificate
-  Kong.ssl_certificate = function()
+  local orig_ssl_certificate = Kong.ssl_certificate   -- luacheck: ignore
+  Kong.ssl_certificate = function()                   -- luacheck: ignore
     orig_ssl_certificate()
 
     local ctx = ngx.ctx

@@ -104,6 +104,7 @@ local function find_entity(dao, key, endpoint_key)
   end
 
   if type(key) == "table" and next(key) then
+    local _
     _, key = next(key)
   end
 

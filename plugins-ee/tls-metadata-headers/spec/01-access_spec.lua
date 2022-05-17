@@ -46,13 +46,12 @@ local tls_fixtures = { http_mock = {
 for _, strategy in strategies() do
   describe("Plugin: tls-metadata-headers (access) [#" .. strategy .. "]", function()
     local proxy_client, proxy_ssl_client, tls_client
-    local bp, db
+    local bp
     local service_https, route_https
-    local plugin1, plugin2
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
-      bp, db = helpers.get_db_utils(db_strategy, {
+      bp = helpers.get_db_utils(db_strategy, {
         "routes",
         "services",
         "plugins",
@@ -69,7 +68,7 @@ for _, strategy in strategies() do
         service = { id = service_https.id, },
       }
 
-      plugin1 = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "tls-metadata-headers",
         route = { id = route_https.id },
         config = { inject_client_cert_details = true, },

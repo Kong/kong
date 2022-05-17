@@ -86,7 +86,6 @@ for _, strategy in strategies() do
     local bp, db
     local ca_cert
     local service_https, route_https1, route_https2, route_https3
-    local plugin1, plugin2
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
@@ -110,12 +109,12 @@ for _, strategy in strategies() do
         paths = { "/get"},
       }
 
-      plugin1 = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "tls-handshake-modifier",
         route = { id = route_https1.id },
       })
 
-      plugin2 = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "tls-metadata-headers",
         route = { id = route_https1.id },
         config = { inject_client_cert_details = true,
@@ -129,12 +128,12 @@ for _, strategy in strategies() do
         paths = { "/anything"},
       }
 
-      plugin1 = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "tls-handshake-modifier",
         route = { id = route_https2.id },
       })
 
-      plugin2 = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "tls-metadata-headers",
         route = { id = route_https2.id },
         config = { inject_client_cert_details = true,
@@ -142,7 +141,7 @@ for _, strategy in strategies() do
           client_serial_header_name = "X-Client-Cert-Serial-Custom",
           client_cert_issuer_dn_header_name = "X-Client-Cert-Issuer-DN-Custom",
           client_cert_subject_dn_header_name = "X-Client-Cert-Subject-DN-Custom",
-          client_cert_fingerprint_header_name = "X-Client-Cert-Fingerprint-Custom", 
+          client_cert_fingerprint_header_name = "X-Client-Cert-Fingerprint-Custom",
         },
       })
 
@@ -157,14 +156,14 @@ for _, strategy in strategies() do
         paths = { "/get"},
       }
 
-      plugin1 = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "mtls-auth",
         route = { id = route_https3.id },
         config = { skip_consumer_lookup = true,
           ca_certificates = { ca_cert.id, }, },
       })
 
-      plugin2 = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "tls-metadata-headers",
         route = { id = route_https3.id },
         config = { inject_client_cert_details = true,

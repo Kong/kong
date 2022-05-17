@@ -96,8 +96,8 @@ function _M:validate_ident(ids, key)
 end
 
 
-function _M:insert(_cred, options)
-  local cred, err = self.schema:process_auto_fields(_cred, "insert", options)
+function _M:insert(in_cred, options)
+  local cred, err = self.schema:process_auto_fields(in_cred, "insert", options)
   if not cred then
     return nil, Errors:schema_violation(err)
   end
@@ -123,8 +123,8 @@ function _M:insert(_cred, options)
 end
 
 
-function _M:update(cred_pk, _cred, options)
-  local cred, err = self.schema:process_auto_fields(_cred, "update", options)
+function _M:update(cred_pk, in_cred, options)
+  local cred, err = self.schema:process_auto_fields(in_cred, "update", options)
   if not cred then
     return nil, Errors:schema_violation(err)
   end
@@ -150,8 +150,8 @@ function _M:update(cred_pk, _cred, options)
 end
 
 
-function _M:upsert(cred_pk, _cred, options)
-  local cred, err = self.schema:process_auto_fields(_cred, "upsert", options)
+function _M:upsert(cred_pk, in_cred, options)
+  local cred, err = self.schema:process_auto_fields(in_cred, "upsert", options)
   if not cred then
     return nil, Errors:schema_violation(err)
   end
