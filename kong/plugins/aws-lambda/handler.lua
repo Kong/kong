@@ -70,10 +70,11 @@ local function validate_http_status_code(status_code)
 
   if type(status_code) == "string" then
     status_code = tonumber(status_code)
-  end
 
-  if not status_code then
-    return false
+    if not status_code then
+      return false
+    end
+
   end
 
   if status_code >= 100 and status_code <= 599 then

@@ -805,7 +805,7 @@ for _, strategy in helpers.each_strategy() do
 -- and the tests pass.
 -- see: https://github.com/Kong/kong/commit/c6f9e4558b5a654e78ca96b2ba4309e527053403#diff-9d13d8efc852de84b07e71bf419a2c4d
 
-      it("sets proper status code(number type) on custom response from Lambda", function()
+      it("sets proper status code (type = number) on custom response from Lambda", function()
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/post",
@@ -823,7 +823,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("", body)
       end)
 
-      it("sets proper status code(string type) on custom response from Lambda", function()
+      it("sets proper status code (type = string) on custom response from Lambda", function()
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/post",
