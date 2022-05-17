@@ -7,7 +7,7 @@
 
 local declarative_config = require "kong.db.schema.others.declarative_config"
 local workspaces = require "kong.workspaces"
-
+local yield = require("kong.tools.utils").yield
 
 
 local kong = kong
@@ -74,6 +74,10 @@ local function get_entity_ids_tagged(key, tag_names, tags_cond)
     if not list then
       return nil, err
     end
+
+    yield(true)
+
+    list = list or {}
 
     if i > 1 and tags_cond == "and" then
       local list_len = #list
@@ -153,6 +157,11 @@ local function page_for_key(self, key, size, offset, options)
     return nil, err
   end
 
+    list = list or {}
+  end
+
+  yield()
+
   local ret = {}
   local schema_name = self.schema.name
 
@@ -163,6 +172,8 @@ local function page_for_key(self, key, size, offset, options)
       offset = nil
       break
     end
+
+    yield(true)
 
     -- Tags are stored in the cache entries "tags||@list" and "tags:<tagname>|@list"
     -- The contents of both of these entries is an array of strings
