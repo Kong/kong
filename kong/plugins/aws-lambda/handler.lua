@@ -74,7 +74,6 @@ local function validate_http_status_code(status_code)
     if not status_code then
       return false
     end
-
   end
 
   if status_code >= 100 and status_code <= 599 then
