@@ -675,7 +675,7 @@ local function issue_token(conf)
             response_params = generate_token(conf, kong.router.get_service(),
               client,
               auth_code.authenticated_userid,
-              auth_code.scope, state)
+              scope, state)
 
             -- Delete authorization code so it cannot be reused
             kong.db.oauth2_authorization_codes:delete({ id = auth_code.id })
