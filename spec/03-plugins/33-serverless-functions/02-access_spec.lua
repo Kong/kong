@@ -69,13 +69,9 @@ end)
 
 for _, plugin_name in ipairs({ "pre-function", "post-function" }) do
 
-  for _, method in ipairs({ "functions", "phase=functions"}) do
+  for _, method in ipairs({ "phase=functions" }) do
     local function get_conf(functions)
-      if method == "functions" then
-        return { functions = functions }
-      elseif method == "phase=functions" then
-        return { access = functions }
-      end
+      return { access = functions }
     end
 
     describe("Plugin: " .. plugin_name .. string.format(" (by %s)", method) .. " access", function()

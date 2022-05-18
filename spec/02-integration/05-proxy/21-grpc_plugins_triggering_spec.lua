@@ -28,7 +28,7 @@ local function wait()
   -- in the logs when executing this
   helpers.wait_until(function()
     local logs = pl_file.read(TEST_CONF.prefix .. "/" .. TEST_CONF.proxy_error_log)
-    local _, count = logs:gsub([[executing plugin "logger": log]], "")
+    local _, count = logs:gsub("%[logger%] log phase", "")
 
     return count >= 1
   end, 10)
@@ -112,12 +112,12 @@ for _, strategy in helpers.each_strategy() do
 
       local service1 = assert(bp.services:insert {
         name = "grpc",
-        url = "grpc://localhost:15002",
+        url = helpers.grpcbin_url,
       })
 
       local service2 = assert(bp.services:insert {
         name = "grpcs",
-        url = "grpcs://localhost:15003",
+        url = helpers.grpcbin_ssl_url,
       })
 
       assert(bp.routes:insert {

@@ -1,9 +1,9 @@
 local kong = kong
 local ngx = ngx
-local find = string.find
 local lower = string.lower
 local concat = table.concat
-local select = select
+local ngx_timer_pending_count = ngx.timer.pending_count
+local ngx_timer_running_count = ngx.timer.running_count
 local balancer = require("kong.runloop.balancer")
 local get_all_upstreams = balancer.get_all_upstreams
 if not balancer.get_all_upstreams then -- API changed since after Kong 2.5
@@ -48,6 +48,9 @@ local function init()
       "Number of Stream connections",
       {"state"})
   end
+  metrics.timers = prometheus:gauge("nginx_timers",
+                                    "Number of nginx timers",
+                                    {"state"})
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
                                           "Datastore reachable from Kong, " ..
                                           "0 is unreachable")
@@ -101,7 +104,6 @@ local function init()
   metrics.consumer_status = prometheus:counter("http_consumer_status",
                                           "HTTP status codes for customer per service/route in Kong",
                                           {"service", "route", "code", "consumer"})
-
 
   -- Hybrid mode status
   if role == "control_plane" then
@@ -293,26 +295,17 @@ local function metric_data()
     return kong.response.exit(500, { message = "An unexpected error occurred" })
   end
 
-  if ngx.location then
-    local r = ngx.location.capture "/nginx_status"
+  local nginx_statistics = kong.nginx.get_statistics()
+  metrics.connections:set(nginx_statistics['connections_accepted'], { "accepted" })
+  metrics.connections:set(nginx_statistics['connections_handled'], { "handled" })
+  metrics.connections:set(nginx_statistics['total_requests'], { "total" })
+  metrics.connections:set(nginx_statistics['connections_active'], { "active" })
+  metrics.connections:set(nginx_statistics['connections_reading'], { "reading" })
+  metrics.connections:set(nginx_statistics['connections_writing'], { "writing" })
+  metrics.connections:set(nginx_statistics['connections_waiting'], { "waiting" })
 
-    if r.status ~= 200 then
-      kong.log.warn("prometheus: failed to retrieve /nginx_status ",
-        "while processing /metrics endpoint")
-
-    else
-      local accepted, handled, total = select(3, find(r.body,
-        "accepts handled requests\n (%d*) (%d*) (%d*)"))
-      metrics.connections:set(accepted, { "accepted" })
-      metrics.connections:set(handled, { "handled" })
-      metrics.connections:set(total, { "total" })
-    end
-  end
-
-  metrics.connections:set(ngx.var.connections_active or 0, { "active" })
-  metrics.connections:set(ngx.var.connections_reading or 0, { "reading" })
-  metrics.connections:set(ngx.var.connections_writing or 0, { "writing" })
-  metrics.connections:set(ngx.var.connections_waiting or 0, { "waiting" })
+  metrics.timers:set(ngx_timer_running_count(), {"running"})
+  metrics.timers:set(ngx_timer_pending_count(), {"pending"})
 
   -- db reachable?
   local ok, err = kong.db.connector:connect()
@@ -411,7 +404,7 @@ local function collect(with_stream)
 
   ngx.print(metric_data())
 
-  -- only gather stream metrics if stream_api module is avaiable
+  -- only gather stream metrics if stream_api module is available
   -- and user has configured at least one stream listeners
   if stream_available and #kong.configuration.stream_listeners > 0 then
     local res, err = stream_api.request("prometheus", "")

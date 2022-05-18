@@ -10,7 +10,7 @@ local tostring = tostring
 local fmt = string.format
 
 
-local function post_health(self, db, is_healthy)
+local function set_target_health(self, db, is_healthy)
   local upstream, _, err_t = endpoints.select_entity(self, db, db.upstreams.schema)
   if err_t then
     return endpoints.handle_error(err_t)
@@ -112,21 +112,6 @@ local function target_endpoint(self, db, callback)
 end
 
 
-local function update_existent_target(self, db)
-  local upstream = endpoints.select_entity(self, db, db.upstreams.schema)
-  local filter = { target = unescape_uri(self.params.target) }
-  local opts = endpoints.extract_options(self.args.uri, db.targets.schema, "select")
-  local target = db.targets:select_by_upstream_filter(upstream, filter, opts)
-
-  if target then
-    self.params.targets = db.targets.schema:extract_pk_values(target)
-    return endpoints.update_entity(self, db, db.targets.schema)
-  end
-
-  return nil
-end
-
-
 return {
   ["/upstreams/:upstreams/health"] = {
     GET = function(self, db)
@@ -180,51 +165,71 @@ return {
                                             kong.db.upstreams.schema,
                                             "upstream",
                                             "page_for_upstream"),
-    POST = function(self, db)
-      -- updating a target using POST is a compatibility with existent API and
-      -- should be deprecated in next major version
-      local entity, _, err_t = update_existent_target(self, db)
-      if err_t then
-        return endpoints.handle_error(err_t)
-      end
-      if entity then
-        return kong.response.exit(200, entity, { ["Deprecation"] = "true" })
-      end
-
+    PUT = function(self, db)
       local create = endpoints.post_collection_endpoint(kong.db.targets.schema,
                         kong.db.upstreams.schema, "upstream")
       return create(self, db)
-    end
+    end,
+    POST = function(self, db)
+      return kong.response.exit(405)
+    end,
   },
 
   ["/upstreams/:upstreams/targets/all"] = {
-    GET = endpoints.get_collection_endpoint(kong.db.targets.schema,
-                                            kong.db.upstreams.schema,
-                                            "upstream",
-                                            "page_for_upstream_raw")
+    GET = function(self, db)
+      local schema = db.targets.schema
+      local foreign_schema = db.upstreams.schema
+      local foreign_entity, _, err_t = endpoints.select_entity(self, db, foreign_schema)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      if not foreign_entity then
+        return endpoints.not_found()
+      end
+
+      self.params[schema.name] = schema:extract_pk_values(foreign_entity)
+
+      local method = "page_for_upstream_raw"
+      local data, _, err_t, offset = endpoints.page_collection(self, db, schema, method)
+      if err_t then
+        return endpoints.handle_error(err_t)
+      end
+
+      local foreign_key = self.params[foreign_schema.name]
+      local next_page = offset and fmt("/upstreams/%s/targets/all?offset=%s",
+                                       foreign_key,
+                                       escape_uri(offset)) or null
+
+      return kong.response.exit(200, {
+        data   = data,
+        offset = offset,
+        next   = next_page,
+      })
+    end
   },
 
   ["/upstreams/:upstreams/targets/:targets/healthy"] = {
-    POST = function(self, db)
-      return post_health(self, db, true)
+    PUT = function(self, db)
+      return set_target_health(self, db, true)
     end,
   },
 
   ["/upstreams/:upstreams/targets/:targets/unhealthy"] = {
-    POST = function(self, db)
-      return post_health(self, db, false)
+    PUT = function(self, db)
+      return set_target_health(self, db, false)
     end,
   },
 
   ["/upstreams/:upstreams/targets/:targets/:address/healthy"] = {
-    POST = function(self, db)
-      return post_health(self, db, true)
+    PUT = function(self, db)
+      return set_target_health(self, db, true)
     end,
   },
 
   ["/upstreams/:upstreams/targets/:targets/:address/unhealthy"] = {
-    POST = function(self, db)
-      return post_health(self, db, false)
+    PUT = function(self, db)
+      return set_target_health(self, db, false)
     end,
   },
 

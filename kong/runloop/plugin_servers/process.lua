@@ -1,7 +1,6 @@
 local cjson = require "cjson.safe"
 local pl_path = require "pl.path"
 local raw_log = require "ngx.errlog".raw_log
-local msgpack = require "MessagePack"
 
 local _, ngx_pipe = pcall(require, "ngx.pipe")
 
@@ -56,29 +55,15 @@ local function get_server_defs()
   if not _servers then
     _servers = {}
 
-    if config.pluginserver_names[1] then
-      for i, name in ipairs(config.pluginserver_names) do
-        name = name:lower()
-        kong.log.debug("search config for pluginserver named: ", name)
-        local env_prefix = "pluginserver_" .. name:gsub("-", "_")
-        _servers[i] = {
-          name = name,
-          socket = config[env_prefix .. "_socket"] or "/usr/local/kong/" .. name .. ".socket",
-          start_command = config[env_prefix .. "_start_cmd"] or ifexists("/usr/local/bin/"..name),
-          query_command = config[env_prefix .. "_query_cmd"] or ifexists("/usr/local/bin/query_"..name),
-        }
-      end
-
-    elseif config.go_plugins_dir ~= "off" then
-      kong.log.info("old go_pluginserver style")
-      _servers[1] = {
-        name = "go-pluginserver",
-        socket = config.prefix .. "/go_pluginserver.sock",
-        start_command = ("%s -kong-prefix %q -plugins-directory %q"):format(
-            config.go_pluginserver_exe, config.prefix, config.go_plugins_dir),
-        info_command = ("%s -plugins-directory %q -dump-plugin-info %%q"):format(
-            config.go_pluginserver_exe, config.go_plugins_dir),
-        protocol = "MsgPack:1",
+    for i, name in ipairs(config.pluginserver_names) do
+      name = name:lower()
+      kong.log.debug("search config for pluginserver named: ", name)
+      local env_prefix = "pluginserver_" .. name:gsub("-", "_")
+      _servers[i] = {
+        name = name,
+        socket = config[env_prefix .. "_socket"] or "/usr/local/kong/" .. name .. ".socket",
+        start_command = config[env_prefix .. "_start_cmd"] or ifexists("/usr/local/bin/"..name),
+        query_command = config[env_prefix .. "_query_cmd"] or ifexists("/usr/local/bin/query_"..name),
       }
     end
   end
@@ -169,24 +154,6 @@ local function ask_info(server_def)
   end
 end
 
-local function ask_info_plugin(server_def, plugin_name)
-  if not server_def.info_command then
-    return
-  end
-
-  local fd, err = io.popen(server_def.info_command:format(plugin_name))
-  if not fd then
-    local msg = string.format("asking [%s] info of [%s", server_def.name, plugin_name)
-    kong.log.err(msg, err)
-    return
-  end
-
-  local info_dump = fd:read("*a")
-  fd:close()
-  local info = assert(msgpack.unpack(info_dump))
-  register_plugin_info(server_def, info)
-end
-
 function proc_mgmt.get_plugin_info(plugin_name)
   if not _plugin_infos then
     kong = kong or _G.kong    -- some CLI cmds set the global after loading the module.
@@ -194,12 +161,6 @@ function proc_mgmt.get_plugin_info(plugin_name)
 
     for _, server_def in ipairs(get_server_defs()) do
       ask_info(server_def)
-    end
-  end
-
-  if not _plugin_infos[plugin_name] then
-    for _, server_def in ipairs(get_server_defs()) do
-      ask_info_plugin(server_def, plugin_name)
     end
   end
 

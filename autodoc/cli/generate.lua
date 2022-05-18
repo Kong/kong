@@ -47,8 +47,6 @@ for _, cmd in ipairs(cmds) do
   pd:close()
   write("```")
   write("")
-  write("[Back to top](#introduction)")
-  write("")
   write("---")
   write("")
 end

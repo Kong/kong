@@ -14,11 +14,13 @@ local floor = math.floor
 local kong = kong
 local type = type
 local ngx = ngx
-local null = ngx.null
+local now = ngx.now
+local log = ngx.log
+local NOTICE  = ngx.NOTICE
 
 
 
-local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
+local GLOBAL_QUERY_OPTS = { workspace = ngx.null, show_ws_id = true }
 
 
 function cache_warmup._mock_kong(mock_kong)
@@ -31,14 +33,24 @@ local function warmup_dns(premature, hosts, count)
     return
   end
 
-  ngx.log(ngx.NOTICE, "warming up DNS entries ...")
+  log(NOTICE, "warming up DNS entries ...")
 
-  local start = ngx.now()
+  local start = now()
 
   local upstreams_dao = kong.db["upstreams"]
   local upstreams_names = {}
   if upstreams_dao then
-    for upstream, err in upstreams_dao:each(nil, GLOBAL_QUERY_OPTS) do
+    local page_size
+    if upstreams_dao.pagination then
+      page_size = upstreams_dao.pagination.max_page_size
+    end
+
+    for upstream, err in upstreams_dao:each(page_size, GLOBAL_QUERY_OPTS) do
+      if err then
+        log(NOTICE, "failed to iterate over upstreams: ", err)
+        break
+      end
+
       upstreams_names[upstream.name] = true
     end
   end
@@ -53,9 +65,9 @@ local function warmup_dns(premature, hosts, count)
     end
   end
 
-  local elapsed = floor((ngx.now() - start) * 1000)
+  local elapsed = floor((now() - start) * 1000)
 
-  ngx.log(ngx.NOTICE, "finished warming up DNS entries",
+  log(NOTICE, "finished warming up DNS entries",
                       "' into the cache (in ", tostring(elapsed), "ms)")
 end
 
@@ -89,9 +101,9 @@ function cache_warmup.single_dao(dao)
   local entity_name = dao.schema.name
   local cache_store = constants.ENTITY_CACHE_STORE[entity_name]
 
-  ngx.log(ngx.NOTICE, "Preloading '", entity_name, "' into the ", cache_store, "...")
+  log(NOTICE, "Preloading '", entity_name, "' into the ", cache_store, "...")
 
-  local start = ngx.now()
+  local start = now()
 
   local hosts_array, hosts_set, host_count
   if entity_name == "services" then
@@ -100,7 +112,11 @@ function cache_warmup.single_dao(dao)
     host_count = 0
   end
 
-  for entity, err in dao:each(nil, GLOBAL_QUERY_OPTS) do
+  local page_size
+  if dao.pagination then
+    page_size = dao.pagination.max_page_size
+  end
+  for entity, err in dao:each(page_size, GLOBAL_QUERY_OPTS) do
     if err then
       return nil, err
     end
@@ -124,16 +140,16 @@ function cache_warmup.single_dao(dao)
     ngx.timer.at(0, warmup_dns, hosts_array, host_count)
   end
 
-  local elapsed = floor((ngx.now() - start) * 1000)
+  local elapsed = floor((now() - start) * 1000)
 
-  ngx.log(ngx.NOTICE, "finished preloading '", entity_name,
+  log(NOTICE, "finished preloading '", entity_name,
                       "' into the ", cache_store, " (in ", tostring(elapsed), "ms)")
   return true
 end
 
 
 -- Loads entities from the database into the cache, for rapid subsequent
--- access. This function is intented to be used during worker initialization.
+-- access. This function is intended to be used during worker initialization.
 function cache_warmup.execute(entities)
   if not kong.cache or not kong.core_cache then
     return true

@@ -72,7 +72,6 @@ return {
     { protocols = typedefs.protocols },
     { config = {
         type = "record",
-        default = { metrics = DEFAULT_METRICS },
         fields = {
           { host = typedefs.host({ default = "localhost" }), },
           { port = typedefs.port({ default = 8125 }), },

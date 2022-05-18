@@ -1,5 +1,7 @@
 # Table of Contents
 
+- [0.4.0](#040---20220228)
+- [0.3.0](#030---20210914)
 - [0.2.14](#0214---20210219)
 - [0.2.13](#0213---20201208)
 - [0.2.12](#0212---20201013)
@@ -18,6 +20,18 @@
 - [0.1.2](#012---20191216)
 - [0.1.1](#011---20191212)
 - [0.1.0](#010---20191212)
+
+## [0.4.0] - 2022/02/28
+
+- Add rsa_key_size config option to acme plugin.
+
+##  [0.3.0] - 2021/09/14
+
+- Wait before signaling challenge in hybrid mode.
+- Always store in external storage in hybrid mode if configured.
+- Throw warning on proxy side when using kong storage in hybrid mode and doesn't allow shm in hybrid mode.
+- Also check if host is in domain list in sanity test.
+- Escape dots in wildcard domains pattern.
 
 ##  [0.2.14] - 2021/02/19
 

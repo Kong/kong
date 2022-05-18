@@ -43,6 +43,10 @@ local table_remove = table.remove
 local table_insert = table.insert
 local table_concat = table.concat
 local string_lower = string.lower
+local string_byte  = string.byte
+
+local DOT   = string_byte(".")
+local COLON = string_byte(":")
 
 local EMPTY = setmetatable({},
   {__newindex = function() error("The 'EMPTY' table is read-only") end})
@@ -260,14 +264,14 @@ local function cacheShortInsert(entry, qname, qtype)
   return cacheinsert(entry, "short:" .. qname, qtype or "none")
 end
 
--- Lookup the last succesful query type.
+-- Lookup the last successful query type.
 -- @param qname name to resolve
 -- @return query/record type constant, or ˋnilˋ if not found
 local function cachegetsuccess(qname)
   return dnscache:get(qname)
 end
 
--- Sets the last succesful query type.
+-- Sets the last successful query type.
 -- Only if the type provided is in the list of types to try.
 -- @param qname name resolved
 -- @param qtype query/record type to set, or ˋnilˋ to clear
@@ -615,6 +619,13 @@ _M.init = function(options)
   options.search = options.search or resolv.search or { resolv.domain }
   log(DEBUG, PREFIX, "search = ", table_concat(options.search,", "))
 
+  -- check if there is special domain like "."
+  for i = #options.search, 1, -1 do
+    if options.search[i] == "." then
+      table_remove(options.search, i)
+    end
+  end
+
 
   -- other options
 
@@ -646,7 +657,7 @@ local function parseAnswer(qname, qtype, answers, try_list)
 
   -- remove last '.' from FQDNs as the answer does not contain it
   local check_qname do
-    if qname:sub(-1, -1) == "." then
+    if string_byte(qname, -1) == DOT then
       check_qname = qname:sub(1, -2) -- FQDN, drop the last dot
     else
       check_qname = qname
@@ -945,8 +956,8 @@ local function check_ipv6(qname, qtype, try_list)
     check = qname
   end
 
-  if check:sub(1,1) == ":" then check = "0"..check end
-  if check:sub(-1,-1) == ":" then check = check.."0" end
+  if string_byte(check, 1)  == COLON then check = "0"..check end
+  if string_byte(check, -1) == COLON then check = check.."0" end
   if check:find("::") then
     -- expand double colon
     local _, count = check:gsub(":","")
@@ -1037,7 +1048,7 @@ local function search_iter(qname, qtype)
 
   local i_type = type_start
   local search do
-    if qname:sub(-1, -1) == "." then
+    if string_byte(qname, -1) == DOT then
       -- this is a FQDN, so no searches
       search = {}
     else
@@ -1095,7 +1106,7 @@ end
 -- `r_opts.qtype` is not provided, then it will try to resolve
 -- the name using the record types, in the order as provided to `init`.
 --
--- Note that unless explictly requesting a CNAME record (by setting `r_opts.qtype`) this
+-- Note that unless explicitly requesting a CNAME record (by setting `r_opts.qtype`) this
 -- function will dereference the CNAME records.
 --
 -- So requesting `my.domain.com` (assuming to be an AAAA record, and default `order`) will try to resolve

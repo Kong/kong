@@ -95,6 +95,14 @@
                                           # is adjusted by the `log_level`
                                           # property.
 
+#vaults = off                    # Comma-separated list of vaults this node
+                                 # should load. By default, no vaults are
+                                 # enabled.
+                                 #
+                                 # The specified name(s) will be substituted as
+                                 # such in the Lua namespace:
+                                 # `kong.vaults.{name}.*`.
+
 #plugins = bundled               # Comma-separated list of plugins this node
                                  # should load. By default, only plugins
                                  # bundled in official distributions are
@@ -270,6 +278,11 @@
                                  # address of the control plane node from
                                  # which configuration updates will be fetched,
                                  # in `host:port` format.
+
+#cluster_max_payload = 4194304
+                                 # This sets the maximum payload size allowed
+                                 # to be sent across from CP to DP in Hybrid mode
+                                 # Default is 4Mb - 4 * 1024 * 1024 due to historical reasons
 
 #------------------------------------------------------------------------------
 # HYBRID MODE CONTROL PLANE
@@ -1294,9 +1307,9 @@
 
 #dns_cache_size = 10000          # Defines the maximum allowed number of
                                  # DNS records stored in memory cache.
-                                 # Least recently used DNS records are discarded 
-                                 # from cache if it is full. Both errors and 
-                                 # data are cached, therefore a single name query 
+                                 # Least recently used DNS records are discarded
+                                 # from cache if it is full. Both errors and
+                                 # data are cached, therefore a single name query
                                  # can easily take up 10-15 slots.
 
 #dns_not_found_ttl = 30          # TTL in seconds for empty DNS responses and
@@ -1366,33 +1379,30 @@
 # https://github.com/openresty/lua-nginx-module
 
 
-#lua_ssl_trusted_certificate =   # Comma-separated list of paths to certificate
-                                 # authority files for Lua cosockets in PEM format.
-                                 #
-                                 # The special value `system` attempts to search for the
-                                 # "usual default" provided by each distro, according
-                                 # to an arbitrary heuristic. In the current implementation,
-                                 # The following pathnames will be tested in order,
-                                 # and the first one found will be used:
-                                 #
-                                 # - /etc/ssl/certs/ca-certificates.crt (Debian/Ubuntu/Gentoo)
-                                 # - /etc/pki/tls/certs/ca-bundle.crt (Fedora/RHEL 6)
-                                 # - /etc/ssl/ca-bundle.pem (OpenSUSE)
-                                 # - /etc/pki/tls/cacert.pem (OpenELEC)
-                                 # - /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem (CentOS/RHEL 7)
-                                 # - /etc/ssl/cert.pem (OpenBSD, Alpine)
-                                 #
-                                 # If no file is found on any of these paths, an error will
-                                 # be raised.
-                                 #
-                                 # `system` can be used by itself or in conjunction with other
-                                 # CA filepaths.
-                                 #
-                                 # When `pg_ssl_verify` or `cassandra_ssl_verify`
-                                 # are enabled, these certificate authority files will be
-                                 # used for verifying Kong's database connections.
-                                 #
-                                 # See https://github.com/openresty/lua-nginx-module#lua_ssl_trusted_certificate
+#lua_ssl_trusted_certificate = system   # Comma-separated list of paths to certificate
+                                        # authority files for Lua cosockets in PEM format.
+                                        #
+                                        # The special value `system` attempts to search for the
+                                        # "usual default" provided by each distro, according
+                                        # to an arbitrary heuristic. In the current implementation,
+                                        # The following pathnames will be tested in order,
+                                        # and the first one found will be used:
+                                        #
+                                        # - /etc/ssl/certs/ca-certificates.crt (Debian/Ubuntu/Gentoo)
+                                        # - /etc/pki/tls/certs/ca-bundle.crt (Fedora/RHEL 6)
+                                        # - /etc/ssl/ca-bundle.pem (OpenSUSE)
+                                        # - /etc/pki/tls/cacert.pem (OpenELEC)
+                                        # - /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem (CentOS/RHEL 7)
+                                        # - /etc/ssl/cert.pem (OpenBSD, Alpine)
+                                        #
+                                        # `system` can be used by itself or in conjunction with other
+                                        # CA filepaths.
+                                        #
+                                        # When `pg_ssl_verify` or `cassandra_ssl_verify`
+                                        # are enabled, these certificate authority files will be
+                                        # used for verifying Kong's database connections.
+                                        #
+                                        # See https://github.com/openresty/lua-nginx-module#lua_ssl_trusted_certificate
 
 #lua_ssl_verify_depth = 1        # Sets the verification depth in the server
                                  # certificates chain used by Lua cosockets,
@@ -1531,3 +1541,14 @@
                                      # **Warning**: Certain variables, when made
                                      # available, may create opportunities to
                                      # escape the sandbox.
+
+#openresty_path =                 # Path to the OpenResty installation that Kong
+                                  # will use. When this is empty (the default),
+                                  # Kong determines the OpenResty installation
+                                  # by searching for a system-installed OpenResty
+                                  # and falling back to searching $PATH for the
+                                  # nginx binary.
+                                  #
+                                  # Setting this attribute disables the search
+                                  # behavior and explicitly instructs Kong which
+                                  # OpenResty installation to use.

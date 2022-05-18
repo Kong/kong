@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
 
-red="\033[0;31m"
-green="\033[0;32m"
-cyan="\033[0;36m"
-bold="\033[1m"
-nocolor="\033[0m"
-
-source $(dirname "$0")/common.sh
+source "$(dirname "$0")/common.sh"
+check_requirements
 
 #-------------------------------------------------------------------------------
 function usage() {
@@ -20,41 +15,26 @@ function usage() {
       echo
    fi
    c=1
-   step "all_clear"            "ensure all PRs marked on the release milestone are 100% merged"
-   step "dependencies"         "ensure all kong dependencies are bumped in the rockspec"
+   step "check_milestone"      "ensure all PRs marked on the release milestone are 100% merged"
+   step "check_dependencies"   "ensure all kong dependencies are bumped in the rockspec"
    step "check_perf"           "ensure performance tests were executed"
    step "check_upgrade_tests"  "ensure upgrade tests were executed"
    step "check_changelog"      "ensure changelog was written in pre-release and is ready for final"
    step "check_upgrade"        "ensure upgrade.md was updated in pre-release and is ready for final"
    step "version_bump"         "bump and commit the version number"
-   step "submit"               "push and submit a release PR"
+   step "submit_release_pr"    "push and submit a release PR"
    step "merge"                "merge, tag and sign the release"
-   step "update_docker"        "(ran by CI now) update and submit a PR to Kong's docker-kong repo"
+   step "approve_docker"       "humans review and approve machine PR to docker-kong repo"
    step "merge_docker"         "merge, tag and sign Kong's docker-kong PR"
    step "submit_docker"        "submit a PR to docker-library/official-images"
-   step "homebrew"             "(ran by CI now) bump version and submit a PR to homebrew-kong"
-   step "luarocks"             "upload to LuaRocks" "<api-key>"
-   step "vagrant"              "(ran by CI now) bump version and submit a PR to kong-vagrant"
-   step "pongo"                "(ran by CI now) bump version and submit a PR to kong-pongo"
+   step "merge_homebrew"       "humans approve and merge machine PR to homebrew-kong"
+   step "upload_rock"          "upload to LuaRocks" "<api-key>"
+   step "merge_vagrant"        "humans approve and merge machine PR to kong-vagrant"
+   step "merge_pongo"          "humans approve and merge machine PR to kong-pongo"
    step "announce"             "Get announcement messages for Kong Nation and Slack #general"
    exit 0
 }
 
-#-------------------------------------------------------------------------------
-function need() {
-  req="$1"
-
-  if [ -z $(which "$req") ]; then
-     echo "Required command $req not found."
-     exit 1
-  fi
-}
-
-function check_requirements() {
-   need git
-   need hub
-   need sed
-}
 
 #-------------------------------------------------------------------------------
 # Default help
@@ -63,14 +43,12 @@ function check_requirements() {
 if [ "$1" = "-h" ] || [ "$1" = "--help" ] || ! [ "$1" ]
 then
    version="<x.y.z>"
-   usage
+   usage "$@"
 fi
 
 #-------------------------------------------------------------------------------
 # Variables
 #-------------------------------------------------------------------------------
-
-check_requirements
 
 version="$1"
 step="$2"
@@ -90,64 +68,30 @@ fi
 
 if [ "$step" = "" ]
 then
-   usage
+   usage "$@"
 fi
 
 EDITOR="${EDITOR-$VISUAL}"
 
 case "$step" in
-   #---------------------------------------------------------------------------
-   all_clear)
-      if which firefox > /dev/null 2>&1
-      then
-        browser=firefox
-      elif which xdg-open > /dev/null 2>&1
-      then
-        browser=xdg-open
-      elif which open > /dev/null 2>&1
-      then
-          browser=open
-      fi
-
-      echo "Visit the milestones page (https://github.com/Kong/kong/milestone) and ensure PRs are merged. Press 'y' to open it or Ctrl-C to quit"
-      read
-      if [ "$REPLY" = "y" ]
-      then
-        $browser https://github.com/Kong/kong/milestones
-      fi
-
-      CONFIRM "If everything looks all right, press Enter to continue"
-      SUCCESS "All PRs are merged. Proceeding!"
-      ;;
-
-   #---------------------------------------------------------------------------
-   dependencies)
-      echo "Ensure Kong dependencies in the rockspec are bumped to their latest version. Press 'y' to open Kong's rockspec or Ctrl+C to quit"
-      read
-      if [ "$REPLY" = "y" ]
-      then
-        $EDITOR *.rockspec
-      fi
-
-      CONFIRM "If everything looks all right, press Enter to continue"
-      SUCCESS "All dependencies are bumped. Proceeding!"
-      ;;
+   check_milestone) check_milestone ;;
+   check_dependencies) check_dependencies ;;
 
    #---------------------------------------------------------------------------
    check_perf)
-      CONFIRM "Ensure Kong performance tests were performed and no showstopper regressions were found. If everything looks all right, press Enter to continue or Ctrl+C to quit"
+      CONFIRM "Ensure Kong performance tests were performed. At minimum that requires running the https://github.com/Kong/kong/actions/workflows/perf.yml on the release branch and on the previous release, and compare the results. It can involve more custom tests. If everything looks all right, press Enter to continue or Ctrl+C to quit"
       SUCCESS "Proceeding."
       ;;
 
    #---------------------------------------------------------------------------
    check_upgrade_tests)
-      CONFIRM "Ensure Kong upgrade tests were performed and no showstopper regressions were found. If everything looks all right, press Enter to continue or Ctrl+C to quit"
+      CONFIRM "Ensure Kong upgrade tests were performed. Current upgrade tests are https://github.com/Kong/kong-upgrade-tests. There should be tests on every release that has migrations, and no stoppers should appear. If everything looks all right, press Enter to continue or Ctrl+C to quit"
       SUCCESS "Proceeding."
       ;;
 
    #---------------------------------------------------------------------------
    check_changelog)
-      echo "Ensure changelog was written in pre-release and is ready for the final. Press 'y' to open the CHANGELOG or Ctrl+C to quit"
+      echo "Ensure changelog contains all the changes needed the final. Press 'y' to open the CHANGELOG or Ctrl+C to quit"
       read
       if [ "$REPLY" = "y" ]
       then
@@ -203,30 +147,12 @@ case "$step" in
 
       SUCCESS "Version bump for the release is now committed locally." \
               "You are ready to run the next step:" \
-              "    $0 $version submit"
+              "    $0 $version submit_release_pr"
       ;;
 
    #---------------------------------------------------------------------------
-   submit)
-      if ! git log -n 1 | grep -q "release: $version"
-      then
-         die "Release commit is not at the top of the current branch. Did you commit the version bump?"
-      fi
+   submit_release_pr) submit_release_pr "$base" "$version" merge docs_pr;;
 
-      git log
-
-      CONFIRM "Press Enter to push the branch and open the release PR" \
-              "or Ctrl-C to cancel."
-
-      set -e
-      git push --set-upstream origin "$base"
-      hub pull-request -b "master" -h "$base" -m "Release: $version" -l "pr/please review,pr/do not merge"
-
-      SUCCESS "Now get the above PR reviewed and approved." \
-              "Once it is approved, you can continue to the 'merge' step." \
-              "In the mean time, you can run the 'docs_pr' step:" \
-              "    $0 $version docs_pr"
-      ;;
    #---------------------------------------------------------------------------
    merge)
       CONFIRM "Press Enter to merge the PR into master and push the tag and Github release" \
@@ -250,166 +176,28 @@ case "$step" in
 
       SUCCESS "Make sure the packages are built and available on download.konghq.com" \
               "before continuing to the following steps." \
-              "Once they are built, you may run the following steps in parallel:" \
-              "* 'homebrew'" \
-              "* 'luarocks'" \
-              "* 'vagrant'" \
-              "* 'update_docker', then 'merge_docker', then 'submit_docker'"
+
+              "They should be visible on https://internal.builds.konghq.com/job/kong/view/tags/. " \
+              "An recurrent task checks for new releases every 15 minutes on the server. " \
+              "If needed, the link 'Scan Multibranch Pipeline Now' will scan on-demmand. It can be used " \
+              "to attempt to rebuild, if there was an error."
+
+              "As the packages are built, you may run the following steps in parallel:" \
+              "* 'upload_luarock'" \
+              "* 'merge_homebrew'" \
+              "* 'merge_vagrant'" \
+              "* 'merge_pongo'" \
+              "* 'approve_docker', then 'merge_docker', then 'submit_docker'"
       ;;
    #---------------------------------------------------------------------------
-   update_docker)
-      update_docker "$version"
-
-      SUCCESS "Make sure you get the PR above approved and merged" \
-              "before continuing to the step 'merge_docker'."
-      ;;
-   #---------------------------------------------------------------------------
-   merge_docker)
-      if [ -d ../docker-kong ]
-      then
-         cd ../docker-kong
-      else
-         cd ..
-         git clone git@github.com:Kong/docker-kong.git
-         cd docker-kong
-      fi
-
-      set -e
-      git checkout "$branch"
-      git pull
-      git checkout master
-      git pull
-      git merge "$branch"
-      git push
-      git tag -s "$version" -m "$version"
-      git push origin "$version"
-
-      make_github_release_file
-
-      hub release create -F release-$version.txt "$version"
-      rm -f release-$version.txt
-
-      SUCCESS "Now you can run the next step:" \
-              "    $0 $version submit_docker"
-      ;;
-   #---------------------------------------------------------------------------
-   submit_docker)
-      if [ -d ../docker-kong ]
-      then
-         cd ../docker-kong
-      else
-         cd ..
-         git clone git@github.com:Kong/docker-kong.git
-         cd docker-kong
-      fi
-
-      set -e
-      ./submit.sh -m "$version"
-
-      SUCCESS "Once this is approved in the main repo," \
-              "run the procedure for generating the RedHat container."
-      ;;
-   #---------------------------------------------------------------------------
-   homebrew)
-      if [ -d ../homebrew-kong ]
-      then
-         cd ../homebrew-kong
-      else
-         cd ..
-         git clone git@github.com:Kong/homebrew-kong.git
-         cd homebrew-kong
-      fi
-
-      git checkout master
-      git pull
-      git checkout -B "$branch"
-      bump_homebrew
-
-      git diff
-
-      CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:Kong/homebrew-kong" \
-              "or Ctrl-C to cancel."
-
-      set -e
-      git add Formula/kong.rb
-      git commit -m "chore(kong) bump kong to $version"
-
-      git push --set-upstream origin "$branch"
-      hub pull-request -b master -h "$branch" -m "Release: $version"
-
-      SUCCESS "Make sure you get the PR above approved and merged."
-      ;;
-   #---------------------------------------------------------------------------
-   pongo)
-      if [ -d ../kong-pongo ]
-      then
-         cd ../kong-pongo
-      else
-         cd ..
-         git clone git@github.com:Kong/kong-pongo.git
-         cd kong-pongo
-      fi
-
-      git checkout master
-      git pull
-      ./assets/add_version.sh CE "$version"
-      if [[ ! $? -eq 0 ]]; then
-         exit 1
-      fi
-      SUCCESS "Make sure you get the PR above approved and merged."
-      ;;
-   #---------------------------------------------------------------------------
-   vagrant)
-      if [ -d ../kong-vagrant ]
-      then
-         cd ../kong-vagrant
-      else
-         cd ..
-         git clone git@github.com:Kong/kong-vagrant.git
-         cd kong-vagrant
-      fi
-
-      git checkout master
-      git pull
-      git checkout -B "$branch"
-      bump_vagrant
-
-      git diff
-
-      CONFIRM "If everything looks all right, press Enter to commit and send a PR to git@github.com:Kong/kong-vagrant" \
-              "or Ctrl-C to cancel."
-
-      set -e
-      git add README.md Vagrantfile
-      git commit -m "chore(*) bump Kong to $version"
-
-      git push --set-upstream origin "$branch"
-      hub pull-request -b master -h "$branch" -m "Release: $version"
-
-      SUCCESS "Make sure you get the PR above approved and merged."
-      ;;
-   #---------------------------------------------------------------------------
-   luarocks)
-      if ! [ "$3" ]
-      then
-         die "Kong API key for LuaRocks is required as an argument."
-      fi
-
-      set -e
-      ensure_recent_luarocks
-
-      luarocks --version
-
-      luarocks upload --temp-key="$3" "$rockspec" --force
-
-      SUCCESS "The LuaRocks entry is now up!"
-      ;;
-   #---------------------------------------------------------------------------
-   announce)
-      prepare_patch_announcement "$major" "$minor" "$patch"
-
-      SUCCESS "Copy and paste this announcement in Kong Nation and Slack #general"
-      ;;
+   approve_docker) approve_docker ;;
+   merge_docker) merge_docker "$branch" "$version" ;;
+   submit_docker) submit_docker "$version";;
+   merge_homebrew) merge_homebrew ;;
+   merge_pongo) merge_pongo ;;
+   merge_vagrant) merge_vagrant ;;
+   upload_luarock) upload_luarock "$rockspec" "$3" ;;
+   announce) announce "$major" "$minor" "$patch" ;;
    *)
       die "Unknown step!"
       ;;

@@ -240,7 +240,7 @@ for _, strategy in helpers.each_strategy() do
       local grpc_routes = {}
       for i = 1, 2 do
         local service = bp.services:insert {
-          url = "grpc://localhost:15002",
+          url = helpers.grpcbin_url,
           name     = fmt("grpc_statsd%s", i)
         }
         grpc_routes[i] = bp.routes:insert {
@@ -305,7 +305,7 @@ for _, strategy in helpers.each_strategy() do
         assert.True(ok)
         assert.contains("kong.statsd1.request.count:1|c", metrics)
         assert.contains("kong.statsd1.latency:%d+|ms", metrics, true)
-        assert.contains("kong.statsd1.request.size:112|ms", metrics)
+        assert.contains("kong.statsd1.request.size:%d+|ms", metrics, true)
         assert.contains("kong.statsd1.request.status.200:1|c", metrics)
         assert.contains("kong.statsd1.request.status.total:1|c", metrics)
         assert.contains("kong.statsd1.response.size:%d+|ms", metrics, true)

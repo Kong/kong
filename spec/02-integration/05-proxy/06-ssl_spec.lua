@@ -518,8 +518,6 @@ for _, strategy in helpers.each_strategy() do
   end)
 
   describe("TLS proxy [#" .. strategy .. "]", function()
-    local https_client
-
     lazy_setup(function()
       local bp = helpers.get_db_utils(strategy, {
         "routes",
@@ -540,6 +538,12 @@ for _, strategy in helpers.each_strategy() do
         snis     = { "example.com" },
         service   = service,
       }
+      
+      bp.routes:insert {
+        protocols = { "tls" },
+        snis      = { "foobar.example.com." },
+        service   = service,
+      }
 
       local cert = bp.certificates:insert {
         cert     = ssl_fixtures.cert,
@@ -558,23 +562,23 @@ for _, strategy in helpers.each_strategy() do
         stream_listen = "127.0.0.1:9020 ssl"
       })
 
-    https_client = helpers.http_client({
-      scheme = "https",
-      host = "127.0.0.1",
-      port = 9020,
-      timeout = 60000,
-      ssl_verify = false,
-      ssl_server_name = "example.com",
-    })
+    
     end)
 
     lazy_teardown(function()
       helpers.stop_kong()
-      https_client:close()
     end)
 
     describe("can route normally", function()
       it("sets the default certificate of '*' SNI", function()
+        local https_client = helpers.http_client({
+          scheme = "https",
+          host = "127.0.0.1",
+          port = 9020,
+          timeout = 60000,
+          ssl_verify = false,
+          ssl_server_name = "example.com",
+        })
         local res = assert(https_client:send {
           method  = "GET",
           path    = "/",
@@ -585,6 +589,24 @@ for _, strategy in helpers.each_strategy() do
         local cert = get_cert("example.com")
         -- this fails if the "example.com" SNI wasn't inserted above
         assert.certificate(cert).has.cn("ssl-example.com")
+        https_client:close()
+      end)
+      it("using FQDN (regression for issue 7550)", function()
+        local https_client = helpers.http_client({
+          scheme = "https",
+          host = "127.0.0.1",
+          port = 9020,
+          timeout = 60000,
+          ssl_verify = false,
+          ssl_server_name = "foobar.example.com",
+        })
+        local res = assert(https_client:send {
+          method  = "GET",
+          path    = "/",
+        })
+
+        assert.res_status(404, res)
+        https_client:close()
       end)
     end)
   end)

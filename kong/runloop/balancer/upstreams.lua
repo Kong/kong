@@ -8,6 +8,7 @@
 ---
 local singletons = require "kong.singletons"
 local workspaces = require "kong.workspaces"
+local constants  = require "kong.constants"
 local balancers
 local healthcheckers
 
@@ -22,6 +23,7 @@ local CRIT = ngx.CRIT
 local ERR = ngx.ERR
 
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
+local CLEAR_HEALTH_STATUS_DELAY = constants.CLEAR_HEALTH_STATUS_DELAY
 
 
 local upstreams_M = {}
@@ -83,7 +85,13 @@ local function load_upstreams_dict_into_memory()
   local found = nil
 
   -- build a dictionary, indexed by the upstream name
-  for up, err in singletons.db.upstreams:each(nil, GLOBAL_QUERY_OPTS) do
+  local upstreams = singletons.db.upstreams
+
+  local page_size
+  if upstreams.pagination then
+    page_size = upstreams.pagination.max_page_size
+  end
+  for up, err in upstreams:each(page_size, GLOBAL_QUERY_OPTS) do
     if err then
       log(CRIT, "could not obtain list of upstreams: ", err)
       return nil
@@ -190,7 +198,7 @@ local function do_upstream_event(operation, upstream_data)
 
     local balancer = balancers.get_balancer_by_id(upstream_id)
     if balancer then
-      healthcheckers.stop_healthchecker(balancer)
+      healthcheckers.stop_healthchecker(balancer, CLEAR_HEALTH_STATUS_DELAY)
     end
 
     if operation == "delete" then

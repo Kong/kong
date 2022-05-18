@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+
+  db:
+    image: postgres:9.6
+    environment:
+      POSTGRES_PASSWORD: kong
+      POSTGRES_USER: kong
+
+  kong:
+    build:
+      # Using a Dockerfile is optional, but included for completeness.
+      context: .
+      dockerfile: Dockerfile
+
+    volumes:
+      # This is where VS Code should expect to find your project's source code and the value of "workspaceFolder" in .devcontainer/devcontainer.json
+      - ..:/workspace:cached
+
+      # Uncomment the next line to use Docker from inside the container. See https://aka.ms/vscode-remote/samples/docker-from-docker-compose for details.
+      - /var/run/docker.sock:/var/run/docker.sock 
+    
+    # Uncomment the next four lines if you will use a ptrace-based debugger like C++, Go, and Rust.
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+
+    environment:
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_PG_USER: kong
+      KONG_PG_DATABASE: kong
+      KONG_PG_PASSWORD: kong
+      KONG_PG_HOST: db
+      OPENSSL_DIR: /usr/local/kong
+      CRYPTO_DIR: /usr/local/kong
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: /bin/sh -c "while sleep 1000; do :; done" 
+
+    # Runs app on the same network as the service container, allows "forwardPorts" in devcontainer.json function.
+    network_mode: service:db
+
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally. 
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+
+    # Uncomment the next line to use a non-root user for all processes - See https://aka.ms/vscode-remote/containers/non-root for details.
+    # user: vscode

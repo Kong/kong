@@ -1,0 +1,35 @@
+// For format details, see https://code.visualstudio.com/docs/remote/devcontainerjson-reference
+{
+    "name": "Kong Gateway Dev",
+
+    // Update the 'dockerComposeFile' list if you have more compose files or use different names.
+    "dockerComposeFile": "docker-compose.yml",
+
+    // The 'service' property is the name of the service for the container that VS Code should
+    // use. Update this value and .devcontainer/docker-compose.yml to the real service name.
+    "service": "kong",
+
+    // The optional 'workspaceFolder' property is the path VS Code should open by default when
+    // connected. This is typically a volume mount in .devcontainer/docker-compose.yml
+    "workspaceFolder": "/workspace",
+
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+    "forwardPorts": [8000, 8001, "db:5432"],
+
+    "postCreateCommand": "make dev",
+
+    // Set *default* container specific settings.json values on container create.
+    // "settings": {},
+
+    // Add the IDs of extensions you want installed when the container is created.
+    // "extensions": [],
+
+    // Uncomment the next line if you want to keep your containers running after VS Code shuts down.
+    // "shutdownAction": "none",
+
+    // Uncomment the next line to use 'postCreateCommand' to run commands after the container is created.
+    // "postCreateCommand": "uname -a",
+
+    // Comment out to connect as root instead. To add a non-root user, see: https://aka.ms/vscode-remote/containers/non-root.
+    // "remoteUser": "vscode"
+}

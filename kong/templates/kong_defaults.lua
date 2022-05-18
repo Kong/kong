@@ -9,12 +9,11 @@ admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
 status_access_log = off
 status_error_log = logs/status_error.log
+vaults = off
 plugins = bundled
 port_maps = NONE
 host_ports = NONE
 anonymous_reports = on
-go_pluginserver_exe = /usr/local/bin/go-pluginserver
-go_plugins_dir = off
 
 proxy_listen = 0.0.0.0:8000 reuseport backlog=16384, 0.0.0.0:8443 http2 ssl reuseport backlog=16384
 stream_listen = off
@@ -29,7 +28,10 @@ cluster_ca_cert = NONE
 cluster_server_name = NONE
 cluster_data_plane_purge_delay = 1209600
 cluster_ocsp = off
+cluster_max_payload = 4194304
 
+lmdb_environment_path = dbless.lmdb
+lmdb_map_size = 128m
 mem_cache_size = 128m
 ssl_cert = NONE
 ssl_cert_key = NONE
@@ -163,7 +165,7 @@ worker_consistency = strict
 worker_state_update_frequency = 5
 
 lua_socket_pool_size = 30
-lua_ssl_trusted_certificate = NONE
+lua_ssl_trusted_certificate = system
 lua_ssl_verify_depth = 1
 lua_ssl_protocols = TLSv1.1 TLSv1.2 TLSv1.3
 lua_package_path = ./?.lua;./?/init.lua;
@@ -176,4 +178,6 @@ pluginserver_names = NONE
 untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
+
+openresty_path =
 ]]

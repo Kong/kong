@@ -7,7 +7,7 @@ local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 local constants = require "kong.constants"
 local request_util = require "kong.plugins.aws-lambda.request-util"
-
+local kong = kong
 
 local VIA_HEADER = constants.HEADERS.VIA
 local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
@@ -16,6 +16,7 @@ local AWS_PORT = 443
 local AWS_REGION do
   AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
 end
+
 
 local fetch_credentials do
   local credential_sources = {
@@ -44,7 +45,6 @@ local error = error
 local pairs = pairs
 local kong = kong
 local type = type
-local find = string.find
 local fmt = string.format
 
 
@@ -63,6 +63,27 @@ local function get_now()
 end
 
 
+local function validate_http_status_code(status_code)
+  if not status_code then
+    return false
+  end
+
+  if type(status_code) == "string" then
+    status_code = tonumber(status_code)
+
+    if not status_code then
+      return false
+    end
+  end
+
+  if status_code >= 100 and status_code <= 599 then
+    return status_code
+  end
+
+  return false
+end
+
+
 --[[
   Response format should be
   {
@@ -72,8 +93,8 @@ end
   }
 --]]
 local function validate_custom_response(response)
-  if type(response.statusCode) ~= "number" then
-    return nil, "statusCode must be a number"
+  if not validate_http_status_code(response.statusCode) then
+    return nil, "statusCode validation failed"
   end
 
   if response.headers ~= nil and type(response.headers) ~= "table" then
@@ -246,15 +267,10 @@ function AWSLambdaHandler:access(conf)
 
   local proxy_opts
   if conf.proxy_url then
-    if find(conf.proxy_url, "https", 1, true) == 1 then
-      proxy_opts = {
-        https_proxy = conf.proxy_url,
-      }
-    else
-      proxy_opts = {
-        http_proxy = conf.proxy_url,
-      }
-    end
+    -- lua-resty-http uses the request scheme to determine which of
+    -- http_proxy/https_proxy it will use, and from this plugin's POV, the
+    -- request scheme is always https
+    proxy_opts = { https_proxy = conf.proxy_url }
   end
 
   -- Trigger request
@@ -326,6 +342,6 @@ function AWSLambdaHandler:access(conf)
 end
 
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = "3.6.2"
+AWSLambdaHandler.VERSION = "3.6.3"
 
 return AWSLambdaHandler

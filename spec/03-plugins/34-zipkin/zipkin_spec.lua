@@ -5,10 +5,8 @@ local to_hex = require "resty.string".to_hex
 
 local fmt = string.format
 
-local ZIPKIN_HOST = os.getenv("ZIPKIN_HOST") or "127.0.0.1"
-local ZIPKIN_PORT = 9411
-local GRPCBIN_HOST = "127.0.0.1"
-local GRPCBIN_PORT = 15002
+local ZIPKIN_HOST = helpers.zipkin_host
+local ZIPKIN_PORT = helpers.zipkin_port
 
 -- Transform zipkin annotations into a hash of timestamps. It assumes no repeated values
 -- input: { { value = x, timestamp = y }, { value = x2, timestamp = y2 } }
@@ -281,6 +279,72 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
+  describe("http_span_name configuration", function()
+    local proxy_client, zipkin_client, service
+
+    setup(function()
+      local bp = helpers.get_db_utils(strategy, { "services", "routes", "plugins" })
+
+      service = bp.services:insert {
+        name = string.lower("http-" .. utils.random_string()),
+      }
+
+      -- kong (http) mock upstream
+      bp.routes:insert({
+        name = string.lower("route-" .. utils.random_string()),
+        service = service,
+        hosts = { "http-route" },
+        preserve_host = true,
+      })
+
+      -- enable zipkin plugin globally, with sample_ratio = 1
+      bp.plugins:insert({
+        name = "zipkin",
+        config = {
+          sample_ratio = 1,
+          http_endpoint = fmt("http://%s:%d/api/v2/spans", ZIPKIN_HOST, ZIPKIN_PORT),
+          default_header_type = "b3-single",
+          http_span_name = "method_path",
+        }
+      })
+
+      helpers.start_kong({
+        database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+        stream_listen = helpers.get_proxy_ip(false) .. ":19000",
+      })
+
+      proxy_client = helpers.proxy_client()
+      zipkin_client = helpers.http_client(ZIPKIN_HOST, ZIPKIN_PORT)
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("http_span_name = 'method_path' includes path to span name", function()
+      local start_s = ngx.now()
+
+      local r = proxy_client:get("/", {
+        headers = {
+          ["x-b3-sampled"] = "1",
+          host  = "http-route",
+          ["zipkin-tags"] = "foo=bar; baz=qux"
+        },
+      })
+
+      assert.response(r).has.status(200)
+
+      local _, proxy_span, request_span =
+        wait_for_spans(zipkin_client, 3, service.name)
+      -- common assertions for request_span and proxy_span
+      assert_span_invariants(request_span, proxy_span, "get /", 16 * 2, start_s, "kong")
+    end)
+  end)
+end
+
+
+for _, strategy in helpers.each_strategy() do
 for _, traceid_byte_count in ipairs({ 8, 16 }) do
 describe("http integration tests with zipkin server [#"
          .. strategy .. "] traceid_byte_count: "
@@ -326,7 +390,7 @@ describe("http integration tests with zipkin server [#"
     -- grpc upstream
     grpc_service = bp.services:insert {
       name = string.lower("grpc-" .. utils.random_string()),
-      url = fmt("grpc://%s:%d", GRPCBIN_HOST, GRPCBIN_PORT),
+      url = helpers.grpcbin_url,
     }
 
     grpc_route = bp.routes:insert {
@@ -488,13 +552,13 @@ describe("http integration tests with zipkin server [#"
     -- specific assertions for proxy_span
     assert.same(proxy_span.tags["kong.route"], grpc_route.id)
     assert.same(proxy_span.tags["kong.route_name"], grpc_route.name)
-    assert.same(proxy_span.tags["peer.hostname"], GRPCBIN_HOST)
+    assert.same(proxy_span.tags["peer.hostname"], helpers.grpcbin_host)
 
     -- random ip assigned by Docker to the grpcbin container
     local grpcbin_ip = proxy_span.remoteEndpoint.ipv4
     assert.same({
       ipv4 = grpcbin_ip,
-      port = GRPCBIN_PORT,
+      port = helpers.grpcbin_port,
       serviceName = grpc_service.name,
     },
     proxy_span.remoteEndpoint)
@@ -510,7 +574,7 @@ describe("http integration tests with zipkin server [#"
 
     assert.same({
       ipv4 = grpcbin_ip,
-      port = GRPCBIN_PORT,
+      port = helpers.grpcbin_port,
       serviceName = grpc_service.name,
     },
     balancer_span.remoteEndpoint)
@@ -871,7 +935,7 @@ describe("http integration tests with zipkin server [#"
       })
       local body = assert.response(r).has.status(200)
       local json = cjson.decode(body)
-      assert.matches(trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
+      assert.matches(('0'):rep(32-#trace_id) .. trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
 
       local balancer_span, proxy_span, request_span =
       wait_for_spans(zipkin_client, 3, nil, trace_id)

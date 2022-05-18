@@ -17,7 +17,7 @@ local CorsHandler = {}
 
 
 CorsHandler.PRIORITY = 2000
-CorsHandler.VERSION = "2.0.0"
+CorsHandler.VERSION = "2.1.1"
 
 
 -- per-plugin cache of normalized origins for runtime comparison
@@ -64,22 +64,16 @@ local function configure_origin(conf, header_filter)
   local n_origins = conf.origins ~= nil and #conf.origins or 0
   local set_header = kong.response.set_header
 
-  -- always set Vary header (it can be used for calculating cache key)
-  -- https://github.com/rs/cors/issues/10
-  add_vary_header(header_filter)
-
-  if n_origins == 0 then
+  if n_origins == 0 or (n_origins == 1 and conf.origins[1] == "*") then
     set_header("Access-Control-Allow-Origin", "*")
     return true
   end
 
+  -- always set Vary header (it can be used for calculating cache key)
+  -- https://github.com/rs/cors/issues/10
+  add_vary_header(header_filter)
+
   if n_origins == 1 then
-    if conf.origins[1] == "*" then
-      set_header("Access-Control-Allow-Origin", "*")
-      return true
-    end
-
-
     -- if this doesnt look like a regex, set the ACAO header directly
     -- otherwise, we'll fall through to an iterative search and
     -- set the ACAO header based on the client Origin
@@ -183,6 +177,7 @@ local function configure_credentials(conf, allow_all, header_filter)
   -- be 'true' if ACAO is '*'.
   local req_origin = kong.request.get_header("origin")
   if req_origin then
+    add_vary_header(header_filter)
     set_header("Access-Control-Allow-Origin", req_origin)
     set_header("Access-Control-Allow-Credentials", true)
   end

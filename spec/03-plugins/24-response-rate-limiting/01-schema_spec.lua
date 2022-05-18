@@ -1,5 +1,6 @@
 local schema_def = require "kong.plugins.response-ratelimiting.schema"
 local v = require("spec.helpers").validate_plugin_config_schema
+local null = ngx.null
 
 
 describe("Plugin: response-rate-limiting (schema)", function()
@@ -31,6 +32,12 @@ describe("Plugin: response-rate-limiting (schema)", function()
       local ok, err = v(config, schema_def)
       assert.falsy(ok)
       assert.equal("unknown field", err.config.limits.seco)
+    end)
+    it("limits: \'null\' value does not cause 500, issue #8314", function()
+      local config = {limits = {video = {second = null, minute = 1}}}
+      local ok, err = v(config, schema_def)
+      assert.truthy(ok)
+      assert.falsy(err)
     end)
     it("limits: smaller unit is less than bigger unit", function()
       local config = {limits = {video = {second = 2, minute = 1}}}

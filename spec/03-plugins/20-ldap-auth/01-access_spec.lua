@@ -80,7 +80,7 @@ for _, ldap_strategy in pairs(ldap_strategies) do
             paths = { "/hello.HelloService/" },
             service = assert(bp.services:insert {
               name = "grpc",
-              url = "grpc://localhost:15002",
+              url = helpers.grpcbin_url,
             }),
           })
 

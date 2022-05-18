@@ -2,7 +2,6 @@ local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local DAO = require "kong.db.dao"
 local plugin_loader = require "kong.db.schema.plugin_loader"
-local BasePlugin = require "kong.plugins.base_plugin"
 local reports = require "kong.reports"
 local plugin_servers = require "kong.runloop.plugin_servers"
 
@@ -123,7 +122,7 @@ local function implements(plugin, method)
   end
 
   local m = plugin[method]
-  return type(m) == "function" and m ~= BasePlugin[method]
+  return type(m) == "function"
 end
 
 
@@ -273,13 +272,6 @@ function Plugins:load_plugin_schemas(plugin_set)
     local handler, err = load_plugin(self, plugin)
 
     if handler then
-      if type(handler.is) == "function" and handler:is(BasePlugin) then
-        -- Backwards-compatibility for 0.x and 1.x plugins inheriting from the
-        -- BasePlugin class.
-        -- TODO: deprecate & remove
-        handler = handler()
-      end
-
       if handler._go then
         go_plugins_cnt = go_plugins_cnt + 1
       end

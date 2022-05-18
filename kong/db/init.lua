@@ -245,7 +245,7 @@ function DB:set_events_handler(events)
 end
 
 
-function DB:check_version_compat(_min, _deprecated)
+function DB:check_version_compat(min, deprecated)
   local _major_minor = self.connector.major_minor_version
 
   if not _major_minor then
@@ -253,17 +253,17 @@ function DB:check_version_compat(_min, _deprecated)
   end
 
   local major_minor = version(_major_minor)
-  local min = version(_min)
-  local deprecated = _deprecated and version(_deprecated)
+  local min_version = version(min)
+  local deprecated = deprecated and version(deprecated)
 
-  if major_minor < min then
+  if major_minor < min_version then
     -- Deprecated is "ok"
     if deprecated and major_minor >= deprecated then
       log.warn("Currently using %s %s which is considered deprecated, " ..
-               "please use %s or greater", self.strategy, _major_minor, _min)
+               "please use %s or greater", self.strategy, _major_minor, min)
     else
       return false, fmt("Kong requires %s %s or greater (currently using %s)",
-                        self.strategy, _min, _major_minor)
+                        self.strategy, min, _major_minor)
     end
   end
 
@@ -420,7 +420,6 @@ end
 do
   -- migrations
   local utils = require "kong.tools.utils"
-  local MigrationHelpers = require "kong.db.migrations.helpers"
   local MigrationsState = require "kong.db.migrations.state"
 
 
@@ -517,8 +516,6 @@ do
       return nil, prefix_err(self, err)
     end
 
-    local mig_helpers = MigrationHelpers.new(self.connector)
-
     local n_migrations = 0
     local n_pending = 0
 
@@ -558,9 +555,7 @@ do
           end
 
           if strategy_migration.up_f then
-            local pok, perr, err = xpcall(strategy_migration.up_f,
-                                          debug.traceback, self.connector,
-                                          mig_helpers)
+            local pok, perr, err = xpcall(strategy_migration.up_f, debug.traceback, self.connector)
             if not pok or err then
               self.connector:close()
               return nil, fmt_err(self, "failed to run migration '%s' up_f: %s",
@@ -601,8 +596,7 @@ do
           -- kong migrations teardown
           local f = strategy_migration.teardown
 
-          local pok, perr, err = xpcall(f, debug.traceback, self.connector,
-                                        mig_helpers)
+          local pok, perr, err = xpcall(f, debug.traceback, self.connector)
           if not pok or err then
             self.connector:close()
             return nil, fmt_err(self, "failed to run migration '%s' teardown: %s",

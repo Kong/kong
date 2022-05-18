@@ -9,6 +9,7 @@ local ngx_var = ngx.var
 local coroutine_running = coroutine.running
 local get_plugin_info = proc_mgmt.get_plugin_info
 local ngx_timer_at = ngx.timer.at
+local subsystem = ngx.config.subsystem
 
 --- keep request data a bit longer, into the log timer
 local save_for_later = {}
@@ -244,8 +245,8 @@ local function build_phases(plugin)
           serialize_data = kong.log.serialize(),
           ngx_ctx = ngx.ctx,
           ctx_shared = kong.ctx.shared,
-          request_headers = ngx.req.get_headers(100),
-          response_headers = ngx.resp.get_headers(100),
+          request_headers = subsystem == "http" and ngx.req.get_headers(100) or nil,
+          response_headers = subsystem == "http" and ngx.resp.get_headers(100) or nil,
           response_status = ngx.status,
         }
 
@@ -253,6 +254,11 @@ local function build_phases(plugin)
           local co = coroutine_running()
           save_for_later[co] = saved
 
+          -- recover KONG_PHASE so check phase works properly
+          -- for functions not supported by log phase
+          if ngx.ctx then
+            ngx.ctx.KONG_PHASE = saved.ngx_ctx.KONG_PHASE
+          end
           server_rpc:handle_event(self.name, conf, phase)
 
           save_for_later[co] = nil

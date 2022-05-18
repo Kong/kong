@@ -7,14 +7,13 @@ local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local utils = require("kong.tools.utils")
-local system_constants = require("lua_system_constants")
-local ffi = require("ffi")
+local clustering_utils = require("kong.clustering.utils")
 local assert = assert
 local setmetatable = setmetatable
-local type = type
 local math = math
 local pcall = pcall
 local tostring = tostring
+local sub = string.sub
 local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
@@ -23,19 +22,16 @@ local cjson_encode = cjson.encode
 local kong = kong
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
-local io_open = io.open
 local inflate_gzip = utils.inflate_gzip
 local deflate_gzip = utils.deflate_gzip
 
 
 local KONG_VERSION = kong.version
-local CONFIG_CACHE = ngx.config.prefix() .. "/config.cache.json.gz"
 local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
-local ngx_INFO = ngx.INFO
 local ngx_WARN = ngx.WARN
 local ngx_NOTICE = ngx.NOTICE
-local MAX_PAYLOAD = constants.CLUSTERING_MAX_PAYLOAD
+local MAX_PAYLOAD = kong.configuration.cluster_max_payload
 local WS_OPTS = {
   timeout = constants.CLUSTERING_TIMEOUT,
   max_payload_len = MAX_PAYLOAD,
@@ -43,10 +39,11 @@ local WS_OPTS = {
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local _log_prefix = "[clustering] "
+local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 
 
 local function is_timeout(err)
-  return err and string.sub(err, -7) == "timeout"
+  return err and sub(err, -7) == "timeout"
 end
 
 
@@ -73,106 +70,11 @@ function _M:decode_config(config)
 end
 
 
-function _M:update_config(config_table, config_hash, update_cache)
-  assert(type(config_table) == "table")
-
-  if not config_hash then
-    config_hash = self:calculate_config_hash(config_table)
-  end
-
-  local entities, err, _, meta, new_hash =
-              self.declarative_config:parse_table(config_table, config_hash)
-  if not entities then
-    return nil, "bad config received from control plane " .. err
-  end
-
-  if declarative.get_current_hash() == new_hash then
-    ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
-                                    "no need to reload")
-    return true
-  end
-
-  -- NOTE: no worker mutex needed as this code can only be
-  -- executed by worker 0
-  local res, err =
-    declarative.load_into_cache_with_events(entities, meta, new_hash)
-  if not res then
-    return nil, err
-  end
-
-  if update_cache then
-    -- local persistence only after load finishes without error
-    local f, err = io_open(CONFIG_CACHE, "w")
-    if not f then
-      ngx_log(ngx_ERR, _log_prefix, "unable to open config cache file: ", err)
-
-    else
-      local config = assert(cjson_encode(config_table))
-      config = assert(self:encode_config(config))
-      res, err = f:write(config)
-      if not res then
-        ngx_log(ngx_ERR, _log_prefix, "unable to write config cache file: ", err)
-      end
-
-      f:close()
-    end
-  end
-
-  return true
-end
-
-
 function _M:init_worker()
   -- ROLE = "data_plane"
 
   if ngx.worker.id() == 0 then
-    local f = io_open(CONFIG_CACHE, "r")
-    if f then
-      local config, err = f:read("*a")
-      if not config then
-        ngx_log(ngx_ERR, _log_prefix, "unable to read cached config file: ", err)
-      end
-
-      f:close()
-
-      if config and #config > 0 then
-        ngx_log(ngx_INFO, _log_prefix, "found cached config, loading...")
-        config, err = self:decode_config(config)
-        if config then
-          config, err = cjson_decode(config)
-          if config then
-            local res
-            res, err = self:update_config(config)
-            if not res then
-              ngx_log(ngx_ERR, _log_prefix, "unable to update running config from cache: ", err)
-            end
-
-          else
-            ngx_log(ngx_ERR, _log_prefix, "unable to json decode cached config: ", err, ", ignoring")
-          end
-
-        else
-          ngx_log(ngx_ERR, _log_prefix, "unable to decode cached config: ", err, ", ignoring")
-        end
-      end
-
-    else
-      -- CONFIG_CACHE does not exist, pre create one with 0600 permission
-      local flags = bit.bor(system_constants.O_RDONLY(),
-                            system_constants.O_CREAT())
-
-      local mode = ffi.new("int", bit.bor(system_constants.S_IRUSR(),
-                                          system_constants.S_IWUSR()))
-
-      local fd = ffi.C.open(CONFIG_CACHE, flags, mode)
-      if fd == -1 then
-        ngx_log(ngx_ERR, _log_prefix, "unable to pre-create cached config file: ",
-                ffi.string(ffi.C.strerror(ffi.errno())))
-
-      else
-        ffi.C.close(fd)
-      end
-    end
+    clustering_utils.load_config_cache(self)
 
     assert(ngx.timer.at(0, function(premature)
       self:communicate(premature)
@@ -187,7 +89,7 @@ local function send_ping(c, log_suffix)
   local hash = declarative.get_current_hash()
 
   if hash == true then
-    hash = string.rep("0", 32)
+    hash = DECLARATIVE_EMPTY_CONFIG_HASH
   end
 
   local _, err = c:send_ping(hash)
@@ -288,10 +190,12 @@ function _M:communicate(premature)
       local ok, err = config_semaphore:wait(1)
       if ok then
         local config_table = self.next_config
-        local config_hash  = self.next_hash
         if config_table then
+          local config_hash  = self.next_hash
+          local hashes = self.next_hashes
+
           local pok, res
-          pok, res, err = pcall(self.update_config, self, config_table, config_hash, true)
+          pok, res, err = pcall(self.update_config, self, config_table, config_hash, true, hashes)
           if pok then
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
@@ -369,6 +273,7 @@ function _M:communicate(premature)
 
             self.next_config = assert(msg.config_table)
             self.next_hash = msg.config_hash
+            self.next_hashes = msg.hashes
 
             if config_semaphore:count() <= 0 then
               -- the following line always executes immediately after the `if` check

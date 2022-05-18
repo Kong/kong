@@ -45,6 +45,9 @@ local fixtures = {
                     elseif string.match(ngx.var.uri, "functionWithMultiValueHeadersResponse") then
                       ngx.say("{\"statusCode\": 200, \"headers\": { \"Age\": \"3600\"}, \"multiValueHeaders\": {\"Access-Control-Allow-Origin\": [\"site1.com\", \"site2.com\"]}}")
 
+                    elseif string.match(ngx.var.uri, "functionEcho") then
+                      require("spec.fixtures.mock_upstream").send_default_json_response()
+
                     elseif type(res) == 'string' then
                       ngx.header["Content-Length"] = #res + 1
                       ngx.say(res)
@@ -96,6 +99,17 @@ local fixtures = {
   },
 }
 
+fixtures.stream_mock = {
+  lambda_proxy = [[
+    server {
+      listen 13128;
+
+      content_by_lua_block {
+        require("spec.fixtures.forward-proxy-server").connect()
+      }
+    }
+  ]],
+}
 
 fixtures.dns_mock:A {
   name = "lambda.us-east-1.amazonaws.com",

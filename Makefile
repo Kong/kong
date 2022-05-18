@@ -1,7 +1,7 @@
 OS := $(shell uname | awk '{print tolower($$0)}')
 MACHINE := $(shell uname -m)
 
-DEV_ROCKS = "busted 2.0.0" "busted-htest 1.0.0" "luacheck 0.25.0" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
+DEV_ROCKS = "busted 2.0.0" "busted-htest 1.0.0" "luacheck 0.26.1" "lua-llthreads2 0.1.6" "http 0.4" "ldoc 1.4.6"
 WIN_SCRIPTS = "bin/busted" "bin/kong"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
@@ -12,6 +12,12 @@ GRPCURL_OS ?= osx
 else
 OPENSSL_DIR ?= /usr
 GRPCURL_OS ?= $(OS)
+endif
+
+ifeq ($(MACHINE), aarch64)
+GRPCURL_MACHINE ?= arm64
+else
+GRPCURL_MACHINE ?= $(MACHINE)
 endif
 
 .PHONY: install dependencies dev remove grpcurl \
@@ -125,7 +131,7 @@ dependencies: bin/grpcurl
 
 bin/grpcurl:
 	@curl -s -S -L \
-		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(MACHINE).tar.gz | tar xz -C bin;
+		https://github.com/fullstorydev/grpcurl/releases/download/v$(GRPCURL_VERSION)/grpcurl_$(GRPCURL_VERSION)_$(GRPCURL_OS)_$(GRPCURL_MACHINE).tar.gz | tar xz -C bin;
 	@rm bin/LICENSE
 
 dev: remove install dependencies

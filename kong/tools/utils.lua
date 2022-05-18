@@ -4,7 +4,7 @@
 -- NOTE: Before implementing a function here, consider if it will be used in many places
 -- across Kong. If not, a local function in the appropriate module is preferred.
 --
--- @copyright Copyright 2016-2021 Kong Inc. All rights reserved.
+-- @copyright Copyright 2016-2022 Kong Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module kong.tools.utils
 
@@ -983,7 +983,7 @@ end
 --- Formats an ip address or hostname with an (optional) port for use in urls.
 -- Supports ipv4, ipv6 and names.
 --
--- Explictly accepts 'nil+error' as input, to pass through any errors from the normalizing and name checking functions.
+-- Explicitly accepts 'nil+error' as input, to pass through any errors from the normalizing and name checking functions.
 -- @param p1 address to format, either string with name/ip, table returned from `normalize_ip`, or from the `socket.url` library.
 -- @param p2 port (optional) if p1 is a table, then this port will be inserted if no port-field is in the table
 -- @return formatted address or nil+error

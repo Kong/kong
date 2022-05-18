@@ -68,10 +68,10 @@ for _, strategy in helpers.each_strategy() do
       local filepath = cfg.prefix .. "/" .. cfg.proxy_error_log
       helpers.wait_until(function()
         return find_in_file(filepath,
-                            -- this line is only found on the other CP (the one not receiving the Admin API call)
-                            "[cluster_events] new event (channel: 'invalidations')") and
-               find_in_file(filepath,
-                            "worker-events: handling event; source=clustering, event=push_config")
+        -- this line is only found on the other CP (the one not receiving the Admin API call)
+                          "clustering] received clustering:push_config event for services:create") and
+          find_in_file(filepath,
+            "worker-events: handling event; source=clustering, event=push_config")
       end, 10)
     end)
   end)

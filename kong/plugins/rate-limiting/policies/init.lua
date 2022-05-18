@@ -61,9 +61,13 @@ local function get_redis_connection(conf)
 
   -- use a special pool name only if redis_database is set to non-zero
   -- otherwise use the default pool name host:port
-  sock_opts.pool = conf.redis_database and
-                    conf.redis_host .. ":" .. conf.redis_port ..
-                    ":" .. conf.redis_database
+  if conf.redis_database ~= 0 then
+    sock_opts.pool = fmt( "%s:%d;%d",
+                          conf.redis_host,
+                          conf.redis_port,
+                          conf.redis_database)
+  end
+  
   local ok, err = red:connect(conf.redis_host, conf.redis_port,
                               sock_opts)
   if not ok then
@@ -79,7 +83,13 @@ local function get_redis_connection(conf)
 
   if times == 0 then
     if is_present(conf.redis_password) then
-      local ok, err = red:auth(conf.redis_password)
+      local ok, err
+      if is_present(conf.redis_username) then
+        ok, err = red:auth(conf.redis_username, conf.redis_password)
+      else
+        ok, err = red:auth(conf.redis_password)
+      end
+
       if not ok then
         kong.log.err("failed to auth Redis: ", err)
         return nil, err
@@ -174,21 +184,35 @@ return {
         return nil, err
       end
 
+      local keys = {}
+      local expiration = {}
+      local idx = 0
       local periods = timestamp.get_timestamps(current_timestamp)
-      red:init_pipeline()
       for period, period_date in pairs(periods) do
         if limits[period] then
           local cache_key = get_local_key(conf, identifier, period, period_date)
+          local exists, err = red:exists(cache_key)
+          if err then
+            kong.log.err("failed to query Redis: ", err)
+            return nil, err
+          end
 
-          red:eval([[
-            local key, value, expiration = KEYS[1], tonumber(ARGV[1]), ARGV[2]
+          idx = idx + 1
+          keys[idx] = cache_key
+          if not exists or exists == 0 then
+            expiration[idx] = EXPIRATION[period]
+          end
 
-            if redis.call("incrby", key, value) == value then
-              redis.call("expire", key, expiration)
+          red:init_pipeline()
+          for i = 1, idx do
+            red:incrby(keys[i], value)
+            if expiration[i] then
+              red:expire(keys[i], expiration[i])
             end
-          ]], 1, cache_key, value, EXPIRATION[period])
+          end
         end
       end
+
       local _, err = red:commit_pipeline()
       if err then
         kong.log.err("failed to commit increment pipeline in Redis: ", err)

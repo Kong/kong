@@ -25,6 +25,7 @@ local cmds = {
   config = true,
   roar = true,
   hybrid = true,
+  vault = true,
 }
 
 for k in pairs(cmds) do

@@ -152,7 +152,7 @@ then
     exit 4
 fi
 
-copy autodoc/output/admin-api/admin-api.md "$DOCS_APP/admin-api.md"
+copy autodoc/output/admin-api/admin-api.md "$DOCS_APP/admin-api/index.md"
 copy autodoc/output/cli.md "$DOCS_APP/reference/cli.md"
 
 rm -rf "$DOCS_APP/install-and-run/upgrade-oss.md"

@@ -16,18 +16,18 @@ jobs:
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Checkout kong-build-tools
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: Kong/kong-build-tools
         path: kong-build-tools
@@ -35,7 +35,7 @@ jobs:
 
     - name: Checkout go-pluginserver
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: Kong/go-pluginserver
         path: go-pluginserver
@@ -82,14 +82,14 @@ jobs:
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
@@ -108,6 +108,11 @@ jobs:
       run: |
           eval `luarocks path`
           luacheck -q .
+
+    - name: Validate rockspec file
+      run: |
+          eval `luarocks path`
+          scripts/validate-rockspec
 
     - name: Unit tests
       run: |
@@ -129,6 +134,8 @@ jobs:
       KONG_TEST_PG_DATABASE: kong
       KONG_TEST_PG_USER: kong
       KONG_TEST_DATABASE: postgres
+      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
       TEST_SUITE: ${{ matrix.suite }}
       TEST_SPLIT: ${{ matrix.split }}
 
@@ -144,7 +151,7 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 8
 
       grpcbin:
-        image: moul/grpcbin
+        image: kong/grpcbin
         ports:
           - 15002:9000
           - 15003:9001
@@ -153,12 +160,9 @@ jobs:
         image: redis
         ports:
           - 6379:6379
-        options: --entrypoint redis-server
-
-      squid:
-        image: datadog/squid
-        ports:
-          - 3128:3128
+          - 6380:6380
+        options: >-
+          --name kong_redis
 
       zipkin:
         image: openzipkin/zipkin:2.19
@@ -173,14 +177,14 @@ jobs:
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -189,6 +193,13 @@ jobs:
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
+
+    - name: Enable SSL for Redis
+      run: |
+          docker cp ${{ github.workspace }} kong_redis:/workspace
+          docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
+          docker restart kong_redis
+          docker logs kong_redis
 
     - name: Tests
       run: |
@@ -205,6 +216,8 @@ jobs:
       KONG_TEST_PG_DATABASE: kong
       KONG_TEST_PG_USER: kong
       KONG_TEST_DATABASE: 'off'
+      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
       TEST_SUITE: dbless
 
     services:
@@ -222,14 +235,14 @@ jobs:
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -258,6 +271,8 @@ jobs:
 
     env:
       KONG_TEST_DATABASE: cassandra
+      KONG_SPEC_TEST_GRPCBIN_PORT: "15002"
+      KONG_SPEC_TEST_GRPCBIN_SSL_PORT: "15003"
       TEST_SUITE: ${{ matrix.suite }}
       TEST_SPLIT: ${{ matrix.split }}
 
@@ -281,12 +296,9 @@ jobs:
         image: redis
         ports:
           - 6379:6379
-        options: --entrypoint redis-server
-
-      squid:
-        image: datadog/squid
-        ports:
-          - 3128:3128
+          - 6380:6380
+        options: >-
+          --name kong_redis
 
       zipkin:
         image: openzipkin/zipkin:2.19
@@ -301,14 +313,14 @@ jobs:
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
@@ -317,6 +329,13 @@ jobs:
       run: |
           echo "127.0.0.1 grpcs_1.test" | sudo tee -a /etc/hosts
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
+
+    - name: Enable SSL for Redis
+      run: |
+          docker cp ${{ github.workspace }} kong_redis:/workspace
+          docker cp ${{ github.workspace }}/spec/fixtures/redis/docker-entrypoint.sh kong_redis:/usr/local/bin/docker-entrypoint.sh
+          docker restart kong_redis
+          docker logs kong_redis
 
     - name: Tests
       run: |
@@ -340,14 +359,14 @@ jobs:
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lookup build cache
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       id: cache-deps
       with:
         path: ${{ env.INSTALL_ROOT }}
-        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
       run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$DOWNLOAD_ROOT/cpanm" >> $GITHUB_PATH

@@ -11,9 +11,24 @@
 - upload to luarocks; `luarocks upload kong-plugin-aws-lambda-x.y.z-1.rockspec --api-key=abc...`
 - test rockspec; `luarocks install kong-plugin-aws-lambda`
 
+## aws-lambda 3.6.3 15-Feb-2022
 
-## unreleased
+- tests: update forward-proxy fixture
+- tests: remove old http proxy tests
+- fix: always use https_proxy
+- fix: deprecate proxy_scheme parameter
+- fix: ensure proxy_url scheme is http
 
+## aws-lambda 3.6.2 07-Sep-2021
+
+- chore: bump lua-resty-http from 0.15 to 0.16.1 [#7797](https://github.com/Kong/kong/pull/7797)
+
+## aws-lambda 3.6.1 07-Sep-2021
+- refactor: use error function instead of kong.log.err + kong.response.error [#7797](https://github.com/Kong/kong/pull/7797)
+
+## aws-lambda 3.6.0 30-Aug-2021
+
+- feat: add support for detecting AWS region from environment variable [#7765](https://github.com/Kong/kong/pull/7765)
 - fix: handle multivalueheaders [#59](https://github.com/Kong/kong-plugin-aws-lambda/pull/59)
 
 ## aws-lambda 3.5.4 22-Mar-2021

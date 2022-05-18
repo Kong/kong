@@ -371,7 +371,7 @@ describe("Plugin: request-transformer(access) [#" .. strategy .. "]", function()
         route = { id = route21.id },
         name = "pre-function",
         config = {
-          functions = {
+          access = {
             [[
               kong.ctx.shared.my_version = "1.2.3"
             ]]

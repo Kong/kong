@@ -723,7 +723,7 @@ describe("Admin API: #" .. strategy, function()
 
         -- create the target
         local res = assert(client:send {
-          method = "POST",
+          method = "PUT",
           path = "/upstreams/my-upstream/targets",
           body = {
             target = "127.0.0.1:8000",
@@ -791,7 +791,7 @@ describe("Admin API: #" .. strategy, function()
 
         -- create the target
         local res = assert(client:send {
-          method = "POST",
+          method = "PUT",
           path = "/upstreams/my-upstream/targets",
           body = {
             target = "127.0.0.1:8000",

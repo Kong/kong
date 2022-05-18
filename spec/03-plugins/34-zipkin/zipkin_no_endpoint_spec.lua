@@ -141,7 +141,8 @@ describe("http integration tests with zipkin server (no http_endpoint) [#"
     })
     local body = assert.response(r).has.status(200)
     local json = cjson.decode(body)
-    assert.matches(trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
+    -- Trace ID is left padded with 0 for assert
+    assert.matches( ('0'):rep(32-#trace_id) .. trace_id .. ":%x+:" .. span_id .. ":01", json.headers["uber-trace-id"])
   end)
 
   it("propagates ot headers", function()

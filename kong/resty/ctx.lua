@@ -20,9 +20,13 @@ require "resty.core.ctx"
 
 local C = ffi.C
 local ngx = ngx
+local var = ngx.var
+local ngx_log = ngx.log
+local ngx_WARN = ngx.WARN
 local tonumber = tonumber
 local registry = debug.getregistry()
 local subsystem = ngx.config.subsystem
+local get_request = base.get_request
 
 
 local ngx_lua_ffi_get_ctx_ref
@@ -44,14 +48,14 @@ local _M = {}
 
 
 function _M.stash_ref(ctx)
-  local r = base.get_request()
+  local r = get_request()
   if not r then
-    ngx.log(ngx.WARN, "could not stash ngx.ctx ref: no request found")
+    ngx_log(ngx_WARN, "could not stash ngx.ctx ref: no request found")
     return
   end
 
   do
-    local ctx_ref = ngx.var.ctx_ref
+    local ctx_ref = var.ctx_ref
     if not ctx_ref or ctx_ref ~= "" then
       return
     end
@@ -62,22 +66,22 @@ function _M.stash_ref(ctx)
   end
   local ctx_ref = ngx_lua_ffi_get_ctx_ref(r, in_ssl_phase, ssl_ctx_ref)
   if ctx_ref == FFI_NO_REQ_CTX then
-    ngx.log(ngx.WARN, "could not stash ngx.ctx ref: no ctx found")
+    ngx_log(ngx_WARN, "could not stash ngx.ctx ref: no ctx found")
     return
   end
 
-  ngx.var.ctx_ref = ctx_ref
+  var.ctx_ref = ctx_ref
 end
 
 
 function _M.apply_ref()
-  local r = base.get_request()
+  local r = get_request()
   if not r then
-    ngx.log(ngx.WARN, "could not apply ngx.ctx: no request found")
+    ngx_log(ngx_WARN, "could not apply ngx.ctx: no request found")
     return
   end
 
-  local ctx_ref = ngx.var.ctx_ref
+  local ctx_ref = var.ctx_ref
   if not ctx_ref or ctx_ref == "" then
     return
   end
@@ -89,12 +93,12 @@ function _M.apply_ref()
 
   local orig_ctx = registry.ngx_lua_ctx_tables[ctx_ref]
   if not orig_ctx then
-    ngx.log(ngx.WARN, "could not apply ngx.ctx: no ctx found")
+    ngx_log(ngx_WARN, "could not apply ngx.ctx: no ctx found")
     return
   end
 
   ngx.ctx = orig_ctx
-  ngx.var.ctx_ref = ""
+  var.ctx_ref = ""
 end
 
 

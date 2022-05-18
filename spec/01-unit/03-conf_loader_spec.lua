@@ -842,6 +842,27 @@ describe("Configuration loader", function()
             pl_path.abspath(system_path),
           }, conf.lua_ssl_trusted_certificate)
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
+
+          -- test default
+          local conf, _, errors = conf_loader(nil, {})
+          assert.is_nil(errors)
+          assert.same({
+            pl_path.abspath(system_path),
+          }, conf.lua_ssl_trusted_certificate)
+          assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
+        end)
+        it("does not throw errors if the host doesn't have system certificates", function()
+          local old_exists = pl_path.exists
+          finally(function()
+            pl_path.exists = old_exists
+          end)
+          pl_path.exists = function(path)
+            return false
+          end
+          local _, _, errors = conf_loader(nil, {
+            lua_ssl_trusted_certificate = "system",
+          })
+          assert.is_nil(errors)
         end)
         it("autoload cluster_cert or cluster_ca_cert for data plane in lua_ssl_trusted_certificate", function()
           local conf, _, errors = conf_loader(nil, {
@@ -851,9 +872,10 @@ describe("Configuration loader", function()
             cluster_cert_key = "spec/fixtures/kong_clustering.key",
           })
           assert.is_nil(errors)
-          assert.same({
+          assert.contains(
             pl_path.abspath("spec/fixtures/kong_clustering.crt"),
-          }, conf.lua_ssl_trusted_certificate)
+            conf.lua_ssl_trusted_certificate
+          )
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
 
           local conf, _, errors = conf_loader(nil, {
@@ -865,9 +887,10 @@ describe("Configuration loader", function()
             cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
           })
           assert.is_nil(errors)
-          assert.same({
+          assert.contains(
             pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"),
-          }, conf.lua_ssl_trusted_certificate)
+            conf.lua_ssl_trusted_certificate
+          )
           assert.matches(".ca_combined", conf.lua_ssl_trusted_certificate_combined)
         end)
         it("doen't overwrite lua_ssl_trusted_certificate when autoload cluster_cert or cluster_ca_cert", function()
@@ -911,7 +934,10 @@ describe("Configuration loader", function()
             cluster_ca_cert = "spec/fixtures/kong_clustering_ca.crt",
           })
           assert.is_nil(errors)
-          assert.same({}, conf.lua_ssl_trusted_certificate)
+          assert.not_contains(
+            pl_path.abspath("spec/fixtures/kong_clustering_ca.crt"),
+            conf.lua_ssl_trusted_certificate
+          )
         end)
         it("resolves SSL cert/key to absolute path", function()
           local conf, err = conf_loader(nil, {
@@ -1330,6 +1356,26 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
       assert.equal("cluster_data_plane_purge_delay must be 60 or greater", err)
     end)
+
+    it("cluster_max_payload is accepted", function()
+      local conf = assert(conf_loader(nil, {
+        cluster_max_payload = 4194304,
+      }))
+      assert.equal(4194304, conf.cluster_max_payload)
+
+      conf = assert(conf_loader(nil, {
+        cluster_max_payload = 8388608,
+      }))
+      assert.equal(8388608, conf.cluster_max_payload)
+    end)
+
+    it("cluster_max_payload < 4Mb rejected", function()
+      local conf, err = conf_loader(nil, {
+        cluster_max_payload = 1048576,
+      })
+      assert.is_nil(conf)
+      assert.equal("cluster_max_payload must be 4194304 (4MB) or greater", err)
+    end)
   end)
 
   describe("upstream keepalive properties", function()
@@ -1415,6 +1461,36 @@ describe("Configuration loader", function()
       assert.not_equal("hide_me", purged_conf.pg_password)
       assert.not_equal("hide_me", purged_conf.cassandra_password)
     end)
+
+    it("replaces sensitive vault resolved settings", function()
+      finally(function()
+        helpers.unsetenv("PG_PASSWORD")
+        helpers.unsetenv("PG_DATABASE")
+        helpers.unsetenv("CASSANDRA_PASSWORD")
+        helpers.unsetenv("CASSANDRA_KEYSPACE")
+      end)
+
+      helpers.setenv("PG_PASSWORD", "pg-password")
+      helpers.setenv("PG_DATABASE", "pg-database")
+      helpers.setenv("CASSANDRA_PASSWORD", "cassandra-password")
+      helpers.setenv("CASSANDRA_KEYSPACE", "cassandra-keyspace")
+
+      local conf = assert(conf_loader(nil, {
+        pg_password = "{vault://env/pg-password}",
+        pg_database = "{vault://env/pg-database}",
+        cassandra_password = "{vault://env/cassandra-password}",
+        cassandra_keyspace = "{vault://env/cassandra-keyspace}",
+        vaults = "env",
+      }))
+
+      local purged_conf = conf_loader.remove_sensitive(conf)
+      assert.equal("******", purged_conf.pg_password)
+      assert.equal("{vault://env/pg-database}", purged_conf.pg_database)
+      assert.equal("******", purged_conf.cassandra_password)
+      assert.equal("{vault://env/cassandra-keyspace}", purged_conf.cassandra_keyspace)
+      assert.is_nil(purged_conf["$refs"])
+    end)
+
     it("does not insert placeholder if no value", function()
       local conf = assert(conf_loader())
       local purged_conf = conf_loader.remove_sensitive(conf)
@@ -1671,6 +1747,38 @@ describe("Configuration loader", function()
       assert.equal(100, conf.upstream_keepalive_max_requests)
       assert.equal("2m", conf.nginx_http_client_max_body_size)
       assert.equal("2m", conf.nginx_http_client_body_buffer_size)
+    end)
+  end)
+  describe("vault references", function()
+    it("are collected under $refs property", function()
+      finally(function()
+        helpers.unsetenv("PG_DATABASE")
+      end)
+
+      helpers.setenv("PG_DATABASE", "resolved-kong-database")
+
+      local conf = assert(conf_loader(nil, {
+        pg_database = "{vault://env/pg-database}",
+        vaults = "env",
+      }))
+
+      assert.equal("resolved-kong-database", conf.pg_database)
+      assert.equal("{vault://env/pg-database}", conf["$refs"].pg_database)
+    end)
+    it("are inferred and collected under $refs property", function()
+      finally(function()
+        helpers.unsetenv("PG_PORT")
+      end)
+
+      helpers.setenv("PG_PORT", "5000")
+
+      local conf = assert(conf_loader(nil, {
+        pg_port = "{vault://env/pg-port#0}",
+        vaults = "env",
+      }))
+
+      assert.equal(5000, conf.pg_port)
+      assert.equal("{vault://env/pg-port#0}", conf["$refs"].pg_port)
     end)
   end)
 end)
