@@ -52,6 +52,8 @@ local header_preprocess do
       local c = name:byte(idx)
       if c == hyphens then
         buffer[idx] = underscores
+      else
+        buffer[idx] = c
       end
     end
     return char(unpack(buffer))
