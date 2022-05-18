@@ -30,11 +30,6 @@ cjson.decode_array_with_array_mt(true)
 
 local header_preprocess do
   local char = string.char
-  local ffi = require "ffi"
-  local C = ffi.C
-  ffi.cdef [[
-    int tolower(int c);
-  ]]
   local unpack = unpack
   local clear_tab
   do
@@ -57,8 +52,6 @@ local header_preprocess do
       local c = name:byte(idx)
       if c == hyphens then
         buffer[idx] = underscores
-      else
-        buffer[idx] = C.tolower(c)
       end
     end
     return char(unpack(buffer))
