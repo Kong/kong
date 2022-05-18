@@ -9,6 +9,8 @@ local helpers = require "spec.helpers"
 local utils = require "pl.utils"
 local stringx = require "pl.stringx"
 local http = require "resty.http"
+local fmt = string.format
+local cjson = require "cjson"
 
 
 local function count_server_blocks(filename)
@@ -86,3 +88,91 @@ describe("Admin API listeners", function()
     end
   end)
 end)
+
+for _, strategy in helpers.each_strategy() do
+  describe("Admin API #" .. strategy .. " - consumers", function ()
+    local client, bp, db
+    local MAX_ENTITIES = 100
+
+    lazy_setup(function ()
+      bp, db = helpers.get_db_utils(strategy, {
+        "consumers",
+      })
+
+      for i = 1, MAX_ENTITIES do
+        local consumer = {
+          type = i % 4,
+          username = fmt("u-%s", i),
+        }
+        local _, err, err_t = bp.consumers:insert(consumer)
+        assert.is_nil(err)
+        assert.is_nil(err_t)
+      end
+
+      assert(helpers.start_kong {
+        database = strategy,
+      })
+      client = assert(helpers.admin_client(10000))
+    end)
+
+    lazy_teardown(function()
+      if client then client:close() end
+      helpers.stop_kong()
+    end)
+
+    it("pagination - page_by_type", function ()
+      local rows, err = db.consumers:page_by_type(0)
+      assert.is_nil(err)
+      assert.same(25, #rows)
+
+      rows, err = db.consumers:page_by_type(1)
+      assert.is_nil(err)
+      assert.same(25, #rows)
+      
+      rows, err = db.consumers:page_by_type(2)
+      assert.is_nil(err)
+      assert.same(25, #rows)
+
+      rows, err = db.consumers:page_by_type(3)
+      assert.is_nil(err)
+      assert.same(25, #rows)
+    end)
+
+    it("pagination - Admin API", function ()
+      local res
+      res = assert(client:send {
+        method = "GET",
+        path = "/consumers"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.same(25, #json.data)
+      for _, row in ipairs(json.data) do
+        assert.same(0, row.type)
+      end
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/consumers?size=5"
+      })
+      body = assert.res_status(200, res)
+      json = cjson.decode(body)
+      assert.same(5, #json.data)
+      for _, row in ipairs(json.data) do
+        assert.same(0, row.type)
+      end
+
+      -- `type` is ignored from Admin API
+      res = assert(client:send {
+        method = "GET",
+        path = "/consumers?type=1"
+      })
+      body = assert.res_status(200, res)
+      json = cjson.decode(body)
+      assert.same(25, #json.data)
+      for _, row in ipairs(json.data) do
+        assert.same(0, row.type)
+      end
+    end)
+  end)
+end
