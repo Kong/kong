@@ -20,6 +20,30 @@ local ldap_base_config = {
   cache_ttl              = 2,
 }
 
+local ldap_base_config2 = {
+  ldap_host              = "ad-server",
+  ldap_password          = "passw2rd1111A$",
+  attribute              = "cn",
+  base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
+  bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
+  consumer_optional      = true,
+  hide_credentials       = true,
+  cache_ttl              = 2,
+  group_required         = "test-group-2",
+}
+
+local ldap_base_config3 = {
+  ldap_host              = "ad-server",
+  ldap_password          = "passw2rd1111A$",
+  attribute              = "cn",
+  base_dn                = "cn=Users,dc=ldap,dc=mashape,dc=com",
+  bind_dn                = "cn=Ophelia,cn=Users,dc=ldap,dc=mashape,dc=com",
+  consumer_optional      = true,
+  hide_credentials       = true,
+  cache_ttl              = 2,
+  group_required         = "test-group-3",
+}
+
 describe("validate_groups", function()
   local groups = {
     "CN=test-group-1,CN=Users,DC=addomain,DC=creativehashtags,DC=com",
@@ -96,10 +120,30 @@ for _, strategy in strategies() do
         hosts = { "ldap.com" }
       }
 
+      local route2 = bp.routes:insert {
+        hosts = { "ldap2.com" }
+      }
+
+      local route3 = bp.routes:insert {
+        hosts = { "ldap3.com" }
+      }
+
       plugin = bp.plugins:insert {
         route = { id = route.id },
         name     = "ldap-auth-advanced",
         config   = ldap_base_config
+      }
+
+      bp.plugins:insert {
+        route = { id = route2.id },
+        name     = "ldap-auth-advanced",
+        config   = ldap_base_config2,
+      }
+
+      bp.plugins:insert {
+        route = { id = route3.id },
+        name     = "ldap-auth-advanced",
+        config   = ldap_base_config3,
       }
 
       assert(helpers.start_kong({
@@ -236,6 +280,54 @@ for _, strategy in strategies() do
         local json = cjson.decode(body)
         assert.equal(389, json.config.ldap_port)
         assert.equal(false, json.config.ldaps)
+      end)
+
+      it("should deny request based on user's group membership", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap2.com",
+            authorization    = "ldap " .. ngx.encode_base64("Hamlet:passw2rd1111A$"),
+          }
+        })
+
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.equal(json.message, "User not in authorized LDAP Group: test-group-2")
+      end)
+
+      it("should allow request based on user's group membership", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap3.com",
+            authorization    = "ldap " .. ngx.encode_base64("Othello:passw2rd1111A$"),
+          }
+        })
+
+        assert.res_status(200, res)
+        local value = assert.request(res).has.header("x-authenticated-groups")
+        assert.equal("test-group-3", value)
+      end)
+
+      it("should deny request when user is not member of any group", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          body    = {},
+          headers = {
+            host             = "ldap3.com",
+            authorization    = "ldap " .. ngx.encode_base64("Kipp:passw2rd1111A$"),
+          }
+        })
+
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.equal(json.message, "User not in authorized LDAP Group: test-group-3")
       end)
     end)
   end)

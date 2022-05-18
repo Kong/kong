@@ -150,10 +150,10 @@ jobs:
       if: type = cron
       script:
       - make test-collector
-    #- name: degraphql
-    #  if: type = cron
-    #  script:
-    #  - make test-degraphql
+    - name: degraphql
+      if: type = cron
+      script:
+      - make test-degraphql
     - name: exit-transformer
       if: type = cron
       script:
@@ -170,10 +170,10 @@ jobs:
       if: type = cron
       script:
       - make test-jq
-    # - name: jwt-signer
-    #   if: type = cron
-    #   script:
-    #   - make test-jwt-signer
+    - name: jwt-signer
+      if: type = cron
+      script:
+      - make test-jwt-signer
     - name: kafka-log
       if: type = cron
       script:
@@ -250,10 +250,10 @@ jobs:
       if: type = cron
       script:
       - make test-tls-metadata-headers
-    #- name: vault-auth
-    #  if: type = cron
-    #  script:
-    #  - make test-vault-auth
+    - name: vault-auth
+      if: type = cron
+      script:
+      - make test-vault-auth
 
 script:
   - .ci/run_tests.sh

@@ -1111,7 +1111,6 @@ for _, strategy in helpers.all_strategies() do
           local token
           local token2
           local invalid_token
-          local invalid_token2
 
 
           lazy_setup(function()

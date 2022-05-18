@@ -1,0 +1,7 @@
+include = {
+   "%/kong%-plugin%/kong%/.+$",
+}
+
+statsfile = "/kong-plugin/luacov.stats.out"
+reportfile = "/kong-plugin/luacov.report.out"
+runreport = true

@@ -7,32 +7,22 @@
 
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
-
 local uuid = require("kong.tools.utils").uuid
+local parse_url = require("socket.url").parse
 
-local function capture(cmd, raw)
-  local f = assert(io.popen(cmd, 'r'))
-  local s = assert(f:read('*a'))
-  f:close()
-  if raw then return s end
-  s = string.gsub(s, '^%s+', '')
-  s = string.gsub(s, '%s+$', '')
-  s = string.gsub(s, '[\n\r]+', ' ')
-  return s
-end
 
-local VAULT_TOKEN
+local VAULT_TOKEN = assert(os.getenv("VAULT_TOKEN"), "please set Vault Token in env var VAULT_TOKEN")
+local VAULT_ADDR = assert(parse_url((assert(os.getenv("VAULT_ADDR"), "please set Vault URL in env var VAULT_ADDR"))))
+local VAULT_MOUNT = assert(os.getenv("VAULT_MOUNT"), "please set Vault mount path in env var VAULT_MOUNT")
+
 
 describe("Plugin: vault (API)",function()
   local admin_client, vault_id, consumer_id, cred
 
+
   describe("Vault instances", function()
+
     setup(function()
-      local out = capture("vault token create")
-      local m = ngx.re.match(out, [[token\s+([\w.]+)]])
-
-      VAULT_TOKEN= m[1]
-
       helpers.get_db_utils(nil, nil, {"vault-auth"})
       assert(helpers.start_kong({
         plugins = "bundled,vault-auth",
@@ -40,6 +30,8 @@ describe("Plugin: vault (API)",function()
 
       admin_client = helpers.admin_client()
     end)
+
+
     teardown(function()
       if admin_client then
         admin_client:close()
@@ -48,7 +40,10 @@ describe("Plugin: vault (API)",function()
       helpers.stop_kong()
     end)
 
+
+
     describe("/vaults/:vault/credentials", function()
+
       setup(function()
         local res = assert(admin_client:send {
           method  = "POST",
@@ -57,9 +52,10 @@ describe("Plugin: vault (API)",function()
             ["Content-Type"] = "application/json"
           },
           body = {
-            host        = "127.0.0.1",
-            mount       = "kong-auth",
-            protocol    = "http",
+            host        = VAULT_ADDR.host,
+            port        = tonumber(VAULT_ADDR.port),
+            mount       = VAULT_MOUNT,
+            protocol    = VAULT_ADDR.scheme,
             vault_token = VAULT_TOKEN,
           }
         })
@@ -84,7 +80,10 @@ describe("Plugin: vault (API)",function()
         consumer_id = body.id
       end)
 
+
+
       describe("POST", function()
+
         it("creates a new Vault credential", function()
           local res = assert(admin_client:send {
             method  = "POST",
@@ -106,23 +105,29 @@ describe("Plugin: vault (API)",function()
           assert.same(consumer_id, cred.consumer.id)
           assert.is_same(ngx.null, cred.ttl)
         end)
+
       end)
 
       describe("GET", function()
+
         it("returns an existing Vault credential", function()
           local res = assert(admin_client:send {
             method = "GET",
             path   = "/vaults/" .. vault_id .. "/credentials",
           })
-          
+
           local json = assert.res_status(200, res)
           local body = cjson.decode(json)
-          
+
           assert.same(cred, body.data[1])
         end)
+
       end)
 
+
+
       describe("errors", function()
+
         it("with a 404 when the given Vault doesn't exist", function()
           local res = assert(admin_client:send {
             method  = "POST",
@@ -138,6 +143,7 @@ describe("Plugin: vault (API)",function()
           assert.res_status(404, res)
         end)
 
+
         it("with a 400 when a Consumer is not passed", function()
           local res = assert(admin_client:send {
             method  = "POST",
@@ -150,6 +156,7 @@ describe("Plugin: vault (API)",function()
 
           assert.res_status(400, res)
         end)
+
 
         it("with a 404 when the given Consumer does not exist", function()
           local res = assert(admin_client:send {
@@ -165,11 +172,17 @@ describe("Plugin: vault (API)",function()
 
           assert.res_status(404, res)
         end)
+
       end)
+
     end)
 
+
+
     describe("/vaults/:vault/credentials/:consumer", function()
+
       describe("POST", function()
+
         it("creates a new Vault credential", function()
           local res = assert(admin_client:send {
             method  = "POST",
@@ -182,9 +195,13 @@ describe("Plugin: vault (API)",function()
 
           assert.res_status(201, res)
         end)
+
       end)
 
+
+
       describe("errors", function()
+
         it("with a 404 when the given Vault doesn't exist", function()
           local res = assert(admin_client:send {
             method  = "POST",
@@ -198,6 +215,7 @@ describe("Plugin: vault (API)",function()
           assert.res_status(404, res)
         end)
 
+
         it("with a 404 when the given Consumer does not exist", function()
           local res = assert(admin_client:send {
             method  = "POST",
@@ -210,22 +228,30 @@ describe("Plugin: vault (API)",function()
 
           assert.res_status(404, res)
         end)
+
       end)
+
     end)
 
+
+
     describe("/vaults/:vault/credentials/token/:access_token", function()
+
       describe("GET", function()
+
         it("returns a credential", function()
           local res = assert(admin_client:send {
             method = "GET",
             path   = "/vaults/" .. vault_id .. "/credentials/token/" .. cred.access_token,
           })
-          
+
           local json = assert.res_status(200, res)
           local body = cjson.decode(json)
           assert.same(cred, body.data)
         end)
       end)
+
+
 
       describe("DELETE", function()
         it("deletes a credential", function()
@@ -233,17 +259,21 @@ describe("Plugin: vault (API)",function()
             method = "DELETE",
             path   = "/vaults/" .. vault_id .. "/credentials/token/" .. cred.access_token,
           })
-          
+
           assert.res_status(204, res)
 
           res = assert(admin_client:send {
             method = "GET",
             path   = "/vaults/" .. vault_id .. "/credentials/token/" .. cred.access_token,
           })
-          
+
           assert.res_status(404, res)
         end)
+
       end)
+
     end)
+
   end)
+
 end)

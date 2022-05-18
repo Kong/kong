@@ -84,17 +84,37 @@ function test_plugin {
 
   echo "Running lint and tests of: $plugin_name"
   pushd $plugin_path
-  KONG_IMAGE=$DOCKER_IMAGE_NAME pongo lint
+  luacheck -v > /dev/null 2>&1
   if [ $? -ne 0 ]; then
-    pongo down
-    exit 1
+    # no local luacheck available, use Pongo
+    KONG_IMAGE=$DOCKER_IMAGE_NAME pongo lint
+    if [ $? -ne 0 ]; then
+      pongo down
+      exit 1
+    fi
+  else
+    # use local Luacheck
+    local lc_config
+    if [ -f .luacheckrc ]; then
+      lc_config=.luacheckrc
+    else
+      lc_config=$KONG_PATH/.luacheckrc
+    fi
+    luacheck -q --config="$lc_config" .
+    if [ $? -ne 0 ]; then
+      exit 1
+    fi
   fi
 
-  KONG_IMAGE=$DOCKER_IMAGE_NAME pongo run --exclude-tags=flaky
-  err_code=$?
-  pongo down
-  popd
-  exit $err_code
+  if [ -d ./spec ]; then
+    KONG_IMAGE=$DOCKER_IMAGE_NAME pongo run --exclude-tags=flaky
+    err_code=$?
+    pongo down
+    popd
+    exit $err_code
+  else
+    echo "Skipping tests; no tests found for $plugin_name"
+  fi
 }
 
 function build_deps {
