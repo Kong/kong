@@ -12,6 +12,7 @@ local phase_checker = require "kong.pdk.private.phases"
 
 
 local ngx = ngx
+local var = ngx.var
 local sub = string.sub
 local find = string.find
 local lower = string.lower
@@ -568,10 +569,7 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    local header_value = ngx.var["http_" .. lower(name:gsub("-", "_"))]
-    if type(header_value) == "table" then
-      return header_value[1]
-    end
+    local header_value = var["http_" .. lower(name:gsub("-", "_"))]
 
     return header_value
   end
