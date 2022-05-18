@@ -29,6 +29,7 @@ local PHASES = phase_checker.phases
 
 cjson.decode_array_with_array_mt(true)
 
+
 local function new(self)
   local _REQUEST = {}
 
