@@ -28,6 +28,42 @@ local PHASES = phase_checker.phases
 
 cjson.decode_array_with_array_mt(true)
 
+local header_preprocess do
+  local char = string.char
+  local ffi = require "ffi"
+  local C = ffi.C
+  ffi.cdef [[
+    int tolower(int c);
+  ]]
+  local unpack = unpack
+  local clear_tab
+  do
+    local ok
+    ok, clear_tab = pcall(require, "table.clear")
+    if not ok then
+      clear_tab = function(tab)
+        for k in pairs(tab) do
+          tab[k] = nil
+        end
+      end
+    end
+  end
+  local buffer = {}
+  local hyphens = string.byte("-")
+  local underscores = string.byte("_")
+  header_preprocess = function (name)
+    clear_tab(buffer)
+    for idx = 1, #name do
+      local c = name:byte(idx)
+      if c == hyphens then
+        buffer[idx] = underscores
+      else
+        buffer[idx] = C.tolower(c)
+      end
+    end
+    return char(unpack(buffer))
+  end
+end
 
 local function new(self)
   local _REQUEST = {}
@@ -569,7 +605,7 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    local header_value = var["http_" .. lower(name:gsub("-", "_"))]
+    local header_value = var["http_" .. header_preprocess(name)]
 
     return header_value
   end
