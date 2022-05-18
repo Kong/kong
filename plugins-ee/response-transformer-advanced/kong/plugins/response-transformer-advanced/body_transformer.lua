@@ -171,6 +171,10 @@ local function navigate_and_apply(conf, json, path, f)
         array = json[head]
       end
 
+      if type(array) ~= "table" then
+        return 
+      end
+
       for k, v in ipairs(array) do
         if type(v) == "table" then
           navigate_and_apply(conf, v, tail, f)

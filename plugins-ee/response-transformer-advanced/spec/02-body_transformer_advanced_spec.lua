@@ -307,6 +307,15 @@ describe("Plugin: response-transformer-advanced", function()
         assert.same({ results = {{}, {}, { p2 = "v1" }}}, body_json)
       end)
 
+      it("array doesn't match with config", function()
+        local json = [=[{ "results": [{ "p1": "v1" }, { "p1": "v1" }, { "p2": "v1" }] }]=]
+        local config = { remove = { json = { "result[*]" } } }
+
+        local body = body_transformer.transform_json_body(config, json, 500)
+        local body_json = cjson.decode(body)
+        assert.same({ results = {{p1 = "v1"}, {p1 = "v1"}, { p2 = "v1" }}}, body_json)
+      end)
+
       it("nested", function()
         local json = [[ { "p1": { "p1": "v1" }} ]]
         local config = { remove = { json = { "p1.p1" } } }
