@@ -21,7 +21,6 @@ local error = error
 local tonumber = tonumber
 local check_phase = phase_checker.check
 local check_not_phase = phase_checker.check_not
-local re_gsub = ngx.re.gsub
 
 
 local PHASES = phase_checker.phases
@@ -570,7 +569,8 @@ local function new(self)
       error("header name must be a string", 2)
     end
 
-    local header_value = var["http_" .. re_gsub(name, "-", "_", "jo")]
+    -- Do not localize ngx.re.gsub! It will crash because ngx.re is monkey patched.
+    local header_value = var["http_" .. ngx.re.gsub(name, "-", "_", "jo")]
 
     return header_value
   end
