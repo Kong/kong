@@ -9,11 +9,9 @@ local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
 local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
-local vault        = require "kong.pdk.vault".new()
+local is_reference = require "kong.pdk.vault".new().is_reference
 
 
-local is_reference = vault.is_reference
-local dereference  = vault.get
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local re_match     = ngx.re.match
@@ -1696,6 +1694,8 @@ function Schema:process_auto_fields(data, context, nulls, opts)
     end
   end
 
+  local refs
+
   for key, field in self:each_field(data) do
     local ftype = field.type
     local value = data[key]
@@ -1754,9 +1754,16 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       if resolve_references then
         if ftype == "string" and field.referenceable then
           if is_reference(value) then
-            local deref, err = dereference(value)
+            if refs then
+              refs[key] = value
+            else
+              refs = { [key] = value }
+            end
+
+            local deref, err = kong.vault.get(value)
             if deref then
               value = deref
+
             else
               if err then
                 kong.log.warn("unable to resolve reference ", value, " (", err, ")")
@@ -1773,9 +1780,11 @@ function Schema:process_auto_fields(data, context, nulls, opts)
           if subfield.type == "string" and subfield.referenceable then
             local count = #value
             if count > 0 then
+              refs[key] = new_tab(count, 0)
               for i = 1, count do
                 if is_reference(value[i]) then
-                  local deref, err = dereference(value[i])
+                  refs[key][i] = value[i]
+                  local deref, err = kong.vault.get(value[i])
                   if deref then
                     value[i] = deref
                   else
@@ -1826,6 +1835,8 @@ function Schema:process_auto_fields(data, context, nulls, opts)
       data[key] = nil
     end
   end
+
+  data["$refs"] = refs
 
   return data
 end

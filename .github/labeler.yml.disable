@@ -20,8 +20,11 @@ core/db/migrations:
 core/db:
 - any: ['kong/db/**/*', '!kong/db/migrations/**/*']
 
+changelog:
+- CHANGELOG.md
+
 core/docs:
-- '**/*.md'
+- any: ['**/*.md', '!CHANGELOG.md']
 - 'kong/autodoc/**/*'
 
 core/language/go:

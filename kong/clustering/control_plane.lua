@@ -13,6 +13,7 @@ local ws_server = require("resty.websocket.server")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
+local clustering_utils = require("kong.clustering.utils")
 local constants = require("kong.constants")
 local ee_meta = require("kong.enterprise_edition.meta")
 local string = string
@@ -61,25 +62,13 @@ local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local PONG_TYPE = "PONG"
 local RECONFIGURE_TYPE = "RECONFIGURE"
-local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local _log_prefix = "[clustering] "
 
 
-local function extract_major_minor(version)
-  if type(version) ~= "string" then
-    return nil, nil
-  end
-
-  local major, minor = version:match(MAJOR_MINOR_PATTERN)
-  if not major then
-    return nil, nil
-  end
-
-  major = tonumber(major, 10)
-  minor = tonumber(minor, 10)
-
-  return major, minor
+local function handle_export_deflated_reconfigure_payload(self)
+  local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)
+  return ok, p_err or err
 end
 
 
@@ -88,7 +77,7 @@ local function plugins_list_to_map(plugins_list)
   for _, plugin in ipairs(plugins_list) do
     local name = plugin.name
     local version = plugin.version
-    local major, minor = extract_major_minor(plugin.version)
+    local major, minor = clustering_utils.extract_major_minor(plugin.version)
 
     if major and minor then
       versions[name] = {
@@ -558,39 +547,9 @@ end
 
 
 function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
-  local major_cp, minor_cp = extract_major_minor(KONG_VERSION)
-  local major_dp, minor_dp = extract_major_minor(dp_version)
-
-  if not major_cp then
-    return nil, "data plane version " .. dp_version .. " is incompatible with control plane version",
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if not major_dp then
-    return nil, "data plane version is incompatible with control plane version " ..
-                KONG_VERSION .. " (" .. major_cp .. ".x.y are accepted)",
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if major_cp ~= major_dp then
-    return nil, "data plane version " .. dp_version ..
-                " is incompatible with control plane version " ..
-                KONG_VERSION .. " (" .. major_cp .. ".x.y are accepted)",
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if minor_cp < minor_dp then
-    return nil, "data plane version " .. dp_version ..
-                " is incompatible with older control plane version " .. KONG_VERSION,
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if minor_cp ~= minor_dp then
-    local msg = "data plane minor version " .. dp_version ..
-                " is different to control plane minor version " ..
-                KONG_VERSION
-
-    ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
+  local ok, err, status = clustering_utils.check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
+  if not ok then
+    return ok, err, status
   end
 
   for _, plugin in ipairs(self.plugins_list) do
@@ -724,18 +683,12 @@ function _M:handle_cp_websocket()
     log_suffix = ""
   end
 
-  local _
-
-  -- use mutual TLS authentication
-  local ok, err = self:validate_client_cert(ngx_var.ssl_client_raw_cert, _log_prefix, log_suffix)
-  if not ok then
-    ngx_log(ngx_ERR, err)
-    return ngx_exit(444)
-  end
-
-  if err then
-    ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
-    return ngx_exit(ngx_CLOSE)
+  do
+    local ok, err = clustering_utils.validate_connection_certs(self.conf, self.cert_digest)
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, err)
+      return ngx.exit(ngx.HTTP_CLOSE)
+    end
   end
 
   if not dp_id then
@@ -799,7 +752,8 @@ function _M:handle_cp_websocket()
   local sync_status = CLUSTERING_SYNC_STATUS.UNKNOWN
   local purge_delay = self.conf.cluster_data_plane_purge_delay
   local update_sync_status = function()
-    local ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
+    local ok
+    ok, err = kong.db.clustering_data_planes:upsert({ id = dp_id, }, {
       last_seen = last_seen,
       config_hash = config_hash ~= "" and config_hash or nil,
       hostname = dp_hostname,
@@ -812,6 +766,7 @@ function _M:handle_cp_websocket()
     end
   end
 
+  local _
   _, err, sync_status = self:check_version_compatibility(dp_version, dp_plugins_map, log_suffix)
   if err then
     ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
@@ -838,10 +793,11 @@ function _M:handle_cp_websocket()
   self.clients[wb] = queue
 
   if not self.deflated_reconfigure_payload then
-    _, err = self:export_deflated_reconfigure_payload()
+    _, err = handle_export_deflated_reconfigure_payload(self)
   end
 
   if self.deflated_reconfigure_payload then
+    local _
     -- initial configuration compatibility for sync status variable
     _, _, sync_status = self:check_configuration_compatibility(dp_plugins_map, dp_version)
 
@@ -1010,8 +966,8 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
     return
   end
 
-  local _, err = self:export_deflated_reconfigure_payload()
-  if err then
+  local ok, err = handle_export_deflated_reconfigure_payload(self)
+  if not ok then
     ngx_log(ngx_ERR, _log_prefix, "unable to export initial config from database: ", err)
   end
 

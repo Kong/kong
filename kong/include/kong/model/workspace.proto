@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option go_package = "github.com/kong/koko/internal/gen/wrpc/kong/model;model";
+
+package kong.model;
+
+message Workspace {
+  string id = 1;
+  string name = 2;
+  string comment = 3;
+  int32 created_at = 4;
+  // EE fields
+  WorkspaceConfig config = 30;
+}
+
+message WorkspaceConfig {
+  bool portal = 1;
+  string portal_developer_meta_fields = 2;
+}

@@ -57,6 +57,7 @@ describe("kong.clustering.control_plane", function()
         "custom_fields_by_lua",
       },
       zipkin = {
+        "http_span_name",
         "tags_header",
         "local_service_name",
       },
@@ -179,6 +180,7 @@ describe("kong.clustering.control_plane", function()
         "per_consumer",
       },
       zipkin = {
+        "http_span_name",
         "tags_header",
         "local_service_name",
       },
@@ -298,6 +300,7 @@ describe("kong.clustering.control_plane", function()
         "per_consumer",
       },
       zipkin = {
+        "http_span_name",
         "tags_header",
         "local_service_name",
       },
@@ -502,6 +505,7 @@ describe("kong.clustering.control_plane", function()
         "redis_server_name",
       },
       zipkin = {
+        "http_span_name",
         "local_service_name",
       },
       response_ratelimiting = {
@@ -607,6 +611,7 @@ describe("kong.clustering.control_plane", function()
         "redis_server_name",
       },
       zipkin = {
+        "http_span_name",
         "local_service_name",
       },
       response_ratelimiting = {
@@ -707,6 +712,7 @@ describe("kong.clustering.control_plane", function()
         "redis_server_name",
       },
       zipkin = {
+        "http_span_name",
         "local_service_name",
       },
       redis = {
@@ -754,6 +760,7 @@ describe("kong.clustering.control_plane", function()
         "redis_server_name",
       },
       zipkin = {
+        "http_span_name",
         "local_service_name",
       },
       openid_connect = {
@@ -806,9 +813,16 @@ describe("kong.clustering.control_plane", function()
       response_ratelimiting = {
         "redis_username",
       },
+      zipkin = {
+        "http_span_name",
+      }
     }, cp._get_removed_fields(2007000000))
 
-    assert.same(nil, cp._get_removed_fields(2008000000))
+    assert.same({
+      zipkin = {
+        "http_span_name",
+      }
+    }, cp._get_removed_fields(2008000000))
   end)
 
   it("update or remove unknown fields", function()

@@ -204,4 +204,11 @@ return {
       "cluster_name",
     },
   },
+
+  -- Any dataplane older than 3.0.0
+  [2999999999] = {
+    zipkin = {
+      "http_span_name",
+    },
+  },
 }

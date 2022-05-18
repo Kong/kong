@@ -199,7 +199,7 @@ end
 local conf = assert(conf_loader(TEST_CONF_PATH))
 
 _G.kong = kong_global.new()
-kong_global.init_pdk(_G.kong, conf, nil) -- nil: latest PDK
+kong_global.init_pdk(_G.kong, conf)
 ngx.ctx.KONG_PHASE = kong_global.phases.access
 _G.kong.core_cache = {
   get = function(self, key, opts, func, ...)
@@ -1943,7 +1943,6 @@ Got instead:
 luassert:register("assertion", "cn", assert_cn,
                   "assertion.cn.negative",
                   "assertion.cn.positive")
-
 
 do
   --- Generic modifier "logfile"
