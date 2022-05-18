@@ -373,7 +373,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
 
       local service_grpc = assert(admin_api.services:insert {
           name = "grpc",
-          url = "grpc://localhost:15002",
+          url = helpers.grpcbin_url,
         })
 
       local route_grpc = assert(admin_api.routes:insert {

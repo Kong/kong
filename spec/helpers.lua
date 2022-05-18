@@ -20,6 +20,9 @@ local MOCK_UPSTREAM_PORT = 15555
 local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
+local GRPCBIN_HOST = os.getenv("KONG_SPEC_TEST_GRPCBIN_HOST") or "localhost"
+local GRPCBIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_PORT")) or 9000
+local GRPCBIN_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_SSL_PORT")) or 9001
 local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
 local ZIPKIN_HOST = os.getenv("KONG_SPEC_TEST_ZIPKIN_HOST") or "localhost"
 local ZIPKIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_ZIPKIN_PORT")) or 9411
@@ -2818,6 +2821,11 @@ end
 -- @field mock_upstream_stream_port
 -- @field mock_upstream_stream_ssl_port
 -- @field mock_grpc_upstream_proto_path
+-- @field grpcbin_host The host for grpcbin service, it can be set by env KONG_SPEC_TEST_GRPCBIN_HOST.
+-- @field grpcbin_port The port (SSL disabled) for grpcbin service, it can be set by env KONG_SPEC_TEST_GRPCBIN_PORT.
+-- @field grpcbin_ssl_port The port (SSL enabled) for grpcbin service it can be set by env KONG_SPEC_TEST_GRPCBIN_SSL_PORT.
+-- @field grpcbin_url The URL (SSL disabled) for grpcbin service
+-- @field grpcbin_ssl_url The URL (SSL enabled) for grpcbin service
 -- @field redis_host The host for Redis, it can be set by env KONG_SPEC_TEST_REDIS_HOST.
 -- @field redis_port The port (SSL disabled) for Redis, it can be set by env KONG_SPEC_TEST_REDIS_PORT.
 -- @field redis_ssl_port The port (SSL enabled) for Redis, it can be set by env KONG_SPEC_TEST_REDIS_SSL_PORT.
@@ -2868,10 +2876,16 @@ end
   zipkin_host = ZIPKIN_HOST,
   zipkin_port = ZIPKIN_PORT,
 
-  redis_host      = REDIS_HOST,
-  redis_port      = REDIS_PORT,
-  redis_ssl_port  = REDIS_SSL_PORT,
-  redis_ssl_sni   = REDIS_SSL_SNI,
+  grpcbin_host     = GRPCBIN_HOST,
+  grpcbin_port     = GRPCBIN_PORT,
+  grpcbin_ssl_port = GRPCBIN_SSL_PORT,
+  grpcbin_url      = string.format("grpc://%s:%d", GRPCBIN_HOST, GRPCBIN_PORT),
+  grpcbin_ssl_url  = string.format("grpcs://%s:%d", GRPCBIN_HOST, GRPCBIN_SSL_PORT),
+
+  redis_host     = REDIS_HOST,
+  redis_port     = REDIS_PORT,
+  redis_ssl_port = REDIS_SSL_PORT,
+  redis_ssl_sni  = REDIS_SSL_SNI,
 
   blackhole_host = BLACKHOLE_HOST,
 

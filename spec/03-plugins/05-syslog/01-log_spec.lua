@@ -84,7 +84,7 @@ for _, strategy in helpers.each_strategy() do
       -- grpc [[
       local grpc_service = bp.services:insert {
         name = "grpc-service",
-        url = "grpc://localhost:15002",
+        url = helpers.grpcbin_url,
       }
 
       local grpc_route1 = bp.routes:insert {
