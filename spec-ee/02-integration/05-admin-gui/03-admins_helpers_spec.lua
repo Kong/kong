@@ -501,7 +501,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- ensure that what came back looks like a workspace
         local ws = res.body[1]
-        for _, key in ipairs({ "config", "created_at", "id", "meta", "name" }) do
+        for _, key in ipairs({ "config", "created_at", "id", "name" }) do
           assert.not_nil(ws[key])
         end
       end)

@@ -1705,7 +1705,9 @@ function _M.find_all_ws_for_rbac_user(rbac_user, workspace)
       else
         if not wsNameMap[wsName] then
           wsNameMap[wsName] = true
-          wss[#wss + 1] = workspaces.select_workspace_by_name_with_cache(wsName)
+          local ws = workspaces.select_workspace_by_name_with_cache(wsName)
+          ws.meta = nil
+          wss[#wss + 1] = ws
         end
       end
     end
@@ -1716,6 +1718,7 @@ function _M.find_all_ws_for_rbac_user(rbac_user, workspace)
   if not ws then
     return nil, err
   end
+  ws.meta = nil
 
   -- hide the workspace associated with the admin's rbac_user most of the time,
   -- but if there is no known workspace or the only workspace is '*', mark it as
