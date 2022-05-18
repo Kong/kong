@@ -81,6 +81,9 @@
   when updating to Kong 3.0.
 - Insert and update operations on duplicated target entities returns 409.
   [#8179](https://github.com/Kong/kong/pull/8179)
+- The list of reported plugins available on the server now returns the version
+  of the plugin instead of a boolean `true`.
+  [#8810](https://github.com/Kong/kong/pull/8810)
 
 #### PDK
 
