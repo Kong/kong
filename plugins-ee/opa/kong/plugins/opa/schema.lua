@@ -36,6 +36,12 @@ local schema = {
           {
             include_consumer_in_opa_input = { type = "boolean", default = false },
           },
+          {
+            include_body_in_opa_input = { type = "boolean", default = false },
+          },
+          {
+            include_parsed_json_body_in_opa_input = { type = "boolean", default = false },
+          },
         },
       },
     },

@@ -128,6 +128,34 @@ for _, strategy in strategies() do
         },
       }
 
+      route = bp.routes:insert({
+        hosts = { "test9.example.com" },
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = route.id },
+        config = {
+          opa_path = "/v1/data/example/allow4",
+          opa_host = "opa",
+          opa_port = 8181,
+          include_body_in_opa_input = true,
+        },
+      }
+
+      route = bp.routes:insert({
+        hosts = { "test10.example.com" },
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = route.id },
+        config = {
+          opa_path = "/v1/data/example/allow5",
+          opa_host = "opa",
+          opa_port = 8181,
+          include_parsed_json_body_in_opa_input = true,
+        },
+      }
+
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
@@ -181,10 +209,34 @@ for _, strategy in strategies() do
         })
         assert.response(r).has.status(200)
       end)
+      it("when raw body is sent to opa and body matches", function()
+        local r = client:post("/request", {
+          headers = {
+            host = "test9.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            hello = "world"
+          },
+        })
+        assert.response(r).has.status(200)
+      end)
+      it("when parsed body is sent to opa, opa accesses key and value matches", function()
+        local r = client:post("/request", {
+          headers = {
+            host = "test10.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            hello = "earth"
+          },
+        })
+        assert.response(r).has.status(200)
+      end)
     end)
 
 
-    describe("denys request", function()
+    describe("denies request", function()
       it("when result is false", function()
         local r = client:get("/request", {
           headers = {
@@ -208,6 +260,38 @@ for _, strategy in strategies() do
             host = "test8.example.com",
             ["my-secret-header"] = "open-sesame",
           }
+        })
+        assert.response(r).has.status(403)
+      end)
+      it("when raw body is sent to opa and the string doesn't match", function()
+        local r = client:post("/request", {
+          headers = {
+            host = "test9.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = "test",
+        })
+        assert.response(r).has.status(403)
+      end)
+      it("when parsed body is sent to opa and it's not json", function()
+        local r = client:post("/request", {
+          headers = {
+            host = "test10.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = "test",
+        })
+        assert.response(r).has.status(403)
+      end)
+      it("when parsed body is sent to opa, opa accesses key and value doesn't match", function()
+        local r = client:post("/request", {
+          headers = {
+            host = "test10.example.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            hello = "mars"
+          },
         })
         assert.response(r).has.status(403)
       end)

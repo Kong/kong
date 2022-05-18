@@ -16,6 +16,19 @@ allow3 {
   input.request.http.path == "/request"
 }
 
+default allow4 = false
+allow4 {
+  body:= input.request.http.body
+  body == `{"hello":"world"}`
+  size:= input.request.http.body_size
+  size == 17
+}
+
+default allow5 = false
+allow5 {
+  input.request.http.parsed_body.hello == "earth"
+}
+
 deny1 = false
 deny2 = response {
   response := {

@@ -51,6 +51,8 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       include_service_in_opa_input = false,
       include_route_in_opa_input = false,
       include_consumer_in_opa_input = false,
+      include_body_in_opa_input = false,
+      include_parsed_json_body_in_opa_input = false
     })
   end)
 

@@ -1,3 +1,6 @@
+## 0.3.0
+- feat(*) add body to opa input [FTI-3218](https://konghq.atlassian.net/browse/FTI-3218)
+
 ## 0.2.0
 
 - chore(*) add changelog file

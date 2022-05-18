@@ -17,7 +17,7 @@ local OpaHandler = {
   -- execute logic in opa after auth plugins have run but before
   -- rate-limiting and any transformations run
   PRIORITY = 920,
-  VERSION = "0.2.0",
+  VERSION = "0.3.0",
 }
 
 
@@ -60,6 +60,15 @@ local function build_opa_input(plugin_conf)
   if plugin_conf.include_consumer_in_opa_input then
     opa_input.consumer = nctx.authenticated_consumer
   end
+  if plugin_conf.include_body_in_opa_input then
+    local body = kong.request.get_raw_body()
+    opa_input.request.http.body = body
+    opa_input.request.http.body_size = #body
+  end
+  if plugin_conf.include_parsed_json_body_in_opa_input and
+    kong.request.get_header("content-type") == "application/json" then
+      opa_input.request.http.parsed_body = kong.request.get_body("application/json")
+  end
 
   return cjson.encode({ input = opa_input })
 end
@@ -97,7 +106,7 @@ local function opa_request(opa_input, plugin_conf)
   end
 
   if res.status ~= 200 then
-    return nil, "received unexpect HTTP response from OPA server: " .. res.status
+    return nil, "received unexpected HTTP response from OPA server: " .. res.status
   end
 
   local body, err = res:read_body()
