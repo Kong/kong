@@ -363,12 +363,6 @@ server {
         }
     }
 
-    location /nginx_status {
-        internal;
-        access_log off;
-        stub_status;
-    }
-
     location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
     }
@@ -408,12 +402,6 @@ server {
         }
     }
 
-    location /nginx_status {
-        internal;
-        access_log off;
-        stub_status;
-    }
-
     location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
     }
@@ -450,6 +438,12 @@ server {
     location = /v1/wrpc {
         content_by_lua_block {
             Kong.serve_wrpc_listener()
+        }
+    }
+
+    location = /version-handshake {
+        content_by_lua_block {
+            Kong.serve_version_handshake()
         }
     }
 }

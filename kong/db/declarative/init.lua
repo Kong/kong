@@ -398,6 +398,33 @@ function declarative.load_into_db(entities, meta)
 end
 
 
+local function begin_transaction(db)
+  if db.strategy == "postgres" then
+    local ok, err = db.connector:connect("read")
+    if not ok then
+      return nil, err
+    end
+
+    ok, err = db.connector:query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;", "read")
+    if not ok then
+      return nil, err
+    end
+  end
+
+  return true
+end
+
+
+local function end_transaction(db)
+  if db.strategy == "postgres" then
+    -- just finish up the read-only transaction,
+    -- either COMMIT or ROLLBACK is fine.
+    db.connector:query("ROLLBACK;", "read")
+    db.connector:setkeepalive()
+  end
+end
+
+
 local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_foreigns)
   local schemas = {}
 
@@ -408,8 +435,15 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
       insert(schemas, dao.schema)
     end
   end
+
   local sorted_schemas, err = schema_topological_sort(schemas)
   if not sorted_schemas then
+    return nil, err
+  end
+
+  local ok
+  ok, err = begin_transaction(db)
+  if not ok then
     return nil, err
   end
 
@@ -439,6 +473,7 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
     end
     for row, err in db[name]:each(page_size, GLOBAL_QUERY_OPTS) do
       if not row then
+        end_transaction(db)
         kong.log.err(err)
         return nil, err
       end
@@ -474,6 +509,8 @@ local function export_from_db(emitter, skip_ws, skip_disabled_entities, expand_f
 
     ::continue::
   end
+
+  end_transaction(db)
 
   return emitter:done()
 end
@@ -993,7 +1030,7 @@ do
   local DECLARATIVE_LOCK_KEY = "declarative:lock"
 
   -- make sure no matter which path it exits, we released the lock.
-  function declarative.load_into_cache_with_events(entities, meta, hash)
+  function declarative.load_into_cache_with_events(entities, meta, hash, hashes)
     local kong_shm = ngx.shared.kong
 
     local ok, err = kong_shm:add(DECLARATIVE_LOCK_KEY, 0, DECLARATIVE_LOCK_TTL)
@@ -1007,7 +1044,7 @@ do
       return nil, err
     end
 
-    ok, err = load_into_cache_with_events_no_lock(entities, meta, hash)
+    ok, err = load_into_cache_with_events_no_lock(entities, meta, hash, hashes)
     kong_shm:delete(DECLARATIVE_LOCK_KEY)
 
     return ok, err

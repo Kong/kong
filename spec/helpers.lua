@@ -8,6 +8,7 @@
 local BIN_PATH = "bin/kong"
 local TEST_CONF_PATH = os.getenv("KONG_SPEC_TEST_CONF_PATH") or "spec/kong_tests.conf"
 local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
+local CUSTOM_VAULT_PATH = "./spec/fixtures/custom_vaults/?.lua;./spec/fixtures/custom_vaults/?/init.lua"
 local DNS_MOCK_LUA_PATH = "./spec/fixtures/mocks/lua-resty-dns/?.lua"
 local GO_PLUGIN_PATH = "./spec/fixtures/go"
 local GRPC_TARGET_SRC_PATH = "./spec/fixtures/grpc/target/"
@@ -20,6 +21,12 @@ local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
 local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
+local ZIPKIN_HOST = os.getenv("KONG_SPEC_TEST_ZIPKIN_HOST") or "localhost"
+local ZIPKIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_ZIPKIN_PORT")) or 9411
+local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_HOST") or "localhost"
+local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_PORT") or 6379)
+local REDIS_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_SSL_PORT") or 6380)
+local REDIS_SSL_SNI = os.getenv("KONG_SPEC_TEST_REDIS_SSL_SNI") or "test-redis.example.com"
 local BLACKHOLE_HOST = "10.255.255.255"
 local KONG_VERSION = require("kong.meta")._VERSION
 local PLUGINS_LIST
@@ -75,6 +82,7 @@ do
   local paths = {}
   table.insert(paths, os.getenv("KONG_LUA_PACKAGE_PATH"))
   table.insert(paths, CUSTOM_PLUGIN_PATH)
+  table.insert(paths, CUSTOM_VAULT_PATH)
   table.insert(paths, package.path)
   package.path = table.concat(paths, ";")
 end
@@ -367,7 +375,7 @@ end
 --   route = { id = route1.id },
 --   config = {},
 -- }
-local function get_db_utils(strategy, tables, plugins)
+local function get_db_utils(strategy, tables, plugins, vaults)
   strategy = strategy or conf.database
   if tables ~= nil and type(tables) ~= "table" then
     error("arg #2 must be a list of tables to truncate", 2)
@@ -379,6 +387,16 @@ local function get_db_utils(strategy, tables, plugins)
   if plugins then
     for _, plugin in ipairs(plugins) do
       conf.loaded_plugins[plugin] = true
+    end
+  end
+
+  if vaults ~= nil and type(vaults) ~= "table" then
+    error("arg #4 must be a list of vaults to enable", 2)
+  end
+
+  if vaults then
+    for _, vault in ipairs(vaults) do
+      conf.loaded_vaults[vault] = true
     end
   end
 
@@ -432,6 +450,12 @@ local function get_db_utils(strategy, tables, plugins)
   if plugins then
     for _, plugin in ipairs(plugins) do
       conf.loaded_plugins[plugin] = false
+    end
+  end
+
+  if vaults then
+    for _, vault in ipairs(vaults) do
+      conf.loaded_vaults[vault] = false
     end
   end
 
@@ -2281,6 +2305,7 @@ function kong_exec(cmd, env, pl_returns, env_vars)
     end
     local paths = {}
     table.insert(paths, cleanup(CUSTOM_PLUGIN_PATH))
+    table.insert(paths, cleanup(CUSTOM_VAULT_PATH))
     table.insert(paths, cleanup(env.lua_package_path))
     table.insert(paths, cleanup(conf.lua_package_path))
     env.lua_package_path = table.concat(paths, ";")
@@ -2793,7 +2818,12 @@ end
 -- @field mock_upstream_stream_port
 -- @field mock_upstream_stream_ssl_port
 -- @field mock_grpc_upstream_proto_path
--- @field redis_host The hostname for a Redis instance if available. Port should be `6379`.
+-- @field redis_host The host for Redis, it can be set by env KONG_SPEC_TEST_REDIS_HOST.
+-- @field redis_port The port (SSL disabled) for Redis, it can be set by env KONG_SPEC_TEST_REDIS_PORT.
+-- @field redis_ssl_port The port (SSL enabled) for Redis, it can be set by env KONG_SPEC_TEST_REDIS_SSL_PORT.
+-- @field redis_ssl_sni The server name for Redis, it can be set by env KONG_SPEC_TEST_REDIS_SSL_SNI.
+-- @field zipkin_host The host for Zipkin service, it can be set by env KONG_SPEC_TEST_ZIPKIN_HOST.
+-- @field zipkin_port the port for Zipkin service, it can be set by env KONG_SPEC_TEST_ZIPKIN_PORT.
 
 ----------
 -- Exposed
@@ -2835,7 +2865,13 @@ end
   mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,
   mock_grpc_upstream_proto_path = MOCK_GRPC_UPSTREAM_PROTO_PATH,
 
-  redis_host = os.getenv("KONG_SPEC_REDIS_HOST") or "127.0.0.1",
+  zipkin_host = ZIPKIN_HOST,
+  zipkin_port = ZIPKIN_PORT,
+
+  redis_host      = REDIS_HOST,
+  redis_port      = REDIS_PORT,
+  redis_ssl_port  = REDIS_SSL_PORT,
+  redis_ssl_sni   = REDIS_SSL_SNI,
 
   blackhole_host = BLACKHOLE_HOST,
 

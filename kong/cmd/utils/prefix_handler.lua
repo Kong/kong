@@ -2,6 +2,7 @@ local default_nginx_template = require "kong.templates.nginx"
 local kong_nginx_template = require "kong.templates.nginx_kong"
 local kong_nginx_stream_template = require "kong.templates.nginx_kong_stream"
 local system_constants = require "lua_system_constants"
+local process_secrets = require "kong.cmd.utils.process_secrets"
 local openssl_bignum = require "resty.openssl.bn"
 local openssl_rand = require "resty.openssl.rand"
 local openssl_pkey = require "resty.openssl.pkey"
@@ -21,6 +22,7 @@ local bit = require "bit"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
 
+local getmetatable = getmetatable
 local tonumber = tonumber
 local tostring = tostring
 local assert = assert
@@ -283,10 +285,11 @@ end
 local function write_env_file(path, data)
   os.remove(path)
 
-  local c = require "lua_system_constants"
-
-  local flags = bit.bor(c.O_CREAT(), c.O_WRONLY())
-  local mode = ffi.new("int", bit.bor(c.S_IRUSR(), c.S_IWUSR(), c.S_IRGRP()))
+  local flags = bit.bor(system_constants.O_CREAT(),
+                        system_constants.O_WRONLY())
+  local mode = ffi.new("int", bit.bor(system_constants.S_IRUSR(),
+                                      system_constants.S_IWUSR(),
+                                      system_constants.S_IRGRP()))
 
   local fd = ffi.C.open(path, flags, mode)
   if fd < 0 then
@@ -318,6 +321,45 @@ local function write_env_file(path, data)
   return true
 end
 
+local function write_process_secrets_file(path, data)
+  os.remove(path)
+
+  local flags = bit.bor(system_constants.O_RDONLY(),
+                        system_constants.O_CREAT())
+
+  local mode = ffi.new("int", bit.bor(system_constants.S_IRUSR(),
+                                      system_constants.S_IWUSR()))
+
+  local fd = ffi.C.open(path, flags, mode)
+  if fd < 0 then
+    local errno = ffi.errno()
+    return nil, "unable to open process secrets path " .. path .. " (" ..
+                ffi.string(ffi.C.strerror(errno)) .. ")"
+  end
+
+  local ok = ffi.C.close(fd)
+  if ok ~= 0 then
+    local errno = ffi.errno()
+    return nil, "failed to close fd (" ..
+                ffi.string(ffi.C.strerror(errno)) .. ")"
+  end
+
+  local file, err = io.open(path, "w+b")
+  if not file then
+    return nil, "unable to open process secrets path " .. path .. " (" .. err .. ")"
+  end
+
+  local ok, err = file:write(data)
+
+  file:close()
+
+  if not ok then
+    return nil, "unable to write process secrets path " .. path .. " (" .. err .. ")"
+  end
+
+  return true
+end
+
 local function compile_kong_conf(kong_config)
   return compile_conf(kong_config, kong_nginx_template)
 end
@@ -331,7 +373,7 @@ local function compile_nginx_conf(kong_config, template)
   return compile_conf(kong_config, template)
 end
 
-local function prepare_prefix(kong_config, nginx_custom_template_path, skip_write)
+local function prepare_prefix(kong_config, nginx_custom_template_path, skip_write, write_process_secrets)
   log.verbose("preparing nginx prefix directory at %s", kong_config.prefix)
 
   if not pl_path.exists(kong_config.prefix) then
@@ -485,7 +527,19 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     "",
   }
 
+  local refs = kong_config["$refs"]
+  local has_refs = refs and type(refs) == "table"
+
+  local secrets
+  if write_process_secrets and has_refs then
+    secrets = process_secrets.extract(kong_config)
+  end
+
   for k, v in pairs(kong_config) do
+    if has_refs and refs[k] then
+      v = refs[k]
+    end
+
     if type(v) == "table" then
       if (getmetatable(v) or {}).__tostring then
         -- the 'tostring' meta-method knows how to serialize
@@ -499,10 +553,22 @@ local function prepare_prefix(kong_config, nginx_custom_template_path, skip_writ
     end
   end
 
-  local ok, err = write_env_file(kong_config.kong_env,
-                                 table.concat(buf, "\n") .. "\n")
+  local env = table.concat(buf, "\n") .. "\n"
+  local ok, err = write_env_file(kong_config.kong_env, env)
   if not ok then
     return nil, err
+  end
+
+  if secrets then
+    secrets, err = process_secrets.serialize(secrets, kong_config.kong_env)
+    if not secrets then
+      return nil, err
+    end
+
+    ok, err = write_process_secrets_file(kong_config.kong_process_secrets, secrets)
+    if not ok then
+      return nil, err
+    end
   end
 
   return true

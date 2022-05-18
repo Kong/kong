@@ -125,7 +125,7 @@ jobs:
         bin/busted -o gtest spec/04-perf/99-teardown/
 
     - name: Save results
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: rps-and-latency
         path: |
@@ -133,7 +133,7 @@ jobs:
         retention-days: 31
 
     - name: Save flamegrpahs
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: flamegraphs
         path: |
@@ -141,7 +141,7 @@ jobs:
         retention-days: 31
 
     - name: Save error logs
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: error_logs
         path: |

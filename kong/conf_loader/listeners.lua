@@ -2,7 +2,12 @@ local pl_stringx = require "pl.stringx"
 local utils = require "kong.tools.utils"
 
 
+local type = type
+local insert = table.insert
+local assert = assert
+local ipairs = ipairs
 local concat = table.concat
+local setmetatable = setmetatable
 
 
 local listeners = {}
@@ -121,7 +126,7 @@ local function parse_listeners(values, flags)
     listener.listener = ip.host .. ":" .. ip.port ..
                         (#cleaned_flags == 0 and "" or " " .. cleaned_flags)
 
-    table.insert(list, listener)
+    insert(list, listener)
   end
 
   return list

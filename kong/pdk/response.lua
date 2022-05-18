@@ -392,6 +392,7 @@ local function new(self, major_version)
   --
   -- Be aware that changing this setting might break any plugins that
   -- rely on the automatic underscore conversion.
+  -- You cannot set Transfer-Encoding header with this function. It will be ignored.
   --
   -- @function kong.response.set_header
   -- @phases rewrite, access, header_filter, response, admin_api
@@ -408,6 +409,11 @@ local function new(self, major_version)
     end
 
     validate_header(name, value)
+    local lower_name = lower(name)
+    if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
+      self.log.warn("manually setting Transfer-Encoding. Ignored.")
+      return
+    end
 
     ngx.header[name] = normalize_header(value)
   end
@@ -487,6 +493,8 @@ local function new(self, major_version)
   -- This function overrides any existing header bearing the same name as those
   -- specified in the `headers` argument. Other headers remain unchanged.
   --
+  -- You cannot set Transfer-Encoding header with this function. It will be ignored.
+  --
   -- @function kong.response.set_headers
   -- @phases rewrite, access, header_filter, response, admin_api
   -- @tparam table headers
@@ -514,7 +522,12 @@ local function new(self, major_version)
     validate_headers(headers)
 
     for name, value in pairs(headers) do
-      ngx.header[name] = normalize_multi_header(value)
+      local lower_name = lower(name)
+      if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
+        self.log.warn("manually setting Transfer-Encoding. Ignored.")
+      else
+        ngx.header[name] = normalize_multi_header(value)
+      end
     end
   end
 
@@ -645,8 +658,13 @@ local function new(self, major_version)
     if headers ~= nil then
       for name, value in pairs(headers) do
         ngx.header[name] = normalize_multi_header(value)
+        local lower_name = lower(name)
+        if lower_name == "transfer-encoding" or lower_name == "transfer_encoding" then
+          self.log.warn("manually setting Transfer-Encoding. Ignored.")
+        else
+          ngx.header[name] = normalize_multi_header(value)
+        end
         if not has_content_type or not has_content_length then
-          local lower_name = lower(name)
           if lower_name == "content-type"
           or lower_name == "content_type"
           then

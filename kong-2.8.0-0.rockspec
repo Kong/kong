@@ -13,10 +13,10 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.3",
-  "luasec == 1.0.2",
+  "luasec == 1.1.0",
   "luasocket == 3.0-rc1",
   "penlight == 1.12.0",
-  "lua-resty-http == 0.16.1",
+  "lua-resty-http ~> 0.17",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
   "multipart == 0.5.9",
@@ -33,13 +33,13 @@ dependencies = {
   "luaxxhash >= 1.0",
   "lua-protobuf == 0.3.3",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.5.0",
+  "lua-resty-healthcheck == 1.5.1",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.8.7",
+  "lua-resty-openssl == 0.8.8",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6.1",
-  "lua-resty-acme == 0.7.2",
+  "lua-resty-acme == 0.8.0",
   "lua-resty-session == 3.10",
 }
 build = {
@@ -65,10 +65,14 @@ build = {
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
 
     ["kong.clustering"] = "kong/clustering/init.lua",
+    ["kong.clustering.version_negotiation"] = "kong/clustering/version_negotiation/init.lua",
+    ["kong.clustering.version_negotiation.services_known"] = "kong/clustering/version_negotiation/services_known.lua",
+    ["kong.clustering.version_negotiation.services_requested"] = "kong/clustering/version_negotiation/services_requested.lua",
     ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
     ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
     ["kong.clustering.wrpc_data_plane"] = "kong/clustering/wrpc_data_plane.lua",
     ["kong.clustering.wrpc_control_plane"] = "kong/clustering/wrpc_control_plane.lua",
+    ["kong.clustering.utils"] = "kong/clustering/utils.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
@@ -85,7 +89,6 @@ build = {
     ["kong.resty.dns.client"] = "kong/resty/dns/client.lua",
     ["kong.resty.dns.utils"] = "kong/resty/dns/utils.lua",
     ["kong.resty.ctx"] = "kong/resty/ctx.lua",
-    ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",
     ["kong.cmd.roar"] = "kong/cmd/roar.lua",
@@ -109,6 +112,7 @@ build = {
     ["kong.cmd.utils.tty"] = "kong/cmd/utils/tty.lua",
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
     ["kong.cmd.utils.prefix_handler"] = "kong/cmd/utils/prefix_handler.lua",
+    ["kong.cmd.utils.process_secrets"] = "kong/cmd/utils/process_secrets.lua",
 
     ["kong.api"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
@@ -210,7 +214,6 @@ build = {
     ["kong.db.strategies.off.tags"] = "kong/db/strategies/off/tags.lua",
 
     ["kong.db.migrations.state"] = "kong/db/migrations/state.lua",
-    ["kong.db.migrations.helpers"] = "kong/db/migrations/helpers.lua",
     ["kong.db.migrations.subsystems"] = "kong/db/migrations/subsystems.lua",
     ["kong.db.migrations.core"] = "kong/db/migrations/core/init.lua",
     ["kong.db.migrations.core.000_base"] = "kong/db/migrations/core/000_base.lua",
@@ -227,9 +230,11 @@ build = {
     ["kong.db.migrations.core.013_220_to_230"] = "kong/db/migrations/core/013_220_to_230.lua",
     ["kong.db.migrations.core.014_230_to_270"] = "kong/db/migrations/core/014_230_to_270.lua",
     ["kong.db.migrations.core.015_270_to_280"] = "kong/db/migrations/core/015_270_to_280.lua",
+    ["kong.db.migrations.core.016_280_to_300"] = "kong/db/migrations/core/016_280_to_300.lua",
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
+    ["kong.db.migrations.operations.280_to_300"] = "kong/db/migrations/operations/280_to_300.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -250,8 +255,6 @@ build = {
     ["kong.pdk.nginx"] = "kong/pdk/nginx.lua",
     ["kong.pdk.cluster"] = "kong/pdk/cluster.lua",
     ["kong.pdk.vault"] = "kong/pdk/vault.lua",
-
-    ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
     ["kong.plugins.basic-auth.migrations"] = "kong/plugins/basic-auth/migrations/init.lua",
     ["kong.plugins.basic-auth.migrations.000_base_basic_auth"] = "kong/plugins/basic-auth/migrations/000_base_basic_auth.lua",
@@ -294,6 +297,8 @@ build = {
 
     ["kong.plugins.http-log.handler"] = "kong/plugins/http-log/handler.lua",
     ["kong.plugins.http-log.schema"] = "kong/plugins/http-log/schema.lua",
+    ["kong.plugins.http-log.migrations"] = "kong/plugins/http-log/migrations/init.lua",
+    ["kong.plugins.http-log.migrations.001_280_to_300"] = "kong/plugins/http-log/migrations/001_280_to_300.lua",
 
     ["kong.plugins.file-log.handler"] = "kong/plugins/file-log/handler.lua",
     ["kong.plugins.file-log.schema"] = "kong/plugins/file-log/schema.lua",

@@ -101,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
                                     .. helpers.mock_upstream_port
                                     .. "/post_auth_log/basic_auth"
                                     .. "/testuser/testpassword",
-          headers = { ["Hello-World"] = { "hi!", "there" } },
+          headers = { ["Hello-World"] = "hi there" },
         }
       }
 
@@ -449,7 +449,7 @@ for _, strategy in helpers.each_strategy() do
               ok = ok + 1
             end
             if name == "hello-world" then
-              assert.same({ "hi!", "there" }, value)
+              assert.equal("hi there", value)
               ok = ok + 1
             end
           end

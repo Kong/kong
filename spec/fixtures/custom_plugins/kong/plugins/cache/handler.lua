@@ -1,21 +1,13 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local singletons = require "kong.singletons"
 
 
-local CacheHandler = BasePlugin:extend()
-
-
-CacheHandler.PRIORITY = 1000
-
-
-function CacheHandler:new()
-  CacheHandler.super.new(self, "cache")
-end
+local CacheHandler =  {
+  VERSION = "0.1-t",
+  PRIORITY = 1000,
+}
 
 
 function CacheHandler:access(conf)
-  CacheHandler.super.access(self)
-
   ngx.req.read_body()
 
   local args, err = ngx.req.get_post_args()

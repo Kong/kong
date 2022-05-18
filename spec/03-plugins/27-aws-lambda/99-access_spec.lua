@@ -805,7 +805,7 @@ for _, strategy in helpers.each_strategy() do
 -- and the tests pass.
 -- see: https://github.com/Kong/kong/commit/c6f9e4558b5a654e78ca96b2ba4309e527053403#diff-9d13d8efc852de84b07e71bf419a2c4d
 
-      it("sets proper status code on custom response from Lambda", function()
+      it("sets proper status code (type = number) on custom response from Lambda", function()
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/post",
@@ -815,6 +815,24 @@ for _, strategy in helpers.each_strategy() do
           },
           body = {
             statusCode = 201,
+          }
+        })
+        local body = assert.res_status(201, res)
+        assert.equal(0, tonumber(res.headers["Content-Length"]))
+        assert.equal(nil, res.headers["X-Custom-Header"])
+        assert.equal("", body)
+      end)
+
+      it("sets proper status code (type = string) on custom response from Lambda", function()
+        local res = assert(proxy_client:send {
+          method  = "POST",
+          path    = "/post",
+          headers = {
+            ["Host"]         = "lambda11.com",
+            ["Content-Type"] = "application/json"
+          },
+          body = {
+            statusCode = "201",
           }
         })
         local body = assert.res_status(201, res)
@@ -878,7 +896,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("bar", res.headers["x-amzn-RequestId"])
       end)
 
-      it("returns HTTP 502 when 'status' property of custom response is not a number", function()
+      it("returns HTTP 502 when 'status' property of custom response contains non-numeric character", function()
         local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/post",
@@ -888,6 +906,42 @@ for _, strategy in helpers.each_strategy() do
           },
           body = {
             statusCode = "hello",
+          }
+        })
+
+        assert.res_status(502, res)
+        local b = assert.response(res).has.jsonbody()
+        assert.equal("Bad Gateway", b.message)
+      end)
+
+      it("returns HTTP 502 when 'status' property of custom response is not a valid HTTP status code", function()
+        local res = assert(proxy_client:send {
+          method  = "POST",
+          path    = "/post",
+          headers = {
+            ["Host"]         = "lambda11.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            statusCode = "99",
+          }
+        })
+
+        assert.res_status(502, res)
+        local b = assert.response(res).has.jsonbody()
+        assert.equal("Bad Gateway", b.message)
+      end)
+
+      it("returns HTTP 502 when 'status' property of custom response is not a valid HTTP status code", function()
+        local res = assert(proxy_client:send {
+          method  = "POST",
+          path    = "/post",
+          headers = {
+            ["Host"]         = "lambda11.com",
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            statusCode = "600",
           }
         })
 

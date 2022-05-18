@@ -50,6 +50,13 @@ local _log_prefix = "[wrpc-clustering] "
 
 local wrpc_config_service
 
+
+local function handle_export_deflated_reconfigure_payload(self)
+  local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)
+  return ok, p_err or err
+end
+
+
 local function get_config_service(self)
   if not wrpc_config_service then
     wrpc_config_service = wrpc.new_service()
@@ -151,7 +158,7 @@ function _M:export_deflated_reconfigure_payload()
     end
   end
 
-  local config_hash = self:calculate_config_hash(config_table)
+  local config_hash, hashes = self:calculate_config_hash(config_table)
   config_version = config_version + 1
 
   -- store serialized plugins map for troubleshooting purposes
@@ -162,7 +169,8 @@ function _M:export_deflated_reconfigure_payload()
   self.config_call_rpc, self.config_call_args = assert(service:encode_args("ConfigService.SyncConfig", {
     config = config_table,
     version = config_version,
-    hash = config_hash,
+    config_hash = config_hash,
+    hashes = hashes,
   }))
 
   return config_table, nil
@@ -170,8 +178,8 @@ end
 
 function _M:push_config_one_client(client)
   if not self.config_call_rpc or not self.config_call_args then
-    local payload, err = self:export_deflated_reconfigure_payload()
-    if not payload then
+    local ok, err = handle_export_deflated_reconfigure_payload(self)
+    if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
       return
     end
@@ -557,8 +565,8 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
   end
 
   do
-    local _, err = self:export_deflated_reconfigure_payload()
-    if err then
+    local ok, err = handle_export_deflated_reconfigure_payload(self)
+    if not ok then
       ngx_log(ngx_ERR, _log_prefix, "unable to export initial config from database: ", err)
     end
   end

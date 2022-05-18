@@ -7,41 +7,47 @@ local date = require "date"
 local bpack = lpack.pack
 local bunpack = lpack.unpack
 
+local type = type
+local pcall = pcall
+local error = error
+local tostring = tostring
+local string_format = string.format
+
+local epoch = date.epoch()
 
 local grpc = {}
 
 
-local function safe_set_type_hook(type, dec, enc)
-  if not pcall(pb.hook, type) then
-    ngx.log(ngx.DEBUG, "no type '" .. type .. "' defined")
+local function safe_set_type_hook(typ, dec, enc)
+  if not pcall(pb.hook, typ) then
+    ngx.log(ngx.DEBUG, "no type '" .. typ .. "' defined")
     return
   end
 
-  if not pb.hook(type) then
-    pb.hook(type, dec)
+  if not pb.hook(typ) then
+    pb.hook(typ, dec)
   end
 
-  if not pb.encode_hook(type) then
-    pb.encode_hook(type, enc)
+  if not pb.encode_hook(typ) then
+    pb.encode_hook(typ, enc)
   end
 end
 
 local function set_hooks()
   pb.option("enable_hooks")
-  local epoch = date.epoch()
 
   safe_set_type_hook(
     ".google.protobuf.Timestamp",
     function (t)
       if type(t) ~= "table" then
-        error(string.format("expected table, got (%s)%q", type(t), tostring(t)))
+        error(string_format("expected table, got (%s)%q", type(t), tostring(t)))
       end
 
       return date(t.seconds):fmt("${iso}")
     end,
     function (t)
       if type(t) ~= "string" then
-        error (string.format("expected time string, got (%s)%q", type(t), tostring(t)))
+        error (string_format("expected time string, got (%s)%q", type(t), tostring(t)))
       end
 
       local ds = date(t) - epoch

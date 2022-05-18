@@ -1,6 +1,9 @@
 local _M = {}
 
 local constants = require("kong.constants")
+local declarative = require("kong.db.declarative")
+local clustering_utils = require("kong.clustering.utils")
+local version_negotiation = require("kong.clustering.version_negotiation")
 local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local ssl = require("ngx.ssl")
@@ -9,6 +12,7 @@ local isempty = require("table.isempty")
 local isarray = require("table.isarray")
 local nkeys = require("table.nkeys")
 local new_tab = require("table.new")
+local ngx_log = ngx.log
 local ngx_null = ngx.null
 local ngx_md5 = ngx.md5
 local ngx_md5_bin = ngx.md5_bin
@@ -20,8 +24,11 @@ local pairs = pairs
 local sort = table.sort
 local type = type
 
+local ngx_ERR = ngx.ERR
+local ngx_DEBUG = ngx.DEBUG
 
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
+local _log_prefix = "[clustering] "
 
 
 local MT = { __index = _M, }
@@ -130,19 +137,9 @@ function _M.new(conf)
   local key = assert(pl_file.read(conf.cluster_cert_key))
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
 
-  print("role: ", conf.role, "  protocol: ", conf.cluster_protocol)
-
   if conf.role == "control_plane" then
     self.json_handler = require("kong.clustering.control_plane").new(self)
     self.wrpc_handler = require("kong.clustering.wrpc_control_plane").new(self)
-
-  else
-    local clustering_submodule = conf.role
-    if conf.cluster_protocol == "wrpc" then
-      clustering_submodule = "wrpc_" .. clustering_submodule
-    end
-
-    self.child = require("kong.clustering." .. clustering_submodule).new(self)
   end
 
   return self
@@ -195,6 +192,78 @@ function _M:calculate_config_hash(config_table)
   }
 end
 
+local function fill_empty_hashes(hashes)
+  for _, field_name in ipairs{
+    "config",
+    "routes",
+    "services",
+    "plugins",
+    "upstreams",
+    "targets",
+  } do
+    hashes[field_name] = hashes[field_name] or DECLARATIVE_EMPTY_CONFIG_HASH
+  end
+end
+
+function _M:request_version_negotiation()
+  local response_data, err = version_negotiation.request_version_handshake(self.conf, self.cert, self.cert_key)
+  if not response_data then
+    ngx_log(ngx_ERR, _log_prefix, "error while requesting version negotiation: " .. err)
+    assert(ngx.timer.at(math.random(5, 10), function(premature)
+      self:communicate(premature)
+    end))
+    return
+  end
+end
+
+
+function _M:update_config(config_table, config_hash, update_cache, hashes)
+  assert(type(config_table) == "table")
+
+  if not config_hash then
+    config_hash, hashes = self:calculate_config_hash(config_table)
+  end
+
+  if hashes then
+    fill_empty_hashes(hashes)
+  end
+
+  local current_hash = declarative.get_current_hash()
+  if current_hash == config_hash then
+    ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
+      "no need to reload")
+    return true
+  end
+
+  local entities, err, _, meta, new_hash =
+  self.declarative_config:parse_table(config_table, config_hash)
+  if not entities then
+    return nil, "bad config received from control plane " .. err
+  end
+
+  if current_hash == new_hash then
+    ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
+      "no need to reload")
+    return true
+  end
+
+  -- NOTE: no worker mutex needed as this code can only be
+  -- executed by worker 0
+
+  local res
+  res, err = declarative.load_into_cache_with_events(entities, meta, new_hash, hashes)
+  if not res then
+    return nil, err
+  end
+
+  if update_cache then
+    -- local persistence only after load finishes without error
+    clustering_utils.save_config_cache(self, config_table)
+  end
+
+  return true
+end
+
 
 function _M:handle_cp_websocket()
   return self.json_handler:handle_cp_websocket()
@@ -204,6 +273,9 @@ function _M:handle_wrpc_websocket()
   return self.wrpc_handler:handle_cp_websocket()
 end
 
+function _M:serve_version_handshake()
+  return version_negotiation.serve_version_handshake(self.conf, self.cert_digest)
+end
 
 function _M:init_worker()
   self.plugins_list = assert(kong.db.plugins:get_handlers())
@@ -215,13 +287,39 @@ function _M:init_worker()
     return { name = p.name, version = p.handler.VERSION, }
   end, self.plugins_list)
 
-  for _, ch in ipairs{"child", "json_handler", "wrpc_handler"} do
-    local child = self[ch]
-    if child then
-      child:init_worker()
-    end
+  local role = self.conf.role
+  if role == "control_plane" then
+    self.json_handler:init_worker()
+    self.wrpc_handler:init_worker()
   end
-  --self.child:init_worker()
+
+  if role == "data_plane" and ngx.worker.id() == 0 then
+    assert(ngx.timer.at(0, function(premature)
+      if premature then
+        return
+      end
+
+      self:request_version_negotiation()
+
+      local config_proto, msg = version_negotiation.get_negotiated_service("config")
+      if not config_proto and msg then
+        ngx_log(ngx_ERR, _log_prefix, "error reading negotiated \"config\" service: ", msg)
+      end
+
+      ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
+      if config_proto == "v1" then
+        self.child = require "kong.clustering.wrpc_data_plane".new(self)
+
+      elseif config_proto == "v0" or config_proto == nil then
+        self.child = require "kong.clustering.data_plane".new(self)
+      end
+
+      if self.child then
+        clustering_utils.load_config_cache(self.child)
+        self.child:communicate()
+      end
+    end))
+  end
 end
 
 

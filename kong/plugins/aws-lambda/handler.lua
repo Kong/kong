@@ -7,7 +7,7 @@ local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 local constants = require "kong.constants"
 local request_util = require "kong.plugins.aws-lambda.request-util"
-
+local kong = kong
 
 local VIA_HEADER = constants.HEADERS.VIA
 local VIA_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
@@ -63,6 +63,27 @@ local function get_now()
 end
 
 
+local function validate_http_status_code(status_code)
+  if not status_code then
+    return false
+  end
+
+  if type(status_code) == "string" then
+    status_code = tonumber(status_code)
+
+    if not status_code then
+      return false
+    end
+  end
+
+  if status_code >= 100 and status_code <= 599 then
+    return status_code
+  end
+
+  return false
+end
+
+
 --[[
   Response format should be
   {
@@ -72,8 +93,8 @@ end
   }
 --]]
 local function validate_custom_response(response)
-  if type(response.statusCode) ~= "number" then
-    return nil, "statusCode must be a number"
+  if not validate_http_status_code(response.statusCode) then
+    return nil, "statusCode validation failed"
   end
 
   if response.headers ~= nil and type(response.headers) ~= "table" then
