@@ -237,6 +237,10 @@ end
 
 
 function _M.update_credential(self, db, helpers, opts)
+  if self.params.id and self.params.id ~= self.params.credential_id then
+    return kong.response.exit(400, { message = "Bad request" })
+  end
+
   local cred_id = self.params.credential_id
   self.params.plugin = nil
   self.params.credential_id = nil
