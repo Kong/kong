@@ -58,8 +58,6 @@ local function set_consumer(consumer, credential)
     clear_header(constants.HEADERS.CREDENTIAL_IDENTIFIER)
   end
 
-  clear_header(constants.HEADERS.CREDENTIAL_USERNAME)
-
   if credential then
     clear_header(constants.HEADERS.ANONYMOUS)
   else
