@@ -9,6 +9,12 @@ local system_constants = require("lua_system_constants")
 local bit = require("bit")
 local ffi = require("ffi")
 
+local type = type
+local tonumber = tonumber
+
+local C = ffi.C
+local bor = bit.bor
+
 local io_open = io.open
 local ngx_var = ngx.var
 local cjson_decode = require "cjson.safe".decode
@@ -147,7 +153,7 @@ do
     local res
     res, err = c:request_uri(ocsp_url, {
       headers = {
-        ["Content-Type"] = "application/ocsp-request"
+        ["Content-Type"] = "application/ocsp-request",
       },
       timeout = OCSP_TIMEOUT,
       method = "POST",
@@ -240,19 +246,19 @@ function clustering_utils.load_config_cache(self)
 
   else
     -- CONFIG_CACHE does not exist, pre create one with 0600 permission
-    local flags = bit.bor(system_constants.O_RDONLY(),
+    local flags = bor(system_constants.O_RDONLY(),
       system_constants.O_CREAT())
 
-    local mode = ffi.new("int", bit.bor(system_constants.S_IRUSR(),
+    local mode = ffi.new("int", bor(system_constants.S_IRUSR(),
       system_constants.S_IWUSR()))
 
-    local fd = ffi.C.open(CONFIG_CACHE, flags, mode)
+    local fd = C.open(CONFIG_CACHE, flags, mode)
     if fd == -1 then
       ngx_log(ngx_ERR, _log_prefix, "unable to pre-create cached config file: ",
-        ffi.string(ffi.C.strerror(ffi.errno())))
+        ffi.string(C.strerror(ffi.errno())))
 
     else
-      ffi.C.close(fd)
+      C.close(fd)
     end
   end
 end

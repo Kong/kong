@@ -11,6 +11,7 @@ local type = type
 local pcall = pcall
 local error = error
 local tostring = tostring
+local ipairs = ipairs
 local string_format = string.format
 
 local epoch = date.epoch()
