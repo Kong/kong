@@ -92,6 +92,9 @@
 - The support for deprecated legacy plugin schemas was removed. If your custom plugins
   still use the old (`0.x era`) schemas, you are now forced to upgrade them.
   [#8815](https://github.com/Kong/kong/pull/8815)
+- The old `kong.plugins.log-serializers.basic` library was removed in favor of the PDK
+  function `kong.log.serialize`, please upgrade your plugins to use PDK.
+  [#8815](https://github.com/Kong/kong/pull/8815)
 
 #### Admin API
 
