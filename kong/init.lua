@@ -1471,10 +1471,6 @@ function Kong.admin_content(options)
 end
 
 
--- TODO: deprecate the following alias
-Kong.serve_admin_api = Kong.admin_content
-
-
 function Kong.admin_header_filter()
   local ctx = ngx.ctx
 
@@ -1530,6 +1526,7 @@ function Kong.serve_cluster_listener(options)
 
   return kong.clustering:handle_cp_websocket()
 end
+
 
 function Kong.serve_wrpc_listener(options)
   log_init_worker_errors()
