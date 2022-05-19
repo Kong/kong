@@ -100,6 +100,9 @@
   to use constant `CREDENTIAL_IDENTIFIER` with value of `X-Credential-Identifier` when
   setting  the upstream headers for a credential.
   [#8815](https://github.com/Kong/kong/pull/8815)
+- The support for deprecated hash structured custom plugin DAOs (using `daos.lua`) was
+  removed. Please upgrade the legacy plugin DAO schemas.
+  [#8815](https://github.com/Kong/kong/pull/8815)
 
 #### Admin API
 
