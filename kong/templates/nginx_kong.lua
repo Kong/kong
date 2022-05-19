@@ -429,7 +429,7 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
-    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
+    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js|woff|woff2)$ {
         root gui;
 
         expires 90d;
@@ -526,7 +526,7 @@ server {
         etag off;
     }
 
-    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js)$ {
+    location ~* \.(jpg|jpeg|png|gif|ico|css|ttf|js|woff|woff2)$ {
         root portal;
 
         header_filter_by_lua_block {
