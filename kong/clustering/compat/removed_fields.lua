@@ -207,8 +207,15 @@ return {
 
   -- Any dataplane older than 3.0.0
   [2999999999] = {
+    -- OSS
     zipkin = {
       "http_span_name",
+    },
+
+    -- Enterprise plugins
+    opa = {
+      "include_body_in_opa_input",
+      "include_parsed_json_body_in_opa_input",
     },
   },
 }

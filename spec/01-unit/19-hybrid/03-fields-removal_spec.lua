@@ -164,6 +164,10 @@ describe("kong.clustering.control_plane", function()
       response_ratelimiting = {
         "redis_username",
       },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+      },
     }, cp._get_removed_fields(2003000000))
 
     assert.same({
@@ -280,6 +284,10 @@ describe("kong.clustering.control_plane", function()
       },
       response_ratelimiting = {
         "redis_username",
+      },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
       },
     }, cp._get_removed_fields(2003003003))
 
@@ -398,6 +406,10 @@ describe("kong.clustering.control_plane", function()
       response_ratelimiting = {
         "redis_username",
       },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+      },
     }, cp._get_removed_fields(2003004000))
 
     assert.same({
@@ -511,6 +523,10 @@ describe("kong.clustering.control_plane", function()
       response_ratelimiting = {
         "redis_username",
       },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+      },
     }, cp._get_removed_fields(2004001000))
 
     assert.same({
@@ -617,6 +633,10 @@ describe("kong.clustering.control_plane", function()
       response_ratelimiting = {
         "redis_username",
       },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+      },
     }, cp._get_removed_fields(2004001002))
 
     assert.same({
@@ -722,6 +742,10 @@ describe("kong.clustering.control_plane", function()
       response_ratelimiting = {
         "redis_username",
       },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+      },
     }, cp._get_removed_fields(2005000000))
 
     assert.same({
@@ -780,6 +804,10 @@ describe("kong.clustering.control_plane", function()
       response_ratelimiting = {
         "redis_username",
       },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+      },
     }, cp._get_removed_fields(2006000000))
 
     assert.same({
@@ -815,13 +843,21 @@ describe("kong.clustering.control_plane", function()
       },
       zipkin = {
         "http_span_name",
-      }
+      },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+      },
     }, cp._get_removed_fields(2007000000))
 
     assert.same({
       zipkin = {
         "http_span_name",
-      }
+      },
+      opa = {
+        "include_body_in_opa_input",
+        "include_parsed_json_body_in_opa_input",
+      },
     }, cp._get_removed_fields(2008000000))
   end)
 
