@@ -319,7 +319,7 @@ for _, strategy in helpers.each_strategy() do
             body = { name = "bot-detection" },
             headers = {["Content-Type"] = "application/json"}
           }))
-          local body = assert.res_status(201, res)
+          assert.res_status(201, res)
 
           -- test route
           helpers.wait_until(function()
