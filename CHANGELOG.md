@@ -79,10 +79,12 @@
 
 #### Admin API
 
-- Insert and update operations on target entities require using the `PUT` HTTP
-  method now. [#8596](https://github.com/Kong/kong/pull/8596). If you have
-  scripts that depend on it being `POST`, these scripts will need to be updated
-  when updating to Kong 3.0.
+- `POST` requests on target entities endpoint are no longer able to update
+  existing entities, they are only able to create new ones.
+  [#8596](https://github.com/Kong/kong/pull/8596),
+  [#8798](https://github.com/Kong/kong/pull/8798). If you have scripts that use
+  `POST` requests to modify target entities, you should change them to `PUT`
+  requests to the appropriate endpoints before updating to Kong 3.0.
 - Insert and update operations on duplicated target entities returns 409.
   [#8179](https://github.com/Kong/kong/pull/8179)
 
