@@ -82,6 +82,9 @@
   the time comes from a driver like `pgmoon` or `lmdb`. This was done for performance
   reasons. Deep copying on `"select"` context can still be done before calling this
   function. [#8796](https://github.com/Kong/kong/pull/8796)
+- The deprecated alias of `Kong.serve_admin_api` was removed. If your custom Nginx
+  templates still use it, please change it to `Kong.admin_content`.
+  [#8815](https://github.com/Kong/kong/pull/8815)
 
 #### Admin API
 
