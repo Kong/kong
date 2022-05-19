@@ -920,7 +920,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("auto-expiring keys", function()
       -- Give a bit of time to reduce test flakyness on slow setups
-      local ttl = 4
+      local ttl = 10
       local inserted_at
 
       lazy_setup(function()
@@ -952,6 +952,7 @@ for _, strategy in helpers.each_strategy() do
           consumer = { id = user_jafar.id },
         }, { ttl = ttl })
 
+        ngx.update_time()
         inserted_at = ngx.now()
 
         assert(helpers.start_kong({
