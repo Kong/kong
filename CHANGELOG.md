@@ -85,6 +85,10 @@
 - The deprecated alias of `Kong.serve_admin_api` was removed. If your custom Nginx
   templates still use it, please change it to `Kong.admin_content`.
   [#8815](https://github.com/Kong/kong/pull/8815)
+- The deprecated `shorthands` field in Kong Plugin or DAO schemas was removed in favor
+  or the typed `shorthand_fields`. If your custom schemas still use `shorthands`, you
+  need to update them to use `shorhand_fields`.
+  [#8815](https://github.com/Kong/kong/pull/8815)
 
 #### Admin API
 

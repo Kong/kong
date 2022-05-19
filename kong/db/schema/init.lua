@@ -1647,24 +1647,6 @@ function Schema:process_auto_fields(data, context, nulls, opts)
     end
   end
 
-  -- deprecated
-  local shorthands = self.shorthands
-  if shorthands then
-    for i = 1, #shorthands do
-      local sname, sfunc = next(shorthands[i])
-      local value = data[sname]
-      if value ~= nil then
-        data[sname] = nil
-        local new_values = sfunc(value)
-        if new_values then
-          for k, v in pairs(new_values) do
-            data[k] = v
-          end
-        end
-      end
-    end
-  end
-
   local now_s
   local now_ms
 
