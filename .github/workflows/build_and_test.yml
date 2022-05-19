@@ -142,30 +142,13 @@ jobs:
 
     strategy:
       matrix:
-        include:
-        - suite: integration
-          split: first-CE
-        
-        - suite: integration
-          split: second-CE
-
-        - suite: integration
-          split: first-EE
-
-        - suite: integration
-          split: second-EE
-
-        - suite: integration
-          split: third-EE
-
-        - suite: plugins
-          split: first-CE
-        
-        - suite: plugins
-          split: second-CE
-
-        - suite: plugins
-          split: first-EE
+        suite: [integration, plugins]
+        split: [first-CE, second-CE, first-EE, second-EE, third-EE]
+        exclude:
+          - suite: plugins
+            split: second-EE
+          - suite: plugins
+            split: third-EE
 
     env:
       KONG_VERSION: nightly-ee
@@ -322,30 +305,13 @@ jobs:
 
     strategy:
       matrix:
-        include:
-        - suite: integration
-          split: first-CE
-        
-        - suite: integration
-          split: second-CE
-
-        - suite: integration
-          split: first-EE
-
-        - suite: integration
-          split: second-EE
-
-        - suite: integration
-          split: third-EE
-
-        - suite: plugins
-          split: first-CE
-        
-        - suite: plugins
-          split: second-CE
-
-        - suite: plugins
-          split: first-EE
+        suite: [integration, plugins]
+        split: [first-CE, second-CE, first-EE, second-EE, third-EE]
+        exclude:
+          - suite: plugins
+            split: second-EE
+          - suite: plugins
+            split: third-EE
 
     env:
       DOCKER_IMAGE_NAME: kong-ee-test
