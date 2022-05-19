@@ -1,13 +1,10 @@
 name: Build & Test
-on: [push, pull_request]
+on: [push]
 
 jobs:
   build:
     name: Build dependencies
     runs-on: ubuntu-20.04
-
-    env:
-      DOWNLOAD_ROOT: $HOME/download-root
 
     steps:
     - name: Set environment variables
@@ -15,6 +12,7 @@ jobs:
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
     - name: Checkout Kong source code
       uses: actions/checkout@v3
 
@@ -42,17 +40,28 @@ jobs:
 
     - name: Add to Path
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+      run: |
+          echo "$INSTALL_ROOT/openssl/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/nginx/sbin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/luarocks/bin" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/bin" >> $GITHUB_PATH
 
     - name: Install packages
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
 
     - name: Build Kong dependencies
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: |
+          export CACHE_DIR=$INSTALL_ROOT/distributions-cache
           source .ci/setup_env_github.sh
-          make dev
+          make dev 
+          make try-install-plugins-ee
+
 
   lint-doc-and-unit-tests:
     name: Lint, Doc and Unit tests
@@ -92,7 +101,17 @@ jobs:
         key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+      run: |
+          echo "$INSTALL_ROOT/openssl/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/nginx/sbin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/luarocks/bin" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/bin" >> $GITHUB_PATH
+    
+    - name: Create symbolic links
+      run: |
+          sudo ln -s $(realpath ${INSTALL_ROOT}/libpasswdqc/lib/libpasswdqc.so) /lib/libpasswdqc.so
 
     - name: Check autodoc generation
       run: |
@@ -107,13 +126,14 @@ jobs:
     - name: Lint Lua code
       run: |
           eval `luarocks path`
-          luacheck -q .
+          make lint
 
     - name: Unit tests
       run: |
           eval `luarocks path`
-          make dev
-          bin/busted -v -o htest spec/01-unit
+          make dev 
+          make try-install-plugins-ee
+          bin/busted -v -o htest spec/01-unit spec-ee/01-unit
 
   integration-tests-postgres:
     name: Postgres ${{ matrix.suite }} - ${{ matrix.split }} tests
@@ -122,10 +142,34 @@ jobs:
 
     strategy:
       matrix:
-        suite: [integration, plugins]
-        split: [first (01-04), second (>= 05)]
+        include:
+        - suite: integration
+          split: first-CE
+        
+        - suite: integration
+          split: second-CE
+
+        - suite: integration
+          split: first-EE
+
+        - suite: integration
+          split: second-EE
+
+        - suite: integration
+          split: third-EE
+
+        - suite: plugins
+          split: first-CE
+        
+        - suite: plugins
+          split: second-CE
+
+        - suite: plugins
+          split: first-EE
 
     env:
+      KONG_VERSION: nightly-ee
+      DOCKER_IMAGE_NAME: kong-ee-test
       KONG_TEST_PG_DATABASE: kong
       KONG_TEST_PG_USER: kong
       KONG_TEST_DATABASE: postgres
@@ -178,7 +222,17 @@ jobs:
         key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+      run: |
+          echo "$INSTALL_ROOT/openssl/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/nginx/sbin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/luarocks/bin" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/bin" >> $GITHUB_PATH
+
+    - name: Create symbolic links
+      run: |
+          sudo ln -s $(realpath ${INSTALL_ROOT}/libpasswdqc/lib/libpasswdqc.so) /lib/libpasswdqc.so
 
     - name: Add gRPC test host names
       run: |
@@ -186,10 +240,16 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Tests
+      env:
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
+        DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
       run: |
           eval `luarocks path`
-          make dev
-          .ci/run_tests.sh
+          make dev 
+          make try-install-plugins-ee
+          .ci/run_tests_github.sh
 
   integration-tests-dbless:
     name: DB-less integration tests
@@ -215,6 +275,7 @@ jobs:
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "CACHE_DIR=$INSTALL_ROOT/distributions-cache" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -227,7 +288,17 @@ jobs:
         key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+      run: |
+          echo "$INSTALL_ROOT/openssl/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/nginx/sbin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/luarocks/bin" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/bin" >> $GITHUB_PATH
+
+    - name: Create symbolic links
+      run: |
+          sudo ln -s $(realpath ${INSTALL_ROOT}/libpasswdqc/lib/libpasswdqc.so) /lib/libpasswdqc.so
 
     - name: Add gRPC test host names
       run: |
@@ -235,30 +306,56 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Tests
+      env:
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
-          make dev
-          .ci/run_tests.sh
+          make dev 
+          make try-install-plugins-ee
+          .ci/run_tests_github.sh
 
   integration-tests-cassandra:
-    name: C* ${{ matrix.cassandra_version }} ${{ matrix.suite }} - ${{ matrix.split }} tests
+    name: C* 3 ${{ matrix.suite }} - ${{ matrix.split }} tests
     runs-on: ubuntu-20.04
     needs: build
 
     strategy:
       matrix:
-        suite: [integration, plugins]
-        cassandra_version: [3]
-        split: [first (01-04), second (>= 05)]
+        include:
+        - suite: integration
+          split: first-CE
+        
+        - suite: integration
+          split: second-CE
+
+        - suite: integration
+          split: first-EE
+
+        - suite: integration
+          split: second-EE
+
+        - suite: integration
+          split: third-EE
+
+        - suite: plugins
+          split: first-CE
+        
+        - suite: plugins
+          split: second-CE
+
+        - suite: plugins
+          split: first-EE
 
     env:
+      DOCKER_IMAGE_NAME: kong-ee-test
       KONG_TEST_DATABASE: cassandra
       TEST_SUITE: ${{ matrix.suite }}
       TEST_SPLIT: ${{ matrix.split }}
 
     services:
       cassandra:
-        image: cassandra:${{ matrix.cassandra_version }}
+        image: cassandra:3
         ports:
           - 7199:7199
           - 7000:7000
@@ -289,6 +386,7 @@ jobs:
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "DOCKER_CACHE=$HOME/docker-cache" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -301,7 +399,17 @@ jobs:
         key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$INSTALL_ROOT/go-pluginserver" >> $GITHUB_PATH
+      run: |
+          echo "$INSTALL_ROOT/openssl/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/nginx/sbin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/luarocks/bin" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/bin" >> $GITHUB_PATH
+    
+    - name: Create symbolic links
+      run: |
+          sudo ln -s $(realpath ${INSTALL_ROOT}/libpasswdqc/lib/libpasswdqc.so) /lib/libpasswdqc.so
 
     - name: Add gRPC test host names
       run: |
@@ -309,10 +417,14 @@ jobs:
           echo "127.0.0.1 grpcs_2.test" | sudo tee -a /etc/hosts
 
     - name: Tests
+      env:
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
-          make dev
-          .ci/run_tests.sh
+          make dev 
+          make try-install-plugins-ee
+          .ci/run_tests_github.sh
 
   pdk-tests:
     name: PDK tests
@@ -328,6 +440,7 @@ jobs:
           echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
           echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "CACHE_DIR=$INSTALL_ROOT/distributions-cache" >> $GITHUB_ENV
 
     - name: Checkout Kong source code
       uses: actions/checkout@v3
@@ -340,23 +453,95 @@ jobs:
         key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
 
     - name: Add to Path
-      run: echo "$INSTALL_ROOT/openssl/bin:$INSTALL_ROOT/openresty/nginx/sbin:$INSTALL_ROOT/openresty/bin:$INSTALL_ROOT/luarocks/bin:$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools:$DOWNLOAD_ROOT/cpanm" >> $GITHUB_PATH
+      run: |
+          echo "$INSTALL_ROOT/openssl/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/nginx/sbin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/luarocks/bin" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/bin" >> $GITHUB_PATH
+
+    - name: Create symbolic links
+      run: |
+          sudo ln -s $(realpath ${INSTALL_ROOT}/libpasswdqc/lib/libpasswdqc.so) /lib/libpasswdqc.so
 
     - name: Install Test::Nginx
       run: |
-          CPAN_DOWNLOAD=$DOWNLOAD_ROOT/cpanm
-          mkdir -p $CPAN_DOWNLOAD
-          curl -o $CPAN_DOWNLOAD/cpanm https://cpanmin.us
-          chmod +x $CPAN_DOWNLOAD/cpanm
+          CPAN_INSTALL=$INSTALL_ROOT/bin
+          mkdir -p $CPAN_INSTALL
+          curl -o $CPAN_INSTALL/cpanm https://cpanmin.us
+          chmod +x $CPAN_INSTALL/cpanm
 
           echo "Installing CPAN dependencies..."
           cpanm --notest --local-lib=$HOME/perl5 local::lib && eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
           cpanm --notest Test::Nginx
 
     - name: Tests
+      env:
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
       run: |
           eval `luarocks path`
-          make dev
+          make dev 
+          make try-install-plugins-ee
 
           eval $(perl -I $HOME/perl5/lib/perl5/ -Mlocal::lib)
-          .ci/run_tests.sh
+          .ci/run_tests_github.sh
+
+  plugins-ee-tests:
+    name: plugins EE - ${{ matrix.split }} tests
+    runs-on: ubuntu-20.04
+    needs: build
+
+    strategy:
+      matrix:
+        split: 
+        - first
+        - second
+        - third
+        - fourth
+
+    env:
+      KONG_VERSION: nightly-ee
+      TEST_SUITE: plugins-ee
+      TEST_SPLIT: ${{ matrix.split }}
+
+    steps:
+    - name: Set environment variables
+      run: |
+          echo "INSTALL_ROOT=$HOME/install-root" >> $GITHUB_ENV
+          echo "DOWNLOAD_ROOT=$HOME/download-root" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$INSTALL_ROOT/openssl/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "DOCKER_CACHE=$HOME/docker-cache" >> $GITHUB_ENV
+
+    - name: Checkout Kong source code
+      uses: actions/checkout@v3
+
+    - name: Lookup build cache
+      uses: actions/cache@v3
+      id: cache-deps
+      with:
+        path: ${{ env.INSTALL_ROOT }}
+        key: ${{ hashFiles('.ci/setup_env_github.sh') }}-${{ hashFiles('.github/workflows/build_and_test.yml') }}-${{ hashFiles('.requirements') }}-${{ hashFiles('kong-*.rockspec') }}-${{ hashFiles('Makefile') }}
+
+    - name: Install packages
+      run: sudo apt update && sudo apt install libyaml-dev valgrind libprotobuf-dev libpam-dev
+
+    - name: Add to Path
+      run: |
+          echo "$INSTALL_ROOT/openssl/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/nginx/sbin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/openresty/bin" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/luarocks/bin" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/kong-build-tools/openresty-build-tools" >> $GITHUB_PATH
+          echo "$INSTALL_ROOT/bin" >> $GITHUB_PATH
+
+    - name: Tests
+      env:
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+        DOCKER_USERNAME: ${{ secrets.GHA_DOCKERHUB_PULL_USER }}
+        DOCKER_PASSWORD: ${{ secrets.GHA_KONG_ORG_DOCKERHUB_PULL_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+      run: |
+          .ci/run_tests_github.sh

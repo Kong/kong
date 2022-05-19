@@ -172,7 +172,7 @@ local function navigate_and_apply(conf, json, path, f)
       end
 
       if type(array) ~= "table" then
-        return 
+        return
       end
 
       for k, v in ipairs(array) do

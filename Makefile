@@ -157,6 +157,7 @@ dev: remove install dependencies
 lint:
 	@luacheck -q .
 	@!(grep -R -E -I -n -w '#only|#o' spec && echo "#only or #o tag detected") >&2
+	@!(grep -R -E -I -n -w '#only|#o' spec-ee && echo "#only or #o tag detected") >&2
 	@!(grep -R -E -I -n -- '---\s+ONLY' t && echo "--- ONLY block detected") >&2
 	@$(KONG_SOURCE_LOCATION)/scripts/copyright-header-checker
 
