@@ -62,7 +62,7 @@ local function get_license_string()
           end
         end
         if license then
-          ngx.log(ngx.DEBUG, "[license-helpers] loaded license from database; using license id: ", license.id)
+          ngx.log(ngx.INFO, "[license-helpers] loaded license from database; using license id: ", license.id)
           return license.payload
         end
       end

@@ -1608,6 +1608,44 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("duderino", credential_res.key)
               assert.is_true(utils.is_valid_uuid(credential_res.id))
             end)
+
+            it("does not allow patch with body-path mismatched id", function()
+              local res = register_developer(portal_api_client, {
+                  email = "attackerdev@konghq.com",
+                  password = "attackerdev",
+                  meta = "{\"full_name\":\"Kong Dev\"}",
+                })
+
+              local body = assert.res_status(200, res)
+              local resp_body_json = cjson.decode(body)
+              local attacker_dev = resp_body_json.developer
+
+              local attacker_credential = assert(kong.db.daos["keyauth_credentials"]:insert({
+                consumer = { id = attacker_dev.consumer.id },
+                key = "attackerkey",
+              }))
+
+              local victm_credential = assert(kong.db.daos["keyauth_credentials"]:insert({
+                consumer = { id = approved_developer.consumer.id },
+                key = "victmkey",
+              }))
+
+
+              res = assert(portal_api_client:send {
+                method = "PATCH",
+                path = "/credentials/key-auth/" .. attacker_credential.id,
+                body = {
+                  id = victm_credential.id,
+                  key = "new_key",
+                },
+                headers = {
+                  ["Content-Type"] = "application/json",
+                  ["Cookie"] = cookie,
+                },
+              })
+
+              assert.res_status(400, res)
+            end)
           end)
 
           describe("DELETE", function()
