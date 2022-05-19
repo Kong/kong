@@ -95,6 +95,11 @@
 - The old `kong.plugins.log-serializers.basic` library was removed in favor of the PDK
   function `kong.log.serialize`, please upgrade your plugins to use PDK.
   [#8815](https://github.com/Kong/kong/pull/8815)
+- The Kong constant `CREDENTIAL_USERNAME` with value of `X-Credential-Username` was
+  removed. Kong plugins in general have moved (since [#5516](https://github.com/Kong/kong/pull/5516))
+  to use constant `CREDENTIAL_IDENTIFIER` with value of `X-Credential-Identifier` when
+  setting  the upstream headers for a credential.
+  [#8815](https://github.com/Kong/kong/pull/8815)
 
 #### Admin API
 
