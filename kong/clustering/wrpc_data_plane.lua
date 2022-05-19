@@ -197,14 +197,15 @@ function _M:communicate(premature)
         end
         local config_table = self.next_config
         local config_hash  = self.next_hash
+        local config_version = self.next_config_version
         local hashes = self.next_hashes
-        if config_table and self.next_config_version > last_config_version then
-          ngx_log(ngx_INFO, _log_prefix, "received config #", self.next_config_version, log_suffix)
+        if config_table and config_version > last_config_version then
+          ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
 
           local pok, res
           pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, true, hashes)
           if pok then
-            last_config_version = self.next_config_version
+            last_config_version = config_version
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
             end
