@@ -5,6 +5,7 @@ local http = require "resty.http"
 local constants = require "kong.constants"
 local clustering_utils = require "kong.clustering.utils"
 
+local cjson_encode = cjson.encode
 local str_lower = string.lower
 local ngx = ngx
 local ngx_log = ngx.log
@@ -51,7 +52,7 @@ local function response(status, body)
 
   if type(body) == "table" then
     ngx.header["Content-Type"] = "application/json"
-    body = cjson.encode(body)
+    body = cjson_encode(body)
   end
 
   ngx.say(body)
@@ -251,7 +252,7 @@ end
 --- Stores the responses to be queried via get_negotiated_service(name)
 --- Returns the DP response as a Lua table.
 function _M.request_version_handshake(conf, cert, cert_key)
-  local body = cjson.encode{
+  local body = cjson_encode{
     node = {
       id = kong.node.get_id(),
       type = "KONG",
@@ -325,7 +326,7 @@ local SERVICE_KEY_PREFIX = "version_negotiation:service:"
 function _M.set_negotiated_service(name, version, message)
   name = str_lower(name)
   version = version and str_lower(version)
-  local ok, err = kong_shm:set(SERVICE_KEY_PREFIX .. name, cjson.encode{
+  local ok, err = kong_shm:set(SERVICE_KEY_PREFIX .. name, cjson_encode{
     version = version,
     message = message,
   })
