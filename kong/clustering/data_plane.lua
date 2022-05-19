@@ -126,8 +126,10 @@ function _M:communicate(premature)
     client_cert = self.cert,
     client_priv_key = self.cert_key,
   }
+
   if conf.cluster_mtls == "shared" then
     opts.server_name = "kong_clustering"
+
   else
     -- server_name will be set to the host if it is not explicitly defined here
     if conf.cluster_server_name ~= "" then
