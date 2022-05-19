@@ -109,9 +109,6 @@ plugins/key-auth:
 plugins/ldap-auth:
 - kong/plugins/ldap-auth/**/*
 
-plugins/log-serializers:
-- kong/plugins/log-serializers/**/*
-
 plugins/loggly:
 - kong/plugins/loggly/**/*
 
@@ -163,5 +160,3 @@ plugins/udp-log:
 
 plugins/zipkin:
 - kong/plugins/zipkin/**/*
-
-

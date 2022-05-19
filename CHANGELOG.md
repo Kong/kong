@@ -99,6 +99,8 @@
 - The HTTP-log plugin `headers` field now only takes a single string per header name,
   where it previously took an array of values
   [#6992](https://github.com/Kong/kong/pull/6992)
+- The Log-Serializer plugin has been removed. If you have a custom plugin depending on it, consider
+  to move to the [kong.log.serialize](https://docs.konghq.com/gateway/latest/pdk/kong.log/#konglogserialize) PDK function.
 
 ### Deprecations
 

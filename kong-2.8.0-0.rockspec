@@ -286,9 +286,6 @@ build = {
     ["kong.plugins.oauth2.daos"] = "kong/plugins/oauth2/daos.lua",
     ["kong.plugins.oauth2.daos.oauth2_tokens"] = "kong/plugins/oauth2/daos/oauth2_tokens.lua",
 
-
-    ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",
-
     ["kong.plugins.tcp-log.handler"] = "kong/plugins/tcp-log/handler.lua",
     ["kong.plugins.tcp-log.schema"] = "kong/plugins/tcp-log/schema.lua",
 
