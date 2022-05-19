@@ -93,7 +93,9 @@ return {
 
       local available_plugins = {}
       for name in pairs(singletons.configuration.loaded_plugins) do
-        available_plugins[name] = kong.db.plugins.handlers[name].VERSION or true
+        available_plugins[name] = {
+          version = kong.db.plugins.handlers[name].VERSION or true
+        }
       end
 
       return kong.response.exit(200, {
