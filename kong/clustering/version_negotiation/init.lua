@@ -6,6 +6,8 @@ local constants = require "kong.constants"
 local clustering_utils = require "kong.clustering.utils"
 
 local cjson_encode = cjson.encode
+local cjson_decode = cjson.decode
+
 local str_lower = string.lower
 local ngx = ngx
 local ngx_log = ngx.log
@@ -213,7 +215,7 @@ function _M.serve_version_handshake(conf, cert_digest)
     return response_err(err)
   end
 
-  local body_in = cjson.decode(get_body())
+  local body_in = cjson_decode(get_body())
   if not body_in then
     err = "not valid JSON data"
     ngx_log(ngx_ERR, _log_prefix, err)
@@ -298,7 +300,7 @@ function _M.request_version_handshake(conf, cert, cert_key)
     return nil, res.status .. ": " .. res.reason
   end
 
-  local response_data = cjson.decode(res.body)
+  local response_data = cjson_decode(res.body)
   if not response_data then
     return nil, "invalid response"
   end
@@ -347,7 +349,7 @@ function _M.get_negotiated_service(name)
     return nil, err
   end
 
-  val = cjson.decode(val)
+  val = cjson_decode(val)
   if not val then
     return nil, "corrupted dictionary"
   end
