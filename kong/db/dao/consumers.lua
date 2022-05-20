@@ -14,6 +14,8 @@ local workspace_config = require "kong.portal.workspace_config"
 local tostring         = tostring
 local null             = ngx.null
 local ws_constants     = constants.WORKSPACE_CONFIG
+local new_tab          = require "table.new"
+local insert           = table.insert
 
 local check_username_lower_unique = function(self, username, primary_key, old_username)
   local workspace = workspaces.get_workspace()
@@ -109,38 +111,53 @@ local Consumers = {}
 
 function Consumers:page_by_type(_, size, offset, options)
   options = options or {}
-  options.type = options.type or 0
+  options.search_fields = options.search_fields or {}
+  options.search_fields.type = options.type or 0
 
+  if kong.db.strategy == "postgres" then
+    return self:page(size, offset, options)
+  end
+
+  -- request fetch all data
   size = size or options.size or 100
+  local page, err, err_t, new_offset
 
-  local count = 1
-  local MAX_ITERATIONS = 5
-  local r, err, err_t, next_offset = self:page(size, offset, options)
-  if err_t then
-    return nil, err, err_t
+  local tab_size = size
+  if tab_size > 100 then
+    tab_size = 100
   end
+  local rows = new_tab(tab_size, 0)
 
-  local rows = {}
-  for _, c in ipairs(r) do
-    if c.type == options.type then
-      table.insert(rows, c)
-    end
-  end
-
-  while count < MAX_ITERATIONS and #rows < size and next_offset do
-    r, err, err_t, next_offset = self:page(size - #rows, next_offset, options)
+  repeat
+    page, err, err_t, new_offset = self:page(size, offset, options)
     if err_t then
       return nil, err, err_t
     end
-    for _, c in ipairs(r) do
-      if c.type == options.type then
-        table.insert(rows, c)
+
+    for i, row in ipairs(page) do
+      local valid_row = row.type == options.search_fields.type
+      if valid_row and next(row) then
+        insert(rows, row)
+
+        -- current page is full
+        if #rows == size then
+          -- If we are stopping in the middle of a db page,
+          -- our new_offset from self:page is incorrect.
+          -- We need to recalculate new_offset from where
+          -- we stopped.
+          if i ~= #page then
+            _, _, _, new_offset = self:page(i, offset, options)
+          end
+
+          return rows, nil, nil, new_offset
+        end
       end
     end
-    count = count + 1
-  end
 
-  return rows, nil, nil, next_offset
+    offset = new_offset
+  until (not offset)
+
+  return rows
 end
 
 function Consumers:insert(entity, options)
