@@ -96,9 +96,43 @@ jobs:
         echo ::set-output name=suites::"$suites"
         echo ::set-output name=tags::"$tags"
 
+    - name: Find comparasion versions
+      id: compare_versions
+      run: |
+        vers=$(echo "${{ github.event.pull_request.base.ref }}")
+        if [[ ! -z $vers ]]; then
+          vers=",git:${vers}"
+        fi
+
+        custom_vers=$(echo "${{ github.event.comment.body }}" | awk '{print $3}')
+        if [[ ! -z $custom_vers ]]; then
+          vers="${vers},${custom_vers}"
+        fi
+
+        echo $vers
+
+        echo ::set-output name=vers::"$vers"
+
+    - name: Obtain License
+      env:
+        PULP_USERNAME: ${{ secrets.PULP_USERNAME }}
+        PULP_PASSWORD: ${{ secrets.PULP_PASSWORD }}
+      run: |
+        KONG_LICENSE_URL="https://download.konghq.com/internal/kong-gateway/license.json"
+        KONG_LICENSE_DATA=$(curl -s -L -u"$PULP_USERNAME:$PULP_PASSWORD" $KONG_LICENSE_URL)
+        echo "KONG_LICENSE_DATA=$KONG_LICENSE_DATA" >> $GITHUB_ENV
+
+        if [[ ! $KONG_LICENSE_DATA == *"signature"* || ! $KONG_LICENSE_DATA == *"payload"* ]]; then
+          # the check above is a bit lame, but the best we can do without requiring
+          # yet more additional dependenies like jq or similar.
+          echo "failed to download the Kong Enterprise license file!
+            $KONG_LICENSE_DATA"
+          exit 1
+        fi
+
     - name: Run Tests
       env:
-        PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
+        PERF_TEST_VERSIONS: git:${{ github.sha }}${{ steps.compare_versions.outputs.vers }}
         PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
@@ -118,7 +152,7 @@ jobs:
       # Note: by default each job has if: ${{ success() }}
       if: always()
       env:
-        PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
+        PERF_TEST_VERSIONS: git:${{ github.sha }}
         PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
