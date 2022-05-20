@@ -57,10 +57,15 @@ return {
             type = "number",
             default = 60000,
           }, },
-          { http_proxy = typedefs.url {
-              required = false,
-          }, },
+          { http_proxy_host = typedefs.host },
+          { http_proxy_port = typedefs.port },
+          { https_proxy_host = typedefs.host },
+          { https_proxy_port = typedefs.port },
         },
+        entity_checks = {
+          { mutually_required = { "http_proxy_host", "http_proxy_port" } },
+          { mutually_required = { "https_proxy_host", "https_proxy_port" } },
+        }
     }, },
   },
 }

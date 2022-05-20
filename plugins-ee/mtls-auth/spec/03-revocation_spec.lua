@@ -67,7 +67,7 @@ local mtls_fixtures = { http_mock = {
           # enable send the SNI sent to server
           proxy_ssl_server_name on;
           proxy_set_header Host example.com;
-          
+
           proxy_pass https://127.0.0.1:9443/get;
         }
 
@@ -79,7 +79,7 @@ local mtls_fixtures = { http_mock = {
           # enable send the SNI sent to server
           proxy_ssl_server_name on;
           proxy_set_header Host exampleproxy.com;
-          
+
           proxy_pass https://127.0.0.1:9443/get;
         }
 
@@ -91,7 +91,7 @@ local mtls_fixtures = { http_mock = {
           # enable send the SNI sent to server
           proxy_ssl_server_name on;
           proxy_set_header Host examplebadproxy.com;
-          
+
           proxy_pass https://127.0.0.1:9443/get;
         }
     }
@@ -140,7 +140,7 @@ for _, strategy in strategies() do
         hosts   = { "exampleproxy.com" },
         service = { id = service.id, },
       }
-      
+
       route_bad_proxy = bp.routes:insert {
         hosts   = { "examplebadproxy.com" },
         service = { id = service.id, },
@@ -167,7 +167,8 @@ for _, strategy in strategies() do
         config = {
           ca_certificates = { ca_cert.id, },
           revocation_check_mode = "STRICT",
-          http_proxy = "http://squid:3128",
+          http_proxy_host = "squid",
+          http_proxy_port = 3128,
           cert_cache_ttl = 0,
           cache_ttl = 0,
         },
@@ -179,7 +180,8 @@ for _, strategy in strategies() do
         config = {
           ca_certificates = { ca_cert.id, },
           revocation_check_mode = "STRICT",
-          http_proxy = "http://squid:3129", -- this port is not open so HTTP CONNECT will fail
+          http_proxy_host = "squid",
+          http_proxy_port = 3129, -- this port is not open so HTTP CONNECT will fail
           cert_cache_ttl = 0,
           cache_ttl = 0,
         },
