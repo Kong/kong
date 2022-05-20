@@ -131,7 +131,9 @@ for _, version in ipairs(versions) do
     end)
 
     before_each(function()
-      perf.start_hybrid_kong(version)
+      perf.start_hybrid_kong(version, {
+        vitals = "on",
+      })
     end)
 
     after_each(function()
