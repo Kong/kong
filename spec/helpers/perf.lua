@@ -15,6 +15,7 @@ local charts = require("spec.helpers.perf.charts")
 local my_logger = logger.new_logger("[controller]")
 
 utils.register_busted_hook()
+utils.add_lua_package_paths()
 
 charts.register_busted_hook()
 

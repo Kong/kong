@@ -7,6 +7,7 @@
 
 local perf
 local logger = require("spec.helpers.perf.logger")
+require "spec.helpers.perf.utils" -- loads strings.endswith
 
 local my_logger = logger.new_logger("[git]")
 

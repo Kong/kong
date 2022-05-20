@@ -324,22 +324,35 @@ function _M:start_kong(version, kong_conf, driver_conf)
       version = perf.get_kong_version()
     end
     self.log.debug("current git hash resolves to docker version ", version)
-  elseif version:match("rc") or version:match("beta") then
-    image = "kong/kong"
   end
+
+  if version:match("rc") or version:match("beta") then
+    image = "kong/kong"
+  elseif version:match("%d+%.%d+%.%d+%.%d+") then -- EE
+    image = "kong/kong-gateway"
+  end
+
+  image = image .. ":" .. version
 
   if self.kong_ct_ids[kong_conf_id] == nil then
     local config = self:_hydrate_kong_configuration(kong_conf, driver_conf)
-    local cid, err = create_container(self, config, image .. ":" .. version)
+    local cid, err = create_container(self, config, image,
+      "/bin/bash -c 'kong migrations up -y && kong migrations finish -y && /docker-entrypoint.sh kong docker-start'")
+
     if err then
       return false, "error running docker create when creating kong container: " .. err
     end
+
     self.kong_ct_ids[kong_conf_id] = cid
     perf.execute("docker cp ./spec/fixtures/kong_clustering.crt " .. cid .. ":/")
     perf.execute("docker cp ./spec/fixtures/kong_clustering.key " .. cid .. ":/")
 
     if use_git then
+      perf.execute("docker exec --user=root " .. cid ..
+        " find /usr/local/openresty/site/lualib/kong/ -name '*.ljbc' -delete; true")
       perf.execute("docker cp ./kong " .. cid .. ":/usr/local/share/lua/5.1/")
+      perf.execute("tar zc plugins-ee/*/kong/plugins/* --transform='s,plugins-ee/[^/]*/kong,kong,' | "
+      .. "docker exec --user=root " .. cid .. " tar zx -C /usr/local/share/lua/5.1/")
     end
   end
 

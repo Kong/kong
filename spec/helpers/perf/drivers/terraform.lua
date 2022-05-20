@@ -258,6 +258,15 @@ function _M:start_kong(version, kong_conf, driver_conf)
   KONG_ADMIN_PORT = math.floor(math.random()*9000+1024)
   kong_conf['admin_listen'] = "0.0.0.0:" .. KONG_ADMIN_PORT
   kong_conf['anonymous_reports'] = "off"
+  if not kong_conf['vitals'] then
+    kong_conf['vitals'] = "off"
+  end
+
+  local kong_license_blob = ""
+  if kong_conf['license_data'] then
+    kong_license_blob = kong_conf['license_data']
+    kong_conf['license_data'] = nil
+  end
 
   local kong_conf_blob = ""
   for k, v in pairs(kong_conf) do
@@ -277,7 +286,10 @@ function _M:start_kong(version, kong_conf, driver_conf)
 
   local download_path
   if version:sub(1, 1) == "2" then
-    if version:match("rc") or version:match("beta") then
+    if version:match("%d+%.%d+%.%d+%.%d+") then -- EE
+      download_path = "https://download.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong-enterprise-edition/kong-enterprise-edition_" ..
+                      version .. "_all.deb"
+    elseif version:match("rc") or version:match("beta") then
       download_path = "https://download-stage.konghq.com/gateway-2.x-ubuntu-focal/pool/all/k/kong/kong_" ..
                       version .. "_amd64.deb"
     else
@@ -326,6 +338,8 @@ function _M:start_kong(version, kong_conf, driver_conf)
     "sudo sysctl net.ipv4.ip_local_port_range='10240 65535'",
     -- stop and remove kong if installed
     "dpkg -l kong && (sudo kong stop; sudo dpkg -r kong) || true",
+    -- stop and remove kong-ee if installed
+    "dpkg -l kong-enterprise-edition && (sudo kong stop; sudo dpkg -r kong-enterprise-edition) || true",
     -- have to do the pkill sometimes, because kong stop allow the process to linger for a while
     "sudo pkill -F /usr/local/kong/pids/nginx.pid || true",
     -- remove all lua files, not only those installed by package
@@ -333,6 +347,7 @@ function _M:start_kong(version, kong_conf, driver_conf)
     "wget -nv " .. download_path .. " -O kong-" .. version .. ".deb",
     "sudo dpkg -i kong-" .. version .. ".deb || sudo apt-get -f -y install",
     "echo " .. kong_conf_blob .. " | sudo base64 -d > /etc/kong/kong.conf",
+    "echo " .. kong_license_blob .. " | sudo base64 -d > /etc/kong/license.json",
     "sudo kong check",
   })
   if not ok then
@@ -374,7 +389,7 @@ function _M:start_kong(version, kong_conf, driver_conf)
       "kong migrations up -y && kong migrations finish -y"),
     -- start kong
     ssh_execute_wrap(self, self.kong_ip,
-      "ulimit -n 655360; kong start || kong restart")
+      "ulimit -n 655360; kong start || kong restart"),
   })
   if not ok then
     return false, err
@@ -517,7 +532,9 @@ function _M:generate_flamegraph(title, opts)
   end
 
   local ok, err = execute_batch(self, self.kong_ip, {
-    "/tmp/perf-ost/fix-lua-bt " .. path .. ".bt > " .. path .. ".fbt",
+    -- if there's any error like ee with compiled bytecode, skip fix-lua-bt
+    "/tmp/perf-ost/fix-lua-bt " .. path .. ".bt > " .. path .. ".fbt || true",
+    "stat " .. path .. ".fbt || cp " .. path .. ".bt " .. path .. ".fbt",
     "/tmp/perf-fg/stackcollapse-stap.pl " .. path .. ".fbt > " .. path .. ".cbt",
     "/tmp/perf-fg/flamegraph.pl --title='" .. title .. "' " .. (opts or "") .. " " .. path .. ".cbt > " .. path .. ".svg",
   })

@@ -181,9 +181,8 @@ function _M:get_start_load_cmd(stub, script, uri)
 end
 
 function _M:get_admin_uri(kong_id)
-  return string.format("http://%s:%s",
-    helpers.get_admin_ip(),
-    helpers.get_admin_port())
+  -- may not work actually
+  return string.format("http://127.0.0.1:8001")
 end
 
 local function check_systemtap_sanity(self)
