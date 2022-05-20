@@ -96,9 +96,26 @@ jobs:
         echo ::set-output name=suites::"$suites"
         echo ::set-output name=tags::"$tags"
 
+    - name: Find comparasion versions
+      id: compare_versions
+      run: |
+        vers=$(echo "${{ github.event.pull_request.base.ref }}")
+        if [[ ! -z $vers ]]; then
+          vers=",git:${vers}"
+        fi
+
+        custom_vers=$(echo "${{ github.event.comment.body }}" | awk '{print $3}')
+        if [[ ! -z $custom_vers ]]; then
+          vers="${vers},${custom_vers}"
+        fi
+
+        echo $vers
+
+        echo ::set-output name=vers::"$vers"
+
     - name: Run Tests
       env:
-        PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
+        PERF_TEST_VERSIONS: git:${{ github.sha }}${{ steps.compare_versions.outputs.vers }}
         PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
@@ -118,7 +135,7 @@ jobs:
       # Note: by default each job has if: ${{ success() }}
       if: always()
       env:
-        PERF_TEST_VERSIONS: git:${{ github.sha }},git:master
+        PERF_TEST_VERSIONS: git:${{ github.sha }}
         PERF_TEST_METAL_PROJECT_ID: ${{ secrets.PERF_TEST_METAL_PROJECT_ID }}
         PERF_TEST_METAL_AUTH_TOKEN: ${{ secrets.PERF_TEST_METAL_AUTH_TOKEN }}
         PERF_TEST_DRIVER: terraform
