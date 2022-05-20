@@ -116,7 +116,7 @@ function _M:setup(opts)
     "docker run -d -p5432:5432 "..
             "-e POSTGRES_PASSWORD=" .. PG_PASSWORD .. " " ..
             "-e POSTGRES_DB=kong_tests " ..
-            "-e POSTGRES_USER=kong --name=kong-database postgres:11",
+            "-e POSTGRES_USER=kong --name=kong-database postgres:11 postgres -N 2333",
   })
   if not ok then
     return ok, err
@@ -143,6 +143,9 @@ function _M:setup(opts)
       pret.admin_client = function(timeout)
         return pret.http_client(self.kong_ip, KONG_ADMIN_PORT, timeout or 60000)
       end
+      perf.unsetenv("KONG_PG_HOST")
+      perf.unsetenv("KONG_PG_PASSWORD")
+
       return pret
     end
     self.log.warn("unable to load spec.helpers: " .. (pret or "nil") .. ", try " .. i)
@@ -390,6 +393,10 @@ function _M:get_start_load_cmd(stub, script, uri)
 
   return ssh_execute_wrap(self, self.worker_ip,
             stub:format(script_path, uri))
+end
+
+function _M:get_admin_uri()
+  return string.format("http://%s:%s", self.kong_internal_ip, KONG_ADMIN_PORT)
 end
 
 local function check_systemtap_sanity(self)

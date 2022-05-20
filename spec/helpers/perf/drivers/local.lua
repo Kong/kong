@@ -100,7 +100,7 @@ function _M:start_upstreams(conf, port_count)
   ]]):format(listeners, conf))
   f:close()
 
-  local res, err = perf.execute("nginx -c " .. nginx_conf_path ..
+  local res, err = perf.execute(self.nginx_bin .. " -c " .. nginx_conf_path ..
                                 " -p " .. nginx_prefix,
                                 { logger = self.log.log_exec })
 
@@ -170,6 +170,12 @@ function _M:get_start_load_cmd(stub, script, uri)
   script_path = script_path and ("-s " .. script_path) or ""
 
   return stub:format(script_path, uri)
+end
+
+function _M:get_admin_uri(kong_id)
+  return string.format("http://%s:%s",
+    helpers.get_admin_ip(),
+    helpers.get_admin_port())
 end
 
 local function check_systemtap_sanity(self)
