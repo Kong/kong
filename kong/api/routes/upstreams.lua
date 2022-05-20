@@ -165,13 +165,10 @@ return {
                                             kong.db.upstreams.schema,
                                             "upstream",
                                             "page_for_upstream"),
-    PUT = function(self, db)
+    POST = function(self, db)
       local create = endpoints.post_collection_endpoint(kong.db.targets.schema,
                         kong.db.upstreams.schema, "upstream")
       return create(self, db)
-    end,
-    POST = function(self, db)
-      return kong.response.exit(405)
     end,
   },
 
