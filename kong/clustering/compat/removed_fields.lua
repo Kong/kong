@@ -217,5 +217,9 @@ return {
       "include_body_in_opa_input",
       "include_parsed_json_body_in_opa_input",
     },
+
+    degraphql = {
+      "graphql_server_path",
+    }
   },
 }
