@@ -52,7 +52,7 @@ local request_log = {
   },
   tries = {
     {
-      balancer_latency = 0,
+      balancer_latency = 10,
       port = 80,
       balancer_start = 1614232668399,
       ip = "18.211.130.98"
@@ -145,7 +145,7 @@ describe("extract request log properly", function()
       },
       tries = {
         {
-          balancer_latency = 0,
+          balancer_latency = 10,
           port = 80,
           ip = "18.211.130.98"
         }
