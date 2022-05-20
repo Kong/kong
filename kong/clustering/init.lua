@@ -206,7 +206,9 @@ local function fill_empty_hashes(hashes)
 end
 
 function _M:request_version_negotiation()
-  local response_data, err = version_negotiation.request_version_handshake(self.conf, self.cert, self.cert_key)
+  local response_data, err =
+    version_negotiation.check_wrpc_support(self.conf, self.cert, self.cert_key)
+
   if not response_data then
     ngx_log(ngx_ERR, _log_prefix, "error while requesting version negotiation: " .. err)
     assert(ngx.timer.at(math.random(5, 10), function(premature)
@@ -214,6 +216,8 @@ function _M:request_version_negotiation()
     end))
     return
   end
+
+  return response_data
 end
 
 
@@ -299,9 +303,9 @@ function _M:init_worker()
         return
       end
 
-      self:request_version_negotiation()
+      local config_proto, msg = self:request_version_negotiation()
+      --local config_proto, msg = version_negotiation.get_negotiated_service("config")
 
-      local config_proto, msg = version_negotiation.get_negotiated_service("config")
       if not config_proto and msg then
         ngx_log(ngx_ERR, _log_prefix, "error reading negotiated \"config\" service: ", msg)
       end
