@@ -332,9 +332,7 @@ for _, strategy in helpers.each_strategy() do
 
             local status = res and res.status
             proxy_client:close()
-            if status == 200 then
-              return true
-            end
+            return status == 200
           end, 10)
 
           -- disable service
@@ -343,20 +341,20 @@ for _, strategy in helpers.each_strategy() do
             headers = {["Content-Type"] = "application/json"}
           }))
           assert.res_status(200, res)
-          -- as this is testing a negative behavior, there is no sure way to wait
-          -- this can probably be optimizted
-          ngx.sleep(2)
-
-          local proxy_client = helpers.http_client("127.0.0.1", 9002)
 
           -- test route again
-          res = assert(proxy_client:send({
-            method  = "GET",
-            path    = "/soon-to-be-disabled",
-          }))
-          assert.res_status(404, res)
+          helpers.wait_until(function()
+            local proxy_client = helpers.http_client("127.0.0.1", 9002)
 
-          proxy_client:close()
+            res = assert(proxy_client:send({
+              method  = "GET",
+              path    = "/soon-to-be-disabled",
+            }))
+
+            local status = res and res.status
+            proxy_client:close()
+            return status == 404
+          end, 10)
         end)
       end)
     end)
