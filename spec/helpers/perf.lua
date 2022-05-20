@@ -19,13 +19,13 @@ utils.register_busted_hook()
 local RETRY_COUNT = 3
 local DRIVER
 local DRIVER_NAME
-local DATA_PLANE
+local DATA_PLANE, CONTROL_PLANE
 
 -- Real user facing functions
 local driver_functions = {
   "start_upstreams", "start_kong", "stop_kong", "setup", "teardown",
   "get_start_load_cmd", "get_start_stapxx_cmd", "get_wait_stapxx_cmd",
-  "generate_flamegraph", "save_error_log",
+  "generate_flamegraph", "save_error_log", "get_admin_uri",
 }
 
 local function check_driver_sanity(mod)
@@ -170,19 +170,6 @@ function _M.start_upstreams(conf, port_count)
   return invoke_driver("start_upstreams", conf, port_count)
 end
 
-local function dp_conf_from_cp_conf(kong_conf)
-  local dp_conf = {}
-  for k, v in pairs(kong_conf) do
-    dp_conf[k] = v
-  end
-  dp_conf['role'] = 'data_plane'
-  dp_conf['database'] = 'off'
-  dp_conf['cluster_control_plane'] = 'kong-cp:8005'
-  dp_conf['cluster_telemetry_endpoint'] = 'kong-cp:8006'
-
-  return dp_conf
-end
-
 --- Start Kong in hybrid mode with given version and conf
 -- @function start_hybrid_kong
 -- @param version string Kong version
@@ -197,10 +184,24 @@ function _M.start_hybrid_kong(version, kong_confs)
   kong_confs['cluster_cert'] = '/kong_clustering.crt'
   kong_confs['cluster_cert_key'] = '/kong_clustering.key'
   kong_confs['role'] = 'control_plane'
+  kong_confs['admin_listen'] = '0.0.0.0:8001'
 
-  local control_plane = _M.start_kong(version, kong_confs, { container_id = 'cp'})
-  local driver_confs = { dns = { ['kong-cp'] = control_plane }, container_id = 'dp' }
-  DATA_PLANE = _M.start_kong(version, dp_conf_from_cp_conf(kong_confs), driver_confs)
+  CONTROL_PLANE = _M.start_kong(version, kong_confs, {
+    container_id = 'cp',
+    ports = { 8001 },
+  })
+
+  kong_confs['admin_listen'] = "off"
+  kong_confs['role'] = 'data_plane'
+  kong_confs['database'] = 'off'
+  kong_confs['cluster_control_plane'] = 'kong-cp:8005'
+  kong_confs['cluster_telemetry_endpoint'] = 'kong-cp:8006'
+
+  DATA_PLANE = _M.start_kong(version, kong_confs, {
+    container_id = 'dp',
+    dns = { ['kong-cp'] = CONTROL_PLANE },
+    ports = { 8000 },
+  })
 
   if not utils.wait_output("docker logs -f " .. DATA_PLANE, " [DB cache] purging (local) cache") then
     return false, "timeout waiting for DP having it's entities ready (5s)"
@@ -474,6 +475,13 @@ function _M.save_error_log(filename)
   invoke_driver("save_error_log", filename)
 
   my_logger.debug("Kong error log written to ", filename)
+end
+
+--- Get the Admin URI accessible from worker
+-- @function save_error_log
+-- @return Nothing. Throws an error if any.
+function _M.get_admin_uri()
+  return invoke_driver("get_admin_uri", CONTROL_PLANE)
 end
 
 return _M

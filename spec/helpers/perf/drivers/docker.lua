@@ -5,6 +5,7 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
+local nkeys = require "table.nkeys"
 local perf = require("spec.helpers.perf")
 local tools = require("kong.tools.utils")
 local helpers
@@ -50,7 +51,7 @@ local function start_container(cid)
   return true
 end
 
-local function create_container(self, args, img)
+local function create_container(self, args, img, cmd)
   local out, err = perf.execute("docker images --format '{{.Repository}}:{{.Tag}}' " .. img)
   -- plain pattern find
   if err or not out:find(img, nil, true) then
@@ -61,7 +62,8 @@ local function create_container(self, args, img)
   end
 
   args = args or ""
-  out, err = perf.execute("docker create " .. args .. " " .. img)
+  cmd = cmd or ""
+  out, err = perf.execute("docker create " .. args .. " " .. img  .. " " .. cmd)
   if err then
     return false, err
   end
@@ -115,14 +117,23 @@ end
 
 local function inject_kong_admin_client(self, helpers)
   helpers.admin_client = function(timeout)
-    if not self.kong_ct_id then
+    if nkeys(self.kong_ct_ids) < 1 then
       error("helpers.admin_client can only be called after perf.start_kong")
     end
-    local admin_port, err = get_container_port(self.kong_ct_id, "8001/tcp")
-    if not admin_port then
-      error("failed to get kong admin port: " .. (err or "nil"))
+
+    -- find all kong containers with first one that exposes admin port
+    for _, kong_id in pairs(kong.ct_ids) do
+      local admin_port, err = get_container_port(kong_id, "8001/tcp")
+      if err then
+        error("failed to get kong admin port: " .. (err or "nil"))
+      end
+      if admin_port then
+        return helpers.http_client("127.0.0.1", admin_port, timeout or 60000)
+      end
+      -- not admin_port, it's fine, maybe it's a dataplane
     end
-    return helpers.http_client("127.0.0.1", admin_port, timeout or 60000)
+
+    error("failed to get kong admin port from all Kong containers")
   end
   return helpers
 end
@@ -132,7 +143,8 @@ function _M:setup()
     local cid, err = create_container(self, "-p5432 " ..
                     "-e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=kong_tests " ..
                     "-e POSTGRES_USER=kong ",
-                    "postgres:11")
+                    "postgres:11",
+                    "postgres -N 2333")
     if err then
       return false, "error running docker create when creating kong container: " .. err
     end
@@ -164,6 +176,8 @@ function _M:setup()
   -- a different set of env vars
   package.loaded["spec.helpers"] = nil
   helpers = require("spec.helpers")
+
+  perf.unsetenv("KONG_PG_PORT")
 
   return inject_kong_admin_client(self, helpers)
 end
@@ -230,6 +244,12 @@ function _M:start_upstreams(conf, port_count)
     return false, "unable to read worker container's private IP: " .. err
   end
 
+  if not perf.wait_output("docker logs -f " .. self.worker_ct_id, " start worker process") then
+    self.log.info("worker container logs:")
+    perf.execute("docker logs " .. self.worker_ct_id, { logger = self.log.log_exec })
+    return false, "timeout waiting worker(nginx) to start (5s)"
+  end
+
   self.log.info("worker is started")
 
   local uris = {}
@@ -244,7 +264,7 @@ function _M:_hydrate_kong_configuration(kong_conf, driver_conf)
   for k, v in pairs(kong_conf) do
     config = string.format("%s -e KONG_%s=%s", config, k:upper(), v)
   end
-  config = config .. " -e KONG_PROXY_ACCESS_LOG=/dev/null -p 8001 -e KONG_ADMIN_LISTEN=0.0.0.0:8001 "
+  config = config .. " -e KONG_PROXY_ACCESS_LOG=/dev/null"
 
   -- adds database configuration
   if kong_conf['database'] == nil then
@@ -259,6 +279,10 @@ function _M:_hydrate_kong_configuration(kong_conf, driver_conf)
     end
   end
 
+  for _, port in ipairs(driver_conf['ports']) do
+    config = string.format("%s -p %d", config, port)
+  end
+
   return config
 end
 
@@ -270,6 +294,10 @@ function _M:start_kong(version, kong_conf, driver_conf)
   local use_git
   local image = "kong"
   local kong_conf_id = driver_conf['container_id'] or 'default'
+
+  if driver_conf['ports'] == nil then
+    driver_conf['ports'] = { 8000 }
+  end
 
   if version:startswith("git:") then
     perf.git_checkout(version:sub(#("git:")+1))
@@ -311,12 +339,25 @@ function _M:start_kong(version, kong_conf, driver_conf)
     return false, "kong is not running: " .. err
   end
 
-  self.log.debug("docker logs -f " .. self.kong_ct_ids[kong_conf_id], " start worker process")
   -- wait
   if not perf.wait_output("docker logs -f " .. self.kong_ct_ids[kong_conf_id], " start worker process") then
+    self.log.info("kong container logs:")
+    perf.execute("docker logs " .. self.kong_ct_ids[kong_conf_id], { logger = self.log.log_exec })
     return false, "timeout waiting kong to start (5s)"
   end
 
+  local ports = driver_conf['ports']
+  local port_maps = {}
+  for _, port in ipairs(ports) do
+    local mport, err = get_container_port(self.kong_ct_ids[kong_conf_id], port .. "/tcp")
+    if not mport then
+      return false, "can't find exposed port " .. port .. " for kong " ..
+            self.kong_ct_ids[kong_conf_id] .. " :" .. err
+    end
+    table.insert(port_maps, string.format("%s->%s/tcp", mport, port))
+  end
+
+  self.log.info("kong is started to listen at port ", table.concat(port_maps, ", "))
   return self.kong_ct_ids[kong_conf_id]
 end
 
@@ -359,6 +400,18 @@ function _M:get_start_load_cmd(stub, script, uri, kong_id)
 
   return "docker exec " .. self.worker_ct_id .. " " ..
           stub:format(script_path, uri)
+end
+
+function _M:get_admin_uri(kong_id)
+  if not kong_id then
+    kong_id = self.kong_ct_ids[next(self.kong_ct_ids)] -- pick the first one
+  end
+  local kong_vip, err = get_container_vip(kong_id)
+  if err then
+    return false, "unable to read kong container's private IP: " .. err
+  end
+
+  return string.format("http://%s:8001", kong_vip)
 end
 
 function _M:get_start_stapxx_cmd()
