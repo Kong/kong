@@ -11,7 +11,7 @@ local init_worker_called = false
 
 local ShortCircuitHandler =  {
   VERSION = "0.1-t",
-  PRIORITY = math.huge,
+  PRIORITY = 1000000,
 }
 
 
@@ -44,6 +44,5 @@ function ShortCircuitHandler:preread(conf)
   -- TODO: this should really support delayed short-circuiting!
   return exit(conf.status)
 end
-
 
 return ShortCircuitHandler

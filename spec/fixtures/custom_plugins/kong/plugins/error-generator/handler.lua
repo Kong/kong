@@ -3,7 +3,7 @@ local error = error
 
 local ErrorGeneratorHandler =  {
   VERSION = "0.1-t",
-  PRIORITY = math.huge,
+  PRIORITY = 1000000,
 }
 
 
@@ -58,6 +58,7 @@ function ErrorGeneratorHandler:log(conf)
     error("[error-generator] body_filter")
   end
 end
+
 
 
 return ErrorGeneratorHandler

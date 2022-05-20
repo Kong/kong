@@ -91,15 +91,9 @@ return {
 
       local available_plugins = {}
       for name in pairs(kong.configuration.loaded_plugins) do
-        local pr = kong.db.plugins.handlers[name].PRIORITY
-        if pr ~= nil then
-          if type(pr) ~= "number" or math.abs(pr) == math.huge then
-            pr = tostring(pr)
-          end
-        end
         available_plugins[name] = {
           version = kong.db.plugins.handlers[name].VERSION,
-          priority = pr,
+          priority = kong.db.plugins.handlers[name].PRIORITY,
         }
       end
 

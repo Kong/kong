@@ -199,7 +199,8 @@ end
 
 
 local CtxTests = {
-  PRIORITY = -math.huge
+  PRIORITY = -1000000,
+  VERSION = "1.0",
 }
 
 
