@@ -90,7 +90,7 @@ function test_plugin {
     exit 1
   fi
 
-  KONG_IMAGE=$DOCKER_IMAGE_NAME pongo run --exclude-tags=flaky
+  KONG_IMAGE=$DOCKER_IMAGE_NAME pongo run --exclude-tags=flaky -o htest
   err_code=$?
   pongo down
   popd

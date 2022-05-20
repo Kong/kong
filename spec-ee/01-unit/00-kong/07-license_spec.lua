@@ -173,7 +173,7 @@ describe("licensing", function()
         }
       end)
 
-      it("#only denies defined methods", function()
+      it("denies defined methods", function()
         for _, method in ipairs({ "GET", "OPTION" }) do
           -- clean up calls
           assert(stub(kong.response, "exit"))

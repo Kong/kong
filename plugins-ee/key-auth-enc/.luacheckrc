@@ -18,7 +18,8 @@ not_globals = {
 
 
 ignore = {
-    "6.", -- ignore whitespace warnings
+    "6.",   -- ignore whitespace warnings
+    "214",  -- ignore warning `used variable`
 }
 
 

@@ -5,9 +5,10 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local cassandra_strategy = require "kong.tools.public.rate-limiting.strategies.cassandra"
-local helpers        = require "spec.helpers"
-local DB                 = require "kong.db"
+local cassandra_strategy  = require "kong.tools.public.rate-limiting.strategies.cassandra"
+local helpers             = require "spec.helpers"
+local DB                  = require "kong.db"
+local utils               = require "kong.tools.utils"
 
 local function window_floor(size, time)
   return math.floor(time / size) * size
@@ -56,7 +57,11 @@ describe("rate-limiting: Cassadra strategy", function()
   local cluster
 
   setup(function()
-    local db = assert(DB.new(helpers.test_conf, strategy))
+    local conf = utils.deep_copy(helpers.test_conf, false)
+    conf.cassandra_keyspace =
+      os.getenv("KONG_TEST_CASSANDRA_KEYSPACE") or helpers.test_conf.cassandra_keyspace
+
+    local db = assert(DB.new(conf, strategy))
     assert(db:init_connector())
 
     strategy = cassandra_strategy.new(db)

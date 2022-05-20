@@ -6,8 +6,9 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local postgres_strategy = require "kong.tools.public.rate-limiting.strategies.postgres"
-local helpers       = require "spec.helpers"
+local helpers           = require "spec.helpers"
 local DB                = require "kong.db"
+local utils             = require "kong.tools.utils"
 
 local function window_floor(size, time)
   return math.floor(time / size) * size
@@ -26,7 +27,11 @@ for _, strategy in helpers.each_strategy({"postgres"}) do
                             mock_window_size
 
     setup(function()
-      db = assert(DB.new(helpers.test_conf))
+      local conf = utils.deep_copy(helpers.test_conf, false)
+      conf.pg_database =
+        os.getenv("KONG_TEST_PG_DATABASE") or helpers.test_conf.pg_database
+
+      db = assert(DB.new(conf))
       assert(db:init_connector())
 
       strategy = postgres_strategy.new(db)
