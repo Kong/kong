@@ -76,6 +76,12 @@
 - Deprecate/stop producing Debian 8 "Jessie" containers and packages (EOLed June 2020)
   [Kong/kong-build-tools #448](https://github.com/Kong/kong-build-tools/pull/448)
   [Kong/kong-distributions #766](https://github.com/Kong/kong-distributions/pull/766)
+- Kong schema library's `process_auto_fields` function will not any more make a deep
+  copy of data that is passed to it when the given context is `"select"`. This was
+  done to avoid excessive deep copying of tables where we believe the data most of
+  the time comes from a driver like `pgmoon` or `lmdb`. This was done for performance
+  reasons. Deep copying on `"select"` context can still be done before calling this
+  function. [#8796](https://github.com/Kong/kong/pull/8796)
 
 #### Admin API
 
