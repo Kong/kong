@@ -22,6 +22,8 @@ message Upstream {
   string hash_on_cookie = 13;
   string hash_on_cookie_path = 14;
   repeated string tags = 15;
+  // EE fields
+  string ws_id = 30;
 }
 
 message Healthcheck {

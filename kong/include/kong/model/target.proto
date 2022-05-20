@@ -13,4 +13,6 @@ message Target {
   int32 weight = 4;
   repeated string tags = 5;
   Upstream upstream = 6;
+  // EE fields
+  string ws_id = 30;
 }

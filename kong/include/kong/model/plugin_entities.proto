@@ -31,6 +31,8 @@ message KeyAuth {
   Consumer consumer = 4;
   int32 created_at = 5;
   repeated string tags = 6;
+  // EE fields
+  string ws_id = 30;
 }
 
 

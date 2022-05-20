@@ -10,4 +10,7 @@ message Consumer {
   string username = 3;
   int32 created_at = 4;
   repeated string tags = 5;
+  // EE fields
+  string ws_id = 30;
+  int32 type = 31;
 }
