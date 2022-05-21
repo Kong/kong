@@ -555,7 +555,6 @@ for _, strategy in helpers.each_strategy() do
                 local reset = tonumber(string.match(res, "ratelimit%-reset: (%d+)"))
                 assert.equal(true, reset <= 60 and reset >= 0)
     
-                ngx.sleep(0.1)  -- wait sync
               end
     
               -- Additonal request, while limit is 6/minute
