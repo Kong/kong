@@ -15,6 +15,7 @@ local clear_header = kong.service.request.clear_header
 local kong = kong
 local match = string.match
 local lower = string.lower
+local upper = string.upper
 local find = string.find
 local sub = string.sub
 local fmt = string.format
@@ -331,7 +332,14 @@ local function do_authentication(conf)
 
   -- If both headers are missing, check anonymous
   if not (authorization_value or proxy_authorization_value) then
-    ngx.header["WWW-Authenticate"] = 'LDAP realm="kong"'
+    local scheme = conf.header_type
+    if scheme == "ldap" then
+       -- RFC 7617 says auth-scheme is case-insentitive
+       -- ensure backwards compatibility (see GH PR #3656)
+      scheme = upper(scheme)
+    end
+    ngx.header["WWW-Authenticate"] = scheme .. ' realm="kong"'
+
     consumer, err = load_consumers(anonymous, { 'id' }, ttl)
 
     if err then
