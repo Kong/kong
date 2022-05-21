@@ -271,6 +271,7 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
       local service14   = admin_api.services:insert()
       local service15   = admin_api.services:insert()
       local service16   = admin_api.services:insert()
+      local service17   = admin_api.services:insert()
 
       local route1 = assert(admin_api.routes:insert({
         hosts     = { "oauth2.com" },
@@ -380,6 +381,11 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         service     = service16,
       }))
 
+      local route17 = assert(admin_api.routes:insert({
+        hosts       = { "oauth2_17.com" },
+        protocols   = { "http", "https" },
+        service     = service17,
+      }))
 
       local service_grpc = assert(admin_api.services:insert {
           name = "grpc",
@@ -471,7 +477,6 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         },
       })
 
-
       admin_api.oauth2_plugins:insert({
         route = { id = route9.id },
         config   = {
@@ -550,6 +555,14 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
           scopes                   = { "email", "profile", "user.email" },
           global_credentials       = true,
           pkce = "lax",
+        }
+      })
+
+      admin_api.oauth2_plugins:insert({
+        route = { id = route17.id },
+        config   = {
+          scopes                   = { "test" },
+          global_credentials       = true,
         }
       })
 
@@ -2896,6 +2909,30 @@ describe("Plugin: oauth2 [#" .. strategy .. "]", function()
         assert.matches("%w+", json.access_token)
         assert.equal(32, #json.refresh_token)
         assert.matches("%w+", json.refresh_token)
+      end)
+
+      it("fails when scope for requesting code and token are for different plugin instances when global_credentials is used on both", function()
+        local code = provision_code("oauth2_16.com")
+        local res = assert(proxy_ssl_client:send {
+          method  = "POST",
+          path    = "/oauth2/token",
+          body    = {
+            code             = code,
+            client_id        = "clientid123",
+            client_secret    = "secret123",
+            grant_type       = "authorization_code",
+          },
+          headers = {
+            ["Host"]         = "oauth2_17.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({
+          error = "invalid_scope",
+          error_description = "\"email\" is an invalid scope"
+        }, json)
       end)
     end)
 

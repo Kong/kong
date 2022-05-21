@@ -630,10 +630,12 @@ local function issue_token(conf)
         local auth_code =
           code and kong.db.oauth2_authorization_codes:select_by_code(code)
 
-        parameters["scope"] = auth_code.scope
-        local scope, err = retrieve_scope(parameters, conf)
-        if err then
-          response_params = err
+        if auth_code then
+          parameters["scope"] = auth_code.scope
+          auth_code.scope, err = retrieve_scope(parameters, conf)
+          if err then
+            response_params = err
+          end
         end
 
         if not auth_code or (service_id and service_id ~= auth_code.service.id) then
@@ -675,8 +677,7 @@ local function issue_token(conf)
             response_params = generate_token(conf, kong.router.get_service(),
               client,
               auth_code.authenticated_userid,
-              scope, state)
-
+              auth_code.scope, state)
             -- Delete authorization code so it cannot be reused
             kong.db.oauth2_authorization_codes:delete({ id = auth_code.id })
           end
