@@ -1070,43 +1070,34 @@ for _, strategy in helpers.each_strategy() do
 
               bu.end_testcase_setup(strategy, bp)
 
-              -- run request: fails with 401, but doesn't hit the 1-error threshold
-              helpers.wait_until(function()
-                local oks, fails, last_status = bu.client_requests(1, api_host)
-                return pcall(function()
-                  assert.same(0, oks)
-                  assert.same(1, fails)
-                  assert.same(401, last_status)
-                end)
-              end, 10)
-
-              -- start servers, they are unaffected by the failure above
+              -- start servers, they wont be affected by the 401 error
               local server1 = https_server.new(port1, localhost)
               local server2 = https_server.new(port2, localhost)
               server1:start()
               server2:start()
 
-              -- XXX: flaky
-              --helpers.wait_until(function()
-              --  local oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
-              --  return pcall(function()
-              --    assert.same(200, last_status)
-              --    assert.same(bu.SLOTS * 2, oks)
-              --    assert.same(0, fails)
-              --  end)
-              --end, 5)
-              --oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
-              --assert.same(200, last_status)
-              --assert.same(bu.SLOTS * 2, oks)
-              --assert.same(0, fails)
+              -- run request: fails with 401, but doesn't hit the 1-error threshold
+              local oks, fails, last_status = bu.client_requests(1, api_host)
+              assert.same(0, oks)
+              assert.same(1, fails)
+              assert.same(401, last_status)
+
+              helpers.wait_until(function()
+                local oks, fails, last_status = bu.client_requests(bu.SLOTS * 2, api_host)
+                return pcall(function()
+                  assert.same(200, last_status)
+                  assert.truthy(oks > 0)
+                  assert.same(0, fails)
+                end)
+              end, 5)
 
               -- collect server results
               local count1 = server1:shutdown()
               local count2 = server2:shutdown()
 
               -- both servers were fully operational
-              --assert.same(bu.SLOTS, count1.ok)
-              --assert.same(bu.SLOTS, count2.ok)
+              assert.truthy(count1.ok > 0)
+              assert.truthy(count2.ok > 0)
               assert.same(0, count1.fail)
               assert.same(0, count2.fail)
 
