@@ -251,6 +251,9 @@ end
 function _M:push_config()
   if not next(self.clients) then
     ngx_log(ngx_DEBUG, _log_prefix, "skip push_config as no data-planes connected")
+    -- also clearthe payload cache, in case a newly connected client received an
+    -- old cache as its initial config
+    self.deflated_reconfigure_payload = nil
     return
   end
 
