@@ -1,3 +1,7 @@
+## Unreleased
+
+- feat: add mtls-auth CRL and OCSP proxy server support
+
 ## 0.3.5
 
 - fix(handler) catch error in workspace_iter
