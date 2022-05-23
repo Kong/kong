@@ -11,6 +11,10 @@ pipeline {
         DOCKER_PASSWORD = "${env.DOCKER_CREDENTIALS_PSW}"
         KONG_PACKAGE_NAME = "kong"
         DOCKER_CLI_EXPERIMENTAL = "enabled"
+        PULP_HOST_PROD = "https://api.pulp.konnect-prod.konghq.com"
+        PULP_PROD = credentials('PULP')
+        PULP_HOST_STAGE = "https://api.pulp.konnect-stage.konghq.com"
+        PULP_STAGE = credentials('PULP_STAGE')
     }
     stages {
         stage('Build Kong') {
