@@ -452,6 +452,24 @@ In this release we continued our work on better performance:
   Porting tips in the [documentation](https://docs.konghq.com/gateway-oss/2.3.x/plugin-development/custom-logic/#porting-from-old-baseplugin-style)
 - The deprecated **BasePlugin** has been removed. [#7961](https://github.com/Kong/kong/pull/7961)
 
+### Configuration
+
+- Removed the following config options, which had been deprecated in previous versions, in favor of other config names. If you have any of these options in your config you will have to rename them: (removed option -> current option).
+  - upstream_keepalive -> nginx_upstream_keepalive + nginx_http_upstream_keepalive
+  - nginx_http_upstream_keepalive -> nginx_upstream_keepalive
+  - nginx_http_upstream_keepalive_requests -> nginx_upstream_keepalive_requests
+  - nginx_http_upstream_keepalive_timeout -> nginx_upstream_keepalive_timeout
+  - nginx_http_upstream_directives -> nginx_upstream_directives
+  - nginx_http_status_directives -> nginx_status_directives
+  - nginx_upstream_keepalive -> upstream_keepalive_pool_size
+  - nginx_upstream_keepalive_requests -> upstream_keepalive_max_requests
+  - nginx_upstream_keepalive_timeout -> upstream_keepalive_idle_timeout
+  - client_max_body_size -> nginx_http_client_max_body_size
+  - client_body_buffer_size -> nginx_http_client_max_buffer_size
+  - cassandra_consistency -> cassandra_write_consistency / cassandra_read_consistency
+  - router_update_frequency -> worker_state_update_frequency
+- Removed the nginx_optimizations config option. If you have it in your configuration, please remove it before updating to 3.0.
+
 ### Fixes
 
 #### Core
