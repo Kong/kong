@@ -249,6 +249,11 @@ end
 
 
 function _M:push_config()
+  if not next(self.clients) then
+    ngx_log(ngx_DEBUG, _log_prefix, "skip push_config as no data-planes connected")
+    return
+  end
+
   local start = ngx_now()
 
   local payload, err = self:export_deflated_reconfigure_payload()

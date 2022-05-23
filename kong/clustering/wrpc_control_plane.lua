@@ -190,6 +190,11 @@ function _M:push_config_one_client(client)
 end
 
 function _M:push_config()
+  if not next(self.clients) then
+    ngx_log(ngx_DEBUG, _log_prefix, "skip push_config as no data-planes connected")
+    return
+  end
+
   local payload, err = self:export_deflated_reconfigure_payload()
   if not payload then
     ngx_log(ngx_ERR, _log_prefix, "unable to export config from database: ", err)
