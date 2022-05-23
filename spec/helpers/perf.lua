@@ -3,16 +3,20 @@ local pl_tablex = require("pl.tablex")
 local logger = require("spec.helpers.perf.logger")
 local utils = require("spec.helpers.perf.utils")
 local git = require("spec.helpers.perf.git")
+local charts = require("spec.helpers.perf.charts")
 
 local my_logger = logger.new_logger("[controller]")
 
 utils.register_busted_hook()
+
+charts.register_busted_hook()
 
 -- how many times for each "driver" operation
 local RETRY_COUNT = 3
 local DRIVER
 local DRIVER_NAME
 local DATA_PLANE, CONTROL_PLANE
+local LAST_KONG_VERSION
 
 -- Real user facing functions
 local driver_functions = {
@@ -208,6 +212,7 @@ end
 -- @param driver_confs table driver configuration as a lua table
 -- @return nothing. Throws an error if any.
 function _M.start_kong(version, kong_confs, driver_confs)
+  LAST_KONG_VERSION = version
   return invoke_driver("start_kong", version, kong_confs or {}, driver_confs or {})
 end
 
@@ -408,6 +413,21 @@ function _M.combine_results(results)
   local latency_avg = sum(latencies_avg) / count
   local latency_max = math.max(unpack(latencies_max))
 
+  if LAST_KONG_VERSION then
+    charts.ingest_combined_results({
+      version = LAST_KONG_VERSION,
+      raw = results,
+      parsed = {
+        rpss = rpss,
+        rps = rps,
+        latencies_max = latencies_max,
+        latencies_avg = latencies_avg,
+        latency_max = latency_max,
+        latency_avg = latency_avg,
+      },
+    })
+  end
+
   return ([[
 RPS     Avg: %3.2f
 Latency Avg: %3.2fms    Max: %3.2fms
@@ -454,6 +474,14 @@ function _M.generate_flamegraph(filename, title, opts)
   f:close()
 
   my_logger.debug("flamegraph written to ", filename)
+end
+
+--- Enable or disable charts generation
+-- @function enable_charts
+-- @param enabled enable or not
+-- @return Nothing. Throws an error if any.
+function _M.enable_charts(enabled)
+  return enabled and charts.on() or charts.off()
 end
 
 
