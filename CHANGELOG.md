@@ -68,8 +68,44 @@
 
 ### Dependencies
 
+<<<<<<< HEAD
 - Bumped `OpenSSL` from 1.1.1n to 1.1.1o
   [#8635](https://github.com/Kong/kong/pull/8809)
+=======
+- Bumped pgmoon from 1.13.0 to 1.14.0
+  [#8429](https://github.com/Kong/kong/pull/8429)
+- OpenSSL bumped to from 1.1.1n to 1.1.1o
+  [#8544](https://github.com/Kong/kong/pull/8544)
+  [#8752](https://github.com/Kong/kong/pull/8752)
+- Bumped resty.openssl from 0.8.5 to 0.8.7
+  [#8592](https://github.com/Kong/kong/pull/8592)
+  [#8753](https://github.com/Kong/kong/pull/8753)
+- Bumped inspect from 3.1.2 to 3.1.3
+  [#8589](https://github.com/Kong/kong/pull/8589)
+- Bumped resty.acme from 0.7.2 to 0.8.0
+  [#8680](https://github.com/Kong/kong/pull/8680)
+- Bumped luarocks from 3.8.0 to 3.9.0
+  [#8700](https://github.com/Kong/kong/pull/8700)
+- Bumped luasec from 1.0.2 to 1.1.0
+  [#8754](https://github.com/Kong/kong/pull/8754)
+- Bumped resty.healthcheck from 1.5.0 to 1.5.1
+  [#8755](https://github.com/Kong/kong/pull/8755)
+
+### Additions
+
+#### Core
+
+- Added `cache_key` on target entity for uniqueness detection.
+  [#8179](https://github.com/Kong/kong/pull/8179)
+- Introduced the tracing API which compatible with OpenTelemetry API spec and
+  add build-in instrumentations.  
+  The tracing API is intend to be used with a external exporter plugin.  
+  Build-in instrumentation types and sampling rate are configuable through
+  `opentelemetry_tracing` and `opentelemetry_tracing_sampling_rate` options.
+ [#8724](https://github.com/Kong/kong/pull/8724)
+
+#### Plugins
+>>>>>>> fa756bcee... feat(pdk) tracing pdk and core instrumentation
 
 ## [2.8.1]
 

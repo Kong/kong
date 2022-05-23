@@ -178,4 +178,7 @@ pluginserver_names = NONE
 untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
+
+opentelemetry_tracing = off
+opentelemetry_tracing_sampling_rate = 1.0
 ]]

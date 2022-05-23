@@ -44,6 +44,15 @@ local stringio_open = pl_stringio.open
 ffi.cdef[[
 typedef unsigned char u_char;
 
+typedef long time_t;
+typedef int clockid_t;
+typedef struct timespec {
+        time_t   tv_sec;        /* seconds */
+        long     tv_nsec;       /* nanoseconds */
+} nanotime;
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
+
 int gethostname(char *name, size_t len);
 
 int RAND_bytes(u_char *buf, int num);
@@ -1445,5 +1454,17 @@ do
   end
 end
 
+local time_ns
+do
+  local nanop = ffi.new("nanotime[1]")
+  function time_ns()
+    -- CLOCK_REALTIME -> 0
+    C.clock_gettime(0, nanop)
+    local t = nanop[0]
+
+    return tonumber(t.tv_sec) * 100000000 + tonumber(t.tv_nsec)
+  end
+end
+_M.time_ns = time_ns
 
 return _M

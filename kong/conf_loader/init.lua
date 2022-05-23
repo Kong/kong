@@ -657,6 +657,9 @@ local CONF_INFERENCES = {
   untrusted_lua = { enum = { "on", "off", "sandbox" } },
   untrusted_lua_sandbox_requires = { typ = "array" },
   untrusted_lua_sandbox_environment = { typ = "array" },
+
+  opentelemetry_tracing = { typ = "array" },
+  opentelemetry_tracing_sampling_rate = { typ = "number" },
 }
 
 
@@ -1132,6 +1135,29 @@ local function check_and_infer(conf, opts)
 
   if conf.upstream_keepalive_idle_timeout < 0 then
     errors[#errors + 1] = "upstream_keepalive_idle_timeout must be 0 or greater"
+  end
+
+  if conf.opentelemetry_tracing and #conf.opentelemetry_tracing > 0 then
+    local instrumentation = require "kong.tracing.instrumentation"
+    local available_types_map = tablex.deepcopy(instrumentation.available_types)
+    available_types_map["all"] = true
+    available_types_map["off"] = true
+
+    for _, trace_type in ipairs(conf.opentelemetry_tracing) do
+      if not available_types_map[trace_type] then
+        errors[#errors + 1] = "invalid opentelemetry tracing type: " .. trace_type
+      end
+    end
+
+    if tablex.find(conf.opentelemetry_tracing, "off")
+      and tablex.find(conf.opentelemetry_tracing, "all")
+    then
+      errors[#errors + 1] = "invalid opentelemetry tracing types: off, all are mutually exclusive"
+    end
+
+    if conf.opentelemetry_tracing_sampling_rate < 0 or conf.opentelemetry_tracing_sampling_rate > 1 then
+      errors[#errors + 1] = "opentelemetry_tracing_sampling_rate must be between 0 and 1"
+    end
   end
 
   return #errors == 0, errors[1], errors
