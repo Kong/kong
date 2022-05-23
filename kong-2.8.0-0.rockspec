@@ -22,7 +22,7 @@ dependencies = {
   "multipart == 0.5.9",
   "version == 1.0.1",
   "kong-lapis == 1.8.3.1",
-  "lua-cassandra == 1.5.1",
+  "lua-cassandra == 1.5.2",
   "pgmoon == 1.14.0",
   "luatz == 0.4",
   "lua_system_constants == 0.1.4",
