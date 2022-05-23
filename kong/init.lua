@@ -86,6 +86,7 @@ local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
+local instrumentation = require "kong.tracing.instrumentation"
 
 local kong             = kong
 local ngx              = ngx
@@ -267,11 +268,19 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
 
   for plugin, configuration in plugins_iterator:iterate("access", ctx) do
     if not ctx.delayed_response then
+      local span = instrumentation.plugin_access(plugin)
+
       setup_plugin_context(ctx, plugin)
 
       local co = coroutine.create(plugin.handler.access)
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
       if not cok then
+        -- set tracing error
+        if span then
+          span:record_error(cerr)
+          span:set_status(2)
+        end
+
         kong.log.err(cerr)
         ctx.delayed_response = {
           status_code = 500,
@@ -283,6 +292,11 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
       end
 
       reset_plugin_context(ctx, old_ws)
+
+      -- ends tracing span
+      if span then
+        span:finish()
+      end
     end
   end
 
@@ -293,9 +307,20 @@ end
 local function execute_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
   for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
+    local span
+    if phase == "rewrite" then
+      span = instrumentation.plugin_rewrite(plugin)
+    elseif phase == "header_filter" then
+      span = instrumentation.plugin_header_filter(plugin)
+    end
+
     setup_plugin_context(ctx, plugin)
     plugin.handler[phase](plugin.handler, configuration)
     reset_plugin_context(ctx, old_ws)
+
+    if span then
+      span:finish()
+    end
   end
 end
 
@@ -476,8 +501,10 @@ function Kong.init()
   math.randomseed()
 
   kong_global.init_pdk(kong, config)
+  instrumentation.init(config)
 
   local db = assert(DB.new(config))
+  instrumentation.db_query(db.connector)
   assert(db:init_connector())
 
   schema_state = assert(db:schema_state())
