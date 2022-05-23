@@ -11,11 +11,13 @@ local singletons   = require "kong.singletons"
 local workspaces = require "kong.workspaces"
 local workspace_config = require "kong.portal.workspace_config"
 local constants    = require "kong.constants"
+local cjson        = require "cjson.safe"
 
 local ws_constants = constants.WORKSPACE_CONFIG
 local fmt          = string.format
 local log          = ngx.log
 local INFO         = ngx.INFO
+local PORTAL_DEVELOPER_META_FIELDS = ws_constants.PORTAL_DEVELOPER_META_FIELDS
 
 
 local _M = {}
@@ -70,7 +72,7 @@ local base_conf = {
       <p>
         Please click the link below to reset your Developer Portal password.
       </p>
-      </p>
+      <p>
         <a href="%s/reset-password?token=%s">%s/reset-password?token=%s</a>
       </p>
       <p>
@@ -106,13 +108,13 @@ local base_conf = {
       <p>
         Please click the link below to verify your Developer Portal account at %s.
       </p>
-      </p>
+      <p>
         <a href="%s/account/verify?token=%s&email=%s">verify account</a>
       </p>
       <p>
         If you didn't make this request, please click the link below to invalidate this request.
       </p>
-      </p>
+      <p>
         <a href="%s/account/invalidate-verification?token=%s&email=%s">invalidate validation request</a>
       </p>
     ]],
@@ -226,6 +228,30 @@ function _M:replace_tokens(view, tokens)
     view = string.gsub(view, match, replacement)
   end
   return view
+end
+
+local function add_meta_matches(developer_email, matches)
+  local developer, err = singletons.db.developers:select_by_email(developer_email)
+
+  if not developer then
+    err = err or "not found"
+    ngx.log(ngx.ERR, "unable to fetch developer for meta field replacements in email template: ", err)
+    return
+  end
+
+  if not developer.meta then
+    return
+  end
+
+  local workspace = workspaces.get_workspace()
+  local dev_meta = cjson.decode(developer.meta)
+  local developer_extra_fields = workspace_config.retrieve(PORTAL_DEVELOPER_META_FIELDS, workspace, {decode_json = true})
+  local custom_value
+
+  for _, field in ipairs(developer_extra_fields) do
+    custom_value = dev_meta[field.title]
+    matches["email.developer_meta." .. field.title] = custom_value or ""
+  end
 end
 
 local function email_handler(self, tokens, file)
@@ -344,6 +370,9 @@ function _M:access_request(developer_email, developer_name)
     matches["email.admin_gui_url"] = admin_gui_url
     matches["email.developer_name"] = developer_name
     matches["email.developer_email"] = developer_email
+
+    add_meta_matches(developer_email, matches)
+
     self.path = path
     html, subject = email_handler(self, matches, file)
   end
@@ -384,7 +413,10 @@ function _M:approved(recipient, developer_name)
     local matches = {}
     matches["portal.url"] = portal_gui_url
     matches["email.developer_email"] = recipient
-    matches["email.developer.name"] = developer_name
+    matches["email.developer_name"] = developer_name
+
+    add_meta_matches(recipient, matches)
+
     self.path = path
     html, subject = email_handler(self, matches, file)
   end
@@ -435,6 +467,9 @@ function _M:password_reset(recipient, token, developer_name)
     matches["email.token_exp"] = exp_string
     matches["email.reset_url"] =  portal_gui_url .. "/reset-password?token=" ..
                                   token
+
+    add_meta_matches(recipient, matches)
+
     self.path = path
     html, subject = email_handler(self, matches, file)
   end
@@ -475,6 +510,9 @@ function _M:password_reset_success(recipient, developer_name)
     matches["portal.url"] = portal_gui_url
     matches["email.developer_email"] = recipient
     matches["email.developer_name"] = developer_name
+
+    add_meta_matches(recipient, matches)
+
     self.path = path
     html, subject = email_handler(self, matches, file)
   end
@@ -521,6 +559,9 @@ function _M:account_verification_email(recipient, token, developer_name)
     matches["email.invalidate_url"] = portal_gui_url ..
                                   "/account/invalidate-verification?token=" ..
                                    token .. "&email=" .. recipient
+
+    add_meta_matches(recipient, matches)
+
     self.path = path
     html, subject = email_handler(self, matches, file)
   end
@@ -556,6 +597,9 @@ function _M:account_verification_success_approved(recipient, developer_name)
     matches["portal.url"] = portal_gui_url
     matches["email.developer_email"] = recipient
     matches["email.developer_name"] = developer_name
+
+    add_meta_matches(recipient, matches)
+
     self.path = path
     html, subject = email_handler(self, matches, file)
   end
@@ -591,6 +635,9 @@ function _M:account_verification_success_pending(recipient, developer_name)
     matches["portal.url"] = portal_gui_url
     matches["email.developer_email"] = recipient
     matches["email.developer_name"] = developer_name
+
+    add_meta_matches(recipient, matches)
+
     self.path = path
     html, subject = email_handler(self, matches, file)
   end

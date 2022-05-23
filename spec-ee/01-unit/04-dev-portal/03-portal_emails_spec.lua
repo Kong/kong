@@ -325,5 +325,15 @@ describe("ee portal emails", function()
       local expected = "Vist www.greatestPortal.com/1234, SomeDev@example.com"
       assert.same(expected, emails:replace_tokens(view, tokens))
     end)
+
+    it("should replace developer metadata tokens in view", function()
+      local tokens = {
+        ["email.developer_meta.my_custom_property"] = "park place",
+        ["email.developer_meta.another_custom_property"] = "boardwalk",
+      }
+      local view = "{{ email.developer_meta.my_custom_property }} and {{ email.developer_meta.another_custom_property }}"
+      local expected = "park place and boardwalk"
+      assert.same(expected, emails:replace_tokens(view, tokens))
+    end)
   end)
 end)
