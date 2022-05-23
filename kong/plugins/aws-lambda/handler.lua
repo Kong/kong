@@ -7,6 +7,7 @@ local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 local constants = require "kong.constants"
 local request_util = require "kong.plugins.aws-lambda.request-util"
+local get_proxy_opts = require("kong.tools.proxies").get_proxy_opts
 local kong = kong
 
 local VIA_HEADER = constants.HEADERS.VIA
@@ -265,14 +266,6 @@ function AWSLambdaHandler:access(conf)
   local uri = port and fmt("https://%s:%d", host, port)
                     or fmt("https://%s", host)
 
-  local proxy_opts
-  if conf.proxy_url then
-    -- lua-resty-http uses the request scheme to determine which of
-    -- http_proxy/https_proxy it will use, and from this plugin's POV, the
-    -- request scheme is always https
-    proxy_opts = { https_proxy = conf.proxy_url }
-  end
-
   -- Trigger request
   local client = http.new()
   client:set_timeout(conf.timeout)
@@ -283,7 +276,7 @@ function AWSLambdaHandler:access(conf)
     body = request.body,
     headers = request.headers,
     ssl_verify = false,
-    proxy_opts = proxy_opts,
+    proxy_opts = get_proxy_opts(conf.proxy),
     keepalive_timeout = conf.keepalive,
   })
   if not res then

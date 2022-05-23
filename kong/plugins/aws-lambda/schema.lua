@@ -1,4 +1,5 @@
 local typedefs = require "kong.db.schema.typedefs"
+local typedef_proxy_config = require("kong.tools.proxies").schema
 
 return {
   name = "aws-lambda",
@@ -77,7 +78,7 @@ return {
           type = "boolean",
           default = false,
         } },
-        { proxy_url = typedefs.url },
+        { proxy = typedef_proxy_config },
         { skip_large_bodies = {
           type = "boolean",
           default = true,
@@ -92,22 +93,5 @@ return {
   entity_checks = {
     { mutually_required = { "config.aws_key", "config.aws_secret" } },
     { mutually_exclusive = { "config.aws_region", "config.host" } },
-    { custom_entity_check = {
-        field_sources = { "config.proxy_url" },
-        fn = function(entity)
-          local proxy_url = entity.config and entity.config.proxy_url
-
-          if type(proxy_url) == "string" then
-            local scheme = proxy_url:match("^([^:]+)://")
-
-            if scheme and scheme ~= "http" then
-              return nil, "proxy_url scheme must be http"
-            end
-          end
-
-          return true
-        end,
-      }
-    },
   }
 }
