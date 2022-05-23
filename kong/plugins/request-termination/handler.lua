@@ -15,7 +15,7 @@ local RequestTerminationHandler = {}
 
 
 RequestTerminationHandler.PRIORITY = 2
-RequestTerminationHandler.VERSION = "2.1.0"
+RequestTerminationHandler.VERSION = "2.2.0"
 
 
 function RequestTerminationHandler:access(conf)
@@ -23,14 +23,28 @@ function RequestTerminationHandler:access(conf)
   local content = conf.body
   local req_headers, req_query
 
-  if conf.trigger or conf.echo then
+  if conf.trigger or conf.avert or conf.echo then
     req_headers = kong.request.get_headers()
     req_query = kong.request.get_query()
 
-    if conf.trigger
+    if conf.trigger and not conf.trigger_value
        and not req_headers[conf.trigger]
        and not req_query[conf.trigger] then
       return -- trigger set but not found, nothing to do
+    elseif conf.trigger_value and conf.trigger
+       and not req_headers[conf.trigger] == conf.trigger_value
+       and not req_query[conf.trigger] == conf.trigger_value then
+      return -- trigger_value set but not found, nothing to do
+    end
+
+    if conf.avert and not conf.avert_value
+       and req_headers[conf.avert]
+       or req_query[conf.avert] then
+      return -- avert set and found, nothing to do
+    elseif conf.avert_value and conf.avert
+       and req_headers[conf.avert] == conf.avert_value
+       or req_query[conf.avert] == conf.avert_value then
+      return -- avert_value set and found, nothing to do
     end
   end
 

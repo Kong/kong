@@ -58,6 +58,18 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "api10.request-termination.com" },
       })
 
+      local route11 = bp.routes:insert({
+        hosts = { "api11.request-termination.com" },
+      })
+
+      local route12 = bp.routes:insert({
+        hosts = { "api12.request-termination.com" },
+      })
+
+      local route13 = bp.routes:insert({
+        hosts = { "api13.request-termination.com" },
+      })
+
       bp.plugins:insert {
         name   = "request-termination",
         route  = { id = route1.id },
@@ -137,6 +149,38 @@ for _, strategy in helpers.each_strategy() do
         config = {
           echo = true,
           trigger = "gimme-an-echo",
+          status_code = 404
+        },
+      }
+
+      bp.plugins:insert {
+        name   = "request-termination",
+        route  = { id = route11.id },
+        config = {
+          echo = true,
+          trigger = "gimme-an-echo",
+          trigger_value = "gimme-an-echo-value",
+          status_code = 404
+        },
+      }
+
+      bp.plugins:insert {
+        name   = "request-termination",
+        route  = { id = route12.id },
+        config = {
+          echo = true,
+          avert = "gimme-an-echo",
+          status_code = 404
+        },
+      }
+
+      bp.plugins:insert {
+        name   = "request-termination",
+        route  = { id = route13.id },
+        config = {
+          echo = true,
+          avert = "gimme-an-echo",
+          avert_value = "gimme-an-echo-value",
           status_code = 404
         },
       }
@@ -355,6 +399,17 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.response(res).has.status(200)
       end)
+      it("doesn't echo a request if the trigger header is set but trigger_value not matched", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api11.request-termination.com",
+            ["Gimme-An-Echo"] = "anything will do"
+          }
+        })
+        assert.response(res).has.status(200)
+      end)
       it("echos a request if the trigger is specified as a header", function()
         local res = assert(proxy_client:send {
           method = "GET",
@@ -379,6 +434,40 @@ for _, strategy in helpers.each_strategy() do
             host = 'api10.request-termination.com',
           },
           host = 'api10.request-termination.com',
+          method = 'GET',
+          path = '/status/200',
+          port = helpers.get_proxy_port(),
+          query = {
+            hello = 'there',
+          },
+          raw_body = 'cool body',
+          scheme = 'http',
+        }, json.request)
+      end)
+      it("echos a request if trigger is specified and trigger_value matches tigger value", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+          },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api11.request-termination.com",
+            ["Gimme-An-Echo"] = "gimme-an-echo-value"
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(404)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("api11.request-termination.com", json.matched_route.hosts[1])
+        json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
+        assert.same({
+          headers = {
+            ["content-length"] = '9',
+            ["gimme-an-echo"] = 'gimme-an-echo-value',
+            host = 'api11.request-termination.com',
+          },
+          host = 'api11.request-termination.com',
           method = 'GET',
           path = '/status/200',
           port = helpers.get_proxy_port(),
@@ -422,6 +511,251 @@ for _, strategy in helpers.each_strategy() do
           raw_body = 'cool body',
           scheme = 'http',
         }, json.request)
+      end)
+      it("does not echo a request if the trigger is specified as a query parameter but trigger_value not matched", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+            ["gimme-an-echo"] = "anything will do"
+            },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api11.request-termination.com",
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(200)
+      end)
+      it("echos a request if the trigger is specified as a query parameter and trigger_value matched", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+            ["gimme-an-echo"] = "gimme-an-echo-value"
+            },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api11.request-termination.com",
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(404)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("api11.request-termination.com", json.matched_route.hosts[1])
+        json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
+        assert.same({
+          headers = {
+            ["content-length"] = '9',
+            host = 'api11.request-termination.com',
+          },
+          host = 'api11.request-termination.com',
+          method = 'GET',
+          path = '/status/200',
+          port = helpers.get_proxy_port(),
+          query = {
+            hello = 'there',
+            ["gimme-an-echo"] = 'gimme-an-echo-value',
+          },
+          raw_body = 'cool body',
+          scheme = 'http',
+        }, json.request)
+      end)
+    end)
+
+    describe("echo & avert", function()
+      it("echos a request if no avert is set", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+          },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api9.request-termination.com"
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(404)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("api9.request-termination.com", json.matched_route.hosts[1])
+        json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
+        assert.same({
+          headers = {
+            ["content-length"] = '9',
+            host = 'api9.request-termination.com',
+          },
+          host = 'api9.request-termination.com',
+          method = 'GET',
+          path = '/status/200',
+          port = helpers.get_proxy_port(),
+          query = {
+            hello = 'there',
+          },
+          raw_body = 'cool body',
+          scheme = 'http',
+        }, json.request)
+      end)
+      it("echos a request if the avert is set but not specified", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+          },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api12.request-termination.com",
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(404)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("api12.request-termination.com", json.matched_route.hosts[1])
+        json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
+        assert.same({
+          headers = {
+            ["content-length"] = '9',
+            ["gimme-an-echo"] = 'anything will do',
+            host = 'api12.request-termination.com',
+          },
+          host = 'api12.request-termination.com',
+          method = 'GET',
+          path = '/status/200',
+          port = helpers.get_proxy_port(),
+          query = {
+            hello = 'there',
+          },
+          raw_body = 'cool body',
+          scheme = 'http',
+        }, json.request)
+      end)
+      it("echos a request if the avert header is set but avert_value not matched", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+          },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api13.request-termination.com",
+            ["Gimme-An-Echo"] = "anything will do"
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(404)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("api13.request-termination.com", json.matched_route.hosts[1])
+        json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
+        assert.same({
+          headers = {
+            ["content-length"] = '9',
+            ["gimme-an-echo"] = 'anything will do',
+            host = 'api13.request-termination.com',
+          },
+          host = 'api13.request-termination.com',
+          method = 'GET',
+          path = '/status/200',
+          port = helpers.get_proxy_port(),
+          query = {
+            hello = 'there',
+          },
+          raw_body = 'cool body',
+          scheme = 'http',
+        }, json.request)
+      end)
+      it("does not echo a request if the avert is specified as a header", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+          },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api12.request-termination.com",
+            ["Gimme-An-Echo"] = "anything will do"
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(200)
+      end)
+      it("does not echo a request if avert is specified and avert_value matches avert value", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+          },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api13.request-termination.com",
+            ["Gimme-An-Echo"] = "gimme-an-echo-value"
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(200)
+      end)
+      it("does not echo a request if the avert is specified as a query parameter", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+            ["gimme-an-echo"] = "anything will do"
+            },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api12.request-termination.com",
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(200)
+      end)
+      it("echos a request if the avert is specified as a query parameter but avert_value not matched", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+            ["gimme-an-echo"] = "anything will do"
+            },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api13.request-termination.com",
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(404)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("api13.request-termination.com", json.matched_route.hosts[1])
+        json.request.headers["user-agent"] = nil -- clear, depends on lua-resty-http version
+        assert.same({
+          headers = {
+            ["content-length"] = '9',
+            ["gimme-an-echo"] = 'anything will do',
+            host = 'api13.request-termination.com',
+          },
+          host = 'api13.request-termination.com',
+          method = 'GET',
+          path = '/status/200',
+          port = helpers.get_proxy_port(),
+          query = {
+            hello = 'there',
+          },
+          raw_body = 'cool body',
+          scheme = 'http',
+        }, json.request)
+      end)
+      it("does not echo a request if the avert is specified as a query parameter and avert_value matched", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          query = {
+            hello = "there",
+            ["gimme-an-echo"] = "gimme-an-echo-value"
+            },
+          path = "/status/200",
+          headers = {
+            ["Host"] = "api13.request-termination.com",
+          },
+          body = "cool body",
+        })
+        assert.response(res).has.status(200)
       end)
     end)
   end)
