@@ -46,6 +46,7 @@ describe("Configuration loader", function()
       assert.is_nil(conf.nginx_main_user)
     end
     assert.equal("auto", conf.nginx_main_worker_processes)
+    assert.equal("eventual", conf.worker_consistency)
     assert.same({"127.0.0.1:8001 reuseport backlog=16384", "127.0.0.1:8444 http2 ssl reuseport backlog=16384"}, conf.admin_listen)
     assert.same({"0.0.0.0:8000 reuseport backlog=16384", "0.0.0.0:8443 http2 ssl reuseport backlog=16384"}, conf.proxy_listen)
     assert.same({}, conf.ssl_cert) -- check placeholder value
@@ -1508,6 +1509,16 @@ describe("Configuration loader", function()
 
       assert.equal("123456", conf.pg_password)
       assert.equal("123456", conf.cassandra_password)
+    end)
+  end)
+
+  describe("deprecated properties", function()
+    it("worker_consistency -> deprecate value <strict>", function()
+      local conf, err = assert(conf_loader(nil, {
+        worker_consistency = "strict"
+      }))
+      assert.equal("strict", conf.worker_consistency)
+      assert.equal(nil, err)
     end)
   end)
 
