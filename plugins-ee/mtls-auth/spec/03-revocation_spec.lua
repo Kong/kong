@@ -8,7 +8,6 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
 local cjson   = require "cjson"
-local utils   = require "kong.tools.utils"
 
 local strategies = helpers.all_strategies ~= nil and helpers.all_strategies or helpers.each_strategy
 
@@ -102,9 +101,8 @@ for _, strategy in strategies() do
   describe("Plugin: mtls-auth (revocation) [#" .. strategy .. "]", function()
     local proxy_client, admin_client, proxy_ssl_client, mtls_client
     local bp, db
-    local anonymous_user, consumer, customized_consumer, service, route
-    local plugin
-    local ca_cert, other_ca_cert
+    local consumer, service, route
+    local ca_cert
     local db_strategy = strategy ~= "off" and strategy or nil
 
     lazy_setup(function()
@@ -121,7 +119,7 @@ for _, strategy in strategies() do
         username = "valid@konghq.com"
       }
 
-      consumer_two = bp.consumers:insert {
+      bp.consumers:insert {
         username = "valid2@konghq.com"
       }
 
@@ -136,12 +134,12 @@ for _, strategy in strategies() do
         service = { id = service.id, },
       }
 
-      route_proxy = bp.routes:insert {
+      local route_proxy = bp.routes:insert {
         hosts   = { "exampleproxy.com" },
         service = { id = service.id, },
       }
 
-      route_bad_proxy = bp.routes:insert {
+      local route_bad_proxy = bp.routes:insert {
         hosts   = { "examplebadproxy.com" },
         service = { id = service.id, },
       }
@@ -150,7 +148,7 @@ for _, strategy in strategies() do
         cert = CA,
       }))
 
-      plugin = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "mtls-auth",
         route = { id = route.id },
         config = {
@@ -161,7 +159,7 @@ for _, strategy in strategies() do
         },
       })
 
-      plugin_proxy = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "mtls-auth",
         route = { id = route_proxy.id },
         config = {
@@ -174,7 +172,7 @@ for _, strategy in strategies() do
         },
       })
 
-      plugin_bad_proxy = assert(bp.plugins:insert {
+      assert(bp.plugins:insert {
         name = "mtls-auth",
         route = { id = route_bad_proxy.id },
         config = {
@@ -256,8 +254,8 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/valid_client_bad_proxy",
         })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
+        assert.request(res).has.status(401)
+        assert.request(res).has.jsonbody()
       end)
     end)
 
@@ -267,8 +265,8 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client",
         })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
+        assert.request(res).has.status(401)
+        assert.request(res).has.jsonbody()
       end)
 
       it("returns HTTP 401 on https request if revoked certificate passed with proxy", function()
@@ -276,8 +274,8 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client_proxy",
         })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
+        assert.request(res).has.status(401)
+        assert.request(res).has.jsonbody()
       end)
 
       it("returns HTTP 401 on https request if revoked certificate passed with bad proxy configuration", function()
@@ -285,8 +283,8 @@ for _, strategy in strategies() do
           method  = "GET",
           path    = "/revoked_client_bad_proxy",
         })
-        local body = assert.res_status(401, res)
-        local json = cjson.decode(body)
+        assert.request(res).has.status(401)
+        assert.request(res).has.jsonbody()
       end)
     end)
   end)
