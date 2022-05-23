@@ -204,4 +204,15 @@ return {
       "cluster_name",
     },
   },
+
+  -- Any dataplane older than 2.8.1.1
+  [2008001001] = {
+    -- Enterprise plugins
+    mtls_auth = {
+      "http_proxy_host",
+      "http_proxy_port",
+      "https_proxy_host",
+      "https_proxy_port",
+    },
+  },
 }
