@@ -10,6 +10,7 @@ local split = require("pl.stringx").split
 local utils = require("spec.helpers.perf.utils")
 
 perf.use_defaults()
+perf.enable_charts(false)
 
 local versions = {}
 

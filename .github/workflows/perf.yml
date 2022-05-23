@@ -61,7 +61,27 @@ jobs:
         popd
 
         # in Kong repository
-        sudo apt install libyaml-dev -y
+        sudo apt install libyaml-dev libpam-dev gnuplot-nox inkscape -y
+
+        dep_version() {
+            grep $1 .requirements | sed -e 's/.*=//' | tr -d '\n'
+        }
+        PASSWDQC=$(dep_version KONG_DEP_PASSWDQC_VERSION)
+
+        mkdir -p /tmp/build
+        pushd /tmp/build
+          wget https://www.openwall.com/passwdqc/passwdqc-${PASSWDQC}.tar.gz \
+            -O libpasswdqc.tar.gz
+
+          mkdir -p libpasswdqc
+          tar -zxf "libpasswdqc.tar.gz" -C libpasswdqc --strip-components=1
+          pushd libpasswdqc
+            make -j $(nproc)
+            sudo make install
+          popd
+        popd
+
+        # we are back in Kong repository
         sudo make dev
 
         # terraform!
@@ -96,7 +116,7 @@ jobs:
         echo ::set-output name=suites::"$suites"
         echo ::set-output name=tags::"$tags"
 
-    - name: Find comparasion versions
+    - name: Find compared versions
       id: compare_versions
       run: |
         vers=$(echo "${{ github.event.pull_request.base.ref }}")
@@ -160,19 +180,27 @@ jobs:
       run: |
         bin/busted -o gtest spec/04-perf/99-teardown/
 
+    - name: Generate high DPI graphs
+      run: |
+        for i in $(ls output/*.svg); do
+          inkscape --export-area-drawing --export-png="${i%.*}.png" --export-dpi=300 -b FFFFFF $i
+        done
+
     - name: Save results
       uses: actions/upload-artifact@v3
       with:
         name: rps-and-latency
         path: |
           output/result.txt
+          output/*.plot
         retention-days: 31
 
-    - name: Save flamegrpahs
+    - name: Save charts and flamegraphs
       uses: actions/upload-artifact@v3
       with:
-        name: flamegraphs
+        name: charts-and-flamegraphs
         path: |
+          output/*.png
           output/*.svg
         retention-days: 31
 
@@ -201,6 +229,14 @@ jobs:
         result="${result//$'\r'/'%0D'}"
 
         echo ::set-output name=result::"$result"
+
+    - name: Upload charts
+      id: charts
+      uses: devicons/public-upload-to-imgur@v2.2.1
+      continue-on-error: true
+      with:
+        path: output/*.png
+        client_id: ${{ secrets.PERF_TEST_IMGUR_CLIENT_ID }}
     
     - name: Comment
       if: |
@@ -214,6 +250,8 @@ jobs:
 
           **Test Suite**: ${{ steps.choose_perf.outputs.suites }} (${{ steps.choose_perf.outputs.tags }})
 
+          ${{ steps.charts.outputs.markdown_urls }}
+
           <details><summary>Click to expand</summary>
 
           ```
@@ -224,4 +262,4 @@ jobs:
 
           </details>
 
-          [Download Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
+          [Download Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) for detailed results and interactive SVG flamegraphs.

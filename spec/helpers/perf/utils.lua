@@ -155,9 +155,10 @@ local function register_busted_hook()
   busted.subscribe({'test', 'start'}, handler.testStart)
 end
 
-local function get_test_descriptor(sanitized)
-  if current_test_element then
-    local msg = handler.getFullName(current_test_element)
+local function get_test_descriptor(sanitized, element_override)
+  local elem = current_test_element or element_override
+  if elem then
+    local msg = handler.getFullName(elem)
     local common_prefix = "perf test for Kong "
     if msg:startswith(common_prefix) then
       msg = msg:sub(#common_prefix+1)
