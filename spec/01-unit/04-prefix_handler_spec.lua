@@ -254,22 +254,9 @@ describe("NGINX conf compiler", function()
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("lua_ssl_trusted_certificate%s+.*ca_combined", kong_nginx_conf)
     end)
-    it("defines the client_max_body_size by default", function()
-      local conf = assert(conf_loader(nil, {}))
-      local nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("client_max_body_size%s+0", nginx_conf)
-      assert.matches("client_max_body_size%s+10m", nginx_conf)
-    end)
     it("writes the client_max_body_size as defined", function()
       local conf = assert(conf_loader(nil, {
         nginx_http_client_max_body_size = "1m",
-      }))
-      local nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("client_max_body_size%s+1m", nginx_conf)
-    end)
-    it("writes the client_max_body_size as defined", function()
-      local conf = assert(conf_loader(nil, {
-        client_max_body_size = "1m",
       }))
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("client_max_body_size%s+1m", nginx_conf)
@@ -281,22 +268,9 @@ describe("NGINX conf compiler", function()
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("client_max_body_size%s+50m", nginx_conf)
     end)
-    it("defines the client_body_buffer_size directive by default", function()
-      local conf = assert(conf_loader(nil, {}))
-      local nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("client_body_buffer_size%s+8k", nginx_conf)
-      assert.matches("client_body_buffer_size%s+10m", nginx_conf)
-    end)
     it("writes the client_body_buffer_size directive as defined", function()
       local conf = assert(conf_loader(nil, {
         nginx_http_client_body_buffer_size = "128k",
-      }))
-      local nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("client_body_buffer_size%s+128k", nginx_conf)
-    end)
-    it("writes the client_body_buffer_size directive as defined", function()
-      local conf = assert(conf_loader(nil, {
-        client_body_buffer_size = "128k",
       }))
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("client_body_buffer_size%s+128k", nginx_conf)
@@ -1030,161 +1004,6 @@ describe("NGINX conf compiler", function()
             assert.matches("listen 0.0.0.0:9000;", contents, nil, true)
             assert.not_matches("keepalive", contents, nil, true)
           end)
-
-          it("'upstream_keepalive = 0' disables keepalive", function()
-            local conf = assert(conf_loader(helpers.test_conf_path, {
-              prefix = tmp_config.prefix,
-              upstream_keepalive = 0,
-            }))
-
-            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
-            assert.truthy(exists(conf.nginx_conf))
-
-            local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.matches("# This is the Kong 1.2 default template", contents,
-                           nil, true)
-            assert.not_matches("keepalive %d+;", contents)
-
-            local conf = assert(conf_loader(helpers.test_conf_path, {
-              prefix = tmp_config.prefix,
-              nginx_http_upstream_keepalive = "120", -- not used by template
-              upstream_keepalive = 0,
-            }))
-
-            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
-            assert.truthy(exists(conf.nginx_conf))
-
-            local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.matches("# This is the Kong 1.2 default template", contents,
-                           nil, true)
-            assert.not_matches("keepalive %d+;", contents)
-          end)
-
-          it("'upstream_keepalive' also sets keepalive if specified", function()
-            local conf = assert(conf_loader(helpers.test_conf_path, {
-              prefix = tmp_config.prefix,
-              nginx_http_upstream_keepalive = "NONE", -- not used by template
-              upstream_keepalive = 60,
-              upstream_keepalive_pool_size = 0,
-            }))
-
-            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
-            assert.truthy(exists(conf.nginx_conf))
-
-            local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.matches("# This is the Kong 1.2 default template", contents,
-                           nil, true)
-            assert.matches("keepalive 60;", contents, nil, true)
-
-            local conf = assert(conf_loader(helpers.test_conf_path, {
-              prefix = tmp_config.prefix,
-              nginx_http_upstream_keepalive = "120", -- not used by template
-              upstream_keepalive = 60,
-            }))
-
-            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
-            assert.truthy(exists(conf.nginx_conf))
-
-            local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.matches("# This is the Kong 1.2 default template", contents,
-                           nil, true)
-            assert.matches("keepalive 60;", contents, nil, true)
-          end)
-        end)
-
-        describe("latest Nginx template", function()
-          local templ_fixture = "spec/fixtures/custom_nginx.template"
-
-          it("'upstream_keepalive = 0' has highest precedence", function()
-            local conf = assert(conf_loader(helpers.test_conf_path, {
-              prefix = tmp_config.prefix,
-              upstream_keepalive = 0,
-            }))
-
-            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
-            assert.truthy(exists(conf.nginx_conf))
-
-            local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.not_matches("keepalive%s+0;", contents)
-
-            local conf = assert(conf_loader(helpers.test_conf_path, {
-              prefix = tmp_config.prefix,
-              nginx_http_upstream_keepalive = "120",
-              upstream_keepalive = 0,
-            }))
-
-            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
-            assert.truthy(exists(conf.nginx_conf))
-
-            local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.not_matches("keepalive%s+0;", contents)
-
-            local conf = assert(conf_loader(helpers.test_conf_path, {
-              prefix = tmp_config.prefix,
-              nginx_http_upstream_keepalive = "120",
-              nginx_upstream_keepalive = "140",
-              upstream_keepalive = 0,
-            }))
-
-            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
-            assert.truthy(exists(conf.nginx_conf))
-
-            local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.not_matches("keepalive%s+0;", contents)
-          end)
-
-          it("'nginx_upstream_keepalive' has second highest precedence", function()
-            local conf = assert(conf_loader(helpers.test_conf_path, {
-              prefix = tmp_config.prefix,
-              nginx_upstream_keepalive = "120",
-              nginx_http_upstream_keepalive = "150",
-              upstream_keepalive = 60,
-            }))
-
-            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
-            assert.truthy(exists(conf.nginx_conf))
-
-            local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.matches("keepalive%s+120;", contents)
-
-            local conf = assert(conf_loader(helpers.test_conf_path, {
-              prefix = tmp_config.prefix,
-              nginx_upstream_keepalive = "60",
-              nginx_http_upstream_keepalive = "150",
-              upstream_keepalive = 120,
-            }))
-
-            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
-            assert.truthy(exists(conf.nginx_conf))
-
-            local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.matches("keepalive%s+60;", contents)
-          end)
-
-          it("'upstream_keepalive' has lowest precedence", function()
-            local conf = assert(conf_loader(helpers.test_conf_path, {
-              prefix = tmp_config.prefix,
-              upstream_keepalive = 120,
-            }))
-
-            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
-            assert.truthy(exists(conf.nginx_conf))
-
-            local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.matches("keepalive%s+120;", contents)
-
-            local conf = assert(conf_loader(helpers.test_conf_path, {
-              prefix = tmp_config.prefix,
-              upstream_keepalive = 120,
-            }))
-
-            assert(prefix_handler.prepare_prefix(conf, templ_fixture))
-            assert.truthy(exists(conf.nginx_conf))
-
-            local contents = helpers.file.read(tmp_config.nginx_conf)
-            assert.matches("keepalive%s+120;", contents)
-          end)
-
         end)
       end)
     end)
