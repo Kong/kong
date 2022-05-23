@@ -433,6 +433,10 @@ the [docs](https://docs.konghq.com/gateway/2.7.x/reference/external-plugins/).
 
 ### Additions
 
+#### Configuration
+
+-  Deprecated the `worker_consistency` directive, and changed its default to `eventual`. Future versions of Kong will remove the option and act with `eventual` consistency only.
+
 #### Performance
 
 In this release we continued our work on better performance:
