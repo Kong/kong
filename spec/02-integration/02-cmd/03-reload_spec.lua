@@ -14,6 +14,7 @@ local function get_kong_workers()
       path = "/",
     }
     if not res or res.status ~= 200 then
+      os.execute("cat servroot/logs/error.log")
       return false
     end
     local body = assert.res_status(200, res)
