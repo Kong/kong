@@ -22,14 +22,15 @@ services:
     image: confluentinc/cp-kafka:${PONGO_KAFKA_VERSION:-6.2.0}
     networks:
       - ${NETWORK_NAME}
-    command: > 
+    command: >
      /bin/bash -c "
         while ! nc -z broker 9092;
         do
           echo sleeping;
           sleep 1;
         done;
-        kafka-configs --bootstrap-server broker:9092 --alter --add-config 'SCRAM-SHA-256 =[iterations=4096,password=client-password]' --entity-type users --entity-name client;"
+        kafka-configs --bootstrap-server broker:9092 --alter --add-config 'SCRAM-SHA-256 =[iterations=4096,password=client-password]' --entity-type users --entity-name client;
+        kafka-configs --bootstrap-server broker:9092 --alter --add-config 'SCRAM-SHA-512 =[iterations=4096,password=client-password]' --entity-type users --entity-name client-sha512;"
     healthcheck:
       test: nc -z broker 9092
 
@@ -72,8 +73,8 @@ services:
 
       # Enable SASL SSL configuration
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
-      KAFKA_SASL_ENABLED_MECHANISMS: SASL_PLAIN,PLAIN,SCRAM-SHA-256
-      KAFKA_SASL_MECHANISMS: PLAIN,SCRAM-SHA-256
+      KAFKA_SASL_ENABLED_MECHANISMS: SASL_PLAIN,PLAIN,SCRAM-SHA-256,SCRAM-SHA-512
+      KAFKA_SASL_MECHANISMS: PLAIN,SCRAM-SHA-256,SCRAM-SHA-512
 
       KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SASL_SSL
 
@@ -113,7 +114,7 @@ services:
       test: ["CMD", "curl" ,"http://0.0.0.0:8082/topics"]
       interval: 10s
       timeout: 10s
-      retries: 50 
+      retries: 50
     environment:
       KAFKA_REST_HOST_NAME: rest-proxy
       KAFKA_REST_BOOTSTRAP_SERVERS: 'broker:9092'
