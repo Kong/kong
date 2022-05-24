@@ -12,7 +12,6 @@ local table_remove = table.remove
 local exiting = ngx.worker.exiting
 
 local DEFAULT_EXPIRATION_DELAY = 90
-local CHANNEL_CLIENT_PREFIX = "wrpc_client_"
 
 pb.option("no_default_values")
 
