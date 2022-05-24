@@ -1,5 +1,10 @@
 name: Build & Test
-on: [push]
+on:
+  push:
+    branches-ignore:
+      # must match "head-branch" input in copyright-generator repo
+      # https://github.com/Kong/copyright-generator
+      - actions/copyright
 
 jobs:
   build:
