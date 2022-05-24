@@ -169,7 +169,6 @@ function wrpc_service:add(service_name)
         if type_annotations then
           local tag_key, tag_value = annotation:match("^%s*(%S-)=(%S+)%s*$")
           if tag_key and tag_value then
-            tag_value = tag_value
             local tags = type_annotations[identifier] or {}
             type_annotations[identifier] = tags
             tags[tag_key] = tag_value
@@ -255,23 +254,28 @@ local wrpc_peer = {
 }
 wrpc_peer.__index = wrpc_peer
 
-local function is_wsclient(conn)
-  return conn and not conn.close or nil
-end
+local channels = {}
 
 --- a `peer` object holds a (websocket) connection and a service.
 function wrpc.new_peer(conn, service, opts)
-  opts = opts or {}
-  return setmetatable(merge({
+  local ret = setmetatable({
     conn = conn,
     service = service,
     seq = 1,
-    request_queue = is_wsclient(conn) and Queue.new(),
+    request_queue = Queue.new(),
     response_queue = {},
     closing = false,
-    channel_dict = opts.channel and ngx.shared["wrpc_channel_" .. opts.channel],
     _receiving_thread = nil,
-  }, opts), wrpc_peer)
+  }, wrpc_peer)
+
+  if opts then
+    merge(ret, opts)
+    if opts.channel then
+      channels[opts.channel] = ret
+    end
+  end
+
+  return ret
 end
 
 
@@ -571,23 +575,6 @@ function wrpc_peer:spawn_threads()
         local data, err = self.request_queue:pop()
         if data then
           self.conn:send_binary(data)
-
-        else
-          if err ~= "timeout" then
-            return nil, err
-          end
-        end
-      end
-    end))
-  end
-
-  if self.channel_dict then
-    self._channel_thread = assert(ngx.thread.spawn(function()
-      while not exiting() and not self.closing do
-        local msg, name, err = channel.wait_all(self.channel_dict)
-        if msg and name then
-          self:send_remote_payload(msg, name)
-
         else
           if err ~= "timeout" then
             return nil, err
@@ -645,41 +632,22 @@ function wrpc_peer:get_response(req_id)
 end
 
 
-local function send_payload_to_channel(self, payload)
-  assert(self.channel:post(self.encode("wrpc.PayloadV1", payload)))
-end
-
-local function remote_call(self, name, ...)
-  self:call(name, ...)
-
-  local msg = assert(self.channel:get())
-  local payload_back = assert(self.decode("wrpc.PayloadV1", msg))
-
-  if payload_back.mtype == "MESSAGE_TYPE_ERROR" then
-    return nil, payload_back.error.description
+local wrpc_remote_peer = {}
+wrpc_remote_peer.__index = function(self, name)
+  local c = channels[self.channel_name]
+  if not c then
+    ngx.log(ngx.ERR, "channel \"", self.channel_name, "\" does not exist when trying to call ", name, " from client")
   end
-
-  if payload_back.mtype == "MESSAGE_TYPE_RPC" then
-    local rpc = self.service:get_method(payload_back.svc_id, payload_back.rpc_id)
-    return decodearray(self.decode, rpc.output_type, payload_back.payloads)
+  if c[name] then
+    return c[name]
   end
-
-  return nil, "unknown message type"
 end
 
-local function remote_close(self)
-  self.closing = true
+function wrpc.new_remote_client(channel_name)
+  local ret = setmetatable({
+    channel_name = channel_name
+  }, wrpc_remote_peer)
+  return ret
 end
-
-function wrpc.new_remote_client(service, channel_name)
-  local self = wrpc.new_peer(nil, service, {
-    channel = channel.new("wrpc_channel_" .. channel_name, CHANNEL_CLIENT_PREFIX .. ngx.worker.pid()),
-    send_payload = send_payload_to_channel,
-    close = remote_close,
-    remote_call = remote_call,
-  })
-  return self
-end
-
 
 return wrpc
