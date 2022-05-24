@@ -106,7 +106,7 @@ function _M.validate_admin(ignore_case, user_name, custom_id)
   end
 
   -- if user_name and custom_id not specified,
-  -- 'admin_gui_auth_header' is required.
+  -- 'admin_gui_auth_header' is required. 
   if not user_name and not custom_id then
     return kong.response.exit(401,
       { message = "Invalid credentials. Token or User credentials required" })
@@ -116,7 +116,7 @@ function _M.validate_admin(ignore_case, user_name, custom_id)
   -- find an admin by custom_id if specified
   if custom_id then
     admin, err = kong.db.admins:select_by_custom_id(custom_id, {skip_rbac = true})
-
+      
     if err then
       log(ERR, _log_prefix, err)
       return nil, err
@@ -516,94 +516,77 @@ function _M.splatify_entity_route(entity, routes)
 end
 
 
-local handle_preflight
-do
-  -- cache cors plugin conf
-  local cors_plugin_run_conf
-
-  handle_preflight = function()
-    local invoke_plugin = singletons.invoke_plugin
-
-    if not cors_plugin_run_conf then
-      local origin = kong.configuration.admin_gui_url or "*"
-
-      local cors_conf = {
-        origins = { origin },
-        methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
-        credentials = true,
-        -- ref: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Max-Age#directives
-        max_age = 86400,
-      }
-
-      cors_plugin_run_conf = {
-        name = "cors",
-        config = cors_conf,
-        phases = { "access" },
-        api_type = _M.apis.ADMIN,
-        db = kong.db,
-      }
-    end
-
-    return invoke_plugin(cors_plugin_run_conf)
-  end
-end
-
 function _M.before_filter(self)
   local req_id = utils.random_string()
+  local invoke_plugin = singletons.invoke_plugin
 
   ngx.ctx.admin_api = {
     req_id = req_id,
   }
   ngx.header["X-Kong-Admin-Request-ID"] = req_id
 
-  -- handle preflight
-  if kong.request.get_method() == "OPTIONS" then
-    local ok, err = handle_preflight()
+  do
+    -- in case of endpoint with missing `/`, this block is executed twice.
+    -- So previous workspace should be dropped
+    ngx.ctx.admin_api_request = true
+    ngx.ctx.rbac = nil
+    workspaces.set_workspace(nil)
+
+    -- workspace name: if no workspace name was provided as the first segment
+    -- in the path (:8001/:workspace/), consider it is the default workspace
+    local ws_name = workspaces.DEFAULT_WORKSPACE
+    if self.params.workspace_name then
+      ws_name = unescape_uri(self.params.workspace_name)
+    end
+
+    -- fetch the workspace for current request
+    local workspace, err = workspaces.select_workspace_by_name_with_cache(ws_name)
+    if err then
+      ngx.log(ngx.ERR, err)
+      return kong.response.exit(500, { message = "An unexpected error occurred" })
+    end
+    if not workspace then
+      kong.response.exit(404, {message = fmt("Workspace '%s' not found", ws_name)})
+    end
+
+    -- set fetched workspace reference into the context
+    workspaces.set_workspace(workspace)
+    self.params.workspace_name = nil
+
+    local origin = singletons.configuration.admin_gui_url or "*"
+
+    local cors_conf = {
+      origins = { origin },
+      methods = { "GET", "PUT", "PATCH", "DELETE", "POST" },
+      credentials = true,
+    }
+
+    local ok, err = invoke_plugin({
+      name = "cors",
+      config = cors_conf,
+      phases = { "access", "header_filter" },
+      api_type = _M.apis.ADMIN,
+      db = singletons.db,
+    })
+
     if not ok then
       return app_helpers.yield_error(err)
     end
+
+    local rbac_auth_header = singletons.configuration.rbac_auth_header
+    local rbac_token = ngx.req.get_headers()[rbac_auth_header]
+
+    if not rbac_token then
+      _M.authenticate(self,
+                      singletons.configuration.enforce_rbac ~= "off",
+                      singletons.configuration.admin_gui_auth)
+    end
+    -- ngx.var.uri is used to look for exact matches
+    -- self.route_name is used to look for wildcard matches,
+    -- by replacing named parameters with *
+    rbac.validate_user(self.rbac_user)
+    rbac.validate_endpoint(self.route_name, ngx.var.uri, self.rbac_user)
   end
-
-  -- in case of endpoint with missing `/`, this block is executed twice.
-  -- So previous workspace should be dropped
-  ngx.ctx.admin_api_request = true
-  ngx.ctx.rbac = nil
-  workspaces.set_workspace(nil)
-
-  -- workspace name: if no workspace name was provided as the first segment
-  -- in the path (:8001/:workspace/), consider it is the default workspace
-  local ws_name = workspaces.DEFAULT_WORKSPACE
-  if self.params.workspace_name then
-    ws_name = unescape_uri(self.params.workspace_name)
-  end
-
-  -- fetch the workspace for current request
-  local workspace, err = workspaces.select_workspace_by_name_with_cache(ws_name)
-  if err then
-    ngx.log(ngx.ERR, err)
-    return kong.response.exit(500, { message = "An unexpected error occurred" })
-  end
-  if not workspace then
-    kong.response.exit(404, {message = fmt("Workspace '%s' not found", ws_name)})
-  end
-
-  -- set fetched workspace reference into the context
-  workspaces.set_workspace(workspace)
-  self.params.workspace_name = nil
-
-  local rbac_auth_header = kong.configuration.rbac_auth_header
-  local rbac_token = kong.request.get_header(rbac_auth_header)
-
-  if not rbac_token then
-    _M.authenticate(self,
-                    kong.configuration.enforce_rbac ~= "off",
-                    kong.configuration.admin_gui_auth)
-  end
-  -- ngx.var.uri is used to look for exact matches
-  -- self.route_name is used to look for wildcard matches,
-  -- by replacing named parameters with *
-  rbac.validate_user(self.rbac_user)
-  rbac.validate_endpoint(self.route_name, ngx.var.uri, self.rbac_user)
 end
 
 
