@@ -255,18 +255,18 @@ function NewRLHandler:init_worker()
     local operation = data.operation
     local config = data.entity.config
 
-    local json, err = cjson_safe.encode({ operation, config })
-    if not json then
-      kong.log.err("could not encode worker_events register cb data: ", err)
-    end
-
-    -- => to cluster_events handler
-    local ok, err = cluster_events:broadcast("rl", json)
-    if not ok then
-      kong.log.err("failed broadcasting rl ", operation, " to cluster: ", err)
-    end
-
     if data.entity.name == "rate-limiting-advanced" then
+      local json, err = cjson_safe.encode({ operation, config })
+      if not json then
+        kong.log.err("could not encode worker_events register cb data: ", err)
+      end
+
+      -- => to cluster_events handler
+      local ok, err = cluster_events:broadcast("rl", json)
+      if not ok then
+        kong.log.err("failed broadcasting rl ", operation, " to cluster: ", err)
+      end
+
       worker_events.post("rl", operation, config)
     end
   end, "crud", "plugins")
