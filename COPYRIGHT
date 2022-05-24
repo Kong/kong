@@ -11698,7 +11698,7 @@ https://raw.githubusercontent.com/lydell/js-tokens/main/LICENSE
 
 The MIT License (MIT)
 
-Copyright (c) 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 Simon Lydell
+Copyright (c) 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Simon Lydell
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -12437,6 +12437,16 @@ THE SOFTWARE.
 %%%%%%%%%
 
 
+kong-developer-portal
+https://github.com/Kong/kong-portal
+https://raw.githubusercontent.com/Kong/kong-portal/main/LICENSE?token=AXMBV7OB73ZFUWW3XHWVHT3CRVSV4
+
+Use of this software is subject to the terms of your license agreement with Kong Inc.
+
+
+%%%%%%%%%
+
+
 kongponents/kbadge
 https://github.com/Kong/kongponents
 https://raw.githubusercontent.com/Kong/kongponents/main/LICENSE
@@ -12934,7 +12944,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 %%%%%%%%%
 
 
-lodash.clonedeep
+lodash.camelcase
 https://github.com/lodash/lodash
 https://raw.githubusercontent.com/lodash/lodash/master/LICENSE
 
@@ -26277,7 +26287,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 vue
 https://github.com/vuejs/vue
-https://raw.githubusercontent.com/vuejs/vue/dev/LICENSE
+https://raw.githubusercontent.com/vuejs/vue/main/LICENSE
 
 The MIT License (MIT)
 
