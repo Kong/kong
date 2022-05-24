@@ -311,6 +311,186 @@ describe("ee portal emails", function()
         assert.spy(portal_emails.client.send).was_called(1)
       end)
     end)
+
+    describe("application_service_requested", function()
+      it("should return nothing if portal_application_request_email is disabled", function()
+        singletons.configuration.portal_application_request_email = false
+        portal_emails = emails.new()
+
+        local res, err = portal_emails:application_service_requested("Gruce", "gruce@konghq.com", "App1", "deadbeef")
+        assert.is_nil(res)
+        assert.is_nil(err)
+      end)
+
+      it("should call client:send", function()
+        singletons.configuration.portal_application_request_email = true
+        portal_emails = emails.new()
+        spy.on(portal_emails.client, "send")
+
+        local expected = {
+          smtp_mock = true,
+          error = {
+            count = 0,
+            emails = {},
+          },
+          sent = {
+            count = 1,
+            emails = {
+              ["admin@example.com"] = true,
+            }
+          }
+        }
+
+        local res, err = portal_emails:application_service_requested("Gruce", "gruce@konghq.com", "App1", "deadbeef")
+        assert.same(expected, res)
+        assert.is_nil(err)
+        assert.spy(portal_emails.client.send).was_called(1)
+      end)
+    end)
+
+    describe("application_service_status_change - pending", function()
+      it("should return nothing if portal_application_status_email is disabled", function()
+        singletons.configuration.portal_application_status_email = false
+        portal_emails = emails.new()
+
+        local res, err = portal_emails:application_service_pending("gruce@konghq.com", "Gruce", "App1")
+        assert.is_nil(res)
+        assert.is_nil(err)
+      end)
+
+      it("should call client:send", function()
+        singletons.configuration.portal_application_status_email = true
+        portal_emails = emails.new()
+        spy.on(portal_emails.client, "send")
+
+        local expected = {
+          smtp_mock = true,
+          error = {
+            count = 0,
+            emails = {},
+          },
+          sent = {
+            count = 1,
+            emails = {
+              ["gruce@konghq.com"] = true,
+            }
+          }
+        }
+
+        local res, err = portal_emails:application_service_pending("gruce@konghq.com", "Gruce", "App1")
+        assert.same(expected, res)
+        assert.is_nil(err)
+        assert.spy(portal_emails.client.send).was_called(1)
+      end)
+    end)
+
+    describe("application_service_status_change - approved", function()
+      it("should return nothing if portal_application_status_email is disabled", function()
+        singletons.configuration.portal_application_status_email = false
+        portal_emails = emails.new()
+
+        local res, err = portal_emails:application_service_approved("gruce@konghq.com", "Gruce", "App1")
+        assert.is_nil(res)
+        assert.is_nil(err)
+      end)
+
+      it("should call client:send", function()
+        singletons.configuration.portal_application_status_email = true
+        portal_emails = emails.new()
+        spy.on(portal_emails.client, "send")
+
+        local expected = {
+          smtp_mock = true,
+          error = {
+            count = 0,
+            emails = {},
+          },
+          sent = {
+            count = 1,
+            emails = {
+              ["gruce@konghq.com"] = true,
+            }
+          }
+        }
+
+        local res, err = portal_emails:application_service_approved("gruce@konghq.com", "Gruce", "App1")
+        assert.same(expected, res)
+        assert.is_nil(err)
+        assert.spy(portal_emails.client.send).was_called(1)
+      end)
+    end)
+
+    describe("application_service_status_change - rejected", function()
+      it("should return nothing if portal_application_status_email is disabled", function()
+        singletons.configuration.portal_application_status_email = false
+        portal_emails = emails.new()
+
+        local res, err = portal_emails:application_service_rejected("gruce@konghq.com", "Gruce", "App1")
+        assert.is_nil(res)
+        assert.is_nil(err)
+      end)
+
+      it("should call client:send", function()
+        singletons.configuration.portal_application_status_email = true
+        portal_emails = emails.new()
+        spy.on(portal_emails.client, "send")
+
+        local expected = {
+          smtp_mock = true,
+          error = {
+            count = 0,
+            emails = {},
+          },
+          sent = {
+            count = 1,
+            emails = {
+              ["gruce@konghq.com"] = true,
+            }
+          }
+        }
+
+        local res, err = portal_emails:application_service_rejected("gruce@konghq.com", "Gruce", "App1")
+        assert.same(expected, res)
+        assert.is_nil(err)
+        assert.spy(portal_emails.client.send).was_called(1)
+      end)
+    end)
+
+    describe("application_service_status_change - revoked", function()
+      it("should return nothing if portal_application_status_email is disabled", function()
+        singletons.configuration.portal_application_status_email = false
+        portal_emails = emails.new()
+
+        local res, err = portal_emails:application_service_revoked("gruce@konghq.com", "Gruce", "App1")
+        assert.is_nil(res)
+        assert.is_nil(err)
+      end)
+
+      it("should call client:send", function()
+        singletons.configuration.portal_application_status_email = true
+        portal_emails = emails.new()
+        spy.on(portal_emails.client, "send")
+
+        local expected = {
+          smtp_mock = true,
+          error = {
+            count = 0,
+            emails = {},
+          },
+          sent = {
+            count = 1,
+            emails = {
+              ["gruce@konghq.com"] = true,
+            }
+          }
+        }
+
+        local res, err = portal_emails:application_service_revoked("gruce@konghq.com", "Gruce", "App1")
+        assert.same(expected, res)
+        assert.is_nil(err)
+        assert.spy(portal_emails.client.send).was_called(1)
+      end)
+    end)
   end)
 
   describe("should work with email template files", function()
