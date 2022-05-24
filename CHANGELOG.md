@@ -155,6 +155,8 @@
   [#8754](https://github.com/Kong/kong/pull/8754)
 - Bumped resty.healthcheck from 1.5.0 to 1.5.1
   [#8755](https://github.com/Kong/kong/pull/8755)
+- Bumped resty.cassandra from 1.5.1 to 1.5.2
+  [#8845](https://github.com/Kong/kong/pull/8845)
 
 ### Additions
 
