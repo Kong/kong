@@ -120,8 +120,11 @@ local EE_CONF_INFERENCES = {
   portal_approved_email = {typ = "boolean"},
   portal_reset_email = {typ = "boolean"},
   portal_reset_success_email = {typ = "boolean"},
+  portal_application_request_email = {typ = "boolean"},
+  portal_application_status_email = {typ = "boolean"},
   portal_emails_from = {typ = "string"},
   portal_emails_reply_to = {typ = "string"},
+  portal_smtp_admin_emails = {typ = "array"},
 
   smtp_host = {typ = "string"},
   smtp_port = {typ = "number"},
@@ -507,9 +510,16 @@ local function validate_portal_smtp_config(conf, errors)
     errors[#errors+1] = "portal_token_exp must be a positive number"
   end
 
-  local smtp_admin_emails = conf.smtp_admin_emails
+  local smtp_admin_emails = conf.portal_smtp_admin_emails
+  local smtp_admin_emails_error_key = "portal_smtp_admin_emails"
+  if next(conf.portal_smtp_admin_emails) == nil then
+    smtp_admin_emails =  conf.smtp_admin_emails
+    smtp_admin_emails_error_key = "smtp_admin_emails"
+  end
+
   if conf.smtp_mock then
     if next(smtp_admin_emails) == nil then
+      -- we need some valid email when using smtp_mock
       conf.smtp_admin_emails = {"admin@example.com"}
     end
     return
@@ -524,10 +534,10 @@ local function validate_portal_smtp_config(conf, errors)
   validate_email(conf.portal_emails_from, "portal_emails_from", errors)
 
   if next(smtp_admin_emails) == nil then
-    errors[#errors+1] = "smtp_admin_emails is required for portal"
+    errors[#errors+1] = "smtp_admin_emails or portal_smtp_admin_emails is required for portal"
   else
     for _, email in ipairs(smtp_admin_emails) do
-      validate_email(email, "smtp_admin_emails", errors)
+      validate_email(email, smtp_admin_emails_error_key, errors)
     end
   end
 end

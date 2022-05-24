@@ -6,6 +6,7 @@
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
 local cjson       = require "cjson"
+local inspect     = require "inspect"
 local Errors      = require "kong.db.errors"
 local workspaces  = require "kong.workspaces"
 local singletons  = require "kong.singletons"
@@ -19,6 +20,8 @@ local arguments   = require "kong.api.arguments"
 local permissions = require "kong.portal.permissions"
 local file_helpers = require "kong.portal.file_helpers"
 local app_auth_strategies = require "kong.portal.app_auth_strategies"
+local portal_smtp_client  = require "kong.portal.emails"
+local dao_helpers         = require "kong.portal.dao_helpers"
 
 
 local kong = kong
@@ -221,6 +224,48 @@ local function is_login_credential(login_credentials, credential)
   end
 
   return false
+end
+
+
+local function send_application_service_requested_email(developer, application_instance, application)
+  -- if name does not exist, we use the email for email template
+  local name_or_email = dao_helpers.get_name_or_email(developer)
+  local portal_emails = portal_smtp_client.new()
+  local _, err = portal_emails:application_service_requested(name_or_email, developer.email,
+                                                       application.name, application.id)
+  if err then
+    ngx.log(ngx.ERR, "failed sending service request email: ", inspect(err))
+  end
+end
+
+
+local function send_application_service_status_change_email(developer, application_instance, application)
+  -- if name does not exist, we use the email for email template
+  local name_or_email = dao_helpers.get_name_or_email(developer)
+  local portal_emails = portal_smtp_client.new()
+  local _, err
+
+  if application_instance.status == enums.CONSUMERS.STATUS.APPROVED then
+    _, err = portal_emails:application_service_approved(developer.email,
+                        name_or_email,
+                        application.name)
+  elseif application_instance.status == enums.CONSUMERS.STATUS.PENDING then
+    _, err = portal_emails:application_service_pending(developer.email,
+                        name_or_email,
+                        application.name)
+  elseif application_instance.status == enums.CONSUMERS.STATUS.REJECTED then
+    _, err = portal_emails:application_service_rejected(developer.email,
+                        name_or_email,
+                        application.name)
+  elseif application_instance.status == enums.CONSUMERS.STATUS.REVOKED then
+    _, err = portal_emails:application_service_revoked(developer.email,
+                        name_or_email,
+                        application.name)
+  end
+
+  if err then
+    ngx.log(ngx.ERR, "failed sending status change email: ", err)
+  end
 end
 
 
@@ -532,6 +577,9 @@ function _M.create_application_instance(self, db, helpers)
     return endpoints.handle_error(err_t)
   end
 
+  send_application_service_requested_email(developer, application_instance, self.application)
+  send_application_service_status_change_email(developer, application_instance, self.application)
+
   return kong.response.exit(201, application_instance)
 end
 
@@ -586,9 +634,21 @@ function _M.update_application_instance(self, db, helpers)
   self.params.suspended = developer.status ~= enums.CONSUMERS.STATUS.APPROVED
 
   local application_instance_pk = { id = self.application_instance.id }
+  local previous_instance
+
+  -- get the previous instance if updating the status
+  if type(self.params.status) == "number" then
+    previous_instance = db.application_instances:select(application_instance_pk)
+  end
+
   local application_instance, _, err_t = db.application_instances:update(application_instance_pk, self.params)
   if not application_instance then
     return endpoints.handle_error(err_t)
+  end
+
+  -- send an email to the application's developer if the status changed
+  if previous_instance and previous_instance.status ~= self.params.status then
+    send_application_service_status_change_email(developer, application_instance, self.application)
   end
 
   return kong.response.exit(200, application_instance)

@@ -148,8 +148,107 @@ local base_conf = {
         Your account is still pending approval.  You will receive another email when your account has been approved.
       </p>
     ]],
-  }
+  },
+
+  portal_application_service_approved_email = {
+    name = "Developer Portal Application Request Approved",
+    subject = "Developer Portal application request approved (%s)",
+    html = [[
+      <p>Hello Developer,</p>
+      <p>
+        We are emailing you to let you know that your request for application access from the
+        Developer Portal account at <a href="%s">%s</a> has been approved.
+      </>
+      <p>
+        Application: %s
+      </p>
+    ]]
+  },
+
+  portal_application_service_rejected_email = {
+    name = "Developer Portal Application Request Denied",
+    subject = "Developer Portal application request denied (%s)",
+    html = [[
+      <p>Hello Developer,</p>
+      <p>
+        We are emailing you to let you know that your request for application access from the
+        Developer Portal account at <a href="%s">%s</a> has been denied.
+      </>
+      <br>
+      <p>
+        Application: %s
+      </p>
+    ]]
+  },
+
+  portal_application_service_revoked_email = {
+    name = "Developer Portal Application Request Revoked",
+    subject = "Developer Portal application request revoked (%s)",
+    html = [[
+      <p>Hello Developer,</p>
+      <p>
+        We are emailing you to let you know that your request for application access from the
+        Developer Portal account at <a href="%s">%s</a> has been revoked.
+      </>
+      <br>
+      <p>
+        Application: %s
+      </p>
+    ]]
+  },
+
+  portal_application_service_pending_email = {
+    name = "Developer Portal Application Request Pending",
+    subject = "Developer Portal application request pending (%s)",
+    html = [[
+      <p>Hello Developer,</p>
+      <p>
+        We are emailing you to let you know that your request for application access from the
+        Developer Portal account at <a href="%s">%s</a> is pending.
+      </>
+      <p>
+        Application: %s
+      </p>
+      <p>
+        You will receive another email when your access has been approved.
+      </p>
+    ]]
+  },
+
+  portal_application_service_requested_email = {
+    name = "Developer Portal Application Requested",
+    subject = "Request to access Developer Portal (%s) service from %s",
+    html = [[
+      <p>Hello Admin,</p>
+      <p>
+        %s (%s) has requested application access for %s.
+      </>
+      <p>
+        Requested workspace: %s
+        <br>
+        Requested application: %s
+      </p>
+      <p>
+        Please visit <a href="%s/applications/%s#requested">
+          %s/applications/%s#requested
+        </a> to review this request.
+      </p>
+    ]]
+  },
 }
+
+local function get_admin_emails(workspace)
+  -- Use `portal_smtp_admin_emails` if available
+  local admin_emails = workspace_config.retrieve(ws_constants.PORTAL_SMTP_ADMIN_EMAILS, workspace)
+
+  -- Fallback to `smtp_admin_emails`
+  if type(admin_emails) ~= "table" or next(admin_emails) == nil then
+    admin_emails = singletons.configuration.smtp_admin_emails
+  end
+
+  return admin_emails
+end
+
 
 function _M:get_example_email_tokens(path)
   local workspace = workspaces.get_workspace()
@@ -167,6 +266,9 @@ function _M:get_example_email_tokens(path)
   else
     token_exp = "PORTAL_TOKEN_EXP MUST BE SET"
   end
+  local workspace_name = "default"
+  local application_id = "deadbeef-ebdc-4dd8-b744-4370efc8322e"
+  local application_name = "Mighty Kong App"
 
   local tokens_by_path = {
     ["emails/invite.txt"] = {
@@ -217,6 +319,39 @@ function _M:get_example_email_tokens(path)
                                   email_token .. "&email=" .. developer_email,
       ["email.invalidate_url"]= portal_gui_url .. "/account/invalidate-verification?token=" ..
                                 email_token .. "&email=" .. developer_email,
+    },
+    ["emails/application-service-approved.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email,
+      ["email.developer_name"] = developer_name,
+      ["email.application_name"] = application_name,
+    },
+    ["emails/application-service-rejected.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email,
+      ["email.developer_name"] = developer_name,
+      ["email.application_name"] = application_name,
+    },
+    ["emails/application-service-revoked.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email,
+      ["email.developer_name"] = developer_name,
+      ["email.application_name"] = application_name,
+    },
+    ["emails/application-service-pending.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email,
+      ["email.developer_name"] = developer_name,
+      ["email.application_name"] = application_name,
+    },
+    ["emails/application-service-requested.txt"] = {
+      ["portal.url"] = portal_gui_url,
+      ["email.developer_email"] = developer_email,
+      ["email.developer_name"] = developer_name,
+      ["email.admin_gui_url"] = admin_gui_url,
+      ["email.workspace"] = workspace_name,
+      ["email.application_id"] = application_id,
+      ["email.application_name"] = application_name,
     },
   }
   return tokens_by_path[path]
@@ -384,7 +519,7 @@ function _M:access_request(developer_email, developer_name)
     html = html,
   }
 
-  local res = self.client:send(singletons.configuration.smtp_admin_emails, options)
+  local res = self.client:send(get_admin_emails(workspace), options)
   return smtp_client.handle_res(res)
 end
 
@@ -651,6 +786,134 @@ function _M:account_verification_success_pending(recipient, developer_name)
 
   local res = self.client:send({recipient}, options)
   return smtp_client.handle_res(res)
+end
+
+function _M:application_service_requested(developer_name, developer_email,
+                                          application_name, application_id)
+  local workspace = workspaces.get_workspace()
+  local portal_application_request_email = workspace_config.retrieve(ws_constants.PORTAL_APPLICATION_REQUEST_EMAIL, workspace)
+
+  if not portal_application_request_email then
+    return nil
+  end
+
+  local admin_gui_url = workspace_config.build_ws_admin_gui_url(singletons.configuration, workspace)
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+  local conf = self.conf.portal_application_service_requested_email
+
+  local html
+  local subject
+  local path = "emails/application-service-requested.txt"
+
+  local file = singletons.db.files:select_by_path(path)
+  if not file then
+    html = fmt(conf.html, developer_name, developer_email, portal_gui_url,
+               workspace.name, application_name,
+               admin_gui_url, application_id,
+               admin_gui_url, application_id)
+  else
+    local matches = {}
+    matches["portal.url"] = portal_gui_url
+    matches["email.admin_gui_url"] = admin_gui_url
+    matches["email.developer_email"] = developer_email
+    matches["email.developer_name"] = developer_name
+    matches["email.application_name"] = application_name
+    matches["email.application_id"] = application_id
+    matches["email.workspace"] = workspace.name
+
+    add_meta_matches(developer_email, matches)
+
+    self.path = path
+    html, subject = email_handler(self, matches, file)
+  end
+
+  local options = {
+    from = portal_emails_from,
+    reply_to = portal_emails_reply_to,
+    subject = subject or fmt(conf.subject, portal_gui_url, developer_email),
+    html = html,
+  }
+
+  local res = self.client:send(get_admin_emails(workspace), options)
+  return smtp_client.handle_res(res)
+end
+
+function _M:application_service_status_change(template_path, fallback_template, recipient,
+                                              developer_name, application_name)
+  local workspace = workspaces.get_workspace()
+  local portal_application_status_email = workspace_config.retrieve(ws_constants.PORTAL_APPLICATION_STATUS_EMAIL, workspace)
+
+  if not portal_application_status_email then
+    return nil
+  end
+
+  local portal_gui_url = workspace_config.build_ws_portal_gui_url(singletons.configuration, workspace)
+  local portal_emails_from = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_FROM, workspace)
+  local portal_emails_reply_to = workspace_config.retrieve(ws_constants.PORTAL_EMAILS_REPLY_TO, workspace)
+  local conf = fallback_template
+
+  local html
+  local subject
+
+  local file = singletons.db.files:select_by_path(template_path)
+  if not file then
+    html = fmt(conf.html, portal_gui_url, portal_gui_url, application_name)
+  else
+    local matches = {}
+    matches["portal.url"] = portal_gui_url
+    matches["email.developer_email"] = recipient
+    matches["email.developer_name"] = developer_name
+    matches["email.application_name"] = application_name
+
+    add_meta_matches(recipient, matches)
+
+    self.path = template_path
+    html, subject = email_handler(self, matches, file)
+  end
+
+  local options = {
+    from = portal_emails_from,
+    reply_to = portal_emails_reply_to,
+    subject = subject or fmt(conf.subject, portal_gui_url),
+    html = html,
+  }
+
+  local res = self.client:send({recipient}, options)
+  return smtp_client.handle_res(res)
+end
+
+function _M:application_service_approved(recipient, developer_name, application_name)
+  return self:application_service_status_change(
+    "emails/application-service-approved.txt",
+    self.conf.portal_application_service_approved_email,
+    recipient, developer_name, application_name
+  )
+end
+
+function _M:application_service_rejected(recipient, developer_name, application_name)
+  return self:application_service_status_change(
+    "emails/application-service-rejected.txt",
+    self.conf.portal_application_service_rejected_email,
+    recipient, developer_name, application_name
+  )
+end
+
+function _M:application_service_pending(recipient, developer_name, application_name)
+  return self:application_service_status_change(
+   "emails/application-service-pending.txt",
+   self.conf.portal_application_service_pending_email,
+   recipient, developer_name, application_name
+  )
+end
+
+function _M:application_service_revoked(recipient, developer_name, application_name)
+  return self:application_service_status_change(
+   "emails/application-service-revoked.txt",
+   self.conf.portal_application_service_revoked_email,
+   recipient, developer_name, application_name
+  )
 end
 
 return _M
