@@ -304,7 +304,6 @@ function _M:init_worker()
       end
 
       local config_proto, msg = self:request_version_negotiation()
-      --local config_proto, msg = version_negotiation.get_negotiated_service("config")
 
       if not config_proto and msg then
         ngx_log(ngx_ERR, _log_prefix, "error reading negotiated \"config\" service: ", msg)
