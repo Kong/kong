@@ -1477,6 +1477,17 @@ describe("kong.clustering.control_plane", function()
     },
     } }, test_with(payload, "2.8.0").config_table.plugins)
 
+    assert.same({ {
+      name = "kafka-upstream",
+      config = {
+        authentication = {
+          mechanism = "SCRAM-SHA-256",
+      },
+    },
+    } }, test_with(payload, "2.8.1.0").config_table.plugins)
+    -- 2.8.1.1 is fine here
+    assert.same(payload.config_table.plugins, test_with(payload, "2.8.1.1").config_table.plugins)
+
     local payload = {
       config_table ={
         plugins = { {
@@ -1501,7 +1512,15 @@ describe("kong.clustering.control_plane", function()
       },
     },
     } }, test_with(payload, "2.8.0").config_table.plugins)
-    -- 2.8.1 is fine here
-    assert.same(payload.config_table.plugins, test_with(payload, "2.8.1").config_table.plugins)
+    assert.same({ {
+      name = "kafka-log",
+      config = {
+        authentication = {
+          mechanism = "SCRAM-SHA-256",
+      },
+    },
+    } }, test_with(payload, "2.8.1.0").config_table.plugins)
+    -- 2.8.1.1 is fine here
+    assert.same(payload.config_table.plugins, test_with(payload, "2.8.1.1").config_table.plugins)
   end)
 end)
