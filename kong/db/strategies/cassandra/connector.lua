@@ -249,7 +249,7 @@ function CassandraConnector:init()
     else
       local major_minor, major = extract_major_minor(release_version)
       major = tonumber(major)
-      if not major_minor or not major then
+      if not (major_minor and major) then
         return nil, "failed to extract major version for peer " .. peers[i].host
                     .. " with version: " .. tostring(peers[i].release_version)
       end
