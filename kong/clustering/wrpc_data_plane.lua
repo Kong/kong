@@ -17,8 +17,6 @@ local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local kong = kong
 local exiting = ngx.worker.exiting
-local inflate_gzip = utils.inflate_gzip
-local deflate_gzip = utils.deflate_gzip
 
 
 local KONG_VERSION = kong.version
