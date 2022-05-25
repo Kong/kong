@@ -344,7 +344,7 @@ function _M.init(config)
     tracer.set_global_tracer(tracer)
 
     -- global patch
-    if trace_types.dns_query then
+    if _M.dns_query ~= NOOP then
       patch_dns_query()
     end
   end
