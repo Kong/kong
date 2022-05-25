@@ -5,7 +5,6 @@ local declarative = require("kong.db.declarative")
 local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
 local constants = require("kong.constants")
-local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local assert = assert
 local setmetatable = setmetatable

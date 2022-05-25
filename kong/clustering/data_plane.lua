@@ -6,7 +6,6 @@ local ws_client = require("resty.websocket.client")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
-local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local assert = assert
 local setmetatable = setmetatable
@@ -22,6 +21,8 @@ local cjson_encode = cjson.encode
 local kong = kong
 local exiting = ngx.worker.exiting
 local ngx_time = ngx.time
+
+local inflate_gzip = require("kong.tools.utils").inflate_gzip
 
 
 local KONG_VERSION = kong.version
