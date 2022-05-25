@@ -97,7 +97,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
     local grpc_service = bp.services:insert {
       name = "mock-grpc-service",
-      url = "grpc://localhost:15002",
+      url = helpers.grpcbin_url,
     }
 
     bp.routes:insert {
@@ -109,7 +109,7 @@ describe("Plugin: prometheus (access via status API)", function()
 
     local grpcs_service = bp.services:insert {
       name = "mock-grpcs-service",
-      url = "grpcs://localhost:15003",
+      url = helpers.grpcbin_ssl_url,
     }
 
     bp.routes:insert {

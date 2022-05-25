@@ -263,19 +263,6 @@ local entity_checks_schema = {
 }
 
 
-local shorthands_array = {
-  type = "array",
-  elements = {
-    type = "map",
-    keys = { type = "string" },
-    values = { type = "function" },
-    required = true,
-    len_eq = 1,
-  },
-  nilable = true,
-}
-
-
 local shorthand_fields_array = {
   type = "array",
   elements = {
@@ -290,7 +277,6 @@ local shorthand_fields_array = {
 
 
 insert(field_schema, { entity_checks = entity_checks_schema })
-insert(field_schema, { shorthands = shorthands_array })
 insert(field_schema, { shorthand_fields = shorthand_fields_array })
 
 
@@ -653,9 +639,6 @@ local MetaSchema = Schema.new({
       entity_checks = entity_checks_schema,
     },
     {
-      shorthands = shorthands_array,
-    },
-    {
       shorthand_fields = shorthand_fields_array,
     },
     {
@@ -664,7 +647,7 @@ local MetaSchema = Schema.new({
     {
       check = {
         type = "function",
-        nilable = true
+        nilable = true,
       },
     },
     {
@@ -673,10 +656,6 @@ local MetaSchema = Schema.new({
         nilable = true
       },
     },
-  },
-
-  entity_checks = {
-    { only_one_of = { "shorthands", "shorthand_fields" } },
   },
 
   check = function(schema)
@@ -842,9 +821,6 @@ MetaSchema.MetaSubSchema = Schema.new({
     },
     {
       entity_checks = entity_checks_schema,
-    },
-    {
-      shorthands = shorthands_array,
     },
     {
       shorthand_fields = shorthand_fields_array,

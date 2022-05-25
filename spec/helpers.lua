@@ -20,7 +20,12 @@ local MOCK_UPSTREAM_PORT = 15555
 local MOCK_UPSTREAM_SSL_PORT = 15556
 local MOCK_UPSTREAM_STREAM_PORT = 15557
 local MOCK_UPSTREAM_STREAM_SSL_PORT = 15558
+local GRPCBIN_HOST = os.getenv("KONG_SPEC_TEST_GRPCBIN_HOST") or "localhost"
+local GRPCBIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_PORT")) or 9000
+local GRPCBIN_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_GRPCBIN_SSL_PORT")) or 9001
 local MOCK_GRPC_UPSTREAM_PROTO_PATH = "./spec/fixtures/grpc/hello.proto"
+local ZIPKIN_HOST = os.getenv("KONG_SPEC_TEST_ZIPKIN_HOST") or "localhost"
+local ZIPKIN_PORT = tonumber(os.getenv("KONG_SPEC_TEST_ZIPKIN_PORT")) or 9411
 local REDIS_HOST = os.getenv("KONG_SPEC_TEST_REDIS_HOST") or "localhost"
 local REDIS_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_PORT") or 6379)
 local REDIS_SSL_PORT = tonumber(os.getenv("KONG_SPEC_TEST_REDIS_SSL_PORT") or 6380)
@@ -2735,6 +2740,77 @@ local function restart_kong(env, tables, fixtures)
 end
 
 
+local function wait_until_no_common_workers(workers, expected_total, strategy)
+  if strategy == "cassandra" then
+    ngx.sleep(0.5)
+  end
+  wait_until(function()
+    local pok, admin_client = pcall(admin_client)
+    if not pok then
+      return false
+    end
+    local res = assert(admin_client:send {
+      method = "GET",
+      path = "/",
+    })
+    luassert.res_status(200, res)
+    local json = cjson.decode(luassert.res_status(200, res))
+    admin_client:close()
+
+    local new_workers = json.pids.workers
+    local total = 0
+    local common = 0
+    if new_workers then
+      for _, v in ipairs(new_workers) do
+        total = total + 1
+        for _, v_old in ipairs(workers) do
+          if v == v_old then
+            common = common + 1
+            break
+          end
+        end
+      end
+    end
+    return common == 0 and total == (expected_total or total)
+  end)
+end
+
+
+local function get_kong_workers()
+  local workers
+  wait_until(function()
+    local pok, admin_client = pcall(admin_client)
+    if not pok then
+      return false
+    end
+    local res = admin_client:send {
+      method = "GET",
+      path = "/",
+    }
+    if not res or res.status ~= 200 then
+      return false
+    end
+    local body = luassert.res_status(200, res)
+    local json = cjson.decode(body)
+
+    admin_client:close()
+    workers = json.pids.workers
+    return true
+  end, 10)
+  return workers
+end
+
+
+--- Reload Kong and wait all workers are restarted.
+local function reload_kong(strategy, ...)
+  local workers = get_kong_workers()
+  local ok, err = kong_exec(...)
+  if ok then
+    wait_until_no_common_workers(workers, 1, strategy)
+  end
+  return ok, err
+end
+
 --- Simulate a Hybrid mode DP and connect to the CP specified in `opts`.
 -- @function clustering_client
 -- @param opts Options to use, the `host`, `port`, `cert` and `cert_key` fields
@@ -2816,7 +2892,17 @@ end
 -- @field mock_upstream_stream_port
 -- @field mock_upstream_stream_ssl_port
 -- @field mock_grpc_upstream_proto_path
--- @field redis_host The hostname for a Redis instance if available. Port should be `6379`.
+-- @field grpcbin_host The host for grpcbin service, it can be set by env KONG_SPEC_TEST_GRPCBIN_HOST.
+-- @field grpcbin_port The port (SSL disabled) for grpcbin service, it can be set by env KONG_SPEC_TEST_GRPCBIN_PORT.
+-- @field grpcbin_ssl_port The port (SSL enabled) for grpcbin service it can be set by env KONG_SPEC_TEST_GRPCBIN_SSL_PORT.
+-- @field grpcbin_url The URL (SSL disabled) for grpcbin service
+-- @field grpcbin_ssl_url The URL (SSL enabled) for grpcbin service
+-- @field redis_host The host for Redis, it can be set by env KONG_SPEC_TEST_REDIS_HOST.
+-- @field redis_port The port (SSL disabled) for Redis, it can be set by env KONG_SPEC_TEST_REDIS_PORT.
+-- @field redis_ssl_port The port (SSL enabled) for Redis, it can be set by env KONG_SPEC_TEST_REDIS_SSL_PORT.
+-- @field redis_ssl_sni The server name for Redis, it can be set by env KONG_SPEC_TEST_REDIS_SSL_SNI.
+-- @field zipkin_host The host for Zipkin service, it can be set by env KONG_SPEC_TEST_ZIPKIN_HOST.
+-- @field zipkin_port the port for Zipkin service, it can be set by env KONG_SPEC_TEST_ZIPKIN_PORT.
 
 ----------
 -- Exposed
@@ -2858,10 +2944,19 @@ end
   mock_upstream_stream_ssl_port = MOCK_UPSTREAM_STREAM_SSL_PORT,
   mock_grpc_upstream_proto_path = MOCK_GRPC_UPSTREAM_PROTO_PATH,
 
-  redis_host      = REDIS_HOST,
-  redis_port      = REDIS_PORT,
-  redis_ssl_port  = REDIS_SSL_PORT,
-  redis_ssl_sni   = REDIS_SSL_SNI,
+  zipkin_host = ZIPKIN_HOST,
+  zipkin_port = ZIPKIN_PORT,
+
+  grpcbin_host     = GRPCBIN_HOST,
+  grpcbin_port     = GRPCBIN_PORT,
+  grpcbin_ssl_port = GRPCBIN_SSL_PORT,
+  grpcbin_url      = string.format("grpc://%s:%d", GRPCBIN_HOST, GRPCBIN_PORT),
+  grpcbin_ssl_url  = string.format("grpcs://%s:%d", GRPCBIN_HOST, GRPCBIN_SSL_PORT),
+
+  redis_host     = REDIS_HOST,
+  redis_port     = REDIS_PORT,
+  redis_ssl_port = REDIS_SSL_PORT,
+  redis_ssl_sni  = REDIS_SSL_SNI,
 
   blackhole_host = BLACKHOLE_HOST,
 
@@ -2914,6 +3009,9 @@ end
   start_kong = start_kong,
   stop_kong = stop_kong,
   restart_kong = restart_kong,
+  reload_kong = reload_kong,
+  get_kong_workers = get_kong_workers,
+  wait_until_no_common_workers = wait_until_no_common_workers,
 
   start_grpc_target = start_grpc_target,
   stop_grpc_target = stop_grpc_target,

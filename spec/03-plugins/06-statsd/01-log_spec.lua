@@ -240,7 +240,7 @@ for _, strategy in helpers.each_strategy() do
       local grpc_routes = {}
       for i = 1, 2 do
         local service = bp.services:insert {
-          url = "grpc://localhost:15002",
+          url = helpers.grpcbin_url,
           name     = fmt("grpc_statsd%s", i)
         }
         grpc_routes[i] = bp.routes:insert {

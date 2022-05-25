@@ -5,10 +5,8 @@ local to_hex = require "resty.string".to_hex
 
 local fmt = string.format
 
-local ZIPKIN_HOST = os.getenv("ZIPKIN_HOST") or "127.0.0.1"
-local ZIPKIN_PORT = 9411
-local GRPCBIN_HOST = "127.0.0.1"
-local GRPCBIN_PORT = 15002
+local ZIPKIN_HOST = helpers.zipkin_host
+local ZIPKIN_PORT = helpers.zipkin_port
 
 -- Transform zipkin annotations into a hash of timestamps. It assumes no repeated values
 -- input: { { value = x, timestamp = y }, { value = x2, timestamp = y2 } }
@@ -523,7 +521,7 @@ describe("http integration tests with zipkin server [#"
     -- grpc upstream
     grpc_service = bp.services:insert {
       name = string.lower("grpc-" .. utils.random_string()),
-      url = fmt("grpc://%s:%d", GRPCBIN_HOST, GRPCBIN_PORT),
+      url = helpers.grpcbin_url,
     }
 
     grpc_route = bp.routes:insert {
@@ -685,13 +683,13 @@ describe("http integration tests with zipkin server [#"
     -- specific assertions for proxy_span
     assert.same(proxy_span.tags["kong.route"], grpc_route.id)
     assert.same(proxy_span.tags["kong.route_name"], grpc_route.name)
-    assert.same(proxy_span.tags["peer.hostname"], GRPCBIN_HOST)
+    assert.same(proxy_span.tags["peer.hostname"], helpers.grpcbin_host)
 
     -- random ip assigned by Docker to the grpcbin container
     local grpcbin_ip = proxy_span.remoteEndpoint.ipv4
     assert.same({
       ipv4 = grpcbin_ip,
-      port = GRPCBIN_PORT,
+      port = helpers.grpcbin_port,
       serviceName = grpc_service.name,
     },
     proxy_span.remoteEndpoint)
@@ -707,7 +705,7 @@ describe("http integration tests with zipkin server [#"
 
     assert.same({
       ipv4 = grpcbin_ip,
-      port = GRPCBIN_PORT,
+      port = helpers.grpcbin_port,
       serviceName = grpc_service.name,
     },
     balancer_span.remoteEndpoint)

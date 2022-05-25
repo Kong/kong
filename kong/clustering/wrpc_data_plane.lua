@@ -5,7 +5,6 @@ local declarative = require("kong.db.declarative")
 local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
 local constants = require("kong.constants")
-local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local assert = assert
 local setmetatable = setmetatable
@@ -17,8 +16,6 @@ local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local kong = kong
 local exiting = ngx.worker.exiting
-local inflate_gzip = utils.inflate_gzip
-local deflate_gzip = utils.deflate_gzip
 
 
 local KONG_VERSION = kong.version
@@ -42,16 +39,6 @@ function _M.new(parent)
       return _M[key] or parent[key]
     end,
   })
-end
-
-
-function _M:encode_config(config)
-  return deflate_gzip(config)
-end
-
-
-function _M:decode_config(config)
-  return inflate_gzip(config)
 end
 
 
@@ -197,14 +184,15 @@ function _M:communicate(premature)
         end
         local config_table = self.next_config
         local config_hash  = self.next_hash
+        local config_version = self.next_config_version
         local hashes = self.next_hashes
-        if config_table and self.next_config_version > last_config_version then
-          ngx_log(ngx_INFO, _log_prefix, "received config #", self.next_config_version, log_suffix)
+        if config_table and config_version > last_config_version then
+          ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
 
           local pok, res
           pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, true, hashes)
           if pok then
-            last_config_version = self.next_config_version
+            last_config_version = config_version
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)
             end

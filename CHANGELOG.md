@@ -73,19 +73,61 @@
 
 ### Breaking Changes
 
+- Deprecate/stop producing Debian 8 "Jessie" containers and packages (EOLed June 2020)
+  [Kong/kong-build-tools #448](https://github.com/Kong/kong-build-tools/pull/448)
+  [Kong/kong-distributions #766](https://github.com/Kong/kong-distributions/pull/766)
+- Kong schema library's `process_auto_fields` function will not any more make a deep
+  copy of data that is passed to it when the given context is `"select"`. This was
+  done to avoid excessive deep copying of tables where we believe the data most of
+  the time comes from a driver like `pgmoon` or `lmdb`. This was done for performance
+  reasons. Deep copying on `"select"` context can still be done before calling this
+  function. [#8796](https://github.com/Kong/kong/pull/8796)
+- The deprecated alias of `Kong.serve_admin_api` was removed. If your custom Nginx
+  templates still use it, please change it to `Kong.admin_content`.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+- The deprecated `shorthands` field in Kong Plugin or DAO schemas was removed in favor
+  or the typed `shorthand_fields`. If your custom schemas still use `shorthands`, you
+  need to update them to use `shorhand_fields`.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+- The support for deprecated legacy plugin schemas was removed. If your custom plugins
+  still use the old (`0.x era`) schemas, you are now forced to upgrade them.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+- The old `kong.plugins.log-serializers.basic` library was removed in favor of the PDK
+  function `kong.log.serialize`, please upgrade your plugins to use PDK.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+- The Kong constant `CREDENTIAL_USERNAME` with value of `X-Credential-Username` was
+  removed. Kong plugins in general have moved (since [#5516](https://github.com/Kong/kong/pull/5516))
+  to use constant `CREDENTIAL_IDENTIFIER` with value of `X-Credential-Identifier` when
+  setting  the upstream headers for a credential.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+- The support for deprecated hash structured custom plugin DAOs (using `daos.lua`) was
+  removed. Please upgrade the legacy plugin DAO schemas.
+  [#8815](https://github.com/Kong/kong/pull/8815)
+
 #### Admin API
 
-- Insert and update operations on target entities require using the `PUT` HTTP
-  method now. [#8596](https://github.com/Kong/kong/pull/8596). If you have
-  scripts that depend on it being `POST`, these scripts will need to be updated
-  when updating to Kong 3.0.
+- `POST` requests on target entities endpoint are no longer able to update
+  existing entities, they are only able to create new ones.
+  [#8596](https://github.com/Kong/kong/pull/8596),
+  [#8798](https://github.com/Kong/kong/pull/8798). If you have scripts that use
+  `POST` requests to modify target entities, you should change them to `PUT`
+  requests to the appropriate endpoints before updating to Kong 3.0.
 - Insert and update operations on duplicated target entities returns 409.
   [#8179](https://github.com/Kong/kong/pull/8179)
+- The list of reported plugins available on the server now returns a table of
+  metadata per plugin instead of a boolean `true`.
+  [#8810](https://github.com/Kong/kong/pull/8810)
 
 #### PDK
 
 - The PDK is no longer versioned
   [#8585](https://github.com/Kong/kong/pull/8585)
+
+#### Plugins
+
+- The HTTP-log plugin `headers` field now only takes a single string per header name,
+  where it previously took an array of values
+  [#6992](https://github.com/Kong/kong/pull/6992)
 
 ### Deprecations
 
@@ -93,6 +135,9 @@
   [#8552](https://github.com/Kong/kong/pull/8552). If you are using
   [Go plugin server](https://github.com/Kong/go-pluginserver), please migrate your plugins to use the
   [Go PDK](https://github.com/Kong/go-pdk) before upgrading.
+- The migration helper library is no longer supplied with Kong (we didn't use it for anything,
+  and the only function it had, was for the deprecated Cassandra).
+  [#8781](https://github.com/Kong/kong/pull/8781)
 
 
 #### Plugins
@@ -113,6 +158,8 @@
 
 ### Dependencies
 
+- Bumped OpenResty from 1.19.9.1 to [1.21.4.1](https://openresty.org/en/changelog-1021004.html)
+  [#8850](https://github.com/Kong/kong/pull/8850)
 - Bumped pgmoon from 1.13.0 to 1.14.0
   [#8429](https://github.com/Kong/kong/pull/8429)
 - OpenSSL bumped to from 1.1.1n to 1.1.1o
@@ -131,8 +178,21 @@
   [#8754](https://github.com/Kong/kong/pull/8754)
 - Bumped resty.healthcheck from 1.5.0 to 1.5.1
   [#8755](https://github.com/Kong/kong/pull/8755)
+- Bumped resty.cassandra from 1.5.1 to 1.5.2
+  [#8845](https://github.com/Kong/kong/pull/8845)
 
 ### Additions
+
+#### Core
+
+- Added `cache_key` on target entity for uniqueness detection.
+  [#8179](https://github.com/Kong/kong/pull/8179)
+- Introduced the tracing API which compatible with OpenTelemetry API spec and
+  add build-in instrumentations.  
+  The tracing API is intend to be used with a external exporter plugin.  
+  Build-in instrumentation types and sampling rate are configuable through
+  `opentelemetry_tracing` and `opentelemetry_tracing_sampling_rate` options.
+ [#8724](https://github.com/Kong/kong/pull/8724)
 
 #### Plugins
 
@@ -168,6 +228,8 @@ a restart (e.g., upon a plugin server crash).
   [#8547](https://github.com/Kong/kong/pull/8547)
 - Fixed an issue on trying to reschedule the DNS resolving timer when Kong was
   being reloaded. [#8702](https://github.com/Kong/kong/pull/8702)
+- The private stream API has been rewritten to allow for larger message payloads
+  [#8641](https://github.com/Kong/kong/pull/8641)
 
 #### Plugins
 
@@ -424,6 +486,7 @@ In this release we continued our work on better performance:
   Thanks [beldahanit](https://github.com/beldahanit) for reporting the issue!
 - Old `BasePlugin` is deprecated and will be removed in a future version of Kong.
   Porting tips in the [documentation](https://docs.konghq.com/gateway-oss/2.3.x/plugin-development/custom-logic/#porting-from-old-baseplugin-style)
+- The deprecated **BasePlugin** has been removed. [#7961](https://github.com/Kong/kong/pull/7961)
 
 ### Fixes
 
@@ -909,6 +972,7 @@ grpc-gateway plugin first:
 
 #### Plugins
 
+- All custom plugins that are using the deprecated `BasePlugin` class have to remove this inheritance.
 - **LDAP-auth**: The LDAP Authentication schema now includes a default value for the `config.ldap_port` parameter
   that matches the documentation. Before the plugin documentation [Parameters](https://docs.konghq.com/hub/kong-inc/ldap-auth/#parameters)
   section included a reference to a default value for the LDAP port; however, the default value was not included in the plugin schema.

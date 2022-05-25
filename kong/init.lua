@@ -86,6 +86,7 @@ local kong_error_handlers = require "kong.error_handlers"
 local migrations_utils = require "kong.cmd.utils.migrations"
 local plugin_servers = require "kong.runloop.plugin_servers"
 local lmdb_txn = require "resty.lmdb.transaction"
+local instrumentation = require "kong.tracing.instrumentation"
 
 local kong             = kong
 local ngx              = ngx
@@ -267,11 +268,19 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
 
   for plugin, configuration in plugins_iterator:iterate("access", ctx) do
     if not ctx.delayed_response then
+      local span = instrumentation.plugin_access(plugin)
+
       setup_plugin_context(ctx, plugin)
 
       local co = coroutine.create(plugin.handler.access)
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
       if not cok then
+        -- set tracing error
+        if span then
+          span:record_error(cerr)
+          span:set_status(2)
+        end
+
         kong.log.err(cerr)
         ctx.delayed_response = {
           status_code = 500,
@@ -283,6 +292,11 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
       end
 
       reset_plugin_context(ctx, old_ws)
+
+      -- ends tracing span
+      if span then
+        span:finish()
+      end
     end
   end
 
@@ -293,9 +307,20 @@ end
 local function execute_plugins_iterator(plugins_iterator, phase, ctx)
   local old_ws = ctx.workspace
   for plugin, configuration in plugins_iterator:iterate(phase, ctx) do
+    local span
+    if phase == "rewrite" then
+      span = instrumentation.plugin_rewrite(plugin)
+    elseif phase == "header_filter" then
+      span = instrumentation.plugin_header_filter(plugin)
+    end
+
     setup_plugin_context(ctx, plugin)
     plugin.handler[phase](plugin.handler, configuration)
     reset_plugin_context(ctx, old_ws)
+
+    if span then
+      span:finish()
+    end
   end
 end
 
@@ -347,10 +372,15 @@ local function flush_delayed_response(ctx)
 end
 
 
+local function has_declarative_config(kong_config)
+  return kong_config.declarative_config or kong_config.declarative_config_string
+end
+
+
 local function parse_declarative_config(kong_config)
   local dc = declarative.new_config(kong_config)
 
-  if not kong_config.declarative_config and not kong_config.declarative_config_string then
+  if not has_declarative_config(kong_config) then
     -- return an empty configuration,
     -- including only the default workspace
     local entities, _, _, meta = dc:parse_table({ _format_version = "2.1" })
@@ -476,8 +506,10 @@ function Kong.init()
   math.randomseed()
 
   kong_global.init_pdk(kong, config)
+  instrumentation.init(config)
 
   local db = assert(DB.new(config))
+  instrumentation.db_query(db.connector)
   assert(db:init_connector())
 
   schema_state = assert(db:schema_state())
@@ -649,7 +681,17 @@ function Kong.init_worker()
       return
     end
 
-    if declarative_entities then
+    if not has_declarative_config(kong.configuration) and
+      declarative.get_current_hash() ~= nil then
+      -- if there is no declarative config set and a config is present in LMDB,
+      -- just build the router and plugins iterator
+      ngx_log(ngx_INFO, "found persisted lmdb config, loading...")
+      local ok, err = declarative_init_build()
+      if not ok then
+        stash_init_worker_error("failed to initialize declarative config: " .. err)
+        return
+      end
+    elseif declarative_entities then
       ok, err = load_declarative_config(kong.configuration,
                                         declarative_entities,
                                         declarative_meta)
@@ -661,7 +703,11 @@ function Kong.init_worker()
     else
       -- stream does not need to load declarative config again, just build
       -- the router and plugins iterator
-      declarative_init_build()
+      local ok, err = declarative_init_build()
+      if not ok then
+        stash_init_worker_error("failed to initialize declarative config: " .. err)
+        return
+      end
     end
   end
 
@@ -1444,10 +1490,6 @@ function Kong.admin_content(options)
 end
 
 
--- TODO: deprecate the following alias
-Kong.serve_admin_api = Kong.admin_content
-
-
 function Kong.admin_header_filter()
   local ctx = ngx.ctx
 
@@ -1503,6 +1545,7 @@ function Kong.serve_cluster_listener(options)
 
   return kong.clustering:handle_cp_websocket()
 end
+
 
 function Kong.serve_wrpc_listener(options)
   log_init_worker_errors()

@@ -129,7 +129,7 @@ describe("Admin API - tags", function()
       it("errors if filter by tag with invalid value", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/consumers?tags=foo bar"
+          path = "/consumers?tags=foo%20bar"
         })
         local body = assert.res_status(400, res)
         local json = cjson.decode(body)

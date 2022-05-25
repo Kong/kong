@@ -74,21 +74,19 @@ describe("Admin API #" .. strategy, function()
   end)
 
   describe("/upstreams/{upstream}/targets/", function()
-    describe("PUT", function()
+    describe("POST", function()
       it_content_types("creates a target with defaults", function(content_type)
         return function()
           local upstream = bp.upstreams:insert { slots = 10 }
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/upstreams/" .. upstream.name .. "/targets/",
+          local res = assert(client:post("/upstreams/" .. upstream.name .. "/targets/", {
             body = {
-              target = "mashape.com",
+              target = "konghq.test",
             },
             headers = {["Content-Type"] = content_type}
-          })
+          }))
           assert.response(res).has.status(201)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("mashape.com:" .. default_port, json.target)
+          assert.equal("konghq.test:" .. default_port, json.target)
           assert.is_number(json.created_at)
           assert.is_string(json.id)
           assert.are.equal(weight_default, json.weight)
@@ -97,18 +95,16 @@ describe("Admin API #" .. strategy, function()
       it_content_types("creates a target without defaults", function(content_type)
         return function()
           local upstream = bp.upstreams:insert { slots = 10 }
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/upstreams/" .. upstream.name .. "/targets/",
+          local res = assert(client:post("/upstreams/" .. upstream.name .. "/targets/", {
             body = {
-              target = "mashape.com:123",
+              target = "konghq.test:123",
               weight = 99,
             },
             headers = {["Content-Type"] = content_type}
-          })
+          }))
           assert.response(res).has.status(201)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("mashape.com:123", json.target)
+          assert.equal("konghq.test:123", json.target)
           assert.is_number(json.created_at)
           assert.is_string(json.id)
           assert.are.equal(99, json.weight)
@@ -118,15 +114,13 @@ describe("Admin API #" .. strategy, function()
       it_content_types("creates a target with weight = 0", function(content_type)
         return function()
           local upstream = bp.upstreams:insert { slots = 10 }
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/upstreams/" .. upstream.name .. "/targets/",
+          local res = assert(client:post("/upstreams/" .. upstream.name .. "/targets/", {
             body = {
               target = "zero.weight.test:8080",
               weight = 0,
             },
             headers = {["Content-Type"] = content_type}
-          })
+          }))
           assert.response(res).has.status(201)
           local json = assert.response(res).has.jsonbody()
           assert.equal("zero.weight.test:8080", json.target)
@@ -142,52 +136,13 @@ describe("Admin API #" .. strategy, function()
         end
       end)
 
-      it_content_types("updates and does not create duplicated targets (#deprecated)", function(content_type)
-        return function()
-          local upstream = bp.upstreams:insert { slots = 10 }
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/upstreams/" .. upstream.name .. "/targets/",
-            body = {
-              target = "single-target.test:8080",
-              weight = 1,
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          assert.response(res).has.status(201)
-          local json = assert.response(res).has.jsonbody()
-          assert.equal("single-target.test:8080", json.target)
-          assert.is_number(json.created_at)
-          assert.is_string(json.id)
-          local id = json.id
-          assert.are.equal(1, json.weight)
-
-          local res = assert(client:send {
-            method = "PUT",
-            path = "/upstreams/" .. upstream.name .. "/targets/",
-            body = {
-              target = "single-target.test:8080",
-              weight = 100,
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          local body = assert.response(res).has.status(200)
-          local json = cjson.decode(body)
-          assert.are.equal(100, json.weight)
-          assert.are.equal(id, json.id)
-          assert.equal("true", res.headers["Deprecation"])
-        end
-      end)
-
       describe("errors", function()
         it("handles malformed JSON body", function()
           local upstream = bp.upstreams:insert { slots = 10 }
-          local res = assert(client:request {
-            method = "PUT",
-            path = "/upstreams/" .. upstream.name .. "/targets/",
+          local res = assert(client:post("/upstreams/" .. upstream.name .. "/targets/", {
             body = '{"hello": "world"',
             headers = {["Content-Type"] = "application/json"}
-          })
+          }))
           local body = assert.response(res).has.status(400)
           local json = cjson.decode(body)
           assert.same({ message = "Cannot parse JSON body" }, json)
@@ -196,28 +151,24 @@ describe("Admin API #" .. strategy, function()
           return function()
             local upstream = bp.upstreams:insert { slots = 10 }
             -- Missing parameter
-            local res = assert(client:send {
-              method = "PUT",
-              path = "/upstreams/" .. upstream.name .. "/targets/",
+            local res = assert(client:post("/upstreams/" .. upstream.name .. "/targets/", {
               body = {
                 weight = weight_min,
               },
               headers = {["Content-Type"] = content_type}
-            })
+            }))
             local body = assert.response(res).has.status(400)
             local json = cjson.decode(body)
             assert.equal("schema violation", json.name)
             assert.same({ target = "required field missing" }, json.fields)
 
             -- Invalid target parameter
-            res = assert(client:send {
-              method = "PUT",
-              path = "/upstreams/" .. upstream.name .. "/targets/",
+            res = assert(client:post("/upstreams/" .. upstream.name .. "/targets/", {
               body = {
                 target = "some invalid host name",
               },
               headers = {["Content-Type"] = content_type}
-            })
+            }))
             body = assert.response(res).has.status(400)
             local json = cjson.decode(body)
             assert.equal("schema violation", json.name)
@@ -225,10 +176,10 @@ describe("Admin API #" .. strategy, function()
 
             -- Invalid weight parameter
             res = assert(client:send {
-              method = "PUT",
+              method = "POST",
               path = "/upstreams/" .. upstream.name .. "/targets/",
               body = {
-                target = "mashape.com",
+                target = "konghq.test",
                 weight = weight_max + 1,
               },
               headers = {["Content-Type"] = content_type}
@@ -240,7 +191,7 @@ describe("Admin API #" .. strategy, function()
           end
         end)
 
-        for _, method in ipairs({"POST", "PATCH", "DELETE"}) do
+        for _, method in ipairs({"PUT", "PATCH", "DELETE"}) do
           it_content_types("returns 405 on " .. method, function(content_type)
             return function()
               local upstream = bp.upstreams:insert { slots = 10 }
@@ -248,7 +199,7 @@ describe("Admin API #" .. strategy, function()
                 method = method,
                 path = "/upstreams/" .. upstream.name .. "/targets/",
                 body = {
-                  target = "mashape.com",
+                  target = "konghq.test",
                 },
                 headers = {["Content-Type"] = content_type}
               })
@@ -256,6 +207,34 @@ describe("Admin API #" .. strategy, function()
             end
           end)
         end
+
+        it_content_types("fails to create duplicated targets", function(content_type)
+          return function()
+            local upstream = bp.upstreams:insert { slots = 10 }
+            local res = assert(client:post("/upstreams/" .. upstream.name .. "/targets/", {
+              body = {
+                target = "single-target.test:8080",
+                weight = 1,
+              },
+              headers = {["Content-Type"] = content_type}
+            }))
+            assert.response(res).has.status(201)
+            local json = assert.response(res).has.jsonbody()
+            assert.equal("single-target.test:8080", json.target)
+            assert.is_number(json.created_at)
+            assert.is_string(json.id)
+            assert.are.equal(1, json.weight)
+
+            local res = assert(client:post("/upstreams/" .. upstream.name .. "/targets/", {
+              body = {
+                target = "single-target.test:8080",
+                weight = 100,
+              },
+              headers = {["Content-Type"] = content_type}
+            }))
+            assert.response(res).has.status(409)
+          end
+        end)
       end)
     end)
 
@@ -337,7 +316,7 @@ describe("Admin API #" .. strategy, function()
 
         for i = 1, #weights do
           local status, body = client_send({
-            method = "PUT",
+            method = "POST",
             path = "/upstreams/" .. upstream.name .. "/targets",
             headers = {
               ["Content-Type"] = "application/json",
@@ -668,7 +647,7 @@ describe("Admin API #" .. strategy, function()
           local json = assert(cjson.decode(body))
 
           status, body = assert(client_send({
-            method = "PUT",
+            method = "POST",
             path = "/upstreams/" .. upstream.id .. "/targets",
             headers = {["Content-Type"] = "application/json"},
             body = {

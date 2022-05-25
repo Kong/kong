@@ -1,6 +1,8 @@
 require("spec.helpers")
-local basic = require("kong.plugins.log-serializers.basic")
+
+
 local LOG_PHASE = require("kong.pdk.private.phases").phases.log
+
 
 describe("kong.log.serialize", function()
   describe("#http", function()
@@ -167,30 +169,6 @@ describe("kong.log.serialize", function()
         assert.is_table(res)
 
         assert.is_nil(res.tries)
-      end)
-
-      it("basic serializer proxy works with a deprecation warning", function()
-        local warned = false
-        local orig_warn = kong.log.warn
-
-        kong.log.warn = function(msg)
-          assert.is_false(warned, "duplicate warning")
-
-          warned = true
-
-          return orig_warn(msg)
-        end
-
-        local res = basic.serialize(ngx, kong)
-        assert.is_table(res)
-
-        assert.equals("1.1.1.1", res.client_ip)
-
-        -- 2nd time
-        res = basic.serialize(ngx, kong)
-        assert.is_table(res)
-
-        kong.log.warn = orig_warn
       end)
     end)
   end)
