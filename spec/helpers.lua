@@ -716,7 +716,7 @@ local function http_client_opts(options)
   local self = setmetatable(assert(http.new()), resty_http_proxy_mt)
   local _, err = self:connect(options)
   if err then
-    error("Could not connect to " .. options.host or "unknown" .. ":" .. options.port or "unknown" .. ": " .. err)
+    error("Could not connect to " .. (options.host or "unknown") .. ":" .. (options.port or "unknown") .. ": " .. err)
   end
 
   if options.connect_timeout and

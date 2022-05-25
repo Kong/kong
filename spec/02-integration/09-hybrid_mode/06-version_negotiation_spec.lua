@@ -249,6 +249,18 @@ for _, strategy in helpers.each_strategy() do
         assert.same({}, { version_negotiation.get_negotiated_service("thingamajig") })
       end)
 
+      it("HEAD request to check endpoint /v1/wrpc", function()
+        local version_negotiation = require "kong.clustering.version_negotiation"
+
+        local conf = {
+          cluster_control_plane = "127.0.0.1:9005",
+          cluster_mtls = "shared",
+        }
+
+        local data = assert(version_negotiation.check_wrpc_support(conf, CLIENT_CERT, CLIENT_PRIV_KEY))
+        assert.same("v1", data)
+      end)
+
     end)
   end)
 end
