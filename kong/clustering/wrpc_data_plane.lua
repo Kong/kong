@@ -5,7 +5,6 @@ local declarative = require("kong.db.declarative")
 local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
 local constants = require("kong.constants")
-local utils = require("kong.tools.utils")
 local clustering_utils = require("kong.clustering.utils")
 local assert = assert
 local setmetatable = setmetatable
@@ -17,8 +16,6 @@ local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
 local kong = kong
 local exiting = ngx.worker.exiting
-local inflate_gzip = utils.inflate_gzip
-local deflate_gzip = utils.deflate_gzip
 
 
 local KONG_VERSION = kong.version
@@ -42,16 +39,6 @@ function _M.new(parent)
       return _M[key] or parent[key]
     end,
   })
-end
-
-
-function _M:encode_config(config)
-  return deflate_gzip(config)
-end
-
-
-function _M:decode_config(config)
-  return inflate_gzip(config)
 end
 
 

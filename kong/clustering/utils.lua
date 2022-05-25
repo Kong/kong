@@ -20,6 +20,9 @@ local ngx_var = ngx.var
 local cjson_decode = require "cjson.safe".decode
 local cjson_encode = require "cjson.safe".encode
 
+local inflate_gzip = require("kong.tools.utils").inflate_gzip
+local deflate_gzip = require("kong.tools.utils").deflate_gzip
+
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
@@ -225,7 +228,7 @@ function clustering_utils.load_config_cache(self)
 
     if config and #config > 0 then
       ngx_log(ngx_INFO, _log_prefix, "found cached config, loading...")
-      config, err = self:decode_config(config)
+      config, err = inflate_gzip(config)
       if config then
         config, err = cjson_decode(config)
         if config then
@@ -271,7 +274,7 @@ function clustering_utils.save_config_cache(self, config_table)
 
   else
     local config = assert(cjson_encode(config_table))
-    config = assert(self:encode_config(config))
+    config = assert(deflate_gzip(config))
     local res
     res, err = f:write(config)
     if not res then
