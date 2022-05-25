@@ -25,7 +25,6 @@ local pairs = pairs
 local tostring = tostring
 local table = table
 local table_concat = table.concat
-local timer_at = ngx.timer.at
 local run_hook = hooks.run_hook
 local var = ngx.var
 
@@ -33,7 +32,6 @@ local var = ngx.var
 local CRIT = ngx.CRIT
 local ERR = ngx.ERR
 local WARN = ngx.WARN
-local DEBUG = ngx.DEBUG
 local EMPTY_T = pl_tablex.readonly {}
 
 
@@ -189,14 +187,7 @@ local function init()
     end
   end
 
-  local _
-  local frequency = kong.configuration.worker_state_update_frequency or 1
-  _, err = timer_at(frequency, upstreams.update_balancer_state)
-  if err then
-    log(CRIT, "unable to start update proxy state timer: ", err)
-  else
-    log(DEBUG, "update proxy state timer scheduled")
-  end
+  upstreams.update_balancer_state()
 end
 
 
