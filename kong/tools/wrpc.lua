@@ -255,13 +255,17 @@ wrpc_peer.__index = wrpc_peer
 
 local channels = {}
 
+local function is_wsclient(conn)
+  return conn and not conn.close or nil
+end
+
 --- a `peer` object holds a (websocket) connection and a service.
 function wrpc.new_peer(conn, service, opts)
   local ret = setmetatable({
     conn = conn,
     service = service,
     seq = 1,
-    request_queue = Queue.new(),
+    request_queue = is_wsclient(conn) and Queue.new(),
     response_queue = {},
     closing = false,
     _receiving_thread = nil,
