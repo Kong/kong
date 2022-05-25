@@ -60,16 +60,6 @@ function _M.new(parent)
 end
 
 
-function _M:encode_config(config)
-  return deflate_gzip(config)
-end
-
-
-function _M:decode_config(config)
-  return inflate_gzip(config)
-end
-
-
 function _M:init_worker()
   -- ROLE = "data_plane"
 
