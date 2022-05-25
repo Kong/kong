@@ -10,7 +10,7 @@ message Workspace {
   string comment = 3;
   int32 created_at = 4;
   // EE fields
-  WorkspaceConfig config = 30;
+  WorkspaceConfig config = 101;
 }
 
 message WorkspaceConfig {

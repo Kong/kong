@@ -22,5 +22,5 @@ message Plugin {
   Consumer consumer = 10;
 
   // EE fields
-  string ws_id = 30;
+  string ws_id = 101;
 }

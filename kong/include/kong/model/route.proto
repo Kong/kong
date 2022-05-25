@@ -29,7 +29,7 @@ message Route {
   bool response_buffering = 20;
   Service service = 21;
   // EE fields
-  string ws_id = 30;
+  string ws_id = 101;
 }
 
 message HeaderValues {

@@ -28,5 +28,5 @@ message Service {
   bool enabled = 19;
 
   // EE fields
-  string ws_id = 30;
+  string ws_id = 101;
 }

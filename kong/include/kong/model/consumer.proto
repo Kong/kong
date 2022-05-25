@@ -11,6 +11,6 @@ message Consumer {
   int32 created_at = 4;
   repeated string tags = 5;
   // EE fields
-  string ws_id = 30;
-  int32 type = 31;
+  string ws_id = 101;
+  int32 type = 102;
 }
