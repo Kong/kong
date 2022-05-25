@@ -235,13 +235,13 @@ do
   -- e.g. patch_dns_query(func, function(wrap)
   --   toip = wrap
   -- end)
-  function _M.patch_dns_query(func, callback)
+  function _M.set_patch_dns_query_fn(func, callback)
     raw_func = func
     patch_callback = callback
   end
 
   -- patch lazily
-  function _M.dns_query()
+  function _M.patch_dns_query()
     patch_callback(wrap)
   end
 
@@ -343,7 +343,9 @@ function _M.init(config)
     tracer.set_global_tracer(tracer)
 
     -- global patch
-    _M.dns_query()
+    if trace_types.dns_query then
+      _M.patch_dns_query()
+    end
   end
 end
 

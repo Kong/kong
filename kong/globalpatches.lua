@@ -430,7 +430,7 @@ return function(options)
       -- `opentelemetry_tracing` includes "dns_query" or set
       -- to "all".
       local instrumentation = require "kong.tracing.instrumentation"
-      instrumentation.patch_dns_query(toip, function(wrap)
+      instrumentation.set_patch_dns_query_fn(toip, function(wrap)
         toip = wrap
       end)
     end
