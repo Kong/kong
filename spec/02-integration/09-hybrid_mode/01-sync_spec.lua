@@ -16,8 +16,16 @@ local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local KEY_AUTH_PLUGIN
 
 
+local confs = {
+  wrpc = "spec/fixtures/custom_nginx.template",
+  json = "spec/fixtures/json_nginx.template",
+}
+-- disable wrpc in CP
+os.execute(string.format("cat %s | sed 's/wrpc/json/g' > %s", confs.wrpc, confs.json))
+
+
 for _, strategy in helpers.each_strategy() do
-  for _, cluster_protocol in ipairs{"json", "wrpc"} do
+  for cluster_protocol, conf in pairs(confs) do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
 
       lazy_setup(function()
@@ -38,7 +46,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           db_update_frequency = 0.1,
           cluster_listen = "127.0.0.1:9005",
-          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_conf = conf,
         }))
 
         assert(helpers.start_kong({
@@ -559,7 +567,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  for _, cluster_protocol in ipairs{"json", "wrpc"} do
+  for cluster_protocol, conf in pairs(confs) do
     describe("CP/DP sync works with #" .. strategy .. " backend, protocol " .. cluster_protocol, function()
       lazy_setup(function()
         helpers.get_db_utils(strategy, {
@@ -579,7 +587,7 @@ for _, strategy in helpers.each_strategy() do
           database = strategy,
           db_update_frequency = 3,
           cluster_listen = "127.0.0.1:9005",
-          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_conf = conf,
         }))
 
         assert(helpers.start_kong({

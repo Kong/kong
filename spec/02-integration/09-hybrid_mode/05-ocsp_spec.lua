@@ -5,12 +5,14 @@ local pl_file = require "pl.file"
 
 local TEST_CONF = helpers.test_conf
 
+
 local confs = {
   wrpc = "spec/fixtures/custom_nginx.template",
   json = "spec/fixtures/json_nginx.template",
 }
 -- disable wrpc in CP
 os.execute(string.format("cat %s | sed 's/wrpc/json/g' > %s", confs.wrpc, confs.json))
+
 
 local function set_ocsp_status(status)
   local upstream_client = helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port, 5000)
