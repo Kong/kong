@@ -68,6 +68,8 @@
 
 ### Breaking Changes
 
+- Deprecate/stop producing Amazon Linux (1) containers and packages (EOLed December 31, 2020)
+  [Kong/docs.konghq.com #3966](https://github.com/Kong/docs.konghq.com/pull/3966)
 - Deprecate/stop producing Debian 8 "Jessie" containers and packages (EOLed June 2020)
   [Kong/kong-build-tools #448](https://github.com/Kong/kong-build-tools/pull/448)
   [Kong/kong-distributions #766](https://github.com/Kong/kong-distributions/pull/766)
