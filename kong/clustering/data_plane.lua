@@ -6,7 +6,6 @@ local ws_client = require("resty.websocket.client")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
-local clustering_utils = require("kong.clustering.utils")
 local assert = assert
 local setmetatable = setmetatable
 local math = math
@@ -63,8 +62,6 @@ function _M:init_worker()
   -- ROLE = "data_plane"
 
   if ngx.worker.id() == 0 then
-    clustering_utils.load_config_cache(self)
-
     assert(ngx.timer.at(0, function(premature)
       self:communicate(premature)
     end))
@@ -186,7 +183,7 @@ function _M:communicate(premature)
           local hashes = self.next_hashes
 
           local pok, res
-          pok, res, err = pcall(self.update_config, self, config_table, config_hash, true, hashes)
+          pok, res, err = pcall(self.update_config, self, config_table, config_hash, hashes)
           if pok then
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)

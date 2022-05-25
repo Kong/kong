@@ -5,7 +5,6 @@ local declarative = require("kong.db.declarative")
 local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
 local constants = require("kong.constants")
-local clustering_utils = require("kong.clustering.utils")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
@@ -46,8 +45,6 @@ function _M:init_worker()
   -- ROLE = "data_plane"
 
   if ngx.worker.id() == 0 then
-    clustering_utils.load_config_cache(self)
-
     assert(ngx.timer.at(0, function(premature)
       self:communicate(premature)
     end))
@@ -190,7 +187,7 @@ function _M:communicate(premature)
           ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
 
           local pok, res
-          pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, true, hashes)
+          pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, hashes)
           if pok then
             last_config_version = config_version
             if not res then
