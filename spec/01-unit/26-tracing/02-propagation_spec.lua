@@ -1,4 +1,4 @@
-local tracing_headers = require "kong.plugins.zipkin.tracing_headers"
+local propagation = require "kong.tracing.propagation"
 
 local to_hex = require "resty.string".to_hex
 
@@ -18,9 +18,9 @@ local function left_pad_zero(str, count)
   return ('0'):rep(count-#str) .. str
 end
 
-local parse = tracing_headers.parse
-local set = tracing_headers.set
-local from_hex = tracing_headers.from_hex
+local parse = propagation.parse
+local set = propagation.set
+local from_hex = propagation.from_hex
 
 local trace_id = "0000000000000001"
 local big_trace_id = "fffffffffffffff1"
@@ -33,7 +33,7 @@ local non_hex_id = "vvvvvvvvvvvvvvvv"
 local too_short_id = "123"
 local too_long_id = "1234567890123456789012345678901234567890" -- 40 digits
 
-describe("tracing_headers.parse", function()
+describe("propagation.parse", function()
 
   _G.kong = {
     log = {},
@@ -553,7 +553,7 @@ describe("tracing_headers.parse", function()
 end)
 
 
-describe("tracing_headers.set", function()
+describe("propagation.set", function()
   local nop = function() end
 
   local headers

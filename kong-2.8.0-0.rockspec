@@ -255,6 +255,7 @@ build = {
     ["kong.pdk.nginx"] = "kong/pdk/nginx.lua",
     ["kong.pdk.cluster"] = "kong/pdk/cluster.lua",
     ["kong.pdk.vault"] = "kong/pdk/vault.lua",
+    ["kong.pdk.tracing"] = "kong/pdk/tracing.lua",
 
     ["kong.plugins.basic-auth.migrations"] = "kong/plugins/basic-auth/migrations/init.lua",
     ["kong.plugins.basic-auth.migrations.000_base_basic_auth"] = "kong/plugins/basic-auth/migrations/000_base_basic_auth.lua",
@@ -471,7 +472,6 @@ build = {
     ["kong.plugins.zipkin.handler"] = "kong/plugins/zipkin/handler.lua",
     ["kong.plugins.zipkin.reporter"] = "kong/plugins/zipkin/reporter.lua",
     ["kong.plugins.zipkin.span"] = "kong/plugins/zipkin/span.lua",
-    ["kong.plugins.zipkin.tracing_headers"] = "kong/plugins/zipkin/tracing_headers.lua",
     ["kong.plugins.zipkin.schema"] = "kong/plugins/zipkin/schema.lua",
     ["kong.plugins.zipkin.request_tags"] = "kong/plugins/zipkin/request_tags.lua",
 
@@ -487,5 +487,8 @@ build = {
 
     ["kong.vaults.env"] = "kong/vaults/env/init.lua",
     ["kong.vaults.env.schema"] = "kong/vaults/env/schema.lua",
+
+    ["kong.tracing.instrumentation"] = "kong/tracing/instrumentation.lua",
+    ["kong.tracing.propagation"] = "kong/tracing/propagation.lua",
   }
 }
