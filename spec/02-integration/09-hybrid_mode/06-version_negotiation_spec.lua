@@ -230,6 +230,7 @@ for _, strategy in helpers.each_strategy() do
         local conf = {
           cluster_control_plane = "127.0.0.1:9005",
           cluster_mtls = "shared",
+          ssl_verify = false,
         }
         local data = assert(version_negotiation.request_version_handshake(conf, CLIENT_CERT, CLIENT_PRIV_KEY))
         -- returns data in standard form
@@ -255,6 +256,7 @@ for _, strategy in helpers.each_strategy() do
         local conf = {
           cluster_control_plane = "127.0.0.1:9005",
           cluster_mtls = "shared",
+          ssl_verify = false,
         }
 
         local data = assert(version_negotiation.check_wrpc_support(conf, CLIENT_CERT, CLIENT_PRIV_KEY))

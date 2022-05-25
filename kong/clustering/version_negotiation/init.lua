@@ -269,8 +269,8 @@ function _M.request_version_handshake(conf, cert, cert_key)
     },
     body = body,
 
-    --ssl_verify = true,
-    ssl_verify = false,
+    -- conf.ssl_verify is only for test, nil for default true
+    ssl_verify = conf.ssl_verify,
     ssl_client_cert = cert,
     ssl_client_priv_key = cert_key,
   }
@@ -362,8 +362,8 @@ function _M.check_wrpc_support(conf, cert, cert_key)
     scheme = "https",
     method = "HEAD",
 
-    --ssl_verify = true,
-    ssl_verify = false,
+    -- conf.ssl_verify is only for test, nil for default true
+    ssl_verify = conf.ssl_verify,
     ssl_client_cert = cert,
     ssl_client_priv_key = cert_key,
   }
