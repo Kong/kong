@@ -1112,12 +1112,13 @@ end)
 describe("Admin API #off worker_consistency=eventual", function()
 
   local client
+  local WORKER_STATE_UPDATE_FREQ = 0.1
 
   lazy_setup(function()
     assert(helpers.start_kong({
       database = "off",
       worker_consistency = "eventual",
-      worker_state_update_frequency = 0.1,
+      worker_state_update_frequency = WORKER_STATE_UPDATE_FREQ,
     }))
   end)
 
