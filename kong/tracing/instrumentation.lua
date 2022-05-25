@@ -204,6 +204,7 @@ function _M.request(ctx)
 end
 
 
+local patch_dns_query
 do
   local raw_func
   local patch_callback
@@ -241,7 +242,7 @@ do
   end
 
   -- patch lazily
-  function _M.patch_dns_query()
+  patch_dns_query = function()
     patch_callback(wrap)
   end
 
@@ -344,7 +345,7 @@ function _M.init(config)
 
     -- global patch
     if trace_types.dns_query then
-      _M.patch_dns_query()
+      patch_dns_query()
     end
   end
 end
