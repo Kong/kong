@@ -5,6 +5,9 @@ local http = require "resty.http"
 local constants = require "kong.constants"
 local clustering_utils = require "kong.clustering.utils"
 
+local cjson_encode = cjson.encode
+local cjson_decode = cjson.decode
+
 local str_lower = string.lower
 local ngx = ngx
 local ngx_log = ngx.log
@@ -51,7 +54,7 @@ local function response(status, body)
 
   if type(body) == "table" then
     ngx.header["Content-Type"] = "application/json"
-    body = cjson.encode(body)
+    body = cjson_encode(body)
   end
 
   ngx.say(body)
@@ -212,7 +215,7 @@ function _M.serve_version_handshake(conf, cert_digest)
     return response_err(err)
   end
 
-  local body_in = cjson.decode(get_body())
+  local body_in = cjson_decode(get_body())
   if not body_in then
     err = "not valid JSON data"
     ngx_log(ngx_ERR, _log_prefix, err)
@@ -251,7 +254,7 @@ end
 --- Stores the responses to be queried via get_negotiated_service(name)
 --- Returns the DP response as a Lua table.
 function _M.request_version_handshake(conf, cert, cert_key)
-  local body = cjson.encode{
+  local body = cjson_encode{
     node = {
       id = kong.node.get_id(),
       type = "KONG",
@@ -297,7 +300,7 @@ function _M.request_version_handshake(conf, cert, cert_key)
     return nil, res.status .. ": " .. res.reason
   end
 
-  local response_data = cjson.decode(res.body)
+  local response_data = cjson_decode(res.body)
   if not response_data then
     return nil, "invalid response"
   end
@@ -325,7 +328,7 @@ local SERVICE_KEY_PREFIX = "version_negotiation:service:"
 function _M.set_negotiated_service(name, version, message)
   name = str_lower(name)
   version = version and str_lower(version)
-  local ok, err = kong_shm:set(SERVICE_KEY_PREFIX .. name, cjson.encode{
+  local ok, err = kong_shm:set(SERVICE_KEY_PREFIX .. name, cjson_encode{
     version = version,
     message = message,
   })
@@ -346,7 +349,7 @@ function _M.get_negotiated_service(name)
     return nil, err
   end
 
-  val = cjson.decode(val)
+  val = cjson_decode(val)
   if not val then
     return nil, "corrupted dictionary"
   end

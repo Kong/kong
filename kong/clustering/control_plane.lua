@@ -386,7 +386,7 @@ function _M:handle_cp_websocket()
     local ok, err = clustering_utils.validate_connection_certs(self.conf, self.cert_digest)
     if not ok then
       ngx_log(ngx_ERR, _log_prefix, err)
-      return ngx.exit(ngx.HTTP_CLOSE)
+      return ngx_exit(ngx.HTTP_CLOSE)
     end
   end
 
