@@ -183,7 +183,7 @@ function _M:communicate(premature)
           local hashes = self.next_hashes
 
           local pok, res
-          pok, res, err = pcall(self.update_config, self, config_table, config_hash, true, hashes)
+          pok, res, err = pcall(self.update_config, self, config_table, config_hash, hashes)
           if pok then
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)

@@ -187,7 +187,7 @@ function _M:communicate(premature)
           ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
 
           local pok, res
-          pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, true, hashes)
+          pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, hashes)
           if pok then
             last_config_version = config_version
             if not res then
