@@ -33,6 +33,7 @@ local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
 
+local calculate_config_hash = require("kong.clustering.update_config").calculate_config_hash
 
 local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
@@ -223,7 +224,7 @@ function _M:export_deflated_reconfigure_payload()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
   ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
-  local config_hash, hashes = self:calculate_config_hash(config_table)
+  local config_hash, hashes = calculate_config_hash(config_table)
 
   local payload = {
     type = "reconfigure",

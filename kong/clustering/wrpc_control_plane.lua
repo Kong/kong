@@ -30,6 +30,8 @@ local ngx_var = ngx.var
 local table_insert = table.insert
 local table_concat = table.concat
 
+local calculate_config_hash = require("kong.clustering.update_config").calculate_config_hash
+
 local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
 local ngx_DEBUG = ngx.DEBUG
@@ -158,7 +160,7 @@ function _M:export_deflated_reconfigure_payload()
     end
   end
 
-  local config_hash, hashes = self:calculate_config_hash(config_table)
+  local config_hash, hashes = calculate_config_hash(config_table)
   config_version = config_version + 1
 
   -- store serialized plugins map for troubleshooting purposes

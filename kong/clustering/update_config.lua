@@ -224,7 +224,7 @@ function _M:execute(config_table, config_hash, hashes)
   return true
 end
 
--- for test
+
 _M.calculate_config_hash = calculate_config_hash
 
 
