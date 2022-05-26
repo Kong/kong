@@ -30,6 +30,8 @@ local ngx_DEBUG = ngx.DEBUG
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local _log_prefix = "[clustering] "
 
+local check_wrpc_support = require("kong.clustering.wrpc_check")
+
 
 local MT = { __index = _M, }
 
@@ -207,7 +209,7 @@ end
 
 function _M:request_version_negotiation()
   local response_data, err =
-    version_negotiation.check_wrpc_support(self.conf, self.cert, self.cert_key)
+    check_wrpc_support(self.conf, self.cert, self.cert_key)
 
   if not response_data then
     ngx_log(ngx_ERR, _log_prefix, "error while requesting version negotiation: " .. err)
