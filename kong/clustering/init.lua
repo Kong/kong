@@ -81,11 +81,11 @@ function _M:init_worker()
 
   local role = self.conf.role
   if role == "control_plane" then
-    self.json_handler:init_worker()
-    self.wrpc_handler:init_worker()
-
     self.json_handler.plugins_list = self.plugins_list
     self.wrpc_handler.plugins_list = self.plugins_list
+
+    self.json_handler:init_worker()
+    self.wrpc_handler:init_worker()
   end
 
   if role == "data_plane" and ngx.worker.id() == 0 then
