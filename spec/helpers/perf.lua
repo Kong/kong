@@ -30,6 +30,7 @@ local driver_functions = {
   "start_upstreams", "start_kong", "stop_kong", "setup", "teardown",
   "get_start_load_cmd", "get_start_stapxx_cmd", "get_wait_stapxx_cmd",
   "generate_flamegraph", "save_error_log", "get_admin_uri",
+  "save_pgdump", "load_pgdump",
 }
 
 local function check_driver_sanity(mod)
@@ -510,6 +511,24 @@ end
 -- @return Nothing. Throws an error if any.
 function _M.get_admin_uri()
   return invoke_driver("get_admin_uri", CONTROL_PLANE)
+end
+
+--- Save a .sql file of the database
+-- @function save_pgdump
+-- @param path string the .sql file path
+-- @return Nothing. Throws an error if any.
+function _M.save_pgdump(path)
+  return invoke_driver("save_pgdump", path)
+end
+
+--- Load a .sql file into the database
+-- @function load_pgdump
+-- @param path string the .sql file path
+-- @param dont_patch_service bool set to true to skip update all services
+-- to upstream started by this framework
+-- @return Nothing. Throws an error if any.
+function _M.load_pgdump(path, dont_patch_service)
+  return invoke_driver("load_pgdump", path, dont_patch_service)
 end
 
 return _M

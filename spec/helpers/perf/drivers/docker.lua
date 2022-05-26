@@ -434,4 +434,43 @@ function _M:save_error_log(path)
   return true
 end
 
+function _M:save_pgdump(path)
+  if not self.psql_ct_id then
+    return false, "postgres container not started"
+  end
+
+  return perf.execute("docker exec -i " ..  self.psql_ct_id .. " pg_dump -Ukong kong_tests >'" .. path .. "'",
+                 { logger = self.log.log_exec })
+end
+
+function _M:load_pgdump(path, dont_patch_service)
+  if not self.psql_ct_id then
+    return false, "postgres container not started"
+  end
+
+  local _, err = perf.execute("cat " .. path .. " |docker exec -i " ..  self.psql_ct_id .. " psql -Ukong kong_tests",
+                 { logger = self.log.log_exec })
+  if err then
+    return false, err
+  end
+
+  if dont_patch_service then
+    return true
+  end
+
+  if not self.worker_ct_id then
+    return false, "worker not started, can't patch_service; call start_upstream first"
+  end
+
+  local worker_vip, err = get_container_vip(self.worker_ct_id)
+  if err then
+    return false, "unable to read worker container's private IP: " .. err
+  end
+
+  return perf.execute("echo \"UPDATE services set host='" .. worker_vip ..
+          "', port=" .. UPSTREAM_PORT ..
+          ", protocol='http';\" | docker exec -i " ..  self.psql_ct_id .. " psql -Ukong kong_tests",
+          { logger = self.log.log_exec })
+end
+
 return _M

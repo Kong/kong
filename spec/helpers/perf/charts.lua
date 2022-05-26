@@ -126,17 +126,16 @@ set pointintervalbox 1 # make some nice outlining for the point
     y1max * yr_factor, y2max * y2r_factor,
     outf_prefix))
 
-    f:write([[
-plot $Data using 2:3:xtic(1) title columnheader(2) w histograms palette frac 0.1, \\n]])
+    f:write("plot $Data using 2:3:xtic(1) title columnheader(2) w histograms palette frac 0.1, \\\n")
     if version_count > 1 then
-      f:write(string.format([[
-for [i=2:%d] '' using (column(3*i-1)):(column(3*i)) title columnheader(3*i-1) w histograms palette frac (i/%d./2-0.1), \\n]], version_count, version_count))
+      f:write(string.format(
+"for [i=2:%d] '' using (column(3*i-1)):(column(3*i)) title columnheader(3*i-1) w histograms palette frac (i/%d./2-0.1), \\\n", version_count, version_count))
     end
-    f:write([[
-'' using 4:xtic(1) t columnheader(2) axes x1y2 w linespoints ls 1 palette frac 0.5]])
+    f:write(
+"'' using 4:xtic(1) t columnheader(2) axes x1y2 w linespoints ls 1 palette frac 0.5")
     if version_count > 1 then
-      f:write(string.format([[, \\n
-for [i=2:%d] '' using 3*i+1 title columnheader(3*i-1) axes x1y2 w linespoints ls 1 palette frac (i/%d./2-0.1+0.5)]],
+      f:write(string.format(
+", \\\nfor [i=2:%d] '' using 3*i+1 title columnheader(3*i-1) axes x1y2 w linespoints ls 1 palette frac (i/%d./2-0.1+0.5)",
 version_count, version_count))
     end
 
@@ -155,7 +154,7 @@ version_count, version_count))
     return false
   end
 
-  my_logger.info(string.format("graph for %s saved to output/%s.png", file.name, outf_prefix))
+  my_logger.info(string.format("graph for %s saved to output/%s.svg", file.name, outf_prefix))
   return true
 end
 
