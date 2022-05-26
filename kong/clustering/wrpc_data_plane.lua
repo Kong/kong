@@ -28,17 +28,14 @@ local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local _M = {
   DPCP_CHANNEL_NAME = "DP-CP_config",
 }
+local _MT = { __index = _M, }
 
 function _M.new(parent)
   local self = {
     update_config = update_config.new(parent.conf),
   }
 
-  return setmetatable(self, {
-    __index = function(_, key)
-      return _M[key] or parent[key]
-    end,
-  })
+  return setmetatable(self, _MT)
 end
 
 

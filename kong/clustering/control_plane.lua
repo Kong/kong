@@ -1,4 +1,5 @@
 local _M = {}
+local _MT = { __index = _M, }
 
 
 local semaphore = require("ngx.semaphore")
@@ -99,11 +100,7 @@ function _M.new(parent)
     plugins_map = {},
   }
 
-  return setmetatable(self, {
-    __index = function(tab, key)
-      return _M[key] or parent[key]
-    end,
-  })
+  return setmetatable(self, _MT)
 end
 
 
