@@ -74,6 +74,7 @@ build = {
     ["kong.clustering.wrpc_control_plane"] = "kong/clustering/wrpc_control_plane.lua",
     ["kong.clustering.utils"] = "kong/clustering/utils.lua",
     ["kong.clustering.compat.removed_fields"] = "kong/clustering/compat/removed_fields.lua",
+    ["kong.clustering.update_config"] = "kong/clustering/update_config.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
