@@ -83,6 +83,9 @@ function _M:init_worker()
   if role == "control_plane" then
     self.json_handler:init_worker()
     self.wrpc_handler:init_worker()
+
+    self.json_handler.plugins_list = self.plugins_list
+    self.wrpc_handler.plugins_list = self.plugins_list
   end
 
   if role == "data_plane" and ngx.worker.id() == 0 then
@@ -107,6 +110,7 @@ function _M:init_worker()
       end
 
       if self.child then
+        self.child.plugins_list = self.plugins_list
         self.child:communicate()
       end
     end))
