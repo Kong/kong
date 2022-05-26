@@ -15,7 +15,7 @@ local ngx_DEBUG = ngx.DEBUG
 local _log_prefix = "[clustering] "
 
 
-local MT = { __index = _M, }
+local _MT = { __index = _M, }
 
 
 function _M.new(conf)
@@ -25,7 +25,7 @@ function _M.new(conf)
     conf = conf,
   }
 
-  setmetatable(self, MT)
+  setmetatable(self, _MT)
 
   local cert = assert(pl_file.read(conf.cluster_cert))
   self.cert = assert(ssl.parse_pem_cert(cert))
