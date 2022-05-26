@@ -96,7 +96,7 @@ function _M:import_proto(name)
         function(_, srvc, mthd)
         self.name_to_mthd[srvc.name .. "." .. mthd.name] = mthd
         local srvc_id = assert(service_ids[srvc.name], "service " .. srvc.name .. " has no id assigned")
-        local rpc_id = assert(service_ids[mthd.name], "rpc " .. mthd.name .. " has no id assigned")
+        local rpc_id = assert(rpc_ids[mthd.name], "rpc " .. mthd.name .. " has no id assigned")
         self.name_to_mthd[srvc_id .. "." .. rpc_id] = mthd
     end
     )
