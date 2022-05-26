@@ -11,6 +11,7 @@ local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
 local openssl_x509 = require("resty.openssl.x509")
 local wrpc = require("kong.tools.wrpc")
+local wrpc_proto = require("kong.tools.wrpc.proto")
 local string = string
 local setmetatable = setmetatable
 local type = type
@@ -59,8 +60,8 @@ end
 
 local function get_config_service(self)
   if not wrpc_config_service then
-    wrpc_config_service = wrpc.new_service()
-    wrpc_config_service:add("kong.services.config.v1.config")
+    wrpc_config_service = wrpc_proto.new()
+    wrpc_config_service:import_proto("kong.services.config.v1.config")
 
     wrpc_config_service:set_handler("ConfigService.PingCP", function(peer, data)
       local client = self.clients[peer.conn]

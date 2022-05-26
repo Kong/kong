@@ -143,7 +143,8 @@ build = {
     ["kong.tools.uri"] = "kong/tools/uri.lua",
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
-    ["kong.tools.wrpc"] = "kong/tools/wrpc.lua",
+    ["kong.tools.wrpc"] = "kong/tools/wrpc/init.lua",
+    ["kong.tools.wrpc.proto"] = "kong/tools/wrpc/proto.lua",
     ["kong.tools.channel"] = "kong/tools/channel.lua",
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
