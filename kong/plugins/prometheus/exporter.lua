@@ -292,7 +292,7 @@ else
 end
 
 
-local function metric_data()
+local function metric_data(write_fn)
   if not prometheus or not metrics then
     kong.log.err("prometheus: plugin is not initialized, please make sure ",
                  " 'prometheus_metrics' shared dict is present in nginx template")
@@ -410,13 +410,13 @@ local function metric_data()
     end
   end
 
-  return prometheus:metric_data()
+  prometheus:metric_data(write_fn)
 end
 
-local function collect(with_stream)
+local function collect()
   ngx.header["Content-Type"] = "text/plain; charset=UTF-8"
 
-  ngx.print(metric_data())
+  metric_data()
 
   -- only gather stream metrics if stream_api module is avaiable
   -- and user has configured at least one stream listeners
