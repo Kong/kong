@@ -17,7 +17,6 @@ local type = type
 local pcall = pcall
 local pairs = pairs
 local ipairs = ipairs
-local tonumber = tonumber
 local tostring = tostring
 local ngx = ngx
 local ngx_log = ngx.log
@@ -31,6 +30,7 @@ local table_insert = table.insert
 local table_concat = table.concat
 
 local calculate_config_hash = require("kong.clustering.update_config").calculate_config_hash
+local extract_major_minor = require("kong.clustering.utils").extract_major_minor
 
 local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
@@ -47,7 +47,6 @@ local WS_OPTS = {
 }
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
-local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 local _log_prefix = "[wrpc-clustering] "
 
 local wrpc_config_service
@@ -88,23 +87,6 @@ local function get_config_service(self)
   end
 
   return wrpc_config_service
-end
-
-
-local function extract_major_minor(version)
-  if type(version) ~= "string" then
-    return nil, nil
-  end
-
-  local major, minor = version:match(MAJOR_MINOR_PATTERN)
-  if not major then
-    return nil, nil
-  end
-
-  major = tonumber(major, 10)
-  minor = tonumber(minor, 10)
-
-  return major, minor
 end
 
 
