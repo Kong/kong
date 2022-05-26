@@ -70,19 +70,19 @@ function _M:serve_version_handshake()
 end
 
 function _M:init_worker()
-  self.plugins_list = assert(kong.db.plugins:get_handlers())
-  sort(self.plugins_list, function(a, b)
+  local plugins_list = assert(kong.db.plugins:get_handlers())
+  sort(plugins_list, function(a, b)
     return a.name:lower() < b.name:lower()
   end)
 
-  self.plugins_list = pl_tablex.map(function(p)
+  plugins_list = pl_tablex.map(function(p)
     return { name = p.name, version = p.handler.VERSION, }
-  end, self.plugins_list)
+  end, plugins_list)
 
   local role = self.conf.role
   if role == "control_plane" then
-    self.json_handler.plugins_list = self.plugins_list
-    self.wrpc_handler.plugins_list = self.plugins_list
+    self.json_handler.plugins_list = plugins_list
+    self.wrpc_handler.plugins_list = plugins_list
 
     self.json_handler:init_worker()
     self.wrpc_handler:init_worker()
@@ -110,7 +110,7 @@ function _M:init_worker()
       end
 
       if self.child then
-        self.child.plugins_list = self.plugins_list
+        self.child.plugins_list = plugins_list
         self.child:communicate()
       end
     end))
