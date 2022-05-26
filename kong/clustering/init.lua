@@ -36,11 +36,6 @@ function _M.new(conf)
   local key = assert(pl_file.read(conf.cluster_cert_key))
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
 
-  if conf.role == "control_plane" then
-    self.json_handler = require("kong.clustering.control_plane").new(self)
-    self.wrpc_handler = require("kong.clustering.wrpc_control_plane").new(self)
-  end
-
   return self
 end
 
@@ -81,6 +76,9 @@ function _M:init_worker()
 
   local role = self.conf.role
   if role == "control_plane" then
+    self.json_handler = require("kong.clustering.control_plane").new(self)
+    self.wrpc_handler = require("kong.clustering.wrpc_control_plane").new(self)
+
     self.json_handler.plugins_list = plugins_list
     self.wrpc_handler.plugins_list = plugins_list
 
