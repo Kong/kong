@@ -98,6 +98,9 @@ function _M.new(parent)
   local self = {
     clients = setmetatable({}, { __mode = "k", }),
     plugins_map = {},
+
+    conf = parent.conf,
+    cert_digest = parent.cert_digest,
   }
 
   return setmetatable(self, _MT)

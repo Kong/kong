@@ -50,6 +50,9 @@ end
 function _M.new(parent)
   local self = {
     update_config = update_config.new(parent.conf),
+    conf = parent.conf,
+    cert = parent.cert,
+    cert_key = parent.cert_key,
   }
 
   return setmetatable(self, _MT)
