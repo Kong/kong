@@ -100,6 +100,8 @@
 - The support for deprecated hash structured custom plugin DAOs (using `daos.lua`) was
   removed. Please upgrade the legacy plugin DAO schemas.
   [#8815](https://github.com/Kong/kong/pull/8815)
+- The dataplane config cache was removed. The config persistence is now done automatically with LMDB.
+  [#8704](https://github.com/Kong/kong/pull/8704)
 
 #### Admin API
 
@@ -153,7 +155,6 @@
 
 - Change the default of `lua_ssl_trusted_certificate` to `system`
   [#8602](https://github.com/Kong/kong/pull/8602) to automatically load trusted CA list from system CA store.
-- `data_plane_config_cache_mode` and `data_plane_config_cache_path` were removed [#8704](https://github.com/Kong/kong/pull/8704).
 
 ### Dependencies
 
