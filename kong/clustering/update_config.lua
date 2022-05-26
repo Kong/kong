@@ -174,7 +174,6 @@ local function fill_empty_hashes(hashes)
   end
 end
 
-
 function _M.new(conf)
   local self = {
     declarative_config = declarative.new_config(conf),
