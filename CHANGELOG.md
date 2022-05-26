@@ -66,13 +66,10 @@
 
 ### Fixes
 
-#### PDK
-
-- `pdk.response.set_header()`, `pdk.response.set_headers()`, `pdk.response.exit()` now ignore and emit warnings for manually set `Transfer-Encoding` headers.
-  [#8698](https://github.com/Kong/kong/pull/8698)
-
 ### Breaking Changes
 
+- Deprecate/stop producing Amazon Linux (1) containers and packages (EOLed December 31, 2020)
+  [Kong/docs.konghq.com #3966](https://github.com/Kong/docs.konghq.com/pull/3966)
 - Deprecate/stop producing Debian 8 "Jessie" containers and packages (EOLed June 2020)
   [Kong/kong-build-tools #448](https://github.com/Kong/kong-build-tools/pull/448)
   [Kong/kong-distributions #766](https://github.com/Kong/kong-distributions/pull/766)
@@ -119,7 +116,8 @@
   [#8810](https://github.com/Kong/kong/pull/8810)
 
 #### PDK
-
+- `pdk.response.set_header()`, `pdk.response.set_headers()`, `pdk.response.exit()` now ignore and emit warnings for manually set `Transfer-Encoding` headers.
+  [#8698](https://github.com/Kong/kong/pull/8698)
 - The PDK is no longer versioned
   [#8585](https://github.com/Kong/kong/pull/8585)
 
@@ -155,6 +153,7 @@
 
 - Change the default of `lua_ssl_trusted_certificate` to `system`
   [#8602](https://github.com/Kong/kong/pull/8602) to automatically load trusted CA list from system CA store.
+- `data_plane_config_cache_mode` and `data_plane_config_cache_path` were removed [#8704](https://github.com/Kong/kong/pull/8704).
 
 ### Dependencies
 

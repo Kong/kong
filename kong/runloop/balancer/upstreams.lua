@@ -20,6 +20,7 @@ local timer_at = ngx.timer.at
 
 
 local CRIT = ngx.CRIT
+local DEBUG = ngx.DEBUG
 local ERR = ngx.ERR
 
 local GLOBAL_QUERY_OPTS = { workspace = null, show_ws_id = true }
@@ -232,11 +233,13 @@ local function set_upstream_events_queue(operation, upstream_data)
 end
 
 
-function upstreams_M.update_balancer_state(premature)
+local update_balancer_state_running
+local function update_balancer_state_timer(premature)
   if premature then
     return
   end
 
+  update_balancer_state_running = true
 
   while upstream_events_queue[1] do
     local event  = upstream_events_queue[1]
@@ -250,11 +253,28 @@ function upstreams_M.update_balancer_state(premature)
   end
 
   local frequency = kong.configuration.worker_state_update_frequency or 1
-  local _, err = timer_at(frequency, upstreams_M.update_balancer_state)
+  local _, err = timer_at(frequency, update_balancer_state_timer)
   if err then
+    update_balancer_state_running = false
     log(CRIT, "unable to reschedule update proxy state timer: ", err)
   end
 
+end
+
+
+function upstreams_M.update_balancer_state()
+  if update_balancer_state_running then
+    return
+  end
+
+  local frequency = kong.configuration.worker_state_update_frequency or 1
+  local _, err = timer_at(frequency, update_balancer_state_timer)
+  if err then
+    log(CRIT, "unable to start update proxy state timer: ", err)
+  else
+    update_balancer_state_running = true
+    log(DEBUG, "update proxy state timer scheduled")
+  end
 end
 
 

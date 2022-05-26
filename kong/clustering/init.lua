@@ -2,7 +2,6 @@ local _M = {}
 
 local constants = require("kong.constants")
 local declarative = require("kong.db.declarative")
-local clustering_utils = require("kong.clustering.utils")
 local version_negotiation = require("kong.clustering.version_negotiation")
 local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
@@ -217,7 +216,7 @@ function _M:request_version_negotiation()
 end
 
 
-function _M:update_config(config_table, config_hash, update_cache, hashes)
+function _M:update_config(config_table, config_hash, hashes)
   assert(type(config_table) == "table")
 
   if not config_hash then
@@ -254,11 +253,6 @@ function _M:update_config(config_table, config_hash, update_cache, hashes)
   res, err = declarative.load_into_cache_with_events(entities, meta, new_hash, hashes)
   if not res then
     return nil, err
-  end
-
-  if update_cache then
-    -- local persistence only after load finishes without error
-    clustering_utils.save_config_cache(self, config_table)
   end
 
   return true
@@ -315,7 +309,6 @@ function _M:init_worker()
       end
 
       if self.child then
-        clustering_utils.load_config_cache(self.child)
         self.child:communicate()
       end
     end))

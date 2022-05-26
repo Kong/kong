@@ -1113,3 +1113,98 @@ describe("Admin API #off with Unique Foreign #unique", function()
     -- assert.equal(references.data[1].unique_foreign.id, unique_reference.unique_foreign.id)
   end)
 end)
+
+describe("Admin API #off worker_consistency=eventual", function()
+
+  local client
+  local WORKER_STATE_UPDATE_FREQ = 0.1
+
+  lazy_setup(function()
+    assert(helpers.start_kong({
+      database = "off",
+      lmdb_map_size = LMDB_MAP_SIZE,
+      worker_consistency = "eventual",
+      worker_state_update_frequency = WORKER_STATE_UPDATE_FREQ,
+    }))
+  end)
+
+  lazy_teardown(function()
+    helpers.stop_kong(nil, true)
+  end)
+
+  before_each(function()
+    client = assert(helpers.admin_client())
+  end)
+
+  after_each(function()
+    if client then
+      client:close()
+    end
+  end)
+
+  it("does not increase timer usage (regression)", function()
+    -- 1. configure a simple service
+    local res = assert(client:send {
+      method = "POST",
+      path = "/config",
+      body = helpers.unindent([[
+        _format_version: '1.1'
+        services:
+        - name: konghq
+          url: http://konghq.com
+          path: /
+        plugins:
+        - name: prometheus
+      ]]),
+      headers = {
+        ["Content-Type"] = "text/yaml"
+      },
+    })
+    assert.response(res).has.status(201)
+
+    -- 2. check the timer count
+    res = assert(client:send {
+      method  = "GET",
+      path    = "/metrics",
+    })
+    local res_body = assert.res_status(200, res)
+    local req1_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
+    local req1_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
+    req1_pending_timers = assert(tonumber(string.match(req1_pending_timers, "%d")))
+    req1_running_timers = assert(tonumber(string.match(req1_running_timers, "%d")))
+
+    -- 3. update the service
+    res = assert(client:send {
+      method = "POST",
+      path = "/config",
+      body = helpers.unindent([[
+        _format_version: '1.1'
+        services:
+        - name: konghq
+          url: http://konghq.com
+          path: /install#kong-community
+        plugins:
+        - name: prometheus
+      ]]),
+      headers = {
+        ["Content-Type"] = "text/yaml"
+      },
+    })
+    assert.response(res).has.status(201)
+
+    -- 4. check if timer count is still the same
+    res = assert(client:send {
+      method  = "GET",
+      path    = "/metrics",
+    })
+    local res_body = assert.res_status(200, res)
+    local req2_pending_timers = assert.matches('kong_nginx_timers{state="pending"} %d+', res_body)
+    local req2_running_timers = assert.matches('kong_nginx_timers{state="running"} %d+', res_body)
+    req2_pending_timers = assert(tonumber(string.match(req2_pending_timers, "%d")))
+    req2_running_timers = assert(tonumber(string.match(req2_running_timers, "%d")))
+
+    assert.equal(req1_pending_timers, req2_pending_timers)
+    assert.equal(req1_running_timers, req2_running_timers)
+  end)
+
+end)
