@@ -13,15 +13,21 @@ local error = error
 local tostring = tostring
 local ipairs = ipairs
 local string_format = string.format
+local splitpath = pl_path.splitpath
+local abspath = pl_path.abspath
+local ngx_log = ngx.log
+local ngx_DEBUG = ngx.DEBUG
 
 local epoch = date.epoch()
 
-local grpc = {}
+local _M = {}
+_M.__index = _M
+setmetatable(_M, _M)
 
 
 local function safe_set_type_hook(typ, dec, enc)
   if not pcall(pb.hook, typ) then
-    ngx.log(ngx.DEBUG, "no type '" .. typ .. "' defined")
+    ngx_log(ngx_DEBUG, "no type '" .. typ .. "' defined")
     return
   end
 
@@ -47,21 +53,19 @@ local function set_hooks()
       return date(t.seconds):fmt("${iso}")
     end,
     function (t)
-      if type(t) ~= "string" then
-        error (string_format("expected time string, got (%s)%q", type(t), tostring(t)))
-      end
+    if type(t) ~= "string" then
+      error (string_format("expected time string, got (%s)%q", type(t), tostring(t)))
+    end
 
-      local ds = date(t) - epoch
-      return {
-        seconds = ds:spanseconds(),
-        nanos = ds:getticks() * 1000,
-      }
-    end)
+    local ds = date(t) - epoch
+    return {
+      seconds = ds:spanseconds(),
+      nanos = ds:getticks() * 1000,
+    }
+  end)
 end
 
---- loads a .proto file optionally applies a function on each defined method.
-function grpc.each_method(fname, f, recurse)
-  local dir = pl_path.splitpath(pl_path.abspath(fname))
+function _M.new()
   local p = protoc.new()
   p:addpath("/usr/include")
   p:addpath("/usr/local/opt/protobuf/include/")
@@ -69,8 +73,38 @@ function grpc.each_method(fname, f, recurse)
   p:addpath("kong")
   p:addpath("kong/include")
   p:addpath("spec/fixtures/grpc")
-
   p.include_imports = true
+
+  return setmetatable({
+    p = p,
+  }, _M)
+end
+
+function _M:addpath(p)
+  if type(p) == "table" then
+    for _, v in ipairs(p) do
+      self.p:addpath(v)
+    end
+  else
+    self.p:addpath(p)
+  end
+end
+
+function _M:name_search(name)
+  for _, path in ipairs(self.p.paths) do
+    local fn = path ~= "" and path .. "/" .. name or name
+    local fh, _ = io.open(fn)
+    if fh then
+      return fh
+    end
+  end
+  return nil
+end
+
+--- loads a .proto file optionally applies a function on each defined method.
+function _M:each_method(fname, f, recurse)
+  local p = self.p
+  local dir = splitpath(abspath(fname))
   p:addpath(dir)
   p:loadfile(fname)
   set_hooks()
@@ -82,7 +116,7 @@ function grpc.each_method(fname, f, recurse)
       if parsed.public_dependency then
         for _, dependency_index in ipairs(parsed.public_dependency) do
           local sub = parsed.dependency[dependency_index + 1]
-          grpc.each_method(sub, f, true)
+          _M:each_method(sub, f, true)
         end
       end
     end
@@ -97,9 +131,8 @@ function grpc.each_method(fname, f, recurse)
   return parsed
 end
 
-
 --- wraps a binary payload into a grpc stream frame.
-function grpc.frame(ftype, msg)
+function _M.frame(ftype, msg)
   return bpack("C>I", ftype, #msg) .. msg
 end
 
@@ -107,12 +140,12 @@ end
 --- If success, returns `content, rest`.
 --- If heading frame isn't complete, returns `nil, body`,
 --- try again with more data.
-function grpc.unframe(body)
+function _M.unframe(body)
   if not body or #body <= 5 then
     return nil, body
   end
 
-  local pos, ftype, sz = bunpack(body, "C>I")       -- luacheck: ignore ftype
+  local pos, ftype, sz = bunpack(body, "C>I") -- luacheck: ignore ftype
   local frame_end = pos + sz - 1
   if frame_end > #body then
     return nil, body
@@ -121,6 +154,4 @@ function grpc.unframe(body)
   return body:sub(pos, frame_end), body:sub(frame_end + 1)
 end
 
-
-
-return grpc
+return _M
