@@ -94,13 +94,13 @@ local function is_timeout(err)
 end
 
 
-function _M.new(parent)
+function _M.new(initer)
   local self = {
     clients = setmetatable({}, { __mode = "k", }),
     plugins_map = {},
 
-    conf = parent.conf,
-    cert_digest = parent.cert_digest,
+    conf = initer.conf,
+    cert_digest = initer.cert_digest,
   }
 
   return setmetatable(self, _MT)

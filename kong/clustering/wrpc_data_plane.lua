@@ -30,12 +30,12 @@ local _M = {
 }
 local _MT = { __index = _M, }
 
-function _M.new(parent)
+function _M.new(initer)
   local self = {
-    update_config = update_config.new(parent.conf),
-    conf = parent.conf,
-    cert = parent.cert,
-    cert_key = parent.cert_key,
+    update_config = update_config.new(initer.conf),
+    conf = initer.conf,
+    cert = initer.cert,
+    cert_key = initer.cert_key,
   }
 
   return setmetatable(self, _MT)
