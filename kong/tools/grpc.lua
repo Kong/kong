@@ -66,32 +66,33 @@ local function set_hooks()
 end
 
 function _M.new()
-  local p = protoc.new()
-  p:addpath("/usr/include")
-  p:addpath("/usr/local/opt/protobuf/include/")
-  p:addpath("/usr/local/kong/lib/")
-  p:addpath("kong")
-  p:addpath("kong/include")
-  p:addpath("spec/fixtures/grpc")
-  p.include_imports = true
+  local protoc_instance = protoc.new()
+  protoc_instance:addpath("/usr/include")
+  protoc_instance:addpath("/usr/local/opt/protobuf/include/")
+  protoc_instance:addpath("/usr/local/kong/lib/")
+  protoc_instance:addpath("kong")
+  protoc_instance:addpath("kong/include")
+  protoc_instance:addpath("spec/fixtures/grpc")
+  protoc_instance.include_imports = true
 
   return setmetatable({
-    p = p,
+    protoc_instance = protoc_instance,
   }, _M)
 end
 
-function _M:addpath(p)
-  if type(p) == "table" then
-    for _, v in ipairs(p) do
-      self.p:addpath(v)
+function _M:addpath(path)
+  local protoc_instance = self.protoc_instance
+  if type(path) == "table" then
+    for _, v in ipairs(path) do
+      protoc_instance:addpath(v)
     end
   else
-    self.p:addpath(p)
+    protoc_instance:addpath(path)
   end
 end
 
 function _M:name_search(name)
-  for _, path in ipairs(self.p.paths) do
+  for _, path in ipairs(self.protoc_instance.paths) do
     local fn = path ~= "" and path .. "/" .. name or name
     local fh, _ = io.open(fn)
     if fh then
@@ -101,22 +102,14 @@ function _M:name_search(name)
   return nil
 end
 
---- loads a .proto file optionally applies a function on each defined method.
-function _M:each_method(fname, f, recurse)
-  local p = self.p
-  local dir = splitpath(abspath(fname))
-  p:addpath(dir)
-  p:loadfile(fname)
-  set_hooks()
-  local parsed = p:parsefile(fname)
-
+local function each_method_recur(protoc_instance, fname, f, recurse)
+  local parsed = protoc_instance:parsefile(fname)
   if f then
-
     if recurse and parsed.dependency then
       if parsed.public_dependency then
         for _, dependency_index in ipairs(parsed.public_dependency) do
           local sub = parsed.dependency[dependency_index + 1]
-          _M:each_method(sub, f, true)
+          each_method_recur(protoc_instance, sub, f, true)
         end
       end
     end
@@ -129,6 +122,17 @@ function _M:each_method(fname, f, recurse)
   end
 
   return parsed
+end
+
+--- loads a .proto file optionally applies a function on each defined method.
+function _M:each_method(fname, f, recurse)
+  local protoc_instance = self.protoc_instance
+  local dir = splitpath(abspath(fname))
+  protoc_instance:addpath(dir)
+  protoc_instance:loadfile(fname)
+  set_hooks()
+
+  return each_method_recur(protoc_instance, fname, f, recurse)
 end
 
 --- wraps a binary payload into a grpc stream frame.
