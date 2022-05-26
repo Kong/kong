@@ -395,7 +395,7 @@ function _M:get_start_load_cmd(stub, script, uri)
             stub:format(script_path, uri))
 end
 
-function _M:get_admin_uri()
+function _M:get_admin_uri(kong_id)
   return string.format("http://%s:%s", self.kong_internal_ip, KONG_ADMIN_PORT)
 end
 
@@ -501,6 +501,32 @@ function _M:save_error_log(path)
   return perf.execute(ssh_execute_wrap(self, self.kong_ip,
           "cat " .. KONG_ERROR_LOG_PATH) .. " >'" .. path .. "'",
           { logger = self.ssh_log.log_exec })
+end
+
+function _M:save_pgdump(path)
+  return perf.execute(ssh_execute_wrap(self, self.kong_ip,
+      "docker exec -i kong-database psql -Ukong kong_tests") .. " >'" .. path .. "'",
+      { logger = self.ssh_log.log_exec })
+end
+
+function _M:load_pgdump(path, dont_patch_service)
+  local _, err = perf.execute("cat " .. path .. "| " .. ssh_execute_wrap(self, self.kong_ip,
+      "docker exec -i kong-database psql -Ukong kong_tests"),
+      { logger = self.ssh_log.log_exec })
+  if err then
+    return false, err
+  end
+
+  if dont_patch_service then
+    return true
+  end
+
+  return perf.execute("echo \"UPDATE services set host='" .. self.worker_ip ..
+                                                "', port=" .. UPSTREAM_PORT ..
+                                                ", protocol='http';\" | " ..
+      ssh_execute_wrap(self, self.kong_ip,
+      "docker exec -i kong-database psql -Ukong kong_tests"),
+      { logger = self.ssh_log.log_exec })
 end
 
 return _M
