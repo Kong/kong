@@ -271,4 +271,25 @@ function _M:save_error_log(path)
                       { logger = self.log.log_exec })
 end
 
+function _M:save_pgdump(path)
+  return perf.execute("cat " .. path .. " | pg_dump -Ukong kong_tests >'" .. path .. "'",
+                 { logger = self.log.log_exec })
+end
+
+function _M:load_pgdump(path, dont_patch_service)
+  local _, err = perf.execute("cat " .. path .. " | psql -Ukong kong_tests",
+                 { logger = self.log.log_exec })
+  if err then
+    return false, err
+  end
+
+  if dont_patch_service then
+    return true
+  end
+
+  return perf.execute("echo \"UPDATE services set host='127.0.0.1', port=" .. UPSTREAM_PORT ..
+          ", protocol='http';\" | psql -Ukong kong_tests",
+          { logger = self.log.log_exec })
+end
+
 return _M
