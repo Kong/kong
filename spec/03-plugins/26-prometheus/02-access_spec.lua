@@ -200,7 +200,7 @@ describe("Plugin: prometheus (access)", function()
       local body = assert.res_status(200, res)
       assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
       assert.matches('kong_stream_status{service="tcp-service",route="tcp-route",code="200",source="service"} 1', body, nil, true)
-      assert.matches('kong_tcp_session_duration_ms_bucket{service="tcp%-service",route="tcp%-route",le="%+Inf"} %d+', body)
+      assert.matches('kong_session_duration_ms_bucket{service="tcp%-service",route="tcp%-route",le="%+Inf"} %d+', body)
 
       return body:find('kong_stream_status{service="tcp-service",route="tcp-route",code="200",source="service"} 1', nil, true)
     end)

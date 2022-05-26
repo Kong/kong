@@ -110,7 +110,7 @@ local function init()
                                                  {"service", "route"},
                                                  UPSTREAM_LATENCY_BUCKETS)
   else
-    metrics.total_latency = prometheus:histogram("tcp_session_duration_ms",
+    metrics.total_latency = prometheus:histogram("session_duration_ms",
                                                  "latency incurred in stream tcp session " ..
                                                  "for each service/route in Kong",
                                                  {"service", "route"},
@@ -220,7 +220,13 @@ if kong_subsystem == "http" then
     labels_table_status[1] = service_name
     labels_table_status[2] = route_name
     labels_table_status[3] = message.response.status
-    labels_table_status[4] = kong.response.get_source()
+
+    if kong.response.get_source() == "service" then
+      labels_table_status[4] = "service"
+    else
+      labels_table_status[4] = "kong"
+    end
+
     labels_table_status[5] = consumer
 
     latency_labels_table[1] = service_name
