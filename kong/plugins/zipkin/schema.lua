@@ -63,7 +63,8 @@ return {
                             custom_validator = validate_static_tags } },
           { http_span_name = { type = "string", required = true, default = "method", one_of = { "method", "method_path" } } },
           { connect_timeout = {type = "number", default = 5000 } },
-          { byte_timeout = {type = "number", default = 10000 } }
+          { send_timeout = {type = "number", default = 10000 } },
+          { read_timeout = {type = "number", default = 10000 } },
         },
     }, },
   },

@@ -314,8 +314,9 @@ for _, strategy in helpers.each_strategy() do
                                      .. helpers.mock_upstream_port
                                      .. "/delay/1",
           default_header_type = "b3-single",
-          byte_timeout = 10,
           connect_timeout = 0,
+          send_timeout = 10,
+          read_timeout = 10,
         }
       }
 
@@ -334,8 +335,9 @@ for _, strategy in helpers.each_strategy() do
           sample_ratio = 1,
           http_endpoint = "http://httpbin.org:1337/status/200",
           default_header_type = "b3-single",
-          byte_timeout = 0,
           connect_timeout = 10,
+          send_timeout = 0,
+          read_timeout = 0,
         }
       }
 

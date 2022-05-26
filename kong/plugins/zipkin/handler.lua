@@ -41,7 +41,8 @@ local function get_reporter(conf)
                                                conf.default_service_name,
                                                conf.local_service_name,
                                                conf.connect_timeout,
-                                               conf.byte_timeout)
+                                               conf.send_timeout,
+                                               conf.read_timeout)
   end
   return reporter_cache[conf]
 end
