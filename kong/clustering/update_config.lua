@@ -168,15 +168,17 @@ local function calculate_config_hash(config_table)
   }
 end
 
-local function fill_empty_hashes(hashes)
-  for _, field_name in ipairs{
+local hash_fields = {
     "config",
     "routes",
     "services",
     "plugins",
     "upstreams",
     "targets",
-  } do
+  }
+
+local function fill_empty_hashes(hashes)
+  for _, field_name in ipairs(hash_fields) do
     hashes[field_name] = hashes[field_name] or DECLARATIVE_EMPTY_CONFIG_HASH
   end
 end
