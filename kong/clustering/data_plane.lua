@@ -48,7 +48,6 @@ end
 
 function _M.new(parent)
   local self = {
-    --declarative_config = declarative.new_config(parent.conf),
     update_config = update_config.new(parent.conf),
   }
 
@@ -185,7 +184,6 @@ function _M:communicate(premature)
           local hashes = self.next_hashes
 
           local pok, res
-          --pok, res, err = pcall(self.update_config, self, config_table, config_hash, hashes)
           pok, res, err = pcall(self.update_config.execute,
                                 self.update_config, config_table, config_hash, hashes)
           if pok then
