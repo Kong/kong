@@ -55,6 +55,20 @@
 -- This library provides per-worker counters used to store counter metric
 -- increments. Copied from https://github.com/Kong/lua-resty-counter
 local resty_counter_lib = require("prometheus_resty_counter")
+local ngx = ngx
+local ngx_re_match = ngx.re.match
+local error = error
+local type = type
+local get_phase = ngx.get_phase
+local ngx_sleep = ngx.sleep
+local select = select
+local tostring = tostring
+local tonumber = tonumber
+local st_format = string.format
+local ngx_print = ngx.print
+local tb_clear = require("table.clear")
+
+local YIELD_ITERATIONS = 200
 
 local Prometheus = {}
 local mt = { __index = Prometheus }
@@ -68,6 +82,13 @@ local TYPE_LITERAL = {
   [TYPE_HISTOGRAM] = "histogram",
 }
 
+local can_yield_phases = {
+  rewrite = true,
+  access = true,
+  content = true,
+  timer = true
+}
+
 -- Default name for error metric incremented by this library.
 local DEFAULT_ERROR_METRIC_NAME = "nginx_metric_errors_total"
 
@@ -78,6 +99,7 @@ local DEFAULT_SYNC_INTERVAL = 1
 local DEFAULT_BUCKETS = {0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.2, 0.3,
                          0.4, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5, 10}
 
+local METRICS_KEY_REGEX = [[(.*[,{]le=")(.*)(".*)]]
 
 -- Accepted range of byte values for tailing bytes of utf8 strings.
 -- This is defined outside of the validate_utf8_string function as a const
@@ -271,15 +293,20 @@ end
 -- Returns:
 --   (string) the formatted key
 local function fix_histogram_bucket_labels(key)
-  local part1, bucket, part2 = key:match('(.*[,{]le=")(.*)(".*)')
-  if part1 == nil then
+  local match, err = ngx_re_match(key, METRICS_KEY_REGEX, "jo")
+  if err then
+    ngx.log(ngx.ERR, "failed to match regex: ", err)
+    return
+  end
+
+  if not match then
     return key
   end
 
-  if bucket == "Inf" then
-    return table.concat({part1, "+Inf", part2})
+  if match[2] == "Inf" then
+    return match[1] .. "+Inf" .. match[3]
   else
-    return table.concat({part1, tostring(tonumber(bucket)), part2})
+    return match[1] .. tostring(tonumber(match[2])) .. match[3]
   end
 end
 
@@ -761,6 +788,22 @@ local function register(self, name, help, label_names, buckets, typ)
   return metric
 end
 
+-- inspired by https://github.com/Kong/kong/blob/2.8.1/kong/tools/utils.lua#L1430-L1446
+-- limit to work only in rewrite, access, content and timer
+local yield
+do
+  local counter = 0
+  yield = function()
+    counter = counter + 1
+    if counter % YIELD_ITERATIONS ~= 0 then
+      return
+    end
+    counter = 0
+
+    ngx_sleep(0)
+  end
+end
+
 -- Public function to register a counter.
 function Prometheus:counter(name, help, label_names)
   return register(self, name, help, label_names, nil, TYPE_COUNTER)
@@ -781,11 +824,12 @@ end
 -- Returns:
 --   Array of strings with all metrics in a text format compatible with
 --   Prometheus.
-function Prometheus:metric_data()
+function Prometheus:metric_data(write_fn)
   if not self.initialized then
     ngx.log(ngx.ERR, "Prometheus module has not been initialized")
     return
   end
+  write_fn = write_fn or ngx_print
 
   -- Force a manual sync of counter local state (mostly to make tests work).
   self._counter:sync()
@@ -795,9 +839,28 @@ function Prometheus:metric_data()
   -- numerical order of their label values.
   table.sort(keys)
 
+  local do_yield = can_yield_phases[get_phase()]
+
   local seen_metrics = {}
   local output = {}
+  local output_count = 0
+
+  local function buffered_print(data)
+    if data then
+      output_count = output_count + 1
+      output[output_count] = data
+    end
+
+    if output_count >= 100 or not data then
+      write_fn(output)
+      output_count = 0
+      tb_clear(output)
+    end
+  end
+
   for _, key in ipairs(keys) do
+    _ = do_yield and yield()
+
     local value, err = self.dict:get(key)
     if value then
       local short_name = short_metric_name(key)
@@ -805,23 +868,24 @@ function Prometheus:metric_data()
         local m = self.registry[short_name]
         if m then
           if m.help then
-            table.insert(output, string.format("# HELP %s%s %s\n",
-            self.prefix, short_name, m.help))
+            buffered_print(st_format("# HELP %s%s %s\n",
+              self.prefix, short_name, m.help))
           end
           if m.typ then
-            table.insert(output, string.format("# TYPE %s%s %s\n",
+            buffered_print(st_format("# TYPE %s%s %s\n",
               self.prefix, short_name, TYPE_LITERAL[m.typ]))
           end
         end
         seen_metrics[short_name] = true
       end
       key = fix_histogram_bucket_labels(key)
-      table.insert(output, string.format("%s%s %s\n", self.prefix, key, value))
+      buffered_print(st_format("%s%s %s\n", self.prefix, key, value))
     else
       self:log_error("Error getting '", key, "': ", err)
     end
   end
-  return output
+
+  buffered_print(nil)
 end
 
 -- Present all metrics in a text format compatible with Prometheus.
@@ -831,7 +895,7 @@ end
 -- aling with TYPE and HELP comments.
 function Prometheus:collect()
   ngx.header["Content-Type"] = "text/plain"
-  ngx.print(self:metric_data())
+  self:metric_data()
 end
 
 -- Log an error, incrementing the error counter.
