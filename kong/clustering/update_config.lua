@@ -39,35 +39,42 @@ local function to_sorted_string(value)
   local t = type(value)
   if t == "string" or t == "number" then
     return value
+  end
 
-  elseif t == "boolean" then
+  if t == "boolean" then
     return tostring(value)
+  end
 
-  elseif t == "table" then
+  if t == "table" then
     if isempty(value) then
       return "{}"
+    end
 
-    elseif isarray(value) then
+    if isarray(value) then
       local count = #value
       if count == 1 then
         return to_sorted_string(value[1])
+      end
 
-      elseif count == 2 then
+      if count == 2 then
         return to_sorted_string(value[1]) .. ";" ..
                to_sorted_string(value[2])
+      end
 
-      elseif count == 3 then
+      if count == 3 then
         return to_sorted_string(value[1]) .. ";" ..
                to_sorted_string(value[2]) .. ";" ..
                to_sorted_string(value[3])
+      end
 
-      elseif count == 4 then
+      if count == 4 then
         return to_sorted_string(value[1]) .. ";" ..
                to_sorted_string(value[2]) .. ";" ..
                to_sorted_string(value[3]) .. ";" ..
                to_sorted_string(value[4])
+      end
 
-      elseif count == 5 then
+      if count == 5 then
         return to_sorted_string(value[1]) .. ";" ..
                to_sorted_string(value[2]) .. ";" ..
                to_sorted_string(value[3]) .. ";" ..
@@ -108,11 +115,11 @@ local function to_sorted_string(value)
       value = concat(o, ";", 1, count)
 
       return #value > 512 and ngx_md5_bin(value) or value
-    end
+    end -- isarray
 
-  else
-    error("invalid type to be sorted (JSON types are supported)")
-  end
+  end   -- table
+
+  error("invalid type to be sorted (JSON types are supported)")
 end
 
 local function calculate_config_hash(config_table)
