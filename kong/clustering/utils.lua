@@ -200,4 +200,27 @@ function clustering_utils.validate_connection_certs(conf, cert_digest)
   return true
 end
 
+
+function clustering_utils.plugins_list_to_map(plugins_list)
+  local versions = {}
+  for _, plugin in ipairs(plugins_list) do
+    local name = plugin.name
+    local version = plugin.version
+    local major, minor = clustering_utils.extract_major_minor(plugin.version)
+
+    if major and minor then
+      versions[name] = {
+        major   = major,
+        minor   = minor,
+        version = version,
+      }
+
+    else
+      versions[name] = {}
+    end
+  end
+  return versions
+end
+
+
 return clustering_utils

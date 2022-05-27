@@ -10,6 +10,7 @@ local http = require("resty.http")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
+local clustering_utils = require("kong.clustering.utils")
 local wrpc = require("kong.tools.wrpc")
 local string = string
 local setmetatable = setmetatable
@@ -30,8 +31,9 @@ local table_insert = table.insert
 local table_concat = table.concat
 
 local calculate_config_hash = require("kong.clustering.update_config").calculate_config_hash
-local extract_major_minor = require("kong.clustering.utils").extract_major_minor
-local validate_shared_cert = require("kong.clustering.utils").validate_shared_cert
+local extract_major_minor = clustering_utils.extract_major_minor
+local validate_shared_cert = clustering_utils.validate_shared_cert
+local plugins_list_to_map = clustering_utils.plugins_list_to_map
 
 local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
@@ -88,28 +90,6 @@ local function get_config_service(self)
   end
 
   return wrpc_config_service
-end
-
-
-local function plugins_list_to_map(plugins_list)
-  local versions = {}
-  for _, plugin in ipairs(plugins_list) do
-    local name = plugin.name
-    local version = plugin.version
-    local major, minor = extract_major_minor(plugin.version)
-
-    if major and minor then
-      versions[name] = {
-        major   = major,
-        minor   = minor,
-        version = version,
-      }
-
-    else
-      versions[name] = {}
-    end
-  end
-  return versions
 end
 
 

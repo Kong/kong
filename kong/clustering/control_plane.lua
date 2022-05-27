@@ -61,31 +61,12 @@ local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local _log_prefix = "[clustering] "
 
 
+local plugins_list_to_map = clustering_utils.plugins_list_to_map
+
+
 local function handle_export_deflated_reconfigure_payload(self)
   local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)
   return ok, p_err or err
-end
-
-
-local function plugins_list_to_map(plugins_list)
-  local versions = {}
-  for _, plugin in ipairs(plugins_list) do
-    local name = plugin.name
-    local version = plugin.version
-    local major, minor = clustering_utils.extract_major_minor(plugin.version)
-
-    if major and minor then
-      versions[name] = {
-        major   = major,
-        minor   = minor,
-        version = version,
-      }
-
-    else
-      versions[name] = {}
-    end
-  end
-  return versions
 end
 
 
