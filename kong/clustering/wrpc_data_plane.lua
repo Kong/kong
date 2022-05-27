@@ -57,7 +57,7 @@ local wrpc_config_service
 local function get_config_service()
   if not wrpc_config_service then
     wrpc_config_service = wrpc_proto.new()
-    wrpc_config_service:import_proto("kong.services.config.v1.config")
+    wrpc_config_service:import("kong.services.config.v1.config")
     wrpc_config_service:set_handler("ConfigService.SyncConfig", function(peer, data)
       if peer.config_semaphore then
         if data.config.plugins then

@@ -61,7 +61,7 @@ end
 local function get_config_service(self)
   if not wrpc_config_service then
     wrpc_config_service = wrpc_proto.new()
-    wrpc_config_service:import_proto("kong.services.config.v1.config")
+    wrpc_config_service:import("kong.services.config.v1.config")
 
     wrpc_config_service:set_handler("ConfigService.PingCP", function(peer, data)
       local client = self.clients[peer.conn]

@@ -42,18 +42,17 @@ end
 local function set_hooks()
   pb.option("enable_hooks")
 
-  safe_set_type_hook(
-    ".google.protobuf.Timestamp",
-    function (t)
-      if type(t) ~= "table" then
-        error(string_format("expected table, got (%s)%q", type(t), tostring(t)))
-      end
+  safe_set_type_hook(".google.protobuf.Timestamp", function (t)
+    if type(t) ~= "table" then
+      error(string_format("expected table, got (%s)%q", type(t), tostring(t)))
+    end
 
-      return date(t.seconds):fmt("${iso}")
-    end,
-    function (t)
+    return date(t.seconds):fmt("${iso}")
+  end,
+  function (t)
     if type(t) ~= "string" then
-      error (string_format("expected time string, got (%s)%q", type(t), tostring(t)))
+      error(string_format(
+        "expected time string, got (%s)%q", type(t), tostring(t)))
     end
 
     local ds = date(t) - epoch
@@ -66,12 +65,16 @@ end
 
 function _M.new()
   local protoc_instance = protoc.new()
-  protoc_instance:addpath("/usr/include")
-  protoc_instance:addpath("/usr/local/opt/protobuf/include/")
-  protoc_instance:addpath("/usr/local/kong/lib/")
-  protoc_instance:addpath("kong")
-  protoc_instance:addpath("kong/include")
-  protoc_instance:addpath("spec/fixtures/grpc")
+  for _, v in ipairs {
+    "/usr/include",
+    "/usr/local/opt/protobuf/include/",
+    "/usr/local/kong/lib/",
+    "kong",
+    "kong/include",
+    "spec/fixtures/grpc",
+  } do
+    protoc_instance:addpath(v)
+  end
   protoc_instance.include_imports = true
 
   return setmetatable({
@@ -85,12 +88,13 @@ function _M:addpath(path)
     for _, v in ipairs(path) do
       protoc_instance:addpath(v)
     end
+
   else
     protoc_instance:addpath(path)
   end
 end
 
-function _M:name_search(name)
+function _M:get_proto_file(name)
   for _, path in ipairs(self.protoc_instance.paths) do
     local fn = path ~= "" and path .. "/" .. name or name
     local fh, _ = io.open(fn)
