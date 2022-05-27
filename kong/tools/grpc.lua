@@ -21,7 +21,7 @@ local ngx_DEBUG = ngx.DEBUG
 local epoch = date.epoch()
 
 local _M = {}
-local _MT = { __index = _M }
+local _MT = { __index = _M, }
 
 
 local function safe_set_type_hook(typ, dec, enc)
