@@ -1,6 +1,8 @@
 local iteration = require "kong.db.iteration"
 local cassandra = require "cassandra"
 local cjson = require "cjson"
+local new_tab = require "table.new"
+local clear_tab = require "table.clear"
 
 
 local fmt           = string.format
@@ -18,26 +20,6 @@ local get_phase     = ngx.get_phase
 local setmetatable  = setmetatable
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
-local new_tab
-local clear_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function(narr, nrec)
-      return {}
-    end
-  end
-
-  ok, clear_tab = pcall(require, "table.clear")
-  if not ok then
-    clear_tab = function (tab)
-      for k, _ in pairs(tab) do
-        tab[k] = nil
-      end
-    end
-  end
-end
 
 
 local APPLIED_COLUMN = "[applied]"

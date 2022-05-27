@@ -1,20 +1,9 @@
 local cassandra = require "cassandra"
+local new_tab = require "table.new"
 
 
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
-
-
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function(narr, nrec)
-      return {}
-    end
-  end
-end
 
 
 local CQL_TAG =  [[
