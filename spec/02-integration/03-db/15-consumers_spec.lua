@@ -221,14 +221,10 @@ for _, strategy in helpers.all_strategies() do
       singletons.configuration = temp_config
 
       -- should conflict when portal openid-connect + by_username_ignore_case = true
-      local temp_ws_config_retrieve = workspace_config.retrieve
-      workspace_config.retrieve = function(key)
-        if key == ws_constants.PORTAL_AUTH then
-          return "openid-connect"
-        elseif key == ws_constants.PORTAL_AUTH_CONF then
-          return [[{"by_username_ignore_case": true}]]
-        end
-      end
+      singletons.configuration = {
+        [ws_constants.PORTAL_AUTH] = "openid-connect",
+        [ws_constants.PORTAL_AUTH_CONF] = '{"by_username_ignore_case": true}'
+      }
       local consumer, err, err_t = kong.db.consumers:insert({
         username = "Kongsumer",
       })
@@ -245,7 +241,7 @@ for _, strategy in helpers.all_strategies() do
       assert.is_nil(err)
       assert.is_nil(err_t)
 
-      workspace_config.retrieve = temp_ws_config_retrieve
+      singletons.configuration = temp_config
 
       -- should not conflict when portal openid-connect + by_username_ignore_case = false
       local temp_ws_config_retrieve = workspace_config.retrieve
@@ -275,7 +271,7 @@ for _, strategy in helpers.all_strategies() do
 
     end)
 
-    it("consumers:select_by_username_ignore_case() ignores username case", function() 
+    it("consumers:select_by_username_ignore_case() ignores username case", function()
       local consumers, err = kong.db.consumers:select_by_username_ignore_case("gruceo@kong.com")
       assert.is_nil(err)
       assert(#consumers == 1)
@@ -283,7 +279,7 @@ for _, strategy in helpers.all_strategies() do
       assert.same("12345", consumers[1].custom_id)
     end)
 
-    it("consumers:select_by_username_ignore_case() sorts oldest created_at first", function() 
+    it("consumers:select_by_username_ignore_case() sorts oldest created_at first", function()
       assert(bp.consumers:insert {
         username = "gruceO@kong.com",
         custom_id = "23456",

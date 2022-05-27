@@ -5,15 +5,16 @@
 -- at https://konghq.com/enterprisesoftwarelicense/.
 -- [ END OF LICENSE 0867164ffc95e54f04670b5169c09574bdbd9bba ]
 
-local singletons = require("kong.singletons")
-local utils = require("kong.tools.utils")
-local cjson = require("cjson")
+local singletons = require "kong.singletons"
+local cjson = require "cjson"
+local clone = require "table.clone"
+
+
+local cjson_decode = cjson.decode
+local null = ngx.null
 
 
 local workspace_config = {}
-
-
-local null = ngx.null
 
 
 function workspace_config.build_ws_admin_gui_url(config, workspace)
@@ -98,11 +99,11 @@ function workspace_config.retrieve(config_name, workspace, opts)
 
   -- if table, return a copy so that we don't mutate the conf
   if type(conf) == "table" then
-    return utils.deep_copy(conf)
+    return clone(conf)
   end
 
   if opts.decode_json and type(conf) == "string" then
-    local json_conf, err = cjson.decode(conf)
+    local json_conf, err = cjson_decode(conf)
     if err then
       return nil, err
     end
