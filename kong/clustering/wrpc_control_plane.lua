@@ -163,6 +163,7 @@ end
 
 
 _M.check_version_compatibility = clustering_utils.check_version_compatibility
+_M.check_configuration_compatibility = clustering_utils.check_configuration_compatibility
 
 
 function _M:handle_cp_websocket()
