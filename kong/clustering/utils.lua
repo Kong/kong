@@ -24,10 +24,10 @@ local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
 local KONG_VERSION = kong.version
 
-local clustering_utils = {}
+local _M = {}
 
 
-function clustering_utils.extract_major_minor(version)
+function _M.extract_major_minor(version)
   if type(version) ~= "string" then
     return nil, nil
   end
@@ -43,9 +43,9 @@ function clustering_utils.extract_major_minor(version)
   return major, minor
 end
 
-function clustering_utils.check_kong_version_compatibility(cp_version, dp_version, log_suffix)
-  local major_cp, minor_cp = clustering_utils.extract_major_minor(cp_version)
-  local major_dp, minor_dp = clustering_utils.extract_major_minor(dp_version)
+function _M.check_kong_version_compatibility(cp_version, dp_version, log_suffix)
+  local major_cp, minor_cp = _M.extract_major_minor(cp_version)
+  local major_dp, minor_dp = _M.extract_major_minor(dp_version)
 
   if not major_cp then
     return nil, "data plane version " .. dp_version .. " is incompatible with control plane version",
@@ -172,7 +172,7 @@ do
 end
 
 
-function clustering_utils.validate_connection_certs(conf, cert_digest)
+function _M.validate_connection_certs(conf, cert_digest)
   local _, err
 
   -- use mutual TLS authentication
@@ -204,12 +204,12 @@ function clustering_utils.validate_connection_certs(conf, cert_digest)
 end
 
 
-function clustering_utils.plugins_list_to_map(plugins_list)
+function _M.plugins_list_to_map(plugins_list)
   local versions = {}
   for _, plugin in ipairs(plugins_list) do
     local name = plugin.name
     local version = plugin.version
-    local major, minor = clustering_utils.extract_major_minor(plugin.version)
+    local major, minor = _M.extract_major_minor(plugin.version)
 
     if major and minor then
       versions[name] = {
@@ -226,8 +226,8 @@ function clustering_utils.plugins_list_to_map(plugins_list)
 end
 
 
-function clustering_utils.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suffix)
-  local ok, err, status = clustering_utils.check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
+function _M.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suffix)
+  local ok, err, status = _M.check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
   if not ok then
     return ok, err, status
   end
@@ -272,7 +272,7 @@ function clustering_utils.check_version_compatibility(obj, dp_version, dp_plugin
 end
 
 
-function clustering_utils.check_configuration_compatibility(obj, dp_plugin_map)
+function _M.check_configuration_compatibility(obj, dp_plugin_map)
   for _, plugin in ipairs(obj.plugins_list) do
     if obj.plugins_configured[plugin.name] then
       local name = plugin.name
@@ -310,4 +310,4 @@ function clustering_utils.check_configuration_compatibility(obj, dp_plugin_map)
 end
 
 
-return clustering_utils
+return _M
