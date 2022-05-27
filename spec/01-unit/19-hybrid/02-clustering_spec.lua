@@ -1,4 +1,4 @@
-local calculate_config_hash = require("kong.clustering.update_config").calculate_config_hash
+local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 
 
 describe("kong.clustering", function()
