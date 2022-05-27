@@ -55,7 +55,7 @@ local DEFAULT_CONTENT_TYPES = {
 
 
 local function validate_param_schema(entity)
-  local validator = require("kong.plugins.request-validator.draft4").validate
+  local validator = require("kong.tools.json-schema.draft4").validate
   return validator(entity, true)
 end
 

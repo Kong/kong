@@ -54,6 +54,7 @@ dependencies = {
   "lua-resty-session == 3.10",
   "lua-resty-aws == 0.4.0",
   "lua-resty-websocket-proxy == 0.0.1",
+  "lua-resty-ljsonschema == 1.1.2",
 }
 build = {
   type = "builtin",
@@ -242,6 +243,7 @@ build = {
     ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",
     ["kong.tools.public.rate-limiting.strategies.postgres"] = "kong/tools/public/rate-limiting/strategies/postgres.lua",
     ["kong.tools.public.rate-limiting.strategies.redis"] = "kong/tools/public/rate-limiting/strategies/redis.lua",
+    ["kong.tools.json-schema.draft4"] = "kong/tools/json-schema/draft4/init.lua",
 
     -- XXX merge - files added or modified by enterprise, all of which no longer exist
     -- upstream (in 0.15.0)

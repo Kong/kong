@@ -151,7 +151,7 @@ local validator_param_cache = setmetatable({}, {
   __mode = "k",
   __index = function(self, parameter)
     -- it was not found, so here we generate it
-    local generator = require("kong.plugins.request-validator.draft4").generate
+    local generator = require("kong.tools.json-schema.draft4").generate
     local validator_func = assert(generator(parameter.schema, {
       coercion = true,
     }))

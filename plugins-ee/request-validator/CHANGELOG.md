@@ -12,6 +12,10 @@
 
 For steps 2 - 6 above [this script](https://github.com/Kong/kong-ee/blob/master/scripts/bump-plugin) can be used.
 
+## 1.2.1
+- update draft4 dependency location (it's been moved to
+  `kong.tools.json-schema.draft4`)
+
 ## 1.2.0
 
 - revert the change in parsing multiple values as arrays in version 1.1.3 (FTI-2530)

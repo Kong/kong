@@ -26,8 +26,13 @@ local nrec = 7
 
 ---@param ctx table
 function websocket.init_state(ctx)
-  ctx.KONG_WEBSOCKET_CLIENT = new_tab(0, nrec)
-  ctx.KONG_WEBSOCKET_UPSTREAM = new_tab(0, nrec)
+  local client = new_tab(0, nrec)
+  client.role = "client"
+  ctx.KONG_WEBSOCKET_CLIENT = client
+
+  local upstream = new_tab(0, nrec)
+  upstream.role = "upstream"
+  ctx.KONG_WEBSOCKET_UPSTREAM = upstream
 end
 
 ---@param ctx table

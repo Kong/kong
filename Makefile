@@ -60,7 +60,7 @@ ifneq ($(TAG),)
 	# if we're building a tag the tag name is the KONG_VERSION (allows for environment var to override)
 	ISTAG = true
 	KONG_VERSION ?= $TAG
-	
+
 	POSSIBLE_PRERELEASE_NAME = $(shell git describe --tags --abbrev=0 | awk -F"-" '{print $$2}')
 	ifneq ($(POSSIBLE_PRERELEASE_NAME),)
 		# it's a pre-release if the tag has a - in which case it's an internal release only
@@ -293,6 +293,9 @@ test-tls-metadata-headers:
 
 test-websocket-size-limit:
 	scripts/enterprise_plugin.sh test websocket-size-limit
+
+test-websocket-validator:
+	scripts/enterprise_plugin.sh test websocket-validator
 
 pdk-phase-checks:
 	rm -f t/phase_checks.stats
