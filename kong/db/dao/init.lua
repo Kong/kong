@@ -4,6 +4,7 @@ local utils = require "kong.tools.utils"
 local defaults = require "kong.db.strategies.connector".defaults
 local hooks = require "kong.hooks"
 local workspaces = require "kong.workspaces"
+local new_tab = require "table.new"
 
 
 local setmetatable = setmetatable
@@ -24,16 +25,6 @@ local run_hook     = hooks.run_hook
 
 
 local ERR          = ngx.ERR
-
-
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function() return {} end
-  end
-end
 
 
 local _M    = {}

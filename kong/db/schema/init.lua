@@ -2,6 +2,7 @@ local tablex       = require "pl.tablex"
 local pretty       = require "pl.pretty"
 local utils        = require "kong.tools.utils"
 local cjson        = require "cjson"
+local new_tab      = require "table.new"
 local is_reference = require "kong.pdk.vault".new().is_reference
 
 
@@ -39,18 +40,6 @@ Schema.__index     = Schema
 
 local _cache = {}
 local _workspaceable = {}
-
-
-local new_tab
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function(narr, nrec)
-      return {}
-    end
-  end
-end
 
 
 local validation_errors = {

@@ -507,17 +507,7 @@ do
   local floor = math.floor
   local max = math.max
 
-  local ok, is_array_fast = pcall(require, "table.isarray")
-  if not ok then
-    is_array_fast = function(t)
-      for k in pairs(t) do
-          if type(k) ~= "number" or floor(k) ~= k then
-            return false
-          end
-      end
-      return true
-    end
-  end
+  local is_array_fast = require "table.isarray"
 
   local is_array_strict = function(t)
     local m, c = 0, 0
@@ -614,16 +604,7 @@ end
 
 
 do
-  local ok, clone = pcall(require, "table.clone")
-  if not ok then
-    clone = function(t)
-      local copy = {}
-      for key, value in pairs(t) do
-        copy[key] = value
-      end
-      return copy
-    end
-  end
+  local clone = require "table.clone"
 
   --- Copies a table into a new table.
   -- neither sub tables nor metatables will be copied.

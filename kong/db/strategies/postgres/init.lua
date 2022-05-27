@@ -3,6 +3,8 @@ local json          = require "pgmoon.json"
 local cjson         = require "cjson"
 local cjson_safe    = require "cjson.safe"
 local pl_tablex     = require "pl.tablex"
+local new_tab       = require "table.new"
+local clear_tab     = require "table.clear"
 
 
 local kong          = kong
@@ -37,30 +39,6 @@ local log           = ngx.log
 local NOTICE        = ngx.NOTICE
 local LIMIT         = {}
 local UNIQUE        = {}
-
-
-local new_tab
-local clear_tab
-
-
-do
-  local pcall = pcall
-  local ok
-
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function () return {} end
-  end
-
-  ok, clear_tab = pcall(require, "table.clear")
-  if not ok then
-    clear_tab = function (tab)
-      for k, _ in pairs(tab) do
-        tab[k] = nil
-      end
-    end
-  end
-end
 
 
 local function noop(...)

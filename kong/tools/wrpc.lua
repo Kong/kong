@@ -1,4 +1,4 @@
-require "table.new"
+local new_tab = require "table.new"
 local pb = require "pb"
 local semaphore = require "ngx.semaphore"
 local grpc = require "kong.tools.grpc"
@@ -240,7 +240,7 @@ function wrpc_service:encode_args(name, ...)
   end
 
   local num_args = select('#', ...)
-  local payloads = table.new(num_args, 0)
+  local payloads = new_tab(num_args, 0)
   for i = 1, num_args do
     payloads[i] = assert(pb.encode(rpc.input_type, select(i, ...)))
   end
