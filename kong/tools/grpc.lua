@@ -21,8 +21,7 @@ local ngx_DEBUG = ngx.DEBUG
 local epoch = date.epoch()
 
 local _M = {}
-_M.__index = _M
-setmetatable(_M, _M)
+local _MT = { __index = _M }
 
 
 local function safe_set_type_hook(typ, dec, enc)
@@ -77,7 +76,7 @@ function _M.new()
 
   return setmetatable({
     protoc_instance = protoc_instance,
-  }, _M)
+  }, _MT)
 end
 
 function _M:addpath(path)
