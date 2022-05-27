@@ -164,7 +164,7 @@ function _M:export_deflated_reconfigure_payload()
 
   -- store serialized plugins map for troubleshooting purposes
   local shm_key_name = "clustering:cp_plugins_configured:worker_" .. ngx.worker.id()
-  kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
+  kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured))
 
   local service = get_config_service(self)
   self.config_call_rpc, self.config_call_args = assert(service:encode_args("ConfigService.SyncConfig", {

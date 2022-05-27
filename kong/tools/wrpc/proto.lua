@@ -49,7 +49,7 @@ function _M:parse_annotations(proto_f)
     if keyword == "service" then
       name = identifier
       id_tag_name = "service-id"
-      service = identifier;
+      service = identifier
       ids = svc_ids
 
     elseif keyword == "rpc" then
