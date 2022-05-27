@@ -36,6 +36,11 @@ function _M.new(conf)
   local key = assert(pl_file.read(conf.cluster_cert_key))
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
 
+  if conf.role == "control_plane" then
+    self.json_handler = require("kong.clustering.control_plane").new(self.conf, self.cert_digest)
+    self.wrpc_handler = require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
+  end
+
   return self
 end
 
@@ -76,9 +81,6 @@ function _M:init_worker()
 
   local role = self.conf.role
   if role == "control_plane" then
-    self.json_handler = require("kong.clustering.control_plane").new(self)
-    self.wrpc_handler = require("kong.clustering.wrpc_control_plane").new(self)
-
     self.json_handler.plugins_list = plugins_list
     self.wrpc_handler.plugins_list = plugins_list
 
@@ -101,10 +103,10 @@ function _M:init_worker()
 
       ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
       if config_proto == "v1" then
-        self.child = require "kong.clustering.wrpc_data_plane".new(self)
+        self.child = require "kong.clustering.wrpc_data_plane".new(self.conf, self.cert, self.cert_key)
 
       elseif config_proto == "v0" or config_proto == nil then
-        self.child = require "kong.clustering.data_plane".new(self)
+        self.child = require "kong.clustering.data_plane".new(self.conf, self.cert, self.cert_key)
       end
 
       if self.child then
