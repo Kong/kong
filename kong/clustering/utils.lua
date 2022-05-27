@@ -8,6 +8,7 @@ local http = require("resty.http")
 
 local type = type
 local tonumber = tonumber
+local ipairs = ipairs
 
 local ngx_var = ngx.var
 
@@ -266,6 +267,44 @@ function clustering_utils.check_version_compatibility(obj, dp_version, dp_plugin
       end
     end
   end
+
+  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
+end
+
+
+function clustering_utils.check_configuration_compatibility(obj, dp_plugin_map)
+  for _, plugin in ipairs(obj.plugins_list) do
+    if obj.plugins_configured[plugin.name] then
+      local name = plugin.name
+      local cp_plugin = obj.plugins_map[name]
+      local dp_plugin = dp_plugin_map[name]
+
+      if not dp_plugin then
+        if cp_plugin.version then
+          return nil, "configured " .. name .. " plugin " .. cp_plugin.version ..
+                      " is missing from data plane", CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+        end
+
+        return nil, "configured " .. name .. " plugin is missing from data plane",
+               CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+      end
+
+      if cp_plugin.version and dp_plugin.version then
+        -- CP plugin needs to match DP plugins with major version
+        -- CP must have plugin with equal or newer version than that on DP
+        if cp_plugin.major ~= dp_plugin.major or
+          cp_plugin.minor < dp_plugin.minor then
+          local msg = "configured data plane " .. name .. " plugin version " .. dp_plugin.version ..
+                      " is different to control plane plugin version " .. cp_plugin.version
+          return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+        end
+      end
+    end
+  end
+
+  -- TODO: DAOs are not checked in any way at the moment. For example if plugin introduces a new DAO in
+  --       minor release and it has entities, that will most likely fail on data plane side, but is not
+  --       checked here.
 
   return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
 end
