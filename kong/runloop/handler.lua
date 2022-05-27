@@ -6,7 +6,6 @@ local Router       = require "kong.router"
 local balancer     = require "kong.runloop.balancer"
 local reports      = require "kong.reports"
 local constants    = require "kong.constants"
-local singletons   = require "kong.singletons"
 local certificate  = require "kong.runloop.certificate"
 local concurrency  = require "kong.concurrency"
 local workspaces   = require "kong.workspaces"
@@ -818,10 +817,6 @@ do
     router_cache:flush_all()
     router_cache_neg:flush_all()
 
-    -- LEGACY - singletons module is deprecated
-    singletons.router = router
-    -- /LEGACY
-
     return true
   end
 
@@ -1597,7 +1592,7 @@ return {
       end
 
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
-      if singletons.configuration.enabled_headers[upstream_status_header] then
+      if kong.configuration.enabled_headers[upstream_status_header] then
         header[upstream_status_header] = tonumber(sub(var.upstream_status or "", -3))
         if not header[upstream_status_header] then
           log(ERR, "failed to set ", upstream_status_header, " header")

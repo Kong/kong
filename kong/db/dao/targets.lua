@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local balancer = require "kong.runloop.balancer"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
@@ -324,7 +323,7 @@ function _TARGETS:post_health(upstream_pk, target, address, is_healthy)
                                            upstream.id,
                                            upstream.name)
 
-  singletons.cluster_events:broadcast("balancer:post_health", packet)
+  kong.cluster_events:broadcast("balancer:post_health", packet)
 
   return true
 end

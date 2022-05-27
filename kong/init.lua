@@ -74,7 +74,6 @@ local meta = require "kong.meta"
 local lapis = require "lapis"
 local runloop = require "kong.runloop.handler"
 local stream_api = require "kong.tools.stream_api"
-local singletons = require "kong.singletons"
 local declarative = require "kong.db.declarative"
 local ngx_balancer = require "ngx.balancer"
 local kong_resty_ctx = require "kong.resty.ctx"
@@ -529,14 +528,8 @@ function Kong.init()
 
   assert(db:connect())
 
-  -- LEGACY
-  singletons.dns = dns(config)
-  singletons.configuration = config
-  singletons.db = db
-  -- /LEGACY
-
   kong.db = db
-  kong.dns = singletons.dns
+  kong.dns = dns(config)
 
   if config.proxy_ssl_enabled or config.stream_ssl_enabled then
     certificate.init()
@@ -602,13 +595,11 @@ function Kong.init_worker()
 
   -- init DB
 
-
   local ok, err = kong.db:init_worker()
   if not ok then
     stash_init_worker_error("failed to instantiate 'kong.db' module: " .. err)
     return
   end
-
 
   if ngx.worker.id() == 0 then
     if schema_state.missing_migrations then
@@ -659,13 +650,6 @@ function Kong.init_worker()
     stash_init_worker_error(err) -- 'err' fully formatted
     return
   end
-
-  -- LEGACY
-  singletons.cache          = cache
-  singletons.core_cache     = core_cache
-  singletons.worker_events  = worker_events
-  singletons.cluster_events = cluster_events
-  -- /LEGACY
 
   kong.db:set_events_handler(worker_events)
 
