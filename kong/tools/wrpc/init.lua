@@ -208,7 +208,7 @@ end
 function wrpc_peer:send_encoded_call(rpc, payloads)
   self:send_payload({
     mtype = "MESSAGE_TYPE_RPC",
-    svc_id = rpc.service_id,
+    svc_id = rpc.svc_id,
     rpc_id = rpc.rpc_id,
     payload_encoding = "ENCODING_PROTO3",
     payloads = payloads,
@@ -269,7 +269,7 @@ end
 --- Could be an incoming method call or the response to a previous one.
 --- @param payload table decoded payload field from incoming `wrpc.WebsocketPayload` message
 function wrpc_peer:handle(payload)
-  local rpc = self.service:get_method(payload.svc_id, payload.rpc_id)
+  local rpc = self.service:get_rpc(payload.svc_id .. '.' .. payload.rpc_id)
   if not rpc then
     self:send_payload({
       mtype = "MESSAGE_TYPE_ERROR",
@@ -277,7 +277,7 @@ function wrpc_peer:handle(payload)
         etype = "ERROR_TYPE_INVALID_SERVICE",
         description = "Invalid service (or rpc)",
       },
-      srvc_id = payload.svc_id,
+      svc_id = payload.svc_id,
       rpc_id = payload.rpc_id,
       ack = payload.seq,
     })
@@ -322,7 +322,7 @@ function wrpc_peer:handle(payload)
             etype = "ERROR_TYPE_UNSPECIFIED",
             description = err,
           },
-          srvc_id = payload.svc_id,
+          svc_id = payload.svc_id,
           rpc_id = payload.rpc_id,
           ack = payload.seq,
         })
@@ -331,7 +331,7 @@ function wrpc_peer:handle(payload)
 
       self:send_payload({
         mtype = "MESSAGE_TYPE_RPC", -- MESSAGE_TYPE_RPC,
-        svc_id = rpc.service_id,
+        svc_id = rpc.svc_id,
         rpc_id = rpc.rpc_id,
         ack = payload.seq,
         payload_encoding = "ENCODING_PROTO3",
@@ -346,7 +346,7 @@ function wrpc_peer:handle(payload)
           etype = "ERROR_TYPE_INVALID_RPC",   -- invalid here, not in the definition
           description = "Unhandled method",
         },
-        srvc_id = payload.svc_id,
+        svc_id = payload.svc_id,
         rpc_id = payload.rpc_id,
         ack = payload.seq,
       })

@@ -25,7 +25,7 @@ end
 -- +wrpc: key1=val1; key2=val2; ...
 -- service-id and rpc-id to get their id
 function _M:parse_annotations(proto_f)
-    local service_ids = self.service_ids
+    local svc_ids = self.svc_ids
     local rpc_ids = self.rpc_ids
     local annotations = self.annotations
 
@@ -42,7 +42,7 @@ function _M:parse_annotations(proto_f)
                     name = identifier
                     id_tag_name = "service-id"
                     service = identifier;
-                    ids = service_ids
+                    ids = svc_ids
                 elseif keyword == "rpc" then
                     id_tag_name = "rpc-id"
                     name = service .. '.' .. identifier
@@ -64,7 +64,7 @@ end
 function _M.new()
     local ret = setmetatable({
         grpc_instance = grpc_new(),
-        service_ids = {},
+        svc_ids = {},
         rpc_ids = {},
         annotations = {},
         name_to_mthd = {},
@@ -89,21 +89,23 @@ function _M:import_proto(name)
     self:parse_annotations(fh)
     fh:close()
 
-    local service_ids = self.service_ids
+    local svc_ids = self.svc_ids
     local rpc_ids = self.rpc_ids
     -- throwable
     self.grpc_instance:each_method(fname,
         function(_, srvc, mthd)
         self.name_to_mthd[srvc.name .. "." .. mthd.name] = mthd
-        local srvc_id = assert(service_ids[srvc.name], "service " .. srvc.name .. " has no id assigned")
-        local rpc_id = assert(rpc_ids[mthd.name], "rpc " .. mthd.name .. " has no id assigned")
-        self.name_to_mthd[srvc_id .. "." .. rpc_id] = mthd
+        local svc_id = assert(svc_ids[srvc.name], "service " .. srvc.name .. " has no id assigned")
+        local rpc_id = assert(rpc_ids[srvc.name .. '.' .. mthd.name], "rpc " .. mthd.name .. " has no id assigned")
+        self.name_to_mthd[svc_id .. "." .. rpc_id] = mthd
+        mthd.svc_id = svc_id
+        mthd.rpc_id = rpc_id
     end
     )
 end
 
-function _M:get_rpc(srvc, mthd)
-    return self.name_to_mthd[srvc..mthd]
+function _M:get_rpc(rpc_name)
+    return self.name_to_mthd[rpc_name]
 end
 
 --- sets a service handler for the givern rpc method
@@ -111,7 +113,7 @@ end
 --- @param handler function Function called to handle the rpc method.
 --- @param response_handler function Fallback function called to handle responses.
 function _M:set_handler(rpc_name, handler, response_handler)
-  local rpc = self:get_method(rpc_name)
+  local rpc = self:get_rpc(rpc_name)
   if not rpc then
     return nil, string.format("unknown method %q", rpc_name)
   end
@@ -127,7 +129,7 @@ end
 --- (to the same or different peers), this method returns the
 --- invariant part, so it can be cached to reduce encoding overhead
 function _M:encode_args(name, ...)
-  local rpc = self:get_method(name)
+  local rpc = self:get_rpc(name)
   if not rpc then
     return nil, string.format("unknown method %q", name)
   end
