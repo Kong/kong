@@ -29,6 +29,7 @@ package.loaded['prometheus_resty_counter'] = require("resty.counter")
 
 
 local kong_subsystem = ngx.config.subsystem
+local http_subsystem = kong_subsystem == "http"
 
 local function init()
   local shm = "prometheus_metrics"
@@ -42,37 +43,47 @@ local function init()
   -- global metrics
   metrics.connections = prometheus:gauge("nginx_connections_total",
     "Number of connections by subsystem",
-    {"node_id", "subsystem", "state"})
+    {"node_id", "subsystem", "state"},
+    prometheus.LOCAL_STORAGE)
   metrics.nginx_requests_total = prometheus:gauge("nginx_requests_total",
-      "Number of requests total", {"node_id", "subsystem"})
+      "Number of requests total", {"node_id", "subsystem"},
+      prometheus.LOCAL_STORAGE)
   metrics.timers = prometheus:gauge("nginx_timers",
                                     "Number of nginx timers",
-                                    {"state"})
+                                    {"state"},
+                                    prometheus.LOCAL_STORAGE)
   metrics.db_reachable = prometheus:gauge("datastore_reachable",
                                           "Datastore reachable from Kong, " ..
-                                          "0 is unreachable")
+                                          "0 is unreachable",
+                                          nil,
+                                          prometheus.LOCAL_STORAGE)
   metrics.node_info = prometheus:gauge("node_info",
                                        "Kong Node metadata information",
-                                       {"node_id", "version"})
+                                       {"node_id", "version"},
+                                       prometheus.LOCAL_STORAGE)
   -- only export upstream health metrics in traditional mode and data plane
   if role ~= "control_plane" then
     metrics.upstream_target_health = prometheus:gauge("upstream_target_health",
                                             "Health status of targets of upstream. " ..
                                             "States = healthchecks_off|healthy|unhealthy|dns_error, " ..
                                             "value is 1 when state is populated.",
-                                            {"upstream", "target", "address", "state", "subsystem"})
+                                            {"upstream", "target", "address", "state", "subsystem"},
+                                            prometheus.LOCAL_STORAGE)
   end
 
   local memory_stats = {}
   memory_stats.worker_vms = prometheus:gauge("memory_workers_lua_vms_bytes",
                                              "Allocated bytes in worker Lua VM",
-                                             {"node_id", "pid", "kong_subsystem"})
+                                             {"node_id", "pid", "kong_subsystem"},
+                                             prometheus.LOCAL_STORAGE)
   memory_stats.shms = prometheus:gauge("memory_lua_shared_dict_bytes",
-                                       "Allocated slabs in bytes in a shared_dict",
-                                       {"node_id", "shared_dict", "kong_subsystem"})
+                                             "Allocated slabs in bytes in a shared_dict",
+                                             {"node_id", "shared_dict", "kong_subsystem"},
+                                             prometheus.LOCAL_STORAGE)
   memory_stats.shm_capacity = prometheus:gauge("memory_lua_shared_dict_total_bytes",
-                                               "Total capacity in bytes of a shared_dict",
-                                               {"node_id", "shared_dict", "kong_subsystem"})
+                                                     "Total capacity in bytes of a shared_dict",
+                                                     {"node_id", "shared_dict", "kong_subsystem"},
+                                                     prometheus.LOCAL_STORAGE)
 
   local res = kong.node.get_memory_stats()
   for shm_name, value in pairs(res.lua_shared_dicts) do
@@ -82,7 +93,7 @@ local function init()
   metrics.memory_stats = memory_stats
 
   -- per service/route
-  if kong_subsystem == "http" then
+  if http_subsystem then
     metrics.status = prometheus:counter("http_requests_total",
                                         "HTTP status codes per consumer/service/route in Kong",
                                         {"service", "route", "code", "source", "consumer"})
@@ -103,7 +114,7 @@ local function init()
                                                   UPSTREAM_LATENCY_BUCKETS)
 
 
-  if kong_subsystem == "http" then
+  if http_subsystem then
     metrics.total_latency = prometheus:histogram("request_latency_ms",
                                                  "Total latency incurred during requests " ..
                                                  "for each service/route in Kong",
@@ -125,18 +136,23 @@ local function init()
   if role == "control_plane" then
     metrics.data_plane_last_seen = prometheus:gauge("data_plane_last_seen",
                                               "Last time data plane contacted control plane",
-                                              {"node_id", "hostname", "ip"})
+                                              {"node_id", "hostname", "ip"},
+                                              prometheus.LOCAL_STORAGE)
     metrics.data_plane_config_hash = prometheus:gauge("data_plane_config_hash",
                                               "Config hash numeric value of the data plane",
-                                              {"node_id", "hostname", "ip"})
+                                              {"node_id", "hostname", "ip"},
+                                              prometheus.LOCAL_STORAGE)
 
     metrics.data_plane_version_compatible = prometheus:gauge("data_plane_version_compatible",
                                               "Version compatible status of the data plane, 0 is incompatible",
-                                              {"node_id", "hostname", "ip", "kong_version"})
+                                              {"node_id", "hostname", "ip", "kong_version"},
+                                              prometheus.LOCAL_STORAGE)
   elseif role == "data_plane" then
     local data_plane_cluster_cert_expiry_timestamp = prometheus:gauge(
       "data_plane_cluster_cert_expiry_timestamp",
-      "Unix timestamp of Data Plane's cluster_cert expiry time")
+      "Unix timestamp of Data Plane's cluster_cert expiry time",
+      nil,
+      prometheus.LOCAL_STORAGE)
     -- The cluster_cert doesn't change once Kong starts.
     -- We set this metrics just once to avoid file read in each scrape.
     local f = assert(io.open(kong.configuration.cluster_cert))
@@ -344,18 +360,20 @@ local function metric_data(write_fn)
 
   metrics.nginx_requests_total:set(nginx_statistics['total_requests'], { node_id, kong_subsystem })
 
-  metrics.timers:set(ngx_timer_running_count(), {"running"})
-  metrics.timers:set(ngx_timer_pending_count(), {"pending"})
+  if http_subsystem then -- only export those metrics once in http as they are shared
+    metrics.timers:set(ngx_timer_running_count(), {"running"})
+    metrics.timers:set(ngx_timer_pending_count(), {"pending"})
 
-  -- db reachable?
-  local ok, err = kong.db.connector:connect()
-  if ok then
-    metrics.db_reachable:set(1)
+    -- db reachable?
+    local ok, err = kong.db.connector:connect()
+    if ok then
+      metrics.db_reachable:set(1)
 
-  else
-    metrics.db_reachable:set(0)
-    kong.log.err("prometheus: failed to reach database while processing",
-                 "/metrics endpoint: ", err)
+    else
+      metrics.db_reachable:set(0)
+      kong.log.err("prometheus: failed to reach database while processing",
+                  "/metrics endpoint: ", err)
+    end
   end
 
   -- only export upstream health metrics in traditional mode and data plane
