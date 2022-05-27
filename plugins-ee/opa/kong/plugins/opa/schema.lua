@@ -42,6 +42,9 @@ local schema = {
           {
             include_parsed_json_body_in_opa_input = { type = "boolean", default = false },
           },
+          {
+            ssl_verify = { type = "boolean", required = true, default = true, },
+          },
         },
       },
     },

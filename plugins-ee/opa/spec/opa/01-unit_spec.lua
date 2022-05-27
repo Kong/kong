@@ -52,7 +52,31 @@ describe(PLUGIN_NAME .. ": (schema)", function()
       include_route_in_opa_input = false,
       include_consumer_in_opa_input = false,
       include_body_in_opa_input = false,
-      include_parsed_json_body_in_opa_input = false
+      include_parsed_json_body_in_opa_input = false,
+      ssl_verify = true,
+    })
+  end)
+
+  it("works when opa_protocol is https", function()
+    local ok, err = validate({
+      opa_protocol = "https",
+      opa_host = "localhost",
+      opa_port = 8181,
+      opa_path = "/foo",
+      ssl_verify = false,
+    })
+    assert.is_nil(err)
+    assert.same(ok.config, {
+      opa_protocol = "https",
+      opa_host = "localhost",
+      opa_port = 8181,
+      opa_path = "/foo",
+      include_service_in_opa_input = false,
+      include_route_in_opa_input = false,
+      include_consumer_in_opa_input = false,
+      include_body_in_opa_input = false,
+      include_parsed_json_body_in_opa_input = false,
+      ssl_verify = false,
     })
   end)
 

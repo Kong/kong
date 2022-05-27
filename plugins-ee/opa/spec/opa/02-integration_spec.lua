@@ -156,6 +156,21 @@ for _, strategy in strategies() do
         },
       }
 
+      route = bp.routes:insert({
+        hosts = { "test11.example.com" }
+      })
+      bp.plugins:insert {
+        name = PLUGIN_NAME,
+        route = { id = route.id },
+        config = {
+          opa_protocol = "https",
+          opa_host = "opa",
+          opa_port = 8282,
+          opa_path = "/v1/data/example/allow3",
+          ssl_verify = false,
+        }
+      }
+
       -- start kong
       assert(helpers.start_kong({
         -- set the strategy
@@ -231,6 +246,27 @@ for _, strategy in strategies() do
             hello = "earth"
           },
         })
+        assert.response(r).has.status(200)
+      end)
+
+      it("fails when opa_protocol is https but no header", function()
+        local r = client:post("/request", {
+          headers = {
+            host = "test11.example.com",
+          }
+        })
+
+        assert.response(r).has.status(403)
+      end)
+
+      it("works when opa_protocol is https and has correct header", function()
+        local r = client:post("/request", {
+          headers = {
+            host = "test11.example.com",
+            ["my-secret-header"] = "open-sesame",
+          }
+        })
+
         assert.response(r).has.status(200)
       end)
     end)
