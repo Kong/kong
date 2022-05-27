@@ -4,9 +4,6 @@ local _MT = { __index = _M, }
 
 local semaphore = require("ngx.semaphore")
 local ws_server = require("resty.websocket.server")
-local ssl = require("ngx.ssl")
-local ocsp = require("ngx.ocsp")
-local http = require("resty.http")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
@@ -18,7 +15,6 @@ local type = type
 local pcall = pcall
 local pairs = pairs
 local ipairs = ipairs
-local tostring = tostring
 local ngx = ngx
 local ngx_log = ngx.log
 local cjson_encode = cjson.encode
@@ -47,7 +43,6 @@ local WS_OPTS = {
   timeout = constants.CLUSTERING_TIMEOUT,
   max_payload_len = MAX_PAYLOAD,
 }
-local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local _log_prefix = "[wrpc-clustering] "
 
