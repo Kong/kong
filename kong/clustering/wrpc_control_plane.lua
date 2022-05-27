@@ -162,14 +162,8 @@ function _M:push_config()
 end
 
 
-function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
-  return clustering_utils.check_version_compatibility(self, dp_version, dp_plugin_map, log_suffix)
-end
+_M.check_version_compatibility = clustering_utils.check_version_compatibility
 
-
-function _M:check_configuration_compatibility(dp_plugin_map)
-  return clustering_utils.check_configuration_compatibility(self, dp_plugin_map)
-end
 
 function _M:handle_cp_websocket()
   local dp_id = ngx_var.arg_node_id
