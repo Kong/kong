@@ -7,7 +7,7 @@ local ws_client = require("resty.websocket.client")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
-local update_config = require("kong.clustering.update_config")
+local config_helper = require("kong.clustering.config_helper")
 local assert = assert
 local setmetatable = setmetatable
 local math = math
@@ -49,7 +49,7 @@ end
 
 function _M.new(conf, cert, cert_key)
   local self = {
-    update_config = update_config.new(conf),
+    declarative_config = declarative.new_config(conf),
     conf = conf,
     cert = cert,
     cert_key = cert_key,
@@ -184,8 +184,8 @@ function _M:communicate(premature)
           local hashes = self.next_hashes
 
           local pok, res
-          pok, res, err = pcall(self.update_config.execute,
-                                self.update_config, config_table, config_hash, hashes)
+          pok, res, err = pcall(config_helper.update,
+                                self.declarative_config, config_table, config_hash, hashes)
           if pok then
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)

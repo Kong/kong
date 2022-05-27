@@ -25,7 +25,7 @@ local ngx_var = ngx.var
 local table_insert = table.insert
 local table_concat = table.concat
 
-local calculate_config_hash = require("kong.clustering.update_config").calculate_config_hash
+local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 
 local kong_dict = ngx.shared.kong

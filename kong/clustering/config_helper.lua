@@ -28,7 +28,7 @@ local _log_prefix = "[clustering] "
 
 
 local _M = {}
-local _MT = { __index = _M, }
+--local _MT = { __index = _M, }
 
 
 local function to_sorted_string(value)
@@ -183,15 +183,7 @@ local function fill_empty_hashes(hashes)
   end
 end
 
-function _M.new(conf)
-  local self = {
-    declarative_config = declarative.new_config(conf),
-  }
-
-  return setmetatable(self, _MT)
-end
-
-function _M:execute(config_table, config_hash, hashes)
+function _M.update(declarative_config, config_table, config_hash, hashes)
   assert(type(config_table) == "table")
 
   if not config_hash then
@@ -210,7 +202,7 @@ function _M:execute(config_table, config_hash, hashes)
   end
 
   local entities, err, _, meta, new_hash =
-  self.declarative_config:parse_table(config_table, config_hash)
+  declarative_config:parse_table(config_table, config_hash)
   if not entities then
     return nil, "bad config received from control plane " .. err
   end
