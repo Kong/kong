@@ -8,7 +8,6 @@ local string_format = string.format
 
 local _M = {}
 local _MT = { __index = _M, }
-_M.__index = _M
 
 local wrpc_proto_name = "wrpc.wrpc"
 
