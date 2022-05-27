@@ -21,9 +21,10 @@ local function parse_annotation(annotation)
     return ret
 end
 
--- TODO: better way to do this
+---@TODO: better way to do this
+-- Parse annotations in proto files with format:
 -- +wrpc: key1=val1; key2=val2; ...
--- service-id and rpc-id to get their id
+-- use key service-id and rpc-id to get IDs for service and rpc
 function _M:parse_annotations(proto_f)
     local svc_ids = self.svc_ids
     local rpc_ids = self.rpc_ids
@@ -75,12 +76,17 @@ function _M.new()
     return ret
 end
 
+-- add searching path for proto files
+---@param proto_path (string or table) path to search proto files in
 function _M:addpath(proto_path)
     self.grpc_instance:addpath(proto_path)
 end
 
+-- import wrpc proto
+-- search from default and user specified paths(addpath)
 -- throw when error occurs
 -- pcall if you do not want it throw
+---@param name(string) name for prototype. a.b.c will be found at a/b/c.proto
 function _M:import_proto(name)
     local fname = name:gsub('%.', '/') .. '.proto'
 
@@ -104,6 +110,8 @@ function _M:import_proto(name)
     )
 end
 
+-- get rpc object
+-- both service_name.rpc_name and 1.2(service_id.rpc_id supported
 function _M:get_rpc(rpc_name)
     return self.name_to_mthd[rpc_name]
 end
