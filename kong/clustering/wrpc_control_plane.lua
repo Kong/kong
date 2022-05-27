@@ -32,7 +32,6 @@ local table_concat = table.concat
 
 local calculate_config_hash = require("kong.clustering.update_config").calculate_config_hash
 local extract_major_minor = clustering_utils.extract_major_minor
-local validate_shared_cert = clustering_utils.validate_shared_cert
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 
 local kong_dict = ngx.shared.kong
@@ -376,30 +375,8 @@ function _M:handle_cp_websocket()
   end
 
   do
-    local _, err
-
-    -- use mutual TLS authentication
-    if self.conf.cluster_mtls == "shared" then
-      _, err = validate_shared_cert(self.cert_digest)
-
-    elseif self.conf.cluster_ocsp ~= "off" then
-      local ok
-      ok, err = check_for_revocation_status()
-      if ok == false then
-        err = "data plane client certificate was revoked: " ..  err
-
-      elseif not ok then
-        if self.conf.cluster_ocsp == "on" then
-          err = "data plane client certificate revocation check failed: " .. err
-
-        else
-          ngx_log(ngx_WARN, _log_prefix, "data plane client certificate revocation check failed: ", err, log_suffix)
-          err = nil
-        end
-      end
-    end
-
-    if err then
+    local ok, err = clustering_utils.validate_connection_certs(self.conf, self.cert_digest)
+    if not ok then
       ngx_log(ngx_ERR, _log_prefix, err, log_suffix)
       return ngx_exit(ngx_CLOSE)
     end
