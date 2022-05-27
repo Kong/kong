@@ -27,11 +27,9 @@ local table_insert = table.insert
 local table_concat = table.concat
 
 local calculate_config_hash = require("kong.clustering.update_config").calculate_config_hash
-local extract_major_minor = clustering_utils.extract_major_minor
 local plugins_list_to_map = clustering_utils.plugins_list_to_map
 
 local kong_dict = ngx.shared.kong
-local KONG_VERSION = kong.version
 local ngx_DEBUG = ngx.DEBUG
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
@@ -166,78 +164,7 @@ end
 
 
 function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
-  local major_cp, minor_cp = extract_major_minor(KONG_VERSION)
-  local major_dp, minor_dp = extract_major_minor(dp_version)
-
-  if not major_cp then
-    return nil, "data plane version " .. dp_version .. " is incompatible with control plane version",
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if not major_dp then
-    return nil, "data plane version is incompatible with control plane version " ..
-                KONG_VERSION .. " (" .. major_cp .. ".x.y are accepted)",
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if major_cp ~= major_dp then
-    return nil, "data plane version " .. dp_version ..
-                " is incompatible with control plane version " ..
-                KONG_VERSION .. " (" .. major_cp .. ".x.y are accepted)",
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if minor_cp < minor_dp then
-    return nil, "data plane version " .. dp_version ..
-                " is incompatible with older control plane version " .. KONG_VERSION,
-                CLUSTERING_SYNC_STATUS.KONG_VERSION_INCOMPATIBLE
-  end
-
-  if minor_cp ~= minor_dp then
-    local msg = "data plane minor version " .. dp_version ..
-                " is different to control plane minor version " ..
-                KONG_VERSION
-
-    ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
-  end
-
-  for _, plugin in ipairs(self.plugins_list) do
-    local name = plugin.name
-    local cp_plugin = self.plugins_map[name]
-    local dp_plugin = dp_plugin_map[name]
-
-    if not dp_plugin then
-      if cp_plugin.version then
-        ngx_log(ngx_WARN, _log_prefix, name, " plugin ", cp_plugin.version, " is missing from data plane", log_suffix)
-      else
-        ngx_log(ngx_WARN, _log_prefix, name, " plugin is missing from data plane", log_suffix)
-      end
-
-    else
-      if cp_plugin.version and dp_plugin.version then
-        local msg = "data plane " .. name .. " plugin version " .. dp_plugin.version ..
-                    " is different to control plane plugin version " .. cp_plugin.version
-
-        if cp_plugin.major ~= dp_plugin.major then
-          ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
-
-        elseif cp_plugin.minor ~= dp_plugin.minor then
-          ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
-        end
-
-      elseif dp_plugin.version then
-        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version ", dp_plugin.version,
-                        " has unspecified version on control plane", log_suffix)
-
-      elseif cp_plugin.version then
-        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version is unspecified, ",
-                        "and is different to control plane plugin version ",
-                        cp_plugin.version, log_suffix)
-      end
-    end
-  end
-
-  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
+  return clustering_utils.check_version_compatibility(self, dp_version, dp_plugin_map, log_suffix)
 end
 
 

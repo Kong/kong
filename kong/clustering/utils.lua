@@ -13,6 +13,7 @@ local ngx_var = ngx.var
 
 local ngx_log = ngx.log
 local ngx_INFO = ngx.INFO
+local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
 local _log_prefix = "[clustering] "
 
@@ -20,6 +21,7 @@ local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
+local KONG_VERSION = kong.version
 
 local clustering_utils = {}
 
@@ -220,6 +222,52 @@ function clustering_utils.plugins_list_to_map(plugins_list)
     end
   end
   return versions
+end
+
+
+function clustering_utils.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suffix)
+  local ok, err, status = clustering_utils.check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
+  if not ok then
+    return ok, err, status
+  end
+
+  for _, plugin in ipairs(obj.plugins_list) do
+    local name = plugin.name
+    local cp_plugin = obj.plugins_map[name]
+    local dp_plugin = dp_plugin_map[name]
+
+    if not dp_plugin then
+      if cp_plugin.version then
+        ngx_log(ngx_WARN, _log_prefix, name, " plugin ", cp_plugin.version, " is missing from data plane", log_suffix)
+      else
+        ngx_log(ngx_WARN, _log_prefix, name, " plugin is missing from data plane", log_suffix)
+      end
+
+    else
+      if cp_plugin.version and dp_plugin.version then
+        local msg = "data plane " .. name .. " plugin version " .. dp_plugin.version ..
+                    " is different to control plane plugin version " .. cp_plugin.version
+
+        if cp_plugin.major ~= dp_plugin.major then
+          ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
+
+        elseif cp_plugin.minor ~= dp_plugin.minor then
+          ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
+        end
+
+      elseif dp_plugin.version then
+        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version ", dp_plugin.version,
+                        " has unspecified version on control plane", log_suffix)
+
+      elseif cp_plugin.version then
+        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version is unspecified, ",
+                        "and is different to control plane plugin version ",
+                        cp_plugin.version, log_suffix)
+      end
+    end
+  end
+
+  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
 end
 
 
