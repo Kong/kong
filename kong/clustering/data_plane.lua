@@ -49,7 +49,7 @@ end
 
 function _M.new(conf, cert, cert_key)
   local self = {
-    update_config = update_config.new(initer.conf),
+    update_config = update_config.new(conf),
     conf = conf,
     cert = cert,
     cert_key = cert_key,
