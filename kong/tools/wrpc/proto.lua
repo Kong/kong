@@ -3,22 +3,24 @@ local grpc = require "kong.tools.grpc"
 
 local grpc_new = grpc.new
 local pb_encode = pb.encode
+local setmetatable = setmetatable
+local string_format = string.format
 
 local _M = {}
+local _MT = { __index = _M, }
 _M.__index = _M
-setmetatable(_M, _M)
 
 local wrpc_proto_name = "wrpc.wrpc"
 
-local default_proto_path = { "kong/include/", "/usr/include/" }
+local default_proto_path = { "kong/include/", "/usr/include/", }
 
 local function parse_annotation(annotation)
-    local ret = {}
+    local parsed = {}
     for kv_pair in annotation:gmatch("[^;]+=[^;]+") do
         local key, value = kv_pair:match("^%s*(%S-)=(%S+)%s*$")
-        ret[key] = value
+        parsed[key] = value
     end
-    return ret
+    return parsed
 end
 
 ---@TODO: better way to do this
@@ -63,17 +65,17 @@ function _M:parse_annotations(proto_f)
 end
 
 function _M.new()
-    local ret = setmetatable({
+    local proto_instance = setmetatable({
         grpc_instance = grpc_new(),
         svc_ids = {},
         rpc_ids = {},
         annotations = {},
         name_to_mthd = {},
-    }, _M)
+    }, _MT)
 
-    ret:addpath(default_proto_path)
-    ret:import_proto(wrpc_proto_name)
-    return ret
+    proto_instance:addpath(default_proto_path)
+    proto_instance:import_proto(wrpc_proto_name)
+    return proto_instance
 end
 
 -- add searching path for proto files
@@ -123,7 +125,7 @@ end
 function _M:set_handler(rpc_name, handler, response_handler)
   local rpc = self:get_rpc(rpc_name)
   if not rpc then
-    return nil, string.format("unknown method %q", rpc_name)
+    return nil, string_format("unknown method %q", rpc_name)
   end
 
   rpc.handler = handler
@@ -139,7 +141,7 @@ end
 function _M:encode_args(name, ...)
   local rpc = self:get_rpc(name)
   if not rpc then
-    return nil, string.format("unknown method %q", name)
+    return nil, string_format("unknown method %q", name)
   end
 
   local num_args = select('#', ...)
