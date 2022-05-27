@@ -32,6 +32,7 @@ local table_concat = table.concat
 
 local calculate_config_hash = require("kong.clustering.update_config").calculate_config_hash
 local extract_major_minor = require("kong.clustering.utils").extract_major_minor
+local validate_shared_cert = require("kong.clustering.utils").validate_shared_cert
 
 local kong_dict = ngx.shared.kong
 local KONG_VERSION = kong.version
@@ -188,34 +189,6 @@ function _M:push_config()
   end
 
   ngx_log(ngx_DEBUG, _log_prefix, "config version #", config_version, " pushed to ", n, " clients")
-end
-
-
-function _M:validate_shared_cert()
-  local cert = ngx_var.ssl_client_raw_cert
-
-  if not cert then
-    return nil, "data plane failed to present client certificate during handshake"
-  end
-
-  local err
-  cert, err = openssl_x509.new(cert, "PEM")
-  if not cert then
-    return nil, "unable to load data plane client certificate during handshake: " .. err
-  end
-
-  local digest
-  digest, err = cert:digest("sha256")
-  if not digest then
-    return nil, "unable to retrieve data plane client certificate digest during handshake: " .. err
-  end
-
-  if digest ~= self.cert_digest then
-    return nil, "data plane presented incorrect client certificate during handshake (expected: " ..
-                self.cert_digest .. ", got: " .. digest .. ")"
-  end
-
-  return true
 end
 
 
@@ -428,7 +401,7 @@ function _M:handle_cp_websocket()
 
     -- use mutual TLS authentication
     if self.conf.cluster_mtls == "shared" then
-      _, err = self:validate_shared_cert()
+      _, err = validate_shared_cert(self.cert_digest)
 
     elseif self.conf.cluster_ocsp ~= "off" then
       local ok
