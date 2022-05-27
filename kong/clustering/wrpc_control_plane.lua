@@ -10,7 +10,6 @@ local http = require("resty.http")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
-local openssl_x509 = require("resty.openssl.x509")
 local wrpc = require("kong.tools.wrpc")
 local string = string
 local setmetatable = setmetatable
