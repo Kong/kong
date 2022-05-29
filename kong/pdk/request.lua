@@ -385,7 +385,6 @@ local function new(self)
   --
   -- @function kong.request.get_path
   -- @phases rewrite, access, header_filter, response, body_filter, log, admin_api
-  -- @tparam[opt=true] boolean merge_slashes consolidate duplicate slashes in the path
   -- @treturn string the path
   -- @usage
   -- -- Given a request to https://example.com/t/Abc%20123%C3%B8%2f/parent/..//test/./
