@@ -287,7 +287,12 @@ else
     labels_table[1] = service_name
     labels_table[2] = route_name
     labels_table[3] = message.session.status
-    labels_table[4] = kong.response.get_source()
+
+    if kong.response.get_source() == "service" then
+      labels_table[4] = "service"
+    else
+      labels_table[4] = "kong"
+    end
 
     latency_labels_table[1] = service_name
     latency_labels_table[2] = route_name

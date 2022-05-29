@@ -484,7 +484,7 @@ describe("Plugin: prometheus (access) per-consumer metrics", function()
       return body:find('http_requests_total{service="mock-service",route="http-route",code="200",source="service",consumer="alice"} 1', nil, true)
     end)
 
-    assert.matches('http_requests_total{service="mock-service",route="http-route",code="401",source="exit",consumer=""} 1', body, nil, true)
+    assert.matches('http_requests_total{service="mock-service",route="http-route",code="401",source="kong",consumer=""} 1', body, nil, true)
 
     assert.matches('kong_nginx_metric_errors_total 0', body, nil, true)
   end)
