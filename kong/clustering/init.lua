@@ -31,8 +31,6 @@ local ngx_DEBUG = ngx.DEBUG
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local _log_prefix = "[clustering] "
 
-local check_wrpc_support = require("kong.clustering.wrpc_check")
-
 
 local MT = { __index = _M, }
 
