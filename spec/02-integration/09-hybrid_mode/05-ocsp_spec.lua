@@ -11,7 +11,7 @@ local confs = {
   json = "spec/fixtures/json_nginx.template",
 }
 -- disable wrpc in CP
-os.execute(string.format("cat %s | sed 's/wrpc/json/g' > %s", confs.wrpc, confs.json))
+os.execute(string.format("cat %s | sed 's/wrpc/foobar/g' > %s", confs.wrpc, confs.json))
 
 
 local function set_ocsp_status(status)

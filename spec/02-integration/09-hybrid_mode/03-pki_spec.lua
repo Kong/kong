@@ -7,7 +7,7 @@ local confs = {
   json = "spec/fixtures/json_nginx.template",
 }
 -- disable wrpc in CP
-os.execute(string.format("cat %s | sed 's/wrpc/json/g' > %s", confs.wrpc, confs.json))
+os.execute(string.format("cat %s | sed 's/wrpc/foobar/g' > %s", confs.wrpc, confs.json))
 
 
 for cluster_protocol, conf in pairs(confs) do
