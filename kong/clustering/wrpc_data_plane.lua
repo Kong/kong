@@ -5,6 +5,7 @@ local declarative = require("kong.db.declarative")
 local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
 local constants = require("kong.constants")
+local config_helper = require("kong.clustering.config_helper")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
@@ -27,17 +28,17 @@ local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
 local _M = {
   DPCP_CHANNEL_NAME = "DP-CP_config",
 }
+local _MT = { __index = _M, }
 
-function _M.new(parent)
+function _M.new(conf, cert, cert_key)
   local self = {
-    declarative_config = declarative.new_config(parent.conf),
+    declarative_config = declarative.new_config(conf),
+    conf = conf,
+    cert = cert,
+    cert_key = cert_key,
   }
 
-  return setmetatable(self, {
-    __index = function(_, key)
-      return _M[key] or parent[key]
-    end,
-  })
+  return setmetatable(self, _MT)
 end
 
 
@@ -187,7 +188,8 @@ function _M:communicate(premature)
           ngx_log(ngx_INFO, _log_prefix, "received config #", config_version, log_suffix)
 
           local pok, res
-          pok, res, err = xpcall(self.update_config, debug.traceback, self, config_table, config_hash, hashes)
+          pok, res, err = xpcall(config_helper.update, debug.traceback,
+                                 self.declarative_config, config_table, config_hash, hashes)
           if pok then
             last_config_version = config_version
             if not res then

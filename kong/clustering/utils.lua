@@ -8,11 +8,13 @@ local http = require("resty.http")
 
 local type = type
 local tonumber = tonumber
+local ipairs = ipairs
 
 local ngx_var = ngx.var
 
 local ngx_log = ngx.log
 local ngx_INFO = ngx.INFO
+local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
 local _log_prefix = "[clustering] "
 
@@ -20,11 +22,12 @@ local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
 local OCSP_TIMEOUT = constants.CLUSTERING_OCSP_TIMEOUT
 
+local KONG_VERSION = kong.version
 
-local clustering_utils = {}
+local _M = {}
 
 
-function clustering_utils.extract_major_minor(version)
+function _M.extract_major_minor(version)
   if type(version) ~= "string" then
     return nil, nil
   end
@@ -40,9 +43,9 @@ function clustering_utils.extract_major_minor(version)
   return major, minor
 end
 
-function clustering_utils.check_kong_version_compatibility(cp_version, dp_version, log_suffix)
-  local major_cp, minor_cp = clustering_utils.extract_major_minor(cp_version)
-  local major_dp, minor_dp = clustering_utils.extract_major_minor(dp_version)
+function _M.check_kong_version_compatibility(cp_version, dp_version, log_suffix)
+  local major_cp, minor_cp = _M.extract_major_minor(cp_version)
+  local major_dp, minor_dp = _M.extract_major_minor(dp_version)
 
   if not major_cp then
     return nil, "data plane version " .. dp_version .. " is incompatible with control plane version",
@@ -169,7 +172,7 @@ do
 end
 
 
-function clustering_utils.validate_connection_certs(conf, cert_digest)
+function _M.validate_connection_certs(conf, cert_digest)
   local _, err
 
   -- use mutual TLS authentication
@@ -200,4 +203,111 @@ function clustering_utils.validate_connection_certs(conf, cert_digest)
   return true
 end
 
-return clustering_utils
+
+function _M.plugins_list_to_map(plugins_list)
+  local versions = {}
+  for _, plugin in ipairs(plugins_list) do
+    local name = plugin.name
+    local version = plugin.version
+    local major, minor = _M.extract_major_minor(plugin.version)
+
+    if major and minor then
+      versions[name] = {
+        major   = major,
+        minor   = minor,
+        version = version,
+      }
+
+    else
+      versions[name] = {}
+    end
+  end
+  return versions
+end
+
+
+function _M.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suffix)
+  local ok, err, status = _M.check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
+  if not ok then
+    return ok, err, status
+  end
+
+  for _, plugin in ipairs(obj.plugins_list) do
+    local name = plugin.name
+    local cp_plugin = obj.plugins_map[name]
+    local dp_plugin = dp_plugin_map[name]
+
+    if not dp_plugin then
+      if cp_plugin.version then
+        ngx_log(ngx_WARN, _log_prefix, name, " plugin ", cp_plugin.version, " is missing from data plane", log_suffix)
+      else
+        ngx_log(ngx_WARN, _log_prefix, name, " plugin is missing from data plane", log_suffix)
+      end
+
+    else
+      if cp_plugin.version and dp_plugin.version then
+        local msg = "data plane " .. name .. " plugin version " .. dp_plugin.version ..
+                    " is different to control plane plugin version " .. cp_plugin.version
+
+        if cp_plugin.major ~= dp_plugin.major then
+          ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
+
+        elseif cp_plugin.minor ~= dp_plugin.minor then
+          ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
+        end
+
+      elseif dp_plugin.version then
+        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version ", dp_plugin.version,
+                        " has unspecified version on control plane", log_suffix)
+
+      elseif cp_plugin.version then
+        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version is unspecified, ",
+                        "and is different to control plane plugin version ",
+                        cp_plugin.version, log_suffix)
+      end
+    end
+  end
+
+  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
+end
+
+
+function _M.check_configuration_compatibility(obj, dp_plugin_map)
+  for _, plugin in ipairs(obj.plugins_list) do
+    if obj.plugins_configured[plugin.name] then
+      local name = plugin.name
+      local cp_plugin = obj.plugins_map[name]
+      local dp_plugin = dp_plugin_map[name]
+
+      if not dp_plugin then
+        if cp_plugin.version then
+          return nil, "configured " .. name .. " plugin " .. cp_plugin.version ..
+                      " is missing from data plane", CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+        end
+
+        return nil, "configured " .. name .. " plugin is missing from data plane",
+               CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
+      end
+
+      if cp_plugin.version and dp_plugin.version then
+        -- CP plugin needs to match DP plugins with major version
+        -- CP must have plugin with equal or newer version than that on DP
+        if cp_plugin.major ~= dp_plugin.major or
+          cp_plugin.minor < dp_plugin.minor then
+          local msg = "configured data plane " .. name .. " plugin version " .. dp_plugin.version ..
+                      " is different to control plane plugin version " .. cp_plugin.version
+          return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
+        end
+      end
+    end
+  end
+
+  -- TODO: DAOs are not checked in any way at the moment. For example if plugin introduces a new DAO in
+  --       minor release and it has entities, that will most likely fail on data plane side, but is not
+  --       checked here.
+
+  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
+end
+
+
+return _M

@@ -1,4 +1,5 @@
 local _M = {}
+local _MT = { __index = _M, }
 
 
 local semaphore = require("ngx.semaphore")
@@ -6,6 +7,7 @@ local ws_client = require("resty.websocket.client")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local constants = require("kong.constants")
+local config_helper = require("kong.clustering.config_helper")
 local assert = assert
 local setmetatable = setmetatable
 local math = math
@@ -45,16 +47,15 @@ local function is_timeout(err)
 end
 
 
-function _M.new(parent)
+function _M.new(conf, cert, cert_key)
   local self = {
-    declarative_config = declarative.new_config(parent.conf),
+    declarative_config = declarative.new_config(conf),
+    conf = conf,
+    cert = cert,
+    cert_key = cert_key,
   }
 
-  return setmetatable(self, {
-    __index = function(tab, key)
-      return _M[key] or parent[key]
-    end,
-  })
+  return setmetatable(self, _MT)
 end
 
 
@@ -183,7 +184,8 @@ function _M:communicate(premature)
           local hashes = self.next_hashes
 
           local pok, res
-          pok, res, err = pcall(self.update_config, self, config_table, config_hash, hashes)
+          pok, res, err = pcall(config_helper.update,
+                                self.declarative_config, config_table, config_hash, hashes)
           if pok then
             if not res then
               ngx_log(ngx_ERR, _log_prefix, "unable to update running config: ", err)

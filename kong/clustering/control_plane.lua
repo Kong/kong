@@ -1,4 +1,5 @@
 local _M = {}
+local _MT = { __index = _M, }
 
 
 local semaphore = require("ngx.semaphore")
@@ -33,11 +34,10 @@ local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
 
+local calculate_config_hash = require("kong.clustering.config_helper").calculate_config_hash
 
 local kong_dict = ngx.shared.kong
-local KONG_VERSION = kong.version
 local ngx_DEBUG = ngx.DEBUG
-local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
 local ngx_ERR = ngx.ERR
@@ -59,31 +59,12 @@ local REMOVED_FIELDS = require("kong.clustering.compat.removed_fields")
 local _log_prefix = "[clustering] "
 
 
+local plugins_list_to_map = clustering_utils.plugins_list_to_map
+
+
 local function handle_export_deflated_reconfigure_payload(self)
   local ok, p_err, err = pcall(self.export_deflated_reconfigure_payload, self)
   return ok, p_err or err
-end
-
-
-local function plugins_list_to_map(plugins_list)
-  local versions = {}
-  for _, plugin in ipairs(plugins_list) do
-    local name = plugin.name
-    local version = plugin.version
-    local major, minor = clustering_utils.extract_major_minor(plugin.version)
-
-    if major and minor then
-      versions[name] = {
-        major   = major,
-        minor   = minor,
-        version = version,
-      }
-
-    else
-      versions[name] = {}
-    end
-  end
-  return versions
 end
 
 
@@ -92,17 +73,16 @@ local function is_timeout(err)
 end
 
 
-function _M.new(parent)
+function _M.new(conf, cert_digest)
   local self = {
     clients = setmetatable({}, { __mode = "k", }),
     plugins_map = {},
+
+    conf = conf,
+    cert_digest = cert_digest,
   }
 
-  return setmetatable(self, {
-    __index = function(tab, key)
-      return _M[key] or parent[key]
-    end,
-  })
+  return setmetatable(self, _MT)
 end
 
 
@@ -223,7 +203,7 @@ function _M:export_deflated_reconfigure_payload()
   kong_dict:set(shm_key_name, cjson_encode(self.plugins_configured));
   ngx_log(ngx_DEBUG, "plugin configuration map key: " .. shm_key_name .. " configuration: ", kong_dict:get(shm_key_name))
 
-  local config_hash, hashes = self:calculate_config_hash(config_table)
+  local config_hash, hashes = calculate_config_hash(config_table)
 
   local payload = {
     type = "reconfigure",
@@ -270,88 +250,9 @@ function _M:push_config()
 end
 
 
-function _M:check_version_compatibility(dp_version, dp_plugin_map, log_suffix)
-  local ok, err, status = clustering_utils.check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
-  if not ok then
-    return ok, err, status
-  end
+_M.check_version_compatibility = clustering_utils.check_version_compatibility
+_M.check_configuration_compatibility = clustering_utils.check_configuration_compatibility
 
-  for _, plugin in ipairs(self.plugins_list) do
-    local name = plugin.name
-    local cp_plugin = self.plugins_map[name]
-    local dp_plugin = dp_plugin_map[name]
-
-    if not dp_plugin then
-      if cp_plugin.version then
-        ngx_log(ngx_WARN, _log_prefix, name, " plugin ", cp_plugin.version, " is missing from data plane", log_suffix)
-      else
-        ngx_log(ngx_WARN, _log_prefix, name, " plugin is missing from data plane", log_suffix)
-      end
-
-    else
-      if cp_plugin.version and dp_plugin.version then
-        local msg = "data plane " .. name .. " plugin version " .. dp_plugin.version ..
-                    " is different to control plane plugin version " .. cp_plugin.version
-
-        if cp_plugin.major ~= dp_plugin.major then
-          ngx_log(ngx_WARN, _log_prefix, msg, log_suffix)
-
-        elseif cp_plugin.minor ~= dp_plugin.minor then
-          ngx_log(ngx_INFO, _log_prefix, msg, log_suffix)
-        end
-
-      elseif dp_plugin.version then
-        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version ", dp_plugin.version,
-                        " has unspecified version on control plane", log_suffix)
-
-      elseif cp_plugin.version then
-        ngx_log(ngx_NOTICE, _log_prefix, "data plane ", name, " plugin version is unspecified, ",
-                        "and is different to control plane plugin version ",
-                        cp_plugin.version, log_suffix)
-      end
-    end
-  end
-
-  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
-end
-
-
-function _M:check_configuration_compatibility(dp_plugin_map)
-  for _, plugin in ipairs(self.plugins_list) do
-    if self.plugins_configured[plugin.name] then
-      local name = plugin.name
-      local cp_plugin = self.plugins_map[name]
-      local dp_plugin = dp_plugin_map[name]
-
-      if not dp_plugin then
-        if cp_plugin.version then
-          return nil, "configured " .. name .. " plugin " .. cp_plugin.version ..
-                      " is missing from data plane", CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
-        end
-
-        return nil, "configured " .. name .. " plugin is missing from data plane",
-               CLUSTERING_SYNC_STATUS.PLUGIN_SET_INCOMPATIBLE
-      end
-
-      if cp_plugin.version and dp_plugin.version then
-        -- CP plugin needs to match DP plugins with major version
-        -- CP must have plugin with equal or newer version than that on DP
-        if cp_plugin.major ~= dp_plugin.major or
-          cp_plugin.minor < dp_plugin.minor then
-          local msg = "configured data plane " .. name .. " plugin version " .. dp_plugin.version ..
-                      " is different to control plane plugin version " .. cp_plugin.version
-          return nil, msg, CLUSTERING_SYNC_STATUS.PLUGIN_VERSION_INCOMPATIBLE
-        end
-      end
-    end
-  end
-
-  -- TODO: DAOs are not checked in any way at the moment. For example if plugin introduces a new DAO in
-  --       minor release and it has entities, that will most likely fail on data plane side, but is not
-  --       checked here.
-
-  return true, nil, CLUSTERING_SYNC_STATUS.NORMAL
-end
 
 function _M:handle_cp_websocket()
   local dp_id = ngx_var.arg_node_id
