@@ -2791,7 +2791,10 @@ local function clustering_client(opts)
 end
 
 
---- Return a table of clustering_protocols and nginx template file
+--- Return a table of clustering_protocols and
+-- create the appropriate Nginx template file if needed.
+-- The file pointed by `json`, when used by CP,
+-- will cause CP's wRPC endpoint be disabled.
 local function get_clustering_protocols()
   local confs = {
     wrpc = "spec/fixtures/custom_nginx.template",
