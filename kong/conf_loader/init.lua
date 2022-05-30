@@ -781,10 +781,10 @@ local function check_and_infer(conf, opts)
         if system_path then
           path = system_path
 
-        else
+        elseif not ngx.IS_CLI then
           log.info("lua_ssl_trusted_certificate: unable to locate system bundle: " .. err ..
-                   ". Please set lua_ssl_trusted_certificate to a path with certificates " ..
-                   "in order to remove this message")
+                   ". If you are using TLS connections, consider specifying " ..
+                   "\"lua_ssl_trusted_certificate\" manually")
         end
       end
 
