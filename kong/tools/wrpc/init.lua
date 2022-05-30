@@ -1,4 +1,3 @@
-local new_tab = require "table.new"
 local pb = require "pb"
 local semaphore = require "ngx.semaphore"
 local channel = require "kong.tools.channel"
