@@ -9,7 +9,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: request.get_path() returns path component of uri
+=== TEST 1: request.get_raw_path() returns path component of uri
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -17,19 +17,19 @@ __DATA__
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.say("normalized path: ", pdk.request.get_path())
+            ngx.say("path: ", pdk.request.get_raw_path())
         }
     }
 --- request
 GET /t
 --- response_body
-normalized path: /t
+path: /t
 --- no_error_log
 [error]
 
 
 
-=== TEST 2: request.get_path() returns at least slash
+=== TEST 2: request.get_raw_path() returns at least slash
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = / {
@@ -37,19 +37,19 @@ normalized path: /t
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.say("normalized path: ", pdk.request.get_path())
+            ngx.say("path: ", pdk.request.get_raw_path())
         }
     }
 --- request
 GET http://kong
 --- response_body
-normalized path: /
+path: /
 --- no_error_log
 [error]
 
 
 
-=== TEST 3: request.get_path() is normalized
+=== TEST 3: request.get_raw_path() is not normalized
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location /t/ {
@@ -57,19 +57,19 @@ normalized path: /
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.say("normalized path: ", pdk.request.get_path())
+            ngx.say("path: ", pdk.request.get_raw_path())
         }
     }
 --- request
-GET /t/Abc%20123%C3%B8/parent/../test/.
+GET /t/Abc%20123%C3%B8/../test/.
 --- response_body
-normalized path: /t/Abc 123ø/test/
+path: /t/Abc%20123%C3%B8/../test/.
 --- no_error_log
 [error]
 
 
 
-=== TEST 4: request.get_path() strips query string
+=== TEST 4: request.get_raw_path() strips query string
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location /t/ {
@@ -77,12 +77,12 @@ normalized path: /t/Abc 123ø/test/
             local PDK = require "kong.pdk"
             local pdk = PDK.new()
 
-            ngx.say("normalized path: ", pdk.request.get_path())
+            ngx.say("path: ", pdk.request.get_raw_path())
         }
     }
 --- request
 GET /t/demo?param=value
 --- response_body
-normalized path: /t/demo
+path: /t/demo
 --- no_error_log
 [error]
