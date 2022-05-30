@@ -106,6 +106,8 @@
   on the string that is returned to the caller. The raw, non-normalized version
   of the request path can be fetched via `kong.request.get_raw_path()`.
   [8823](https://github.com/Kong/kong/pull/8823)
+- The Kong singletons module `"kong.singletons"` was removed in favor of the PDK `kong.*`.
+  [#8874](https://github.com/Kong/kong/pull/8874)
 
 #### Admin API
 
@@ -142,7 +144,6 @@
 - The migration helper library is no longer supplied with Kong (we didn't use it for anything,
   and the only function it had, was for the deprecated Cassandra).
   [#8781](https://github.com/Kong/kong/pull/8781)
-
 
 #### Plugins
 
@@ -192,8 +193,8 @@
 - Added `cache_key` on target entity for uniqueness detection.
   [#8179](https://github.com/Kong/kong/pull/8179)
 - Introduced the tracing API which compatible with OpenTelemetry API spec and
-  add build-in instrumentations.  
-  The tracing API is intend to be used with a external exporter plugin.  
+  add build-in instrumentations.
+  The tracing API is intend to be used with a external exporter plugin.
   Build-in instrumentation types and sampling rate are configuable through
   `opentelemetry_tracing` and `opentelemetry_tracing_sampling_rate` options.
  [#8724](https://github.com/Kong/kong/pull/8724)

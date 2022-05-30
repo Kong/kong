@@ -6,11 +6,11 @@
 ---
 ---
 ---
-local singletons = require "kong.singletons"
 local workspaces = require "kong.workspaces"
 local constants  = require "kong.constants"
 local balancers
 local healthcheckers
+
 
 local ngx = ngx
 local log = ngx.log
@@ -61,7 +61,7 @@ end
 -- @param upstream_id string
 -- @return the upstream table, or nil+error
 local function load_upstream_into_memory(upstream_id)
-  local upstream, err = singletons.db.upstreams:select({id = upstream_id}, GLOBAL_QUERY_OPTS)
+  local upstream, err = kong.db.upstreams:select({id = upstream_id}, GLOBAL_QUERY_OPTS)
   if not upstream then
     return nil, err
   end
@@ -74,7 +74,7 @@ end
 function upstreams_M.get_upstream_by_id(upstream_id)
   local upstream_cache_key = "balancer:upstreams:" .. upstream_id
 
-  return singletons.core_cache:get(upstream_cache_key, nil,
+  return kong.core_cache:get(upstream_cache_key, nil,
     load_upstream_into_memory, upstream_id)
 end
 
@@ -86,7 +86,7 @@ local function load_upstreams_dict_into_memory()
   local found = nil
 
   -- build a dictionary, indexed by the upstream name
-  local upstreams = singletons.db.upstreams
+  local upstreams = kong.db.upstreams
 
   local page_size
   if upstreams.pagination then
@@ -115,8 +115,8 @@ local opts = { neg_ttl = 10 }
 -- @return The upstreams dictionary (a map with upstream names as string keys
 -- and upstream entity tables as values), or nil+error
 function upstreams_M.get_all_upstreams()
-  local upstreams_dict, err = singletons.core_cache:get("balancer:upstreams", opts,
-                                                        load_upstreams_dict_into_memory)
+  local upstreams_dict, err = kong.core_cache:get("balancer:upstreams", opts,
+                                                  load_upstreams_dict_into_memory)
   if err then
     return nil, err
   end
@@ -193,8 +193,8 @@ local function do_upstream_event(operation, upstream_data)
 
   elseif operation == "delete" or operation == "update" then
     local target_cache_key = "balancer:targets:" .. upstream_id
-    if singletons.db.strategy ~= "off" then
-      singletons.core_cache:invalidate_local(target_cache_key)
+    if kong.db.strategy ~= "off" then
+      kong.core_cache:invalidate_local(target_cache_key)
     end
 
     local balancer = balancers.get_balancer_by_id(upstream_id)

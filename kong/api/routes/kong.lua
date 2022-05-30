@@ -1,5 +1,3 @@
-local singletons = require "kong.singletons"
-local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
 local api_helpers = require "kong.api.api_helpers"
 local Schema = require "kong.db.schema"
@@ -92,7 +90,7 @@ return {
       end
 
       local available_plugins = {}
-      for name in pairs(singletons.configuration.loaded_plugins) do
+      for name in pairs(kong.configuration.loaded_plugins) do
         local pr = kong.db.plugins.handlers[name].PRIORITY
         if pr ~= nil then
           if type(pr) ~= "number" or math.abs(pr) == math.huge then
@@ -119,7 +117,7 @@ return {
           enabled_in_cluster = distinct_plugins,
         },
         lua_version = lua_version,
-        configuration = conf_loader.remove_sensitive(singletons.configuration),
+        configuration = kong.configuration.remove_sensitive(),
         pids = pids,
       })
     end

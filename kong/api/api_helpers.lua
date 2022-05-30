@@ -5,7 +5,6 @@ local tablex = require "pl.tablex"
 local app_helpers = require "lapis.application"
 local arguments = require "kong.api.arguments"
 local Errors = require "kong.db.errors"
-local singletons = require "kong.singletons"
 local hooks = require "kong.hooks"
 
 
@@ -446,7 +445,7 @@ function _M.attach_new_db_routes(app, routes)
           request = self.req,
         })
 
-        return method_handler(self, singletons.db, handler_helpers)
+        return method_handler(self, kong.db, handler_helpers)
       end
 
       methods[method_name] = parse_params(wrapped_handler)
