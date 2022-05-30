@@ -207,8 +207,7 @@ local function fill_empty_hashes(hashes)
 end
 
 
---- detect '/v1/wrpc' endpoint
---- if there is no '/v1/wrpc', fallback to websocket + json
+--- Return the highest supported Hybrid mode protocol version.
 local function check_protocol_support(conf, cert, cert_key)
   local params = {
     scheme = "https",
