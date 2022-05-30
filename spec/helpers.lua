@@ -2791,6 +2791,20 @@ local function clustering_client(opts)
 end
 
 
+--- Return a table of clustering_protocols and nginx template file
+local function get_clustering_protocols()
+  local confs = {
+    wrpc = "spec/fixtures/custom_nginx.template",
+    json = "/tmp/custom_nginx_no_wrpc.template",
+  }
+
+  -- disable wrpc in CP
+  os.execute(string.format("cat %s | sed 's/wrpc/foobar/g' > %s", confs.wrpc, confs.json))
+
+  return confs
+end
+
+
 ----------------
 -- Variables/constants
 -- @section exported-fields
@@ -2898,6 +2912,7 @@ end
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
   clustering_client = clustering_client,
+  get_clustering_protocols = get_clustering_protocols,
   https_server = https_server,
   stress_generator = stress_generator,
 

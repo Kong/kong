@@ -16,12 +16,7 @@ local CLUSTERING_SYNC_STATUS = require("kong.constants").CLUSTERING_SYNC_STATUS
 local KEY_AUTH_PLUGIN
 
 
-local confs = {
-  wrpc = "spec/fixtures/custom_nginx.template",
-  json = "spec/fixtures/json_nginx.template",
-}
--- disable wrpc in CP
-os.execute(string.format("cat %s | sed 's/wrpc/foobar/g' > %s", confs.wrpc, confs.json))
+local confs = helpers.get_clustering_protocols()
 
 
 for _, strategy in helpers.each_strategy() do

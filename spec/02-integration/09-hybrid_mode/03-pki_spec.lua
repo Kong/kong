@@ -2,12 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson.safe"
 
 
-local confs = {
-  wrpc = "spec/fixtures/custom_nginx.template",
-  json = "spec/fixtures/json_nginx.template",
-}
--- disable wrpc in CP
-os.execute(string.format("cat %s | sed 's/wrpc/foobar/g' > %s", confs.wrpc, confs.json))
+local confs = helpers.get_clustering_protocols()
 
 
 for cluster_protocol, conf in pairs(confs) do
