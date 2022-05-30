@@ -179,10 +179,10 @@ untrusted_lua = sandbox
 untrusted_lua_sandbox_requires =
 untrusted_lua_sandbox_environment =
 
+legacy_worker_events = off
+
 openresty_path =
 
 opentelemetry_tracing = off
 opentelemetry_tracing_sampling_rate = 1.0
-
-legacy_worker_events = off
 ]]
