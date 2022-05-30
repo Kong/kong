@@ -43,7 +43,7 @@ local CorrelationIdHandler = {}
 
 
 CorrelationIdHandler.PRIORITY = 1
-CorrelationIdHandler.VERSION = kong_meta._VERSION
+CorrelationIdHandler.VERSION = kong_meta.version
 
 
 function CorrelationIdHandler:init_worker()

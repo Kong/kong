@@ -66,7 +66,7 @@ end
 
 local FileLogHandler = {
   PRIORITY = 9,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 

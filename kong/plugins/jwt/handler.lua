@@ -14,7 +14,7 @@ local re_gmatch = ngx.re.gmatch
 
 local JwtHandler = {
   PRIORITY = 1005,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 

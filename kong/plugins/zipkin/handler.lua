@@ -11,7 +11,7 @@ local fmt = string.format
 local rand_bytes = utils.get_rand_bytes
 
 local ZipkinLogHandler = {
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
   -- We want to run first so that timestamps taken are at start of the phase
   -- also so that other plugins might be able to use our structures
   PRIORITY = 100000,

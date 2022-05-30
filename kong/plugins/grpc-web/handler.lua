@@ -23,7 +23,7 @@ local kong_service_request_set_raw_body = kong.service.request.set_raw_body
 
 local grpc_web = {
   PRIORITY = 3,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 

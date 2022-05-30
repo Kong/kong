@@ -137,7 +137,7 @@ end
 
 local HttpLogHandler = {
   PRIORITY = 12,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 

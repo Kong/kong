@@ -210,7 +210,7 @@ end
 
 
 local ProxyCacheHandler = {
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
   PRIORITY = 100,
 }
 

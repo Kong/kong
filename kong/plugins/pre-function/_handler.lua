@@ -92,7 +92,7 @@ return function(priority)
 
   local ServerlessFunction = {
     PRIORITY = priority,
-    VERSION = kong_meta._VERSION,
+    VERSION = kong_meta.version,
   }
 
   function ServerlessFunction:certificate(config)

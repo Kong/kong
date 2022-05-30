@@ -9,7 +9,7 @@ local error = error
 
 local IpRestrictionHandler = {
   PRIORITY = 990,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 

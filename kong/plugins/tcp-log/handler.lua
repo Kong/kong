@@ -53,7 +53,7 @@ end
 
 local TcpLogHandler = {
   PRIORITY = 7,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 

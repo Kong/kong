@@ -5,7 +5,7 @@ local kong_meta = require "kong.meta"
 
 local HMACAuthHandler = {
   PRIORITY = 1000,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 
