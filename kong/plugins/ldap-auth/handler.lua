@@ -4,7 +4,7 @@ local kong_meta = require "kong.meta"
 
 local LdapAuthHandler = {
   PRIORITY = 1002,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 

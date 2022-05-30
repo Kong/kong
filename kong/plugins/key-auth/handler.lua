@@ -9,7 +9,7 @@ local error = error
 
 local KeyAuthHandler = {
   PRIORITY = 1003,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 

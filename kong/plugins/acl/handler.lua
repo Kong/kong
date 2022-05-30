@@ -41,7 +41,7 @@ local ACLHandler = {}
 
 
 ACLHandler.PRIORITY = 950
-ACLHandler.VERSION = kong_meta._VERSION
+ACLHandler.VERSION = kong_meta.version
 
 
 function ACLHandler:access(conf)

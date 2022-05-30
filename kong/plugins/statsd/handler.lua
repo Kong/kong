@@ -129,7 +129,7 @@ end
 
 local StatsdHandler = {
   PRIORITY = 11,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 

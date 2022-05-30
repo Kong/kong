@@ -43,7 +43,7 @@ end
 
 local UdpLogHandler = {
   PRIORITY = 8,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 

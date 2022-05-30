@@ -15,7 +15,7 @@ local RequestTerminationHandler = {}
 
 
 RequestTerminationHandler.PRIORITY = 2
-RequestTerminationHandler.VERSION = kong_meta._VERSION
+RequestTerminationHandler.VERSION = kong_meta.version
 
 
 function RequestTerminationHandler:access(conf)

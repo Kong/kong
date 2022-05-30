@@ -4,7 +4,7 @@ local kong_meta = require "kong.meta"
 
 local BasicAuthHandler = {
   PRIORITY = 1001,
-  VERSION = kong_meta._VERSION,
+  VERSION = kong_meta.version,
 }
 
 
