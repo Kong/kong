@@ -272,7 +272,7 @@ function _M.request_version_handshake(conf, cert, cert_key)
     },
     body = body,
 
-    ssl_verify = false,
+    ssl_verify = true,
     ssl_client_cert = cert,
     ssl_client_priv_key = cert_key,
   }

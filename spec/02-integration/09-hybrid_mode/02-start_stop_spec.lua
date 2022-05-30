@@ -1,13 +1,16 @@
 local helpers = require "spec.helpers"
 
 
-for _, cluster_protocol in ipairs{"json", "wrpc"} do
+local confs = helpers.get_clustering_protocols()
+
+
+for cluster_protocol, conf in pairs(confs) do
   describe("invalid config are rejected, protocol " .. cluster_protocol, function()
     describe("role is control_plane", function()
       it("can not disable admin_listen", function()
         local ok, err = helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -21,7 +24,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
       it("can not disable cluster_listen", function()
         local ok, err = helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -35,7 +38,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
       it("can not use DB-less mode", function()
         local ok, err = helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -49,7 +52,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
       it("must define cluster_ca_cert", function()
         local ok, err = helpers.start_kong({
           role = "control_plane",
-          cluster_protocol = cluster_protocol,
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -65,7 +68,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
       it("can not disable proxy_listen", function()
         local ok, err = helpers.start_kong({
           role = "data_plane",
-          cluster_protocol = cluster_protocol,
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -79,7 +82,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
       it("can not use DB mode", function()
         local ok, err = helpers.start_kong({
           role = "data_plane",
-          cluster_protocol = cluster_protocol,
+          nginx_conf = conf,
           prefix = "servroot2",
           cluster_cert = "spec/fixtures/kong_clustering.crt",
           cluster_cert_key = "spec/fixtures/kong_clustering.key",
@@ -96,7 +99,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
         it("errors if cluster certificate is not found", function()
           local ok, err = helpers.start_kong({
             role = param[1],
-            cluster_protocol = cluster_protocol,
+            nginx_conf = conf,
             database = param[2],
             prefix = "servroot2",
           })
@@ -108,7 +111,7 @@ for _, cluster_protocol in ipairs{"json", "wrpc"} do
         it("errors if cluster certificate key is not found", function()
           local ok, err = helpers.start_kong({
             role = param[1],
-            cluster_protocol = cluster_protocol,
+            nginx_conf = conf,
             database = param[2],
             prefix = "servroot2",
             cluster_cert = "spec/fixtures/kong_clustering.crt",

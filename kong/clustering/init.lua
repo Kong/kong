@@ -1,5 +1,6 @@
 local _M = {}
 
+local http = require("resty.http")
 local constants = require("kong.constants")
 local declarative = require("kong.db.declarative")
 local version_negotiation = require("kong.clustering.version_negotiation")
@@ -204,15 +205,40 @@ local function fill_empty_hashes(hashes)
   end
 end
 
-function _M:request_version_negotiation()
-  local response_data, err = version_negotiation.request_version_handshake(self.conf, self.cert, self.cert_key)
-  if not response_data then
-    ngx_log(ngx_ERR, _log_prefix, "error while requesting version negotiation: " .. err)
-    assert(ngx.timer.at(math.random(5, 10), function(premature)
-      self:communicate(premature)
-    end))
-    return
+
+--- Return the highest supported Hybrid mode protocol version.
+local function check_protocol_support(conf, cert, cert_key)
+  local params = {
+    scheme = "https",
+    method = "HEAD",
+
+    ssl_verify = true,
+    ssl_client_cert = cert,
+    ssl_client_priv_key = cert_key,
+  }
+
+  if conf.cluster_mtls == "shared" then
+    params.ssl_server_name = "kong_clustering"
+
+  else
+    -- server_name will be set to the host if it is not explicitly defined here
+    if conf.cluster_server_name ~= "" then
+      params.ssl_server_name = conf.cluster_server_name
+    end
   end
+
+  local c = http.new()
+  local res, err = c:request_uri(
+    "https://" .. conf.cluster_control_plane .. "/v1/wrpc", params)
+  if not res then
+    return nil, err
+  end
+
+  if res.status == 404 then
+    return "v0"
+  end
+
+  return "v1"   -- wrpc
 end
 
 
@@ -293,11 +319,10 @@ function _M:init_worker()
         return
       end
 
-      self:request_version_negotiation()
+      local config_proto, msg = check_protocol_support(self.conf, self.cert, self.cert_key)
 
-      local config_proto, msg = version_negotiation.get_negotiated_service("config")
       if not config_proto and msg then
-        ngx_log(ngx_ERR, _log_prefix, "error reading negotiated \"config\" service: ", msg)
+        ngx_log(ngx_ERR, _log_prefix, "error check protocol support: ", msg)
       end
 
       ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)

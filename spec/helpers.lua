@@ -721,7 +721,7 @@ local function http_client_opts(options)
   local self = setmetatable(assert(http.new()), resty_http_proxy_mt)
   local _, err = self:connect(options)
   if err then
-    error("Could not connect to " .. options.host or "unknown" .. ":" .. options.port or "unknown" .. ": " .. err)
+    error("Could not connect to " .. (options.host or "unknown") .. ":" .. (options.port or "unknown") .. ": " .. err)
   end
 
   if options.connect_timeout and
@@ -2867,6 +2867,23 @@ local function clustering_client(opts)
 end
 
 
+--- Return a table of clustering_protocols and
+-- create the appropriate Nginx template file if needed.
+-- The file pointed by `json`, when used by CP,
+-- will cause CP's wRPC endpoint be disabled.
+local function get_clustering_protocols()
+  local confs = {
+    wrpc = "spec/fixtures/custom_nginx.template",
+    json = "/tmp/custom_nginx_no_wrpc.template",
+  }
+
+  -- disable wrpc in CP
+  os.execute(string.format("cat %s | sed 's/wrpc/foobar/g' > %s", confs.wrpc, confs.json))
+
+  return confs
+end
+
+
 ----------------
 -- Variables/constants
 -- @section exported-fields
@@ -2993,6 +3010,7 @@ end
   all_strategies = all_strategies,
   validate_plugin_config_schema = validate_plugin_config_schema,
   clustering_client = clustering_client,
+  get_clustering_protocols = get_clustering_protocols,
   https_server = https_server,
   stress_generator = stress_generator,
 
