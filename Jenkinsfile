@@ -16,7 +16,6 @@ pipeline {
         PULP_HOST_STAGE = "https://api.pulp.konnect-stage.konghq.com"
         PULP_STAGE = credentials('PULP_STAGE')
         GITHUB_TOKEN = credentials('github_bot_access_token')
-        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
         DEBUG = 0
     }
     stages {
@@ -87,6 +86,7 @@ pipeline {
                         PACKAGE_TYPE = "rpm"
                         PRIVATE_KEY_FILE = credentials('kong.private.gpg-key.asc')
                         PRIVATE_KEY_PASSPHRASE = credentials('kong.private.gpg-key.asc.password')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -108,6 +108,7 @@ pipeline {
                         KONG_SOURCE_LOCATION = "${env.WORKSPACE}"
                         KONG_BUILD_TOOLS_LOCATION = "${env.WORKSPACE}/../kong-build-tools"
                         PACKAGE_TYPE = "deb"
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
@@ -132,6 +133,7 @@ pipeline {
                         PACKAGE_TYPE = "rpm"
                         AWS_ACCESS_KEY = credentials('AWS_ACCESS_KEY')
                         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+                        GITHUB_SSH_KEY = credentials('github_bot_ssh_key')
                     }
                     steps {
                         sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin || true'
