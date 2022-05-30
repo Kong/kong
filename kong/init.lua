@@ -285,17 +285,25 @@ local function execute_access_plugins_iterator(plugins_iterator, ctx)
 
   ctx.delay_response = true
 
-  for plugin, configuration in plugins_iterator:iterate("access", ctx) do
+  -- A context can only ever be scoped to one workspace, which means that an iteration is bound to
+  -- the workspace. A workspace can be flagged for reordering. Depending on this flag
+  -- we choose a iterator.
+  -- 1) Iterator that needs to sorts after retrieving the plugins configuration since dynamic reordering is required.
+  --    This means we have to iterate twice, once to fetch the plugins information in order to apply the sorting function and once
+  --    to actually run the access_handler
+  -- 2) Iterator that is pre-sorted. Only one iteration is needed. This is the default
+  local iterator = plugins_iterator:get_iterator(ctx)
+
+  for plugin, configuration in iterator(plugins_iterator, "access", ctx) do
     if not ctx.delayed_response then
       setup_plugin_context(ctx, plugin)
-
       local co = coroutine.create(plugin.handler.access)
       local cok, cerr = coroutine.resume(co, plugin.handler, configuration)
       if not cok then
         kong.log.err(cerr)
         ctx.delayed_response = {
           status_code = 500,
-          content = { message  = "An unexpected error occurred" },
+          content = { message = "An unexpected error occurred" },
         }
 
         -- plugin that throws runtime exception should be marked as `error`

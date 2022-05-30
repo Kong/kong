@@ -13,6 +13,7 @@ local utils        = require "kong.tools.utils"
 
 
 local tracing = require "kong.tracing"
+local topsort_plugins = require("kong.db.schema.topsort_plugins")
 
 
 local kong         = kong
@@ -116,6 +117,8 @@ local function load_configuration(ctx,
   end
 
   local cfg = plugin.config or {}
+
+  cfg.ordering = plugin.ordering
 
   if not cfg.__key__ then
     cfg.__key__ = key
@@ -390,6 +393,89 @@ local function iterate(self, phase, ctx)
 end
 
 
+-- Check if plugins need dynamic reordering upon request by looking at `dynamic_plugin_ordering`
+-- @return boolean value
+local function plugins_need_reorder(self, ctx)
+  local ws = get_workspace(self, ctx)
+  if not ws then
+    return zero_iter
+  end
+  if not ws.dynamic_plugin_ordering then
+    return false
+  end
+  return true
+end
+
+-- Applies topological ordering accroding to their configuration.
+-- @return table of sorted handler,config tuple
+local function topological_ordered_plugins(self, phase, ctx)
+    local plugins_meta = {}
+    local ws = get_workspace(self, ctx)
+    if not ws then
+      return zero_iter
+    end
+
+    local int_idx_plugins = {}
+    for plugin, configuration in self:iterate(phase, ctx) do
+      -- index plugin by name to find them during graph building
+      -- The order of a non-integer index based table is non-deterministic!
+      plugins_meta[plugin.name] = {plugin=plugin, config=configuration}
+      -- maintain a integer indexed list and a string indexed list for easier access
+      table.insert(int_idx_plugins, { plugin = plugin, config = configuration })
+    end
+
+    local sorted, err = topsort_plugins(plugins_meta, int_idx_plugins, phase)
+    if err then
+      return nil, err
+    end
+    return sorted
+end
+
+local function get_next_reordering(self)
+  local i = self.i + 1
+  local plugin = self.plugins[i]
+  if not plugin then
+    return nil
+  end
+
+  self.i = i
+
+  -- Durablity condition to account for a case where the topsort algorithm adds a empty string
+  if plugin == "" then
+    return get_next_reordering(self)
+  end
+
+
+  if plugin then
+    return plugin.plugin, plugin.config
+  end
+
+  return get_next_reordering(self)
+end
+
+-- Iterator for ordered plugins table
+-- @return function iterator
+-- todo: rename function -> s/ordered/re_ordered
+local function iter_ordered_plugins(self, phase, ctx)
+  local plugins, err = topological_ordered_plugins(self, phase, ctx)
+  if err then
+    kong.log.err("Error during topological sorting of plugin: ", err)
+    return nil, err
+  end
+
+  local ws = get_workspace(self, ctx)
+  if not ws then
+    return zero_iter
+  end
+
+  return get_next_reordering, {
+    phases = ws.phases[phase] or {},
+    plugins = plugins,
+    i = 0,
+  }
+end
+
+
 -- Iterate over the loaded plugins that implement `init_worker`.
 -- @treturn function iterator
 local function iterate_init_worker(self)
@@ -446,6 +532,16 @@ local function new_ws_data()
   }
 end
 
+-- Pick iterator based on context. When dynamic ordering is required we have
+-- to collect and order the related plugins.
+-- @return iterator function
+local function get_iterator(self, ctx)
+  if plugins_need_reorder(self, ctx) then
+    return iter_ordered_plugins
+  end
+  return iterate
+end
+
 
 function PluginsIterator.new(version)
   if not version then
@@ -478,6 +574,14 @@ function PluginsIterator.new(version)
       data = new_ws_data()
       ws[plugin.ws_id] = data
     end
+
+    -- Flag the workspace with `dynamic_plugin_ordering` this signals that we have to sort plugins differently
+    -- based on the request.
+    if plugin.ordering then
+      data.dynamic_plugin_ordering = true
+      kong.log.info("Changing the order of plugins in this workspace dynamically")
+    end
+
     local plugins = data.plugins
     local combos = data.combos
 
@@ -509,6 +613,9 @@ function PluginsIterator.new(version)
       if kong.db.strategy == "off" then
         if plugin.enabled then
           local cfg = plugin.config or {}
+
+          -- needed as we do not load configurations from plugins again in db-less mode
+          cfg.ordering = plugin.ordering
 
           cfg.route_id    = plugin.route    and plugin.route.id
           cfg.service_id  = plugin.service  and plugin.service.id
@@ -610,11 +717,14 @@ function PluginsIterator.new(version)
     counter = counter + 1
   end
 
+  -- loaded_plugins contains all the plugins that we _may_ execute
   for _, plugin in ipairs(loaded_plugins) do
     local name = plugin.name
+    -- ws contains all the plugins that are associated to the request via route/service/global mappings
     for _, data in pairs(ws) do
       for phase_name, phase in pairs(data.phases) do
         if data.combos[name] then
+          -- figure out which phases to run in associated plugins
           local phase_handler = plugin.handler[phase_name]
           if phase_handler and phase_handler ~= BasePlugin[phase_name] then
             phase[name] = true
@@ -623,10 +733,14 @@ function PluginsIterator.new(version)
       end
 
       local plugins = data.plugins
+      -- is the plugin associated to the request(workspace/route/service)?
       if plugins[name] then
         local n = plugins[0] + 1
+        -- next item goes into next slot
         plugins[n] = plugin
+        -- index 0 holds table size
         plugins[0] = n
+        -- remove the placeholder value
         plugins[name] = nil
       end
     end
@@ -636,6 +750,7 @@ function PluginsIterator.new(version)
     version = version,
     ws = ws,
     loaded = loaded_plugins,
+    get_iterator = get_iterator,
     iterate = iterate,
     iterate_collected_plugins = iterate_collected_plugins,
     iterate_init_worker = iterate_init_worker,

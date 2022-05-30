@@ -13,6 +13,7 @@ local openssl_x509 = require "resty.openssl.x509"
 local Schema = require "kong.db.schema"
 local socket_url = require "socket.url"
 local constants = require "kong.constants"
+local pl_tablex = require("pl.tablex")
 
 
 local pairs = pairs
@@ -628,6 +629,73 @@ typedefs.semantic_version = Schema.define {
       pattern = "%.%.",
       err = "must not have empty version segments"
     },
+  },
+}
+
+local function validate_loaded_plugins(target_plugin)
+  -- When a plugin describes a dependecy to another plugin
+  -- we should ensure that the dependecy is actually a loaded plugin.
+  -- `loaded_plugins` also include custom plugins
+  local loaded_plugins = pl_tablex.keys(kong.configuration.loaded_plugins)
+  if utils.table_contains(loaded_plugins, target_plugin) then
+    return true
+  end
+  return false, "Expected one of " .. table.concat(loaded_plugins, ", ")
+end
+
+local function validate_dependencies(...)
+  -- The `plugin` we get in this function is the value of a `before` and
+  -- `after` directive. This means we can't maintain a list of plugins that
+  -- should be reordered as the `before|after` target can be any plugin.
+  -- This acts as a placeholder for a an actual validation function
+  return true
+end
+
+local function validate_plugins(target_plugin)
+  local res, err = validate_loaded_plugins(target_plugin)
+  if err or res ~= true then
+    return false, err
+  end
+  local res, err = validate_dependencies(target_plugin)
+  if err or res ~= true then
+    return false, err
+  end
+  return true
+end
+
+local dependency_token = Schema.define {
+  type = "string",
+  one_of = {"before", "after"}
+}
+
+local phases_supporting_reordering = Schema.define {
+  type = "string",
+  one_of = { "access" }
+}
+
+typedefs.plugin_ordering = Schema.define {
+  --[[
+  The structure looks like this
+    ordering:
+      dependency_token:
+        phases_supporting_reordering:
+          - plugin_name_a
+          - plugin_name_b
+          - ...
+  --]]
+  type = "map",
+  keys = dependency_token,
+  values = {
+    type = "map",
+    keys = phases_supporting_reordering,
+    values = {
+      type = "array",
+      elements = {
+        custom_validator = validate_plugins,
+        type = "string",
+        unique = true
+      }
+    }
   },
 }
 

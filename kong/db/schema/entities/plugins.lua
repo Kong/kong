@@ -29,6 +29,7 @@ return {
     { config = { type = "record", abstract = true, }, },
     { protocols = typedefs.protocols },
     { enabled = { type = "boolean", required = true, default = true, indexed = true }, },
-    { tags           = typedefs.tags },
+    { tags = typedefs.tags },
+    { ordering = typedefs.plugin_ordering },
   },
 }

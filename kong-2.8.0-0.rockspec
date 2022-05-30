@@ -265,6 +265,7 @@ build = {
 
     ["kong.enterprise_edition.db.migrations.operations.2600_to_2700"] = "kong/enterprise_edition/db/migrations/operations/2600_to_2700.lua",
     ["kong.enterprise_edition.db.migrations.enterprise.013_2700_to_2800"] = "kong/enterprise_edition/db/migrations/enterprise/013_2700_to_2800.lua",
+    ["kong.enterprise_edition.db.migrations.enterprise.014_2800_to_3000"] = "kong/enterprise_edition/db/migrations/enterprise/014_2800_to_3000.lua",
 
 
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
@@ -413,6 +414,7 @@ build = {
     ["kong.db.schema.plugin_loader"] = "kong/db/schema/plugin_loader.lua",
     ["kong.db.schema.vault_loader"] = "kong/db/schema/vault_loader.lua",
     ["kong.db.schema.topological_sort"] = "kong/db/schema/topological_sort.lua",
+    ["kong.db.schema.topsort_plugins"] = "kong/db/schema/topsort_plugins.lua",
     ["kong.db.strategies"] = "kong/db/strategies/init.lua",
     ["kong.db.strategies.connector"] = "kong/db/strategies/connector.lua",
     ["kong.db.strategies.cassandra"] = "kong/db/strategies/cassandra/init.lua",

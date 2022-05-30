@@ -144,6 +144,7 @@ describe("kong config", function()
     json.protocols = nil
     assert.same({
       name = "correlation-id",
+      ordering = ngx.null,
       id = "467f719f-a544-4a8f-bc4b-7cd12913a9d4",
       route = ngx.null,
       service = ngx.null,

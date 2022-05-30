@@ -95,11 +95,31 @@ local function sort_by_handler_priority(a, b)
   return (a.handler.PRIORITY or 0) > (b.handler.PRIORITY or 0)
 end
 
+local function check_ordering_validity(self, entity)
+  --[[
+    Plugins that are scoped to a consumer can't be a target for reordering
+    because they rely on a context (ngx.authenticated_consumer) which is only
+    set during the access phase of an authentacation plugin. This means that
+    we can't influence the order of plugins without running their access phase first 
+    which is a catch-22.
+  --]]
+  if entity.consumer ~= nil and type(entity.ordering) == "table" then
+    local err_t = self.errors:schema_violation({
+      protocols = "can't apply dynamic reordering to consumer scoped plugins",
+    })
+    return nil, tostring(err_t), err_t
+  end
+  return true
+end
 
 function Plugins:insert(entity, options)
   local ok, err, err_t = check_protocols_match(self, entity)
   if not ok then
     return nil, err, err_t
+  end
+  local ok_o, err_o, err_t_o = check_ordering_validity(self, entity)
+  if not ok_o then
+    return nil, err_o, err_t_o
   end
   return self.super.insert(self, entity, options)
 end
@@ -114,7 +134,10 @@ function Plugins:update(primary_key, entity, options)
   if not ok then
     return nil, err, err_t
   end
-
+  local ok_o, err_o, err_t_o = check_ordering_validity(self, entity)
+  if not ok_o then
+    return nil, err_o, err_t_o
+  end
   return self.super.update(self, primary_key, entity, options)
 end
 
@@ -123,6 +146,10 @@ function Plugins:upsert(primary_key, entity, options)
   local ok, err, err_t = check_protocols_match(self, entity)
   if not ok then
     return nil, err, err_t
+  end
+  local ok_o, err_o, err_t_o = check_ordering_validity(self, entity)
+  if not ok_o then
+    return nil, err_o, err_t_o
   end
   return self.super.upsert(self, primary_key, entity, options)
 end
@@ -324,7 +351,7 @@ end
 -- @return an array where each element has the format { name = "keyauth", handler = function() .. end }. Or nil, error
 function Plugins:get_handlers()
   if not self.handlers then
-    return nil, "Please invoke Plugins:load_plugin_schemas() before invoking Plugins:get_plugin_handlers"
+    return nil, "Please invoke Plugins:load_plugin_schemas() before invoking Plugins:get_handlers"
   end
 
   local list = {}

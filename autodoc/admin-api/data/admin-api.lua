@@ -1346,6 +1346,12 @@ return {
             { "admin", "high-priority", "critical" }
           },
         },
+        ordering = {
+          description = [[ Lorem Ipsum ]],
+          examples = {
+            { before = {"plugin-name"} },
+          }
+        }
       }
     },
 

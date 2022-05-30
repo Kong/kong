@@ -501,7 +501,6 @@ function _M.table_contains(arr, val)
   return false
 end
 
-
 do
   local floor = math.floor
   local max = math.max
