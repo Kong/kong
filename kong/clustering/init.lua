@@ -2,7 +2,6 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local http = require("resty.http")
 local version_negotiation = require("kong.clustering.version_negotiation")
 local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
