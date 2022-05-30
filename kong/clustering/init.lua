@@ -1,8 +1,6 @@
 local _M = {}
 
 local http = require("resty.http")
-local constants = require("kong.constants")
-local declarative = require("kong.db.declarative")
 local version_negotiation = require("kong.clustering.version_negotiation")
 local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
