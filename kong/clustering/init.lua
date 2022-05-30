@@ -82,53 +82,6 @@ local function check_protocol_support(conf, cert, cert_key)
 end
 
 
-function _M:update_config(config_table, config_hash, hashes)
-  assert(type(config_table) == "table")
-
-  if not config_hash then
-    config_hash, hashes = self:calculate_config_hash(config_table)
-  end
-
-  if hashes then
-    fill_empty_hashes(hashes)
-  end
-
-  local current_hash = declarative.get_current_hash()
-  if current_hash == config_hash then
-    ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
-      "no need to reload")
-    return true
-  end
-
-  local entities, err, _, meta, new_hash =
-  self.declarative_config:parse_table(config_table, config_hash)
-  if not entities then
-    return nil, "bad config received from control plane " .. err
-  end
-
-  if current_hash == new_hash then
-    ngx_log(ngx_DEBUG, _log_prefix, "same config received from control plane, ",
-      "no need to reload")
-    return true
-=======
->>>>>>> chore/dpcp_config_clean
-  end
-
-  local c = http.new()
-  local res, err = c:request_uri(
-    "https://" .. conf.cluster_control_plane .. "/v1/wrpc", params)
-  if not res then
-    return nil, err
-  end
-
-  if res.status == 404 then
-    return "v0"
-  end
-
-  return "v1"   -- wrpc
-end
-
-
 function _M:handle_cp_websocket()
   return self.json_handler:handle_cp_websocket()
 end
