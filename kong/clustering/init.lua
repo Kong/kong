@@ -243,22 +243,6 @@ local function check_protocol_support(conf, cert, cert_key)
 end
 
 
-function _M:request_version_negotiation()
-  local response_data, err =
-    check_protocol_support(self.conf, self.cert, self.cert_key)
-
-  if not response_data then
-    ngx_log(ngx_ERR, _log_prefix, "error while requesting version negotiation: " .. err)
-    assert(ngx.timer.at(math.random(5, 10), function(premature)
-      self:communicate(premature)
-    end))
-    return
-  end
-
-  return response_data
-end
-
-
 function _M:update_config(config_table, config_hash, update_cache, hashes)
   assert(type(config_table) == "table")
 
@@ -341,10 +325,10 @@ function _M:init_worker()
         return
       end
 
-      local config_proto, msg = self:request_version_negotiation()
+      local config_proto, msg = check_protocol_support(self.conf, self.cert, self.cert_key)
 
       if not config_proto and msg then
-        ngx_log(ngx_ERR, _log_prefix, "error reading negotiated \"config\" service: ", msg)
+        ngx_log(ngx_ERR, _log_prefix, "error check protocol support: ", msg)
       end
 
       ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
