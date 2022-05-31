@@ -354,7 +354,7 @@ function _M:handle_cp_websocket()
     -- initial configuration compatibility for sync status variable
     _, _, sync_status = self:check_configuration_compatibility(dp_plugins_map)
 
-    table_insert(queue, self.deflated_reconfigure_payload)
+    table_insert(queue, RECONFIGURE_TYPE)
     queue.post()
 
   else
