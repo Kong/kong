@@ -28,7 +28,6 @@ local ngx_update_time = ngx.update_time
 local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
-local table_concat = table.concat
 local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
@@ -254,56 +253,16 @@ function _M:handle_cp_websocket()
   local dp_ip = ngx_var.remote_addr
   local dp_version = ngx_var.arg_node_version
 
-  local log_suffix = {}
-  if type(dp_id) == "string" then
-    table_insert(log_suffix, "id: " .. dp_id)
-  end
-
-  if type(dp_hostname) == "string" then
-    table_insert(log_suffix, "host: " .. dp_hostname)
-  end
-
-  if type(dp_ip) == "string" then
-    table_insert(log_suffix, "ip: " .. dp_ip)
-  end
-
-  if type(dp_version) == "string" then
-    table_insert(log_suffix, "version: " .. dp_version)
-  end
-
-  if #log_suffix > 0 then
-    log_suffix = " [" .. table_concat(log_suffix, ", ") .. "]"
-  else
-    log_suffix = ""
-  end
-
-  do
-    local ok, err = clustering_utils.validate_connection_certs(self.conf, self.cert_digest)
-    if not ok then
-      ngx_log(ngx_ERR, _log_prefix, err)
-      return ngx_exit(ngx.HTTP_CLOSE)
-    end
-  end
-
-  if not dp_id then
-    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the id", log_suffix)
-    ngx_exit(400)
-  end
-
-  if not dp_version then
-    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the version", log_suffix)
-    ngx_exit(400)
-  end
-
-  local wb, err = clustering_utils.connect_dp()
+  local wb, log_suffix, ec = clustering_utils.connect_dp(
+                                self.conf, self.cert_digest,
+                                dp_id, dp_hostname, dp_ip, dp_version)
   if not wb then
-    ngx_log(ngx_ERR, _log_prefix, "failed to perform server side websocket handshake: ", err, log_suffix)
-    return ngx_exit(ngx_CLOSE)
+    return ngx_exit(ec)
   end
 
   -- connection established
   -- receive basic info
-  local data, typ
+  local data, typ, err
   data, typ, err = wb:recv_frame()
   if err then
     err = "failed to receive websocket basic info frame: " .. err

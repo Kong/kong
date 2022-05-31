@@ -11,15 +11,20 @@ local ws_server = require("resty.websocket.server")
 local type = type
 local tonumber = tonumber
 local ipairs = ipairs
+local table_insert = table.insert
+local table_concat = table.concat
 
 local kong = kong
 
+local ngx = ngx
 local ngx_var = ngx.var
-
 local ngx_log = ngx.log
 local ngx_INFO = ngx.INFO
 local ngx_NOTICE = ngx.NOTICE
 local ngx_WARN = ngx.WARN
+local ngx_ERR = ngx.ERR
+local ngx_CLOSE = ngx.HTTP_CLOSE
+
 local _log_prefix = "[clustering] "
 
 local MAJOR_MINOR_PATTERN = "^(%d+)%.(%d+)%.%d+"
@@ -391,8 +396,58 @@ function _M.connect_cp(endpoint, conf, cert, cert_key, protocols)
 end
 
 
-function _M.connect_dp()
-  return ws_server:new(WS_OPTS)
+function _M.connect_dp(conf, cert_digest,
+                       dp_id, dp_hostname, dp_ip, dp_version)
+  local log_suffix = {}
+
+  if type(dp_id) == "string" then
+    table_insert(log_suffix, "id: " .. dp_id)
+  end
+
+  if type(dp_hostname) == "string" then
+    table_insert(log_suffix, "host: " .. dp_hostname)
+  end
+
+  if type(dp_ip) == "string" then
+    table_insert(log_suffix, "ip: " .. dp_ip)
+  end
+
+  if type(dp_version) == "string" then
+    table_insert(log_suffix, "version: " .. dp_version)
+  end
+
+  if #log_suffix > 0 then
+    log_suffix = " [" .. table_concat(log_suffix, ", ") .. "]"
+  else
+    log_suffix = ""
+  end
+
+  do
+    local ok, err = _M.validate_connection_certs(conf, cert_digest)
+    if not ok then
+      ngx_log(ngx_ERR, _log_prefix, err)
+      return nil, nil, ngx.HTTP_CLOSE
+    end
+  end
+
+  if not dp_id then
+    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the id", log_suffix)
+    return nil, nil, 400
+  end
+
+  if not dp_version then
+    ngx_log(ngx_WARN, _log_prefix, "data plane didn't pass the version", log_suffix)
+    return nil, nil, 400
+  end
+
+  local wb, err = ws_server:new(WS_OPTS)
+
+  if not wb then
+    ngx_log(ngx_ERR, _log_prefix, "failed to perform server side websocket handshake: ", err, log_suffix)
+    return nil, nil, ngx_CLOSE
+  end
+
+  return wb, log_suffix
 end
 
 
