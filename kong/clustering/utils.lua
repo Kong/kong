@@ -30,7 +30,7 @@ local KONG_VERSION = kong.version
 local _M = {}
 
 
-function _M.extract_major_minor(version)
+local function extract_major_minor(version)
   if type(version) ~= "string" then
     return nil, nil
   end
@@ -47,8 +47,8 @@ function _M.extract_major_minor(version)
 end
 
 function _M.check_kong_version_compatibility(cp_version, dp_version, log_suffix)
-  local major_cp, minor_cp = _M.extract_major_minor(cp_version)
-  local major_dp, minor_dp = _M.extract_major_minor(dp_version)
+  local major_cp, minor_cp = extract_major_minor(cp_version)
+  local major_dp, minor_dp = extract_major_minor(dp_version)
 
   if not major_cp then
     return nil, "data plane version " .. dp_version .. " is incompatible with control plane version",
@@ -212,7 +212,7 @@ function _M.plugins_list_to_map(plugins_list)
   for _, plugin in ipairs(plugins_list) do
     local name = plugin.name
     local version = plugin.version
-    local major, minor = _M.extract_major_minor(plugin.version)
+    local major, minor = extract_major_minor(plugin.version)
 
     if major and minor then
       versions[name] = {
