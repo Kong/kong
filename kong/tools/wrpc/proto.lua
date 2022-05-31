@@ -16,8 +16,10 @@ local default_proto_path = { "kong/include/", "/usr/include/", }
 local function parse_annotation(annotation)
   local parsed = {}
   for kv_pair in annotation:gmatch("[^;]+=[^;]+") do
-    local key, value = kv_pair:match("^%s*(%S-)=(%S+)%s*$")
-    parsed[key] = value
+    local key, value = kv_pair:match("^%s*(%S-)%s*=%s*(%S+)%s*$")
+    if key and value then
+      parsed[key] = value
+    end
   end
 
   return parsed
@@ -26,20 +28,20 @@ end
 ---@TODO: better way to do this
 -- Parse annotations in proto files with format:
 -- +wrpc: key1=val1; key2=val2; ...
--- use key service-id and rpc-id to get IDs for service and rpc
-function _M:parse_annotations(proto_f)
-  local svc_ids = self.svc_ids
-  local rpc_ids = self.rpc_ids
-  local annotations = self.annotations
+-- Use key service-id and rpc-id to get IDs for service and RPC.
+local function parse_annotations(proto_obj, proto_file)
+  local svc_ids = proto_obj.svc_ids
+  local rpc_ids = proto_obj.rpc_ids
+  local annotations = proto_obj.annotations
 
   local service = ""
-  for line in proto_f:lines() do
+  for line in proto_file:lines() do
     local annotation = line:match("//%s*%+wrpc:%s*(.-)%s*$")
     if not annotation then
       goto continue
     end
 
-    local nextline = proto_f:read("*l")
+    local nextline = proto_file:read("*l")
     local keyword, identifier = nextline:match("^%s*(%a+)%s+(%w+)")
     if not keyword or not identifier then
       goto continue
@@ -65,7 +67,7 @@ function _M:parse_annotations(proto_f)
     local id = assert(annotations[name][id_tag_name],
       keyword .. "with no id assigned")
     ids[name] = assert(tonumber(id), keyword .. "'s id should be a number")
-  
+
     ::continue::
   end
 end
@@ -84,32 +86,40 @@ function _M.new()
   return proto_instance
 end
 
--- add searching path for proto files
+-- Add searching path for proto files.
 ---@param proto_path (string or table) path to search proto files in
 function _M:addpath(proto_path)
   self.grpc_instance:addpath(proto_path)
 end
 
--- import wrpc proto
--- search from default and user specified paths(addpath)
--- throw when error occurs
--- pcall if you do not want it throw
+-- Import wrpc proto.
+-- Search from default and user specified paths(addpath)
+--
+-- Throw when error occurs.
+-- pcall if you do not want it throw.
 ---@param name(string) name for prototype. a.b.c will be found at a/b/c.proto
 function _M:import(name)
   local fname = name:gsub('%.', '/') .. '.proto'
 
   local fh = assert(self.grpc_instance:get_proto_file(fname),
     "module " .. name .. " cannot be found or cannot be opened")
-  self:parse_annotations(fh)
+  parse_annotations(self, fh)
   fh:close()
 
   local svc_ids = self.svc_ids
   local rpc_ids = self.rpc_ids
-  -- throwable
+  -- may throw from this call
   self.grpc_instance:each_method(fname,
     function(_, srvc, mthd)
-      local svc_id = assert(svc_ids[srvc.name], "service " .. srvc.name .. " has no id assigned")
-      local rpc_id = assert(rpc_ids[srvc.name .. '.' .. mthd.name], "rpc " .. mthd.name .. " has no id assigned")
+      local svc_id = svc_ids[srvc.name]
+      local rpc_id = rpc_ids[srvc.name .. '.' .. mthd.name]
+
+      if not svc_id then
+        error("service " .. srvc.name .. " has no id assigned")
+      end
+      if not rpc_id then
+        error("rpc " .. mthd.name .. " has no id assigned")
+      end
 
       mthd.svc_id = svc_id
       mthd.rpc_id = rpc_id
@@ -120,13 +130,13 @@ function _M:import(name)
   )
 end
 
--- get rpc object
--- both service_name.rpc_name and 1.2(service_id.rpc_id supported
+-- Get rpc object.
+-- Both service_name.rpc_name and 1.2(service_id.rpc_id) supported.
 function _M:get_rpc(rpc_name)
   return self.name_to_mthd[rpc_name]
 end
 
---- sets a service handler for the givern rpc method
+-- Sets a service handler for the given rpc method.
 --- @param rpc_name string Full name of the rpc method
 --- @param handler function Function called to handle the rpc method.
 --- @param response_handler function Fallback function called to handle responses.
@@ -142,10 +152,10 @@ function _M:set_handler(rpc_name, handler, response_handler)
   return rpc
 end
 
---- Part of wrpc_peer:call()
---- If calling the same method with the same args several times,
---- (to the same or different peers), this method returns the
---- invariant part, so it can be cached to reduce encoding overhead
+-- Part of wrpc_peer:call()
+-- If calling the same method with the same args several times,
+-- (to the same or different peers), this method returns the
+-- invariant part, so it can be cached to reduce encoding overhead
 function _M:encode_args(name, ...)
   local rpc = self:get_rpc(name)
   if not rpc then
