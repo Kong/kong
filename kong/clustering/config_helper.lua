@@ -20,7 +20,6 @@ local ngx_null = ngx.null
 local ngx_md5 = ngx.md5
 local ngx_md5_bin = ngx.md5_bin
 
---local ngx_ERR = ngx.ERR
 local ngx_DEBUG = ngx.DEBUG
 
 local DECLARATIVE_EMPTY_CONFIG_HASH = constants.DECLARATIVE_EMPTY_CONFIG_HASH
@@ -28,7 +27,6 @@ local _log_prefix = "[clustering] "
 
 
 local _M = {}
---local _MT = { __index = _M, }
 
 
 local function to_sorted_string(value)
