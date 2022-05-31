@@ -112,7 +112,8 @@ function _M:setup(opts)
 
   -- install psql docker on kong
   ok, err = execute_batch(self, self.kong_ip, {
-    "apt-get update", "apt-get install -y --force-yes docker.io",
+    "sudo systemctl stop unattended-upgrades || true", "sudo apt-get purge -y unattended-upgrades",
+    "sudo apt-get update", "sudo apt-get install -y --force-yes docker.io",
     "docker rm -f kong-database || true", -- if exist remove it
     "docker run -d -p5432:5432 "..
             "-e POSTGRES_PASSWORD=" .. PG_PASSWORD .. " " ..
@@ -217,6 +218,7 @@ function _M:start_upstreams(conf, port_count)
   local ok, err = execute_batch(self, self.worker_ip, {
     "sudo id",
     "echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor",
+    "sudo systemctl stop unattended-upgrades || true", "sudo apt-get purge -y unattended-upgrades",
     "sudo apt-get update", "sudo apt-get install -y --force-yes nginx",
     -- ubuntu where's wrk in apt?
     "wget -nv http://mirrors.kernel.org/ubuntu/pool/universe/w/wrk/wrk_4.1.0-3_amd64.deb -O wrk.deb",
@@ -287,7 +289,7 @@ function _M:start_kong(version, kong_conf, driver_conf)
   if self.opts.use_daily_image and use_git then
     local image = "kong/kong"
     local tag, err = perf.get_newest_docker_tag(image, "ubuntu20.04")
-    if not version then
+    if not tag then
       return nil, "failed to use daily image: " .. err
     end
     self.log.debug("daily image " .. tag.name .." was pushed at ", tag.last_updated)
@@ -347,6 +349,9 @@ function _M:start_kong(version, kong_conf, driver_conf)
     use_git and (ssh_execute_wrap(self, self.kong_ip,
       "sudo cp -r /usr/local/share/lua/5.1/kong/include/. /usr/local/kong/include/ || true"))
       or "echo use stock proto files",
+    -- new migrations
+    ssh_execute_wrap(self, self.kong_ip,
+    "kong migrations up -y && kong migrations finish -y"),
     -- start kong
     ssh_execute_wrap(self, self.kong_ip,
       "ulimit -n 655360; kong start || kong restart")
@@ -516,7 +521,7 @@ end
 
 function _M:save_pgdump(path)
   return perf.execute(ssh_execute_wrap(self, self.kong_ip,
-      "docker exec -i kong-database psql -Ukong kong_tests") .. " >'" .. path .. "'",
+      "docker exec -i kong-database psql -Ukong kong_tests --data-only") .. " >'" .. path .. "'",
       { logger = self.ssh_log.log_exec })
 end
 

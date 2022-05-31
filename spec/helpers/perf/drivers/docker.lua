@@ -256,7 +256,7 @@ end
 function _M:_hydrate_kong_configuration(kong_conf, driver_conf)
   local config = ''
   for k, v in pairs(kong_conf) do
-    config = string.format("%s -e KONG_%s=%s", config, k:upper(), v)
+    config = string.format("%s -e KONG_%s='%s'", config, k:upper(), v)
   end
   config = config .. " -e KONG_PROXY_ACCESS_LOG=/dev/null"
 
@@ -315,7 +315,8 @@ function _M:start_kong(version, kong_conf, driver_conf)
 
   if self.kong_ct_ids[kong_conf_id] == nil then
     local config = self:_hydrate_kong_configuration(kong_conf, driver_conf)
-    local cid, err = create_container(self, config, image .. ":" .. version)
+    local cid, err = create_container(self, config, image .. ":" .. version,
+      "/bin/bash -c 'kong migrations up -y && kong migrations finish -y && /docker-entrypoint.sh kong docker-start'")
     if err then
       return false, "error running docker create when creating kong container: " .. err
     end
@@ -434,7 +435,7 @@ function _M:save_pgdump(path)
     return false, "postgres container not started"
   end
 
-  return perf.execute("docker exec -i " ..  self.psql_ct_id .. " pg_dump -Ukong kong_tests >'" .. path .. "'",
+  return perf.execute("docker exec -i " ..  self.psql_ct_id .. " pg_dump -Ukong kong_tests --data-only >'" .. path .. "'",
                  { logger = self.log.log_exec })
 end
 
