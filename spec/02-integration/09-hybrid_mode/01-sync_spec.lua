@@ -297,7 +297,7 @@ for _, strategy in helpers.each_strategy() do
 
           -- create service
           local res = assert(admin_client:post("/services", {
-            body = { name = "mockbin-service2", url = "https://127.0.0.1:15556/request", },
+            body = { name = "mockbin-service3", url = "https://127.0.0.1:15556/request", },
             headers = {["Content-Type"] = "application/json"}
           }))
           local body = assert.res_status(201, res)
@@ -305,8 +305,8 @@ for _, strategy in helpers.each_strategy() do
           local service_id = json.id
 
           -- create route
-          res = assert(admin_client:post("/services/mockbin-service2/routes", {
-            body = { paths = { "/soon-to-be-disabled" }, },
+          res = assert(admin_client:post("/services/mockbin-service3/routes", {
+            body = { paths = { "/soon-to-be-disabled-3" }, },
             headers = {["Content-Type"] = "application/json"}
           }))
           local body = assert.res_status(201, res)
@@ -327,7 +327,7 @@ for _, strategy in helpers.each_strategy() do
 
             res = proxy_client:send({
               method  = "GET",
-              path    = "/soon-to-be-disabled",
+              path    = "/soon-to-be-disabled-3",
             })
 
             local status = res and res.status
@@ -348,7 +348,7 @@ for _, strategy in helpers.each_strategy() do
 
             res = assert(proxy_client:send({
               method  = "GET",
-              path    = "/soon-to-be-disabled",
+              path    = "/soon-to-be-disabled-3",
             }))
 
             local status = res and res.status
