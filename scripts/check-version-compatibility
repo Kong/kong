@@ -956,6 +956,100 @@ function check_protocol_compatibility() {
   reset_kong
 }
 
+function assert_sync_status_with_upstream() {
+  local status=${1:?sync status is required}
+  shift
+
+  reset_kong
+
+  create_entity upstream "$@" || {
+    echo "Failed creating upstream"
+    return 1
+  }
+
+  assert_sync_status "$status" || return 1
+}
+
+UPSTREAM_NEW_HASH=(
+  path
+  query_arg
+  uri_capture
+)
+
+function check_upstream_compatibility() {
+  for hash in "${UPSTREAM_NEW_HASH[@]}"; do
+    echo "Validating upstream compat (hash_on=$hash)..."
+
+    local args=(
+      name="test-${hash//_/-}"
+      algorithm="consistent-hashing"
+
+      hash_on="$hash"
+    )
+
+    if [[ $hash != path ]]; then
+      args+=( "hash_on_${hash}=foobar" )
+    fi
+
+    assert_sync_status_with_upstream \
+      "upstream_hash_incompatible" \
+      "${args[@]}" \
+    || return 1
+  done
+
+
+  for hash in "${UPSTREAM_NEW_HASH[@]}"; do
+    echo "Validating upstream compat (hash_fallback=$hash)..."
+
+    local args=(
+      name="test-fallback-${hash//_/-}"
+      algorithm="consistent-hashing"
+
+      hash_on="header"
+      hash_on_header="my-special-header"
+
+      hash_fallback="$hash"
+    )
+
+    if [[ $hash != path ]]; then
+      args+=( "hash_fallback_${hash}=foobar" )
+    fi
+
+    assert_sync_status_with_upstream \
+      "upstream_hash_incompatible" \
+      "${args[@]}" \
+    || return 1
+  done
+
+
+  for hash in "${UPSTREAM_NEW_HASH[@]}"; do
+    if [[ $hash == path ]]; then
+      continue
+    fi
+
+    echo "Validating upstream compat (extra hash_on_${hash}/hash_fallback_${hash} fields)..."
+
+    local args=(
+      name="test-extra-${hash//_/-}"
+      algorithm="consistent-hashing"
+
+      hash_on="header"
+      hash_on_header="my-special-header"
+
+      hash_fallback="ip"
+
+      # these fields should get dropped without breaking config sync
+      "hash_on_${hash}=primary"
+      "hash_fallback_${hash}=fallback"
+    )
+
+    assert_sync_status_with_upstream \
+      "normal" \
+      "${args[@]}" \
+    || return 1
+  done
+}
+
 function main() {
   local known_incompatible_plugin_names=()
   local execute_enterprise=$TRUE
@@ -987,6 +1081,12 @@ function main() {
 
   local start
   start="$(date -u +%s)"
+
+  # temp running this first for the sake of sanity during dev
+  if ! check_upstream_compatibility; then
+    printf "\nUpstream compatibility test failed\n"
+    is_failure=$TRUE
+  fi
 
   # In Kong Gateway v2.6.0.0 consumer:username_lower was added
   printf "Validating consumers with simple route and service ... "

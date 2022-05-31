@@ -393,11 +393,12 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
     ::continue::
   end
 
-  -- [[ XXX EE: Check for any WebSocket protocols
-  --
-  -- refactor me if/when adding new protocols becomes a regular thing
-  local conf = (obj.reconfigure_payload or EMPTY).config_table
-  if conf and dp_version_num < 3000000000 then
+  local conf = (obj.reconfigure_payload or EMPTY).config_table or EMPTY
+
+  if dp_version_num < 3000000000 then
+    -- [[ XXX EE: Check for any WebSocket protocols
+    --
+    -- refactor me if/when adding new protocols becomes a regular thing
     local WS, WSS = "ws", "wss"
 
     local msg = "%s '%s' protocol '%s' is incompatible with data plane version %s"
@@ -454,8 +455,29 @@ function _M.check_configuration_compatibility(obj, dp_plugin_map, dp_version)
         end
       end
     end
+    -- XXX EE ]]
+
+    local upstreams = conf.upstreams or EMPTY
+    local msg = "upstream %s hash_on (%q) or hash_fallback (%q) is " ..
+                "incompatible with data plane version %s"
+
+    for _, upstream in ipairs(upstreams) do
+      local hash_on = upstream.hash_on
+      local hash_fallback = upstream.hash_fallback
+
+      if hash_on == "path"
+        or hash_on == "query_arg"
+        or hash_on == "uri_capture"
+        or hash_fallback == "path"
+        or hash_fallback == "query_arg"
+        or hash_fallback == "uri_capture"
+      then
+        return nil,
+               msg:format(upstream.id, hash_on, hash_fallback, dp_version),
+               CLUSTERING_SYNC_STATUS.UPSTREAM_HASH_INCOMPATIBLE
+      end
+    end
   end
-  -- XXX EE ]]
 
   -- TODO: DAOs are not checked in any way at the moment. For example if plugin introduces a new DAO in
   --       minor release and it has entities, that will most likely fail on data plane side, but is not

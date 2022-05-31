@@ -40,6 +40,7 @@ local ngx_update_time = ngx.update_time
 local ngx_var = ngx.var
 local table_insert = table.insert
 local table_remove = table.remove
+local table_concat = table.concat
 local sub = string.sub
 local gsub = string.gsub
 local deflate_gzip = utils.deflate_gzip
@@ -331,6 +332,55 @@ local function update_compatible_payload(payload, dp_version, log_suffix)
         end
       end
     end
+
+    if config_table["upstreams"] then
+      -- handle new upstream `hash_on` and `hash_fallback` options
+      -- https://github.com/Kong/kong/pull/8701
+
+      local field_names = {
+        "hash_on_query_arg",
+        "hash_fallback_query_arg",
+        "hash_on_uri_capture",
+        "hash_fallback_uri_capture",
+      }
+
+      local removed = {}
+
+      for _, t in ipairs(config_table["upstreams"]) do
+        -- At this point the upstream's hash fields are have been validated as
+        -- safe for pre-3.0 data planes, but it might still have incompatible
+        -- fields present. Example scenario:
+        --
+        -- 1. POST /upstreams name=test
+        --                    hash_on=query_arg
+        --                    hash_on_query_arg=test
+        --
+        -- 2. PATCH /upstream/test hash_on=ip
+        --
+        -- The `hash_on` field is compatible with <3.0, but there is now a
+        -- dangling `hash_on_query_arg` arg field that must be removed.
+
+        local n = 0
+        for _, field in ipairs(field_names) do
+          if t[field] ~= nil then
+            n = n + 1
+            removed[n] = field
+            t[field] = nil
+          end
+        end
+
+        if n > 0 then
+          local removed_field_names = table_concat(removed, ", ", 1, n)
+          ngx_log(ngx_WARN, _log_prefix, "Kong Gateway v", KONG_VERSION,
+                  " contains upstream configuration (", removed_field_names, ")",
+                  " which is incompatible with dataplane version ", dp_version,
+                  " and will be removed.", log_suffix)
+          has_update = true
+        end
+      end
+    end
+
+
   end
 
   if dp_version_num < 2008001001 --[[ 2.8.1.1 ]] then
