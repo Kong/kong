@@ -39,8 +39,11 @@ function _M.new(conf)
   self.cert_key = assert(ssl.parse_pem_priv_key(key))
 
   if conf.role == "control_plane" then
-    self.json_handler = require("kong.clustering.control_plane").new(self.conf, self.cert_digest)
-    self.wrpc_handler = require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
+    self.json_handler =
+      require("kong.clustering.control_plane").new(self.conf, self.cert_digest)
+
+    self.wrpc_handler =
+      require("kong.clustering.wrpc_control_plane").new(self.conf, self.cert_digest)
   end
 
   return self
@@ -59,6 +62,46 @@ function _M:serve_version_handshake()
   return version_negotiation.serve_version_handshake(self.conf, self.cert_digest)
 end
 
+function _M:cp_init_worker(plugins_list)
+  self.json_handler.plugins_list = plugins_list
+  self.wrpc_handler.plugins_list = plugins_list
+
+  self.json_handler:init_worker()
+  self.wrpc_handler:init_worker()
+end
+
+function _M:dp_init_worker(plugins_list)
+  local start_dp = function(premature)
+    if premature then
+      return
+    end
+
+    local config_proto, msg = check_protocol_support(self.conf, self.cert, self.cert_key)
+
+    if not config_proto and msg then
+      ngx_log(ngx_ERR, _log_prefix, "error check protocol support: ", msg)
+    end
+
+    ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
+
+    if config_proto == "v1" then
+      self.child =
+        require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
+
+    elseif config_proto == "v0" or config_proto == nil then
+      self.child =
+        require("kong.clustering.data_plane").new(self.conf, self.cert, self.cert_key)
+    end
+
+    if self.child then
+      self.child.plugins_list = plugins_list
+      self.child:communicate()
+    end
+  end
+
+  assert(ngx.timer.at(0, start_dp))
+end
+
 function _M:init_worker()
   local plugins_list = assert(kong.db.plugins:get_handlers())
   sort(plugins_list, function(a, b)
@@ -72,40 +115,12 @@ function _M:init_worker()
   local role = self.conf.role
 
   if role == "control_plane" then
-    self.json_handler.plugins_list = plugins_list
-    self.wrpc_handler.plugins_list = plugins_list
-
-    self.json_handler:init_worker()
-    self.wrpc_handler:init_worker()
-
+    self.cp_init_worker(plugins_list)
     return
   end
 
   if role == "data_plane" and ngx.worker.id() == 0 then
-    assert(ngx.timer.at(0, function(premature)
-      if premature then
-        return
-      end
-
-      local config_proto, msg = check_protocol_support(self.conf, self.cert, self.cert_key)
-
-      if not config_proto and msg then
-        ngx_log(ngx_ERR, _log_prefix, "error check protocol support: ", msg)
-      end
-
-      ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
-      if config_proto == "v1" then
-        self.child = require "kong.clustering.wrpc_data_plane".new(self.conf, self.cert, self.cert_key)
-
-      elseif config_proto == "v0" or config_proto == nil then
-        self.child = require "kong.clustering.data_plane".new(self.conf, self.cert, self.cert_key)
-      end
-
-      if self.child then
-        self.child.plugins_list = plugins_list
-        self.child:communicate()
-      end
-    end))
+    self.dp_init_worker(plugins_list)
   end
 end
 
