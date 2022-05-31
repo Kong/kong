@@ -170,10 +170,9 @@ function _GLOBAL.init_worker_events()
   local worker_events
   local opts
 
-  local singletons = require "kong.singletons"
+  local configuration = kong.configuration
 
-  if singletons.configuration and
-     singletons.configuration.legacy_worker_events then
+  if configuration and configuration.legacy_worker_events then
 
     opts = {
       shm = "kong_process_events", -- defined by "lua_shared_dict"
