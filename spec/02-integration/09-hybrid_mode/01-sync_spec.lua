@@ -289,7 +289,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client:close()
         end)
 
-        it('does not sync plugins when service with plugin-enabled route is disabled', function()
+        it('does not sync plugins on a route attached to a disabled service', function()
           local admin_client = helpers.admin_client(10000)
           finally(function()
             admin_client:close()
