@@ -15,6 +15,8 @@ local DEFAULT_EXPIRATION_DELAY = 90
 pb.option("no_default_values")
 
 local _M = {}
+local _MT = {}
+_MT.__index = _M
 
 _M.spawn_threads = threads.spawn
 _M.wait_threads = threads.wait
@@ -48,8 +50,6 @@ do
   end
 end
 
-local _MT = {}
-
 local function is_wsclient(conn)
   return conn and not conn.close or nil
 end
@@ -71,7 +71,7 @@ end
 
 -- functions for managing connection
 
-function _MT:close()
+function _M:close()
   self.closing = true
   self.conn:send_close()
   if self.conn.close then
@@ -80,7 +80,7 @@ function _MT:close()
 end
 
 
-function _MT:send(d)
+function _M:send(d)
   if self.request_queue then
     return self.request_queue:push(d)
   end
@@ -88,7 +88,7 @@ function _MT:send(d)
   return self.conn:send_binary(d)
 end
 
-function _MT:receive()
+function _M:receive()
   while true do
     local data, typ, err = self.conn:recv_frame()
     if not data then
@@ -113,7 +113,7 @@ end
 --- are the return values from wrpc_peer:encode_args(),
 --- either directly or cached (to repeat the same call
 --- several times).
-function _MT:send_encoded_call(rpc, payloads)
+function _M:send_encoded_call(rpc, payloads)
   self:send_payload({
     mtype = "MESSAGE_TYPE_RPC",
     svc_id = rpc.svc_id,
@@ -124,17 +124,17 @@ function _MT:send_encoded_call(rpc, payloads)
   return self.seq
 end
 
-local send_encoded_call = _MT.send_encoded_call
+local send_encoded_call = _M.send_encoded_call
 
 --- RPC call.
 --- returns the call sequence number, doesn't wait for response.
-function _MT:call(name, ...)
+function _M:call(name, ...)
   local rpc, payloads = assert(self.service:encode_args(name, ...))
   return send_encoded_call(self, rpc, payloads)
 end
 
 
-function _MT:call_wait(name, ...)
+function _M:call_wait(name, ...)
   local waiter = semaphore_waiter()
 
   local seq = self.seq
@@ -153,7 +153,7 @@ end
 --- Assumes protocol fields are already filled (except `.seq` and `.deadline`)
 --- and payload data (if any) is already encoded with the right type.
 --- Keeps track of the sequence number and assigns deadline.
-function _MT:send_payload(payload)
+function _M:send_payload(payload)
   local seq = self.seq
   payload.seq = seq
   self.seq = seq + 1
@@ -170,7 +170,7 @@ end
 
 
 --- Returns the response for a given call ID, if any
-function _MT:get_response(req_id)
+function _M:get_response(req_id)
   local resp_data = self.response_queue[req_id]
   self.response_queue[req_id] = nil
 

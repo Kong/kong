@@ -58,7 +58,7 @@ end
 function _M.spawn(wrpc_peer)
     wrpc_peer._receiving_thread = assert(thread_spawn(function()
         while not exiting() and not wrpc_peer.closing do
-            step()
+            step(wrpc_peer)
             sleep(0)
         end
     end))
