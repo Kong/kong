@@ -63,11 +63,9 @@ function _M:serve_version_handshake()
 end
 
 function _M:init_cp_worker(plugins_list)
-  self.json_handler.plugins_list = plugins_list
-  self.wrpc_handler.plugins_list = plugins_list
 
-  self.json_handler:init_worker()
-  self.wrpc_handler:init_worker()
+  self.json_handler:init_worker(plugins_list)
+  self.wrpc_handler:init_worker(plugins_list)
 end
 
 function _M:init_dp_worker(plugins_list)
@@ -94,8 +92,7 @@ function _M:init_dp_worker(plugins_list)
     end
 
     if self.child then
-      self.child.plugins_list = plugins_list
-      self.child:init_worker()
+      self.child:init_worker(plugins_list)
     end
   end
 

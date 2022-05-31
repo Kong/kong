@@ -605,18 +605,18 @@ local function push_config_loop(premature, self, push_config_semaphore, delay)
 end
 
 
-function _M:init_worker()
+function _M:init_worker(plugins_list)
   -- ROLE = "control_plane"
 
-  self.plugins_map = plugins_list_to_map(self.plugins_list)
+  self.plugins_map = plugins_list_to_map(plugins_list)
 
   self.deflated_reconfigure_payload = nil
   self.reconfigure_payload = nil
   self.plugins_configured = {}
   self.plugin_versions = {}
 
-  for i = 1, #self.plugins_list do
-    local plugin = self.plugins_list[i]
+  for i = 1, #plugins_list do
+    local plugin = plugins_list[i]
     self.plugin_versions[plugin.name] = plugin.version
   end
 

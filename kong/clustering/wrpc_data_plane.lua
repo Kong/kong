@@ -40,8 +40,10 @@ function _M.new(conf, cert, cert_key)
 end
 
 
-function _M:init_worker()
+function _M:init_worker(plugins_list)
   -- ROLE = "data_plane"
+
+  self.plugins_list = plugins_list
 
   if ngx.worker.id() == 0 then
     assert(ngx.timer.at(0, function(premature)
