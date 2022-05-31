@@ -1,8 +1,8 @@
 local semaphore = require "ngx.semaphore"
 
-local table_insert = table.insert
-local table_remove = table.remove
-local table_unpack = table.unpack
+local table_insert = table.insert     -- luacheck: ignore
+local table_remove = table.remove     -- luacheck: ignore
+local table_unpack = table.unpack     -- luacheck: ignore
 
 local _M = {}
 
