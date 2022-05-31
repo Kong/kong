@@ -422,12 +422,10 @@ function _M.connect_dp(conf, cert_digest,
     log_suffix = ""
   end
 
-  do
-    local ok, err = validate_connection_certs(conf, cert_digest)
-    if not ok then
-      ngx_log(ngx_ERR, _log_prefix, err)
-      return nil, nil, ngx.HTTP_CLOSE
-    end
+  local ok, err = validate_connection_certs(conf, cert_digest)
+  if not ok then
+    ngx_log(ngx_ERR, _log_prefix, err)
+    return nil, nil, ngx.HTTP_CLOSE
   end
 
   if not dp_id then
