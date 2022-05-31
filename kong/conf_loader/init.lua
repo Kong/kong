@@ -658,10 +658,13 @@ local CONF_INFERENCES = {
   untrusted_lua_sandbox_requires = { typ = "array" },
   untrusted_lua_sandbox_environment = { typ = "array" },
 
+  legacy_worker_events = { typ = "boolean" },
+
   lmdb_environment_path = { typ = "string" },
   lmdb_map_size = { typ = "string" },
 
-  legacy_worker_events = { typ = "boolean" },
+  opentelemetry_tracing = { typ = "array" },
+  opentelemetry_tracing_sampling_rate = { typ = "number" },
 }
 
 
