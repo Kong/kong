@@ -16,7 +16,7 @@ function _M:finish()
   self.response_t[self.seq] = nil
 end
 
-local function dropWait(permature, future)
+local function drop_wait(permature, future)
   if permature then
     return
   end
@@ -30,7 +30,7 @@ end
 -- intentionally drop the future
 -- it will wait for the response and log error if it occurs
 function _M:drop()
-  return new_timer(0, dropWait, self)
+  return new_timer(0, drop_wait, self)
 end
 
 -- call to indicate the request is done.
