@@ -1,7 +1,5 @@
-local new_tab = require "table.new"
 local pb = require "pb"
 local semaphore = require "ngx.semaphore"
-local grpc = require "kong.tools.grpc"
 local channel = require "kong.tools.channel"
 
 local select = select
@@ -114,141 +112,6 @@ local function merge(a, b)
   return a
 end
 
-local function proto_searchpath(name)
-  return package.searchpath(name, "kong/include/?.proto;/usr/include/?.proto")
-end
-
---- definitions for the transport protocol
-local wrpc_proto
-
-
-local wrpc_service = {}
-wrpc_service.__index = wrpc_service
-
-
---- a `service` object holds a set of methods defined
---- in .proto files
-function wrpc.new_service()
-  if not wrpc_proto then
-    local wrpc_protofname = assert(proto_searchpath("wrpc.wrpc"))
-    wrpc_proto = assert(grpc.each_method(wrpc_protofname))
-  end
-
-  return setmetatable({
-    methods = {},
-  }, wrpc_service)
-end
-
---- Loads the methods from a .proto file.
---- There can be more than one file, and any number of
---- service definitions.
-function wrpc_service:add(service_name)
-  local annotations = {
-    service = {},
-    rpc = {},
-  }
-  local service_fname = assert(proto_searchpath(service_name))
-  local proto_f = assert(io.open(service_fname))
-  local scope_name = ""
-
-  for line in proto_f:lines() do
-    local annotation = line:match("//%s*%+wrpc:%s*(.-)%s*$")
-    if annotation then
-      local nextline = proto_f:read("*l")
-      local keyword, identifier = nextline:match("^%s*(%a+)%s+(%w+)")
-      if keyword and identifier then
-
-        if keyword == "service" then
-          scope_name = identifier;
-
-        elseif keyword == "rpc" then
-          identifier = scope_name .. "." .. identifier
-        end
-
-        local type_annotations = annotations[keyword]
-        if type_annotations then
-          local tag_key, tag_value = annotation:match("^%s*(%S-)=(%S+)%s*$")
-          if tag_key and tag_value then
-            tag_value = tag_value
-            local tags = type_annotations[identifier] or {}
-            type_annotations[identifier] = tags
-            tags[tag_key] = tag_value
-          end
-        end
-      end
-    end
-  end
-  proto_f:close()
-
-  grpc.each_method(service_fname, function(_, srvc, mthd)
-    assert(srvc.name)
-    assert(mthd.name)
-    local rpc_name = srvc.name .. "." .. mthd.name
-
-    local service_id = assert(annotations.service[srvc.name] and annotations.service[srvc.name]["service-id"])
-    local rpc_id = assert(annotations.rpc[rpc_name] and annotations.rpc[rpc_name]["rpc-id"])
-    local rpc = {
-      name = rpc_name,
-      service_id = tonumber(service_id),
-      rpc_id = tonumber(rpc_id),
-      input_type = mthd.input_type,
-      output_type = mthd.output_type,
-    }
-    self.methods[service_id .. ":" .. rpc_id] = rpc
-    self.methods[rpc_name] = rpc
-  end, true)
-end
-
---- returns the method defintion given either:
---- pair of IDs (service, rpc) or
---- rpc name as "<service_name>.<rpc_name>"
-function wrpc_service:get_method(srvc_id, rpc_id)
-  local rpc_name
-  if type(srvc_id) == "string" and rpc_id == nil then
-    rpc_name = srvc_id
-  else
-    rpc_name = tostring(srvc_id) .. ":" .. tostring(rpc_id)
-  end
-
-  return self.methods[rpc_name]
-end
-
---- sets a service handler for the givern rpc method
---- @param rpc_name string Full name of the rpc method
---- @param handler function Function called to handle the rpc method.
---- @param response_handler function Fallback function called to handle responses.
-function wrpc_service:set_handler(rpc_name, handler, response_handler)
-  local rpc = self:get_method(rpc_name)
-  if not rpc then
-    return nil, string.format("unknown method %q", rpc_name)
-  end
-
-  rpc.handler = handler
-  rpc.response_handler = response_handler
-  return rpc
-end
-
-
---- Part of wrpc_peer:call()
---- If calling the same method with the same args several times,
---- (to the same or different peers), this method returns the
---- invariant part, so it can be cached to reduce encoding overhead
-function wrpc_service:encode_args(name, ...)
-  local rpc = self:get_method(name)
-  if not rpc then
-    return nil, string.format("unknown method %q", name)
-  end
-
-  local num_args = select('#', ...)
-  local payloads = new_tab(num_args, 0)
-  for i = 1, num_args do
-    payloads[i] = assert(pb.encode(rpc.input_type, select(i, ...)))
-  end
-
-  return rpc, payloads
-end
-
-
 local wrpc_peer = {
   encode = pb.encode,
   decode = pb.decode,
@@ -260,6 +123,9 @@ local function is_wsclient(conn)
 end
 
 --- a `peer` object holds a (websocket) connection and a service.
+--- @param conn table WebSocket connection to use.
+--- @param service table Proto object that holds Serivces the connection supports.
+--- @param opts table Extra options.
 function wrpc.new_peer(conn, service, opts)
   opts = opts or {}
   return setmetatable(merge({
@@ -341,7 +207,7 @@ end
 function wrpc_peer:send_encoded_call(rpc, payloads)
   self:send_payload({
     mtype = "MESSAGE_TYPE_RPC",
-    svc_id = rpc.service_id,
+    svc_id = rpc.svc_id,
     rpc_id = rpc.rpc_id,
     payload_encoding = "ENCODING_PROTO3",
     payloads = payloads,
@@ -402,7 +268,7 @@ end
 --- Could be an incoming method call or the response to a previous one.
 --- @param payload table decoded payload field from incoming `wrpc.WebsocketPayload` message
 function wrpc_peer:handle(payload)
-  local rpc = self.service:get_method(payload.svc_id, payload.rpc_id)
+  local rpc = self.service:get_rpc(payload.svc_id .. '.' .. payload.rpc_id)
   if not rpc then
     self:send_payload({
       mtype = "MESSAGE_TYPE_ERROR",
@@ -410,7 +276,7 @@ function wrpc_peer:handle(payload)
         etype = "ERROR_TYPE_INVALID_SERVICE",
         description = "Invalid service (or rpc)",
       },
-      srvc_id = payload.svc_id,
+      svc_id = payload.svc_id,
       rpc_id = payload.rpc_id,
       ack = payload.seq,
     })
@@ -455,7 +321,7 @@ function wrpc_peer:handle(payload)
             etype = "ERROR_TYPE_UNSPECIFIED",
             description = err,
           },
-          srvc_id = payload.svc_id,
+          svc_id = payload.svc_id,
           rpc_id = payload.rpc_id,
           ack = payload.seq,
         })
@@ -464,7 +330,7 @@ function wrpc_peer:handle(payload)
 
       self:send_payload({
         mtype = "MESSAGE_TYPE_RPC", -- MESSAGE_TYPE_RPC,
-        svc_id = rpc.service_id,
+        svc_id = rpc.svc_id,
         rpc_id = rpc.rpc_id,
         ack = payload.seq,
         payload_encoding = "ENCODING_PROTO3",
@@ -479,7 +345,7 @@ function wrpc_peer:handle(payload)
           etype = "ERROR_TYPE_INVALID_RPC",   -- invalid here, not in the definition
           description = "Unhandled method",
         },
-        srvc_id = payload.svc_id,
+        svc_id = payload.svc_id,
         rpc_id = payload.rpc_id,
         ack = payload.seq,
       })
