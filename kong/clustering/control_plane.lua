@@ -3,7 +3,6 @@ local _MT = { __index = _M, }
 
 
 local semaphore = require("ngx.semaphore")
-local ws_server = require("resty.websocket.server")
 local cjson = require("cjson.safe")
 local declarative = require("kong.db.declarative")
 local utils = require("kong.tools.utils")
@@ -44,10 +43,6 @@ local ngx_ERR = ngx.ERR
 local ngx_OK = ngx.OK
 local ngx_ERROR = ngx.ERROR
 local ngx_CLOSE = ngx.HTTP_CLOSE
-local WS_OPTS = {
-  timeout = constants.CLUSTERING_TIMEOUT,
-  max_payload_len = kong.configuration.cluster_max_payload,
-}
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
 local PING_WAIT = PING_INTERVAL * 1.5
 local CLUSTERING_SYNC_STATUS = constants.CLUSTERING_SYNC_STATUS
@@ -300,7 +295,7 @@ function _M:handle_cp_websocket()
     ngx_exit(400)
   end
 
-  local wb, err = ws_server:new(WS_OPTS)
+  local wb, err = clustering_utils.connect_dp()
   if not wb then
     ngx_log(ngx_ERR, _log_prefix, "failed to perform server side websocket handshake: ", err, log_suffix)
     return ngx_exit(ngx_CLOSE)

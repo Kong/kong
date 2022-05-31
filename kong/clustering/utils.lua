@@ -6,6 +6,7 @@ local ssl = require("ngx.ssl")
 local ocsp = require("ngx.ocsp")
 local http = require("resty.http")
 local ws_client = require("resty.websocket.client")
+local ws_server = require("resty.websocket.server")
 
 local type = type
 local tonumber = tonumber
@@ -387,6 +388,11 @@ function _M.connect_cp(endpoint, conf, cert, cert_key, protocols)
   end
 
   return c
+end
+
+
+function _M.connect_dp()
+  return ws_server:new(WS_OPTS)
 end
 
 
