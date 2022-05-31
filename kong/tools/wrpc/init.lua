@@ -1,47 +1,22 @@
 local pb = require "pb"
 local semaphore = require "ngx.semaphore"
 local channel = require "kong.tools.channel"
+local util = require "kong.tools.wrpc.util"
 
 local select = select
 local table_unpack = table.unpack     -- luacheck: ignore
-local table_insert = table.insert
-local table_remove = table.remove
 
 local exiting = ngx.worker.exiting
+local safe_args = util.safe_args
+local endswith = util.endswith
+local queue = util.queue
+local queue_new = queue.new
 
 local DEFAULT_EXPIRATION_DELAY = 90
-local CHANNEL_CLIENT_PREFIX = "wrpc_client_"
 
 pb.option("no_default_values")
 
 local wrpc = {}
-
-local function endswith(s, e) -- luacheck: ignore
-  return s and e and e ~= "" and s:sub(#s-#e+1, #s) == e
-end
-
-local Queue = {}
-Queue.__index = Queue
-
-function Queue.new()
-  return setmetatable({
-    smph = semaphore.new(),
-  }, Queue)
-end
-
-function Queue:push(itm)
-  table_insert(self, itm)
-  return self.smph:post()
-end
-
-function Queue:pop(timeout)
-  local ok, err = self.smph:wait(timeout or 1)
-  if not ok then
-    return nil, err
-  end
-
-  return table_remove(self, 1)
-end
 
 local semaphore_waiter
 do
@@ -72,46 +47,6 @@ do
   end
 end
 
-
-local remote_waiter
-do
-  local function handle(self, payload)
-    channel.put_back(self.dict, self.name, pb.encode("wrpc.PayloadV1", payload))
-  end
-
-  local function handle_error(self, etype, errdesc)
-    channel.put_back(self.dict, self.name, pb.encode("wrpc.PayloadV1", {
-      mtype = "MESSAGE_TYPE_ERROR",
-      error = {
-        etype = etype,
-        description = errdesc,
-      }
-    }))
-  end
-
-  function remote_waiter(dict, name)
-    return {
-      dict = dict,
-      name = name,
-      deadline = ngx.now() + DEFAULT_EXPIRATION_DELAY,
-      handle = handle,
-      handle_error = handle_error,
-      raw = true,
-    }
-  end
-end
-
-
-local function merge(a, b)
-  if type(b) == "table" then
-    for k, v in pairs(b) do
-      a[k] = v
-    end
-  end
-
-  return a
-end
-
 local wrpc_peer = {
   encode = pb.encode,
   decode = pb.decode,
@@ -125,19 +60,16 @@ end
 --- a `peer` object holds a (websocket) connection and a service.
 --- @param conn table WebSocket connection to use.
 --- @param service table Proto object that holds Serivces the connection supports.
---- @param opts table Extra options.
-function wrpc.new_peer(conn, service, opts)
-  opts = opts or {}
-  return setmetatable(merge({
+function wrpc.new_peer(conn, service)
+  return setmetatable({
     conn = conn,
     service = service,
     seq = 1,
-    request_queue = is_wsclient(conn) and Queue.new(),
+    request_queue = is_wsclient(conn) and queue_new(),
     response_queue = {},
     closing = false,
-    channel_dict = opts.channel and ngx.shared["wrpc_channel_" .. opts.channel],
     _receiving_thread = nil,
-  }, opts), wrpc_peer)
+  }, wrpc_peer)
 end
 
 
@@ -256,12 +188,6 @@ function wrpc_peer:send_payload(payload)
     version = "PAYLOAD_VERSION_V1",
     payload = payload,
   }))
-end
-
-function wrpc_peer:send_remote_payload(msg, name)
-  local payload = self.decode("wrpc.PayloadV1", msg)
-  self.response_queue[self.seq] = remote_waiter(self.channel_dict, name)
-  return self:send_payload(payload)
 end
 
 --- Handle RPC data (mtype == MESSAGE_TYPE_RPC).
@@ -465,18 +391,6 @@ function wrpc_peer:spawn_threads()
 end
 
 
---- return same args in the same order, removing any nil args.
---- required for functions (like ngx.thread.wait) that complain
---- about nil args at the end.
-local function safe_args(...)
-  local out = {}
-  for i = 1, select('#', ...) do
-    out[#out + 1] = select(i, ...)
-  end
-  return table_unpack(out)
-end
-
-
 function wrpc_peer:wait_threads()
   local ok, err, perr = ngx.thread.wait(safe_args(self._receiving_thread, self._transmit_thread, self._channel_thread))
 
@@ -509,43 +423,5 @@ function wrpc_peer:get_response(req_id)
 
   return resp_data
 end
-
-
-local function send_payload_to_channel(self, payload)
-  assert(self.channel:post(self.encode("wrpc.PayloadV1", payload)))
-end
-
-local function remote_call(self, name, ...)
-  self:call(name, ...)
-
-  local msg = assert(self.channel:get())
-  local payload_back = assert(self.decode("wrpc.PayloadV1", msg))
-
-  if payload_back.mtype == "MESSAGE_TYPE_ERROR" then
-    return nil, payload_back.error.description
-  end
-
-  if payload_back.mtype == "MESSAGE_TYPE_RPC" then
-    local rpc = self.service:get_method(payload_back.svc_id, payload_back.rpc_id)
-    return decodearray(self.decode, rpc.output_type, payload_back.payloads)
-  end
-
-  return nil, "unknown message type"
-end
-
-local function remote_close(self)
-  self.closing = true
-end
-
-function wrpc.new_remote_client(service, channel_name)
-  local self = wrpc.new_peer(nil, service, {
-    channel = channel.new("wrpc_channel_" .. channel_name, CHANNEL_CLIENT_PREFIX .. ngx.worker.pid()),
-    send_payload = send_payload_to_channel,
-    close = remote_close,
-    remote_call = remote_call,
-  })
-  return self
-end
-
 
 return wrpc
