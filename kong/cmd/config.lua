@@ -11,13 +11,6 @@ local kong_yml = require "kong.templates.kong_yml"
 local DEFAULT_FILE = "./kong.yml"
 
 
-local accepted_formats = {
-  yaml = true,
-  json = true,
-  lua = true,
-}
-
-
 local function db_export(filename, conf)
   if pl_file.access_time(filename) then
     error(filename .. " already exists. Will not overwrite it.")
@@ -110,7 +103,7 @@ local function execute(args)
       log.deprecation("db_import of .lua files is deprecated; please convert your file into .yaml or .json")
     end
 
-    local entities, err, _, meta = dc:parse_file(filename, accepted_formats)
+    local entities, err, _, meta = dc:parse_file(filename)
     if not entities then
       error("Failed parsing:\n" .. err)
     end

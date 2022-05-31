@@ -10,13 +10,6 @@ local table = table
 local tostring = tostring
 
 
--- Do not accept Lua configurations from the Admin API
--- because it is Turing-complete.
-local accept = {
-  yaml = true,
-  json = true,
-}
-
 local _reports = {
   decl_fmt_version = false,
 }
@@ -89,7 +82,7 @@ return {
           end
         end
         entities, _, err_t, meta, new_hash =
-          dc:parse_string(config, nil, accept, old_hash)
+          dc:parse_string(config, nil, old_hash)
       end
 
       if not entities then

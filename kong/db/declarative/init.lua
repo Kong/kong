@@ -12,10 +12,8 @@ local lmdb = require "resty.lmdb"
 
 
 local setmetatable = setmetatable
-local loadstring = loadstring
 local tostring = tostring
 local exiting = ngx.worker.exiting
-local setfenv = setfenv
 local io_open = io.open
 local insert = table.insert
 local concat = table.concat
@@ -109,7 +107,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-function Config:parse_file(filename, accept, old_hash)
+function Config:parse_file(filename, old_hash)
   if type(filename) ~= "string" then
     error("filename must be a string", 2)
   end
@@ -119,7 +117,7 @@ function Config:parse_file(filename, accept, old_hash)
     return nil, err
   end
 
-  return self:parse_string(contents, filename, accept, old_hash)
+  return self:parse_string(contents, filename, old_hash)
 end
 
 
@@ -146,8 +144,7 @@ end
 
 --   }
 -- @tparam string contents the json/yml/lua being parsed
--- @tparam string|nil filename. If nil, json will be tried first, then yaml, then lua (unless deactivated by accept)
--- @tparam table|nil table which specifies which content types are active. By default it is yaml and json only.
+-- @tparam string|nil filename. If nil, json will be tried first, then yaml
 -- @tparam string|nil old_hash used to avoid loading the same content more than once, if present
 -- @treturn nil|string error message, only if error happened
 -- @treturn nil|table err_t, only if error happened
@@ -156,7 +153,7 @@ end
 --     _format_version: "2.1",
 --     _transform: true,
 --   }
-function Config:parse_string(contents, filename, accept, old_hash)
+function Config:parse_string(contents, filename, old_hash)
   -- we don't care about the strength of the hash
   -- because declarative config is only loaded by Kong administrators,
   -- not outside actors that could exploit it for collisions
@@ -167,20 +164,15 @@ function Config:parse_string(contents, filename, accept, old_hash)
     return nil, err, { error = err }, nil
   end
 
-  -- do not accept Lua by default
-  accept = accept or { yaml = true, json = true }
-
   local tried_one = false
   local dc_table, err
-  if accept.json
-    and (filename == nil or filename:match("json$"))
+  if filename == nil or filename:match("json$")
   then
     tried_one = true
     dc_table, err = cjson.decode(contents)
   end
 
   if type(dc_table) ~= "table"
-    and accept.yaml
     and (filename == nil or filename:match("ya?ml$"))
   then
     tried_one = true
@@ -199,35 +191,11 @@ function Config:parse_string(contents, filename, accept, old_hash)
     end
   end
 
-  if type(dc_table) ~= "table"
-    and accept.lua
-    and (filename == nil or filename:match("lua$"))
-  then
-    tried_one = true
-    local chunk, pok
-    chunk, err = loadstring(contents)
-    if chunk then
-      setfenv(chunk, {})
-      pok, dc_table = pcall(chunk)
-      if not pok then
-        err = dc_table
-        dc_table = nil
-      end
-    end
-  end
-
   if type(dc_table) ~= "table" then
     if not tried_one then
-      local accepted = {}
-      for k, _ in pairs(accept) do
-        accepted[#accepted + 1] = k
-      end
-      sort(accepted)
-
       err = "unknown file type: " ..
             tostring(filename) ..
-            ". (Accepted types: " ..
-            concat(accepted, ", ") .. ")"
+            ". (Accepted types: json, yaml)"
     else
       err = "failed parsing declarative configuration" .. (err and (": " .. err) or "")
     end
