@@ -131,7 +131,7 @@ end
 -- Returns immediately and ignore response of the call.
 --- @param name(string) name of RPC to call, like "ConfigService.Sync"
 --- @param arg(table) arguments of the call, like {config = config}
-function _M:void_call(name, arg)
+function _M:call_no_return(name, arg)
   local future_to_wait = self:call(name, arg)
 
   return future_to_wait:drop()

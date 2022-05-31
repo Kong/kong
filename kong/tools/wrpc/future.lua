@@ -10,14 +10,12 @@ local setmetatable = setmetatable
 local _M = {}
 local _MT = { __index = _M, }
 
--- this future is no longer tracked
--- don't call this if you don't know what this means
-function _M:finish()
-  self.response_t[self.seq] = nil
+local function finish_future_life(future)
+  future.response_t[future.seq] = nil
 end
 
-local function drop_wait(permature, future)
-  if permature then
+local function drop_aftermath(premature, future)
+  if premature then
     return
   end
 
@@ -27,21 +25,21 @@ local function drop_wait(permature, future)
   end
 end
 
--- intentionally drop the future
--- it will wait for the response and log error if it occurs
+-- Call to intentionally drop the future, without blocking to wait.
+-- It will discard the response and log if error occurs.
 function _M:drop()
-  return new_timer(0, drop_wait, self)
+  return new_timer(0, drop_aftermath, self)
 end
 
--- call to indicate the request is done.
+-- Call to indicate the request is done.
 --- @param any data the response
 function _M:done(data)
   self.data = data
   self.smph:post()
-  self:finish()
+  finish_future_life(self)
 end
 
--- call to indicate the request is in error.
+-- Call to indicate the request is in error.
 --- @param string etype error type enumerator
 --- @param string errdesc the error description
 function _M:error(etype, errdesc)
@@ -49,7 +47,7 @@ function _M:error(etype, errdesc)
   self.etype = etype
   self.errdesc = errdesc
   self.smph:post()
-  self:finish()
+  finish_future_life(self)
 end
 
 -- call to indicate the request expires.
