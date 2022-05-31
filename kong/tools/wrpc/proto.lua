@@ -97,7 +97,7 @@ end
 --
 -- Throw when error occurs.
 -- pcall if you do not want it throw.
----@param name(string) name for prototype. a.b.c will be found at a/b/c.proto
+---@param name(string) name for prototype. a.b will be found at a/b.proto
 function _M:import(name)
   local fname = name:gsub('%.', '/') .. '.proto'
 
@@ -139,7 +139,7 @@ end
 -- Sets a service handler for the given rpc method.
 --- @param rpc_name string Full name of the rpc method
 --- @param handler function Function called to handle the rpc method.
---- @param response_handler function Fallback function called to handle responses.
+--- @param response_handler function Fallback function for responses.
 function _M:set_handler(rpc_name, handler, response_handler)
   local rpc = self:get_rpc(rpc_name)
   if not rpc then

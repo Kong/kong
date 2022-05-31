@@ -29,9 +29,10 @@ end
 
 --- Handle RPC data (mtype == MESSAGE_TYPE_RPC).
 --- Could be an incoming method call or the response to a previous one.
---- @param payload table decoded payload field from incoming `wrpc.WebsocketPayload` message
+--- @param payload table decoded payload field from incoming `wrpc.WebsocketPayload`
 function _M.process_message(wrpc_peer, payload)
-  local rpc = wrpc_peer.service:get_rpc(payload.svc_id .. '.' .. payload.rpc_id)
+  local rpc = wrpc_peer.service:get_rpc(
+    payload.svc_id .. '.' .. payload.rpc_id)
   if not rpc then
     send_error(wrpc_peer, {
       etype = "ERROR_TYPE_INVALID_SERVICE",
@@ -55,19 +56,22 @@ function _M.process_message(wrpc_peer, payload)
         if response_future.raw then
           response_future:done(payload)
         else
-          response_future:done(decodearray(pb_decode, rpc.output_type, payload.payloads))
+          response_future:done(
+            decodearray(pb_decode, rpc.output_type, payload.payloads))
         end
       end
 
     elseif rpc.response_handler then
-      pcall(rpc.response_handler, wrpc_peer, decodearray(pb_decode, rpc.output_type, payload.payloads))
+      pcall(rpc.response_handler,
+        wrpc_peer, decodearray(pb_decode, rpc.output_type, payload.payloads))
     end
 
   else
     -- incoming method call
     if rpc.handler then
       local input_data = decodearray(pb_decode, rpc.input_type, payload.payloads)
-      local ok, output_data = ok_wrapper(pcall(rpc.handler, wrpc_peer, table_unpack(input_data, 1, input_data.n)))
+      local ok, output_data = ok_wrapper(
+        pcall(rpc.handler, wrpc_peer, table_unpack(input_data, 1, input_data.n)))
       if not ok then
         local err = tostring(output_data[1])
         ngx_log(ERR, ("[wrpc] Error handling %q method: %q"):format(rpc.name, err))
@@ -103,7 +107,8 @@ end
 function _M.handle_error(wrpc_peer, payload)
   local etype = payload.error and payload.error.etype or "--"
   local errdesc = payload.error and payload.error.description or "--"
-  ngx_log(NOTICE, string.format("[wRPC] Received error message, %s.%s:%s (%s: %q)",
+  ngx_log(NOTICE, string.format(
+    "[wRPC] Received error message, %s.%s:%s (%s: %q)",
     payload.svc_id, payload.rpc_id, payload.ack, etype, errdesc
   ))
 
@@ -118,12 +123,15 @@ function _M.handle_error(wrpc_peer, payload)
         end
 
       else
-        assert(response_future.error, "response future does not has a error handler!")
+        assert(response_future.error,
+          "response future does not has a error handler!")
         response_future:error(etype, errdesc)
       end
 
     else
-      ngx_log(ERR, "reciving error response for a call not initiated by this peer. Service ID: ", payload.svc_id, " RPC ID: ", payload.rpc_id)
+      ngx_log(ERR, 
+        "reciving error response for a call not initiated by this peer.",
+        " Service ID: ", payload.svc_id, " RPC ID: ", payload.rpc_id)
       local rpc = wrpc_peer.service:get_rpc(payload.svc_id .. payload.rpc_id)
       if rpc and rpc.error_handler then
         local ok, err = pcall(rpc.error_handler, wrpc_peer, etype, errdesc)
