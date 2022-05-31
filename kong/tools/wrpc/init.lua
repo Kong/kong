@@ -106,7 +106,7 @@ function _MT:receive()
     end
 
     if typ == "close" then
-      kong.log.notice("Received WebSocket \"close\" frame from peer: ", err, ": ", data)
+      ngx_log(NOTICE, "Received WebSocket \"close\" frame from peer: ", err, ": ", data)
       return self:close()
     end
   end
