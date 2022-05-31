@@ -16,7 +16,11 @@ function _M:finish()
   self.response_t[self.seq] = nil
 end
 
-local function dropWait(future)
+local function dropWait(permature, future)
+  if permature then
+    return
+  end
+
   local ok, err = future:wait()
   if not ok then
     ngx_log(ERR, "request fail to recieve response: ", err)
