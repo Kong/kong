@@ -219,7 +219,7 @@ function _M:communicate(premature)
       if hash == true then
         hash = DECLARATIVE_EMPTY_CONFIG_HASH
       end
-      assert(peer:call("ConfigService.PingCP", { hash = hash }))
+      assert(peer:void_call("ConfigService.PingCP", { hash = hash }))
       ngx_log(ngx_INFO, _log_prefix, "sent ping", log_suffix)
 
       for _ = 1, PING_INTERVAL do

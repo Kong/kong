@@ -17,21 +17,25 @@ local ngx_now = ngx.now
 
 local _M = {}
 
+local function send_error(wrpc_peer, payload, error)
+  return wrpc_peer:send_payload({
+    mtype = "MESSAGE_TYPE_ERROR",
+    error = error,
+    svc_id = payload.svc_id,
+    rpc_id = payload.rpc_id,
+    ack = payload.seq,
+  })
+end
+
 --- Handle RPC data (mtype == MESSAGE_TYPE_RPC).
 --- Could be an incoming method call or the response to a previous one.
 --- @param payload table decoded payload field from incoming `wrpc.WebsocketPayload` message
 function _M.process_message(wrpc_peer, payload)
   local rpc = wrpc_peer.service:get_rpc(payload.svc_id .. '.' .. payload.rpc_id)
   if not rpc then
-    wrpc_peer:send_payload({
-      mtype = "MESSAGE_TYPE_ERROR",
-      error = {
-        etype = "ERROR_TYPE_INVALID_SERVICE",
-        description = "Invalid service (or rpc)",
-      },
-      svc_id = payload.svc_id,
-      rpc_id = payload.rpc_id,
-      ack = payload.seq,
+    send_error(wrpc_peer, {
+      etype = "ERROR_TYPE_INVALID_SERVICE",
+      description = "Invalid service (or rpc)",
     })
     return nil, "INVALID_SERVICE"
   end
@@ -39,22 +43,21 @@ function _M.process_message(wrpc_peer, payload)
   local ack = tonumber(payload.ack) or 0
   if ack > 0 then
     -- response to a previous call
-    local response_waiter = wrpc_peer.response_queue[ack]
-    if response_waiter then
+    local response_future = wrpc_peer.responses[ack]
+    if response_future then
 
-      if response_waiter.deadline and response_waiter.deadline < ngx_now() then
-        if response_waiter.expire then
-          response_waiter:expire()
+      if response_future.deadline and response_future.deadline < ngx_now() then
+        if response_future.expire then
+          response_future:expire()
         end
 
       else
-        if response_waiter.raw then
-          response_waiter:handle(payload)
+        if response_future.raw then
+          response_future:done(payload)
         else
-          response_waiter:handle(decodearray(pb_decode, rpc.output_type, payload.payloads))
+          response_future:done(decodearray(pb_decode, rpc.output_type, payload.payloads))
         end
       end
-      wrpc_peer.response_queue[ack] = nil
 
     elseif rpc.response_handler then
       pcall(rpc.response_handler, wrpc_peer, decodearray(pb_decode, rpc.output_type, payload.payloads))
@@ -68,16 +71,12 @@ function _M.process_message(wrpc_peer, payload)
       if not ok then
         local err = tostring(output_data[1])
         ngx_log(ERR, ("[wrpc] Error handling %q method: %q"):format(rpc.name, err))
-        wrpc_peer:send_payload({
-          mtype = "MESSAGE_TYPE_ERROR",
-          error = {
-            etype = "ERROR_TYPE_UNSPECIFIED",
-            description = err,
-          },
-          svc_id = payload.svc_id,
-          rpc_id = payload.rpc_id,
-          ack = payload.seq,
+
+        send_error(wrpc_peer, {
+          etype = "ERROR_TYPE_UNSPECIFIED",
+          description = err,
         })
+
         return nil, err
       end
 
@@ -92,15 +91,9 @@ function _M.process_message(wrpc_peer, payload)
 
     else
       -- rpc has no handler
-      wrpc_peer:send_payload({
-        mtype = "MESSAGE_TYPE_ERROR",
-        error = {
-          etype = "ERROR_TYPE_INVALID_RPC",   -- invalid here, not in the definition
-          description = "Unhandled method",
-        },
-        svc_id = payload.svc_id,
-        rpc_id = payload.rpc_id,
-        ack = payload.seq,
+      send_error(wrpc_peer, {
+        etype = "ERROR_TYPE_INVALID_RPC",   -- invalid here, not in the definition
+        description = "Unhandled method",
       })
     end
   end
@@ -117,23 +110,26 @@ function _M.handle_error(wrpc_peer, payload)
   local ack = tonumber(payload.ack) or 0
   if ack > 0 then
     -- response to a previous call
-    local response_waiter = wrpc_peer.response_queue[ack]
-    if response_waiter and response_waiter.handle_error then
-
-      if response_waiter.deadline and response_waiter.deadline < ngx_now() then
-        if response_waiter.expire then
-          response_waiter:expire()
+    local response_future = wrpc_peer.responses[ack]
+    if response_future then
+      if response_future.deadline and response_future.deadline < ngx_now() then
+        if response_future.expire then
+          response_future:expire()
         end
 
       else
-        response_waiter:handle_error(etype, errdesc)
+        assert(response_future.error, "response future does not has a error handler!")
+        response_future:error(etype, errdesc)
       end
-      wrpc_peer.response_queue[ack] = nil
 
     else
-      local rpc = wrpc_peer.service:get_method(payload.svc_id, payload.rpc_id)
+      ngx_log(ERR, "reciving error response for a call not initiated by this peer. Service ID: ", payload.svc_id, " RPC ID: ", payload.rpc_id)
+      local rpc = wrpc_peer.service:get_rpc(payload.svc_id .. payload.rpc_id)
       if rpc and rpc.error_handler then
-        pcall(rpc.error_handler, wrpc_peer, etype, errdesc)
+        local ok, err = pcall(rpc.error_handler, wrpc_peer, etype, errdesc)
+        if not ok then
+          ngx_log(ERR, "error thrown when handling RPC error: ", err)
+        end
       end
     end
   end

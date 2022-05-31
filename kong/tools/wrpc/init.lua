@@ -1,11 +1,12 @@
 local pb = require "pb"
-local semaphore = require "ngx.semaphore"
 local utils = require "kong.tools.wrpc.utils"
 local threads = require "kong.tools.wrpc.threads"
+local future = require "kong.tools.wrpc.future"
 
 local pb_encode = pb.encode
 local queue = utils.queue
 local queue_new = queue.new
+local future_new = future.new
 
 local ngx_log = ngx.log
 local NOTICE = ngx.NOTICE
@@ -21,35 +22,6 @@ _MT.__index = _M
 _M.spawn_threads = threads.spawn
 _M.wait_threads = threads.wait
 
-local semaphore_waiter
-do
-  local function handle(self, data)
-    self.data = data
-    self.smph:post()
-  end
-
-  local function handle_error(self, etype, errdesc)
-    self.data = nil
-    self.error = errdesc
-    self.etype = etype
-    self.smph:post()
-  end
-
-  local function expire(self)
-    self:handle_error("timeout", "timeout")
-  end
-
-  function semaphore_waiter()
-    return {
-      smph = semaphore.new(),
-      deadline = ngx_now() + DEFAULT_EXPIRATION_DELAY,
-      handle = handle,
-      handle_error = handle_error,
-      expire = expire,
-    }
-  end
-end
-
 local function is_wsclient(conn)
   return conn and not conn.close or nil
 end
@@ -63,7 +35,7 @@ function _M.new_peer(conn, service)
     service = service,
     seq = 1,
     request_queue = is_wsclient(conn) and queue_new(),
-    response_queue = {},
+    responses = {},
     closing = false,
     _receiving_thread = nil,
   }, _MT)
@@ -113,6 +85,9 @@ end
 --- are the return values from wrpc_peer:encode_args(),
 --- either directly or cached (to repeat the same call
 --- several times).
+--- @param rpc(string) name of RPC to call or response
+--- @param payloads(string) payloads to send
+--- @return kong.tools.wrpc.future future
 function _M:send_encoded_call(rpc, payloads)
   self:send_payload({
     mtype = "MESSAGE_TYPE_RPC",
@@ -121,31 +96,45 @@ function _M:send_encoded_call(rpc, payloads)
     payload_encoding = "ENCODING_PROTO3",
     payloads = payloads,
   })
-  return self.seq
+  return future_new(self, DEFAULT_EXPIRATION_DELAY)
 end
 
 local send_encoded_call = _M.send_encoded_call
 
---- RPC call.
---- returns the call sequence number, doesn't wait for response.
-function _M:call(name, ...)
-  local rpc, payloads = assert(self.service:encode_args(name, ...))
+-- Make an RPC call.
+--
+-- Returns immediately.
+-- Caller is responsible to call wait() for the returned future.
+--- @param name(string) name of RPC to call, like "ConfigService.Sync"
+--- @param arg(table) arguments of the call, like {config = config}
+--- @return kong.tools.wrpc.future future
+function _M:call(name, arg)
+  local rpc, payloads = assert(self.service:encode_args(name, arg))
   return send_encoded_call(self, rpc, payloads)
 end
 
 
-function _M:call_wait(name, ...)
-  local waiter = semaphore_waiter()
+-- Make an RPC call.
+--
+-- Block until the call is responded or an error occurs.
+--- @param name(string) name of RPC to call, like "ConfigService.Sync"
+--- @param arg(table) arguments of the call, like {config = config}
+--- @return any data, string err result of the call
+function _M:call_wait(name, arg)
+  local future_to_wait = self:call(name, arg)
 
-  local seq = self.seq
-  self.response_queue[seq] = waiter
-  self:call(name, ...)
+  return future_to_wait:wait()
+end
 
-  local ok, err = waiter.smph:wait(DEFAULT_EXPIRATION_DELAY)
-  if not ok then
-    return nil, err
-  end
-  return waiter.data, waiter.error
+-- Make an RPC call.
+--
+-- Returns immediately and ignore response of the call.
+--- @param name(string) name of RPC to call, like "ConfigService.Sync"
+--- @param arg(table) arguments of the call, like {config = config}
+function _M:void_call(name, arg)
+  local future_to_wait = self:call(name, arg)
+
+  return future_to_wait:drop()
 end
 
 
@@ -166,19 +155,6 @@ function _M:send_payload(payload)
     version = "PAYLOAD_VERSION_V1",
     payload = payload,
   }))
-end
-
-
---- Returns the response for a given call ID, if any
-function _M:get_response(req_id)
-  local resp_data = self.response_queue[req_id]
-  self.response_queue[req_id] = nil
-
-  if resp_data == nil then
-    return nil, "no response"
-  end
-
-  return resp_data
 end
 
 return _M
