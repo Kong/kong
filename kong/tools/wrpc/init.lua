@@ -3,17 +3,23 @@ local semaphore = require "ngx.semaphore"
 local channel = require "kong.tools.channel"
 local util = require "kong.tools.wrpc.util"
 
-local select = select
 local table_unpack = table.unpack     -- luacheck: ignore
-
 local pb_encode = pb.encode
 local pb_decode = pb.decode
-local exiting = ngx.worker.exiting
+local ok_wrapper = util.ok_wrapper
 local safe_args = util.safe_args
 local endswith = util.endswith
 local queue = util.queue
 local queue_new = queue.new
-
+local ngx_log = ngx.log
+local ERR = ngx.ERR
+local NOTICE = ngx.NOTICE
+local exiting = ngx.worker.exiting
+local ngx_now = ngx.now
+local sleep = ngx.sleep
+local thread_spawn = ngx.thread.spawn
+local thread_kill = ngx.thread.kill
+local thread_wait = ngx.thread.wait
 local DEFAULT_EXPIRATION_DELAY = 90
 
 pb.option("no_default_values")
@@ -41,7 +47,7 @@ do
   function semaphore_waiter()
     return {
       smph = semaphore.new(),
-      deadline = ngx.now() + DEFAULT_EXPIRATION_DELAY,
+      deadline = ngx_now() + DEFAULT_EXPIRATION_DELAY,
       handle = handle,
       handle_error = handle_error,
       expire = expire,
@@ -106,28 +112,6 @@ function _MT:receive()
   end
 end
 
---- RPC call.
---- returns the call sequence number, doesn't wait for response.
-function _MT:call(name, ...)
-  local rpc, payloads = assert(self.service:encode_args(name, ...))
-  return self:send_encoded_call(rpc, payloads)
-end
-
-
-function _MT:call_wait(name, ...)
-  local waiter = semaphore_waiter()
-
-  local seq = self.seq
-  self.response_queue[seq] = waiter
-  self:call(name, ...)
-
-  local ok, err = waiter.smph:wait(DEFAULT_EXPIRATION_DELAY)
-  if not ok then
-    return nil, err
-  end
-  return waiter.data, waiter.error
-end
-
 
 --- Part of wrpc_peer:call()
 --- This performs the per-call parts.  The arguments
@@ -145,10 +129,28 @@ function _MT:send_encoded_call(rpc, payloads)
   return self.seq
 end
 
---- little helper to ease grabbing an unspecified number
---- of values after an `ok` flag
-local function ok_wrapper(ok, ...)
-  return ok, {n = select('#', ...), ...}
+local send_encoded_call = _MT.send_encoded_call
+
+--- RPC call.
+--- returns the call sequence number, doesn't wait for response.
+function _MT:call(name, ...)
+  local rpc, payloads = assert(self.service:encode_args(name, ...))
+  return send_encoded_call(self, rpc, payloads)
+end
+
+
+function _MT:call_wait(name, ...)
+  local waiter = semaphore_waiter()
+
+  local seq = self.seq
+  self.response_queue[seq] = waiter
+  self:call(name, ...)
+
+  local ok, err = waiter.smph:wait(DEFAULT_EXPIRATION_DELAY)
+  if not ok then
+    return nil, err
+  end
+  return waiter.data, waiter.error
 end
 
 --- decodes each element of an array with the same type
@@ -179,7 +181,7 @@ function _MT:send_payload(payload)
   self.seq = seq + 1
 
   if not payload.ack or payload.ack == 0 then
-    payload.deadline = ngx.now() + DEFAULT_EXPIRATION_DELAY
+    payload.deadline = ngx_now() + DEFAULT_EXPIRATION_DELAY
   end
 
   self:send(pb_encode("wrpc.WebsocketPayload", {
@@ -213,7 +215,7 @@ function _MT:handle(payload)
     local response_waiter = self.response_queue[ack]
     if response_waiter then
 
-      if response_waiter.deadline and response_waiter.deadline < ngx.now() then
+      if response_waiter.deadline and response_waiter.deadline < ngx_now() then
         if response_waiter.expire then
           response_waiter:expire()
         end
@@ -238,7 +240,7 @@ function _MT:handle(payload)
       local ok, output_data = ok_wrapper(pcall(rpc.handler, self, table_unpack(input_data, 1, input_data.n)))
       if not ok then
         local err = tostring(output_data[1])
-        ngx.log(ngx.ERR, ("[wrpc] Error handling %q method: %q"):format(rpc.name, err))
+        ngx_log(ERR, ("[wrpc] Error handling %q method: %q"):format(rpc.name, err))
         self:send_payload({
           mtype = "MESSAGE_TYPE_ERROR",
           error = {
@@ -282,7 +284,7 @@ end
 function _MT:handle_error(payload)
   local etype = payload.error and payload.error.etype or "--"
   local errdesc = payload.error and payload.error.description or "--"
-  ngx.log(ngx.NOTICE, string.format("[wRPC] Received error message, %s.%s:%s (%s: %q)",
+  ngx_log(NOTICE, string.format("[wRPC] Received error message, %s.%s:%s (%s: %q)",
     payload.svc_id, payload.rpc_id, payload.ack, etype, errdesc
   ))
 
@@ -292,7 +294,7 @@ function _MT:handle_error(payload)
     local response_waiter = self.response_queue[ack]
     if response_waiter and response_waiter.handle_error then
 
-      if response_waiter.deadline and response_waiter.deadline < ngx.now() then
+      if response_waiter.deadline and response_waiter.deadline < ngx_now() then
         if response_waiter.expire then
           response_waiter:expire()
         end
@@ -327,11 +329,11 @@ function _MT:step()
       local ack = payload.ack or 0
       local deadline = payload.deadline or 0
 
-      if ack == 0 and deadline < ngx.now() then
-        ngx.log(ngx.NOTICE, "[wRPC] Expired message (", deadline, "<", ngx.now(), ") discarded")
+      if ack == 0 and deadline < ngx_now() then
+        ngx_log(NOTICE, "[wRPC] Expired message (", deadline, "<", ngx_now(), ") discarded")
 
       elseif ack ~= 0 and deadline ~= 0 then
-        ngx.log(ngx.NOTICE, "[WRPC] Invalid deadline (", deadline, ") for response")
+        ngx_log(NOTICE, "[WRPC] Invalid deadline (", deadline, ") for response")
 
       else
         self:handle(payload)
@@ -342,21 +344,21 @@ function _MT:step()
   end
 
   if err ~= nil and not endswith(err, "timeout") then
-    ngx.log(ngx.NOTICE, "[wRPC] WebSocket frame: ", err)
+    ngx_log(NOTICE, "[wRPC] WebSocket frame: ", err)
     self.closing = true
   end
 end
 
 function _MT:spawn_threads()
-  self._receiving_thread = assert(ngx.thread.spawn(function()
+  self._receiving_thread = assert(thread_spawn(function()
     while not exiting() and not self.closing do
       self:step()
-      ngx.sleep(0)
+      sleep(0)
     end
   end))
 
   if self.request_queue then
-    self._transmit_thread = assert(ngx.thread.spawn(function()
+    self._transmit_thread = assert(thread_spawn(function()
       while not exiting() and not self.closing do
         local data, err = self.request_queue:pop()
         if data then
@@ -372,7 +374,7 @@ function _MT:spawn_threads()
   end
 
   if self.channel_dict then
-    self._channel_thread = assert(ngx.thread.spawn(function()
+    self._channel_thread = assert(thread_spawn(function()
       while not exiting() and not self.closing do
         local msg, name, err = channel.wait_all(self.channel_dict)
         if msg and name then
@@ -390,20 +392,20 @@ end
 
 
 function _MT:wait_threads()
-  local ok, err, perr = ngx.thread.wait(safe_args(self._receiving_thread, self._transmit_thread, self._channel_thread))
+  local ok, err, perr = thread_wait(safe_args(self._receiving_thread, self._transmit_thread, self._channel_thread))
 
   if self._receiving_thread then
-    ngx.thread.kill(self._receiving_thread)
+    thread_kill(self._receiving_thread)
     self._receiving_thread = nil
   end
 
   if self._transmit_thread then
-    ngx.thread.kill(self._transmit_thread)
+    thread_kill(self._transmit_thread)
     self._transmit_thread = nil
   end
 
   if self._channel_thread then
-    ngx.thread.kill(self._channel_thread)
+    thread_kill(self._channel_thread)
     self._channel_thread = nil
   end
 

@@ -3,6 +3,7 @@ local semaphore = require "ngx.semaphore"
 local table_insert = table.insert     -- luacheck: ignore
 local table_remove = table.remove     -- luacheck: ignore
 local table_unpack = table.unpack     -- luacheck: ignore
+local select = select
 
 local _M = {}
 
@@ -19,6 +20,12 @@ function _M.safe_args(...)
     out[#out + 1] = select(i, ...)
   end
   return table_unpack(out)
+end
+
+--- little helper to ease grabbing an unspecified number
+--- of values after an `ok` flag
+function _M.ok_wrapper(ok, ...)
+  return ok, {n = select('#', ...), ...}
 end
 
 local queue = {}
