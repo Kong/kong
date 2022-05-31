@@ -5,10 +5,13 @@ local openssl_x509 = require("resty.openssl.x509")
 local ssl = require("ngx.ssl")
 local ocsp = require("ngx.ocsp")
 local http = require("resty.http")
+local ws_client = require("resty.websocket.client")
 
 local type = type
 local tonumber = tonumber
 local ipairs = ipairs
+
+local kong = kong
 
 local ngx_var = ngx.var
 
@@ -343,6 +346,47 @@ function _M.check_protocol_support(conf, cert, cert_key)
   end
 
   return "v1"   -- wrpc
+end
+
+
+local WS_OPTS = {
+  timeout = constants.CLUSTERING_TIMEOUT,
+  max_payload_len = kong.configuration.cluster_max_payload,
+}
+
+-- TODO: pick one random CP
+function _M.connect_cp(endpoint, conf, cert, cert_key, protocols)
+  local address = conf.cluster_control_plane .. endpoint
+
+  local c = assert(ws_client:new(WS_OPTS))
+  local uri = "wss://" .. address .. "?node_id=" ..
+              kong.node.get_id() ..
+              "&node_hostname=" .. kong.node.get_hostname() ..
+              "&node_version=" .. KONG_VERSION
+
+  local opts = {
+    ssl_verify = true,
+    client_cert = cert,
+    client_priv_key = cert_key,
+    protocols = protocols,
+  }
+
+  if conf.cluster_mtls == "shared" then
+    opts.server_name = "kong_clustering"
+
+  else
+    -- server_name will be set to the host if it is not explicitly defined here
+    if conf.cluster_server_name ~= "" then
+      opts.server_name = conf.cluster_server_name
+    end
+  end
+
+  local ok, err = c:connect(uri, opts)
+  if not ok then
+    return nil, uri, err
+  end
+
+  return c
 end
 
 

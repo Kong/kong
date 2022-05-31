@@ -87,7 +87,6 @@ local function get_config_service()
 end
 
 function _M:communicate(premature)
-
   if premature then
     -- worker wants to exit
     return
