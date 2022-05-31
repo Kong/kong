@@ -143,6 +143,7 @@ build = {
     ["kong.tools.kong-lua-sandbox"] = "kong/tools/kong-lua-sandbox.lua",
     ["kong.tools.protobuf"] = "kong/tools/protobuf.lua",
     ["kong.tools.wrpc"] = "kong/tools/wrpc/init.lua",
+    ["kong.tools.wrpc.utils"] = "kong/tools/wrpc/utils.lua",
     ["kong.tools.wrpc.proto"] = "kong/tools/wrpc/proto.lua",
     ["kong.tools.wrpc.message"] = "kong/tools/wrpc/message.lua",
     ["kong.tools.wrpc.threads"] = "kong/tools/wrpc/threads.lua",

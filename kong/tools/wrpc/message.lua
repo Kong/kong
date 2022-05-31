@@ -1,11 +1,11 @@
 
 local pb = require "pb"
-local util = require "kong.tools.wrpc.util"
+local utils = require "kong.tools.wrpc.utils"
 local table_unpack = table.unpack     -- luacheck: ignore
 
-local encodearray = util.encodearray
-local decodearray = util.decodearray
-local ok_wrapper = util.ok_wrapper
+local encodearray = utils.encodearray
+local decodearray = utils.decodearray
+local ok_wrapper = utils.ok_wrapper
 
 local pb_decode = pb.decode
 local pb_encode = pb.encode

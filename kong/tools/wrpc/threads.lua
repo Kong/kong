@@ -1,9 +1,9 @@
 local pb = require "pb"
-local util = require "kong.tools.wrpc.util"
+local utils = require "kong.tools.wrpc.utils"
 local message = require "kong.tools.wrpc.message"
 
-local safe_args = util.safe_args
-local endswith = util.endswith
+local safe_args = utils.safe_args
+local endswith = utils.endswith
 local pb_decode = pb.decode
 
 local ngx_now = ngx.now

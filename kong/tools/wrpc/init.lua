@@ -1,10 +1,10 @@
 local pb = require "pb"
 local semaphore = require "ngx.semaphore"
-local util = require "kong.tools.wrpc.util"
+local utils = require "kong.tools.wrpc.utils"
 local threads = require "kong.tools.wrpc.threads"
 
 local pb_encode = pb.encode
-local queue = util.queue
+local queue = utils.queue
 local queue_new = queue.new
 
 local ngx_log = ngx.log
