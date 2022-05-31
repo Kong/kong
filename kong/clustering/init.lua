@@ -71,27 +71,35 @@ function _M:init_cp_worker(plugins_list)
 end
 
 function _M:init_dp_worker(plugins_list)
-  local config_proto, msg = check_protocol_support(self.conf, self.cert, self.cert_key)
+  local start_dp = function(premature)
+    if premature then
+      return
+    end
 
-  if not config_proto and msg then
-    ngx_log(ngx_ERR, _log_prefix, "error check protocol support: ", msg)
+    local config_proto, msg = check_protocol_support(self.conf, self.cert, self.cert_key)
+
+    if not config_proto and msg then
+      ngx_log(ngx_ERR, _log_prefix, "error check protocol support: ", msg)
+    end
+
+    ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
+
+    if config_proto == "v0" or config_proto == nil then
+      self.child =
+        require("kong.clustering.data_plane").new(self.conf, self.cert, self.cert_key)
+
+    else -- config_proto == "v1" or higher
+      self.child =
+        require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
+    end
+
+    if self.child then
+      self.child.plugins_list = plugins_list
+      self.child:init_worker()
+    end
   end
 
-  ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
-
-  if config_proto == "v0" or config_proto == nil then
-    self.child =
-      require("kong.clustering.data_plane").new(self.conf, self.cert, self.cert_key)
-
-  else -- config_proto == "v1" or higher
-    self.child =
-      require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
-  end
-
-  if self.child then
-    self.child.plugins_list = plugins_list
-    self.child:init_worker()
-  end
+  assert(ngx.timer.at(0, start_dp))
 end
 
 function _M:init_worker()
