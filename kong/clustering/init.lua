@@ -62,7 +62,7 @@ function _M:serve_version_handshake()
   return version_negotiation.serve_version_handshake(self.conf, self.cert_digest)
 end
 
-function _M:cp_init_worker(plugins_list)
+function _M:init_cp_worker(plugins_list)
   self.json_handler.plugins_list = plugins_list
   self.wrpc_handler.plugins_list = plugins_list
 
@@ -70,7 +70,7 @@ function _M:cp_init_worker(plugins_list)
   self.wrpc_handler:init_worker()
 end
 
-function _M:dp_init_worker(plugins_list)
+function _M:init_dp_worker(plugins_list)
   local start_dp = function(premature)
     if premature then
       return
@@ -115,12 +115,12 @@ function _M:init_worker()
   local role = self.conf.role
 
   if role == "control_plane" then
-    self.cp_init_worker(plugins_list)
+    self:init_cp_worker(plugins_list)
     return
   end
 
   if role == "data_plane" and ngx.worker.id() == 0 then
-    self.dp_init_worker(plugins_list)
+    self:init_dp_worker(plugins_list)
   end
 end
 
