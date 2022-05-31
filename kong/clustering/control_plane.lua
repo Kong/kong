@@ -608,6 +608,8 @@ end
 function _M:init_worker(plugins_list)
   -- ROLE = "control_plane"
 
+  self.plugins_list = plugins_list
+
   self.plugins_map = plugins_list_to_map(plugins_list)
 
   self.deflated_reconfigure_payload = nil
