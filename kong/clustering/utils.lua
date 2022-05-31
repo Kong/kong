@@ -46,7 +46,7 @@ local function extract_major_minor(version)
   return major, minor
 end
 
-function _M.check_kong_version_compatibility(cp_version, dp_version, log_suffix)
+local function check_kong_version_compatibility(cp_version, dp_version, log_suffix)
   local major_cp, minor_cp = extract_major_minor(cp_version)
   local major_dp, minor_dp = extract_major_minor(dp_version)
 
@@ -230,7 +230,7 @@ end
 
 
 function _M.check_version_compatibility(obj, dp_version, dp_plugin_map, log_suffix)
-  local ok, err, status = _M.check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
+  local ok, err, status = check_kong_version_compatibility(KONG_VERSION, dp_version, log_suffix)
   if not ok then
     return ok, err, status
   end
