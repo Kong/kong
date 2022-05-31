@@ -79,13 +79,13 @@ function _M:init_dp_worker(plugins_list)
 
   ngx_log(ngx_DEBUG, _log_prefix, "config_proto: ", config_proto, " / ", msg)
 
-  if config_proto == "v1" then
-    self.child =
-      require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
-
-  elseif config_proto == "v0" or config_proto == nil then
+  if config_proto == "v0" or config_proto == nil then
     self.child =
       require("kong.clustering.data_plane").new(self.conf, self.cert, self.cert_key)
+
+  else -- config_proto == "v1" or higher
+    self.child =
+      require("kong.clustering.wrpc_data_plane").new(self.conf, self.cert, self.cert_key)
   end
 
   if self.child then
