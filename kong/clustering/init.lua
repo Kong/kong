@@ -2,7 +2,6 @@ local _M = {}
 local _MT = { __index = _M, }
 
 
-local version_negotiation = require("kong.clustering.version_negotiation")
 local pl_file = require("pl.file")
 local pl_tablex = require("pl.tablex")
 local ssl = require("ngx.ssl")
@@ -56,10 +55,6 @@ end
 
 function _M:handle_wrpc_websocket()
   return self.wrpc_handler:handle_cp_websocket()
-end
-
-function _M:serve_version_handshake()
-  return version_negotiation.serve_version_handshake(self.conf, self.cert_digest)
 end
 
 function _M:init_cp_worker(plugins_list)
