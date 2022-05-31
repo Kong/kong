@@ -1,11 +1,11 @@
 
 local semaphore = require("ngx.semaphore")
-local ws_client = require("resty.websocket.client")
 local declarative = require("kong.db.declarative")
 local protobuf = require("kong.tools.protobuf")
 local wrpc = require("kong.tools.wrpc")
 local constants = require("kong.constants")
 local config_helper = require("kong.clustering.config_helper")
+local clustering_utils = require("kong.clustering.utils")
 local assert = assert
 local setmetatable = setmetatable
 local type = type
@@ -14,11 +14,9 @@ local xpcall = xpcall
 local ngx = ngx
 local ngx_log = ngx.log
 local ngx_sleep = ngx.sleep
-local kong = kong
 local exiting = ngx.worker.exiting
 
 
-local KONG_VERSION = kong.version
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
 local PING_INTERVAL = constants.CLUSTERING_PING_INTERVAL
@@ -94,46 +92,20 @@ function _M:communicate(premature)
 
   local conf = self.conf
 
-  -- TODO: pick one random CP
-  local address = conf.cluster_control_plane
-  local log_suffix = " [" .. address .. "]"
-
-  local c = assert(ws_client:new({
-    timeout = constants.CLUSTERING_TIMEOUT,
-    max_payload_len = conf.cluster_max_payload,
-  }))
-  local uri = "wss://" .. address .. "/v1/wrpc?node_id=" ..
-              kong.node.get_id() ..
-              "&node_hostname=" .. kong.node.get_hostname() ..
-              "&node_version=" .. KONG_VERSION
-
-  local opts = {
-    ssl_verify = true,
-    client_cert = self.cert,
-    client_priv_key = self.cert_key,
-    protocols = "wrpc.konghq.com",
-  }
-  if conf.cluster_mtls == "shared" then
-    opts.server_name = "kong_clustering"
-  else
-    -- server_name will be set to the host if it is not explicitly defined here
-    if conf.cluster_server_name ~= "" then
-      opts.server_name = conf.cluster_server_name
-    end
-  end
-
+  local log_suffix = " [" .. conf.cluster_control_plane .. "]"
   local reconnection_delay = math.random(5, 10)
-  do
-    local res, err = c:connect(uri, opts)
-    if not res then
-      ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
-        " (retrying after ", reconnection_delay, " seconds)", log_suffix)
 
-      assert(ngx.timer.at(reconnection_delay, function(premature)
-        self:communicate(premature)
-      end))
-      return
-    end
+  local c, uri, err = clustering_utils.connect_cp(
+                        "/v1/wrpc", conf, self.cert, self.cert_key,
+                        "wrpc.konghq.com")
+  if not c then
+    ngx_log(ngx_ERR, _log_prefix, "connection to control plane ", uri, " broken: ", err,
+                 " (retrying after ", reconnection_delay, " seconds)", log_suffix)
+
+    assert(ngx.timer.at(reconnection_delay, function(premature)
+      self:communicate(premature)
+    end))
+    return
   end
 
   local config_semaphore = semaphore.new(0)
